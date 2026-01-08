@@ -98,7 +98,7 @@ export class ReleaseNotesModal extends Modal {
         });
 
         const bodyHost = contentEl.createDiv({ cls: 'rt-release-notes-modal-body' });
-        await renderReleaseNotesList(bodyHost, this.entries, this.featuredEntry, this.plugin, 'rt-release-notes-modal');
+        await renderReleaseNotesList(this.entries, bodyHost, this.plugin);
 
         const footerEl = contentEl.createDiv({ cls: 'rt-release-notes-modal-footer' });
         const closeButton = footerEl.createEl('button', { text: 'Close' });

@@ -27,5 +27,5 @@ export async function renderReleaseNotesSection({ plugin, containerEl }: Release
     }
 
     const featuredEntry = entries[0] ?? entries[entries.length - 1]!;
-    await renderReleaseNotesList(section, entries, featuredEntry, plugin, 'rt-settings-release-notes');
+    await renderReleaseNotesList(entries, section, plugin);
 }

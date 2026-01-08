@@ -127,9 +127,18 @@ export async function getSortedSceneFiles(plugin: RadialTimelinePlugin): Promise
 }
 
 /**
+ * Get all valid scenes from the timeline (wrapper for getting timeline items directly)
+ */
+export async function getAllScenes(app: App, plugin: RadialTimelinePlugin): Promise<TimelineItem[]> {
+    const data = await plugin.getSceneData();
+    return data.filter(s => s.itemType === 'Scene' || !s.itemType);
+}
+
+/**
  * Fetch scene files in a specific order (ignores current mode when explicit order is provided)
  */
 export async function getSceneFilesByOrder(
+  app: App,
   plugin: RadialTimelinePlugin,
   order: ManuscriptOrder,
   subplotFilter?: string
@@ -181,7 +190,7 @@ export async function getSceneFilesByOrder(
 
   for (const scene of sortedScenes) {
     if (!scene.path) continue;
-    const file = plugin.app.vault.getAbstractFileByPath(scene.path);
+    const file = app.vault.getAbstractFileByPath(scene.path);
     if (!(file instanceof TFile)) continue;
     files.push(file);
     titles.push(file.basename);
@@ -355,4 +364,3 @@ export async function updateSceneWordCounts(
 
   return updatedCount;
 }
-

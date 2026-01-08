@@ -1,5 +1,5 @@
 /*
- * Radial Timeline Plugin for Obsidian
+ * Radial Timeline (tm) Plugin for Obsidian
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
@@ -78,7 +78,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         {
             id: "young_adult",
             name: "Young Adult / Coming-of-Age",
-            prompt: `Act as a developmental editor for a young adult coming-of-age novel. Focus on pacing, clear emotional arcs, and voice consistency. Ensure stakes feel personal and immediate. Highlight areas where dialogue or internal monologue can better show growth or vulnerability. Keep feedback concise and energetic.`,
+            prompt: `Act as a developmental editor for a young adult coming-of-age novel. Focus on pacing, clear emotional arcs, and voice consistency. Ensure stakes feel personal and immediate. Highlight areas where dialogue or internal monologue can better show growth or vulnerability. Keep feedback focused on concise and energetic prose.`,
             isBuiltIn: true
         },
         {
@@ -210,6 +210,25 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
         novel: ''
     },
 
+    // Author Progress Report (APR)
+    authorProgress: {
+        enabled: false,
+        defaultMode: 'FULL_STRUCTURE',
+        defaultNoteBehavior: 'preset',
+        defaultPublishTarget: 'folder',
+        lastUsedMode: 'FULL_STRUCTURE',
+        
+        bookTitle: '',
+        authorUrl: '',
+        
+        lastPublishedDate: undefined,
+        updateFrequency: 'manual',
+        stalenessThresholdDays: 30,
+        enableReminders: true,
+        dynamicEmbedPath: 'AuthorProgress/progress.svg'
+    },
+
     // Pro experience (visual/hero activation)
-    proExperienceEnabled: false,
+    hasSeenProActivation: false,
+    // proExperienceEnabled: false, // Removed invalid property
 };

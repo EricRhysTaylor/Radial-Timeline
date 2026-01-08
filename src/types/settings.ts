@@ -1,47 +1,3 @@
-/*
- * Plugin settings schema
- */
-
-import type { EmbeddedReleaseNotesBundle } from './releaseNotes';
-
-export type PovMarkerLabel = '1' | '2' | '3' | '0';
-
-export type GlobalPovMode = 'off' | 'first' | 'second' | 'third' | 'omni' | 'objective';
-
-export type ScenePovKeyword = 'first' | 'second' | 'third' | 'omni' | 'objective' | 'one' | 'two' | 'three' | 'count';
-
-export type ReadabilityScale = 'normal' | 'large';
-
-export type RuntimeContentType = 'screenplay' | 'novel';
-
-export interface RuntimeSessionPlanning {
-    draftingWpm?: number;   // Words per minute during drafting
-    recordingWpm?: number;  // Words per minute when recording/podcasting
-    editingWpm?: number;    // Words per minute equivalent for editing passes
-    dailyMinutes?: number;  // Minutes available per day for this profile
-}
-
-export interface LlmTimingStats {
-    avgSecondsPerRuntimeSecond: number;  // LLM processing time per runtime-second of content
-    sampleCount: number;                  // Total samples collected
-    recentSamples: number[];              // Last 10 samples for calibration
-}
-
-export interface RuntimeRateProfile {
-    id: string;
-    label: string;
-    contentType: RuntimeContentType;
-    dialogueWpm?: number;
-    actionWpm?: number;
-    narrationWpm?: number;
-    beatSeconds?: number;
-    pauseSeconds?: number;
-    longPauseSeconds?: number;
-    momentSeconds?: number;
-    silenceSeconds?: number;
-    sessionPlanning?: RuntimeSessionPlanning;
-}
-
 export interface AiContextTemplate {
     id: string;
     name: string;
@@ -70,10 +26,68 @@ export interface BookDesignerTemplate {
     assignments: BookDesignerSceneAssignment[];
 }
 
+export type GlobalPovMode = 'off' | 'first' | 'second' | 'third' | 'omni' | 'objective';
+export type ReadabilityScale = 'normal' | 'large';
+export type RuntimeContentType = 'novel' | 'screenplay' | 'audiobook';
+export type PovMarkerLabel = '0' | '1' | '2' | '3';
+
+export interface RuntimeRateProfile {
+    id: string;
+    label: string;
+    contentType: RuntimeContentType;
+    dialogueWpm: number;
+    actionWpm: number;
+    narrationWpm: number;
+    beatSeconds: number;
+    pauseSeconds: number;
+    longPauseSeconds: number;
+    momentSeconds: number;
+    silenceSeconds: number;
+    sessionPlanning?: {
+        draftingWpm?: number;
+        recordingWpm?: number;
+        editingWpm?: number;
+        dailyMinutes?: number;
+    };
+}
+
+export interface LlmTimingStats {
+    averageTokenPerSec: number;
+    lastJobTokenCount: number;
+    lastJobDurationMs: number;
+    sampleSize: number;
+    recentSamples: number[];
+    sampleCount: number;
+}
+
 export interface HoverMetadataField {
-    key: string;           // YAML key name
+    key: string;           // Frontmatter key
+    label: string;         // Display label
     icon: string;          // Lucide icon name
     enabled: boolean;      // Show in hover synopsis
+}
+
+export type AuthorProgressMode = 'FULL_STRUCTURE' | 'SCENES_ONLY' | 'MOMENTUM_ONLY';
+export type AuthorProgressPublishTarget = 'folder' | 'github_pages';
+export type AuthorProgressFrequency = 'manual' | 'daily' | 'weekly' | 'monthly';
+
+export interface AuthorProgressSettings {
+    enabled: boolean;
+    defaultMode: AuthorProgressMode;
+    defaultNoteBehavior: 'preset' | 'custom';
+    defaultPublishTarget: AuthorProgressPublishTarget;
+    lastUsedMode?: AuthorProgressMode;
+    
+    // Identity & Branding
+    bookTitle: string;
+    authorUrl: string;
+
+    // Updates & Frequency
+    lastPublishedDate?: string; // ISO string
+    updateFrequency: AuthorProgressFrequency;
+    stalenessThresholdDays: number; // For Manual mode
+    enableReminders: boolean;
+    dynamicEmbedPath: string;
 }
 
 export interface RadialTimelineSettings {
@@ -133,7 +147,7 @@ export interface RadialTimelineSettings {
     releaseNotesLastFetched?: string;
     enablePlanetaryTime?: boolean;
     planetaryProfiles?: PlanetaryProfile[];
-    activePlanetaryProfileId?: string;
+    activePlanetaryProfileId?: string
     frontmatterMappings?: Record<string, string>;
     enableCustomMetadataMapping?: boolean;
     enableAdvancedYamlEditor?: boolean;
@@ -176,8 +190,11 @@ export interface RadialTimelineSettings {
         novel?: string;
     };
 
+    // Author Progress Report (APR)
+    authorProgress?: AuthorProgressSettings;
+
     // Pro experience (visual/hero activation)
-    proExperienceEnabled?: boolean;
+    hasSeenProActivation?: boolean;
 }
 
 export interface PlanetaryProfile {
@@ -190,4 +207,27 @@ export interface PlanetaryProfile {
     epochLabel?: string;
     monthNames?: string[];
     weekdayNames?: string[];
+    customFormat?: string;
+}
+
+export interface EmbeddedReleaseNotesBundle {
+    version: string;
+    entries: EmbeddedReleaseNotesEntry[];
+    // Properties used by ReleaseNotesService logic
+    majorVersion?: string;
+    major?: EmbeddedReleaseNotesEntry;
+    latest?: EmbeddedReleaseNotesEntry;
+    patches?: EmbeddedReleaseNotesEntry[];
+}
+
+export interface EmbeddedReleaseNotesEntry {
+    version: string;
+    title: string;
+    sections: {
+        type: 'feature' | 'improvement' | 'fix';
+        items: string[];
+    }[];
+    publishedAt?: string;
+    body?: string;
+    url?: string;
 }

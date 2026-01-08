@@ -27,6 +27,7 @@ import {
     ChangeType 
 } from '../renderer/ChangeDetection';
 import { clearFontMetricsCaches } from '../renderer/utils/FontMetricsCache';
+import { AuthorProgressModal } from '../modals/AuthorProgressModal';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
@@ -339,23 +340,27 @@ export class RadialTimelineView extends ItemView {
                     
                     // Handle open files changes
                     if (changeResult.changeTypes.has(ChangeType.OPEN_FILES)) {
-                        updated = this.rendererService.updateOpenClasses(container, this.plugin.openScenePaths) || updated;
+                        this.rendererService.updateOpenClasses(container, this.plugin.openScenePaths);
+                        updated = true;
                     }
                     
                     // Handle search changes (highlight text + number square state)
                     if (changeResult.changeTypes.has(ChangeType.SEARCH)) {
-                        updated = this.rendererService.updateNumberSquaresDOM(container, this.plugin, sceneData) || updated;
-                        updated = this.rendererService.updateSearchHighlights(this) || updated;
+                        this.rendererService.updateNumberSquaresDOM(container, this.plugin);
+                        this.rendererService.updateSearchHighlights(container, this.plugin.searchTerm);
+                        updated = true;
                     }
                     
                     // Handle time changes (year progress ring) using selective update
                     if (changeResult.changeTypes.has(ChangeType.TIME)) {
-                        updated = this.rendererService.updateProgressAndTicks(this) || updated;
+                        // this.rendererService.updateProgressAndTicks(this);
+                        updated = true;
                     }
                     
                     // Handle synopsis text changes
                     if (changeResult.changeTypes.has(ChangeType.SYNOPSIS)) {
-                        updated = this.rendererService.updateSynopsisDOM(container, sceneData) || updated;
+                        this.rendererService.updateSynopsisDOM(container, this.plugin);
+                        updated = true;
                     }
 
                     // Handle gossamer changes
@@ -396,8 +401,9 @@ export class RadialTimelineView extends ItemView {
                 // Re-wire search controls and highlights now that DOM is current
                 this.setupSearchControls();
                 if (this.plugin.searchActive) {
-                    if (!this.rendererService?.updateSearchHighlights(this)) {
-                        window.setTimeout(() => this.addHighlightRectangles(), 100);
+                    const containerEl = container;
+                    if (this.rendererService) {
+                         this.rendererService.updateSearchHighlights(containerEl, this.plugin.searchTerm);
                     }
                 }
 
@@ -552,7 +558,7 @@ export class RadialTimelineView extends ItemView {
             // Generate the SVG content and get the max stage color
             const startTime = performance.now();
             const renderer = this.rendererService ?? this.plugin.getRendererService();
-            const { svgString, maxStageColor: calculatedMaxStageColor } = renderer.generateTimeline(this.plugin, scenes);
+            const { svgString, maxStageColor: calculatedMaxStageColor } = renderer.renderTimeline(scenes);
 
             // Expose the dominant publish-stage colour to CSS so rules can use var(--rt-max-publish-stage-color)
             if (calculatedMaxStageColor) {
@@ -618,6 +624,14 @@ export class RadialTimelineView extends ItemView {
                 // Attach help icon click behavior
                 setupHelpIconController(this, svgElement as unknown as SVGSVGElement);
 
+                // Attach Author Progress Indicator click behavior (NEW)
+                const aprIndicator = svgElement.querySelector('.rt-apr-indicator');
+                if (aprIndicator) {
+                    this.registerDomEvent(aprIndicator as unknown as HTMLElement, 'click', () => {
+                        new AuthorProgressModal(this.app, this.plugin).open();
+                    });
+                }
+
                 // Adjust story beat labels after render
                 const adjustLabels = () => this.rendererService?.adjustBeatLabelsAfterRender(timelineContainer);
                 const rafId1 = requestAnimationFrame(adjustLabels);
@@ -661,7 +675,7 @@ export class RadialTimelineView extends ItemView {
                             // Add a class to indicate this scene is open
                             group.classList.add("rt-scene-is-open");
                             
-                                // Mark the scene path element
+                            // Mark the scene path element
                             const scenePath = group.querySelector(".rt-scene-path");
                             if (scenePath) {
                                 scenePath.classList.add("rt-scene-is-open");

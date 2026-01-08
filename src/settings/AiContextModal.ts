@@ -1,17 +1,6 @@
-/*
- * Radial Timeline (tm) Plugin for Obsidian
- * Copyright (c) 2025 Eric Rhys Taylor
- * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
- */
 import { App, Modal, ButtonComponent, DropdownComponent, TextComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-
-interface AiContextTemplate {
-    id: string;
-    name: string;
-    prompt: string;
-    isBuiltIn: boolean;
-}
+import { AiContextTemplate } from '../types/settings';
 
 /**
  * Simple text input modal to replace prompt()

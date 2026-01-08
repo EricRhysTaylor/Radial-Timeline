@@ -94,7 +94,8 @@ export class FileTrackingService {
                 views.forEach(v => {
                     const svg = (v as unknown as { containerEl?: HTMLElement })?.containerEl?.querySelector?.('.radial-timeline-svg');
                     if (svg) {
-                        this.plugin.getRendererService().updateProgressAndTicks(v as any);
+                        // Pass null for currentSceneId if not available/relevant here, or fix signature
+                        this.plugin.getRendererService().updateProgressAndTicks(v as any, null);
                         if ((v as any).currentMode === 'gossamer') {
                             this.plugin.getRendererService().updateGossamerLayer(v as any);
                         }

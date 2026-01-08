@@ -203,6 +203,60 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(geminiSection);
     params.addAiRelatedElement(openaiSection);
 
+    // Helper to support SecretComponent if available (Obsidian 1.11.4+)
+    const addApiKeyInput = (
+        setting: Settings,
+        placeholder: string,
+        value: string,
+        save: (val: string) => Promise<void>,
+        validate: () => void,
+        setRef: (el: HTMLInputElement) => void,
+        extraCheck?: (val: string, el: HTMLElement) => boolean
+    ) => {
+        const configure = (component: TextComponent) => {
+            component.inputEl.addClass('rt-input-full');
+            component.setPlaceholder(placeholder).setValue(value);
+            
+            component.onChange(() => {
+                component.inputEl.removeClass('rt-setting-input-success');
+                component.inputEl.removeClass('rt-setting-input-error');
+            });
+            
+            plugin.registerDomEvent(component.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    component.inputEl.blur();
+                }
+            });
+
+            const handleBlur = async () => {
+                const trimmed = component.getValue().trim();
+                await save(trimmed);
+                setRef(component.inputEl);
+                
+                let valid = true;
+                if (extraCheck) {
+                    valid = extraCheck(trimmed, component.inputEl);
+                }
+                
+                if (valid && trimmed) {
+                    validate();
+                }
+            };
+            
+            plugin.registerDomEvent(component.inputEl, 'blur', () => { void handleBlur(); });
+        };
+
+        if ((app as any).SecretComponent) {
+            const SecretComponent = (app as any).SecretComponent;
+            const sc = new SecretComponent(setting.controlEl);
+            configure(sc);
+        } else {
+            setting.addText(text => configure(text));
+        }
+        setting.settingEl.addClass('rt-setting-full-width-input');
+    };
+
     // Anthropic API Key
     const anthropicKeySetting = new Settings(anthropicSection)
         .setName('Anthropic API key')
@@ -218,38 +272,16 @@ export function renderAiSection(params: {
             frag.appendChild(span);
             frag.appendChild(link);
             return frag;
-        })())
-        .addText(text => {
-            text.inputEl.addClass('rt-input-full');
-            text
-                .setPlaceholder('Enter your Anthropic API key')
-                .setValue(plugin.settings.anthropicApiKey || '');
-
-            text.onChange(() => {
-                text.inputEl.removeClass('rt-setting-input-success');
-                text.inputEl.removeClass('rt-setting-input-error');
-            });
-
-            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-                if (evt.key === 'Enter') {
-                    evt.preventDefault();
-                    text.inputEl.blur();
-                }
-            });
-
-            const handleBlur = async () => {
-                const trimmed = text.getValue().trim();
-                plugin.settings.anthropicApiKey = trimmed;
-                await plugin.saveSettings();
-                params.setKeyInputRef('anthropic', text.inputEl);
-                if (trimmed) {
-                    params.scheduleKeyValidation('anthropic');
-                }
-            };
-
-            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
-        });
-    anthropicKeySetting.settingEl.addClass('rt-setting-full-width-input');
+        })());
+    
+    addApiKeyInput(
+        anthropicKeySetting,
+        'Enter your Anthropic API key',
+        plugin.settings.anthropicApiKey || '',
+        async (val) => { plugin.settings.anthropicApiKey = val; await plugin.saveSettings(); },
+        () => params.scheduleKeyValidation('anthropic'),
+        (el) => params.setKeyInputRef('anthropic', el)
+    );
 
     // Gemini API Key
     const geminiKeySetting = new Settings(geminiSection)
@@ -266,38 +298,16 @@ export function renderAiSection(params: {
             frag.appendChild(span);
             frag.appendChild(link);
             return frag;
-        })())
-        .addText(text => {
-            text.inputEl.addClass('rt-input-full');
-            text
-                .setPlaceholder('Enter your Gemini API key')
-                .setValue(plugin.settings.geminiApiKey || '');
+        })());
 
-            text.onChange(() => {
-                text.inputEl.removeClass('rt-setting-input-success');
-                text.inputEl.removeClass('rt-setting-input-error');
-            });
-
-            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-                if (evt.key === 'Enter') {
-                    evt.preventDefault();
-                    text.inputEl.blur();
-                }
-            });
-
-            const handleBlur = async () => {
-                const trimmed = text.getValue().trim();
-                plugin.settings.geminiApiKey = trimmed;
-                await plugin.saveSettings();
-                params.setKeyInputRef('gemini', text.inputEl);
-                if (trimmed) {
-                    params.scheduleKeyValidation('gemini');
-                }
-            };
-
-            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
-        });
-    geminiKeySetting.settingEl.addClass('rt-setting-full-width-input');
+    addApiKeyInput(
+        geminiKeySetting,
+        'Enter your Gemini API key',
+        plugin.settings.geminiApiKey || '',
+        async (val) => { plugin.settings.geminiApiKey = val; await plugin.saveSettings(); },
+        () => params.scheduleKeyValidation('gemini'),
+        (el) => params.setKeyInputRef('gemini', el)
+    );
 
     // OpenAI API Key
     const openAiKeySetting = new Settings(openaiSection)
@@ -314,43 +324,27 @@ export function renderAiSection(params: {
             frag.appendChild(span);
             frag.appendChild(link);
             return frag;
-        })())
-        .addText(text => {
-            text.inputEl.addClass('rt-input-full');
-            text
-                .setPlaceholder('Enter your API key')
-                .setValue(plugin.settings.openaiApiKey || '');
+        })());
 
-            text.onChange(() => {
-                text.inputEl.removeClass('rt-setting-input-success');
-                text.inputEl.removeClass('rt-setting-input-error');
-            });
-
-            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-                if (evt.key === 'Enter') {
-                    evt.preventDefault();
-                    text.inputEl.blur();
-                }
-            });
-
-            const handleBlur = async () => {
-                const trimmed = text.getValue().trim();
-                plugin.settings.openaiApiKey = trimmed;
-                await plugin.saveSettings();
-                params.setKeyInputRef('openai', text.inputEl);
-                text.inputEl.removeClass('rt-setting-input-success');
-                text.inputEl.removeClass('rt-setting-input-error');
-                if (trimmed && !trimmed.startsWith('sk-')) {
-                    text.inputEl.addClass('rt-setting-input-error');
-                    new Notice('This does not look like an OpenAI secret key. Keys start with "sk-".');
-                } else if (trimmed) {
-                    params.scheduleKeyValidation('openai');
-                }
-            };
-
-            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
-        });
-    openAiKeySetting.settingEl.addClass('rt-setting-full-width-input');
+    addApiKeyInput(
+        openAiKeySetting,
+        'Enter your API key',
+        plugin.settings.openaiApiKey || '',
+        async (val) => { plugin.settings.openaiApiKey = val; await plugin.saveSettings(); },
+        () => params.scheduleKeyValidation('openai'),
+        (el) => params.setKeyInputRef('openai', el),
+        (val, el) => {
+            el.removeClass('rt-setting-input-success');
+            el.removeClass('rt-setting-input-error');
+            // Only validate sk- prefix if NOT using SecretStorage (or strict legacy mode)
+            if (!(app as any).SecretComponent && val && !val.startsWith('sk-')) {
+                el.addClass('rt-setting-input-error');
+                new Notice('This does not look like an OpenAI secret key. Keys start with "sk-".');
+                return false;
+            }
+            return true;
+        }
+    );
 
     const localSection = containerEl.createDiv({ cls: 'rt-provider-section rt-provider-local' });
     params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection, local: localSection } as any);
@@ -496,30 +490,15 @@ export function renderAiSection(params: {
     const apiKeySetting = new Settings(localSection)
         .setName('API Key (Optional)')
         .setDesc('Required by some servers. For local tools like Ollama, this is usually ignored.')
-        .addText(text => {
-            text.inputEl.addClass('rt-input-full');
-            text
-                .setPlaceholder('not-needed')
-                .setValue(plugin.settings.localApiKey || '');
-            text.onChange(() => {
-                text.inputEl.removeClass('rt-setting-input-success');
-                text.inputEl.removeClass('rt-setting-input-error');
-            });
-            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-                if (evt.key === 'Enter') {
-                    evt.preventDefault();
-                    text.inputEl.blur();
-                }
-            });
-            const handleBlur = async () => {
-                plugin.settings.localApiKey = text.getValue().trim();
-                await plugin.saveSettings();
-                params.scheduleKeyValidation('local');
-            };
-            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
-            params.setKeyInputRef('local', text.inputEl);
-        });
-    apiKeySetting.settingEl.addClass('rt-setting-full-width-input');
+    
+    addApiKeyInput(
+        apiKeySetting,
+        'not-needed',
+        plugin.settings.localApiKey || '',
+        async (val) => { plugin.settings.localApiKey = val; await plugin.saveSettings(); },
+        () => params.scheduleKeyValidation('local'),
+        (el) => params.setKeyInputRef('local', el)
+    );
 
     // Apply provider dimming on first render
     params.refreshProviderDimming();

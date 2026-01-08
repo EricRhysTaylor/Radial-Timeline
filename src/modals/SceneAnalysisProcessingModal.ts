@@ -11,6 +11,7 @@ import type RadialTimelinePlugin from '../main';
 import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
 import { resolveAiOutputFolder } from '../utils/aiOutput';
 import { getModelDisplayName } from '../utils/modelResolver';
+import type { LlmTimingStats } from '../types/settings';
 
 export type ProcessingMode = 'flagged' | 'unprocessed' | 'force-all';
 
@@ -785,10 +786,13 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (actualSeconds <= 0) return;
 
         // Update running average of actual call times (keep last 10 samples)
-        const stats = this.plugin.settings.pulseTimingStats ?? {
-            avgSecondsPerRuntimeSecond: 1.5, // Legacy field, unused now
-            sampleCount: 0,
-            recentSamples: []
+        const stats: LlmTimingStats = this.plugin.settings.pulseTimingStats ?? {
+            averageTokenPerSec: 0,
+            lastJobTokenCount: 0,
+            lastJobDurationMs: 0,
+            sampleSize: 0,
+            recentSamples: [],
+            sampleCount: 0
         };
 
         // Store actual call time directly (not a ratio)

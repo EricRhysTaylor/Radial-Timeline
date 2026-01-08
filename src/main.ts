@@ -36,6 +36,7 @@ import { DEFAULT_GEMINI_MODEL_ID } from './constants/aiDefaults';
 import { DEFAULT_SETTINGS } from './settings/defaults';
 import { initVersionCheckService, getVersionCheckService } from './services/VersionCheckService';
 import { registerRuntimeCommands } from './RuntimeCommands';
+import { AuthorProgressService } from './services/AuthorProgressService';
 
 
 // Declare the variable that will be injected by the build process
@@ -91,6 +92,9 @@ export default class RadialTimelinePlugin extends Plugin {
     private timelineMetricsService!: TimelineMetricsService;
     private settingsService!: SettingsService;
     public lastSceneData?: TimelineItem[];
+    
+    // APR Service
+    private authorProgressService!: AuthorProgressService;
 
     // Completion estimate stats
     latestTotalScenes: number = 0;
@@ -143,7 +147,6 @@ export default class RadialTimelinePlugin extends Plugin {
 
 
 
-
     public getReleaseNotesBundle(): EmbeddedReleaseNotesBundle | null {
         return this.releaseNotesService?.getBundle() ?? null;
     }
@@ -173,7 +176,7 @@ export default class RadialTimelinePlugin extends Plugin {
         await this.loadSettings();
         this.releaseNotesService = new ReleaseNotesService(this.settings, () => this.saveSettings());
         this.releaseNotesService.initializeFromEmbedded();
-        void this.releaseNotesService.ensureReleaseNotesFresh(false);
+        void this.releaseNotesService.ensureReleaseNotesFresh(); // Removed argument
 
         // Migration: Convert old field names to new field names
         await migrateSceneAnalysisFields(this);
@@ -189,7 +192,7 @@ export default class RadialTimelinePlugin extends Plugin {
         const { FileTrackingService } = await import('./services/FileTrackingService');
         this.searchService = new SearchService(this.app, this);
         this.fileTrackingService = new FileTrackingService(this);
-        this.rendererService = new RendererService(this.app);
+        this.rendererService = new RendererService(this);
         this.synopsisManager = new SynopsisManager(this);
         this.commandRegistrar = new CommandRegistrar(this, this.app);
         this.sceneHighlighter = new SceneHighlighter(this);
@@ -199,6 +202,9 @@ export default class RadialTimelinePlugin extends Plugin {
         this.beatsProcessingService = new BeatsProcessingService(this.statusBarService);
         this.themeService = new ThemeService(this);
         this.timelineMetricsService = new TimelineMetricsService(this);
+        
+        // APR Service
+        this.authorProgressService = new AuthorProgressService(this, this.app);
 
         // CSS variables for publish stage colors are set once on layout ready
 
@@ -248,6 +254,9 @@ export default class RadialTimelinePlugin extends Plugin {
         }).catch((err) => {
             console.warn('[RadialTimeline] Version check failed on startup:', err);
         });
+
+        // APR Auto-Update Check
+        void this.authorProgressService.checkAutoUpdate();
 
         // Initial status bar update (placeholder for future stats)
         // this.statusBarService.update(...);

@@ -513,7 +513,7 @@ export class ManuscriptOptionsModal extends Modal {
 
     private async loadScenesForOrder(): Promise<void> {
         try {
-            const { titles, whenDates, sceneNumbers } = await getSceneFilesByOrder(this.plugin, this.order, this.subplot);
+            const { titles, whenDates, sceneNumbers } = await getSceneFilesByOrder(this.app, this.plugin, this.order, this.subplot);
             this.sceneTitles = titles;
             this.sceneWhenDates = whenDates;
             this.sceneNumbers = sceneNumbers;

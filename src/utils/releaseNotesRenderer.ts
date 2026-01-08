@@ -1,63 +1,54 @@
-/*
- * Radial Timeline (tm) Plugin for Obsidian
- * Copyright (c) 2025 Eric Rhys Taylor
- * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
- */
-
-import { MarkdownRenderer } from 'obsidian';
+import { MarkdownRenderer, Component } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import type { EmbeddedReleaseNotesEntry } from '../types';
-import { parseReleaseVersion, formatPublishedDate } from './releases';
+import { EmbeddedReleaseNotesEntry } from '../types';
 
-export { formatPublishedDate };
+export function formatPublishedDate(dateStr?: string): string {
+    if (!dateStr) return '';
+    try {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch {
+        return dateStr;
+    }
+}
 
-export async function renderReleaseNotesList(
-    containerEl: HTMLElement,
-    entries: EmbeddedReleaseNotesEntry[],
-    featuredEntry: EmbeddedReleaseNotesEntry,
-    plugin: RadialTimelinePlugin,
-    cssPrefix: string
+export async function renderReleaseNoteEntry(
+    entry: EmbeddedReleaseNotesEntry,
+    container: HTMLElement,
+    plugin: RadialTimelinePlugin
 ): Promise<void> {
-    // Render all entries as collapsible details, with the featured entry expanded by default
-    for (const entry of entries) {
-        const versionLabel = parseReleaseVersion(entry.version)?.fullLabel ?? (entry.title || entry.version);
-        const details = containerEl.createEl('details', { cls: `${cssPrefix}-details` }) as HTMLDetailsElement;
-
-        // Expand the featured release
-        if (entry.version === featuredEntry.version) {
-            details.open = true;
-        }
-
-        if (entry.version === featuredEntry.version) {
-            details.addClass(`${cssPrefix}-details-major`);
-        }
-
-        const summaryEl = details.createEl('summary', { cls: `${cssPrefix}-details-summary` });
-        summaryEl.createSpan({
-            text: versionLabel,
-            cls: `${cssPrefix}-details-summary-label`
-        });
-
-        const dateText = formatPublishedDate(entry.publishedAt);
-        if (dateText) {
-            summaryEl.createSpan({
-                text: '•',
-                cls: `${cssPrefix}-details-summary-divider`
-            });
-            summaryEl.createSpan({
-                text: dateText,
-                cls: `${cssPrefix}-details-summary-date`
-            });
-        }
-
-        if (entry.version === featuredEntry.version) {
-            summaryEl.createSpan({
-                text: 'Latest',
-                cls: `${cssPrefix}-details-summary-badge`
-            });
-        }
-
-        const entryBody = details.createDiv({ cls: `${cssPrefix}-details-body markdown-preview-view` });
+    const entryBody = container.createDiv({ cls: 'rt-release-note-body' });
+    
+    if (entry.body) {
+        // Safe check for undefined body
         await MarkdownRenderer.renderMarkdown(entry.body, entryBody, '', plugin);
+    } else {
+        // Render sections if body is missing
+        entry.sections.forEach(section => {
+            if (section.items.length > 0) {
+                entryBody.createEl('h4', { text: section.type.toUpperCase() });
+                const ul = entryBody.createEl('ul');
+                section.items.forEach(item => {
+                    ul.createEl('li', { text: item });
+                });
+            }
+        });
+    }
+}
+
+// Fallback/alias if older code calls renderReleaseNotesList expecting a list renderer
+// (though usually we render entry by entry now).
+export async function renderReleaseNotesList(
+    entries: EmbeddedReleaseNotesEntry[],
+    container: HTMLElement,
+    plugin: RadialTimelinePlugin
+): Promise<void> {
+    for (const entry of entries) {
+        const wrapper = container.createDiv({ cls: 'rt-release-note-entry-wrapper' });
+        wrapper.createEl('h3', { text: entry.title });
+        if (entry.publishedAt) {
+            wrapper.createDiv({ cls: 'rt-release-note-date', text: formatPublishedDate(entry.publishedAt) });
+        }
+        await renderReleaseNoteEntry(entry, wrapper, plugin);
     }
 }

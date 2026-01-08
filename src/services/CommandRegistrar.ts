@@ -12,6 +12,7 @@ import { ManuscriptOptionsModal, ManuscriptModalResult } from '../modals/Manuscr
 import { PlanetaryTimeModal } from '../modals/PlanetaryTimeModal';
 import { BookDesignerModal } from '../modals/BookDesignerModal';
 import { TimelineRepairModal } from '../modals/TimelineRepairModal';
+import { AuthorProgressModal } from '../modals/AuthorProgressModal';
 import { generateSceneContent } from '../utils/sceneGenerator';
 import { sanitizeSourcePath, buildInitialSceneFilename } from '../utils/sceneCreation';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
@@ -35,15 +36,55 @@ export class CommandRegistrar {
 
     private registerCommands(): void {
         this.plugin.addCommand({
-            id: 'search-timeline',
-            name: 'Search timeline',
-            callback: () => this.plugin.openSearchPrompt()
+            id: 'open-radial-timeline-view',
+            name: 'Open radial timeline view',
+            callback: () => {
+                this.plugin.getTimelineService().activateView();
+            },
         });
 
         this.plugin.addCommand({
-            id: 'clear-timeline-search',
-            name: 'Search clear',
-            callback: () => this.plugin.clearSearch()
+            id: 'create-scene-note',
+            name: 'Create scene note',
+            callback: async () => {
+                const sourcePath = this.plugin.settings.sourcePath || '';
+                if (!sourcePath) {
+                    new Notice('Please set a source path in settings first.');
+                    return;
+                }
+
+                try {
+                    const sanitizedPath = sanitizeSourcePath(sourcePath);
+                    const filename = await buildInitialSceneFilename(sanitizedPath);
+                    const folder = this.app.vault.getAbstractFileByPath(sanitizedPath);
+
+                    if (!folder) {
+                        await this.app.vault.createFolder(sanitizedPath);
+                    }
+
+                    const path = `${sanitizedPath}/${filename}`;
+                    
+                    // Use basic template by default for quick creation
+                    const template = this.plugin.settings.sceneYamlTemplates?.base || DEFAULT_SETTINGS.sceneYamlTemplates!.base;
+                    // Provide minimal required props to satisfy strict types if needed, or rely on internal defaults
+                    const content = generateSceneContent(template, {
+                         act: 1,
+                         when: new Date().toISOString().split('T')[0],
+                         sceneNumber: 1,
+                         subplots: ['Main Plot'],
+                         character: 'Hero',
+                         place: 'Unknown',
+                         characterList: ['Hero'],
+                         placeList: ['Unknown']
+                    });
+                    
+                    const newFile = await this.app.vault.create(path, content);
+                    const leaf = this.app.workspace.getLeaf(true);
+                    await leaf.openFile(newFile);
+                } catch (error) {
+                    new Notice('Failed to create scene note: ' + error);
+                }
+            }
         });
 
         this.plugin.addCommand({
@@ -51,30 +92,6 @@ export class CommandRegistrar {
             name: 'Manage subplots',
             callback: () => {
                 new ManageSubplotsModal(this.app, this.plugin).open();
-            }
-        });
-
-        this.plugin.addCommand({
-            id: 'create-scene-note',
-            name: 'Create basic scene note',
-            callback: () => {
-                void this.createSceneTemplateNote();
-            }
-        });
-
-        this.plugin.addCommand({
-            id: 'create-advanced-scene-note',
-            name: 'Create advanced scene note',
-            callback: () => {
-                void this.createAdvancedSceneTemplateNote();
-            }
-        });
-
-        this.plugin.addCommand({
-            id: 'create-backdrop-note',
-            name: 'Create backdrop note',
-            callback: () => {
-                void this.createBackdropTemplateNote();
             }
         });
 
@@ -87,391 +104,186 @@ export class CommandRegistrar {
         });
 
         this.plugin.addCommand({
-            id: 'timeline-repair-wizard',
-            name: 'Timeline repair wizard',
+            id: 'repair-timeline-order',
+            name: 'Repair timeline order',
             callback: () => {
                 new TimelineRepairModal(this.app, this.plugin).open();
             }
         });
 
         this.plugin.addCommand({
-            id: 'gossamer-enter-scores',
-            name: 'Gossamer enter momentum scores',
-            callback: async () => {
+            id: 'export-manuscript',
+            name: 'Export manuscript',
+            callback: () => {
+                new ManuscriptOptionsModal(this.app, this.plugin, this.handleManuscriptExport.bind(this)).open();
+            }
+        });
+
+        this.plugin.addCommand({
+            id: 'planetary-time-settings',
+            name: 'Planetary time settings',
+            callback: () => {
+                new PlanetaryTimeModal(this.app, this.plugin).open();
+            }
+        });
+
+        this.plugin.addCommand({
+            id: 'open-gossamer-score',
+            name: 'Open gossamer score',
+            callback: () => {
+                openGossamerScoreEntry(this.plugin);
+            }
+        });
+
+        this.plugin.addCommand({
+            id: 'run-gossamer-analysis',
+            name: 'Run gossamer analysis',
+            callback: () => {
+                runGossamerAiAnalysis(this.plugin);
+            }
+        });
+
+        // APR Command (Sentence case per Obsidian guidelines)
+        this.plugin.addCommand({
+            id: 'author-progress-report',
+            name: 'Author progress report',
+            callback: () => {
+                new AuthorProgressModal(this.app, this.plugin).open();
+            }
+        });
+    }
+
+    private async handleManuscriptExport(result: ManuscriptModalResult): Promise<void> {
+        if (this.requiresPro(result) && !isProfessionalActive(this.plugin)) {
+            new Notice('This export configuration requires a Professional license.');
+            return;
+        }
+
+        try {
+            const scenes = await getSceneFilesByOrder(this.app, this.plugin, result.order);
+            const selection: ManuscriptSceneSelection = {
+                files: scenes.files,
+                titles: scenes.titles,
+                whenDates: scenes.whenDates,
+                sceneNumbers: scenes.sceneNumbers,
+                subplots: scenes.subplots,
+                sortOrder: scenes.sortOrder
+            };
+
+            // Filter by subplot if selected
+            let filteredSelection = selection;
+            if (result.subplot && result.subplot !== 'All Subplots') {
+                const indices = selection.subplots.map((s, i) => s === result.subplot ? i : -1).filter(i => i !== -1);
+                filteredSelection = {
+                    files: indices.map(i => selection.files[i]),
+                    titles: indices.map(i => selection.titles[i]),
+                    whenDates: indices.map(i => selection.whenDates[i]),
+                    sceneNumbers: indices.map(i => selection.sceneNumbers[i]),
+                    subplots: indices.map(i => selection.subplots[i]),
+                    sortOrder: selection.sortOrder
+                };
+            }
+
+            // Slice by range
+            const slicedFiles = sliceScenesByRange(filteredSelection.files, result.rangeStart, result.rangeEnd);
+            
+            // Handle output generation
+            if (result.exportType === 'outline') {
+                // outline export expects ManuscriptSceneSelection
+                const slicedSelection = this.sliceSelection(filteredSelection, result.rangeStart, result.rangeEnd);
+                const outline = buildOutlineExport(slicedSelection, result.outlinePreset || 'beat-sheet');
+                const outputFolder = await ensureAiOutputFolder(this.plugin);
+                const filename = `outline-${Date.now()}.${outline.extension}`;
+                const path = `${outputFolder}/${filename}`;
+                await this.app.vault.create(path, outline.text);
+                new Notice(`Outline exported to ${path}`);
+                return;
+            }
+
+            // Manuscript assembly
+            const assembled = await assembleManuscript(
+                slicedFiles, 
+                this.app.vault, 
+                undefined, 
+                false, 
+                filteredSelection.sortOrder,
+                result.tocMode !== 'none'
+            );
+            
+            // Update word counts if requested
+            if (result.updateWordCounts) {
+                new Notice('Updating word counts...');
+                // assembleManuscript returns { scenes: SceneContent[] } which has word counts
+                await updateSceneWordCounts(this.app, slicedFiles, assembled.scenes);
+            }
+
+            if (result.outputFormat === 'markdown') {
+                const outputFolder = await ensureAiOutputFolder(this.plugin);
+                const filename = `manuscript-${Date.now()}.md`;
+                const path = `${outputFolder}/${filename}`;
+                await this.app.vault.create(path, assembled.text);
+                new Notice(`Manuscript exported to ${path}`);
+            } else {
+                // Pandoc export (Pro)
+                // We need to write a temp markdown file, then run pandoc
+                const extension = getExportFormatExtension(result.outputFormat);
+                const outputFolder = await ensureAiOutputFolder(this.plugin); // Normalized relative path
+                const absoluteOutputFolder = getVaultAbsolutePath(this.plugin, outputFolder);
+                
+                // If getVaultAbsolutePath returns null (mobile/sandbox), we can't run Pandoc
+                if (!absoluteOutputFolder) {
+                    new Notice('Pandoc export not supported in this environment.');
+                    return;
+                }
+
+                const filename = `manuscript-${Date.now()}.${extension}`;
+                const outputPath = `${absoluteOutputFolder}/${filename}`;
+                
+                // Resolve template
+                let templatePath = undefined;
+                if (result.manuscriptPreset) {
+                    const templateName = getTemplateForPreset(this.plugin, result.manuscriptPreset);
+                    if (templateName && this.plugin.settings.pandocTemplates) {
+                        // Check if user has defined a template path in settings
+                        const userTemplate = (this.plugin.settings.pandocTemplates as any)[result.manuscriptPreset];
+                        if (userTemplate) templatePath = userTemplate;
+                    }
+                }
+
+                new Notice('Running Pandoc...');
                 try {
-                    await openGossamerScoreEntry(this.plugin);
+                    await runPandocOnContent(assembled.text, outputPath, {
+                        targetFormat: result.outputFormat as 'docx' | 'pdf',
+                        templatePath,
+                        workingDir: absoluteOutputFolder
+                    });
+                    new Notice(`Export successful: ${filename}`);
                 } catch (e) {
-                    new Notice('Failed to open Gossamer score entry.');
+                    const msg = (e as any)?.message || String(e);
+                    new Notice(`Pandoc failed: ${msg}`);
                     console.error(e);
                 }
             }
-        });
 
-        const beatSystemLabel = this.getBeatSystemDisplayName();
-        this.plugin.addCommand({
-            id: 'gossamer-run-save-the-cat-analysis',
-            name: `Gossamer AI evaluation using ${beatSystemLabel} story beats`,
-            checkCallback: (checking: boolean) => {
-                if (!this.plugin.settings.enableAiSceneAnalysis) return false;
-                if (checking) return true;
-
-                (async () => {
-                    const currentLabel = this.getBeatSystemDisplayName();
-                    try {
-                        new Notice(`Gossamer AI evaluation using ${currentLabel} story beats...`);
-                        await runGossamerAiAnalysis(this.plugin);
-                    } catch (e) {
-                        new Notice(`Failed to run ${currentLabel} beat analysis.`);
-                        console.error(e);
-                    }
-                })();
-                return true;
-            }
-        });
-
-        this.plugin.addCommand({
-            id: 'gossamer-generate-manuscript',
-            name: 'Manuscript generate',
-            callback: async () => this.generateManuscript()
-        });
-
-        this.plugin.addCommand({
-            id: 'open-timeline-view',
-            name: 'Open',
-            callback: () => this.plugin.getTimelineService().activateView()
-        });
-
-        this.plugin.addCommand({
-            id: 'open-planetary-time-converter',
-            name: 'Planetary time converter',
-            checkCallback: (checking) => {
-                if (!this.plugin.settings.enablePlanetaryTime) return false;
-                if (!this.plugin.settings.planetaryProfiles || this.plugin.settings.planetaryProfiles.length === 0) {
-                    if (!checking) {
-                        new Notice('Add a planetary profile in Settings first.');
-                    }
-                    return false;
-                }
-                if (checking) return true;
-                new PlanetaryTimeModal(this.app, this.plugin).open();
-                return true;
-            }
-        });
-    }
-
-    private async createSceneTemplateNote(): Promise<void> {
-        try {
-            const vault = this.app.vault;
-            const sourcePath = sanitizeSourcePath(this.plugin.settings.sourcePath);
-
-            if (sourcePath && !vault.getAbstractFileByPath(sourcePath)) {
-                await vault.createFolder(sourcePath);
-            }
-
-            const template = ensureClassScene(
-                (this.plugin.settings.sceneYamlTemplates?.base
-                    ?? DEFAULT_SETTINGS.sceneYamlTemplates?.base
-                    ?? '').trim()
-            );
-
-            if (!template) {
-                new Notice('Basic scene template not found. Set a scene template in Settings.');
-                return;
-            }
-
-            const today = new Date().toISOString().slice(0, 10);
-            const content = generateSceneContent(template, {
-                act: 1,
-                when: today,
-                sceneNumber: 1,
-                subplots: ['Main Plot'],
-                character: 'Hero',
-                place: 'Unknown',
-                characterList: ['Hero'],
-                placeList: ['Unknown']
-            });
-
-            const fileBody = `---\n${content}\n---\n\nWrite your scene here...`;
-            const initialPath = buildInitialSceneFilename(sourcePath, '1 Template Scene.md');
-            const filePath = this.getAvailableFilePath(initialPath);
-
-            const createdFile = await vault.create(filePath, fileBody);
-            const leaf = this.app.workspace.getLeaf('tab');
-            await leaf.openFile(createdFile);
-            new Notice(`Template scene created at ${filePath}`);
         } catch (error) {
-            console.error('[CreateSceneTemplateNote] Failed to create template scene note:', error);
-            new Notice('Failed to create template scene note.');
-        }
-    }
-
-    private async createAdvancedSceneTemplateNote(): Promise<void> {
-        try {
-            const vault = this.app.vault;
-            const sourcePath = sanitizeSourcePath(this.plugin.settings.sourcePath);
-
-            if (sourcePath && !vault.getAbstractFileByPath(sourcePath)) {
-                await vault.createFolder(sourcePath);
-            }
-
-            const template = ensureClassScene(
-                (this.plugin.settings.sceneYamlTemplates?.advanced
-                    ?? DEFAULT_SETTINGS.sceneYamlTemplates?.advanced
-                    ?? '').trim()
-            );
-
-            if (!template) {
-                new Notice('Advanced scene template not found. Enable or configure it in Settings.');
-                return;
-            }
-
-            const today = new Date().toISOString().slice(0, 10);
-            const content = generateSceneContent(template, {
-                act: 1,
-                when: today,
-                sceneNumber: 1,
-                subplots: ['Main Plot'],
-                character: 'Hero',
-                place: 'Unknown',
-                characterList: ['Hero'],
-                placeList: ['Unknown']
-            });
-
-            const fileBody = `---\n${content}\n---\n\nWrite your scene here...`;
-            const initialPath = buildInitialSceneFilename(sourcePath, '1 Template Scene (Advanced).md');
-            const filePath = this.getAvailableFilePath(initialPath);
-
-            const createdFile = await vault.create(filePath, fileBody);
-            const leaf = this.app.workspace.getLeaf('tab');
-            await leaf.openFile(createdFile);
-            new Notice(`Advanced template scene created at ${filePath}`);
-        } catch (error) {
-            console.error('[CreateAdvancedSceneTemplateNote] Failed to create advanced template scene note:', error);
-            new Notice('Failed to create advanced template scene note.');
-        }
-    }
-
-    private async createBackdropTemplateNote(): Promise<void> {
-        try {
-            const vault = this.app.vault;
-            const sourcePath = sanitizeSourcePath(this.plugin.settings.sourcePath);
-
-            if (sourcePath && !vault.getAbstractFileByPath(sourcePath)) {
-                await vault.createFolder(sourcePath);
-            }
-
-            const template = (this.plugin.settings.backdropYamlTemplate
-                ?? DEFAULT_SETTINGS.backdropYamlTemplate
-                ?? '').trim();
-
-            if (!template) {
-                new Notice('Backdrop template not found. Add one in Settings.');
-                return;
-            }
-
-            const start = new Date();
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
-            const filledTemplate = template
-                .replace(/{{When}}/g, this.formatDateTime(start))
-                .replace(/{{End}}/g, this.formatDateTime(end));
-
-            const fileBody = `---\n${filledTemplate}\n---\n\nDescribe how this backdrop shapes your scenes.`;
-            const filePath = this.getAvailableFilePath(`${sourcePath ? `${sourcePath}/` : ''}Backdrop Template.md`);
-
-            const createdFile = await vault.create(filePath, fileBody);
-            const leaf = this.app.workspace.getLeaf('tab');
-            await leaf.openFile(createdFile);
-            new Notice(`Backdrop template created at ${filePath}`);
-        } catch (error) {
-            console.error('[CreateBackdropTemplateNote] Failed to create backdrop template note:', error);
-            new Notice('Failed to create backdrop template note.');
-        }
-    }
-
-    private getAvailableFilePath(initialPath: string): string {
-        const vault = this.app.vault;
-        if (!vault.getAbstractFileByPath(initialPath)) return initialPath;
-
-        const dotIndex = initialPath.lastIndexOf('.');
-        const base = dotIndex >= 0 ? initialPath.slice(0, dotIndex) : initialPath;
-        const ext = dotIndex >= 0 ? initialPath.slice(dotIndex) : '';
-
-        let counter = 2;
-        let candidate = `${base} (${counter})${ext}`;
-        while (vault.getAbstractFileByPath(candidate)) {
-            counter += 1;
-            candidate = `${base} (${counter})${ext}`;
-        }
-        return candidate;
-    }
-
-    private formatDateTime(date: Date): string {
-        const pad = (n: number) => n.toString().padStart(2, '0');
-        const year = date.getFullYear();
-        const month = pad(date.getMonth() + 1);
-        const day = pad(date.getDate());
-        const hours = pad(date.getHours());
-        const minutes = pad(date.getMinutes());
-        // Use ISO-like separator with seconds so Obsidian treats it as datetime
-        return `${year}-${month}-${day}T${hours}:${minutes}:00`;
-    }
-
-    private getBeatSystemDisplayName(): string {
-        const configured = (this.plugin.settings.beatSystem || '').trim();
-        if (!configured) return 'Save The Cat';
-        return configured;
-    }
-
-    private async generateManuscript(): Promise<void> {
-        const modal = new ManuscriptOptionsModal(this.app, this.plugin, async (result) => {
-            await this.handleManuscriptSubmission(result);
-        });
-        modal.open();
-    }
-
-    private async handleManuscriptSubmission(options: ManuscriptModalResult): Promise<void> {
-        try {
-            const isPro = isProfessionalActive(this.plugin);
-            if (this.requiresPro(options) && !isPro) {
-                new Notice('This export requires Pro. Unlock Pro to continue.');
-                return;
-            }
-
-            new Notice('Preparing export...');
-            const selection = await getSceneFilesByOrder(this.plugin, options.order, options.subplot);
-            if (selection.files.length === 0) {
-                new Notice('No scenes found in source path.');
-                return;
-            }
-
-            // Apply range to all ordering modes
-            const sliced = this.sliceSelection(selection, options.rangeStart, options.rangeEnd);
-            const orderedFiles = sliced.files;
-
-            if (orderedFiles.length === 0) {
-                new Notice('Selected range is empty.');
-                return;
-            }
-
-            const rangeInfo = this.buildRangeSuffix(options, selection.files.length);
-            const now = new Date();
-            const dateStr = now.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-            const timeDisplayStr = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
-            const timeFileStr = timeDisplayStr.replace(/:/g, '.');
-            const aiFolderPath = await ensureAiOutputFolder(this.plugin);
-
-            if (options.exportType === 'outline') {
-                const outlineResult = buildOutlineExport(sliced, options.outlinePreset || 'beat-sheet');
-                const extension = outlineResult.extension;
-                const filePath = `${aiFolderPath}/Outline ${outlineResult.label}${rangeInfo}${options.subplot ? ` ${options.subplot}` : ''} ${dateStr} ${timeFileStr}.${extension}`;
-                await writeTextFile(this.app.vault, filePath, outlineResult.text);
-                const outlineFile = this.app.vault.getAbstractFileByPath(filePath);
-                if (outlineFile instanceof TFile) {
-                    const leaf = this.app.workspace.getLeaf('tab');
-                    await leaf.openFile(outlineFile);
-                }
-                new Notice(`Outline generated: ${outlineResult.label}. Saved to ${filePath}`);
-                return;
-            }
-
-            const sortLabelWithRange = `${selection.sortOrder}${options.subplot ? ` · ${options.subplot}` : ''}${rangeInfo}`;
-            const includeToc = options.tocMode !== 'none';
-            const useMarkdownToc = options.tocMode === 'markdown';
-
-            const manuscript = await assembleManuscript(
-                orderedFiles,
-                this.app.vault,
-                undefined,
-                useMarkdownToc,
-                sortLabelWithRange,
-                includeToc
-            );
-
-            if (!manuscript.text || manuscript.text.trim().length === 0) {
-                new Notice('Manuscript is empty. Check that your scene files have content.');
-                return;
-            }
-
-            // Update scene word counts if requested
-            if (options.updateWordCounts && manuscript.scenes.length > 0) {
-                const updatedCount = await updateSceneWordCounts(this.app, orderedFiles, manuscript.scenes);
-                if (updatedCount > 0) {
-                    new Notice(`Updated word counts for ${updatedCount} scene${updatedCount !== 1 ? 's' : ''}.`);
-                }
-            }
-
-            const orderLabel = this.getOrderLabel(options.order);
-            const fileSubplotLabel = options.subplot ? ` (${options.subplot})` : '';
-            const ext = getExportFormatExtension(options.outputFormat);
-            const manuscriptPath = `${aiFolderPath}/Manuscript ${orderLabel}${fileSubplotLabel}${rangeInfo} ${dateStr} ${timeFileStr}.${ext}`;
-            const existing = this.app.vault.getAbstractFileByPath(manuscriptPath);
-            if (existing) {
-                new Notice('Warning: Duplicate title. Please wait 1 minute then try again.');
-                return;
-            }
-
-            if (options.outputFormat === 'markdown') {
-                const createdFile = await this.app.vault.create(manuscriptPath, manuscript.text);
-                const leaf = this.app.workspace.getLeaf('tab');
-                await leaf.openFile(createdFile);
-                new Notice(`Manuscript generated: ${manuscript.totalScenes} scenes, ${manuscript.totalWords.toLocaleString()} words. Saved to ${manuscriptPath}`);
-            } else {
-                const absolutePath = getVaultAbsolutePath(this.plugin, manuscriptPath);
-                if (!absolutePath) {
-                    new Notice('Cannot resolve vault path for export.');
-                    return;
-                }
-                const templatePath = getTemplateForPreset(this.plugin, options.manuscriptPreset || 'novel');
-                await runPandocOnContent(manuscript.text, absolutePath, {
-                    targetFormat: options.outputFormat === 'docx' ? 'docx' : 'pdf',
-                    pandocPath: this.plugin.settings.pandocPath,
-                    enableFallback: this.plugin.settings.pandocEnableFallback,
-                    fallbackPath: this.plugin.settings.pandocFallbackPath,
-                    templatePath
-                });
-                new Notice(`Manuscript exported (${options.outputFormat.toUpperCase()}) to ${manuscriptPath}`);
-            }
-        } catch (e) {
-            const errorMsg = (e as Error)?.message || 'Unknown error';
-            new Notice(`Failed to generate manuscript: ${errorMsg}`);
-            console.error(e);
-        }
-    }
-
-    private buildRangeSuffix(options: ManuscriptModalResult, total: number): string {
-        const hasCustomRange = options.rangeStart && options.rangeEnd &&
-            !(options.rangeStart === 1 && options.rangeEnd === total);
-        if (!hasCustomRange) return '';
-        return ` · Scenes ${options.rangeStart}-${options.rangeEnd}`;
-    }
-
-    private getOrderLabel(order: ManuscriptModalResult['order']): string {
-        switch (order) {
-            case 'chronological':
-                return 'Chronological';
-            case 'reverse-chronological':
-                return 'Reverse Chronological';
-            case 'reverse-narrative':
-                return 'Reverse Narrative';
-            default:
-                return 'Narrative';
+            const msg = (error as any)?.message || String(error);
+            new Notice('Export failed: ' + msg);
+            console.error(error);
         }
     }
 
     private sliceSelection(selection: ManuscriptSceneSelection, start?: number, end?: number): ManuscriptSceneSelection {
-        const files = sliceScenesByRange(selection.files, start, end);
-        const normalizedStart = start && start > 0 ? start : 1;
-        const normalizedEnd = end && end > 0 ? end : selection.files.length;
-        const startIdx = Math.max(0, normalizedStart - 1);
-        const endIdx = Math.min(selection.files.length, normalizedEnd);
+        if (!start && !end) return selection;
+        const startIdx = (start || 1) - 1;
+        const endIdx = end || selection.files.length;
+        
         return {
-            ...selection,
-            files,
+            files: selection.files.slice(startIdx, endIdx),
             titles: selection.titles.slice(startIdx, endIdx),
             whenDates: selection.whenDates.slice(startIdx, endIdx),
             sceneNumbers: selection.sceneNumbers.slice(startIdx, endIdx),
-            subplots: selection.subplots.slice(startIdx, endIdx)
+            subplots: selection.subplots.slice(startIdx, endIdx),
+            sortOrder: selection.sortOrder
         };
     }
 
@@ -487,12 +299,9 @@ export class CommandRegistrar {
 
 function ensureClassScene(template: string): string {
     const lines = template.split('\n');
-    const classIdx = lines.findIndex(l => /^\s*Class\s*:/i.test(l));
-    if (classIdx >= 0) {
-        if (!/^\s*Class\s*:\s*Scene\b/i.test(lines[classIdx])) {
-            lines[classIdx] = 'Class: Scene';
-        }
-        return lines.join('\n');
+    const hasClass = lines.some(line => line.trim().startsWith('Class:') || line.trim().startsWith('class:'));
+    if (!hasClass) {
+        return `Class: Scene\n${template}`;
     }
-    return ['Class: Scene', ...lines].join('\n');
+    return template;
 }
