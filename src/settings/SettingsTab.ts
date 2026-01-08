@@ -396,7 +396,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         renderPovSection({ plugin: this.plugin, containerEl: povSection });
         
         const beatsSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'beats' } });
-        renderTemplatesSection(beatsSection, this.plugin);
+        renderTemplatesSection({ app: this.app, plugin: this.plugin, containerEl: beatsSection });
 
         const publicationSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'publication' } });
         renderPublicationSection({ app: this.app, plugin: this.plugin, containerEl: publicationSection });
