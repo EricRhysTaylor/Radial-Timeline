@@ -16,7 +16,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
     // Single toggle that both enables the feature and controls visibility
     new Settings(containerEl)
         .setName('Custom Metadata Mapping')
-        .setDesc('Map your custom frontmatter keys to Radial Timeline keys. Useful for pre-existing vaults.')
+        .setDesc('Map your custom frontmatter keys to Radial Timeline base keys.')
         .addToggle(toggle => {
             toggle
                 .setValue(plugin.settings.enableCustomMetadataMapping ?? false)
@@ -54,15 +54,19 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
             
             // Text input for User Key
             setting.addText(text => {
+                text.inputEl.addClass('rt-input-md');
                 text.setPlaceholder('Your Key (e.g. StoryLine)')
                     .setValue(userKey)
                     .onChange(async (_newValue) => {
                         // We defer saving until blur to avoid partial state
                     });
-                // Handle rename on blur
-                // SAFE: addEventListener used for Settings (transient element, cleanup via DOM removal)
-                text.inputEl.addEventListener('blur', async () => {
+                
+                // Handle rename on blur with validation feedback
+                const handleBlur = async () => {
                     const newValue = text.getValue().trim();
+                    text.inputEl.removeClass('rt-setting-input-success');
+                    text.inputEl.removeClass('rt-setting-input-error');
+                    
                     if (newValue && newValue !== userKey) {
                         if (!plugin.settings.frontmatterMappings) plugin.settings.frontmatterMappings = {};
                         
@@ -72,10 +76,29 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
                         plugin.settings.frontmatterMappings[newValue] = systemKey;
                         
                         await plugin.saveSettings();
-                        renderMappings(); 
+                        text.inputEl.addClass('rt-setting-input-success');
+                        window.setTimeout(() => {
+                            text.inputEl.removeClass('rt-setting-input-success');
+                            renderMappings();
+                        }, 600);
                     } else if (!newValue) {
-                         // Revert if empty
-                         text.setValue(userKey);
+                        // Revert if empty - show error briefly
+                        text.inputEl.addClass('rt-setting-input-error');
+                        window.setTimeout(() => {
+                            text.inputEl.removeClass('rt-setting-input-error');
+                            text.setValue(userKey);
+                        }, 800);
+                    }
+                };
+                
+                // SAFE: addEventListener used for Settings (transient element, cleanup via DOM removal)
+                text.inputEl.addEventListener('blur', handleBlur);
+                
+                // Treat Enter like blur so validation runs when user confirms
+                plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                    if (evt.key === 'Enter') {
+                        evt.preventDefault();
+                        text.inputEl.blur();
                     }
                 });
             });
@@ -125,11 +148,21 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
 
             // Text input for User Key (starts empty; required to persist)
             setting.addText(text => {
+                text.inputEl.addClass('rt-input-md');
                 text.setPlaceholder('Your Key (required to save)');
                 text.setValue('');
-                plugin.registerDomEvent(text.inputEl, 'blur', async () => {
+                
+                const handleBlur = async () => {
                     const newValue = text.getValue().trim();
+                    text.inputEl.removeClass('rt-setting-input-success');
+                    text.inputEl.removeClass('rt-setting-input-error');
+                    
                     if (!newValue) {
+                        // Show brief error hint - key is required
+                        text.inputEl.addClass('rt-setting-input-error');
+                        window.setTimeout(() => {
+                            text.inputEl.removeClass('rt-setting-input-error');
+                        }, 800);
                         return; // Keep as draft and do not persist
                     }
 
@@ -142,7 +175,21 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
                     if (idx >= 0) pendingMappings.splice(idx, 1);
 
                     await plugin.saveSettings();
-                    renderMappings();
+                    text.inputEl.addClass('rt-setting-input-success');
+                    window.setTimeout(() => {
+                        text.inputEl.removeClass('rt-setting-input-success');
+                        renderMappings();
+                    }, 600);
+                };
+                
+                plugin.registerDomEvent(text.inputEl, 'blur', handleBlur);
+                
+                // Treat Enter like blur so validation runs when user confirms
+                plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                    if (evt.key === 'Enter') {
+                        evt.preventDefault();
+                        text.inputEl.blur();
+                    }
                 });
             });
 

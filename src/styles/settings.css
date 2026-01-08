@@ -58,6 +58,17 @@
   color: var(--rt-pro-color);
 }
 
+/* Social Media tab special styling when active */
+.rt-settings-tab-social.rt-settings-tab-active {
+  background: linear-gradient(135deg, rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.15), rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.05));
+  color: var(--interactive-accent);
+  border: 1px solid rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.25);
+}
+
+.rt-settings-tab-social.rt-settings-tab-active .rt-settings-tab-icon {
+  color: var(--interactive-accent);
+}
+
 .rt-settings-tab-icon {
   display: flex;
   align-items: center;
@@ -1666,10 +1677,6 @@
   height: 16px;
 }
 
-.rt-icon-input {
-  /* Uses rt-input-md sizing from template input utilities */
-}
-
 .rt-hover-checkbox-wrapper {
   display: flex;
   align-items: center;
@@ -1760,11 +1767,6 @@
 /* -------------------------------------------------------------------------- */
 /* RUNTIME SETTINGS SECTION                                                   */
 /* -------------------------------------------------------------------------- */
-
-/* Conditional settings container */
-.rt-runtime-conditional-settings {
-  /* Container for settings that show when runtime is enabled */
-}
 
 /* Patterns info block */
 .rt-runtime-patterns-info {
@@ -2190,28 +2192,20 @@
   display: none;
 }
 
-/* Searchable content wrapper */
-.rt-settings-searchable-content {
-  /* Wrapper doesn't add visual styling, just contains searchable sections */
-}
-
-/* Section containers within searchable content */
-.rt-settings-searchable-content > [data-rt-section] {
-  /* Sections are blocks that can be hidden as a group */
-}
-
 /* -------------------------------------------------------------------------- */
 /* PRO CALLOUTS (upsell hints in Core sections)                               */
 /* -------------------------------------------------------------------------- */
 
 .rt-pro-callout {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
   font-size: 12px;
   color: var(--text-faint);
   cursor: pointer;
   margin-top: 8px;
+  margin-bottom: 16px;
   padding: 6px 10px;
   border-radius: 6px;
   transition: color 0.15s ease, background 0.15s ease;
@@ -2292,26 +2286,42 @@
 }
 
 .rt-apr-content-wrapper {
-  padding: 16px;
-  border: 2px dashed var(--interactive-accent);
+  padding: 16px 18px;
+  border: 1px solid rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.3);
   border-radius: 10px;
-  background: rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.04);
+  background: linear-gradient(135deg, rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.08) 0%, rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.02) 100%);
 }
 
-.rt-apr-status-banner {
+/* APR Header Banner with Icon and Title */
+.rt-apr-header-banner {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-  padding: 10px 14px;
-  background: var(--background-secondary);
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 12px 16px;
+  background: rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.08);
   border-radius: 8px;
-  border-left: 3px solid var(--interactive-accent);
+  border: 1px solid rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.2);
 }
 
-.rt-apr-last-updated {
-  font-size: 14px;
-  font-weight: 500;
+.rt-apr-header-banner .rt-apr-header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  color: var(--interactive-accent);
+}
+
+.rt-apr-header-banner .rt-apr-header-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.rt-apr-header-title {
+  font-size: 15px;
+  font-weight: 600;
   color: var(--text-normal);
 }
 
@@ -2326,7 +2336,6 @@
   min-width: 32px;
   height: 24px;
   padding: 0 8px;
-  margin-left: 12px;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;

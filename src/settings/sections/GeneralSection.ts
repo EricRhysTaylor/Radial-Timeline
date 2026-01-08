@@ -10,15 +10,8 @@ export function renderGeneralSection(params: {
 }): void {
     const { app, plugin, attachFolderSuggest, containerEl } = params;
 
-    // Section wrapper
-    const section = containerEl.createDiv({ cls: 'rt-settings-section' });
-    
-    // Header
-    const header = section.createDiv({ cls: 'rt-settings-header-row' });
-    header.createEl('h3', { text: 'Setup' });
-
     // --- Source Path with Autocomplete ---
-    const sourcePathSetting = new ObsidianSetting(section)
+    const sourcePathSetting = new ObsidianSetting(containerEl)
         .setName('Source path')
         .setDesc('Specify the root folder containing your manuscript scene files.');
 
@@ -87,16 +80,34 @@ export function renderGeneralSection(params: {
     });
 
     // --- Show Source Path as Title ---
-    new ObsidianSetting(section)
+    const isShowingSourcePath = plugin.settings.showSourcePathAsTitle !== false;
+    
+    const getFolderTitle = () => {
+        const sourcePath = plugin.settings.sourcePath;
+        if (!sourcePath) return 'Work in Progress';
+        // Get the last segment of the path
+        const segments = sourcePath.split('/').filter(s => s.length > 0);
+        return segments.length > 0 ? segments[segments.length - 1] : 'Work in Progress';
+    };
+    
+    const getDescText = (enabled: boolean) => {
+        const title = enabled ? getFolderTitle() : 'Work in Progress';
+        return `Currently showing "${title}" as the title.`;
+    };
+    
+    const titleToggleSetting = new ObsidianSetting(containerEl)
         .setName('Show source path as title')
-        .setDesc('Display the source folder name as the title of your work. When off, displays "Work in Progress" instead.')
-        .addToggle(toggle => {
-            toggle
-                .setValue(plugin.settings.showSourcePathAsTitle !== false)
-                .onChange(async (value) => {
-                    plugin.settings.showSourcePathAsTitle = value;
-                    await plugin.saveSettings();
-                    plugin.refreshTimelineIfNeeded(null);
-                });
-        });
+        .setDesc(getDescText(isShowingSourcePath));
+    
+    titleToggleSetting.addToggle(toggle => {
+        toggle
+            .setValue(isShowingSourcePath)
+            .onChange(async (value) => {
+                plugin.settings.showSourcePathAsTitle = value;
+                await plugin.saveSettings();
+                plugin.refreshTimelineIfNeeded(null);
+                // Update description to reflect new state
+                titleToggleSetting.setDesc(getDescText(value));
+            });
+    });
 }

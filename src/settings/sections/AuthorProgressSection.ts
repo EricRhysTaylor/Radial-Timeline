@@ -1,4 +1,4 @@
-import { App, Setting, Notice } from 'obsidian';
+import { App, Setting, Notice, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { AuthorProgressService } from '../../services/AuthorProgressService';
 
@@ -9,30 +9,31 @@ export interface AuthorProgressSectionProps {
 }
 
 export function renderAuthorProgressSection({ app, plugin, containerEl }: AuthorProgressSectionProps): void {
-    const section = containerEl.createDiv({ cls: 'rt-settings-section' });
+    const section = containerEl.createDiv({ cls: 'rt-settings-section rt-apr-section' });
     
-    // Header with Help Link
-    const header = section.createDiv({ cls: 'rt-settings-header-row' });
-    header.createEl('h3', { text: 'Author Progress Report (APR)' });
-    
-    // Content wrapper with dashed accent border
+    // Content wrapper with accent border
     const contentWrapper = section.createDiv({ cls: 'rt-apr-content-wrapper' });
     
-    // Status Banner
+    // Header inside content wrapper with icon, title, and last update
     const settings = plugin.settings.authorProgress;
     const lastDate = settings?.lastPublishedDate 
         ? new Date(settings.lastPublishedDate).toLocaleDateString() 
         : 'Never';
     
-    const banner = contentWrapper.createDiv({ cls: 'rt-apr-status-banner' });
-    banner.createEl('span', { text: `Last Updated: ${lastDate}`, cls: 'rt-apr-last-updated' });
+    const headerBanner = contentWrapper.createDiv({ cls: 'rt-apr-header-banner' });
+    const headerIcon = headerBanner.createSpan({ cls: 'rt-apr-header-icon' });
+    setIcon(headerIcon, 'radio');
+    headerBanner.createEl('span', { 
+        text: `Author Progress Report (APR) — Last Update: ${lastDate}`, 
+        cls: 'rt-apr-header-title' 
+    });
     
     // Identity Inputs (High Visibility)
     new Setting(contentWrapper)
         .setName('Book Title')
         .setDesc('This title appears on your public report graphic.')
         .addText(text => text
-            .setPlaceholder('My Great Novel')
+            .setPlaceholder('Working Title')
             .setValue(settings?.bookTitle || '')
             .onChange(async (val) => {
                 if (plugin.settings.authorProgress) {
@@ -42,19 +43,23 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             })
         );
 
-    new Setting(contentWrapper)
+    const linkUrlSetting = new Setting(contentWrapper)
         .setName('Link URL')
-        .setDesc('Where the graphic should link to (e.g. your website, Kickstarter, or shop).')
-        .addText(text => text
-            .setPlaceholder('https://...')
+        .setDesc('Where the graphic should link to (e.g. your website, Kickstarter, or shop).');
+    
+    linkUrlSetting.settingEl.addClass('rt-setting-full-width-input');
+    
+    linkUrlSetting.addText(text => {
+        text.inputEl.addClass('rt-input-full');
+        text.setPlaceholder('https://...')
             .setValue(settings?.authorUrl || '')
             .onChange(async (val) => {
                 if (plugin.settings.authorProgress) {
                     plugin.settings.authorProgress.authorUrl = val;
                     await plugin.saveSettings();
                 }
-            })
-        );
+            });
+    });
 
     // Automation & Frequency
     new Setting(contentWrapper)

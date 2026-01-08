@@ -33,7 +33,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _localBaseUrlInput?: HTMLInputElement;
     private _localModelIdInput?: HTMLInputElement;
     private _aiRelatedElements: HTMLElement[] = []; 
-    private _activeTab: 'pro' | 'core' = 'core'; 
+    private _activeTab: 'pro' | 'core' | 'social' = 'core'; 
     private _searchDebounceTimer?: number;
     private _coreSearchableContent?: HTMLElement;
 
@@ -354,25 +354,37 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const coreIcon = coreTab.createSpan({ cls: 'rt-settings-tab-icon' });
         setIcon(coreIcon, 'settings');
         coreTab.createSpan({ text: 'Core', cls: 'rt-settings-tab-label' });
+        
+        const socialTab = tabBar.createDiv({ cls: 'rt-settings-tab rt-settings-tab-social' });
+        const socialIcon = socialTab.createSpan({ cls: 'rt-settings-tab-icon' });
+        setIcon(socialIcon, 'radio');
+        socialTab.createSpan({ text: 'Social Media', cls: 'rt-settings-tab-label' });
 
         const proContent = containerEl.createDiv({ cls: 'rt-settings-tab-content rt-settings-pro-content' });
         const coreContent = containerEl.createDiv({ cls: 'rt-settings-tab-content rt-settings-core-content' });
+        const socialContent = containerEl.createDiv({ cls: 'rt-settings-tab-content rt-settings-social-content' });
 
         const updateTabState = () => {
             proTab.toggleClass('rt-settings-tab-active', this._activeTab === 'pro');
             coreTab.toggleClass('rt-settings-tab-active', this._activeTab === 'core');
+            socialTab.toggleClass('rt-settings-tab-active', this._activeTab === 'social');
             proContent.toggleClass('rt-hidden', this._activeTab !== 'pro');
             coreContent.toggleClass('rt-hidden', this._activeTab !== 'core');
+            socialContent.toggleClass('rt-hidden', this._activeTab !== 'social');
         };
 
         this.plugin.registerDomEvent(proTab, 'click', () => { this._activeTab = 'pro'; updateTabState(); });
         this.plugin.registerDomEvent(coreTab, 'click', () => { this._activeTab = 'core'; updateTabState(); });
+        this.plugin.registerDomEvent(socialTab, 'click', () => { this._activeTab = 'social'; updateTabState(); });
         updateTabState();
 
         const isProActive = isProfessionalActive(this.plugin);
         if (isProActive) this.renderProHero(proContent);
         renderProfessionalSection({ app: this.app, plugin: this.plugin, containerEl: proContent });
         renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: proContent });
+
+        // Social Media Tab Content - APR Section
+        renderAuthorProgressSection({ app: this.app, plugin: this.plugin, containerEl: socialContent });
 
         this.renderBackupSafetySection(coreContent);
         this.renderSearchBox(coreContent);
@@ -385,10 +397,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const generalSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'general' } });
         renderGeneralSection({ app: this.app, plugin: this.plugin, attachFolderSuggest: (t) => this.attachFolderSuggest(t), containerEl: generalSection });
         this.renderProCallout(generalSection, 'Manuscript exports via Pandoc', switchToProTab);
-
-        // APR Section
-        const shareSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'share' } });
-        renderAuthorProgressSection({ app: this.app, plugin: this.plugin, containerEl: shareSection });
 
         const metadataSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'metadata' } });
         renderMetadataSection({ app: this.app, plugin: this.plugin, containerEl: metadataSection });
