@@ -10,8 +10,15 @@ export function renderGeneralSection(params: {
 }): void {
     const { app, plugin, attachFolderSuggest, containerEl } = params;
 
+    // Section wrapper
+    const section = containerEl.createDiv({ cls: 'rt-settings-section' });
+    
+    // Header
+    const header = section.createDiv({ cls: 'rt-settings-header-row' });
+    header.createEl('h3', { text: 'Setup' });
+
     // --- Source Path with Autocomplete ---
-    const sourcePathSetting = new ObsidianSetting(containerEl)
+    const sourcePathSetting = new ObsidianSetting(section)
         .setName('Source path')
         .setDesc('Specify the root folder containing your manuscript scene files.');
 
@@ -80,7 +87,7 @@ export function renderGeneralSection(params: {
     });
 
     // --- Show Source Path as Title ---
-    new ObsidianSetting(containerEl)
+    new ObsidianSetting(section)
         .setName('Show source path as title')
         .setDesc('Display the source folder name as the title of your work. When off, displays "Work in Progress" instead.')
         .addToggle(toggle => {

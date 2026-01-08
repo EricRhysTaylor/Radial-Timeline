@@ -15,17 +15,20 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const header = section.createDiv({ cls: 'rt-settings-header-row' });
     header.createEl('h3', { text: 'Author Progress Report (APR)' });
     
+    // Content wrapper with dashed accent border
+    const contentWrapper = section.createDiv({ cls: 'rt-apr-content-wrapper' });
+    
     // Status Banner
     const settings = plugin.settings.authorProgress;
     const lastDate = settings?.lastPublishedDate 
         ? new Date(settings.lastPublishedDate).toLocaleDateString() 
         : 'Never';
     
-    const banner = section.createDiv({ cls: 'rt-apr-status-banner' });
+    const banner = contentWrapper.createDiv({ cls: 'rt-apr-status-banner' });
     banner.createEl('span', { text: `Last Updated: ${lastDate}`, cls: 'rt-apr-last-updated' });
     
     // Identity Inputs (High Visibility)
-    new Setting(section)
+    new Setting(contentWrapper)
         .setName('Book Title')
         .setDesc('This title appears on your public report graphic.')
         .addText(text => text
@@ -39,7 +42,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             })
         );
 
-    new Setting(section)
+    new Setting(contentWrapper)
         .setName('Link URL')
         .setDesc('Where the graphic should link to (e.g. your website, Kickstarter, or shop).')
         .addText(text => text
@@ -54,7 +57,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         );
 
     // Automation & Frequency
-    new Setting(section)
+    new Setting(contentWrapper)
         .setName('Update Frequency')
         .setDesc('How often to auto-update the live embed file. "Manual" requires clicking the update button.')
         .addDropdown(dropdown => dropdown
@@ -77,32 +80,95 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Conditional Manual Settings
     if (settings?.updateFrequency === 'manual') {
-        new Setting(section)
+        const currentDays = settings?.stalenessThresholdDays || 30;
+        const stalenessSetting = new Setting(contentWrapper)
             .setName('Staleness Alert Threshold')
-            .setDesc('Days before showing a "Stale Report" warning in the timeline view.')
-            .addSlider(slider => slider
-                .setLimits(1, 90, 1)
-                .setValue(settings?.stalenessThresholdDays || 30)
-                .setDynamicTooltip()
-                .onChange(async (val) => {
-                    if (plugin.settings.authorProgress) {
-                        plugin.settings.authorProgress.stalenessThresholdDays = val;
-                        await plugin.saveSettings();
-                    }
-                })
-            );
+            .setDesc(`Days before showing a "Stale Report" warning in the timeline view. Currently: ${currentDays} days.`)
+            .addSlider(slider => {
+                slider
+                    .setLimits(1, 90, 1)
+                    .setValue(currentDays)
+                    .setDynamicTooltip()
+                    .onChange(async (val) => {
+                        if (plugin.settings.authorProgress) {
+                            plugin.settings.authorProgress.stalenessThresholdDays = val;
+                            await plugin.saveSettings();
+                            // Update description with new value
+                            const descEl = stalenessSetting.descEl;
+                            if (descEl) {
+                                descEl.setText(`Days before showing a "Stale Report" warning in the timeline view. Currently: ${val} days.`);
+                            }
+                            // Update value label
+                            if (valueLabel) {
+                                valueLabel.setText(String(val));
+                            }
+                        }
+                    });
+                
+                // Add value label above the slider thumb
+                const sliderEl = slider.sliderEl;
+                const valueLabel = sliderEl.parentElement?.createEl('span', {
+                    cls: 'rt-slider-value-label',
+                    text: String(currentDays)
+                });
+                
+                return slider;
+            });
     }
 
-    new Setting(section)
+    const embedPathSetting = new Setting(contentWrapper)
         .setName('Embed File Path')
-        .setDesc('Location for the "Live Embed" SVG file.')
-        .addText(text => text
-            .setValue(settings?.dynamicEmbedPath || 'AuthorProgress/progress.svg')
-            .onChange(async (val) => {
-                if (plugin.settings.authorProgress) {
-                    plugin.settings.authorProgress.dynamicEmbedPath = val;
-                    await plugin.saveSettings();
-                }
-            })
-        );
+        .setDesc('Location for the "Live Embed" SVG file. Must end with .svg');
+    
+    embedPathSetting.settingEl.addClass('rt-setting-full-width-input');
+    
+    embedPathSetting.addText(text => {
+        text.inputEl.addClass('rt-input-full');
+        text.setPlaceholder('AuthorProgress/progress.svg')
+            .setValue(settings?.dynamicEmbedPath || 'AuthorProgress/progress.svg');
+        
+        // Validate on blur
+        const handleBlur = async () => {
+            const val = text.getValue().trim();
+            text.inputEl.removeClass('rt-setting-input-success');
+            text.inputEl.removeClass('rt-setting-input-error');
+            
+            if (!val) {
+                // Empty is invalid - needs a path
+                text.inputEl.addClass('rt-setting-input-error');
+                window.setTimeout(() => {
+                    text.inputEl.removeClass('rt-setting-input-error');
+                }, 2000);
+                return;
+            }
+            
+            if (!val.toLowerCase().endsWith('.svg')) {
+                text.inputEl.addClass('rt-setting-input-error');
+                window.setTimeout(() => {
+                    text.inputEl.removeClass('rt-setting-input-error');
+                }, 2000);
+                return;
+            }
+            
+            // Valid - save
+            if (plugin.settings.authorProgress) {
+                plugin.settings.authorProgress.dynamicEmbedPath = val;
+                await plugin.saveSettings();
+                text.inputEl.addClass('rt-setting-input-success');
+                window.setTimeout(() => {
+                    text.inputEl.removeClass('rt-setting-input-success');
+                }, 1000);
+            }
+        };
+        
+        plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
+        
+        // Also handle Enter key
+        plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+            if (evt.key === 'Enter') {
+                evt.preventDefault();
+                text.inputEl.blur();
+            }
+        });
+    });
 }

@@ -381,13 +381,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         this._coreSearchableContent = searchableContent;
         const switchToProTab = () => { this._activeTab = 'pro'; updateTabState(); };
 
-        // APR Section - Top of Core
-        const shareSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'share' } });
-        renderAuthorProgressSection({ app: this.app, plugin: this.plugin, containerEl: shareSection });
-
+        // Setup Section - Source path settings
         const generalSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'general' } });
         renderGeneralSection({ app: this.app, plugin: this.plugin, attachFolderSuggest: (t) => this.attachFolderSuggest(t), containerEl: generalSection });
         this.renderProCallout(generalSection, 'Manuscript exports via Pandoc', switchToProTab);
+
+        // APR Section
+        const shareSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'share' } });
+        renderAuthorProgressSection({ app: this.app, plugin: this.plugin, containerEl: shareSection });
 
         const metadataSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'metadata' } });
         renderMetadataSection({ app: this.app, plugin: this.plugin, containerEl: metadataSection });
