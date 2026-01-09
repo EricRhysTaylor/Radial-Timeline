@@ -1805,10 +1805,12 @@
 }
 
 /* Legacy styles (keep for modal) */
-.rt-runtime-subheader {
+.rt-settings-root h4.rt-runtime-subheader,
+.rt-settings-root .setting-item + h4.rt-runtime-subheader {
   font-size: 14px;
   font-weight: 600;
-  margin: 12px 0 8px 0;
+  margin: 0 0 8px 0;
+  padding: 0 16px;
   color: var(--text-normal);
 }
 

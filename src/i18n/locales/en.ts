@@ -135,6 +135,7 @@ export interface TranslationKeys {
         invalidInput: string;
     };
     manuscriptModal: {
+        badge: string;
         title: string;
         description: string;
         heroLoading: string;
@@ -188,6 +189,8 @@ export interface TranslationKeys {
         wordCountHeading: string;
         wordCountToggle: string;
         wordCountNote: string;
+        includeSynopsis: string;
+        includeSynopsisNote: string;
     };
     planetary: {
         heading: string;
@@ -345,6 +348,7 @@ export const en: TranslationKeys = {
         invalidInput: 'Invalid input.',
     },
     manuscriptModal: {
+        badge: 'Export',
         title: 'Manuscript generate',
         description: 'Choose export presets for manuscripts or outlines. Use markdown-linked TOC for Obsidian-friendly navigation, or plain TOC for AI processing. All orderings support custom ranges with the draggable selector.',
         heroLoading: 'Loading scenes...',
@@ -398,6 +402,8 @@ export const en: TranslationKeys = {
         wordCountHeading: 'Update metadata',
         wordCountToggle: 'Update Words in scene YAML',
         wordCountNote: 'Updates the Words field in each scene\'s frontmatter with accurate counts (excludes YAML and comments).',
+        includeSynopsis: 'Include scene synopsis',
+        includeSynopsisNote: 'Adds the Synopsis field from each scene\'s frontmatter to the outline.',
     },
     planetary: {
         heading: 'Planetary calendar system',

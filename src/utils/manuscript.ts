@@ -29,6 +29,7 @@ export interface ManuscriptSceneSelection {
   whenDates: (string | null)[];
   sceneNumbers: number[];
   subplots: string[];
+  synopses: (string | null)[];
 }
  
 export type TocMode = 'markdown' | 'plain' | 'none';
@@ -187,6 +188,7 @@ export async function getSceneFilesByOrder(
   const whenDates: (string | null)[] = [];
   const sceneNumbers: number[] = [];
   const subplots: string[] = [];
+  const synopses: (string | null)[] = [];
 
   for (const scene of sortedScenes) {
     if (!scene.path) continue;
@@ -199,9 +201,10 @@ export async function getSceneFilesByOrder(
     sceneNumbers.push(numStr ? parseInt(numStr, 10) || 0 : 0);
     const sceneSubplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
     subplots.push(sceneSubplot);
+    synopses.push(scene.synopsis && scene.synopsis.trim().length > 0 ? scene.synopsis : null);
   }
 
-  return { files, sortOrder, titles, whenDates, sceneNumbers, subplots };
+  return { files, sortOrder, titles, whenDates, sceneNumbers, subplots, synopses };
 }
 
 function formatWhenDate(date: Date): string {

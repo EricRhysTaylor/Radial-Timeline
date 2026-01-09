@@ -166,6 +166,52 @@
   border-color: rgba(255, 255, 255, 0.18);
 }
 
+/* Pro-styled pills (magenta accent) */
+.rt-manuscript-pill.rt-manuscript-pill-pro {
+  border-color: rgba(217, 70, 239, 0.35);
+  background: rgba(217, 70, 239, 0.08);
+}
+
+.rt-manuscript-pill.rt-manuscript-pill-pro:hover {
+  border-color: rgba(217, 70, 239, 0.5);
+  background: rgba(217, 70, 239, 0.12);
+}
+
+.rt-manuscript-pill.rt-manuscript-pill-pro.rt-is-active {
+  background: linear-gradient(120deg, rgba(217, 70, 239, 0.22), rgba(217, 70, 239, 0.12));
+  border-color: rgba(217, 70, 239, 0.55);
+  box-shadow: 0 10px 30px rgba(217, 70, 239, 0.25);
+}
+
+/* Disabled Pro pills (Core users) - grayed out */
+.rt-manuscript-pill.rt-manuscript-pill-pro.rt-is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.rt-manuscript-pill.rt-manuscript-pill-pro.rt-is-disabled:hover {
+  transform: none;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Standard disabled pills */
+.rt-manuscript-pill.rt-is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.rt-manuscript-pill.rt-is-disabled:hover {
+  transform: none;
+}
+
+/* Pro dropdown options (for Core users - shows magenta hint) */
+.rt-dropdown-pro-option {
+  color: #d946ef;
+}
+
 .rt-manuscript-toggle-row {
   display: flex;
   align-items: center;

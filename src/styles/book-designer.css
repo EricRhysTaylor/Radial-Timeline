@@ -48,10 +48,10 @@
     height: 100%;
 }
 
-/* Remove horizontal padding when card-block contains stacked settings */
+/* Group block padding - handles consistent padding for all children */
 .rt-manuscript-surface .rt-manuscript-card-block.rt-manuscript-group-block {
-    padding-left: 0;
-    padding-right: 0;
+    padding-left: 16px;
+    padding-right: 16px;
 }
 
 .rt-manuscript-surface .rt-manuscript-card-block + .rt-manuscript-card-block {
@@ -115,10 +115,10 @@
     gap: 8px;
 }
 
-/* Scoped padding for stacked settings inside Book Designer (e.g., Subplots, Characters) */
+/* Stacked settings don't need extra horizontal padding - parent provides it */
 .rt-book-designer-modal .rt-setting-stacked.rt-manuscript-group-setting,
 .rt-book-designer-modal .rt-manuscript-content-left > .rt-setting-stacked {
-    padding: 0 16px;
+    padding: 0;
 }
 
 /* Remove left padding from setting info in stacked layouts - align with input fields */
@@ -189,16 +189,14 @@
     gap: 12px;
 }
 
-/* Scoped padding & divider only for Book Designer duo grid */
+/* Scoped divider between duo grid columns */
 .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-scenes-generate-setting {
-    padding-left: 16px;
     padding-right: 16px;
     border-right: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-book-length-setting {
     padding-left: 16px;
-    padding-right: 16px;
     align-self: flex-start; /* Align to top like scenes to generate */
 }
 

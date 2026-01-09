@@ -1,7 +1,7 @@
 /*
  * Manuscript Options Modal
  */
-import { App, ButtonComponent, DropdownComponent, Modal, Notice, ToggleComponent } from 'obsidian';
+import { App, ButtonComponent, DropdownComponent, Modal, Notice, setIcon, ToggleComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { getSceneFilesByOrder, ManuscriptOrder, TocMode } from '../utils/manuscript';
 import { t } from '../i18n';
@@ -19,6 +19,7 @@ export interface ManuscriptModalResult {
     outlinePreset?: OutlinePreset;
     outputFormat: ExportFormat;
     updateWordCounts?: boolean;
+    includeSynopsis?: boolean;
 }
 
 type DragHandle = 'start' | 'end' | null;
@@ -37,6 +38,7 @@ export class ManuscriptOptionsModal extends Modal {
     private outlinePreset: OutlinePreset = 'beat-sheet';
     private outputFormat: ExportFormat = 'markdown';
     private updateWordCounts: boolean = false;
+    private includeSynopsis: boolean = true;
 
     private sceneTitles: string[] = [];
     private sceneWhenDates: (string | null)[] = [];
@@ -63,7 +65,6 @@ export class ManuscriptOptionsModal extends Modal {
     private tocCard?: HTMLElement;
     private manuscriptOptionsCard?: HTMLElement;
     private outlineOptionsCard?: HTMLElement;
-    private proNoteEl?: HTMLElement;
 
     private activeHandle: DragHandle = null;
     private detachEvents?: () => void;
@@ -105,7 +106,15 @@ export class ManuscriptOptionsModal extends Modal {
     // Layout -----------------------------------------------------------------
     private renderSkeleton(container: HTMLElement): void {
         const hero = container.createDiv({ cls: 'rt-modal-header' });
-        hero.createSpan({ cls: 'rt-modal-badge', text: t('manuscriptModal.badge') });
+        
+        // Pro badge with signature icon (only when Pro is active)
+        if (this.isPro) {
+            const badge = hero.createSpan({ cls: 'rt-modal-badge rt-modal-badge-pro' });
+            const iconSpan = badge.createSpan({ cls: 'rt-modal-badge-icon' });
+            setIcon(iconSpan, 'signature');
+            badge.createSpan({ text: 'Pro' });
+        }
+        
         hero.createDiv({
             cls: 'rt-modal-title',
             text: t('manuscriptModal.title')
@@ -117,43 +126,103 @@ export class ManuscriptOptionsModal extends Modal {
         this.heroMetaEl = hero.createDiv({ cls: 'rt-modal-meta' });
         this.renderHeroMeta([t('manuscriptModal.heroLoading')]);
 
-        // Export type switch
+        // ═══════════════════════════════════════════════════════════════════
+        // SCENE ORDERING
+        // ═══════════════════════════════════════════════════════════════════
+        const orderCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        orderCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.orderHeading') });
+        const orderRow = orderCard.createDiv({ cls: 'rt-manuscript-pill-row' });
+        this.createOrderPill(orderRow, t('manuscriptModal.orderNarrative'), 'narrative');
+        this.createOrderPill(orderRow, t('manuscriptModal.orderReverseNarrative'), 'reverse-narrative');
+        this.createOrderPill(orderRow, t('manuscriptModal.orderChronological'), 'chronological');
+        this.createOrderPill(orderRow, t('manuscriptModal.orderReverseChronological'), 'reverse-chronological');
+        orderCard.createDiv({
+            cls: 'rt-sub-card-note',
+            text: t('manuscriptModal.orderNote')
+        });
+
+        // ═══════════════════════════════════════════════════════════════════
+        // SUBPLOT FILTER
+        // ═══════════════════════════════════════════════════════════════════
+        const filterCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        filterCard.createDiv({ cls: 'rt-sub-card-head', text: 'Subplot filter' });
+        const filterContainer = filterCard.createDiv({ cls: 'rt-manuscript-input-container' });
+        this.subplotDropdown = new DropdownComponent(filterContainer)
+            .addOption('All Subplots', 'All Subplots')
+            .setValue('All Subplots')
+            .onChange(async (value) => {
+                this.subplot = value;
+                if (value !== 'All Subplots') {
+                    // Force non-reverse order when specific subplot is selected
+                    if (this.isReverseOrder()) {
+                        this.order = 'narrative';
+                    }
+                }
+                this.updateOrderPillsState();
+                await this.loadScenesForOrder();
+            });
+
+        // ═══════════════════════════════════════════════════════════════════
+        // SCENE RANGE SELECTOR
+        // ═══════════════════════════════════════════════════════════════════
+        const rangeCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        rangeCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.rangeHeading') });
+        this.rangeStatusEl = rangeCard.createDiv({ cls: 'rt-manuscript-range-status', text: t('manuscriptModal.rangeLoading') });
+
+        const rangeShell = rangeCard.createDiv({ cls: 'rt-manuscript-range-shell' });
+        this.rangeCardContainer = rangeShell.createDiv({ cls: 'rt-manuscript-range-cards' });
+
+        const trackWrap = rangeShell.createDiv({ cls: 'rt-manuscript-range-track-wrap' });
+        this.trackEl = trackWrap.createDiv({ cls: 'rt-manuscript-range-track' });
+        this.rangeFillEl = this.trackEl.createDiv({ cls: 'rt-manuscript-range-fill' });
+        this.startHandleEl = this.trackEl.createDiv({ cls: 'rt-manuscript-range-handle', attr: { 'data-handle': 'start', 'aria-label': 'Start of range' } });
+        this.endHandleEl = this.trackEl.createDiv({ cls: 'rt-manuscript-range-handle', attr: { 'data-handle': 'end', 'aria-label': 'End of range' } });
+
+        this.registerPointerEvents();
+
+        this.loadingEl = rangeCard.createDiv({ cls: 'rt-manuscript-loading', text: t('manuscriptModal.rangeLoading') });
+
+        // ═══════════════════════════════════════════════════════════════════
+        // EXPORT TYPE (Manuscript vs Outline)
+        // ═══════════════════════════════════════════════════════════════════
         const exportCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         exportCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.exportHeading') });
         const exportRow = exportCard.createDiv({ cls: 'rt-manuscript-pill-row' });
         this.createExportTypePill(exportRow, t('manuscriptModal.exportTypeManuscript'), 'manuscript');
-        this.createExportTypePill(exportRow, `${t('manuscriptModal.exportTypeOutline')} · ${t('manuscriptModal.proBadge')}`, 'outline', !this.isPro);
+        this.createExportTypePill(exportRow, t('manuscriptModal.exportTypeOutline'), 'outline', !this.isPro, true);
 
-        this.proNoteEl = exportCard.createDiv({
-            cls: 'rt-sub-card-note',
-            text: this.isPro ? t('manuscriptModal.proEnabled') : t('manuscriptModal.proRequired')
-        });
-
-        // Manuscript preset + format
+        // ═══════════════════════════════════════════════════════════════════
+        // MANUSCRIPT PRESET + FORMAT (Core feature)
+        // ═══════════════════════════════════════════════════════════════════
         this.manuscriptOptionsCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         this.manuscriptOptionsCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.manuscriptPresetHeading') });
         const presetRow = this.manuscriptOptionsCard.createDiv({ cls: 'rt-manuscript-input-container' });
         this.manuscriptPresetDropdown = new DropdownComponent(presetRow)
             .addOption('novel', t('manuscriptModal.presetNovel'))
-            .addOption('screenplay', `${t('manuscriptModal.presetScreenplay')} · ${t('manuscriptModal.proBadge')}`)
-            .addOption('podcast', `${t('manuscriptModal.presetPodcast')} · ${t('manuscriptModal.proBadge')}`)
+            .addOption('screenplay', t('manuscriptModal.presetScreenplay'))
+            .addOption('podcast', t('manuscriptModal.presetPodcast'))
             .setValue(this.manuscriptPreset)
             .onChange((value) => {
                 const preset = value as ManuscriptPreset;
-                if (!this.isPro && (preset === 'screenplay' || preset === 'podcast')) {
+                const isProPreset = preset === 'screenplay' || preset === 'podcast';
+                if (!this.isPro && isProPreset) {
                     new Notice(t('manuscriptModal.proRequired'));
                     this.manuscriptPresetDropdown?.setValue(this.manuscriptPreset);
                     return;
                 }
                 this.manuscriptPreset = preset;
             });
+        // Style Pro options in dropdown
+        this.styleDropdownProOptions(this.manuscriptPresetDropdown, ['screenplay', 'podcast']);
 
         const formatRow = this.manuscriptOptionsCard.createDiv({ cls: 'rt-manuscript-pill-row' });
         this.createOutputFormatPill(formatRow, t('manuscriptModal.formatMarkdown'), 'markdown');
-        this.createOutputFormatPill(formatRow, `${t('manuscriptModal.formatDocx')} · ${t('manuscriptModal.proBadge')}`, 'docx', !this.isPro);
-        this.createOutputFormatPill(formatRow, `${t('manuscriptModal.formatPdf')} · ${t('manuscriptModal.proBadge')}`, 'pdf', !this.isPro);
+        this.createOutputFormatPill(formatRow, t('manuscriptModal.formatDocx'), 'docx', !this.isPro, 'both', true);
+        this.createOutputFormatPill(formatRow, t('manuscriptModal.formatPdf'), 'pdf', !this.isPro, 'both', true);
 
-        // Outline presets
+        // ═══════════════════════════════════════════════════════════════════
+        // OUTLINE PRESETS (Pro feature - entire card)
+        // ═══════════════════════════════════════════════════════════════════
         this.outlineOptionsCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         this.outlineOptionsCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.outlinePresetHeading') });
         const outlinePresetRow = this.outlineOptionsCard.createDiv({ cls: 'rt-manuscript-input-container' });
@@ -161,8 +230,8 @@ export class ManuscriptOptionsModal extends Modal {
             .addOption('beat-sheet', t('manuscriptModal.outlineBeatSheet'))
             .addOption('episode-rundown', t('manuscriptModal.outlineEpisodeRundown'))
             .addOption('shooting-schedule', t('manuscriptModal.outlineShootingSchedule'))
-            .addOption('index-cards-csv', `${t('manuscriptModal.outlineIndexCardsCsv')} · ${t('manuscriptModal.proBadge')}`)
-            .addOption('index-cards-json', `${t('manuscriptModal.outlineIndexCardsJson')} · ${t('manuscriptModal.proBadge')}`)
+            .addOption('index-cards-csv', t('manuscriptModal.outlineIndexCardsCsv'))
+            .addOption('index-cards-json', t('manuscriptModal.outlineIndexCardsJson'))
             .setValue(this.outlinePreset)
             .onChange((value) => {
                 const preset = value as OutlinePreset;
@@ -175,12 +244,30 @@ export class ManuscriptOptionsModal extends Modal {
                 this.normalizeOutputFormatForOutline();
                 this.syncOutputFormatPills();
             });
+        // Style Pro options in dropdown
+        this.styleDropdownProOptions(this.outlinePresetDropdown, ['index-cards-csv', 'index-cards-json']);
 
         const outlineFormatRow = this.outlineOptionsCard.createDiv({ cls: 'rt-manuscript-pill-row' });
         this.createOutputFormatPill(outlineFormatRow, t('manuscriptModal.formatMarkdown'), 'markdown', false, 'outline');
-        this.createOutputFormatPill(outlineFormatRow, `${t('manuscriptModal.formatCsv')} · ${t('manuscriptModal.proBadge')}`, 'csv', !this.isPro, 'outline');
-        this.createOutputFormatPill(outlineFormatRow, `${t('manuscriptModal.formatJson')} · ${t('manuscriptModal.proBadge')}`, 'json', !this.isPro, 'outline');
+        this.createOutputFormatPill(outlineFormatRow, t('manuscriptModal.formatCsv'), 'csv', !this.isPro, 'outline', true);
+        this.createOutputFormatPill(outlineFormatRow, t('manuscriptModal.formatJson'), 'json', !this.isPro, 'outline', true);
 
+        // Synopsis toggle for outlines
+        const synopsisRow = this.outlineOptionsCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
+        synopsisRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: t('manuscriptModal.includeSynopsis') });
+        new ToggleComponent(synopsisRow)
+            .setValue(this.includeSynopsis)
+            .onChange((value) => {
+                this.includeSynopsis = value;
+            });
+        this.outlineOptionsCard.createDiv({
+            cls: 'rt-sub-card-note',
+            text: t('manuscriptModal.includeSynopsisNote')
+        });
+
+        // ═══════════════════════════════════════════════════════════════════
+        // TABLE OF CONTENTS
+        // ═══════════════════════════════════════════════════════════════════
         this.tocCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         this.tocCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.tocHeading') });
         const tocActions = this.tocCard.createDiv({ cls: 'rt-manuscript-pill-row' });
@@ -201,11 +288,13 @@ export class ManuscriptOptionsModal extends Modal {
             text: t('manuscriptModal.tocNote')
         });
 
-        // Word Count Update Card
+        // ═══════════════════════════════════════════════════════════════════
+        // WORD COUNT UPDATE
+        // ═══════════════════════════════════════════════════════════════════
         const wordCountCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         wordCountCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.wordCountHeading') });
         const wordCountRow = wordCountCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
-        const wordCountLabel = wordCountRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: t('manuscriptModal.wordCountToggle') });
+        wordCountRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: t('manuscriptModal.wordCountToggle') });
         new ToggleComponent(wordCountRow)
             .setValue(this.updateWordCounts)
             .onChange((value) => {
@@ -216,54 +305,9 @@ export class ManuscriptOptionsModal extends Modal {
             text: t('manuscriptModal.wordCountNote')
         });
 
-        // Subplot Filter Card
-        const filterCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        filterCard.createDiv({ cls: 'rt-sub-card-head', text: 'Subplot filter' });
-        const filterContainer = filterCard.createDiv({ cls: 'rt-manuscript-input-container' });
-        this.subplotDropdown = new DropdownComponent(filterContainer)
-            .addOption('All Subplots', 'All Subplots')
-            .setValue('All Subplots')
-            .onChange(async (value) => {
-                this.subplot = value;
-                if (value !== 'All Subplots') {
-                    // Force non-reverse order when specific subplot is selected
-                    if (this.isReverseOrder()) {
-                        this.order = 'narrative';
-                    }
-                }
-                this.updateOrderPillsState();
-                await this.loadScenesForOrder();
-            });
-
-        const orderCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        orderCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.orderHeading') });
-        const orderRow = orderCard.createDiv({ cls: 'rt-manuscript-pill-row' });
-        this.createOrderPill(orderRow, t('manuscriptModal.orderNarrative'), 'narrative');
-        this.createOrderPill(orderRow, t('manuscriptModal.orderReverseNarrative'), 'reverse-narrative');
-        this.createOrderPill(orderRow, t('manuscriptModal.orderChronological'), 'chronological');
-        this.createOrderPill(orderRow, t('manuscriptModal.orderReverseChronological'), 'reverse-chronological');
-        orderCard.createDiv({
-            cls: 'rt-sub-card-note',
-            text: t('manuscriptModal.orderNote')
-        });
-
-        const rangeCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        rangeCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.rangeHeading') });
-        this.rangeStatusEl = rangeCard.createDiv({ cls: 'rt-manuscript-range-status', text: t('manuscriptModal.rangeLoading') });
-
-        const rangeShell = rangeCard.createDiv({ cls: 'rt-manuscript-range-shell' });
-        this.rangeCardContainer = rangeShell.createDiv({ cls: 'rt-manuscript-range-cards' });
-
-        const trackWrap = rangeShell.createDiv({ cls: 'rt-manuscript-range-track-wrap' });
-        this.trackEl = trackWrap.createDiv({ cls: 'rt-manuscript-range-track' });
-        this.rangeFillEl = this.trackEl.createDiv({ cls: 'rt-manuscript-range-fill' });
-        this.startHandleEl = this.trackEl.createDiv({ cls: 'rt-manuscript-range-handle', attr: { 'data-handle': 'start', 'aria-label': 'Start of range' } });
-        this.endHandleEl = this.trackEl.createDiv({ cls: 'rt-manuscript-range-handle', attr: { 'data-handle': 'end', 'aria-label': 'End of range' } });
-
-        this.registerPointerEvents();
-
-        this.loadingEl = rangeCard.createDiv({ cls: 'rt-manuscript-loading', text: t('manuscriptModal.rangeLoading') });
-
+        // ═══════════════════════════════════════════════════════════════════
+        // ACTIONS
+        // ═══════════════════════════════════════════════════════════════════
         const actions = container.createDiv({ cls: 'rt-modal-actions' });
         this.actionButton = new ButtonComponent(actions)
             .setButtonText(t('manuscriptModal.actionCreate'))
@@ -281,6 +325,20 @@ export class ManuscriptOptionsModal extends Modal {
         if (!this.heroMetaEl) return;
         this.heroMetaEl.empty();
         items.forEach(item => this.heroMetaEl?.createSpan({ cls: 'rt-modal-meta-item', text: item }));
+    }
+
+    /**
+     * Style specific dropdown options as Pro features (magenta text when Core)
+     */
+    private styleDropdownProOptions(dropdown: DropdownComponent, proValues: string[]): void {
+        if (this.isPro) return; // Pro users see normal styling
+        
+        const options = dropdown.selectEl.querySelectorAll('option');
+        options.forEach(option => {
+            if (proValues.includes(option.value)) {
+                option.classList.add('rt-dropdown-pro-option');
+            }
+        });
     }
 
     // Interaction helpers ----------------------------------------------------
@@ -323,8 +381,9 @@ export class ManuscriptOptionsModal extends Modal {
         });
     }
 
-    private createExportTypePill(parent: HTMLElement, label: string, type: ExportType, disabled = false): void {
+    private createExportTypePill(parent: HTMLElement, label: string, type: ExportType, disabled = false, isPro = false): void {
         const pill = parent.createDiv({ cls: 'rt-manuscript-pill' });
+        if (isPro) pill.classList.add('rt-manuscript-pill-pro');
         pill.createSpan({ text: label });
         if (this.exportType === type) pill.classList.add('rt-is-active');
         if (disabled) pill.classList.add('rt-is-disabled');
@@ -343,8 +402,9 @@ export class ManuscriptOptionsModal extends Modal {
         });
     }
 
-    private createOutputFormatPill(parent: HTMLElement, label: string, format: ExportFormat, disabled = false, scope: ExportType | 'both' = 'both'): void {
+    private createOutputFormatPill(parent: HTMLElement, label: string, format: ExportFormat, disabled = false, scope: ExportType | 'both' = 'both', isPro = false): void {
         const pill = parent.createDiv({ cls: 'rt-manuscript-pill', attr: { 'data-scope': scope } });
+        if (isPro) pill.classList.add('rt-manuscript-pill-pro');
         pill.createSpan({ text: label });
         const isActive = this.outputFormat === format;
         if (isActive) pill.classList.add('rt-is-active');
@@ -394,10 +454,6 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     private syncExportUi(): void {
-        if (this.proNoteEl) {
-            this.proNoteEl.setText(this.isPro ? t('manuscriptModal.proEnabled') : t('manuscriptModal.proRequired'));
-        }
-
         this.tocCard?.toggleClass('rt-hidden', this.exportType !== 'manuscript');
         this.manuscriptOptionsCard?.toggleClass('rt-hidden', this.exportType !== 'manuscript');
         this.outlineOptionsCard?.toggleClass('rt-hidden', this.exportType !== 'outline');
@@ -570,7 +626,6 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     private syncRangeAvailability(): void {
-        const isReverse = this.isReverseOrder();
         // Get actual scene numbers for the range boundaries
         const startSceneNum = this.getSceneNumberAt(this.rangeStart);
         const endSceneNum = this.getSceneNumberAt(this.rangeEnd);
@@ -616,7 +671,6 @@ export class ManuscriptOptionsModal extends Modal {
         this.rangeCardContainer.empty();
         if (this.totalScenes === 0) return;
 
-        const isReverse = this.isReverseOrder();
         // Get actual scene numbers for range display
         const startSceneNum = this.getSceneNumberAt(this.rangeStart);
         const endSceneNum = this.getSceneNumberAt(this.rangeEnd);
@@ -666,7 +720,8 @@ export class ManuscriptOptionsModal extends Modal {
                 manuscriptPreset: this.manuscriptPreset,
                 outlinePreset: this.outlinePreset,
                 outputFormat: this.outputFormat,
-                updateWordCounts: this.updateWordCounts
+                updateWordCounts: this.updateWordCounts,
+                includeSynopsis: this.includeSynopsis
             });
             this.close();
         } catch (err) {

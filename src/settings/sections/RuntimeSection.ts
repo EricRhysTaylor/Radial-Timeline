@@ -6,7 +6,7 @@
  * Runtime Estimation Settings Section
  */
 
-import { App, Setting, TextComponent, DropdownComponent, setIcon } from 'obsidian';
+import { App, Setting, TextComponent, DropdownComponent, setIcon, Modal, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { RuntimeContentType, RuntimeRateProfile } from '../../types';
 import { addWikiLink } from '../wikiLink';
@@ -161,7 +161,14 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         if (!selectedProfileId && profiles[0]) {
             selectedProfileId = profiles[0].id;
         }
-        const selectedProfile: RuntimeRateProfile | undefined = profiles.find(p => p.id === selectedProfileId) || profiles[0];
+
+        const headerContainer = conditionalContainer.createDiv();
+        const detailsContainer = conditionalContainer.createDiv();
+
+        const getSelectedProfile = (): RuntimeRateProfile | undefined => {
+            const next = profiles.find(p => p.id === selectedProfileId);
+            return next || profiles[0];
+        };
 
         const updateProfile = async (mutate: (p: RuntimeRateProfile) => void) => {
             const list = plugin.settings.runtimeRateProfiles || [];
@@ -177,317 +184,325 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             await plugin.saveSettings();
         };
 
-        // ─────────────────────────────────────────────────────────────────────
-        // Profiles cluster
-        // ─────────────────────────────────────────────────────────────────────
-        conditionalContainer.createEl('h4', { cls: 'rt-runtime-subheader', text: 'Profiles' });
+        const renderDetails = () => {
+            detailsContainer.empty();
+            const selectedProfile = getSelectedProfile();
+            if (!selectedProfile) return;
 
-        new Setting(conditionalContainer)
-            .setName('Profile to edit')
-            .setDesc('Select a profile to adjust. Use the buttons to duplicate or delete it.')
-            .addDropdown((dropdown: DropdownComponent) => {
-                profiles.forEach((p) => dropdown.addOption(p.id, p.label));
-                dropdown
-                    .setValue(selectedProfile?.id || profiles[0].id)
-                    .onChange((value: string) => {
-                        selectedProfileId = value;
-                        renderConditionalContent();
-                    });
-            })
-            .addExtraButton(btn => {
-                btn.setIcon('plus');
-                btn.setTooltip('Add profile (copies current)');
-                btn.onClick(async () => {
-                    const base = selectedProfile || profiles[0];
-                    const copy: RuntimeRateProfile = {
-                        ...base,
-                        id: generateProfileId(),
-                        label: `${base?.label ?? 'Profile'} copy`,
-                    };
-                    plugin.settings.runtimeRateProfiles = [...profiles, copy];
-                    selectedProfileId = copy.id;
-                    await plugin.saveSettings();
-                    renderConditionalContent();
-                });
-            })
-            .addExtraButton(btn => {
-                btn.setIcon('trash');
-                btn.setTooltip('Delete profile');
-                btn.setDisabled(profiles.length <= 1);
-                btn.onClick(async () => {
-                    if (profiles.length <= 1) return;
-                    const remaining = profiles.filter(p => p.id !== selectedProfileId);
-                    plugin.settings.runtimeRateProfiles = remaining;
-                    if (plugin.settings.defaultRuntimeProfileId === selectedProfileId) {
-                        plugin.settings.defaultRuntimeProfileId = remaining[0].id;
-                        syncLegacyFromProfile(remaining[0]);
-                    }
-                    selectedProfileId = remaining[0].id;
-                    await plugin.saveSettings();
-                    renderConditionalContent();
-                });
-            });
+            const contentType = selectedProfile.contentType || 'novel';
+            detailsContainer.createEl('h4', { cls: 'rt-runtime-subheader', text: 'Rates & timings' });
 
-        new Setting(conditionalContainer)
-            .setName('Default runtime profile')
-            .setDesc('Used when a scene has no profile set (runtime modal, hover, exports).')
-            .addDropdown((dropdown: DropdownComponent) => {
-                profiles.forEach((p) => dropdown.addOption(p.id, p.label));
-                dropdown
-                    .setValue(plugin.settings.defaultRuntimeProfileId || profiles[0].id)
-                    .onChange(async (value: string) => {
-                        plugin.settings.defaultRuntimeProfileId = value;
-                        const chosen = profiles.find(p => p.id === value);
-                        if (chosen) {
-                            syncLegacyFromProfile(chosen);
-                        }
-                        await plugin.saveSettings();
-                        selectedProfileId = value;
-                        renderConditionalContent();
-                    });
-            });
-
-        if (!selectedProfile) {
-            restoreScrollState(scrollState);
-            return;
-        }
-
-        conditionalContainer.createEl('h4', { cls: 'rt-runtime-subheader', text: 'Profile details' });
-
-        // ─────────────────────────────────────────────────────────────────────
-        // Profile label
-        // ─────────────────────────────────────────────────────────────────────
-        new Setting(conditionalContainer)
-            .setName('Profile label')
-            .setDesc('Shown in pickers and runtime modal.')
-            .addText((text: TextComponent) => {
-                text.setValue(selectedProfile.label);
-                plugin.registerDomEvent(text.inputEl, 'blur', async () => {
-                    const value = text.getValue().trim() || 'Profile';
-                    await updateProfile((p) => { p.label = value; });
-                    renderConditionalContent();
-                });
-            });
-
-        const contentType = selectedProfile.contentType || 'novel';
-
-        conditionalContainer.createEl('h4', { cls: 'rt-runtime-subheader', text: 'Rates & timings' });
-
-        // ─────────────────────────────────────────────────────────────────────
-        // Content Type Selection
-        // ─────────────────────────────────────────────────────────────────────
-        new Setting(conditionalContainer)
-            .setName('Content type')
-            .setDesc('Novel calculates all text at narration pace. Screenplay separates dialogue from action.')
-            .addDropdown((dropdown: DropdownComponent) => {
-                dropdown
-                    .addOption('novel', 'Novel / Audiobook')
-                    .addOption('screenplay', 'Screenplay')
-                    .setValue(contentType)
-                    .onChange(async (value: string) => {
-                        await updateProfile((p) => { p.contentType = value as RuntimeContentType; });
-                        renderConditionalContent();
-                    });
-            });
-
-        // ─────────────────────────────────────────────────────────────────────
-        // Word Rates (content-type specific)
-        // ─────────────────────────────────────────────────────────────────────
-        if (contentType === 'screenplay') {
-            new Setting(conditionalContainer)
-                .setName('Dialogue words per minute')
-                .setDesc('Reading speed for quoted dialogue.')
-                .addText((text: TextComponent) => {
-                    text.inputEl.type = 'number';
-                    text.inputEl.min = '50';
-                    text.inputEl.max = '300';
-                    text.inputEl.addClass('rt-input-xs');
-                    text.setValue(String(selectedProfile.dialogueWpm ?? 160));
-                    plugin.registerDomEvent(text.inputEl, 'blur', async () => {
-                        const num = parseInt(text.getValue());
-                        if (!Number.isFinite(num) || num < 50 || num > 300) {
-                            flash(text.inputEl, 'error');
-                            return;
-                        }
-                        await updateProfile((p) => { p.dialogueWpm = num; });
-                        flash(text.inputEl, 'success');
-                    });
+            // Content Type Selection
+            new Setting(detailsContainer)
+                .setName('Content type')
+                .setDesc('Novel calculates all text at narration pace. Screenplay separates dialogue from action.')
+                .addDropdown((dropdown: DropdownComponent) => {
+                    dropdown
+                        .addOption('novel', 'Novel / Audiobook')
+                        .addOption('screenplay', 'Screenplay')
+                        .setValue(contentType)
+                        .onChange(async (value: string) => {
+                            await updateProfile((p) => { p.contentType = value as RuntimeContentType; });
+                            renderDetails();
+                        });
                 });
 
-            new Setting(conditionalContainer)
-                .setName('Action words per minute')
-                .setDesc('Reading speed for scene descriptions and action lines.')
-                .addText((text: TextComponent) => {
-                    text.inputEl.type = 'number';
-                    text.inputEl.min = '50';
-                    text.inputEl.max = '300';
-                    text.inputEl.addClass('rt-input-xs');
-                    text.setValue(String(selectedProfile.actionWpm ?? 100));
-                    plugin.registerDomEvent(text.inputEl, 'blur', async () => {
-                        const num = parseInt(text.getValue());
-                        if (!Number.isFinite(num) || num < 50 || num > 300) {
-                            flash(text.inputEl, 'error');
-                            return;
-                        }
-                        await updateProfile((p) => { p.actionWpm = num; });
-                        flash(text.inputEl, 'success');
-                    });
-                });
-
-            // ─────────────────────────────────────────────────────────────────
-            // Parenthetical Timing (screenplay only)
-            // ─────────────────────────────────────────────────────────────────
-            const parentheticals: Array<{
-                key: keyof RuntimeRateProfile;
-                label: string;
-                desc: string;
-                defaultVal: number;
-            }> = [
-                { key: 'beatSeconds', label: '(beat)', desc: 'Brief pause. Parenthetical timings — seconds added when screenplay directives are detected.', defaultVal: 2 },
-                { key: 'pauseSeconds', label: '(pause)', desc: 'Standard pause', defaultVal: 3 },
-                { key: 'longPauseSeconds', label: '(long pause)', desc: 'Extended silence', defaultVal: 5 },
-                { key: 'momentSeconds', label: '(a moment)', desc: 'Reflective beat', defaultVal: 4 },
-                { key: 'silenceSeconds', label: '(silence)', desc: 'Atmospheric pause', defaultVal: 5 },
-            ];
-
-            for (const p of parentheticals) {
-                new Setting(conditionalContainer)
-                    .setName(p.label)
-                    .setDesc(p.desc)
+            // Word Rates (content-type specific)
+            if (contentType === 'screenplay') {
+                new Setting(detailsContainer)
+                    .setName('Dialogue words per minute')
+                    .setDesc('Reading speed for quoted dialogue.')
                     .addText((text: TextComponent) => {
                         text.inputEl.type = 'number';
-                        text.inputEl.min = '0';
-                        text.inputEl.max = '60';
+                        text.inputEl.min = '50';
+                        text.inputEl.max = '300';
                         text.inputEl.addClass('rt-input-xs');
-                        const currentValue = selectedProfile[p.key] as number | undefined;
-                        text.setValue(String(currentValue ?? p.defaultVal));
+                        text.setValue(String(selectedProfile.dialogueWpm ?? 160));
                         plugin.registerDomEvent(text.inputEl, 'blur', async () => {
                             const num = parseInt(text.getValue());
-                            if (!Number.isFinite(num) || num < 0 || num > 60) {
+                            if (!Number.isFinite(num) || num < 50 || num > 300) {
                                 flash(text.inputEl, 'error');
                                 return;
                             }
-                            await updateProfile((profile) => {
-                                (profile as unknown as Record<string, unknown>)[p.key] = num;
-                            });
+                            await updateProfile((p) => { p.dialogueWpm = num; });
                             flash(text.inputEl, 'success');
                         });
-                    })
-                    .addExtraButton(btn => {
-                        btn.setIcon('rotate-ccw');
-                        btn.setTooltip('Reset to default');
-                        btn.onClick(async () => {
-                            await updateProfile((profile) => {
-                                (profile as unknown as Record<string, unknown>)[p.key] = p.defaultVal;
+                    });
+
+                new Setting(detailsContainer)
+                    .setName('Action words per minute')
+                    .setDesc('Reading speed for scene descriptions and action lines.')
+                    .addText((text: TextComponent) => {
+                        text.inputEl.type = 'number';
+                        text.inputEl.min = '50';
+                        text.inputEl.max = '300';
+                        text.inputEl.addClass('rt-input-xs');
+                        text.setValue(String(selectedProfile.actionWpm ?? 100));
+                        plugin.registerDomEvent(text.inputEl, 'blur', async () => {
+                            const num = parseInt(text.getValue());
+                            if (!Number.isFinite(num) || num < 50 || num > 300) {
+                                flash(text.inputEl, 'error');
+                                return;
+                            }
+                            await updateProfile((p) => { p.actionWpm = num; });
+                            flash(text.inputEl, 'success');
+                        });
+                    });
+
+                // Parenthetical Timing (screenplay only)
+                const parentheticals: Array<{
+                    key: keyof RuntimeRateProfile;
+                    label: string;
+                    desc: string;
+                    defaultVal: number;
+                }> = [
+                    { key: 'beatSeconds', label: '(beat)', desc: 'Brief pause. Parenthetical timings — seconds added when screenplay directives are detected.', defaultVal: 2 },
+                    { key: 'pauseSeconds', label: '(pause)', desc: 'Standard pause', defaultVal: 3 },
+                    { key: 'longPauseSeconds', label: '(long pause)', desc: 'Extended silence', defaultVal: 5 },
+                    { key: 'momentSeconds', label: '(a moment)', desc: 'Reflective beat', defaultVal: 4 },
+                    { key: 'silenceSeconds', label: '(silence)', desc: 'Atmospheric pause', defaultVal: 5 },
+                ];
+
+                for (const p of parentheticals) {
+                    new Setting(detailsContainer)
+                        .setName(p.label)
+                        .setDesc(p.desc)
+                        .addText((text: TextComponent) => {
+                            text.inputEl.type = 'number';
+                            text.inputEl.min = '0';
+                            text.inputEl.max = '60';
+                            text.inputEl.addClass('rt-input-xs');
+                            const currentValue = selectedProfile[p.key] as number | undefined;
+                            text.setValue(String(currentValue ?? p.defaultVal));
+                            plugin.registerDomEvent(text.inputEl, 'blur', async () => {
+                                const num = parseInt(text.getValue());
+                                if (!Number.isFinite(num) || num < 0 || num > 60) {
+                                    flash(text.inputEl, 'error');
+                                    return;
+                                }
+                                await updateProfile((profile) => {
+                                    (profile as unknown as Record<string, unknown>)[p.key] = num;
+                                });
+                                flash(text.inputEl, 'success');
                             });
-                            renderConditionalContent();
+                        })
+                        .addExtraButton(btn => {
+                            btn.setIcon('rotate-ccw');
+                            btn.setTooltip('Reset to default');
+                            btn.onClick(async () => {
+                                await updateProfile((profile) => {
+                                    (profile as unknown as Record<string, unknown>)[p.key] = p.defaultVal;
+                                });
+                                renderDetails();
+                            });
+                        });
+                }
+            } else {
+                // Novel / Audiobook mode
+                new Setting(detailsContainer)
+                    .setName('Narration words per minute')
+                    .setDesc('Reading pace for all content (audiobook narration).')
+                    .addText((text: TextComponent) => {
+                        text.inputEl.type = 'number';
+                        text.inputEl.min = '50';
+                        text.inputEl.max = '300';
+                        text.inputEl.addClass('rt-input-xs');
+                        text.setValue(String(selectedProfile.narrationWpm ?? 150));
+                        plugin.registerDomEvent(text.inputEl, 'blur', async () => {
+                            const num = parseInt(text.getValue());
+                            if (!Number.isFinite(num) || num < 50 || num > 300) {
+                                flash(text.inputEl, 'error');
+                                return;
+                            }
+                            await updateProfile((p) => { p.narrationWpm = num; });
+                            flash(text.inputEl, 'success');
                         });
                     });
             }
-        } else {
-            // Novel / Audiobook mode
-            new Setting(conditionalContainer)
-                .setName('Narration words per minute')
-                .setDesc('Reading pace for all content (audiobook narration).')
+
+            // Session planning (optional, per profile)
+            detailsContainer.createEl('h4', { cls: 'rt-runtime-subheader', text: 'Session planning (optional)' });
+            const session = selectedProfile.sessionPlanning || {};
+
+            new Setting(detailsContainer)
+                .setName('Drafting words per minute (optional)')
+                .setDesc('Used for future session planning estimates (currently inactive).')
                 .addText((text: TextComponent) => {
                     text.inputEl.type = 'number';
-                    text.inputEl.min = '50';
-                    text.inputEl.max = '300';
+                    text.inputEl.min = '0';
+                    text.inputEl.max = '1000';
                     text.inputEl.addClass('rt-input-xs');
-                    text.setValue(String(selectedProfile.narrationWpm ?? 150));
-                    plugin.registerDomEvent(text.inputEl, 'blur', async () => {
-                        const num = parseInt(text.getValue());
-                        if (!Number.isFinite(num) || num < 50 || num > 300) {
-                            flash(text.inputEl, 'error');
-                            return;
+                    text.setValue(session.draftingWpm ? String(session.draftingWpm) : '');
+                    text.setDisabled(true);
+                });
+
+            new Setting(detailsContainer)
+                .setName('Daily minutes available (optional)')
+                .setDesc('For “45 min/day” style projections (currently inactive).')
+                .addText((text: TextComponent) => {
+                    text.inputEl.type = 'number';
+                    text.inputEl.min = '0';
+                    text.inputEl.max = '1440';
+                    text.inputEl.addClass('rt-input-xs');
+                    text.setValue(session.dailyMinutes ? String(session.dailyMinutes) : '');
+                    text.setDisabled(true);
+                });
+
+            // Explicit Duration Patterns (always shown when enabled)
+            const patternsInfo = detailsContainer.createDiv({ cls: 'setting-item-description rt-runtime-patterns-info' });
+            patternsInfo.createEl('p', { text: 'Explicit duration patterns are always parsed and added to runtime:' });
+            const patternsList = patternsInfo.createEl('ul');
+            const patterns = [
+                '(30 seconds) or (30s)',
+                '(2 minutes) or (2m)',
+                '(runtime: 3m)',
+                '(allow 5 minutes) — for demos, podcasts',
+            ];
+            for (const pat of patterns) {
+                patternsList.createEl('li').createEl('code', { text: pat });
+            }
+        };
+
+        const renderHeader = () => {
+            headerContainer.empty();
+            const currentProfiles = plugin.settings.runtimeRateProfiles || [];
+            const selectedProfile = currentProfiles.find(p => p.id === selectedProfileId) || currentProfiles[0];
+            const currentDefault = currentProfiles.find(p => p.id === plugin.settings.defaultRuntimeProfileId);
+            const isDefault = selectedProfile && selectedProfile.id === plugin.settings.defaultRuntimeProfileId;
+            const defaultNote = isDefault ? ' (default)' : '';
+
+            const headerSetting = new Setting(headerContainer)
+                .setName('Profile')
+                .setDesc(`Select, rename, duplicate, delete, or set as default. Current default: ${currentDefault?.label || 'None'}`);
+
+            headerSetting.addDropdown((dropdown: DropdownComponent) => {
+                currentProfiles.forEach((p) => {
+                    const suffix = p.id === plugin.settings.defaultRuntimeProfileId ? ' ★' : '';
+                    dropdown.addOption(p.id, p.label + suffix);
+                });
+                dropdown
+                    .setValue(selectedProfile?.id || currentProfiles[0]?.id || '')
+                    .onChange((value: string) => {
+                        selectedProfileId = value;
+                        renderHeader();
+                        renderDetails();
+                    });
+            });
+
+            headerSetting.addExtraButton(btn => {
+                btn.setIcon('plus');
+                btn.setTooltip('Duplicate profile');
+                btn.onClick(async () => {
+                    const base = selectedProfile || currentProfiles[0];
+                    if (!base) return;
+                    const copy: RuntimeRateProfile = {
+                        ...base,
+                        id: generateProfileId(),
+                        label: `${base.label} copy`,
+                    };
+                    plugin.settings.runtimeRateProfiles = [...currentProfiles, copy];
+                    selectedProfileId = copy.id;
+                    await plugin.saveSettings();
+                    renderHeader();
+                    renderDetails();
+                });
+            });
+
+            headerSetting.addExtraButton(btn => {
+                btn.setIcon('pencil');
+                btn.setTooltip('Rename profile');
+                btn.setDisabled(!selectedProfile);
+                btn.onClick(() => {
+                    if (!selectedProfile) return;
+                    const modal = new Modal(plugin.app);
+                    const { modalEl, contentEl } = modal;
+                    modalEl.classList.add('rt-modal-shell');
+                    modalEl.style.width = '400px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+                    modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+                    contentEl.addClass('rt-modal-container');
+
+                    const header = contentEl.createDiv({ cls: 'rt-modal-header' });
+                    header.createDiv({ cls: 'rt-modal-title', text: 'Rename profile' });
+
+                    const inputContainer = contentEl.createDiv({ cls: 'rt-search-input-container' });
+                    const inputEl = inputContainer.createEl('input', {
+                        type: 'text',
+                        value: selectedProfile.label || '',
+                        cls: 'rt-input-full'
+                    });
+
+                    window.setTimeout(() => {
+                        inputEl.focus();
+                        inputEl.select();
+                    }, 10);
+
+                    const submit = async () => {
+                        const trimmed = inputEl.value.trim();
+                        if (!trimmed) return;
+                        await updateProfile((p) => { p.label = trimmed; });
+                        modal.close();
+                        renderHeader();
+                        renderDetails();
+                    };
+
+                    inputEl.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            submit();
+                        } else if (e.key === 'Escape') {
+                            modal.close();
                         }
-                        await updateProfile((p) => { p.narrationWpm = num; });
-                        flash(text.inputEl, 'success');
                     });
-                });
-        }
 
-        // ─────────────────────────────────────────────────────────────────────
-        // Session planning (optional, per profile)
-        // ─────────────────────────────────────────────────────────────────────
-        conditionalContainer.createEl('h4', { cls: 'rt-runtime-subheader', text: 'Session planning (optional)' });
-        const session = selectedProfile.sessionPlanning || {};
+                    const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
+                    new ButtonComponent(buttonRow)
+                        .setButtonText('OK')
+                        .setCta()
+                        .onClick(() => submit());
+                    new ButtonComponent(buttonRow)
+                        .setButtonText('Cancel')
+                        .onClick(() => modal.close());
 
-        new Setting(conditionalContainer)
-            .setName('Drafting words per minute (optional)')
-            .setDesc('Used for future session planning estimates.')
-            .addText((text: TextComponent) => {
-                text.inputEl.type = 'number';
-                text.inputEl.min = '0';
-                text.inputEl.max = '1000';
-                text.inputEl.addClass('rt-input-xs');
-                text.setValue(session.draftingWpm ? String(session.draftingWpm) : '');
-                plugin.registerDomEvent(text.inputEl, 'blur', async () => {
-                    const raw = text.getValue();
-                    if (raw === '') {
-                        await updateProfile((p) => {
-                            p.sessionPlanning = { ...(p.sessionPlanning || {}), draftingWpm: undefined };
-                        });
-                        flash(text.inputEl, 'success');
-                        return;
-                    }
-                    const num = parseInt(raw);
-                    if (!Number.isFinite(num) || num < 0 || num > 1000) {
-                        flash(text.inputEl, 'error');
-                        return;
-                    }
-                    await updateProfile((p) => {
-                        p.sessionPlanning = { ...(p.sessionPlanning || {}), draftingWpm: num };
-                    });
-                    flash(text.inputEl, 'success');
+                    modal.open();
                 });
             });
 
-        new Setting(conditionalContainer)
-            .setName('Daily minutes available (optional)')
-            .setDesc('For “45 min/day” style projections.')
-            .addText((text: TextComponent) => {
-                text.inputEl.type = 'number';
-                text.inputEl.min = '0';
-                text.inputEl.max = '1440';
-                text.inputEl.addClass('rt-input-xs');
-                text.setValue(session.dailyMinutes ? String(session.dailyMinutes) : '');
-                plugin.registerDomEvent(text.inputEl, 'blur', async () => {
-                    const raw = text.getValue();
-                    if (raw === '') {
-                        await updateProfile((p) => {
-                            p.sessionPlanning = { ...(p.sessionPlanning || {}), dailyMinutes: undefined };
-                        });
-                        flash(text.inputEl, 'success');
-                        return;
+            headerSetting.addExtraButton(btn => {
+                btn.setIcon('trash');
+                btn.setTooltip('Delete profile');
+                btn.setDisabled(currentProfiles.length <= 1);
+                btn.onClick(async () => {
+                    if (currentProfiles.length <= 1) return;
+                    const remaining = currentProfiles.filter(p => p.id !== selectedProfileId);
+                    plugin.settings.runtimeRateProfiles = remaining;
+                    const fallback = remaining[0];
+                    if (plugin.settings.defaultRuntimeProfileId === selectedProfileId && fallback) {
+                        plugin.settings.defaultRuntimeProfileId = fallback.id;
+                        syncLegacyFromProfile(fallback);
                     }
-                    const num = parseInt(raw);
-                    if (!Number.isFinite(num) || num < 0 || num > 1440) {
-                        flash(text.inputEl, 'error');
-                        return;
-                    }
-                    await updateProfile((p) => {
-                        p.sessionPlanning = { ...(p.sessionPlanning || {}), dailyMinutes: num };
-                    });
-                    flash(text.inputEl, 'success');
+                    selectedProfileId = fallback?.id || '';
+                    await plugin.saveSettings();
+                    renderHeader();
+                    renderDetails();
                 });
             });
 
-        // ─────────────────────────────────────────────────────────────────────
-        // Explicit Duration Patterns (always shown when enabled)
-        // ─────────────────────────────────────────────────────────────────────
-        const patternsInfo = conditionalContainer.createDiv({ cls: 'setting-item-description rt-runtime-patterns-info' });
-        patternsInfo.createEl('p', { text: 'Explicit duration patterns are always parsed and added to runtime:' });
-        const patternsList = patternsInfo.createEl('ul');
-        const patterns = [
-            '(30 seconds) or (30s)',
-            '(2 minutes) or (2m)',
-            '(runtime: 3m)',
-            '(allow 5 minutes) — for demos, podcasts',
-        ];
-        for (const pat of patterns) {
-            patternsList.createEl('li').createEl('code', { text: pat });
-        }
+            headerSetting.addExtraButton(btn => {
+                btn.setIcon('star');
+                btn.setTooltip(isDefault ? 'Already default' : 'Set as default');
+                btn.setDisabled(!selectedProfile || isDefault);
+                btn.onClick(async () => {
+                    if (!selectedProfile) return;
+                    plugin.settings.defaultRuntimeProfileId = selectedProfile.id;
+                    syncLegacyFromProfile(selectedProfile);
+                    await plugin.saveSettings();
+                    renderHeader();
+                });
+            });
+        };
+
+        renderHeader();
+        renderDetails();
         restoreScrollState(scrollState);
     };
 

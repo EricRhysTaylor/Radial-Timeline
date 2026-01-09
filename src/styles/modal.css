@@ -150,7 +150,8 @@
   max-height: 92vh;
 }
 
-/* Runtime modal uses Pro/Signature magenta color scheme */
+/* Pro badge styling - used in manuscript modal and runtime modal */
+.rt-modal-badge.rt-modal-badge-pro,
 .rt-runtime-modal-shell .rt-modal-badge {
   display: inline-flex;
   align-items: center;
@@ -160,12 +161,14 @@
   color: var(--rt-pro-color, #d946ef);
 }
 
+.rt-modal-badge-pro .rt-modal-badge-icon,
 .rt-runtime-modal-shell .rt-modal-badge-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
+.rt-modal-badge-pro .rt-modal-badge-icon svg,
 .rt-runtime-modal-shell .rt-modal-badge-icon svg {
   width: 14px;
   height: 14px;

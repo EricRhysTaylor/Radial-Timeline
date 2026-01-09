@@ -167,6 +167,7 @@ export class CommandRegistrar {
                 whenDates: scenes.whenDates,
                 sceneNumbers: scenes.sceneNumbers,
                 subplots: scenes.subplots,
+                synopses: scenes.synopses,
                 sortOrder: scenes.sortOrder
             };
 
@@ -180,6 +181,7 @@ export class CommandRegistrar {
                     whenDates: indices.map(i => selection.whenDates[i]),
                     sceneNumbers: indices.map(i => selection.sceneNumbers[i]),
                     subplots: indices.map(i => selection.subplots[i]),
+                    synopses: indices.map(i => selection.synopses[i]),
                     sortOrder: selection.sortOrder
                 };
             }
@@ -191,7 +193,7 @@ export class CommandRegistrar {
             if (result.exportType === 'outline') {
                 // outline export expects ManuscriptSceneSelection
                 const slicedSelection = this.sliceSelection(filteredSelection, result.rangeStart, result.rangeEnd);
-                const outline = buildOutlineExport(slicedSelection, result.outlinePreset || 'beat-sheet');
+                const outline = buildOutlineExport(slicedSelection, result.outlinePreset || 'beat-sheet', result.includeSynopsis ?? false);
                 const outputFolder = await ensureAiOutputFolder(this.plugin);
                 const filename = `outline-${Date.now()}.${outline.extension}`;
                 const path = `${outputFolder}/${filename}`;
@@ -286,6 +288,7 @@ export class CommandRegistrar {
             whenDates: selection.whenDates.slice(startIdx, endIdx),
             sceneNumbers: selection.sceneNumbers.slice(startIdx, endIdx),
             subplots: selection.subplots.slice(startIdx, endIdx),
+            synopses: selection.synopses.slice(startIdx, endIdx),
             sortOrder: selection.sortOrder
         };
     }

@@ -89,24 +89,31 @@ function formatCsvValue(value: string | null | undefined): string {
     return safe;
 }
 
-export function buildOutlineExport(selection: ManuscriptSceneSelection, preset: OutlinePreset): OutlineExportResult {
+export function buildOutlineExport(selection: ManuscriptSceneSelection, preset: OutlinePreset, includeSynopsis = false): OutlineExportResult {
     const titles = selection.titles;
     const whenDates = selection.whenDates;
     const sceneNumbers = selection.sceneNumbers;
     const subplots = selection.subplots;
+    const synopses = selection.synopses || [];
 
     switch (preset) {
         case 'index-cards-csv': {
-            const header = ['Scene', 'Title', 'When', 'Subplot', 'Path'];
+            const header = includeSynopsis 
+                ? ['Scene', 'Title', 'When', 'Subplot', 'Synopsis', 'Path']
+                : ['Scene', 'Title', 'When', 'Subplot', 'Path'];
             const rows = titles.map((title, idx) => {
                 const sceneLabel = sceneNumbers[idx] || idx + 1;
-                return [
+                const base = [
                     sceneLabel.toString(),
                     formatCsvValue(title),
                     formatCsvValue(whenDates[idx] || ''),
-                    formatCsvValue(subplots[idx] || ''),
-                    formatCsvValue(selection.files[idx]?.path || '')
-                ].join(',');
+                    formatCsvValue(subplots[idx] || '')
+                ];
+                if (includeSynopsis) {
+                    base.push(formatCsvValue(synopses[idx] || ''));
+                }
+                base.push(formatCsvValue(selection.files[idx]?.path || ''));
+                return base.join(',');
             });
             return {
                 text: [header.join(','), ...rows].join('\n'),
@@ -115,13 +122,19 @@ export function buildOutlineExport(selection: ManuscriptSceneSelection, preset: 
             };
         }
         case 'index-cards-json': {
-            const cards = titles.map((title, idx) => ({
-                scene: sceneNumbers[idx] || idx + 1,
-                title,
-                when: whenDates[idx],
-                subplot: subplots[idx] || null,
-                path: selection.files[idx]?.path || null
-            }));
+            const cards = titles.map((title, idx) => {
+                const card: Record<string, unknown> = {
+                    scene: sceneNumbers[idx] || idx + 1,
+                    title,
+                    when: whenDates[idx],
+                    subplot: subplots[idx] || null
+                };
+                if (includeSynopsis) {
+                    card.synopsis = synopses[idx] || null;
+                }
+                card.path = selection.files[idx]?.path || null;
+                return card;
+            });
             return {
                 text: JSON.stringify(cards, null, 2),
                 extension: 'json',
@@ -134,14 +147,26 @@ export function buildOutlineExport(selection: ManuscriptSceneSelection, preset: 
                 const sceneLabel = sceneNumbers[idx] || idx + 1;
                 const when = whenDates[idx] ? ` · ${whenDates[idx]}` : '';
                 lines.push(`${sceneLabel}. ${title}${when}`);
+                if (includeSynopsis && synopses[idx]) {
+                    lines.push(`   > ${synopses[idx]}`);
+                    lines.push('');
+                }
             });
             return { text: lines.join('\n'), extension: 'md', label: 'Episode rundown' };
         }
         case 'shooting-schedule': {
-            const lines = ['# Shooting schedule', '', '| Scene | Title | When | Subplot |', '|-------|-------|------|---------|'];
+            const header = includeSynopsis
+                ? ['# Shooting schedule', '', '| Scene | Title | When | Subplot | Synopsis |', '|-------|-------|------|---------|----------|']
+                : ['# Shooting schedule', '', '| Scene | Title | When | Subplot |', '|-------|-------|------|---------|'];
+            const lines = [...header];
             titles.forEach((title, idx) => {
                 const sceneLabel = sceneNumbers[idx] || idx + 1;
-                lines.push(`| ${sceneLabel} | ${title} | ${whenDates[idx] || '—'} | ${subplots[idx] || '—'} |`);
+                if (includeSynopsis) {
+                    const synopsis = (synopses[idx] || '—').replace(/\|/g, '\\|'); // Escape pipes for markdown table
+                    lines.push(`| ${sceneLabel} | ${title} | ${whenDates[idx] || '—'} | ${subplots[idx] || '—'} | ${synopsis} |`);
+                } else {
+                    lines.push(`| ${sceneLabel} | ${title} | ${whenDates[idx] || '—'} | ${subplots[idx] || '—'} |`);
+                }
             });
             return { text: lines.join('\n'), extension: 'md', label: 'Shooting schedule' };
         }
@@ -151,6 +176,10 @@ export function buildOutlineExport(selection: ManuscriptSceneSelection, preset: 
             titles.forEach((title, idx) => {
                 const sceneLabel = sceneNumbers[idx] || idx + 1;
                 lines.push(`${sceneLabel}. ${title}`);
+                if (includeSynopsis && synopses[idx]) {
+                    lines.push(`   > ${synopses[idx]}`);
+                    lines.push('');
+                }
             });
             return { text: lines.join('\n'), extension: 'md', label: 'Beat sheet' };
         }
