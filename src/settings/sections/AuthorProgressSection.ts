@@ -1,6 +1,7 @@
-import { App, Setting, Notice, setIcon } from 'obsidian';
+import { App, Setting, Notice, setIcon, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { AuthorProgressService } from '../../services/AuthorProgressService';
+import { DEFAULT_SETTINGS } from '../defaults';
 
 export interface AuthorProgressSectionProps {
     app: App;
@@ -123,14 +124,15 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     const embedPathSetting = new Setting(contentWrapper)
         .setName('Embed File Path')
-        .setDesc('Location for the "Live Embed" SVG file. Must end with .svg');
+        .setDesc(`Location for the "Live Embed" SVG file. Must end with .svg. Default: ${DEFAULT_SETTINGS.authorProgress?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg'}`);
     
     embedPathSetting.settingEl.addClass('rt-setting-full-width-input');
     
     embedPathSetting.addText(text => {
+        const defaultPath = DEFAULT_SETTINGS.authorProgress?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg';
         text.inputEl.addClass('rt-input-full');
-        text.setPlaceholder('AuthorProgress/progress.svg')
-            .setValue(settings?.dynamicEmbedPath || 'AuthorProgress/progress.svg');
+        text.setPlaceholder(defaultPath)
+            .setValue(settings?.dynamicEmbedPath || defaultPath);
         
         // Validate on blur
         const handleBlur = async () => {
@@ -174,6 +176,23 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 evt.preventDefault();
                 text.inputEl.blur();
             }
+        });
+
+        embedPathSetting.addExtraButton(button => {
+            button.setIcon('rotate-ccw');
+            button.setTooltip(`Reset to ${defaultPath}`);
+            button.onClick(async () => {
+                text.setValue(defaultPath);
+                if (!plugin.settings.authorProgress) {
+                    plugin.settings.authorProgress = { ...DEFAULT_SETTINGS.authorProgress! };
+                }
+                plugin.settings.authorProgress.dynamicEmbedPath = normalizePath(defaultPath);
+                await plugin.saveSettings();
+                text.inputEl.addClass('rt-setting-input-success');
+                window.setTimeout(() => {
+                    text.inputEl.removeClass('rt-setting-input-success');
+                }, 1000);
+            });
         });
     });
 }

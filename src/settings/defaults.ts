@@ -11,7 +11,8 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     sourcePath: '',
     showSourcePathAsTitle: true, // Default: show source path as title of the work
     validFolderPaths: [], // Default empty array for folder path history
-    aiOutputFolder: 'AI',
+    aiOutputFolder: 'Radial Timeline/AI Logs',
+    manuscriptOutputFolder: 'Radial Timeline/Manuscript',
     actCount: 3,
     actLabelsRaw: 'Act 1, Act 2, Act 3',
     showActLabels: true,
@@ -225,7 +226,7 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
         updateFrequency: 'manual',
         stalenessThresholdDays: 30,
         enableReminders: true,
-        dynamicEmbedPath: 'AuthorProgress/progress.svg'
+        dynamicEmbedPath: 'Radial Timeline/Social/progress.svg'
     },
 
     // Pro experience (visual/hero activation)

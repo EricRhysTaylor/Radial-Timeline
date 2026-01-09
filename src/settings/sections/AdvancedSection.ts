@@ -3,6 +3,7 @@ import type RadialTimelinePlugin from '../../main';
 import { clearFontMetricsCaches } from '../../renderer/utils/FontMetricsCache';
 import { t } from '../../i18n';
 import { addWikiLink } from '../wikiLink';
+import { DEFAULT_SETTINGS } from '../defaults';
 
 export function renderAdvancedSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { app, plugin, containerEl } = params;
@@ -13,59 +14,138 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
     addWikiLink(advancedHeading, 'Settings#advanced');
 
     // 0. AI output folder for logs and generated files
-    new Settings(containerEl)
+    const aiSetting = new Settings(containerEl)
         .setName(t('settings.advanced.aiOutputFolder.name'))
-        .setDesc(t('settings.advanced.aiOutputFolder.desc'))
-        .addText(text => {
-            const fallbackFolder = plugin.settings.aiOutputFolder?.trim() || 'AI';
-            const illegalChars = /[<>:"|?*]/;
+        .setDesc(`${t('settings.advanced.aiOutputFolder.desc')} Default: ${DEFAULT_SETTINGS.aiOutputFolder || 'Radial Timeline/AI Logs'}`);
+    aiSetting.addText(text => {
+        const defaultPath = DEFAULT_SETTINGS.aiOutputFolder || 'Radial Timeline/AI Logs';
+        const fallbackFolder = plugin.settings.aiOutputFolder?.trim() || defaultPath;
+        const illegalChars = /[<>:"|?*]/;
 
-            text.setPlaceholder(t('settings.advanced.aiOutputFolder.placeholder'))
-                .setValue(fallbackFolder);
-            text.inputEl.addClass('rt-input-full');
+        text.setPlaceholder(t('settings.advanced.aiOutputFolder.placeholder'))
+            .setValue(fallbackFolder);
+        text.inputEl.addClass('rt-input-full');
 
-            const inputEl = text.inputEl;
+        const inputEl = text.inputEl;
 
-            const flashClass = (cls: string) => {
-                inputEl.addClass(cls);
-                window.setTimeout(() => inputEl.removeClass(cls), cls === 'rt-setting-input-success' ? 1000 : 2000);
-            };
+        const flashClass = (cls: string) => {
+            inputEl.addClass(cls);
+            window.setTimeout(() => inputEl.removeClass(cls), cls === 'rt-setting-input-success' ? 1000 : 2000);
+        };
 
-            const validatePath = async () => {
-                inputEl.removeClass('rt-setting-input-success');
-                inputEl.removeClass('rt-setting-input-error');
+        const validatePath = async () => {
+            inputEl.removeClass('rt-setting-input-success');
+            inputEl.removeClass('rt-setting-input-error');
 
-                const rawValue = text.getValue();
-                const trimmed = rawValue.trim() || fallbackFolder;
+            const rawValue = text.getValue();
+            const trimmed = rawValue.trim() || fallbackFolder;
 
-                if (illegalChars.test(trimmed)) {
-                    flashClass('rt-setting-input-error');
-                    new Notice('Folder path cannot contain the characters < > : " | ? *');
-                    return;
-                }
+            if (illegalChars.test(trimmed)) {
+                flashClass('rt-setting-input-error');
+                new Notice('Folder path cannot contain the characters < > : " | ? *');
+                return;
+            }
 
-                const normalized = normalizePath(trimmed);
+            const normalized = normalizePath(trimmed);
 
-                try { await plugin.app.vault.createFolder(normalized); } catch { /* folder may already exist */ }
+            try { await plugin.app.vault.createFolder(normalized); } catch { /* folder may already exist */ }
 
-                const isValid = await plugin.validateAndRememberPath(normalized);
-                if (!isValid) {
-                    flashClass('rt-setting-input-error');
-                    return;
-                }
+            const isValid = await plugin.validateAndRememberPath(normalized);
+            if (!isValid) {
+                flashClass('rt-setting-input-error');
+                return;
+            }
 
-                plugin.settings.aiOutputFolder = normalized;
+            plugin.settings.aiOutputFolder = normalized;
+            await plugin.saveSettings();
+            flashClass('rt-setting-input-success');
+        };
+
+        text.onChange(() => {
+            inputEl.removeClass('rt-setting-input-success');
+            inputEl.removeClass('rt-setting-input-error');
+        });
+
+        plugin.registerDomEvent(text.inputEl, 'blur', () => { void validatePath(); });
+
+        aiSetting.addExtraButton(button => {
+            button.setIcon('rotate-ccw');
+            button.setTooltip(`Reset to ${defaultPath}`);
+            button.onClick(async () => {
+                text.setValue(defaultPath);
+                plugin.settings.aiOutputFolder = normalizePath(defaultPath);
                 await plugin.saveSettings();
                 flashClass('rt-setting-input-success');
-            };
-
-            text.onChange(() => {
-                inputEl.removeClass('rt-setting-input-success');
-                inputEl.removeClass('rt-setting-input-error');
             });
-
-            plugin.registerDomEvent(text.inputEl, 'blur', () => { void validatePath(); });
         });
+    });
+
+    // 0b. Manuscript export folder
+    const manuscriptSetting = new Settings(containerEl)
+        .setName(t('settings.advanced.manuscriptOutputFolder.name'))
+        .setDesc(`${t('settings.advanced.manuscriptOutputFolder.desc')} Default: ${DEFAULT_SETTINGS.manuscriptOutputFolder || 'Radial Timeline/Manuscript'}`);
+    manuscriptSetting.addText(text => {
+        const defaultPath = DEFAULT_SETTINGS.manuscriptOutputFolder || 'Radial Timeline/Manuscript';
+        const fallbackFolder = plugin.settings.manuscriptOutputFolder?.trim() || defaultPath;
+        const illegalChars = /[<>:"|?*]/;
+
+        text.setPlaceholder(t('settings.advanced.manuscriptOutputFolder.placeholder'))
+            .setValue(fallbackFolder);
+        text.inputEl.addClass('rt-input-full');
+
+        const inputEl = text.inputEl;
+
+        const flashClass = (cls: string) => {
+            inputEl.addClass(cls);
+            window.setTimeout(() => inputEl.removeClass(cls), cls === 'rt-setting-input-success' ? 1000 : 2000);
+        };
+
+        const validatePath = async () => {
+            inputEl.removeClass('rt-setting-input-success');
+            inputEl.removeClass('rt-setting-input-error');
+
+            const rawValue = text.getValue();
+            const trimmed = rawValue.trim() || fallbackFolder;
+
+            if (illegalChars.test(trimmed)) {
+                flashClass('rt-setting-input-error');
+                new Notice('Folder path cannot contain the characters < > : " | ? *');
+                return;
+            }
+
+            const normalized = normalizePath(trimmed);
+
+            try { await plugin.app.vault.createFolder(normalized); } catch { /* folder may already exist */ }
+
+            const isValid = await plugin.validateAndRememberPath(normalized);
+            if (!isValid) {
+                flashClass('rt-setting-input-error');
+                return;
+            }
+
+            plugin.settings.manuscriptOutputFolder = normalized;
+            await plugin.saveSettings();
+            flashClass('rt-setting-input-success');
+        };
+
+        text.onChange(() => {
+            inputEl.removeClass('rt-setting-input-success');
+            inputEl.removeClass('rt-setting-input-error');
+        });
+
+        plugin.registerDomEvent(text.inputEl, 'blur', () => { void validatePath(); });
+
+        manuscriptSetting.addExtraButton(button => {
+            button.setIcon('rotate-ccw');
+            button.setTooltip(`Reset to ${defaultPath}`);
+            button.onClick(async () => {
+                text.setValue(defaultPath);
+                plugin.settings.manuscriptOutputFolder = normalizePath(defaultPath);
+                await plugin.saveSettings();
+                flashClass('rt-setting-input-success');
+            });
+        });
+    });
 
     // 1. Auto-expand clipped scene titles
     new Settings(containerEl)

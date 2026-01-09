@@ -37,6 +37,36 @@
   margin-bottom: 20px;
 }
 
+/* Template Dialog - Simple modals for save/delete/confirm actions */
+.rt-template-dialog {
+  padding: 22px 28px 20px;
+}
+
+.rt-template-dialog .rt-modal-header {
+  margin-bottom: 16px;
+}
+
+.rt-template-dialog .rt-glass-card.rt-sub-card {
+  padding: 14px 16px;
+  gap: 8px;
+}
+
+.rt-template-dialog .rt-manuscript-group-setting {
+  padding: 0;
+}
+
+.rt-template-dialog .rt-sub-card-note {
+  margin-top: 8px;
+  padding: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.rt-template-dialog .rt-modal-actions {
+  margin-top: 16px;
+}
+
 /* Consolidated badge pattern - all badges with identical styling grouped together */
 .rt-modal-badge,
 .rt-scene-analysis-badge,

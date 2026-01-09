@@ -55,8 +55,13 @@ export const ja: DeepPartial<TranslationKeys> = {
             heading: '詳細設定',
             aiOutputFolder: {
                 name: 'AI出力フォルダ',
-                desc: 'AIログや生成ファイル（原稿、レポートなど）を保存するフォルダです。ボールト内のフォルダを指定してください。',
-                placeholder: 'AI',
+                desc: 'AIログやローカルLLMレポートを保存するフォルダです。ボールト内のフォルダを指定してください。',
+                placeholder: 'Radial Timeline/AI Logs',
+            },
+            manuscriptOutputFolder: {
+                name: '原稿エクスポートフォルダ',
+                desc: '原稿のエクスポート（Markdown、DOCX、PDF）を保存するフォルダです。デフォルト: Radial Timeline/Manuscript。',
+                placeholder: 'Radial Timeline/Manuscript',
             },
             autoExpand: {
                 name: 'クリップされたシーンタイトルを自動展開',

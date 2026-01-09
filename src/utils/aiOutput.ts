@@ -13,3 +13,13 @@ export async function ensureAiOutputFolder(plugin: RadialTimelinePlugin): Promis
     return folder;
 }
 
+export function resolveManuscriptOutputFolder(plugin: RadialTimelinePlugin): string {
+    const raw = plugin.settings.manuscriptOutputFolder?.trim() || DEFAULT_SETTINGS.manuscriptOutputFolder || 'Manuscript';
+    return normalizePath(raw);
+}
+
+export async function ensureManuscriptOutputFolder(plugin: RadialTimelinePlugin): Promise<string> {
+    const folder = resolveManuscriptOutputFolder(plugin);
+    try { await plugin.app.vault.createFolder(folder); } catch { /* folder may already exist */ }
+    return folder;
+}

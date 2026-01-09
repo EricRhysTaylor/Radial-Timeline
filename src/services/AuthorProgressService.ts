@@ -90,7 +90,7 @@ export class AuthorProgressService {
 
         // Save logic
         if (mode === 'dynamic') {
-            const path = settings.dynamicEmbedPath || 'AuthorProgress/progress.svg';
+            const path = settings.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg';
             await this.ensureFolder(path);
             
             // Use Vault API: modify if exists, create if not
@@ -109,7 +109,7 @@ export class AuthorProgressService {
         } else {
             // Static snapshot - save to Output folder
             const fileName = `apr-snapshot-${Date.now()}.svg`;
-            const folder = this.plugin.settings.aiOutputFolder || 'Radial Timeline Output';
+            const folder = this.plugin.settings.aiOutputFolder || 'Radial Timeline/AI Logs';
             const path = `${folder}/${fileName}`;
             await this.ensureFolder(path);
             await this.app.vault.create(path, finalSvg);

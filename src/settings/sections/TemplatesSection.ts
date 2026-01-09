@@ -592,7 +592,6 @@ export function renderStoryBeatsSection(params: {
             const renderEntryRow = (entry: TemplateEntry, idx: number, list: TemplateEntry[]) => {
                 // Match beats row structure: all inputs are direct grid children
                 const row = listEl.createDiv({ cls: 'rt-yaml-row rt-yaml-row-hover-meta' });
-                row.draggable = true;
 
                 // Get existing hover metadata for this key
                 const hoverMeta = getHoverMetadata(entry.key);
@@ -601,6 +600,7 @@ export function renderStoryBeatsSection(params: {
 
                 // 1. Drag handle (direct child)
                 const dragHandle = row.createDiv({ cls: 'rt-drag-handle' });
+                dragHandle.draggable = true;
                 setIcon(dragHandle, 'grip-vertical');
                 setTooltip(dragHandle, 'Drag to reorder key');
 
@@ -716,14 +716,14 @@ export function renderStoryBeatsSection(params: {
                     updateHoverPreview?.();
                 };
 
-                plugin.registerDomEvent(row, 'dragstart', (e) => {
+                plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
                     dragIndex = idx;
                     row.classList.add('rt-template-dragging');
                     e.dataTransfer?.setData('text/plain', idx.toString());
                     if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
                 });
 
-                plugin.registerDomEvent(row, 'dragend', () => {
+                plugin.registerDomEvent(dragHandle, 'dragend', () => {
                     row.classList.remove('rt-template-dragging');
                     row.classList.remove('rt-template-dragover');
                     dragIndex = null;

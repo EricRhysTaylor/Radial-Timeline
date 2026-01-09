@@ -16,7 +16,7 @@ import { AuthorProgressModal } from '../modals/AuthorProgressModal';
 import { generateSceneContent } from '../utils/sceneGenerator';
 import { sanitizeSourcePath, buildInitialSceneFilename } from '../utils/sceneCreation';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
-import { ensureAiOutputFolder } from '../utils/aiOutput';
+import { ensureAiOutputFolder, ensureManuscriptOutputFolder } from '../utils/aiOutput';
 import { buildOutlineExport, getExportFormatExtension, getTemplateForPreset, getVaultAbsolutePath, runPandocOnContent, writeTextFile } from '../utils/exportFormats';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 
@@ -121,7 +121,7 @@ export class CommandRegistrar {
 
         this.plugin.addCommand({
             id: 'planetary-time-settings',
-            name: 'Planetary time settings',
+            name: 'Planetary time calculator',
             callback: () => {
                 new PlanetaryTimeModal(this.app, this.plugin).open();
             }
@@ -218,7 +218,7 @@ export class CommandRegistrar {
             }
 
             if (result.outputFormat === 'markdown') {
-                const outputFolder = await ensureAiOutputFolder(this.plugin);
+                const outputFolder = await ensureManuscriptOutputFolder(this.plugin);
                 const filename = `manuscript-${Date.now()}.md`;
                 const path = `${outputFolder}/${filename}`;
                 await this.app.vault.create(path, assembled.text);
@@ -227,7 +227,7 @@ export class CommandRegistrar {
                 // Pandoc export (Pro)
                 // We need to write a temp markdown file, then run pandoc
                 const extension = getExportFormatExtension(result.outputFormat);
-                const outputFolder = await ensureAiOutputFolder(this.plugin); // Normalized relative path
+                const outputFolder = await ensureManuscriptOutputFolder(this.plugin); // Normalized relative path
                 const absoluteOutputFolder = getVaultAbsolutePath(this.plugin, outputFolder);
                 
                 // If getVaultAbsolutePath returns null (mobile/sandbox), we can't run Pandoc
@@ -255,7 +255,10 @@ export class CommandRegistrar {
                     await runPandocOnContent(assembled.text, outputPath, {
                         targetFormat: result.outputFormat as 'docx' | 'pdf',
                         templatePath,
-                        workingDir: absoluteOutputFolder
+                        workingDir: absoluteOutputFolder,
+                        pandocPath: this.plugin.settings.pandocPath,
+                        enableFallback: this.plugin.settings.pandocEnableFallback,
+                        fallbackPath: this.plugin.settings.pandocFallbackPath
                     });
                     new Notice(`Export successful: ${filename}`);
                 } catch (e) {

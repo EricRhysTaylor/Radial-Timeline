@@ -115,8 +115,9 @@
     gap: 8px;
 }
 
-/* Scoped padding for stacked settings inside Book Designer (e.g., Subplots) */
-.rt-book-designer-modal .rt-setting-stacked.rt-manuscript-group-setting {
+/* Scoped padding for stacked settings inside Book Designer (e.g., Subplots, Characters) */
+.rt-book-designer-modal .rt-setting-stacked.rt-manuscript-group-setting,
+.rt-book-designer-modal .rt-manuscript-content-left > .rt-setting-stacked {
     padding: 0 16px;
 }
 
@@ -188,11 +189,6 @@
     gap: 12px;
 }
 
-/* Fix for vertical alignment of 'Target book length' (2nd item in Duo Grid) */
-.rt-book-designer-modal .rt-manuscript-duo-grid > .rt-manuscript-group-setting:nth-child(2) {
-    padding-bottom: 0;
-}
-
 /* Scoped padding & divider only for Book Designer duo grid */
 .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-scenes-generate-setting {
     padding-left: 16px;
@@ -203,7 +199,7 @@
 .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-book-length-setting {
     padding-left: 16px;
     padding-right: 16px;
-    border-left: 1px solid rgba(255, 255, 255, 0.12);
+    align-self: flex-start; /* Align to top like scenes to generate */
 }
 
 /* Standard Row Grid (e.g. Acts checkboxes) */

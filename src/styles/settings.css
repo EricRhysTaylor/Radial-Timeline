@@ -6,6 +6,10 @@
 .rt-settings-root {
   --rt-pro-color: #d946ef;
   --rt-pro-color-rgb: 217, 70, 239;
+  
+  /* Social Media color tokens (vibrant yellow) */
+  --rt-social-color: #FFD41D;
+  --rt-social-color-rgb: 255, 212, 29;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -60,13 +64,13 @@
 
 /* Social Media tab special styling when active */
 .rt-settings-tab-social.rt-settings-tab-active {
-  background: linear-gradient(135deg, rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.15), rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.05));
-  color: var(--interactive-accent);
-  border: 1px solid rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.25);
+  background: linear-gradient(135deg, rgba(var(--rt-social-color-rgb), 0.15), rgba(var(--rt-social-color-rgb), 0.05));
+  color: var(--rt-social-color);
+  border: 1px solid rgba(var(--rt-social-color-rgb), 0.25);
 }
 
 .rt-settings-tab-social.rt-settings-tab-active .rt-settings-tab-icon {
-  color: var(--interactive-accent);
+  color: var(--rt-social-color);
 }
 
 .rt-settings-tab-icon {
@@ -2256,40 +2260,11 @@
   margin-bottom: 24px;
 }
 
-.rt-apr-header-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.rt-apr-header-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  color: var(--interactive-accent);
-}
-
-.rt-apr-header-icon svg {
-  width: 20px;
-  height: 20px;
-}
-
-.rt-apr-header-row h3 {
-  margin: 0;
-  padding: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-normal);
-}
-
 .rt-apr-content-wrapper {
   padding: 16px 18px;
-  border: 1px solid rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.3);
+  border: 1px solid rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.3);
   border-radius: 10px;
-  background: linear-gradient(135deg, rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.08) 0%, rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.02) 100%);
+  background: linear-gradient(135deg, rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.08) 0%, rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.02) 100%);
 }
 
 /* APR Header Banner with Icon and Title */
@@ -2299,9 +2274,9 @@
   gap: 10px;
   margin-bottom: 18px;
   padding: 12px 16px;
-  background: rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.08);
+  background: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.08);
   border-radius: 8px;
-  border: 1px solid rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.2);
+  border: 1px solid rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.2);
 }
 
 .rt-apr-header-banner .rt-apr-header-icon {
@@ -2311,7 +2286,7 @@
   flex-shrink: 0;
   width: 24px;
   height: 24px;
-  color: var(--interactive-accent);
+  color: var(--rt-social-color);
 }
 
 .rt-apr-header-banner .rt-apr-header-icon svg {
@@ -2322,7 +2297,7 @@
 .rt-apr-header-title {
   font-size: 15px;
   font-weight: 600;
-  color: var(--text-normal);
+  color: var(--rt-social-color);
 }
 
 /* -------------------------------------------------------------------------- */

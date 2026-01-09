@@ -95,6 +95,7 @@ export interface RadialTimelineSettings {
     showSourcePathAsTitle?: boolean;
     validFolderPaths: string[];
     aiOutputFolder?: string;
+    manuscriptOutputFolder?: string;
     actCount?: number;
     actLabelsRaw?: string;
     showActLabels?: boolean;

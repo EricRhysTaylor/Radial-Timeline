@@ -57,6 +57,11 @@ export interface TranslationKeys {
                 desc: string;
                 placeholder: string;
             };
+            manuscriptOutputFolder: {
+                name: string;
+                desc: string;
+                placeholder: string;
+            };
             autoExpand: {
                 name: string;
                 desc: string;
@@ -259,8 +264,13 @@ export const en: TranslationKeys = {
             heading: 'Advanced',
             aiOutputFolder: {
                 name: 'Logs & generated files output folder',
-                desc: 'Folder where AI logs and generated files (manuscripts, local LLM reports) are saved. Uses your vault folder structure.',
-                placeholder: 'AI',
+                desc: 'Folder where AI logs and local LLM reports are saved. Default: Radial Timeline/AI Logs.',
+                placeholder: 'Radial Timeline/AI Logs',
+            },
+            manuscriptOutputFolder: {
+                name: 'Manuscript export folder',
+                desc: 'Folder where manuscript exports (Markdown, DOCX, PDF) are saved. Default: Radial Timeline/Manuscript.',
+                placeholder: 'Radial Timeline/Manuscript',
             },
             autoExpand: {
                 name: 'Auto-expand clipped scene titles',

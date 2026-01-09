@@ -64,6 +64,34 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
     ensureProfiles();
     let selectedProfileId = plugin.settings.defaultRuntimeProfileId || (plugin.settings.runtimeRateProfiles?.[0]?.id ?? '');
+
+    const findScrollContainer = (): HTMLElement | null => {
+        const modalContent = containerEl.closest('.modal')?.querySelector('.modal-content');
+        if (modalContent instanceof HTMLElement) return modalContent;
+        const tabContent = containerEl.closest('.vertical-tab-content');
+        if (tabContent instanceof HTMLElement) return tabContent;
+        const tabWrapper = containerEl.closest('.rt-settings-tab-content');
+        if (tabWrapper instanceof HTMLElement) return tabWrapper;
+        return null;
+    };
+
+    const captureScrollState = () => {
+        const scrollContainer = findScrollContainer();
+        return {
+            scrollContainer,
+            top: scrollContainer ? scrollContainer.scrollTop : null,
+        };
+    };
+
+    const restoreScrollState = (state: { scrollContainer: HTMLElement | null; top: number | null; }) => {
+        const { scrollContainer, top } = state;
+        if (!scrollContainer || top === null) return;
+        window.requestAnimationFrame(() => {
+            const maxTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
+            const clampedTop = Math.min(top, maxTop);
+            scrollContainer.scrollTop = clampedTop;
+        });
+    };
     
     // ─────────────────────────────────────────────────────────────────────────
     // Section Header
@@ -120,9 +148,11 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     };
 
     const renderConditionalContent = () => {
+        const scrollState = captureScrollState();
         conditionalContainer.empty();
         
         if (!plugin.settings.enableRuntimeEstimation) {
+            restoreScrollState(scrollState);
             return;
         }
 
@@ -148,33 +178,13 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         };
 
         // ─────────────────────────────────────────────────────────────────────
-        // Default Profile
+        // Profiles cluster
         // ─────────────────────────────────────────────────────────────────────
-        new Setting(conditionalContainer)
-            .setName('Default runtime profile')
-            .setDesc('Used when no per-scene profile is set.')
-            .addDropdown((dropdown: DropdownComponent) => {
-                profiles.forEach((p) => dropdown.addOption(p.id, p.label));
-                dropdown
-                    .setValue(plugin.settings.defaultRuntimeProfileId || profiles[0].id)
-                    .onChange(async (value: string) => {
-                        plugin.settings.defaultRuntimeProfileId = value;
-                        const chosen = profiles.find(p => p.id === value);
-                        if (chosen) {
-                            syncLegacyFromProfile(chosen);
-                        }
-                        await plugin.saveSettings();
-                        selectedProfileId = value;
-                        renderConditionalContent();
-                    });
-            });
+        conditionalContainer.createEl('h4', { cls: 'rt-runtime-subheader', text: 'Profiles' });
 
-        // ─────────────────────────────────────────────────────────────────────
-        // Profile selection + add/remove
-        // ─────────────────────────────────────────────────────────────────────
         new Setting(conditionalContainer)
-            .setName('Edit profile')
-            .setDesc('Adjust rates and parenthetical timings per profile.')
+            .setName('Profile to edit')
+            .setDesc('Select a profile to adjust. Use the buttons to duplicate or delete it.')
             .addDropdown((dropdown: DropdownComponent) => {
                 profiles.forEach((p) => dropdown.addOption(p.id, p.label));
                 dropdown
@@ -218,9 +228,31 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                 });
             });
 
+        new Setting(conditionalContainer)
+            .setName('Default runtime profile')
+            .setDesc('Used when a scene has no profile set (runtime modal, hover, exports).')
+            .addDropdown((dropdown: DropdownComponent) => {
+                profiles.forEach((p) => dropdown.addOption(p.id, p.label));
+                dropdown
+                    .setValue(plugin.settings.defaultRuntimeProfileId || profiles[0].id)
+                    .onChange(async (value: string) => {
+                        plugin.settings.defaultRuntimeProfileId = value;
+                        const chosen = profiles.find(p => p.id === value);
+                        if (chosen) {
+                            syncLegacyFromProfile(chosen);
+                        }
+                        await plugin.saveSettings();
+                        selectedProfileId = value;
+                        renderConditionalContent();
+                    });
+            });
+
         if (!selectedProfile) {
+            restoreScrollState(scrollState);
             return;
         }
+
+        conditionalContainer.createEl('h4', { cls: 'rt-runtime-subheader', text: 'Profile details' });
 
         // ─────────────────────────────────────────────────────────────────────
         // Profile label
@@ -238,6 +270,8 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             });
 
         const contentType = selectedProfile.contentType || 'novel';
+
+        conditionalContainer.createEl('h4', { cls: 'rt-runtime-subheader', text: 'Rates & timings' });
 
         // ─────────────────────────────────────────────────────────────────────
         // Content Type Selection
@@ -376,6 +410,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         // ─────────────────────────────────────────────────────────────────────
         // Session planning (optional, per profile)
         // ─────────────────────────────────────────────────────────────────────
+        conditionalContainer.createEl('h4', { cls: 'rt-runtime-subheader', text: 'Session planning (optional)' });
         const session = selectedProfile.sessionPlanning || {};
 
         new Setting(conditionalContainer)
@@ -453,6 +488,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         for (const pat of patterns) {
             patternsList.createEl('li').createEl('code', { text: pat });
         }
+        restoreScrollState(scrollState);
     };
 
     // Initial render

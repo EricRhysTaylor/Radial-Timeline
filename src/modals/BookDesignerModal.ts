@@ -36,7 +36,7 @@ class SaveTemplateModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
         contentEl.addClass('rt-modal-container');
-        contentEl.addClass('rt-book-designer-modal');
+        contentEl.addClass('rt-template-dialog');
 
         const header = contentEl.createDiv({ cls: 'rt-modal-header' });
         header.createSpan({ cls: 'rt-modal-badge', text: 'TEMPLATE' });
@@ -103,7 +103,7 @@ class DeleteTemplateModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
         contentEl.addClass('rt-modal-container');
-        contentEl.addClass('rt-book-designer-modal');
+        contentEl.addClass('rt-template-dialog');
 
         const header = contentEl.createDiv({ cls: 'rt-modal-header' });
         header.createSpan({ cls: 'rt-modal-badge', text: 'TEMPLATE' });

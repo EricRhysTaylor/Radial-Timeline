@@ -36,7 +36,7 @@ export class AuthorProgressModal extends Modal {
             updateFrequency: 'manual',
             stalenessThresholdDays: 30,
             enableReminders: true,
-            dynamicEmbedPath: 'AuthorProgress/progress.svg'
+            dynamicEmbedPath: 'Radial Timeline/Social/progress.svg'
         };
 
         this.mode = settings.lastUsedMode || settings.defaultMode;
