@@ -3,7 +3,8 @@ import type RadialTimelinePlugin from '../../main';
 import { AuthorProgressService } from '../../services/AuthorProgressService';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { getAllScenes } from '../../utils/manuscript';
-import { createAprSVG } from '../../renderer/apr';
+import { createTimelineSVG } from '../../renderer/TimelineRenderer';
+import { PluginRendererFacade } from '../../utils/sceneHelpers';
 
 export interface AuthorProgressSectionProps {
     app: App;
@@ -42,7 +43,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     featuresSection.createEl('h5', { text: 'Key Benefits:' });
     const featuresList = featuresSection.createEl('ul');
     [
-        { icon: 'eye-off', text: 'Spoiler-Safe — Scene titles and content automatically anonymized' },
+        { icon: 'eye-off', text: 'Spoiler-Safe — Scene titles and content automatically hidden' },
         { icon: 'share-2', text: 'Shareable — Export as static snapshot or live-updating embed' },
         { icon: 'trending-up', text: 'Progress Tracking — Visual momentum that excites your audience' },
     ].forEach(feature => {
@@ -122,10 +123,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 if (plugin.settings.authorProgress) {
                     plugin.settings.authorProgress.updateFrequency = val as any;
                     await plugin.saveSettings();
-                    
-                    // Toggle visibility of staleness threshold
-                    const isManual = val === 'manual';
-                    // We'd ideally toggle the element here, but for simplicity we rely on re-render or just leave it visible.
                 }
             })
         );
@@ -245,6 +242,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
 /**
  * Render the APR SVG preview in the hero section
+ * Uses the main timeline renderer with APR mode for accurate preview
  */
 async function renderHeroPreview(
     app: App, 
@@ -269,14 +267,14 @@ async function renderHeroPreview(
         
         const aprSettings = plugin.settings.authorProgress;
         
-        // Use the new dedicated APR renderer
-        const { svgString } = createAprSVG(scenes, {
-            viewMode: 'full',
-            size: 'compact', // Use compact size for settings preview
-            bookTitle: aprSettings?.bookTitle || 'Working Title',
-            authorName: (aprSettings as any)?.authorName || '',
-            authorUrl: aprSettings?.authorUrl || '',
+        // Use the main timeline renderer with APR mode
+        const pluginFacade = plugin as unknown as PluginRendererFacade;
+        
+        const { svgString } = createTimelineSVG(pluginFacade, scenes, {
+            aprMode: true,
             progressPercent,
+            bookTitle: aprSettings?.bookTitle || 'Working Title',
+            authorUrl: aprSettings?.authorUrl || ''
         });
         
         container.empty();

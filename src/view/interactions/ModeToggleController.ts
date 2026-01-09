@@ -120,7 +120,7 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
         const numberLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         numberLabel.setAttribute('class', 'rt-mode-number-label');
         numberLabel.setAttribute('x', '8');
-        numberLabel.setAttribute('y', '16'); // 14 + 2px offset
+        numberLabel.setAttribute('y', '12'); // moved up 4px
         numberLabel.setAttribute('text-anchor', 'start');
         numberLabel.setAttribute('dominant-baseline', 'middle');
         numberLabel.textContent = String(index + 1);
@@ -264,7 +264,7 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
             text.setAttribute('y', String(52 * ICON_ACTIVE_SCALE));
             if (numberLabel) {
                 numberLabel.setAttribute('x', String(8 * ICON_ACTIVE_SCALE));
-                numberLabel.setAttribute('y', String(16 * ICON_ACTIVE_SCALE));
+                numberLabel.setAttribute('y', String(12 * ICON_ACTIVE_SCALE));
             }
         } else {
             // Inactive mode - no scale transform, use native inactive size path
@@ -282,7 +282,7 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
             text.setAttribute('y', '52');
             if (numberLabel) {
                 numberLabel.setAttribute('x', '8');
-                numberLabel.setAttribute('y', '16');
+                numberLabel.setAttribute('y', '12');
             }
         }
     });

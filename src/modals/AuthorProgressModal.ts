@@ -1,27 +1,20 @@
 import { App, Modal, Setting, ButtonComponent, Notice, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { AuthorProgressPublishTarget } from '../types/settings';
+import { AuthorProgressMode, AuthorProgressPublishTarget } from '../types/settings';
 import { getKickstarterEmbed, getPatreonEmbed } from '../renderer/utils/AuthorProgressUtils';
+import { createTimelineSVG } from '../renderer/TimelineRenderer';
 import { getAllScenes } from '../utils/manuscript';
 import { TimelineItem } from '../types/timeline';
 import { AuthorProgressService } from '../services/AuthorProgressService';
-import { 
-    createAprSVG, 
-    APR_SIZE_PRESETS, 
-    APR_VIEW_MODE_LABELS,
-    AprSize, 
-    AprViewMode 
-} from '../renderer/apr';
+import { PluginRendererFacade } from '../utils/sceneHelpers';
 
 export class AuthorProgressModal extends Modal {
     private plugin: RadialTimelinePlugin;
     private service: AuthorProgressService;
-    private viewMode: AprViewMode;
-    private size: AprSize;
+    private mode: AuthorProgressMode;
     private publishTarget: AuthorProgressPublishTarget;
     
     private previewContainer: HTMLElement | null = null;
-    private sizeInfoEl: HTMLElement | null = null;
     
     private cachedScenes: TimelineItem[] = [];
     private progressPercent: number = 0;
@@ -38,28 +31,15 @@ export class AuthorProgressModal extends Modal {
             defaultPublishTarget: 'folder',
             lastUsedMode: 'FULL_STRUCTURE',
             bookTitle: '',
-            authorName: '',
             authorUrl: '',
             updateFrequency: 'manual',
             stalenessThresholdDays: 30,
             enableReminders: true,
-            dynamicEmbedPath: 'Radial Timeline/Social/progress.svg',
-            aprSize: 'standard'
+            dynamicEmbedPath: 'Radial Timeline/Social/progress.svg'
         };
 
-        // Map old modes to new
-        this.viewMode = this.mapOldModeToNew(settings.lastUsedMode || settings.defaultMode);
-        this.size = (settings as any).aprSize || 'standard';
+        this.mode = settings.lastUsedMode || settings.defaultMode;
         this.publishTarget = settings.defaultPublishTarget;
-    }
-
-    private mapOldModeToNew(oldMode: string): AprViewMode {
-        switch (oldMode) {
-            case 'SCENES_ONLY': return 'scenes';
-            case 'MOMENTUM_ONLY': return 'momentum';
-            case 'FULL_STRUCTURE':
-            default: return 'full';
-        }
     }
 
     async onOpen() {
@@ -93,25 +73,13 @@ export class AuthorProgressModal extends Modal {
             alert.createEl('span', { text: `Your report is ${daysSince} days old. Consider refreshing.` });
         }
 
-        // View Mode Selector
+        // Mode Selector (segmented control)
         const modeSection = glassContainer.createDiv({ cls: 'rt-glass-card rt-apr-mode-section' });
         modeSection.createEl('h4', { text: 'View Mode', cls: 'rt-section-title' });
         const modeSelector = modeSection.createDiv({ cls: 'rt-apr-mode-selector' });
-        this.createModeButton(modeSelector, 'full', 'Full Structure');
-        this.createModeButton(modeSelector, 'scenes', 'Scenes Only');
-        this.createModeButton(modeSelector, 'momentum', 'Momentum Only');
-
-        // Size Selector
-        const sizeSection = glassContainer.createDiv({ cls: 'rt-glass-card rt-apr-size-section' });
-        sizeSection.createEl('h4', { text: 'Export Size', cls: 'rt-section-title' });
-        const sizeSelector = sizeSection.createDiv({ cls: 'rt-apr-size-selector' });
-        this.createSizeButton(sizeSelector, 'compact', 'Compact');
-        this.createSizeButton(sizeSelector, 'standard', 'Standard');
-        this.createSizeButton(sizeSelector, 'large', 'Large');
-        
-        // Size info display
-        this.sizeInfoEl = sizeSection.createDiv({ cls: 'rt-apr-size-info' });
-        this.updateSizeInfo();
+        this.createModeButton(modeSelector, 'FULL_STRUCTURE', 'Full Structure');
+        // Note: SCENES_ONLY and MOMENTUM_ONLY would require additional renderer changes
+        // For now, focus on FULL_STRUCTURE which shows the real timeline
 
         // Preview Panel
         const previewSection = glassContainer.createDiv({ cls: 'rt-glass-card rt-apr-preview-section' });
@@ -139,23 +107,8 @@ export class AuthorProgressModal extends Modal {
             );
 
         new Setting(identitySection)
-            .setName('Author Name')
-            .setDesc('Optional - shown alongside book title in branding')
-            .addText(text => text
-                .setPlaceholder('Your Name')
-                .setValue((this.plugin.settings.authorProgress as any)?.authorName || '')
-                .onChange(async (val) => {
-                    if (this.plugin.settings.authorProgress) {
-                        (this.plugin.settings.authorProgress as any).authorName = val;
-                        await this.plugin.saveSettings();
-                        this.renderPreview();
-                    }
-                })
-            );
-
-        new Setting(identitySection)
             .setName('Author URL')
-            .setDesc('Link target for the book title (your shop, Kickstarter, etc.)')
+            .setDesc('Link target for the book title arc (your shop, Kickstarter, etc.)')
             .addText(text => text
                 .setPlaceholder('https://myshop.com')
                 .setValue(this.plugin.settings.authorProgress?.authorUrl || '')
@@ -241,52 +194,21 @@ export class AuthorProgressModal extends Modal {
             .onClick(() => this.copyEmbed('patreon'));
     }
 
-    private createModeButton(container: HTMLElement, mode: AprViewMode, label: string) {
+    private createModeButton(container: HTMLElement, mode: AuthorProgressMode, label: string) {
         const btn = container.createEl('button', { text: label, cls: 'rt-apr-mode-btn' });
-        if (this.viewMode === mode) btn.addClass('rt-active');
+        if (this.mode === mode) btn.addClass('rt-active');
         btn.onclick = () => {
-            this.viewMode = mode;
+            this.mode = mode;
             container.findAll('.rt-apr-mode-btn').forEach(b => b.removeClass('rt-active'));
             btn.addClass('rt-active');
             
-            // Save to settings (map back to old format for compatibility)
             if (this.plugin.settings.authorProgress) {
-                const oldModeMap: Record<AprViewMode, string> = {
-                    'full': 'FULL_STRUCTURE',
-                    'scenes': 'SCENES_ONLY',
-                    'momentum': 'MOMENTUM_ONLY'
-                };
-                this.plugin.settings.authorProgress.lastUsedMode = oldModeMap[mode] as any;
+                this.plugin.settings.authorProgress.lastUsedMode = mode;
                 this.plugin.saveSettings();
             }
             
             this.renderPreview();
         };
-    }
-
-    private createSizeButton(container: HTMLElement, size: AprSize, label: string) {
-        const btn = container.createEl('button', { text: label, cls: 'rt-apr-size-btn' });
-        if (this.size === size) btn.addClass('rt-active');
-        btn.onclick = () => {
-            this.size = size;
-            container.findAll('.rt-apr-size-btn').forEach(b => b.removeClass('rt-active'));
-            btn.addClass('rt-active');
-            
-            // Save to settings
-            if (this.plugin.settings.authorProgress) {
-                (this.plugin.settings.authorProgress as any).aprSize = size;
-                this.plugin.saveSettings();
-            }
-            
-            this.updateSizeInfo();
-            this.renderPreview();
-        };
-    }
-
-    private updateSizeInfo() {
-        if (!this.sizeInfoEl) return;
-        const preset = APR_SIZE_PRESETS[this.size];
-        this.sizeInfoEl.setText(`${preset.svgSize} × ${preset.svgSize} px`);
     }
 
     private async loadData() {
@@ -305,14 +227,17 @@ export class AuthorProgressModal extends Modal {
 
         const settings = this.plugin.settings.authorProgress;
 
+        // Use the actual plugin as the facade to get correct timeline rendering
+        const pluginFacade = this.plugin as unknown as PluginRendererFacade;
+
         try {
-            const { svgString } = createAprSVG(this.cachedScenes, {
-                viewMode: this.viewMode,
-                size: this.size,
-                bookTitle: settings?.bookTitle || 'Working Title',
-                authorName: (settings as any)?.authorName || '',
-                authorUrl: settings?.authorUrl || '',
+            // Use the main timeline renderer with APR mode enabled
+            // This preserves all the correct geometry, colors, and structure
+            const { svgString } = createTimelineSVG(pluginFacade, this.cachedScenes, {
+                aprMode: true,
                 progressPercent: this.progressPercent,
+                bookTitle: settings?.bookTitle || 'Working Title',
+                authorUrl: settings?.authorUrl || ''
             });
 
             this.previewContainer.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
@@ -323,11 +248,7 @@ export class AuthorProgressModal extends Modal {
     }
 
     private async publish(mode: 'static' | 'dynamic') {
-        // Update service to use new renderer
-        const result = await this.service.generateReport(mode, {
-            viewMode: this.viewMode,
-            size: this.size,
-        });
+        const result = await this.service.generateReport(mode);
         if (result) {
             new Notice(mode === 'dynamic' ? 'Live file updated!' : `Snapshot saved to ${result}`);
         } else {

@@ -113,8 +113,8 @@ export function renderCenterGrid(params: {
         const sceneList = sceneNames.join(', ');
         tooltipText = `${stage} • ${status}: ${sceneList}`;
       }
-      // Escape quotes for HTML attribute
-      tooltipText = tooltipText.replace(/"/g, '&quot;');
+      // Escape special characters for HTML attribute
+      tooltipText = tooltipText.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
     }
     
     return `

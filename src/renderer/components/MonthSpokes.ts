@@ -93,7 +93,7 @@ export function renderMonthSpokesAndInnerLabels(params: {
     // Build tooltip showing scene names if there are completions
     let tooltipAttrs = '';
     if (completedCount > 0 && sceneNames.length > 0) {
-      const tooltipText = `Completed in ${months[monthIndex].name}: ${sceneNames.join(', ')}`.replace(/"/g, '&quot;');
+      const tooltipText = `Completed in ${months[monthIndex].name}: ${sceneNames.join(', ')}`.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
       tooltipAttrs = ` class="rt-tooltip-target" data-tooltip="${tooltipText}" data-tooltip-placement="bottom"`;
     }
 

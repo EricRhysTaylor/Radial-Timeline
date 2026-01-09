@@ -46,6 +46,8 @@ export interface RingRenderContext {
     sceneGrades: Map<string, string>;
     manuscriptOrderPositions?: Map<string, { startAngle: number; endAngle: number }>;
     numActs: number;
+    /** APR mode - suppress all text rendering */
+    isAprMode?: boolean;
 }
 
 export function renderRings(ctx: RingRenderContext): string {
@@ -66,7 +68,8 @@ export function renderRings(ctx: RingRenderContext): string {
         synopsesElements,
         sceneGrades,
         manuscriptOrderPositions,
-        numActs
+        numActs,
+        isAprMode = false
     } = ctx;
 
     let svg = '';
@@ -303,7 +306,7 @@ export function renderRings(ctx: RingRenderContext): string {
                                   fill="${color}" 
                                   ${plotStrokeAttr}
                                   class="${sceneClasses}"/>
-                            ${!isBeatNote(scene) ? `
+                            ${!isAprMode && !isBeatNote(scene) ? `
                             <path id="textPath-${act}-${ring}-outer-${idx}" 
                                   d="M ${formatNumber(textPathRadius * Math.cos(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} ${formatNumber(textPathRadius * Math.sin(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} 
                                      A ${formatNumber(textPathRadius)} ${formatNumber(textPathRadius)} 0 ${textPathLargeArcFlag} 1 ${formatNumber(textPathRadius * Math.cos(sceneEndAngle))} ${formatNumber(textPathRadius * Math.sin(sceneEndAngle))}" 
@@ -312,7 +315,7 @@ export function renderRings(ctx: RingRenderContext): string {
                                 <textPath href="#textPath-${act}-${ring}-outer-${idx}" startOffset="4">
                                     ${text}
                                 </textPath>
-                            </text>` : `
+                            </text>` : !isAprMode && isBeatNote(scene) ? `
                             <path id="plot-label-arc-${act}-${ring}-outer-${idx}" 
                                   d="M ${formatNumber(beatTextRadius * Math.cos(labelStartAngle))} ${formatNumber(beatTextRadius * Math.sin(labelStartAngle))} 
                                      A ${formatNumber(beatTextRadius)} ${formatNumber(beatTextRadius)} 0 ${largeArcFlag} 1 ${formatNumber(beatTextRadius * Math.cos(labelEndAngle))} ${formatNumber(beatTextRadius * Math.sin(labelEndAngle))}" 
@@ -322,7 +325,7 @@ export function renderRings(ctx: RingRenderContext): string {
                                     ${escapeXml(rawTitleFull)}
                                 </textPath>
                             </text>
-                            `}
+                            ` : ``}
                         </g>`;
                 });
 
@@ -403,7 +406,7 @@ export function renderRings(ctx: RingRenderContext): string {
                                   fill="${color}" 
                                   class="${sceneClasses}"/>
 
-                            ${!isBeatNote(scene) ? `
+                            ${!isAprMode && !isBeatNote(scene) ? `
                             <path id="textPath-${act}-${ring}-${idx}" 
                                   d="M ${formatNumber(textPathRadius * Math.cos(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} ${formatNumber(textPathRadius * Math.sin(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} 
                                      A ${formatNumber(textPathRadius)} ${formatNumber(textPathRadius)} 0 ${textPathLargeArcFlag} 1 ${formatNumber(textPathRadius * Math.cos(sceneEndAngle))} ${formatNumber(textPathRadius * Math.sin(sceneEndAngle))}" 

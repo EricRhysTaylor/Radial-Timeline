@@ -1,13 +1,9 @@
 import { App, Notice, TFolder } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { TimelineItem } from '../types/timeline';
+import { createTimelineSVG } from '../renderer/TimelineRenderer';
 import { getAllScenes } from '../utils/manuscript';
-import { createAprSVG, AprSize, AprViewMode } from '../renderer/apr';
-
-export interface AprGenerateOptions {
-    viewMode?: AprViewMode;
-    size?: AprSize;
-}
+import { PluginRendererFacade } from '../utils/sceneHelpers';
 
 export class AuthorProgressService {
     constructor(private plugin: RadialTimelinePlugin, private app: App) {}
@@ -57,45 +53,24 @@ export class AuthorProgressService {
     }
 
     /**
-     * Maps old mode strings to new AprViewMode
-     */
-    private mapOldModeToNew(oldMode: string): AprViewMode {
-        switch (oldMode) {
-            case 'SCENES_ONLY': return 'scenes';
-            case 'MOMENTUM_ONLY': return 'momentum';
-            case 'FULL_STRUCTURE':
-            default: return 'full';
-        }
-    }
-
-    /**
      * Generates and saves the APR report.
+     * Uses the main timeline renderer with APR mode for accurate visuals.
      */
-    public async generateReport(
-        mode?: 'static' | 'dynamic', 
-        options?: AprGenerateOptions
-    ): Promise<string | null> {
+    public async generateReport(mode?: 'static' | 'dynamic'): Promise<string | null> {
         const settings = this.plugin.settings.authorProgress;
         if (!settings) return null;
 
         const scenes = await getAllScenes(this.app, this.plugin);
         const progressPercent = this.calculateProgress(scenes);
         
-        // Determine view mode - use passed option, or map from settings
-        const oldMode = mode === 'dynamic' ? settings.defaultMode : (settings.lastUsedMode || 'FULL_STRUCTURE');
-        const viewMode = options?.viewMode ?? this.mapOldModeToNew(oldMode);
+        // Use the main timeline renderer with APR mode
+        const pluginFacade = this.plugin as unknown as PluginRendererFacade;
         
-        // Determine size - use passed option, or default from settings
-        const size: AprSize = options?.size ?? ((settings as any).aprSize || 'standard');
-
-        // Generate SVG with new dedicated APR renderer
-        const { svgString } = createAprSVG(scenes, {
-            viewMode,
-            size,
-            bookTitle: settings.bookTitle || 'Working Title',
-            authorName: (settings as any).authorName || '',
-            authorUrl: settings.authorUrl || '',
+        const { svgString } = createTimelineSVG(pluginFacade, scenes, {
+            aprMode: true,
             progressPercent,
+            bookTitle: settings.bookTitle || 'Working Title',
+            authorUrl: settings.authorUrl || ''
         });
 
         let finalSvg = svgString;

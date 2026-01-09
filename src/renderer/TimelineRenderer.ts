@@ -466,7 +466,8 @@ export function createTimelineSVG(
         synopsesElements,
         sceneGrades,
         manuscriptOrderPositions,
-        numActs
+        numActs,
+        isAprMode
     };
 
     svg += renderRings(ringRenderContext);

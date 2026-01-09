@@ -666,20 +666,52 @@
 }
 
 .rt-pulse-ruler-item {
+  position: relative;
   flex: 0 0 auto;
-  width: 120px;
-  min-height: 72px;
+  width: 140px;
+  min-height: 90px;
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 10px;
+  padding: 12px;
   opacity: 0.4;
   transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+/* Background icon container for hero cards */
+.rt-pulse-card-icon-bg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.rt-pulse-card-icon-bg svg {
+  width: 80%;
+  height: 80%;
+  opacity: 0.12;
+}
+
+/* Content wrapper sits above the background */
+.rt-pulse-card-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
 }
 
 .rt-pulse-ruler-value {
@@ -688,7 +720,7 @@
   width: 100%;
   text-align: center;
   white-space: normal;
-  line-height: 1.1;
+  line-height: 1.15;
   background: linear-gradient(90deg, #fff, #f2d7a3);
   -webkit-background-clip: text;
   background-clip: text;
@@ -716,19 +748,10 @@
   z-index: 2;
 }
 
-.rt-pulse-ruler-item.rt-status-success {
-  background: rgba(49, 212, 123, 0.15);
-  border-color: rgba(49, 212, 123, 0.35);
-}
-
+/* Error styling (API failures only) */
 .rt-pulse-ruler-item.rt-status-error {
   background: rgba(255, 95, 109, 0.18);
   border-color: rgba(255, 95, 109, 0.4);
-}
-
-.rt-pulse-ruler-item.rt-status-success.rt-is-active {
-  background: rgba(49, 212, 123, 0.3);
-  border-color: rgba(49, 212, 123, 0.55);
 }
 
 .rt-pulse-ruler-item.rt-status-error.rt-is-active {
@@ -736,18 +759,108 @@
   border-color: rgba(255, 95, 109, 0.55);
 }
 
-.rt-pulse-ruler-item.rt-status-success .rt-pulse-ruler-value,
-.rt-pulse-ruler-item.rt-status-success .rt-pulse-ruler-label {
-  background: none;
-  color: #d8ffe7;
-  -webkit-text-fill-color: #d8ffe7;
-}
-
 .rt-pulse-ruler-item.rt-status-error .rt-pulse-ruler-value,
 .rt-pulse-ruler-item.rt-status-error .rt-pulse-ruler-label {
   background: none;
   color: #ffe0e5;
   -webkit-text-fill-color: #ffe0e5;
+}
+
+/* ========================================
+   Grade-based Hero Card Styling
+   ======================================== */
+
+/* Grade A - Intense Green / Rainbow */
+.rt-pulse-ruler-item.rt-grade-a {
+  opacity: 1;
+  background: linear-gradient(145deg, rgba(46, 204, 113, 0.25) 0%, rgba(39, 174, 96, 0.15) 50%, rgba(46, 204, 113, 0.08) 100%);
+  border-width: 3px;
+  border-color: rgba(46, 204, 113, 0.7);
+  box-shadow: 0 8px 24px rgba(46, 204, 113, 0.25), inset 0 0 30px rgba(46, 204, 113, 0.08);
+}
+
+.rt-pulse-ruler-item.rt-grade-a .rt-pulse-card-icon-bg {
+  opacity: 1;
+}
+
+.rt-pulse-ruler-item.rt-grade-a .rt-pulse-card-icon-bg svg {
+  color: #2ecc71;
+  opacity: 0.18;
+}
+
+.rt-pulse-ruler-item.rt-grade-a .rt-pulse-ruler-value,
+.rt-pulse-ruler-item.rt-grade-a .rt-pulse-ruler-label {
+  background: none;
+  color: #2ecc71;
+  -webkit-text-fill-color: #2ecc71;
+  text-shadow: 0 0 12px rgba(46, 204, 113, 0.5);
+}
+
+.rt-pulse-ruler-item.rt-grade-a.rt-is-active {
+  transform: scale(1.12);
+  box-shadow: 0 12px 32px rgba(46, 204, 113, 0.4), inset 0 0 40px rgba(46, 204, 113, 0.12);
+}
+
+/* Grade B - Orange / Mountain */
+.rt-pulse-ruler-item.rt-grade-b {
+  opacity: 1;
+  background: linear-gradient(145deg, rgba(243, 156, 18, 0.25) 0%, rgba(230, 126, 34, 0.15) 50%, rgba(243, 156, 18, 0.08) 100%);
+  border-width: 3px;
+  border-color: rgba(243, 156, 18, 0.7);
+  box-shadow: 0 8px 24px rgba(243, 156, 18, 0.25), inset 0 0 30px rgba(243, 156, 18, 0.08);
+}
+
+.rt-pulse-ruler-item.rt-grade-b .rt-pulse-card-icon-bg {
+  opacity: 1;
+}
+
+.rt-pulse-ruler-item.rt-grade-b .rt-pulse-card-icon-bg svg {
+  color: #f39c12;
+  opacity: 0.18;
+}
+
+.rt-pulse-ruler-item.rt-grade-b .rt-pulse-ruler-value,
+.rt-pulse-ruler-item.rt-grade-b .rt-pulse-ruler-label {
+  background: none;
+  color: #f39c12;
+  -webkit-text-fill-color: #f39c12;
+  text-shadow: 0 0 12px rgba(243, 156, 18, 0.5);
+}
+
+.rt-pulse-ruler-item.rt-grade-b.rt-is-active {
+  transform: scale(1.12);
+  box-shadow: 0 12px 32px rgba(243, 156, 18, 0.4), inset 0 0 40px rgba(243, 156, 18, 0.12);
+}
+
+/* Grade C - Red / Recycle */
+.rt-pulse-ruler-item.rt-grade-c {
+  opacity: 1;
+  background: linear-gradient(145deg, rgba(231, 76, 60, 0.25) 0%, rgba(192, 57, 43, 0.15) 50%, rgba(231, 76, 60, 0.08) 100%);
+  border-width: 3px;
+  border-color: rgba(231, 76, 60, 0.7);
+  box-shadow: 0 8px 24px rgba(231, 76, 60, 0.25), inset 0 0 30px rgba(231, 76, 60, 0.08);
+}
+
+.rt-pulse-ruler-item.rt-grade-c .rt-pulse-card-icon-bg {
+  opacity: 1;
+}
+
+.rt-pulse-ruler-item.rt-grade-c .rt-pulse-card-icon-bg svg {
+  color: #e74c3c;
+  opacity: 0.18;
+}
+
+.rt-pulse-ruler-item.rt-grade-c .rt-pulse-ruler-value,
+.rt-pulse-ruler-item.rt-grade-c .rt-pulse-ruler-label {
+  background: none;
+  color: #e74c3c;
+  -webkit-text-fill-color: #e74c3c;
+  text-shadow: 0 0 12px rgba(231, 76, 60, 0.5);
+}
+
+.rt-pulse-ruler-item.rt-grade-c.rt-is-active {
+  transform: scale(1.12);
+  box-shadow: 0 12px 32px rgba(231, 76, 60, 0.4), inset 0 0 40px rgba(231, 76, 60, 0.12);
 }
 
 .rt-pulse-actions {
@@ -763,34 +876,37 @@
   opacity: 0.55;
 }
 
-/* Scene grade display in queue items */
+/* Scene grade display in queue items - now styled as hero badge */
 .rt-pulse-grade {
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 1.3rem;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-top: 4px;
-  padding: 2px 8px;
-  border-radius: 6px;
+  letter-spacing: 0.08em;
+  margin-top: 6px;
+  padding: 4px 12px;
+  border-radius: 8px;
   text-align: center;
 }
 
 .rt-pulse-grade-a {
   color: #2ecc71;
-  background: rgba(46, 204, 113, 0.15);
-  text-shadow: 0 0 8px rgba(46, 204, 113, 0.4);
+  background: rgba(46, 204, 113, 0.2);
+  text-shadow: 0 0 16px rgba(46, 204, 113, 0.6);
+  border: 1px solid rgba(46, 204, 113, 0.4);
 }
 
 .rt-pulse-grade-b {
   color: #f39c12;
-  background: rgba(243, 156, 18, 0.15);
-  text-shadow: 0 0 8px rgba(243, 156, 18, 0.4);
+  background: rgba(243, 156, 18, 0.2);
+  text-shadow: 0 0 16px rgba(243, 156, 18, 0.6);
+  border: 1px solid rgba(243, 156, 18, 0.4);
 }
 
 .rt-pulse-grade-c {
   color: #e74c3c;
-  background: rgba(231, 76, 60, 0.15);
-  text-shadow: 0 0 8px rgba(231, 76, 60, 0.4);
+  background: rgba(231, 76, 60, 0.2);
+  text-shadow: 0 0 16px rgba(231, 76, 60, 0.6);
+  border: 1px solid rgba(231, 76, 60, 0.4);
 }
 
 .rt-pulse-ruler-note {

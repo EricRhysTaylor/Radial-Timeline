@@ -6,7 +6,7 @@
  * AI Scene Analysis Processing Modal
  * This processes scenes for LLM analysis, not story beats (timeline slices)
  */
-import { App, Modal, ButtonComponent, Notice } from 'obsidian';
+import { App, Modal, ButtonComponent, Notice, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
 import { resolveAiOutputFolder } from '../utils/aiOutput';
@@ -272,18 +272,26 @@ export class SceneAnalysisProcessingModal extends Modal {
             const entry = this.queueTrackEl.createDiv({ cls: 'rt-pulse-ruler-item' });
             entry.setAttr('data-queue-id', item.id);
 
+            // Background icon container (for grade-based icons)
+            const iconBg = entry.createDiv({ cls: 'rt-pulse-card-icon-bg' });
+            iconBg.setAttr('aria-hidden', 'true');
+
+            // Content wrapper to sit above the background
+            const content = entry.createDiv({ cls: 'rt-pulse-card-content' });
+            
             const primaryLabel = item.label?.trim() || '—';
-            entry.createSpan({ cls: 'rt-pulse-ruler-value', text: primaryLabel });
+            content.createSpan({ cls: 'rt-pulse-ruler-value', text: primaryLabel });
 
             const secondary = item.detail?.trim();
             if (secondary && secondary !== primaryLabel) {
-                entry.createSpan({ cls: 'rt-pulse-ruler-label', text: secondary });
+                content.createSpan({ cls: 'rt-pulse-ruler-label', text: secondary });
             }
 
-            const state = this.queueStatus.get(item.id);
+            // Grade display will be added by applyQueueStatus when grade is known
+
             const grade = this.queueGrades.get(item.id);
-            if (state) {
-                this.applyQueueStatus(entry, state, grade);
+            if (grade) {
+                this.applyQueueStatus(entry, 'success', grade);
             }
 
             this.queueItems.push(entry);
@@ -330,17 +338,35 @@ export class SceneAnalysisProcessingModal extends Modal {
     }
 
     private applyQueueStatus(entry: HTMLElement, status: 'success' | 'error', grade?: 'A' | 'B' | 'C'): void {
-        entry.removeClass('rt-status-success', 'rt-status-error');
-        entry.addClass(status === 'success' ? 'rt-status-success' : 'rt-status-error');
+        // Remove old status classes
+        entry.removeClass('rt-status-success', 'rt-status-error', 'rt-grade-a', 'rt-grade-b', 'rt-grade-c');
         
-        // Add grade display for successful items
-        if (status === 'success' && grade) {
+        // For errors only (API failures), apply error styling
+        if (status === 'error') {
+            entry.addClass('rt-status-error');
+            return;
+        }
+        
+        // For successful items, style by grade (not generic success)
+        if (grade) {
+            entry.addClass(`rt-grade-${grade.toLowerCase()}`);
+            
             // Remove any existing grade element
             entry.querySelector('.rt-pulse-grade')?.remove();
             
-            const gradeEl = entry.createDiv({ cls: 'rt-pulse-grade' });
+            // Find the content wrapper to add grade display
+            const content = entry.querySelector('.rt-pulse-card-content') ?? entry;
+            const gradeEl = content.createDiv({ cls: 'rt-pulse-grade' });
             gradeEl.setText(`Grade ${grade}`);
             gradeEl.addClass(`rt-pulse-grade-${grade.toLowerCase()}`);
+            
+            // Add background icon based on grade
+            const iconBg = entry.querySelector('.rt-pulse-card-icon-bg');
+            if (iconBg) {
+                iconBg.empty();
+                const iconName = grade === 'A' ? 'rainbow' : grade === 'B' ? 'mountain' : 'recycle';
+                setIcon(iconBg as HTMLElement, iconName);
+            }
         }
     }
 

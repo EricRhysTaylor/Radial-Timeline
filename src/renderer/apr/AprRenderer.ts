@@ -139,14 +139,20 @@ function processScenes(scenes: TimelineItem[]): ProcessedScene[] {
 }
 
 function getStageColor(scene: TimelineItem): string {
-    // Check publishStage first
-    const stage = (scene as any).publishStage?.toLowerCase();
+    // Check publishStage first - handle array or string
+    const rawStage = (scene as any).publishStage;
+    const stageValue = Array.isArray(rawStage) ? rawStage[0] : rawStage;
+    const stage = (typeof stageValue === 'string') ? stageValue.toLowerCase() : null;
+    
     if (stage && APR_STAGE_COLORS[stage as keyof typeof APR_STAGE_COLORS]) {
         return APR_STAGE_COLORS[stage as keyof typeof APR_STAGE_COLORS];
     }
     
-    // Fall back to status
-    const status = (scene as any).status?.toLowerCase();
+    // Fall back to status - handle array or string
+    const rawStatus = (scene as any).status;
+    const statusValue = Array.isArray(rawStatus) ? rawStatus[0] : rawStatus;
+    const status = (typeof statusValue === 'string') ? statusValue.toLowerCase() : null;
+    
     if (status === 'complete' || status === 'completed') {
         return APR_STATUS_COLORS.complete;
     }

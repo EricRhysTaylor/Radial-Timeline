@@ -1,71 +1,115 @@
 import { SVG_SIZE, INNER_RADIUS } from '../layout/LayoutConstants';
+import { escapeXml } from '../../utils/svg';
 
 export function renderAprOverlay(params: {
     progressPercent: number;
     bookTitle: string;
     authorUrl: string;
+    authorName?: string;
 }): string {
-    const { progressPercent, bookTitle, authorUrl } = params;
+    const { progressPercent, bookTitle, authorUrl, authorName } = params;
     
-    // 1. Center Percentage
+    // Center hole radius is INNER_RADIUS (200px)
+    // Make percentage text large enough to fill most of the center
+    const centerFontSize = Math.floor(INNER_RADIUS * 0.75); // ~150px
+    
+    // 1. Center Percentage - large and prominent
     const centerText = `
-        <text x="0" y="15" 
+        <text x="0" y="${Math.floor(centerFontSize * 0.35)}" 
               text-anchor="middle" 
-              font-family="var(--font-interface)" 
-              font-weight="bold" 
-              font-size="64" 
-              fill="var(--text-normal)" 
-              opacity="0.9">
+              font-family="var(--font-interface, system-ui, sans-serif)" 
+              font-weight="800" 
+              font-size="${centerFontSize}" 
+              fill="var(--text-normal, #e5e5e5)" 
+              opacity="0.95">
             ${progressPercent}%
         </text>
     `;
 
-    // 2. Perimeter Branding
-    const outerR = (SVG_SIZE / 2) - 20; // 20px padding from edge
-    const rtUrl = "https://www.radialtimeline.com"; 
+    // 2. Perimeter Branding - repeating around the outer edge
+    const outerR = (SVG_SIZE / 2) - 15; // Just inside the edge
+    const innerBrandingR = INNER_RADIUS + 8; // Just outside the center hole
+    const rtUrl = "https://radialtimeline.com"; 
+    
+    // Build repeating title text - escape for XML safety
+    const separator = ' ~ ';
+    const safeTitle = escapeXml(bookTitle.toUpperCase()) || 'WORKING TITLE';
+    const safeAuthor = authorName ? escapeXml(authorName.toUpperCase()) : '';
+    const titleSegment = safeAuthor 
+        ? `${safeTitle}${separator}${safeAuthor}`
+        : safeTitle;
+    
+    // Calculate repetitions to fill the circumference
+    const circumference = 2 * Math.PI * outerR;
+    const avgCharWidth = 22 * 0.55; // font-size * avg width ratio
+    const segmentWidth = (titleSegment.length + separator.length) * avgCharWidth;
+    const repetitions = Math.ceil(circumference / segmentWidth) + 1;
+    const fullBrandingText = Array(repetitions).fill(titleSegment).join(separator);
 
-    // Helper to wrap content in a link ONLY if URL is present
+    // Helper to wrap content in a link
     const wrapLink = (url: string | undefined, content: string) => {
-        if (!url || !url.trim()) return content;
-        return `<a href="${url}" target="_blank" style="cursor: pointer;">${content}</a>`; // SAFE: inline style used for standalone SVG export
+        if (!url?.trim()) return content;
+        return `<a href="${url}" target="_blank" rel="noopener">${content}</a>`;
     };
 
     const topPathId = "apr-top-arc";
     const bottomPathId = "apr-bottom-arc";
+    const rtPathId = "apr-rt-arc";
+
+    // Larger font size for perimeter branding
+    const brandingFontSize = 22;
+    const rtFontSize = 14;
+
+    const topArcPath = `M -${outerR} 0 A ${outerR} ${outerR} 0 0 1 ${outerR} 0`;
+    const bottomArcPath = `M ${outerR} 0 A ${outerR} ${outerR} 0 0 1 -${outerR} 0`;
+    // RT branding on inside of inner radius, lower half
+    const rtArcPath = `M ${innerBrandingR} 0 A ${innerBrandingR} ${innerBrandingR} 0 0 1 -${innerBrandingR} 0`;
 
     const topTextContent = `
-        <text font-family="var(--font-interface)" font-size="16" font-weight="bold" fill="var(--text-normal)" letter-spacing="2">
-            <textPath href="#${topPathId}" startOffset="50%" text-anchor="middle">
-                ${bookTitle.toUpperCase()} — AUTHOR PROGRESS REPORT
+        <text font-family="var(--font-interface, system-ui, sans-serif)" font-size="${brandingFontSize}" font-weight="700" fill="var(--text-normal, #e5e5e5)" letter-spacing="0.15em">
+            <textPath href="#${topPathId}" startOffset="0%">
+                ${fullBrandingText}
             </textPath>
         </text>
     `;
 
     const bottomTextContent = `
-        <text font-family="var(--font-interface)" font-size="12" fill="var(--text-muted)" letter-spacing="1">
-            <textPath href="#${bottomPathId}" startOffset="50%" text-anchor="middle">
-                PRESENTED BY THE RADIAL TIMELINE™
+        <text font-family="var(--font-interface, system-ui, sans-serif)" font-size="${brandingFontSize}" font-weight="700" fill="var(--text-normal, #e5e5e5)" letter-spacing="0.15em">
+            <textPath href="#${bottomPathId}" startOffset="0%">
+                ${fullBrandingText}
             </textPath>
         </text>
     `;
 
-    const refinedBranding = `
+    const rtBrandingContent = `
+        <text font-family="var(--font-interface, system-ui, sans-serif)" font-size="${rtFontSize}" font-weight="600" fill="rgba(255, 212, 29, 0.75)" letter-spacing="0.1em">
+            <textPath href="#${rtPathId}" startOffset="50%" text-anchor="middle">
+                RADIAL TIMELINE&#8482;
+            </textPath>
+        </text>
+    `;
+
+    const branding = `
         <defs>
-            <path id="${topPathId}" d="M -${outerR} 0 A ${outerR} ${outerR} 0 0 1 ${outerR} 0" />
-            <path id="${bottomPathId}" d="M ${outerR} 0 A ${outerR} ${outerR} 0 0 1 -${outerR} 0" />
+            <path id="${topPathId}" d="${topArcPath}" />
+            <path id="${bottomPathId}" d="${bottomArcPath}" />
+            <path id="${rtPathId}" d="${rtArcPath}" />
         </defs>
 
-        <!-- Top Arc: Book Title -->
+        <!-- Top Arc: Repeating Book Title -->
         ${wrapLink(authorUrl, topTextContent)}
 
-        <!-- Bottom Arc: Radial Timeline -->
-        ${wrapLink(rtUrl, bottomTextContent)}
+        <!-- Bottom Arc: Repeating Book Title -->
+        ${wrapLink(authorUrl, bottomTextContent)}
+
+        <!-- RT Branding: Inside bottom of inner radius -->
+        ${wrapLink(rtUrl, rtBrandingContent)}
     `;
 
     return `
         <g class="apr-overlay">
             ${centerText}
-            ${refinedBranding}
+            ${branding}
         </g>
     `;
 }
