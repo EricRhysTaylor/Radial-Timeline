@@ -1165,7 +1165,19 @@ function updateAltButtonState(button: SVGGElement, active: boolean): void {
 }
 
 /**
- * Create the RT (Runtime) icon button element (Right of Shift button)
+ * Create rounded rect shape for RT button (32x32 with 6px corner radius)
+ * Similar to SHIFT button's rounded corners
+ */
+function createRtButtonShape(): string {
+    const w = 32;
+    const h = 32;
+    const r = 10; // Corner radius
+    // Rounded rect path: start top-left corner, go clockwise
+    return `M${r} 0 H${w - r} Q${w} 0 ${w} ${r} V${h - r} Q${w} ${h} ${w - r} ${h} H${r} Q0 ${h} 0 ${h - r} V${r} Q0 0 ${r} 0 Z`;
+}
+
+/**
+ * Create the RT (Runtime) icon button element
  * Uses Lucide icons: 'film' for screenplay, 'mic-vocal' for novel/audiobook
  * @param contentType - screenplay or novel
  * @param noData - if true, button shows warning state (no Runtime YAML data found)
@@ -1180,36 +1192,28 @@ function createRtButton(contentType: RuntimeContentType, noData: boolean = false
         button.classList.add('rt-runtime-no-data');
     }
 
-    // Icon button dimensions
-    const RT_SIZE = 32; // Square icon container
-    const SHIFT_WIDTH = 62;
-    const SHIFT_HEIGHT = 55;
+    // Icon button dimensions (matching createRtButtonShape)
+    const RT_SIZE = 32;
+    const BUTTON_GAP = 10; // Same gap as between ALT and SHIFT
 
-    // Position to the RIGHT of Shift button (50px gap) and 15px up (net -15 from center)
-    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 50;
-    // Vertically center with shift button, then nudge up 15px
-    const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_SIZE) / 2 - 15;
+    // Position: left-edge aligned with SHIFT button's left edge
+    const basePosX = SHIFT_BUTTON_POS_X;
+    
+    // Vertical: above SHIFT button with same gap as ALT-SHIFT horizontal gap (10px)
+    // Runtime bottom should be 10px above SHIFT top
+    const basePosY = SHIFT_BUTTON_POS_Y - BUTTON_GAP - RT_SIZE;
 
     button.setAttribute('transform', `translate(${basePosX}, ${basePosY})`);
     button.setAttribute('data-base-x', String(basePosX));
     button.setAttribute('data-base-y', String(basePosY));
 
-    // Create a circular background
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('cx', String(RT_SIZE / 2));
-    circle.setAttribute('cy', String(RT_SIZE / 2));
-    circle.setAttribute('r', String(RT_SIZE / 2));
-    circle.setAttribute('class', 'rt-runtime-icon-bg');
-    
-    if (noData) {
-        // Warning state: red-tinted background
-        circle.setAttribute('fill', 'rgba(200, 60, 60, 0.15)');
-        circle.setAttribute('stroke', 'var(--text-error)');
-    } else {
-        circle.setAttribute('fill', 'var(--background-secondary)');
-        circle.setAttribute('stroke', 'var(--text-muted)');
-    }
-    circle.setAttribute('stroke-width', '1.5');
+    // Create rounded rect background (same style as SHIFT/ALT buttons)
+    const bg = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    bg.setAttribute('d', createRtButtonShape());
+    bg.setAttribute('class', 'rt-shift-button-bg rt-runtime-icon-bg');
+    bg.setAttribute('fill', 'var(--interactive-normal)');
+    bg.setAttribute('stroke', 'var(--text-normal)');
+    bg.setAttribute('stroke-width', '6');
 
     // Create foreignObject to embed the Lucide icon
     const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
@@ -1236,27 +1240,16 @@ function createRtButton(contentType: RuntimeContentType, noData: boolean = false
     const iconName = contentType === 'screenplay' ? 'film' : 'mic-vocal';
     setIcon(iconWrapper, iconName);
 
-    // Style the icon element
+    // Style the icon element (same color as SHIFT/ALT button text)
     const iconSvg = iconWrapper.querySelector('svg');
     if (iconSvg) {
-        if (noData) {
-            // Warning state: red icon
-            iconSvg.style.cssText = `
-                width: 18px;
-                height: 18px;
-                stroke: var(--text-error);
-                stroke-width: 2;
-                fill: none;
-            `;
-        } else {
-            iconSvg.style.cssText = `
-                width: 18px;
-                height: 18px;
-                stroke: var(--text-muted);
-                stroke-width: 2;
-                fill: none;
-            `;
-        }
+        iconSvg.style.cssText = `
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-normal);
+            stroke-width: 4;
+            fill: none;
+        `;
         iconSvg.classList.add('rt-runtime-lucide-icon');
     }
 
@@ -1276,7 +1269,7 @@ function createRtButton(contentType: RuntimeContentType, noData: boolean = false
     button.setAttribute('data-tooltip-placement', 'bottom');
     button.setAttribute('data-content-type', contentType);
 
-    button.appendChild(circle);
+    button.appendChild(bg);
     button.appendChild(foreignObject);
 
     return button;
@@ -1286,13 +1279,12 @@ function createRtButton(contentType: RuntimeContentType, noData: boolean = false
  * Update RT icon button visual state
  */
 function updateRtButtonState(button: SVGGElement, active: boolean): void {
-    const RT_SIZE = 32;
-    const SHIFT_WIDTH = 62;
-    const SHIFT_HEIGHT = 55;
+    const RT_SIZE = 32; // Matching createRtButtonShape
+    const BUTTON_GAP = 10;
 
-    // Position to the RIGHT of Shift button (50px gap) and 15px up
-    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 50;
-    const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_SIZE) / 2 - 15;
+    // Position: left-edge aligned with SHIFT button's left edge, 10px above SHIFT
+    const basePosX = SHIFT_BUTTON_POS_X;
+    const basePosY = SHIFT_BUTTON_POS_Y - BUTTON_GAP - RT_SIZE;
 
     if (active) {
         // Scale from center
