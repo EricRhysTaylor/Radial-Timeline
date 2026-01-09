@@ -1,22 +1,18 @@
 /* Chronologue: Runtime mode */
 
-/* Base tinting */
-.radial-timeline-container .radial-timeline-svg[data-shift-mode="runtime"] .rt-backdrop-ring {
-  opacity: 0.2;
-}
-
+/* Base tinting - matches ALT mode visibility with blue theme */
 .radial-timeline-container .radial-timeline-svg[data-shift-mode="runtime"] .rt-backdrop-ring-background {
   stroke: rgba(60, 140, 220, 0.5);
-  stroke-opacity: 0.18;
+  stroke-opacity: 0.15;
 }
 
 .radial-timeline-container .radial-timeline-svg[data-shift-mode="runtime"] .rt-backdrop-border {
-  stroke: rgba(60, 140, 220, 0.4);
-  opacity: 0.7;
+  stroke: rgba(60, 140, 220, 0.5);
+  opacity: 1;
 }
 
 .radial-timeline-container .radial-timeline-svg[data-shift-mode="runtime"] .rt-backdrop-label {
-  fill: rgba(60, 140, 220, 0.7);
+  fill: rgba(60, 140, 220, 0.8);
   opacity: 0.3;
 }
 
@@ -27,7 +23,7 @@
 
 .radial-timeline-container .radial-timeline-svg[data-shift-mode="runtime"] .rt-backdrop-segment {
   fill: rgba(60, 140, 220, 0.05);
-  stroke: rgba(60, 140, 220, 0.25);
+  stroke: rgba(60, 140, 220, 0.3);
   stroke-width: 1px;
 }
 
@@ -71,7 +67,7 @@
   stroke-width: 2px;
 }
 
-/* RT Button Warning State (no runtime data) */
+/* RT Button Warning State (no runtime data) - clean, no glow */
 .rt-runtime-button.rt-runtime-no-data .rt-runtime-icon-bg {
   fill: rgba(200, 60, 60, 0.15);
   stroke: var(--text-error);
@@ -82,13 +78,11 @@
 }
 
 .rt-runtime-button.rt-runtime-no-data:hover .rt-runtime-icon-bg {
-  fill: rgba(200, 60, 60, 0.25);
+  fill: rgba(200, 60, 60, 0.3);
   stroke: var(--text-error);
-  filter: drop-shadow(0 0 4px rgba(200, 60, 60, 0.5));
 }
 
 .rt-runtime-button.rt-runtime-no-data:hover .rt-runtime-lucide-icon {
   stroke: var(--text-error);
-  filter: drop-shadow(0 0 3px rgba(200, 60, 60, 0.6));
 }
 

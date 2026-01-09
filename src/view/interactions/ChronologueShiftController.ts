@@ -989,6 +989,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     // STATE RESTORATION: Sync local state with global state after SVG refresh
     // When a refresh replaces the SVG, a new controller is created. We need to
     // restore the UI state (buttons, slider, data attributes) based on global state.
+    // Modes are MUTUALLY EXCLUSIVE: only one of Runtime, Alien, or Shift can be active.
     // =========================================================================
     if (globalRuntimeModeActive && rtButton) {
         runtimeModeActive = true;
@@ -997,9 +998,8 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         updateDateLabelsForRuntimeMode(true);
     } else if (globalAlienModeActive && altButton) {
         alienModeActive = true;
-        shiftModeActive = true; // Alien requires shift to be active
+        // Alien is now independent of Shift - don't activate Shift
         updateAltButtonState(altButton, true);
-        updateShiftButtonState(shiftButton, true);
         svg.setAttribute('data-shift-mode', 'alien');
         updateDateLabelsForAlienMode(true);
     } else if (globalShiftModeActive) {
@@ -1237,17 +1237,17 @@ function createRtButton(contentType: RuntimeContentType, noData: boolean = false
     `;
 
     // Use Obsidian's setIcon to add the Lucide icon
-    const iconName = contentType === 'screenplay' ? 'film' : 'mic-vocal';
+    const iconName = contentType === 'screenplay' ? 'projector' : 'mic-vocal';
     setIcon(iconWrapper, iconName);
 
     // Style the icon element (same color as SHIFT/ALT button text)
     const iconSvg = iconWrapper.querySelector('svg');
     if (iconSvg) {
         iconSvg.style.cssText = `
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             stroke: var(--text-normal);
-            stroke-width: 4;
+            stroke-width: 2;
             fill: none;
         `;
         iconSvg.classList.add('rt-runtime-lucide-icon');
@@ -1287,11 +1287,10 @@ function updateRtButtonState(button: SVGGElement, active: boolean): void {
     const basePosY = SHIFT_BUTTON_POS_Y - BUTTON_GAP - RT_SIZE;
 
     if (active) {
-        // Scale from center
-        const scaledPosX = basePosX - (RT_SIZE * (BUTTON_ACTIVE_SCALE - 1)) / 2;
-        const scaledPosY = basePosY - (RT_SIZE * (BUTTON_ACTIVE_SCALE - 1)) / 2;
+        // Scale from bottom-left pivot: X stays same, Y shifts up by growth amount
+        const scaledPosY = basePosY - RT_SIZE * (BUTTON_ACTIVE_SCALE - 1);
         
-        button.setAttribute('transform', `translate(${scaledPosX}, ${scaledPosY}) scale(${BUTTON_ACTIVE_SCALE})`);
+        button.setAttribute('transform', `translate(${basePosX}, ${scaledPosY}) scale(${BUTTON_ACTIVE_SCALE})`);
         button.classList.add('rt-shift-mode-active');
         button.classList.add('rt-runtime-mode-active');
     } else {

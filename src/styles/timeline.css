@@ -940,48 +940,32 @@
   stroke: var(--rt-color-due);
 }
 
-/* 8. RT Icon Button Styling */
+/* 8. RT Icon Button Styling - clean like SHIFT/ALT buttons */
 .rt-runtime-button {
   cursor: pointer;
-  transition: transform 0.15s ease-out;
-}
-
-.rt-runtime-button .rt-runtime-icon-bg {
-  fill: var(--background-secondary);
-  stroke: var(--text-muted);
-  stroke-width: 1.5;
-  transition: all 0.2s ease-out;
 }
 
 .rt-runtime-button .rt-runtime-lucide-icon {
-  stroke: var(--text-muted);
-  transition: all 0.2s ease-out;
+  stroke: var(--text-normal);
+  transition: fill 0.2s ease;
 }
 
-/* Hover state - enlarge and blue glow */
+/* Hover state - Runtime blue fill */
 .rt-runtime-button:hover .rt-runtime-icon-bg {
-  fill: rgba(60, 140, 220, 0.15);
-  stroke: rgba(60, 160, 220, 0.9);
-  stroke-width: 2;
-  filter: drop-shadow(0 0 6px rgba(60, 160, 220, 0.5));
+  fill: rgba(60, 140, 220, 0.85);
 }
 
 .rt-runtime-button:hover .rt-runtime-lucide-icon {
-  stroke: rgba(60, 160, 220, 1);
-  filter: drop-shadow(0 0 4px rgba(60, 160, 220, 0.6));
+  stroke: var(--text-on-accent);
 }
 
-/* Active state - solid blue glow (specificity: class + class + class) */
+/* Active state - Runtime blue fill */
 .rt-runtime-button.rt-runtime-mode-active .rt-runtime-icon-bg {
-  fill: rgba(60, 140, 220, 0.25);
-  stroke: rgba(60, 160, 220, 1);
-  stroke-width: 2.5;
-  filter: drop-shadow(0 0 10px rgba(60, 160, 220, 0.7));
+  fill: rgba(60, 140, 220, 0.85);
 }
 
 .rt-runtime-button.rt-runtime-mode-active .rt-runtime-lucide-icon {
-  stroke: rgba(80, 180, 255, 1);
-  filter: drop-shadow(0 0 6px rgba(80, 180, 255, 0.8));
+  stroke: var(--text-on-accent);
 }
 
 /* Runtime hover: keep number squares/text tinted instead of turning white */
@@ -1021,15 +1005,6 @@
   stroke: rgba(60, 140, 200, 0.6);
 }
 
-/* Active + Hover - intensify glow */
-.rt-runtime-button.rt-runtime-mode-active:hover .rt-runtime-icon-bg {
-  filter: drop-shadow(0 0 14px rgba(60, 180, 255, 0.9));
-}
-
-.rt-runtime-button.rt-runtime-mode-active:hover .rt-runtime-lucide-icon {
-  stroke: rgba(100, 200, 255, 1);
-  filter: drop-shadow(0 0 8px rgba(100, 200, 255, 1));
-}
 
 /* 9. Runtime Total display in grid footer - matches center-key-text size (18px) */
 .rt-runtime-display .rt-runtime-total {
