@@ -144,7 +144,7 @@ export function renderCenterGrid(params: {
         const runtimeText = totalRuntimeSeconds > 0 ? formatRuntimeValue(totalRuntimeSeconds) : 'No Data';
         // Estimate text width for icon positioning (approx 9px per character for 18px font)
         const textWidth = runtimeText.length * 9;
-        const iconX = startXGrid + textWidth + 4;
+        const iconX = startXGrid + textWidth - 2;
         const iconY = runtimeY - 14; // Center icon vertically with text
         const iconColor = 'rgba(60, 160, 220, 0.9)';
         // Lucide mic-vocal icon (16x16, viewBox 0 0 24 24) - exact from Lucide
@@ -154,7 +154,7 @@ export function renderCenterGrid(params: {
           <circle cx="16" cy="7" r="5"/>
         </svg>`;
         // Lucide clapperboard icon (16x16, viewBox 0 0 24 24)
-        const clapperboardIcon = `<svg x="${iconX}" y="${iconY}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        const clapperboardIcon = `<svg x="${iconX}" y="${iconY}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/>
           <path d="m6.2 5.3 3.1 3.9"/>
           <path d="m12.4 3.4 3.1 4"/>

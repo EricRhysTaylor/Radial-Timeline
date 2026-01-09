@@ -1035,3 +1035,9 @@
 .rt-runtime-display .rt-runtime-total {
   fill: rgba(60, 160, 220, 0.9);
 }
+
+/* Runtime display icon - override container svg sizing rules */
+.rt-runtime-display svg {
+  width: 16px;
+  height: 16px;
+}

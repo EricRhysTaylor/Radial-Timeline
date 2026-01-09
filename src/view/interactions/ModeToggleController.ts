@@ -111,7 +111,7 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         text.setAttribute('class', 'rt-mode-acronym-text');
         text.setAttribute('x', '21.5'); // Center of 43
-        text.setAttribute('y', '50'); // 60 - 12 + 2px offset
+        text.setAttribute('y', '52'); // 60 - 12 + 4px offset
         text.setAttribute('text-anchor', 'middle');
         text.setAttribute('dominant-baseline', 'middle');
         text.textContent = mode.acronym;
@@ -259,9 +259,9 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
             // Update path to active size (native)
             bg.setAttribute('d', createActiveDocumentShape());
 
-            // Update text positions to active size (21.5 * 1.2 = 25.8, 50 * 1.2 = 60)
+            // Update text positions to active size (21.5 * 1.2 = 25.8, 52 * 1.2 = 62.4)
             text.setAttribute('x', String(21.5 * ICON_ACTIVE_SCALE));
-            text.setAttribute('y', String(50 * ICON_ACTIVE_SCALE));
+            text.setAttribute('y', String(52 * ICON_ACTIVE_SCALE));
             if (numberLabel) {
                 numberLabel.setAttribute('x', String(8 * ICON_ACTIVE_SCALE));
                 numberLabel.setAttribute('y', String(16 * ICON_ACTIVE_SCALE));
@@ -279,7 +279,7 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
 
             // Update text positions to inactive size (Native)
             text.setAttribute('x', '21.5');
-            text.setAttribute('y', '50');
+            text.setAttribute('y', '52');
             if (numberLabel) {
                 numberLabel.setAttribute('x', '8');
                 numberLabel.setAttribute('y', '16');
