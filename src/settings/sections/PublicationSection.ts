@@ -3,6 +3,8 @@ import { Setting as ObsidianSetting, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { t } from '../../i18n';
 import { addWikiLink } from '../wikiLink';
+import { getAllScenes } from '../../utils/manuscript';
+import type { CompletionEstimate } from '../../services/TimelineMetricsService';
 
 export function renderPublicationSection(params: {
     app: App;
@@ -120,6 +122,221 @@ export function renderPublicationSection(params: {
                 plugin.refreshTimelineIfNeeded(null);
             };
 
-            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { 
+                void handleBlur(); 
+                void renderCompletionPreview();
+            });
         });
+
+    // --- Completion Estimate Preview ---
+    const previewContainer = containerEl.createDiv({ cls: 'rt-planetary-preview rt-completion-preview' });
+    
+    async function renderCompletionPreview(): Promise<void> {
+        previewContainer.empty();
+        
+        try {
+            const scenes = await getAllScenes(app, plugin);
+            if (scenes.length === 0) {
+                previewContainer.addClass('rt-completion-preview-empty');
+                const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
+                heading.setText('Completion Estimate');
+                const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
+                body.createDiv({ cls: 'rt-completion-no-data', text: 'No scenes found. Create scenes to see progress calculations.' });
+                return;
+            }
+
+            // Calculate completion estimate using the plugin's service
+            const estimate: CompletionEstimate | null = plugin.calculateCompletionEstimate(scenes);
+            
+            if (!estimate) {
+                previewContainer.removeClass('rt-completion-preview-warn', 'rt-completion-preview-late', 'rt-completion-preview-stalled');
+                const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
+                heading.setText('Completion Estimate');
+                const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
+                body.createDiv({ cls: 'rt-completion-complete', text: '🎉 All scenes in the active stage are complete!' });
+                return;
+            }
+
+            // Apply staleness styling
+            previewContainer.removeClass('rt-completion-preview-warn', 'rt-completion-preview-late', 'rt-completion-preview-stalled', 'rt-completion-preview-fresh');
+            previewContainer.addClass(`rt-completion-preview-${estimate.staleness}`);
+
+            const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
+            heading.setText(`Completion Estimate • ${estimate.stage} Stage`);
+
+            const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
+
+            // Key metrics row
+            const metricsRow = body.createDiv({ cls: 'rt-completion-metrics-row' });
+            
+            // Completed / Total
+            const completedMetric = metricsRow.createDiv({ cls: 'rt-completion-metric' });
+            completedMetric.createDiv({ cls: 'rt-completion-metric-value', text: `${estimate.total - estimate.remaining}/${estimate.total}` });
+            completedMetric.createDiv({ cls: 'rt-completion-metric-label', text: 'Scenes Complete' });
+
+            // Remaining
+            const remainingMetric = metricsRow.createDiv({ cls: 'rt-completion-metric' });
+            remainingMetric.createDiv({ cls: 'rt-completion-metric-value', text: String(estimate.remaining) });
+            remainingMetric.createDiv({ cls: 'rt-completion-metric-label', text: 'Remaining' });
+
+            // Rate
+            const rateMetric = metricsRow.createDiv({ cls: 'rt-completion-metric' });
+            const rateValue = estimate.rate > 0 ? estimate.rate.toFixed(1) : '—';
+            rateMetric.createDiv({ cls: 'rt-completion-metric-value', text: rateValue });
+            rateMetric.createDiv({ cls: 'rt-completion-metric-label', text: 'Per Week' });
+
+            // Staleness indicator
+            if (estimate.staleness !== 'fresh') {
+                const stalenessRow = body.createDiv({ cls: 'rt-completion-staleness-row' });
+                const stalenessText = getStalenessMessage(estimate);
+                stalenessRow.createSpan({ cls: 'rt-completion-staleness-icon', text: getStalenessIcon(estimate.staleness) });
+                stalenessRow.createSpan({ cls: 'rt-completion-staleness-text', text: stalenessText });
+            }
+
+            // Estimated completion date
+            const dateRow = body.createDiv({ cls: 'rt-completion-date-row' });
+            if (estimate.date && estimate.labelText !== '?') {
+                const dateFormatter = new Intl.DateTimeFormat('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+                dateRow.createDiv({ cls: 'rt-completion-date-label', text: 'Estimated Completion:' });
+                dateRow.createDiv({ cls: 'rt-completion-date-value', text: dateFormatter.format(estimate.date) });
+                
+                // Days until completion
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const daysUntil = Math.ceil((estimate.date.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+                if (daysUntil > 0) {
+                    dateRow.createDiv({ cls: 'rt-completion-days-until', text: `(${daysUntil} days from now)` });
+                }
+            } else {
+                dateRow.createDiv({ cls: 'rt-completion-date-label', text: 'Estimated Completion:' });
+                dateRow.createDiv({ cls: 'rt-completion-date-value rt-completion-date-unknown', text: '?' });
+                dateRow.createDiv({ cls: 'rt-completion-days-until', text: 'Insufficient data to calculate' });
+            }
+
+            // Monthly projection breakdown
+            if (estimate.date && estimate.rate > 0 && estimate.labelText !== '?') {
+                const projectionSection = body.createDiv({ cls: 'rt-completion-projection' });
+                projectionSection.createDiv({ cls: 'rt-completion-projection-heading', text: 'Monthly Progress Projection' });
+                
+                const projectionGrid = projectionSection.createDiv({ cls: 'rt-completion-projection-grid' });
+                renderMonthlyProjection(projectionGrid, estimate);
+            }
+
+            // Last progress info
+            if (estimate.lastProgressDate) {
+                const lastProgressRow = body.createDiv({ cls: 'rt-completion-last-progress' });
+                const daysSince = Math.floor((Date.now() - estimate.lastProgressDate.getTime()) / (24 * 60 * 60 * 1000));
+                const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+                lastProgressRow.setText(`Last progress: ${dateFormatter.format(estimate.lastProgressDate)} (${daysSince} day${daysSince !== 1 ? 's' : ''} ago) • ${estimate.windowDays}-day rolling window`);
+            }
+
+        } catch (e) {
+            previewContainer.empty();
+            const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
+            heading.setText('Completion Estimate');
+            const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
+            body.createDiv({ cls: 'rt-completion-error', text: 'Error calculating estimate.' });
+            console.error('Completion estimate preview error:', e);
+        }
+    }
+
+    function getStalenessIcon(staleness: CompletionEstimate['staleness']): string {
+        switch (staleness) {
+            case 'warn': return '⚠️';
+            case 'late': return '🔴';
+            case 'stalled': return '❌';
+            default: return '✓';
+        }
+    }
+
+    function getStalenessMessage(estimate: CompletionEstimate): string {
+        if (!estimate.lastProgressDate) return 'No recent progress recorded';
+        const daysSince = Math.floor((Date.now() - estimate.lastProgressDate.getTime()) / (24 * 60 * 60 * 1000));
+        switch (estimate.staleness) {
+            case 'warn': return `Progress slowing (${daysSince} days since last completion)`;
+            case 'late': return `Falling behind (${daysSince} days since last completion)`;
+            case 'stalled': return `Stalled — no progress in ${daysSince} days`;
+            default: return '';
+        }
+    }
+
+    function renderMonthlyProjection(container: HTMLElement, estimate: CompletionEstimate): void {
+        if (!estimate.date || estimate.rate <= 0) return;
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const targetDate = estimate.date;
+        const scenesPerDay = estimate.rate / 7;
+        
+        let remaining = estimate.remaining;
+        let cumulative = estimate.total - estimate.remaining;
+        const months: { month: string; added: number; cumulative: number; isLast: boolean }[] = [];
+        
+        // Start from current month
+        let current = new Date(today.getFullYear(), today.getMonth(), 1);
+        const maxMonths = 24; // Limit to 2 years
+        
+        for (let i = 0; i < maxMonths && remaining > 0; i++) {
+            const monthStart = new Date(current);
+            const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0);
+            
+            // Calculate days in this month that fall within our projection
+            const projectionStart = i === 0 ? today : monthStart;
+            const projectionEnd = monthEnd > targetDate ? targetDate : monthEnd;
+            
+            if (projectionStart > projectionEnd) {
+                current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
+                continue;
+            }
+            
+            const daysInPeriod = Math.max(0, Math.ceil((projectionEnd.getTime() - projectionStart.getTime()) / (24 * 60 * 60 * 1000)) + 1);
+            const scenesThisMonth = Math.min(remaining, Math.round(daysInPeriod * scenesPerDay));
+            
+            if (scenesThisMonth > 0 || i === 0) {
+                remaining -= scenesThisMonth;
+                cumulative += scenesThisMonth;
+                
+                const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: '2-digit' });
+                months.push({
+                    month: monthFormatter.format(monthStart),
+                    added: scenesThisMonth,
+                    cumulative: Math.min(cumulative, estimate.total),
+                    isLast: remaining <= 0 || monthEnd >= targetDate
+                });
+            }
+            
+            if (monthEnd >= targetDate) break;
+            current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
+        }
+
+        // Render the projection table
+        if (months.length === 0) return;
+
+        const headerRow = container.createDiv({ cls: 'rt-completion-projection-header' });
+        headerRow.createSpan({ text: 'Month' });
+        headerRow.createSpan({ text: '+Scenes' });
+        headerRow.createSpan({ text: 'Total' });
+        headerRow.createSpan({ text: 'Progress' });
+
+        for (const m of months) {
+            const row = container.createDiv({ cls: `rt-completion-projection-row${m.isLast ? ' rt-completion-projection-final' : ''}` });
+            row.createSpan({ cls: 'rt-completion-projection-month', text: m.month });
+            row.createSpan({ cls: 'rt-completion-projection-added', text: `+${m.added}` });
+            row.createSpan({ cls: 'rt-completion-projection-cumulative', text: String(m.cumulative) });
+            
+            const percent = Math.round((m.cumulative / estimate.total) * 100);
+            const progressContainer = row.createSpan({ cls: 'rt-completion-projection-progress' });
+            const progressBar = progressContainer.createDiv({ cls: 'rt-completion-projection-bar' });
+            progressBar.setCssStyles({ width: `${percent}%` });
+            progressContainer.createSpan({ cls: 'rt-completion-projection-percent', text: `${percent}%` });
+        }
+    }
+
+    // Initial render
+    void renderCompletionPreview();
 }

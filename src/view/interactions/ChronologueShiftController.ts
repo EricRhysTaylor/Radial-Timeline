@@ -1723,8 +1723,8 @@ function restoreHiddenTicks(svg: SVGSVGElement): void {
 
 /**
  * Calculate cumulative runtime of all scenes between two selected scenes (inclusive)
- * Uses manuscript order (order in allScenes array), NOT chronological order.
- * Simply sums all Runtime fields between the two selected scenes regardless of When dates.
+ * Uses CHRONOLOGICAL order (by When date) since Chronologue mode displays scenes chronologically.
+ * Sums Runtime fields of all scenes between the two selected scenes in chronological order.
  */
 function calculateCumulativeRuntime(scene1: TimelineItem, scene2: TimelineItem, allScenes: TimelineItem[]): number {
     // Filter to Scene/Backdrop only and dedupe by path
@@ -1736,15 +1736,24 @@ function calculateCumulativeRuntime(scene1: TimelineItem, scene2: TimelineItem, 
         return true;
     });
     
-    // Find indices of the two selected scenes in manuscript order
+    // Sort by chronological order (When date) to match Chronologue display
+    const sortedScenes = validScenes.slice().sort((a, b) => {
+        const aWhen = a.when instanceof Date ? a.when.getTime() : 
+                      typeof a.when === 'string' ? new Date(a.when).getTime() : 0;
+        const bWhen = b.when instanceof Date ? b.when.getTime() : 
+                      typeof b.when === 'string' ? new Date(b.when).getTime() : 0;
+        return aWhen - bWhen;
+    });
+    
+    // Find indices of the two selected scenes in chronological order
     let idx1 = -1;
     let idx2 = -1;
     
-    for (let i = 0; i < validScenes.length; i++) {
-        if (validScenes[i].path === scene1.path && idx1 === -1) {
+    for (let i = 0; i < sortedScenes.length; i++) {
+        if (sortedScenes[i].path === scene1.path && idx1 === -1) {
             idx1 = i;
         }
-        if (validScenes[i].path === scene2.path) {
+        if (sortedScenes[i].path === scene2.path && idx2 === -1) {
             idx2 = i;
         }
     }
@@ -1763,7 +1772,7 @@ function calculateCumulativeRuntime(scene1: TimelineItem, scene2: TimelineItem, 
     // Sum runtimes from startIdx through endIdx (inclusive)
     let totalSeconds = 0;
     for (let i = startIdx; i <= endIdx; i++) {
-        const runtime = parseRuntimeField(validScenes[i].Runtime);
+        const runtime = parseRuntimeField(sortedScenes[i].Runtime);
         if (runtime !== null && runtime > 0) {
             totalSeconds += runtime;
         }

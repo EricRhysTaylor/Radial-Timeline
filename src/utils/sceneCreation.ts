@@ -14,11 +14,19 @@ export function sanitizeSourcePath(sourcePath: string | undefined | null): strin
 }
 
 /**
- * Build the initial scene filename placed under the given (sanitized) source path.
- * Defaults to using "1 Test Scene.md" as the initial file name.
+ * Build an initial scene filename for new note creation.
+ * Returns just the filename (not the full path).
  */
-export function buildInitialSceneFilename(sanitizedSourcePath: string, baseName: string = '1 Test Scene.md'): string {
-  return `${sanitizedSourcePath ? sanitizedSourcePath + '/' : ''}${baseName}`;
+export function buildInitialSceneFilename(baseName: string = '1 Test Scene.md'): string {
+  return baseName;
+}
+
+/**
+ * Build an initial backdrop filename for new note creation.
+ * Returns just the filename (not the full path).
+ */
+export function buildInitialBackdropFilename(baseName: string = '1 Backdrop.md'): string {
+  return baseName;
 }
 
 

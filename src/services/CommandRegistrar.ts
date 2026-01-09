@@ -14,7 +14,7 @@ import { BookDesignerModal } from '../modals/BookDesignerModal';
 import { TimelineRepairModal } from '../modals/TimelineRepairModal';
 import { AuthorProgressModal } from '../modals/AuthorProgressModal';
 import { generateSceneContent } from '../utils/sceneGenerator';
-import { sanitizeSourcePath, buildInitialSceneFilename } from '../utils/sceneCreation';
+import { sanitizeSourcePath, buildInitialSceneFilename, buildInitialBackdropFilename } from '../utils/sceneCreation';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { ensureAiOutputFolder, ensureManuscriptOutputFolder } from '../utils/aiOutput';
 import { buildOutlineExport, getExportFormatExtension, getTemplateForPreset, getVaultAbsolutePath, runPandocOnContent, writeTextFile } from '../utils/exportFormats';
@@ -37,53 +37,33 @@ export class CommandRegistrar {
     private registerCommands(): void {
         this.plugin.addCommand({
             id: 'open-radial-timeline-view',
-            name: 'Open radial timeline view',
+            name: 'Open',
             callback: () => {
                 this.plugin.getTimelineService().activateView();
             },
         });
 
         this.plugin.addCommand({
-            id: 'create-scene-note',
-            name: 'Create scene note',
+            id: 'create-basic-scene-note',
+            name: 'Create basic scene note',
             callback: async () => {
-                const sourcePath = this.plugin.settings.sourcePath || '';
-                if (!sourcePath) {
-                    new Notice('Please set a source path in settings first.');
-                    return;
-                }
+                await this.createSceneNote('base');
+            }
+        });
 
-                try {
-                    const sanitizedPath = sanitizeSourcePath(sourcePath);
-                    const filename = await buildInitialSceneFilename(sanitizedPath);
-                    const folder = this.app.vault.getAbstractFileByPath(sanitizedPath);
+        this.plugin.addCommand({
+            id: 'create-advanced-scene-note',
+            name: 'Create advanced scene note',
+            callback: async () => {
+                await this.createSceneNote('advanced');
+            }
+        });
 
-                    if (!folder) {
-                        await this.app.vault.createFolder(sanitizedPath);
-                    }
-
-                    const path = `${sanitizedPath}/${filename}`;
-                    
-                    // Use basic template by default for quick creation
-                    const template = this.plugin.settings.sceneYamlTemplates?.base || DEFAULT_SETTINGS.sceneYamlTemplates!.base;
-                    // Provide minimal required props to satisfy strict types if needed, or rely on internal defaults
-                    const content = generateSceneContent(template, {
-                         act: 1,
-                         when: new Date().toISOString().split('T')[0],
-                         sceneNumber: 1,
-                         subplots: ['Main Plot'],
-                         character: 'Hero',
-                         place: 'Unknown',
-                         characterList: ['Hero'],
-                         placeList: ['Unknown']
-                    });
-                    
-                    const newFile = await this.app.vault.create(path, content);
-                    const leaf = this.app.workspace.getLeaf(true);
-                    await leaf.openFile(newFile);
-                } catch (error) {
-                    new Notice('Failed to create scene note: ' + error);
-                }
+        this.plugin.addCommand({
+            id: 'create-backdrop-note',
+            name: 'Create backdrop note',
+            callback: async () => {
+                await this.createBackdropNote();
             }
         });
 
@@ -128,8 +108,8 @@ export class CommandRegistrar {
         });
 
         this.plugin.addCommand({
-            id: 'open-gossamer-score',
-            name: 'Open gossamer score',
+            id: 'gossamer-score-manager',
+            name: 'Gossamer score manager',
             callback: () => {
                 openGossamerScoreEntry(this.plugin);
             }
@@ -299,6 +279,103 @@ export class CommandRegistrar {
         if (options.manuscriptPreset && (options.manuscriptPreset === 'screenplay' || options.manuscriptPreset === 'podcast')) return true;
         if (options.outlinePreset && (options.outlinePreset === 'index-cards-csv' || options.outlinePreset === 'index-cards-json')) return true;
         return false;
+    }
+
+    /**
+     * Create a new scene note with either basic or advanced YAML template.
+     */
+    private async createSceneNote(type: 'base' | 'advanced'): Promise<void> {
+        const sourcePath = this.plugin.settings.sourcePath || '';
+        if (!sourcePath) {
+            new Notice('Please set a source path in settings first.');
+            return;
+        }
+
+        try {
+            const sanitizedPath = sanitizeSourcePath(sourcePath);
+            const filename = buildInitialSceneFilename();
+            const folder = this.app.vault.getAbstractFileByPath(sanitizedPath);
+
+            if (!folder) {
+                await this.app.vault.createFolder(sanitizedPath);
+            }
+
+            const path = `${sanitizedPath}/${filename}`;
+            
+            // Use basic or advanced template based on type
+            const templates = this.plugin.settings.sceneYamlTemplates || DEFAULT_SETTINGS.sceneYamlTemplates;
+            const template = type === 'advanced' 
+                ? (templates?.advanced || DEFAULT_SETTINGS.sceneYamlTemplates!.advanced)
+                : (templates?.base || DEFAULT_SETTINGS.sceneYamlTemplates!.base);
+            
+            // Generate content with default placeholder values
+            const content = generateSceneContent(template, {
+                act: 1,
+                when: new Date().toISOString().split('T')[0],
+                sceneNumber: 1,
+                subplots: ['Main Plot'],
+                character: 'Hero',
+                place: 'Unknown',
+                characterList: ['Hero'],
+                placeList: ['Unknown']
+            });
+            
+            // Ensure the content has Class: Scene if not already present
+            const finalContent = ensureClassScene(content);
+            const fileContent = `---\n${finalContent}\n---\n\n`;
+            
+            const newFile = await this.app.vault.create(path, fileContent);
+            const leaf = this.app.workspace.getLeaf(true);
+            await leaf.openFile(newFile);
+            new Notice(`Created ${type === 'advanced' ? 'advanced' : 'basic'} scene note: ${filename}`);
+        } catch (error) {
+            const msg = (error as any)?.message || String(error);
+            new Notice('Failed to create scene note: ' + msg);
+        }
+    }
+
+    /**
+     * Create a new backdrop note.
+     */
+    private async createBackdropNote(): Promise<void> {
+        const sourcePath = this.plugin.settings.sourcePath || '';
+        if (!sourcePath) {
+            new Notice('Please set a source path in settings first.');
+            return;
+        }
+
+        try {
+            const sanitizedPath = sanitizeSourcePath(sourcePath);
+            const filename = buildInitialBackdropFilename();
+            const folder = this.app.vault.getAbstractFileByPath(sanitizedPath);
+
+            if (!folder) {
+                await this.app.vault.createFolder(sanitizedPath);
+            }
+
+            const path = `${sanitizedPath}/${filename}`;
+            
+            // Use backdrop template
+            const template = this.plugin.settings.backdropYamlTemplate 
+                || DEFAULT_SETTINGS.backdropYamlTemplate 
+                || `Class: Backdrop\nWhen: {{When}}\nEnd: {{End}}\nSynopsis: `;
+            
+            // Replace placeholders for backdrop
+            const today = new Date().toISOString().split('T')[0];
+            const content = template
+                .replace(/{{When}}/g, today)
+                .replace(/{{End}}/g, today);
+            
+            const fileContent = `---\n${content}\n---\n\n`;
+            
+            const newFile = await this.app.vault.create(path, fileContent);
+            const leaf = this.app.workspace.getLeaf(true);
+            await leaf.openFile(newFile);
+            new Notice(`Created backdrop note: ${filename}`);
+        } catch (error) {
+            const msg = (error as any)?.message || String(error);
+            new Notice('Failed to create backdrop note: ' + msg);
+        }
     }
 
 }

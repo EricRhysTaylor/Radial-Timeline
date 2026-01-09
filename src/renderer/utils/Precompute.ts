@@ -154,7 +154,7 @@ export function computeCacheableValues(
     // For Chronologue mode, ensure 'Backdrop' is the second ring from the outside
     // Outer Ring (ringOffset=0) is typically Main Plot or All Scenes.
     // Backdrop (ringOffset=1) should be next.
-    if (isChronologueMode && hasBackdrops) {
+    if (isChronologueMode && hasBackdrops && showBackdropRing) {
         masterSubplotOrder = masterSubplotOrder.filter(s => s !== 'Backdrop');
         if (masterSubplotOrder.length > 0) {
             // Insert after the first one (Main Plot)

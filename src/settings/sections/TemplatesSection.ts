@@ -104,7 +104,7 @@ export function renderStoryBeatsSection(params: {
 
     const beatSystemSetting = new Settings(containerEl)
         .setName('Available system templates')
-        .setDesc('Select the story structure model for your manuscript. This will establish the story beat system and can be used to create beat notes and graph scores using Gossamer mode.')
+        .setDesc('Select the story structure model for your manuscript. This will establish the story beat system and can be used to create beat notes and graph scores using Gossamer mode manually or automatically using AI.')
         .addDropdown(dropdown => {
             dropdown
                 .addOption('Save The Cat', 'Save The Cat (15 beats)')
