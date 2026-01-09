@@ -67,8 +67,8 @@
 }
 
 .rt-runtime-tick-mark {
-  stroke: rgba(60, 160, 220, 0.8);
-  stroke-width: 1.5px;
+  stroke: rgba(60, 160, 220, 1);
+  stroke-width: 2px;
 }
 
 /* RT Button Warning State (no runtime data) */

@@ -257,11 +257,13 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
             const runtimeSeconds = durationMs / 1000;
             const runtimeLabel = formatRuntimeValue(runtimeSeconds);
             
-            // Tick mark at arc end
-            const tickInnerX = formatNumber(arcRadius * Math.cos(arcEnd));
-            const tickInnerY = formatNumber(arcRadius * Math.sin(arcEnd));
-            const tickOuterX = formatNumber((arcRadius + TICK_MARK_LENGTH) * Math.cos(arcEnd));
-            const tickOuterY = formatNumber((arcRadius + TICK_MARK_LENGTH) * Math.sin(arcEnd));
+            // Tick mark at arc end - positioned 3px inward, extended 4px outward
+            const tickInnerRadius = arcRadius - 3; // 3px inward from arc
+            const tickOuterRadius = arcRadius + TICK_MARK_LENGTH + 4; // 4px longer outward
+            const tickInnerX = formatNumber(tickInnerRadius * Math.cos(arcEnd));
+            const tickInnerY = formatNumber(tickInnerRadius * Math.sin(arcEnd));
+            const tickOuterX = formatNumber(tickOuterRadius * Math.cos(arcEnd));
+            const tickOuterY = formatNumber(tickOuterRadius * Math.sin(arcEnd));
             
             runtimeLabels.push(
                 `<line x1="${tickInnerX}" y1="${tickInnerY}" x2="${tickOuterX}" y2="${tickOuterY}" class="rt-runtime-tick-mark" />`

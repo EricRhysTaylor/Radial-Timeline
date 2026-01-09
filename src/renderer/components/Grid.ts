@@ -142,28 +142,8 @@ export function renderCenterGrid(params: {
       ${(() => {
         const runtimeY = startYGrid + gridHeight + (cellGapY + 16);
         const runtimeText = totalRuntimeSeconds > 0 ? formatRuntimeValue(totalRuntimeSeconds) : 'No Data';
-        // Estimate text width for icon positioning (approx 9px per character for 18px font)
-        const textWidth = runtimeText.length * 9;
-        const iconX = startXGrid + textWidth - 2;
-        const iconY = runtimeY - 14; // Center icon vertically with text
-        const iconColor = 'rgba(60, 160, 220, 0.9)';
-        // Lucide mic-vocal icon (16x16, viewBox 0 0 24 24) - exact from Lucide
-        const micVocalIcon = `<svg x="${iconX}" y="${iconY}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="m11 7.601-5.994 8.19a1 1 0 0 0 .1 1.298l.817.818a1 1 0 0 0 1.314.087L15.09 12"/>
-          <path d="M16.5 21.174C15.5 20.5 14.372 20 13 20c-2.058 0-3.928 2.356-6 2-2.072-.356-2.775-3.369-1.5-4.5"/>
-          <circle cx="16" cy="7" r="5"/>
-        </svg>`;
-        // Lucide clapperboard icon (20x20, viewBox 0 0 24 24)
-        const clapperboardIcon = `<svg x="${iconX}" y="${iconY}" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/>
-          <path d="m6.2 5.3 3.1 3.9"/>
-          <path d="m12.4 3.4 3.1 4"/>
-          <path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>
-        </svg>`;
-        const icon = runtimeContentType === 'screenplay' ? clapperboardIcon : micVocalIcon;
         return `<g class="rt-runtime-display">
           <text x="${startXGrid}" y="${runtimeY}" text-anchor="start" dominant-baseline="alphabetic" class="center-key-text rt-runtime-total">${runtimeText}</text>
-          ${icon}
         </g>`;
       })()}
       <text x="${startXGrid + gridWidth}" y="${startYGrid + gridHeight + (cellGapY + 16)}" text-anchor="end" dominant-baseline="alphabetic" class="center-key-text">${currentYearLabel}//${estimatedTotalScenes}</text>

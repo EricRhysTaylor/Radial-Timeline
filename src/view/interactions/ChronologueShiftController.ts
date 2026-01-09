@@ -631,7 +631,13 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             deactivateRuntimeMode();
         } else {
             // Turn ON Runtime Mode
-            // First deactivate any other modes
+            // FRONTLOAD: Update button state and visuals immediately (before expensive refresh)
+            runtimeModeActive = true;
+            globalRuntimeModeActive = true;
+            updateRtButtonState(rtButton, true);
+            svg.setAttribute('data-shift-mode', 'runtime');
+            
+            // Then deactivate any other modes (quick operations)
             if (alienModeActive && altButton) {
                 alienModeActive = false;
                 globalAlienModeActive = false;
@@ -649,15 +655,14 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                 removeShiftModeFromAllScenes(svg);
             }
             
-            runtimeModeActive = true;
-            globalRuntimeModeActive = true;
-            updateRtButtonState(rtButton, true);
-            svg.setAttribute('data-shift-mode', 'runtime');
             updateDateLabelsForRuntimeMode(true);
-            // Trigger timeline refresh to switch to Runtime arcs
-            if (view.plugin.refreshTimelineIfNeeded) {
-                view.plugin.refreshTimelineIfNeeded(null);
-            }
+            
+            // Defer the expensive timeline refresh to next frame for snappy button response
+            requestAnimationFrame(() => {
+                if (view.plugin.refreshTimelineIfNeeded) {
+                    view.plugin.refreshTimelineIfNeeded(null);
+                }
+            });
         }
     };
 

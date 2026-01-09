@@ -131,10 +131,24 @@ export function setupTooltipsFromDataAttributes(
         }
     };
 
+    // Hide tooltip on click (button clicks should dismiss tooltip immediately)
+    const handleClick = (e: Event) => {
+        const target = (e.target as Element).closest('.rt-tooltip-target[data-tooltip]');
+        if (target) {
+            // Immediately hide tooltip when clicking a tooltip target
+            if (hideTimeout) {
+                window.clearTimeout(hideTimeout);
+                hideTimeout = null;
+            }
+            hideCustomTooltip();
+        }
+    };
+
     // Use Obsidian lifecycle-backed registration for automatic cleanup
     registerDomEvent(svgElement as unknown as HTMLElement, 'mouseover', handleMouseOver);
     registerDomEvent(svgElement as unknown as HTMLElement, 'mouseout', handleMouseOut);
     registerDomEvent(svgElement as unknown as HTMLElement, 'mouseleave', handleMouseLeave);
+    registerDomEvent(svgElement as unknown as HTMLElement, 'click', handleClick);
 }
 
 /**
