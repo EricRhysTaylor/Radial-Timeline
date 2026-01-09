@@ -86,10 +86,13 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     const restoreScrollState = (state: { scrollContainer: HTMLElement | null; top: number | null; }) => {
         const { scrollContainer, top } = state;
         if (!scrollContainer || top === null) return;
+        // Double RAF to wait for DOM layout to fully settle after re-render
         window.requestAnimationFrame(() => {
-            const maxTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
-            const clampedTop = Math.min(top, maxTop);
-            scrollContainer.scrollTop = clampedTop;
+            window.requestAnimationFrame(() => {
+                const maxTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
+                const clampedTop = Math.min(top, maxTop);
+                scrollContainer.scrollTop = clampedTop;
+            });
         });
     };
     
@@ -166,8 +169,9 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         const detailsContainer = conditionalContainer.createDiv();
 
         const getSelectedProfile = (): RuntimeRateProfile | undefined => {
-            const next = profiles.find(p => p.id === selectedProfileId);
-            return next || profiles[0];
+            const currentProfiles = plugin.settings.runtimeRateProfiles || [];
+            const next = currentProfiles.find(p => p.id === selectedProfileId);
+            return next || currentProfiles[0];
         };
 
         const updateProfile = async (mutate: (p: RuntimeRateProfile) => void) => {
@@ -185,9 +189,13 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         };
 
         const renderDetails = () => {
+            const scrollState = captureScrollState();
             detailsContainer.empty();
             const selectedProfile = getSelectedProfile();
-            if (!selectedProfile) return;
+            if (!selectedProfile) {
+                restoreScrollState(scrollState);
+                return;
+            }
 
             const contentType = selectedProfile.contentType || 'novel';
             detailsContainer.createEl('h4', { cls: 'rt-runtime-subheader', text: 'Rates & timings' });
@@ -326,26 +334,46 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             new Setting(detailsContainer)
                 .setName('Drafting words per minute (optional)')
-                .setDesc('Used for future session planning estimates (currently inactive).')
+                .setDesc('Your writing speed for session time estimates.')
                 .addText((text: TextComponent) => {
                     text.inputEl.type = 'number';
                     text.inputEl.min = '0';
                     text.inputEl.max = '1000';
                     text.inputEl.addClass('rt-input-xs');
                     text.setValue(session.draftingWpm ? String(session.draftingWpm) : '');
-                    text.setDisabled(true);
+                    plugin.registerDomEvent(text.inputEl, 'blur', async () => {
+                        const num = parseInt(text.getValue());
+                        if (text.getValue() && (!Number.isFinite(num) || num < 0 || num > 1000)) {
+                            flash(text.inputEl, 'error');
+                            return;
+                        }
+                        await updateProfile((p) => {
+                            p.sessionPlanning = { ...p.sessionPlanning, draftingWpm: num || undefined };
+                        });
+                        flash(text.inputEl, 'success');
+                    });
                 });
 
             new Setting(detailsContainer)
                 .setName('Daily minutes available (optional)')
-                .setDesc('For “45 min/day” style projections (currently inactive).')
+                .setDesc('For shooting schedule time estimates.')
                 .addText((text: TextComponent) => {
                     text.inputEl.type = 'number';
                     text.inputEl.min = '0';
                     text.inputEl.max = '1440';
                     text.inputEl.addClass('rt-input-xs');
                     text.setValue(session.dailyMinutes ? String(session.dailyMinutes) : '');
-                    text.setDisabled(true);
+                    plugin.registerDomEvent(text.inputEl, 'blur', async () => {
+                        const num = parseInt(text.getValue());
+                        if (text.getValue() && (!Number.isFinite(num) || num < 0 || num > 1440)) {
+                            flash(text.inputEl, 'error');
+                            return;
+                        }
+                        await updateProfile((p) => {
+                            p.sessionPlanning = { ...p.sessionPlanning, dailyMinutes: num || undefined };
+                        });
+                        flash(text.inputEl, 'success');
+                    });
                 });
 
             // Explicit Duration Patterns (always shown when enabled)
@@ -361,6 +389,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             for (const pat of patterns) {
                 patternsList.createEl('li').createEl('code', { text: pat });
             }
+            restoreScrollState(scrollState);
         };
 
         const renderHeader = () => {
@@ -428,7 +457,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     const inputEl = inputContainer.createEl('input', {
                         type: 'text',
                         value: selectedProfile.label || '',
-                        cls: 'rt-input-full'
+                        cls: 'rt-input-lg'
                     });
 
                     window.setTimeout(() => {

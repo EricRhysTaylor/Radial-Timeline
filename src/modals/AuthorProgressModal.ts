@@ -1,21 +1,20 @@
-import { App, Modal, Setting, DropdownComponent, ButtonComponent, Notice, TFile } from 'obsidian';
+import { App, Modal, Setting, ButtonComponent, Notice, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { AuthorProgressMode, AuthorProgressPublishTarget } from '../types/settings';
-import { anonymizeTimeline, getAuthorProgressSealSVG, getKickstarterEmbed, getPatreonEmbed } from '../renderer/utils/AuthorProgressUtils';
+import { anonymizeTimeline, getKickstarterEmbed, getPatreonEmbed } from '../renderer/utils/AuthorProgressUtils';
 import { createTimelineSVG } from '../renderer/TimelineRenderer';
 import { getAllScenes } from '../utils/manuscript';
 import { TimelineItem } from '../types/timeline';
 import { AuthorProgressService } from '../services/AuthorProgressService';
+import { PluginRendererFacade } from '../utils/sceneHelpers';
 
 export class AuthorProgressModal extends Modal {
     private plugin: RadialTimelinePlugin;
     private service: AuthorProgressService;
     private mode: AuthorProgressMode;
-    private note: string = '';
     private publishTarget: AuthorProgressPublishTarget;
     
     private previewContainer: HTMLElement | null = null;
-    private controlsContainer: HTMLElement | null = null;
     
     private cachedScenes: TimelineItem[] = [];
     private progressPercent: number = 0;
@@ -48,42 +47,50 @@ export class AuthorProgressModal extends Modal {
         contentEl.empty();
         contentEl.addClass('rt-apr-modal');
 
+        // Modal Header with Badge (following modal template pattern)
+        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
+        
+        // Badge with Radio icon for social media theme
+        const badge = header.createSpan({ cls: 'rt-modal-badge rt-apr-badge' });
+        const badgeIcon = badge.createSpan({ cls: 'rt-modal-badge-icon' });
+        setIcon(badgeIcon, 'radio');
+        badge.createSpan({ text: 'Share' });
+        
+        header.createDiv({ text: 'Author Progress Report', cls: 'rt-modal-title' });
+        header.createDiv({ text: 'Public, spoiler-safe progress view for fans and backers', cls: 'rt-modal-subtitle' });
+
         // Check staleness and show alert if needed (Manual mode only)
         if (this.service.isStale()) {
             const daysSince = this.plugin.settings.authorProgress?.lastPublishedDate 
                 ? Math.floor((Date.now() - new Date(this.plugin.settings.authorProgress.lastPublishedDate).getTime()) / (1000 * 60 * 60 * 24))
                 : 'many';
-            const alert = contentEl.createDiv({ cls: 'rt-apr-stale-alert' });
-            alert.createEl('span', { text: `⚠️ Your report is ${daysSince} days old. Refresh recommended.` });
+            const alert = contentEl.createDiv({ cls: 'rt-apr-stale-alert rt-glass-card' });
+            const alertIcon = alert.createSpan({ cls: 'rt-apr-stale-icon' });
+            setIcon(alertIcon, 'alert-triangle');
+            alert.createEl('span', { text: `Your report is ${daysSince} days old. Consider refreshing.` });
         }
 
-        const grid = contentEl.createDiv({ cls: 'rt-apr-grid' });
-        
-        // --- PREVIEW PANEL (Left/Center) ---
-        const leftPanel = grid.createDiv({ cls: 'rt-apr-preview-panel' });
-        
-        const header = leftPanel.createDiv({ cls: 'rt-apr-header' });
-        header.createEl('h2', { text: 'Author Progress Report' });
-        header.createEl('span', { text: 'Public, spoiler-safe progress view', cls: 'rt-apr-subtitle' });
-
-        const modeSelector = header.createDiv({ cls: 'rt-apr-mode-selector' });
+        // Mode Selector (segmented control)
+        const modeSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-mode-section' });
+        modeSection.createEl('h4', { text: 'View Mode', cls: 'rt-section-title' });
+        const modeSelector = modeSection.createDiv({ cls: 'rt-apr-mode-selector' });
         this.createModeButton(modeSelector, 'FULL_STRUCTURE', 'Full Structure');
         this.createModeButton(modeSelector, 'SCENES_ONLY', 'Scenes Only');
         this.createModeButton(modeSelector, 'MOMENTUM_ONLY', 'Momentum Only');
 
-        this.previewContainer = leftPanel.createDiv({ cls: 'rt-apr-preview-area' });
+        // Preview Panel
+        const previewSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-preview-section' });
+        previewSection.createEl('h4', { text: 'Live Preview', cls: 'rt-section-title' });
+        this.previewContainer = previewSection.createDiv({ cls: 'rt-apr-preview-area' });
         this.previewContainer.createDiv({ text: 'Loading preview...', cls: 'rt-apr-loading' });
 
-        // --- CONTROLS PANEL (Right) ---
-        const rightPanel = grid.createDiv({ cls: 'rt-apr-controls-panel' });
-        this.controlsContainer = rightPanel;
-
-        // Identity Configuration (Top of Controls)
-        rightPanel.createEl('h3', { text: 'Report Identity' });
+        // Identity Configuration
+        const identitySection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-identity-section' });
+        identitySection.createEl('h4', { text: 'Report Identity', cls: 'rt-section-title' });
         
-        new Setting(rightPanel)
+        new Setting(identitySection)
             .setName('Book Title')
-            .setDesc('Displayed on the report ring')
+            .setDesc('Displayed on the perimeter branding')
             .addText(text => text
                 .setPlaceholder('My Awesome Novel')
                 .setValue(this.plugin.settings.authorProgress?.bookTitle || '')
@@ -91,14 +98,14 @@ export class AuthorProgressModal extends Modal {
                     if (this.plugin.settings.authorProgress) {
                         this.plugin.settings.authorProgress.bookTitle = val;
                         await this.plugin.saveSettings();
-                        this.renderPreview(); // Live update
+                        this.renderPreview();
                     }
                 })
             );
 
-        new Setting(rightPanel)
-            .setName('Link URL')
-            .setDesc('Target for the report graphic (e.g., Shop, Kickstarter)')
+        new Setting(identitySection)
+            .setName('Author URL')
+            .setDesc('Link target for the book title arc (your shop, Kickstarter, etc.)')
             .addText(text => text
                 .setPlaceholder('https://myshop.com')
                 .setValue(this.plugin.settings.authorProgress?.authorUrl || '')
@@ -111,14 +118,21 @@ export class AuthorProgressModal extends Modal {
                 })
             );
 
-        // Tabbed Actions
-        const tabsContainer = rightPanel.createDiv({ cls: 'rt-apr-tabs-container' });
-        const snapshotTab = tabsContainer.createDiv({ cls: 'rt-apr-tab rt-active', text: 'Static Snapshot' });
-        const dynamicTab = tabsContainer.createDiv({ cls: 'rt-apr-tab', text: 'Live Embed' });
+        // Actions Section with Tabs
+        const actionsSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-actions-section' });
+        actionsSection.createEl('h4', { text: 'Publish', cls: 'rt-section-title' });
         
-        const actionsContent = rightPanel.createDiv({ cls: 'rt-apr-actions-content' });
+        const tabsContainer = actionsSection.createDiv({ cls: 'rt-apr-tabs-container' });
+        const snapshotTab = tabsContainer.createDiv({ cls: 'rt-apr-tab rt-active' });
+        setIcon(snapshotTab.createSpan(), 'camera');
+        snapshotTab.createSpan({ text: 'Static Snapshot' });
+        
+        const dynamicTab = tabsContainer.createDiv({ cls: 'rt-apr-tab' });
+        setIcon(dynamicTab.createSpan(), 'refresh-cw');
+        dynamicTab.createSpan({ text: 'Live Embed' });
+        
+        const actionsContent = actionsSection.createDiv({ cls: 'rt-apr-actions-content' });
 
-        // Default to Snapshot view
         this.renderSnapshotActions(actionsContent);
 
         snapshotTab.onclick = () => {
@@ -133,40 +147,46 @@ export class AuthorProgressModal extends Modal {
             this.renderDynamicActions(actionsContent);
         };
 
+        // Footer actions
+        const footer = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        new ButtonComponent(footer)
+            .setButtonText('Close')
+            .onClick(() => this.close());
+
         await this.loadData();
         this.renderPreview();
     }
 
     private renderSnapshotActions(container: HTMLElement) {
         container.empty();
-        container.createEl('p', { text: 'Generate a one-time image to share immediately.', cls: 'rt-apr-tab-desc' });
+        container.createEl('p', { text: 'Generate a one-time image to share immediately. Saves to your Output folder.', cls: 'rt-apr-tab-desc' });
         
-        new ButtonComponent(container)
-            .setButtonText('Save Snapshot to Disk')
+        const btnRow = container.createDiv({ cls: 'rt-row' });
+        new ButtonComponent(btnRow)
+            .setButtonText('Save Snapshot')
             .setCta()
             .onClick(() => this.publish('static'));
-
-        // "Copy to Clipboard" is tricky with SVG->Image conversion in Obsidian context without canvas API access sometimes.
-        // We'll stick to Save for V1 unless we add canvas rasterization logic.
     }
 
     private renderDynamicActions(container: HTMLElement) {
         container.empty();
-        container.createEl('p', { text: 'Update the persistent file for your hosted embed.', cls: 'rt-apr-tab-desc' });
+        container.createEl('p', { text: 'Update the persistent file for your hosted embed. Use with GitHub Pages or similar.', cls: 'rt-apr-tab-desc' });
         
-        new ButtonComponent(container)
+        const btnRow = container.createDiv({ cls: 'rt-row' });
+        new ButtonComponent(btnRow)
             .setButtonText('Update Live File')
             .setCta()
             .onClick(() => this.publish('dynamic'));
 
         const embedSection = container.createDiv({ cls: 'rt-apr-embed-codes' });
-        embedSection.createEl('h4', { text: 'Embed Codes' });
+        embedSection.createEl('h5', { text: 'Embed Codes' });
         
-        new ButtonComponent(embedSection)
+        const embedBtns = embedSection.createDiv({ cls: 'rt-row' });
+        new ButtonComponent(embedBtns)
             .setButtonText('Copy Kickstarter Embed')
             .onClick(() => this.copyEmbed('kickstarter'));
         
-        new ButtonComponent(embedSection)
+        new ButtonComponent(embedBtns)
             .setButtonText('Copy Patreon Embed')
             .onClick(() => this.copyEmbed('patreon'));
     }
@@ -197,37 +217,45 @@ export class AuthorProgressModal extends Modal {
         if (!this.previewContainer) return;
         this.previewContainer.empty();
 
+        if (this.cachedScenes.length === 0) {
+            this.previewContainer.createDiv({ text: 'No scenes found. Create scenes to see a preview.', cls: 'rt-apr-empty' });
+            return;
+        }
+
         const processedScenes = anonymizeTimeline(this.cachedScenes, this.mode);
         const settings = this.plugin.settings.authorProgress;
 
-        const { svgString } = createTimelineSVG({
-            settings: {
-                ...this.plugin.settings,
-                showActLabels: this.mode !== 'MOMENTUM_ONLY',
-            }
-        } as any, processedScenes, {
-            aprMode: true,
-            progressPercent: this.progressPercent,
-            bookTitle: settings?.bookTitle || 'Untitled Project',
-            authorUrl: settings?.authorUrl || ''
-        });
+        // Use the actual plugin as the facade to ensure all methods are available
+        const pluginFacade = this.plugin as unknown as PluginRendererFacade;
 
-        // The SVG now contains the overlay, so we just inject it
-        this.previewContainer.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
+        try {
+            const { svgString } = createTimelineSVG(pluginFacade, processedScenes, {
+                aprMode: true,
+                progressPercent: this.progressPercent,
+                bookTitle: settings?.bookTitle || 'Untitled Project',
+                authorUrl: settings?.authorUrl || ''
+            });
+
+            this.previewContainer.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
+        } catch (e) {
+            this.previewContainer.createDiv({ text: 'Failed to render preview. Check console for details.', cls: 'rt-apr-error' });
+            console.error('APR Preview render error:', e);
+        }
     }
 
     private async publish(mode: 'static' | 'dynamic') {
         const result = await this.service.generateReport(mode);
         if (result) {
             new Notice(mode === 'dynamic' ? 'Live file updated!' : `Snapshot saved to ${result}`);
-            this.close();
         } else {
             new Notice('Failed to generate report.');
         }
     }
 
     private copyEmbed(type: 'kickstarter' | 'patreon') {
-        const url = 'YOUR_PUBLISHED_URL_HERE'; // Placeholder
+        const embedPath = this.plugin.settings.authorProgress?.dynamicEmbedPath || 'progress.svg';
+        // Placeholder URL - user needs to replace with their actual hosted URL
+        const url = `https://YOUR_GITHUB_PAGES_URL/${embedPath}`;
         let code = '';
         
         if (type === 'kickstarter') {
@@ -237,7 +265,7 @@ export class AuthorProgressModal extends Modal {
         }
 
         navigator.clipboard.writeText(code);
-        new Notice('Embed code copied! Replace URL with your hosted link.');
+        new Notice('Embed code copied! Replace YOUR_GITHUB_PAGES_URL with your actual hosted URL.');
     }
 
     onClose() {

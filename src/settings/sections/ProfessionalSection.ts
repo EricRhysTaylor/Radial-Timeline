@@ -188,6 +188,7 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
         .setName('Pandoc binary path')
         .setDesc('Optional: set a custom pandoc executable path. If blank, system PATH is used.')
         .addText(text => {
+            text.inputEl.addClass('rt-input-lg');
             text.setPlaceholder('/usr/local/bin/pandoc');
             text.setValue(plugin.settings.pandocPath || '');
             plugin.registerDomEvent(text.inputEl, 'blur', async () => {
@@ -213,6 +214,7 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
         .setName('Fallback Pandoc path')
         .setDesc('Optional path to a portable/bundled pandoc binary.')
         .addText(text => {
+            text.inputEl.addClass('rt-input-lg');
             text.setPlaceholder('/path/to/pandoc');
             text.setValue(plugin.settings.pandocFallbackPath || '');
             plugin.registerDomEvent(text.inputEl, 'blur', async () => {
@@ -233,6 +235,7 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
     new Setting(templatesCard)
         .setName('Template: Screenplay')
         .addText(text => {
+            text.inputEl.addClass('rt-input-lg');
             text.setPlaceholder('vault/path/to/screenplay_template.tex');
             text.setValue(templates.screenplay || '');
             plugin.registerDomEvent(text.inputEl, 'blur', async () => {
@@ -247,6 +250,7 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
     new Setting(templatesCard)
         .setName('Template: Podcast Script')
         .addText(text => {
+            text.inputEl.addClass('rt-input-lg');
             text.setPlaceholder('vault/path/to/podcast_template.tex');
             text.setValue(templates.podcast || '');
             plugin.registerDomEvent(text.inputEl, 'blur', async () => {
@@ -261,6 +265,7 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
     new Setting(templatesCard)
         .setName('Template: Novel Manuscript')
         .addText(text => {
+            text.inputEl.addClass('rt-input-lg');
             text.setPlaceholder('vault/path/to/novel_template.tex');
             text.setValue(templates.novel || '');
             plugin.registerDomEvent(text.inputEl, 'blur', async () => {

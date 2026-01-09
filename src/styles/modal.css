@@ -1792,3 +1792,258 @@
   padding-left: 26px;
 }
 
+/* -------------------------------------------------------------------------- */
+/* AUTHOR PROGRESS REPORT (APR) MODAL                                          */
+/* -------------------------------------------------------------------------- */
+
+.rt-apr-modal.modal {
+  width: min(880px, 92vw);
+  max-height: 92vh;
+}
+
+.rt-apr-modal .modal-content {
+  position: relative;
+  padding: 28px 32px 24px;
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(16, 16, 21, 0.95), rgba(36, 28, 24, 0.92));
+  border: 1px solid rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.2);
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55);
+  overflow-y: auto;
+}
+
+.rt-apr-modal .modal-content::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 15% 10%, rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.12), transparent 55%),
+    radial-gradient(circle at 85% 5%, rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.08), transparent 45%);
+  pointer-events: none;
+}
+
+.rt-apr-modal .modal-content > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* APR Badge - social media theme */
+.rt-apr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.15);
+  border: 1px solid rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.3);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rt-social-color, #ffd41d);
+  margin-bottom: 8px;
+}
+
+.rt-apr-badge .rt-modal-badge-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.rt-apr-badge .rt-modal-badge-icon svg {
+  width: 14px;
+  height: 14px;
+  stroke: var(--rt-social-color, #ffd41d);
+}
+
+/* Stale Alert */
+.rt-apr-stale-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(255, 140, 0, 0.12);
+  border: 1px solid rgba(255, 140, 0, 0.3);
+  border-radius: 12px;
+  color: var(--text-warning);
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+
+.rt-apr-stale-icon svg {
+  width: 18px;
+  height: 18px;
+  stroke: var(--text-warning);
+}
+
+/* Mode Section */
+.rt-apr-mode-section {
+  margin-bottom: 16px;
+}
+
+.rt-apr-mode-selector {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rt-apr-mode-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rt-apr-mode-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.rt-apr-mode-btn.rt-active {
+  background: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.2);
+  border-color: var(--rt-social-color, #ffd41d);
+  color: var(--rt-social-color, #ffd41d);
+}
+
+/* Preview Section */
+.rt-apr-preview-section {
+  margin-bottom: 16px;
+}
+
+.rt-apr-preview-area {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  max-height: 400px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  padding: 16px;
+}
+
+.rt-apr-preview-area svg {
+  max-width: 100%;
+  max-height: 360px;
+  height: auto;
+}
+
+.rt-apr-loading,
+.rt-apr-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  padding: 40px;
+}
+
+.rt-apr-error {
+  text-align: center;
+  color: var(--text-error);
+  font-size: 0.95rem;
+  padding: 40px;
+}
+
+/* Identity Section */
+.rt-apr-identity-section {
+  margin-bottom: 16px;
+}
+
+.rt-apr-identity-section .setting-item {
+  padding: 10px 0;
+  border-top: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.rt-apr-identity-section .setting-item:last-child {
+  border-bottom: none;
+}
+
+/* Actions Section */
+.rt-apr-actions-section {
+  margin-bottom: 16px;
+}
+
+.rt-apr-tabs-container {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.rt-apr-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rt-apr-tab:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.rt-apr-tab.rt-active {
+  background: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.15);
+  border-color: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.4);
+  color: var(--rt-social-color, #ffd41d);
+}
+
+.rt-apr-tab svg {
+  width: 14px;
+  height: 14px;
+}
+
+.rt-apr-actions-content {
+  padding: 12px 0;
+}
+
+.rt-apr-tab-desc {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.rt-apr-embed-codes {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rt-apr-embed-codes h5 {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.rt-apr-embed-codes .rt-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Section titles in APR modal */
+.rt-apr-modal .rt-section-title {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-normal);
+  letter-spacing: 0.02em;
+}
+
+/* Row utility */
+.rt-apr-modal .rt-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
