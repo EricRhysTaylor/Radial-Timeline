@@ -1,6 +1,6 @@
 import { App, Modal, Setting, ButtonComponent, Notice, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { AuthorProgressMode, AuthorProgressPublishTarget } from '../types/settings';
+import { AuthorProgressPublishTarget } from '../types/settings';
 import { getKickstarterEmbed, getPatreonEmbed } from '../renderer/utils/AuthorProgressUtils';
 import { createTimelineSVG } from '../renderer/TimelineRenderer';
 import { getAllScenes } from '../utils/manuscript';
@@ -11,8 +11,12 @@ import { PluginRendererFacade } from '../utils/sceneHelpers';
 export class AuthorProgressModal extends Modal {
     private plugin: RadialTimelinePlugin;
     private service: AuthorProgressService;
-    private mode: AuthorProgressMode;
     private publishTarget: AuthorProgressPublishTarget;
+    
+    // Reveal options (checkbox states)
+    private showSubplots: boolean;
+    private showActs: boolean;
+    private showStatus: boolean;
     
     private previewContainer: HTMLElement | null = null;
     
@@ -26,10 +30,11 @@ export class AuthorProgressModal extends Modal {
         
         const settings = plugin.settings.authorProgress || {
             enabled: false,
-            defaultMode: 'FULL_STRUCTURE',
             defaultNoteBehavior: 'preset',
             defaultPublishTarget: 'folder',
-            lastUsedMode: 'FULL_STRUCTURE',
+            showSubplots: true,
+            showActs: true,
+            showStatus: true,
             bookTitle: '',
             authorUrl: '',
             updateFrequency: 'manual',
@@ -38,7 +43,10 @@ export class AuthorProgressModal extends Modal {
             dynamicEmbedPath: 'Radial Timeline/Social/progress.svg'
         };
 
-        this.mode = settings.lastUsedMode || settings.defaultMode;
+        // Initialize reveal options from settings
+        this.showSubplots = settings.showSubplots ?? true;
+        this.showActs = settings.showActs ?? true;
+        this.showStatus = settings.showStatus ?? true;
         this.publishTarget = settings.defaultPublishTarget;
     }
 
@@ -73,13 +81,49 @@ export class AuthorProgressModal extends Modal {
             alert.createEl('span', { text: `Your report is ${daysSince} days old. Consider refreshing.` });
         }
 
-        // Mode Selector (segmented control)
-        const modeSection = glassContainer.createDiv({ cls: 'rt-glass-card rt-apr-mode-section' });
-        modeSection.createEl('h4', { text: 'View Mode', cls: 'rt-section-title' });
-        const modeSelector = modeSection.createDiv({ cls: 'rt-apr-mode-selector' });
-        this.createModeButton(modeSelector, 'FULL_STRUCTURE', 'Full Structure');
-        // Note: SCENES_ONLY and MOMENTUM_ONLY would require additional renderer changes
-        // For now, focus on FULL_STRUCTURE which shows the real timeline
+        // Reveal Options (checkboxes)
+        const revealSection = glassContainer.createDiv({ cls: 'rt-glass-card rt-apr-reveal-section' });
+        revealSection.createEl('h4', { text: 'What to Reveal', cls: 'rt-section-title' });
+        revealSection.createEl('p', { 
+            text: 'Control how much of your story structure is visible to fans.', 
+            cls: 'rt-section-desc' 
+        });
+        
+        new Setting(revealSection)
+            .setName('Subplots')
+            .setDesc('Show all subplot rings. Unchecked shows only the main plot ring.')
+            .addToggle(toggle => toggle
+                .setValue(this.showSubplots)
+                .onChange(async (val) => {
+                    this.showSubplots = val;
+                    await this.saveRevealOptions();
+                    this.renderPreview();
+                })
+            );
+
+        new Setting(revealSection)
+            .setName('Acts')
+            .setDesc('Show act divisions. Unchecked shows a continuous circle.')
+            .addToggle(toggle => toggle
+                .setValue(this.showActs)
+                .onChange(async (val) => {
+                    this.showActs = val;
+                    await this.saveRevealOptions();
+                    this.renderPreview();
+                })
+            );
+
+        new Setting(revealSection)
+            .setName('Status Colors')
+            .setDesc('Show stage colors (draft, revised, etc). Unchecked uses neutral gray for all scenes.')
+            .addToggle(toggle => toggle
+                .setValue(this.showStatus)
+                .onChange(async (val) => {
+                    this.showStatus = val;
+                    await this.saveRevealOptions();
+                    this.renderPreview();
+                })
+            );
 
         // Preview Panel
         const previewSection = glassContainer.createDiv({ cls: 'rt-glass-card rt-apr-preview-section' });
@@ -194,23 +238,6 @@ export class AuthorProgressModal extends Modal {
             .onClick(() => this.copyEmbed('patreon'));
     }
 
-    private createModeButton(container: HTMLElement, mode: AuthorProgressMode, label: string) {
-        const btn = container.createEl('button', { text: label, cls: 'rt-apr-mode-btn' });
-        if (this.mode === mode) btn.addClass('rt-active');
-        btn.onclick = () => {
-            this.mode = mode;
-            container.findAll('.rt-apr-mode-btn').forEach(b => b.removeClass('rt-active'));
-            btn.addClass('rt-active');
-            
-            if (this.plugin.settings.authorProgress) {
-                this.plugin.settings.authorProgress.lastUsedMode = mode;
-                this.plugin.saveSettings();
-            }
-            
-            this.renderPreview();
-        };
-    }
-
     private async loadData() {
         this.cachedScenes = await getAllScenes(this.app, this.plugin);
         this.progressPercent = this.service.calculateProgress(this.cachedScenes);
@@ -237,7 +264,10 @@ export class AuthorProgressModal extends Modal {
                 aprMode: true,
                 progressPercent: this.progressPercent,
                 bookTitle: settings?.bookTitle || 'Working Title',
-                authorUrl: settings?.authorUrl || ''
+                authorUrl: settings?.authorUrl || '',
+                showSubplots: this.showSubplots,
+                showActs: this.showActs,
+                showStatus: this.showStatus
             });
 
             this.previewContainer.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
@@ -245,6 +275,29 @@ export class AuthorProgressModal extends Modal {
             this.previewContainer.createDiv({ text: 'Failed to render preview. Check console for details.', cls: 'rt-apr-error' });
             console.error('APR Preview render error:', e);
         }
+    }
+    
+    private async saveRevealOptions() {
+        if (!this.plugin.settings.authorProgress) {
+            this.plugin.settings.authorProgress = {
+                enabled: false,
+                defaultNoteBehavior: 'preset',
+                defaultPublishTarget: 'folder',
+                showSubplots: true,
+                showActs: true,
+                showStatus: true,
+                bookTitle: '',
+                authorUrl: '',
+                updateFrequency: 'manual',
+                stalenessThresholdDays: 30,
+                enableReminders: true,
+                dynamicEmbedPath: 'Radial Timeline/Social/progress.svg'
+            };
+        }
+        this.plugin.settings.authorProgress.showSubplots = this.showSubplots;
+        this.plugin.settings.authorProgress.showActs = this.showActs;
+        this.plugin.settings.authorProgress.showStatus = this.showStatus;
+        await this.plugin.saveSettings();
     }
 
     private async publish(mode: 'static' | 'dynamic') {

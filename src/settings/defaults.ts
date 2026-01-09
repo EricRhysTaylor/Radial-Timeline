@@ -214,10 +214,13 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
     // Author Progress Report (APR)
     authorProgress: {
         enabled: false,
-        defaultMode: 'FULL_STRUCTURE',
         defaultNoteBehavior: 'preset',
         defaultPublishTarget: 'folder',
-        lastUsedMode: 'FULL_STRUCTURE',
+        
+        // Reveal options
+        showSubplots: true,
+        showActs: true,
+        showStatus: true,
         
         bookTitle: '',
         authorUrl: '',

@@ -48,6 +48,10 @@ export interface RingRenderContext {
     numActs: number;
     /** APR mode - suppress all text rendering */
     isAprMode?: boolean;
+    /** APR reveal options */
+    aprShowSubplots?: boolean;  // Show all rings vs single Main Plot ring
+    aprShowActs?: boolean;      // Show act divisions vs full circle  
+    aprShowStatus?: boolean;    // Show real stage colors vs neutral gray
 }
 
 export function renderRings(ctx: RingRenderContext): string {
@@ -69,7 +73,10 @@ export function renderRings(ctx: RingRenderContext): string {
         sceneGrades,
         manuscriptOrderPositions,
         numActs,
-        isAprMode = false
+        isAprMode = false,
+        aprShowSubplots = true,
+        aprShowActs = true,
+        aprShowStatus = true
     } = ctx;
 
     let svg = '';
@@ -111,7 +118,10 @@ export function renderRings(ctx: RingRenderContext): string {
         const subplotCount = masterSubplotOrder.length;
         const ringsToUse = Math.min(subplotCount, totalRings);
 
-        for (let ringOffset = 0; ringOffset < ringsToUse; ringOffset++) {
+        // In APR mode with showSubplots=false, only render the outermost ring
+        const maxRingOffset = (isAprMode && !aprShowSubplots) ? 1 : ringsToUse;
+        
+        for (let ringOffset = 0; ringOffset < maxRingOffset; ringOffset++) {
             const ring = totalRings - ringOffset - 1; // Start from outermost
 
             const innerR = ringStartRadii[ring];
@@ -235,7 +245,10 @@ export function renderRings(ctx: RingRenderContext): string {
                     const textPathRadius = Math.max(innerR, outerR - sceneTitleInset);
                     const textPathLargeArcFlag = (sceneEndAngle - (sceneStartAngle + TEXTPATH_START_NUDGE_RAD)) > Math.PI ? 1 : 0;
 
-                    const color = getFillForScene(scene, PUBLISH_STAGE_COLORS, subplotColorFor, true, forceSubplotFillColors);
+                    // In APR mode with showStatus=false, use neutral Zero stage color for all scenes
+                    const color = (isAprMode && !aprShowStatus) 
+                        ? PUBLISH_STAGE_COLORS.Zero 
+                        : getFillForScene(scene, PUBLISH_STAGE_COLORS, subplotColorFor, true, forceSubplotFillColors);
                     const arcPathStr = sceneArcPath(innerR, effectiveOuterR, sceneStartAngle, sceneEndAngle);
                     const sceneUniqueKey = scene.path || `${scene.title || ''}::${scene.number ?? ''}::${scene.when ?? ''}`;
                     const sceneId = makeSceneId(act, ring, idx, true, true, sceneUniqueKey);
@@ -364,13 +377,16 @@ export function renderRings(ctx: RingRenderContext): string {
                     const textPathRadius = Math.max(innerR, outerR - sceneTitleInset);
                     const textPathLargeArcFlag = (sceneEndAngle - (sceneStartAngle + TEXTPATH_START_NUDGE_RAD)) > Math.PI ? 1 : 0;
 
-                    const color = getFillForScene(
-                        scene,
-                        PUBLISH_STAGE_COLORS,
-                        subplotColorFor,
-                        isAllScenesMode,
-                        forceSubplotFillColors
-                    );
+                    // In APR mode with showStatus=false, use neutral Zero stage color for all scenes
+                    const color = (isAprMode && !aprShowStatus)
+                        ? PUBLISH_STAGE_COLORS.Zero
+                        : getFillForScene(
+                            scene,
+                            PUBLISH_STAGE_COLORS,
+                            subplotColorFor,
+                            isAllScenesMode,
+                            forceSubplotFillColors
+                        );
 
                     const arcPathStr = sceneArcPath(innerR, outerR, sceneStartAngle, sceneEndAngle);
                     const sceneUniqueKey = scene.path || `${scene.title || ''}::${scene.number ?? ''}::${scene.when ?? ''}`;

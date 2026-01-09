@@ -67,16 +67,18 @@ export interface HoverMetadataField {
     enabled: boolean;      // Show in hover synopsis
 }
 
-export type AuthorProgressMode = 'FULL_STRUCTURE' | 'SCENES_ONLY' | 'MOMENTUM_ONLY';
 export type AuthorProgressPublishTarget = 'folder' | 'github_pages';
 export type AuthorProgressFrequency = 'manual' | 'daily' | 'weekly' | 'monthly';
 
 export interface AuthorProgressSettings {
     enabled: boolean;
-    defaultMode: AuthorProgressMode;
     defaultNoteBehavior: 'preset' | 'custom';
     defaultPublishTarget: AuthorProgressPublishTarget;
-    lastUsedMode?: AuthorProgressMode;
+    
+    // Reveal Options (checkboxes)
+    showSubplots: boolean;  // Show all rings vs single Main Plot ring
+    showActs: boolean;      // Show act divisions vs full circle
+    showStatus: boolean;    // Show real stage colors vs neutral gray
     
     // Identity & Branding
     bookTitle: string;

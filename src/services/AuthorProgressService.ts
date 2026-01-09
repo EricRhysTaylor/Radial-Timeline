@@ -70,7 +70,10 @@ export class AuthorProgressService {
             aprMode: true,
             progressPercent,
             bookTitle: settings.bookTitle || 'Working Title',
-            authorUrl: settings.authorUrl || ''
+            authorUrl: settings.authorUrl || '',
+            showSubplots: settings.showSubplots ?? true,
+            showActs: settings.showActs ?? true,
+            showStatus: settings.showStatus ?? true
         });
 
         let finalSvg = svgString;

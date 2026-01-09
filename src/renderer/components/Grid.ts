@@ -153,8 +153,8 @@ export function renderCenterGrid(params: {
           <path d="M16.5 21.174C15.5 20.5 14.372 20 13 20c-2.058 0-3.928 2.356-6 2-2.072-.356-2.775-3.369-1.5-4.5"/>
           <circle cx="16" cy="7" r="5"/>
         </svg>`;
-        // Lucide clapperboard icon (16x16, viewBox 0 0 24 24)
-        const clapperboardIcon = `<svg x="${iconX}" y="${iconY}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+        // Lucide clapperboard icon (20x20, viewBox 0 0 24 24)
+        const clapperboardIcon = `<svg x="${iconX}" y="${iconY}" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/>
           <path d="m6.2 5.3 3.1 3.9"/>
           <path d="m12.4 3.4 3.1 4"/>

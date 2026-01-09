@@ -131,6 +131,10 @@ export function createTimelineSVG(
     aprOptions?: AprOptions
 ): { svgString: string; maxStageColor: string } {
     const isAprMode = aprOptions?.aprMode === true;
+    // APR reveal options (default to showing everything if not specified)
+    const aprShowSubplots = aprOptions?.showSubplots ?? true;
+    const aprShowActs = aprOptions?.showActs ?? true;
+    const aprShowStatus = aprOptions?.showStatus ?? true;
     const stopTotalPerf = startPerfSegment(plugin, 'timeline.total');
     const sceneCount = scenes.length;
     const size = SVG_SIZE;
@@ -467,7 +471,10 @@ export function createTimelineSVG(
         sceneGrades,
         manuscriptOrderPositions,
         numActs,
-        isAprMode
+        isAprMode,
+        aprShowSubplots,
+        aprShowActs,
+        aprShowStatus
     };
 
     svg += renderRings(ringRenderContext);
@@ -475,9 +482,13 @@ export function createTimelineSVG(
     stopRingRender();
 
     // After all scenes are drawn, add just the act borders (vertical lines only)
-    svg += renderActBorders({ numActs, innerRadius, outerRadius: subplotOuterRadius });
+    // In APR mode with showActs=false, skip act borders for a continuous circle
+    if (!(isAprMode && !aprShowActs)) {
+        svg += renderActBorders({ numActs, innerRadius, outerRadius: subplotOuterRadius });
+    }
 
-    if (shouldShowSubplotRings(plugin)) {
+    // In APR mode with showSubplots=false, skip subplot indicators
+    if (shouldShowSubplotRings(plugin) && !(isAprMode && !aprShowSubplots)) {
         svg += renderSubplotDominanceIndicators({
             masterSubplotOrder,
             ringStartRadii,

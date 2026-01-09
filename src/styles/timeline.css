@@ -1036,8 +1036,10 @@
   fill: rgba(60, 160, 220, 0.9);
 }
 
-/* Runtime display icon - override container svg sizing rules */
+/* Runtime display icon - override container svg sizing rules to respect inline dimensions */
 .rt-runtime-display svg {
-  width: 16px;
-  height: 16px;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
 }

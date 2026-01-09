@@ -1,7 +1,10 @@
 import { TimelineItem } from '../../types';
-import { AuthorProgressMode } from '../../types/settings';
 
-export function anonymizeTimeline(scenes: TimelineItem[], mode: AuthorProgressMode): TimelineItem[] {
+/**
+ * Anonymize timeline data for public sharing.
+ * Removes sensitive text content while preserving structure.
+ */
+export function anonymizeTimeline(scenes: TimelineItem[]): TimelineItem[] {
     return scenes.map(scene => {
         const clean: TimelineItem = { ...scene };
         // Remove sensitive text
@@ -17,20 +20,6 @@ export function anonymizeTimeline(scenes: TimelineItem[], mode: AuthorProgressMo
         Object.keys(clean).forEach(key => {
             if (key.startsWith('Gossamer')) delete (clean as any)[key];
         });
-
-        // Mode specific filtering
-        if (mode === 'MOMENTUM_ONLY') {
-            // Flatten everything to just a generic ring
-            clean.subplot = 'Anonymized';
-            clean.act = undefined;
-        } else if (mode === 'SCENES_ONLY') {
-            if (clean.subplot) {
-                // Keep the subplot ID/Color association but maybe obscure the name?
-                // For V1 we'll keep subplot names if they are structure-only
-                // But the requirement says "anonymized rings". 
-                // Let's keep the subplot *grouping* but not text labels in the renderer.
-            }
-        }
         
         // Ensure minimal title for renderer stability
         clean.title = `Scene ${scene.number || ''}`;

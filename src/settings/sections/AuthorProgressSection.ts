@@ -274,7 +274,10 @@ async function renderHeroPreview(
             aprMode: true,
             progressPercent,
             bookTitle: aprSettings?.bookTitle || 'Working Title',
-            authorUrl: aprSettings?.authorUrl || ''
+            authorUrl: aprSettings?.authorUrl || '',
+            showSubplots: aprSettings?.showSubplots ?? true,
+            showActs: aprSettings?.showActs ?? true,
+            showStatus: aprSettings?.showStatus ?? true
         });
         
         container.empty();
