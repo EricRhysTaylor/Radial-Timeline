@@ -1,9 +1,13 @@
 import { App, Notice, TFolder } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { TimelineItem } from '../types/timeline';
-import { createTimelineSVG } from '../renderer/TimelineRenderer';
 import { getAllScenes } from '../utils/manuscript';
-import { anonymizeTimeline, getAuthorProgressSealSVG } from '../renderer/utils/AuthorProgressUtils';
+import { createAprSVG, AprSize, AprViewMode } from '../renderer/apr';
+
+export interface AprGenerateOptions {
+    viewMode?: AprViewMode;
+    size?: AprSize;
+}
 
 export class AuthorProgressService {
     constructor(private plugin: RadialTimelinePlugin, private app: App) {}
@@ -53,39 +57,47 @@ export class AuthorProgressService {
     }
 
     /**
+     * Maps old mode strings to new AprViewMode
+     */
+    private mapOldModeToNew(oldMode: string): AprViewMode {
+        switch (oldMode) {
+            case 'SCENES_ONLY': return 'scenes';
+            case 'MOMENTUM_ONLY': return 'momentum';
+            case 'FULL_STRUCTURE':
+            default: return 'full';
+        }
+    }
+
+    /**
      * Generates and saves the APR report.
      */
-    public async generateReport(mode?: 'static' | 'dynamic'): Promise<string | null> {
+    public async generateReport(
+        mode?: 'static' | 'dynamic', 
+        options?: AprGenerateOptions
+    ): Promise<string | null> {
         const settings = this.plugin.settings.authorProgress;
         if (!settings) return null;
 
         const scenes = await getAllScenes(this.app, this.plugin);
         const progressPercent = this.calculateProgress(scenes);
         
-        // Use settings mode or override
-        const aprMode = mode === 'dynamic' ? settings.defaultMode : (settings.lastUsedMode || 'FULL_STRUCTURE');
-        const processedScenes = anonymizeTimeline(scenes, aprMode);
+        // Determine view mode - use passed option, or map from settings
+        const oldMode = mode === 'dynamic' ? settings.defaultMode : (settings.lastUsedMode || 'FULL_STRUCTURE');
+        const viewMode = options?.viewMode ?? this.mapOldModeToNew(oldMode);
+        
+        // Determine size - use passed option, or default from settings
+        const size: AprSize = options?.size ?? ((settings as any).aprSize || 'standard');
 
-        // Generate SVG with APR Mode flag
-        const { svgString } = createTimelineSVG({
-            settings: {
-                ...this.plugin.settings,
-                showActLabels: aprMode !== 'MOMENTUM_ONLY',
-            }
-        } as any, processedScenes, {
-            aprMode: true,
+        // Generate SVG with new dedicated APR renderer
+        const { svgString } = createAprSVG(scenes, {
+            viewMode,
+            size,
+            bookTitle: settings.bookTitle || 'Working Title',
+            authorName: (settings as any).authorName || '',
+            authorUrl: settings.authorUrl || '',
             progressPercent,
-            bookTitle: settings.bookTitle || 'Untitled Project',
-            authorUrl: settings.authorUrl || ''
         });
 
-        // Inject simplified seal/branding if not handled by renderer directly
-        // The plan says renderer handles branding text path, so seal might be redundant or supplementary.
-        // We'll leave the seal out if the renderer handles the perimeter text. 
-        // But the plan says "Perimeter Branding: Arcing text... Links".
-        // Let's assume createTimelineSVG handles it via the new options.
-
-        // Add clickable wrapper if URL provided (and not handled inside SVG)
         let finalSvg = svgString;
 
         // Save logic

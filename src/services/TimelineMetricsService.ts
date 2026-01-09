@@ -110,12 +110,13 @@ export class TimelineMetricsService {
             return null;
         }
 
-        // Count completions in the active stage within the rolling window
+        // Count completions across ALL stages within the rolling window (not just active stage)
+        // This way, completing scenes in any stage contributes to the pace calculation
         const completedPathsWindow = new Set<string>();
         let completedWindow = 0;
         let lastProgressDate: Date | null = null;
 
-        stageScenes.forEach(scene => {
+        sceneNotesOnly.forEach(scene => {
             const scenePath = scene.path;
             if (!scenePath) return;
             if (!isCompleted(scene.status)) return;

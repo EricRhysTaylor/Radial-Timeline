@@ -2,6 +2,8 @@ import { App, Setting, Notice, setIcon, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { AuthorProgressService } from '../../services/AuthorProgressService';
 import { DEFAULT_SETTINGS } from '../defaults';
+import { getAllScenes } from '../../utils/manuscript';
+import { createAprSVG } from '../../renderer/apr';
 
 export interface AuthorProgressSectionProps {
     app: App;
@@ -12,22 +14,66 @@ export interface AuthorProgressSectionProps {
 export function renderAuthorProgressSection({ app, plugin, containerEl }: AuthorProgressSectionProps): void {
     const section = containerEl.createDiv({ cls: 'rt-settings-section rt-apr-section' });
     
-    // Content wrapper with accent border
-    const contentWrapper = section.createDiv({ cls: 'rt-apr-content-wrapper' });
+    // ─────────────────────────────────────────────────────────────────────────
+    // APR HERO SECTION
+    // ─────────────────────────────────────────────────────────────────────────
+    const hero = section.createDiv({ cls: 'rt-apr-hero' });
     
-    // Header inside content wrapper with icon, title, and last update
+    // Badge row with pill
+    const badgeRow = hero.createDiv({ cls: 'rt-apr-hero-badge-row' });
+    const badge = badgeRow.createSpan({ cls: 'rt-apr-hero-badge' });
+    setIcon(badge, 'radio');
+    badge.createSpan({ text: 'Social · Share' });
+    
+    // Big headline
+    hero.createEl('h3', { 
+        cls: 'rt-apr-hero-title', 
+        text: 'Promote your work in progress.' 
+    });
+    
+    // Description paragraph
+    hero.createEl('p', { 
+        cls: 'rt-apr-hero-subtitle', 
+        text: 'Generate beautiful, spoiler-safe progress graphics for social media and crowdfunding. Perfect for Kickstarter updates, Patreon posts, or sharing your writing journey with fans.' 
+    });
+    
+    // Features section
+    const featuresSection = hero.createDiv({ cls: 'rt-apr-hero-features' });
+    featuresSection.createEl('h5', { text: 'Key Benefits:' });
+    const featuresList = featuresSection.createEl('ul');
+    [
+        { icon: 'eye-off', text: 'Spoiler-Safe — Scene titles and content automatically anonymized' },
+        { icon: 'share-2', text: 'Shareable — Export as static snapshot or live-updating embed' },
+        { icon: 'trending-up', text: 'Progress Tracking — Visual momentum that excites your audience' },
+    ].forEach(feature => {
+        const li = featuresList.createEl('li');
+        const iconSpan = li.createSpan({ cls: 'rt-apr-hero-feature-icon' });
+        setIcon(iconSpan, feature.icon);
+        li.createSpan({ text: feature.text });
+    });
+    
+    // SVG Preview container
+    const previewContainer = hero.createDiv({ cls: 'rt-apr-hero-preview' });
+    previewContainer.createDiv({ cls: 'rt-apr-hero-preview-loading', text: 'Loading preview...' });
+    
+    // Load and render preview asynchronously
+    renderHeroPreview(app, plugin, previewContainer);
+    
+    // Meta tags
     const settings = plugin.settings.authorProgress;
     const lastDate = settings?.lastPublishedDate 
         ? new Date(settings.lastPublishedDate).toLocaleDateString() 
         : 'Never';
     
-    const headerBanner = contentWrapper.createDiv({ cls: 'rt-apr-header-banner' });
-    const headerIcon = headerBanner.createSpan({ cls: 'rt-apr-header-icon' });
-    setIcon(headerIcon, 'radio');
-    headerBanner.createEl('span', { 
-        text: `Author Progress Report (APR) — Last Update: ${lastDate}`, 
-        cls: 'rt-apr-header-title' 
-    });
+    const meta = hero.createDiv({ cls: 'rt-apr-hero-meta' });
+    meta.createSpan({ text: `Last update: ${lastDate}` });
+    meta.createSpan({ text: 'Kickstarter ready' });
+    meta.createSpan({ text: 'Patreon friendly' });
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // CONFIGURATION SECTION
+    // ─────────────────────────────────────────────────────────────────────────
+    const contentWrapper = section.createDiv({ cls: 'rt-apr-content-wrapper' });
     
     // Identity Inputs (High Visibility)
     new Setting(contentWrapper)
@@ -195,4 +241,53 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             });
         });
     });
+}
+
+/**
+ * Render the APR SVG preview in the hero section
+ */
+async function renderHeroPreview(
+    app: App, 
+    plugin: RadialTimelinePlugin, 
+    container: HTMLElement
+): Promise<void> {
+    try {
+        const scenes = await getAllScenes(app, plugin);
+        
+        if (scenes.length === 0) {
+            container.empty();
+            container.createDiv({ 
+                cls: 'rt-apr-hero-preview-empty',
+                text: 'Create scenes to see a preview of your Author Progress Report.' 
+            });
+            return;
+        }
+        
+        // Calculate progress using AuthorProgressService
+        const service = new AuthorProgressService(plugin, app);
+        const progressPercent = service.calculateProgress(scenes);
+        
+        const aprSettings = plugin.settings.authorProgress;
+        
+        // Use the new dedicated APR renderer
+        const { svgString } = createAprSVG(scenes, {
+            viewMode: 'full',
+            size: 'compact', // Use compact size for settings preview
+            bookTitle: aprSettings?.bookTitle || 'Working Title',
+            authorName: (aprSettings as any)?.authorName || '',
+            authorUrl: aprSettings?.authorUrl || '',
+            progressPercent,
+        });
+        
+        container.empty();
+        container.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
+        
+    } catch (e) {
+        container.empty();
+        container.createDiv({ 
+            cls: 'rt-apr-hero-preview-error',
+            text: 'Failed to render preview.' 
+        });
+        console.error('APR Settings Preview error:', e);
+    }
 }

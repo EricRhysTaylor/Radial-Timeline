@@ -2262,14 +2262,166 @@
   margin-bottom: 24px;
 }
 
-.rt-apr-content-wrapper {
+/* APR Hero Section (mirrors Pro hero but with social media colors) */
+.rt-apr-hero {
+  position: relative;
+  margin-bottom: 16px;
   padding: 16px 18px;
-  border: 1px solid rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.3);
   border-radius: 10px;
-  background: linear-gradient(135deg, rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.08) 0%, rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.02) 100%);
+  border: 1px solid rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.35);
+  background: radial-gradient(circle at 12% 20%, rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.16), transparent 40%),
+              linear-gradient(135deg, rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.12), rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.04));
+  box-shadow: 0 10px 40px rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.12);
+  overflow: hidden;
 }
 
-/* APR Header Banner with Icon and Title */
+.rt-apr-hero-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.rt-apr-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.15);
+  color: var(--rt-social-color);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.rt-apr-hero-badge svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* High specificity to override Obsidian's default h3 styles */
+.rt-settings-root .rt-apr-hero h3.rt-apr-hero-title,
+.rt-settings-root .rt-apr-hero .rt-apr-hero-title,
+.rt-settings-root .rt-apr-hero-title {
+  margin: 0 0 4px 0;
+  padding: 0;
+  margin-left: 0;
+  padding-left: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-normal);
+  text-indent: 0;
+}
+
+.rt-apr-hero-subtitle {
+  margin: 4px 0 10px 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.rt-apr-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.rt-apr-hero-meta span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.10);
+  color: var(--rt-social-color);
+  font-size: 12px;
+}
+
+/* APR hero features list */
+.rt-apr-hero-features {
+  margin: 12px 0 14px 0;
+  padding: 10px 12px;
+  background: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.06);
+  border-radius: 8px;
+}
+
+.rt-apr-hero-features h5 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rt-social-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rt-apr-hero-features ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rt-apr-hero-features li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.rt-apr-hero-feature-icon {
+  display: flex;
+  align-items: center;
+  color: var(--rt-social-color);
+}
+
+.rt-apr-hero-feature-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* APR Hero Preview (SVG container) */
+.rt-apr-hero-preview {
+  margin: 16px 0 8px 0;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  max-height: 240px;
+  overflow: hidden;
+}
+
+.rt-apr-hero-preview svg {
+  width: 100%;
+  height: auto;
+  max-height: 220px;
+  border-radius: 4px;
+}
+
+.rt-apr-hero-preview-loading,
+.rt-apr-hero-preview-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 24px;
+}
+
+.rt-apr-hero-preview-error {
+  color: var(--text-error);
+  font-size: 13px;
+  text-align: center;
+  padding: 24px;
+}
+
+/* APR Configuration Wrapper */
+.rt-apr-content-wrapper {
+  padding: 16px 18px;
+  border: 1px solid rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.2);
+  border-radius: 10px;
+  background: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.03);
+}
+
+/* Legacy styles kept for backwards compatibility */
 .rt-apr-header-banner {
   display: flex;
   align-items: center;

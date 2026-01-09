@@ -191,12 +191,12 @@
 
 /* Scoped divider between duo grid columns */
 .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-scenes-generate-setting {
-    padding-right: 16px;
+    padding: 0 24px 0 0;
     border-right: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-book-length-setting {
-    padding-left: 16px;
+    padding: 0 0 0 24px;
     align-self: flex-start; /* Align to top like scenes to generate */
 }
 

@@ -474,6 +474,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                         renderDetails();
                     };
 
+                    // SAFE: Modal classes don't have registerDomEvent; modal cleanup handles this
                     inputEl.addEventListener('keydown', (e) => {
                         if (e.key === 'Enter') {
                             e.preventDefault();
