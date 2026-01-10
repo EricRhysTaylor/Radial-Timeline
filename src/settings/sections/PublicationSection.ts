@@ -1,10 +1,11 @@
 import type { App } from 'obsidian';
-import { Setting as ObsidianSetting, Notice } from 'obsidian';
+import { Setting as ObsidianSetting, Notice, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { t } from '../../i18n';
 import { addWikiLink } from '../wikiLink';
 import { getAllScenes } from '../../utils/manuscript';
 import type { CompletionEstimate } from '../../services/TimelineMetricsService';
+import { STAGE_ORDER } from '../../utils/constants';
 
 export function renderPublicationSection(params: {
     app: App;
@@ -180,10 +181,122 @@ export function renderPublicationSection(params: {
             
             if (!estimate) {
                 previewContainer.removeClass('rt-completion-preview-warn', 'rt-completion-preview-late', 'rt-completion-preview-stalled');
-                const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
-                heading.setText('Completion Estimate');
-                const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
-                body.createDiv({ cls: 'rt-completion-complete', text: '🎉 All scenes in the active stage are complete!' });
+                
+                // Detect which stage is complete
+                const normalizeStage = (raw: unknown): string => {
+                    const v = (raw ?? 'Zero').toString().trim().toLowerCase();
+                    const match = STAGE_ORDER.find(s => s.toLowerCase() === v);
+                    return match ?? 'Zero';
+                };
+                const highestStageWithScenes = [...STAGE_ORDER].reverse().find(stage =>
+                    scenes.some(scene => normalizeStage(scene['Publish Stage']) === stage)
+                );
+                
+                if (highestStageWithScenes === 'Press') {
+                    // ULTIMATE celebration - the book is DONE!
+                    previewContainer.addClass('rt-completion-preview-book-complete');
+                    
+                    const bgIcon = previewContainer.createDiv({ cls: 'rt-completion-complete-bg-icon' });
+                    setIcon(bgIcon, 'shell');
+                    
+                    const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
+                    heading.setText('Book Complete');
+                    
+                    const bookCelebrations = [
+                        { title: "You wrote a book.", subtitle: "Let that sink in." },
+                        { title: "It's done.", subtitle: "You actually did it. A whole book." },
+                        { title: "Author status: confirmed.", subtitle: "Press stage complete. This is a real book now." },
+                        { title: "CHAMPION", subtitle: "From zero draft to press-ready. Incredible." },
+                        { title: "The manuscript is complete.", subtitle: "Time to uncork something." },
+                        { title: "Publishing awaits.", subtitle: "You've done your part. Every. Single. Scene." },
+                        { title: "Final boss defeated.", subtitle: "The book is finished. You win." },
+                        { title: "Standing ovation.", subtitle: "From first word to final scene — you did this." },
+                    ];
+                    const celebration = bookCelebrations[Math.floor(Math.random() * bookCelebrations.length)];
+                    
+                    const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
+                    const completeContent = body.createDiv({ cls: 'rt-completion-complete' });
+                    completeContent.createDiv({ cls: 'rt-completion-complete-title', text: celebration.title });
+                    completeContent.createDiv({ cls: 'rt-completion-complete-subtitle', text: celebration.subtitle });
+                } else if (highestStageWithScenes === 'Zero') {
+                    // Zero draft complete - first major milestone! Sprout icon
+                    previewContainer.addClass('rt-completion-preview-zero-complete');
+                    
+                    const bgIcon = previewContainer.createDiv({ cls: 'rt-completion-complete-bg-icon' });
+                    setIcon(bgIcon, 'sprout');
+                    
+                    const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
+                    heading.setText('Zero Draft Complete');
+                    
+                    const zeroCelebrations = [
+                        { title: "The seed is planted.", subtitle: "A complete zero draft. That's the hardest part." },
+                        { title: "First draft done.", subtitle: "You told yourself the whole story." },
+                        { title: "From nothing to something.", subtitle: "Every book starts exactly like this." },
+                        { title: "The foundation is laid.", subtitle: "Zero draft complete. Now the real work begins." },
+                        { title: "You did it.", subtitle: "A whole draft exists. Most writers never get here." },
+                        { title: "Something from nothing.", subtitle: "The hardest gap to cross is now behind you." },
+                        { title: "Draft one: complete.", subtitle: "It doesn't have to be good. It just has to exist. And it does." },
+                        { title: "The clay is on the wheel.", subtitle: "Now you can shape it." },
+                    ];
+                    const celebration = zeroCelebrations[Math.floor(Math.random() * zeroCelebrations.length)];
+                    
+                    const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
+                    const completeContent = body.createDiv({ cls: 'rt-completion-complete' });
+                    completeContent.createDiv({ cls: 'rt-completion-complete-title', text: celebration.title });
+                    completeContent.createDiv({ cls: 'rt-completion-complete-subtitle', text: celebration.subtitle });
+                } else if (highestStageWithScenes === 'Author') {
+                    // Author stage complete - the sapling grows! Tree-pine icon
+                    previewContainer.addClass('rt-completion-preview-author-complete');
+                    
+                    const bgIcon = previewContainer.createDiv({ cls: 'rt-completion-complete-bg-icon' });
+                    setIcon(bgIcon, 'tree-pine');
+                    
+                    const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
+                    heading.setText('Author Stage Complete');
+                    
+                    const authorCelebrations = [
+                        { title: "The sapling stands.", subtitle: "Author revisions complete. Your vision is taking shape." },
+                        { title: "Revision one: done.", subtitle: "You've refined your raw material into something real." },
+                        { title: "Author's cut complete.", subtitle: "This is your version. Now it goes to the editors." },
+                        { title: "Self-edit: conquered.", subtitle: "The hardest critic has approved. Time for fresh eyes." },
+                        { title: "Your draft, realized.", subtitle: "From zero to author-ready. That's growth." },
+                        { title: "The tree takes root.", subtitle: "Solid foundation. Ready for the next stage." },
+                        { title: "Personal best achieved.", subtitle: "You've done everything you can alone. Time to collaborate." },
+                        { title: "Manuscript shaped.", subtitle: "Author stage complete. Onward to the house." },
+                    ];
+                    const celebration = authorCelebrations[Math.floor(Math.random() * authorCelebrations.length)];
+                    
+                    const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
+                    const completeContent = body.createDiv({ cls: 'rt-completion-complete' });
+                    completeContent.createDiv({ cls: 'rt-completion-complete-title', text: celebration.title });
+                    completeContent.createDiv({ cls: 'rt-completion-complete-subtitle', text: celebration.subtitle });
+                } else if (highestStageWithScenes === 'House') {
+                    // House stage complete - the forest grows! Trees icon
+                    previewContainer.addClass('rt-completion-preview-house-complete');
+                    
+                    const bgIcon = previewContainer.createDiv({ cls: 'rt-completion-complete-bg-icon' });
+                    setIcon(bgIcon, 'trees');
+                    
+                    const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
+                    heading.setText('House Stage Complete');
+                    
+                    const houseCelebrations = [
+                        { title: "The forest grows.", subtitle: "House edits complete. The manuscript is maturing." },
+                        { title: "Editor approved.", subtitle: "You've incorporated professional feedback. Almost there." },
+                        { title: "House stage: done.", subtitle: "One more push to the finish line." },
+                        { title: "Professionally polished.", subtitle: "The collaboration has paid off. Press stage awaits." },
+                        { title: "Editorial gauntlet: cleared.", subtitle: "The hard conversations are behind you." },
+                        { title: "Refined and ready.", subtitle: "House complete. The press beckons." },
+                        { title: "From rough to refined.", subtitle: "The editorial process has shaped something special." },
+                        { title: "Almost there.", subtitle: "House stage complete. One final stage remains." },
+                    ];
+                    const celebration = houseCelebrations[Math.floor(Math.random() * houseCelebrations.length)];
+                    
+                    const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
+                    const completeContent = body.createDiv({ cls: 'rt-completion-complete' });
+                    completeContent.createDiv({ cls: 'rt-completion-complete-title', text: celebration.title });
+                    completeContent.createDiv({ cls: 'rt-completion-complete-subtitle', text: celebration.subtitle });
+                }
                 return;
             }
 

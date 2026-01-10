@@ -2775,10 +2775,195 @@
 }
 
 .rt-completion-complete {
-  font-size: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   text-align: center;
-  padding: 20px;
-  color: var(--text-normal);
+  padding: 24px 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.rt-completion-complete-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.rt-completion-complete-subtitle {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+}
+
+/* Dramatic completion state */
+.rt-completion-preview-complete {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #2d5a2d 0%, #3d7a3d 25%, #4a9a4a 50%, #3d7a3d 75%, #2d5a2d 100%);
+  border: 2px solid #6FB971;
+  box-shadow: 
+    0 0 30px rgba(111, 185, 113, 0.3),
+    inset 0 0 60px rgba(111, 185, 113, 0.1);
+}
+
+.rt-completion-preview-complete .rt-planetary-preview-heading {
+  color: rgba(255, 255, 255, 0.9);
+  position: relative;
+  z-index: 1;
+}
+
+.rt-completion-complete-bg-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.rt-completion-complete-bg-icon svg {
+  width: 180px;
+  height: 180px;
+  color: #fff;
+}
+
+/* Zero Draft Complete - Purple theme with Sprout */
+.rt-completion-preview-zero-complete {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #3d2d5a 0%, #5a3d7a 25%, #7a4d9a 50%, #5a3d7a 75%, #3d2d5a 100%);
+  border: 2px solid #9E70CF;
+  box-shadow: 
+    0 0 30px rgba(158, 112, 207, 0.35),
+    inset 0 0 60px rgba(158, 112, 207, 0.12);
+}
+
+.rt-completion-preview-zero-complete .rt-planetary-preview-heading {
+  color: rgba(255, 255, 255, 0.9);
+  position: relative;
+  z-index: 1;
+}
+
+.rt-completion-preview-zero-complete .rt-completion-complete-title {
+  color: #fff;
+}
+
+.rt-completion-preview-zero-complete .rt-completion-complete-bg-icon {
+  opacity: 0.15;
+}
+
+.rt-completion-preview-zero-complete .rt-completion-complete-bg-icon svg {
+  color: #d4b8e8;
+}
+
+/* Author Stage Complete - Blue theme with Tree-pine */
+.rt-completion-preview-author-complete {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #2d3d5a 0%, #3d5a7a 25%, #4d7a9a 50%, #3d5a7a 75%, #2d3d5a 100%);
+  border: 2px solid #5E85CF;
+  box-shadow: 
+    0 0 30px rgba(94, 133, 207, 0.35),
+    inset 0 0 60px rgba(94, 133, 207, 0.12);
+}
+
+.rt-completion-preview-author-complete .rt-planetary-preview-heading {
+  color: rgba(255, 255, 255, 0.9);
+  position: relative;
+  z-index: 1;
+}
+
+.rt-completion-preview-author-complete .rt-completion-complete-title {
+  color: #fff;
+}
+
+.rt-completion-preview-author-complete .rt-completion-complete-bg-icon {
+  opacity: 0.15;
+}
+
+.rt-completion-preview-author-complete .rt-completion-complete-bg-icon svg {
+  color: #a8c4e8;
+}
+
+/* House Stage Complete - Orange theme with Trees */
+.rt-completion-preview-house-complete {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #5a3d2d 0%, #7a4d3d 25%, #9a5d47 50%, #7a4d3d 75%, #5a3d2d 100%);
+  border: 2px solid #DA7847;
+  box-shadow: 
+    0 0 30px rgba(218, 120, 71, 0.35),
+    inset 0 0 60px rgba(218, 120, 71, 0.12);
+}
+
+.rt-completion-preview-house-complete .rt-planetary-preview-heading {
+  color: rgba(255, 255, 255, 0.9);
+  position: relative;
+  z-index: 1;
+}
+
+.rt-completion-preview-house-complete .rt-completion-complete-title {
+  color: #fff;
+}
+
+.rt-completion-preview-house-complete .rt-completion-complete-bg-icon {
+  opacity: 0.15;
+}
+
+.rt-completion-preview-house-complete .rt-completion-complete-bg-icon svg {
+  color: #e8c4a8;
+}
+
+/* ULTIMATE celebration - Book complete (Press stage done) */
+.rt-completion-preview-book-complete {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #5a4a0a 0%, #8b7a1a 20%, #c9a227 45%, #e6c340 55%, #c9a227 70%, #8b7a1a 90%, #5a4a0a 100%);
+  border: 2px solid #ffd700;
+  box-shadow: 
+    0 0 40px rgba(255, 215, 0, 0.4),
+    0 0 80px rgba(255, 215, 0, 0.2),
+    inset 0 0 60px rgba(255, 215, 0, 0.15);
+  animation: rt-book-complete-glow 3s ease-in-out infinite;
+}
+
+@keyframes rt-book-complete-glow {
+  0%, 100% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.4), 0 0 80px rgba(255, 215, 0, 0.2), inset 0 0 60px rgba(255, 215, 0, 0.15); }
+  50% { box-shadow: 0 0 50px rgba(255, 215, 0, 0.5), 0 0 100px rgba(255, 215, 0, 0.3), inset 0 0 80px rgba(255, 215, 0, 0.2); }
+}
+
+.rt-completion-preview-book-complete .rt-planetary-preview-heading {
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  position: relative;
+  z-index: 1;
+}
+
+.rt-completion-preview-book-complete .rt-completion-complete-title {
+  font-size: 1.8rem;
+  background: linear-gradient(180deg, #fff 0%, #ffd700 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+}
+
+.rt-completion-preview-book-complete .rt-completion-complete-subtitle {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.rt-completion-preview-book-complete .rt-completion-complete-bg-icon {
+  opacity: 0.18;
+}
+
+.rt-completion-preview-book-complete .rt-completion-complete-bg-icon svg {
+  width: 200px;
+  height: 200px;
+  color: #ffd700;
 }
 
 /* Inspiring quote for empty state */

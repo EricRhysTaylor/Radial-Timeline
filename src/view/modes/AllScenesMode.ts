@@ -169,7 +169,14 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
 
 export function setupOuterRingDrag(view: AllScenesView, svg: SVGSVGElement): void {
     const controller = new OuterRingDragController(view as any, svg, {
-        onRefresh: () => (view.plugin as any)?.refreshTimelineIfNeeded?.(null, 0),
+        onRefresh: () => {
+            // Use direct refresh (bypasses debounce) for immediate update after drag operations
+            if (typeof (view as any).refreshTimeline === 'function') {
+                (view as any).refreshTimeline();
+            } else {
+                (view.plugin as any)?.refreshTimelineIfNeeded?.(null);
+            }
+        },
         enableDebug: (view.plugin.settings as any)?.enableHoverDebugLogging,
         mode: view.currentMode,
     });

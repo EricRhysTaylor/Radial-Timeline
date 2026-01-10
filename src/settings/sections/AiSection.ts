@@ -7,7 +7,7 @@ import { fetchGeminiModels } from '../../api/geminiApi';
 import { fetchLocalModels } from '../../api/localAiApi';
 import { CURATED_MODELS, CuratedModel, AiProvider } from '../../data/aiModels';
 import { AiContextModal } from '../AiContextModal';
-import { resolveAiOutputFolder } from '../../utils/aiOutput';
+import { resolveAiOutputFolder, countAiLogFiles } from '../../utils/aiOutput';
 import { addWikiLink } from '../wikiLink';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
@@ -503,10 +503,21 @@ export function renderAiSection(params: {
     // Apply provider dimming on first render
     params.refreshProviderDimming();
 
-    // API Logging toggle
+    // API Logging toggle with dynamic file count
+    const getLoggingDesc = (): string => {
+        const outputFolder = resolveAiOutputFolder(plugin);
+        const fileCount = countAiLogFiles(plugin);
+        const countText = fileCount === 0 
+            ? 'No log files yet' 
+            : fileCount === 1 
+                ? '1 log file' 
+                : `${fileCount} log files`;
+        return `If enabled, create a new note in "${outputFolder}" for each AI API request/response. (${countText})`;
+    };
+
     const apiLoggingSetting = new Settings(containerEl)
         .setName('Log AI interactions to file including sent and received payloads')
-        .setDesc('If enabled, create a new note in the "AI" folder for each AI API request/response.')
+        .setDesc(getLoggingDesc())
         .addToggle(toggle => toggle
             .setValue(plugin.settings.logApiInteractions)
             .onChange(async (value) => {

@@ -16,11 +16,11 @@ export interface OuterRingDragOptions {
 
 /** 
  * Result type for drop target detection
- * Can be either a scene group (number square) or a void cell
+ * Can be either a scene group or a void cell (empty act/subplot ring)
  */
 type DropTarget = 
-    | { type: 'scene'; group: SVGGElement; sceneId: string }
-    | { type: 'void'; element: SVGPathElement; act: number; startAngle: number; endAngle: number };
+    | { type: 'scene'; group: SVGGElement; sceneId: string; act: number; ring: number }
+    | { type: 'void'; element: SVGPathElement; act: number; ring: number; startAngle: number; endAngle: number; isOuterRing: boolean };
 
 /**
  * Flag to coordinate with click handlers - prevents file open during/after drag
@@ -133,7 +133,8 @@ export class OuterRingDragController {
         return rect?.closest('.number-square-group') as SVGGElement | null;
     }
 
-    private buildOuterRingOrder(): Array<{ sceneId: string; path: string; numberText: string }> {
+    private buildOuterRingOrder(): Array<{ sceneId: string; path: string; numberText: string; subplot: string; ring: number }> {
+        const masterSubplotOrder = (this.view.plugin.settings as any).masterSubplotOrder as string[] || ['Main Plot'];
         const groups = Array.from(this.svg.querySelectorAll<SVGGElement>('.number-square-group[data-outer-ring="true"]'));
         return groups.map((group) => {
             const sceneId = this.getSceneIdFromNumberGroup(group) || '';
@@ -145,7 +146,11 @@ export class OuterRingDragController {
             const path = encodedPath ? decodeURIComponent(encodedPath) : '';
             const numberTextEl = this.svg.querySelector<SVGTextElement>(`.rt-number-text[data-scene-id="${this.cssEscape(sceneId)}"]`);
             const numberText = numberTextEl?.textContent?.trim() || '';
-            return { sceneId, path, numberText };
+            // Get subplot from scene group's subplot-index attribute
+            const subplotIdx = Number(sceneGroup?.getAttribute('data-subplot-index') ?? 0);
+            const subplot = masterSubplotOrder[subplotIdx] || 'Main Plot';
+            const ring = Number(sceneGroup?.getAttribute('data-ring') ?? 0);
+            return { sceneId, path, numberText, subplot, ring };
         }).filter(entry => entry.sceneId && entry.path);
     }
 
@@ -162,11 +167,14 @@ export class OuterRingDragController {
         }
         this.currentTarget = null;
         
+        // Hide tick and arc completely when not in use
         if (this.dropTick) {
             this.dropTick.setAttribute('d', '');
+            this.dropTick.classList.add('rt-hidden');
         }
         if (this.dropArc) {
             this.dropArc.setAttribute('d', '');
+            this.dropArc.classList.add('rt-hidden');
         }
     }
 
@@ -225,40 +233,38 @@ export class OuterRingDragController {
         const fromPoint = document.elementFromPoint(evt.clientX, evt.clientY);
         if (!fromPoint) return null;
         
-        // First check for void cells (empty act areas)
-        const voidCell = fromPoint.closest('.rt-void-cell[data-outer-ring="true"]') as SVGPathElement | null;
+        // First check for void cells (empty act areas or empty subplot rings)
+        // Look for ANY void cell with data-act attribute (all rings)
+        const voidCell = fromPoint.closest('.rt-void-cell[data-act]') as SVGPathElement | null;
         if (voidCell) {
             const act = Number(voidCell.getAttribute('data-act') ?? '');
+            const ring = Number(voidCell.getAttribute('data-ring') ?? '');
             const startAngle = Number(voidCell.getAttribute('data-start-angle') ?? '');
             const endAngle = Number(voidCell.getAttribute('data-end-angle') ?? '');
-            if (Number.isFinite(act)) {
+            const isOuterRing = voidCell.getAttribute('data-outer-ring') === 'true';
+            if (Number.isFinite(act) && Number.isFinite(ring)) {
                 return { 
                     type: 'void', 
                     element: voidCell, 
-                    act, 
+                    act,
+                    ring,
                     startAngle,
-                    endAngle
+                    endAngle,
+                    isOuterRing
                 };
             }
         }
         
-        // Then check for number square groups (scene drop targets)
-        const numberGroup = fromPoint.closest('.number-square-group[data-outer-ring="true"]') as SVGGElement | null;
-        if (numberGroup) {
-            const sceneId = this.getSceneIdFromNumberGroup(numberGroup);
-            if (sceneId) {
-                return { type: 'scene', group: numberGroup, sceneId };
-            }
-        }
-        
-        // Also check if hovering over a scene group directly
+        // Check for scene groups (any ring, not just outer)
         const sceneGroup = fromPoint.closest('.rt-scene-group[data-item-type="Scene"]') as SVGGElement | null;
         if (sceneGroup) {
             const sceneId = this.getSceneIdFromSceneGroup(sceneGroup);
+            const act = Number(sceneGroup.getAttribute('data-act') ?? '0');
+            const ring = Number(sceneGroup.getAttribute('data-ring') ?? '0');
             if (sceneId) {
                 const numberGroup = this.getNumberGroupForSceneId(sceneId);
                 if (numberGroup) {
-                    return { type: 'scene', group: numberGroup, sceneId };
+                    return { type: 'scene', group: numberGroup, sceneId, act, ring };
                 }
             }
         }
@@ -307,6 +313,7 @@ export class OuterRingDragController {
         const x2 = r2 * Math.cos(startAngle);
         const y2 = r2 * Math.sin(startAngle);
         const tick = this.ensureDropTick();
+        tick.classList.remove('rt-hidden');
         tick.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
         if (color) {
             tick.style.stroke = color;
@@ -318,6 +325,7 @@ export class OuterRingDragController {
 
     private updateDropArc(startAngle: number, endAngle: number, color?: string): void {
         const arc = this.ensureDropArc();
+        arc.classList.remove('rt-hidden');
         const rArc = DRAG_DROP_ARC_RADIUS;
 
         const norm = (a: number) => {
@@ -344,9 +352,13 @@ export class OuterRingDragController {
     }
 
     private resetState(): void {
+        // Only mark interaction time if a drag was actually in progress
+        // Quick clicks should NOT block the click handler
+        if (this.dragging) {
+            lastInteractionTime = Date.now();
+        }
         this.dragging = false;
         dragInProgress = false;
-        lastInteractionTime = Date.now(); // Mark that we handled this interaction
         this.sourceSceneId = null;
         this.sourcePath = null;
         if (this.sourceSceneGroup) {
@@ -370,6 +382,7 @@ export class OuterRingDragController {
         if (this.dragging || !this.sourceSceneGroup) return;
         this.dragging = true;
         dragInProgress = true;
+        lastInteractionTime = Date.now(); // Mark start so click handler knows to skip
         this.svg.classList.add('rt-dragging-outer');
         this.sourceSceneGroup.classList.add('rt-drag-source');
         if (this.sourceNumberGroup) {
@@ -400,7 +413,7 @@ export class OuterRingDragController {
         this.resetState();
     }
 
-    private async finishDropOnScene(target: { type: 'scene'; group: SVGGElement; sceneId: string }): Promise<void> {
+    private async finishDropOnScene(target: { type: 'scene'; group: SVGGElement; sceneId: string; act: number; ring: number }): Promise<void> {
         const targetId = target.sceneId;
         if (!this.sourceSceneId || !targetId || this.sourceSceneId === targetId) {
             this.resetState();
@@ -434,6 +447,15 @@ export class OuterRingDragController {
         const targetActNumber = Number.isFinite(targetActIdx) ? (targetActIdx + 1) : undefined;
         const sourcePath = moved.path;
 
+        // Determine target subplot from target scene's subplot-index
+        const masterSubplotOrder = (this.view.plugin.settings as any).masterSubplotOrder as string[] || ['Main Plot'];
+        const targetSubplotIdx = Number(targetGroup?.getAttribute('data-subplot-index') ?? 0);
+        const targetSubplot = masterSubplotOrder[targetSubplotIdx] || 'Main Plot';
+        
+        // Get source subplot for comparison
+        const sourceSubplot = order[fromIdx]?.subplot ?? 'Main Plot';
+        const subplotChanged = sourceSubplot !== targetSubplot;
+
         const sourceOriginalNumber = order[fromIdx]?.numberText ?? '';
         const targetOriginalNumber = order[toIdx]?.numberText ?? '';
         const summaryLines = [
@@ -442,6 +464,9 @@ export class OuterRingDragController {
         ];
         if (targetActNumber !== undefined) {
             summaryLines.push(`Update moved scene Act → ${targetActNumber}.`);
+        }
+        if (subplotChanged) {
+            summaryLines.push(`Update moved scene Subplot → ${targetSubplot}.`);
         }
 
         this.confirming = true;
@@ -462,11 +487,25 @@ export class OuterRingDragController {
             return;
         }
 
-        if (targetActNumber !== undefined) {
-            updates.forEach(u => {
-                if (u.path === sourcePath) {
+        // Apply act and subplot updates to the moved scene
+        updates.forEach(u => {
+            if (u.path === sourcePath) {
+                if (targetActNumber !== undefined) {
                     u.actNumber = targetActNumber;
                 }
+                if (subplotChanged) {
+                    u.subplots = [targetSubplot];
+                }
+            }
+        });
+
+        // If the moved scene didn't need renumbering, we still need to update its act/subplot
+        if (!updates.find(u => u.path === sourcePath) && (targetActNumber !== undefined || subplotChanged)) {
+            updates.push({
+                path: sourcePath,
+                newNumber: sourceOriginalNumber,
+                actNumber: targetActNumber,
+                subplots: subplotChanged ? [targetSubplot] : undefined
             });
         }
 
@@ -474,14 +513,16 @@ export class OuterRingDragController {
             this.resetState();
             return;
         }
-        this.log('apply updates', { count: updates.length, from: fromIdx, to: toIdx });
+        this.log('apply updates', { count: updates.length, from: fromIdx, to: toIdx, subplot: subplotChanged ? targetSubplot : undefined });
         await applySceneNumberUpdates(this.view.plugin.app, updates);
         new Notice(`Moved scene ${sourceOriginalNumber} → before ${targetOriginalNumber}`, 2000);
+        // Small delay to allow Obsidian's metadata cache to update before refresh
+        await new Promise(resolve => setTimeout(resolve, 100));
         this.options.onRefresh();
         this.resetState();
     }
 
-    private async finishDropOnVoidCell(target: { type: 'void'; element: SVGPathElement; act: number; startAngle: number; endAngle: number }): Promise<void> {
+    private async finishDropOnVoidCell(target: { type: 'void'; element: SVGPathElement; act: number; ring: number; startAngle: number; endAngle: number; isOuterRing: boolean }): Promise<void> {
         if (!this.sourceSceneId || !this.sourcePath) {
             this.resetState();
             return;
@@ -496,19 +537,62 @@ export class OuterRingDragController {
         }
 
         const sourceOriginalNumber = order[fromIdx]?.numberText ?? '';
+        const targetSubplotName = this.getSubplotNameFromRing(target.ring);
         
-        // Scene will become the first scene in the empty act
-        // Find the first scene number that would be in this act
-        // For now, we'll just move it and update the act, keeping its number
+        // Get current subplots for the scene
+        const currentSubplots = await this.getSceneSubplots(this.sourcePath);
+        const hasMainPlot = currentSubplots.includes('Main Plot');
+        
+        // Determine new subplots based on the move
+        let newSubplots: string[] | undefined;
+        let subplotChangeDesc = '';
+        
+        // Check if target subplot is already one of the scene's subplots
+        const isMovingToExistingSubplot = currentSubplots.includes(targetSubplotName);
+        
+        if (isMovingToExistingSubplot) {
+            // No subplot change needed - scene already belongs to this subplot
+            subplotChangeDesc = `Scene already belongs to "${targetSubplotName}".`;
+        } else if (target.isOuterRing) {
+            // Dropping to outer ring (All Scenes) - no subplot change
+            subplotChangeDesc = 'Subplot unchanged (outer ring).';
+        } else {
+            // Moving to a different subplot ring
+            if (hasMainPlot) {
+                // Keep Main Plot, replace other subplots with the new one
+                newSubplots = ['Main Plot', targetSubplotName];
+                if (currentSubplots.length > 1) {
+                    const otherSubplots = currentSubplots.filter(s => s !== 'Main Plot');
+                    subplotChangeDesc = `Keep "Main Plot", change "${otherSubplots.join(', ')}" → "${targetSubplotName}".`;
+                } else {
+                    subplotChangeDesc = `Add "${targetSubplotName}" to scene subplots.`;
+                }
+            } else {
+                // No Main Plot - replace all subplots with the new one
+                newSubplots = [targetSubplotName];
+                if (currentSubplots.length > 0) {
+                    subplotChangeDesc = `Change subplot "${currentSubplots.join(', ')}" → "${targetSubplotName}".`;
+                } else {
+                    subplotChangeDesc = `Set subplot to "${targetSubplotName}".`;
+                }
+            }
+        }
+        
+        // Build update
         const updates: SceneUpdate[] = [{
             path: this.sourcePath,
-            newNumber: sourceOriginalNumber, // Keep same number for now
-            actNumber: targetActNumber
+            newNumber: sourceOriginalNumber,
+            actNumber: targetActNumber,
+            subplots: newSubplots
         }];
 
+        // Build descriptive summary message
+        const locationDesc = target.isOuterRing 
+            ? `Act ${targetActNumber}` 
+            : `Act ${targetActNumber}, "${targetSubplotName}"`;
         const summaryLines = [
-            `Move scene ${sourceOriginalNumber} to Act ${targetActNumber}.`,
-            `This act currently has no scenes.`,
+            `Move scene ${sourceOriginalNumber} to ${locationDesc}.`,
+            subplotChangeDesc,
         ];
 
         this.confirming = true;
@@ -529,9 +613,14 @@ export class OuterRingDragController {
             return;
         }
 
-        this.log('apply void cell drop', { targetAct: targetActNumber, path: this.sourcePath });
+        const noticeText = target.isOuterRing 
+            ? `Moved scene ${sourceOriginalNumber} → Act ${targetActNumber}`
+            : `Moved scene ${sourceOriginalNumber} → Act ${targetActNumber}, "${targetSubplotName}"`;
+        this.log('apply void cell drop', { targetAct: targetActNumber, ring: target.ring, subplot: targetSubplotName, path: this.sourcePath });
         await applySceneNumberUpdates(this.view.plugin.app, updates);
-        new Notice(`Moved scene ${sourceOriginalNumber} → Act ${targetActNumber}`, 2000);
+        new Notice(noticeText, 2000);
+        // Small delay to allow Obsidian's metadata cache to update before refresh
+        await new Promise(resolve => setTimeout(resolve, 100));
         this.options.onRefresh();
         this.resetState();
     }
@@ -584,6 +673,33 @@ export class OuterRingDragController {
         }
     }
 
+    /**
+     * Check if dragging is possible - requires at least 2 possible locations
+     * (either multiple scenes or multiple subplots/acts to drop into)
+     */
+    private canDrag(): boolean {
+        // Count total scenes
+        const sceneGroups = this.svg.querySelectorAll('.rt-scene-group[data-item-type="Scene"]');
+        const sceneCount = sceneGroups.length;
+        
+        // Count void cells (empty slots to drop into)
+        const voidCells = this.svg.querySelectorAll('.rt-void-cell[data-act]');
+        const voidCount = voidCells.length;
+        
+        // If only 1 scene and no void cells, can't drag anywhere
+        if (sceneCount <= 1 && voidCount === 0) {
+            return false;
+        }
+        
+        // If multiple scenes, can always reorder
+        if (sceneCount > 1) {
+            return true;
+        }
+        
+        // If 1 scene but void cells exist, can move to empty location
+        return voidCount > 0;
+    }
+
     private startDrag(evt: PointerEvent, group: SVGGElement): void {
         if (evt.button !== 0) return;
         
@@ -595,8 +711,14 @@ export class OuterRingDragController {
         const filePath = encodedPath ? decodeURIComponent(encodedPath) : null;
         if (!filePath) return;
         
-        evt.preventDefault();
-        evt.stopPropagation(); // Prevent the click handler from firing
+        // Check if dragging is possible
+        if (!this.canDrag()) {
+            // Let the click proceed normally - don't capture the event
+            return;
+        }
+        
+        // Don't call preventDefault/stopPropagation yet - let quick clicks work
+        // We'll only block clicks if an actual drag begins
         
         this.sourceSceneId = sceneId;
         this.sourceSceneGroup = group;
@@ -645,5 +767,51 @@ export class OuterRingDragController {
         const colors = (this.view.plugin.settings as any)?.subplotColors as string[] | undefined;
         if (colors && colors[idx]) return colors[idx];
         return undefined;
+    }
+
+    /**
+     * Get the master subplot order from SVG labels
+     * Ring 0 (outermost) = first subplot in the array
+     */
+    private getMasterSubplotOrder(): string[] {
+        const labels = this.svg.querySelectorAll('.rt-subplot-ring-label-text');
+        return Array.from(labels)
+            .map(label => label.getAttribute('data-subplot-name'))
+            .filter((name): name is string => name !== null);
+    }
+
+    /**
+     * Get subplot name from ring number
+     * Ring offset 0 = outermost = first in masterSubplotOrder
+     */
+    private getSubplotNameFromRing(ring: number): string {
+        const order = this.getMasterSubplotOrder();
+        const numRings = order.length;
+        // Ring is stored as the actual ring index, with higher numbers being inner rings
+        // masterSubplotOrder[0] = outermost ring
+        const ringOffset = numRings - 1 - ring;
+        if (ringOffset >= 0 && ringOffset < order.length) {
+            return order[ringOffset];
+        }
+        return `Ring ${ring}`;
+    }
+
+    /**
+     * Get the current subplots for a scene from frontmatter
+     */
+    private async getSceneSubplots(filePath: string): Promise<string[]> {
+        const file = this.view.plugin.app.vault.getAbstractFileByPath(filePath);
+        if (!file) return [];
+        const cache = this.view.plugin.app.metadataCache.getFileCache(file as any);
+        const fm = cache?.frontmatter;
+        if (!fm) return [];
+        
+        const subplotValue = fm['Subplot'] || fm['subplot'];
+        if (!subplotValue) return [];
+        
+        if (Array.isArray(subplotValue)) {
+            return subplotValue.map(s => String(s).trim()).filter(s => s.length > 0);
+        }
+        return [String(subplotValue).trim()].filter(s => s.length > 0);
     }
 }

@@ -109,21 +109,8 @@
   /* Draw stroke first, then fill covers inner half = "outside" border */
 }
 
-.radial-timeline-svg[data-mode="narrative"] .number-square-group[data-outer-ring="true"] .rt-number-square,
-.radial-timeline-svg[data-mode="narrative"] .number-square-group[data-outer-ring="true"] .rt-number-text {
-  pointer-events: auto;
-  cursor: grab;
-}
-
-.radial-timeline-svg[data-mode="narrative"] .number-square-group[data-outer-ring="true"]:hover .rt-number-square,
-.radial-timeline-svg[data-mode="narrative"] .number-square-group[data-outer-ring="true"]:hover .rt-number-text {
-  cursor: ew-resize;
-}
-
-.radial-timeline-svg[data-mode="narrative"].rt-dragging-outer .number-square-group[data-outer-ring="true"] .rt-number-square,
-.radial-timeline-svg[data-mode="narrative"].rt-dragging-outer .number-square-group[data-outer-ring="true"] .rt-number-text {
-  cursor: grabbing;
-}
+/* Number squares are NOT draggable - only scene cells are draggable */
+/* Keep pointer-events: none on number squares (default above) */
 
 /* Drag source outline */
 .number-square-group.rt-drag-source .rt-number-square {
@@ -141,19 +128,19 @@
    VOID CELL DROP TARGET STYLING (Narrative Drag)
    ============================================ */
 
-/* Enable pointer events on void cells in narrative mode during drag */
-.radial-timeline-svg[data-mode="narrative"].rt-dragging-outer .rt-void-cell[data-outer-ring="true"] {
+/* Enable pointer events on ALL void cells in narrative mode during drag */
+/* This allows dropping scenes into empty acts AND empty subplot rings */
+.radial-timeline-svg[data-mode="narrative"].rt-dragging-outer .rt-void-cell[data-act] {
   pointer-events: auto;
   cursor: copy;
 }
 
-/* Void cell drop target highlight */
+/* Void cell drop target highlight - fill only, no stroke to avoid visual artifacts */
 .radial-timeline-svg[data-mode="narrative"] .rt-void-cell.rt-drop-target {
   fill: var(--rt-drag-stroke-color, var(--interactive-accent, #705DCF));
-  fill-opacity: 0.25;
-  stroke: var(--rt-drag-stroke-color, var(--interactive-accent, #705DCF));
-  stroke-width: 3px;
-  stroke-dasharray: 8 4;
+  fill-opacity: 0.35;
+  stroke: none;
+  stroke-width: 0;
 }
 
 /* Scene group drag source styling - when dragging from scene cell */
@@ -162,13 +149,14 @@
   stroke-width: 4px;
 }
 
-/* Scene cells in narrative mode: enable grab cursor for outer ring scenes */
+/* Scene cells in narrative mode: pointer cursor by default (like a link) */
 .radial-timeline-svg[data-mode="narrative"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path {
-  cursor: grab;
+  cursor: pointer;
 }
 
+/* During drag: show ew-resize (double arrow) cursor */
 .radial-timeline-svg[data-mode="narrative"].rt-dragging-outer .rt-scene-group[data-item-type="Scene"] .rt-scene-path {
-  cursor: grabbing;
+  cursor: ew-resize;
 }
 
 .rt-number-square[data-subplot-idx="0"] {
