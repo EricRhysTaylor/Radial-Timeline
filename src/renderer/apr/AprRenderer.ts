@@ -116,9 +116,6 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         svg += renderActSpokes(numActs, innerRadius, outerRadius, actSpokeWidth);
     }
 
-    // Scene spokes (subtle)
-    svg += renderSceneSpokes(safeScenes.length, innerRadius, outerRadius, spokeWidth);
-
     // Center hole
     svg += `<circle cx="0" cy="0" r="${innerRadius}" fill="${APR_STRUCTURAL_COLORS.centerHole}" />`;
 
@@ -223,22 +220,6 @@ function renderActSpokes(numActs: number, innerR: number, outerR: number, spokeW
         const x2 = outerR * Math.cos(angle);
         const y2 = outerR * Math.sin(angle);
         svg += `<line x1="${x1.toFixed(3)}" y1="${y1.toFixed(3)}" x2="${x2.toFixed(3)}" y2="${y2.toFixed(3)}" stroke="${APR_STRUCTURAL_COLORS.actSpoke}" stroke-width="${spokeWidth}" />`;
-    }
-    svg += `</g>`;
-    return svg;
-}
-
-function renderSceneSpokes(totalScenes: number, innerR: number, outerR: number, spokeWidth: number): string {
-    if (totalScenes <= 1) return '';
-    const anglePer = (2 * Math.PI) / totalScenes;
-    let svg = `<g class="apr-scene-spokes">`;
-    for (let i = 0; i < totalScenes; i++) {
-        const angle = -Math.PI / 2 + i * anglePer;
-        const x1 = innerR * Math.cos(angle);
-        const y1 = innerR * Math.sin(angle);
-        const x2 = outerR * Math.cos(angle);
-        const y2 = outerR * Math.sin(angle);
-        svg += `<line x1="${x1.toFixed(3)}" y1="${y1.toFixed(3)}" x2="${x2.toFixed(3)}" y2="${y2.toFixed(3)}" stroke="${APR_STRUCTURAL_COLORS.spoke}" stroke-width="${spokeWidth}" />`;
     }
     svg += `</g>`;
     return svg;

@@ -525,7 +525,7 @@ export class OuterRingDragController {
         await applySceneNumberUpdates(this.view.plugin.app, updates);
         new Notice(`Moved scene ${sourceOriginalNumber} → before ${targetOriginalNumber}`, 2000);
         // Small delay to allow Obsidian's metadata cache to update before refresh
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => window.setTimeout(resolve, 100));
         this.options.onRefresh();
         this.resetState();
     }
@@ -628,7 +628,7 @@ export class OuterRingDragController {
         await applySceneNumberUpdates(this.view.plugin.app, updates);
         new Notice(noticeText, 2000);
         // Small delay to allow Obsidian's metadata cache to update before refresh
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => window.setTimeout(resolve, 100));
         this.options.onRefresh();
         this.resetState();
     }

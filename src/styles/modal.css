@@ -504,9 +504,7 @@
   flex: 1;
 }
 
-.rt-drag-confirm-modal {
-  max-width: 560px;
-}
+/* rt-drag-confirm-modal width controlled via inline styles in DragConfirmModal.ts */
 
 .rt-drag-confirm-list {
   display: flex;
@@ -1796,48 +1794,8 @@
 /* AUTHOR PROGRESS REPORT (APR) MODAL                                          */
 /* -------------------------------------------------------------------------- */
 
-.rt-apr-modal.modal {
-  width: min(1000px, 94vw);
-  max-height: 94vh;
-}
-
-.rt-apr-modal .modal-content {
-  position: relative;
-  padding: 0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  overflow-y: auto;
-}
-
-/* Glass Container - the outer glassy wrapper */
-.rt-apr-modal .rt-modal-glass-container {
-  position: relative;
-  padding: 28px 36px 24px;
-  border-radius: 24px;
-  background: linear-gradient(145deg, rgba(16, 16, 21, 0.96), rgba(36, 28, 24, 0.93));
-  border: 1px solid rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.25);
-  box-shadow: 
-    0 50px 100px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-}
-
-.rt-apr-modal .rt-modal-glass-container::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 24px;
-  background: radial-gradient(circle at 15% 10%, rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.14), transparent 55%),
-    radial-gradient(circle at 85% 5%, rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.10), transparent 45%);
-  pointer-events: none;
-}
-
-.rt-apr-modal .rt-modal-glass-container > * {
-  position: relative;
-  z-index: 1;
-}
+/* APR Modal uses standard rt-modal-shell + rt-modal-container pattern */
+/* Sizing handled via inline styles in the modal class */
 
 /* APR Badge - social media theme */
 .rt-apr-badge {
@@ -1885,6 +1843,70 @@
   width: 18px;
   height: 18px;
   stroke: var(--text-warning);
+}
+
+/* Reveal Section - compact checkbox grid */
+.rt-apr-reveal-section {
+  margin-bottom: 16px;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+}
+
+.rt-apr-reveal-title {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-normal);
+  letter-spacing: 0.02em;
+}
+
+.rt-apr-reveal-desc {
+  margin: 0 0 14px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.rt-apr-checkbox-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rt-apr-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.rt-apr-checkbox-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.rt-apr-checkbox-item input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: var(--rt-social-color, #ffd41d);
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.rt-apr-checkbox-item label {
+  font-size: 0.8rem;
+  color: var(--text-normal);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
 }
 
 /* Mode Section */

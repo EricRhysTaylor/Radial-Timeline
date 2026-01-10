@@ -17,7 +17,6 @@ export class AuthorProgressModal extends Modal {
     private showActs: boolean;
     private showStatus: boolean;
     private showPercent: boolean;
-    private showBeatNotes: boolean;
     
     private previewContainer: HTMLElement | null = null;
     
@@ -49,20 +48,25 @@ export class AuthorProgressModal extends Modal {
         this.showActs = settings.showActs ?? true;
         this.showStatus = settings.showStatus ?? true;
         this.showPercent = settings.showProgressPercent ?? true;
-        this.showBeatNotes = settings.showBeatNotes ?? false;
         this.publishTarget = settings.defaultPublishTarget;
     }
 
     async onOpen() {
-        const { contentEl } = this;
+        const { contentEl, modalEl } = this;
         contentEl.empty();
-        contentEl.addClass('rt-apr-modal');
-
-        // Outer glass container
-        const glassContainer = contentEl.createDiv({ cls: 'rt-modal-glass-container' });
+        
+        // Apply shell styling and sizing
+        if (modalEl) {
+            modalEl.classList.add('rt-modal-shell', 'rt-apr-modal');
+            modalEl.style.width = '560px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '92vw';
+        }
+        
+        // Standard modal container with glassy styling
+        contentEl.addClass('rt-modal-container', 'rt-apr-content');
 
         // Modal Header with Badge (following modal template pattern)
-        const header = glassContainer.createDiv({ cls: 'rt-modal-header' });
+        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
         
         // Badge with Radio icon for social media theme
         const badge = header.createSpan({ cls: 'rt-modal-badge rt-apr-badge' });
@@ -70,7 +74,7 @@ export class AuthorProgressModal extends Modal {
         setIcon(badgeIcon, 'radio');
         badge.createSpan({ text: 'Share' });
         
-        header.createDiv({ text: 'Author Progress Report', cls: 'rt-modal-title' });
+        header.createDiv({ text: 'Author progress report', cls: 'rt-modal-title' });
         header.createDiv({ text: 'Public, spoiler-safe progress view for fans and backers', cls: 'rt-modal-subtitle' });
 
         // Check staleness and show alert if needed (Manual mode only)
@@ -78,88 +82,78 @@ export class AuthorProgressModal extends Modal {
             const daysSince = this.plugin.settings.authorProgress?.lastPublishedDate 
                 ? Math.floor((Date.now() - new Date(this.plugin.settings.authorProgress.lastPublishedDate).getTime()) / (1000 * 60 * 60 * 24))
                 : 'many';
-            const alert = glassContainer.createDiv({ cls: 'rt-apr-stale-alert rt-glass-card' });
+            const alert = contentEl.createDiv({ cls: 'rt-apr-stale-alert rt-glass-card' });
             const alertIcon = alert.createSpan({ cls: 'rt-apr-stale-icon' });
             setIcon(alertIcon, 'alert-triangle');
             alert.createEl('span', { text: `Your report is ${daysSince} days old. Consider refreshing.` });
         }
 
-        // Reveal Options (checkboxes)
-        const revealSection = glassContainer.createDiv({ cls: 'rt-glass-card rt-apr-reveal-section' });
-        revealSection.createEl('h4', { text: 'What to Reveal', cls: 'rt-section-title' });
+        // Reveal Options (checkboxes in grid)
+        const revealSection = contentEl.createDiv({ cls: 'rt-apr-reveal-section' });
+        revealSection.createEl('h4', { text: 'What to Reveal', cls: 'rt-apr-reveal-title' });
         revealSection.createEl('p', { 
             text: 'Control how much of your story structure is visible to fans.', 
-            cls: 'rt-section-desc' 
+            cls: 'rt-apr-reveal-desc' 
         });
         
-        new Setting(revealSection)
-            .setName('Subplots')
-            .setDesc('Show all subplot rings. Unchecked shows only the main plot ring.')
-            .addToggle(toggle => toggle
-                .setValue(this.showSubplots)
-                .onChange(async (val) => {
-                    this.showSubplots = val;
-                    await this.saveRevealOptions();
-                    this.renderPreview();
-                })
-            );
-
-        new Setting(revealSection)
-            .setName('Acts')
-            .setDesc('Show act divisions. Unchecked shows a continuous circle.')
-            .addToggle(toggle => toggle
-                .setValue(this.showActs)
-                .onChange(async (val) => {
-                    this.showActs = val;
-                    await this.saveRevealOptions();
-                    this.renderPreview();
-                })
-            );
-
-        new Setting(revealSection)
-            .setName('Status Colors')
-            .setDesc('Show stage colors (draft, revised, etc). Unchecked uses neutral gray for all scenes.')
-            .addToggle(toggle => toggle
-                .setValue(this.showStatus)
-                .onChange(async (val) => {
-                    this.showStatus = val;
-                    await this.saveRevealOptions();
-                    this.renderPreview();
-                })
-            );
-
-        new Setting(revealSection)
-            .setName('Show % Complete')
-            .setDesc('Show the big center percentage.')
-            .addToggle(toggle => toggle
-                .setValue(this.showPercent)
-                .onChange(async (val) => {
-                    this.showPercent = val;
-                    await this.saveRevealOptions();
-                    this.renderPreview();
-                })
-            );
-
-        new Setting(revealSection)
-            .setName('Beat Notes')
-            .setDesc('Include beat notes in the preview (usually off for APR).')
-            .addToggle(toggle => toggle
-                .setValue(this.showBeatNotes)
-                .onChange(async (val) => {
-                    this.showBeatNotes = val;
-                    await this.saveRevealOptions();
-                    this.renderPreview();
-                })
-            );
+        const checkboxGrid = revealSection.createDiv({ cls: 'rt-apr-checkbox-grid' });
+        
+        // Subplots checkbox
+        const subplotsItem = checkboxGrid.createDiv({ cls: 'rt-apr-checkbox-item' });
+        const subplotsInput = subplotsItem.createEl('input', { type: 'checkbox' });
+        subplotsInput.id = 'apr-subplots';
+        subplotsInput.checked = this.showSubplots;
+        subplotsInput.onchange = async () => {
+            this.showSubplots = subplotsInput.checked;
+            await this.saveRevealOptions();
+            this.renderPreview();
+        };
+        subplotsItem.createEl('label', { text: 'Subplots', attr: { for: 'apr-subplots' } });
+        
+        // Acts checkbox
+        const actsItem = checkboxGrid.createDiv({ cls: 'rt-apr-checkbox-item' });
+        const actsInput = actsItem.createEl('input', { type: 'checkbox' });
+        actsInput.id = 'apr-acts';
+        actsInput.checked = this.showActs;
+        actsInput.onchange = async () => {
+            this.showActs = actsInput.checked;
+            await this.saveRevealOptions();
+            this.renderPreview();
+        };
+        actsItem.createEl('label', { text: 'Acts', attr: { for: 'apr-acts' } });
+        
+        // Status Colors checkbox
+        const statusItem = checkboxGrid.createDiv({ cls: 'rt-apr-checkbox-item' });
+        const statusInput = statusItem.createEl('input', { type: 'checkbox' });
+        statusInput.id = 'apr-status';
+        statusInput.checked = this.showStatus;
+        statusInput.onchange = async () => {
+            this.showStatus = statusInput.checked;
+            await this.saveRevealOptions();
+            this.renderPreview();
+        };
+        statusItem.createEl('label', { text: 'Status Colors', attr: { for: 'apr-status' } });
+        
+        // % Complete checkbox
+        const percentItem = checkboxGrid.createDiv({ cls: 'rt-apr-checkbox-item' });
+        const percentInput = percentItem.createEl('input', { type: 'checkbox' });
+        percentInput.id = 'apr-percent';
+        percentInput.checked = this.showPercent;
+        percentInput.onchange = async () => {
+            this.showPercent = percentInput.checked;
+            await this.saveRevealOptions();
+            this.renderPreview();
+        };
+        percentItem.createEl('label', { text: '% Complete', attr: { for: 'apr-percent' } });
 
         // Preview Panel
-        const previewSection = glassContainer.createDiv({ cls: 'rt-glass-card rt-apr-preview-section' });
+        const previewSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-preview-section' });
         previewSection.createEl('h4', { text: 'Live Preview', cls: 'rt-section-title' });
         this.previewContainer = previewSection.createDiv({ cls: 'rt-apr-preview-area' });
         this.previewContainer.createDiv({ text: 'Loading preview...', cls: 'rt-apr-loading' });
 
         // Identity Configuration
-        const identitySection = glassContainer.createDiv({ cls: 'rt-glass-card rt-apr-identity-section' });
+        const identitySection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-identity-section' });
         identitySection.createEl('h4', { text: 'Report Identity', cls: 'rt-section-title' });
         
         new Setting(identitySection)
@@ -193,7 +187,7 @@ export class AuthorProgressModal extends Modal {
             );
 
         // Actions Section with Tabs
-        const actionsSection = glassContainer.createDiv({ cls: 'rt-glass-card rt-apr-actions-section' });
+        const actionsSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-actions-section' });
         actionsSection.createEl('h4', { text: 'Publish', cls: 'rt-section-title' });
         
         const tabsContainer = actionsSection.createDiv({ cls: 'rt-apr-tabs-container' });
@@ -222,7 +216,7 @@ export class AuthorProgressModal extends Modal {
         };
 
         // Footer actions
-        const footer = glassContainer.createDiv({ cls: 'rt-modal-actions' });
+        const footer = contentEl.createDiv({ cls: 'rt-modal-actions' });
         new ButtonComponent(footer)
             .setButtonText('Close')
             .onClick(() => this.close());
@@ -292,7 +286,6 @@ export class AuthorProgressModal extends Modal {
                 showActs: this.showActs,
                 showStatusColors: this.showStatus,
                 showProgressPercent: this.showPercent,
-                showBeatNotes: this.showBeatNotes,
                 stageColors: (this.plugin.settings as any).publishStageColors
             });
 
@@ -324,7 +317,6 @@ export class AuthorProgressModal extends Modal {
         this.plugin.settings.authorProgress.showActs = this.showActs;
         this.plugin.settings.authorProgress.showStatus = this.showStatus;
         this.plugin.settings.authorProgress.showProgressPercent = this.showPercent;
-        this.plugin.settings.authorProgress.showBeatNotes = this.showBeatNotes;
         await this.plugin.saveSettings();
     }
 

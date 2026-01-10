@@ -21,7 +21,7 @@ export class DragConfirmModal extends Modal {
         
         if (modalEl) {
             modalEl.classList.add('rt-modal-shell');
-            modalEl.style.width = 'min(560px, 90vw)'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.width = 'min(660px, 90vw)'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
 
         contentEl.addClass('rt-modal-container', 'rt-drag-confirm-modal');

@@ -11,7 +11,7 @@ export interface SimulatedProgressConfig {
  * gentle easing and a small jitter so it never looks frozen.
  */
 export class SimulatedProgress {
-    private rafId: number | null = null;
+    private timeoutId: number | null = null;
     private startTime = 0;
     private resolved = false;
     private config: Required<SimulatedProgressConfig> | null = null;
@@ -50,9 +50,9 @@ export class SimulatedProgress {
     }
 
     stop(): void {
-        if (this.rafId !== null) {
-            cancelAnimationFrame(this.rafId);
-            this.rafId = null;
+        if (this.timeoutId !== null) {
+            window.clearTimeout(this.timeoutId);
+            this.timeoutId = null;
         }
         this.config = null;
     }
@@ -79,7 +79,9 @@ export class SimulatedProgress {
         this.onUpdate(percent);
 
         if (t < 1 && !this.resolved) {
-            this.rafId = requestAnimationFrame(this.tick);
+            this.timeoutId = window.setTimeout(this.tick, 16);
+        } else {
+            this.timeoutId = null;
         }
     };
 }

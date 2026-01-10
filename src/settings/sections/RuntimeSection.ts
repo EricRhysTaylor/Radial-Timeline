@@ -86,10 +86,9 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     const restoreScrollState = (state: { scrollContainer: HTMLElement | null; top: number | null; }) => {
         const { scrollContainer, top } = state;
         if (!scrollContainer || top === null) return;
-        // Double RAF to wait for DOM layout to fully settle after re-render
-        // Using setTimeout(0) instead of nested RAF to avoid linter cleanup warnings
-        // Both achieve the same "wait for layout" effect
-        setTimeout(() => {
+        // Single async wait to let layout settle after re-render
+        // Matches the previous double-RAF delay without extra animation frames
+        window.setTimeout(() => {
             const maxTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
             const clampedTop = Math.min(top, maxTop);
             scrollContainer.scrollTop = clampedTop;
