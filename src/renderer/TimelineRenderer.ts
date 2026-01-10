@@ -44,6 +44,7 @@ import {
     SUBPLOT_OUTER_RADIUS_MAINPLOT,
     SUBPLOT_OUTER_RADIUS_STANDARD,
     SUBPLOT_OUTER_RADIUS_CHRONOLOGUE,
+    SUBPLOT_OUTER_RADIUS_APR,
     MONTH_LABEL_RADIUS,
     CHRONOLOGUE_DATE_RADIUS,
     MONTH_TICK_END,
@@ -224,11 +225,14 @@ export function createTimelineSVG(
     const sceneNumbersMap = new Map<string, SceneNumberInfo>();
 
     // Use appropriate subplot outer radius based on mode and readability scale
-    const subplotOuterRadius = isChronologueMode
-        ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE
-        : isSubplotMode
-            ? SUBPLOT_OUTER_RADIUS_MAINPLOT
-            : SUBPLOT_OUTER_RADIUS_STANDARD[readabilityScale];
+    // APR mode uses a smaller radius to leave room for large branding text
+    const subplotOuterRadius = isAprMode
+        ? SUBPLOT_OUTER_RADIUS_APR
+        : isChronologueMode
+            ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE
+            : isSubplotMode
+                ? SUBPLOT_OUTER_RADIUS_MAINPLOT
+                : SUBPLOT_OUTER_RADIUS_STANDARD[readabilityScale];
 
     // Fixed beat text radius based on readability scale (independent of subplot outer radius)
     const beatTextRadius = BEAT_TEXT_RADIUS[readabilityScale];

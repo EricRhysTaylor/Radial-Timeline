@@ -117,9 +117,9 @@
   opacity: 1;
 }
 
-/* Act spokes: soften or recolor on hover/shift modes */
+/* All spokes: soften on hover and shift modes */
 .radial-timeline-svg.scene-hover .act-border,
-.radial-timeline-svg.scene-hover .rt-month-spoke-line.rt-act-boundary {
+.radial-timeline-svg.scene-hover .rt-month-spoke-line {
   stroke: #ffffff;
   opacity: 0.35;
 }

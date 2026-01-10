@@ -6,6 +6,14 @@
   opacity: 0.9;
 }
 
+/* Hide arc/tick when not in use - use visibility for SVG */
+.rt-drop-target-arc.rt-hidden,
+.rt-drop-target-tick.rt-hidden {
+  visibility: hidden;
+  stroke: none;
+  opacity: 0;
+}
+
 .rt-drop-target-tick {
   stroke: var(--interactive-accent);
   stroke-width: 4px;

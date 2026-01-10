@@ -170,10 +170,12 @@ export class OuterRingDragController {
         // Hide tick and arc completely when not in use
         if (this.dropTick) {
             this.dropTick.setAttribute('d', '');
+            this.dropTick.removeAttribute('stroke');
             this.dropTick.classList.add('rt-hidden');
         }
         if (this.dropArc) {
             this.dropArc.setAttribute('d', '');
+            this.dropArc.removeAttribute('stroke');
             this.dropArc.classList.add('rt-hidden');
         }
     }
@@ -276,11 +278,15 @@ export class OuterRingDragController {
         if (this.dropTick && this.dropTick.isConnected) return this.dropTick;
         const existing = this.svg.querySelector<SVGPathElement>('.rt-drop-target-tick');
         if (existing) {
+            // Reset existing element to hidden state
+            existing.classList.add('rt-hidden');
+            existing.setAttribute('d', '');
+            existing.removeAttribute('stroke');
             this.dropTick = existing;
             return existing;
         }
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.classList.add('rt-drop-target-tick');
+        path.classList.add('rt-drop-target-tick', 'rt-hidden');
         path.setAttribute('d', '');
         const overlays = this.svg.querySelector<SVGGElement>('#rt-overlays');
         if (overlays) overlays.appendChild(path); else this.svg.appendChild(path);
@@ -292,11 +298,15 @@ export class OuterRingDragController {
         if (this.dropArc && this.dropArc.isConnected) return this.dropArc;
         const existing = this.svg.querySelector<SVGPathElement>('.rt-drop-target-arc');
         if (existing) {
+            // Reset existing element to hidden state
+            existing.classList.add('rt-hidden');
+            existing.setAttribute('d', '');
+            existing.removeAttribute('stroke');
             this.dropArc = existing;
             return existing;
         }
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.classList.add('rt-drop-target-arc');
+        path.classList.add('rt-drop-target-arc', 'rt-hidden');
         path.setAttribute('d', '');
         const overlays = this.svg.querySelector<SVGGElement>('#rt-overlays');
         if (overlays) overlays.appendChild(path); else this.svg.appendChild(path);

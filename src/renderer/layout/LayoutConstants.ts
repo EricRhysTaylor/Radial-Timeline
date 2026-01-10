@@ -65,6 +65,15 @@ export const DRAG_DROP_ARC_RADIUS = 797;
 /** Where subplot rings end in Chronologue mode (smaller for time details) */
 export const SUBPLOT_OUTER_RADIUS_CHRONOLOGUE = 750;
 
+/** Where subplot rings end in APR mode (smaller to leave room for branding) */
+export const SUBPLOT_OUTER_RADIUS_APR = 520;
+
+/** Radius for APR branding text path (between rings and edge) */
+export const APR_BRANDING_RADIUS = 640;
+
+/** Font size for APR perimeter branding */
+export const APR_BRANDING_FONT_SIZE = 38;
+
 // =============================================================================
 // RADII - BACKDROP RING
 // =============================================================================

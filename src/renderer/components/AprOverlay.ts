@@ -1,4 +1,4 @@
-import { SVG_SIZE, INNER_RADIUS } from '../layout/LayoutConstants';
+import { SVG_SIZE, INNER_RADIUS, APR_BRANDING_RADIUS, APR_BRANDING_FONT_SIZE } from '../layout/LayoutConstants';
 import { escapeXml } from '../../utils/svg';
 
 export function renderAprOverlay(params: {
@@ -26,9 +26,10 @@ export function renderAprOverlay(params: {
         </text>
     `;
 
-    // 2. Perimeter Branding - repeating around the outer edge
-    const outerR = (SVG_SIZE / 2) - 15; // Just inside the edge
-    const innerBrandingR = INNER_RADIUS + 8; // Just outside the center hole
+    // 2. Perimeter Branding - in the space between rings and edge
+    // Use APR_BRANDING_RADIUS (640px) - between rings (520px outer) and edge (800px)
+    const brandingR = APR_BRANDING_RADIUS;
+    const outerR = (SVG_SIZE / 2) - 15; // 785px - just inside the edge for RT branding
     const rtUrl = "https://radialtimeline.com"; 
     
     // Build repeating title text - escape for XML safety
@@ -39,9 +40,9 @@ export function renderAprOverlay(params: {
         ? `${safeTitle}${separator}${safeAuthor}`
         : safeTitle;
     
-    // Calculate repetitions to fill the circumference
-    const circumference = 2 * Math.PI * outerR;
-    const avgCharWidth = 22 * 0.55; // font-size * avg width ratio
+    // Calculate repetitions to fill the circumference at the branding radius
+    const circumference = 2 * Math.PI * brandingR;
+    const avgCharWidth = APR_BRANDING_FONT_SIZE * 0.55; // font-size * avg width ratio
     const segmentWidth = (titleSegment.length + separator.length) * avgCharWidth;
     const repetitions = Math.ceil(circumference / segmentWidth) + 1;
     const fullBrandingText = Array(repetitions).fill(titleSegment).join(separator);
@@ -56,14 +57,15 @@ export function renderAprOverlay(params: {
     const bottomPathId = "apr-bottom-arc";
     const rtPathId = "apr-rt-arc";
 
-    // Larger font size for perimeter branding
-    const brandingFontSize = 22;
-    const rtFontSize = 14;
+    // Use the defined APR branding font size (38px) - much larger for readability
+    const brandingFontSize = APR_BRANDING_FONT_SIZE;
+    const rtFontSize = 18; // RT branding also larger
 
-    const topArcPath = `M -${outerR} 0 A ${outerR} ${outerR} 0 0 1 ${outerR} 0`;
-    const bottomArcPath = `M ${outerR} 0 A ${outerR} ${outerR} 0 0 1 -${outerR} 0`;
-    // RT branding on inside of inner radius, lower half
-    const rtArcPath = `M ${innerBrandingR} 0 A ${innerBrandingR} ${innerBrandingR} 0 0 1 -${innerBrandingR} 0`;
+    // Branding arcs at the dedicated branding radius (between rings and edge)
+    const topArcPath = `M -${brandingR} 0 A ${brandingR} ${brandingR} 0 0 1 ${brandingR} 0`;
+    const bottomArcPath = `M ${brandingR} 0 A ${brandingR} ${brandingR} 0 0 1 -${brandingR} 0`;
+    // RT branding on the outer edge
+    const rtArcPath = `M ${outerR} 0 A ${outerR} ${outerR} 0 0 1 -${outerR} 0`;
 
     const topTextContent = `
         <text font-family="var(--font-interface, system-ui, sans-serif)" font-size="${brandingFontSize}" font-weight="700" fill="var(--text-normal, #e5e5e5)" letter-spacing="0.15em">

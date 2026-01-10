@@ -234,7 +234,7 @@
   /* Fully opaque for prominence */
 }
 
-.radial-timeline-svg.scene-hover .rt-gossamer-grid-spoke.rt-act-boundary {
+.radial-timeline-svg.scene-hover .rt-gossamer-grid-spoke {
   stroke: #ffffff;
   opacity: 0.35;
 }

@@ -1,4 +1,4 @@
-import { TFile, App, Notice } from 'obsidian';
+import { TFile, App } from 'obsidian';
 
 export interface SceneUpdate {
     path: string;
@@ -8,20 +8,20 @@ export interface SceneUpdate {
     subplots?: string[];
 }
 
+/**
+ * Apply scene updates - updates frontmatter and renames files.
+ * Uses two-phase rename: ALL files go through temp namespace first.
+ * This is the safest approach - never rename directly from old to new.
+ */
 export async function applySceneNumberUpdates(app: App, updates: SceneUpdate[]): Promise<void> {
-    // Two-phase rename to avoid "destination file already exists" conflicts
-    // Phase 1: Rename all files to temporary names
-    // Phase 2: Rename from temporary to final names
-    
     interface RenameOp {
         originalPath: string;
         tempPath: string;
+        finalBasename: string;
         finalPath: string;
-        update: SceneUpdate;
     }
     
     const renameOps: RenameOp[] = [];
-    const timestamp = Date.now();
     
     // First pass: Update frontmatter and collect rename operations
     for (const update of updates) {
@@ -34,7 +34,6 @@ export async function applySceneNumberUpdates(app: App, updates: SceneUpdate[]):
                 fm['Act'] = update.actNumber;
             }
             if (update.subplots !== undefined) {
-                // Handle subplot update
                 if (update.subplots.length === 1) {
                     fm['Subplot'] = update.subplots[0];
                 } else if (update.subplots.length > 1) {
@@ -45,75 +44,41 @@ export async function applySceneNumberUpdates(app: App, updates: SceneUpdate[]):
 
         // Check if rename is needed
         const currentBasename = file.basename;
-        const renamedBase = buildRenamedBasename(currentBasename, update.newNumber);
-        if (renamedBase !== currentBasename) {
+        const finalBasename = buildRenamedBasename(currentBasename, update.newNumber);
+        
+        if (finalBasename !== currentBasename) {
             const parentPath = file.parent?.path ?? '';
             const prefix = parentPath ? `${parentPath}/` : '';
-            const tempBase = `__temp_reorder_${timestamp}_${Math.random().toString(36).slice(2, 8)}_${renamedBase}`;
-            const tempPath = `${prefix}${tempBase}.${file.extension}`;
-            const finalPath = `${prefix}${renamedBase}.${file.extension}`;
+            // Simple temp name: z + final basename (sorts to end, easy to spot)
+            const tempBasename = `z${finalBasename}`;
+            
             renameOps.push({ 
-                originalPath: file.path, // Store current path after frontmatter update
-                tempPath, 
-                finalPath, 
-                update 
+                originalPath: file.path,
+                tempPath: `${prefix}${tempBasename}.${file.extension}`,
+                finalBasename,
+                finalPath: `${prefix}${finalBasename}.${file.extension}`
             });
         }
     }
     
     if (renameOps.length === 0) return;
     
-    // Track successful phase 1 renames for rollback if needed
-    const phase1Complete: Array<{ tempPath: string; originalPath: string }> = [];
-    
-    try {
-        // Phase 1: Rename to temporary names
-        for (const op of renameOps) {
-            const file = app.vault.getAbstractFileByPath(op.originalPath);
-            if (!(file instanceof TFile)) {
-                console.warn(`[SceneReorder] File not found for phase 1: ${op.originalPath}`);
-                continue;
-            }
+    // Phase 1: Rename ALL files to temp namespace
+    // This clears ALL original positions
+    for (const op of renameOps) {
+        const file = app.vault.getAbstractFileByPath(op.originalPath);
+        if (file instanceof TFile) {
             await app.fileManager.renameFile(file, op.tempPath);
-            phase1Complete.push({ tempPath: op.tempPath, originalPath: op.originalPath });
         }
-        
-        // Phase 2: Rename from temporary to final names
-        for (const op of renameOps) {
-            const tempFile = app.vault.getAbstractFileByPath(op.tempPath);
-            if (!(tempFile instanceof TFile)) {
-                console.warn(`[SceneReorder] Temp file not found for phase 2: ${op.tempPath}`);
-                continue;
-            }
-            await app.fileManager.renameFile(tempFile, op.finalPath);
+    }
+    
+    // Phase 2: Rename ALL files from temp to final
+    // All target positions are now guaranteed free
+    for (const op of renameOps) {
+        const file = app.vault.getAbstractFileByPath(op.tempPath);
+        if (file instanceof TFile) {
+            await app.fileManager.renameFile(file, op.finalPath);
         }
-    } catch (error) {
-        console.error('[SceneReorder] Error during rename:', error);
-        new Notice(`Scene reorder error: ${error instanceof Error ? error.message : 'Unknown error'}`, 5000);
-        
-        // Attempt to clean up any temp files that were created
-        for (const completed of phase1Complete) {
-            try {
-                const tempFile = app.vault.getAbstractFileByPath(completed.tempPath);
-                if (tempFile instanceof TFile) {
-                    // Try to rename back to a safe name (original without number conflict)
-                    const safeBase = tempFile.basename.replace(/^__temp_reorder_\d+_[a-z0-9]+_/, '');
-                    const parentPath = tempFile.parent?.path ?? '';
-                    const prefix = parentPath ? `${parentPath}/` : '';
-                    const safePath = `${prefix}${safeBase}.${tempFile.extension}`;
-                    
-                    // Check if safe path exists
-                    const existing = app.vault.getAbstractFileByPath(safePath);
-                    if (!existing) {
-                        await app.fileManager.renameFile(tempFile, safePath);
-                    }
-                }
-            } catch (cleanupError) {
-                console.error('[SceneReorder] Cleanup error:', cleanupError);
-            }
-        }
-        
-        throw error;
     }
 }
 

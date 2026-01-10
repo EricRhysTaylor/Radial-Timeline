@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
-import { ButtonComponent } from 'obsidian';
+import { ButtonComponent, setIcon } from 'obsidian';
 import RadialTimelinePlugin from '../main';
 import { BookDesignerModal } from '../modals/BookDesignerModal';
 
@@ -15,6 +15,10 @@ interface WelcomeScreenParams {
 
 export function renderWelcomeScreen({ container, plugin, refreshTimeline }: WelcomeScreenParams): void {
     container.addClass('rt-welcome-view');
+
+    // Background shell icon - large and faint
+    const bgIcon = container.createDiv({ cls: 'rt-welcome-bg-icon' });
+    setIcon(bgIcon, 'shell');
 
     // Huge Welcome Title (custom styled block, not an H1)
     container.createDiv({ cls: 'rt-welcome-title', text: 'Welcome' });

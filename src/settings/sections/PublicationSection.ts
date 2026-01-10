@@ -188,9 +188,28 @@ export function renderPublicationSection(params: {
                     const match = STAGE_ORDER.find(s => s.toLowerCase() === v);
                     return match ?? 'Zero';
                 };
+                const isCompleted = (status: unknown): boolean => {
+                    const val = Array.isArray(status) ? status[0] : status;
+                    const normalized = (val ?? '').toString().trim().toLowerCase();
+                    return normalized === 'complete' || normalized === 'completed' || normalized === 'done';
+                };
+                
                 const highestStageWithScenes = [...STAGE_ORDER].reverse().find(stage =>
                     scenes.some(scene => normalizeStage(scene['Publish Stage']) === stage)
                 );
+                
+                // Check if the highest stage actually has ALL scenes complete
+                const stageScenes = scenes.filter(scene => normalizeStage(scene['Publish Stage']) === highestStageWithScenes);
+                const allComplete = stageScenes.length > 0 && stageScenes.every(scene => isCompleted(scene.status));
+                
+                if (!allComplete) {
+                    // Not actually complete - show a simple "no estimate available" message
+                    const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
+                    heading.setText('Completion Estimate');
+                    const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
+                    body.createDiv({ cls: 'rt-completion-no-data', text: 'Complete some scenes to see progress calculations.' });
+                    return;
+                }
                 
                 if (highestStageWithScenes === 'Press') {
                     // ULTIMATE celebration - the book is DONE!
