@@ -49,7 +49,9 @@ export class SceneInteractionManager {
     
     constructor(view: RadialTimelineView, svg: SVGSVGElement, totalActs?: number) {
         this.svg = svg;
-        this.totalActs = Math.max(3, totalActs ?? 3);
+        // Prefer act count from the rendered SVG (data-num-acts) so hover redistribution matches the actual geometry
+        const svgActs = this.getActCountFromSvg(svg);
+        this.totalActs = svgActs ?? Math.max(3, totalActs ?? 3);
         this.registerFn = typeof (view as any).register === 'function' ? (view.register as any).bind(view) : null;
         
         // Create reusable text measurement element
@@ -69,6 +71,40 @@ export class SceneInteractionManager {
     setActCount(count: number): void {
         this.totalActs = Math.max(3, count);
     }
+    /**
+     * Read act count from the rendered SVG (authoritative for hover redistribution)
+     */
+    private getActCountFromSvg(svg: SVGSVGElement): number | null {
+        const attr = svg.getAttribute('data-num-acts');
+        if (!attr) return null;
+        const parsed = parseInt(attr, 10);
+        return Number.isFinite(parsed) && parsed >= 3 ? parsed : null;
+    }
+
+    /**
+     * Safely read angle attribute with raw fallback for higher precision
+     */
+    private getAngleAttr(el: Element, rawAttr: string, fallbackAttr: string): number {
+        const raw = el.getAttribute(rawAttr);
+        if (raw !== null && raw !== undefined && raw !== '') {
+            const val = Number(raw);
+            if (Number.isFinite(val)) return val;
+        }
+        const fb = el.getAttribute(fallbackAttr);
+        const fbNum = fb !== null && fb !== undefined && fb !== '' ? Number(fb) : NaN;
+        return Number.isFinite(fbNum) ? fbNum : 0;
+    }
+
+    /**
+     * Ensure totalActs stays in sync with the rendered SVG
+     */
+    private refreshActCount(): void {
+        const svgActs = this.getActCountFromSvg(this.svg);
+        if (svgActs !== null) {
+            this.totalActs = svgActs;
+        }
+    }
+
     
     /**
      * Get the view (uses getLeavesOfType to avoid persistent reference)
@@ -279,8 +315,8 @@ export class SceneInteractionManager {
         if (!view) return;
         
         this.svg.querySelectorAll('.rt-scene-group').forEach((group: Element) => {
-            const start = Number(group.getAttribute('data-start-angle')) || 0;
-            const end = Number(group.getAttribute('data-end-angle')) || 0;
+            const start = this.getAngleAttr(group, 'data-start-angle-raw', 'data-start-angle');
+            const end = this.getAngleAttr(group, 'data-end-angle-raw', 'data-end-angle');
             this.originalAngles.set(group.id, { start, end });
             
             // Store original number square transforms
@@ -372,8 +408,8 @@ export class SceneInteractionManager {
                     
                     actElements.push({
                         id: group.id,
-                        startAngle: Number(group.getAttribute('data-start-angle')) || 0,
-                        endAngle: Number(group.getAttribute('data-end-angle')) || 0,
+                        startAngle: this.getAngleAttr(group, 'data-start-angle-raw', 'data-start-angle'),
+                        endAngle: this.getAngleAttr(group, 'data-end-angle-raw', 'data-end-angle'),
                         innerRadius: Number(group.getAttribute('data-inner-r')) || 0,
                         outerRadius: Number(group.getAttribute('data-outer-r')) || 0,
                         isScene
@@ -420,6 +456,7 @@ export class SceneInteractionManager {
         const targetSize = calculateTargetSize(textWidth, hoveredMidR);
         
         // Get act boundaries
+        this.refreshActCount();
         const actNum = Number(hoveredAct);
         const actBounds = getActBoundaries(actNum, this.totalActs);
         
@@ -428,7 +465,8 @@ export class SceneInteractionManager {
             actElements,
             hoveredGroup.id,
             targetSize,
-            actBounds.start
+            actBounds.start,
+            actBounds.end
         );
         
         // Apply redistribution

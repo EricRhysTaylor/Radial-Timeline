@@ -86,24 +86,34 @@ export function redistributeAngles(
     elements: SceneAngleData[],
     hoveredId: string,
     targetSize: number,
-    actStartAngle: number
+    actStartAngle: number,
+    actEndAngle?: number
 ): RedistributionResult[] {
     // Separate scenes from beat slices
     const scenes = elements.filter(e => e.isScene);
     const beats = elements.filter(e => !e.isScene);
     
-    // Calculate beat space (beats keep original size)
-    const totalBeatSpace = beats.reduce((sum, beat) => 
-        sum + (beat.endAngle - beat.startAngle), 0);
+    // Calculate beat space (beats keep original size, but clamp if rounding would overflow the act)
+    const rawBeatSpace = beats.reduce((sum, beat) => sum + (beat.endAngle - beat.startAngle), 0);
     
-    // Calculate total act space
-    const totalActSpace = elements.reduce((sum, el) => 
-        sum + (el.endAngle - el.startAngle), 0);
+    // Calculate total act space using configured act boundaries when provided
+    // This avoids accumulated rounding loss from per-scene data attributes.
+    const totalActSpace = (typeof actEndAngle === 'number')
+        ? (actEndAngle - actStartAngle)
+        : elements.reduce((sum, el) => sum + (el.endAngle - el.startAngle), 0);
+    
+    // If beats would overrun the act span (rare), scale them down proportionally
+    const beatScale = (rawBeatSpace > totalActSpace && rawBeatSpace > 0)
+        ? (totalActSpace / rawBeatSpace)
+        : 1;
+    const totalBeatSpace = rawBeatSpace * beatScale;
     
     // Space available for scenes after subtracting beat space
-    const availableSceneSpace = totalActSpace - totalBeatSpace;
-    const spaceForOtherScenes = availableSceneSpace - targetSize;
-    const sizePerOtherScene = spaceForOtherScenes / (scenes.length - 1);
+    const availableSceneSpace = Math.max(totalActSpace - totalBeatSpace, 0);
+    const safeTargetSize = Math.min(targetSize, availableSceneSpace);
+    const otherSceneCount = Math.max(scenes.length - 1, 0);
+    const spaceForOtherScenes = Math.max(availableSceneSpace - safeTargetSize, 0);
+    const sizePerOtherScene = otherSceneCount > 0 ? (spaceForOtherScenes / otherSceneCount) : 0;
     
     // Redistribute elements maintaining their order
     const results: RedistributionResult[] = [];
@@ -114,15 +124,15 @@ export function redistributeAngles(
         let newEnd: number;
         
         if (element.id === hoveredId) {
-            // Expanded scene
-            newEnd = currentAngle + targetSize;
+            // Expanded scene (bounded by available space in the act)
+            newEnd = currentAngle + safeTargetSize;
         } else if (element.isScene) {
             // Other scenes (compressed)
             newEnd = currentAngle + sizePerOtherScene;
         } else {
-            // Beat slice (keep original size)
+            // Beat slice (keep original size, scaled only if beats would overflow the act)
             const originalSize = element.endAngle - element.startAngle;
-            newEnd = currentAngle + originalSize;
+            newEnd = currentAngle + (originalSize * beatScale);
         }
         
         results.push({
@@ -146,16 +156,26 @@ export function buildArcPath(
     startAngle: number,
     endAngle: number
 ): string {
-    const formatNumber = (n: number) => n.toFixed(6);
-    
-    const largeArcFlag = (endAngle - startAngle) > Math.PI ? 1 : 0;
-    
+    // Match renderer path shape (SceneArcs.sceneArcPath) to avoid post-hover gaps against act spokes.
+    const formatNumber = (n: number) => Number(n.toFixed(2)).toString();
+    const outerRadiusFmt = formatNumber(outerRadius);
+    const innerRadiusFmt = formatNumber(innerRadius);
+    const startCosOuter = formatNumber(outerRadius * Math.cos(startAngle));
+    const startSinOuter = formatNumber(outerRadius * Math.sin(startAngle));
+    const endCosOuter = formatNumber(outerRadius * Math.cos(endAngle));
+    const endSinOuter = formatNumber(outerRadius * Math.sin(endAngle));
+    const startCosInner = formatNumber(innerRadius * Math.cos(startAngle));
+    const startSinInner = formatNumber(innerRadius * Math.sin(startAngle));
+    const endCosInner = formatNumber(innerRadius * Math.cos(endAngle));
+    const endSinInner = formatNumber(innerRadius * Math.sin(endAngle));
+
+    // Keep large-arc flag at 0 (matches renderer) so geometry remains identical pre/post hover.
     return `
-        M ${formatNumber(innerRadius * Math.cos(startAngle))} ${formatNumber(innerRadius * Math.sin(startAngle))}
-        L ${formatNumber(outerRadius * Math.cos(startAngle))} ${formatNumber(outerRadius * Math.sin(startAngle))}
-        A ${formatNumber(outerRadius)} ${formatNumber(outerRadius)} 0 ${largeArcFlag} 1 ${formatNumber(outerRadius * Math.cos(endAngle))} ${formatNumber(outerRadius * Math.sin(endAngle))}
-        L ${formatNumber(innerRadius * Math.cos(endAngle))} ${formatNumber(innerRadius * Math.sin(endAngle))}
-        A ${formatNumber(innerRadius)} ${formatNumber(innerRadius)} 0 ${largeArcFlag} 0 ${formatNumber(innerRadius * Math.cos(startAngle))} ${formatNumber(innerRadius * Math.sin(startAngle))}
+        M ${startCosInner} ${startSinInner}
+        L ${startCosOuter} ${startSinOuter}
+        A ${outerRadiusFmt} ${outerRadiusFmt} 0 0 1 ${endCosOuter} ${endSinOuter}
+        L ${endCosInner} ${endSinInner}
+        A ${innerRadiusFmt} ${innerRadiusFmt} 0 0 0 ${startCosInner} ${startSinInner}
     `;
 }
 

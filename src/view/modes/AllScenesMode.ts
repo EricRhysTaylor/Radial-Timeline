@@ -102,7 +102,12 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
     if (!svg) return;
     
     // Create scene interaction manager
-    const totalActs = Math.max(3, (view.plugin.settings as any).actCount ?? 3);
+    // Prefer SVG's declared act count for accurate hover redistribution; fall back to settings.
+    const svgActsAttr = svg.getAttribute('data-num-acts');
+    const svgActs = svgActsAttr ? parseInt(svgActsAttr, 10) : NaN;
+    const totalActs = Number.isFinite(svgActs) && svgActs >= 3
+        ? svgActs
+        : Math.max(3, (view.plugin.settings as any).actCount ?? 3);
     const manager = new SceneInteractionManager(view as any, svg, totalActs);
     manager.setTitleExpansionEnabled(view.plugin.settings.enableSceneTitleAutoExpand ?? true);
 

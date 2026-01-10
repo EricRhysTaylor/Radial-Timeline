@@ -66,6 +66,9 @@ export function renderVoidCellPath(
   if (metadata?.isOuterRing) {
     dataAttrs.push(`data-outer-ring="true"`);
   }
+  // Preserve high-precision angles for interaction math
+  dataAttrs.push(`data-start-angle-raw="${startAngle}"`);
+  dataAttrs.push(`data-end-angle-raw="${endAngle}"`);
   // Always include angles for positioning
   dataAttrs.push(`data-start-angle="${formatNumber(startAngle)}"`);
   dataAttrs.push(`data-end-angle="${formatNumber(endAngle)}"`);
