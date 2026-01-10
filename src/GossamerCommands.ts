@@ -865,7 +865,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       const errorMsg = (e as Error)?.message || 'Unknown error';
       modal.addError(`Processing failed: ${errorMsg}`);
       modal.completeProcessing(false, 'Processing failed');
-      new Notice(`Failed to run Gossamer AI analysis: ${errorMsg}`);
+      new Notice(`Failed Gossamer AI analysis: ${errorMsg}`);
       console.error('[Gossamer AI]', e);
     }
   };

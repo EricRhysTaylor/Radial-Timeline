@@ -116,8 +116,8 @@ export class CommandRegistrar {
         });
 
         this.plugin.addCommand({
-            id: 'run-gossamer-analysis',
-            name: 'Run gossamer analysis',
+            id: 'gossamer-analysis',
+            name: 'Gossamer analysis',
             callback: () => {
                 runGossamerAiAnalysis(this.plugin);
             }
