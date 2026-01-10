@@ -174,7 +174,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 textInput.setValue(path);
                 const ok = await this.plugin.validateAndRememberPath(path);
                 if (ok) {
-                    this.plugin.settings.sourcePath = normalizePath(path);
+                    const normalizedPath = normalizePath(path);
+                    this.plugin.settings.sourcePath = normalizedPath;
                     await this.plugin.saveSettings();
                     container.classList.add('hidden');
                     textInput.inputEl.removeClass('rt-setting-input-error');

@@ -105,20 +105,33 @@ export function setupTooltipsFromDataAttributes(
     };
 
     const handleMouseOut = (e: Event) => {
+        if (!currentTarget) return;
+        
         const target = (e.target as Element).closest('.rt-tooltip-target[data-tooltip]');
         const relatedTarget = (e as MouseEvent).relatedTarget as Element | null;
         
-        // Check if we moved to a child or another valid target
+        // Check if we moved to another tooltip target
         const newTarget = relatedTarget?.closest('.rt-tooltip-target[data-tooltip]');
 
+        // Case 1: Normal case - we can identify the source tooltip target
         if (target && target === currentTarget && newTarget !== target) {
             // Delay hiding to allow moving to tooltip (if interactive) or reducing flicker
             hideTimeout = window.setTimeout(hideCustomTooltip, 50);
+            return;
         }
         
-        // Special handling for foreignObject elements (like Runtime button):
-        // If relatedTarget is null or outside the SVG entirely, hide the tooltip
-        if (currentTarget && !relatedTarget) {
+        // Case 2: Target couldn't be resolved (e.g., events from foreignObject/HTML content)
+        // Check if relatedTarget is still inside currentTarget
+        if (!target && currentTarget) {
+            const stillInsideCurrentTarget = relatedTarget && currentTarget.contains(relatedTarget);
+            if (!stillInsideCurrentTarget && newTarget !== currentTarget) {
+                hideTimeout = window.setTimeout(hideCustomTooltip, 50);
+                return;
+            }
+        }
+        
+        // Case 3: relatedTarget is null (left SVG entirely)
+        if (!relatedTarget) {
             hideTimeout = window.setTimeout(hideCustomTooltip, 50);
         }
     };

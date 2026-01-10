@@ -4,7 +4,7 @@ import type { TimelineItem } from '../../types';
 import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';
 import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
 import { updateSynopsisTitleColor } from '../interactions/SynopsisTitleColorManager';
-import { OuterRingDragController } from '../interactions/OuterRingDragController';
+import { OuterRingDragController, isDragInProgress, wasRecentlyHandledByDrag } from '../interactions/OuterRingDragController';
 
 export interface AllScenesView {
     currentMode: string;
@@ -32,6 +32,10 @@ export function setupSceneInteractions(view: AllScenesView, group: Element, svgE
     if (encodedPath && encodedPath !== '') {
         const filePath = decodeURIComponent(encodedPath);
         view.registerDomEvent(path as HTMLElement, 'click', async (evt: MouseEvent) => {
+            // Skip if drag controller is handling this interaction
+            // The drag controller handles click-to-open for quick clicks and drag operations
+            if (isDragInProgress() || wasRecentlyHandledByDrag()) return;
+            
             const file = view.plugin.app.vault.getAbstractFileByPath(filePath);
             if (!(file instanceof TFile)) return;
             

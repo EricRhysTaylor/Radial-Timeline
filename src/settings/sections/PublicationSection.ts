@@ -131,6 +131,29 @@ export function renderPublicationSection(params: {
     // --- Completion Estimate Preview ---
     const previewContainer = containerEl.createDiv({ cls: 'rt-planetary-preview rt-completion-preview' });
     
+    // Quotes for different states
+    const startingQuotes = [
+        { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
+        { text: "Start writing, no matter what. The water does not flow until the faucet is turned on.", author: "Louis L'Amour" },
+        { text: "You don't start out writing good stuff. You start out writing crap and thinking it's good stuff, and then gradually you get better at it.", author: "Octavia E. Butler" },
+        { text: "The first draft is just you telling yourself the story.", author: "Terry Pratchett" },
+        { text: "Begin at the beginning and go on till you come to the end; then stop.", author: "Lewis Carroll" },
+    ];
+    
+    const perseveranceQuotes = [
+        { text: "You can always edit a bad page. You can't edit a blank page.", author: "Jodi Picoult" },
+        { text: "I write only when inspiration strikes. Fortunately it strikes every morning at nine o'clock sharp.", author: "W. Somerset Maugham" },
+        { text: "The hard part about writing a novel is finishing it.", author: "Ernest Hemingway" },
+        { text: "A writer is someone for whom writing is more difficult than it is for other people.", author: "Thomas Mann" },
+        { text: "Almost all good writing begins with terrible first efforts.", author: "Anne Lamott" },
+        { text: "Don't get it right, get it written.", author: "James Thurber" },
+        { text: "Writing a book is a horrible, exhausting struggle. One would never undertake such a thing if one were not driven.", author: "George Orwell" },
+    ];
+    
+    function getRandomQuote(quotes: { text: string; author: string }[]): { text: string; author: string } {
+        return quotes[Math.floor(Math.random() * quotes.length)];
+    }
+
     async function renderCompletionPreview(): Promise<void> {
         previewContainer.empty();
         
@@ -141,7 +164,14 @@ export function renderPublicationSection(params: {
                 const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
                 heading.setText('Completion Estimate');
                 const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
-                body.createDiv({ cls: 'rt-completion-no-data', text: 'No scenes found. Create scenes to see progress calculations.' });
+                
+                // Inspiring quote for empty state
+                const quote = getRandomQuote(startingQuotes);
+                
+                const quoteEl = body.createDiv({ cls: 'rt-completion-empty-quote' });
+                quoteEl.createDiv({ cls: 'rt-completion-quote-text', text: `"${quote.text}"` });
+                quoteEl.createDiv({ cls: 'rt-completion-quote-author', text: `— ${quote.author}` });
+                body.createDiv({ cls: 'rt-completion-empty-hint', text: 'Create scenes to see progress calculations.' });
                 return;
             }
 
@@ -157,14 +187,28 @@ export function renderPublicationSection(params: {
                 return;
             }
 
-            // Apply staleness styling
-            previewContainer.removeClass('rt-completion-preview-warn', 'rt-completion-preview-late', 'rt-completion-preview-stalled', 'rt-completion-preview-fresh');
-            previewContainer.addClass(`rt-completion-preview-${estimate.staleness}`);
+            // Apply stage color and staleness styling
+            previewContainer.removeClass(
+                'rt-completion-preview-warn', 'rt-completion-preview-late', 'rt-completion-preview-stalled', 'rt-completion-preview-fresh',
+                'rt-completion-stage-Zero', 'rt-completion-stage-Author', 'rt-completion-stage-House', 'rt-completion-stage-Press'
+            );
+            previewContainer.addClass(`rt-completion-stage-${estimate.stage}`);
+            if (estimate.staleness !== 'fresh') {
+                previewContainer.addClass(`rt-completion-preview-${estimate.staleness}`);
+            }
 
             const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
             heading.setText(`Completion Estimate • ${estimate.stage} Stage`);
 
             const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
+
+            // Encouragement quote when progress is slowing
+            if (estimate.staleness !== 'fresh') {
+                const quote = getRandomQuote(perseveranceQuotes);
+                const encouragementEl = body.createDiv({ cls: 'rt-completion-encouragement' });
+                encouragementEl.createSpan({ cls: 'rt-completion-encouragement-text', text: `"${quote.text}"` });
+                encouragementEl.createSpan({ cls: 'rt-completion-encouragement-author', text: ` — ${quote.author}` });
+            }
 
             // Key metrics row
             const metricsRow = body.createDiv({ cls: 'rt-completion-metrics-row' });
@@ -219,9 +263,12 @@ export function renderPublicationSection(params: {
             }
 
             // Monthly projection breakdown
-            if (estimate.date && estimate.rate > 0 && estimate.labelText !== '?') {
+            if (estimate.date && estimate.rate > 0) {
                 const projectionSection = body.createDiv({ cls: 'rt-completion-projection' });
-                projectionSection.createDiv({ cls: 'rt-completion-projection-heading', text: 'Monthly Progress Projection' });
+                const projectionHeading = estimate.labelText === '?' 
+                    ? 'Monthly Progress Projection (based on last known pace)'
+                    : 'Monthly Progress Projection';
+                projectionSection.createDiv({ cls: 'rt-completion-projection-heading', text: projectionHeading });
                 
                 const projectionGrid = projectionSection.createDiv({ cls: 'rt-completion-projection-grid' });
                 renderMonthlyProjection(projectionGrid, estimate);
@@ -323,15 +370,27 @@ export function renderPublicationSection(params: {
         headerRow.createSpan({ text: 'Total' });
         headerRow.createSpan({ text: 'Progress' });
 
-        for (const m of months) {
-            const row = container.createDiv({ cls: `rt-completion-projection-row${m.isLast ? ' rt-completion-projection-final' : ''}` });
+        for (let idx = 0; idx < months.length; idx++) {
+            const m = months[idx];
+            const isFuture = idx > 0; // First month is current, rest are future projections
+            const rowClasses = [
+                'rt-completion-projection-row',
+                m.isLast ? 'rt-completion-projection-final' : '',
+                isFuture && estimate.staleness !== 'fresh' ? `rt-completion-projection-${estimate.staleness}` : ''
+            ].filter(Boolean).join(' ');
+            
+            const row = container.createDiv({ cls: rowClasses });
             row.createSpan({ cls: 'rt-completion-projection-month', text: m.month });
             row.createSpan({ cls: 'rt-completion-projection-added', text: `+${m.added}` });
             row.createSpan({ cls: 'rt-completion-projection-cumulative', text: String(m.cumulative) });
             
             const percent = Math.round((m.cumulative / estimate.total) * 100);
             const progressContainer = row.createSpan({ cls: 'rt-completion-projection-progress' });
-            const progressBar = progressContainer.createDiv({ cls: 'rt-completion-projection-bar' });
+            const barClasses = [
+                'rt-completion-projection-bar',
+                isFuture && estimate.staleness !== 'fresh' ? `rt-completion-bar-${estimate.staleness}` : ''
+            ].filter(Boolean).join(' ');
+            const progressBar = progressContainer.createDiv({ cls: barClasses });
             progressBar.setCssStyles({ width: `${percent}%` });
             progressContainer.createSpan({ cls: 'rt-completion-projection-percent', text: `${percent}%` });
         }

@@ -349,7 +349,11 @@ export function renderRings(ctx: RingRenderContext): string {
                 if (remainingVoidSpace > 0.001) {
                     const voidStartAngle = startAngle + totalUsedSpace;
                     const voidEndAngle = endAngle;
-                    svg += renderVoidCellPath(innerR, outerR, voidStartAngle, voidEndAngle);
+                    svg += renderVoidCellPath(innerR, outerR, voidStartAngle, voidEndAngle, {
+                        act,
+                        ring,
+                        isOuterRing: true
+                    });
                 }
 
                 continue; // Continue to next ring loop (which iterates rings for this act)
@@ -443,11 +447,19 @@ export function renderRings(ctx: RingRenderContext): string {
                 if (remainingVoidSpace > 0.001) {
                     const voidStartAngle = startAngle + totalUsedSpace;
                     const voidEndAngle = endAngle;
-                    svg += renderVoidCellPath(innerR, outerR, voidStartAngle, voidEndAngle);
+                    svg += renderVoidCellPath(innerR, outerR, voidStartAngle, voidEndAngle, {
+                        act,
+                        ring,
+                        isOuterRing: isOuterRing
+                    });
                 }
             } else {
                 // No scenes, render empty void ring
-                svg += renderVoidCellPath(innerR, outerR, startAngle, endAngle);
+                svg += renderVoidCellPath(innerR, outerR, startAngle, endAngle, {
+                    act,
+                    ring,
+                    isOuterRing: isOuterRing
+                });
             }
         }
     }

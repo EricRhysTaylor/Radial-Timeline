@@ -40,7 +40,38 @@ export function sceneArcPath(innerR: number, outerR: number, startAngle: number,
   `;
 }
 
-export function renderVoidCellPath(innerR: number, outerR: number, startAngle: number, endAngle: number): string {
+export interface VoidCellMetadata {
+  act?: number;
+  ring?: number;
+  isOuterRing?: boolean;
+}
+
+export function renderVoidCellPath(
+  innerR: number, 
+  outerR: number, 
+  startAngle: number, 
+  endAngle: number,
+  metadata?: VoidCellMetadata
+): string {
   const path = sceneArcPath(innerR, outerR, startAngle, endAngle);
-  return `<path d="${path}" class="rt-void-cell"/>`;
+  
+  // Build data attributes for intelligent drop targeting
+  const dataAttrs: string[] = [];
+  if (metadata?.act !== undefined) {
+    dataAttrs.push(`data-act="${metadata.act}"`);
+  }
+  if (metadata?.ring !== undefined) {
+    dataAttrs.push(`data-ring="${metadata.ring}"`);
+  }
+  if (metadata?.isOuterRing) {
+    dataAttrs.push(`data-outer-ring="true"`);
+  }
+  // Always include angles for positioning
+  dataAttrs.push(`data-start-angle="${formatNumber(startAngle)}"`);
+  dataAttrs.push(`data-end-angle="${formatNumber(endAngle)}"`);
+  dataAttrs.push(`data-inner-r="${formatNumber(innerR)}"`);
+  dataAttrs.push(`data-outer-r="${formatNumber(outerR)}"`);
+  
+  const attrString = dataAttrs.length > 0 ? ` ${dataAttrs.join(' ')}` : '';
+  return `<path d="${path}" class="rt-void-cell"${attrString}/>`;
 }

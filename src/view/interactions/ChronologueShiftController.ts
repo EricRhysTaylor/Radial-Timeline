@@ -658,11 +658,12 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             updateDateLabelsForRuntimeMode(true);
             
             // Defer the expensive timeline refresh to next frame for snappy button response
-            requestAnimationFrame(() => {
+            const rafId = requestAnimationFrame(() => {
                 if (view.plugin.refreshTimelineIfNeeded) {
                     view.plugin.refreshTimelineIfNeeded(null);
                 }
             });
+            view.register(() => cancelAnimationFrame(rafId));
         }
     };
 
@@ -1216,12 +1217,15 @@ function createRtButton(contentType: RuntimeContentType, noData: boolean = false
     bg.setAttribute('stroke-width', '6');
 
     // Create foreignObject to embed the Lucide icon
+    // pointer-events: none ensures hover/click events go to the parent SVG group
+    // which has the tooltip target class - prevents tooltip getting stuck
     const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
     foreignObject.setAttribute('x', '0');
     foreignObject.setAttribute('y', '0');
     foreignObject.setAttribute('width', String(RT_SIZE));
     foreignObject.setAttribute('height', String(RT_SIZE));
     foreignObject.setAttribute('class', 'rt-runtime-icon-container');
+    foreignObject.style.pointerEvents = 'none';
 
     // Create the icon wrapper div
     const iconWrapper = document.createElement('div');

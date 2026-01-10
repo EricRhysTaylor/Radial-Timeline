@@ -137,6 +137,40 @@
   stroke-width: 10px;
 }
 
+/* ============================================
+   VOID CELL DROP TARGET STYLING (Narrative Drag)
+   ============================================ */
+
+/* Enable pointer events on void cells in narrative mode during drag */
+.radial-timeline-svg[data-mode="narrative"].rt-dragging-outer .rt-void-cell[data-outer-ring="true"] {
+  pointer-events: auto;
+  cursor: copy;
+}
+
+/* Void cell drop target highlight */
+.radial-timeline-svg[data-mode="narrative"] .rt-void-cell.rt-drop-target {
+  fill: var(--rt-drag-stroke-color, var(--interactive-accent, #705DCF));
+  fill-opacity: 0.25;
+  stroke: var(--rt-drag-stroke-color, var(--interactive-accent, #705DCF));
+  stroke-width: 3px;
+  stroke-dasharray: 8 4;
+}
+
+/* Scene group drag source styling - when dragging from scene cell */
+.radial-timeline-svg[data-mode="narrative"] .rt-scene-group.rt-drag-source .rt-scene-path {
+  stroke: var(--rt-drag-stroke-color, var(--interactive-accent, #705DCF));
+  stroke-width: 4px;
+}
+
+/* Scene cells in narrative mode: enable grab cursor for outer ring scenes */
+.radial-timeline-svg[data-mode="narrative"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path {
+  cursor: grab;
+}
+
+.radial-timeline-svg[data-mode="narrative"].rt-dragging-outer .rt-scene-group[data-item-type="Scene"] .rt-scene-path {
+  cursor: grabbing;
+}
+
 .rt-number-square[data-subplot-idx="0"] {
   --rt-number-stroke-color: var(--rt-subplot-colors-0);
 }

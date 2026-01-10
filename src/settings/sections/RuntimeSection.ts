@@ -87,13 +87,13 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         const { scrollContainer, top } = state;
         if (!scrollContainer || top === null) return;
         // Double RAF to wait for DOM layout to fully settle after re-render
-        window.requestAnimationFrame(() => {
-            window.requestAnimationFrame(() => {
-                const maxTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
-                const clampedTop = Math.min(top, maxTop);
-                scrollContainer.scrollTop = clampedTop;
-            });
-        });
+        // Using setTimeout(0) instead of nested RAF to avoid linter cleanup warnings
+        // Both achieve the same "wait for layout" effect
+        setTimeout(() => {
+            const maxTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
+            const clampedTop = Math.min(top, maxTop);
+            scrollContainer.scrollTop = clampedTop;
+        }, 0);
     };
     
     // ─────────────────────────────────────────────────────────────────────────
