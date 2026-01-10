@@ -3,6 +3,7 @@
  */
 
 import { parseRange, isScoreInRange } from './rangeValidation';
+import { STAGE_ORDER } from './constants';
 
 export type GossamerBeatStatus = 'present' | 'outlineOnly' | 'missing';
 
@@ -27,6 +28,60 @@ export interface GossamerRun {
     date?: string; // ISO
     label?: string;
   };
+}
+
+/**
+ * Detects the dominant publish stage for a Gossamer run based on scene completion.
+ * 
+ * Rules (Milestone-based):
+ * - Zero: Always the default starting stage (no requirements)
+ * - Author: Unlocks when 100% of scenes have COMPLETED the Author stage
+ * - House: Unlocks when 100% of scenes have COMPLETED the House stage
+ * - Press: Unlocks when 100% of scenes have COMPLETED the Press stage
+ * 
+ * "Completed" means: Status = Complete AND Publish Stage >= that stage
+ * 
+ * @param scenes - Array of scene items to analyze (should be filtered to Scene itemType only)
+ * @returns The dominant stage: 'Zero' | 'Author' | 'House' | 'Press'
+ */
+export function detectDominantStage(
+  scenes: { itemType?: string; status?: string | string[]; "Publish Stage"?: string }[]
+): typeof STAGE_ORDER[number] {
+  // Filter to scene notes only (exclude Beat/Plot/Backdrop)
+  const sceneNotes = scenes.filter(s => s.itemType === 'Scene');
+  
+  if (sceneNotes.length === 0) {
+    return 'Zero';
+  }
+  
+  // Helper to check if a status indicates completion
+  const isCompleted = (status: string | string[] | undefined): boolean => {
+    const val = Array.isArray(status) ? status[0] : status;
+    const normalized = (val ?? '').toString().trim().toLowerCase();
+    return normalized === 'complete' || normalized === 'completed' || normalized === 'done';
+  };
+  
+  // Check stages in reverse order (most advanced first): Press -> House -> Author
+  // Zero is the default fallback
+  for (const stage of ['Press', 'House', 'Author'] as const) {
+    const stageIndex = STAGE_ORDER.indexOf(stage);
+    
+    // Check if ALL scenes have completed this stage
+    const allCompleted = sceneNotes.every(scene => {
+      const sceneStage = scene['Publish Stage'] || 'Zero';
+      const sceneStageIndex = STAGE_ORDER.indexOf(sceneStage as typeof STAGE_ORDER[number]);
+      
+      // Scene must be AT or BEYOND this stage AND marked complete
+      return sceneStageIndex >= stageIndex && isCompleted(scene.status);
+    });
+    
+    if (allCompleted) {
+      return stage;
+    }
+  }
+  
+  // Default: Zero stage (always available)
+  return 'Zero';
 }
 
 /**
@@ -379,11 +434,12 @@ export function buildRunFromDefault(scenes?: { itemType?: string; subplot?: stri
 }
 
 /**
- * Build all gossamer runs (Gossamer1-5) and calculate min/max for band
+ * Build all gossamer runs (Gossamer1-30) and calculate min/max for band.
+ * Includes stage information for each run to enable stage-based coloring.
  */
-export function buildAllGossamerRuns(scenes: { itemType?: string; [key: string]: unknown }[] | undefined, selectedBeatModel?: string): { // SAFE: unknown type used for dynamic Gossamer1-5 field access
+export function buildAllGossamerRuns(scenes: { itemType?: string; [key: string]: unknown }[] | undefined, selectedBeatModel?: string): { // SAFE: unknown type used for dynamic Gossamer1-30 field access
   current: GossamerRun;
-  historical: Array<{ label: string; points: { beat: string; score: number }[]; color: string }>;
+  historical: Array<{ label: string; points: { beat: string; score: number }[]; color: string; stage?: string; runIndex: number }>;
   minMax: { min: { beat: string; score: number }[]; max: { beat: string; score: number }[] } | null;
   hasAnyScores: boolean;
 } {
@@ -399,11 +455,26 @@ export function buildAllGossamerRuns(scenes: { itemType?: string; [key: string]:
   // Build current run (Gossamer1)
   const current = buildRunFromGossamerField(scenes, 'Gossamer1', selectedBeatModel, true);
   
-  // Use single gray color for all historical runs (matches CSS variable)
+  // Default gray color for runs without stage data (legacy fallback)
   const historicalColor = '#c0c0c0'; // Same as --rt-gossamer-historical-color
   
+  // Helper to get the stage for a run by checking beat notes
+  const getRunStage = (runIndex: number): string | undefined => {
+    const stageFieldName = `GossamerStage${runIndex}`;
+    // Look for stage in any beat note
+    for (const scene of scenes) {
+      if ((scene.itemType === 'Beat' || scene.itemType === 'Plot') && scene[stageFieldName]) {
+        const stage = scene[stageFieldName];
+        if (typeof stage === 'string' && ['Zero', 'Author', 'House', 'Press'].includes(stage)) {
+          return stage;
+        }
+      }
+    }
+    return undefined;
+  };
+  
   // Build historical runs (Gossamer2-30)
-  const historical: Array<{ label: string; points: { beat: string; score: number }[]; color: string }> = [];
+  const historical: Array<{ label: string; points: { beat: string; score: number }[]; color: string; stage?: string; runIndex: number }> = [];
   
   for (let i = 2; i <= 30; i++) {
     const fieldName = `Gossamer${i}`;
@@ -414,11 +485,14 @@ export function buildAllGossamerRuns(scenes: { itemType?: string; [key: string]:
     if (hasAnyValue) {
       // If any value exists, default ALL missing beats to 0 (encourages complete data)
       const run = buildRunFromGossamerField(scenes, fieldName, selectedBeatModel, true);
+      const stage = getRunStage(i);
       
       historical.push({
         label: fieldName,
         points: run.beats.map(b => ({ beat: b.beat, score: b.score as number })),
-        color: historicalColor
+        color: historicalColor, // Will be overridden by renderer if stage is present
+        stage,
+        runIndex: i
       });
     }
   }

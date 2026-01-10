@@ -3,7 +3,7 @@
  */
 import type RadialTimelinePlugin from './main';
 import { DEFAULT_GEMINI_MODEL_ID } from './constants/aiDefaults';
-import { buildRunFromDefault, buildAllGossamerRuns, GossamerRun, normalizeBeatName, appendGossamerScore, extractBeatOrder } from './utils/gossamer';
+import { buildRunFromDefault, buildAllGossamerRuns, GossamerRun, normalizeBeatName, appendGossamerScore, extractBeatOrder, detectDominantStage } from './utils/gossamer';
 import { Notice, TFile, App } from 'obsidian';
 import { GossamerScoreModal } from './modals/GossamerScoreModal';
 import { GossamerProcessingModal, type ManuscriptInfo, type AnalysisOptions } from './modals/GossamerProcessingModal';
@@ -31,13 +31,26 @@ function findBeatNoteByTitle(files: TFile[], beatTitle: string, app: App): TFile
 
 /**
  * Save Gossamer scores to Beat note frontmatter with appending (G1=oldest, newest=highest number)
+ * Also saves the dominant publish stage at the time of the run.
  */
 async function saveGossamerScores(
   plugin: RadialTimelinePlugin,
-  scores: Map<string, number> // beatTitle → score
+  scores: Map<string, number>, // beatTitle → score
+  dominantStage?: string // Optional pre-computed stage
 ): Promise<void> {
   const files = plugin.app.vault.getMarkdownFiles();
   let updateCount = 0;
+  
+  // Detect dominant stage if not provided
+  let stage = dominantStage || 'Zero';
+  if (!dominantStage) {
+    try {
+      const scenes = await plugin.getSceneData();
+      stage = detectDominantStage(scenes);
+    } catch (e) {
+      console.error('[Gossamer] Failed to detect dominant stage, defaulting to Zero:', e);
+    }
+  }
   
   for (const [beatTitle, newScore] of scores) {
     const file = findBeatNoteByTitle(files, beatTitle, plugin.app);
@@ -56,6 +69,9 @@ async function saveGossamerScores(
         // Set new score at next available index
         fm[`Gossamer${nextIndex}`] = newScore;
         
+        // Set the stage for this run
+        fm[`GossamerStage${nextIndex}`] = stage;
+        
         // Clean up old/deprecated fields
         delete fm.GossamerLocation;
         delete fm.GossamerNote;
@@ -70,7 +86,7 @@ async function saveGossamerScores(
   }
   
   if (updateCount > 0) {
-    new Notice(`Updated ${updateCount} beat scores with history preserved.`);
+    new Notice(`Updated ${updateCount} beat scores (${stage} stage).`);
   }
 }
 

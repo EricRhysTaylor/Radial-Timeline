@@ -251,9 +251,10 @@
 .radial-timeline-container .rt-void-cell {
   fill: var(--rt-color-empty);
   fill-opacity: 0.9;
-  stroke: var(--rt-color-empty);
-  stroke-width: 1;
+  stroke: none;
+  stroke-width: 0;
   cursor: default;
+  pointer-events: none;
 }
 
 /* Optimized global fade: Apply to all children when parent has class */

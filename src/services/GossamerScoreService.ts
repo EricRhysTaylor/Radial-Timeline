@@ -2,7 +2,7 @@ import { Notice, TFile, App } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { isStoryBeat } from '../utils/sceneHelpers';
-import { appendGossamerScore } from '../utils/gossamer';
+import { appendGossamerScore, detectDominantStage } from '../utils/gossamer';
 
 export class GossamerScoreService {
     constructor(private app: App, private plugin: RadialTimelinePlugin) {}
@@ -13,6 +13,15 @@ export class GossamerScoreService {
         const files = sourcePath
             ? allFiles.filter(f => f.path.startsWith(sourcePath))
             : allFiles;
+
+        // Detect dominant stage from current scene data
+        let dominantStage = 'Zero';
+        try {
+            const scenes = await this.plugin.getSceneData();
+            dominantStage = detectDominantStage(scenes);
+        } catch (e) {
+            console.error('[Gossamer] Failed to detect dominant stage, defaulting to Zero:', e);
+        }
 
         let updateCount = 0;
 
@@ -43,6 +52,7 @@ export class GossamerScoreService {
                     const { nextIndex, updated } = appendGossamerScore(fm);
                     Object.assign(fm, updated);
                     fm[`Gossamer${nextIndex}`] = newScore;
+                    fm[`GossamerStage${nextIndex}`] = dominantStage;
                     delete fm.GossamerLocation;
                     delete fm.GossamerNote;
                     delete fm.GossamerRuns;
@@ -55,7 +65,7 @@ export class GossamerScoreService {
         }
 
         if (updateCount > 0) {
-            new Notice(`Updated ${updateCount} beat score${updateCount > 1 ? 's' : ''}.`);
+            new Notice(`Updated ${updateCount} beat score${updateCount > 1 ? 's' : ''} (${dominantStage} stage).`);
         } else {
             new Notice('No beats were updated.');
         }

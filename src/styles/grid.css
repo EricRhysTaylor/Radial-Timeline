@@ -326,3 +326,25 @@
   fill: var(--rt-color-empty);
   text-decoration: underline;
 }
+
+/* Grid arrows - direction indicators for stage progression */
+.rt-grid-arrow {
+  color: var(--text-muted, #666666);
+}
+
+/* Completed stage arrows use publish stage colors */
+.rt-grid-arrow.rt-grid-arrow-complete[data-stage="zero"] {
+  color: var(--rt-color-zero);
+}
+
+.rt-grid-arrow.rt-grid-arrow-complete[data-stage="author"] {
+  color: var(--rt-color-author);
+}
+
+.rt-grid-arrow.rt-grid-arrow-complete[data-stage="house"] {
+  color: var(--rt-color-house);
+}
+
+.rt-grid-arrow.rt-grid-arrow-complete[data-stage="press"] {
+  color: var(--rt-color-press);
+}

@@ -130,3 +130,49 @@ export function lightenColor(hex: string, percent: number): string {
   const newB = Math.min(255, Math.round(b + (255 - b) * mixRatio));
   return `#${(1 << 24 | newR << 16 | newG << 8 | newB).toString(16).slice(1)}`;
 }
+
+/**
+ * Adjusts the saturation of a hex color to an absolute level.
+ * @param hex - The hex color to adjust
+ * @param saturationLevel - Target saturation level (0.0 = fully desaturated/gray, 1.0 = original saturation)
+ * @returns The adjusted hex color
+ */
+export function adjustSaturation(hex: string, saturationLevel: number): string {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+  // Scale the original saturation by the saturation level
+  hsl.s = hsl.s * Math.max(0, Math.min(1, saturationLevel));
+  const adjustedRgb = hslToRgb(hsl.h, hsl.s, hsl.l);
+  return rgbToHex(adjustedRgb.r, adjustedRgb.g, adjustedRgb.b);
+}
+
+/**
+ * Calculates the color for a Gossamer run based on its position within a stage.
+ * Uses saturation gradations: older runs are more muted, newer runs are more vibrant.
+ * 
+ * @param stageColor - The base hex color for the stage (e.g., purple for Zero)
+ * @param runIndexInStage - 0-based index of this run within its stage group (0 = oldest in stage)
+ * @param totalRunsInStage - Total number of runs in this stage
+ * @returns Hex color with adjusted saturation
+ */
+export function getRunColorWithSaturation(
+  stageColor: string,
+  runIndexInStage: number,
+  totalRunsInStage: number
+): string {
+  // Saturation range: 40% (oldest) to 100% (newest)
+  const minSaturation = 0.4;
+  const maxSaturation = 1.0;
+  
+  // If only one run in stage, use full saturation
+  if (totalRunsInStage <= 1) {
+    return stageColor;
+  }
+  
+  // Calculate position (0 = oldest, 1 = newest)
+  const position = runIndexInStage / (totalRunsInStage - 1);
+  const saturationLevel = minSaturation + position * (maxSaturation - minSaturation);
+  
+  return adjustSaturation(stageColor, saturationLevel);
+}

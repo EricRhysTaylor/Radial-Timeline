@@ -214,13 +214,21 @@ export function renderCenterGrid(params: {
     }, -1);
     if (maxStageIdxForGrid === -1) return '';
     return stagesForGrid.map((stage, r) => {
-      let arrowId = '';
-      if (r === maxStageIdxForGrid) arrowId = 'icon-arrow-right-dash';
-      else if (r < maxStageIdxForGrid) arrowId = 'icon-arrow-down';
-      else return '';
+      // Only show arrows for rows up to and including the most advanced stage
+      if (r > maxStageIdxForGrid) return '';
+      
+      const isComplete = isStageCompleteForGridRow(r, gridCounts, stagesForGrid);
       const ax = startXGrid + gridWidth + 4;
       const ay = startYGrid + r * (cellHeight + cellGapY) + (cellHeight / 2);
-      return `<use href="#${arrowId}" x="${ax}" y="${ay - 12}" width="24" height="24" class="rt-grid-arrow" />`;
+      
+      if (isComplete) {
+        // Complete rows get down arrow colored with that stage's color
+        const stageKey = stage.toLowerCase();
+        return `<use href="#icon-arrow-down" x="${ax}" y="${ay - 12}" width="24" height="24" class="rt-grid-arrow rt-grid-arrow-complete" data-stage="${stageKey}" />`;
+      } else {
+        // Incomplete rows (still working on this stage) get right arrow
+        return `<use href="#icon-arrow-right-dash" x="${ax}" y="${ay - 12}" width="24" height="24" class="rt-grid-arrow" />`;
+      }
     }).join('');
   })();
 

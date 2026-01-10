@@ -316,10 +316,9 @@ export class OuterRingDragController {
         tick.classList.remove('rt-hidden');
         tick.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
         if (color) {
-            tick.style.stroke = color;
-            tick.removeAttribute('stroke');
+            tick.setAttribute('stroke', color);
         } else {
-            tick.style.removeProperty('stroke');
+            tick.removeAttribute('stroke');
         }
     }
 
@@ -344,10 +343,9 @@ export class OuterRingDragController {
         const y1p = rArc * Math.sin(a1);
         arc.setAttribute('d', `M ${x0} ${y0} A ${rArc} ${rArc} 0 ${largeArc} ${sweep} ${x1p} ${y1p}`);
         if (color) {
-            arc.style.stroke = color;
-            arc.removeAttribute('stroke');
+            arc.setAttribute('stroke', color);
         } else {
-            arc.style.removeProperty('stroke');
+            arc.removeAttribute('stroke');
         }
     }
 

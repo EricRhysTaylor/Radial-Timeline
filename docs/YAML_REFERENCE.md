@@ -436,6 +436,31 @@ Gossamer4: 15    # Fourth run (now the most recent)
 
 ---
 
+### GossamerStage1-30
+**Optional for Beats** | Type: String (Zero/Author/House/Press)
+
+Tracks the dominant publish stage when each Gossamer run was created. Automatically saved alongside Gossamer scores.
+
+- Each `GossamerStageN` corresponds to the same run as `GossamerN`
+- Used for stage-based coloring of historical Gossamer runs
+- **Zero** (purple): Default starting stage
+- **Author** (blue): Unlocks when all scenes complete Author stage
+- **House** (orange): Unlocks when all scenes complete House stage
+- **Press** (green): Unlocks when all scenes complete Press stage
+
+```yaml
+Gossamer1: 4
+GossamerStage1: Zero      # First run was during Zero stage
+Gossamer2: 8
+GossamerStage2: Zero      # Second run still during Zero stage
+Gossamer3: 12
+GossamerStage3: Author    # Third run after completing Author stage
+```
+
+In Gossamer Mode, historical runs display in their stage color with saturation gradients—older runs within the same stage appear more muted, while newer runs appear more vibrant.
+
+---
+
 ## Beat Model
 **Optional for Beats** | Type: String
 

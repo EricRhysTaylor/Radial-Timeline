@@ -64,6 +64,37 @@ export interface TimelineItem {
     Gossamer28?: number;
     Gossamer29?: number;
     Gossamer30?: number;
+    // Gossamer Stage fields - tracks which publish stage each run was created during
+    GossamerStage1?: string;
+    GossamerStage2?: string;
+    GossamerStage3?: string;
+    GossamerStage4?: string;
+    GossamerStage5?: string;
+    GossamerStage6?: string;
+    GossamerStage7?: string;
+    GossamerStage8?: string;
+    GossamerStage9?: string;
+    GossamerStage10?: string;
+    GossamerStage11?: string;
+    GossamerStage12?: string;
+    GossamerStage13?: string;
+    GossamerStage14?: string;
+    GossamerStage15?: string;
+    GossamerStage16?: string;
+    GossamerStage17?: string;
+    GossamerStage18?: string;
+    GossamerStage19?: string;
+    GossamerStage20?: string;
+    GossamerStage21?: string;
+    GossamerStage22?: string;
+    GossamerStage23?: string;
+    GossamerStage24?: string;
+    GossamerStage25?: string;
+    GossamerStage26?: string;
+    GossamerStage27?: string;
+    GossamerStage28?: string;
+    GossamerStage29?: string;
+    GossamerStage30?: string;
     End?: string;
     /** Raw frontmatter data for custom field access */
     rawFrontmatter?: Record<string, unknown>;

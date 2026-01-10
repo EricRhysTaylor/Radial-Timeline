@@ -3,7 +3,7 @@
  */
 import type { TimelineItem } from '../types';
 import { GossamerRun, extractPresentBeatScores, extractBeatOrder } from '../utils/gossamer';
-import { getMostAdvancedStageColor, lightenColor } from '../utils/colour';
+import { getMostAdvancedStageColor, lightenColor, getRunColorWithSaturation } from '../utils/colour';
 
 export interface PolarConfig {
   innerRadius: number;
@@ -35,7 +35,7 @@ export function renderGossamerLayer(
   polar: PolarConfig,
   anglesByBeat?: Map<string, number>,
   beatPathByName?: Map<string, string>,
-  overlayRuns?: Array<{ label?: string; points: { beat: string; score: number }[]; color?: string }>,
+  overlayRuns?: Array<{ label?: string; points: { beat: string; score: number }[]; color?: string; stage?: string; runIndex?: number }>,
   minBand?: { min: { beat: string; score: number }[]; max: { beat: string; score: number }[] },
   spokeEndRadius?: number,
   publishStageColorByBeat?: Map<string, string>,
@@ -260,18 +260,55 @@ export function renderGossamerLayer(
   const overlayDots: string[] = [];
   
   if (overlayRuns && overlayRuns.length > 0) {
+    // Calculate stage-based colors with saturation gradients
+    // Group runs by stage to determine position within each stage
+    const runsByStage = new Map<string, number[]>();
+    overlayRuns.forEach((ov, idx) => {
+      const stage = ov.stage || 'unknown';
+      if (!runsByStage.has(stage)) {
+        runsByStage.set(stage, []);
+      }
+      runsByStage.get(stage)!.push(idx);
+    });
+    
+    // Calculate color for each run based on stage and position
+    const runColors = overlayRuns.map((ov, idx) => {
+      const historicalColor = getCSSVar('--rt-gossamer-historical-color', '#c0c0c0');
+      
+      // If no stage info or no publishStageColors, use legacy gray
+      if (!ov.stage || !publishStageColors) {
+        return ov.color || historicalColor;
+      }
+      
+      // Get the base color for this stage
+      const stageColor = publishStageColors[ov.stage as keyof typeof publishStageColors];
+      if (!stageColor) {
+        return ov.color || historicalColor;
+      }
+      
+      // Get position within this stage's runs
+      const stageRuns = runsByStage.get(ov.stage) || [idx];
+      const positionInStage = stageRuns.indexOf(idx);
+      const totalInStage = stageRuns.length;
+      
+      // Apply saturation gradient (older = less saturated, newer = more saturated)
+      return getRunColorWithSaturation(stageColor, positionInStage, totalInStage);
+    });
+    
     // Reverse to draw oldest first (bottom layer)
-    [...overlayRuns].reverse().forEach(ov => {
+    [...overlayRuns].reverse().forEach((ov, reversedIdx) => {
+      const originalIdx = overlayRuns.length - 1 - reversedIdx;
+      const runColor = runColors[originalIdx];
+      
       const path = buildOverlayPath(ov.points, localAngles, innerRadius, outerRadius);
       if (path) {
-        const historicalColor = getCSSVar('--rt-gossamer-historical-color', '#c0c0c0');
         overlayPathsWithColors.push({
           path,
-          color: ov.color || historicalColor
+          color: runColor
         });
       }
       
-      // Add dots for historical runs (red if score is 0, gray if score > 0)
+      // Add dots for historical runs (red if score is 0, stage color if score > 0)
       const historicalDotRadius = getCSSVar('--rt-gossamer-dot-historical', '5');
       ov.points.forEach(point => {
         const angle = localAngles.get(point.beat);
@@ -280,8 +317,7 @@ export function renderGossamerLayer(
           const x = r * Math.cos(angle);
           const y = r * Math.sin(angle);
           const errorColor = getCSSVar('--rt-gossamer-error-color', '#ff4444');
-          const historicalColor = getCSSVar('--rt-gossamer-historical-color', '#c0c0c0');
-          const dotColor = point.score === 0 ? errorColor : (ov.color || historicalColor);
+          const dotColor = point.score === 0 ? errorColor : runColor;
           // Historical dots: use CSS variable for size
           overlayDots.push(`<circle class="rt-gossamer-dot-historical" cx="${fmt(x)}" cy="${fmt(y)}" r="${historicalDotRadius}" fill="${dotColor}" data-beat="${escapeAttr(point.beat)}" pointer-events="none"/>`);
         }
