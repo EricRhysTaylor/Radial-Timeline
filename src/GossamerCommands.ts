@@ -195,11 +195,10 @@ function setInMemoryRun(plugin: RadialTimelinePlugin, run: GossamerRun): void {
 export async function openGossamerScoreEntry(plugin: RadialTimelinePlugin): Promise<void> {
   // Get story beat notes filtered by Beat Model setting (same as gossamer rendering)
   const scenes = await plugin.getSceneData();
-  // Support both 'Beat' (new standard) and 'Plot' (legacy)
-  const plotBeats = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
+  const plotBeats = scenes.filter(s => s.itemType === 'Beat');
   
   if (plotBeats.length === 0) {
-    new Notice('No story beats found. Create notes with frontmatter "Class: Beat" (or "Class: Plot" deprecated).');
+    new Notice('No story beats found. Create notes with frontmatter "Class: Beat".');
     return;
   }
   
@@ -222,10 +221,10 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     // ALWAYS rebuild run from fresh scene data (reads latest Gossamer1 scores from YAML)
     const scenes = await plugin.getSceneData();
     
-    // Check if there are any story beat notes (support both 'Beat' and 'Plot')
-    const beatNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
+    // Check if there are any story beat notes (Beat only)
+    const beatNotes = scenes.filter(s => s.itemType === 'Beat');
     if (beatNotes.length === 0) {
-      new Notice('Cannot enter Gossamer mode: No story beats found. Create notes with frontmatter "Class: Beat" (or "Class: Plot" for backward compatibility).');
+      new Notice('Cannot enter Gossamer mode: No story beats found. Create notes with frontmatter "Class: Beat".');
       return;
     }
     
@@ -692,6 +691,15 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     // Save results to beat notes
     modal.setStatus('Updating beat notes...');
     
+    // Detect dominant stage for this run
+    let dominantStage = 'Zero';
+    try {
+      const allScenes = await plugin.getSceneData();
+      dominantStage = detectDominantStage(allScenes);
+    } catch (e) {
+      console.error('[Gossamer] Failed to detect dominant stage, defaulting to Zero:', e);
+    }
+    
     const files = plugin.app.vault.getMarkdownFiles();
     let updateCount = 0;
     const unmatchedBeats: string[] = [];
@@ -721,8 +729,9 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         const { nextIndex, updated } = appendGossamerScore(fm);
         Object.assign(fm, updated);
         
-        // Set new score and justification at next available index
+        // Set new score, stage, and justification at next available index
         fm[`Gossamer${nextIndex}`] = beat.momentumScore;
+        fm[`GossamerStage${nextIndex}`] = dominantStage;
         fm[`Gossamer${nextIndex} Justification`] = beat.justification || '';
         
         // Add timestamp and model info

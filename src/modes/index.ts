@@ -33,7 +33,7 @@ export {
 
 // Mode definitions
 export { NARRATIVE_MODE } from './definitions/AllScenesMode';
-export { SUBPLOT_MODE } from './definitions/MainPlotMode';
+export { PUBLICATION_MODE } from './definitions/MainPlotMode';
 export { CHRONOLOGUE_MODE } from './definitions/ChronologueMode';
 export { GOSSAMER_MODE } from './definitions/GossamerMode';
 

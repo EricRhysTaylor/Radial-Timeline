@@ -272,7 +272,7 @@ Place:
 
 Workflow status: `Todo`, `Working`, or `Complete`
 
-Determines scene color coding in Subplot Mode (Todo/Working/Complete/Overdue patterns).
+Determines scene color coding in Publication Mode (formerly Subplot Mode) with Todo/Working/Complete/Overdue patterns.
 
 ---
 
@@ -286,7 +286,7 @@ Publication readiness: `Zero`, `Author`, `House`, or `Press`
 - **House**: Reviewed and edited
 - **Press**: Ready for publication
 
-Used for color coding in Main Plot mode.
+Used for color coding in Publication mode.
 
 ---
 

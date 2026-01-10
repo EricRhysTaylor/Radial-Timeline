@@ -79,9 +79,12 @@ export interface AuthorProgressSettings {
     showSubplots: boolean;  // Show all rings vs single Main Plot ring
     showActs: boolean;      // Show act divisions vs full circle
     showStatus: boolean;    // Show real stage colors vs neutral gray
+    showProgressPercent?: boolean; // Show big center %
+    showBeatNotes?: boolean;       // Include beat notes
     
     // Identity & Branding
     bookTitle: string;
+    authorName?: string;
     authorUrl: string;
 
     // Updates & Frequency

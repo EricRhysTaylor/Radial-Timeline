@@ -7,7 +7,7 @@
     *   [[Chronologue Mode]]
     *   [[Gossamer Mode]]
     *   [[Narrative Mode]]
-    *   [[Subplot Mode]]
+    *   [[Subplot Mode|Publication Mode]]
 *   **Features & Tools**
     *   [[AI Analysis]]
     *   [[Book Designer]]

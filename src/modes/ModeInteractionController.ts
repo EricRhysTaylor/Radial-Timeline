@@ -56,8 +56,8 @@ export class ModeInteractionController {
                 await this.setupAllScenesHandlers(svg);
                 break;
                 
-            case TimelineMode.SUBPLOT:
-                await this.setupMainPlotHandlers(svg);
+            case TimelineMode.PUBLICATION:
+                await this.setupPublicationHandlers(svg);
                 break;
                 
             case TimelineMode.GOSSAMER:
@@ -129,9 +129,9 @@ export class ModeInteractionController {
     }
     
     /**
-     * Setup handlers for Main Plot mode
+     * Setup handlers for Publication mode
      */
-    private async setupMainPlotHandlers(svg: SVGSVGElement): Promise<void> {
+    private async setupPublicationHandlers(svg: SVGSVGElement): Promise<void> {
         // Import and use existing Main Plot mode setup
         const { setupMainPlotMode } = await import('../view/modes/MainPlotMode');
         setupMainPlotMode(this.view as any, svg);

@@ -45,7 +45,7 @@ Radial Timeline™ captures and visualizes all 4 critical timelines, revealing t
 3. **Author time**: your scene writing progress with target completion dates from Todo to Complete.
 4. **Publishing time**: manuscript revision stages from Zero draft through Press-ready.
 
-Narrative and Chronologue modes keep subplot colors front-and-center so you can compare structure without workflow noise. When you need to see Todo/Working/Overdue progress or publish stage colors, jump into Subplot Mode where all scenes is replaced by Main Plot and scenes inherit the author-status and publish-stage palette.
+Narrative and Chronologue modes keep subplot colors front-and-center so you can compare structure without workflow noise. When you need to see Todo/Working/Overdue progress or publish stage colors, jump into Publication Mode (formerly Subplot Mode) where all scenes is replaced by Main Plot and scenes inherit the author-status and publish-stage palette.
 
 ---
 

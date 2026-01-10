@@ -45,7 +45,7 @@ export function computeCacheableValues(
 
     const currentMode = (plugin.settings as any).currentMode || 'narrative';
     const isChronologueMode = currentMode === 'chronologue';
-    const isSubplotMode = currentMode === 'subplot';
+    const isPublicationMode = currentMode === 'publication';
     const readabilityScale = getReadabilityScale(plugin.settings as any);
     const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
     const forceChronological = isChronologueMode;
@@ -172,7 +172,7 @@ export function computeCacheableValues(
 
     const subplotOuterRadius = isChronologueMode
         ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE
-        : isSubplotMode
+        : isPublicationMode
             ? SUBPLOT_OUTER_RADIUS_MAINPLOT
             : SUBPLOT_OUTER_RADIUS_STANDARD[readabilityScale];
 

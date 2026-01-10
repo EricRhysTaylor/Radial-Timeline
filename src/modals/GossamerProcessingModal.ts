@@ -9,6 +9,7 @@
 import { App, Modal, ButtonComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { getModelDisplayName } from '../utils/modelResolver';
+import { SimulatedProgress } from '../utils/simulatedProgress';
 
 export interface ManuscriptInfo {
     totalScenes: number;
@@ -50,6 +51,8 @@ export class GossamerProcessingModal extends Modal {
     private currentStatus: string = 'Initializing...';
     private apiCallStartTime?: number;
     private timerInterval?: number;
+    private progressSimulator?: SimulatedProgress;
+    private estimatedProcessingMs: number = 45000; // Fallback estimate (45s typical)
 
     constructor(
         app: App,
@@ -96,6 +99,9 @@ export class GossamerProcessingModal extends Modal {
         if (this.timerInterval) {
             window.clearInterval(this.timerInterval);
             this.timerInterval = undefined;
+        }
+        if (this.progressSimulator) {
+            this.progressSimulator.stop();
         }
         // Allow closing while processing - it continues in background
     }
@@ -251,6 +257,9 @@ export class GossamerProcessingModal extends Modal {
             }
         }
 
+        // Precompute estimated processing time for smoother progress animation
+        this.estimatedProcessingMs = this.estimateProcessingMs(info);
+
         // Update the beat system info in confirmation view if it exists
         const beatSystemInfoEl = this.confirmationView?.querySelector('.rt-gossamer-proc-beat-system-info');
         if (beatSystemInfoEl) {
@@ -288,9 +297,9 @@ export class GossamerProcessingModal extends Modal {
         // Animate progress bar to indicate activity (pulse between 10% and 90%)
         if (this.progressBarEl) {
             this.progressBarEl.addClass('rt-gossamer-progress-active');
-            // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
-            this.progressBarEl.style.setProperty('--progress-width', '50%');
         }
+
+        this.startSimulatedProgress();
     }
 
     /**
@@ -316,12 +325,14 @@ export class GossamerProcessingModal extends Modal {
             message = `Preparing response... ${timeStr}`;
         }
 
-        // Estimate: ~30-90 seconds for typical manuscripts
-        const estimate = elapsed < 90
-            ? ' (typically 30-90 seconds)'
-            : ' (large manuscript)';
+        const estimateSeconds = Math.round(this.estimatedProcessingMs / 1000);
+        const estimateSuffix = Number.isFinite(estimateSeconds)
+            ? (elapsed > estimateSeconds
+                ? ` (running longer than expected · est. ~${estimateSeconds}s)`
+                : ` (est. ~${estimateSeconds}s)`)
+            : ' (typically 30-90 seconds)';
 
-        this.apiStatusEl.setText(message + estimate);
+        this.apiStatusEl.setText(message + estimateSuffix);
     }
 
     /**
@@ -342,6 +353,9 @@ export class GossamerProcessingModal extends Modal {
         }
 
         // Complete the progress bar and pause animation
+        if (this.progressSimulator) {
+            this.progressSimulator.complete();
+        }
         if (this.progressBarEl) {
             this.progressBarEl.removeClass('rt-gossamer-progress-active');
             this.progressBarEl.addClass('rt-progress-complete');
@@ -366,6 +380,9 @@ export class GossamerProcessingModal extends Modal {
         }
 
         // Reset progress bar
+        if (this.progressSimulator) {
+            this.progressSimulator.fail();
+        }
         if (this.progressBarEl) {
             this.progressBarEl.removeClass('rt-gossamer-progress-active');
             this.progressBarEl.addClass('rt-progress-complete');
@@ -404,6 +421,13 @@ export class GossamerProcessingModal extends Modal {
         }
 
         // Complete the progress bar and pause animation
+        if (this.progressSimulator) {
+            if (success) {
+                this.progressSimulator.complete();
+            } else {
+                this.progressSimulator.fail();
+            }
+        }
         if (this.progressBarEl) {
             this.progressBarEl.removeClass('rt-gossamer-progress-active');
             this.progressBarEl.addClass('rt-progress-complete');
@@ -434,6 +458,67 @@ export class GossamerProcessingModal extends Modal {
         if (this.apiStatusEl) {
             this.apiStatusEl.setText('⚠️ Rate limited');
         }
+    }
+
+    /**
+     * Start a simulated progress animation using manuscript-derived estimate.
+     */
+    private startSimulatedProgress(): void {
+        const durationMs = this.estimateProcessingMs(this.manuscriptInfo);
+        this.estimatedProcessingMs = durationMs;
+
+        const simulator = this.getProgressSimulator();
+        simulator.start({
+            durationMs,
+            startPercent: 8,
+            maxPercent: 93,
+            jitter: 0.9
+        });
+    }
+
+    /**
+     * Ensure we have a simulator instance and wire it to the bar element.
+     */
+    private getProgressSimulator(): SimulatedProgress {
+        if (!this.progressSimulator) {
+            this.progressSimulator = new SimulatedProgress((percent: number) => {
+                this.updateProgressWidth(percent);
+            });
+        }
+        return this.progressSimulator;
+    }
+
+    private updateProgressWidth(percent: number): void {
+        if (this.progressBarEl) {
+            // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
+            this.progressBarEl.style.setProperty('--progress-width', `${percent}%`);
+        }
+    }
+
+    /**
+     * Estimate processing duration based on manuscript size and beats.
+     * Calibrated so a ~97k word manuscript lands near 40-45 seconds.
+     */
+    private estimateProcessingMs(info?: ManuscriptInfo): number {
+        if (!info) return this.estimatedProcessingMs || 45000;
+
+        const tokens = info.estimatedTokens ?? Math.round(info.totalWords * 1.35);
+        const tokenSeconds = tokens / 4000; // Calibrated to ~40s for 139k tokens
+        const sceneSeconds = Math.min(8, info.totalScenes * 0.08);
+        const beatSeconds = Math.min(4, info.beatCount * 0.1);
+        const iterativeSeconds = info.hasIterativeContext ? 3 : 0;
+
+        const totalSeconds = this.clamp(
+            tokenSeconds + sceneSeconds + beatSeconds + iterativeSeconds,
+            18,
+            95
+        );
+
+        return totalSeconds * 1000;
+    }
+
+    private clamp(value: number, min: number, max: number): number {
+        return Math.min(max, Math.max(min, value));
     }
 }
 

@@ -782,12 +782,12 @@ export default class SynopsisManager {
 
     const currentMode = (this.plugin.settings as any).currentMode || 'narrative';
     const isChronologueMode = currentMode === 'chronologue';
-    const isSubplotMode = currentMode === 'subplot';
+    const isPublicationMode = currentMode === 'publication';
     const readabilityScale = getReadabilityScale(this.plugin.settings);
 
     const subplotOuterRadius = isChronologueMode
       ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE
-      : isSubplotMode
+      : isPublicationMode
         ? SUBPLOT_OUTER_RADIUS_MAINPLOT
         : SUBPLOT_OUTER_RADIUS_STANDARD[readabilityScale];
 

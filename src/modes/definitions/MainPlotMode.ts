@@ -7,17 +7,17 @@
 import { ModeDefinition, TimelineMode } from '../ModeDefinition';
 
 /**
- * Subplot Mode Definition
+ * Publication Mode Definition (formerly Subplot)
  * 
- * Shows Main Plot scenes in the outer ring with publish stage coloring.
- * Other subplots are shown in their respective inner rings.
+ * Shows Main Plot scenes in the outer ring with publication stage/status coloring.
+ * Each subplot stays on its own ring (no aggregated ring) to focus on progress tracking.
  * Beat notes are removed entirely from the timeline.
  * Non-Main-Plot elements are visually muted.
  */
-export const SUBPLOT_MODE: ModeDefinition = {
-    id: TimelineMode.SUBPLOT,
-    name: 'Subplot',
-    description: 'View Main Plot scenes with publish stage coloring, other subplots in inner rings',
+export const PUBLICATION_MODE: ModeDefinition = {
+    id: TimelineMode.PUBLICATION,
+    name: 'Publication',
+    description: 'Track stage/status per subplot: main plot in the outer ring, other subplots in their own rings with publication coloring',
     
     rendering: {
         outerRingContent: 'subplot-only',
@@ -37,8 +37,8 @@ export const SUBPLOT_MODE: ModeDefinition = {
     },
     
     ui: {
-        acronym: 'SUBP',
-        tooltip: 'Switch to Narrative mode',
+        acronym: 'PUBL',
+        tooltip: 'Switch to Publication mode',
         showInToggleButton: true,
         order: 2
     }

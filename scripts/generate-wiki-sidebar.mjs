@@ -21,7 +21,7 @@ const STRUCTURE = [
             { name: 'Chronologue Mode', link: 'Chronologue-Mode' },
             { name: 'Gossamer Mode', link: 'Gossamer-Mode' },
             { name: 'Narrative Mode', link: 'Narrative-Mode' },
-            { name: 'Subplot Mode', link: 'Subplot-Mode' },
+            { name: 'Publication Mode', link: 'Subplot-Mode' },
         ]
     },
     {

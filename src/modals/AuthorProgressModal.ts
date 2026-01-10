@@ -2,11 +2,10 @@ import { App, Modal, Setting, ButtonComponent, Notice, setIcon } from 'obsidian'
 import type RadialTimelinePlugin from '../main';
 import { AuthorProgressPublishTarget } from '../types/settings';
 import { getKickstarterEmbed, getPatreonEmbed } from '../renderer/utils/AuthorProgressUtils';
-import { createTimelineSVG } from '../renderer/TimelineRenderer';
+import { createAprSVG } from '../renderer/apr/AprRenderer';
 import { getAllScenes } from '../utils/manuscript';
 import { TimelineItem } from '../types/timeline';
 import { AuthorProgressService } from '../services/AuthorProgressService';
-import { PluginRendererFacade } from '../utils/sceneHelpers';
 
 export class AuthorProgressModal extends Modal {
     private plugin: RadialTimelinePlugin;
@@ -17,6 +16,8 @@ export class AuthorProgressModal extends Modal {
     private showSubplots: boolean;
     private showActs: boolean;
     private showStatus: boolean;
+    private showPercent: boolean;
+    private showBeatNotes: boolean;
     
     private previewContainer: HTMLElement | null = null;
     
@@ -47,6 +48,8 @@ export class AuthorProgressModal extends Modal {
         this.showSubplots = settings.showSubplots ?? true;
         this.showActs = settings.showActs ?? true;
         this.showStatus = settings.showStatus ?? true;
+        this.showPercent = settings.showProgressPercent ?? true;
+        this.showBeatNotes = settings.showBeatNotes ?? false;
         this.publishTarget = settings.defaultPublishTarget;
     }
 
@@ -120,6 +123,30 @@ export class AuthorProgressModal extends Modal {
                 .setValue(this.showStatus)
                 .onChange(async (val) => {
                     this.showStatus = val;
+                    await this.saveRevealOptions();
+                    this.renderPreview();
+                })
+            );
+
+        new Setting(revealSection)
+            .setName('Show % Complete')
+            .setDesc('Show the big center percentage.')
+            .addToggle(toggle => toggle
+                .setValue(this.showPercent)
+                .onChange(async (val) => {
+                    this.showPercent = val;
+                    await this.saveRevealOptions();
+                    this.renderPreview();
+                })
+            );
+
+        new Setting(revealSection)
+            .setName('Beat Notes')
+            .setDesc('Include beat notes in the preview (usually off for APR).')
+            .addToggle(toggle => toggle
+                .setValue(this.showBeatNotes)
+                .onChange(async (val) => {
+                    this.showBeatNotes = val;
                     await this.saveRevealOptions();
                     this.renderPreview();
                 })
@@ -254,20 +281,19 @@ export class AuthorProgressModal extends Modal {
 
         const settings = this.plugin.settings.authorProgress;
 
-        // Use the actual plugin as the facade to get correct timeline rendering
-        const pluginFacade = this.plugin as unknown as PluginRendererFacade;
-
         try {
-            // Use the main timeline renderer with APR mode enabled
-            // This preserves all the correct geometry, colors, and structure
-            const { svgString } = createTimelineSVG(pluginFacade, this.cachedScenes, {
-                aprMode: true,
+            const { svgString } = createAprSVG(this.cachedScenes, {
+                size: 'standard',
                 progressPercent: this.progressPercent,
                 bookTitle: settings?.bookTitle || 'Working Title',
+                authorName: settings?.authorName || '',
                 authorUrl: settings?.authorUrl || '',
                 showSubplots: this.showSubplots,
                 showActs: this.showActs,
-                showStatus: this.showStatus
+                showStatusColors: this.showStatus,
+                showProgressPercent: this.showPercent,
+                showBeatNotes: this.showBeatNotes,
+                stageColors: (this.plugin.settings as any).publishStageColors
             });
 
             this.previewContainer.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
@@ -297,6 +323,8 @@ export class AuthorProgressModal extends Modal {
         this.plugin.settings.authorProgress.showSubplots = this.showSubplots;
         this.plugin.settings.authorProgress.showActs = this.showActs;
         this.plugin.settings.authorProgress.showStatus = this.showStatus;
+        this.plugin.settings.authorProgress.showProgressPercent = this.showPercent;
+        this.plugin.settings.authorProgress.showBeatNotes = this.showBeatNotes;
         await this.plugin.saveSettings();
     }
 

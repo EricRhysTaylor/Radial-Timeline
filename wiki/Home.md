@@ -22,7 +22,7 @@ Radial Timeline™ captures and visualizes all 4 critical timelines:
 *   **Author time**: your scene writing progress with target due dates tracking Todo, Working, Complete and Overdue.
 *   **Publishing time**: manuscript revision stages from Zero draft through Press-ready.
 
-Narrative and Chronologue modes keep subplot colors front-and-center so you can compare structure without workflow noise. When you need to see Todo/Working/Overdue progress or publish stage colors, jump into Subplot Mode where all scenes is replaced by Main Plot and scenes inherit the author-status and publish-stage palette.
+Narrative and Chronologue modes keep subplot colors front-and-center so you can compare structure without workflow noise. When you need to see Todo/Working/Overdue progress or publish stage colors, jump into Publication Mode (formerly Subplot Mode) where all scenes is replaced by Main Plot and scenes inherit the author-status and publish-stage palette.
 
 ---
 
@@ -41,8 +41,8 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
   <div style="text-align: center;">
-    <img src="images/subplot.jpeg" alt="Subplot Mode: author status (Todo/Working/Overdue/Complete) and publish stage colors" style="width: 300px; max-width: 100%; border-radius: 8px;" />
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Subplot Mode — schedule/status + publish stage progress</div>
+    <img src="images/subplot.jpeg" alt="Publication Mode: author status (Todo/Working/Overdue/Complete) and publish stage colors" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Publication Mode — schedule/status + publish stage progress</div>
   </div>
   <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
   <div style="text-align: center;">

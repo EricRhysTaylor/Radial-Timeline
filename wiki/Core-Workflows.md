@@ -10,12 +10,12 @@
 *   **Create basic scene note**: Command palette → **Radial Timeline: Create basic scene note** (uses the Base YAML template).
 *   **Create advanced scene note**: Command palette → **Radial Timeline: Create advanced scene note** (uses the Advanced YAML template, including any Advanced YAML editor customizations).
 
-### Subplot Mode and Tracking Progress
-*   **Scene Status Colors**: In Subplot Mode, scenes are color-coded by status: Todo = plaid, Working = pink, Overdue = red, Complete = publish stage color. In Narrative and Chronologue modes, scenes display their subplot color.
+### Publication Mode and Tracking Progress (formerly Subplot)
+*   **Scene Status Colors**: In Publication Mode, scenes are color-coded by status: Todo = plaid, Working = pink, Overdue = red, Complete = publish stage color. In Narrative and Chronologue modes, scenes display their subplot color.
 *   **Publishing Stages**: Track manuscript through Zero → Author → House → Press.
 *   **Completion Estimate Mark**: Plugin calculates target completion date based on your recent writing pace. The calculation is most accurate when the `Due` date is updated to the day of scene completion.
 
-**Modes**: Subplot `2`
+**Modes**: Publication `2`
 **Settings**: Publishing stage colors
 
 ### Generating a Manuscript

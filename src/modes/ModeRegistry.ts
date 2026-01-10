@@ -13,7 +13,7 @@
 
 import { ModeDefinition, TimelineMode } from './ModeDefinition';
 import { NARRATIVE_MODE } from './definitions/AllScenesMode';
-import { SUBPLOT_MODE } from './definitions/MainPlotMode';
+import { PUBLICATION_MODE } from './definitions/MainPlotMode';
 import { GOSSAMER_MODE } from './definitions/GossamerMode';
 import { CHRONOLOGUE_MODE } from './definitions/ChronologueMode';
 
@@ -22,7 +22,7 @@ import { CHRONOLOGUE_MODE } from './definitions/ChronologueMode';
  */
 const MODE_REGISTRY = new Map<TimelineMode, ModeDefinition>([
     [TimelineMode.NARRATIVE, NARRATIVE_MODE],
-    [TimelineMode.SUBPLOT, SUBPLOT_MODE],
+    [TimelineMode.PUBLICATION, PUBLICATION_MODE],
     [TimelineMode.CHRONOLOGUE, CHRONOLOGUE_MODE],
     [TimelineMode.GOSSAMER, GOSSAMER_MODE],
 ]);

@@ -35,13 +35,9 @@ export class ModeManager {
      */
     getCurrentMode(): TimelineMode {
         const currentModeString = this.view.currentMode;
-        
-        // Validate and return as TimelineMode
-        if (isTimelineMode(currentModeString)) {
+        if (currentModeString && isTimelineMode(currentModeString)) {
             return currentModeString as TimelineMode;
         }
-        
-        // Fallback to NARRATIVE if invalid
         return TimelineMode.NARRATIVE;
     }
     

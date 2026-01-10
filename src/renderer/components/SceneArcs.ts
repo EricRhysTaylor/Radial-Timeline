@@ -44,6 +44,10 @@ export interface VoidCellMetadata {
   act?: number;
   ring?: number;
   isOuterRing?: boolean;
+  className?: string;
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
 }
 
 export function renderVoidCellPath(
@@ -75,6 +79,15 @@ export function renderVoidCellPath(
   dataAttrs.push(`data-inner-r="${formatNumber(innerR)}"`);
   dataAttrs.push(`data-outer-r="${formatNumber(outerR)}"`);
   
+  if (metadata?.className) {
+    dataAttrs.push(`class="rt-void-cell ${metadata.className}"`);
+  } else {
+    dataAttrs.push(`class="rt-void-cell"`);
+  }
+  if (metadata?.fill) dataAttrs.push(`fill="${metadata.fill}"`);
+  if (metadata?.stroke) dataAttrs.push(`stroke="${metadata.stroke}"`);
+  if (metadata?.strokeWidth !== undefined) dataAttrs.push(`stroke-width="${metadata.strokeWidth}"`);
+
   const attrString = dataAttrs.length > 0 ? ` ${dataAttrs.join(' ')}` : '';
-  return `<path d="${path}" class="rt-void-cell"${attrString}/>`;
+  return `<path d="${path}"${attrString}/>`;
 }

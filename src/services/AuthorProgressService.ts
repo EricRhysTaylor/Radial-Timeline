@@ -1,9 +1,8 @@
 import { App, Notice, TFolder } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { TimelineItem } from '../types/timeline';
-import { createTimelineSVG } from '../renderer/TimelineRenderer';
+import { createAprSVG } from '../renderer/apr/AprRenderer';
 import { getAllScenes } from '../utils/manuscript';
-import { PluginRendererFacade } from '../utils/sceneHelpers';
 
 export class AuthorProgressService {
     constructor(private plugin: RadialTimelinePlugin, private app: App) {}
@@ -53,8 +52,7 @@ export class AuthorProgressService {
     }
 
     /**
-     * Generates and saves the APR report.
-     * Uses the main timeline renderer with APR mode for accurate visuals.
+     * Generates and saves the APR report using the dedicated APR renderer.
      */
     public async generateReport(mode?: 'static' | 'dynamic'): Promise<string | null> {
         const settings = this.plugin.settings.authorProgress;
@@ -62,18 +60,19 @@ export class AuthorProgressService {
 
         const scenes = await getAllScenes(this.app, this.plugin);
         const progressPercent = this.calculateProgress(scenes);
-        
-        // Use the main timeline renderer with APR mode
-        const pluginFacade = this.plugin as unknown as PluginRendererFacade;
-        
-        const { svgString } = createTimelineSVG(pluginFacade, scenes, {
-            aprMode: true,
+
+        const { svgString } = createAprSVG(scenes, {
+            size: 'standard',
             progressPercent,
             bookTitle: settings.bookTitle || 'Working Title',
+            authorName: settings.authorName || '',
             authorUrl: settings.authorUrl || '',
             showSubplots: settings.showSubplots ?? true,
             showActs: settings.showActs ?? true,
-            showStatus: settings.showStatus ?? true
+            showStatusColors: settings.showStatus ?? true,
+            showProgressPercent: settings.showProgressPercent ?? true,
+            showBeatNotes: settings.showBeatNotes ?? false,
+            stageColors: (this.plugin.settings as any).publishStageColors
         });
 
         let finalSvg = svgString;

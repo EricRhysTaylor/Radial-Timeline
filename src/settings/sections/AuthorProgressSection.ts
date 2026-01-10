@@ -3,8 +3,7 @@ import type RadialTimelinePlugin from '../../main';
 import { AuthorProgressService } from '../../services/AuthorProgressService';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { getAllScenes } from '../../utils/manuscript';
-import { createTimelineSVG } from '../../renderer/TimelineRenderer';
-import { PluginRendererFacade } from '../../utils/sceneHelpers';
+import { createAprSVG } from '../../renderer/apr/AprRenderer';
 
 export interface AuthorProgressSectionProps {
     app: App;
@@ -242,7 +241,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
 /**
  * Render the APR SVG preview in the hero section
- * Uses the main timeline renderer with APR mode for accurate preview
+ * Uses the dedicated APR renderer
  */
 async function renderHeroPreview(
     app: App, 
@@ -267,17 +266,18 @@ async function renderHeroPreview(
         
         const aprSettings = plugin.settings.authorProgress;
         
-        // Use the main timeline renderer with APR mode
-        const pluginFacade = plugin as unknown as PluginRendererFacade;
-        
-        const { svgString } = createTimelineSVG(pluginFacade, scenes, {
-            aprMode: true,
+        const { svgString } = createAprSVG(scenes, {
+            size: 'standard',
             progressPercent,
             bookTitle: aprSettings?.bookTitle || 'Working Title',
+            authorName: aprSettings?.authorName || '',
             authorUrl: aprSettings?.authorUrl || '',
             showSubplots: aprSettings?.showSubplots ?? true,
             showActs: aprSettings?.showActs ?? true,
-            showStatus: aprSettings?.showStatus ?? true
+            showStatusColors: aprSettings?.showStatus ?? true,
+            showProgressPercent: aprSettings?.showProgressPercent ?? true,
+            showBeatNotes: aprSettings?.showBeatNotes ?? false,
+            stageColors: (plugin.settings as any).publishStageColors
         });
         
         container.empty();

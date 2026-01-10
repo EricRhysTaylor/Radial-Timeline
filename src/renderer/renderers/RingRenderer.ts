@@ -46,12 +46,6 @@ export interface RingRenderContext {
     sceneGrades: Map<string, string>;
     manuscriptOrderPositions?: Map<string, { startAngle: number; endAngle: number }>;
     numActs: number;
-    /** APR mode - suppress all text rendering */
-    isAprMode?: boolean;
-    /** APR reveal options */
-    aprShowSubplots?: boolean;  // Show all rings vs single Main Plot ring
-    aprShowActs?: boolean;      // Show act divisions vs full circle  
-    aprShowStatus?: boolean;    // Show real stage colors vs neutral gray
 }
 
 export function renderRings(ctx: RingRenderContext): string {
@@ -72,11 +66,7 @@ export function renderRings(ctx: RingRenderContext): string {
         synopsesElements,
         sceneGrades,
         manuscriptOrderPositions,
-        numActs,
-        isAprMode = false,
-        aprShowSubplots = true,
-        aprShowActs = true,
-        aprShowStatus = true
+        numActs
     } = ctx;
 
     let svg = '';
@@ -117,9 +107,7 @@ export function renderRings(ctx: RingRenderContext): string {
         const totalRings = NUM_RINGS;
         const subplotCount = masterSubplotOrder.length;
         const ringsToUse = Math.min(subplotCount, totalRings);
-
-        // In APR mode with showSubplots=false, only render the outermost ring
-        const maxRingOffset = (isAprMode && !aprShowSubplots) ? 1 : ringsToUse;
+        const maxRingOffset = ringsToUse;
         
         for (let ringOffset = 0; ringOffset < maxRingOffset; ringOffset++) {
             const ring = totalRings - ringOffset - 1; // Start from outermost
@@ -245,10 +233,7 @@ export function renderRings(ctx: RingRenderContext): string {
                     const textPathRadius = Math.max(innerR, outerR - sceneTitleInset);
                     const textPathLargeArcFlag = (sceneEndAngle - (sceneStartAngle + TEXTPATH_START_NUDGE_RAD)) > Math.PI ? 1 : 0;
 
-                    // In APR mode with showStatus=false, use neutral Zero stage color for all scenes
-                    const color = (isAprMode && !aprShowStatus) 
-                        ? PUBLISH_STAGE_COLORS.Zero 
-                        : getFillForScene(scene, PUBLISH_STAGE_COLORS, subplotColorFor, true, forceSubplotFillColors);
+                    const color = getFillForScene(scene, PUBLISH_STAGE_COLORS, subplotColorFor, true, forceSubplotFillColors);
                     const arcPathStr = sceneArcPath(innerR, effectiveOuterR, sceneStartAngle, sceneEndAngle);
                     const sceneUniqueKey = scene.path || `${scene.title || ''}::${scene.number ?? ''}::${scene.when ?? ''}`;
                     const sceneId = makeSceneId(act, ring, idx, true, true, sceneUniqueKey);
@@ -319,7 +304,7 @@ export function renderRings(ctx: RingRenderContext): string {
                                   fill="${color}" 
                                   ${plotStrokeAttr}
                                   class="${sceneClasses}"/>
-                            ${!isAprMode && !isBeatNote(scene) ? `
+                            ${!isBeatNote(scene) ? `
                             <path id="textPath-${act}-${ring}-outer-${idx}" 
                                   d="M ${formatNumber(textPathRadius * Math.cos(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} ${formatNumber(textPathRadius * Math.sin(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} 
                                      A ${formatNumber(textPathRadius)} ${formatNumber(textPathRadius)} 0 ${textPathLargeArcFlag} 1 ${formatNumber(textPathRadius * Math.cos(sceneEndAngle))} ${formatNumber(textPathRadius * Math.sin(sceneEndAngle))}" 
@@ -328,7 +313,7 @@ export function renderRings(ctx: RingRenderContext): string {
                                 <textPath href="#textPath-${act}-${ring}-outer-${idx}" startOffset="4">
                                     ${text}
                                 </textPath>
-                            </text>` : !isAprMode && isBeatNote(scene) ? `
+                            </text>` : isBeatNote(scene) ? `
                             <path id="plot-label-arc-${act}-${ring}-outer-${idx}" 
                                   d="M ${formatNumber(beatTextRadius * Math.cos(labelStartAngle))} ${formatNumber(beatTextRadius * Math.sin(labelStartAngle))} 
                                      A ${formatNumber(beatTextRadius)} ${formatNumber(beatTextRadius)} 0 ${largeArcFlag} 1 ${formatNumber(beatTextRadius * Math.cos(labelEndAngle))} ${formatNumber(beatTextRadius * Math.sin(labelEndAngle))}" 
@@ -381,16 +366,13 @@ export function renderRings(ctx: RingRenderContext): string {
                     const textPathRadius = Math.max(innerR, outerR - sceneTitleInset);
                     const textPathLargeArcFlag = (sceneEndAngle - (sceneStartAngle + TEXTPATH_START_NUDGE_RAD)) > Math.PI ? 1 : 0;
 
-                    // In APR mode with showStatus=false, use neutral Zero stage color for all scenes
-                    const color = (isAprMode && !aprShowStatus)
-                        ? PUBLISH_STAGE_COLORS.Zero
-                        : getFillForScene(
-                            scene,
-                            PUBLISH_STAGE_COLORS,
-                            subplotColorFor,
-                            isAllScenesMode,
-                            forceSubplotFillColors
-                        );
+                    const color = getFillForScene(
+                        scene,
+                        PUBLISH_STAGE_COLORS,
+                        subplotColorFor,
+                        isAllScenesMode,
+                        forceSubplotFillColors
+                    );
 
                     const arcPathStr = sceneArcPath(innerR, outerR, sceneStartAngle, sceneEndAngle);
                     const sceneUniqueKey = scene.path || `${scene.title || ''}::${scene.number ?? ''}::${scene.when ?? ''}`;
@@ -426,7 +408,7 @@ export function renderRings(ctx: RingRenderContext): string {
                                   fill="${color}" 
                                   class="${sceneClasses}"/>
 
-                            ${!isAprMode && !isBeatNote(scene) ? `
+                            ${!isBeatNote(scene) ? `
                             <path id="textPath-${act}-${ring}-${idx}" 
                                   d="M ${formatNumber(textPathRadius * Math.cos(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} ${formatNumber(textPathRadius * Math.sin(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} 
                                      A ${formatNumber(textPathRadius)} ${formatNumber(textPathRadius)} 0 ${textPathLargeArcFlag} 1 ${formatNumber(textPathRadius * Math.cos(sceneEndAngle))} ${formatNumber(textPathRadius * Math.sin(sceneEndAngle))}" 

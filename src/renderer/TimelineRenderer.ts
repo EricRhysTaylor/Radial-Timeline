@@ -44,7 +44,6 @@ import {
     SUBPLOT_OUTER_RADIUS_MAINPLOT,
     SUBPLOT_OUTER_RADIUS_STANDARD,
     SUBPLOT_OUTER_RADIUS_CHRONOLOGUE,
-    SUBPLOT_OUTER_RADIUS_APR,
     MONTH_LABEL_RADIUS,
     CHRONOLOGUE_DATE_RADIUS,
     MONTH_TICK_END,
@@ -97,8 +96,6 @@ import { renderProgressRingBaseLayer } from './utils/ProgressRing';
 import { getReadabilityMultiplier, getReadabilityScale } from '../utils/readability';
 import { getVersionCheckService } from '../services/VersionCheckService';
 import { getConfiguredActCount, parseActLabels, shouldShowActLabels } from '../utils/acts';
-import { AprOptions } from './utils/AprOptions';
-import { renderAprOverlay } from './components/AprOverlay';
 import { renderAuthorProgressIndicator } from './components/AuthorProgressIndicator';
 
 
@@ -129,13 +126,7 @@ function computeSceneTitleInset(fontScale: number): number {
 export function createTimelineSVG(
     plugin: PluginRendererFacade,
     scenes: TimelineItem[],
-    aprOptions?: AprOptions
 ): { svgString: string; maxStageColor: string } {
-    const isAprMode = aprOptions?.aprMode === true;
-    // APR reveal options (default to showing everything if not specified)
-    const aprShowSubplots = aprOptions?.showSubplots ?? true;
-    const aprShowActs = aprOptions?.showActs ?? true;
-    const aprShowStatus = aprOptions?.showStatus ?? true;
     const stopTotalPerf = startPerfSegment(plugin, 'timeline.total');
     const sceneCount = scenes.length;
     const size = SVG_SIZE;
@@ -202,7 +193,7 @@ export function createTimelineSVG(
     const actLabels = parseActLabels(plugin.settings as any, numActs);
     const showActLabels = shouldShowActLabels(plugin.settings as any);
     const isChronologueMode = currentMode === 'chronologue';
-    const isSubplotMode = currentMode === 'subplot';
+    const isPublicationMode = currentMode === 'publication';
     const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
     const forceChronological = isChronologueMode;
     const chronologueSceneEntries: ChronologueSceneEntry[] | undefined = isChronologueMode
@@ -211,7 +202,7 @@ export function createTimelineSVG(
 
     // Create SVG root and expose the dominant publish-stage colour for CSS via a hidden <g> element
     let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" 
-                       xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg ${readabilityClass} ${isAprMode ? 'rt-apr-mode' : ''}" data-font-scale="${readabilityScale}" data-num-acts="${numActs}"
+                       xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg ${readabilityClass}" data-font-scale="${readabilityScale}" data-num-acts="${numActs}"
                        preserveAspectRatio="xMidYMid meet">`;
 
 
@@ -225,14 +216,11 @@ export function createTimelineSVG(
     const sceneNumbersMap = new Map<string, SceneNumberInfo>();
 
     // Use appropriate subplot outer radius based on mode and readability scale
-    // APR mode uses a smaller radius to leave room for large branding text
-    const subplotOuterRadius = isAprMode
-        ? SUBPLOT_OUTER_RADIUS_APR
-        : isChronologueMode
-            ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE
-            : isSubplotMode
-                ? SUBPLOT_OUTER_RADIUS_MAINPLOT
-                : SUBPLOT_OUTER_RADIUS_STANDARD[readabilityScale];
+    const subplotOuterRadius = isChronologueMode
+        ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE
+        : isPublicationMode
+            ? SUBPLOT_OUTER_RADIUS_MAINPLOT
+            : SUBPLOT_OUTER_RADIUS_STANDARD[readabilityScale];
 
     // Fixed beat text radius based on readability scale (independent of subplot outer radius)
     const beatTextRadius = BEAT_TEXT_RADIUS[readabilityScale];
@@ -291,18 +279,13 @@ export function createTimelineSVG(
     // Store boundary labels (first/last) to render on top later in chronologue mode
     let boundaryLabelsHtml = '';
 
-    // In APR Mode, we might want to suppress outer month labels entirely to keep it clean?
-    // Plan says "Text: NO scene titles, beat labels, or internal text."
-    // Does that include months? "Pattern only". Let's suppress months in APR mode.
-    if (!isAprMode) {
-        const outerLabelRender = renderOuterLabelTexts({
-            outerLabels,
-            isChronologueMode,
-            currentMonthIndex
-        });
-        svg += outerLabelRender.labelsSvg;
-        boundaryLabelsHtml = outerLabelRender.boundaryLabelsHtml;
-    }
+    const outerLabelRender = renderOuterLabelTexts({
+        outerLabels,
+        isChronologueMode,
+        currentMonthIndex
+    });
+    svg += outerLabelRender.labelsSvg;
+    boundaryLabelsHtml = outerLabelRender.boundaryLabelsHtml;
 
     // --- Draw Act labels early (below story beat labels) into rotatable group later ---
 
@@ -331,7 +314,7 @@ export function createTimelineSVG(
     });
 
 
-    // Month spokes and inner labels (always calendar months)
+    // Month spokes and inner labels
     svg += renderCalendarSpokesLayer({
         months,
         lineInnerRadius,
@@ -341,11 +324,6 @@ export function createTimelineSVG(
         isChronologueMode,
         numActs,
         scenes,
-        // hideLabels: isAprMode // Pass a hideLabels flag if we update that function, otherwise CSS or leave as is.
-        // Assuming renderCalendarSpokesLayer renders text. We might need to hide it via CSS class .rt-apr-mode text { display: none }
-        // but we want center text.
-        // Let's rely on CSS hiding for internal text if possible, or modify helper.
-        // Actually, let's just let the APR overlay cover the center.
     });
 
     // Add outer chronological tick marks in Chronologue mode
@@ -367,9 +345,7 @@ export function createTimelineSVG(
 
 
     // Target completion tick/marker
-    if (!isAprMode) {
-        svg += renderTargetDateTick({ plugin, progressRadius, dateToAngle });
-    }
+    svg += renderTargetDateTick({ plugin, progressRadius, dateToAngle });
 
 
     // Synopses at end to be above all other elements
@@ -412,17 +388,15 @@ export function createTimelineSVG(
         // Extract grade from 2beats using helper function
         extractGradeFromScene(scene, sceneId, sceneGrades, plugin);
 
-        if (!isAprMode) {
-            appendSynopsisElementForScene({
-                plugin,
-                scene,
-                sceneId,
-                maxTextWidth,
-                masterSubplotOrder,
-                scenes,
-                targets: synopsesElements
-            });
-        }
+        appendSynopsisElementForScene({
+            plugin,
+            scene,
+            sceneId,
+            maxTextWidth,
+            masterSubplotOrder,
+            scenes,
+            targets: synopsesElements
+        });
     });
 
     // Open rotatable container – scenes and act labels/borders only
@@ -431,7 +405,7 @@ export function createTimelineSVG(
     const lastBeatEndByAct: { [key: string]: number } = {};
 
     // Only show Act labels when using manuscript order (not When date sorting)
-    if (!sortByWhen && !isAprMode) {
+    if (!sortByWhen) {
         // --- Draw Act labels at fixed radius ---
         svg += renderActLabels({
             numActs,
@@ -474,11 +448,7 @@ export function createTimelineSVG(
         synopsesElements,
         sceneGrades,
         manuscriptOrderPositions,
-        numActs,
-        isAprMode,
-        aprShowSubplots,
-        aprShowActs,
-        aprShowStatus
+        numActs
     };
 
     svg += renderRings(ringRenderContext);
@@ -486,13 +456,13 @@ export function createTimelineSVG(
     stopRingRender();
 
     // After all scenes are drawn, add just the act borders (vertical lines only)
-    // In APR mode with showActs=false, skip act borders for a continuous circle
-    if (!(isAprMode && !aprShowActs)) {
-        svg += renderActBorders({ numActs, innerRadius, outerRadius: subplotOuterRadius });
-    }
+    svg += renderActBorders({
+        numActs,
+        innerRadius,
+        outerRadius: subplotOuterRadius,
+    });
 
-    // In APR mode with showSubplots=false, skip subplot indicators
-    if (shouldShowSubplotRings(plugin) && !(isAprMode && !aprShowSubplots)) {
+    if (shouldShowSubplotRings(plugin)) {
         svg += renderSubplotDominanceIndicators({
             masterSubplotOrder,
             ringStartRadii,
@@ -576,33 +546,30 @@ export function createTimelineSVG(
 
 
 
-    // Skip Grid in APR mode
-    if (!isAprMode) {
-        svg += renderCenterGrid({
-            statusesForGrid,
-            stagesForGrid,
-            gridCounts,
-            gridSceneNames,
-            PUBLISH_STAGE_COLORS,
-            currentYearLabel,
-            estimatedTotalScenes,
-            totalRuntimeSeconds,
-            startXGrid,
-            startYGrid,
-            cellWidth,
-            cellHeight,
-            cellGapX,
-            cellGapY,
-            headerY,
-            stageTooltips: STAGE_HEADER_TOOLTIPS,
-            statusTooltips: STATUS_HEADER_TOOLTIPS,
-            runtimeContentType: plugin.settings.runtimeContentType || 'novel',
-        });
-    }
+    svg += renderCenterGrid({
+        statusesForGrid,
+        stagesForGrid,
+        gridCounts,
+        gridSceneNames,
+        PUBLISH_STAGE_COLORS,
+        currentYearLabel,
+        estimatedTotalScenes,
+        totalRuntimeSeconds,
+        startXGrid,
+        startYGrid,
+        cellWidth,
+        cellHeight,
+        cellGapX,
+        cellGapY,
+        headerY,
+        stageTooltips: STAGE_HEADER_TOOLTIPS,
+        statusTooltips: STATUS_HEADER_TOOLTIPS,
+        runtimeContentType: plugin.settings.runtimeContentType || 'novel',
+    });
 
     // Add tick mark and label for the estimated completion date if available
     // (Moved here to draw AFTER center stats so it appears on top)
-    if (estimateResult && (plugin.settings as any).showCompletionEstimate !== false && !isAprMode) {
+    if (estimateResult && (plugin.settings as any).showCompletionEstimate !== false) {
         svg += renderEstimatedDateElements({ estimate: estimateResult, progressRadius });
     }
 
@@ -627,11 +594,9 @@ export function createTimelineSVG(
     svg += `</g>`;
 
     // Subplot labels - rendered OUTSIDE rotatable so they stay fixed when rotation is applied
-    if (!isAprMode) {
-        svg += `<g class="background-layer subplot-labels-fixed">`;
-        svg += renderSubplotLabels({ NUM_RINGS, ringStartRadii, ringWidths, masterSubplotOrder, plugin });
-        svg += `</g>`;
-    }
+    svg += `<g class="background-layer subplot-labels-fixed">`;
+    svg += renderSubplotLabels({ NUM_RINGS, ringStartRadii, ringWidths, masterSubplotOrder, plugin });
+    svg += `</g>`;
 
     let chronologueOverlaysHtml = '';
     // Add Chronologue mode arcs
@@ -670,49 +635,34 @@ export function createTimelineSVG(
     svg += chronologueOverlaysHtml;
 
     // Render boundary date labels on top of chronologue arcs
-    if (isChronologueMode && boundaryLabelsHtml && !isAprMode) {
+    if (isChronologueMode && boundaryLabelsHtml) {
         svg += boundaryLabelsHtml;
     }
 
-    if (!isAprMode) {
-        svg += synopsisHTML;
-    }
+    svg += synopsisHTML;
 
     // Close static root container
     svg += `</g>`;
 
-    // Add APR Overlay (Center Text & Perimeter Branding)
-    if (isAprMode) {
-        svg += renderAprOverlay({
-            progressPercent: aprOptions?.progressPercent || 0,
-            bookTitle: aprOptions?.bookTitle || 'My Book',
-            authorUrl: aprOptions?.authorUrl || ''
-        });
-    }
-
     // Add rotation toggle control (non-rotating UI), positioned above top edge (Act 2 marker vicinity)
     // Place the button near the Act 2 label (start of Act 2 boundary) and slightly outside along local y-axis
-    if (!isAprMode) {
-        svg += renderRotationToggle({ numActs, actualOuterRadius });
-    }
+    svg += renderRotationToggle({ numActs, actualOuterRadius });
 
     // Add version indicator (bottom-right corner)
-    if (!isAprMode) {
-        try {
-            const versionService = getVersionCheckService();
-            svg += renderVersionIndicator({
-                version: versionService.getCurrentVersion(),
-                hasUpdate: versionService.isUpdateAvailable(),
-                latestVersion: versionService.getLatestVersion() || undefined
-            });
-        } catch {
-            // Version service not initialized yet - render without update info
-            // Will be updated on next render after version check completes
-        }
-
-        // Add help icon (bottom-right corner)
-        svg += renderHelpIcon();
+    try {
+        const versionService = getVersionCheckService();
+        svg += renderVersionIndicator({
+            version: versionService.getCurrentVersion(),
+            hasUpdate: versionService.isUpdateAvailable(),
+            latestVersion: versionService.getLatestVersion() || undefined
+        });
+    } catch {
+        // Version service not initialized yet - render without update info
+        // Will be updated on next render after version check completes
     }
+
+    // Add help icon (bottom-right corner)
+    svg += renderHelpIcon();
     
     // Check for stale APR (Manual mode only) and show indicator if needed
     // Assuming this runs in context where we can check settings or pass a flag
