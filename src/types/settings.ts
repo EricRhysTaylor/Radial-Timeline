@@ -104,20 +104,20 @@ export interface AuthorProgressSettings {
 }
 
 /**
- * Momentum Builder Reveal Levels
+ * Teaser Reveal Levels
  * Each level unlocks more visual detail as progress increases
  */
-export type MomentumRevealLevel = 'bar' | 'scenes' | 'acts' | 'subplots' | 'colors';
+export type TeaserRevealLevel = 'bar' | 'scenes' | 'acts' | 'subplots' | 'colors';
 
 /**
- * Momentum Builder preset configurations
+ * Teaser Reveal preset configurations
  */
-export type MomentumPreset = 'slow' | 'standard' | 'fast' | 'custom';
+export type TeaserPreset = 'slow' | 'standard' | 'fast' | 'custom';
 
 /**
- * Momentum Builder thresholds - percentage at which each level unlocks
+ * Teaser Reveal thresholds - percentage at which each level unlocks
  */
-export interface MomentumThresholds {
+export interface TeaserThresholds {
     scenes: number;    // When to show individual scene cells (e.g., 10%)
     acts: number;      // When to show act divisions (e.g., 25%)
     subplots: number;  // When to show subplot rings (e.g., 50%)
@@ -125,12 +125,12 @@ export interface MomentumThresholds {
 }
 
 /**
- * Momentum Builder settings for progressive reveal
+ * Teaser Reveal settings for progressive reveal
  */
-export interface MomentumBuilderSettings {
+export interface TeaserRevealSettings {
     enabled: boolean;
-    preset: MomentumPreset;
-    customThresholds?: MomentumThresholds;
+    preset: TeaserPreset;
+    customThresholds?: TeaserThresholds;
 }
 
 /**
@@ -150,7 +150,7 @@ export interface AprCampaign {
     // Output
     embedPath: string;               // Where to save the SVG for this campaign
     
-    // Per-campaign reveal options (override defaults when Momentum Builder is OFF)
+    // Per-campaign reveal options (override defaults when Teaser Reveal is OFF)
     showSubplots: boolean;
     showActs: boolean;
     showStatus: boolean;
@@ -162,8 +162,8 @@ export interface AprCampaign {
     customTransparent?: boolean;
     customTheme?: 'dark' | 'light';
     
-    // Pro Feature: Momentum Builder (Progressive Reveal)
-    momentumBuilder?: MomentumBuilderSettings;
+    // Pro Feature: Teaser Reveal (Progressive Reveal)
+    teaserReveal?: TeaserRevealSettings;
 }
 
 export interface RadialTimelineSettings {

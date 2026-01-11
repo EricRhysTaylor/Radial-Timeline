@@ -3422,16 +3422,16 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   MOMENTUM BUILDER (Progressive Reveal)
+   TEASER REVEAL (Progressive Reveal)
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.rt-settings-root .rt-campaign-momentum-section {
+.rt-settings-root .rt-campaign-teaser-section {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--background-modifier-border);
 }
 
-.rt-settings-root .rt-campaign-momentum-title {
+.rt-settings-root .rt-campaign-teaser-title {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-normal);
@@ -3441,7 +3441,7 @@
   gap: 6px;
 }
 
-.rt-settings-root .rt-campaign-momentum-title::before {
+.rt-settings-root .rt-campaign-teaser-title::before {
   content: '';
   display: inline-block;
   width: 3px;
@@ -3450,15 +3450,15 @@
   border-radius: 2px;
 }
 
-.rt-settings-root .rt-campaign-momentum-desc {
+.rt-settings-root .rt-campaign-teaser-desc {
   font-size: 12px;
   color: var(--text-muted);
   margin: 0 0 12px 0;
   line-height: 1.4;
 }
 
-/* Momentum Level Preview Row */
-.rt-settings-root .rt-momentum-preview-row {
+/* Teaser Level Preview Row */
+.rt-settings-root .rt-teaser-preview-row {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -3470,7 +3470,7 @@
   flex-wrap: nowrap;
 }
 
-.rt-settings-root .rt-momentum-level-box {
+.rt-settings-root .rt-teaser-level-box {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3484,40 +3484,126 @@
   transition: all 0.15s ease;
 }
 
-.rt-settings-root .rt-momentum-level-box:hover {
+.rt-settings-root .rt-teaser-level-box:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: var(--text-accent);
 }
 
-.rt-settings-root .rt-momentum-level-icon {
+.rt-settings-root .rt-teaser-level-icon {
   color: var(--text-accent);
   opacity: 0.8;
 }
 
-.rt-settings-root .rt-momentum-level-icon svg {
+.rt-settings-root .rt-teaser-level-icon svg {
   width: 20px;
   height: 20px;
 }
 
-.rt-settings-root .rt-momentum-level-threshold {
+.rt-settings-root .rt-teaser-level-threshold {
   font-size: 14px;
   font-weight: 700;
   color: var(--text-normal);
 }
 
-.rt-settings-root .rt-momentum-level-label {
+.rt-settings-root .rt-teaser-level-label {
   font-size: 10px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-.rt-settings-root .rt-momentum-arrow {
+.rt-settings-root .rt-teaser-arrow {
   color: var(--text-faint);
   flex-shrink: 0;
 }
 
-.rt-settings-root .rt-momentum-arrow svg {
+.rt-settings-root .rt-teaser-arrow svg {
   width: 14px;
   height: 14px;
+}
+
+/* Teaser SVG Stage Previews */
+.rt-settings-root .rt-teaser-svg-preview-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  overflow-x: auto;
+  justify-content: space-between;
+}
+
+.rt-settings-root .rt-teaser-stage-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 90px;
+  flex: 1;
+  max-width: 120px;
+}
+
+.rt-settings-root .rt-teaser-stage-svg {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--background-modifier-border);
+  transition: all 0.2s ease;
+}
+
+.rt-settings-root .rt-teaser-stage-card:hover .rt-teaser-stage-svg {
+  border-color: var(--text-accent);
+  transform: scale(1.05);
+}
+
+.rt-settings-root .rt-teaser-stage-svg svg {
+  width: 100%;
+  height: 100%;
+}
+
+.rt-settings-root .rt-teaser-stage-error {
+  font-size: 24px;
+  color: var(--text-error);
+}
+
+.rt-settings-root .rt-teaser-stage-label-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rt-settings-root .rt-teaser-stage-icon {
+  color: var(--text-accent);
+}
+
+.rt-settings-root .rt-teaser-stage-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.rt-settings-root .rt-teaser-stage-percent {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-normal);
+}
+
+.rt-settings-root .rt-teaser-stage-name {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rt-settings-root .rt-teaser-no-scenes {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
 }

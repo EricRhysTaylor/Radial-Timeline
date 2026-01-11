@@ -126,16 +126,16 @@ export const APR_SCENE_GAP_RAD = 0.008;
 export const APR_MIN_SCENE_ARC_RAD = 0.02;
 
 // =============================================================================
-// MOMENTUM BUILDER (Progressive Reveal) PRESETS
+// TEASER REVEAL (Progressive Reveal) PRESETS
 // =============================================================================
 
-import type { MomentumThresholds, MomentumPreset, MomentumRevealLevel } from '../../types/settings';
+import type { TeaserThresholds, TeaserPreset, TeaserRevealLevel } from '../../types/settings';
 
 /**
- * Preset thresholds for Momentum Builder
+ * Preset thresholds for Teaser Reveal
  * Each number is the % at which that level unlocks
  */
-export const MOMENTUM_PRESETS: Record<Exclude<MomentumPreset, 'custom'>, MomentumThresholds> = {
+export const TEASER_PRESETS: Record<Exclude<TeaserPreset, 'custom'>, TeaserThresholds> = {
     slow: {
         scenes: 15,    // Show scene cells at 15%
         acts: 30,      // Show act divisions at 30%
@@ -159,7 +159,7 @@ export const MOMENTUM_PRESETS: Record<Exclude<MomentumPreset, 'custom'>, Momentu
 /**
  * Reveal level labels with icons (matching publication stage icons)
  */
-export const MOMENTUM_LEVEL_INFO: Record<MomentumRevealLevel, { label: string; icon: string; description: string }> = {
+export const TEASER_LEVEL_INFO: Record<TeaserRevealLevel, { label: string; icon: string; description: string }> = {
     bar: {
         label: 'Teaser',
         icon: 'circle',        // Minimal: just a ring
@@ -190,17 +190,17 @@ export const MOMENTUM_LEVEL_INFO: Record<MomentumRevealLevel, { label: string; i
 /**
  * Get thresholds for a given preset
  */
-export function getMomentumThresholds(preset: MomentumPreset, customThresholds?: MomentumThresholds): MomentumThresholds {
+export function getTeaserThresholds(preset: TeaserPreset, customThresholds?: TeaserThresholds): TeaserThresholds {
     if (preset === 'custom' && customThresholds) {
         return customThresholds;
     }
-    return MOMENTUM_PRESETS[preset === 'custom' ? 'standard' : preset];
+    return TEASER_PRESETS[preset === 'custom' ? 'standard' : preset];
 }
 
 /**
  * Calculate which reveal level is active based on current progress
  */
-export function getMomentumRevealLevel(progress: number, thresholds: MomentumThresholds): MomentumRevealLevel {
+export function getTeaserRevealLevel(progress: number, thresholds: TeaserThresholds): TeaserRevealLevel {
     if (progress >= thresholds.colors) return 'colors';
     if (progress >= thresholds.subplots) return 'subplots';
     if (progress >= thresholds.acts) return 'acts';
@@ -211,7 +211,7 @@ export function getMomentumRevealLevel(progress: number, thresholds: MomentumThr
 /**
  * Convert reveal level to reveal options for APR renderer
  */
-export function momentumLevelToRevealOptions(level: MomentumRevealLevel): {
+export function teaserLevelToRevealOptions(level: TeaserRevealLevel): {
     showScenes: boolean;
     showActs: boolean;
     showSubplots: boolean;

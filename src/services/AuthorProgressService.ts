@@ -4,7 +4,7 @@ import { TimelineItem } from '../types/timeline';
 import { createAprSVG } from '../renderer/apr/AprRenderer';
 import { getAllScenes } from '../utils/manuscript';
 import type { AprCampaign } from '../types/settings';
-import { getMomentumThresholds, getMomentumRevealLevel, momentumLevelToRevealOptions } from '../renderer/apr/AprConstants';
+import { getTeaserThresholds, getTeaserRevealLevel, teaserLevelToRevealOptions } from '../renderer/apr/AprConstants';
 
 export class AuthorProgressService {
     constructor(private plugin: RadialTimelinePlugin, private app: App) {}
@@ -203,14 +203,14 @@ export class AuthorProgressService {
         let showActs = campaign.showActs;
         let showStatusColors = campaign.showStatus;
         
-        // Apply Momentum Builder if enabled
-        if (campaign.momentumBuilder?.enabled) {
-            const thresholds = getMomentumThresholds(
-                campaign.momentumBuilder.preset,
-                campaign.momentumBuilder.customThresholds
+        // Apply Teaser Reveal if enabled
+        if (campaign.teaserReveal?.enabled) {
+            const thresholds = getTeaserThresholds(
+                campaign.teaserReveal.preset,
+                campaign.teaserReveal.customThresholds
             );
-            const revealLevel = getMomentumRevealLevel(progressPercent, thresholds);
-            const revealOptions = momentumLevelToRevealOptions(revealLevel);
+            const revealLevel = getTeaserRevealLevel(progressPercent, thresholds);
+            const revealOptions = teaserLevelToRevealOptions(revealLevel);
             
             showScenes = revealOptions.showScenes;
             showSubplots = revealOptions.showSubplots;

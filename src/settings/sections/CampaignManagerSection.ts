@@ -5,9 +5,11 @@
 
 import { App, Setting, setIcon, ButtonComponent, TextComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import type { AprCampaign, MomentumPreset } from '../../types/settings';
+import type { AprCampaign, TeaserPreset, TeaserRevealLevel } from '../../types/settings';
 import { isProfessionalActive } from './ProfessionalSection';
-import { MOMENTUM_PRESETS, MOMENTUM_LEVEL_INFO, getMomentumThresholds } from '../../renderer/apr/AprConstants';
+import { TEASER_PRESETS, TEASER_LEVEL_INFO, getTeaserThresholds, teaserLevelToRevealOptions } from '../../renderer/apr/AprConstants';
+import { createAprSVG } from '../../renderer/apr/AprRenderer';
+import { getAllScenes } from '../../utils/manuscript';
 
 export interface CampaignManagerProps {
     app: App;
@@ -42,8 +44,8 @@ export function createDefaultCampaign(name: string): AprCampaign {
         aprSize: 'standard',
         customTransparent: true,
         customTheme: 'dark',
-        // Momentum Builder defaults (disabled by default, author opts in)
-        momentumBuilder: {
+        // Teaser Reveal defaults (disabled by default, author opts in)
+        teaserReveal: {
             enabled: false,
             preset: 'standard',
             customThresholds: undefined
@@ -444,60 +446,60 @@ function renderCampaignDetails(
     });
     
     // ─────────────────────────────────────────────────────────────────────────
-    // MOMENTUM BUILDER (Progressive Reveal)
+    // TEASER REVEAL (Progressive Reveal)
     // ─────────────────────────────────────────────────────────────────────────
-    const momentumSection = details.createDiv({ cls: 'rt-campaign-momentum-section' });
-    momentumSection.createEl('h5', { text: 'Momentum Builder', cls: 'rt-campaign-momentum-title' });
+    const teaserSection = details.createDiv({ cls: 'rt-campaign-teaser-section' });
+    teaserSection.createEl('h5', { text: 'Teaser Reveal', cls: 'rt-campaign-teaser-title' });
     
-    const momentumDesc = momentumSection.createEl('p', { cls: 'rt-campaign-momentum-desc' });
-    momentumDesc.setText('Automatically reveal more detail as your book progresses. Creates anticipation for your audience.');
+    const teaserDesc = teaserSection.createEl('p', { cls: 'rt-campaign-teaser-desc' });
+    teaserDesc.setText('Automatically reveal more detail as your book progresses. Creates anticipation for your audience.');
     
-    // Momentum toggle
-    const momentumSettings = campaign.momentumBuilder ?? { enabled: false, preset: 'standard' as MomentumPreset };
+    // Teaser toggle
+    const teaserSettings = campaign.teaserReveal ?? { enabled: false, preset: 'standard' as TeaserPreset };
     
-    new Setting(momentumSection)
-        .setName('Enable Momentum Builder')
+    new Setting(teaserSection)
+        .setName('Enable Teaser Reveal')
         .setDesc('Progressive reveal based on completion %')
         .addToggle(toggle => {
-            toggle.setValue(momentumSettings.enabled)
+            toggle.setValue(teaserSettings.enabled)
                 .onChange(async (val) => {
                     if (!plugin.settings.authorProgress?.campaigns) return;
                     const target = plugin.settings.authorProgress.campaigns[index];
-                    if (!target.momentumBuilder) {
-                        target.momentumBuilder = { enabled: false, preset: 'standard' };
+                    if (!target.teaserReveal) {
+                        target.teaserReveal = { enabled: false, preset: 'standard' };
                     }
-                    target.momentumBuilder.enabled = val;
+                    target.teaserReveal.enabled = val;
                     await plugin.saveSettings();
                     onUpdate();
                 });
         });
     
-    // Only show preset and preview if momentum is enabled
-    if (momentumSettings.enabled) {
+    // Only show preset and preview if teaser is enabled
+    if (teaserSettings.enabled) {
         // Preset selector
-        new Setting(momentumSection)
+        new Setting(teaserSection)
             .setName('Reveal Schedule')
             .addDropdown(drop => {
                 drop.addOption('slow', 'Slow (15/30/60/85%)')
                     .addOption('standard', 'Standard (10/25/50/75%)')
                     .addOption('fast', 'Fast (5/15/35/65%)')
                     .addOption('custom', 'Custom')
-                    .setValue(momentumSettings.preset)
+                    .setValue(teaserSettings.preset)
                     .onChange(async (val) => {
                         if (!plugin.settings.authorProgress?.campaigns) return;
                         const target = plugin.settings.authorProgress.campaigns[index];
-                        if (!target.momentumBuilder) {
-                            target.momentumBuilder = { enabled: true, preset: 'standard' };
+                        if (!target.teaserReveal) {
+                            target.teaserReveal = { enabled: true, preset: 'standard' };
                         }
-                        target.momentumBuilder.preset = val as MomentumPreset;
+                        target.teaserReveal.preset = val as TeaserPreset;
                         await plugin.saveSettings();
                         onUpdate();
                     });
             });
         
         // Show reveal level preview
-        const thresholds = getMomentumThresholds(momentumSettings.preset, momentumSettings.customThresholds);
-        const previewRow = momentumSection.createDiv({ cls: 'rt-momentum-preview-row' });
+        const thresholds = getTeaserThresholds(teaserSettings.preset, teaserSettings.customThresholds);
+        const previewRow = teaserSection.createDiv({ cls: 'rt-teaser-preview-row' });
         
         const levels = [
             { key: 'bar', threshold: 0, label: 'Teaser' },
@@ -508,18 +510,22 @@ function renderCampaignDetails(
         ] as const;
         
         levels.forEach((level, i) => {
-            const levelBox = previewRow.createDiv({ cls: 'rt-momentum-level-box' });
-            const iconSpan = levelBox.createSpan({ cls: 'rt-momentum-level-icon' });
-            setIcon(iconSpan, MOMENTUM_LEVEL_INFO[level.key].icon);
-            levelBox.createSpan({ text: `${level.threshold}%`, cls: 'rt-momentum-level-threshold' });
-            levelBox.createSpan({ text: level.label, cls: 'rt-momentum-level-label' });
+            const levelBox = previewRow.createDiv({ cls: 'rt-teaser-level-box' });
+            const iconSpan = levelBox.createSpan({ cls: 'rt-teaser-level-icon' });
+            setIcon(iconSpan, TEASER_LEVEL_INFO[level.key].icon);
+            levelBox.createSpan({ text: `${level.threshold}%`, cls: 'rt-teaser-level-threshold' });
+            levelBox.createSpan({ text: level.label, cls: 'rt-teaser-level-label' });
             
             // Arrow between levels (except last)
             if (i < levels.length - 1) {
-                const arrow = previewRow.createSpan({ cls: 'rt-momentum-arrow' });
+                const arrow = previewRow.createSpan({ cls: 'rt-teaser-arrow' });
                 setIcon(arrow, 'arrow-right');
             }
         });
+        
+        // SVG Previews of each stage
+        const svgPreviewRow = teaserSection.createDiv({ cls: 'rt-teaser-svg-preview-row' });
+        renderTeaserStagesPreviews(svgPreviewRow, plugin, campaign, thresholds);
     }
     
     // Publish button
@@ -533,4 +539,77 @@ function renderCampaignDetails(
             await aprService.generateCampaignReport(campaign.id);
             onUpdate();
         });
+}
+
+/**
+ * Render mini SVG previews for each teaser reveal stage
+ */
+async function renderTeaserStagesPreviews(
+    container: HTMLElement,
+    plugin: RadialTimelinePlugin,
+    campaign: AprCampaign,
+    thresholds: { scenes: number; acts: number; subplots: number; colors: number }
+): Promise<void> {
+    const settings = plugin.settings.authorProgress;
+    if (!settings) return;
+    
+    // Get scenes for preview
+    const scenes = await getAllScenes(plugin.app, plugin);
+    if (scenes.length === 0) {
+        container.createEl('p', { 
+            text: 'No scenes to preview. Add scenes to see teaser stages.',
+            cls: 'rt-teaser-no-scenes'
+        });
+        return;
+    }
+    
+    // Stages to preview with their simulated progress percentages
+    const stages: { level: TeaserRevealLevel; label: string; progress: number; icon: string }[] = [
+        { level: 'bar', label: 'Teaser', progress: 5, icon: 'circle' },
+        { level: 'scenes', label: 'Scenes', progress: thresholds.scenes, icon: 'sprout' },
+        { level: 'acts', label: 'Structure', progress: thresholds.acts, icon: 'tree-pine' },
+        { level: 'subplots', label: 'Depth', progress: thresholds.subplots, icon: 'trees' },
+        { level: 'colors', label: 'Full Detail', progress: thresholds.colors, icon: 'shell' },
+    ];
+    
+    stages.forEach(stage => {
+        const revealOptions = teaserLevelToRevealOptions(stage.level);
+        
+        const card = container.createDiv({ cls: 'rt-teaser-stage-card' });
+        
+        // SVG preview container
+        const svgContainer = card.createDiv({ cls: 'rt-teaser-stage-svg' });
+        
+        try {
+            const { svgString } = createAprSVG(scenes, {
+                size: 'compact',
+                progressPercent: stage.progress,
+                bookTitle: settings.bookTitle || 'Book',
+                authorName: settings.authorName || '',
+                authorUrl: '',
+                showScenes: revealOptions.showScenes,
+                showSubplots: revealOptions.showSubplots,
+                showActs: revealOptions.showActs,
+                showStatusColors: revealOptions.showStatusColors,
+                showProgressPercent: true,
+                stageColors: plugin.settings.publishStageColors,
+                actCount: plugin.settings.actCount,
+                backgroundColor: campaign.customBackgroundColor ?? settings.aprBackgroundColor,
+                transparentCenter: campaign.customTransparent ?? settings.aprCenterTransparent,
+                theme: campaign.customTheme ?? settings.aprTheme ?? 'dark'
+            });
+            
+            svgContainer.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
+        } catch {
+            svgContainer.createEl('span', { text: '⚠', cls: 'rt-teaser-stage-error' });
+        }
+        
+        // Label row
+        const labelRow = card.createDiv({ cls: 'rt-teaser-stage-label-row' });
+        const iconSpan = labelRow.createSpan({ cls: 'rt-teaser-stage-icon' });
+        setIcon(iconSpan, stage.icon);
+        labelRow.createSpan({ text: `${stage.progress}%`, cls: 'rt-teaser-stage-percent' });
+        
+        card.createDiv({ cls: 'rt-teaser-stage-name', text: stage.label });
+    });
 }
