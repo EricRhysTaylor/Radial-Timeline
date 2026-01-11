@@ -17,6 +17,13 @@
   font-weight: bold;
 }
 
+/* Gossamer beat-grade styling driven by beat-stage color */
+.gossamer-grade {
+  font-size: calc(16px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
+  fill: var(--rt-gossamer-stage-color, var(--rt-max-publish-stage-color));
+  font-weight: bold;
+}
+
 .pulse-text-positive {
   font-size: calc(14px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
   fill: #2B9348;
