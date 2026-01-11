@@ -668,17 +668,15 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     modal.apiCallSuccess();
     modal.setStatus('Parsing AI response...');
 
-    // Parse response
-    interface UnifiedBeatAnalysis {
+    // Parse response - AI returns raw scores without range info (to avoid anchoring bias)
+    interface AiBeatAnalysis {
       beatName: string;
       momentumScore: number;
-      idealRange: string;
-      isWithinRange: boolean;
       justification: string;
     }
 
-    interface UnifiedAnalysisResponse {
-      beats: UnifiedBeatAnalysis[];
+    interface AiAnalysisResponse {
+      beats: AiBeatAnalysis[];
       overallAssessment: {
         summary: string;
         strengths: string[];
@@ -686,7 +684,43 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       };
     }
 
-    const analysis: UnifiedAnalysisResponse = JSON.parse(result.content);
+    // Enriched beat with computed range comparison
+    interface EnrichedBeatAnalysis extends AiBeatAnalysis {
+      idealRange: string;
+      isWithinRange: boolean;
+    }
+
+    interface EnrichedAnalysisResponse {
+      beats: EnrichedBeatAnalysis[];
+      overallAssessment: {
+        summary: string;
+        strengths: string[];
+        improvements: string[];
+      };
+    }
+
+    const rawAnalysis: AiAnalysisResponse = JSON.parse(result.content);
+    
+    // Import range utilities for computing isWithinRange
+    const { parseRange, isScoreInRange } = await import('./utils/rangeValidation');
+    
+    // Enrich AI response with range comparison (computed in code, not by AI)
+    const analysis: EnrichedAnalysisResponse = {
+      ...rawAnalysis,
+      beats: rawAnalysis.beats.map((aiBeat, idx) => {
+        // Match to our beats array which has the range info
+        const ourBeat = beats[idx];
+        const idealRange = ourBeat?.idealRange || '0-100';
+        const parsed = parseRange(idealRange);
+        const isWithinRange = parsed ? isScoreInRange(aiBeat.momentumScore, parsed) : true;
+        
+        return {
+          ...aiBeat,
+          idealRange,
+          isWithinRange
+        };
+      })
+    };
 
     // Save results to beat notes
     modal.setStatus('Updating beat notes...');

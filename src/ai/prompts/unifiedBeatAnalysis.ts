@@ -13,6 +13,8 @@ export interface UnifiedBeatInfo {
 
 /**
  * JSON schema for unified beat analysis response
+ * Note: idealRange and isWithinRange are computed in code after AI response,
+ * not requested from AI to avoid anchoring bias
  */
 const UNIFIED_BEAT_ANALYSIS_SCHEMA = {
   type: "object",
@@ -33,20 +35,12 @@ const UNIFIED_BEAT_ANALYSIS_SCHEMA = {
             minimum: 0,
             maximum: 100
           },
-          idealRange: {
-            type: "string",
-            description: "Ideal momentum range for this beat"
-          },
-          isWithinRange: {
-            type: "boolean",
-            description: "True if momentum score is within ideal range"
-          },
           justification: {
             type: "string",
             description: "Brief justification for the score (one sentence)"
           }
         },
-        required: ["beatName", "momentumScore", "idealRange", "isWithinRange", "justification"]
+        required: ["beatName", "momentumScore", "justification"]
       }
     },
     overallAssessment: {
@@ -90,12 +84,11 @@ export function buildUnifiedBeatAnalysisPrompt(
   beats: UnifiedBeatInfo[],
   beatSystem: string
 ): string {
+  // Build beat list - ranges intentionally omitted to avoid anchoring bias
+  // AI should assess momentum based purely on manuscript content
   const beatList = beats
     .map((b, i) => {
-      const parts = [
-        `${i + 1}. ${b.beatName}`,
-        `ideal range: ${b.idealRange}`
-      ];
+      const parts = [`${i + 1}. ${b.beatName}`];
       if (typeof b.previousScore === 'number') {
         parts.push(`previous score: ${b.previousScore}`);
       }
@@ -111,7 +104,7 @@ export function buildUnifiedBeatAnalysisPrompt(
 Story beats (oldest history first):
 ${beatList}
 
-Score momentum (0-100) for each listed beat, include a short justification, and set isWithinRange by comparing to the ideal range. Respond strictly in the JSON schema that accompanies this prompt.
+Score momentum (0-100) for each listed beat based on the actual tension, stakes, and emotional intensity you perceive in the manuscript. Include a brief justification for each score. Respond strictly in the JSON schema that accompanies this prompt.
 
 Manuscript text (table of contents followed by scenes):
 ${manuscriptText}`;

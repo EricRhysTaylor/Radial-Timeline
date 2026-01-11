@@ -5,6 +5,8 @@
 
 /**
  * JSON schema for Gemini Gossamer analysis response
+ * Note: idealRange and isWithinRange are computed in code after AI response,
+ * not requested from AI to avoid anchoring bias
  */
 const GOSSAMER_ANALYSIS_JSON_SCHEMA = {
   type: "object",
@@ -25,20 +27,12 @@ const GOSSAMER_ANALYSIS_JSON_SCHEMA = {
             minimum: 0,
             maximum: 100
           },
-          idealRange: {
-            type: "string",
-            description: "Ideal momentum range for this beat (e.g., '0-20', '60-70')"
-          },
-          isWithinRange: {
-            type: "boolean",
-            description: "True if momentum score is within ideal range"
-          },
           justification: {
             type: "string",
             description: "Brief justification for the momentum score (max 30 words)"
           }
         },
-        required: ["beatName", "momentumScore", "idealRange", "isWithinRange", "justification"]
+        required: ["beatName", "momentumScore", "justification"]
       }
     },
     overallAssessment: {
@@ -93,10 +87,11 @@ export function buildGossamerAnalysisPrompt(
   // Check if we have any previous analysis
   const hasPreviousAnalysis = beats.some(b => b.previousScore !== undefined);
   
-  // Build beat list with ideal ranges and previous scores
+  // Build beat list - ranges intentionally omitted to avoid anchoring bias
+  // AI should assess momentum based purely on manuscript content
   const beatList = beats
     .map((b, i) => {
-      let line = `${i + 1}. ${b.beatName} (ideal momentum: ${b.idealRange})`;
+      let line = `${i + 1}. ${b.beatName}`;
       if (b.previousScore !== undefined) {
         line += `\n   Previous Score: ${b.previousScore}/100`;
         if (b.previousJustification) {
@@ -149,8 +144,6 @@ Return ONLY valid JSON matching this structure (no markdown, no preamble):
     {
       "beatName": "Opening Image",
       "momentumScore": 15,
-      "idealRange": "0-20",
-      "isWithinRange": true,
       "justification": "Establishes quiet status quo before inciting incident"
     }
     // ... for each beat
