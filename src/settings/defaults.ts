@@ -227,6 +227,7 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
         aprCenterTransparent: false,
         aprBookAuthorColor: '#6FB971', // Press stage default
         aprEngineColor: '#e5e5e5',
+        aprTheme: 'dark',
         
         bookTitle: '',
         authorUrl: '',

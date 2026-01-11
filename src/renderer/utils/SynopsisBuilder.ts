@@ -1,6 +1,6 @@
 import type { TimelineItem } from '../../types';
 import { isBeatNote, type PluginRendererFacade } from '../../utils/sceneHelpers';
-import { splitIntoBalancedLines } from '../../utils/text';
+import { splitIntoBalancedLinesOptimal } from '../../utils/text';
 import { resolveScenePov } from '../../utils/pov';
 import { getReadabilityMultiplier } from '../../utils/readability';
 
@@ -18,9 +18,9 @@ export function buildSynopsisElement(
     if (scene.itemType === 'Backdrop') {
         const lines = [scene.title || 'Untitled'];
         if (scene.synopsis) {
-            lines.push(...splitIntoBalancedLines(scene.synopsis, maxTextWidth, fontScale));
+            lines.push(...splitIntoBalancedLinesOptimal(scene.synopsis, maxTextWidth, fontScale));
         } else if (scene.Description) {
-            lines.push(...splitIntoBalancedLines(scene.Description, maxTextWidth, fontScale));
+            lines.push(...splitIntoBalancedLinesOptimal(scene.Description, maxTextWidth, fontScale));
         }
         return plugin.synopsisManager.generateElement(scene, lines, sceneId, subplotIndexResolver);
     }
@@ -28,16 +28,17 @@ export function buildSynopsisElement(
     const contentLines = [
         scene.title || '',
         ...(isBeatNote(scene) && scene.Description
-            ? splitIntoBalancedLines(scene.Description, maxTextWidth, fontScale)
+            ? splitIntoBalancedLinesOptimal(scene.Description, maxTextWidth, fontScale)
             : scene.synopsis
-                ? splitIntoBalancedLines(scene.synopsis, maxTextWidth, fontScale)
+                ? splitIntoBalancedLinesOptimal(scene.synopsis, maxTextWidth, fontScale)
                 : [])
     ];
 
     if (isBeatNote(scene)) {
-        // Find the latest Gossamer score and justification (highest numbered field)
+        // Find the latest Gossamer score, justification, and stage (highest numbered field)
         let latestScore: number | undefined;
         let latestJustification: string | undefined;
+        let latestStage: string = 'Zero'; // Default stage
         
         // Check Gossamer1 through Gossamer30 for the latest score
         for (let i = 30; i >= 1; i--) {
@@ -51,16 +52,43 @@ export function buildSynopsisElement(
                 if (typeof justification === 'string') {
                     latestJustification = justification;
                 }
+                // Get the stage for this run
+                const stageKey = `GossamerStage${i}` as keyof typeof scene;
+                const stage = scene[stageKey];
+                if (typeof stage === 'string') {
+                    latestStage = stage;
+                }
                 break;
             }
         }
         
         if (latestScore !== undefined) {
-            // Score line (bold, colored)
-            contentLines.push(`<gossamer>${latestScore}/100</gossamer>`);
-            // Justification as separate line in pulse format (uppercase gray, like scene analysis)
+            // Add spacer before Gossamer line (like scenes have before pulse analysis)
+            contentLines.push('<gossamer-spacer></gossamer-spacer>');
+            
+            // Format: "80/100 — JUSTIFICATION" with score using GossamerStage color
+            // Include stage in tag for color lookup: <gossamer-pulse data-stage="Zero">
             if (latestJustification) {
-                contentLines.push(`<gossamer-justification>${latestJustification.toUpperCase()}</gossamer-justification>`);
+                const justificationUpper = latestJustification.toUpperCase();
+                // Combine score + em dash + justification for balanced wrapping
+                const fullText = `${latestScore}/100 — ${justificationUpper}`;
+                
+                // Use balanced line breaking - wider width since text wraps nicely
+                const wrappedLines = splitIntoBalancedLinesOptimal(fullText, maxTextWidth * 1.6, fontScale);
+                
+                if (wrappedLines.length <= 1) {
+                    // Short enough - single line
+                    contentLines.push(`<gossamer-pulse data-stage="${latestStage}">${fullText}</gossamer-pulse>`);
+                } else {
+                    // First line contains score + em dash + start of justification
+                    contentLines.push(`<gossamer-pulse data-stage="${latestStage}">${wrappedLines[0]}</gossamer-pulse>`);
+                    // Continuation lines
+                    for (let j = 1; j < wrappedLines.length; j++) {
+                        contentLines.push(`<gossamer-pulse-cont>${wrappedLines[j]}</gossamer-pulse-cont>`);
+                    }
+                }
+            } else {
+                contentLines.push(`<gossamer-pulse data-stage="${latestStage}">${latestScore}/100</gossamer-pulse>`);
             }
         }
     }

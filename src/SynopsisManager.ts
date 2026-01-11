@@ -239,8 +239,26 @@ export default class SynopsisManager {
    * @returns An SVG group element containing the formatted synopsis
    */
   generateElement(scene: TimelineItem, contentLines: string[], sceneId: string, subplotIndexResolver?: (name: string) => number): SVGGElement {
-    const { stageClass, titleColor } = getPublishStageStyle(scene["Publish Stage"], this.plugin.settings.publishStageColors);
+    const { stageClass, titleColor: defaultTitleColor } = getPublishStageStyle(scene["Publish Stage"], this.plugin.settings.publishStageColors);
     const fontScale = this.getReadabilityScale();
+    
+    // For beats with Gossamer data, use the GossamerStage color instead
+    let titleColor = defaultTitleColor;
+    if (scene.itemType === 'Beat' || scene.itemType === 'Plot') {
+      // Find the latest GossamerStage
+      for (let i = 30; i >= 1; i--) {
+        const scoreKey = `Gossamer${i}` as keyof typeof scene;
+        const stageKey = `GossamerStage${i}` as keyof typeof scene;
+        if (scene[scoreKey] !== undefined && scene[scoreKey] !== null) {
+          const stage = scene[stageKey];
+          if (typeof stage === 'string') {
+            const stageColors = this.plugin.settings.publishStageColors || { Zero: '#9370DB', Author: '#4169E1', House: '#228B22', Press: '#FF8C00' };
+            titleColor = stageColors[stage as keyof typeof stageColors] || stageColors.Zero;
+          }
+          break;
+        }
+      }
+    }
 
     const { synopsisEndIndex, metadataItems } = splitSynopsisLines(contentLines);
 
@@ -437,11 +455,27 @@ export default class SynopsisManager {
       const isGossamerLine = contentLines[i].includes('<gossamer>') && contentLines[i].includes('</gossamer>');
       // Check if this is a Gossamer justification line (AI analysis feedback)
       const isGossamerJustificationLine = contentLines[i].includes('<gossamer-justification>') && contentLines[i].includes('</gossamer-justification>');
+      // Check if this is a Gossamer pulse-format line (score + justification like pulse analysis)
+      const isGossamerPulseLine = contentLines[i].includes('<gossamer-pulse>') && contentLines[i].includes('</gossamer-pulse>');
+      // Check if this is a Gossamer pulse continuation line (wrapped text)
+      const isGossamerPulseContLine = contentLines[i].includes('<gossamer-pulse-cont>') && contentLines[i].includes('</gossamer-pulse-cont>');
+      // Check if this is a Gossamer spacer (gap before momentum line)
+      const isGossamerSpacer = contentLines[i].includes('<gossamer-spacer>');
 
       const lineY = (i + extraLineCount) * lineHeight; // shift down by inserted lines
       const synopsisLineElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
 
-      if (isGossamerLine) {
+      if (isGossamerSpacer) {
+        // Add a visual gap before Gossamer momentum line (like scenes have before pulse)
+        // Create an invisible spacer element that adds vertical space
+        synopsisLineElement.setAttribute("class", "rt-info-text rt-gossamer-spacer");
+        synopsisLineElement.setAttribute("x", "0");
+        synopsisLineElement.setAttribute("y", String(lineY));
+        synopsisLineElement.setAttribute("font-size", "2px");
+        synopsisLineElement.textContent = "\u00A0"; // Non-breaking space
+        synopsisLineElement.classList.add('rt-invisible-spacer');
+        // The lineY increment will create the gap for the next line
+      } else if (isGossamerLine) {
         // Apply title styling for Gossamer lines
         synopsisLineElement.setAttribute("class", "rt-info-text rt-title-text-main rt-gossamer-score-line");
         synopsisLineElement.setAttribute("x", "0");
@@ -466,6 +500,60 @@ export default class SynopsisManager {
         // Extract the content between the tags (already uppercased in builder)
         const justificationContent = contentLines[i].replace(/<gossamer-justification>/g, '').replace(/<\/gossamer-justification>/g, '');
         synopsisLineElement.textContent = justificationContent;
+      } else if (isGossamerPulseLine) {
+        // Format: "80/100 — JUSTIFICATION" with score using GossamerStage color
+        synopsisLineElement.setAttribute("class", "rt-info-text pulse-text");
+        synopsisLineElement.setAttribute("x", "0");
+        synopsisLineElement.setAttribute("y", String(lineY));
+
+        // Extract stage from data-stage attribute
+        const stageMatch = contentLines[i].match(/data-stage="([^"]+)"/);
+        const gossamerStage = stageMatch ? stageMatch[1] : 'Zero';
+        
+        // Get the stage color from plugin settings
+        const stageColors = this.plugin.settings.publishStageColors || { Zero: '#9370DB', Author: '#4169E1', House: '#228B22', Press: '#FF8C00' };
+        const stageColor = stageColors[gossamerStage as keyof typeof stageColors] || stageColors.Zero;
+
+        // Extract content between tags (remove the data-stage attribute part)
+        const pulseContent = contentLines[i]
+          .replace(/<gossamer-pulse[^>]*>/g, '')
+          .replace(/<\/gossamer-pulse>/g, '');
+        
+        // Check for " — " separator (em dash)
+        const dashIndex = pulseContent.indexOf(' — ');
+        if (dashIndex !== -1) {
+          const scorePart = pulseContent.substring(0, dashIndex);
+          const justificationPart = pulseContent.substring(dashIndex + 3);
+          
+          // Create tspan for score (bold, larger - using GossamerStage color)
+          const scoreTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+          scoreTspan.setAttribute('class', 'pulse-text-grade');
+          scoreTspan.style.fill = stageColor;
+          scoreTspan.textContent = scorePart;
+          synopsisLineElement.appendChild(scoreTspan);
+          
+          // Create tspan for em dash + justification (gray)
+          const justificationTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+          justificationTspan.setAttribute('class', 'pulse-text');
+          justificationTspan.textContent = ' — ' + justificationPart;
+          synopsisLineElement.appendChild(justificationTspan);
+        } else {
+          // Just the score (no justification)
+          const scoreTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+          scoreTspan.setAttribute('class', 'pulse-text-grade');
+          scoreTspan.style.fill = stageColor;
+          scoreTspan.textContent = pulseContent;
+          synopsisLineElement.appendChild(scoreTspan);
+        }
+      } else if (isGossamerPulseContLine) {
+        // Continuation line for wrapped Gossamer justification (gray, like pulse-text)
+        synopsisLineElement.setAttribute("class", "rt-info-text pulse-text");
+        synopsisLineElement.setAttribute("x", "0");
+        synopsisLineElement.setAttribute("y", String(lineY));
+        
+        // Extract content between tags
+        const contContent = contentLines[i].replace(/<gossamer-pulse-cont>/g, '').replace(/<\/gossamer-pulse-cont>/g, '');
+        synopsisLineElement.textContent = contContent;
       } else {
         // Regular synopsis line styling
         synopsisLineElement.setAttribute("class", "rt-info-text rt-title-text-secondary");

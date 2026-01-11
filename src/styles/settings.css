@@ -2421,6 +2421,10 @@
   background: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.03);
 }
 
+.rt-apr-stack-gap:not(:last-child) {
+  margin-bottom: 16px;
+}
+
 /* Legacy styles kept for backwards compatibility */
 .rt-apr-header-banner {
   display: flex;

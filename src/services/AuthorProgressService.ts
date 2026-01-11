@@ -76,7 +76,8 @@ export class AuthorProgressService {
             backgroundColor: settings.aprBackgroundColor,
             transparentCenter: settings.aprCenterTransparent,
             bookAuthorColor: settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
-            engineColor: settings.aprEngineColor
+            engineColor: settings.aprEngineColor,
+            theme: settings.aprTheme || 'dark'
         });
 
         let finalSvg = svgString;

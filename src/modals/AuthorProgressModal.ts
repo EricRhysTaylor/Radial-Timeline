@@ -22,6 +22,7 @@ export class AuthorProgressModal extends Modal {
     private aprCenterTransparent: boolean;
     private aprBookAuthorColor: string;
     private aprEngineColor: string;
+    private aprTheme: 'dark' | 'light';
     
     private previewContainer: HTMLElement | null = null;
     private sizeInfoEl: HTMLElement | null = null;
@@ -59,6 +60,7 @@ export class AuthorProgressModal extends Modal {
         this.aprCenterTransparent = settings.aprCenterTransparent ?? false;
         this.aprBookAuthorColor = settings.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971';
         this.aprEngineColor = settings.aprEngineColor ?? '#e5e5e5';
+        this.aprTheme = settings.aprTheme ?? 'dark';
         this.publishTarget = settings.defaultPublishTarget;
     }
 
@@ -167,108 +169,29 @@ export class AuthorProgressModal extends Modal {
         this.createSizeButton(sizeSelector, 'large', 'Large · 1000px');
         this.sizeInfoEl = sizeSection.createDiv({ cls: 'rt-apr-size-info' });
         this.updateSizeInfo();
-
-        // Background & Core colors (single control affecting both; transparent option)
-        const bgSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-bg-section' });
-        bgSection.createEl('h4', { text: 'Backgrounds & Core', cls: 'rt-section-title' });
-        bgSection.createEl('p', { text: 'Set the outer canvas and center core. Use transparent for a cutout, or match both.', cls: 'rt-apr-size-desc' });
-
-        const bgSetting = new Setting(bgSection)
-            .setName('Background')
-            .setDesc('Applies to outer canvas and core when not transparent.');
-
-        bgSetting.addColorPicker(color => {
-            color.setValue(this.aprBackgroundColor);
-            color.onChange(async (val) => {
-                this.aprBackgroundColor = val || '#0d0d0f';
-                await this.saveRevealOptions();
-                await this.renderPreview(false);
+        // Theme selector (light/dark)
+        const themeSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-theme-section' });
+        themeSection.createEl('h4', { text: 'Theme Contrast', cls: 'rt-section-title' });
+        themeSection.createEl('p', { text: 'Light uses dark spokes/borders for pale backgrounds. Dark uses light spokes/borders for dark canvases. Pick the one that keeps borders and spokes visible with your chosen background.', cls: 'rt-apr-size-desc' });
+        new Setting(themeSection)
+            .setName('Theme')
+            .setDesc('Choose stroke/border contrast')
+            .addDropdown(drop => {
+                drop.addOption('dark', 'Dark (light strokes)');
+                drop.addOption('light', 'Light (dark strokes)');
+                drop.setValue(this.aprTheme);
+                drop.onChange(async (val) => {
+                    this.aprTheme = (val as 'dark' | 'light') || 'dark';
+                    await this.saveRevealOptions();
+                    await this.renderPreview();
+                });
             });
-        });
-
-        bgSetting.addText(text => {
-            text.setPlaceholder('#0d0d0f').setValue(this.aprBackgroundColor);
-            text.onChange(async (val) => {
-                if (!val) return;
-                this.aprBackgroundColor = val;
-                await this.saveRevealOptions();
-                await this.renderPreview(false);
-            });
-        });
-
-        bgSetting.addButton(btn => {
-            btn.setButtonText('Transparent');
-            btn.onClick(async () => {
-                this.aprCenterTransparent = true;
-                this.aprBackgroundColor = 'transparent';
-                await this.saveRevealOptions();
-                await this.renderPreview(false);
-            });
-        });
-
-        bgSetting.addButton(btn => {
-            btn.setButtonText('Match Color');
-            btn.onClick(async () => {
-                this.aprCenterTransparent = false;
-                await this.saveRevealOptions();
-                await this.renderPreview(false);
-            });
-        });
 
         // Preview Panel (moved up for prominence)
         const previewSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-preview-section' });
         previewSection.createEl('h4', { text: 'Live Preview', cls: 'rt-section-title' });
         this.previewContainer = previewSection.createDiv({ cls: 'rt-apr-preview-area' });
         this.previewContainer.createDiv({ text: 'Loading preview...', cls: 'rt-apr-loading' });
-
-        // Identity Configuration
-        const identitySection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-identity-section' });
-        identitySection.createEl('h4', { text: 'Report Identity', cls: 'rt-section-title' });
-        
-        new Setting(identitySection)
-            .setName('Book Title')
-            .setDesc('Displayed on the perimeter branding')
-            .addText(text => text
-                .setPlaceholder('Working Title')
-                .setValue(this.plugin.settings.authorProgress?.bookTitle || '')
-                .onChange(async (val) => {
-                    if (this.plugin.settings.authorProgress) {
-                        this.plugin.settings.authorProgress.bookTitle = val;
-                        await this.plugin.saveSettings();
-                        await this.renderPreview(false);
-                    }
-                })
-            );
-
-        new Setting(identitySection)
-            .setName('Author Name')
-            .setDesc('Displayed alongside the book title (e.g., Title • Author)')
-            .addText(text => text
-                .setPlaceholder('Author Name')
-                .setValue(this.plugin.settings.authorProgress?.authorName || '')
-                .onChange(async (val) => {
-                    if (this.plugin.settings.authorProgress) {
-                        this.plugin.settings.authorProgress.authorName = val;
-                        await this.plugin.saveSettings();
-                        await this.renderPreview(false);
-                    }
-                })
-            );
-
-        new Setting(identitySection)
-            .setName('Author URL')
-            .setDesc('Link target for the book title arc (your shop, Kickstarter, etc.)')
-            .addText(text => text
-                .setPlaceholder('https://myshop.com')
-                .setValue(this.plugin.settings.authorProgress?.authorUrl || '')
-                .onChange(async (val) => {
-                    if (this.plugin.settings.authorProgress) {
-                        this.plugin.settings.authorProgress.authorUrl = val;
-                        await this.plugin.saveSettings();
-                        await this.renderPreview(false);
-                    }
-                })
-            );
 
         // Actions Section with Tabs
         const actionsSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-actions-section' });
@@ -409,7 +332,8 @@ export class AuthorProgressModal extends Modal {
                 backgroundColor: this.aprBackgroundColor,
                 transparentCenter: this.aprCenterTransparent,
                 bookAuthorColor: this.aprBookAuthorColor,
-                engineColor: this.aprEngineColor
+                engineColor: this.aprEngineColor,
+                theme: this.aprTheme
             });
 
             this.previewContainer.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
@@ -451,6 +375,7 @@ export class AuthorProgressModal extends Modal {
         this.plugin.settings.authorProgress.aprCenterTransparent = this.aprCenterTransparent;
         this.plugin.settings.authorProgress.aprBookAuthorColor = this.aprBookAuthorColor;
         this.plugin.settings.authorProgress.aprEngineColor = this.aprEngineColor;
+        this.plugin.settings.authorProgress.aprTheme = this.aprTheme;
         await this.plugin.saveSettings();
     }
 

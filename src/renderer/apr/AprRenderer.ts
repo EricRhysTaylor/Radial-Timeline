@@ -28,6 +28,7 @@ export interface AprRenderOptions {
     transparentCenter?: boolean;
     bookAuthorColor?: string;
     engineColor?: string;
+    theme?: 'dark' | 'light';
 }
 
 export interface AprRenderResult {
@@ -59,12 +60,16 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         backgroundColor,
         transparentCenter,
         bookAuthorColor,
-        engineColor
+        engineColor,
+        theme = 'dark'
     } = opts;
 
     const preset = APR_SIZE_PRESETS[size];
     const { svgSize, innerRadius, outerRadius, spokeWidth, borderWidth, actSpokeWidth } = preset;
     const half = svgSize / 2;
+
+    // Structural palette based on theme
+    const structural = resolveStructuralColors(theme);
 
     // Normalize stage colors to match Publication mode (settings or defaults)
     const stageColorMap = stageColors || DEFAULT_SETTINGS.publishStageColors;
@@ -118,7 +123,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     }
 
     let svg = `<svg width="${svgSize}" height="${svgSize}" viewBox="-${half} -${half} ${svgSize} ${svgSize}" xmlns="http://www.w3.org/2000/svg" class="apr-svg apr-${size}">`;
-    const bgFill = backgroundColor ?? APR_STRUCTURAL_COLORS.background;
+    const bgFill = backgroundColor === 'transparent' ? 'none' : (backgroundColor ?? structural.background);
     svg += `<rect x="-${half}" y="-${half}" width="${svgSize}" height="${svgSize}" fill="${bgFill}" />`;
 
     // Publication-mode defs (plaid patterns etc.) + percent shadow filter
@@ -132,29 +137,29 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     // Draw rings
     svg += `<g class="apr-rings">`;
     ringsToRender.forEach(ring => {
-        svg += renderRing(ring, safeScenes, borderWidth, showStatusColors, stageColorMap, numActs);
+        svg += renderRing(ring, safeScenes, borderWidth, showStatusColors, stageColorMap, numActs, structural);
     });
     svg += `</g>`;
 
     // Act spokes
     if (showActs) {
-        svg += renderActSpokes(numActs, innerRadius, outerRadius, actSpokeWidth);
+        svg += renderActSpokes(numActs, innerRadius, outerRadius, actSpokeWidth, structural);
     }
 
     // Center hole
-    const holeFill = transparentCenter ? 'none' : (backgroundColor ?? APR_STRUCTURAL_COLORS.centerHole);
-    svg += `<circle cx="0" cy="0" r="${innerRadius}" fill="${holeFill}" stroke="${APR_STRUCTURAL_COLORS.border}" stroke-opacity="0.35" />`;
+    const holeFill = transparentCenter ? 'none' : (backgroundColor ?? structural.centerHole);
+    svg += `<circle cx="0" cy="0" r="${innerRadius}" fill="${holeFill}" stroke="${structural.border}" stroke-opacity="0.35" />`;
 
     // Center percent (optional)
     if (showProgressPercent) {
         svg += renderAprCenterPercent(progressPercent, size, stageColorMap, innerRadius);
     }
 
-    // Branding on the perimeter
+    // Branding on the perimeter (sanitize placeholder/dummy URLs)
     svg += renderAprBranding({
         bookTitle: bookTitle || 'Working Title',
         authorName,
-        authorUrl,
+        authorUrl: sanitizeAuthorUrl(authorUrl),
         size,
         bookAuthorColor,
         engineColor
@@ -177,7 +182,8 @@ function renderRing(
     borderWidth: number,
     showStatusColors: boolean,
     stageColors: Record<string, string>,
-    numActs: number
+    numActs: number,
+    structural: ReturnType<typeof resolveStructuralColors>
 ): string {
     const ringScenes = ring.scenes;
     const actScenes: TimelineItem[][] = [];
@@ -206,7 +212,7 @@ function renderRing(
         if (scenesInAct.length === 0) {
             // full void arc for this act
             const voidPath = sceneArcPath(ring.innerR, ring.outerR, actStart, actEnd);
-            svg += `<path d="${voidPath}" fill="var(--rt-color-empty, ${APR_STAGE_COLORS.default})" fill-opacity="0.75" stroke="${APR_STRUCTURAL_COLORS.border}" stroke-width="${borderWidth}" />`;
+            svg += `<path d="${voidPath}" fill="var(--rt-color-empty, ${APR_STAGE_COLORS.default})" fill-opacity="0.75" stroke="${structural.border}" stroke-width="${borderWidth}" />`;
             continue;
         }
 
@@ -227,18 +233,18 @@ function renderRing(
         if (remaining > 0.0001) {
             const voidStart = actEnd - remaining;
             const voidPath = sceneArcPath(ring.innerR, ring.outerR, voidStart, actEnd);
-            svg += `<path d="${voidPath}" fill="var(--rt-color-empty, ${APR_STAGE_COLORS.default})" fill-opacity="0.75" stroke="${APR_STRUCTURAL_COLORS.border}" stroke-width="${borderWidth}" />`;
+            svg += `<path d="${voidPath}" fill="var(--rt-color-empty, ${APR_STAGE_COLORS.default})" fill-opacity="0.75" stroke="${structural.border}" stroke-width="${borderWidth}" />`;
         }
     }
 
     // Ring frames (inner/outer)
-    svg += `<circle r="${ring.outerR}" fill="none" stroke="${APR_STRUCTURAL_COLORS.border}" stroke-width="${borderWidth}" />`;
-    svg += `<circle r="${ring.innerR}" fill="none" stroke="${APR_STRUCTURAL_COLORS.border}" stroke-width="${borderWidth}" />`;
+    svg += `<circle r="${ring.outerR}" fill="none" stroke="${structural.border}" stroke-width="${borderWidth}" />`;
+    svg += `<circle r="${ring.innerR}" fill="none" stroke="${structural.border}" stroke-width="${borderWidth}" />`;
 
     return svg;
 }
 
-function renderActSpokes(numActs: number, innerR: number, outerR: number, spokeWidth: number): string {
+function renderActSpokes(numActs: number, innerR: number, outerR: number, spokeWidth: number, structural: ReturnType<typeof resolveStructuralColors>): string {
     if (numActs <= 1) return '';
     let svg = `<g class="apr-act-spokes">`;
     for (let i = 0; i < numActs; i++) {
@@ -247,7 +253,7 @@ function renderActSpokes(numActs: number, innerR: number, outerR: number, spokeW
         const y1 = innerR * Math.sin(angle);
         const x2 = outerR * Math.cos(angle);
         const y2 = outerR * Math.sin(angle);
-        svg += `<line x1="${x1.toFixed(3)}" y1="${y1.toFixed(3)}" x2="${x2.toFixed(3)}" y2="${y2.toFixed(3)}" stroke="${APR_STRUCTURAL_COLORS.actSpoke}" stroke-width="${spokeWidth}" />`;
+        svg += `<line x1="${x1.toFixed(3)}" y1="${y1.toFixed(3)}" x2="${x2.toFixed(3)}" y2="${y2.toFixed(3)}" stroke="${structural.actSpoke}" stroke-width="${spokeWidth}" />`;
     }
     svg += `</g>`;
     return svg;
@@ -257,4 +263,32 @@ function resolveSceneColor(scene: TimelineItem, showStatusColors: boolean, stage
     const neutral = `var(--rt-color-empty, ${APR_STAGE_COLORS.default})`;
     if (!showStatusColors) return neutral;
     return getFillForScene(scene, stageColors);
+}
+
+function sanitizeAuthorUrl(url?: string): string | undefined {
+    if (!url) return undefined;
+    const trimmed = url.trim();
+    if (!trimmed) return undefined;
+    const placeholder = 'https://your-site.com';
+    if (trimmed.toLowerCase() === placeholder.toLowerCase()) return undefined;
+    return trimmed;
+}
+
+function resolveStructuralColors(theme: 'dark' | 'light') {
+    if (theme === 'light') {
+        return {
+            spoke: 'rgba(0, 0, 0, 0.5)',
+            actSpoke: 'rgba(0, 0, 0, 0.65)',
+            border: 'rgba(0, 0, 0, 0.35)',
+            centerHole: '#ffffff',
+            background: '#ffffff'
+        };
+    }
+    return {
+        spoke: 'rgba(255, 255, 255, 0.4)',
+        actSpoke: 'rgba(255, 255, 255, 0.7)',
+        border: 'rgba(255, 255, 255, 0.25)',
+        centerHole: '#0a0a0a',
+        background: 'transparent'
+    };
 }

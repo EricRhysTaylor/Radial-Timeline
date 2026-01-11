@@ -230,6 +230,80 @@ function splitPlainTextIntoLines(text: string, maxWidth: number, fontScale: numb
   return lines;
 }
 
+/**
+ * Splits text into balanced lines where each line has roughly equal length.
+ * Avoids orphaned words (1-2 words) on the last line.
+ * 
+ * @param text - The text to split
+ * @param maxWidth - Maximum width in pixels (used to estimate chars per line)
+ * @param fontScale - Font scale multiplier
+ * @returns Array of balanced line strings
+ */
+export function splitIntoBalancedLinesOptimal(text: string, maxWidth: number, fontScale: number = 1): string[] {
+  if (!text) return [''];
+  
+  const words = text.split(/\s+/).filter(w => w.length > 0);
+  if (words.length === 0) return [''];
+  if (words.length <= 3) return [text]; // Short text - keep on one line
+  
+  const approxCharWidth = 8 * (fontScale || 1);
+  const maxCharsPerLine = Math.max(20, Math.round((maxWidth || 400) / approxCharWidth));
+  const totalChars = text.length;
+  
+  // If it fits on one line, return as-is
+  if (totalChars <= maxCharsPerLine) return [text];
+  
+  // Calculate optimal number of lines
+  const estimatedLines = Math.ceil(totalChars / maxCharsPerLine);
+  // Target chars per line for balanced distribution
+  const targetCharsPerLine = Math.ceil(totalChars / estimatedLines);
+  
+  const lines: string[] = [];
+  let currentLine = '';
+  let currentLength = 0;
+  
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    const remainingWords = words.length - i;
+    const testLine = currentLine ? currentLine + ' ' + word : word;
+    
+    // Check if adding this word exceeds target AND we have more words
+    // But don't break if it would leave orphans (1-2 words on last line)
+    const wouldExceedTarget = testLine.length > targetCharsPerLine;
+    const wouldCreateOrphan = remainingWords <= 2 && lines.length > 0;
+    
+    if (wouldExceedTarget && currentLine && !wouldCreateOrphan) {
+      lines.push(currentLine);
+      currentLine = word;
+      currentLength = word.length;
+    } else {
+      currentLine = testLine;
+      currentLength = testLine.length;
+    }
+  }
+  
+  if (currentLine) lines.push(currentLine);
+  
+  // Post-process: if last line is very short compared to previous, rebalance
+  if (lines.length >= 2) {
+    const lastLine = lines[lines.length - 1];
+    const prevLine = lines[lines.length - 2];
+    
+    // If last line is less than 40% of previous line, try to rebalance
+    if (lastLine.length < prevLine.length * 0.4) {
+      // Combine last two lines and re-split at midpoint
+      const combined = prevLine + ' ' + lastLine;
+      const words2 = combined.split(/\s+/);
+      const midpoint = Math.ceil(words2.length / 2);
+      
+      lines[lines.length - 2] = words2.slice(0, midpoint).join(' ');
+      lines[lines.length - 1] = words2.slice(midpoint).join(' ');
+    }
+  }
+  
+  return lines;
+}
+
 // --- Scene title parser that prefers frontmatter data over regex parsing ---
 export function parseSceneTitle(title: string, sceneNumber?: number | null): { number: string; text: string } {
   if (!title) return { number: '0', text: '' };

@@ -45,7 +45,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     
     // Build the full repeating string
     const fullBrandingText = Array(repetitions).fill(titleSegment).join(separator);
-    const fullEngineText = Array(repetitions).fill(engineSegment).join(separator);
+    const fullEngineText = [engineSegment, ...Array(repetitions).fill(titleSegment)].join(separator);
     
     // Create arc paths for text
     // Top arc (clockwise from left to right)
@@ -147,14 +147,14 @@ export function renderAprCenterPercent(
     const charCount = numStr.length;
 
     // Fit the number to the inner circle: rough width = fontSize * 0.6 * chars
-    const targetDiameter = innerRadius * 1.8;
-    const baseFont = preset.centerFontSize * 1.1;
+    const targetDiameter = innerRadius * 2.2;
+    const baseFont = preset.centerFontSize * 2;
     const fitFont = targetDiameter / (0.6 * charCount);
     const fontSize = Math.min(fitFont, baseFont);
 
-    const ghostFontSize = innerRadius * 1.35;
-    const ghostOpacity = 0.12;
-    const yOffset = fontSize * 0.32;
+    const ghostFontSize = innerRadius * 1.8;
+    const ghostOpacity = 0.25;
+    const yOffset = fontSize * 0.35;
 
     return `
         <g class="apr-center-percent">
@@ -177,10 +177,6 @@ export function renderAprCenterPercent(
                 font-weight="800" 
                 font-size="${fontSize}" 
                 fill="${pressColor}"
-                stroke="rgba(0,0,0,0.55)"
-                stroke-width="2"
-                paint-order="stroke fill"
-                filter="url(#aprPercentShadow)"
                 opacity="0.95">
                 ${numStr}
             </text>

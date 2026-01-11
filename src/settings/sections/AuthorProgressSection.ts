@@ -58,6 +58,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     
     // Load and render preview asynchronously
     renderHeroPreview(app, plugin, previewContainer);
+    const refreshPreview = () => { void renderHeroPreview(app, plugin, previewContainer); };
     
     // Meta tags
     const settings = plugin.settings.authorProgress;
@@ -75,10 +76,13 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     const contentWrapper = section.createDiv({ cls: 'rt-apr-content-wrapper' });
     
-    // Identity Inputs (High Visibility)
-    new Setting(contentWrapper)
+    // Identity & Links
+    const identityCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-identity-card rt-apr-stack-gap' });
+    identityCard.createEl('h4', { text: 'Identity & Links', cls: 'rt-section-title' });
+
+    new Setting(identityCard)
         .setName('Book Title')
-        .setDesc('This title appears on your public report graphic.')
+        .setDesc('Appears on your public report graphic.')
         .addText(text => text
             .setPlaceholder('Working Title')
             .setValue(settings?.bookTitle || '')
@@ -86,11 +90,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 if (plugin.settings.authorProgress) {
                     plugin.settings.authorProgress.bookTitle = val;
                     await plugin.saveSettings();
+                    refreshPreview();
                 }
             })
         );
 
-    new Setting(contentWrapper)
+    new Setting(identityCard)
         .setName('Author Name')
         .setDesc('Appears alongside the title (e.g., Title • Author).')
         .addText(text => text
@@ -100,11 +105,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 if (plugin.settings.authorProgress) {
                     plugin.settings.authorProgress.authorName = val;
                     await plugin.saveSettings();
+                    refreshPreview();
                 }
             })
         );
 
-    const linkUrlSetting = new Setting(contentWrapper)
+    const linkUrlSetting = new Setting(identityCard)
         .setName('Link URL')
         .setDesc('Where the graphic should link to (e.g. your website, Kickstarter, or shop).');
     
@@ -112,20 +118,76 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     
     linkUrlSetting.addText(text => {
         text.inputEl.addClass('rt-input-full');
-        text.setPlaceholder('https://...')
+        text.setPlaceholder('https://your-site.com')
             .setValue(settings?.authorUrl || '')
             .onChange(async (val) => {
                 if (plugin.settings.authorProgress) {
                     plugin.settings.authorProgress.authorUrl = val;
                     await plugin.saveSettings();
+                    refreshPreview();
                 }
             });
     });
 
-    // Branding colors (kept in settings to avoid modal clutter)
-    const colorCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-color-card' });
-    colorCard.createEl('h4', { text: 'Branding Colors', cls: 'rt-section-title' });
-    colorCard.createEl('p', { text: 'Adjust perimeter text colors.', cls: 'rt-apr-size-desc' });
+    // Styling (background + branding colors)
+    const stylingCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-styling-card rt-apr-stack-gap' });
+    stylingCard.createEl('h4', { text: 'Styling', cls: 'rt-section-title' });
+    stylingCard.createEl('p', { text: 'Control canvas/core and perimeter branding colors. Light theme uses dark spokes/borders for pale backgrounds; dark theme uses light strokes for dark canvases.', cls: 'rt-apr-size-desc' });
+
+    const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
+    const currentTransparent = settings?.aprCenterTransparent || false;
+    const currentTheme = settings?.aprTheme || 'dark';
+
+    const bgSetting = new Setting(stylingCard)
+        .setName('Background & Core')
+        .setDesc('Applies to the outer canvas and center core; toggle transparent for a cutout.');
+
+    bgSetting.addColorPicker(picker => {
+        picker.setValue(currentBg);
+        picker.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprBackgroundColor = val || '#0d0d0f';
+            await plugin.saveSettings();
+            refreshPreview();
+        });
+    });
+
+    bgSetting.addText(text => {
+        text.setPlaceholder('#0d0d0f').setValue(currentBg);
+        text.onChange(async (val) => {
+            if (!val) return;
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprBackgroundColor = val;
+            await plugin.saveSettings();
+            refreshPreview();
+        });
+    });
+
+    bgSetting.addToggle(toggle => {
+        toggle.setValue(currentTransparent);
+        toggle.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprCenterTransparent = val;
+            await plugin.saveSettings();
+            refreshPreview();
+        });
+    }).setDesc('Transparent core (shows page background behind the rings)');
+
+    // Theme selector
+    const themeSetting = new Setting(stylingCard)
+        .setName('Theme Contrast')
+        .setDesc('Choose stroke/border contrast to match your background.')
+        .addDropdown(drop => {
+            drop.addOption('dark', 'Dark (light strokes)');
+            drop.addOption('light', 'Light (dark strokes)');
+            drop.setValue(currentTheme);
+            drop.onChange(async (val) => {
+                if (!plugin.settings.authorProgress) return;
+                plugin.settings.authorProgress.aprTheme = (val as 'dark' | 'light') || 'dark';
+                await plugin.saveSettings();
+                refreshPreview();
+            });
+        });
 
     const setColorPicker = (
         setting: Setting, 
@@ -139,6 +201,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 if (!plugin.settings.authorProgress) return;
                 (plugin.settings.authorProgress as any)[key] = val || fallback;
                 await plugin.saveSettings();
+                refreshPreview();
             });
         });
         setting.addText(text => {
@@ -148,18 +211,22 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 if (!plugin.settings.authorProgress) return;
                 (plugin.settings.authorProgress as any)[key] = val;
                 await plugin.saveSettings();
+                refreshPreview();
             });
         });
     };
 
-    const bookColorSetting = new Setting(colorCard).setName('Book + Author Color').setDesc('Used on the top perimeter text.');
+    const bookColorSetting = new Setting(stylingCard).setName('Book + Author Color').setDesc('Used on the top perimeter text.');
     setColorPicker(bookColorSetting, 'aprBookAuthorColor', plugin.settings.publishStageColors?.Press || '#6FB971');
 
-    const engineColorSetting = new Setting(colorCard).setName('Radial Timeline Engine Color').setDesc('Used on the bottom perimeter text.');
+    const engineColorSetting = new Setting(stylingCard).setName('Radial Timeline Engine Color').setDesc('Used on the bottom perimeter text.');
     setColorPicker(engineColorSetting, 'aprEngineColor', '#e5e5e5');
 
-    // Automation & Frequency
-    new Setting(contentWrapper)
+    // Publishing & Automation
+    const automationCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-automation-card rt-apr-stack-gap' });
+    automationCard.createEl('h4', { text: 'Publishing & Automation', cls: 'rt-section-title' });
+
+    new Setting(automationCard)
         .setName('Update Frequency')
         .setDesc('How often to auto-update the live embed file. "Manual" requires clicking the update button.')
         .addDropdown(dropdown => dropdown
@@ -179,7 +246,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Conditional Manual Settings
     if (settings?.updateFrequency === 'manual') {
         const currentDays = settings?.stalenessThresholdDays || 30;
-        const stalenessSetting = new Setting(contentWrapper)
+        const stalenessSetting = new Setting(automationCard)
             .setName('Staleness Alert Threshold')
             .setDesc(`Days before showing a "Stale Report" warning in the timeline view. Currently: ${currentDays} days.`)
             .addSlider(slider => {
@@ -214,7 +281,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             });
     }
 
-    const embedPathSetting = new Setting(contentWrapper)
+    const embedPathSetting = new Setting(automationCard)
         .setName('Embed File Path')
         .setDesc(`Location for the "Live Embed" SVG file. Must end with .svg. Default: ${DEFAULT_SETTINGS.authorProgress?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg'}`);
     
