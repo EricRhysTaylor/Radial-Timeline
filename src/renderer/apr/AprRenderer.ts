@@ -123,7 +123,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     }
 
     let svg = `<svg width="${svgSize}" height="${svgSize}" viewBox="-${half} -${half} ${svgSize} ${svgSize}" xmlns="http://www.w3.org/2000/svg" class="apr-svg apr-${size}">`;
-    const bgFill = backgroundColor === 'transparent' ? 'none' : (backgroundColor ?? structural.background);
+    const bgFill = (transparentCenter || backgroundColor === 'transparent') ? 'none' : (backgroundColor ?? structural.background);
     svg += `<rect x="-${half}" y="-${half}" width="${svgSize}" height="${svgSize}" fill="${bgFill}" />`;
 
     // Publication-mode defs (plaid patterns etc.) + percent shadow filter

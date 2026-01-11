@@ -35,10 +35,9 @@ export function buildSynopsisElement(
     ];
 
     if (isBeatNote(scene)) {
-        // Find the latest Gossamer score, justification, and stage (highest numbered field)
+        // Find the latest Gossamer score and justification (highest numbered field)
         let latestScore: number | undefined;
         let latestJustification: string | undefined;
-        let latestStage: string = 'Zero'; // Default stage
         
         // Check Gossamer1 through Gossamer30 for the latest score
         for (let i = 30; i >= 1; i--) {
@@ -52,12 +51,6 @@ export function buildSynopsisElement(
                 if (typeof justification === 'string') {
                     latestJustification = justification;
                 }
-                // Get the stage for this run
-                const stageKey = `GossamerStage${i}` as keyof typeof scene;
-                const stage = scene[stageKey];
-                if (typeof stage === 'string') {
-                    latestStage = stage;
-                }
                 break;
             }
         }
@@ -66,8 +59,7 @@ export function buildSynopsisElement(
             // Add spacer before Gossamer line (like scenes have before pulse analysis)
             contentLines.push('<gossamer-spacer></gossamer-spacer>');
             
-            // Format: "80/100 — JUSTIFICATION" with score using GossamerStage color
-            // Include stage in tag for color lookup: <gossamer-pulse data-stage="Zero">
+            // Format: "80/100 — JUSTIFICATION" with score bold (pulse-text-grade style)
             if (latestJustification) {
                 const justificationUpper = latestJustification.toUpperCase();
                 // Combine score + em dash + justification for balanced wrapping
@@ -78,17 +70,17 @@ export function buildSynopsisElement(
                 
                 if (wrappedLines.length <= 1) {
                     // Short enough - single line
-                    contentLines.push(`<gossamer-pulse data-stage="${latestStage}">${fullText}</gossamer-pulse>`);
+                    contentLines.push(`<gossamer-pulse>${fullText}</gossamer-pulse>`);
                 } else {
                     // First line contains score + em dash + start of justification
-                    contentLines.push(`<gossamer-pulse data-stage="${latestStage}">${wrappedLines[0]}</gossamer-pulse>`);
+                    contentLines.push(`<gossamer-pulse>${wrappedLines[0]}</gossamer-pulse>`);
                     // Continuation lines
                     for (let j = 1; j < wrappedLines.length; j++) {
                         contentLines.push(`<gossamer-pulse-cont>${wrappedLines[j]}</gossamer-pulse-cont>`);
                     }
                 }
             } else {
-                contentLines.push(`<gossamer-pulse data-stage="${latestStage}">${latestScore}/100</gossamer-pulse>`);
+                contentLines.push(`<gossamer-pulse>${latestScore}/100</gossamer-pulse>`);
             }
         }
     }

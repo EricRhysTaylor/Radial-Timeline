@@ -154,6 +154,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     bgSetting.addText(text => {
         text.setPlaceholder('#0d0d0f').setValue(currentBg);
+        text.inputEl.classList.add('rt-hex-input');
         text.onChange(async (val) => {
             if (!val) return;
             if (!plugin.settings.authorProgress) return;
@@ -178,8 +179,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         .setName('Theme Contrast')
         .setDesc('Choose stroke/border contrast to match your background.')
         .addDropdown(drop => {
-            drop.addOption('dark', 'Dark (light strokes)');
-            drop.addOption('light', 'Light (dark strokes)');
+            drop.addOption('dark', 'Light Strokes');
+            drop.addOption('light', 'Dark Strokes');
             drop.setValue(currentTheme);
             drop.onChange(async (val) => {
                 if (!plugin.settings.authorProgress) return;
@@ -206,6 +207,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
         setting.addText(text => {
             text.setPlaceholder(fallback).setValue(current);
+            text.inputEl.classList.add('rt-hex-input');
             text.onChange(async (val) => {
                 if (!val) return;
                 if (!plugin.settings.authorProgress) return;

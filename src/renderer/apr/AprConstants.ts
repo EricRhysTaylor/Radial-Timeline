@@ -16,8 +16,8 @@ export const APR_SIZE_PRESETS = {
         svgSize: 600,
         innerRadius: 120,
         outerRadius: 280,
-        brandingRadius: 286, // 6px outside outer ring (2px more)
-        rtBrandingRadius: 268,
+        brandingRadius: 288, // +2px
+        rtBrandingRadius: 270,
         centerFontSize: 72,
         brandingFontSize: 20,
         rtBrandingFontSize: 12,
@@ -29,8 +29,8 @@ export const APR_SIZE_PRESETS = {
         svgSize: 800,
         innerRadius: 160,
         outerRadius: 370,
-        brandingRadius: 376, // 6px outside outer ring (2px more)
-        rtBrandingRadius: 354,
+        brandingRadius: 378, // +2px
+        rtBrandingRadius: 356,
         centerFontSize: 96,
         brandingFontSize: 26,
         rtBrandingFontSize: 14,
@@ -42,8 +42,8 @@ export const APR_SIZE_PRESETS = {
         svgSize: 1000,
         innerRadius: 200,
         outerRadius: 460,
-        brandingRadius: 466, // 6px outside outer ring (2px more)
-        rtBrandingRadius: 442,
+        brandingRadius: 468, // +2px
+        rtBrandingRadius: 444,
         centerFontSize: 120,
         brandingFontSize: 32,
         rtBrandingFontSize: 18,

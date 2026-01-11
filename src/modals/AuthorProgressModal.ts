@@ -169,6 +169,22 @@ export class AuthorProgressModal extends Modal {
         this.createSizeButton(sizeSelector, 'large', 'Large · 1000px');
         this.sizeInfoEl = sizeSection.createDiv({ cls: 'rt-apr-size-info' });
         this.updateSizeInfo();
+
+        // Transparency (recommended)
+        const transparencySection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-transparency-section' });
+        transparencySection.createEl('h4', { text: 'Transparency (Recommended)', cls: 'rt-section-title' });
+        transparencySection.createEl('p', { text: 'Use transparent canvas/core to let the modal or page color show through. Best for sharing and embeds.', cls: 'rt-apr-size-desc' });
+        new Setting(transparencySection)
+            .setName('Transparent Canvas/Core')
+            .setDesc('Removes fills; shows underlying background.')
+            .addToggle(toggle => {
+                toggle.setValue(this.aprCenterTransparent);
+                toggle.onChange(async (val) => {
+                    this.aprCenterTransparent = val;
+                    await this.saveRevealOptions();
+                    await this.renderPreview();
+                });
+            });
         // Theme selector (light/dark)
         const themeSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-theme-section' });
         themeSection.createEl('h4', { text: 'Theme Contrast', cls: 'rt-section-title' });
@@ -177,8 +193,8 @@ export class AuthorProgressModal extends Modal {
             .setName('Theme')
             .setDesc('Choose stroke/border contrast')
             .addDropdown(drop => {
-                drop.addOption('dark', 'Dark (light strokes)');
-                drop.addOption('light', 'Light (dark strokes)');
+                drop.addOption('dark', 'Light Strokes');
+                drop.addOption('light', 'Dark Strokes');
                 drop.setValue(this.aprTheme);
                 drop.onChange(async (val) => {
                     this.aprTheme = (val as 'dark' | 'light') || 'dark';

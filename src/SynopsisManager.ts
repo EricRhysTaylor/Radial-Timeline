@@ -242,23 +242,8 @@ export default class SynopsisManager {
     const { stageClass, titleColor: defaultTitleColor } = getPublishStageStyle(scene["Publish Stage"], this.plugin.settings.publishStageColors);
     const fontScale = this.getReadabilityScale();
     
-    // For beats with Gossamer data, use the GossamerStage color instead
-    let titleColor = defaultTitleColor;
-    if (scene.itemType === 'Beat' || scene.itemType === 'Plot') {
-      // Find the latest GossamerStage
-      for (let i = 30; i >= 1; i--) {
-        const scoreKey = `Gossamer${i}` as keyof typeof scene;
-        const stageKey = `GossamerStage${i}` as keyof typeof scene;
-        if (scene[scoreKey] !== undefined && scene[scoreKey] !== null) {
-          const stage = scene[stageKey];
-          if (typeof stage === 'string') {
-            const stageColors = this.plugin.settings.publishStageColors || { Zero: '#9370DB', Author: '#4169E1', House: '#228B22', Press: '#FF8C00' };
-            titleColor = stageColors[stage as keyof typeof stageColors] || stageColors.Zero;
-          }
-          break;
-        }
-      }
-    }
+    // Default title color from publish stage (do not override with Gossamer stage)
+    const titleColor = defaultTitleColor;
 
     const { synopsisEndIndex, metadataItems } = splitSynopsisLines(contentLines);
 
@@ -501,20 +486,12 @@ export default class SynopsisManager {
         const justificationContent = contentLines[i].replace(/<gossamer-justification>/g, '').replace(/<\/gossamer-justification>/g, '');
         synopsisLineElement.textContent = justificationContent;
       } else if (isGossamerPulseLine) {
-        // Format: "80/100 — JUSTIFICATION" with score using GossamerStage color
+        // Format: "80/100 — JUSTIFICATION" with grade styling (pulse-text-grade)
         synopsisLineElement.setAttribute("class", "rt-info-text pulse-text");
         synopsisLineElement.setAttribute("x", "0");
         synopsisLineElement.setAttribute("y", String(lineY));
 
-        // Extract stage from data-stage attribute
-        const stageMatch = contentLines[i].match(/data-stage="([^"]+)"/);
-        const gossamerStage = stageMatch ? stageMatch[1] : 'Zero';
-        
-        // Get the stage color from plugin settings
-        const stageColors = this.plugin.settings.publishStageColors || { Zero: '#9370DB', Author: '#4169E1', House: '#228B22', Press: '#FF8C00' };
-        const stageColor = stageColors[gossamerStage as keyof typeof stageColors] || stageColors.Zero;
-
-        // Extract content between tags (remove the data-stage attribute part)
+        // Extract content between tags
         const pulseContent = contentLines[i]
           .replace(/<gossamer-pulse[^>]*>/g, '')
           .replace(/<\/gossamer-pulse>/g, '');
@@ -525,23 +502,21 @@ export default class SynopsisManager {
           const scorePart = pulseContent.substring(0, dashIndex);
           const justificationPart = pulseContent.substring(dashIndex + 3);
           
-          // Create tspan for score (bold, larger - using GossamerStage color)
+          // Create tspan for score (bold, larger - pulse-text-grade style)
           const scoreTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-          scoreTspan.setAttribute('class', 'pulse-text-grade');
-          scoreTspan.style.fill = stageColor;
+          scoreTspan.classList.add('pulse-text-grade');
           scoreTspan.textContent = scorePart;
           synopsisLineElement.appendChild(scoreTspan);
           
           // Create tspan for em dash + justification (gray)
           const justificationTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-          justificationTspan.setAttribute('class', 'pulse-text');
+          justificationTspan.classList.add('pulse-text');
           justificationTspan.textContent = ' — ' + justificationPart;
           synopsisLineElement.appendChild(justificationTspan);
         } else {
           // Just the score (no justification)
           const scoreTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-          scoreTspan.setAttribute('class', 'pulse-text-grade');
-          scoreTspan.style.fill = stageColor;
+          scoreTspan.classList.add('pulse-text-grade');
           scoreTspan.textContent = pulseContent;
           synopsisLineElement.appendChild(scoreTspan);
         }
