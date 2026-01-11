@@ -5,8 +5,9 @@
 
 import { App, Setting, setIcon, ButtonComponent, TextComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import type { AprCampaign } from '../../types/settings';
+import type { AprCampaign, MomentumPreset } from '../../types/settings';
 import { isProfessionalActive } from './ProfessionalSection';
+import { MOMENTUM_PRESETS, MOMENTUM_LEVEL_INFO, getMomentumThresholds } from '../../renderer/apr/AprConstants';
 
 export interface CampaignManagerProps {
     app: App;
@@ -40,7 +41,13 @@ export function createDefaultCampaign(name: string): AprCampaign {
         showProgressPercent: true,
         aprSize: 'standard',
         customTransparent: true,
-        customTheme: 'dark'
+        customTheme: 'dark',
+        // Momentum Builder defaults (disabled by default, author opts in)
+        momentumBuilder: {
+            enabled: false,
+            preset: 'standard',
+            customThresholds: undefined
+        }
     };
 }
 
@@ -75,7 +82,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     const titleArea = headerRow.createDiv({ cls: 'rt-campaign-manager-title-area' });
     
     const proBadge = titleArea.createSpan({ cls: 'rt-pro-feature-badge' });
-    setIcon(proBadge, 'crown');
+    setIcon(proBadge, 'signature');
     proBadge.createSpan({ text: 'Pro' });
     
     titleArea.createEl('h4', { text: 'Campaign Manager', cls: 'rt-section-title' });
@@ -435,6 +442,85 @@ function renderCampaignDetails(
             await plugin.saveSettings();
         };
     });
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // MOMENTUM BUILDER (Progressive Reveal)
+    // ─────────────────────────────────────────────────────────────────────────
+    const momentumSection = details.createDiv({ cls: 'rt-campaign-momentum-section' });
+    momentumSection.createEl('h5', { text: 'Momentum Builder', cls: 'rt-campaign-momentum-title' });
+    
+    const momentumDesc = momentumSection.createEl('p', { cls: 'rt-campaign-momentum-desc' });
+    momentumDesc.setText('Automatically reveal more detail as your book progresses. Creates anticipation for your audience.');
+    
+    // Momentum toggle
+    const momentumSettings = campaign.momentumBuilder ?? { enabled: false, preset: 'standard' as MomentumPreset };
+    
+    new Setting(momentumSection)
+        .setName('Enable Momentum Builder')
+        .setDesc('Progressive reveal based on completion %')
+        .addToggle(toggle => {
+            toggle.setValue(momentumSettings.enabled)
+                .onChange(async (val) => {
+                    if (!plugin.settings.authorProgress?.campaigns) return;
+                    const target = plugin.settings.authorProgress.campaigns[index];
+                    if (!target.momentumBuilder) {
+                        target.momentumBuilder = { enabled: false, preset: 'standard' };
+                    }
+                    target.momentumBuilder.enabled = val;
+                    await plugin.saveSettings();
+                    onUpdate();
+                });
+        });
+    
+    // Only show preset and preview if momentum is enabled
+    if (momentumSettings.enabled) {
+        // Preset selector
+        new Setting(momentumSection)
+            .setName('Reveal Schedule')
+            .addDropdown(drop => {
+                drop.addOption('slow', 'Slow (15/30/60/85%)')
+                    .addOption('standard', 'Standard (10/25/50/75%)')
+                    .addOption('fast', 'Fast (5/15/35/65%)')
+                    .addOption('custom', 'Custom')
+                    .setValue(momentumSettings.preset)
+                    .onChange(async (val) => {
+                        if (!plugin.settings.authorProgress?.campaigns) return;
+                        const target = plugin.settings.authorProgress.campaigns[index];
+                        if (!target.momentumBuilder) {
+                            target.momentumBuilder = { enabled: true, preset: 'standard' };
+                        }
+                        target.momentumBuilder.preset = val as MomentumPreset;
+                        await plugin.saveSettings();
+                        onUpdate();
+                    });
+            });
+        
+        // Show reveal level preview
+        const thresholds = getMomentumThresholds(momentumSettings.preset, momentumSettings.customThresholds);
+        const previewRow = momentumSection.createDiv({ cls: 'rt-momentum-preview-row' });
+        
+        const levels = [
+            { key: 'bar', threshold: 0, label: 'Teaser' },
+            { key: 'scenes', threshold: thresholds.scenes, label: 'Scenes' },
+            { key: 'acts', threshold: thresholds.acts, label: 'Structure' },
+            { key: 'subplots', threshold: thresholds.subplots, label: 'Depth' },
+            { key: 'colors', threshold: thresholds.colors, label: 'Full Detail' },
+        ] as const;
+        
+        levels.forEach((level, i) => {
+            const levelBox = previewRow.createDiv({ cls: 'rt-momentum-level-box' });
+            const iconSpan = levelBox.createSpan({ cls: 'rt-momentum-level-icon' });
+            setIcon(iconSpan, MOMENTUM_LEVEL_INFO[level.key].icon);
+            levelBox.createSpan({ text: `${level.threshold}%`, cls: 'rt-momentum-level-threshold' });
+            levelBox.createSpan({ text: level.label, cls: 'rt-momentum-level-label' });
+            
+            // Arrow between levels (except last)
+            if (i < levels.length - 1) {
+                const arrow = previewRow.createSpan({ cls: 'rt-momentum-arrow' });
+                setIcon(arrow, 'arrow-right');
+            }
+        });
+    }
     
     // Publish button
     const publishRow = details.createDiv({ cls: 'rt-campaign-publish-row' });

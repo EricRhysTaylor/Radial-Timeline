@@ -104,6 +104,36 @@ export interface AuthorProgressSettings {
 }
 
 /**
+ * Momentum Builder Reveal Levels
+ * Each level unlocks more visual detail as progress increases
+ */
+export type MomentumRevealLevel = 'bar' | 'scenes' | 'acts' | 'subplots' | 'colors';
+
+/**
+ * Momentum Builder preset configurations
+ */
+export type MomentumPreset = 'slow' | 'standard' | 'fast' | 'custom';
+
+/**
+ * Momentum Builder thresholds - percentage at which each level unlocks
+ */
+export interface MomentumThresholds {
+    scenes: number;    // When to show individual scene cells (e.g., 10%)
+    acts: number;      // When to show act divisions (e.g., 25%)
+    subplots: number;  // When to show subplot rings (e.g., 50%)
+    colors: number;    // When to show status colors (e.g., 75%)
+}
+
+/**
+ * Momentum Builder settings for progressive reveal
+ */
+export interface MomentumBuilderSettings {
+    enabled: boolean;
+    preset: MomentumPreset;
+    customThresholds?: MomentumThresholds;
+}
+
+/**
  * APR Campaign - Pro Feature
  * Allows multiple embed destinations with independent refresh schedules
  */
@@ -120,7 +150,7 @@ export interface AprCampaign {
     // Output
     embedPath: string;               // Where to save the SVG for this campaign
     
-    // Per-campaign reveal options (override defaults)
+    // Per-campaign reveal options (override defaults when Momentum Builder is OFF)
     showSubplots: boolean;
     showActs: boolean;
     showStatus: boolean;
@@ -131,6 +161,9 @@ export interface AprCampaign {
     customBackgroundColor?: string;
     customTransparent?: boolean;
     customTheme?: 'dark' | 'light';
+    
+    // Pro Feature: Momentum Builder (Progressive Reveal)
+    momentumBuilder?: MomentumBuilderSettings;
 }
 
 export interface RadialTimelineSettings {

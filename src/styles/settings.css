@@ -3420,3 +3420,104 @@
 .rt-settings-root .rt-campaign-template-btn.rt-campaign-template-used svg {
   color: var(--text-muted);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOMENTUM BUILDER (Progressive Reveal)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.rt-settings-root .rt-campaign-momentum-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.rt-settings-root .rt-campaign-momentum-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-normal);
+  margin: 0 0 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rt-settings-root .rt-campaign-momentum-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 14px;
+  background: linear-gradient(180deg, #22c55e, #6366f1);
+  border-radius: 2px;
+}
+
+.rt-settings-root .rt-campaign-momentum-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0 0 12px 0;
+  line-height: 1.4;
+}
+
+/* Momentum Level Preview Row */
+.rt-settings-root .rt-momentum-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  margin-top: 12px;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+}
+
+.rt-settings-root .rt-momentum-level-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  min-width: 70px;
+  flex-shrink: 0;
+  border: 1px solid var(--background-modifier-border);
+  transition: all 0.15s ease;
+}
+
+.rt-settings-root .rt-momentum-level-box:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--text-accent);
+}
+
+.rt-settings-root .rt-momentum-level-icon {
+  color: var(--text-accent);
+  opacity: 0.8;
+}
+
+.rt-settings-root .rt-momentum-level-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.rt-settings-root .rt-momentum-level-threshold {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-normal);
+}
+
+.rt-settings-root .rt-momentum-level-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rt-settings-root .rt-momentum-arrow {
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+
+.rt-settings-root .rt-momentum-arrow svg {
+  width: 14px;
+  height: 14px;
+}

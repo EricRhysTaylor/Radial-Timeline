@@ -4,6 +4,7 @@ import { TimelineItem } from '../types/timeline';
 import { createAprSVG } from '../renderer/apr/AprRenderer';
 import { getAllScenes } from '../utils/manuscript';
 import type { AprCampaign } from '../types/settings';
+import { getMomentumThresholds, getMomentumRevealLevel, momentumLevelToRevealOptions } from '../renderer/apr/AprConstants';
 
 export class AuthorProgressService {
     constructor(private plugin: RadialTimelinePlugin, private app: App) {}
@@ -196,6 +197,27 @@ export class AuthorProgressService {
         const scenes = await getAllScenes(this.app, this.plugin);
         const progressPercent = this.calculateProgress(scenes);
 
+        // Determine reveal options based on Momentum Builder or static settings
+        let showScenes = true;
+        let showSubplots = campaign.showSubplots;
+        let showActs = campaign.showActs;
+        let showStatusColors = campaign.showStatus;
+        
+        // Apply Momentum Builder if enabled
+        if (campaign.momentumBuilder?.enabled) {
+            const thresholds = getMomentumThresholds(
+                campaign.momentumBuilder.preset,
+                campaign.momentumBuilder.customThresholds
+            );
+            const revealLevel = getMomentumRevealLevel(progressPercent, thresholds);
+            const revealOptions = momentumLevelToRevealOptions(revealLevel);
+            
+            showScenes = revealOptions.showScenes;
+            showSubplots = revealOptions.showSubplots;
+            showActs = revealOptions.showActs;
+            showStatusColors = revealOptions.showStatusColors;
+        }
+
         // Use campaign-specific settings with fallbacks to main settings
         const { svgString } = createAprSVG(scenes, {
             size: campaign.aprSize || settings.aprSize || 'standard',
@@ -203,9 +225,10 @@ export class AuthorProgressService {
             bookTitle: settings.bookTitle || 'Working Title',
             authorName: settings.authorName || '',
             authorUrl: settings.authorUrl || '',
-            showSubplots: campaign.showSubplots,
-            showActs: campaign.showActs,
-            showStatusColors: campaign.showStatus,
+            showScenes,
+            showSubplots,
+            showActs,
+            showStatusColors,
             showProgressPercent: campaign.showProgressPercent,
             stageColors: this.plugin.settings.publishStageColors,
             actCount: this.plugin.settings.actCount || undefined,

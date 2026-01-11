@@ -18,6 +18,7 @@ export interface AprRenderOptions {
     authorName?: string;
     authorUrl?: string;
     progressPercent: number;
+    showScenes?: boolean;      // When false, show solid progress ring (bar mode)
     showSubplots?: boolean;
     showActs?: boolean;
     showStatusColors?: boolean;
@@ -51,6 +52,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         authorName,
         authorUrl,
         progressPercent,
+        showScenes = true,      // New: when false, shows bar-only mode
         showSubplots = true,
         showActs = true,
         showStatusColors = true,
@@ -134,16 +136,23 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     `;
     svg += `<defs>${renderDefs(stageColorMap)}${percentShadow}</defs>`;
 
-    // Draw rings
-    svg += `<g class="apr-rings">`;
-    ringsToRender.forEach(ring => {
-        svg += renderRing(ring, safeScenes, borderWidth, showStatusColors, stageColorMap, numActs, structural);
-    });
-    svg += `</g>`;
+    // ─────────────────────────────────────────────────────────────────────────
+    // BAR-ONLY MODE (Teaser): Solid progress ring, no scene details
+    // ─────────────────────────────────────────────────────────────────────────
+    if (!showScenes) {
+        svg += renderProgressRing(innerRadius, outerRadius, progressPercent, structural, stageColorMap);
+    } else {
+        // Normal mode: Draw rings with scene cells
+        svg += `<g class="apr-rings">`;
+        ringsToRender.forEach(ring => {
+            svg += renderRing(ring, safeScenes, borderWidth, showStatusColors, stageColorMap, numActs, structural);
+        });
+        svg += `</g>`;
 
-    // Act spokes
-    if (showActs) {
-        svg += renderActSpokes(numActs, innerRadius, outerRadius, actSpokeWidth, structural);
+        // Act spokes (only when scenes are shown)
+        if (showActs) {
+            svg += renderActSpokes(numActs, innerRadius, outerRadius, actSpokeWidth, structural);
+        }
     }
 
     // Center hole
@@ -291,4 +300,55 @@ function resolveStructuralColors(theme: 'dark' | 'light') {
         centerHole: '#0a0a0a',
         background: 'transparent'
     };
+}
+
+/**
+ * Render a solid progress ring (bar-only mode / teaser mode)
+ * Shows a single ring with progress filled as an arc
+ */
+function renderProgressRing(
+    innerR: number,
+    outerR: number,
+    progressPercent: number,
+    structural: ReturnType<typeof resolveStructuralColors>,
+    stageColors: Record<string, string>
+): string {
+    const midR = (innerR + outerR) / 2;
+    const ringWidth = outerR - innerR;
+    
+    // Track (empty ring)
+    let svg = `<g class="apr-progress-ring">`;
+    svg += `<circle cx="0" cy="0" r="${midR}" fill="none" stroke="${structural.border}" stroke-width="${ringWidth}" stroke-opacity="0.3" />`;
+    
+    // Progress arc
+    if (progressPercent > 0) {
+        const progressColor = stageColors.Press || '#22c55e'; // Use Press stage color for progress
+        const clampedPercent = Math.min(100, Math.max(0, progressPercent));
+        
+        if (clampedPercent >= 100) {
+            // Full circle
+            svg += `<circle cx="0" cy="0" r="${midR}" fill="none" stroke="${progressColor}" stroke-width="${ringWidth}" />`;
+        } else {
+            // Arc from top (-90°) clockwise
+            const angle = (clampedPercent / 100) * 2 * Math.PI;
+            const startAngle = -Math.PI / 2;
+            const endAngle = startAngle + angle;
+            
+            const x1 = midR * Math.cos(startAngle);
+            const y1 = midR * Math.sin(startAngle);
+            const x2 = midR * Math.cos(endAngle);
+            const y2 = midR * Math.sin(endAngle);
+            
+            const largeArcFlag = angle > Math.PI ? 1 : 0;
+            
+            svg += `<path d="M ${x1.toFixed(3)} ${y1.toFixed(3)} A ${midR} ${midR} 0 ${largeArcFlag} 1 ${x2.toFixed(3)} ${y2.toFixed(3)}" fill="none" stroke="${progressColor}" stroke-width="${ringWidth}" stroke-linecap="round" />`;
+        }
+    }
+    
+    // Outer and inner border circles
+    svg += `<circle cx="0" cy="0" r="${outerR}" fill="none" stroke="${structural.border}" stroke-width="1.5" />`;
+    svg += `<circle cx="0" cy="0" r="${innerR}" fill="none" stroke="${structural.border}" stroke-width="1.5" />`;
+    
+    svg += `</g>`;
+    return svg;
 }

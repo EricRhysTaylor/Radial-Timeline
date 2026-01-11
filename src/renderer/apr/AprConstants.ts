@@ -124,3 +124,109 @@ export const APR_SCENE_GAP_RAD = 0.008;
 
 /** Minimum arc angle for very small scenes (radians) */
 export const APR_MIN_SCENE_ARC_RAD = 0.02;
+
+// =============================================================================
+// MOMENTUM BUILDER (Progressive Reveal) PRESETS
+// =============================================================================
+
+import type { MomentumThresholds, MomentumPreset, MomentumRevealLevel } from '../../types/settings';
+
+/**
+ * Preset thresholds for Momentum Builder
+ * Each number is the % at which that level unlocks
+ */
+export const MOMENTUM_PRESETS: Record<Exclude<MomentumPreset, 'custom'>, MomentumThresholds> = {
+    slow: {
+        scenes: 15,    // Show scene cells at 15%
+        acts: 30,      // Show act divisions at 30%
+        subplots: 60,  // Show subplot rings at 60%
+        colors: 85,    // Show status colors at 85%
+    },
+    standard: {
+        scenes: 10,    // Show scene cells at 10%
+        acts: 25,      // Show act divisions at 25%
+        subplots: 50,  // Show subplot rings at 50%
+        colors: 75,    // Show status colors at 75%
+    },
+    fast: {
+        scenes: 5,     // Show scene cells at 5%
+        acts: 15,      // Show act divisions at 15%
+        subplots: 35,  // Show subplot rings at 35%
+        colors: 65,    // Show status colors at 65%
+    },
+};
+
+/**
+ * Reveal level labels with icons (matching publication stage icons)
+ */
+export const MOMENTUM_LEVEL_INFO: Record<MomentumRevealLevel, { label: string; icon: string; description: string }> = {
+    bar: {
+        label: 'Teaser',
+        icon: 'circle',        // Minimal: just a ring
+        description: 'Progress ring only, no scene details',
+    },
+    scenes: {
+        label: 'Scenes',
+        icon: 'sprout',        // Zero stage icon: first sign of life
+        description: 'Individual scene cells visible',
+    },
+    acts: {
+        label: 'Structure',
+        icon: 'tree-pine',     // Author stage icon: growing
+        description: 'Act divisions and spokes appear',
+    },
+    subplots: {
+        label: 'Depth',
+        icon: 'trees',         // House stage icon: forest
+        description: 'Subplot rings expand',
+    },
+    colors: {
+        label: 'Full Detail',
+        icon: 'shell',         // Press stage icon: complete
+        description: 'Status colors revealed',
+    },
+};
+
+/**
+ * Get thresholds for a given preset
+ */
+export function getMomentumThresholds(preset: MomentumPreset, customThresholds?: MomentumThresholds): MomentumThresholds {
+    if (preset === 'custom' && customThresholds) {
+        return customThresholds;
+    }
+    return MOMENTUM_PRESETS[preset === 'custom' ? 'standard' : preset];
+}
+
+/**
+ * Calculate which reveal level is active based on current progress
+ */
+export function getMomentumRevealLevel(progress: number, thresholds: MomentumThresholds): MomentumRevealLevel {
+    if (progress >= thresholds.colors) return 'colors';
+    if (progress >= thresholds.subplots) return 'subplots';
+    if (progress >= thresholds.acts) return 'acts';
+    if (progress >= thresholds.scenes) return 'scenes';
+    return 'bar';
+}
+
+/**
+ * Convert reveal level to reveal options for APR renderer
+ */
+export function momentumLevelToRevealOptions(level: MomentumRevealLevel): {
+    showScenes: boolean;
+    showActs: boolean;
+    showSubplots: boolean;
+    showStatusColors: boolean;
+} {
+    switch (level) {
+        case 'bar':
+            return { showScenes: false, showActs: false, showSubplots: false, showStatusColors: false };
+        case 'scenes':
+            return { showScenes: true, showActs: false, showSubplots: false, showStatusColors: false };
+        case 'acts':
+            return { showScenes: true, showActs: true, showSubplots: false, showStatusColors: false };
+        case 'subplots':
+            return { showScenes: true, showActs: true, showSubplots: true, showStatusColors: false };
+        case 'colors':
+            return { showScenes: true, showActs: true, showSubplots: true, showStatusColors: true };
+    }
+}
