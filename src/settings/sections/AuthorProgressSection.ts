@@ -76,6 +76,121 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     const contentWrapper = section.createDiv({ cls: 'rt-apr-content-wrapper' });
     
+    // Styling (background + branding colors) - placed first, close to preview
+    const stylingCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-styling-card rt-apr-stack-gap' });
+    stylingCard.createEl('h4', { text: 'Styling', cls: 'rt-section-title' });
+
+    const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
+    const currentTransparent = settings?.aprCenterTransparent ?? true; // Default to true (recommended)
+    const currentTheme = settings?.aprTheme || 'dark';
+
+    // Transparency (Recommended) - placed FIRST with special styling
+    const transparencySetting = new Setting(stylingCard)
+        .setName('Transparent Mode (Recommended)')
+        .setDesc('Canvas and center core show page/modal background. Best for sharing and embeds.');
+    
+    // Background color - for special situations only (when transparency is off)
+    const bgSetting = new Setting(stylingCard)
+        .setName('Background Color')
+        .setDesc('Applies to the canvas background. Used only when transparent mode is off. For special embed situations.');
+    
+    // Helper to swap emphasis between transparency and background rows
+    const updateEmphasis = (isTransparent: boolean) => {
+        if (isTransparent) {
+            transparencySetting.settingEl.classList.add('rt-apr-recommended-setting');
+            bgSetting.settingEl.classList.remove('rt-apr-recommended-setting');
+        } else {
+            transparencySetting.settingEl.classList.remove('rt-apr-recommended-setting');
+            bgSetting.settingEl.classList.add('rt-apr-recommended-setting');
+        }
+    };
+    
+    // Set initial emphasis state
+    updateEmphasis(currentTransparent);
+    
+    transparencySetting.addToggle(toggle => {
+        toggle.setValue(currentTransparent);
+        toggle.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprCenterTransparent = val;
+            await plugin.saveSettings();
+            updateEmphasis(val);
+            refreshPreview();
+        });
+    });
+
+    bgSetting.addColorPicker(picker => {
+        picker.setValue(currentBg);
+        picker.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprBackgroundColor = val || '#0d0d0f';
+            await plugin.saveSettings();
+            refreshPreview();
+        });
+    });
+
+    bgSetting.addText(text => {
+        text.setPlaceholder('#0d0d0f').setValue(currentBg);
+        text.inputEl.classList.add('rt-hex-input');
+        text.onChange(async (val) => {
+            if (!val) return;
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprBackgroundColor = val;
+            await plugin.saveSettings();
+            refreshPreview();
+        });
+    });
+
+    // Theme selector
+    const themeSetting = new Setting(stylingCard)
+        .setName('Theme Contrast')
+        .setDesc('Choose stroke/border contrast to match your background.')
+        .addDropdown(drop => {
+            drop.addOption('dark', 'Light Strokes');
+            drop.addOption('light', 'Dark Strokes');
+            drop.setValue(currentTheme);
+            drop.onChange(async (val) => {
+                if (!plugin.settings.authorProgress) return;
+                plugin.settings.authorProgress.aprTheme = (val as 'dark' | 'light') || 'dark';
+                await plugin.saveSettings();
+                refreshPreview();
+            });
+        });
+
+    const setColorPicker = (
+        setting: Setting, 
+        key: 'aprBookAuthorColor' | 'aprEngineColor', 
+        fallback: string
+    ) => {
+        const current = (settings as any)?.[key] || fallback;
+        setting.addColorPicker(picker => {
+            picker.setValue(current);
+            picker.onChange(async (val) => {
+                if (!plugin.settings.authorProgress) return;
+                (plugin.settings.authorProgress as any)[key] = val || fallback;
+                await plugin.saveSettings();
+                refreshPreview();
+            });
+        });
+        setting.addText(text => {
+            text.setPlaceholder(fallback).setValue(current);
+            text.inputEl.classList.add('rt-hex-input');
+            text.onChange(async (val) => {
+                if (!val) return;
+                if (!plugin.settings.authorProgress) return;
+                (plugin.settings.authorProgress as any)[key] = val;
+                await plugin.saveSettings();
+                refreshPreview();
+            });
+        });
+    };
+
+    const bookColorSetting = new Setting(stylingCard).setName('Book + Author Color').setDesc('Used on the top perimeter text.');
+    setColorPicker(bookColorSetting, 'aprBookAuthorColor', plugin.settings.publishStageColors?.Press || '#6FB971');
+
+    const engineColorSetting = new Setting(stylingCard).setName('Radial Timeline Engine Color').setDesc('Used on the bottom perimeter text.');
+    setColorPicker(engineColorSetting, 'aprEngineColor', '#e5e5e5');
+
     // Identity & Links
     const identityCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-identity-card rt-apr-stack-gap' });
     identityCard.createEl('h4', { text: 'Identity & Links', cls: 'rt-section-title' });
@@ -128,101 +243,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 }
             });
     });
-
-    // Styling (background + branding colors)
-    const stylingCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-styling-card rt-apr-stack-gap' });
-    stylingCard.createEl('h4', { text: 'Styling', cls: 'rt-section-title' });
-    stylingCard.createEl('p', { text: 'Control canvas/core and perimeter branding colors. Light theme uses dark spokes/borders for pale backgrounds; dark theme uses light strokes for dark canvases.', cls: 'rt-apr-size-desc' });
-
-    const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
-    const currentTransparent = settings?.aprCenterTransparent || false;
-    const currentTheme = settings?.aprTheme || 'dark';
-
-    const bgSetting = new Setting(stylingCard)
-        .setName('Background & Core')
-        .setDesc('Applies to the outer canvas and center core; toggle transparent for a cutout.');
-
-    bgSetting.addColorPicker(picker => {
-        picker.setValue(currentBg);
-        picker.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprBackgroundColor = val || '#0d0d0f';
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-
-    bgSetting.addText(text => {
-        text.setPlaceholder('#0d0d0f').setValue(currentBg);
-        text.inputEl.classList.add('rt-hex-input');
-        text.onChange(async (val) => {
-            if (!val) return;
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprBackgroundColor = val;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-
-    bgSetting.addToggle(toggle => {
-        toggle.setValue(currentTransparent);
-        toggle.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprCenterTransparent = val;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    }).setDesc('Transparent core (shows page background behind the rings)');
-
-    // Theme selector
-    const themeSetting = new Setting(stylingCard)
-        .setName('Theme Contrast')
-        .setDesc('Choose stroke/border contrast to match your background.')
-        .addDropdown(drop => {
-            drop.addOption('dark', 'Light Strokes');
-            drop.addOption('light', 'Dark Strokes');
-            drop.setValue(currentTheme);
-            drop.onChange(async (val) => {
-                if (!plugin.settings.authorProgress) return;
-                plugin.settings.authorProgress.aprTheme = (val as 'dark' | 'light') || 'dark';
-                await plugin.saveSettings();
-                refreshPreview();
-            });
-        });
-
-    const setColorPicker = (
-        setting: Setting, 
-        key: 'aprBookAuthorColor' | 'aprEngineColor', 
-        fallback: string
-    ) => {
-        const current = (settings as any)?.[key] || fallback;
-        setting.addColorPicker(picker => {
-            picker.setValue(current);
-            picker.onChange(async (val) => {
-                if (!plugin.settings.authorProgress) return;
-                (plugin.settings.authorProgress as any)[key] = val || fallback;
-                await plugin.saveSettings();
-                refreshPreview();
-            });
-        });
-        setting.addText(text => {
-            text.setPlaceholder(fallback).setValue(current);
-            text.inputEl.classList.add('rt-hex-input');
-            text.onChange(async (val) => {
-                if (!val) return;
-                if (!plugin.settings.authorProgress) return;
-                (plugin.settings.authorProgress as any)[key] = val;
-                await plugin.saveSettings();
-                refreshPreview();
-            });
-        });
-    };
-
-    const bookColorSetting = new Setting(stylingCard).setName('Book + Author Color').setDesc('Used on the top perimeter text.');
-    setColorPicker(bookColorSetting, 'aprBookAuthorColor', plugin.settings.publishStageColors?.Press || '#6FB971');
-
-    const engineColorSetting = new Setting(stylingCard).setName('Radial Timeline Engine Color').setDesc('Used on the bottom perimeter text.');
-    setColorPicker(engineColorSetting, 'aprEngineColor', '#e5e5e5');
 
     // Publishing & Automation
     const automationCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-automation-card rt-apr-stack-gap' });

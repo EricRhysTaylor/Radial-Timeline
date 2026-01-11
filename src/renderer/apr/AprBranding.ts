@@ -18,12 +18,12 @@ export interface AprBrandingOptions {
 
 /**
  * Generate the perimeter branding SVG elements
- * Creates a continuous text ring where one segment is the engine branding
+ * Creates a continuous text ring of book/author, plus a minimal RT badge at bottom-right
  */
 export function renderAprBranding(options: AprBrandingOptions): string {
     const { bookTitle, authorName, authorUrl, size, bookAuthorColor, engineColor } = options;
     const preset = APR_SIZE_PRESETS[size];
-    const { brandingRadius, brandingFontSize } = preset;
+    const { brandingRadius, brandingFontSize, rtBrandingFontSize } = preset;
     
     const rtUrl = 'https://radialtimeline.com';
     const baColor = bookAuthorColor || APR_STAGE_COLORS.published;
@@ -35,7 +35,6 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         ? `${bookTitle.toUpperCase()} • ${authorName.toUpperCase()}`
         : bookTitle.toUpperCase();
     const titleSegment = pair;
-    const engineSegment = 'RADIAL TIMELINE ENGINE';
     
     // Calculate how many repetitions we need to fill the circle
     const circumference = 2 * Math.PI * brandingRadius;
@@ -43,30 +42,8 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const segmentWidth = titleSegment.length * avgCharWidth + (separator.length * avgCharWidth);
     const repetitions = Math.max(Math.ceil(circumference / segmentWidth), 4);
     
-    // Build segments array with one engine segment replacing one book/author segment
-    // Place the engine segment roughly at the bottom (around 75% of the way, which is ~270 degrees = bottom)
-    const engineIndex = Math.floor(repetitions * 0.75);
-    
-    // Build tspan elements for each segment with appropriate colors
-    const tspans: string[] = [];
-    for (let i = 0; i < repetitions; i++) {
-        const isEngine = (i === engineIndex);
-        const text = isEngine ? engineSegment : titleSegment;
-        const color = isEngine ? engColor : baColor;
-        const url = isEngine ? rtUrl : authorUrl;
-        
-        // Add separator before (except first)
-        if (i > 0) {
-            tspans.push(`<tspan fill="${baColor}">${separator}</tspan>`);
-        }
-        
-        // Add the segment with optional link
-        if (url?.trim()) {
-            tspans.push(`<a href="${url}" target="_blank" rel="noopener"><tspan fill="${color}">${text}</tspan></a>`);
-        } else {
-            tspans.push(`<tspan fill="${color}">${text}</tspan>`);
-        }
-    }
+    // Build the full repeating string (all book/author, no engine text in the ring)
+    const fullBrandingText = Array(repetitions).fill(titleSegment).join(separator);
     
     // Full circle path starting from top (12 o'clock) going clockwise
     const circlePathId = 'apr-branding-circle';
@@ -78,22 +55,53 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         </defs>
     `;
     
+    // Wrap in link if URL provided
+    const wrapLink = (url: string | undefined, content: string): string => {
+        if (!url?.trim()) return content;
+        return `<a href="${url}" target="_blank" rel="noopener">${content}</a>`;
+    };
+    
     const brandingText = `
         <text 
             font-family="var(--font-interface, system-ui, sans-serif)" 
             font-size="${brandingFontSize}" 
             font-weight="700" 
+            fill="${baColor}"
             letter-spacing="0.15em">
             <textPath href="#${circlePathId}" startOffset="0%">
-                ${tspans.join('')}
+                ${fullBrandingText}
             </textPath>
         </text>
+    `;
+    
+    // Minimal RT badge at bottom-right (positioned at ~5 o'clock)
+    const rtBadgeAngle = Math.PI * 0.65; // ~117 degrees from top = bottom-right area
+    const rtBadgeRadius = brandingRadius + 8; // slightly outside the text ring
+    const rtX = rtBadgeRadius * Math.sin(rtBadgeAngle);
+    const rtY = rtBadgeRadius * Math.cos(rtBadgeAngle);
+    
+    const rtBadge = `
+        <a href="${rtUrl}" target="_blank" rel="noopener">
+            <text 
+                x="${rtX.toFixed(2)}" 
+                y="${rtY.toFixed(2)}" 
+                text-anchor="middle" 
+                dominant-baseline="middle"
+                font-family="var(--font-interface, system-ui, sans-serif)" 
+                font-size="${rtBrandingFontSize}" 
+                font-weight="700" 
+                fill="${engColor}"
+                opacity="0.7">
+                RT
+            </text>
+        </a>
     `;
     
     return `
         <g class="apr-branding">
             ${brandingDefs}
-            ${brandingText}
+            ${wrapLink(authorUrl, brandingText)}
+            ${rtBadge}
         </g>
     `;
 }
@@ -121,8 +129,8 @@ export function renderAprCenterPercent(
     const ghostFontSize = innerRadius * 1.9;
     const ghostOpacity = 0.28;
     // Manual vertical offsets to visually center in the hole
-    const ghostYOffset = 20; // % symbol down 20px
-    const numberYOffset = 10; // number down 10px
+    const ghostYOffset = 30; // % symbol down 30px
+    const numberYOffset = 15; // number down 15px
 
     return `
         <g class="apr-center-percent">

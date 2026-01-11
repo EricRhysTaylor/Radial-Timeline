@@ -224,7 +224,7 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
         showProgressPercent: true,
         aprSize: 'standard',
         aprBackgroundColor: '#0d0d0f',
-        aprCenterTransparent: false,
+        aprCenterTransparent: true, // Recommended: transparent shows page background
         aprBookAuthorColor: '#6FB971', // Press stage default
         aprEngineColor: '#e5e5e5',
         aprTheme: 'dark',

@@ -179,6 +179,7 @@ export default class SynopsisManager {
         numTspan.classList.add('rt-scene-title-bold');
         numTspan.setAttribute("data-item-type", "title");
         numTspan.style.setProperty('--rt-dynamic-color', titleColor);
+        numTspan.style.setProperty('fill', titleColor);
         numTspan.textContent = `${titleParts.sceneNumber} `;
         titleTextElement.appendChild(numTspan);
       }
@@ -188,6 +189,7 @@ export default class SynopsisManager {
       mainTspan.classList.add('rt-scene-title-bold');
       mainTspan.setAttribute("data-item-type", "title");
       mainTspan.style.setProperty('--rt-dynamic-color', titleColor);
+      mainTspan.style.setProperty('fill', titleColor);
       mainTspan.textContent = titleParts.title;
       titleTextElement.appendChild(mainTspan);
 

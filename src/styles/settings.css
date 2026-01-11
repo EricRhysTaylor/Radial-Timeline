@@ -1224,6 +1224,9 @@
   /* ensure square inside */
 }
 
+/* Hex input - constrained width for color codes (high specificity to override defaults) */
+.rt-settings-root .setting-item .setting-item-control input.rt-hex-input,
+.rt-settings-root input.rt-hex-input,
 .rt-color-grid-controls .rt-hex-input {
   width: 10ch;
   flex: 0 0 10ch;
@@ -1236,6 +1239,8 @@
 }
 
 /* Focus state for hex input */
+.rt-settings-root .setting-item .setting-item-control input.rt-hex-input:focus,
+.rt-settings-root input.rt-hex-input:focus,
 .rt-color-grid-controls .rt-hex-input:focus {
   border-color: var(--interactive-accent);
   box-shadow: 0 0 0 2px rgba(100, 180, 255, 0.2);
@@ -2423,6 +2428,45 @@
 
 .rt-apr-stack-gap:not(:last-child) {
   margin-bottom: 16px;
+}
+
+/* Recommended setting highlight (for transparency toggle) */
+.rt-apr-recommended-setting {
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  border: 2px solid rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.5);
+  background: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.08);
+}
+
+.rt-settings-root .rt-apr-recommended-setting .setting-item-name {
+  color: var(--rt-social-color);
+  font-weight: 600;
+}
+
+/* APR color pickers - square swatch to match core settings */
+.rt-apr-section input[type="color"] {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  overflow: hidden;
+  box-shadow: none;
+  outline: none;
+  cursor: pointer;
+}
+
+.rt-apr-section input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.rt-apr-section input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
 }
 
 /* Legacy styles kept for backwards compatibility */
