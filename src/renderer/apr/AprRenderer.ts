@@ -6,7 +6,7 @@ import type { TimelineItem } from '../../types';
 import { isBeatNote, sortScenes } from '../../utils/sceneHelpers';
 import { computePositions } from '../utils/SceneLayout';
 import { sceneArcPath } from '../components/SceneArcs';
-import { APR_SIZE_PRESETS, APR_STAGE_COLORS, APR_STRUCTURAL_COLORS, AprSize } from './AprConstants';
+import { APR_SIZE_PRESETS, APR_COLORS, AprSize } from './AprConstants';
 import { renderDefs } from '../components/Defs';
 import { getFillForScene } from '../utils/SceneFill';
 import { DEFAULT_SETTINGS } from '../../settings/defaults';
@@ -93,16 +93,25 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         : Math.max(...safeScenes.map(s => Number(s.actNumber ?? s.act ?? 1)), 1);
 
     // Determine subplot rings
-    const subplotOrder: string[] = [];
     const scenesBySubplot: Record<string, TimelineItem[]> = {};
     safeScenes.forEach(scene => {
         const subplot = scene.subplot?.trim() || 'Main Plot';
         if (!scenesBySubplot[subplot]) {
             scenesBySubplot[subplot] = [];
-            subplotOrder.push(subplot);
         }
         scenesBySubplot[subplot].push(scene);
     });
+
+    // Sort subplots: Main Plot always outermost, then by scene count (most → least)
+    // Ring index 0 = innermost, so we order: least scenes → most scenes → Main Plot
+    const subplotOrder = Object.keys(scenesBySubplot)
+        .filter(s => s !== 'Main Plot')
+        .sort((a, b) => scenesBySubplot[a].length - scenesBySubplot[b].length); // least to most
+    
+    // Main Plot goes last (outermost ring)
+    if (scenesBySubplot['Main Plot']) {
+        subplotOrder.push('Main Plot');
+    }
 
     const ringsToRender: RingData[] = [];
     if (showSubplots) {
@@ -219,9 +228,9 @@ function renderRing(
         });
 
         if (scenesInAct.length === 0) {
-            // full void arc for this act
+            // full void arc for this act - use light gray void color
             const voidPath = sceneArcPath(ring.innerR, ring.outerR, actStart, actEnd);
-            svg += `<path d="${voidPath}" fill="var(--rt-color-empty, ${APR_STAGE_COLORS.default})" fill-opacity="0.75" stroke="${structural.border}" stroke-width="${borderWidth}" />`;
+            svg += `<path d="${voidPath}" fill="${APR_COLORS.void}" fill-opacity="0.85" stroke="${structural.border}" stroke-width="${borderWidth}" />`;
             continue;
         }
 
@@ -236,13 +245,13 @@ function renderRing(
             svg += `<path d="${path}" fill="${color}" stroke="${structural.border}" stroke-width="${borderWidth}" />`;
         });
 
-        // Void for remaining space in this act, if any
+        // Void for remaining space in this act, if any - use light gray void color
         const span = actEnd - actStart;
         const remaining = span - used;
         if (remaining > 0.0001) {
             const voidStart = actEnd - remaining;
             const voidPath = sceneArcPath(ring.innerR, ring.outerR, voidStart, actEnd);
-            svg += `<path d="${voidPath}" fill="var(--rt-color-empty, ${APR_STAGE_COLORS.default})" fill-opacity="0.75" stroke="${structural.border}" stroke-width="${borderWidth}" />`;
+            svg += `<path d="${voidPath}" fill="${APR_COLORS.void}" fill-opacity="0.85" stroke="${structural.border}" stroke-width="${borderWidth}" />`;
         }
     }
 
@@ -269,8 +278,8 @@ function renderActSpokes(numActs: number, innerR: number, outerR: number, spokeW
 }
 
 function resolveSceneColor(scene: TimelineItem, showStatusColors: boolean, stageColors: Record<string, string>): string {
-    const neutral = `var(--rt-color-empty, ${APR_STAGE_COLORS.default})`;
-    if (!showStatusColors) return neutral;
+    // When colors disabled, use neutral gray; otherwise use settings colors via getFillForScene
+    if (!showStatusColors) return APR_COLORS.sceneNeutral;
     return getFillForScene(scene, stageColors);
 }
 

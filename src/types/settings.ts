@@ -116,12 +116,13 @@ export type TeaserPreset = 'slow' | 'standard' | 'fast' | 'custom';
 
 /**
  * Teaser Reveal thresholds - percentage at which each level unlocks
+ * Order: bar (0%) → scenes → colors → acts → subplots (full)
  */
 export interface TeaserThresholds {
-    scenes: number;    // When to show individual scene cells (e.g., 10%)
-    acts: number;      // When to show act divisions (e.g., 25%)
-    subplots: number;  // When to show subplot rings (e.g., 50%)
-    colors: number;    // When to show status colors (e.g., 75%)
+    scenes: number;    // When to show scene cells (e.g., 10%)
+    colors: number;    // When to show status colors (e.g., 25%)
+    acts: number;      // When to show act divisions (e.g., 50%)
+    subplots: number;  // When to show subplot rings / full view (e.g., 75%)
 }
 
 /**

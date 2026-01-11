@@ -69,30 +69,13 @@ export const APR_VIEW_MODE_LABELS: Record<AprViewMode, string> = {
 // COLORS & STYLING
 // =============================================================================
 
-/** Stage/status colors for APR (same as main timeline) */
-export const APR_STAGE_COLORS = {
-    draft: '#6b7280',      // gray-500
-    revised: '#3b82f6',    // blue-500
-    edited: '#8b5cf6',     // violet-500
-    proofed: '#f59e0b',    // amber-500
-    published: '#22c55e',  // green-500
-    default: '#9ca3af',    // gray-400 (lighter neutral to avoid dark fills)
-} as const;
-
-/** Fallback status colors when no stage defined */
-export const APR_STATUS_COLORS = {
-    complete: '#22c55e',   // green
-    active: '#3b82f6',     // blue
-    pending: '#6b7280',    // gray
-} as const;
-
-/** Scene border/spoke colors */
-export const APR_STRUCTURAL_COLORS = {
-    spoke: 'rgba(255, 255, 255, 0.4)',
-    actSpoke: 'rgba(255, 255, 255, 0.7)',
-    border: 'rgba(255, 255, 255, 0.25)',
-    centerHole: '#0a0a0a',
-    background: 'transparent',
+/**
+ * APR-specific colors (only what we customize, not stage/status colors)
+ * Stage/status colors come from plugin settings (publishStageColors)
+ */
+export const APR_COLORS = {
+    void: '#e8e8e8',           // Very light gray for empty/void cells (matches RT --rt-color-empty-selected)
+    sceneNeutral: '#9ca3af',   // Neutral gray for scenes when colors are disabled
 } as const;
 
 /** Branding text colors */
@@ -134,30 +117,32 @@ import type { TeaserThresholds, TeaserPreset, TeaserRevealLevel } from '../../ty
 /**
  * Preset thresholds for Teaser Reveal
  * Each number is the % at which that level unlocks
+ * Order: scenes → colors → acts → subplots (full)
  */
 export const TEASER_PRESETS: Record<Exclude<TeaserPreset, 'custom'>, TeaserThresholds> = {
     slow: {
         scenes: 15,    // Show scene cells at 15%
-        acts: 30,      // Show act divisions at 30%
-        subplots: 60,  // Show subplot rings at 60%
-        colors: 85,    // Show status colors at 85%
+        colors: 30,    // Show status colors at 30%
+        acts: 55,      // Show act divisions at 55%
+        subplots: 80,  // Show subplot rings at 80%
     },
     standard: {
         scenes: 10,    // Show scene cells at 10%
-        acts: 25,      // Show act divisions at 25%
-        subplots: 50,  // Show subplot rings at 50%
-        colors: 75,    // Show status colors at 75%
+        colors: 25,    // Show status colors at 25%
+        acts: 50,      // Show act divisions at 50%
+        subplots: 75,  // Show subplot rings at 75%
     },
     fast: {
         scenes: 5,     // Show scene cells at 5%
-        acts: 15,      // Show act divisions at 15%
-        subplots: 35,  // Show subplot rings at 35%
-        colors: 65,    // Show status colors at 65%
+        colors: 15,    // Show status colors at 15%
+        acts: 35,      // Show act divisions at 35%
+        subplots: 60,  // Show subplot rings at 60%
     },
 };
 
 /**
  * Reveal level labels with icons (matching publication stage icons)
+ * Order: bar → scenes → colors → acts → full
  */
 export const TEASER_LEVEL_INFO: Record<TeaserRevealLevel, { label: string; icon: string; description: string }> = {
     bar: {
@@ -168,22 +153,22 @@ export const TEASER_LEVEL_INFO: Record<TeaserRevealLevel, { label: string; icon:
     scenes: {
         label: 'Scenes',
         icon: 'sprout',        // Zero stage icon: first sign of life
-        description: 'Individual scene cells visible',
+        description: 'Scene cells visible (void colors)',
+    },
+    colors: {
+        label: 'Colors',
+        icon: 'tree-pine',     // Author stage icon: growing
+        description: 'Status/stage colors revealed',
     },
     acts: {
         label: 'Structure',
-        icon: 'tree-pine',     // Author stage icon: growing
-        description: 'Act divisions and spokes appear',
+        icon: 'trees',         // House stage icon: forest
+        description: 'Act divisions appear',
     },
     subplots: {
-        label: 'Depth',
-        icon: 'trees',         // House stage icon: forest
-        description: 'Subplot rings expand',
-    },
-    colors: {
-        label: 'Full Detail',
+        label: 'Full',
         icon: 'shell',         // Press stage icon: complete
-        description: 'Status colors revealed',
+        description: 'All subplots visible',
     },
 };
 
@@ -199,17 +184,19 @@ export function getTeaserThresholds(preset: TeaserPreset, customThresholds?: Tea
 
 /**
  * Calculate which reveal level is active based on current progress
+ * Order: bar → scenes → colors → acts → subplots (full)
  */
 export function getTeaserRevealLevel(progress: number, thresholds: TeaserThresholds): TeaserRevealLevel {
-    if (progress >= thresholds.colors) return 'colors';
     if (progress >= thresholds.subplots) return 'subplots';
     if (progress >= thresholds.acts) return 'acts';
+    if (progress >= thresholds.colors) return 'colors';
     if (progress >= thresholds.scenes) return 'scenes';
     return 'bar';
 }
 
 /**
  * Convert reveal level to reveal options for APR renderer
+ * Order: bar → scenes → colors → acts → subplots (full)
  */
 export function teaserLevelToRevealOptions(level: TeaserRevealLevel): {
     showScenes: boolean;
@@ -219,14 +206,19 @@ export function teaserLevelToRevealOptions(level: TeaserRevealLevel): {
 } {
     switch (level) {
         case 'bar':
+            // Just progress ring, no details
             return { showScenes: false, showActs: false, showSubplots: false, showStatusColors: false };
         case 'scenes':
+            // Scene cells visible but void colors (no status coloring)
             return { showScenes: true, showActs: false, showSubplots: false, showStatusColors: false };
-        case 'acts':
-            return { showScenes: true, showActs: true, showSubplots: false, showStatusColors: false };
-        case 'subplots':
-            return { showScenes: true, showActs: true, showSubplots: true, showStatusColors: false };
         case 'colors':
+            // Scenes with status/stage colors, single ring, no acts
+            return { showScenes: true, showActs: false, showSubplots: false, showStatusColors: true };
+        case 'acts':
+            // Scenes + colors + act divisions, still single ring
+            return { showScenes: true, showActs: true, showSubplots: false, showStatusColors: true };
+        case 'subplots':
+            // Full view: scenes + colors + acts + subplots
             return { showScenes: true, showActs: true, showSubplots: true, showStatusColors: true };
     }
 }

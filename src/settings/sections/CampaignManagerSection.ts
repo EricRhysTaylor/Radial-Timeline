@@ -44,9 +44,9 @@ export function createDefaultCampaign(name: string): AprCampaign {
         aprSize: 'standard',
         customTransparent: true,
         customTheme: 'dark',
-        // Teaser Reveal defaults (disabled by default, author opts in)
+        // Teaser Reveal defaults (enabled by default for campaigns)
         teaserReveal: {
-            enabled: false,
+            enabled: true,
             preset: 'standard',
             customThresholds: undefined
         }
@@ -87,7 +87,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     setIcon(proBadge, 'signature');
     proBadge.createSpan({ text: 'Pro' });
     
-    titleArea.createEl('h4', { text: 'Campaign Manager', cls: 'rt-section-title' });
+    titleArea.createEl('span', { text: 'Campaign Manager', cls: 'setting-item-name' });
     
     // Description
     card.createEl('p', { 
@@ -280,11 +280,15 @@ function renderCampaignRow(
     onUpdate: () => void
 ): void {
     const needsRefresh = campaignNeedsRefresh(campaign);
+    
+    // Create a wrapper to contain both the row and expandable details
+    const wrapper = container.createDiv({ cls: 'rt-campaign-wrapper' });
+    
     const rowClasses = ['rt-campaign-row'];
     if (needsRefresh) rowClasses.push('rt-campaign-needs-refresh');
     if (!campaign.isActive) rowClasses.push('rt-campaign-inactive');
     
-    const row = container.createDiv({ cls: rowClasses.join(' ') });
+    const row = wrapper.createDiv({ cls: rowClasses.join(' ') });
     
     // Status indicator
     const statusIndicator = row.createDiv({ cls: 'rt-campaign-status' });
@@ -336,12 +340,14 @@ function renderCampaignRow(
     setIcon(editBtn, 'settings');
     editBtn.title = 'Edit campaign settings';
     editBtn.onclick = () => {
-        // Toggle expanded state
-        const existingDetails = row.querySelector('.rt-campaign-details');
+        // Toggle expanded state - add details to wrapper, not row
+        const existingDetails = wrapper.querySelector('.rt-campaign-details');
         if (existingDetails) {
             existingDetails.remove();
+            row.classList.remove('rt-campaign-row-expanded');
         } else {
-            renderCampaignDetails(row, campaign, index, plugin, onUpdate);
+            row.classList.add('rt-campaign-row-expanded');
+            renderCampaignDetails(wrapper, campaign, index, plugin, onUpdate);
         }
     };
     
@@ -454,79 +460,94 @@ function renderCampaignDetails(
     const teaserDesc = teaserSection.createEl('p', { cls: 'rt-campaign-teaser-desc' });
     teaserDesc.setText('Automatically reveal more detail as your book progresses. Creates anticipation for your audience.');
     
-    // Teaser toggle
-    const teaserSettings = campaign.teaserReveal ?? { enabled: false, preset: 'standard' as TeaserPreset };
+    // Container for teaser content that can be re-rendered
+    const teaserContentContainer = teaserSection.createDiv({ cls: 'rt-teaser-content' });
     
-    new Setting(teaserSection)
-        .setName('Enable Teaser Reveal')
-        .setDesc('Progressive reveal based on completion %')
-        .addToggle(toggle => {
-            toggle.setValue(teaserSettings.enabled)
-                .onChange(async (val) => {
-                    if (!plugin.settings.authorProgress?.campaigns) return;
-                    const target = plugin.settings.authorProgress.campaigns[index];
-                    if (!target.teaserReveal) {
-                        target.teaserReveal = { enabled: false, preset: 'standard' };
-                    }
-                    target.teaserReveal.enabled = val;
-                    await plugin.saveSettings();
-                    onUpdate();
-                });
-        });
-    
-    // Only show preset and preview if teaser is enabled
-    if (teaserSettings.enabled) {
-        // Preset selector
-        new Setting(teaserSection)
-            .setName('Reveal Schedule')
-            .addDropdown(drop => {
-                drop.addOption('slow', 'Slow (15/30/60/85%)')
-                    .addOption('standard', 'Standard (10/25/50/75%)')
-                    .addOption('fast', 'Fast (5/15/35/65%)')
-                    .addOption('custom', 'Custom')
-                    .setValue(teaserSettings.preset)
+    // Function to render teaser content (toggle + optional presets/previews)
+    const renderTeaserContent = () => {
+        teaserContentContainer.empty();
+        
+        const currentCampaign = plugin.settings.authorProgress?.campaigns?.[index];
+        if (!currentCampaign) return;
+        
+        const teaserSettings = currentCampaign.teaserReveal ?? { enabled: true, preset: 'standard' as TeaserPreset };
+        
+        new Setting(teaserContentContainer)
+            .setName('Enable Teaser Reveal')
+            .setDesc('Progressive reveal based on completion %')
+            .addToggle(toggle => {
+                toggle.setValue(teaserSettings.enabled)
                     .onChange(async (val) => {
                         if (!plugin.settings.authorProgress?.campaigns) return;
                         const target = plugin.settings.authorProgress.campaigns[index];
                         if (!target.teaserReveal) {
                             target.teaserReveal = { enabled: true, preset: 'standard' };
                         }
-                        target.teaserReveal.preset = val as TeaserPreset;
+                        target.teaserReveal.enabled = val;
                         await plugin.saveSettings();
-                        onUpdate();
+                        // Re-render just this section, not the whole list
+                        renderTeaserContent();
                     });
             });
         
-        // Show reveal level preview
-        const thresholds = getTeaserThresholds(teaserSettings.preset, teaserSettings.customThresholds);
-        const previewRow = teaserSection.createDiv({ cls: 'rt-teaser-preview-row' });
-        
-        const levels = [
-            { key: 'bar', threshold: 0, label: 'Teaser' },
-            { key: 'scenes', threshold: thresholds.scenes, label: 'Scenes' },
-            { key: 'acts', threshold: thresholds.acts, label: 'Structure' },
-            { key: 'subplots', threshold: thresholds.subplots, label: 'Depth' },
-            { key: 'colors', threshold: thresholds.colors, label: 'Full Detail' },
-        ] as const;
-        
-        levels.forEach((level, i) => {
-            const levelBox = previewRow.createDiv({ cls: 'rt-teaser-level-box' });
-            const iconSpan = levelBox.createSpan({ cls: 'rt-teaser-level-icon' });
-            setIcon(iconSpan, TEASER_LEVEL_INFO[level.key].icon);
-            levelBox.createSpan({ text: `${level.threshold}%`, cls: 'rt-teaser-level-threshold' });
-            levelBox.createSpan({ text: level.label, cls: 'rt-teaser-level-label' });
+        // Only show preset and preview if teaser is enabled
+        if (teaserSettings.enabled) {
+            // Preset selector
+            new Setting(teaserContentContainer)
+                .setName('Reveal Schedule')
+                .addDropdown(drop => {
+                    drop.addOption('slow', 'Slow (15/30/55/80%)')
+                        .addOption('standard', 'Standard (10/25/50/75%)')
+                        .addOption('fast', 'Fast (5/15/35/60%)')
+                        .addOption('custom', 'Custom')
+                        .setValue(teaserSettings.preset)
+                        .onChange(async (val) => {
+                            if (!plugin.settings.authorProgress?.campaigns) return;
+                            const target = plugin.settings.authorProgress.campaigns[index];
+                            if (!target.teaserReveal) {
+                                target.teaserReveal = { enabled: true, preset: 'standard' };
+                            }
+                            target.teaserReveal.preset = val as TeaserPreset;
+                            await plugin.saveSettings();
+                            // Re-render just this section
+                            renderTeaserContent();
+                        });
+                });
             
-            // Arrow between levels (except last)
-            if (i < levels.length - 1) {
-                const arrow = previewRow.createSpan({ cls: 'rt-teaser-arrow' });
-                setIcon(arrow, 'arrow-right');
-            }
-        });
-        
-        // SVG Previews of each stage
-        const svgPreviewRow = teaserSection.createDiv({ cls: 'rt-teaser-svg-preview-row' });
-        renderTeaserStagesPreviews(svgPreviewRow, plugin, campaign, thresholds);
-    }
+            // Show reveal level preview
+            const thresholds = getTeaserThresholds(teaserSettings.preset, teaserSettings.customThresholds);
+            const previewRow = teaserContentContainer.createDiv({ cls: 'rt-teaser-preview-row' });
+            
+            const levels = [
+                { key: 'bar', threshold: 0, label: 'Teaser' },
+                { key: 'scenes', threshold: thresholds.scenes, label: 'Scenes' },
+                { key: 'colors', threshold: thresholds.colors, label: 'Colors' },
+                { key: 'acts', threshold: thresholds.acts, label: 'Structure' },
+                { key: 'subplots', threshold: thresholds.subplots, label: 'Full' },
+            ] as const;
+            
+            levels.forEach((level, i) => {
+                const levelBox = previewRow.createDiv({ cls: 'rt-teaser-level-box' });
+                const iconSpan = levelBox.createSpan({ cls: 'rt-teaser-level-icon' });
+                setIcon(iconSpan, TEASER_LEVEL_INFO[level.key].icon);
+                levelBox.createSpan({ text: `${level.threshold}%`, cls: 'rt-teaser-level-threshold' });
+                levelBox.createSpan({ text: level.label, cls: 'rt-teaser-level-label' });
+                
+                // Arrow between levels (except last)
+                if (i < levels.length - 1) {
+                    const arrow = previewRow.createSpan({ cls: 'rt-teaser-arrow' });
+                    setIcon(arrow, 'arrow-right');
+                }
+            });
+            
+            // SVG Previews of each stage
+            const svgPreviewRow = teaserContentContainer.createDiv({ cls: 'rt-teaser-svg-preview-row' });
+            renderTeaserStagesPreviews(svgPreviewRow, plugin, currentCampaign, thresholds);
+        }
+    };
+    
+    // Initial render
+    renderTeaserContent();
     
     // Publish button
     const publishRow = details.createDiv({ cls: 'rt-campaign-publish-row' });
@@ -564,12 +585,13 @@ async function renderTeaserStagesPreviews(
     }
     
     // Stages to preview with their simulated progress percentages
+    // Order: bar → scenes → colors → acts → subplots (full)
     const stages: { level: TeaserRevealLevel; label: string; progress: number; icon: string }[] = [
         { level: 'bar', label: 'Teaser', progress: 5, icon: 'circle' },
         { level: 'scenes', label: 'Scenes', progress: thresholds.scenes, icon: 'sprout' },
-        { level: 'acts', label: 'Structure', progress: thresholds.acts, icon: 'tree-pine' },
-        { level: 'subplots', label: 'Depth', progress: thresholds.subplots, icon: 'trees' },
-        { level: 'colors', label: 'Full Detail', progress: thresholds.colors, icon: 'shell' },
+        { level: 'colors', label: 'Colors', progress: thresholds.colors, icon: 'tree-pine' },
+        { level: 'acts', label: 'Structure', progress: thresholds.acts, icon: 'trees' },
+        { level: 'subplots', label: 'Full', progress: thresholds.subplots, icon: 'shell' },
     ];
     
     stages.forEach(stage => {

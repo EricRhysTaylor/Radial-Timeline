@@ -3139,7 +3139,14 @@
 .rt-settings-root .rt-campaign-manager-title-area {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+}
+
+.rt-settings-root .rt-campaign-manager-title-area .setting-item-name {
+  margin: 0;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .rt-settings-root .rt-pro-feature-badge {
@@ -3216,6 +3223,11 @@
   margin: 0;
 }
 
+/* Campaign Wrapper - contains row + expandable details */
+.rt-settings-root .rt-campaign-wrapper {
+  margin-bottom: 8px;
+}
+
 /* Campaign Row */
 .rt-settings-root .rt-campaign-row {
   display: flex;
@@ -3224,7 +3236,6 @@
   padding: 12px 14px;
   background: rgba(255, 255, 255, 0.03);
   border-radius: 8px;
-  margin-bottom: 8px;
   border: 1px solid var(--background-modifier-border);
   transition: all 0.15s ease;
 }
@@ -3232,6 +3243,12 @@
 .rt-settings-root .rt-campaign-row:hover {
   background: rgba(255, 255, 255, 0.05);
   border-color: var(--text-accent);
+}
+
+.rt-settings-root .rt-campaign-row.rt-campaign-row-expanded {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-color: transparent;
 }
 
 .rt-settings-root .rt-campaign-row.rt-campaign-needs-refresh {
@@ -3318,11 +3335,13 @@
   color: var(--text-error, #ef4444);
 }
 
-/* Campaign Details (expanded) */
+/* Campaign Details (expanded) - appears below the row */
 .rt-settings-root .rt-campaign-details {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--background-modifier-border);
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--background-modifier-border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
 }
 
 .rt-settings-root .rt-campaign-reveal-row {
@@ -3359,12 +3378,25 @@
 
 /* Add Campaign Section */
 .rt-settings-root .rt-campaign-add-section {
-  padding-top: 12px;
-  border-top: 1px solid var(--background-modifier-border);
+  padding: 16px 20px;
+  margin-top: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  border: 1px solid var(--background-modifier-border);
 }
 
 .rt-settings-root .rt-campaign-add-row .setting-item {
   padding: 8px 0;
+  gap: 16px;
+}
+
+.rt-settings-root .rt-campaign-add-row .setting-item-info {
+  padding-right: 12px;
+}
+
+.rt-settings-root .rt-campaign-add-row .setting-item-control {
+  gap: 12px;
+  padding-right: 4px;
 }
 
 /* Quick Start Templates */
@@ -3392,7 +3424,7 @@
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--background-modifier-border);
   border-radius: 20px;
   cursor: pointer;
@@ -3402,14 +3434,20 @@
 }
 
 .rt-settings-root .rt-campaign-template-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   border-color: var(--text-accent);
 }
 
 .rt-settings-root .rt-campaign-template-btn svg {
   width: 14px;
   height: 14px;
+  color: var(--text-normal);
+  opacity: 0.85;
+}
+
+.rt-settings-root .rt-campaign-template-btn:hover:not(:disabled) svg {
   color: var(--text-accent);
+  opacity: 1;
 }
 
 .rt-settings-root .rt-campaign-template-btn.rt-campaign-template-used {
@@ -3419,6 +3457,7 @@
 
 .rt-settings-root .rt-campaign-template-btn.rt-campaign-template-used svg {
   color: var(--text-muted);
+  opacity: 0.5;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

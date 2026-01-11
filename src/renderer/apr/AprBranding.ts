@@ -5,7 +5,7 @@
  * of Radial Timeline branding replacing one iteration near the bottom.
  */
 
-import { APR_SIZE_PRESETS, APR_TEXT_COLORS, APR_STAGE_COLORS, AprSize } from './AprConstants';
+import { APR_SIZE_PRESETS, APR_TEXT_COLORS, AprSize } from './AprConstants';
 
 export interface AprBrandingOptions {
     bookTitle: string;
@@ -26,7 +26,8 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const { brandingRadius, brandingFontSize, rtBrandingFontSize } = preset;
     
     const rtUrl = 'https://radialtimeline.com';
-    const baColor = bookAuthorColor || APR_STAGE_COLORS.published;
+    // Fallback to Press stage green if no color provided (matches RT default)
+    const baColor = bookAuthorColor || '#6FB971';
     const engColor = engineColor || APR_TEXT_COLORS.primary;
     
     // Build the repeating title text
@@ -117,7 +118,8 @@ export function renderAprCenterPercent(
     innerRadius: number
 ): string {
     const preset = APR_SIZE_PRESETS[size];
-    const pressColor = stageColors.Press || APR_STAGE_COLORS.published;
+    // Use Press stage color from settings (or default green)
+    const pressColor = stageColors.Press || '#6FB971';
     const numStr = String(percent);
     const charCount = numStr.length;
 

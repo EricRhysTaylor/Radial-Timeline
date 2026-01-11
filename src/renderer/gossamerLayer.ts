@@ -230,30 +230,81 @@ export function renderGossamerLayer(
   if (segments.length === 0 && scoreTexts.length === 0 && spokes.length === 0 && beatOutlines.length === 0) return '';
 
   // Optional min/max band fill (rendered FIRST - behind everything)
+  // Strategy: Sample the ACTUAL bezier curves of all runs at many points,
+  // then compute min/max radius at each sample. This ensures the envelope
+  // perfectly follows the rendered curves, even at crossovers.
   let bandSvg = '';
-  if (minBand && minBand.min && minBand.max) {
-    const minPts = toPoints(minBand.min, localAngles, innerRadius, outerRadius);
-    const maxPts = toPoints(minBand.max, localAngles, innerRadius, outerRadius);
-    if (minPts.length >= 2 && maxPts.length >= 2) {
-      // Smooth, non-overshooting envelope using centripetal Catmull-Rom interpolation
-      const smoothMax = interpolateCentripetal(maxPts, 10);
-      const smoothMin = interpolateCentripetal(minPts, 10);
-
-      if (smoothMax.length >= 2 && smoothMin.length >= 2) {
-        let bandPath = `M ${fmt(smoothMax[0].x)} ${fmt(smoothMax[0].y)}`;
-        for (let i = 1; i < smoothMax.length; i++) {
-          bandPath += ` L ${fmt(smoothMax[i].x)} ${fmt(smoothMax[i].y)}`;
-        }
-        // Trace back along min points in reverse to close the polygon
-        for (let i = smoothMin.length - 1; i >= 0; i--) {
-          bandPath += ` L ${fmt(smoothMin[i].x)} ${fmt(smoothMin[i].y)}`;
-        }
-        bandPath += ' Z';
+  if (overlayRuns && overlayRuns.length > 0) {
+    // Collect all runs (current + historical)
+    const allRunPoints: Array<{ x: number; y: number }[]> = [];
+    
+    // Current run points
+    const currentPts = current.map(pt => ({ x: pt.x, y: pt.y }));
+    if (currentPts.length >= 2) {
+      allRunPoints.push(currentPts);
+    }
+    
+    // Historical run points
+    overlayRuns.forEach(ov => {
+      const pts = toPoints(ov.points, localAngles, innerRadius, outerRadius);
+      if (pts.length >= 2) {
+        allRunPoints.push(pts);
+      }
+    });
+    
+    if (allRunPoints.length >= 1) {
+      // Sample each run's bezier at many intermediate points
+      // Higher = more precision at crossovers
+      const samplesPerSegment = 50;
+      const sampledRuns: Array<{ x: number; y: number }[]> = allRunPoints.map(pts => 
+        sampleBezierCurve(pts, samplesPerSegment)
+      );
+      
+      // All runs should have same number of samples (same beat count)
+      const numSamples = sampledRuns[0]?.length || 0;
+      
+      if (numSamples >= 2) {
+        // At each sample index, find min and max radius
+        const minEnvelope: { x: number; y: number }[] = [];
+        const maxEnvelope: { x: number; y: number }[] = [];
         
-        const bandOpacity = getCSSVar('--rt-gossamer-band-opacity', '0.5');
-        const lightColor = lightenColor(latestSweepColor, 70); // 70% lighter
+        for (let i = 0; i < numSamples; i++) {
+          let minR = Infinity;
+          let maxR = -Infinity;
+          let sampleAngle = 0;
+          
+          sampledRuns.forEach(run => {
+            if (i < run.length) {
+              const pt = run[i];
+              const r = Math.sqrt(pt.x * pt.x + pt.y * pt.y);
+              sampleAngle = Math.atan2(pt.y, pt.x);
+              if (r < minR) minR = r;
+              if (r > maxR) maxR = r;
+            }
+          });
+          
+          if (minR !== Infinity && maxR !== -Infinity) {
+            minEnvelope.push({ x: minR * Math.cos(sampleAngle), y: minR * Math.sin(sampleAngle) });
+            maxEnvelope.push({ x: maxR * Math.cos(sampleAngle), y: maxR * Math.sin(sampleAngle) });
+          }
+        }
         
-        bandSvg = `<path class="rt-gossamer-band" d="${bandPath}" fill="${lightColor}" fill-opacity="${bandOpacity}"/>`;
+        if (minEnvelope.length >= 2 && maxEnvelope.length >= 2) {
+          // Build band polygon: max forward, min backward
+          let bandPath = `M ${fmt(maxEnvelope[0].x)} ${fmt(maxEnvelope[0].y)}`;
+          for (let i = 1; i < maxEnvelope.length; i++) {
+            bandPath += ` L ${fmt(maxEnvelope[i].x)} ${fmt(maxEnvelope[i].y)}`;
+          }
+          for (let i = minEnvelope.length - 1; i >= 0; i--) {
+            bandPath += ` L ${fmt(minEnvelope[i].x)} ${fmt(minEnvelope[i].y)}`;
+          }
+          bandPath += ' Z';
+          
+          const bandOpacity = getCSSVar('--rt-gossamer-band-opacity', '0.5');
+          const lightColor = lightenColor(latestSweepColor, 70);
+          
+          bandSvg = `<path class="rt-gossamer-band" d="${bandPath}" fill="${lightColor}" fill-opacity="${bandOpacity}"/>`;
+        }
       }
     }
   }
@@ -446,6 +497,119 @@ function buildBezierPath(points: { x: number; y: number }[], startWithMove: bool
 
 function buildPath(points: { x: number; y: number }[]): string {
   return buildBezierPath(points, true);
+}
+
+/**
+ * Sample a bezier curve at intermediate points.
+ * Uses the EXACT same control point calculation as buildBezierPath to ensure perfect matching.
+ * @param points Array of x,y coordinates (the beat points)
+ * @param samplesPerSegment Number of samples between each pair of points
+ * @returns Array of sampled x,y coordinates along the curve
+ */
+function sampleBezierCurve(points: { x: number; y: number }[], samplesPerSegment: number): { x: number; y: number }[] {
+  if (!points.length) return [];
+  if (points.length === 1) return [{ ...points[0] }];
+  if (points.length === 2) {
+    // Linear interpolation for 2 points
+    const result: { x: number; y: number }[] = [];
+    for (let s = 0; s <= samplesPerSegment; s++) {
+      const t = s / samplesPerSegment;
+      result.push({
+        x: points[0].x + (points[1].x - points[0].x) * t,
+        y: points[0].y + (points[1].y - points[0].y) * t
+      });
+    }
+    return result;
+  }
+  
+  const result: { x: number; y: number }[] = [];
+  
+  // Sample each segment using the SAME control point logic as buildBezierPath
+  for (let i = 0; i < points.length - 1; i++) {
+    const current = points[i];
+    const next = points[i + 1];
+    const prev = i > 0 ? points[i - 1] : current;
+    const afterNext = i < points.length - 2 ? points[i + 2] : next;
+    
+    // Calculate distances to detect tight curves (same as buildBezierPath)
+    const distCurrNext = Math.sqrt((next.x - current.x) ** 2 + (next.y - current.y) ** 2);
+    const distPrevCurr = Math.sqrt((current.x - prev.x) ** 2 + (current.y - prev.y) ** 2);
+    const distNextAfter = Math.sqrt((afterNext.x - next.x) ** 2 + (afterNext.y - next.y) ** 2);
+    
+    // Base tension for smooth curves
+    let tension = 0.25;
+    
+    // Reduce tension for tight curves
+    const avgDist = (distPrevCurr + distCurrNext + distNextAfter) / 3;
+    if (avgDist < 50) {
+      tension = 0.1;
+    } else if (avgDist < 100) {
+      tension = 0.15;
+    }
+    
+    // Further reduce tension if we detect a sharp angle
+    if (i > 0 && i < points.length - 1) {
+      const v1x = current.x - prev.x;
+      const v1y = current.y - prev.y;
+      const v2x = next.x - current.x;
+      const v2y = next.y - current.y;
+      
+      const dot = v1x * v2x + v1y * v2y;
+      const mag1 = Math.sqrt(v1x * v1x + v1y * v1y);
+      const mag2 = Math.sqrt(v2x * v2x + v2y * v2y);
+      
+      if (mag1 > 0 && mag2 > 0) {
+        const cosAngle = dot / (mag1 * mag2);
+        if (cosAngle < 0.5) {
+          tension *= 0.5;
+        }
+      }
+    }
+    
+    // Calculate control point distances (same as buildBezierPath)
+    const maxControlDist = distCurrNext * 0.4;
+    
+    // Control point 1 (outgoing from current point)
+    let cp1x = current.x + (next.x - prev.x) * tension;
+    let cp1y = current.y + (next.y - prev.y) * tension;
+    
+    const cp1dist = Math.sqrt((cp1x - current.x) ** 2 + (cp1y - current.y) ** 2);
+    if (cp1dist > maxControlDist && cp1dist > 0) {
+      const scale = maxControlDist / cp1dist;
+      cp1x = current.x + (cp1x - current.x) * scale;
+      cp1y = current.y + (cp1y - current.y) * scale;
+    }
+    
+    // Control point 2 (incoming to next point)
+    let cp2x = next.x - (afterNext.x - current.x) * tension;
+    let cp2y = next.y - (afterNext.y - current.y) * tension;
+    
+    const cp2dist = Math.sqrt((cp2x - next.x) ** 2 + (cp2y - next.y) ** 2);
+    if (cp2dist > maxControlDist && cp2dist > 0) {
+      const scale = maxControlDist / cp2dist;
+      cp2x = next.x + (cp2x - next.x) * scale;
+      cp2y = next.y + (cp2y - next.y) * scale;
+    }
+    
+    // Sample this cubic bezier segment
+    const startSample = i === 0 ? 0 : 1; // Avoid duplicating points at segment boundaries
+    for (let s = startSample; s <= samplesPerSegment; s++) {
+      const t = s / samplesPerSegment;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const mt = 1 - t;
+      const mt2 = mt * mt;
+      const mt3 = mt2 * mt;
+      
+      // Cubic bezier formula: B(t) = (1-t)³P0 + 3(1-t)²tP1 + 3(1-t)t²P2 + t³P3
+      const x = mt3 * current.x + 3 * mt2 * t * cp1x + 3 * mt * t2 * cp2x + t3 * next.x;
+      const y = mt3 * current.y + 3 * mt2 * t * cp1y + 3 * mt * t2 * cp2y + t3 * next.y;
+      
+      result.push({ x, y });
+    }
+  }
+  
+  return result;
 }
 
 /**

@@ -357,7 +357,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             // Find the content wrapper to add grade display
             const content = entry.querySelector('.rt-pulse-card-content') ?? entry;
             const gradeEl = content.createDiv({ cls: 'rt-pulse-grade' });
-            gradeEl.setText(`Grade ${grade}`);
+            gradeEl.setText(grade);
             gradeEl.addClass(`rt-pulse-grade-${grade.toLowerCase()}`);
             
             // Add background icon based on grade
