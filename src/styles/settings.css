@@ -3120,3 +3120,303 @@
 .rt-completion-preview-stalled .rt-completion-encouragement {
   background: rgba(193, 18, 31, 0.08);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CAMPAIGN MANAGER (Pro Feature)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.rt-settings-root .rt-campaign-manager-card {
+  position: relative;
+}
+
+.rt-settings-root .rt-campaign-manager-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.rt-settings-root .rt-campaign-manager-title-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rt-settings-root .rt-pro-feature-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #9333ea, #6366f1);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rt-settings-root .rt-pro-feature-badge svg {
+  width: 12px;
+  height: 12px;
+}
+
+.rt-settings-root .rt-campaign-manager-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 16px 0;
+  line-height: 1.5;
+}
+
+/* Locked/Coming Soon State */
+.rt-settings-root .rt-campaign-manager-locked {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.rt-settings-root .rt-campaign-manager-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  border-radius: 12px;
+  z-index: 10;
+}
+
+.rt-settings-root .rt-campaign-manager-coming-soon {
+  background: linear-gradient(135deg, #9333ea, #6366f1);
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 12px 24px;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(147, 51, 234, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Campaign List */
+.rt-settings-root .rt-campaign-list {
+  margin-bottom: 16px;
+}
+
+.rt-settings-root .rt-campaign-empty-state {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border: 1px dashed var(--background-modifier-border);
+}
+
+.rt-settings-root .rt-campaign-empty-state p {
+  margin: 0;
+}
+
+/* Campaign Row */
+.rt-settings-root .rt-campaign-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  border: 1px solid var(--background-modifier-border);
+  transition: all 0.15s ease;
+}
+
+.rt-settings-root .rt-campaign-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--text-accent);
+}
+
+.rt-settings-root .rt-campaign-row.rt-campaign-needs-refresh {
+  border-left: 3px solid var(--text-error, #ef4444);
+}
+
+.rt-settings-root .rt-campaign-row.rt-campaign-inactive {
+  opacity: 0.5;
+}
+
+.rt-settings-root .rt-campaign-status {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rt-settings-root .rt-campaign-needs-refresh .rt-campaign-status {
+  color: var(--text-error, #ef4444);
+}
+
+.rt-settings-root .rt-campaign-row:not(.rt-campaign-needs-refresh):not(.rt-campaign-inactive) .rt-campaign-status {
+  color: var(--text-success, #22c55e);
+}
+
+.rt-settings-root .rt-campaign-inactive .rt-campaign-status {
+  color: var(--text-muted);
+}
+
+.rt-settings-root .rt-campaign-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rt-settings-root .rt-campaign-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rt-settings-root .rt-campaign-name {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.rt-settings-root .rt-campaign-refresh-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: var(--text-muted);
+}
+
+.rt-settings-root .rt-campaign-last-published {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Campaign Actions */
+.rt-settings-root .rt-campaign-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.rt-settings-root .rt-campaign-action-btn {
+  background: none;
+  border: none;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+}
+
+.rt-settings-root .rt-campaign-action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-normal);
+}
+
+.rt-settings-root .rt-campaign-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--text-error, #ef4444);
+}
+
+/* Campaign Details (expanded) */
+.rt-settings-root .rt-campaign-details {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.rt-settings-root .rt-campaign-reveal-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  flex-wrap: wrap;
+}
+
+.rt-settings-root .rt-campaign-reveal-label {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.rt-settings-root .rt-campaign-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-normal);
+}
+
+.rt-settings-root .rt-campaign-checkbox input {
+  margin: 0;
+}
+
+.rt-settings-root .rt-campaign-publish-row {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 12px;
+}
+
+/* Add Campaign Section */
+.rt-settings-root .rt-campaign-add-section {
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.rt-settings-root .rt-campaign-add-row .setting-item {
+  padding: 8px 0;
+}
+
+/* Quick Start Templates */
+.rt-settings-root .rt-campaign-templates {
+  padding-top: 16px;
+}
+
+.rt-settings-root .rt-campaign-templates-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 10px 0;
+}
+
+.rt-settings-root .rt-campaign-template-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rt-settings-root .rt-campaign-template-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 20px;
+  cursor: pointer;
+  color: var(--text-normal);
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+
+.rt-settings-root .rt-campaign-template-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--text-accent);
+}
+
+.rt-settings-root .rt-campaign-template-btn svg {
+  width: 14px;
+  height: 14px;
+  color: var(--text-accent);
+}
+
+.rt-settings-root .rt-campaign-template-btn.rt-campaign-template-used {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.rt-settings-root .rt-campaign-template-btn.rt-campaign-template-used svg {
+  color: var(--text-muted);
+}

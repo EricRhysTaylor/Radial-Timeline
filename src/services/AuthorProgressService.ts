@@ -3,12 +3,13 @@ import type RadialTimelinePlugin from '../main';
 import { TimelineItem } from '../types/timeline';
 import { createAprSVG } from '../renderer/apr/AprRenderer';
 import { getAllScenes } from '../utils/manuscript';
+import type { AprCampaign } from '../types/settings';
 
 export class AuthorProgressService {
     constructor(private plugin: RadialTimelinePlugin, private app: App) {}
 
     /**
-     * Checks if the APR report needs refresh based on settings.
+     * Checks if the main APR report needs refresh based on settings.
      * Returns true only in Manual mode if threshold exceeded.
      */
     public isStale(): boolean {
@@ -23,6 +24,44 @@ export class AuthorProgressService {
         const diffDays = (now - last) / (1000 * 60 * 60 * 24);
 
         return diffDays > settings.stalenessThresholdDays;
+    }
+
+    /**
+     * Checks if any campaign needs refresh.
+     * Pro Feature: Campaigns are independent of the main report.
+     */
+    public anyCampaignNeedsRefresh(): boolean {
+        const campaigns = this.plugin.settings.authorProgress?.campaigns || [];
+        return campaigns.some(c => this.campaignNeedsRefresh(c));
+    }
+
+    /**
+     * Check if a specific campaign needs refresh.
+     */
+    public campaignNeedsRefresh(campaign: AprCampaign): boolean {
+        if (!campaign.isActive) return false;
+        if (!campaign.lastPublishedDate) return true; // Never published
+
+        const last = new Date(campaign.lastPublishedDate).getTime();
+        const now = Date.now();
+        const diffDays = (now - last) / (1000 * 60 * 60 * 24);
+
+        return diffDays > campaign.refreshThresholdDays;
+    }
+
+    /**
+     * Get list of campaigns needing refresh.
+     */
+    public getCampaignsNeedingRefresh(): AprCampaign[] {
+        const campaigns = this.plugin.settings.authorProgress?.campaigns || [];
+        return campaigns.filter(c => this.campaignNeedsRefresh(c));
+    }
+
+    /**
+     * Combined check: main report OR any campaign needs refresh.
+     */
+    public needsAnyRefresh(): boolean {
+        return this.isStale() || this.anyCampaignNeedsRefresh();
     }
 
     /**
@@ -138,6 +177,90 @@ export class AuthorProgressService {
                 // Silent failure for auto-update - user can manually trigger if needed
             }
         }
+    }
+
+    /**
+     * Generate and save a report for a specific campaign.
+     * Pro Feature: Each campaign has its own settings and output path.
+     */
+    public async generateCampaignReport(campaignId: string): Promise<string | null> {
+        const settings = this.plugin.settings.authorProgress;
+        if (!settings) return null;
+
+        const campaign = settings.campaigns?.find(c => c.id === campaignId);
+        if (!campaign) {
+            new Notice('Campaign not found');
+            return null;
+        }
+
+        const scenes = await getAllScenes(this.app, this.plugin);
+        const progressPercent = this.calculateProgress(scenes);
+
+        // Use campaign-specific settings with fallbacks to main settings
+        const { svgString } = createAprSVG(scenes, {
+            size: campaign.aprSize || settings.aprSize || 'standard',
+            progressPercent,
+            bookTitle: settings.bookTitle || 'Working Title',
+            authorName: settings.authorName || '',
+            authorUrl: settings.authorUrl || '',
+            showSubplots: campaign.showSubplots,
+            showActs: campaign.showActs,
+            showStatusColors: campaign.showStatus,
+            showProgressPercent: campaign.showProgressPercent,
+            stageColors: this.plugin.settings.publishStageColors,
+            actCount: this.plugin.settings.actCount || undefined,
+            backgroundColor: campaign.customBackgroundColor ?? settings.aprBackgroundColor,
+            transparentCenter: campaign.customTransparent ?? settings.aprCenterTransparent,
+            bookAuthorColor: settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
+            engineColor: settings.aprEngineColor,
+            theme: campaign.customTheme ?? settings.aprTheme ?? 'dark'
+        });
+
+        // Save to campaign's embed path
+        const path = campaign.embedPath;
+        await this.ensureFolder(path);
+        
+        const existingFile = this.app.vault.getAbstractFileByPath(path);
+        if (existingFile && 'path' in existingFile) {
+            // SAFE: Cast required for Obsidian API compatibility
+            await this.app.vault.modify(existingFile as Parameters<typeof this.app.vault.modify>[0], svgString);
+        } else {
+            await this.app.vault.create(path, svgString);
+        }
+        
+        // Update campaign's last published date
+        const campaignIndex = settings.campaigns?.findIndex(c => c.id === campaignId);
+        if (campaignIndex !== undefined && campaignIndex >= 0 && settings.campaigns) {
+            settings.campaigns[campaignIndex].lastPublishedDate = new Date().toISOString();
+            await this.plugin.saveSettings();
+        }
+        
+        new Notice(`Campaign "${campaign.name}" published!`);
+        return path;
+    }
+
+    /**
+     * Publish all active campaigns that need refresh.
+     * Pro Feature: Batch update for convenience.
+     */
+    public async publishAllStale(): Promise<number> {
+        const needsRefresh = this.getCampaignsNeedingRefresh();
+        let count = 0;
+        
+        for (const campaign of needsRefresh) {
+            try {
+                await this.generateCampaignReport(campaign.id);
+                count++;
+            } catch (e) {
+                console.error(`Failed to publish campaign ${campaign.name}:`, e);
+            }
+        }
+        
+        if (count > 0) {
+            new Notice(`Published ${count} campaign${count > 1 ? 's' : ''}`);
+        }
+        
+        return count;
     }
 
     private async ensureFolder(filePath: string) {

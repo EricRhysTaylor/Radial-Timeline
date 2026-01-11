@@ -525,21 +525,28 @@ function toPoints(series: { beat: string; score: number }[], angles: Map<string,
 // Centripetal Catmull-Rom spline interpolation to avoid overshoot/self-intersection.
 // Returns a denser polyline that smoothly follows the input points.
 function interpolateCentripetal(points: { x: number; y: number }[], samplesPerSeg: number = 8): { x: number; y: number }[] {
-  if (points.length <= 2) return points.slice();
+  // Collapse consecutive duplicates to avoid zero-length segments/NaNs
+  const dedup: { x: number; y: number }[] = [];
+  for (const p of points) {
+    if (dedup.length === 0 || dedup[dedup.length - 1].x !== p.x || dedup[dedup.length - 1].y !== p.y) {
+      dedup.push(p);
+    }
+  }
+  if (dedup.length <= 2) return dedup.slice();
 
   const alpha = 0.5; // centripetal
+  const eps = 1e-6;
   const result: { x: number; y: number }[] = [];
 
-  // Helper to compute parameter t based on chord length
   const tj = (pi: { x: number; y: number }, pj: { x: number; y: number }, tPrev: number): number => {
     const dx = pj.x - pi.x;
     const dy = pj.y - pi.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    return tPrev + Math.pow(dist, alpha);
+    return tPrev + Math.pow(Math.max(dist, eps), alpha);
   };
 
   // Duplicate endpoints for boundary handling
-  const pts = [points[0], ...points, points[points.length - 1]];
+  const pts = [dedup[0], ...dedup, dedup[dedup.length - 1]];
 
   for (let i = 0; i < pts.length - 3; i++) {
     const p0 = pts[i];
@@ -552,36 +559,37 @@ function interpolateCentripetal(points: { x: number; y: number }[], samplesPerSe
     const t2 = tj(p1, p2, t1);
     const t3 = tj(p2, p3, t2);
 
+    // Guard against degenerate parameter intervals
+    if (t1 - t0 < eps || t2 - t1 < eps || t3 - t2 < eps) continue;
+
     for (let s = 0; s <= samplesPerSeg; s++) {
       const t = t1 + ((t2 - t1) * s) / samplesPerSeg;
 
-      // Basis functions for centripetal Catmull-Rom
-      const a1x = (t1 - t) / (t1 - t0) * p0.x + (t - t0) / (t1 - t0) * p1.x;
-      const a1y = (t1 - t) / (t1 - t0) * p0.y + (t - t0) / (t1 - t0) * p1.y;
+      const a1x = ((t1 - t) / (t1 - t0)) * p0.x + ((t - t0) / (t1 - t0)) * p1.x;
+      const a1y = ((t1 - t) / (t1 - t0)) * p0.y + ((t - t0) / (t1 - t0)) * p1.y;
 
-      const a2x = (t2 - t) / (t2 - t1) * p1.x + (t - t1) / (t2 - t1) * p2.x;
-      const a2y = (t2 - t) / (t2 - t1) * p1.y + (t - t1) / (t2 - t1) * p2.y;
+      const a2x = ((t2 - t) / (t2 - t1)) * p1.x + ((t - t1) / (t2 - t1)) * p2.x;
+      const a2y = ((t2 - t) / (t2 - t1)) * p1.y + ((t - t1) / (t2 - t1)) * p2.y;
 
-      const a3x = (t3 - t) / (t3 - t2) * p2.x + (t - t2) / (t3 - t2) * p3.x;
-      const a3y = (t3 - t) / (t3 - t2) * p2.y + (t - t2) / (t3 - t2) * p3.y;
+      const a3x = ((t3 - t) / (t3 - t2)) * p2.x + ((t - t2) / (t3 - t2)) * p3.x;
+      const a3y = ((t3 - t) / (t3 - t2)) * p2.y + ((t - t2) / (t3 - t2)) * p3.y;
 
-      const b1x = (t2 - t) / (t2 - t0) * a1x + (t - t0) / (t2 - t0) * a2x;
-      const b1y = (t2 - t) / (t2 - t0) * a1y + (t - t0) / (t2 - t0) * a2y;
+      const b1x = ((t2 - t) / (t2 - t0)) * a1x + ((t - t0) / (t2 - t0)) * a2x;
+      const b1y = ((t2 - t) / (t2 - t0)) * a1y + ((t - t0) / (t2 - t0)) * a2y;
 
-      const b2x = (t3 - t) / (t3 - t1) * a2x + (t - t1) / (t3 - t1) * a3x;
-      const b2y = (t3 - t) / (t3 - t1) * a2y + (t - t1) / (t3 - t1) * a3y;
+      const b2x = ((t3 - t) / (t3 - t1)) * a2x + ((t - t1) / (t3 - t1)) * a3x;
+      const b2y = ((t3 - t) / (t3 - t1)) * a2y + ((t - t1) / (t3 - t1)) * a3y;
 
-      const cx = (t2 - t) / (t2 - t1) * b1x + (t - t1) / (t2 - t1) * b2x;
-      const cy = (t2 - t) / (t2 - t1) * b1y + (t - t1) / (t2 - t1) * b2y;
+      const cx = ((t2 - t) / (t2 - t1)) * b1x + ((t - t1) / (t2 - t1)) * b2x;
+      const cy = ((t2 - t) / (t2 - t1)) * b1y + ((t - t1) / (t2 - t1)) * b2y;
 
-      // Avoid duplicates except first point
       if (result.length === 0 || result[result.length - 1].x !== cx || result[result.length - 1].y !== cy) {
         result.push({ x: cx, y: cy });
       }
     }
   }
 
-  return result;
+  return result.length >= 2 ? result : dedup;
 }
 
 function buildOverlayPath(points: { beat: string; score: number }[], angles: Map<string, number>, inner: number, outer: number): string | null {

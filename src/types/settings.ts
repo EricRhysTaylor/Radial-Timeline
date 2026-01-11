@@ -98,6 +98,39 @@ export interface AuthorProgressSettings {
     stalenessThresholdDays: number; // For Manual mode
     enableReminders: boolean;
     dynamicEmbedPath: string;
+    
+    // Pro Feature: Campaign Manager
+    campaigns?: AprCampaign[];
+}
+
+/**
+ * APR Campaign - Pro Feature
+ * Allows multiple embed destinations with independent refresh schedules
+ */
+export interface AprCampaign {
+    id: string;
+    name: string;                    // "Kickstarter", "Newsletter", "Website", etc.
+    description?: string;            // Optional notes about this campaign
+    isActive: boolean;               // Whether this campaign is currently being used
+    
+    // Refresh Schedule
+    refreshThresholdDays: number;    // Days before reminder appears
+    lastPublishedDate?: string;      // ISO string - when last updated
+    
+    // Output
+    embedPath: string;               // Where to save the SVG for this campaign
+    
+    // Per-campaign reveal options (override defaults)
+    showSubplots: boolean;
+    showActs: boolean;
+    showStatus: boolean;
+    showProgressPercent: boolean;
+    aprSize: 'compact' | 'standard' | 'large';
+    
+    // Per-campaign styling (optional overrides)
+    customBackgroundColor?: string;
+    customTransparent?: boolean;
+    customTheme?: 'dark' | 'light';
 }
 
 export interface RadialTimelineSettings {

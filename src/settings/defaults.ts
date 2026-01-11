@@ -236,7 +236,10 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
         updateFrequency: 'manual',
         stalenessThresholdDays: 30,
         enableReminders: true,
-        dynamicEmbedPath: 'Radial Timeline/Social/progress.svg'
+        dynamicEmbedPath: 'Radial Timeline/Social/progress.svg',
+        
+        // Pro Feature: Campaign Manager (empty by default)
+        campaigns: []
     },
 
     // Pro experience (visual/hero activation)

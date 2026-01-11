@@ -4,6 +4,7 @@ import { AuthorProgressService } from '../../services/AuthorProgressService';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { getAllScenes } from '../../utils/manuscript';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
+import { renderCampaignManagerSection } from './CampaignManagerSection';
 
 export interface AuthorProgressSectionProps {
     app: App;
@@ -402,6 +403,19 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 }, 1000);
             });
         });
+    });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CAMPAIGN MANAGER (PRO FEATURE)
+    // ─────────────────────────────────────────────────────────────────────────
+    renderCampaignManagerSection({
+        app,
+        plugin,
+        containerEl: contentWrapper,
+        onCampaignChange: () => {
+            // Refresh the hero preview when campaigns change
+            void renderHeroPreview(app, plugin, previewContainer);
+        }
     });
 }
 
