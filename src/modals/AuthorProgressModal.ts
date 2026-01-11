@@ -17,8 +17,14 @@ export class AuthorProgressModal extends Modal {
     private showActs: boolean;
     private showStatus: boolean;
     private showPercent: boolean;
+    private aprSize: 'compact' | 'standard' | 'large';
+    private aprBackgroundColor: string;
+    private aprCenterTransparent: boolean;
+    private aprBookAuthorColor: string;
+    private aprEngineColor: string;
     
     private previewContainer: HTMLElement | null = null;
+    private sizeInfoEl: HTMLElement | null = null;
     
     private cachedScenes: TimelineItem[] = [];
     private progressPercent: number = 0;
@@ -48,6 +54,11 @@ export class AuthorProgressModal extends Modal {
         this.showActs = settings.showActs ?? true;
         this.showStatus = settings.showStatus ?? true;
         this.showPercent = settings.showProgressPercent ?? true;
+        this.aprSize = settings.aprSize ?? 'standard';
+        this.aprBackgroundColor = settings.aprBackgroundColor ?? '#0d0d0f';
+        this.aprCenterTransparent = settings.aprCenterTransparent ?? false;
+        this.aprBookAuthorColor = settings.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971';
+        this.aprEngineColor = settings.aprEngineColor ?? '#e5e5e5';
         this.publishTarget = settings.defaultPublishTarget;
     }
 
@@ -58,7 +69,7 @@ export class AuthorProgressModal extends Modal {
         // Apply shell styling and sizing
         if (modalEl) {
             modalEl.classList.add('rt-modal-shell', 'rt-apr-modal');
-            modalEl.style.width = '560px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw';
         }
         
@@ -106,7 +117,7 @@ export class AuthorProgressModal extends Modal {
         subplotsInput.onchange = async () => {
             this.showSubplots = subplotsInput.checked;
             await this.saveRevealOptions();
-            this.renderPreview();
+            await this.renderPreview();
         };
         subplotsItem.createEl('label', { text: 'Subplots', attr: { for: 'apr-subplots' } });
         
@@ -118,7 +129,7 @@ export class AuthorProgressModal extends Modal {
         actsInput.onchange = async () => {
             this.showActs = actsInput.checked;
             await this.saveRevealOptions();
-            this.renderPreview();
+            await this.renderPreview();
         };
         actsItem.createEl('label', { text: 'Acts', attr: { for: 'apr-acts' } });
         
@@ -130,7 +141,7 @@ export class AuthorProgressModal extends Modal {
         statusInput.onchange = async () => {
             this.showStatus = statusInput.checked;
             await this.saveRevealOptions();
-            this.renderPreview();
+            await this.renderPreview();
         };
         statusItem.createEl('label', { text: 'Status Colors', attr: { for: 'apr-status' } });
         
@@ -142,11 +153,69 @@ export class AuthorProgressModal extends Modal {
         percentInput.onchange = async () => {
             this.showPercent = percentInput.checked;
             await this.saveRevealOptions();
-            this.renderPreview();
+            await this.renderPreview();
         };
         percentItem.createEl('label', { text: '% Complete', attr: { for: 'apr-percent' } });
 
-        // Preview Panel
+        // Size selector
+        const sizeSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-size-section' });
+        sizeSection.createEl('h4', { text: 'Export Size', cls: 'rt-section-title' });
+        sizeSection.createEl('p', { text: 'Pick a preset for typical use: small (social), medium (posts), large (embeds).', cls: 'rt-apr-size-desc' });
+        const sizeSelector = sizeSection.createDiv({ cls: 'rt-apr-size-selector' });
+        this.createSizeButton(sizeSelector, 'compact', 'Small · 600px');
+        this.createSizeButton(sizeSelector, 'standard', 'Medium · 800px');
+        this.createSizeButton(sizeSelector, 'large', 'Large · 1000px');
+        this.sizeInfoEl = sizeSection.createDiv({ cls: 'rt-apr-size-info' });
+        this.updateSizeInfo();
+
+        // Background & Core colors (single control affecting both; transparent option)
+        const bgSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-bg-section' });
+        bgSection.createEl('h4', { text: 'Backgrounds & Core', cls: 'rt-section-title' });
+        bgSection.createEl('p', { text: 'Set the outer canvas and center core. Use transparent for a cutout, or match both.', cls: 'rt-apr-size-desc' });
+
+        const bgSetting = new Setting(bgSection)
+            .setName('Background')
+            .setDesc('Applies to outer canvas and core when not transparent.');
+
+        bgSetting.addColorPicker(color => {
+            color.setValue(this.aprBackgroundColor);
+            color.onChange(async (val) => {
+                this.aprBackgroundColor = val || '#0d0d0f';
+                await this.saveRevealOptions();
+                await this.renderPreview(false);
+            });
+        });
+
+        bgSetting.addText(text => {
+            text.setPlaceholder('#0d0d0f').setValue(this.aprBackgroundColor);
+            text.onChange(async (val) => {
+                if (!val) return;
+                this.aprBackgroundColor = val;
+                await this.saveRevealOptions();
+                await this.renderPreview(false);
+            });
+        });
+
+        bgSetting.addButton(btn => {
+            btn.setButtonText('Transparent');
+            btn.onClick(async () => {
+                this.aprCenterTransparent = true;
+                this.aprBackgroundColor = 'transparent';
+                await this.saveRevealOptions();
+                await this.renderPreview(false);
+            });
+        });
+
+        bgSetting.addButton(btn => {
+            btn.setButtonText('Match Color');
+            btn.onClick(async () => {
+                this.aprCenterTransparent = false;
+                await this.saveRevealOptions();
+                await this.renderPreview(false);
+            });
+        });
+
+        // Preview Panel (moved up for prominence)
         const previewSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-preview-section' });
         previewSection.createEl('h4', { text: 'Live Preview', cls: 'rt-section-title' });
         this.previewContainer = previewSection.createDiv({ cls: 'rt-apr-preview-area' });
@@ -166,7 +235,22 @@ export class AuthorProgressModal extends Modal {
                     if (this.plugin.settings.authorProgress) {
                         this.plugin.settings.authorProgress.bookTitle = val;
                         await this.plugin.saveSettings();
-                        this.renderPreview();
+                        await this.renderPreview(false);
+                    }
+                })
+            );
+
+        new Setting(identitySection)
+            .setName('Author Name')
+            .setDesc('Displayed alongside the book title (e.g., Title • Author)')
+            .addText(text => text
+                .setPlaceholder('Author Name')
+                .setValue(this.plugin.settings.authorProgress?.authorName || '')
+                .onChange(async (val) => {
+                    if (this.plugin.settings.authorProgress) {
+                        this.plugin.settings.authorProgress.authorName = val;
+                        await this.plugin.saveSettings();
+                        await this.renderPreview(false);
                     }
                 })
             );
@@ -181,7 +265,7 @@ export class AuthorProgressModal extends Modal {
                     if (this.plugin.settings.authorProgress) {
                         this.plugin.settings.authorProgress.authorUrl = val;
                         await this.plugin.saveSettings();
-                        this.renderPreview();
+                        await this.renderPreview(false);
                     }
                 })
             );
@@ -222,7 +306,7 @@ export class AuthorProgressModal extends Modal {
             .onClick(() => this.close());
 
         await this.loadData();
-        this.renderPreview();
+        await this.renderPreview(false);
     }
 
     private renderSnapshotActions(container: HTMLElement) {
@@ -259,14 +343,48 @@ export class AuthorProgressModal extends Modal {
             .onClick(() => this.copyEmbed('patreon'));
     }
 
+    private createSizeButton(container: HTMLElement, size: 'compact' | 'standard' | 'large', label: string) {
+        const btn = container.createEl('button', { cls: 'rt-apr-size-btn' });
+        btn.setText(label);
+        const applyActive = () => {
+            const buttons = container.querySelectorAll('.rt-apr-size-btn');
+            buttons?.forEach(b => b.removeClass('rt-active'));
+            btn.addClass('rt-active');
+        };
+        if (this.aprSize === size) {
+            btn.addClass('rt-active');
+        }
+        btn.onclick = async () => {
+            this.aprSize = size;
+            applyActive();
+            this.updateSizeInfo();
+            await this.saveRevealOptions();
+            await this.renderPreview();
+        };
+    }
+
+    private updateSizeInfo() {
+        if (!this.sizeInfoEl) return;
+        const map: Record<string, string> = {
+            compact: 'Small · 600x600 @1x · ideal for X/Bluesky single-image posts',
+            standard: 'Medium · 800x800 @1x · great for Patreon/blog cards with crisp text',
+            large: 'Large · 1000x1000 @1x · best for site embeds or higher DPI exports'
+        };
+        this.sizeInfoEl.setText(map[this.aprSize] || '');
+    }
+
     private async loadData() {
         this.cachedScenes = await getAllScenes(this.app, this.plugin);
         this.progressPercent = this.service.calculateProgress(this.cachedScenes);
     }
 
-    private renderPreview() {
+    private async renderPreview(refreshScenes = true) {
         if (!this.previewContainer) return;
         this.previewContainer.empty();
+
+        if (refreshScenes) {
+            await this.loadData();
+        }
 
         if (this.cachedScenes.length === 0) {
             this.previewContainer.createDiv({ text: 'No scenes found. Create scenes to see a preview.', cls: 'rt-apr-empty' });
@@ -277,7 +395,7 @@ export class AuthorProgressModal extends Modal {
 
         try {
             const { svgString } = createAprSVG(this.cachedScenes, {
-                size: 'standard',
+                size: this.aprSize,
                 progressPercent: this.progressPercent,
                 bookTitle: settings?.bookTitle || 'Working Title',
                 authorName: settings?.authorName || '',
@@ -286,7 +404,12 @@ export class AuthorProgressModal extends Modal {
                 showActs: this.showActs,
                 showStatusColors: this.showStatus,
                 showProgressPercent: this.showPercent,
-                stageColors: (this.plugin.settings as any).publishStageColors
+                stageColors: (this.plugin.settings as any).publishStageColors,
+                actCount: this.plugin.settings.actCount || undefined,
+                backgroundColor: this.aprBackgroundColor,
+                transparentCenter: this.aprCenterTransparent,
+                bookAuthorColor: this.aprBookAuthorColor,
+                engineColor: this.aprEngineColor
             });
 
             this.previewContainer.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
@@ -305,6 +428,12 @@ export class AuthorProgressModal extends Modal {
                 showSubplots: true,
                 showActs: true,
                 showStatus: true,
+                showProgressPercent: true,
+                aprSize: 'standard',
+                aprBackgroundColor: '#0d0d0f',
+                aprCenterTransparent: false,
+                aprBookAuthorColor: this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
+                aprEngineColor: '#e5e5e5',
                 bookTitle: '',
                 authorUrl: '',
                 updateFrequency: 'manual',
@@ -317,6 +446,11 @@ export class AuthorProgressModal extends Modal {
         this.plugin.settings.authorProgress.showActs = this.showActs;
         this.plugin.settings.authorProgress.showStatus = this.showStatus;
         this.plugin.settings.authorProgress.showProgressPercent = this.showPercent;
+        this.plugin.settings.authorProgress.aprSize = this.aprSize;
+        this.plugin.settings.authorProgress.aprBackgroundColor = this.aprBackgroundColor;
+        this.plugin.settings.authorProgress.aprCenterTransparent = this.aprCenterTransparent;
+        this.plugin.settings.authorProgress.aprBookAuthorColor = this.aprBookAuthorColor;
+        this.plugin.settings.authorProgress.aprEngineColor = this.aprEngineColor;
         await this.plugin.saveSettings();
     }
 

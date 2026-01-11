@@ -5,30 +5,36 @@
  * Radial Timeline branding on the inner edge of the branding ring.
  */
 
-import { APR_SIZE_PRESETS, APR_TEXT_COLORS, AprSize } from './AprConstants';
+import { APR_SIZE_PRESETS, APR_TEXT_COLORS, APR_STAGE_COLORS, AprSize } from './AprConstants';
 
 export interface AprBrandingOptions {
     bookTitle: string;
     authorName?: string;
     authorUrl?: string;
     size: AprSize;
+    bookAuthorColor?: string;
+    engineColor?: string;
 }
 
 /**
  * Generate the perimeter branding SVG elements
  */
 export function renderAprBranding(options: AprBrandingOptions): string {
-    const { bookTitle, authorName, authorUrl, size } = options;
+    const { bookTitle, authorName, authorUrl, size, bookAuthorColor, engineColor } = options;
     const preset = APR_SIZE_PRESETS[size];
     const { svgSize, brandingRadius, rtBrandingRadius, brandingFontSize, rtBrandingFontSize } = preset;
     
     const rtUrl = 'https://radialtimeline.com';
+    const baColor = bookAuthorColor || APR_STAGE_COLORS.published;
+    const engColor = engineColor || APR_TEXT_COLORS.primary;
     
     // Build the repeating title text
     const separator = ' ~ ';
-    const titleSegment = authorName 
-        ? `${bookTitle.toUpperCase()}${separator}${authorName.toUpperCase()}`
+    const pair = authorName 
+        ? `${bookTitle.toUpperCase()} • ${authorName.toUpperCase()}`
         : bookTitle.toUpperCase();
+    const titleSegment = pair;
+    const engineSegment = 'RADIAL TIMELINE ENGINE';
     
     // Calculate how many repetitions we need to fill the circle
     // Approximate: circumference / (avg char width * segment length)
@@ -39,6 +45,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     
     // Build the full repeating string
     const fullBrandingText = Array(repetitions).fill(titleSegment).join(separator);
+    const fullEngineText = Array(repetitions).fill(engineSegment).join(separator);
     
     // Create arc paths for text
     // Top arc (clockwise from left to right)
@@ -74,9 +81,9 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             font-family="var(--font-interface, system-ui, sans-serif)" 
             font-size="${brandingFontSize}" 
             font-weight="700" 
-            fill="${APR_TEXT_COLORS.primary}" 
+            fill="${baColor}" 
             letter-spacing="0.15em">
-            <textPath href="#${topArcId}" startOffset="0%">
+            <textPath href="#${topArcId}" startOffset="0%" side="right">
                 ${fullBrandingText}
             </textPath>
         </text>
@@ -87,10 +94,10 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             font-family="var(--font-interface, system-ui, sans-serif)" 
             font-size="${brandingFontSize}" 
             font-weight="700" 
-            fill="${APR_TEXT_COLORS.primary}" 
+            fill="${engColor}" 
             letter-spacing="0.15em">
-            <textPath href="#${bottomArcId}" startOffset="0%">
-                ${fullBrandingText}
+            <textPath href="#${bottomArcId}" startOffset="0%" side="right">
+                ${fullEngineText}
             </textPath>
         </text>
     `;
@@ -103,7 +110,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             font-weight="600" 
             fill="${APR_TEXT_COLORS.rtBranding}" 
             letter-spacing="0.1em">
-            <textPath href="#${rtArcId}" startOffset="50%" text-anchor="middle">
+            <textPath href="#${rtArcId}" startOffset="50%" text-anchor="middle" side="right">
                 RADIAL TIMELINE™
             </textPath>
         </text>
@@ -128,15 +135,40 @@ export function renderAprBranding(options: AprBrandingOptions): string {
 /**
  * Render the large center percentage
  */
-export function renderAprCenterPercent(percent: number, size: AprSize): string {
+export function renderAprCenterPercent(
+    percent: number, 
+    size: AprSize, 
+    stageColors: Record<string, string>, 
+    innerRadius: number
+): string {
     const preset = APR_SIZE_PRESETS[size];
-    const fontSize = preset.centerFontSize;
-    
-    // Position text slightly above center for visual balance
-    const yOffset = fontSize * 0.35;
-    
+    const pressColor = stageColors.Press || APR_STAGE_COLORS.published;
+    const numStr = String(percent);
+    const charCount = numStr.length;
+
+    // Fit the number to the inner circle: rough width = fontSize * 0.6 * chars
+    const targetDiameter = innerRadius * 1.8;
+    const baseFont = preset.centerFontSize * 1.1;
+    const fitFont = targetDiameter / (0.6 * charCount);
+    const fontSize = Math.min(fitFont, baseFont);
+
+    const ghostFontSize = innerRadius * 1.35;
+    const ghostOpacity = 0.12;
+    const yOffset = fontSize * 0.32;
+
     return `
         <g class="apr-center-percent">
+            <text 
+                x="0" 
+                y="${ghostFontSize * 0.32}" 
+                text-anchor="middle" 
+                font-family="var(--font-interface, system-ui, sans-serif)" 
+                font-weight="800" 
+                font-size="${ghostFontSize}" 
+                fill="${pressColor}"
+                opacity="${ghostOpacity}">
+                %
+            </text>
             <text 
                 x="0" 
                 y="${yOffset}" 
@@ -144,9 +176,13 @@ export function renderAprCenterPercent(percent: number, size: AprSize): string {
                 font-family="var(--font-interface, system-ui, sans-serif)" 
                 font-weight="800" 
                 font-size="${fontSize}" 
-                fill="${APR_TEXT_COLORS.primary}"
+                fill="${pressColor}"
+                stroke="rgba(0,0,0,0.55)"
+                stroke-width="2"
+                paint-order="stroke fill"
+                filter="url(#aprPercentShadow)"
                 opacity="0.95">
-                ${percent}%
+                ${numStr}
             </text>
         </g>
     `;

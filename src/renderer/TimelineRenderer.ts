@@ -448,7 +448,8 @@ export function createTimelineSVG(
         synopsesElements,
         sceneGrades,
         manuscriptOrderPositions,
-        numActs
+        numActs,
+        maxStageColor // Pass for Gossamer mode beat strokes
     };
 
     svg += renderRings(ringRenderContext);

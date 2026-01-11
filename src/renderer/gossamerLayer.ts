@@ -3,7 +3,7 @@
  */
 import type { TimelineItem } from '../types';
 import { GossamerRun, extractPresentBeatScores, extractBeatOrder } from '../utils/gossamer';
-import { getMostAdvancedStageColor, lightenColor, getRunColorWithSaturation } from '../utils/colour';
+import { getLatestGossamerSweepStageColor, lightenColor, getRunColorWithSaturation } from '../utils/colour';
 
 export interface PolarConfig {
   innerRadius: number;
@@ -51,12 +51,13 @@ export function renderGossamerLayer(
   // Build a map of out-of-range beats (for thicker red spokes)
   const outOfRangeBeats = new Set(run.beats.filter(b => b.isOutOfRange).map(b => b.beat));
 
-  // Get the most advanced publish stage color (used for range lines and text)
-  // This is the same color used for act labels and other UI reflecting overall project state
+  // Get the latest Gossamer sweep stage color (not most advanced publish stage)
+  // This reflects the stage at which the momentum analysis was performed
   const defaultColor = getCSSVar('--rt-gossamer-default-color', '#7a7a7a');
-  const mostAdvancedColor = publishStageColors 
-    ? getMostAdvancedStageColor(scenes, publishStageColors)
-    : (Array.from(publishStageColorByBeat?.values() || [])[0] || defaultColor);
+  const latestSweepInfo = publishStageColors 
+    ? getLatestGossamerSweepStageColor(scenes, publishStageColors)
+    : { stage: 'Zero', color: Array.from(publishStageColorByBeat?.values() || [])[0] || defaultColor };
+  const latestSweepColor = latestSweepInfo.color;
 
   // Get selected beat model from plugin settings (passed through run meta if needed)
   const selectedBeatModel = run?.meta?.model;
@@ -103,7 +104,7 @@ export function renderGossamerLayer(
     if (typeof angle !== 'number') return; // Need angle to render anything
     
     // Get the specific color for this beat, with a fallback
-    const beatColor = publishStageColorByBeat?.get(name) || mostAdvancedColor;
+    const beatColor = publishStageColorByBeat?.get(name) || latestSweepColor;
     
     const score = nameToScore.get(name);
     const beatData = run.beats.find(b => b.beat === name);
@@ -249,7 +250,7 @@ export function renderGossamerLayer(
       
       // Use a light version of the most advanced publish stage color with transparency
       const bandOpacity = getCSSVar('--rt-gossamer-band-opacity', '0.5');
-      const lightColor = lightenColor(mostAdvancedColor, 70); // 70% lighter
+      const lightColor = lightenColor(latestSweepColor, 70); // 70% lighter
       
       bandSvg = `<path class="rt-gossamer-band" d="${bandPath}" fill="${lightColor}" fill-opacity="${bandOpacity}"/>`;
     }

@@ -394,6 +394,14 @@
   font-weight: normal;
 }
 
+/* Gossamer justification text - gray, like pulse analysis */
+.rt-gossamer-justification {
+  font-size: calc(18px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
+  fill: #888888;
+  font-weight: normal;
+  text-transform: none;
+}
+
 /* Subplot and character text styling - randomized colors in JS file for characters. Subplots follow subplot settings color defined styles*/
 .rt-metadata-text {
   font-size: calc(18px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));

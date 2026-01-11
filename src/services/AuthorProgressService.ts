@@ -62,7 +62,7 @@ export class AuthorProgressService {
         const progressPercent = this.calculateProgress(scenes);
 
         const { svgString } = createAprSVG(scenes, {
-            size: 'standard',
+            size: settings.aprSize || 'standard',
             progressPercent,
             bookTitle: settings.bookTitle || 'Working Title',
             authorName: settings.authorName || '',
@@ -71,8 +71,12 @@ export class AuthorProgressService {
             showActs: settings.showActs ?? true,
             showStatusColors: settings.showStatus ?? true,
             showProgressPercent: settings.showProgressPercent ?? true,
-            showBeatNotes: settings.showBeatNotes ?? false,
-            stageColors: (this.plugin.settings as any).publishStageColors
+            stageColors: (this.plugin.settings as any).publishStageColors,
+            actCount: this.plugin.settings.actCount || undefined,
+            backgroundColor: settings.aprBackgroundColor,
+            transparentCenter: settings.aprCenterTransparent,
+            bookAuthorColor: settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
+            engineColor: settings.aprEngineColor
         });
 
         let finalSvg = svgString;

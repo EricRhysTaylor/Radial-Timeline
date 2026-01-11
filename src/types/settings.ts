@@ -80,7 +80,11 @@ export interface AuthorProgressSettings {
     showActs: boolean;      // Show act divisions vs full circle
     showStatus: boolean;    // Show real stage colors vs neutral gray
     showProgressPercent?: boolean; // Show big center %
-    showBeatNotes?: boolean;       // Include beat notes
+    aprSize?: 'compact' | 'standard' | 'large';
+    aprBackgroundColor?: string;
+    aprCenterTransparent?: boolean;
+    aprBookAuthorColor?: string;
+    aprEngineColor?: string;
     
     // Identity & Branding
     bookTitle: string;

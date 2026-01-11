@@ -90,6 +90,20 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             })
         );
 
+    new Setting(contentWrapper)
+        .setName('Author Name')
+        .setDesc('Appears alongside the title (e.g., Title • Author).')
+        .addText(text => text
+            .setPlaceholder('Author Name')
+            .setValue(settings?.authorName || '')
+            .onChange(async (val) => {
+                if (plugin.settings.authorProgress) {
+                    plugin.settings.authorProgress.authorName = val;
+                    await plugin.saveSettings();
+                }
+            })
+        );
+
     const linkUrlSetting = new Setting(contentWrapper)
         .setName('Link URL')
         .setDesc('Where the graphic should link to (e.g. your website, Kickstarter, or shop).');
@@ -107,6 +121,42 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 }
             });
     });
+
+    // Branding colors (kept in settings to avoid modal clutter)
+    const colorCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-color-card' });
+    colorCard.createEl('h4', { text: 'Branding Colors', cls: 'rt-section-title' });
+    colorCard.createEl('p', { text: 'Adjust perimeter text colors.', cls: 'rt-apr-size-desc' });
+
+    const setColorPicker = (
+        setting: Setting, 
+        key: 'aprBookAuthorColor' | 'aprEngineColor', 
+        fallback: string
+    ) => {
+        const current = (settings as any)?.[key] || fallback;
+        setting.addColorPicker(picker => {
+            picker.setValue(current);
+            picker.onChange(async (val) => {
+                if (!plugin.settings.authorProgress) return;
+                (plugin.settings.authorProgress as any)[key] = val || fallback;
+                await plugin.saveSettings();
+            });
+        });
+        setting.addText(text => {
+            text.setPlaceholder(fallback).setValue(current);
+            text.onChange(async (val) => {
+                if (!val) return;
+                if (!plugin.settings.authorProgress) return;
+                (plugin.settings.authorProgress as any)[key] = val;
+                await plugin.saveSettings();
+            });
+        });
+    };
+
+    const bookColorSetting = new Setting(colorCard).setName('Book + Author Color').setDesc('Used on the top perimeter text.');
+    setColorPicker(bookColorSetting, 'aprBookAuthorColor', plugin.settings.publishStageColors?.Press || '#6FB971');
+
+    const engineColorSetting = new Setting(colorCard).setName('Radial Timeline Engine Color').setDesc('Used on the bottom perimeter text.');
+    setColorPicker(engineColorSetting, 'aprEngineColor', '#e5e5e5');
 
     // Automation & Frequency
     new Setting(contentWrapper)
@@ -267,7 +317,7 @@ async function renderHeroPreview(
         const aprSettings = plugin.settings.authorProgress;
         
         const { svgString } = createAprSVG(scenes, {
-            size: 'standard',
+            size: aprSettings?.aprSize || 'standard',
             progressPercent,
             bookTitle: aprSettings?.bookTitle || 'Working Title',
             authorName: aprSettings?.authorName || '',
@@ -276,8 +326,12 @@ async function renderHeroPreview(
             showActs: aprSettings?.showActs ?? true,
             showStatusColors: aprSettings?.showStatus ?? true,
             showProgressPercent: aprSettings?.showProgressPercent ?? true,
-            showBeatNotes: aprSettings?.showBeatNotes ?? false,
-            stageColors: (plugin.settings as any).publishStageColors
+            stageColors: (plugin.settings as any).publishStageColors,
+            actCount: plugin.settings.actCount || undefined,
+            backgroundColor: aprSettings?.aprBackgroundColor,
+            transparentCenter: aprSettings?.aprCenterTransparent,
+            bookAuthorColor: aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
+            engineColor: aprSettings?.aprEngineColor
         });
         
         container.empty();

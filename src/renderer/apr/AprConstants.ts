@@ -16,10 +16,10 @@ export const APR_SIZE_PRESETS = {
         svgSize: 600,
         innerRadius: 120,
         outerRadius: 280,
-        brandingRadius: 300,
-        rtBrandingRadius: 270,
+        brandingRadius: 286, // 6px outside outer ring (2px more)
+        rtBrandingRadius: 268,
         centerFontSize: 72,
-        brandingFontSize: 18,
+        brandingFontSize: 20,
         rtBrandingFontSize: 12,
         spokeWidth: 2,
         borderWidth: 1.5,
@@ -29,10 +29,10 @@ export const APR_SIZE_PRESETS = {
         svgSize: 800,
         innerRadius: 160,
         outerRadius: 370,
-        brandingRadius: 420,
-        rtBrandingRadius: 380,
+        brandingRadius: 376, // 6px outside outer ring (2px more)
+        rtBrandingRadius: 354,
         centerFontSize: 96,
-        brandingFontSize: 24,
+        brandingFontSize: 26,
         rtBrandingFontSize: 14,
         spokeWidth: 2.5,
         borderWidth: 2,
@@ -42,10 +42,10 @@ export const APR_SIZE_PRESETS = {
         svgSize: 1000,
         innerRadius: 200,
         outerRadius: 460,
-        brandingRadius: 540,
-        rtBrandingRadius: 480,
+        brandingRadius: 466, // 6px outside outer ring (2px more)
+        rtBrandingRadius: 442,
         centerFontSize: 120,
-        brandingFontSize: 30,
+        brandingFontSize: 32,
         rtBrandingFontSize: 18,
         spokeWidth: 3,
         borderWidth: 2.5,
@@ -76,7 +76,7 @@ export const APR_STAGE_COLORS = {
     edited: '#8b5cf6',     // violet-500
     proofed: '#f59e0b',    // amber-500
     published: '#22c55e',  // green-500
-    default: '#4b5563',    // gray-600
+    default: '#9ca3af',    // gray-400 (lighter neutral to avoid dark fills)
 } as const;
 
 /** Fallback status colors when no stage defined */

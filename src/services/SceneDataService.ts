@@ -332,7 +332,9 @@ export class SceneDataService {
                 Gossamer3: metadata.Gossamer3 as number | undefined,
                 Gossamer4: metadata.Gossamer4 as number | undefined,
                 Gossamer5: metadata.Gossamer5 as number | undefined,
-                "Publish Stage": metadata["Publish Stage"] as string | undefined
+                "Publish Stage": metadata["Publish Stage"] as string | undefined,
+                // Raw frontmatter for accessing Gossamer Justification and other dynamic fields
+                rawFrontmatter: metadata
             });
         }
 

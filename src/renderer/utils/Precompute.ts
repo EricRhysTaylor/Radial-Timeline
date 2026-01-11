@@ -15,7 +15,7 @@ import {
     MONTH_LABEL_RADIUS
 } from '../layout/LayoutConstants';
 import { computeRingGeometry } from '../layout/Rings';
-import { getMostAdvancedStageColor } from '../../utils/colour';
+import { getMostAdvancedStageColor, getLatestGossamerSweepStageColor } from '../../utils/colour';
 import { startPerfSegment } from '../utils/Performance';
 import { computeSubplotDominanceStates, type SubplotDominanceState } from '../components/SubplotDominanceIndicators';
 import { getReadabilityScale } from '../../utils/readability';
@@ -194,7 +194,12 @@ export function computeCacheableValues(
         fixedRingWidth: isChronologueMode ? BACKDROP_RING_HEIGHT : undefined
     });
 
-    const maxStageColor = getMostAdvancedStageColor(scenes, plugin.settings.publishStageColors);
+    // In Gossamer mode, use the latest sweep stage color (reflects when analysis was run)
+    // Otherwise use the most advanced publish stage color
+    const isGossamerMode = currentMode === 'gossamer';
+    const maxStageColor = isGossamerMode
+        ? getLatestGossamerSweepStageColor(scenes, plugin.settings.publishStageColors).color
+        : getMostAdvancedStageColor(scenes, plugin.settings.publishStageColors);
 
     stopPrecompute();
 

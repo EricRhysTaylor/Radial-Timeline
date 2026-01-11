@@ -35,9 +35,33 @@ export function buildSynopsisElement(
     ];
 
     if (isBeatNote(scene)) {
-        const gossamer1 = scene.Gossamer1;
-        if (gossamer1 !== undefined && gossamer1 !== null) {
-            contentLines.push(`<gossamer>${gossamer1}/100</gossamer>`);
+        // Find the latest Gossamer score and justification (highest numbered field)
+        let latestScore: number | undefined;
+        let latestJustification: string | undefined;
+        
+        // Check Gossamer1 through Gossamer30 for the latest score
+        for (let i = 30; i >= 1; i--) {
+            const scoreKey = `Gossamer${i}` as keyof typeof scene;
+            const score = scene[scoreKey];
+            if (score !== undefined && score !== null && typeof score === 'number') {
+                latestScore = score;
+                // Get justification from rawFrontmatter (not typed on TimelineItem)
+                const justificationKey = `Gossamer${i} Justification`;
+                const justification = scene.rawFrontmatter?.[justificationKey];
+                if (typeof justification === 'string') {
+                    latestJustification = justification;
+                }
+                break;
+            }
+        }
+        
+        if (latestScore !== undefined) {
+            // Score line (bold, colored)
+            contentLines.push(`<gossamer>${latestScore}/100</gossamer>`);
+            // Justification as separate line in pulse format (uppercase gray, like scene analysis)
+            if (latestJustification) {
+                contentLines.push(`<gossamer-justification>${latestJustification.toUpperCase()}</gossamer-justification>`);
+            }
         }
     }
 

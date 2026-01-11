@@ -435,6 +435,8 @@ export default class SynopsisManager {
 
       // Check if this is a Gossamer score line (marked with <gossamer> tags) - check BEFORE decoding
       const isGossamerLine = contentLines[i].includes('<gossamer>') && contentLines[i].includes('</gossamer>');
+      // Check if this is a Gossamer justification line (AI analysis feedback)
+      const isGossamerJustificationLine = contentLines[i].includes('<gossamer-justification>') && contentLines[i].includes('</gossamer-justification>');
 
       const lineY = (i + extraLineCount) * lineHeight; // shift down by inserted lines
       const synopsisLineElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -447,14 +449,23 @@ export default class SynopsisManager {
 
         // Extract the content between the tags from the original line (before decoding)
         const gossamerContent = contentLines[i].replace(/<gossamer>/g, '').replace(/<\/gossamer>/g, '');
-
-        // Create a tspan with the same styling as title tspans
+        
+        // Create tspan for score (bold, colored)
         const gossamerTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
         gossamerTspan.classList.add('rt-scene-title-bold');
         gossamerTspan.setAttribute("data-item-type", "title");
         gossamerTspan.style.setProperty('--rt-dynamic-color', titleColor);
         gossamerTspan.textContent = gossamerContent;
         synopsisLineElement.appendChild(gossamerTspan);
+      } else if (isGossamerJustificationLine) {
+        // Style Gossamer justification like pulse analysis (gray, uppercase, same line height)
+        synopsisLineElement.setAttribute("class", "rt-info-text pulse-text rt-gossamer-justification-line");
+        synopsisLineElement.setAttribute("x", "0");
+        synopsisLineElement.setAttribute("y", String(lineY));
+
+        // Extract the content between the tags (already uppercased in builder)
+        const justificationContent = contentLines[i].replace(/<gossamer-justification>/g, '').replace(/<\/gossamer-justification>/g, '');
+        synopsisLineElement.textContent = justificationContent;
       } else {
         // Regular synopsis line styling
         synopsisLineElement.setAttribute("class", "rt-info-text rt-title-text-secondary");

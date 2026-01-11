@@ -6,7 +6,10 @@ import type { TimelineItem } from '../../types';
 import { isBeatNote, sortScenes } from '../../utils/sceneHelpers';
 import { computePositions } from '../utils/SceneLayout';
 import { sceneArcPath } from '../components/SceneArcs';
-import { APR_SIZE_PRESETS, APR_STAGE_COLORS, APR_STATUS_COLORS, APR_STRUCTURAL_COLORS, AprSize } from './AprConstants';
+import { APR_SIZE_PRESETS, APR_STAGE_COLORS, APR_STRUCTURAL_COLORS, AprSize } from './AprConstants';
+import { renderDefs } from '../components/Defs';
+import { getFillForScene } from '../utils/SceneFill';
+import { DEFAULT_SETTINGS } from '../../settings/defaults';
 import { renderAprBranding, renderAprCenterPercent } from './AprBranding';
 
 export interface AprRenderOptions {
@@ -19,8 +22,12 @@ export interface AprRenderOptions {
     showActs?: boolean;
     showStatusColors?: boolean;
     showProgressPercent?: boolean;
-    showBeatNotes?: boolean;
     stageColors?: Record<string, string>; // optional override (publishStage map)
+    actCount?: number; // optional explicit act count override
+    backgroundColor?: string;
+    transparentCenter?: boolean;
+    bookAuthorColor?: string;
+    engineColor?: string;
 }
 
 export interface AprRenderResult {
@@ -47,16 +54,23 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         showActs = true,
         showStatusColors = true,
         showProgressPercent = true,
-        showBeatNotes = false,
-        stageColors
+        stageColors,
+        actCount,
+        backgroundColor,
+        transparentCenter,
+        bookAuthorColor,
+        engineColor
     } = opts;
 
     const preset = APR_SIZE_PRESETS[size];
     const { svgSize, innerRadius, outerRadius, spokeWidth, borderWidth, actSpokeWidth } = preset;
     const half = svgSize / 2;
 
-    // Filter scenes per options
-    const filteredScenes = scenes.filter(s => showBeatNotes ? true : !isBeatNote(s));
+    // Normalize stage colors to match Publication mode (settings or defaults)
+    const stageColorMap = stageColors || DEFAULT_SETTINGS.publishStageColors;
+
+    // Filter scenes (exclude beat notes always)
+    const filteredScenes = scenes.filter(s => !isBeatNote(s));
     const safeScenes = sortScenes(filteredScenes, false, false); // manuscript order equivalent
     if (safeScenes.length === 0) {
         return {
@@ -66,8 +80,10 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         };
     }
 
-    // Determine acts from data (fallback to 1 if missing)
-    const numActs = Math.max(...safeScenes.map(s => Number(s.actNumber ?? s.act ?? 1)), 1);
+    // Determine acts from data (fallback to 1 if missing), allow override
+    const numActs = actCount && actCount > 0
+        ? actCount
+        : Math.max(...safeScenes.map(s => Number(s.actNumber ?? s.act ?? 1)), 1);
 
     // Determine subplot rings
     const subplotOrder: string[] = [];
@@ -102,12 +118,21 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     }
 
     let svg = `<svg width="${svgSize}" height="${svgSize}" viewBox="-${half} -${half} ${svgSize} ${svgSize}" xmlns="http://www.w3.org/2000/svg" class="apr-svg apr-${size}">`;
-    svg += `<rect x="-${half}" y="-${half}" width="${svgSize}" height="${svgSize}" fill="${APR_STRUCTURAL_COLORS.background}" />`;
+    const bgFill = backgroundColor ?? APR_STRUCTURAL_COLORS.background;
+    svg += `<rect x="-${half}" y="-${half}" width="${svgSize}" height="${svgSize}" fill="${bgFill}" />`;
+
+    // Publication-mode defs (plaid patterns etc.) + percent shadow filter
+    const percentShadow = `
+        <filter id="aprPercentShadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="2" stdDeviation="2.2" flood-color="#000" flood-opacity="0.45"/>
+        </filter>
+    `;
+    svg += `<defs>${renderDefs(stageColorMap)}${percentShadow}</defs>`;
 
     // Draw rings
     svg += `<g class="apr-rings">`;
     ringsToRender.forEach(ring => {
-        svg += renderRing(ring, safeScenes, borderWidth, showStatusColors, stageColors, numActs);
+        svg += renderRing(ring, safeScenes, borderWidth, showStatusColors, stageColorMap, numActs);
     });
     svg += `</g>`;
 
@@ -117,11 +142,12 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     }
 
     // Center hole
-    svg += `<circle cx="0" cy="0" r="${innerRadius}" fill="${APR_STRUCTURAL_COLORS.centerHole}" />`;
+    const holeFill = transparentCenter ? 'none' : (backgroundColor ?? APR_STRUCTURAL_COLORS.centerHole);
+    svg += `<circle cx="0" cy="0" r="${innerRadius}" fill="${holeFill}" stroke="${APR_STRUCTURAL_COLORS.border}" stroke-opacity="0.35" />`;
 
     // Center percent (optional)
     if (showProgressPercent) {
-        svg += renderAprCenterPercent(progressPercent, size);
+        svg += renderAprCenterPercent(progressPercent, size, stageColorMap, innerRadius);
     }
 
     // Branding on the perimeter
@@ -129,7 +155,9 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         bookTitle: bookTitle || 'Working Title',
         authorName,
         authorUrl,
-        size
+        size,
+        bookAuthorColor,
+        engineColor
     });
 
     svg += `</svg>`;
@@ -148,7 +176,7 @@ function renderRing(
     allScenes: TimelineItem[],
     borderWidth: number,
     showStatusColors: boolean,
-    stageColors: Record<string, string> | undefined,
+    stageColors: Record<string, string>,
     numActs: number
 ): string {
     const ringScenes = ring.scenes;
@@ -178,7 +206,7 @@ function renderRing(
         if (scenesInAct.length === 0) {
             // full void arc for this act
             const voidPath = sceneArcPath(ring.innerR, ring.outerR, actStart, actEnd);
-            svg += `<path d="${voidPath}" fill="${APR_STAGE_COLORS.default}" stroke="${APR_STRUCTURAL_COLORS.border}" stroke-width="${borderWidth}" />`;
+            svg += `<path d="${voidPath}" fill="var(--rt-color-empty, ${APR_STAGE_COLORS.default})" fill-opacity="0.75" stroke="${APR_STRUCTURAL_COLORS.border}" stroke-width="${borderWidth}" />`;
             continue;
         }
 
@@ -199,7 +227,7 @@ function renderRing(
         if (remaining > 0.0001) {
             const voidStart = actEnd - remaining;
             const voidPath = sceneArcPath(ring.innerR, ring.outerR, voidStart, actEnd);
-            svg += `<path d="${voidPath}" fill="${APR_STAGE_COLORS.default}" stroke="${APR_STRUCTURAL_COLORS.border}" stroke-width="${borderWidth}" />`;
+            svg += `<path d="${voidPath}" fill="var(--rt-color-empty, ${APR_STAGE_COLORS.default})" fill-opacity="0.75" stroke="${APR_STRUCTURAL_COLORS.border}" stroke-width="${borderWidth}" />`;
         }
     }
 
@@ -225,21 +253,8 @@ function renderActSpokes(numActs: number, innerR: number, outerR: number, spokeW
     return svg;
 }
 
-function resolveSceneColor(scene: TimelineItem, showStatusColors: boolean, stageColors?: Record<string, string>): string {
-    const neutral = APR_STAGE_COLORS.default;
+function resolveSceneColor(scene: TimelineItem, showStatusColors: boolean, stageColors: Record<string, string>): string {
+    const neutral = `var(--rt-color-empty, ${APR_STAGE_COLORS.default})`;
     if (!showStatusColors) return neutral;
-    const map = stageColors || APR_STAGE_COLORS;
-    const rawStage = (scene as any).publishStage || (scene as any)['Publish Stage'];
-    const stage = Array.isArray(rawStage) ? rawStage[0] : rawStage;
-    if (typeof stage === 'string' && map[stage as keyof typeof map]) {
-        return map[stage as keyof typeof map];
-    }
-    const rawStatus = (scene as any).status;
-    const status = Array.isArray(rawStatus) ? rawStatus[0] : rawStatus;
-    if (typeof status === 'string') {
-        const s = status.toLowerCase();
-        if (s === 'complete' || s === 'completed') return APR_STATUS_COLORS.complete;
-        if (s === 'active' || s === 'in-progress') return APR_STATUS_COLORS.active;
-    }
-    return neutral;
+    return getFillForScene(scene, stageColors);
 }

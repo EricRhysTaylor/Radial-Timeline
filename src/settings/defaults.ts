@@ -221,6 +221,12 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
         showSubplots: true,
         showActs: true,
         showStatus: true,
+        showProgressPercent: true,
+        aprSize: 'standard',
+        aprBackgroundColor: '#0d0d0f',
+        aprCenterTransparent: false,
+        aprBookAuthorColor: '#6FB971', // Press stage default
+        aprEngineColor: '#e5e5e5',
         
         bookTitle: '',
         authorUrl: '',
