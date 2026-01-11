@@ -18,14 +18,9 @@ export class AuthorProgressModal extends Modal {
     private showStatus: boolean;
     private showPercent: boolean;
     private aprSize: 'compact' | 'standard' | 'large';
-    private aprBackgroundColor: string;
-    private aprCenterTransparent: boolean;
-    private aprBookAuthorColor: string;
-    private aprEngineColor: string;
-    private aprTheme: 'dark' | 'light';
     
-    private previewContainer: HTMLElement | null = null;
-    private sizeInfoEl: HTMLElement | null = null;
+    private previewContainers: Map<'compact' | 'standard' | 'large', HTMLElement> = new Map();
+    private previewCards: Map<'compact' | 'standard' | 'large', HTMLElement> = new Map();
     
     private cachedScenes: TimelineItem[] = [];
     private progressPercent: number = 0;
@@ -56,11 +51,6 @@ export class AuthorProgressModal extends Modal {
         this.showStatus = settings.showStatus ?? true;
         this.showPercent = settings.showProgressPercent ?? true;
         this.aprSize = settings.aprSize ?? 'standard';
-        this.aprBackgroundColor = settings.aprBackgroundColor ?? '#0d0d0f';
-        this.aprCenterTransparent = settings.aprCenterTransparent ?? false;
-        this.aprBookAuthorColor = settings.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971';
-        this.aprEngineColor = settings.aprEngineColor ?? '#e5e5e5';
-        this.aprTheme = settings.aprTheme ?? 'dark';
         this.publishTarget = settings.defaultPublishTarget;
     }
 
@@ -90,15 +80,15 @@ export class AuthorProgressModal extends Modal {
         header.createDiv({ text: 'Author progress report', cls: 'rt-modal-title' });
         header.createDiv({ text: 'Public, spoiler-safe progress view for fans and backers', cls: 'rt-modal-subtitle' });
 
-        // Check staleness and show alert if needed (Manual mode only)
+        // Check if refresh reminder is needed (Manual mode only)
         if (this.service.isStale()) {
             const daysSince = this.plugin.settings.authorProgress?.lastPublishedDate 
                 ? Math.floor((Date.now() - new Date(this.plugin.settings.authorProgress.lastPublishedDate).getTime()) / (1000 * 60 * 60 * 24))
                 : 'many';
-            const alert = contentEl.createDiv({ cls: 'rt-apr-stale-alert rt-glass-card' });
-            const alertIcon = alert.createSpan({ cls: 'rt-apr-stale-icon' });
+            const alert = contentEl.createDiv({ cls: 'rt-apr-refresh-alert rt-glass-card' });
+            const alertIcon = alert.createSpan({ cls: 'rt-apr-refresh-icon' });
             setIcon(alertIcon, 'alert-triangle');
-            alert.createEl('span', { text: `Your report is ${daysSince} days old. Consider refreshing.` });
+            alert.createEl('span', { text: `Your report is ${daysSince} days old. Time to refresh!` });
         }
 
         // Reveal Options (checkboxes in grid)
@@ -159,55 +149,28 @@ export class AuthorProgressModal extends Modal {
         };
         percentItem.createEl('label', { text: '% Complete', attr: { for: 'apr-percent' } });
 
-        // Size selector
+        // Size selector with side-by-side previews
         const sizeSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-size-section' });
-        sizeSection.createEl('h4', { text: 'Export Size', cls: 'rt-section-title' });
-        sizeSection.createEl('p', { text: 'Pick a preset for typical use: small (social), medium (posts), large (embeds).', cls: 'rt-apr-size-desc' });
-        const sizeSelector = sizeSection.createDiv({ cls: 'rt-apr-size-selector' });
-        this.createSizeButton(sizeSelector, 'compact', 'Small · 600px');
-        this.createSizeButton(sizeSelector, 'standard', 'Medium · 800px');
-        this.createSizeButton(sizeSelector, 'large', 'Large · 1000px');
-        this.sizeInfoEl = sizeSection.createDiv({ cls: 'rt-apr-size-info' });
-        this.updateSizeInfo();
-
-        // Transparency (recommended)
-        const transparencySection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-transparency-section' });
-        transparencySection.createEl('h4', { text: 'Transparency (Recommended)', cls: 'rt-section-title' });
-        transparencySection.createEl('p', { text: 'Use transparent canvas/core to let the modal or page color show through. Best for sharing and embeds.', cls: 'rt-apr-size-desc' });
-        new Setting(transparencySection)
-            .setName('Transparent Canvas/Core')
-            .setDesc('Removes fills; shows underlying background.')
-            .addToggle(toggle => {
-                toggle.setValue(this.aprCenterTransparent);
-                toggle.onChange(async (val) => {
-                    this.aprCenterTransparent = val;
-                    await this.saveRevealOptions();
-                    await this.renderPreview();
-                });
-            });
-        // Theme selector (light/dark)
-        const themeSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-theme-section' });
-        themeSection.createEl('h4', { text: 'Theme Contrast', cls: 'rt-section-title' });
-        themeSection.createEl('p', { text: 'Light uses dark spokes/borders for pale backgrounds. Dark uses light spokes/borders for dark canvases. Pick the one that keeps borders and spokes visible with your chosen background.', cls: 'rt-apr-size-desc' });
-        new Setting(themeSection)
-            .setName('Theme')
-            .setDesc('Choose stroke/border contrast')
-            .addDropdown(drop => {
-                drop.addOption('dark', 'Light Strokes');
-                drop.addOption('light', 'Dark Strokes');
-                drop.setValue(this.aprTheme);
-                drop.onChange(async (val) => {
-                    this.aprTheme = (val as 'dark' | 'light') || 'dark';
-                    await this.saveRevealOptions();
-                    await this.renderPreview();
-                });
-            });
-
-        // Preview Panel (moved up for prominence)
-        const previewSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-preview-section' });
-        previewSection.createEl('h4', { text: 'Live Preview', cls: 'rt-section-title' });
-        this.previewContainer = previewSection.createDiv({ cls: 'rt-apr-preview-area' });
-        this.previewContainer.createDiv({ text: 'Loading preview...', cls: 'rt-apr-loading' });
+        sizeSection.createEl('h4', { text: 'Choose Export Size', cls: 'rt-section-title' });
+        sizeSection.createEl('p', { 
+            text: 'Click a preview to select. SVG exports are resolution-independent and look crisp on any screen.', 
+            cls: 'rt-apr-size-desc' 
+        });
+        
+        // Side-by-side preview row
+        const previewRow = sizeSection.createDiv({ cls: 'rt-apr-preview-row' });
+        
+        // Create 3 preview cards
+        this.createPreviewCard(previewRow, 'compact', 'Small', '600×600', 'Social posts (X, Bluesky)');
+        this.createPreviewCard(previewRow, 'standard', 'Medium', '800×800', 'Blog cards, Patreon');
+        this.createPreviewCard(previewRow, 'large', 'Large', '1000×1000', 'Embeds, Kickstarter');
+        
+        // Info note about pixel density
+        const infoNote = sizeSection.createDiv({ cls: 'rt-apr-density-note' });
+        setIcon(infoNote.createSpan({ cls: 'rt-apr-density-icon' }), 'info');
+        infoNote.createSpan({ 
+            text: 'Tip: If your platform rasterizes SVG to PNG (Twitter does this), use Large for best quality on Retina/high-DPI screens.' 
+        });
 
         // Actions Section with Tabs
         const actionsSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-actions-section' });
@@ -282,34 +245,46 @@ export class AuthorProgressModal extends Modal {
             .onClick(() => this.copyEmbed('patreon'));
     }
 
-    private createSizeButton(container: HTMLElement, size: 'compact' | 'standard' | 'large', label: string) {
-        const btn = container.createEl('button', { cls: 'rt-apr-size-btn' });
-        btn.setText(label);
-        const applyActive = () => {
-            const buttons = container.querySelectorAll('.rt-apr-size-btn');
-            buttons?.forEach(b => b.removeClass('rt-active'));
-            btn.addClass('rt-active');
-        };
+    private createPreviewCard(
+        container: HTMLElement, 
+        size: 'compact' | 'standard' | 'large', 
+        label: string,
+        dimensions: string,
+        useCase: string
+    ) {
+        const card = container.createDiv({ cls: 'rt-apr-preview-card' });
         if (this.aprSize === size) {
-            btn.addClass('rt-active');
+            card.addClass('rt-active');
         }
-        btn.onclick = async () => {
+        
+        // Preview container (will hold SVG)
+        const previewArea = card.createDiv({ cls: 'rt-apr-preview-thumb' });
+        previewArea.createDiv({ cls: 'rt-apr-loading', text: '...' });
+        this.previewContainers.set(size, previewArea);
+        this.previewCards.set(size, card);
+        
+        // Label area
+        const labelArea = card.createDiv({ cls: 'rt-apr-preview-label' });
+        labelArea.createEl('strong', { text: label });
+        labelArea.createEl('span', { text: dimensions, cls: 'rt-apr-preview-dims' });
+        labelArea.createEl('span', { text: useCase, cls: 'rt-apr-preview-usecase' });
+        
+        // Click to select
+        card.onclick = async () => {
             this.aprSize = size;
-            applyActive();
-            this.updateSizeInfo();
+            this.updateCardSelection();
             await this.saveRevealOptions();
-            await this.renderPreview();
         };
     }
 
-    private updateSizeInfo() {
-        if (!this.sizeInfoEl) return;
-        const map: Record<string, string> = {
-            compact: 'Small · 600x600 @1x · ideal for X/Bluesky single-image posts',
-            standard: 'Medium · 800x800 @1x · great for Patreon/blog cards with crisp text',
-            large: 'Large · 1000x1000 @1x · best for site embeds or higher DPI exports'
-        };
-        this.sizeInfoEl.setText(map[this.aprSize] || '');
+    private updateCardSelection() {
+        this.previewCards.forEach((card, size) => {
+            if (size === this.aprSize) {
+                card.addClass('rt-active');
+            } else {
+                card.removeClass('rt-active');
+            }
+        });
     }
 
     private async loadData() {
@@ -318,44 +293,50 @@ export class AuthorProgressModal extends Modal {
     }
 
     private async renderPreview(refreshScenes = true) {
-        if (!this.previewContainer) return;
-        this.previewContainer.empty();
+        if (this.previewContainers.size === 0) return;
 
         if (refreshScenes) {
             await this.loadData();
         }
 
-        if (this.cachedScenes.length === 0) {
-            this.previewContainer.createDiv({ text: 'No scenes found. Create scenes to see a preview.', cls: 'rt-apr-empty' });
-            return;
-        }
-
         const settings = this.plugin.settings.authorProgress;
+        const sizes: Array<'compact' | 'standard' | 'large'> = ['compact', 'standard', 'large'];
 
-        try {
-            const { svgString } = createAprSVG(this.cachedScenes, {
-                size: this.aprSize,
-                progressPercent: this.progressPercent,
-                bookTitle: settings?.bookTitle || 'Working Title',
-                authorName: settings?.authorName || '',
-                authorUrl: settings?.authorUrl || '',
-                showSubplots: this.showSubplots,
-                showActs: this.showActs,
-                showStatusColors: this.showStatus,
-                showProgressPercent: this.showPercent,
-                stageColors: (this.plugin.settings as any).publishStageColors,
-                actCount: this.plugin.settings.actCount || undefined,
-                backgroundColor: this.aprBackgroundColor,
-                transparentCenter: this.aprCenterTransparent,
-                bookAuthorColor: this.aprBookAuthorColor,
-                engineColor: this.aprEngineColor,
-                theme: this.aprTheme
-            });
+        for (const size of sizes) {
+            const container = this.previewContainers.get(size);
+            if (!container) continue;
+            container.empty();
 
-            this.previewContainer.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
-        } catch (e) {
-            this.previewContainer.createDiv({ text: 'Failed to render preview. Check console for details.', cls: 'rt-apr-error' });
-            console.error('APR Preview render error:', e);
+            if (this.cachedScenes.length === 0) {
+                container.createDiv({ text: 'No scenes', cls: 'rt-apr-empty' });
+                continue;
+            }
+
+            try {
+                const { svgString } = createAprSVG(this.cachedScenes, {
+                    size,
+                    progressPercent: this.progressPercent,
+                    bookTitle: settings?.bookTitle || 'Working Title',
+                    authorName: settings?.authorName || '',
+                    authorUrl: settings?.authorUrl || '',
+                    showSubplots: this.showSubplots,
+                    showActs: this.showActs,
+                    showStatusColors: this.showStatus,
+                    showProgressPercent: this.showPercent,
+                    stageColors: (this.plugin.settings as any).publishStageColors,
+                    actCount: this.plugin.settings.actCount || undefined,
+                    backgroundColor: settings?.aprBackgroundColor ?? '#0d0d0f',
+                    transparentCenter: settings?.aprCenterTransparent ?? true,
+                    bookAuthorColor: settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
+                    engineColor: settings?.aprEngineColor ?? '#e5e5e5',
+                    theme: settings?.aprTheme ?? 'dark'
+                });
+
+                container.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
+            } catch (e) {
+                container.createDiv({ text: 'Error', cls: 'rt-apr-error' });
+                console.error(`APR Preview render error (${size}):`, e);
+            }
         }
     }
     
@@ -370,10 +351,6 @@ export class AuthorProgressModal extends Modal {
                 showStatus: true,
                 showProgressPercent: true,
                 aprSize: 'standard',
-                aprBackgroundColor: '#0d0d0f',
-                aprCenterTransparent: false,
-                aprBookAuthorColor: this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
-                aprEngineColor: '#e5e5e5',
                 bookTitle: '',
                 authorUrl: '',
                 updateFrequency: 'manual',
@@ -387,11 +364,6 @@ export class AuthorProgressModal extends Modal {
         this.plugin.settings.authorProgress.showStatus = this.showStatus;
         this.plugin.settings.authorProgress.showProgressPercent = this.showPercent;
         this.plugin.settings.authorProgress.aprSize = this.aprSize;
-        this.plugin.settings.authorProgress.aprBackgroundColor = this.aprBackgroundColor;
-        this.plugin.settings.authorProgress.aprCenterTransparent = this.aprCenterTransparent;
-        this.plugin.settings.authorProgress.aprBookAuthorColor = this.aprBookAuthorColor;
-        this.plugin.settings.authorProgress.aprEngineColor = this.aprEngineColor;
-        this.plugin.settings.authorProgress.aprTheme = this.aprTheme;
         await this.plugin.saveSettings();
     }
 

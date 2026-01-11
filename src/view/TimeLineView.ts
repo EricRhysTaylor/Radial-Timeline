@@ -624,11 +624,20 @@ export class RadialTimelineView extends ItemView {
                 // Attach help icon click behavior
                 setupHelpIconController(this, svgElement as unknown as SVGSVGElement);
 
-                // Attach Author Progress Indicator click behavior (NEW)
+                // Attach Author Progress Indicator click behavior - opens Settings Social tab
                 const aprIndicator = svgElement.querySelector('.rt-apr-indicator');
                 if (aprIndicator) {
                     this.registerDomEvent(aprIndicator as unknown as HTMLElement, 'click', () => {
-                        new AuthorProgressModal(this.app, this.plugin).open();
+                        // Open settings and switch to Social tab
+                        if (this.plugin.settingsTab) {
+                            this.plugin.settingsTab.setActiveTab('social');
+                        }
+                        // SAFE: any type used for accessing Obsidian's internal settings API
+                        const setting = (this.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting;
+                        if (setting) {
+                            setting.open();
+                            setting.openTabById('radial-timeline');
+                        }
                     });
                 }
 

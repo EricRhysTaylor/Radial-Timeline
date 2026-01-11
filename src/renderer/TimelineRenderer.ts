@@ -91,12 +91,12 @@ import { renderGossamerOverlay, type StageColorMap } from './utils/Gossamer';
 import { renderRotationToggle } from './utils/RotationToggle';
 import { renderVersionIndicator } from './components/VersionIndicator';
 import { renderHelpIcon } from './components/HelpIcon';
+import { renderAuthorProgressIndicator } from './components/AuthorProgressIndicator';
 import type { CompletionEstimate } from './utils/Estimation';
 import { renderProgressRingBaseLayer } from './utils/ProgressRing';
 import { getReadabilityMultiplier, getReadabilityScale } from '../utils/readability';
 import { getVersionCheckService } from '../services/VersionCheckService';
 import { getConfiguredActCount, parseActLabels, shouldShowActLabels } from '../utils/acts';
-import { renderAuthorProgressIndicator } from './components/AuthorProgressIndicator';
 
 
 // STATUS_COLORS and SceneNumberInfo now imported from constants
@@ -126,6 +126,7 @@ function computeSceneTitleInset(fontScale: number): number {
 export function createTimelineSVG(
     plugin: PluginRendererFacade,
     scenes: TimelineItem[],
+    options?: { aprNeedsRefresh?: boolean }
 ): { svgString: string; maxStageColor: string } {
     const stopTotalPerf = startPerfSegment(plugin, 'timeline.total');
     const sceneCount = scenes.length;
@@ -665,11 +666,10 @@ export function createTimelineSVG(
     // Add help icon (bottom-right corner)
     svg += renderHelpIcon();
     
-    // Check for stale APR (Manual mode only) and show indicator if needed
-    // Assuming this runs in context where we can check settings or pass a flag
-    // We'll rely on TimeLineView injecting it or calling renderAuthorProgressIndicator if needed.
-    // Or we can check it here if we had access to the service/staleness state.
-    // For now, let the View handle the indicator injection as per Plan Step 3 & 4.
+    // Add APR refresh indicator if needed (bottom-left, above version indicator)
+    if (options?.aprNeedsRefresh) {
+        svg += renderAuthorProgressIndicator({ needsRefresh: true });
+    }
 
     // Add JavaScript to handle synopsis visibility
     const scriptSection = ``;

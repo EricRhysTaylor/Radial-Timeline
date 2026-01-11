@@ -239,6 +239,20 @@
   opacity: 0.35;
 }
 
+/* Gossamer hover: softly mute non-hovered elements to reduce distraction */
+.radial-timeline-svg.gossamer-hover .rt-gossamer-line:not(.rt-hover),
+.radial-timeline-svg.gossamer-hover .rt-gossamer-overlay:not(.rt-hover),
+.radial-timeline-svg.gossamer-hover .rt-gossamer-band:not(.rt-hover),
+.radial-timeline-svg.gossamer-hover .rt-gossamer-spoke:not(.rt-gossamer-spoke-hover),
+.radial-timeline-svg.gossamer-hover .rt-gossamer-beat-outline:not(.rt-hover),
+.radial-timeline-svg.gossamer-hover .rt-gossamer-range-segment:not(.rt-hover),
+.radial-timeline-svg.gossamer-hover .rt-gossamer-dot:not(.rt-hover),
+.radial-timeline-svg.gossamer-hover .rt-gossamer-dot-center:not(.rt-hover),
+.radial-timeline-svg.gossamer-hover .rt-gossamer-dot-historical:not(.rt-hover),
+.radial-timeline-svg.gossamer-hover .rt-gossamer-score-text:not(.rt-hover),
+.radial-timeline-svg.gossamer-hover .rt-gossamer-range-value:not(.rt-hidden) {
+  opacity: 0.3;
+}
 .radial-timeline-svg[data-shift-mode="active"] .rt-gossamer-grid-spoke.rt-act-boundary {
   stroke: rgba(255, 255, 255, 0.3);
   opacity: 0.25;

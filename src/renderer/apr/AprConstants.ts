@@ -19,8 +19,8 @@ export const APR_SIZE_PRESETS = {
         brandingRadius: 288,
         rtBrandingRadius: 270,
         centerFontSize: 72,
-        brandingFontSize: 22, // +2pt
-        rtBrandingFontSize: 12,
+        brandingFontSize: 22,
+        rtBrandingFontSize: 16, // 8px base × 2 (pixel font requires multiples of 8)
         spokeWidth: 2,
         borderWidth: 1.5,
         actSpokeWidth: 3,
@@ -32,8 +32,8 @@ export const APR_SIZE_PRESETS = {
         brandingRadius: 378,
         rtBrandingRadius: 356,
         centerFontSize: 96,
-        brandingFontSize: 28, // +2pt
-        rtBrandingFontSize: 14,
+        brandingFontSize: 28,
+        rtBrandingFontSize: 16, // 8px base × 2 (pixel font requires multiples of 8)
         spokeWidth: 2.5,
         borderWidth: 2,
         actSpokeWidth: 4,
@@ -45,8 +45,8 @@ export const APR_SIZE_PRESETS = {
         brandingRadius: 468,
         rtBrandingRadius: 444,
         centerFontSize: 120,
-        brandingFontSize: 34, // +2pt
-        rtBrandingFontSize: 18,
+        brandingFontSize: 34,
+        rtBrandingFontSize: 24, // 8px base × 3 (pixel font requires multiples of 8)
         spokeWidth: 3,
         borderWidth: 2.5,
         actSpokeWidth: 5,

@@ -235,24 +235,26 @@ export function renderGossamerLayer(
     const minPts = toPoints(minBand.min, localAngles, innerRadius, outerRadius);
     const maxPts = toPoints(minBand.max, localAngles, innerRadius, outerRadius);
     if (minPts.length >= 2 && maxPts.length >= 2) {
-      // Build ONE continuous path that fills the area between min and max lines
-      // 1. Trace max line forward (beat 1→N) - exact same bezier as max plot line
-      const maxPath = buildBezierPath(maxPts, true);
-      
-      // 2. Build min line forward (beat 1→N) - exact same bezier as min plot line
-      const minPathForward = buildBezierPath(minPts, true);
-      
-      // 3. Reverse the min path commands (not recalculate!) to trace backward
-      const minPathReversed = reverseSvgPath(minPathForward);
-      
-      // 4. Combine: max forward + min reversed + close
-      const bandPath = `${maxPath} ${minPathReversed} Z`;
-      
-      // Use a light version of the most advanced publish stage color with transparency
-      const bandOpacity = getCSSVar('--rt-gossamer-band-opacity', '0.5');
-      const lightColor = lightenColor(latestSweepColor, 70); // 70% lighter
-      
-      bandSvg = `<path class="rt-gossamer-band" d="${bandPath}" fill="${lightColor}" fill-opacity="${bandOpacity}"/>`;
+      // Smooth, non-overshooting envelope using centripetal Catmull-Rom interpolation
+      const smoothMax = interpolateCentripetal(maxPts, 10);
+      const smoothMin = interpolateCentripetal(minPts, 10);
+
+      if (smoothMax.length >= 2 && smoothMin.length >= 2) {
+        let bandPath = `M ${fmt(smoothMax[0].x)} ${fmt(smoothMax[0].y)}`;
+        for (let i = 1; i < smoothMax.length; i++) {
+          bandPath += ` L ${fmt(smoothMax[i].x)} ${fmt(smoothMax[i].y)}`;
+        }
+        // Trace back along min points in reverse to close the polygon
+        for (let i = smoothMin.length - 1; i >= 0; i--) {
+          bandPath += ` L ${fmt(smoothMin[i].x)} ${fmt(smoothMin[i].y)}`;
+        }
+        bandPath += ' Z';
+        
+        const bandOpacity = getCSSVar('--rt-gossamer-band-opacity', '0.5');
+        const lightColor = lightenColor(latestSweepColor, 70); // 70% lighter
+        
+        bandSvg = `<path class="rt-gossamer-band" d="${bandPath}" fill="${lightColor}" fill-opacity="${bandOpacity}"/>`;
+      }
     }
   }
 
@@ -518,6 +520,68 @@ function toPoints(series: { beat: string; score: number }[], angles: Map<string,
     pts.push({ x: r * Math.cos(a), y: r * Math.sin(a) });
   });
   return pts;
+}
+
+// Centripetal Catmull-Rom spline interpolation to avoid overshoot/self-intersection.
+// Returns a denser polyline that smoothly follows the input points.
+function interpolateCentripetal(points: { x: number; y: number }[], samplesPerSeg: number = 8): { x: number; y: number }[] {
+  if (points.length <= 2) return points.slice();
+
+  const alpha = 0.5; // centripetal
+  const result: { x: number; y: number }[] = [];
+
+  // Helper to compute parameter t based on chord length
+  const tj = (pi: { x: number; y: number }, pj: { x: number; y: number }, tPrev: number): number => {
+    const dx = pj.x - pi.x;
+    const dy = pj.y - pi.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    return tPrev + Math.pow(dist, alpha);
+  };
+
+  // Duplicate endpoints for boundary handling
+  const pts = [points[0], ...points, points[points.length - 1]];
+
+  for (let i = 0; i < pts.length - 3; i++) {
+    const p0 = pts[i];
+    const p1 = pts[i + 1];
+    const p2 = pts[i + 2];
+    const p3 = pts[i + 3];
+
+    const t0 = 0;
+    const t1 = tj(p0, p1, t0);
+    const t2 = tj(p1, p2, t1);
+    const t3 = tj(p2, p3, t2);
+
+    for (let s = 0; s <= samplesPerSeg; s++) {
+      const t = t1 + ((t2 - t1) * s) / samplesPerSeg;
+
+      // Basis functions for centripetal Catmull-Rom
+      const a1x = (t1 - t) / (t1 - t0) * p0.x + (t - t0) / (t1 - t0) * p1.x;
+      const a1y = (t1 - t) / (t1 - t0) * p0.y + (t - t0) / (t1 - t0) * p1.y;
+
+      const a2x = (t2 - t) / (t2 - t1) * p1.x + (t - t1) / (t2 - t1) * p2.x;
+      const a2y = (t2 - t) / (t2 - t1) * p1.y + (t - t1) / (t2 - t1) * p2.y;
+
+      const a3x = (t3 - t) / (t3 - t2) * p2.x + (t - t2) / (t3 - t2) * p3.x;
+      const a3y = (t3 - t) / (t3 - t2) * p2.y + (t - t2) / (t3 - t2) * p3.y;
+
+      const b1x = (t2 - t) / (t2 - t0) * a1x + (t - t0) / (t2 - t0) * a2x;
+      const b1y = (t2 - t) / (t2 - t0) * a1y + (t - t0) / (t2 - t0) * a2y;
+
+      const b2x = (t3 - t) / (t3 - t1) * a2x + (t - t1) / (t3 - t1) * a3x;
+      const b2y = (t3 - t) / (t3 - t1) * a2y + (t - t1) / (t3 - t1) * a3y;
+
+      const cx = (t2 - t) / (t2 - t1) * b1x + (t - t1) / (t2 - t1) * b2x;
+      const cy = (t2 - t) / (t2 - t1) * b1y + (t - t1) / (t2 - t1) * b2y;
+
+      // Avoid duplicates except first point
+      if (result.length === 0 || result[result.length - 1].x !== cx || result[result.length - 1].y !== cy) {
+        result.push({ x: cx, y: cy });
+      }
+    }
+  }
+
+  return result;
 }
 
 function buildOverlayPath(points: { beat: string; score: number }[], angles: Map<string, number>, inner: number, outer: number): string | null {

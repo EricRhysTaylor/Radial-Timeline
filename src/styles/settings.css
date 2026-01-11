@@ -2304,6 +2304,34 @@
   height: 16px;
 }
 
+/* Alert state for badge when APR needs refresh */
+.rt-apr-hero-badge.rt-apr-badge-alert {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--text-error, #ef4444);
+  animation: rt-apr-badge-pulse 2s ease-in-out infinite;
+}
+
+.rt-apr-hero-badge.rt-apr-badge-alert svg {
+  color: var(--text-error, #ef4444);
+}
+
+@keyframes rt-apr-badge-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Alert border for settings rows when refresh is needed */
+.rt-settings-root .rt-apr-refresh-alert {
+  border-left: 3px solid var(--text-error, #ef4444);
+  padding-left: 12px;
+  background: rgba(239, 68, 68, 0.05);
+  border-radius: 6px;
+}
+
+.rt-settings-root .rt-apr-refresh-alert .setting-item-name {
+  color: var(--text-error, #ef4444);
+}
+
 /* High specificity to override Obsidian's default h3 styles */
 .rt-settings-root .rt-apr-hero h3.rt-apr-hero-title,
 .rt-settings-root .rt-apr-hero .rt-apr-hero-title,
@@ -2442,6 +2470,18 @@
 .rt-settings-root .rt-apr-recommended-setting .setting-item-name {
   color: var(--rt-social-color);
   font-weight: 600;
+}
+
+/* Muted/disabled setting row (e.g., background color when transparency is on) */
+.rt-settings-root .rt-setting-muted {
+  opacity: 0.45;
+  pointer-events: none;
+  filter: grayscale(0.5);
+}
+
+.rt-settings-root .rt-setting-muted .setting-item-name,
+.rt-settings-root .rt-setting-muted .setting-item-description {
+  color: var(--text-muted);
 }
 
 /* APR color pickers - square swatch to match core settings */

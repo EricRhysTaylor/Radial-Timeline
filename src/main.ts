@@ -67,6 +67,8 @@ export default class RadialTimelinePlugin extends Plugin {
     openScenePaths: Set<string> = new Set<string>();
     // Ensure settings tab is only added once per load
     private _settingsTabAdded: boolean = false;
+    // Reference to settings tab for programmatic tab switching
+    public settingsTab?: RadialTimelineSettingsTab;
 
     // Search related properties
     searchTerm: string = '';
@@ -223,7 +225,8 @@ export default class RadialTimelinePlugin extends Plugin {
 
         // Add settings tab (only once)
         if (!this._settingsTabAdded) {
-            this.addSettingTab(new RadialTimelineSettingsTab(this.app, this));
+            this.settingsTab = new RadialTimelineSettingsTab(this.app, this);
+            this.addSettingTab(this.settingsTab);
             this._settingsTabAdded = true;
         }
 

@@ -36,6 +36,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _activeTab: 'pro' | 'core' | 'social' = 'core'; 
     private _searchDebounceTimer?: number;
     private _coreSearchableContent?: HTMLElement;
+    
+    /** Public method to set active tab before/after opening settings */
+    public setActiveTab(tab: 'pro' | 'core' | 'social'): void {
+        this._activeTab = tab;
+    }
 
     constructor(app: App, plugin: RadialTimelinePlugin) {
         super(app, plugin);

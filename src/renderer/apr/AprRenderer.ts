@@ -224,7 +224,7 @@ function renderRing(
             used += pos.endAngle - pos.startAngle;
             const color = resolveSceneColor(scene, showStatusColors, stageColors);
             const path = sceneArcPath(ring.innerR, ring.outerR, pos.startAngle, pos.endAngle);
-            svg += `<path d="${path}" fill="${color}" stroke="${APR_STRUCTURAL_COLORS.border}" stroke-width="${borderWidth}" />`;
+            svg += `<path d="${path}" fill="${color}" stroke="${structural.border}" stroke-width="${borderWidth}" />`;
         });
 
         // Void for remaining space in this act, if any

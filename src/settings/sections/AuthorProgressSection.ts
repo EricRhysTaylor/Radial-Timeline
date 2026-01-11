@@ -14,16 +14,21 @@ export interface AuthorProgressSectionProps {
 export function renderAuthorProgressSection({ app, plugin, containerEl }: AuthorProgressSectionProps): void {
     const section = containerEl.createDiv({ cls: 'rt-settings-section rt-apr-section' });
     
+    // Check if APR needs refresh
+    const aprService = new AuthorProgressService(plugin, app);
+    const needsRefresh = aprService.isStale();
+    
     // ─────────────────────────────────────────────────────────────────────────
     // APR HERO SECTION
     // ─────────────────────────────────────────────────────────────────────────
     const hero = section.createDiv({ cls: 'rt-apr-hero' });
     
-    // Badge row with pill
+    // Badge row with pill - turns red when refresh needed
     const badgeRow = hero.createDiv({ cls: 'rt-apr-hero-badge-row' });
-    const badge = badgeRow.createSpan({ cls: 'rt-apr-hero-badge' });
-    setIcon(badge, 'radio');
-    badge.createSpan({ text: 'Social · Share' });
+    const badgeClasses = needsRefresh ? 'rt-apr-hero-badge rt-apr-badge-alert' : 'rt-apr-hero-badge';
+    const badge = badgeRow.createSpan({ cls: badgeClasses });
+    setIcon(badge, needsRefresh ? 'alert-triangle' : 'radio');
+    badge.createSpan({ text: needsRefresh ? 'Reminder to Refresh' : 'Social · Share' });
     
     // Big headline
     hero.createEl('h3', { 
@@ -87,26 +92,33 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Transparency (Recommended) - placed FIRST with special styling
     const transparencySetting = new Setting(stylingCard)
         .setName('Transparent Mode (Recommended)')
-        .setDesc('Canvas and center core show page/modal background. Best for sharing and embeds.');
+        .setDesc('No background fill — adapts to any page or app. Ideal for websites, blogs, and platforms that preserve SVG transparency.');
     
     // Background color - for special situations only (when transparency is off)
     const bgSetting = new Setting(stylingCard)
         .setName('Background Color')
-        .setDesc('Applies to the canvas background. Used only when transparent mode is off. For special embed situations.');
+        .setDesc('Bakes in a solid background. Use when transparency isn\'t reliable: email newsletters, Kickstarter, PDF exports, or platforms that rasterize SVGs.');
     
-    // Helper to swap emphasis between transparency and background rows
+    // Store references to the color picker and text input for enabling/disabling
+    let bgColorPicker: any = null; // SAFE: any type used for Obsidian color picker component reference
+    let bgTextInput: any = null; // SAFE: any type used for Obsidian text component reference
+    
+    // Helper to swap emphasis and enable/disable background controls
     const updateEmphasis = (isTransparent: boolean) => {
         if (isTransparent) {
             transparencySetting.settingEl.classList.add('rt-apr-recommended-setting');
             bgSetting.settingEl.classList.remove('rt-apr-recommended-setting');
+            bgSetting.settingEl.classList.add('rt-setting-muted');
+            if (bgColorPicker) bgColorPicker.setDisabled(true);
+            if (bgTextInput) bgTextInput.setDisabled(true);
         } else {
             transparencySetting.settingEl.classList.remove('rt-apr-recommended-setting');
             bgSetting.settingEl.classList.add('rt-apr-recommended-setting');
+            bgSetting.settingEl.classList.remove('rt-setting-muted');
+            if (bgColorPicker) bgColorPicker.setDisabled(false);
+            if (bgTextInput) bgTextInput.setDisabled(false);
         }
     };
-    
-    // Set initial emphasis state
-    updateEmphasis(currentTransparent);
     
     transparencySetting.addToggle(toggle => {
         toggle.setValue(currentTransparent);
@@ -120,6 +132,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     });
 
     bgSetting.addColorPicker(picker => {
+        bgColorPicker = picker;
         picker.setValue(currentBg);
         picker.onChange(async (val) => {
             if (!plugin.settings.authorProgress) return;
@@ -130,6 +143,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     });
 
     bgSetting.addText(text => {
+        bgTextInput = text;
         text.setPlaceholder('#0d0d0f').setValue(currentBg);
         text.inputEl.classList.add('rt-hex-input');
         text.onChange(async (val) => {
@@ -140,6 +154,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             refreshPreview();
         });
     });
+    
+    // Set initial emphasis state after controls are created
+    updateEmphasis(currentTransparent);
 
     // Theme selector
     const themeSetting = new Setting(stylingCard)
@@ -185,7 +202,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
     };
 
-    const bookColorSetting = new Setting(stylingCard).setName('Book + Author Color').setDesc('Used on the top perimeter text.');
+    const bookColorSetting = new Setting(stylingCard).setName('Book + Author Color').setDesc('Used for the perimeter text.');
     setColorPicker(bookColorSetting, 'aprBookAuthorColor', plugin.settings.publishStageColors?.Press || '#6FB971');
 
     const engineColorSetting = new Setting(stylingCard).setName('Radial Timeline Engine Color').setDesc('Used on the bottom perimeter text.');
@@ -248,9 +265,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const automationCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-automation-card rt-apr-stack-gap' });
     automationCard.createEl('h4', { text: 'Publishing & Automation', cls: 'rt-section-title' });
 
-    new Setting(automationCard)
+    const frequencySetting = new Setting(automationCard)
         .setName('Update Frequency')
-        .setDesc('How often to auto-update the live embed file. "Manual" requires clicking the update button.')
+        .setDesc('How often to auto-update the live embed file. "Manual" requires clicking the update button in the Author Progress Report modal.')
         .addDropdown(dropdown => dropdown
             .addOption('manual', 'Manual Only')
             .addOption('daily', 'Daily')
@@ -264,13 +281,18 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 }
             })
         );
+    
+    // Add red alert border when refresh is needed
+    if (needsRefresh) {
+        frequencySetting.settingEl.classList.add('rt-apr-refresh-alert');
+    }
 
     // Conditional Manual Settings
     if (settings?.updateFrequency === 'manual') {
         const currentDays = settings?.stalenessThresholdDays || 30;
         const stalenessSetting = new Setting(automationCard)
-            .setName('Staleness Alert Threshold')
-            .setDesc(`Days before showing a "Stale Report" warning in the timeline view. Currently: ${currentDays} days.`)
+            .setName('Refresh Alert Threshold')
+            .setDesc(`Days before showing a refresh reminder in the timeline view. Currently: ${currentDays} days.`)
             .addSlider(slider => {
                 slider
                     .setLimits(1, 90, 1)
@@ -283,7 +305,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                             // Update description with new value
                             const descEl = stalenessSetting.descEl;
                             if (descEl) {
-                                descEl.setText(`Days before showing a "Stale Report" warning in the timeline view. Currently: ${val} days.`);
+                                descEl.setText(`Days before showing a refresh reminder in the timeline view. Currently: ${val} days.`);
                             }
                             // Update value label
                             if (valueLabel) {
@@ -301,6 +323,11 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 
                 return slider;
             });
+        
+        // Add red alert border when refresh is needed
+        if (needsRefresh) {
+            stalenessSetting.settingEl.classList.add('rt-apr-refresh-alert');
+        }
     }
 
     const embedPathSetting = new Setting(automationCard)
@@ -420,7 +447,8 @@ async function renderHeroPreview(
             backgroundColor: aprSettings?.aprBackgroundColor,
             transparentCenter: aprSettings?.aprCenterTransparent,
             bookAuthorColor: aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
-            engineColor: aprSettings?.aprEngineColor
+            engineColor: aprSettings?.aprEngineColor,
+            theme: aprSettings?.aprTheme || 'dark'
         });
         
         container.empty();

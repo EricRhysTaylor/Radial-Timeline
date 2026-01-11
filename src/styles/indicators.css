@@ -261,3 +261,58 @@
   stroke-width: 2px;
   /* Outline width */
 }
+
+/* =============================================================================
+   APR REFRESH INDICATOR
+   Bottom-left corner alert when Author Progress Report needs refresh
+   ============================================================================= */
+.rt-apr-indicator {
+  cursor: pointer;
+  transition: filter 0.2s ease;
+}
+
+.rt-apr-indicator:hover {
+  filter: drop-shadow(0 0 8px var(--text-error, #ef4444));
+}
+
+/* Text styles - similar to version indicator */
+.rt-apr-indicator-text {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: opacity 0.2s ease, fill 0.2s ease;
+}
+
+.rt-apr-indicator-text.rt-apr-label {
+  fill: var(--text-error, #ef4444);
+  opacity: 1;
+}
+
+.rt-apr-indicator-text.rt-apr-action {
+  fill: var(--text-normal);
+  opacity: 0;
+}
+
+/* Swap text on hover */
+.rt-apr-indicator:hover .rt-apr-indicator-text.rt-apr-label {
+  opacity: 0;
+}
+
+.rt-apr-indicator:hover .rt-apr-indicator-text.rt-apr-action {
+  opacity: 1;
+}
+
+/* Alert icon pulse animation */
+.rt-apr-alert-icon {
+  animation: rt-apr-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes rt-apr-pulse {
+  0%, 100% {
+    transform: translate(0, 22px) scale(1);
+  }
+  50% {
+    transform: translate(0, 22px) scale(1.1);
+  }
+}

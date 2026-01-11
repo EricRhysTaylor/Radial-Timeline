@@ -22,6 +22,7 @@ import { updateSubplotLabels, updateSubplotLabelVisibility } from '../renderer/d
 import { createTimelineSVG as buildTimelineSVG } from '../renderer/TimelineRenderer';
 import { adjustBeatLabelsAfterRender } from '../renderer/dom/BeatLabelAdjuster';
 import { PluginRendererFacade } from '../utils/sceneHelpers';
+import { AuthorProgressService } from './AuthorProgressService';
 
 export interface RenderResult {
     svgString: string;
@@ -33,7 +34,17 @@ export class RendererService {
 
     public renderTimeline(scenes: TimelineItem[]): RenderResult {
         const pluginFacade = this.plugin as unknown as PluginRendererFacade;
-        return buildTimelineSVG(pluginFacade, scenes);
+        
+        // Check if APR needs refresh (stale check)
+        let aprNeedsRefresh = false;
+        try {
+            const aprService = new AuthorProgressService(this.plugin, this.plugin.app);
+            aprNeedsRefresh = aprService.isStale();
+        } catch {
+            // AuthorProgressService not available - skip indicator
+        }
+        
+        return buildTimelineSVG(pluginFacade, scenes, { aprNeedsRefresh });
     }
 
     public generateTimeline(scenes: TimelineItem[]): RenderResult {

@@ -8,13 +8,13 @@ export class AuthorProgressService {
     constructor(private plugin: RadialTimelinePlugin, private app: App) {}
 
     /**
-     * Checks if the APR report is stale based on settings.
+     * Checks if the APR report needs refresh based on settings.
      * Returns true only in Manual mode if threshold exceeded.
      */
     public isStale(): boolean {
         const settings = this.plugin.settings.authorProgress;
         if (!settings || !settings.enabled) return false;
-        if (settings.updateFrequency !== 'manual') return false; // Auto modes don't show UI staleness
+        if (settings.updateFrequency !== 'manual') return false; // Auto modes don't need refresh reminders
 
         if (!settings.lastPublishedDate) return true; // Never published
 
