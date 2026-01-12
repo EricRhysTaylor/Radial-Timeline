@@ -166,11 +166,11 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         .addDropdown(drop => {
             drop.addOption('dark', 'Light Strokes');
             drop.addOption('light', 'Dark Strokes');
-            drop.addOption('transparent', 'No Strokes');
+            drop.addOption('none', 'No Strokes');
             drop.setValue(currentTheme);
             drop.onChange(async (val) => {
                 if (!plugin.settings.authorProgress) return;
-                plugin.settings.authorProgress.aprTheme = (val as 'dark' | 'light' | 'transparent') || 'dark';
+                plugin.settings.authorProgress.aprTheme = (val as 'dark' | 'light' | 'none') || 'dark';
                 await plugin.saveSettings();
                 refreshPreview();
             });
@@ -207,7 +207,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const bookColorSetting = new Setting(stylingCard).setName('Book + Author Color').setDesc('Used for the perimeter text.');
     setColorPicker(bookColorSetting, 'aprBookAuthorColor', plugin.settings.publishStageColors?.Press || '#6FB971');
 
-    const engineColorSetting = new Setting(stylingCard).setName('Radial Timeline Engine Color').setDesc('Used on the bottom perimeter text.');
+    const engineColorSetting = new Setting(stylingCard).setName('Radial Timeline Engine Color').setDesc('Used on the Radial Timeline Logo link in the bottom right corner.');
     setColorPicker(engineColorSetting, 'aprEngineColor', '#e5e5e5');
 
     // Identity & Links

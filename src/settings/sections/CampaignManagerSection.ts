@@ -419,46 +419,63 @@ function renderCampaignDetails(
                 });
         });
     
-    // Reveal options row
-    const revealRow = details.createDiv({ cls: 'rt-campaign-reveal-row' });
-    revealRow.createEl('span', { text: 'Show:', cls: 'rt-campaign-reveal-label' });
+    // Container for reveal options (hidden when Teaser is enabled)
+    const revealRowContainer = details.createDiv({ cls: 'rt-campaign-reveal-container' });
     
-    const revealOptions = [
-        { key: 'showSubplots', label: 'Subplots' },
-        { key: 'showActs', label: 'Acts' },
-        { key: 'showStatus', label: 'Status' },
-        { key: 'showProgressPercent', label: '%' },
-    ] as const;
-    
-    revealOptions.forEach(opt => {
-        const checkbox = revealRow.createEl('label', { cls: 'rt-campaign-checkbox' });
-        const input = checkbox.createEl('input', { type: 'checkbox' });
-        input.checked = campaign[opt.key];
-        checkbox.createSpan({ text: opt.label });
+    // Function to render or hide reveal options based on teaser state
+    const renderRevealOptions = () => {
+        revealRowContainer.empty();
         
-        input.onchange = async () => {
-            if (!plugin.settings.authorProgress?.campaigns) return;
-            const targetCampaign = plugin.settings.authorProgress.campaigns[index];
-            if (!targetCampaign) return;
-            // Update the specific reveal option
-            switch (opt.key) {
-                case 'showSubplots': targetCampaign.showSubplots = input.checked; break;
-                case 'showActs': targetCampaign.showActs = input.checked; break;
-                case 'showStatus': targetCampaign.showStatus = input.checked; break;
-                case 'showProgressPercent': targetCampaign.showProgressPercent = input.checked; break;
-            }
-            await plugin.saveSettings();
-        };
-    });
+        const currentCampaign = plugin.settings.authorProgress?.campaigns?.[index];
+        if (!currentCampaign) return;
+        
+        // If teaser is enabled, these manual options don't apply
+        if (currentCampaign.teaserReveal?.enabled) {
+            // Show a note instead
+            const note = revealRowContainer.createDiv({ cls: 'rt-campaign-reveal-note' });
+            note.setText('Visibility controlled by Teaser Reveal below');
+            return;
+        }
+        
+        // Show manual reveal checkboxes
+        const revealRow = revealRowContainer.createDiv({ cls: 'rt-campaign-reveal-row' });
+        revealRow.createEl('span', { text: 'Show:', cls: 'rt-campaign-reveal-label' });
+        
+        const revealOptions = [
+            { key: 'showSubplots', label: 'Subplots' },
+            { key: 'showActs', label: 'Acts' },
+            { key: 'showStatus', label: 'Status' },
+            { key: 'showProgressPercent', label: '%' },
+        ] as const;
+        
+        revealOptions.forEach(opt => {
+            const checkbox = revealRow.createEl('label', { cls: 'rt-campaign-checkbox' });
+            const input = checkbox.createEl('input', { type: 'checkbox' });
+            input.checked = currentCampaign[opt.key];
+            checkbox.createSpan({ text: opt.label });
+            
+            input.onchange = async () => {
+                if (!plugin.settings.authorProgress?.campaigns) return;
+                const targetCampaign = plugin.settings.authorProgress.campaigns[index];
+                if (!targetCampaign) return;
+                switch (opt.key) {
+                    case 'showSubplots': targetCampaign.showSubplots = input.checked; break;
+                    case 'showActs': targetCampaign.showActs = input.checked; break;
+                    case 'showStatus': targetCampaign.showStatus = input.checked; break;
+                    case 'showProgressPercent': targetCampaign.showProgressPercent = input.checked; break;
+                }
+                await plugin.saveSettings();
+            };
+        });
+    };
+    
+    // Initial render
+    renderRevealOptions();
     
     // ─────────────────────────────────────────────────────────────────────────
     // TEASER REVEAL (Progressive Reveal)
     // ─────────────────────────────────────────────────────────────────────────
     const teaserSection = details.createDiv({ cls: 'rt-campaign-teaser-section' });
-    teaserSection.createEl('h5', { text: 'Teaser Reveal', cls: 'rt-campaign-teaser-title' });
-    
-    const teaserDesc = teaserSection.createEl('p', { cls: 'rt-campaign-teaser-desc' });
-    teaserDesc.setText('Automatically reveal more detail as your book progresses. Creates anticipation for your audience.');
     
     // Container for teaser content that can be re-rendered
     const teaserContentContainer = teaserSection.createDiv({ cls: 'rt-teaser-content' });
@@ -472,9 +489,10 @@ function renderCampaignDetails(
         
         const teaserSettings = currentCampaign.teaserReveal ?? { enabled: true, preset: 'standard' as TeaserPreset };
         
-        new Setting(teaserContentContainer)
-            .setName('Enable Teaser Reveal')
-            .setDesc('Progressive reveal based on completion %')
+        // Combined header with toggle
+        const teaserToggleSetting = new Setting(teaserContentContainer)
+            .setName('Teaser Reveal')
+            .setDesc('Automatically reveal more detail as your book progresses. Creates anticipation for your audience.')
             .addToggle(toggle => {
                 toggle.setValue(teaserSettings.enabled)
                     .onChange(async (val) => {
@@ -485,24 +503,70 @@ function renderCampaignDetails(
                         }
                         target.teaserReveal.enabled = val;
                         await plugin.saveSettings();
-                        // Re-render just this section, not the whole list
+                        // Re-render teaser section and update reveal options visibility
                         renderTeaserContent();
+                        renderRevealOptions();
                     });
             });
+        
+        // Add calendar icon to the teaser setting
+        const teaserNameEl = teaserToggleSetting.nameEl;
+        const iconSpan = teaserNameEl.createSpan({ cls: 'rt-teaser-icon' });
+        setIcon(iconSpan, 'calendar-clock');
+        teaserNameEl.prepend(iconSpan);
         
         // Only show preset and preview if teaser is enabled
         if (teaserSettings.enabled) {
             const isCustom = teaserSettings.preset === 'custom';
             
-            // Combined row: label + inputs (when custom) OR label + dropdown (when preset)
-            const scheduleRow = teaserContentContainer.createDiv({ cls: 'rt-teaser-schedule-row' });
+            // Container for schedule (wraps both rows)
+            const scheduleContainer = teaserContentContainer.createDiv({ cls: 'rt-teaser-schedule-container' });
+            
+            // Row 1: Label + Dropdown (always shown)
+            const scheduleRow = scheduleContainer.createDiv({ cls: 'rt-teaser-schedule-row' });
             scheduleRow.createSpan({ text: 'Reveal Schedule', cls: 'rt-teaser-schedule-label' });
             
+            const dropdown = scheduleRow.createEl('select', { cls: 'rt-teaser-preset-dropdown dropdown' });
+            const options = [
+                { value: 'slow', label: 'Slow (15/30/55/80%)' },
+                { value: 'standard', label: 'Standard (10/25/50/75%)' },
+                { value: 'fast', label: 'Fast (5/15/35/60%)' },
+                { value: 'custom', label: 'Custom' },
+            ];
+            options.forEach(opt => {
+                const optEl = dropdown.createEl('option', { value: opt.value, text: opt.label });
+                if (opt.value === teaserSettings.preset) optEl.selected = true;
+            });
+            dropdown.onchange = async () => {
+                if (!plugin.settings.authorProgress?.campaigns) return;
+                const target = plugin.settings.authorProgress.campaigns[index];
+                if (!target.teaserReveal) {
+                    target.teaserReveal = { enabled: true, preset: 'standard' };
+                }
+                const val = dropdown.value as TeaserPreset;
+                target.teaserReveal.preset = val;
+                // Initialize custom thresholds from current preset values if switching to custom
+                if (val === 'custom' && !target.teaserReveal.customThresholds) {
+                    const currentThresholds = getTeaserThresholds(teaserSettings.preset, undefined);
+                    target.teaserReveal.customThresholds = { ...currentThresholds };
+                }
+                await plugin.saveSettings();
+                renderTeaserContent();
+            };
+            
+            // Row 2: Custom inputs (5-column grid to align with previews below)
             if (isCustom) {
-                // Custom mode: show inputs + save button inline
                 const customThresholds = teaserSettings.customThresholds ?? { scenes: 10, colors: 25, acts: 50, subplots: 75 };
-                const inputsContainer = scheduleRow.createDiv({ cls: 'rt-teaser-inputs' });
+                const customRow = scheduleContainer.createDiv({ cls: 'rt-teaser-custom-row' });
                 
+                // Column 1: Save button (aligns with TEASER preview)
+                const saveCell = customRow.createDiv({ cls: 'rt-teaser-save-cell' });
+                const saveBtn = saveCell.createEl('button', { 
+                    text: 'Save',
+                    cls: 'rt-teaser-save-btn'
+                });
+                
+                // Columns 2-5: Input fields (align with SCENES, COLORS, STRUCTURE, FULL)
                 const fields: { key: 'scenes' | 'colors' | 'acts' | 'subplots'; label: string }[] = [
                     { key: 'scenes', label: 'Scenes' },
                     { key: 'colors', label: 'Colors' },
@@ -513,7 +577,7 @@ function renderCampaignDetails(
                 const inputs: Record<string, HTMLInputElement> = {};
                 
                 fields.forEach(({ key, label }) => {
-                    const field = inputsContainer.createDiv({ cls: 'rt-teaser-field' });
+                    const field = customRow.createDiv({ cls: 'rt-teaser-field' });
                     field.createSpan({ text: label, cls: 'rt-teaser-field-label' });
                     const input = field.createEl('input', { 
                         type: 'text',
@@ -522,12 +586,6 @@ function renderCampaignDetails(
                     });
                     input.maxLength = 2;
                     inputs[key] = input;
-                });
-                
-                // Save button
-                const saveBtn = inputsContainer.createEl('button', { 
-                    text: 'Save',
-                    cls: 'rt-teaser-save-btn'
                 });
                 
                 const validateAndSave = async () => {
@@ -576,39 +634,6 @@ function renderCampaignDetails(
                 });
             }
             
-            // Dropdown - inline for presets, below row for custom
-            const dropdownContainer = isCustom 
-                ? teaserContentContainer.createDiv({ cls: 'rt-teaser-dropdown-row' })
-                : scheduleRow;
-            
-            const dropdown = dropdownContainer.createEl('select', { cls: 'rt-teaser-preset-dropdown dropdown' });
-            const options = [
-                { value: 'slow', label: 'Slow (15/30/55/80%)' },
-                { value: 'standard', label: 'Standard (10/25/50/75%)' },
-                { value: 'fast', label: 'Fast (5/15/35/60%)' },
-                { value: 'custom', label: 'Custom' },
-            ];
-            options.forEach(opt => {
-                const optEl = dropdown.createEl('option', { value: opt.value, text: opt.label });
-                if (opt.value === teaserSettings.preset) optEl.selected = true;
-            });
-            dropdown.onchange = async () => {
-                if (!plugin.settings.authorProgress?.campaigns) return;
-                const target = plugin.settings.authorProgress.campaigns[index];
-                if (!target.teaserReveal) {
-                    target.teaserReveal = { enabled: true, preset: 'standard' };
-                }
-                const val = dropdown.value as TeaserPreset;
-                target.teaserReveal.preset = val;
-                // Initialize custom thresholds from current preset values if switching to custom
-                if (val === 'custom' && !target.teaserReveal.customThresholds) {
-                    const currentThresholds = getTeaserThresholds(teaserSettings.preset, undefined);
-                    target.teaserReveal.customThresholds = { ...currentThresholds };
-                }
-                await plugin.saveSettings();
-                renderTeaserContent();
-            };
-            
             // Show SVG previews of each reveal stage
             const thresholds = getTeaserThresholds(teaserSettings.preset, teaserSettings.customThresholds);
             const svgPreviewRow = teaserContentContainer.createDiv({ cls: 'rt-teaser-svg-preview-row' });
@@ -656,8 +681,9 @@ async function renderTeaserStagesPreviews(
     
     // Stages to preview with their simulated progress percentages
     // Order: bar → scenes → colors → acts → subplots (full)
+    // Note: Teaser uses 5% for preview (shows ring) even though threshold is 0%
     const stages: { level: TeaserRevealLevel; label: string; progress: number; icon: string }[] = [
-        { level: 'bar', label: 'Teaser', progress: 0, icon: 'circle' },
+        { level: 'bar', label: 'Teaser', progress: 5, icon: 'circle' },
         { level: 'scenes', label: 'Scenes', progress: thresholds.scenes, icon: 'sprout' },
         { level: 'colors', label: 'Colors', progress: thresholds.colors, icon: 'tree-pine' },
         { level: 'acts', label: 'Structure', progress: thresholds.acts, icon: 'trees' },

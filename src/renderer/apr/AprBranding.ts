@@ -81,7 +81,8 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const cornerOffset = 20; // equal offset from both edges
     const rtX = half - cornerOffset;
     const rtY = half - cornerOffset;
-    const rtFontSize = brandingFontSize + 4; // RT badge slightly bigger
+    // Use rtBrandingFontSize which is set to multiples of 8 for crisp pixel font rendering
+    const rtFontSize = rtBrandingFontSize;
     
     const rtBadge = `
         <a href="${rtUrl}" target="_blank" rel="noopener">

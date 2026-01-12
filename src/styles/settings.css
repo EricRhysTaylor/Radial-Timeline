@@ -3127,6 +3127,13 @@
 
 .rt-settings-root .rt-campaign-manager-card {
   position: relative;
+  margin-top: 24px;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--rt-pro-color-rgb), 0.35);
+  background: radial-gradient(circle at 12% 20%, rgba(var(--rt-pro-color-rgb), 0.12), transparent 40%),
+              linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.08), rgba(var(--rt-pro-color-rgb), 0.03));
+  box-shadow: 0 8px 32px rgba(var(--rt-pro-color-rgb), 0.12);
 }
 
 .rt-settings-root .rt-campaign-manager-header {
@@ -3352,6 +3359,14 @@
   flex-wrap: wrap;
 }
 
+.rt-settings-root .rt-campaign-reveal-note {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-muted);
+  padding: 8px 0;
+  opacity: 0.8;
+}
+
 .rt-settings-root .rt-campaign-reveal-label {
   font-weight: 500;
   color: var(--text-muted);
@@ -3434,19 +3449,21 @@
 }
 
 .rt-settings-root .rt-campaign-template-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: var(--text-accent);
+  background: rgba(var(--rt-pro-color-rgb), 0.15);
+  border-color: var(--rt-pro-color);
+  color: var(--rt-pro-color);
 }
 
 .rt-settings-root .rt-campaign-template-btn svg {
   width: 14px;
   height: 14px;
-  color: var(--text-normal);
-  opacity: 0.85;
+  color: var(--text-muted);
+  opacity: 0.7;
+  transition: all 0.15s ease;
 }
 
 .rt-settings-root .rt-campaign-template-btn:hover:not(:disabled) svg {
-  color: var(--text-accent);
+  color: var(--rt-pro-color);
   opacity: 1;
 }
 
@@ -3470,42 +3487,33 @@
   border-top: 1px solid var(--background-modifier-border);
 }
 
-.rt-settings-root .rt-campaign-teaser-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-normal);
-  margin: 0 0 4px 0;
-  display: flex;
+/* Teaser Reveal icon in setting name */
+.rt-settings-root .rt-teaser-icon {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  margin-right: 8px;
+  color: var(--rt-pro-color);
 }
 
-.rt-settings-root .rt-campaign-teaser-title::before {
-  content: '';
-  display: inline-block;
-  width: 3px;
-  height: 14px;
-  background: linear-gradient(180deg, #22c55e, #6366f1);
-  border-radius: 2px;
+.rt-settings-root .rt-teaser-icon svg {
+  width: 18px;
+  height: 18px;
 }
 
-.rt-settings-root .rt-campaign-teaser-desc {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin: 0 0 12px 0;
-  line-height: 1.4;
-}
-
-/* Reveal Schedule Row - combined label + inputs/dropdown */
-.rt-settings-root .rt-teaser-schedule-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+/* Reveal Schedule Container - wraps label row and custom row */
+.rt-settings-root .rt-teaser-schedule-container {
+  margin-top: 8px;
   padding: 12px 16px;
   background: rgba(255, 255, 255, 0.03);
   border-radius: 8px;
   border: 1px solid var(--background-modifier-border);
-  margin-top: 8px;
+}
+
+/* Row 1: Label + Dropdown */
+.rt-settings-root .rt-teaser-schedule-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .rt-settings-root .rt-teaser-schedule-label {
@@ -3514,36 +3522,44 @@
   white-space: nowrap;
 }
 
-.rt-settings-root .rt-teaser-inputs {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.rt-settings-root .rt-teaser-preset-dropdown {
   margin-left: auto;
+}
+
+/* Row 2: Custom inputs - 5-column grid to match preview stages */
+.rt-settings-root .rt-teaser-custom-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-border);
 }
 
 .rt-settings-root .rt-teaser-field {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  justify-content: center;
+  gap: 4px;
 }
 
 .rt-settings-root .rt-teaser-field-label {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .rt-settings-root .rt-teaser-field-input {
-  width: 36px;
-  padding: 4px;
+  width: 54px;
+  padding: 8px;
   text-align: center;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
+  border-radius: 6px;
   color: var(--text-normal);
 }
 
@@ -3552,29 +3568,26 @@
   outline: none;
 }
 
+.rt-settings-root .rt-teaser-save-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .rt-settings-root .rt-teaser-save-btn {
-  padding: 5px 12px;
-  font-size: 11px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   transition: opacity 0.15s ease;
 }
 
 .rt-settings-root .rt-teaser-save-btn:hover {
   opacity: 0.9;
-}
-
-.rt-settings-root .rt-teaser-preset-dropdown {
-  margin-left: auto;
-}
-
-.rt-settings-root .rt-teaser-dropdown-row {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
 }
 
 /* Teaser SVG Stage Previews */
@@ -3634,12 +3647,13 @@
 }
 
 .rt-settings-root .rt-teaser-stage-icon {
-  color: var(--text-accent);
+  color: var(--rt-pro-color);
+  opacity: 0.9;
 }
 
 .rt-settings-root .rt-teaser-stage-icon svg {
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
 }
 
 .rt-settings-root .rt-teaser-stage-percent {
