@@ -223,6 +223,12 @@
   filter: drop-shadow(0 0 6px currentColor);
 }
 
+/* Large invisible hotspot for target ticks (easy hover/touch) */
+.radial-timeline-container .rt-target-hotspot {
+  pointer-events: all;
+  cursor: pointer;
+}
+
 /* Legacy label styles (label removed, kept for reference) */
 .radial-timeline-container .estimation-date-label {
   font-size: 14px;

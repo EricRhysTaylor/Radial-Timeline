@@ -1802,6 +1802,15 @@
   cursor: pointer;
 }
 
+/* APR RT badge link - no underline */
+.rt-apr-rt-badge {
+  text-decoration: none;
+}
+
+.rt-apr-rt-badge:hover text {
+  opacity: 1;
+}
+
 /* APR Badge - social media theme */
 .rt-apr-badge {
   display: inline-flex;

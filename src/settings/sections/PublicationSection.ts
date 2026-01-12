@@ -1,5 +1,5 @@
 import type { App } from 'obsidian';
-import { Setting as ObsidianSetting, Notice, setIcon } from 'obsidian';
+import { Setting as ObsidianSetting, Notice, setIcon, setTooltip } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { t } from '../../i18n';
 import { addWikiLink } from '../wikiLink';
@@ -153,10 +153,10 @@ export function renderPublicationSection(params: {
     // --- Stage Target Dates ---
     // Create target date settings for each publish stage (Zero, Author, House, Press)
     const stageDescriptions: Record<Stage, string> = {
-        Zero: 'Target date to complete Zero draft. All scenes written, ready for author revision.',
-        Author: 'Target date to complete Author stage. Self-edited, ready for professional feedback.',
-        House: 'Target date to complete House stage. Editor feedback incorporated.',
-        Press: 'Target date to complete Press stage. Publication-ready manuscript.'
+        Zero: 'All scenes written, continuity intact, no prose polishing beyond clarity. Consider using Zero draft mode to discourage never-ending revision loops.',
+        Author: 'Let sit two weeks or more. Self-edited for structure, character intent, and pacing. Alpha readers engaged, story questions resolved, ready for professional feedback.',
+        House: 'Professional Editor feedback incorporated; structural and tonal notes addressed, ready for press.',
+        Press: 'Line edited, copy edited, proofread. No open queries. No tracked changes. Publication-ready manuscript.'
     };
     
     for (const stage of STAGE_ORDER) {
@@ -263,7 +263,8 @@ export function renderPublicationSection(params: {
     }
 
     // --- Zero draft mode toggle ---
-    new ObsidianSetting(containerEl)
+    const zeroStageColor = getStageColor(plugin, 'Zero');
+    const zeroDraftSetting = new ObsidianSetting(containerEl)
         .setName('Zero draft mode')
         .setDesc('Intercept clicks on scenes with Publish Stage = Zero and Status = Complete to capture Pending Edits without opening the scene.')
         .addToggle(toggle => toggle
@@ -271,7 +272,20 @@ export function renderPublicationSection(params: {
             .onChange(async (value) => {
                 plugin.settings.enableZeroDraftMode = value;
                 await plugin.saveSettings();
+                zeroDraftSetting.settingEl.setCssStyles({
+                    backgroundColor: value ? `${zeroStageColor}20` : 'transparent'
+                });
             }));
+    
+    // Apply initial styles including background tint if enabled
+    const isEnabled = plugin.settings.enableZeroDraftMode ?? false;
+    zeroDraftSetting.settingEl.setCssStyles({
+        border: `2px dashed ${zeroStageColor}`,
+        borderRadius: '8px',
+        padding: '12px',
+        marginTop: '8px',
+        backgroundColor: isEnabled ? `${zeroStageColor}20` : 'transparent'
+    });
 
     // --- Show completion estimate ---
     // Estimated completion uses a dot instead of square, different from target ticks
@@ -759,12 +773,11 @@ export function renderPublicationSection(params: {
                     const marker = markersContainer.createSpan({ cls: 'rt-completion-target-marker' });
                     marker.setCssStyles({ backgroundColor: displayColor });
                     
-                    // Tooltip with stage and date
+                    // Tooltip with stage and date (Obsidian's styled tooltip)
                     const tooltipText = target.isOverdue
                         ? `${target.stage} target: ${dateFormatter.format(target.date)} (OVERDUE)`
                         : `${target.stage} target: ${dateFormatter.format(target.date)}`;
-                    marker.setAttribute('title', tooltipText);
-                    marker.setAttribute('aria-label', tooltipText);
+                    setTooltip(marker, tooltipText, { placement: 'top' });
                 }
             }
             

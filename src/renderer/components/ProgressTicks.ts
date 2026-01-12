@@ -4,6 +4,9 @@ import { formatNumber, escapeXml } from '../../utils/svg';
 const STAGE_ORDER = ['Zero', 'Author', 'House', 'Press'] as const;
 type Stage = typeof STAGE_ORDER[number];
 
+// Hotspot radius for target ticks (large enough for easy hover/touch, matching estimate tick)
+const TARGET_HOTSPOT_RADIUS = 20;
+
 /**
  * Enhanced data for target tick tooltips.
  * When provided, tooltips show Required Pace Calculator and Stage Milestone Alerts.
@@ -20,8 +23,8 @@ export interface TargetTickEnhancedData {
 }
 
 /**
- * Build an enhanced tooltip for a target tick.
- * Shows date, remaining scenes, days until target, required pace, and milestone alerts.
+ * Build a concise tooltip for a target tick.
+ * Shows date and approximate days/scenes remaining.
  */
 function buildEnhancedTooltip(
     stage: Stage,
@@ -31,55 +34,28 @@ function buildEnhancedTooltip(
     enhancedData?: TargetTickEnhancedData
 ): string {
     const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    const lines: string[] = [];
     
     // Line 1: Stage and date
-    if (isOverdue) {
-        lines.push(`${stage} target: ${dateFormatter.format(targetDate)} (OVERDUE)`);
-    } else {
-        lines.push(`${stage} target: ${dateFormatter.format(targetDate)}`);
-    }
+    let tooltip = isOverdue 
+        ? `${stage} target: ${dateFormatter.format(targetDate)} (OVERDUE)`
+        : `${stage} target: ${dateFormatter.format(targetDate)}`;
     
-    if (!enhancedData) return lines.join('\n');
+    if (!enhancedData) return tooltip;
     
     const remaining = enhancedData.stageRemaining[stage] ?? 0;
     const daysUntil = Math.ceil((targetDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
     
-    if (isOverdue) {
+    if (isOverdue && remaining > 0) {
         // Overdue: show how many scenes remain
-        if (remaining > 0) {
-            lines.push(`${remaining} scene${remaining !== 1 ? 's' : ''} remaining`);
-        }
-    } else if (daysUntil > 0 && remaining > 0) {
-        // Line 2: Milestone alert (days and scenes remaining)
-        lines.push(`${daysUntil} day${daysUntil !== 1 ? 's' : ''} · ${remaining} scene${remaining !== 1 ? 's' : ''} remaining`);
-        
-        // Line 3: Required pace calculator
-        const weeksUntil = daysUntil / 7;
-        if (weeksUntil > 0) {
-            const requiredPace = remaining / weeksUntil;
-            const paceFormatted = requiredPace.toFixed(1);
-            lines.push(`Required: ${paceFormatted}/week to hit target`);
-            
-            // Line 4: Compare with current pace
-            if (enhancedData.currentPace > 0) {
-                const diff = enhancedData.currentPace - requiredPace;
-                if (Math.abs(diff) >= 0.1) {
-                    if (diff > 0) {
-                        lines.push(`Current: ${enhancedData.currentPace.toFixed(1)}/week (+${diff.toFixed(1)} ahead)`);
-                    } else {
-                        lines.push(`Current: ${enhancedData.currentPace.toFixed(1)}/week (${diff.toFixed(1)} behind)`);
-                    }
-                } else {
-                    lines.push(`Current: ${enhancedData.currentPace.toFixed(1)}/week (on pace)`);
-                }
-            }
-        }
-    } else if (remaining === 0) {
-        lines.push('Stage complete!');
+        tooltip += `\n${remaining} scene${remaining !== 1 ? 's' : ''} remaining`;
+    } else if (!isOverdue && remaining > 0) {
+        // Not overdue with work to do: show approximate days and scenes
+        tooltip += `\n~${daysUntil} days · ${remaining} scene${remaining !== 1 ? 's' : ''} remaining`;
     }
+    // Note: Don't show "Stage complete!" - if remaining is 0, it might just mean
+    // no scenes have reached that stage yet (not actually complete)
     
-    return lines.join('\n');
+    return tooltip;
 }
 
 /**
@@ -135,6 +111,9 @@ export function renderTargetDateTick(params: {
         const lineY2 = formatNumber((targetTickInnerRadius + 3) * Math.sin(targetDateAngle));
         const markerX = formatNumber(targetTickInnerRadius * Math.cos(targetDateAngle) - targetMarkerSize / 2);
         const markerY = formatNumber(targetTickInnerRadius * Math.sin(targetDateAngle) - targetMarkerSize / 2);
+        // Hotspot center (at the marker position)
+        const hotspotCx = formatNumber(targetTickInnerRadius * Math.cos(targetDateAngle));
+        const hotspotCy = formatNumber(targetTickInnerRadius * Math.sin(targetDateAngle));
         
         svg += `
             <g class="rt-target-tick-group${stageClass} rt-target-auto-mode" data-stage="${stage}">
@@ -146,9 +125,15 @@ export function renderTargetDateTick(params: {
                 <rect 
                     x="${markerX}" y="${markerY}" 
                     width="${targetMarkerSize}" height="${targetMarkerSize}" 
-                    class="target-date-marker${stageClass} rt-tooltip-target"
+                    class="target-date-marker${stageClass}"
+                />
+                <circle 
+                    cx="${hotspotCx}" cy="${hotspotCy}" 
+                    r="${TARGET_HOTSPOT_RADIUS}" 
+                    class="rt-target-hotspot rt-tooltip-target"
                     data-tooltip="${escapedTooltip}"
                     data-tooltip-placement="top"
+                    fill="transparent"
                 />
             </g>`;
         
@@ -182,6 +167,9 @@ export function renderTargetDateTick(params: {
                 
                 const markerX = formatNumber(targetTickInnerRadius * Math.cos(targetDateAngle) - targetMarkerSize / 2);
                 const markerY = formatNumber(targetTickInnerRadius * Math.sin(targetDateAngle) - targetMarkerSize / 2);
+                // Hotspot center (at the marker position)
+                const hotspotCx = formatNumber(targetTickInnerRadius * Math.cos(targetDateAngle));
+                const hotspotCy = formatNumber(targetTickInnerRadius * Math.sin(targetDateAngle));
                 
                 svg += `
                     <g class="rt-target-tick-group${stageClass}${overdueClass}" data-stage="${stage}">
@@ -193,9 +181,15 @@ export function renderTargetDateTick(params: {
                         <rect 
                             x="${markerX}" y="${markerY}" 
                             width="${targetMarkerSize}" height="${targetMarkerSize}" 
-                            class="target-date-marker${stageClass}${overdueClass} rt-tooltip-target"
+                            class="target-date-marker${stageClass}${overdueClass}"
+                        />
+                        <circle 
+                            cx="${hotspotCx}" cy="${hotspotCy}" 
+                            r="${TARGET_HOTSPOT_RADIUS}" 
+                            class="rt-target-hotspot rt-tooltip-target"
                             data-tooltip="${escapedTooltip}"
                             data-tooltip-placement="top"
+                            fill="transparent"
                         />
                     </g>`;
             } catch (e) {
@@ -212,6 +206,10 @@ export function renderTargetDateTick(params: {
                 const targetDate = new Date(plugin.settings.targetCompletionDate + 'T00:00:00');
                 if (!isNaN(targetDate.getTime()) && targetDate > today) {
                     const targetDateAngle = dateToAngle(targetDate);
+                    const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                    const daysUntil = Math.ceil((targetDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+                    const tooltipText = `Target: ${dateFormatter.format(targetDate)}\n~${daysUntil} days`;
+                    const escapedTooltip = escapeXml(tooltipText);
                     
                     const lineX1 = formatNumber(targetTickOuterRadius * Math.cos(targetDateAngle));
                     const lineY1 = formatNumber(targetTickOuterRadius * Math.sin(targetDateAngle));
@@ -220,18 +218,30 @@ export function renderTargetDateTick(params: {
                     
                     const markerX = formatNumber(targetTickInnerRadius * Math.cos(targetDateAngle) - targetMarkerSize / 2);
                     const markerY = formatNumber(targetTickInnerRadius * Math.sin(targetDateAngle) - targetMarkerSize / 2);
+                    const hotspotCx = formatNumber(targetTickInnerRadius * Math.cos(targetDateAngle));
+                    const hotspotCy = formatNumber(targetTickInnerRadius * Math.sin(targetDateAngle));
                     
                     svg += `
-                        <line
-                            x1="${lineX1}" y1="${lineY1}"
-                            x2="${lineX2}" y2="${lineY2}"
-                            class="target-date-tick"
-                        />
-                        <rect 
-                            x="${markerX}" y="${markerY}" 
-                            width="${targetMarkerSize}" height="${targetMarkerSize}" 
-                            class="target-date-marker"
-                        />`;
+                        <g class="rt-target-tick-group rt-target-legacy">
+                            <line
+                                x1="${lineX1}" y1="${lineY1}"
+                                x2="${lineX2}" y2="${lineY2}"
+                                class="target-date-tick"
+                            />
+                            <rect 
+                                x="${markerX}" y="${markerY}" 
+                                width="${targetMarkerSize}" height="${targetMarkerSize}" 
+                                class="target-date-marker"
+                            />
+                            <circle 
+                                cx="${hotspotCx}" cy="${hotspotCy}" 
+                                r="${TARGET_HOTSPOT_RADIUS}" 
+                                class="rt-target-hotspot rt-tooltip-target"
+                                data-tooltip="${escapedTooltip}"
+                                data-tooltip-placement="top"
+                                fill="transparent"
+                            />
+                        </g>`;
                 }
             } catch (e) {
                 // Error parsing target date - skip

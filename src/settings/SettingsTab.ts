@@ -326,22 +326,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         setIcon(badge, 'signature');
         badge.createSpan({ text: 'Pro · Signature' });
         
-        // Pro activation toggle for testing
-        const isProActive = this.plugin.settings.devProActive !== false; // Default true during beta
-        const toggleContainer = badgeRow.createDiv({ cls: 'rt-pro-hero-toggle' });
-        const toggleLabel = toggleContainer.createSpan({ 
-            text: isProActive ? 'Active' : 'Inactive',
-            cls: isProActive ? 'rt-pro-toggle-label rt-pro-toggle-active' : 'rt-pro-toggle-label'
-        });
-        const toggle = toggleContainer.createEl('input', { type: 'checkbox', cls: 'rt-pro-toggle-checkbox' });
-        toggle.checked = isProActive;
-        toggle.onchange = async () => {
-            this.plugin.settings.devProActive = toggle.checked;
-            await this.plugin.saveSettings();
-            // Refresh the entire settings display
-            this.display();
-        };
-        
         hero.createEl('h3', { cls: 'rt-pro-hero-title', text: 'Signature tools for professional workflows.' });
         hero.createEl('p', { cls: 'rt-pro-hero-subtitle', text: 'Premium exports, runtime intelligence, and Pandoc templates. Make your publishing pipeline radial and your story ever revolving.' });
         const featuresSection = hero.createDiv({ cls: 'rt-pro-hero-features' });
@@ -357,10 +341,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             setIcon(iconSpan, feature.icon);
             li.createSpan({ text: feature.text });
         });
-        const meta = hero.createDiv({ cls: 'rt-pro-hero-meta' });
-        meta.createSpan({ text: isProActive ? 'Active Pro session' : 'Pro features disabled' });
-        meta.createSpan({ text: 'Early Access perks' });
-        meta.createSpan({ text: 'Configure below' });
     }
 
     display(): void {
@@ -403,8 +383,12 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         updateTabState();
 
         const isProActive = isProfessionalActive(this.plugin);
-        if (isProActive) this.renderProHero(proContent);
-        renderProfessionalSection({ app: this.app, plugin: this.plugin, containerEl: proContent });
+        renderProfessionalSection({ 
+            app: this.app, 
+            plugin: this.plugin, 
+            containerEl: proContent,
+            renderHero: isProActive ? () => this.renderProHero(proContent) : undefined
+        });
         renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: proContent });
 
         // Social Media Tab Content - APR Section

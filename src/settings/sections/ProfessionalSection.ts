@@ -20,6 +20,7 @@ interface SectionParams {
     app: App;
     plugin: RadialTimelinePlugin;
     containerEl: HTMLElement;
+    renderHero?: () => void;
 }
 
 /**
@@ -57,7 +58,7 @@ export function isOpenBeta(): boolean {
     return OPEN_BETA_ACTIVE;
 }
 
-export function renderProfessionalSection({ plugin, containerEl }: SectionParams): void {
+export function renderProfessionalSection({ plugin, containerEl, renderHero }: SectionParams): void {
     const hasValidKey = isProfessionalLicenseValid(plugin.settings.professionalLicenseKey);
     const isActive = isProfessionalActive(plugin);
     
@@ -108,9 +109,14 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
             plugin.settings.devProActive = value;
             await plugin.saveSettings();
             containerEl.empty();
-            renderProfessionalSection({ app: plugin.app, plugin, containerEl });
+            renderProfessionalSection({ app: plugin.app, plugin, containerEl, renderHero });
         });
     });
+    
+    // Render hero section after header when active
+    if (renderHero) {
+        renderHero();
+    }
     
     // Content container (always expanded during beta)
     const contentContainer = containerEl.createDiv({ cls: 'rt-professional-content' });
@@ -137,7 +143,7 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
         const rewardText = bannerText.createEl('p', { cls: 'rt-professional-reward-text' });
         rewardText.createEl('strong', { text: '🎁 Early Adopter Reward: ' });
         rewardText.createSpan({ 
-            text: 'Submit helpful feedback or bug reports and receive one year of Pro free when we launch paid licensing!' 
+            text: 'Submit helpful feedback or bug reports and receive six months of Pro free when we launch paid licensing!' 
         });
         
         // Feedback link

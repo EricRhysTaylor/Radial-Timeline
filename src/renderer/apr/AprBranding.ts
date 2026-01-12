@@ -46,10 +46,10 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     // Build the full repeating string (all book/author, no engine text in the ring)
     const fullBrandingText = Array(repetitions).fill(titleSegment).join(separator);
     
-    // Full circle path starting from top (12 o'clock) going counter-clockwise
-    // Counter-clockwise (sweep-flag=0) places text on the OUTSIDE of the curve
+    // Full circle path starting from top (12 o'clock) going clockwise
+    // Clockwise (sweep-flag=1) places text on the OUTSIDE of the curve, readable at top
     const circlePathId = 'apr-branding-circle';
-    const circlePath = `M 0 -${brandingRadius} A ${brandingRadius} ${brandingRadius} 0 1 0 0 ${brandingRadius} A ${brandingRadius} ${brandingRadius} 0 1 0 0 -${brandingRadius}`;
+    const circlePath = `M 0 -${brandingRadius} A ${brandingRadius} ${brandingRadius} 0 1 1 0 ${brandingRadius} A ${brandingRadius} ${brandingRadius} 0 1 1 0 -${brandingRadius}`;
     
     const brandingDefs = `
         <defs>
@@ -85,7 +85,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const rtFontSize = rtBrandingFontSize;
     
     const rtBadge = `
-        <a href="${rtUrl}" target="_blank" rel="noopener">
+        <a href="${rtUrl}" target="_blank" rel="noopener" class="rt-apr-rt-badge">
             <text 
                 x="${rtX.toFixed(2)}" 
                 y="${rtY.toFixed(2)}" 
