@@ -254,8 +254,7 @@ export function renderGossamerLayer(
     
     if (allRunPoints.length >= 1) {
       // Sample each run's bezier at many intermediate points
-      // Higher = more precision at crossovers
-      const samplesPerSegment = 50;
+      const samplesPerSegment = 5;
       const sampledRuns: Array<{ x: number; y: number }[]> = allRunPoints.map(pts => 
         sampleBezierCurve(pts, samplesPerSegment)
       );
@@ -264,28 +263,35 @@ export function renderGossamerLayer(
       const numSamples = sampledRuns[0]?.length || 0;
       
       if (numSamples >= 2) {
-        // At each sample index, find min and max radius
+        // At each sample index, find min and max radius - use actual points, not recomputed
         const minEnvelope: { x: number; y: number }[] = [];
         const maxEnvelope: { x: number; y: number }[] = [];
         
         for (let i = 0; i < numSamples; i++) {
           let minR = Infinity;
           let maxR = -Infinity;
-          let sampleAngle = 0;
+          let minPt: { x: number; y: number } | null = null;
+          let maxPt: { x: number; y: number } | null = null;
           
-          sampledRuns.forEach(run => {
+          for (const run of sampledRuns) {
             if (i < run.length) {
               const pt = run[i];
               const r = Math.sqrt(pt.x * pt.x + pt.y * pt.y);
-              sampleAngle = Math.atan2(pt.y, pt.x);
-              if (r < minR) minR = r;
-              if (r > maxR) maxR = r;
+              if (r < minR) {
+                minR = r;
+                minPt = pt;
+              }
+              if (r > maxR) {
+                maxR = r;
+                maxPt = pt;
+              }
             }
-          });
+          }
           
-          if (minR !== Infinity && maxR !== -Infinity) {
-            minEnvelope.push({ x: minR * Math.cos(sampleAngle), y: minR * Math.sin(sampleAngle) });
-            maxEnvelope.push({ x: maxR * Math.cos(sampleAngle), y: maxR * Math.sin(sampleAngle) });
+          // Use actual x,y from the runs that produced min/max, not recomputed coordinates
+          if (minPt && maxPt) {
+            minEnvelope.push({ x: minPt.x, y: minPt.y });
+            maxEnvelope.push({ x: maxPt.x, y: maxPt.y });
           }
         }
         

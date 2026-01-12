@@ -75,23 +75,22 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         </text>
     `;
     
-    // Minimal RT badge at bottom-right (positioned at ~4:30 position)
-    // SVG coordinate: X right is positive, Y down is positive
-    // Angle from 12 o'clock going clockwise: 4:30 = 135 degrees = 3π/4 radians
-    const rtBadgeAngle = (3 * Math.PI) / 4; // 135 degrees clockwise from top
-    const rtBadgeRadius = brandingRadius - 12; // inside the text ring to stay in viewBox
-    const rtX = rtBadgeRadius * Math.sin(rtBadgeAngle);
-    const rtY = -rtBadgeRadius * Math.cos(rtBadgeAngle); // negate because SVG Y is down
+    // Minimal RT badge at bottom-right corner (outside the ring)
+    // Position at corner with equal offset from bottom and right edges
+    const half = preset.svgSize / 2;
+    const cornerOffset = 20; // equal offset from both edges
+    const rtX = half - cornerOffset;
+    const rtY = half - cornerOffset;
     
     const rtBadge = `
         <a href="${rtUrl}" target="_blank" rel="noopener">
             <text 
                 x="${rtX.toFixed(2)}" 
                 y="${rtY.toFixed(2)}" 
-                text-anchor="middle" 
-                dominant-baseline="middle"
+                text-anchor="end" 
+                dominant-baseline="auto"
                 font-family="'04b03b', monospace" 
-                font-size="${rtBrandingFontSize}" 
+                font-size="${brandingFontSize}" 
                 fill="${engColor}"
                 opacity="0.7">
                 RT

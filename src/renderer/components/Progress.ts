@@ -9,6 +9,7 @@ export function renderEstimatedDateElements(params: {
   const { estimate, progressRadius } = params;
   const estimateDate = estimate.date;
   const stalenessClass = estimate.staleness ? ` estimate-${estimate.staleness}` : '';
+  const stageClass = estimate.stage ? ` estimate-stage-${estimate.stage}` : '';
   const labelText = estimate.labelText;
   const displayDate = estimateDate === null ? new Date(new Date().getFullYear(), 0, 1) : estimateDate;
   const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
@@ -35,8 +36,8 @@ export function renderEstimatedDateElements(params: {
   let svg = '';
   if ([tickOuterX, tickOuterY, tickInnerX, tickInnerY].every((v) => Number.isFinite(v))) {
     svg += `
-      <line x1="${formatNumber(tickOuterX)}" y1="${formatNumber(tickOuterY)}" x2="${formatNumber(tickInnerX)}" y2="${formatNumber(tickInnerY)}" class="estimated-date-tick${stalenessClass}" />
-      <circle cx="${formatNumber(tickInnerX)}" cy="${formatNumber(tickInnerY)}" r="4" class="estimated-date-dot${stalenessClass}" />
+      <line x1="${formatNumber(tickOuterX)}" y1="${formatNumber(tickOuterY)}" x2="${formatNumber(tickInnerX)}" y2="${formatNumber(tickInnerY)}" class="estimated-date-tick${stageClass}${stalenessClass}" />
+      <circle cx="${formatNumber(tickInnerX)}" cy="${formatNumber(tickInnerY)}" r="4" class="estimated-date-dot${stageClass}${stalenessClass}" />
     `;
   }
 
@@ -52,7 +53,7 @@ export function renderEstimatedDateElements(params: {
     const labelX = formatNumber(labelXNum);
     const labelY = formatNumber(labelYNum);
     svg += `
-      <text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" class="estimation-date-label${stalenessClass}">${dateDisplay}</text>
+      <text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" class="estimation-date-label${stageClass}${stalenessClass}">${dateDisplay}</text>
     `;
   }
   return svg;

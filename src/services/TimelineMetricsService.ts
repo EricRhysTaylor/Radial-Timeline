@@ -15,6 +15,8 @@ export interface CompletionEstimate {
     windowDays: number;
     labelText?: string;
     isFrozen?: boolean;
+    /** Number of incomplete scenes in stages lower than the active stage */
+    stragglerCount?: number;
 }
 
 export class TimelineMetricsService {
@@ -44,16 +46,59 @@ export class TimelineMetricsService {
             return normalized === 'complete' || normalized === 'completed' || normalized === 'done';
         };
 
-        // Determine active publish stage: highest stage that still has incomplete work
-        const stageWithIncomplete = [...STAGE_ORDER].reverse().find(stage =>
-            sceneNotesOnly.some(scene => normalizeStage(scene['Publish Stage']) === stage && !isCompleted(scene.status))
-        );
-        const stageWithAnyScenes = [...STAGE_ORDER].reverse().find(stage =>
-            sceneNotesOnly.some(scene => normalizeStage(scene['Publish Stage']) === stage)
-        );
-        const activeStage = stageWithIncomplete ?? stageWithAnyScenes ?? 'Zero';
+        // Count recent completions per stage within the rolling window to detect active working stage
+        const recentCompletionsByStage: Record<string, number> = {};
+        for (const stage of STAGE_ORDER) {
+            recentCompletionsByStage[stage] = 0;
+        }
+        
+        sceneNotesOnly.forEach(scene => {
+            if (!isCompleted(scene.status)) return;
+            const dueStr = scene.due;
+            if (!dueStr) return;
+            try {
+                const dueDate = new Date(dueStr + 'T00:00:00');
+                dueDate.setHours(0, 0, 0, 0);
+                const dueTime = dueDate.getTime();
+                if (isNaN(dueTime)) return;
+                if (dueTime >= windowStartTime && dueTime <= todayTime) {
+                    const stage = normalizeStage(scene['Publish Stage']);
+                    recentCompletionsByStage[stage]++;
+                }
+            } catch {
+                // ignore parse errors
+            }
+        });
+
+        // Determine active stage: prefer stage with most recent completions,
+        // fall back to highest stage with incomplete work
+        let activeStage: (typeof STAGE_ORDER)[number] = 'Zero';
+        let maxRecentCompletions = 0;
+        
+        // Check stages from highest to lowest for recent activity
+        for (const stage of [...STAGE_ORDER].reverse()) {
+            if (recentCompletionsByStage[stage] > maxRecentCompletions) {
+                maxRecentCompletions = recentCompletionsByStage[stage];
+                activeStage = stage;
+            }
+        }
+        
+        // If no recent completions, fall back to highest stage with incomplete work
+        if (maxRecentCompletions === 0) {
+            const stageWithIncomplete = [...STAGE_ORDER].reverse().find(stage =>
+                sceneNotesOnly.some(scene => normalizeStage(scene['Publish Stage']) === stage && !isCompleted(scene.status))
+            );
+            const stageWithAnyScenes = [...STAGE_ORDER].reverse().find(stage =>
+                sceneNotesOnly.some(scene => normalizeStage(scene['Publish Stage']) === stage)
+            );
+            activeStage = stageWithIncomplete ?? stageWithAnyScenes ?? 'Zero';
+        }
+        
+        const activeStageIndex = STAGE_ORDER.indexOf(activeStage);
+        
+        // Count scenes at active stage (for display purposes)
         const stageScenes = sceneNotesOnly.filter(scene => normalizeStage(scene['Publish Stage']) === activeStage);
-        if (stageScenes.length === 0) return null;
+        if (stageScenes.length === 0 && maxRecentCompletions === 0) return null;
 
         // Compute highest scene number across all scenes (any stage) as a floor for total count
         const seenForMax = new Set<string>();
@@ -70,43 +115,71 @@ export class TimelineMetricsService {
             }
         });
 
+        // Count scenes at active stage AND all lower stages (stragglers)
+        // This gives us the total work remaining for this revision round
+        const scenesAtActiveAndLower = sceneNotesOnly.filter(scene => {
+            const sceneStageIndex = STAGE_ORDER.indexOf(normalizeStage(scene['Publish Stage']));
+            return sceneStageIndex <= activeStageIndex;
+        });
+
         const processedPaths = new Set<string>();
-        const currentStatusCounts = stageScenes.reduce((acc, scene) => {
-            if (!scene.path || processedPaths.has(scene.path)) {
-                return acc;
-            }
+        let completedAtActiveAndLower = 0;
+        let incompleteAtActiveStage = 0;
+        let stragglerCount = 0; // incomplete scenes in stages LOWER than active
+        
+        const currentStatusCounts: Record<string, number> = {};
+        
+        scenesAtActiveAndLower.forEach(scene => {
+            if (!scene.path || processedPaths.has(scene.path)) return;
             processedPaths.add(scene.path);
-
-            const normalizedStatus = scene.status?.toString().trim().toLowerCase() || 'Todo';
-
-            if (normalizedStatus === 'complete' || normalizedStatus === 'done') {
-                acc['Completed'] = (acc['Completed'] || 0) + 1;
+            
+            const sceneStage = normalizeStage(scene['Publish Stage']);
+            const sceneStageIndex = STAGE_ORDER.indexOf(sceneStage);
+            const normalizedStatus = scene.status?.toString().trim().toLowerCase() || 'todo';
+            const isSceneComplete = normalizedStatus === 'complete' || normalizedStatus === 'done' || normalizedStatus === 'completed';
+            
+            if (isSceneComplete) {
+                completedAtActiveAndLower++;
+                currentStatusCounts['Completed'] = (currentStatusCounts['Completed'] || 0) + 1;
             } else if (scene.due) {
                 try {
                     const dueDate = new Date(scene.due + 'T00:00:00');
                     if (!isNaN(dueDate.getTime()) && dueDate.getTime() < todayTime) {
-                        acc['Due'] = (acc['Due'] || 0) + 1;
+                        currentStatusCounts['Due'] = (currentStatusCounts['Due'] || 0) + 1;
                     } else {
-                        acc[normalizedStatus] = (acc[normalizedStatus] || 0) + 1;
+                        currentStatusCounts[normalizedStatus] = (currentStatusCounts[normalizedStatus] || 0) + 1;
                     }
                 } catch {
-                    acc[normalizedStatus] = (acc[normalizedStatus] || 0) + 1;
+                    currentStatusCounts[normalizedStatus] = (currentStatusCounts[normalizedStatus] || 0) + 1;
+                }
+                
+                // Track stragglers vs active stage incomplete
+                if (sceneStageIndex < activeStageIndex) {
+                    stragglerCount++;
+                } else {
+                    incompleteAtActiveStage++;
                 }
             } else {
-                acc[normalizedStatus] = (acc[normalizedStatus] || 0) + 1;
+                currentStatusCounts[normalizedStatus] = (currentStatusCounts[normalizedStatus] || 0) + 1;
+                
+                // Track stragglers vs active stage incomplete
+                if (sceneStageIndex < activeStageIndex) {
+                    stragglerCount++;
+                } else {
+                    incompleteAtActiveStage++;
+                }
             }
-            return acc;
-        }, {} as Record<string, number>);
+        });
 
         this.plugin.latestStatusCounts = currentStatusCounts;
 
-        const completedCount = currentStatusCounts['Completed'] || 0;
         const totalScenesDeduped = processedPaths.size;
-        const totalForStage = Math.max(totalScenesDeduped, Math.floor(highestPrefixNumber));
-        const remainingScenes = Math.max(0, totalForStage - completedCount);
+        const totalForEstimate = Math.max(totalScenesDeduped, Math.floor(highestPrefixNumber));
+        // Remaining = all incomplete scenes at active stage + all incomplete at lower stages (stragglers)
+        const remainingScenes = Math.max(0, totalForEstimate - completedAtActiveAndLower);
 
         if (remainingScenes <= 0) {
-            this.captureLatestStats(totalForStage, 0, 0);
+            this.captureLatestStats(totalForEstimate, 0, 0);
             return null;
         }
 
@@ -159,7 +232,7 @@ export class TimelineMetricsService {
 
         const result: CompletionEstimate = {
             date: estimatedDate,
-            total: totalForStage,
+            total: totalForEstimate,
             remaining: remainingScenes,
             rate: parseFloat(scenesPerWeek.toFixed(1)),
             stage: activeStage,
@@ -167,19 +240,20 @@ export class TimelineMetricsService {
             lastProgressDate,
             windowDays,
             labelText,
-            isFrozen: false
+            isFrozen: false,
+            stragglerCount: stragglerCount > 0 ? stragglerCount : undefined
         };
 
         // Freeze to last fresh estimate if we have no valid rate/date but we had one before
         if (!estimatedDate || scenesPerDay <= 0 || !Number.isFinite(daysNeeded)) {
-            const frozen = this.freezeToLastEstimate(activeStage, lastProgressDate, windowDays);
-            this.captureLatestStats(totalForStage, remainingScenes, scenesPerWeek);
+            const frozen = this.freezeToLastEstimate(activeStage, lastProgressDate, windowDays, stragglerCount);
+            this.captureLatestStats(totalForEstimate, remainingScenes, scenesPerWeek);
             return frozen;
         }
 
         // Store as last fresh estimate for morale-friendly freezing
         this.lastFreshEstimate = { ...result, isFrozen: false, labelText: undefined };
-        this.captureLatestStats(totalForStage, remainingScenes, scenesPerWeek);
+        this.captureLatestStats(totalForEstimate, remainingScenes, scenesPerWeek);
         return result;
     }
 
@@ -189,7 +263,7 @@ export class TimelineMetricsService {
         this.plugin.latestScenesPerWeek = rate;
     }
 
-    private freezeToLastEstimate(stage: string, lastProgressDate: Date | null, windowDays: number): CompletionEstimate | null {
+    private freezeToLastEstimate(stage: string, lastProgressDate: Date | null, windowDays: number, stragglerCount?: number): CompletionEstimate | null {
         if (!this.lastFreshEstimate || this.lastFreshEstimate.stage !== stage) {
             return null;
         }
@@ -200,7 +274,8 @@ export class TimelineMetricsService {
             lastProgressDate: lastProgressDate ?? this.lastFreshEstimate.lastProgressDate,
             windowDays,
             labelText: '?',
-            isFrozen: true
+            isFrozen: true,
+            stragglerCount: stragglerCount && stragglerCount > 0 ? stragglerCount : undefined
         };
     }
 

@@ -213,6 +213,7 @@
   font-weight: normal;
 }
 
+/* Default estimate tick (fallback red) */
 .radial-timeline-container .estimated-date-tick {
   stroke: #ff0000;
   stroke-width: 2px;
@@ -220,6 +221,35 @@
 
 .radial-timeline-container .estimated-date-dot {
   fill: #ff0000;
+}
+
+/* Stage-colored estimate ticks - uses publish stage colors */
+.radial-timeline-container .estimated-date-tick.estimate-stage-Zero,
+.radial-timeline-container .estimated-date-dot.estimate-stage-Zero,
+.radial-timeline-container .estimation-date-label.estimate-stage-Zero {
+  stroke: var(--rt-publishStageColors-Zero, #9E70CF);
+  fill: var(--rt-publishStageColors-Zero, #9E70CF);
+}
+
+.radial-timeline-container .estimated-date-tick.estimate-stage-Author,
+.radial-timeline-container .estimated-date-dot.estimate-stage-Author,
+.radial-timeline-container .estimation-date-label.estimate-stage-Author {
+  stroke: var(--rt-publishStageColors-Author, #5E85CF);
+  fill: var(--rt-publishStageColors-Author, #5E85CF);
+}
+
+.radial-timeline-container .estimated-date-tick.estimate-stage-House,
+.radial-timeline-container .estimated-date-dot.estimate-stage-House,
+.radial-timeline-container .estimation-date-label.estimate-stage-House {
+  stroke: var(--rt-publishStageColors-House, #6FB971);
+  fill: var(--rt-publishStageColors-House, #6FB971);
+}
+
+.radial-timeline-container .estimated-date-tick.estimate-stage-Press,
+.radial-timeline-container .estimated-date-dot.estimate-stage-Press,
+.radial-timeline-container .estimation-date-label.estimate-stage-Press {
+  stroke: var(--rt-publishStageColors-Press, #E5A84B);
+  fill: var(--rt-publishStageColors-Press, #E5A84B);
 }
 
 .radial-timeline-container .estimated-date-tick.estimate-warn,

@@ -508,39 +508,97 @@ function renderCampaignDetails(
                                 target.teaserReveal = { enabled: true, preset: 'standard' };
                             }
                             target.teaserReveal.preset = val as TeaserPreset;
+                            // Initialize custom thresholds from current preset values if switching to custom
+                            if (val === 'custom' && !target.teaserReveal.customThresholds) {
+                                const currentThresholds = getTeaserThresholds(teaserSettings.preset, undefined);
+                                target.teaserReveal.customThresholds = { ...currentThresholds };
+                            }
                             await plugin.saveSettings();
                             // Re-render just this section
                             renderTeaserContent();
                         });
                 });
             
-            // Show reveal level preview
-            const thresholds = getTeaserThresholds(teaserSettings.preset, teaserSettings.customThresholds);
-            const previewRow = teaserContentContainer.createDiv({ cls: 'rt-teaser-preview-row' });
-            
-            const levels = [
-                { key: 'bar', threshold: 0, label: 'Teaser' },
-                { key: 'scenes', threshold: thresholds.scenes, label: 'Scenes' },
-                { key: 'colors', threshold: thresholds.colors, label: 'Colors' },
-                { key: 'acts', threshold: thresholds.acts, label: 'Structure' },
-                { key: 'subplots', threshold: thresholds.subplots, label: 'Full' },
-            ] as const;
-            
-            levels.forEach((level, i) => {
-                const levelBox = previewRow.createDiv({ cls: 'rt-teaser-level-box' });
-                const iconSpan = levelBox.createSpan({ cls: 'rt-teaser-level-icon' });
-                setIcon(iconSpan, TEASER_LEVEL_INFO[level.key].icon);
-                levelBox.createSpan({ text: `${level.threshold}%`, cls: 'rt-teaser-level-threshold' });
-                levelBox.createSpan({ text: level.label, cls: 'rt-teaser-level-label' });
+            // Show custom threshold inputs when 'custom' is selected - compact single row
+            if (teaserSettings.preset === 'custom') {
+                const customRow = teaserContentContainer.createDiv({ cls: 'rt-teaser-custom-row' });
+                const customThresholds = teaserSettings.customThresholds ?? { scenes: 10, colors: 25, acts: 50, subplots: 75 };
                 
-                // Arrow between levels (except last)
-                if (i < levels.length - 1) {
-                    const arrow = previewRow.createSpan({ cls: 'rt-teaser-arrow' });
-                    setIcon(arrow, 'arrow-right');
-                }
-            });
+                const fields: { key: 'scenes' | 'colors' | 'acts' | 'subplots'; label: string }[] = [
+                    { key: 'scenes', label: 'Scenes' },
+                    { key: 'colors', label: 'Colors' },
+                    { key: 'acts', label: 'Structure' },
+                    { key: 'subplots', label: 'Full' },
+                ];
+                
+                const inputs: Record<string, HTMLInputElement> = {};
+                
+                fields.forEach(({ key, label }) => {
+                    const field = customRow.createDiv({ cls: 'rt-teaser-field' });
+                    field.createSpan({ text: label, cls: 'rt-teaser-field-label' });
+                    const input = field.createEl('input', { 
+                        type: 'text',
+                        cls: 'rt-teaser-field-input',
+                        value: String(customThresholds[key])
+                    });
+                    input.maxLength = 2;
+                    inputs[key] = input;
+                });
+                
+                // Save button
+                const saveBtn = customRow.createEl('button', { 
+                    text: 'Save',
+                    cls: 'rt-teaser-save-btn'
+                });
+                
+                const validateAndSave = async () => {
+                    const vals = {
+                        scenes: parseInt(inputs.scenes.value) || 0,
+                        colors: parseInt(inputs.colors.value) || 0,
+                        acts: parseInt(inputs.acts.value) || 0,
+                        subplots: parseInt(inputs.subplots.value) || 0,
+                    };
+                    
+                    // Validate range (1-99)
+                    for (const [k, v] of Object.entries(vals)) {
+                        if (v < 1 || v > 99) {
+                            new Notice(`${k} must be between 1 and 99`);
+                            return;
+                        }
+                    }
+                    
+                    // Validate order: scenes < colors < acts < subplots
+                    if (vals.scenes >= vals.colors || vals.colors >= vals.acts || vals.acts >= vals.subplots) {
+                        new Notice('Thresholds must be in ascending order');
+                        return;
+                    }
+                    
+                    // Save
+                    if (!plugin.settings.authorProgress?.campaigns) return;
+                    const target = plugin.settings.authorProgress.campaigns[index];
+                    if (!target.teaserReveal) {
+                        target.teaserReveal = { enabled: true, preset: 'custom' };
+                    }
+                    target.teaserReveal.customThresholds = vals;
+                    await plugin.saveSettings();
+                    new Notice('Custom thresholds saved');
+                    renderTeaserContent();
+                };
+                
+                saveBtn.onclick = validateAndSave;
+                
+                // Validate on blur for each input
+                Object.values(inputs).forEach(input => {
+                    input.onblur = () => {
+                        const val = parseInt(input.value) || 0;
+                        if (val < 1) input.value = '1';
+                        else if (val > 99) input.value = '99';
+                    };
+                });
+            }
             
-            // SVG Previews of each stage
+            // Show SVG previews of each reveal stage
+            const thresholds = getTeaserThresholds(teaserSettings.preset, teaserSettings.customThresholds);
             const svgPreviewRow = teaserContentContainer.createDiv({ cls: 'rt-teaser-svg-preview-row' });
             renderTeaserStagesPreviews(svgPreviewRow, plugin, currentCampaign, thresholds);
         }
