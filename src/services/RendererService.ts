@@ -21,8 +21,10 @@ import { updateSynopsisText, updateSynopsisVisibility } from '../renderer/dom/Sy
 import { updateSubplotLabels, updateSubplotLabelVisibility } from '../renderer/dom/SubplotLabelDOMUpdater';
 import { createTimelineSVG as buildTimelineSVG } from '../renderer/TimelineRenderer';
 import { adjustBeatLabelsAfterRender } from '../renderer/dom/BeatLabelAdjuster';
-import { PluginRendererFacade } from '../utils/sceneHelpers';
+import { PluginRendererFacade, isBeatNote } from '../utils/sceneHelpers';
 import { AuthorProgressService } from './AuthorProgressService';
+import { STAGE_ORDER } from '../utils/constants';
+import type { MilestoneInfo } from '../renderer/components/ProgressMilestoneIndicator';
 
 export interface RenderResult {
     svgString: string;
@@ -44,7 +46,93 @@ export class RendererService {
             // AuthorProgressService not available - skip indicator
         }
         
-        return buildTimelineSVG(pluginFacade, scenes, { aprNeedsRefresh });
+        // Detect progress milestones (stage completions, staleness encouragement)
+        const milestone = this.detectProgressMilestone(scenes);
+        
+        return buildTimelineSVG(pluginFacade, scenes, { aprNeedsRefresh, milestone });
+    }
+
+    /**
+     * Detect if there's a progress milestone to celebrate or encouragement needed
+     * Priority: Book complete > Stage complete > Staleness encouragement
+     * 
+     * A stage is only "complete" when ALL scenes have reached that stage AND are complete.
+     * Scenes at lower stages waiting to be promoted mean the higher stage is NOT complete.
+     */
+    private detectProgressMilestone(scenes: TimelineItem[]): MilestoneInfo | null {
+        const sceneNotesOnly = scenes.filter(scene => !isBeatNote(scene));
+        if (sceneNotesOnly.length === 0) return null;
+
+        const normalizeStage = (raw: unknown): (typeof STAGE_ORDER)[number] => {
+            const v = (raw ?? 'Zero').toString().trim().toLowerCase();
+            const match = STAGE_ORDER.find(stage => stage.toLowerCase() === v);
+            return match ?? 'Zero';
+        };
+
+        const isCompleted = (status: unknown): boolean => {
+            const val = Array.isArray(status) ? status[0] : status;
+            const normalized = (val ?? '').toString().trim().toLowerCase();
+            return normalized === 'complete' || normalized === 'completed' || normalized === 'done';
+        };
+
+        // For a stage to be "complete", ALL scenes must be AT that stage (or higher) AND complete
+        // Check from highest stage down
+        for (const stage of [...STAGE_ORDER].reverse()) {
+            const stageIndex = STAGE_ORDER.indexOf(stage);
+            
+            // Count scenes at this stage or higher
+            const scenesAtOrAbove = sceneNotesOnly.filter(s => {
+                const sceneStageIndex = STAGE_ORDER.indexOf(normalizeStage(s['Publish Stage']));
+                return sceneStageIndex >= stageIndex;
+            });
+            
+            // If no scenes have reached this stage yet, skip
+            if (scenesAtOrAbove.length === 0) continue;
+            
+            // Check if ALL scenes are at this stage or higher
+            const allScenesAtOrAbove = scenesAtOrAbove.length === sceneNotesOnly.length;
+            
+            // Check if all scenes at this exact stage are complete
+            const scenesAtExactStage = sceneNotesOnly.filter(s => normalizeStage(s['Publish Stage']) === stage);
+            const allAtExactStageComplete = scenesAtExactStage.length > 0 && 
+                scenesAtExactStage.every(s => isCompleted(s.status));
+            
+            // Stage is complete only if:
+            // 1. ALL scenes have reached this stage (no scenes at lower stages)
+            // 2. All scenes at this exact stage are complete
+            if (allScenesAtOrAbove && allAtExactStageComplete) {
+                if (stage === 'Press') {
+                    return { type: 'book-complete', stage };
+                } else if (stage === 'House') {
+                    return { type: 'stage-house-complete', stage };
+                } else if (stage === 'Author') {
+                    return { type: 'stage-author-complete', stage };
+                } else if (stage === 'Zero') {
+                    return { type: 'stage-zero-complete', stage };
+                }
+            }
+            
+            // If some scenes are at this stage but not all complete, or some scenes are below,
+            // no celebration yet - keep checking lower stages
+        }
+
+        // Check for staleness (encouragement needed)
+        try {
+            const estimate = this.plugin.calculateCompletionEstimate(scenes);
+            if (estimate && estimate.staleness !== 'fresh') {
+                if (estimate.staleness === 'stalled') {
+                    return { type: 'staleness-stalled' };
+                } else if (estimate.staleness === 'late') {
+                    return { type: 'staleness-late' };
+                } else if (estimate.staleness === 'warn') {
+                    return { type: 'staleness-warn' };
+                }
+            }
+        } catch {
+            // Estimate calculation failed - skip staleness check
+        }
+
+        return null;
     }
 
     public generateTimeline(scenes: TimelineItem[]): RenderResult {
@@ -343,7 +431,7 @@ export class RendererService {
 
         svg.querySelectorAll('path.progress-ring-fill').forEach(n => n.parentNode?.removeChild(n));
         svg.querySelectorAll('line.target-date-tick, rect.target-date-marker').forEach(n => n.parentNode?.removeChild(n));
-        svg.querySelectorAll('line.estimated-date-tick, circle.estimated-date-dot, text.estimation-date-label').forEach(n => n.parentNode?.removeChild(n));
+        svg.querySelectorAll('.rt-estimate-tick-group, line.estimated-date-tick, circle.estimated-date-dot').forEach(n => n.parentNode?.removeChild(n));
         svg.querySelectorAll('path.progress-ring-base').forEach(n => n.parentNode?.removeChild(n));
 
         const now = new Date();

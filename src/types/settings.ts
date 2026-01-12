@@ -85,7 +85,7 @@ export interface AuthorProgressSettings {
     aprCenterTransparent?: boolean;
     aprBookAuthorColor?: string;
     aprEngineColor?: string;
-    aprTheme?: 'dark' | 'light'; // Controls stroke/border contrast
+    aprTheme?: 'dark' | 'light' | 'transparent'; // Controls stroke/border contrast
     
     // Identity & Branding
     bookTitle: string;

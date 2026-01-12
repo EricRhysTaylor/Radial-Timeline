@@ -93,13 +93,22 @@ export function setupTooltipsFromDataAttributes(
 
     const handleMouseOver = (e: Event) => {
         const target = (e.target as Element).closest('.rt-tooltip-target[data-tooltip]');
-        if (target && target !== currentTarget) {
-            currentTarget = target;
-            const text = target.getAttribute('data-tooltip') || '';
-            const placement = (target.getAttribute('data-tooltip-placement') || 'bottom') as TooltipPlacement;
+        if (target) {
+            // Cancel any pending hide immediately when entering a tooltip target
+            if (hideTimeout) {
+                window.clearTimeout(hideTimeout);
+                hideTimeout = null;
+            }
             
-            if (text) {
-                showCustomTooltip(target, text, placement);
+            // Only update if it's a different target
+            if (target !== currentTarget) {
+                currentTarget = target;
+                const text = target.getAttribute('data-tooltip') || '';
+                const placement = (target.getAttribute('data-tooltip-placement') || 'bottom') as TooltipPlacement;
+                
+                if (text) {
+                    showCustomTooltip(target, text, placement);
+                }
             }
         }
     };
@@ -113,10 +122,15 @@ export function setupTooltipsFromDataAttributes(
         // Check if we moved to another tooltip target
         const newTarget = relatedTarget?.closest('.rt-tooltip-target[data-tooltip]');
 
+        // If moving to another tooltip target, don't hide - mouseover will handle the switch
+        if (newTarget) {
+            return;
+        }
+
         // Case 1: Normal case - we can identify the source tooltip target
-        if (target && target === currentTarget && newTarget !== target) {
+        if (target && target === currentTarget) {
             // Delay hiding to allow moving to tooltip (if interactive) or reducing flicker
-            hideTimeout = window.setTimeout(hideCustomTooltip, 50);
+            hideTimeout = window.setTimeout(hideCustomTooltip, 100);
             return;
         }
         
@@ -124,15 +138,15 @@ export function setupTooltipsFromDataAttributes(
         // Check if relatedTarget is still inside currentTarget
         if (!target && currentTarget) {
             const stillInsideCurrentTarget = relatedTarget && currentTarget.contains(relatedTarget);
-            if (!stillInsideCurrentTarget && newTarget !== currentTarget) {
-                hideTimeout = window.setTimeout(hideCustomTooltip, 50);
+            if (!stillInsideCurrentTarget) {
+                hideTimeout = window.setTimeout(hideCustomTooltip, 100);
                 return;
             }
         }
         
         // Case 3: relatedTarget is null (left SVG entirely)
         if (!relatedTarget) {
-            hideTimeout = window.setTimeout(hideCustomTooltip, 50);
+            hideTimeout = window.setTimeout(hideCustomTooltip, 100);
         }
     };
     
@@ -140,6 +154,10 @@ export function setupTooltipsFromDataAttributes(
     // mouseleave doesn't bubble, so it fires when truly leaving the SVG
     const handleMouseLeave = () => {
         if (currentTarget) {
+            // Clear any existing timeout before setting new one
+            if (hideTimeout) {
+                window.clearTimeout(hideTimeout);
+            }
             hideTimeout = window.setTimeout(hideCustomTooltip, 100);
         }
     };

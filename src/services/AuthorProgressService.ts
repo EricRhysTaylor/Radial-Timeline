@@ -4,7 +4,7 @@ import { TimelineItem } from '../types/timeline';
 import { createAprSVG } from '../renderer/apr/AprRenderer';
 import { getAllScenes } from '../utils/manuscript';
 import type { AprCampaign } from '../types/settings';
-import { getTeaserThresholds, getTeaserRevealLevel, teaserLevelToRevealOptions } from '../renderer/apr/AprConstants';
+import { getTeaserThresholds, getTeaserRevealLevel, teaserLevelToRevealOptions, calculateAprProgress } from '../renderer/apr/AprConstants';
 
 export class AuthorProgressService {
     constructor(private plugin: RadialTimelinePlugin, private app: App) {}
@@ -66,29 +66,17 @@ export class AuthorProgressService {
     }
 
     /**
-     * Calculates the project progress percentage.
-     * Logic: (Completed Scenes + Weighted In-Progress) / Total Scenes
-     * For V1 simplified: Count 'Complete', 'Completed', 'Done' status as 100%.
-     * Optional: Add weighted logic for stages if requested.
+     * Calculate progress percentage using weighted publish stage approach.
+     * Delegates to the APR-specific calculation in AprConstants.
+     * 
+     * Each scene contributes based on its Publish Stage:
+     * - Zero = 25%, Author = 50%, House = 75%, Press = 100%
+     * 
+     * This is intentionally separate from TimelineMetricsService
+     * (estimated completion tick) and settings progression preview.
      */
     public calculateProgress(scenes: TimelineItem[]): number {
-        // Filter out beats/backdrops
-        const realScenes = scenes.filter(s => s.itemType === 'Scene' || !s.itemType);
-        if (realScenes.length === 0) return 0;
-
-        let completedCount = 0;
-        
-        realScenes.forEach(scene => {
-            const status = Array.isArray(scene.status) ? scene.status[0] : scene.status;
-            const normalizedStatus = (status || '').toString().trim().toLowerCase();
-            
-            if (['complete', 'completed', 'done'].includes(normalizedStatus)) {
-                completedCount++;
-            }
-            // Future: Add weighted stage logic here if needed
-        });
-
-        return Math.round((completedCount / realScenes.length) * 100);
+        return calculateAprProgress(scenes);
     }
 
     /**

@@ -222,3 +222,62 @@ export function teaserLevelToRevealOptions(level: TeaserRevealLevel): {
             return { showScenes: true, showActs: true, showSubplots: true, showStatusColors: true };
     }
 }
+
+// =============================================================================
+// APR PROGRESS CALCULATION (Weighted Stage-Based)
+// =============================================================================
+// This is intentionally separate from:
+// - TimelineMetricsService (estimated completion tick in main timeline)
+// - Settings progression preview
+// APR uses a simpler weighted approach suitable for fan-facing progress.
+
+/**
+ * Stage weights for APR progress calculation.
+ * Represents how "complete" a scene is based on its publish stage.
+ */
+const APR_STAGE_WEIGHTS: Record<string, number> = {
+    'zero': 0.25,      // First draft complete
+    'author': 0.50,    // Author revision complete
+    'house': 0.75,     // Editor/house revision complete  
+    'press': 1.00,     // Ready for publication
+};
+
+/**
+ * Calculate APR progress using weighted publish stage approach.
+ * 
+ * Each scene contributes based on its Publish Stage:
+ * - Zero = 25%, Author = 50%, House = 75%, Press = 100%
+ * 
+ * This gives fans a more realistic view of multi-stage publishing progress
+ * rather than just counting "done" scenes.
+ * 
+ * @param scenes - Array of timeline items (scenes)
+ * @returns Progress percentage (0-100)
+ */
+export function calculateAprProgress(scenes: Array<{ 
+    itemType?: string; 
+    publishStage?: string | string[];
+    status?: string | string[];
+}>): number {
+    // Filter to real scenes only (not beats/backdrops)
+    const realScenes = scenes.filter(s => s.itemType === 'Scene' || !s.itemType);
+    if (realScenes.length === 0) return 0;
+
+    let totalWeight = 0;
+
+    realScenes.forEach(scene => {
+        // Get publish stage (handle array or string)
+        const rawStage = Array.isArray(scene.publishStage) 
+            ? scene.publishStage[0] 
+            : scene.publishStage;
+        const stage = (rawStage || '').toString().trim().toLowerCase();
+        
+        // Get weight for this stage (default to 0 for unknown/empty)
+        const weight = APR_STAGE_WEIGHTS[stage] ?? 0;
+        totalWeight += weight;
+    });
+
+    // Calculate percentage (each scene at Press = 100% contribution)
+    const maxPossible = realScenes.length; // All at Press = 100%
+    return Math.round((totalWeight / maxPossible) * 100);
+}

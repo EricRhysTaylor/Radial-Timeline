@@ -38,11 +38,9 @@ export function setupRotationController(view: RotationView, svg: SVGSVGElement):
 
         const counterSelectors = [
             '.color-key-center',
+            '.rt-estimate-tick-group',
             '.estimated-date-tick',
             '.estimated-date-dot',
-            '.target-date-tick',
-            '.target-date-marker',
-            '.estimation-date-label',
             '.target-date-tick',
             '.target-date-marker'
         ];

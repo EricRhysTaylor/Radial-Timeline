@@ -92,6 +92,7 @@ import { renderRotationToggle } from './utils/RotationToggle';
 import { renderVersionIndicator } from './components/VersionIndicator';
 import { renderHelpIcon } from './components/HelpIcon';
 import { renderAuthorProgressIndicator } from './components/AuthorProgressIndicator';
+import { renderProgressMilestoneIndicator, type MilestoneInfo } from './components/ProgressMilestoneIndicator';
 import type { CompletionEstimate } from './utils/Estimation';
 import { renderProgressRingBaseLayer } from './utils/ProgressRing';
 import { getReadabilityMultiplier, getReadabilityScale } from '../utils/readability';
@@ -126,7 +127,7 @@ function computeSceneTitleInset(fontScale: number): number {
 export function createTimelineSVG(
     plugin: PluginRendererFacade,
     scenes: TimelineItem[],
-    options?: { aprNeedsRefresh?: boolean }
+    options?: { aprNeedsRefresh?: boolean; milestone?: MilestoneInfo | null }
 ): { svgString: string; maxStageColor: string } {
     const stopTotalPerf = startPerfSegment(plugin, 'timeline.total');
     const sceneCount = scenes.length;
@@ -669,6 +670,11 @@ export function createTimelineSVG(
     // Add APR refresh indicator if needed (bottom-left, above version indicator)
     if (options?.aprNeedsRefresh) {
         svg += renderAuthorProgressIndicator({ needsRefresh: true });
+    }
+
+    // Add progress milestone indicator if there's a milestone (right side)
+    if (options?.milestone) {
+        svg += renderProgressMilestoneIndicator({ milestone: options.milestone });
     }
 
     // Add JavaScript to handle synopsis visibility

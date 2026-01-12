@@ -106,7 +106,7 @@ export function updateEstimationElements(
 ): boolean {
     try {
         // Remove old estimation elements
-        const oldEstimation = svg.querySelectorAll('.estimation-arc, .estimated-date-tick, .estimated-date-label, .year-indicator-circle');
+        const oldEstimation = svg.querySelectorAll('.estimation-arc, .rt-estimate-tick-group, .estimated-date-tick, .year-indicator-circle');
         oldEstimation.forEach(el => el.remove());
         
         // Calculate new estimation

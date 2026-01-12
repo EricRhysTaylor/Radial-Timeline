@@ -1797,6 +1797,11 @@
 /* APR Modal uses standard rt-modal-shell + rt-modal-container pattern */
 /* Sizing handled via inline styles in the modal class */
 
+/* APR SVG hotspot - clickable timeline area */
+.apr-timeline-hotspot {
+  cursor: pointer;
+}
+
 /* APR Badge - social media theme */
 .rt-apr-badge {
   display: inline-flex;

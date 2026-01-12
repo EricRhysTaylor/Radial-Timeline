@@ -492,37 +492,16 @@ function renderCampaignDetails(
         
         // Only show preset and preview if teaser is enabled
         if (teaserSettings.enabled) {
-            // Preset selector
-            new Setting(teaserContentContainer)
-                .setName('Reveal Schedule')
-                .addDropdown(drop => {
-                    drop.addOption('slow', 'Slow (15/30/55/80%)')
-                        .addOption('standard', 'Standard (10/25/50/75%)')
-                        .addOption('fast', 'Fast (5/15/35/60%)')
-                        .addOption('custom', 'Custom')
-                        .setValue(teaserSettings.preset)
-                        .onChange(async (val) => {
-                            if (!plugin.settings.authorProgress?.campaigns) return;
-                            const target = plugin.settings.authorProgress.campaigns[index];
-                            if (!target.teaserReveal) {
-                                target.teaserReveal = { enabled: true, preset: 'standard' };
-                            }
-                            target.teaserReveal.preset = val as TeaserPreset;
-                            // Initialize custom thresholds from current preset values if switching to custom
-                            if (val === 'custom' && !target.teaserReveal.customThresholds) {
-                                const currentThresholds = getTeaserThresholds(teaserSettings.preset, undefined);
-                                target.teaserReveal.customThresholds = { ...currentThresholds };
-                            }
-                            await plugin.saveSettings();
-                            // Re-render just this section
-                            renderTeaserContent();
-                        });
-                });
+            const isCustom = teaserSettings.preset === 'custom';
             
-            // Show custom threshold inputs when 'custom' is selected - compact single row
-            if (teaserSettings.preset === 'custom') {
-                const customRow = teaserContentContainer.createDiv({ cls: 'rt-teaser-custom-row' });
+            // Combined row: label + inputs (when custom) OR label + dropdown (when preset)
+            const scheduleRow = teaserContentContainer.createDiv({ cls: 'rt-teaser-schedule-row' });
+            scheduleRow.createSpan({ text: 'Reveal Schedule', cls: 'rt-teaser-schedule-label' });
+            
+            if (isCustom) {
+                // Custom mode: show inputs + save button inline
                 const customThresholds = teaserSettings.customThresholds ?? { scenes: 10, colors: 25, acts: 50, subplots: 75 };
+                const inputsContainer = scheduleRow.createDiv({ cls: 'rt-teaser-inputs' });
                 
                 const fields: { key: 'scenes' | 'colors' | 'acts' | 'subplots'; label: string }[] = [
                     { key: 'scenes', label: 'Scenes' },
@@ -534,7 +513,7 @@ function renderCampaignDetails(
                 const inputs: Record<string, HTMLInputElement> = {};
                 
                 fields.forEach(({ key, label }) => {
-                    const field = customRow.createDiv({ cls: 'rt-teaser-field' });
+                    const field = inputsContainer.createDiv({ cls: 'rt-teaser-field' });
                     field.createSpan({ text: label, cls: 'rt-teaser-field-label' });
                     const input = field.createEl('input', { 
                         type: 'text',
@@ -546,7 +525,7 @@ function renderCampaignDetails(
                 });
                 
                 // Save button
-                const saveBtn = customRow.createEl('button', { 
+                const saveBtn = inputsContainer.createEl('button', { 
                     text: 'Save',
                     cls: 'rt-teaser-save-btn'
                 });
@@ -597,6 +576,39 @@ function renderCampaignDetails(
                 });
             }
             
+            // Dropdown - inline for presets, below row for custom
+            const dropdownContainer = isCustom 
+                ? teaserContentContainer.createDiv({ cls: 'rt-teaser-dropdown-row' })
+                : scheduleRow;
+            
+            const dropdown = dropdownContainer.createEl('select', { cls: 'rt-teaser-preset-dropdown dropdown' });
+            const options = [
+                { value: 'slow', label: 'Slow (15/30/55/80%)' },
+                { value: 'standard', label: 'Standard (10/25/50/75%)' },
+                { value: 'fast', label: 'Fast (5/15/35/60%)' },
+                { value: 'custom', label: 'Custom' },
+            ];
+            options.forEach(opt => {
+                const optEl = dropdown.createEl('option', { value: opt.value, text: opt.label });
+                if (opt.value === teaserSettings.preset) optEl.selected = true;
+            });
+            dropdown.onchange = async () => {
+                if (!plugin.settings.authorProgress?.campaigns) return;
+                const target = plugin.settings.authorProgress.campaigns[index];
+                if (!target.teaserReveal) {
+                    target.teaserReveal = { enabled: true, preset: 'standard' };
+                }
+                const val = dropdown.value as TeaserPreset;
+                target.teaserReveal.preset = val;
+                // Initialize custom thresholds from current preset values if switching to custom
+                if (val === 'custom' && !target.teaserReveal.customThresholds) {
+                    const currentThresholds = getTeaserThresholds(teaserSettings.preset, undefined);
+                    target.teaserReveal.customThresholds = { ...currentThresholds };
+                }
+                await plugin.saveSettings();
+                renderTeaserContent();
+            };
+            
             // Show SVG previews of each reveal stage
             const thresholds = getTeaserThresholds(teaserSettings.preset, teaserSettings.customThresholds);
             const svgPreviewRow = teaserContentContainer.createDiv({ cls: 'rt-teaser-svg-preview-row' });
@@ -645,7 +657,7 @@ async function renderTeaserStagesPreviews(
     // Stages to preview with their simulated progress percentages
     // Order: bar → scenes → colors → acts → subplots (full)
     const stages: { level: TeaserRevealLevel; label: string; progress: number; icon: string }[] = [
-        { level: 'bar', label: 'Teaser', progress: 5, icon: 'circle' },
+        { level: 'bar', label: 'Teaser', progress: 0, icon: 'circle' },
         { level: 'scenes', label: 'Scenes', progress: thresholds.scenes, icon: 'sprout' },
         { level: 'colors', label: 'Colors', progress: thresholds.colors, icon: 'tree-pine' },
         { level: 'acts', label: 'Structure', progress: thresholds.acts, icon: 'trees' },

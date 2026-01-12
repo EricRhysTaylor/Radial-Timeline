@@ -29,7 +29,7 @@ export interface AprRenderOptions {
     transparentCenter?: boolean;
     bookAuthorColor?: string;
     engineColor?: string;
-    theme?: 'dark' | 'light';
+    theme?: 'dark' | 'light' | 'transparent';
 }
 
 export interface AprRenderResult {
@@ -292,7 +292,7 @@ function sanitizeAuthorUrl(url?: string): string | undefined {
     return trimmed;
 }
 
-function resolveStructuralColors(theme: 'dark' | 'light') {
+function resolveStructuralColors(theme: 'dark' | 'light' | 'transparent') {
     if (theme === 'light') {
         return {
             spoke: 'rgba(0, 0, 0, 0.5)',
@@ -302,6 +302,17 @@ function resolveStructuralColors(theme: 'dark' | 'light') {
             background: '#ffffff'
         };
     }
+    if (theme === 'transparent') {
+        // Minimal/invisible structural elements for a clean look
+        return {
+            spoke: 'none',
+            actSpoke: 'none',
+            border: 'none',
+            centerHole: 'transparent',
+            background: 'transparent'
+        };
+    }
+    // Default: dark theme
     return {
         spoke: 'rgba(255, 255, 255, 0.4)',
         actSpoke: 'rgba(255, 255, 255, 0.7)',

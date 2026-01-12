@@ -641,6 +641,23 @@ export class RadialTimelineView extends ItemView {
                     });
                 }
 
+                // Attach Progress Milestone Indicator click behavior - opens Settings Core tab (where progress preview lives)
+                const milestoneIndicator = svgElement.querySelector('.rt-milestone-indicator');
+                if (milestoneIndicator) {
+                    this.registerDomEvent(milestoneIndicator as unknown as HTMLElement, 'click', () => {
+                        // Open settings and switch to Core tab (where the progress preview lives)
+                        if (this.plugin.settingsTab) {
+                            this.plugin.settingsTab.setActiveTab('core');
+                        }
+                        // SAFE: any type used for accessing Obsidian's internal settings API
+                        const setting = (this.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting;
+                        if (setting) {
+                            setting.open();
+                            setting.openTabById('radial-timeline');
+                        }
+                    });
+                }
+
                 // Adjust story beat labels after render
                 const adjustLabels = () => this.rendererService?.adjustBeatLabelsAfterRender(timelineContainer);
                 const rafId1 = requestAnimationFrame(adjustLabels);

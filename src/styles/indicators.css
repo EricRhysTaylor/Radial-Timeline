@@ -207,10 +207,28 @@
   /* Optional: round ends */
 }
 
+/* Estimate tick group - hover interaction */
+.radial-timeline-container .rt-estimate-tick-group {
+  cursor: pointer;
+}
+
+/* Large invisible hotspot for easy hover/touch */
+.radial-timeline-container .rt-estimate-hotspot {
+  pointer-events: all;
+  cursor: pointer;
+}
+
+.radial-timeline-container .rt-estimate-tick-group:hover .estimated-date-tick,
+.radial-timeline-container .rt-estimate-tick-group:hover .estimated-date-dot {
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+/* Legacy label styles (label removed, kept for reference) */
 .radial-timeline-container .estimation-date-label {
   font-size: 14px;
   fill: #ff0000;
   font-weight: normal;
+  display: none; /* Label removed - using tooltip instead */
 }
 
 /* Default estimate tick (fallback red) */
@@ -344,5 +362,59 @@
   }
   50% {
     transform: translate(0, 22px) scale(1.1);
+  }
+}
+
+/* =============================================================================
+   PROGRESS MILESTONE INDICATOR
+   Right-side indicator for stage completions and encouragement
+   ============================================================================= */
+.rt-milestone-indicator {
+  cursor: pointer;
+  transition: filter 0.2s ease;
+}
+
+.rt-milestone-indicator:hover {
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+/* Text styles */
+.rt-milestone-indicator-text {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: opacity 0.2s ease, fill 0.2s ease;
+}
+
+.rt-milestone-indicator-text.rt-milestone-label {
+  opacity: 1;
+}
+
+.rt-milestone-indicator-text.rt-milestone-action {
+  fill: var(--text-normal);
+  opacity: 0;
+}
+
+/* Swap text on hover */
+.rt-milestone-indicator:hover .rt-milestone-indicator-text.rt-milestone-label {
+  opacity: 0;
+}
+
+.rt-milestone-indicator:hover .rt-milestone-indicator-text.rt-milestone-action {
+  opacity: 1;
+}
+
+/* Icon pulse animation */
+.rt-milestone-icon {
+  animation: rt-milestone-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes rt-milestone-pulse {
+  0%, 100% {
+    transform: translate(0, 24px) scale(1);
+  }
+  50% {
+    transform: translate(0, 24px) scale(1.05);
   }
 }

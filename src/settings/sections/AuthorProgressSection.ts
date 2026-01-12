@@ -50,7 +50,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     [
         { icon: 'eye-off', text: 'Spoiler-Safe — Scene titles and content automatically hidden' },
         { icon: 'share-2', text: 'Shareable — Export as static snapshot or live-updating embed' },
-        { icon: 'trending-up', text: 'Progress Tracking — Visual momentum that excites your audience' },
+        { icon: 'trending-up', text: 'Stage-Weighted Progress — Tracks advancement through Zero → Author → House → Press' },
     ].forEach(feature => {
         const li = featuresList.createEl('li');
         const iconSpan = li.createSpan({ cls: 'rt-apr-hero-feature-icon' });
@@ -166,10 +166,11 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         .addDropdown(drop => {
             drop.addOption('dark', 'Light Strokes');
             drop.addOption('light', 'Dark Strokes');
+            drop.addOption('transparent', 'No Strokes');
             drop.setValue(currentTheme);
             drop.onChange(async (val) => {
                 if (!plugin.settings.authorProgress) return;
-                plugin.settings.authorProgress.aprTheme = (val as 'dark' | 'light') || 'dark';
+                plugin.settings.authorProgress.aprTheme = (val as 'dark' | 'light' | 'transparent') || 'dark';
                 await plugin.saveSettings();
                 refreshPreview();
             });

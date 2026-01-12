@@ -81,6 +81,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const cornerOffset = 20; // equal offset from both edges
     const rtX = half - cornerOffset;
     const rtY = half - cornerOffset;
+    const rtFontSize = brandingFontSize + 4; // RT badge slightly bigger
     
     const rtBadge = `
         <a href="${rtUrl}" target="_blank" rel="noopener">
@@ -90,7 +91,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
                 text-anchor="end" 
                 dominant-baseline="auto"
                 font-family="'04b03b', monospace" 
-                font-size="${brandingFontSize}" 
+                font-size="${rtFontSize}" 
                 fill="${engColor}"
                 opacity="0.7">
                 RT
@@ -98,10 +99,19 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         </a>
     `;
     
+    // Large clickable hotspot covering the entire timeline for author URL
+    // Place it behind everything but in front of background
+    const timelineHotspot = authorUrl?.trim() ? `
+        <a href="${authorUrl}" target="_blank" rel="noopener" class="apr-timeline-hotspot">
+            <circle cx="0" cy="0" r="${brandingRadius}" fill="transparent" />
+        </a>
+    ` : '';
+    
     return `
         <g class="apr-branding">
+            ${timelineHotspot}
             ${brandingDefs}
-            ${wrapLink(authorUrl, brandingText)}
+            ${brandingText}
             ${rtBadge}
         </g>
     `;
@@ -131,8 +141,8 @@ export function renderAprCenterPercent(
     const ghostFontSize = innerRadius * 1.9;
     const ghostOpacity = 0.28;
     // Manual vertical offsets to visually center in the hole
-    const ghostYOffset = 30; // % symbol down 30px
-    const numberYOffset = 15; // number down 15px
+    const ghostYOffset = 33; // % symbol down 33px
+    const numberYOffset = 25; // number down 25px
 
     return `
         <g class="apr-center-percent">

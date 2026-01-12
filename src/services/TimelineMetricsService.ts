@@ -115,21 +115,21 @@ export class TimelineMetricsService {
             }
         });
 
-        // Count scenes at active stage AND all lower stages (stragglers)
-        // This gives us the total work remaining for this revision round
-        const scenesAtActiveAndLower = sceneNotesOnly.filter(scene => {
-            const sceneStageIndex = STAGE_ORDER.indexOf(normalizeStage(scene['Publish Stage']));
-            return sceneStageIndex <= activeStageIndex;
-        });
-
+        // Count remaining work for the active stage revision round
+        // Remaining includes:
+        //   1. Scenes AT active stage that are NOT complete (being worked on)
+        //   2. Scenes at LOWER stages that ARE complete (waiting to be promoted and revised)
+        // Stragglers are scenes at lower stages that are NOT complete (haven't finished their stage)
+        
         const processedPaths = new Set<string>();
-        let completedAtActiveAndLower = 0;
+        let completedAtActiveStage = 0;
         let incompleteAtActiveStage = 0;
-        let stragglerCount = 0; // incomplete scenes in stages LOWER than active
+        let completedAtLowerStages = 0; // These are PENDING work for active stage
+        let stragglerCount = 0; // incomplete scenes in stages LOWER than active (not ready yet)
         
         const currentStatusCounts: Record<string, number> = {};
         
-        scenesAtActiveAndLower.forEach(scene => {
+        sceneNotesOnly.forEach(scene => {
             if (!scene.path || processedPaths.has(scene.path)) return;
             processedPaths.add(scene.path);
             
@@ -138,35 +138,49 @@ export class TimelineMetricsService {
             const normalizedStatus = scene.status?.toString().trim().toLowerCase() || 'todo';
             const isSceneComplete = normalizedStatus === 'complete' || normalizedStatus === 'done' || normalizedStatus === 'completed';
             
-            if (isSceneComplete) {
-                completedAtActiveAndLower++;
-                currentStatusCounts['Completed'] = (currentStatusCounts['Completed'] || 0) + 1;
-            } else if (scene.due) {
-                try {
-                    const dueDate = new Date(scene.due + 'T00:00:00');
-                    if (!isNaN(dueDate.getTime()) && dueDate.getTime() < todayTime) {
-                        currentStatusCounts['Due'] = (currentStatusCounts['Due'] || 0) + 1;
+            // Only count scenes at active stage or lower for this revision round
+            if (sceneStageIndex > activeStageIndex) {
+                // Scene is at a HIGHER stage than active - already past this revision round
+                // These count as truly complete for our estimate
+                if (isSceneComplete) {
+                    currentStatusCounts['Completed'] = (currentStatusCounts['Completed'] || 0) + 1;
+                }
+                return;
+            }
+            
+            if (sceneStageIndex === activeStageIndex) {
+                // Scene is AT the active stage
+                if (isSceneComplete) {
+                    completedAtActiveStage++;
+                    currentStatusCounts['Completed'] = (currentStatusCounts['Completed'] || 0) + 1;
+                } else {
+                    incompleteAtActiveStage++;
+                    if (scene.due) {
+                        try {
+                            const dueDate = new Date(scene.due + 'T00:00:00');
+                            if (!isNaN(dueDate.getTime()) && dueDate.getTime() < todayTime) {
+                                currentStatusCounts['Due'] = (currentStatusCounts['Due'] || 0) + 1;
+                            } else {
+                                currentStatusCounts[normalizedStatus] = (currentStatusCounts[normalizedStatus] || 0) + 1;
+                            }
+                        } catch {
+                            currentStatusCounts[normalizedStatus] = (currentStatusCounts[normalizedStatus] || 0) + 1;
+                        }
                     } else {
                         currentStatusCounts[normalizedStatus] = (currentStatusCounts[normalizedStatus] || 0) + 1;
                     }
-                } catch {
-                    currentStatusCounts[normalizedStatus] = (currentStatusCounts[normalizedStatus] || 0) + 1;
-                }
-                
-                // Track stragglers vs active stage incomplete
-                if (sceneStageIndex < activeStageIndex) {
-                    stragglerCount++;
-                } else {
-                    incompleteAtActiveStage++;
                 }
             } else {
-                currentStatusCounts[normalizedStatus] = (currentStatusCounts[normalizedStatus] || 0) + 1;
-                
-                // Track stragglers vs active stage incomplete
-                if (sceneStageIndex < activeStageIndex) {
-                    stragglerCount++;
+                // Scene is at a LOWER stage than active
+                if (isSceneComplete) {
+                    // Complete at lower stage = waiting to be promoted to active stage
+                    // This is PENDING work for the active stage revision round
+                    completedAtLowerStages++;
+                    // Don't count as "Completed" for status display - it's pending
                 } else {
-                    incompleteAtActiveStage++;
+                    // Incomplete at lower stage = straggler (hasn't finished that stage yet)
+                    stragglerCount++;
+                    currentStatusCounts[normalizedStatus] = (currentStatusCounts[normalizedStatus] || 0) + 1;
                 }
             }
         });
@@ -175,8 +189,10 @@ export class TimelineMetricsService {
 
         const totalScenesDeduped = processedPaths.size;
         const totalForEstimate = Math.max(totalScenesDeduped, Math.floor(highestPrefixNumber));
-        // Remaining = all incomplete scenes at active stage + all incomplete at lower stages (stragglers)
-        const remainingScenes = Math.max(0, totalForEstimate - completedAtActiveAndLower);
+        
+        // Remaining = incomplete at active stage + complete at lower stages (pending promotion)
+        // Plus stragglers (incomplete at lower stages - will eventually need to be done too)
+        const remainingScenes = incompleteAtActiveStage + completedAtLowerStages + stragglerCount;
 
         if (remainingScenes <= 0) {
             this.captureLatestStats(totalForEstimate, 0, 0);

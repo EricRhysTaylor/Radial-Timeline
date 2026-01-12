@@ -1,6 +1,9 @@
-import { formatNumber } from '../../utils/svg';
+import { formatNumber, escapeXml } from '../../utils/svg';
 import { dateToAngle } from '../../utils/date';
 import type { CompletionEstimate } from '../../services/TimelineMetricsService';
+
+// Hotspot radius for the estimate tick (large enough for easy hover/touch)
+const ESTIMATE_HOTSPOT_RADIUS = 20;
 
 export function renderEstimatedDateElements(params: {
   estimate: CompletionEstimate;
@@ -14,6 +17,12 @@ export function renderEstimatedDateElements(params: {
   const displayDate = estimateDate === null ? new Date(new Date().getFullYear(), 0, 1) : estimateDate;
   const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
   const dateDisplay = labelText ?? dateFormatter.format(displayDate);
+  
+  // Build tooltip text (escaped for use in data attribute)
+  const tooltipText = labelText === '?' 
+    ? 'Estimated completion: insufficient data'
+    : `Estimated completion: ${dateDisplay}`;
+  const escapedTooltip = escapeXml(tooltipText);
   
   // null date means "use default angle" (book complete, no target set)
   let absoluteDatePos: number;
@@ -35,27 +44,20 @@ export function renderEstimatedDateElements(params: {
 
   let svg = '';
   if ([tickOuterX, tickOuterY, tickInnerX, tickInnerY].every((v) => Number.isFinite(v))) {
+    // Wrap tick elements in a group for styling, but tooltip target is the hotspot only
     svg += `
-      <line x1="${formatNumber(tickOuterX)}" y1="${formatNumber(tickOuterY)}" x2="${formatNumber(tickInnerX)}" y2="${formatNumber(tickInnerY)}" class="estimated-date-tick${stageClass}${stalenessClass}" />
-      <circle cx="${formatNumber(tickInnerX)}" cy="${formatNumber(tickInnerY)}" r="4" class="estimated-date-dot${stageClass}${stalenessClass}" />
+      <g class="rt-estimate-tick-group${stageClass}${stalenessClass}">
+        <!-- Visible tick line -->
+        <line x1="${formatNumber(tickOuterX)}" y1="${formatNumber(tickOuterY)}" x2="${formatNumber(tickInnerX)}" y2="${formatNumber(tickInnerY)}" class="estimated-date-tick${stageClass}${stalenessClass}" />
+        <!-- Visible dot at inner end -->
+        <circle cx="${formatNumber(tickInnerX)}" cy="${formatNumber(tickInnerY)}" r="4" class="estimated-date-dot${stageClass}${stalenessClass}" />
+        <!-- Large invisible hotspot centered on dot - this is the tooltip target so arrow points at dot -->
+        <circle cx="${formatNumber(tickInnerX)}" cy="${formatNumber(tickInnerY)}" r="${ESTIMATE_HOTSPOT_RADIUS}" class="rt-estimate-hotspot rt-tooltip-target" data-tooltip="${escapedTooltip}" data-tooltip-placement="top" fill="transparent" />
+      </g>
     `;
   }
 
-  const labelRadius = progressRadius - 45;
-  const maxOffset = -18;
-  const offsetX = maxOffset * Math.cos(absoluteDatePos);
-  const maxYOffset = 5;
-  const offsetY = -maxYOffset * Math.sin(absoluteDatePos);
-  const labelXNum = labelRadius * Math.cos(absoluteDatePos) + offsetX;
-  const labelYNum = labelRadius * Math.sin(absoluteDatePos) + offsetY;
-
-  if (Number.isFinite(labelXNum) && Number.isFinite(labelYNum)) {
-    const labelX = formatNumber(labelXNum);
-    const labelY = formatNumber(labelYNum);
-    svg += `
-      <text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" class="estimation-date-label${stageClass}${stalenessClass}">${dateDisplay}</text>
-    `;
-  }
+  // Date label removed - styled tooltip on hover is cleaner since tick aligns with month ring
   return svg;
 }
 

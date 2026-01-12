@@ -10,6 +10,7 @@
     *   [[Subplot Mode|Publication Mode]]
 *   **Features & Tools**
     *   [[AI Analysis]]
+    *   [[Author Progress Report]]
     *   [[Book Designer]]
     *   [[Signature]]
 *   **Reference**

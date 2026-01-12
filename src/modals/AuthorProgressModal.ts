@@ -95,7 +95,7 @@ export class AuthorProgressModal extends Modal {
         const revealSection = contentEl.createDiv({ cls: 'rt-apr-reveal-section' });
         revealSection.createEl('h4', { text: 'What to Reveal', cls: 'rt-apr-reveal-title' });
         revealSection.createEl('p', { 
-            text: 'Control how much of your story structure is visible to fans.', 
+            text: 'Control how much of your story structure is visible to fans. Uncheck all for a simple progress ring showing how far scenes have advanced through your publishing stages (Zero → Press).', 
             cls: 'rt-apr-reveal-desc' 
         });
         
