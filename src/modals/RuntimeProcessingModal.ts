@@ -13,7 +13,7 @@ import { formatRuntimeValue, getRuntimeSettings } from '../utils/runtimeEstimato
 import { isNonSceneItem } from '../utils/sceneHelpers';
 
 export type RuntimeScope = 'current' | 'subplot' | 'all';
-export type RuntimeMode = 'local' | 'ai-full' | 'ai-hybrid';
+export type RuntimeMode = 'local' | 'ai';
 
 export interface RuntimeProcessResult {
     message?: string;
@@ -62,7 +62,11 @@ export class RuntimeProcessingModal extends Modal {
     // UI elements
     private scopeDropdown?: DropdownComponent;
     private subplotDropdown?: DropdownComponent;
-    private subplotContainer?: HTMLElement;
+    private subplotLabelContainer?: HTMLElement;
+    private subplotDropdownContainer?: HTMLElement;
+    private currentSceneContainer?: HTMLElement;
+    private currentSceneNameEl?: HTMLElement;
+    private modeDescEl?: HTMLElement;
     private settingsAccordion?: HTMLElement;
     private settingsContent?: HTMLElement;
     private settingsExpanded: boolean = false;
@@ -156,6 +160,12 @@ export class RuntimeProcessingModal extends Modal {
         scopeInfo.createDiv({ cls: 'rt-runtime-section-desc', text: 'Select which scenes to process for runtime estimation.' });
 
         const scopeControls = scopeLayout.createDiv({ cls: 'rt-stack' });
+        
+        // Subplot label row (shown only when subplot scope is selected)
+        this.subplotLabelContainer = scopeControls.createDiv({ cls: 'rt-hidden' });
+        this.subplotLabelContainer.createEl('label', { text: 'Subplot:', cls: 'rt-runtime-label' });
+        
+        // Dropdowns row - both dropdowns aligned horizontally
         const scopeRow = scopeControls.createDiv({ cls: 'rt-row rt-row-wrap' });
         
         // Scope dropdown
@@ -172,10 +182,10 @@ export class RuntimeProcessingModal extends Modal {
                 this.updateCount();
             });
 
-        // Subplot dropdown (shown only when subplot scope is selected)
-        this.subplotContainer = scopeRow.createDiv({ cls: 'rt-runtime-dropdown-container rt-hidden' });
-        this.subplotContainer.createEl('label', { text: 'Subplot:', cls: 'rt-runtime-label' });
-        this.subplotDropdown = new DropdownComponent(this.subplotContainer);
+        // Subplot dropdown (disabled when not in subplot scope)
+        this.subplotDropdownContainer = scopeRow.createDiv({ cls: 'rt-runtime-dropdown-container rt-runtime-dropdown-disabled' });
+        this.subplotDropdown = new DropdownComponent(this.subplotDropdownContainer);
+        this.subplotDropdown.setDisabled(true);
         
         // Populate subplot dropdown
         this.orderedSubplots.forEach(sub => {
@@ -191,6 +201,11 @@ export class RuntimeProcessingModal extends Modal {
             this.selectedSubplot = value;
             this.updateCount();
         });
+
+        // Current scene display (shown only when current scope is selected)
+        this.currentSceneContainer = scopeCard.createDiv({ cls: 'rt-runtime-current-scene rt-hidden' });
+        this.currentSceneContainer.createSpan({ text: 'Scene: ', cls: 'rt-runtime-label' });
+        this.currentSceneNameEl = this.currentSceneContainer.createSpan({ cls: 'rt-runtime-current-scene-name' });
 
         // ===== STATUS FILTERS SECTION =====
         const statusCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
@@ -247,19 +262,21 @@ export class RuntimeProcessingModal extends Modal {
         // ===== MODE SELECTION =====
         const modeCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
         modeCard.createEl('h4', { text: 'Estimation Mode', cls: 'rt-section-title' });
-        modeCard.createDiv({ cls: 'rt-runtime-section-desc', text: 'Use local math only or compare with an AI estimate. AI modes send scene stats (and small samples) to your configured provider.' });
+        this.modeDescEl = modeCard.createDiv({ cls: 'rt-runtime-section-desc' });
 
         const modeRow = modeCard.createDiv({ cls: 'rt-row' });
         const modeDropdownContainer = modeRow.createDiv({ cls: 'rt-runtime-dropdown-container' });
         const modeDropdown = new DropdownComponent(modeDropdownContainer);
         modeDropdown
-            .addOption('local', 'Local only')
-            .addOption('ai-hybrid', 'AI hybrid (stats + samples)')
-            .addOption('ai-full', 'AI fuller pass')
+            .addOption('local', 'Local')
+            .addOption('ai', 'AI')
             .setValue(this.selectedMode)
             .onChange((value) => {
                 this.selectedMode = value as RuntimeMode;
+                this.updateModeDescription();
             });
+        
+        this.updateModeDescription();
 
         // ===== SCENE COUNT SECTION =====
         const countCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
@@ -349,12 +366,89 @@ export class RuntimeProcessingModal extends Modal {
     }
 
     private updateScopeVisibility(): void {
-        if (this.subplotContainer) {
-            if (this.selectedScope === 'subplot') {
-                this.subplotContainer.removeClass('rt-hidden');
+        const showSubplot = this.selectedScope === 'subplot';
+        const showCurrentScene = this.selectedScope === 'current';
+        
+        // Show/hide subplot label
+        if (this.subplotLabelContainer) {
+            if (showSubplot) {
+                this.subplotLabelContainer.removeClass('rt-hidden');
             } else {
-                this.subplotContainer.addClass('rt-hidden');
+                this.subplotLabelContainer.addClass('rt-hidden');
             }
+        }
+        
+        // Enable/disable subplot dropdown (always visible, but muted when not applicable)
+        if (this.subplotDropdownContainer && this.subplotDropdown) {
+            if (showSubplot) {
+                this.subplotDropdownContainer.removeClass('rt-runtime-dropdown-disabled');
+                this.subplotDropdown.setDisabled(false);
+            } else {
+                this.subplotDropdownContainer.addClass('rt-runtime-dropdown-disabled');
+                this.subplotDropdown.setDisabled(true);
+            }
+        }
+        
+        // Show/hide current scene display
+        if (this.currentSceneContainer) {
+            if (showCurrentScene) {
+                this.currentSceneContainer.removeClass('rt-hidden');
+                this.updateCurrentSceneDisplay();
+            } else {
+                this.currentSceneContainer.addClass('rt-hidden');
+            }
+        }
+    }
+
+    private updateCurrentSceneDisplay(): void {
+        if (!this.currentSceneNameEl) return;
+        
+        const activeFile = this.plugin.app.workspace.getActiveFile();
+        if (activeFile) {
+            this.currentSceneNameEl.setText(activeFile.basename);
+            this.currentSceneNameEl.removeClass('rt-runtime-no-scene');
+        } else {
+            this.currentSceneNameEl.setText('No scene open');
+            this.currentSceneNameEl.addClass('rt-runtime-no-scene');
+        }
+    }
+
+    private updateModeDescription(): void {
+        if (!this.modeDescEl) return;
+        
+        const provider = this.plugin.settings.defaultAiProvider || 'openai';
+        const providerLabel = this.getProviderLabel(provider);
+        
+        let description: string;
+        
+        switch (this.selectedMode) {
+            case 'local':
+                description = 'No data sent externally. Runtime calculated locally using word counts, configured WPM rates, and parenthetical timing directives.';
+                break;
+            case 'ai':
+                description = `Each scene sent to ${providerLabel} along with local stats. AI analyzes pacing and context to estimate runtime. Writes AI estimate to each scene.`;
+                break;
+            default:
+                description = '';
+        }
+        
+        this.modeDescEl.setText(description);
+    }
+
+    private getProviderLabel(provider: string): string {
+        switch (provider) {
+            case 'openai':
+                return `OpenAI (${this.plugin.settings.openaiModelId || 'gpt-5.1-chat-latest'})`;
+            case 'anthropic':
+                return `Anthropic (${this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929'})`;
+            case 'gemini':
+                return `Google Gemini (${this.plugin.settings.geminiModelId || 'gemini-2.5-flash'})`;
+            case 'local':
+                const baseUrl = this.plugin.settings.localBaseUrl || 'localhost';
+                const modelId = this.plugin.settings.localModelId || 'local model';
+                return `Local LLM (${modelId} @ ${baseUrl})`;
+            default:
+                return provider;
         }
     }
 

@@ -461,10 +461,11 @@ export function buildAllGossamerRuns(scenes: { itemType?: string; [key: string]:
   // Helper to get the stage for a run by checking beat notes
   const getRunStage = (runIndex: number): string | undefined => {
     const stageFieldName = `GossamerStage${runIndex}`;
-    // Look for stage in any beat note
+    // Look for stage in any beat note - GossamerStage fields are in rawFrontmatter
     for (const scene of scenes) {
-      if ((scene.itemType === 'Beat' || scene.itemType === 'Plot') && scene[stageFieldName]) {
-        const stage = scene[stageFieldName];
+      if (scene.itemType === 'Beat' || scene.itemType === 'Plot') {
+        const fm = (scene as { rawFrontmatter?: Record<string, unknown> }).rawFrontmatter || {};
+        const stage = fm[stageFieldName];
         if (typeof stage === 'string' && ['Zero', 'Author', 'House', 'Press'].includes(stage)) {
           return stage;
         }

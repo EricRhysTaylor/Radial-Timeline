@@ -93,7 +93,7 @@ export class CommandRegistrar {
 
         this.plugin.addCommand({
             id: 'export-manuscript',
-            name: 'Export manuscript',
+            name: 'Manuscript export',
             callback: () => {
                 new ManuscriptOptionsModal(this.app, this.plugin, this.handleManuscriptExport.bind(this)).open();
             }
@@ -199,9 +199,20 @@ export class CommandRegistrar {
                 await updateSceneWordCounts(this.app, slicedFiles, assembled.scenes);
             }
 
+            // Generate friendly timestamp for filename: "Manuscript Jan 12 @ 2.21PM"
+            const now = new Date();
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const month = months[now.getMonth()];
+            const day = now.getDate();
+            const hours = now.getHours();
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            const hour12 = hours % 12 || 12;
+            const friendlyTimestamp = `${month} ${day} @ ${hour12}.${minutes}${ampm}`;
+
             if (result.outputFormat === 'markdown') {
                 const outputFolder = await ensureManuscriptOutputFolder(this.plugin);
-                const filename = `manuscript-${Date.now()}.md`;
+                const filename = `Manuscript ${friendlyTimestamp}.md`;
                 const path = `${outputFolder}/${filename}`;
                 await this.app.vault.create(path, assembled.text);
                 new Notice(`Manuscript exported to ${path}`);
@@ -218,7 +229,7 @@ export class CommandRegistrar {
                     return;
                 }
 
-                const filename = `manuscript-${Date.now()}.${extension}`;
+                const filename = `Manuscript ${friendlyTimestamp}.${extension}`;
                 const outputPath = `${absoluteOutputFolder}/${filename}`;
                 
                 // Resolve template

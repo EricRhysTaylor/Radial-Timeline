@@ -26,25 +26,6 @@ interface SceneToProcess {
     body: string;
 }
 
-interface SceneRuntimeSnapshot {
-    title: string;
-    path: string;
-    runtimeSeconds: number;
-    dialogueWords: number;
-    actionWords: number;
-    directiveSeconds: number;
-    directiveCounts: Record<string, number>;
-    sample?: string;
-}
-
-interface AiEstimateResult {
-    success: boolean;
-    aiSeconds?: number;
-    provider?: string;
-    modelId?: string;
-    rationale?: string;
-    error?: string;
-}
 
 /**
  * Check if a scene's status matches the filters
@@ -77,6 +58,7 @@ async function getScenesForScope(
     const scenes = await plugin.getSceneData();
     const vault = plugin.app.vault;
     const result: SceneToProcess[] = [];
+    const processedPaths = new Set<string>();
 
     // Build the list of scenes to process based on scope
     let targetScenes: TimelineItem[];
@@ -107,6 +89,10 @@ async function getScenesForScope(
     // Filter by existing runtime if not overriding
     for (const scene of targetScenes) {
         if (!scene.path) continue;
+        
+        // Deduplicate: scenes with multiple subplots appear multiple times in getSceneData
+        if (processedPaths.has(scene.path)) continue;
+        processedPaths.add(scene.path);
 
         const hasExistingRuntime = scene.Runtime && parseRuntimeField(scene.Runtime) !== null && parseRuntimeField(scene.Runtime)! > 0;
         
@@ -195,7 +181,6 @@ async function processScenes(
     let processed = 0;
     let totalRuntime = 0;
     let errors = 0;
-    const sceneStats: SceneRuntimeSnapshot[] = [];
 
     for (const scene of scenes) {
         if (modal.isAborted()) {
@@ -203,28 +188,35 @@ async function processScenes(
         }
 
         try {
-            // Estimate runtime from content
             const runtimeSettings = getRuntimeSettings(plugin.settings, scene.runtimeProfileId || defaultProfileId);
-            const result = estimateRuntime(scene.body, runtimeSettings);
+            const localResult = estimateRuntime(scene.body, runtimeSettings);
             
-            // Update file frontmatter
-            const success = await updateSceneRuntime(plugin, scene.file, result.totalSeconds);
+            let runtimeSeconds: number;
+            
+            if (mode === 'ai') {
+                // AI mode: send scene to AI for estimation
+                modal.setStatusMessage(`AI analyzing: ${scene.title}`);
+                const aiResult = await estimateSceneWithAi(plugin, scene, localResult, runtimeSettings);
+                
+                if (aiResult.success && typeof aiResult.runtimeSeconds === 'number') {
+                    runtimeSeconds = aiResult.runtimeSeconds;
+                } else {
+                    // Fall back to local if AI fails
+                    runtimeSeconds = localResult.totalSeconds;
+                    console.warn(`AI estimation failed for ${scene.title}, using local estimate`);
+                }
+            } else {
+                // Local mode: use algorithmic estimation
+                runtimeSeconds = localResult.totalSeconds;
+            }
+            
+            // Update file frontmatter with the runtime
+            const success = await updateSceneRuntime(plugin, scene.file, runtimeSeconds);
             
             if (success) {
                 processed++;
-                totalRuntime += result.totalSeconds;
-                const sample = mode === 'local' ? undefined : truncateText(scene.body, mode === 'ai-full' ? 1200 : 400);
-                sceneStats.push({
-                    title: scene.title,
-                    path: scene.path,
-                    runtimeSeconds: result.totalSeconds,
-                    dialogueWords: result.dialogueWords,
-                    actionWords: result.actionWords,
-                    directiveSeconds: result.directiveSeconds,
-                    directiveCounts: result.directiveCounts,
-                    sample,
-                });
-                modal.updateProgress(processed, scenes.length, scene.title, result.totalSeconds);
+                totalRuntime += runtimeSeconds;
+                modal.updateProgress(processed, scenes.length, scene.title, runtimeSeconds);
             } else {
                 errors++;
             }
@@ -233,58 +225,26 @@ async function processScenes(
             errors++;
         }
     }
-    
-    let aiResult: AiEstimateResult | undefined;
-    if (mode !== 'local') {
-        modal.setStatusMessage('Preparing AI runtime estimate...');
-        aiResult = await estimateRuntimeWithAi(plugin, sceneStats, getRuntimeSettings(plugin.settings, defaultProfileId), mode);
-    }
 
+    const modeLabel = mode === 'ai' ? 'AI' : 'Local';
     const message = errors > 0
-        ? `Runtime estimation complete. ${processed} scenes updated, ${errors} errors.`
-        : `Runtime estimation complete! ${processed} scenes updated. Total: ${formatRuntimeValue(totalRuntime)}`;
+        ? `${modeLabel} estimation complete. ${processed} scenes updated, ${errors} errors.`
+        : `${modeLabel} estimation complete! ${processed} scenes updated. Total: ${formatRuntimeValue(totalRuntime)}`;
 
     new Notice(message);
 
-    // Refresh timeline AFTER all processing (including AI estimate) completes
-    // Use direct refresh on all views to bypass debounce for immediate visual feedback
+    // Refresh timeline after processing
     plugin.getTimelineViews().forEach(v => v.refreshTimeline());
 
     return {
         message,
         localTotalSeconds: totalRuntime,
-        aiResult: aiResult ? { ...aiResult } : undefined,
     };
 }
 
-function truncateText(text: string, maxChars: number): string {
-    if (!text) return '';
-    if (text.length <= maxChars) return text;
-    return `${text.slice(0, maxChars)}…`;
-}
-
-function aggregateStats(scenes: SceneRuntimeSnapshot[]) {
-    return scenes.reduce(
-        (acc, scene) => {
-            acc.dialogueWords += scene.dialogueWords;
-            acc.actionWords += scene.actionWords;
-            acc.directiveSeconds += scene.directiveSeconds;
-            Object.entries(scene.directiveCounts).forEach(([key, value]) => {
-                acc.directiveCounts[key] = (acc.directiveCounts[key] || 0) + value;
-            });
-            acc.localSeconds += scene.runtimeSeconds;
-            return acc;
-        },
-        { dialogueWords: 0, actionWords: 0, directiveSeconds: 0, directiveCounts: {} as Record<string, number>, localSeconds: 0 }
-    );
-}
-
-function pickScenesForAi(scenes: SceneRuntimeSnapshot[], mode: RuntimeMode): SceneRuntimeSnapshot[] {
-    const sorted = [...scenes].sort((a, b) => b.runtimeSeconds - a.runtimeSeconds);
-    const limit = mode === 'ai-full' ? 24 : 12;
-    return sorted.slice(0, limit);
-}
-
+/**
+ * Extract JSON from AI response content
+ */
 function extractJsonFromContent(content: string): unknown {
     if (!content) return null;
     const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -306,117 +266,110 @@ function extractJsonFromContent(content: string): unknown {
     }
 }
 
-async function estimateRuntimeWithAi(
+interface SceneAiResult {
+    success: boolean;
+    runtimeSeconds?: number;
+    error?: string;
+}
+
+/**
+ * Estimate a single scene's runtime using AI
+ * Sends scene content along with local stats for AI to analyze
+ */
+async function estimateSceneWithAi(
     plugin: RadialTimelinePlugin,
-    sceneStats: SceneRuntimeSnapshot[],
-    settings: ReturnType<typeof getRuntimeSettings>,
-    mode: RuntimeMode
-): Promise<AiEstimateResult> {
-    if (sceneStats.length === 0) {
-        return { success: false, error: 'No scenes available for AI estimate.' };
-    }
-
-    const selectedScenes = pickScenesForAi(sceneStats, mode);
-    const omittedScenes = sceneStats.filter((s) => !selectedScenes.includes(s));
-    const totalsAll = aggregateStats(sceneStats);
-    const totalsOmitted = aggregateStats(omittedScenes);
-
+    scene: SceneToProcess,
+    localResult: ReturnType<typeof estimateRuntime>,
+    settings: ReturnType<typeof getRuntimeSettings>
+): Promise<SceneAiResult> {
+    const contentType = settings.contentType || 'novel';
+    const isScreenplay = contentType === 'screenplay';
+    
+    // Build context for AI
     const payload = {
-        mode,
-        sceneCount: sceneStats.length,
+        sceneTitle: scene.title,
+        contentType,
+        localEstimate: {
+            totalSeconds: localResult.totalSeconds,
+            formattedTime: formatRuntimeValue(localResult.totalSeconds),
+            wordCount: localResult.dialogueWords + localResult.actionWords,
+            dialogueWords: localResult.dialogueWords,
+            actionWords: localResult.actionWords,
+            directiveSeconds: localResult.directiveSeconds,
+            directives: localResult.directiveCounts,
+        },
         settings: {
-            contentType: settings.contentType,
+            narrationWpm: settings.narrationWpm,
             dialogueWpm: settings.dialogueWpm,
             actionWpm: settings.actionWpm,
-            narrationWpm: settings.narrationWpm,
-            directives: {
-                beatSeconds: settings.beatSeconds,
-                pauseSeconds: settings.pauseSeconds,
-                longPauseSeconds: settings.longPauseSeconds,
-                momentSeconds: settings.momentSeconds,
-                silenceSeconds: settings.silenceSeconds,
-            },
+            beatSeconds: settings.beatSeconds,
+            pauseSeconds: settings.pauseSeconds,
+            longPauseSeconds: settings.longPauseSeconds,
+            momentSeconds: settings.momentSeconds,
+            silenceSeconds: settings.silenceSeconds,
         },
-        totals: totalsAll,
-        sampleScenes: selectedScenes.map((scene) => ({
-            title: scene.title,
-            path: scene.path,
-            localRuntimeSeconds: scene.runtimeSeconds,
-            dialogueWords: scene.dialogueWords,
-            actionWords: scene.actionWords,
-            directiveSeconds: scene.directiveSeconds,
-            directives: scene.directiveCounts,
-            sample: scene.sample,
-        })),
-        omittedSummary: {
-            count: omittedScenes.length,
-            totals: totalsOmitted,
-        },
-        note: 'Estimate total runtime (seconds). Prefer local math if confident; adjust using pacing intuition from stats/samples.',
+        sceneContent: scene.body,
     };
 
-    const systemPrompt = [
-        'You are a runtime estimator for novels and screenplays.',
-        'Use provided per-scene stats to estimate total runtime in seconds.',
-        'Return JSON: {"estimatedSeconds": number, "rationale": string, "confidence": 1-5}.',
-        'Do not include prose outside JSON.',
-    ].join(' ');
+    const systemPrompt = isScreenplay
+        ? `You are an expert script supervisor estimating screen time for screenplay scenes. Analyze the scene content, considering dialogue pacing, action sequences, visual beats, and dramatic pauses. The local algorithm provides a baseline using word counts and parenthetical timings. Your job is to refine this estimate based on your understanding of how the scene would actually play on screen. Return ONLY valid JSON.`
+        : `You are an expert audiobook producer estimating narration time. Analyze the scene content, considering dialogue pacing, descriptive passages, emotional beats, and natural reading rhythm. The local algorithm provides a baseline using word counts and timing directives. Your job is to refine this estimate based on how a professional narrator would actually perform this scene. Return ONLY valid JSON.`;
 
-    const userPrompt = [
-        'Runtime data follows as JSON.',
-        'Account for pacing differences between dialogue and action.',
-        'Adjust modestly for directive seconds if they seem over/under-weighted.',
-        'Respond with JSON only.',
-        JSON.stringify(payload, null, 2),
-    ].join('\n\n');
+    const userPrompt = `Estimate the runtime for this scene in seconds.
 
-    const response = await callProvider(plugin, {
-        systemPrompt,
-        userPrompt,
-        maxTokens: 900,
-        temperature: 0.25,
-    });
+Scene: "${scene.title}"
+Content Type: ${contentType}
 
-    const provider = response?.provider || plugin.settings.defaultAiProvider || 'openai';
-    const modelId = response?.modelId || '';
+LOCAL ALGORITHM ESTIMATE:
+- Total: ${localResult.totalSeconds} seconds (${formatRuntimeValue(localResult.totalSeconds)})
+- Word count: ${localResult.dialogueWords + localResult.actionWords} words
+${isScreenplay ? `- Dialogue words: ${localResult.dialogueWords}
+- Action/description words: ${localResult.actionWords}` : `- Narration words: ${localResult.dialogueWords + localResult.actionWords}`}
+- Timing directives: ${localResult.directiveSeconds} seconds from ${Object.entries(localResult.directiveCounts).map(([k, v]) => `${k}(${v})`).join(', ') || 'none'}
 
-    if (!response.success || !response.content) {
-        return {
-            success: false,
-            provider,
-            modelId,
-            error: 'AI request failed',
-        };
+CONFIGURED RATES:
+${isScreenplay ? `- Dialogue: ${settings.dialogueWpm} wpm
+- Action: ${settings.actionWpm} wpm` : `- Narration: ${settings.narrationWpm} wpm`}
+
+SCENE CONTENT:
+${scene.body}
+
+---
+Analyze the scene and provide your runtime estimate. Consider:
+- Pacing and rhythm of dialogue
+- ${isScreenplay ? 'Visual action that takes screen time beyond word count' : 'Descriptive passages that may be read slower for atmosphere'}
+- Emotional moments that warrant natural pauses
+- Whether the local estimate seems accurate, too short, or too long
+
+Return JSON only: {"runtimeSeconds": number, "reasoning": "brief explanation"}`;
+
+    try {
+        const response = await callProvider(plugin, {
+            systemPrompt,
+            userPrompt,
+            maxTokens: 500,
+            temperature: 0.3,
+        });
+
+        if (!response.success || !response.content) {
+            return { success: false, error: 'AI request failed' };
+        }
+
+        const parsed = extractJsonFromContent(response.content) as
+            | { runtimeSeconds?: number; estimatedSeconds?: number; totalSeconds?: number; seconds?: number }
+            | null;
+
+        // Try various field names the AI might use
+        const seconds = parsed?.runtimeSeconds ?? parsed?.estimatedSeconds ?? parsed?.totalSeconds ?? parsed?.seconds;
+
+        if (typeof seconds === 'number' && Number.isFinite(seconds) && seconds >= 0) {
+            return { success: true, runtimeSeconds: Math.round(seconds) };
+        }
+
+        return { success: false, error: 'AI response missing runtimeSeconds' };
+    } catch (e) {
+        return { success: false, error: e instanceof Error ? e.message : 'Unknown error' };
     }
-
-    const parsed = extractJsonFromContent(response.content) as
-        | { estimatedSeconds?: number; totalSeconds?: number; rationale?: string; reasoning?: string; confidence?: number }
-        | null;
-
-    const aiSeconds =
-        (parsed && typeof parsed.estimatedSeconds === 'number' && Number.isFinite(parsed.estimatedSeconds) && parsed.estimatedSeconds >= 0)
-            ? parsed.estimatedSeconds
-            : parsed && typeof parsed.totalSeconds === 'number' && Number.isFinite(parsed.totalSeconds) && parsed.totalSeconds >= 0
-                ? parsed.totalSeconds
-                : null;
-
-    if (aiSeconds === null) {
-        return {
-            success: false,
-            provider,
-            modelId,
-            rationale: response.content,
-            error: 'AI response missing estimatedSeconds',
-        };
-    }
-
-    return {
-        success: true,
-        aiSeconds: Math.round(aiSeconds),
-        provider,
-        modelId,
-        rationale: parsed?.rationale || parsed?.reasoning || response.content,
-    };
 }
 
 /**

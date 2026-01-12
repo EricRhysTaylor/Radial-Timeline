@@ -203,15 +203,20 @@ export function getLatestGossamerSweepStageColor(
   const beatNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
   
   for (const beat of beatNotes) {
+    // Use rawFrontmatter since Gossamer6-30 and all GossamerStage fields are only there
+    const fm = beat.rawFrontmatter || {};
+    
     // Find the highest Gossamer score index for this beat
     for (let i = 30; i >= 1; i--) {
-      const scoreKey = `Gossamer${i}` as keyof typeof beat;
-      if ((beat as unknown as Record<string, unknown>)[scoreKey] !== undefined) {
+      const scoreKey = `Gossamer${i}`;
+      // Check both direct property (Gossamer1-5) and rawFrontmatter (Gossamer6-30)
+      const scoreValue = (beat as unknown as Record<string, unknown>)[scoreKey] ?? fm[scoreKey];
+      if (scoreValue !== undefined && scoreValue !== null) {
         if (i > latestRunIndex) {
           latestRunIndex = i;
-          // Get the stage for this run
+          // Get the stage for this run from rawFrontmatter (GossamerStage fields are only there)
           const stageKey = `GossamerStage${i}`;
-          const stageValue = (beat as unknown as Record<string, unknown>)[stageKey];
+          const stageValue = fm[stageKey];
           if (typeof stageValue === 'string' && STAGE_ORDER.includes(stageValue as typeof STAGE_ORDER[number])) {
             latestStage = stageValue;
           }

@@ -2024,14 +2024,18 @@
   color: var(--text-normal);
 }
 
-/* Legacy styles (keep for modal) */
-.rt-settings-root h4.rt-runtime-subheader,
-.rt-settings-root .setting-item + h4.rt-runtime-subheader {
+/* Runtime/Pro tab subheaders - styled like major section headings */
+.rt-settings-root h4.rt-runtime-subheader {
   font-size: 14px;
   font-weight: 600;
-  margin: 0 0 8px 0;
+  margin: 24px 0 8px 0;
   padding: 0 16px;
   color: var(--text-normal);
+}
+
+/* First subheader in a container doesn't need top margin */
+.rt-settings-root h4.rt-runtime-subheader:first-child {
+  margin-top: 0;
 }
 
 .rt-runtime-explanation {
@@ -2205,6 +2209,36 @@
 
 .rt-runtime-dropdown-container .dropdown {
   width: 100%;
+}
+
+.rt-runtime-dropdown-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.rt-runtime-dropdown-disabled .dropdown {
+  cursor: not-allowed;
+}
+
+/* Current scene display */
+.rt-runtime-current-scene {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rt-runtime-current-scene-name {
+  font-weight: 500;
+  color: var(--text-normal);
+}
+
+.rt-runtime-current-scene-name.rt-runtime-no-scene {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 /* rt-runtime-status-row replaced by rt-row rt-row-loose rt-row-wrap in base.css */
