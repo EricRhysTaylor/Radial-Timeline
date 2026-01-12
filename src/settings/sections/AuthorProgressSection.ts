@@ -67,13 +67,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     sizeSelectorRow.createSpan({ text: 'Preview Size:', cls: 'rt-apr-size-label' });
     
     const sizeButtons = [
-        { size: 'xsmall', label: 'X-Small', dimension: '300×300' },
-        { size: 'compact', label: 'Small', dimension: '600×600' },
-        { size: 'standard', label: 'Medium', dimension: '800×800' },
-        { size: 'large', label: 'Large', dimension: '1000×1000' },
+        { size: 'small', label: 'Small', dimension: '150×150' },
+        { size: 'medium', label: 'Medium', dimension: '300×300' },
+        { size: 'large', label: 'Large', dimension: '450×450' },
     ] as const;
     
-    const currentSize = plugin.settings.authorProgress?.aprSize || 'standard';
+    const currentSize = plugin.settings.authorProgress?.aprSize || 'medium';
     
     sizeButtons.forEach(({ size, label, dimension }) => {
         const btn = sizeSelectorRow.createEl('button', { 
@@ -114,7 +113,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Load and render preview asynchronously at actual size
     renderHeroPreview(app, plugin, previewContainer, currentSize);
     const refreshPreview = () => { 
-        const size = plugin.settings.authorProgress?.aprSize || 'standard';
+        const size = plugin.settings.authorProgress?.aprSize || 'medium';
         void renderHeroPreview(app, plugin, previewContainer, size); 
     };
     
@@ -492,7 +491,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             containerEl: contentWrapper,
             onCampaignChange: () => {
                 // Refresh the hero preview when campaigns change
-                const size = plugin.settings.authorProgress?.aprSize || 'standard';
+                const size = plugin.settings.authorProgress?.aprSize || 'medium';
                 void renderHeroPreview(app, plugin, previewContainer, size);
             }
         });
@@ -507,7 +506,7 @@ async function renderHeroPreview(
     app: App, 
     plugin: RadialTimelinePlugin, 
     container: HTMLElement,
-    size: 'xsmall' | 'compact' | 'standard' | 'large' = 'standard'
+    size: 'small' | 'medium' | 'large' = 'medium'
 ): Promise<void> {
     try {
         const scenes = await getAllScenes(app, plugin);

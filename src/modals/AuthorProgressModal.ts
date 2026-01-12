@@ -17,10 +17,10 @@ export class AuthorProgressModal extends Modal {
     private showActs: boolean;
     private showStatus: boolean;
     private showPercent: boolean;
-    private aprSize: 'xsmall' | 'compact' | 'standard' | 'large';
+    private aprSize: 'small' | 'medium' | 'large';
     
-    private previewContainers: Map<'compact' | 'standard' | 'large', HTMLElement> = new Map();
-    private previewCards: Map<'compact' | 'standard' | 'large', HTMLElement> = new Map();
+    private previewContainers: Map<'small' | 'medium' | 'large', HTMLElement> = new Map();
+    private previewCards: Map<'small' | 'medium' | 'large', HTMLElement> = new Map();
     
     private cachedScenes: TimelineItem[] = [];
     private progressPercent: number = 0;
@@ -50,7 +50,7 @@ export class AuthorProgressModal extends Modal {
         this.showActs = settings.showActs ?? true;
         this.showStatus = settings.showStatus ?? true;
         this.showPercent = settings.showProgressPercent ?? true;
-        this.aprSize = settings.aprSize ?? 'standard';
+        this.aprSize = settings.aprSize ?? 'medium';
         this.publishTarget = settings.defaultPublishTarget;
     }
 
@@ -161,9 +161,9 @@ export class AuthorProgressModal extends Modal {
         const previewRow = sizeSection.createDiv({ cls: 'rt-apr-preview-row' });
         
         // Create 3 preview cards
-        this.createPreviewCard(previewRow, 'compact', 'Small', '600×600', 'Social posts (X, Bluesky)');
-        this.createPreviewCard(previewRow, 'standard', 'Medium', '800×800', 'Blog cards, Patreon');
-        this.createPreviewCard(previewRow, 'large', 'Large', '1000×1000', 'Embeds, Kickstarter');
+        this.createPreviewCard(previewRow, 'small', 'Small', '150×150', 'Widgets, sidebars');
+        this.createPreviewCard(previewRow, 'medium', 'Medium', '300×300', 'Social posts, newsletters');
+        this.createPreviewCard(previewRow, 'large', 'Large', '450×450', 'Website embeds');
         
         // Info note about pixel density
         const infoNote = sizeSection.createDiv({ cls: 'rt-apr-density-note' });
@@ -247,7 +247,7 @@ export class AuthorProgressModal extends Modal {
 
     private createPreviewCard(
         container: HTMLElement, 
-        size: 'compact' | 'standard' | 'large', 
+        size: 'small' | 'medium' | 'large', 
         label: string,
         dimensions: string,
         useCase: string
@@ -300,7 +300,7 @@ export class AuthorProgressModal extends Modal {
         }
 
         const settings = this.plugin.settings.authorProgress;
-        const sizes: Array<'compact' | 'standard' | 'large'> = ['compact', 'standard', 'large'];
+        const sizes: Array<'small' | 'medium' | 'large'> = ['small', 'medium', 'large'];
 
         for (const size of sizes) {
             const container = this.previewContainers.get(size);
@@ -350,7 +350,7 @@ export class AuthorProgressModal extends Modal {
                 showActs: true,
                 showStatus: true,
                 showProgressPercent: true,
-                aprSize: 'standard',
+                aprSize: 'medium',
                 bookTitle: '',
                 authorUrl: '',
                 updateFrequency: 'manual',

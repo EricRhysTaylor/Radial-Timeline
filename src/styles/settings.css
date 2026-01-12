@@ -947,11 +947,9 @@
 .rt-color-grid-controls {
   display: flex;
   align-items: center;
-  gap: 0;
-  width: 100%;
+  gap: 8px;
   padding-top: 2px;
   margin-top: 0;
-  justify-content: space-evenly;
   position: relative;
 }
 
@@ -1335,7 +1333,6 @@
 
 .rt-settings-root .rt-color-grid-controls .setting-item {
   margin: 0;
-  width: 100%;
   display: block;
   padding: 0;
   border: none;
@@ -1349,11 +1346,9 @@
 .rt-settings-root .rt-color-grid-controls .setting-item-control {
   display: flex;
   align-items: center;
-  gap: 6px;
-  width: 100%;
+  gap: 8px;
   padding: 0;
   margin: 0;
-  justify-content: space-between;
 }
 
 /* Settings visibility utility classes */

@@ -90,7 +90,7 @@ export class AuthorProgressService {
         const progressPercent = this.calculateProgress(scenes);
 
         const { svgString } = createAprSVG(scenes, {
-            size: settings.aprSize || 'standard',
+            size: settings.aprSize || 'medium',
             progressPercent,
             bookTitle: settings.bookTitle || 'Working Title',
             authorName: settings.authorName || '',
@@ -208,7 +208,7 @@ export class AuthorProgressService {
 
         // Use campaign-specific settings with fallbacks to main settings
         const { svgString } = createAprSVG(scenes, {
-            size: campaign.aprSize || settings.aprSize || 'standard',
+            size: campaign.aprSize || settings.aprSize || 'medium',
             progressPercent,
             bookTitle: settings.bookTitle || 'Working Title',
             authorName: settings.authorName || '',

@@ -42,7 +42,7 @@ export function createDefaultCampaign(name: string): AprCampaign {
         showActs: true,
         showStatus: true,
         showProgressPercent: true,
-        aprSize: 'standard',
+        aprSize: 'medium',
         customTransparent: true,
         customTheme: 'dark',
         // Teaser Reveal defaults (enabled by default for campaigns)
@@ -481,16 +481,15 @@ function renderCampaignDetails(
     // Size
     new Setting(details)
         .setName('Export Size')
-        .setDesc('SVG dimensions for different use cases: X-Small for profile pics, Small for social posts, Medium for newsletters, Large for website embeds.')
+        .setDesc('SVG dimensions: Small for widgets, Medium for social/newsletters, Large for website embeds.')
         .addDropdown(drop => {
-            drop.addOption('xsmall', 'X-Small (300px)')
-                .addOption('compact', 'Small (600px)')
-                .addOption('standard', 'Medium (800px)')
-                .addOption('large', 'Large (1000px)')
+            drop.addOption('small', 'Small (150px)')
+                .addOption('medium', 'Medium (300px)')
+                .addOption('large', 'Large (450px)')
                 .setValue(campaign.aprSize)
                 .onChange(async (val) => {
                     if (!plugin.settings.authorProgress?.campaigns) return;
-                    plugin.settings.authorProgress.campaigns[index].aprSize = val as 'xsmall' | 'compact' | 'standard' | 'large';
+                    plugin.settings.authorProgress.campaigns[index].aprSize = val as 'small' | 'medium' | 'large';
                     await plugin.saveSettings();
                 });
         });
@@ -810,7 +809,7 @@ async function renderTeaserStagesPreviews(
         
         try {
             const { svgString } = createAprSVG(scenes, {
-                size: 'compact',
+                size: 'small',
                 progressPercent: stage.progress,
                 bookTitle: settings.bookTitle || 'Book',
                 authorName: settings.authorName || '',

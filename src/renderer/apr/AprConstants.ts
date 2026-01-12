@@ -9,60 +9,50 @@
 // SIZE PRESETS
 // =============================================================================
 
-export type AprSize = 'xsmall' | 'compact' | 'standard' | 'large';
+export type AprSize = 'small' | 'medium' | 'large';
 
 export const APR_SIZE_PRESETS = {
-    xsmall: {
+    // 150×150 - Like Brandon Sanderson's progress tracker
+    small: {
+        svgSize: 150,
+        innerRadius: 30,
+        outerRadius: 68,
+        brandingRadius: 72,
+        rtBrandingRadius: 66,
+        centerFontSize: 24,
+        brandingFontSize: 7,
+        rtBrandingFontSize: 8, // 8px minimum for pixel font
+        spokeWidth: 0.75,
+        borderWidth: 0.5,
+        actSpokeWidth: 1,
+    },
+    // 300×300 - Standard social media / newsletter size
+    medium: {
         svgSize: 300,
         innerRadius: 60,
-        outerRadius: 140,
-        brandingRadius: 146,
-        rtBrandingRadius: 135,
-        centerFontSize: 36,
-        brandingFontSize: 11,
-        rtBrandingFontSize: 8, // 8px base × 1 (minimum for pixel font)
+        outerRadius: 136,
+        brandingRadius: 144,
+        rtBrandingRadius: 132,
+        centerFontSize: 48,
+        brandingFontSize: 14,
+        rtBrandingFontSize: 8, // 8px minimum for pixel font
         spokeWidth: 1,
         borderWidth: 1,
         actSpokeWidth: 1.5,
     },
-    compact: {
-        svgSize: 600,
-        innerRadius: 120,
-        outerRadius: 280,
-        brandingRadius: 288,
-        rtBrandingRadius: 270,
-        centerFontSize: 72,
-        brandingFontSize: 22,
-        rtBrandingFontSize: 16, // 8px base × 2 (pixel font requires multiples of 8)
-        spokeWidth: 2,
-        borderWidth: 1.5,
-        actSpokeWidth: 3,
-    },
-    standard: {
-        svgSize: 800,
-        innerRadius: 160,
-        outerRadius: 370,
-        brandingRadius: 378,
-        rtBrandingRadius: 356,
-        centerFontSize: 96,
-        brandingFontSize: 28,
-        rtBrandingFontSize: 16, // 8px base × 2 (pixel font requires multiples of 8)
-        spokeWidth: 2.5,
-        borderWidth: 2,
-        actSpokeWidth: 4,
-    },
+    // 450×450 - Larger embed for websites
     large: {
-        svgSize: 1000,
-        innerRadius: 200,
-        outerRadius: 460,
-        brandingRadius: 468,
-        rtBrandingRadius: 444,
-        centerFontSize: 120,
-        brandingFontSize: 34,
-        rtBrandingFontSize: 24, // 8px base × 3 (pixel font requires multiples of 8)
-        spokeWidth: 3,
-        borderWidth: 2.5,
-        actSpokeWidth: 5,
+        svgSize: 450,
+        innerRadius: 90,
+        outerRadius: 204,
+        brandingRadius: 216,
+        rtBrandingRadius: 198,
+        centerFontSize: 72,
+        brandingFontSize: 21,
+        rtBrandingFontSize: 16, // 8px × 2 for pixel font
+        spokeWidth: 1.5,
+        borderWidth: 1.5,
+        actSpokeWidth: 2.5,
     },
 } as const;
 

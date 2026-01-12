@@ -46,9 +46,10 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     // Build the full repeating string (all book/author, no engine text in the ring)
     const fullBrandingText = Array(repetitions).fill(titleSegment).join(separator);
     
-    // Full circle path starting from top (12 o'clock) going clockwise
+    // Full circle path starting from top (12 o'clock) going counter-clockwise
+    // Counter-clockwise (sweep-flag=0) places text on the OUTSIDE of the curve
     const circlePathId = 'apr-branding-circle';
-    const circlePath = `M 0 -${brandingRadius} A ${brandingRadius} ${brandingRadius} 0 1 1 0 ${brandingRadius} A ${brandingRadius} ${brandingRadius} 0 1 1 0 -${brandingRadius}`;
+    const circlePath = `M 0 -${brandingRadius} A ${brandingRadius} ${brandingRadius} 0 1 0 0 ${brandingRadius} A ${brandingRadius} ${brandingRadius} 0 1 0 0 -${brandingRadius}`;
     
     const brandingDefs = `
         <defs>
