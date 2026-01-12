@@ -631,6 +631,7 @@
   margin-top: 8px;
   padding-top: 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: visible;
 }
 
 .rt-pulse-ruler-title {
@@ -645,11 +646,13 @@
   width: 100%;
   overflow-x: auto;
   overflow-y: visible;
-  padding-bottom: 8px;
-  padding-left: 12px;
-  padding-right: 12px;
-  scroll-padding-left: 18px;
-  scroll-padding-right: 18px;
+  /* Increased padding to accommodate scaled-up cards (scale 1.12 = ~17px extra on each side for 140px card) */
+  padding-top: 12px;
+  padding-bottom: 16px;
+  padding-left: 20px;
+  padding-right: 20px;
+  scroll-padding-left: 24px;
+  scroll-padding-right: 24px;
   /* Hide scrollbar for cleaner look, but allow scroll */
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
@@ -668,7 +671,8 @@
   display: flex;
   gap: 10px;
   min-width: min-content;
-  padding: 6px 4px 0 4px;
+  /* Extra padding to accommodate scaled-up active card */
+  padding: 10px 8px;
   overflow: visible;
 }
 
@@ -676,7 +680,8 @@
   position: relative;
   flex: 0 0 auto;
   width: 140px;
-  min-height: 90px;
+  /* Fixed height to prevent resize when grade appears - accommodates value + label + grade badge */
+  min-height: 136px;
   background: rgba(255, 255, 255, 0.04);
   border: 2px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
@@ -688,7 +693,7 @@
   padding: 12px;
   opacity: 0.4;
   transition: all 0.3s ease;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Background icon container for hero cards */
@@ -893,6 +898,17 @@
   padding: 4px 12px;
   border-radius: 8px;
   text-align: center;
+  /* Fixed dimensions to prevent layout shift when grade appears */
+  min-width: 48px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Invisible placeholder that reserves space before grade arrives */
+.rt-pulse-grade-placeholder {
+  visibility: hidden;
 }
 
 .rt-pulse-grade-a {

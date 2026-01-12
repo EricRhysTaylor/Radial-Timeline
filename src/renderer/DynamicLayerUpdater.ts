@@ -5,10 +5,12 @@
  */
 
 import { renderProgressRing } from './components/ProgressRing';
-import { renderTargetDateTick } from './components/ProgressTicks';
+import { renderTargetDateTick, type TargetTickEnhancedData } from './components/ProgressTicks';
 import { renderEstimatedDateElements, renderEstimationArc } from './components/Progress';
 import { dateToAngle } from '../utils/date';
-import type { PluginRendererFacade } from '../utils/sceneHelpers';
+import { isBeatNote, type PluginRendererFacade } from '../utils/sceneHelpers';
+import { STAGE_ORDER } from '../utils/constants';
+import type { TimelineItem } from '../types';
 
 /**
  * Update only the year progress ring without full re-render
@@ -59,12 +61,59 @@ export function updateYearProgressRing(svg: SVGSVGElement, progressRadius: numbe
 }
 
 /**
+ * Calculate enhanced data for target tick tooltips.
+ */
+function calculateTargetTickEnhancedData(
+    scenes: TimelineItem[],
+    plugin: PluginRendererFacade
+): TargetTickEnhancedData | undefined {
+    const realScenes = scenes.filter(scene => !isBeatNote(scene));
+    if (realScenes.length === 0) return undefined;
+    
+    const estimate = plugin.calculateCompletionEstimate(scenes);
+    
+    const stageRemaining: Record<typeof STAGE_ORDER[number], number> = {
+        Zero: 0, Author: 0, House: 0, Press: 0
+    };
+    
+    const normalizeStage = (raw: unknown): typeof STAGE_ORDER[number] => {
+        const v = (raw ?? 'Zero').toString().trim().toLowerCase();
+        const match = STAGE_ORDER.find(stage => stage.toLowerCase() === v);
+        return match ?? 'Zero';
+    };
+    
+    const isCompleted = (status: unknown): boolean => {
+        const val = Array.isArray(status) ? status[0] : status;
+        const normalized = (val ?? '').toString().trim().toLowerCase();
+        return normalized === 'complete' || normalized === 'completed' || normalized === 'done';
+    };
+    
+    const seenPaths = new Set<string>();
+    for (const scene of realScenes) {
+        if (scene.path && seenPaths.has(scene.path)) continue;
+        if (scene.path) seenPaths.add(scene.path);
+        if (!isCompleted(scene.status)) {
+            const stage = normalizeStage(scene['Publish Stage']);
+            stageRemaining[stage]++;
+        }
+    }
+    
+    return {
+        stageRemaining,
+        currentPace: estimate?.rate ?? 0,
+        estimatedStage: (estimate?.stage as typeof STAGE_ORDER[number] | null) ?? null,
+        estimatedDate: estimate?.date ?? null
+    };
+}
+
+/**
  * Update target completion tick/marker without full re-render
  */
 export function updateTargetDateTick(
     svg: SVGSVGElement, 
     plugin: PluginRendererFacade,
-    progressRadius: number
+    progressRadius: number,
+    scenes?: TimelineItem[]
 ): boolean {
     try {
         // Remove old target tick
@@ -75,8 +124,11 @@ export function updateTargetDateTick(
         const timelineRoot = svg.querySelector('#timeline-root');
         if (!timelineRoot) return false;
         
+        // Calculate enhanced data for tooltips if scenes are available
+        const enhancedData = scenes ? calculateTargetTickEnhancedData(scenes, plugin) : undefined;
+        
         // Generate new target tick
-        const newTickSvg = renderTargetDateTick({ plugin, progressRadius, dateToAngle });
+        const newTickSvg = renderTargetDateTick({ plugin, progressRadius, dateToAngle, enhancedData });
         
         // Parse and insert
         const parser = new DOMParser();
@@ -102,7 +154,7 @@ export function updateEstimationElements(
     svg: SVGSVGElement,
     plugin: PluginRendererFacade,
     progressRadius: number,
-    scenes: any[] // SAFE: any type used for scene array from SceneDataService
+    scenes: TimelineItem[]
 ): boolean {
     try {
         // Remove old estimation elements
@@ -151,11 +203,11 @@ export function updateAllTimeBasedElements(
     svg: SVGSVGElement,
     plugin: PluginRendererFacade,
     progressRadius: number,
-    scenes: any[] // SAFE: any type used for scene array from SceneDataService
+    scenes: TimelineItem[]
 ): boolean {
     const success = 
         updateYearProgressRing(svg, progressRadius) &&
-        updateTargetDateTick(svg, plugin, progressRadius) &&
+        updateTargetDateTick(svg, plugin, progressRadius, scenes) &&
         updateEstimationElements(svg, plugin, progressRadius, scenes);
     
     return success;

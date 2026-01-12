@@ -67,6 +67,8 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
     const headerContainer = containerEl.createDiv({ cls: 'rt-professional-header' });
     if (isActive) {
         headerContainer.addClass('rt-professional-active');
+    } else {
+        headerContainer.addClass('rt-professional-inactive');
     }
     if (OPEN_BETA_ACTIVE) {
         headerContainer.addClass('rt-professional-beta');
@@ -86,16 +88,35 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
         titleEl.setText(isActive ? 'Pro features active' : 'Pro');
     }
     
-    // Wiki link (only when not active)
-    if (!isActive) {
-        const linkContainer = headerRow.createSpan({ cls: 'rt-professional-wiki-link' });
-        const dummySetting = new Setting(linkContainer);
-        dummySetting.settingEl.addClass('rt-professional-heading-inline');
-        addWikiLink(dummySetting, 'Settings#professional');
-    }
+    // Wiki link - always show
+    const linkContainer = headerRow.createSpan({ cls: 'rt-professional-wiki-link' });
+    const dummySetting = new Setting(linkContainer);
+    dummySetting.settingEl.addClass('rt-professional-heading-inline');
+    addWikiLink(dummySetting, 'Settings#professional');
+    
+    // Pro toggle on the right (for testing during beta)
+    const toggleContainer = headerRow.createDiv({ cls: 'rt-professional-header-toggle-container' });
+    const toggleLabel = toggleContainer.createSpan({ 
+        cls: isActive ? 'rt-professional-toggle-label rt-pro-toggle-active' : 'rt-professional-toggle-label',
+        text: isActive ? 'Active' : 'Inactive'
+    });
+    const toggle = new Setting(toggleContainer);
+    toggle.settingEl.addClass('rt-professional-header-toggle');
+    toggle.addToggle(t => {
+        t.setValue(plugin.settings.devProActive !== false);
+        t.onChange(async (value) => {
+            plugin.settings.devProActive = value;
+            await plugin.saveSettings();
+            containerEl.empty();
+            renderProfessionalSection({ app: plugin.app, plugin, containerEl });
+        });
+    });
     
     // Content container (always expanded during beta)
     const contentContainer = containerEl.createDiv({ cls: 'rt-professional-content' });
+    if (!isActive) {
+        contentContainer.addClass('rt-professional-content-muted');
+    }
     
     // ─────────────────────────────────────────────────────────────────────────
     // Open Beta Banner (shown during beta period)

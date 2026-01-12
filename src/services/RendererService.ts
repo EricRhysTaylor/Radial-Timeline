@@ -10,7 +10,7 @@ import { addHighlightRectangles as addHighlightRectanglesExt } from '../view/int
 import { renderGossamerLayer } from '../renderer/gossamerLayer';
 import { renderGossamerMonthSpokes } from '../renderer/components/MonthSpokes';
 import { renderProgressRing } from '../renderer/components/ProgressRing';
-import { renderTargetDateTick } from '../renderer/components/ProgressTicks';
+import { renderTargetDateTick, type TargetTickEnhancedData } from '../renderer/components/ProgressTicks';
 import { renderEstimatedDateElements, renderEstimationArc } from '../renderer/components/Progress';
 import { ELAPSED_ARC_RADIUS } from '../renderer/layout/LayoutConstants';
 import { dateToAngle } from '../utils/date';
@@ -440,23 +440,32 @@ export class RendererService {
         const currentYearStartAngle = -Math.PI / 2;
 
         const segmentsHtml = renderProgressRing({ progressRadius, yearProgress, currentYearStartAngle, segmentCount: 6 });
-        const tickHtml = renderTargetDateTick({ plugin: this.plugin as any, progressRadius, dateToAngle }); // SAFE: any type used for plugin interface compatibility
+        
+        // Get scenes and estimate for enhanced tick tooltips
+        const pluginAny = this.plugin as any; // SAFE: any type used for dynamic method access
+        const scenes: TimelineItem[] = pluginAny.lastSceneData || [];
+        let enhancedData: TargetTickEnhancedData | undefined;
+        let estimateResult: ReturnType<typeof pluginAny.calculateCompletionEstimate> = null;
+        
+        try {
+            if (typeof pluginAny.calculateCompletionEstimate === 'function' && scenes.length > 0) {
+                estimateResult = pluginAny.calculateCompletionEstimate(scenes);
+                enhancedData = this.calculateTargetTickEnhancedData(scenes, estimateResult);
+            }
+        } catch {}
+        
+        const tickHtml = renderTargetDateTick({ plugin: this.plugin as any, progressRadius, dateToAngle, enhancedData }); // SAFE: any type used for plugin interface compatibility
 
         let estimationHtml = '';
         try {
-            const pluginAny = this.plugin as any; // SAFE: any type used for dynamic method access
-            if (typeof pluginAny.calculateCompletionEstimate === 'function') {
-                const scenes: TimelineItem[] = pluginAny.lastSceneData || [];
-                const estimateResult = pluginAny.calculateCompletionEstimate(scenes);
-                if (estimateResult && this.plugin.settings?.showCompletionEstimate !== false) {
-                    if (estimateResult.date) {
-                        const yearsDiff = estimateResult.date.getFullYear() - now.getFullYear();
-                        if (yearsDiff <= 0) {
-                            estimationHtml += renderEstimationArc({ estimateDate: estimateResult.date, progressRadius });
-                        }
+            if (estimateResult && this.plugin.settings?.showCompletionEstimate !== false) {
+                if (estimateResult.date) {
+                    const yearsDiff = estimateResult.date.getFullYear() - now.getFullYear();
+                    if (yearsDiff <= 0) {
+                        estimationHtml += renderEstimationArc({ estimateDate: estimateResult.date, progressRadius });
                     }
-                    estimationHtml += renderEstimatedDateElements({ estimate: estimateResult, progressRadius });
                 }
+                estimationHtml += renderEstimatedDateElements({ estimate: estimateResult, progressRadius });
             }
         } catch {}
 
@@ -472,5 +481,49 @@ export class RendererService {
         const nextSibling = baseCircle.nextSibling;
         toInsert.forEach(el => parent.insertBefore(svg.ownerDocument.importNode(el, true), nextSibling));
         return true;
+    }
+    
+    /**
+     * Calculate enhanced data for target tick tooltips.
+     */
+    private calculateTargetTickEnhancedData(
+        scenes: TimelineItem[],
+        estimate: { date: Date | null; rate: number; stage: string } | null
+    ): TargetTickEnhancedData | undefined {
+        const realScenes = scenes.filter(scene => !isBeatNote(scene));
+        if (realScenes.length === 0) return undefined;
+        
+        const stageRemaining: Record<typeof STAGE_ORDER[number], number> = {
+            Zero: 0, Author: 0, House: 0, Press: 0
+        };
+        
+        const normalizeStage = (raw: unknown): typeof STAGE_ORDER[number] => {
+            const v = (raw ?? 'Zero').toString().trim().toLowerCase();
+            const match = STAGE_ORDER.find(stage => stage.toLowerCase() === v);
+            return match ?? 'Zero';
+        };
+        
+        const isCompleted = (status: unknown): boolean => {
+            const val = Array.isArray(status) ? status[0] : status;
+            const normalized = (val ?? '').toString().trim().toLowerCase();
+            return normalized === 'complete' || normalized === 'completed' || normalized === 'done';
+        };
+        
+        const seenPaths = new Set<string>();
+        for (const scene of realScenes) {
+            if (scene.path && seenPaths.has(scene.path)) continue;
+            if (scene.path) seenPaths.add(scene.path);
+            if (!isCompleted(scene.status)) {
+                const stage = normalizeStage(scene['Publish Stage']);
+                stageRemaining[stage]++;
+            }
+        }
+        
+        return {
+            stageRemaining,
+            currentPace: estimate?.rate ?? 0,
+            estimatedStage: (estimate?.stage as typeof STAGE_ORDER[number] | null) ?? null,
+            estimatedDate: estimate?.date ?? null
+        };
     }
 }

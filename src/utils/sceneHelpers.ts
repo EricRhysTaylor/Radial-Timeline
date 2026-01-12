@@ -84,6 +84,12 @@ export interface PluginRendererFacade {
         publishStageColors: Record<string, string>;
         subplotColors: string[];
         targetCompletionDate?: string;
+        stageTargetDates?: {
+            Zero?: string;
+            Author?: string;
+            House?: string;
+            Press?: string;
+        };
         enableAiSceneAnalysis: boolean;
         chronologueDurationCapSelection?: string;
         dominantSubplots?: Record<string, string>;

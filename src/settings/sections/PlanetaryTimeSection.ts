@@ -45,8 +45,8 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         plugin.settings.planetaryProfiles = profiles;
     }
 
-    // Section header and description (use Obsidian defaults)
-    const headerEl = containerEl.createEl('h3', { text: t('planetary.heading') });
+    // Section header
+    const headerEl = containerEl.createDiv({ cls: 'setting-item-name', text: t('planetary.heading') });
     addWikiLinkToElement(headerEl, 'Settings#planetary-time');
 
     // Feature toggle

@@ -42,7 +42,13 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     ],
     currentMode: 'narrative', // Default to Narrative mode
     logApiInteractions: true, // Default for new setting
-    targetCompletionDate: undefined, // Ensure it's undefined by default
+    targetCompletionDate: undefined, // Legacy - kept for backwards compatibility
+    stageTargetDates: {
+        Zero: undefined,
+        Author: undefined,
+        House: undefined,
+        Press: undefined
+    },
     showCompletionEstimate: true, // Default: show the estimate tick
     completionEstimateWindowDays: 30, // Rolling window (days) for completion estimate pace
     openaiApiKey: '', // Default to empty string

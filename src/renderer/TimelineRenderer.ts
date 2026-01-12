@@ -77,7 +77,7 @@ import { sceneArcPath, renderVoidCellPath } from './components/SceneArcs';
 import { renderBeatSlice } from './components/BeatSlices';
 import { renderActBorders } from './components/Acts';
 import { renderActLabels } from './components/ActLabels';
-import { renderTargetDateTick } from './components/ProgressTicks';
+import { renderTargetDateTick, type TargetTickEnhancedData } from './components/ProgressTicks';
 import { renderProgressRing } from './components/ProgressRing';
 import { serializeSynopsesToString } from './components/Synopses';
 import { renderSceneGroup } from './components/Scenes';
@@ -122,6 +122,60 @@ function computeSceneTitleInset(fontScale: number): number {
     if (!Number.isFinite(fontScale) || fontScale <= 1) return SCENE_TITLE_INSET;
     const extraInset = (fontScale - 1) * 18;
     return SCENE_TITLE_INSET + extraInset;
+}
+
+/**
+ * Calculate enhanced data for target tick tooltips.
+ * Computes per-stage remaining scene counts for Required Pace Calculator and Stage Milestone Alerts.
+ */
+function calculateTargetTickEnhancedData(
+    scenes: TimelineItem[],
+    estimate: CompletionEstimate | null
+): TargetTickEnhancedData | undefined {
+    if (scenes.length === 0) return undefined;
+    
+    // Filter to real scenes only (not beats)
+    const realScenes = scenes.filter(scene => !isBeatNote(scene));
+    if (realScenes.length === 0) return undefined;
+    
+    // Calculate remaining scenes per stage
+    const stageRemaining: Record<typeof STAGE_ORDER[number], number> = {
+        Zero: 0,
+        Author: 0,
+        House: 0,
+        Press: 0
+    };
+    
+    const normalizeStage = (raw: unknown): typeof STAGE_ORDER[number] => {
+        const v = (raw ?? 'Zero').toString().trim().toLowerCase();
+        const match = STAGE_ORDER.find(stage => stage.toLowerCase() === v);
+        return match ?? 'Zero';
+    };
+    
+    const isCompleted = (status: unknown): boolean => {
+        const val = Array.isArray(status) ? status[0] : status;
+        const normalized = (val ?? '').toString().trim().toLowerCase();
+        return normalized === 'complete' || normalized === 'completed' || normalized === 'done';
+    };
+    
+    // Count remaining (incomplete) scenes per stage
+    const seenPaths = new Set<string>();
+    for (const scene of realScenes) {
+        if (scene.path && seenPaths.has(scene.path)) continue;
+        if (scene.path) seenPaths.add(scene.path);
+        
+        if (!isCompleted(scene.status)) {
+            const stage = normalizeStage(scene['Publish Stage']);
+            stageRemaining[stage]++;
+        }
+    }
+    
+    return {
+        stageRemaining,
+        currentPace: estimate?.rate ?? 0,
+        estimatedStage: estimate?.stage as typeof STAGE_ORDER[number] | null ?? null,
+        estimatedDate: estimate?.date ?? null
+    };
 }
 
 export function createTimelineSVG(
@@ -344,10 +398,11 @@ export function createTimelineSVG(
     // Draw the year progress ring segments
     svg += renderProgressRing({ progressRadius, yearProgress, currentYearStartAngle, segmentCount: 6 });
 
-
+    // Calculate enhanced data for target ticks (Required Pace Calculator, Stage Milestone Alerts, Auto Mode)
+    const targetTickEnhancedData = calculateTargetTickEnhancedData(scenes, estimateResult);
 
     // Target completion tick/marker
-    svg += renderTargetDateTick({ plugin, progressRadius, dateToAngle });
+    svg += renderTargetDateTick({ plugin, progressRadius, dateToAngle, enhancedData: targetTickEnhancedData });
 
 
     // Synopses at end to be above all other elements

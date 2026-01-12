@@ -7,6 +7,137 @@ import { getAllScenes } from '../../utils/manuscript';
 import type { CompletionEstimate } from '../../services/TimelineMetricsService';
 import { STAGE_ORDER } from '../../utils/constants';
 
+type Stage = typeof STAGE_ORDER[number];
+
+/**
+ * Creates an inline SVG target tick icon for settings rows.
+ * Matches the timeline target tick: line with empty square at end.
+ * @param color - Hex color for the tick stroke
+ * @param size - Icon size in pixels (default 16)
+ */
+function createTargetTickIcon(color: string, size = 16): SVGElement {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', String(size));
+    svg.setAttribute('height', String(size));
+    svg.setAttribute('viewBox', '0 0 16 16');
+    svg.classList.add('rt-target-tick-icon');
+    
+    // Vertical line (pointing up like the timeline tick)
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', '8');
+    line.setAttribute('y1', '14');
+    line.setAttribute('x2', '8');
+    line.setAttribute('y2', '5');
+    line.setAttribute('stroke', color);
+    line.setAttribute('stroke-width', '2');
+    
+    // Empty square at top (the marker)
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', '4');
+    rect.setAttribute('y', '1');
+    rect.setAttribute('width', '8');
+    rect.setAttribute('height', '8');
+    rect.setAttribute('fill', 'none');
+    rect.setAttribute('stroke', color);
+    rect.setAttribute('stroke-width', '2');
+    
+    svg.appendChild(line);
+    svg.appendChild(rect);
+    
+    return svg;
+}
+
+/**
+ * Creates an inline SVG estimate tick icon for settings rows.
+ * Matches the timeline estimated completion tick: line with filled dot at end.
+ * @param color - Hex color for the tick stroke
+ * @param size - Icon size in pixels (default 16)
+ */
+function createEstimateTickIcon(color: string, size = 16): SVGElement {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', String(size));
+    svg.setAttribute('height', String(size));
+    svg.setAttribute('viewBox', '0 0 16 16');
+    svg.classList.add('rt-estimate-tick-icon');
+    
+    // Vertical line (pointing up)
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', '8');
+    line.setAttribute('y1', '14');
+    line.setAttribute('x2', '8');
+    line.setAttribute('y2', '6');
+    line.setAttribute('stroke', color);
+    line.setAttribute('stroke-width', '2');
+    
+    // Filled circle at top (the dot marker)
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', '8');
+    circle.setAttribute('cy', '4');
+    circle.setAttribute('r', '3');
+    circle.setAttribute('fill', color);
+    circle.setAttribute('stroke', color);
+    circle.setAttribute('stroke-width', '1');
+    
+    svg.appendChild(line);
+    svg.appendChild(circle);
+    
+    return svg;
+}
+
+/**
+ * Get the stage color from plugin settings
+ */
+function getStageColor(plugin: RadialTimelinePlugin, stage: Stage): string {
+    return plugin.settings.publishStageColors?.[stage] ?? '#9E70CF';
+}
+
+/**
+ * Check if a date has passed (is overdue)
+ */
+function isOverdue(dateStr: string | undefined): boolean {
+    if (!dateStr) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const targetDate = new Date(dateStr + 'T00:00:00');
+    return !isNaN(targetDate.getTime()) && targetDate < today;
+}
+
+/**
+ * Validate stage target dates ordering.
+ * Returns error message if validation fails, null if valid.
+ */
+function validateStageOrder(plugin: RadialTimelinePlugin, stage: Stage, newDate: string): string | null {
+    const dates = plugin.settings.stageTargetDates ?? {};
+    const stageIndex = STAGE_ORDER.indexOf(stage);
+    const newDateObj = new Date(newDate + 'T00:00:00');
+    
+    // Check earlier stages - their dates should be before this one
+    for (let i = 0; i < stageIndex; i++) {
+        const earlierStage = STAGE_ORDER[i];
+        const earlierDateStr = dates[earlierStage];
+        if (earlierDateStr) {
+            const earlierDate = new Date(earlierDateStr + 'T00:00:00');
+            if (!isNaN(earlierDate.getTime()) && newDateObj <= earlierDate) {
+                return `${stage} target must be after ${earlierStage} target (${earlierDateStr})`;
+            }
+        }
+    }
+    
+    // Check later stages - their dates should be after this one
+    for (let i = stageIndex + 1; i < STAGE_ORDER.length; i++) {
+        const laterStage = STAGE_ORDER[i];
+        const laterDateStr = dates[laterStage];
+        if (laterDateStr) {
+            const laterDate = new Date(laterDateStr + 'T00:00:00');
+            if (!isNaN(laterDate.getTime()) && newDateObj >= laterDate) {
+                return `${stage} target must be before ${laterStage} target (${laterDateStr})`;
+            }
+        }
+    }
+    
+    return null;
+}
+
 export function renderPublicationSection(params: {
     app: App;
     plugin: RadialTimelinePlugin;
@@ -19,17 +150,36 @@ export function renderPublicationSection(params: {
         .setHeading();
     addWikiLink(pubHeading, 'Settings#publication');
 
-    // --- Target Completion Date ---
-    new ObsidianSetting(containerEl)
-        .setName('Target completion date')
-        .setDesc('Set a target date for project completion (YYYY-MM-DD). This will be shown on the timeline.')
+    // --- Stage Target Dates ---
+    // Create target date settings for each publish stage (Zero, Author, House, Press)
+    const stageDescriptions: Record<Stage, string> = {
+        Zero: 'Target date to complete Zero draft. All scenes written, ready for author revision.',
+        Author: 'Target date to complete Author stage. Self-edited, ready for professional feedback.',
+        House: 'Target date to complete House stage. Editor feedback incorporated.',
+        Press: 'Target date to complete Press stage. Publication-ready manuscript.'
+    };
+    
+    for (const stage of STAGE_ORDER) {
+        const stageColor = getStageColor(plugin, stage);
+        const currentDateStr = plugin.settings.stageTargetDates?.[stage];
+        const overdue = isOverdue(currentDateStr);
+        const displayColor = overdue ? '#d05e5e' : stageColor;
+        
+        const setting = new ObsidianSetting(containerEl)
+            .setDesc(stageDescriptions[stage])
         .addText(text => {
             text.inputEl.type = 'date';
-            text.inputEl.addClass('rt-input-md'); /* YYYY-MM-DD needs more space */
-            text.setValue(plugin.settings.targetCompletionDate || '');
+                text.inputEl.addClass('rt-input-md');
+                text.setValue(currentDateStr || '');
+                
+                // Apply overdue styling
+                if (overdue) {
+                    text.inputEl.addClass('rt-setting-input-overdue');
+                }
 
             text.onChange(() => {
                 text.inputEl.removeClass('rt-setting-input-error');
+                    text.inputEl.removeClass('rt-setting-input-overdue');
             });
 
             plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
@@ -41,32 +191,76 @@ export function renderPublicationSection(params: {
 
             const handleBlur = async () => {
                 const value = text.getValue();
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
+
+                    // Initialize stageTargetDates if needed
+                    if (!plugin.settings.stageTargetDates) {
+                        plugin.settings.stageTargetDates = {};
+                    }
 
                 if (!value) {
-                    plugin.settings.targetCompletionDate = undefined;
+                        plugin.settings.stageTargetDates[stage] = undefined;
                     text.inputEl.removeClass('rt-setting-input-error');
+                        text.inputEl.removeClass('rt-setting-input-overdue');
                     await plugin.saveSettings();
                     plugin.refreshTimelineIfNeeded(null);
+                        // Update icon color
+                        const icon = setting.nameEl.querySelector('.rt-target-tick-icon');
+                        if (icon) {
+                            icon.remove();
+                            const newIcon = createTargetTickIcon(stageColor);
+                            setting.nameEl.insertBefore(newIcon, setting.nameEl.firstChild);
+                        }
+                        return;
+                    }
+
+                    // Validate stage ordering
+                    const validationError = validateStageOrder(plugin, stage, value);
+                    if (validationError) {
+                        new Notice(validationError);
+                        text.inputEl.addClass('rt-setting-input-error');
+                        text.setValue(plugin.settings.stageTargetDates[stage] || '');
                     return;
                 }
 
-                const selectedDate = new Date(value + 'T00:00:00');
-                if (selectedDate > today) {
-                    plugin.settings.targetCompletionDate = value;
+                    plugin.settings.stageTargetDates[stage] = value;
                     text.inputEl.removeClass('rt-setting-input-error');
+                    
+                    // Check if now overdue and update styling
+                    const nowOverdue = isOverdue(value);
+                    if (nowOverdue) {
+                        text.inputEl.addClass('rt-setting-input-overdue');
                 } else {
-                    new Notice('Target date must be in the future.');
-                    text.setValue(plugin.settings.targetCompletionDate || '');
-                    return;
+                        text.inputEl.removeClass('rt-setting-input-overdue');
+                    }
+                    
+                    // Update icon color
+                    const icon = setting.nameEl.querySelector('.rt-target-tick-icon');
+                    if (icon) {
+                        icon.remove();
+                        const newColor = nowOverdue ? '#d05e5e' : stageColor;
+                        const newIcon = createTargetTickIcon(newColor);
+                        setting.nameEl.insertBefore(newIcon, setting.nameEl.firstChild);
                 }
+                    
                 await plugin.saveSettings();
                 plugin.refreshTimelineIfNeeded(null);
             };
 
             plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
         });
+        
+        // Create custom name with icon
+        setting.nameEl.empty();
+        const icon = createTargetTickIcon(displayColor);
+        setting.nameEl.appendChild(icon);
+        setting.nameEl.appendText(` ${stage} target date`);
+        
+        // Add stage color indicator class
+        setting.settingEl.addClass(`rt-stage-target-${stage.toLowerCase()}`);
+        if (overdue) {
+            setting.settingEl.addClass('rt-stage-target-overdue');
+        }
+    }
 
     // --- Zero draft mode toggle ---
     new ObsidianSetting(containerEl)
@@ -80,8 +274,8 @@ export function renderPublicationSection(params: {
             }));
 
     // --- Show completion estimate ---
-    new ObsidianSetting(containerEl)
-        .setName(t('settings.advanced.showEstimate.name'))
+    // Estimated completion uses a dot instead of square, different from target ticks
+    const estimateToggle = new ObsidianSetting(containerEl)
         .setDesc(t('settings.advanced.showEstimate.desc'))
         .addToggle(toggle => toggle
             .setValue(plugin.settings.showCompletionEstimate ?? true)
@@ -90,6 +284,12 @@ export function renderPublicationSection(params: {
                 await plugin.saveSettings();
                 plugin.refreshTimelineIfNeeded(null);
             }));
+    
+    // Add estimate icon (line with dot at end, like the estimated completion tick)
+    estimateToggle.nameEl.empty();
+    const estimateIcon = createEstimateTickIcon('#6FB971'); // Default to Press color
+    estimateToggle.nameEl.appendChild(estimateIcon);
+    estimateToggle.nameEl.appendText(` ${t('settings.advanced.showEstimate.name')}`);
 
     // --- Completion estimate window (days) ---
     new ObsidianSetting(containerEl)
@@ -452,9 +652,21 @@ export function renderPublicationSection(params: {
         const targetDate = estimate.date;
         const scenesPerDay = estimate.rate / 7;
         
+        // Get stage target dates for markers
+        const stageTargetDates = plugin.settings.stageTargetDates ?? {};
+        
         let remaining = estimate.remaining;
         let cumulative = estimate.total - estimate.remaining;
-        const months: { month: string; added: number; cumulative: number; isLast: boolean }[] = [];
+        interface MonthData {
+            month: string;
+            monthStart: Date;
+            monthEnd: Date;
+            added: number;
+            cumulative: number;
+            isLast: boolean;
+            stageTargets: { stage: Stage; date: Date; isOverdue: boolean }[];
+        }
+        const months: MonthData[] = [];
         
         // Start from current month
         let current = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -480,12 +692,29 @@ export function renderPublicationSection(params: {
                 remaining -= scenesThisMonth;
                 cumulative += scenesThisMonth;
                 
+                // Find stage targets that fall within this month
+                const stageTargets: { stage: Stage; date: Date; isOverdue: boolean }[] = [];
+                for (const stage of STAGE_ORDER) {
+                    const dateStr = stageTargetDates[stage];
+                    if (!dateStr) continue;
+                    try {
+                        const stageDate = new Date(dateStr + 'T00:00:00');
+                        if (isNaN(stageDate.getTime())) continue;
+                        if (stageDate >= monthStart && stageDate <= monthEnd) {
+                            stageTargets.push({ stage, date: stageDate, isOverdue: stageDate < today });
+                        }
+                    } catch {}
+                }
+                
                 const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: '2-digit' });
                 months.push({
                     month: monthFormatter.format(monthStart),
+                    monthStart,
+                    monthEnd,
                     added: scenesThisMonth,
                     cumulative: Math.min(cumulative, estimate.total),
-                    isLast: remaining <= 0 || monthEnd >= targetDate
+                    isLast: remaining <= 0 || monthEnd >= targetDate,
+                    stageTargets
                 });
             }
             
@@ -502,17 +731,43 @@ export function renderPublicationSection(params: {
         headerRow.createSpan({ text: 'Total' });
         headerRow.createSpan({ text: 'Progress' });
 
+        const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+        
         for (let idx = 0; idx < months.length; idx++) {
             const m = months[idx];
             const isFuture = idx > 0; // First month is current, rest are future projections
+            const hasTargets = m.stageTargets.length > 0;
             const rowClasses = [
                 'rt-completion-projection-row',
                 m.isLast ? 'rt-completion-projection-final' : '',
-                isFuture && estimate.staleness !== 'fresh' ? `rt-completion-projection-${estimate.staleness}` : ''
+                isFuture && estimate.staleness !== 'fresh' ? `rt-completion-projection-${estimate.staleness}` : '',
+                hasTargets ? 'rt-completion-projection-has-target' : ''
             ].filter(Boolean).join(' ');
             
             const row = container.createDiv({ cls: rowClasses });
-            row.createSpan({ cls: 'rt-completion-projection-month', text: m.month });
+            
+            // Month cell with target markers
+            const monthCell = row.createSpan({ cls: 'rt-completion-projection-month' });
+            monthCell.createSpan({ text: m.month });
+            
+            // Add target markers for this month
+            if (hasTargets) {
+                const markersContainer = monthCell.createSpan({ cls: 'rt-completion-target-markers' });
+                for (const target of m.stageTargets) {
+                    const stageColor = getStageColor(plugin, target.stage);
+                    const displayColor = target.isOverdue ? '#d05e5e' : stageColor;
+                    const marker = markersContainer.createSpan({ cls: 'rt-completion-target-marker' });
+                    marker.setCssStyles({ backgroundColor: displayColor });
+                    
+                    // Tooltip with stage and date
+                    const tooltipText = target.isOverdue
+                        ? `${target.stage} target: ${dateFormatter.format(target.date)} (OVERDUE)`
+                        : `${target.stage} target: ${dateFormatter.format(target.date)}`;
+                    marker.setAttribute('title', tooltipText);
+                    marker.setAttribute('aria-label', tooltipText);
+                }
+            }
+            
             row.createSpan({ cls: 'rt-completion-projection-added', text: `+${m.added}` });
             row.createSpan({ cls: 'rt-completion-projection-cumulative', text: String(m.cumulative) });
             

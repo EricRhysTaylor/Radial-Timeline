@@ -547,11 +547,16 @@ async function renderHeroPreview(
         
         container.empty();
         
-        // Set container to actual SVG dimensions for 1:1 display using CSS custom properties
-        container.style.setProperty('--apr-preview-width', `${width}px`);
-        container.style.setProperty('--apr-preview-height', `${height}px`);
+        // Create a wrapper to ensure SVG displays at natural size
+        const svgWrapper = container.createDiv({ cls: 'rt-apr-svg-wrapper' });
+        svgWrapper.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
         
-        container.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
+        // Ensure the SVG has explicit dimensions for 1:1 display
+        const svgEl = svgWrapper.querySelector('svg');
+        if (svgEl) {
+            svgEl.setAttribute('width', String(width));
+            svgEl.setAttribute('height', String(height));
+        }
         
     } catch (e) {
         container.empty();

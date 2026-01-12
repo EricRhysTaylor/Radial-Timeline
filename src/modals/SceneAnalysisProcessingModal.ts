@@ -287,7 +287,9 @@ export class SceneAnalysisProcessingModal extends Modal {
                 content.createSpan({ cls: 'rt-pulse-ruler-label', text: secondary });
             }
 
-            // Grade display will be added by applyQueueStatus when grade is known
+            // Grade placeholder - always present to reserve space, prevents resize when grade arrives
+            const gradePlaceholder = content.createDiv({ cls: 'rt-pulse-grade rt-pulse-grade-placeholder' });
+            gradePlaceholder.setAttr('aria-hidden', 'true');
 
             const grade = this.queueGrades.get(item.id);
             if (grade) {
@@ -351,14 +353,14 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (grade) {
             entry.addClass(`rt-grade-${grade.toLowerCase()}`);
             
-            // Remove any existing grade element
-            entry.querySelector('.rt-pulse-grade')?.remove();
-            
-            // Find the content wrapper to add grade display
-            const content = entry.querySelector('.rt-pulse-card-content') ?? entry;
-            const gradeEl = content.createDiv({ cls: 'rt-pulse-grade' });
-            gradeEl.setText(grade);
-            gradeEl.addClass(`rt-pulse-grade-${grade.toLowerCase()}`);
+            // Find existing grade placeholder and update it (don't create new element to prevent resize)
+            const gradeEl = entry.querySelector('.rt-pulse-grade') as HTMLElement;
+            if (gradeEl) {
+                gradeEl.setText(grade);
+                gradeEl.removeClass('rt-pulse-grade-placeholder');
+                gradeEl.addClass(`rt-pulse-grade-${grade.toLowerCase()}`);
+                gradeEl.removeAttribute('aria-hidden');
+            }
             
             // Add background icon based on grade
             const iconBg = entry.querySelector('.rt-pulse-card-icon-bg');

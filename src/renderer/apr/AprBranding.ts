@@ -77,11 +77,10 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     `;
     
     // Minimal RT badge at bottom-right corner (outside the ring)
-    // Position at corner with equal offset from bottom and right edges
+    // Position uses preset-specific offset for proper scaling at each size
     const half = preset.svgSize / 2;
-    const cornerOffset = 20; // equal offset from both edges
-    const rtX = half - cornerOffset;
-    const rtY = half - cornerOffset;
+    const rtX = half - preset.rtCornerOffset;
+    const rtY = half - preset.rtCornerOffset;
     // Use rtBrandingFontSize which is set to multiples of 8 for crisp pixel font rendering
     const rtFontSize = rtBrandingFontSize;
     
@@ -142,9 +141,9 @@ export function renderAprCenterPercent(
 
     const ghostFontSize = innerRadius * 1.9;
     const ghostOpacity = 0.28;
-    // Manual vertical offsets to visually center in the hole
-    const ghostYOffset = 33; // % symbol down 33px
-    const numberYOffset = 25; // number down 25px
+    // Use preset-specific offsets for proper scaling at each size
+    const ghostYOffset = preset.ghostYOffset;
+    const numberYOffset = preset.centerYOffset;
 
     return `
         <g class="apr-center-percent">

@@ -200,7 +200,13 @@ export interface RadialTimelineSettings {
     subplotColors: string[];
     currentMode?: string;
     logApiInteractions: boolean;
-    targetCompletionDate?: string;
+    targetCompletionDate?: string;  // Legacy - kept for backwards compatibility
+    stageTargetDates?: {
+        Zero?: string;    // Target date for Zero stage completion (YYYY-MM-DD)
+        Author?: string;  // Target date for Author stage completion
+        House?: string;   // Target date for House stage completion
+        Press?: string;   // Target date for Press stage completion
+    };
     showCompletionEstimate?: boolean;
     completionEstimateWindowDays?: number;
     openaiApiKey?: string;

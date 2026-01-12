@@ -294,7 +294,7 @@
   color: #c1121f;
 }
 
-/* Target Completion Date Marker Styles */
+/* Target Completion Date Marker Styles (Legacy - single green tick) */
 .radial-timeline-container .target-date-tick {
   stroke: #00cc00;
   /* Bright Green */
@@ -308,6 +308,74 @@
   /* Bright Green */
   stroke-width: 2px;
   /* Outline width */
+}
+
+/* =============================================================================
+   STAGE TARGET DATE TICKS
+   Per-stage target dates with stage colors and overdue states
+   ============================================================================= */
+
+.radial-timeline-container .rt-target-tick-group {
+  cursor: pointer;
+  transition: filter 0.2s ease;
+}
+
+.radial-timeline-container .rt-target-tick-group:hover {
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+/* Stage-specific target tick colors */
+.radial-timeline-container .target-date-tick.target-stage-zero {
+  stroke: var(--rt-publishStageColors-Zero, #9E70CF);
+}
+
+.radial-timeline-container .target-date-tick.target-stage-author {
+  stroke: var(--rt-publishStageColors-Author, #5E85CF);
+}
+
+.radial-timeline-container .target-date-tick.target-stage-house {
+  stroke: var(--rt-publishStageColors-House, #DA7847);
+}
+
+.radial-timeline-container .target-date-tick.target-stage-press {
+  stroke: var(--rt-publishStageColors-Press, #6FB971);
+}
+
+/* Overdue ticks - red */
+.radial-timeline-container .target-date-tick.target-overdue {
+  stroke: #d05e5e;
+}
+
+/* Stage target markers (unfilled squares with stage-colored stroke) */
+.radial-timeline-container .target-date-marker.target-stage-zero {
+  fill: none;
+  stroke-width: 2px;
+  stroke: var(--rt-publishStageColors-Zero, #9E70CF);
+}
+
+.radial-timeline-container .target-date-marker.target-stage-author {
+  fill: none;
+  stroke-width: 2px;
+  stroke: var(--rt-publishStageColors-Author, #5E85CF);
+}
+
+.radial-timeline-container .target-date-marker.target-stage-house {
+  fill: none;
+  stroke-width: 2px;
+  stroke: var(--rt-publishStageColors-House, #DA7847);
+}
+
+.radial-timeline-container .target-date-marker.target-stage-press {
+  fill: none;
+  stroke-width: 2px;
+  stroke: var(--rt-publishStageColors-Press, #6FB971);
+}
+
+/* Overdue markers - unfilled with red stroke */
+.radial-timeline-container .target-date-marker.target-overdue {
+  fill: none;
+  stroke-width: 2px;
+  stroke: #d05e5e;
 }
 
 /* =============================================================================

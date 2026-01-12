@@ -13,6 +13,7 @@ export type AprSize = 'small' | 'medium' | 'large';
 
 export const APR_SIZE_PRESETS = {
     // 150×150 - Like Brandon Sanderson's progress tracker
+    // All dimensions at 1x base scale
     small: {
         svgSize: 150,
         innerRadius: 30,
@@ -21,12 +22,16 @@ export const APR_SIZE_PRESETS = {
         rtBrandingRadius: 66,
         centerFontSize: 24,
         brandingFontSize: 7,
-        rtBrandingFontSize: 8, // 8px minimum for pixel font
+        rtBrandingFontSize: 8,  // Minimum for pixel font
+        rtCornerOffset: 8,      // Offset from corner for RT badge
+        centerYOffset: 8,       // Y offset for center percent number
+        ghostYOffset: 11,       // Y offset for ghost % symbol
         spokeWidth: 0.75,
         borderWidth: 0.5,
         actSpokeWidth: 1,
     },
     // 300×300 - Standard social media / newsletter size
+    // All dimensions at 2x base scale
     medium: {
         svgSize: 300,
         innerRadius: 60,
@@ -35,12 +40,16 @@ export const APR_SIZE_PRESETS = {
         rtBrandingRadius: 132,
         centerFontSize: 48,
         brandingFontSize: 14,
-        rtBrandingFontSize: 8, // 8px minimum for pixel font
+        rtBrandingFontSize: 8,  // Keep at 8px for crisp pixel font
+        rtCornerOffset: 16,     // 2x base
+        centerYOffset: 16,      // 2x base
+        ghostYOffset: 22,       // 2x base
         spokeWidth: 1,
         borderWidth: 1,
         actSpokeWidth: 1.5,
     },
     // 450×450 - Larger embed for websites
+    // All dimensions at 3x base scale
     large: {
         svgSize: 450,
         innerRadius: 90,
@@ -49,7 +58,10 @@ export const APR_SIZE_PRESETS = {
         rtBrandingRadius: 198,
         centerFontSize: 72,
         brandingFontSize: 21,
-        rtBrandingFontSize: 16, // 8px × 2 for pixel font
+        rtBrandingFontSize: 16, // 2x base (8×2) for crisp pixel font at larger size
+        rtCornerOffset: 24,     // 3x base
+        centerYOffset: 24,      // 3x base
+        ghostYOffset: 33,       // 3x base
         spokeWidth: 1.5,
         borderWidth: 1.5,
         actSpokeWidth: 2.5,

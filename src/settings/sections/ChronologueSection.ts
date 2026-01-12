@@ -257,4 +257,16 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
             }
             new Notice('Discontinuity threshold reset to auto-calculated value');
         }));
+
+    // 3. Show backdrop ring toggle
+    new Settings(containerEl)
+        .setName('Show backdrop ring')
+        .setDesc('Display the backdrop ring in Chronologue mode. When disabled, the ring space is reclaimed for subplot rings.')
+        .addToggle(toggle => toggle
+            .setValue(plugin.settings.showBackdropRing ?? true)
+            .onChange(async (value) => {
+                plugin.settings.showBackdropRing = value;
+                await plugin.saveSettings();
+                plugin.refreshTimelineIfNeeded(null);
+            }));
 }

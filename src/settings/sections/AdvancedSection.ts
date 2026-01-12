@@ -40,18 +40,6 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
             drop.selectEl.addClass('rt-setting-dropdown');
         });
 
-    // 1c. Show backdrop ring toggle
-    new Settings(containerEl)
-        .setName('Show backdrop ring')
-        .setDesc('Display the backdrop ring in Chronologue mode. When disabled, the ring space is reclaimed for subplot rings.')
-        .addToggle(toggle => toggle
-            .setValue(plugin.settings.showBackdropRing ?? true)
-            .onChange(async (value) => {
-                plugin.settings.showBackdropRing = value;
-                await plugin.saveSettings();
-                plugin.refreshTimelineIfNeeded(null);
-            }));
-
     // 2. Metadata refresh debounce
     new Settings(containerEl)
         .setName(t('settings.advanced.debounce.name'))

@@ -576,6 +576,86 @@
   text-decoration: underline;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   PRO HEADER TOGGLE (Testing)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.rt-professional-header-toggle-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.rt-professional-toggle-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rt-professional-toggle-label.rt-pro-toggle-active {
+  color: var(--rt-pro-color);
+}
+
+.rt-professional-header-toggle {
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-height: 0;
+  background: transparent;
+}
+
+.rt-settings-root .rt-professional-header-toggle .setting-item-control {
+  padding: 0;
+}
+
+/* Inactive state - muted header */
+.rt-professional-header.rt-professional-inactive {
+  background: linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.04) 0%, rgba(var(--rt-pro-color-rgb), 0.01) 100%);
+  border-color: rgba(var(--rt-pro-color-rgb), 0.12);
+}
+
+.rt-professional-header.rt-professional-inactive .rt-professional-icon,
+.rt-professional-header.rt-professional-inactive .rt-professional-title {
+  color: rgba(var(--rt-pro-color-rgb), 0.45);
+}
+
+/* Muted content when Pro is inactive */
+.rt-professional-content.rt-professional-content-muted {
+  position: relative;
+  pointer-events: none;
+}
+
+.rt-professional-content.rt-professional-content-muted::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(var(--background-primary-rgb, 30, 30, 30), 0.6);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.rt-professional-content.rt-professional-content-muted > * {
+  opacity: 0.4;
+  filter: saturate(0.3);
+}
+
+/* Keep Pro tint visible when muted */
+.rt-professional-content.rt-professional-content-muted .rt-pro-section-card {
+  border-color: rgba(var(--rt-pro-color-rgb), 0.15);
+}
+
+.rt-professional-content.rt-professional-content-muted .rt-pro-badge,
+.rt-professional-content.rt-professional-content-muted .rt-professional-beta-text strong {
+  opacity: 0.6;
+  color: rgba(var(--rt-pro-color-rgb), 0.6);
+}
+
 /* Future license note (during beta) */
 .rt-professional-future-note {
   font-size: 12px;
@@ -1489,6 +1569,45 @@
   border-color: var(--rt-gossamer-error-color);
   background-color: rgba(255, 68, 68, 0.1);
   box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.2);
+}
+
+/* Overdue input styling */
+.rt-setting-input-overdue {
+  border-color: #d05e5e;
+  background-color: rgba(208, 94, 94, 0.1);
+  box-shadow: 0 0 0 2px rgba(208, 94, 94, 0.2);
+}
+
+/* -------------------------------------------------------------------------- */
+/* STAGE TARGET TICK ICONS                                                     */
+/* Icons in settings rows for target dates                                     */
+/* -------------------------------------------------------------------------- */
+
+.rt-target-tick-icon,
+.rt-estimate-tick-icon {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+/* Stage-specific target setting rows */
+.rt-settings-root .rt-stage-target-zero .setting-item-name,
+.rt-settings-root .rt-stage-target-author .setting-item-name,
+.rt-settings-root .rt-stage-target-house .setting-item-name,
+.rt-settings-root .rt-stage-target-press .setting-item-name {
+  display: flex;
+  align-items: center;
+}
+
+/* Overdue row styling */
+.rt-settings-root .rt-stage-target-overdue .setting-item-name {
+  color: #d05e5e;
+}
+
+.rt-settings-root .rt-stage-target-overdue .setting-item-description {
+  color: #d05e5e;
+  opacity: 0.85;
 }
 
 /* Source path autocomplete suggestions */
@@ -2509,13 +2628,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 8px 16px;
+  gap: 4px;
+  padding: 10px 20px;
+  min-width: 90px;
   background: var(--background-modifier-border);
   border: 2px solid transparent;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-muted);
   transition: all 0.2s ease;
@@ -2533,7 +2653,7 @@
 }
 
 .rt-apr-size-dimension {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 400;
   color: var(--text-faint);
 }
@@ -2548,21 +2668,28 @@
 /* APR Hero Preview (1:1 actual size, scrollable) */
 .rt-apr-hero-preview.rt-apr-preview-actual {
   margin: 0;
-  padding: 16px;
+  padding: 24px;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 8px;
   overflow: auto;
-  max-height: 500px;
-  display: block;
-  width: var(--apr-preview-width, auto);
-  height: var(--apr-preview-height, auto);
+  max-height: 520px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rt-apr-hero-preview.rt-apr-preview-actual .rt-apr-svg-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .rt-apr-hero-preview.rt-apr-preview-actual svg {
   display: block;
   border-radius: 4px;
-  width: var(--apr-preview-width, 100%);
-  height: var(--apr-preview-height, auto);
+  flex-shrink: 0;
+  /* SVG renders at its natural width/height from viewBox */
 }
 
 /* Legacy scaled preview (for thumbnails) */
@@ -2976,6 +3103,9 @@
 }
 
 .rt-completion-projection-month {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-weight: 500;
   color: var(--text-normal);
 }
@@ -3039,6 +3169,33 @@
   font-size: 0.75rem;
   color: var(--text-muted);
   min-width: 32px;
+}
+
+/* Target date markers in monthly projection */
+.rt-completion-target-markers {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.rt-completion-target-marker {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  cursor: help;
+  transition: transform 0.15s ease;
+}
+
+.rt-completion-target-marker:hover {
+  transform: scale(1.3);
+}
+
+.rt-completion-projection-has-target {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  margin: 0 -4px;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 
 /* Last progress info */
