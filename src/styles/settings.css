@@ -887,6 +887,20 @@
   align-items: center;
 }
 
+/* Ensure consistent top margin for all section headings within settings.
+   Obsidian's default rule (.setting-item + .setting-item-heading) only applies 
+   when there's a preceding sibling, but our sections are wrapped in container 
+   divs so headings that are first-child don't get the margin. This fix ensures
+   all major section headings get proper 24px top spacing. */
+.rt-settings-root .rt-settings-searchable-content [data-rt-section] > .setting-item.setting-item-heading {
+  margin-top: 24px;
+}
+
+/* Remove top margin from the very first section heading in the settings panel */
+.rt-settings-root .rt-settings-searchable-content [data-rt-section]:first-child > .setting-item.setting-item-heading:first-child {
+  margin-top: 0;
+}
+
 .rt-settings-root .setting-item-control {
   display: flex;
   align-items: center;
@@ -2476,8 +2490,88 @@
   height: 16px;
 }
 
-/* APR Hero Preview (SVG container) */
-.rt-apr-hero-preview {
+/* APR Preview Section with Size Selector */
+.rt-apr-preview-section {
+  margin: 16px 0;
+}
+
+.rt-apr-size-selector-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.rt-apr-size-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.rt-settings-root .rt-apr-size-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 16px;
+  background: var(--background-modifier-border);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+
+.rt-settings-root .rt-apr-size-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.rt-settings-root .rt-apr-size-btn-active {
+  border-color: var(--rt-social-color);
+  background: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.15);
+  color: var(--text-normal);
+}
+
+.rt-apr-size-dimension {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-faint);
+}
+
+.rt-apr-preview-dimension-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  font-style: italic;
+}
+
+/* APR Hero Preview (1:1 actual size, scrollable) */
+.rt-apr-hero-preview.rt-apr-preview-actual {
+  margin: 0;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  overflow: auto;
+  max-height: 500px;
+  display: block;
+  width: var(--apr-preview-width, auto);
+  height: var(--apr-preview-height, auto);
+}
+
+.rt-apr-hero-preview.rt-apr-preview-actual svg {
+  display: block;
+  border-radius: 4px;
+  width: var(--apr-preview-width, 100%);
+  height: var(--apr-preview-height, auto);
+}
+
+/* Legacy scaled preview (for thumbnails) */
+.rt-apr-hero-preview:not(.rt-apr-preview-actual) {
   margin: 16px 0 8px 0;
   padding: 12px;
   background: rgba(0, 0, 0, 0.2);
@@ -2490,7 +2584,7 @@
   overflow: hidden;
 }
 
-.rt-apr-hero-preview svg {
+.rt-apr-hero-preview:not(.rt-apr-preview-actual) svg {
   width: 100%;
   height: auto;
   max-height: 220px;

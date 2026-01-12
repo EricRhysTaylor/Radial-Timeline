@@ -59,13 +59,64 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         li.createSpan({ text: feature.text });
     });
     
-    // SVG Preview container
-    const previewContainer = hero.createDiv({ cls: 'rt-apr-hero-preview' });
+    // Size selector and 1:1 preview
+    const previewSection = hero.createDiv({ cls: 'rt-apr-preview-section' });
+    
+    // Size selector row
+    const sizeSelectorRow = previewSection.createDiv({ cls: 'rt-apr-size-selector-row' });
+    sizeSelectorRow.createSpan({ text: 'Preview Size:', cls: 'rt-apr-size-label' });
+    
+    const sizeButtons = [
+        { size: 'xsmall', label: 'X-Small', dimension: '300×300' },
+        { size: 'compact', label: 'Small', dimension: '600×600' },
+        { size: 'standard', label: 'Medium', dimension: '800×800' },
+        { size: 'large', label: 'Large', dimension: '1000×1000' },
+    ] as const;
+    
+    const currentSize = plugin.settings.authorProgress?.aprSize || 'standard';
+    
+    sizeButtons.forEach(({ size, label, dimension }) => {
+        const btn = sizeSelectorRow.createEl('button', { 
+            cls: `rt-apr-size-btn ${size === currentSize ? 'rt-apr-size-btn-active' : ''}`,
+            text: label
+        });
+        btn.createEl('span', { text: dimension, cls: 'rt-apr-size-dimension' });
+        
+        btn.onclick = async () => {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprSize = size;
+            await plugin.saveSettings();
+            
+            // Update button states
+            sizeSelectorRow.querySelectorAll('.rt-apr-size-btn').forEach(b => b.removeClass('rt-apr-size-btn-active'));
+            btn.addClass('rt-apr-size-btn-active');
+            
+            // Update dimension label
+            const dimLabel = previewSection.querySelector('.rt-apr-preview-dimension-label');
+            if (dimLabel) dimLabel.setText(`${dimension} — Actual size (scroll to see full preview)`);
+            
+            // Re-render preview at new size
+            void renderHeroPreview(app, plugin, previewContainer, size);
+        };
+    });
+    
+    // Dimension info
+    const currentDim = sizeButtons.find(s => s.size === currentSize)?.dimension || '800×800';
+    previewSection.createDiv({ 
+        cls: 'rt-apr-preview-dimension-label',
+        text: `${currentDim} — Actual size (scroll to see full preview)`
+    });
+    
+    // SVG Preview container - shows at 1:1 actual size
+    const previewContainer = previewSection.createDiv({ cls: 'rt-apr-hero-preview rt-apr-preview-actual' });
     previewContainer.createDiv({ cls: 'rt-apr-hero-preview-loading', text: 'Loading preview...' });
     
-    // Load and render preview asynchronously
-    renderHeroPreview(app, plugin, previewContainer);
-    const refreshPreview = () => { void renderHeroPreview(app, plugin, previewContainer); };
+    // Load and render preview asynchronously at actual size
+    renderHeroPreview(app, plugin, previewContainer, currentSize);
+    const refreshPreview = () => { 
+        const size = plugin.settings.authorProgress?.aprSize || 'standard';
+        void renderHeroPreview(app, plugin, previewContainer, size); 
+    };
     
     // Meta tags
     const settings = plugin.settings.authorProgress;
@@ -307,7 +358,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 slider
                     .setLimits(1, 90, 1)
                     .setValue(currentDays)
-                    .setDynamicTooltip()
                     .onChange(async (val) => {
                         if (plugin.settings.authorProgress) {
                             plugin.settings.authorProgress.stalenessThresholdDays = val;
@@ -442,7 +492,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             containerEl: contentWrapper,
             onCampaignChange: () => {
                 // Refresh the hero preview when campaigns change
-                void renderHeroPreview(app, plugin, previewContainer);
+                const size = plugin.settings.authorProgress?.aprSize || 'standard';
+                void renderHeroPreview(app, plugin, previewContainer, size);
             }
         });
     }
@@ -450,12 +501,13 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
 /**
  * Render the APR SVG preview in the hero section
- * Uses the dedicated APR renderer
+ * Uses the dedicated APR renderer at 1:1 actual size
  */
 async function renderHeroPreview(
     app: App, 
     plugin: RadialTimelinePlugin, 
-    container: HTMLElement
+    container: HTMLElement,
+    size: 'xsmall' | 'compact' | 'standard' | 'large' = 'standard'
 ): Promise<void> {
     try {
         const scenes = await getAllScenes(app, plugin);
@@ -475,8 +527,8 @@ async function renderHeroPreview(
         
         const aprSettings = plugin.settings.authorProgress;
         
-        const { svgString } = createAprSVG(scenes, {
-            size: aprSettings?.aprSize || 'standard',
+        const { svgString, width, height } = createAprSVG(scenes, {
+            size: size,
             progressPercent,
             bookTitle: aprSettings?.bookTitle || 'Working Title',
             authorName: aprSettings?.authorName || '',
@@ -495,6 +547,11 @@ async function renderHeroPreview(
         });
         
         container.empty();
+        
+        // Set container to actual SVG dimensions for 1:1 display using CSS custom properties
+        container.style.setProperty('--apr-preview-width', `${width}px`);
+        container.style.setProperty('--apr-preview-height', `${height}px`);
+        
         container.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
         
     } catch (e) {

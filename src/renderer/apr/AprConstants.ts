@@ -9,9 +9,22 @@
 // SIZE PRESETS
 // =============================================================================
 
-export type AprSize = 'compact' | 'standard' | 'large';
+export type AprSize = 'xsmall' | 'compact' | 'standard' | 'large';
 
 export const APR_SIZE_PRESETS = {
+    xsmall: {
+        svgSize: 300,
+        innerRadius: 60,
+        outerRadius: 140,
+        brandingRadius: 146,
+        rtBrandingRadius: 135,
+        centerFontSize: 36,
+        brandingFontSize: 11,
+        rtBrandingFontSize: 8, // 8px base × 1 (minimum for pixel font)
+        spokeWidth: 1,
+        borderWidth: 1,
+        actSpokeWidth: 1.5,
+    },
     compact: {
         svgSize: 600,
         innerRadius: 120,

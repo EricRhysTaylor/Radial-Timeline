@@ -17,7 +17,7 @@ export class AuthorProgressModal extends Modal {
     private showActs: boolean;
     private showStatus: boolean;
     private showPercent: boolean;
-    private aprSize: 'compact' | 'standard' | 'large';
+    private aprSize: 'xsmall' | 'compact' | 'standard' | 'large';
     
     private previewContainers: Map<'compact' | 'standard' | 'large', HTMLElement> = new Map();
     private previewCards: Map<'compact' | 'standard' | 'large', HTMLElement> = new Map();

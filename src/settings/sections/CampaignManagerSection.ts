@@ -403,7 +403,6 @@ function renderCampaignDetails(
         .addSlider(slider => {
             slider.setLimits(1, 90, 1)
                 .setValue(campaign.refreshThresholdDays)
-                .setDynamicTooltip()
                 .onChange(async (val) => {
                     if (!plugin.settings.authorProgress?.campaigns) return;
                     plugin.settings.authorProgress.campaigns[index].refreshThresholdDays = val;
@@ -482,15 +481,16 @@ function renderCampaignDetails(
     // Size
     new Setting(details)
         .setName('Export Size')
-        .setDesc('SVG dimensions for different use cases: Small for social posts, Medium for newsletters, Large for website embeds.')
+        .setDesc('SVG dimensions for different use cases: X-Small for profile pics, Small for social posts, Medium for newsletters, Large for website embeds.')
         .addDropdown(drop => {
-            drop.addOption('compact', 'Small (600px)')
+            drop.addOption('xsmall', 'X-Small (300px)')
+                .addOption('compact', 'Small (600px)')
                 .addOption('standard', 'Medium (800px)')
                 .addOption('large', 'Large (1000px)')
                 .setValue(campaign.aprSize)
                 .onChange(async (val) => {
                     if (!plugin.settings.authorProgress?.campaigns) return;
-                    plugin.settings.authorProgress.campaigns[index].aprSize = val as 'compact' | 'standard' | 'large';
+                    plugin.settings.authorProgress.campaigns[index].aprSize = val as 'xsmall' | 'compact' | 'standard' | 'large';
                     await plugin.saveSettings();
                 });
         });
