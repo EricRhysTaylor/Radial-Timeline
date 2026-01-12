@@ -222,6 +222,28 @@ export function getVaultAbsolutePath(plugin: RadialTimelinePlugin, vaultPath: st
     return resolveVaultAbsolutePath(plugin, vaultPath);
 }
 
+/**
+ * Resolve a template path to an absolute path for Pandoc.
+ * Handles both vault-relative paths and absolute paths.
+ * Returns the absolute path, or the original path if resolution fails.
+ */
+export function resolveTemplatePath(plugin: RadialTimelinePlugin, templatePath: string): string {
+    if (!templatePath || !templatePath.trim()) {
+        return templatePath;
+    }
+    
+    const trimmed = templatePath.trim();
+    
+    // If path is already absolute, use it as-is
+    if (path.isAbsolute(trimmed)) {
+        return trimmed;
+    }
+    
+    // Otherwise, treat as vault-relative and resolve to absolute
+    const absolutePath = resolveVaultAbsolutePath(plugin, trimmed);
+    return absolutePath || trimmed; // Fallback to original if resolution fails
+}
+
 export async function writeTextFile(
     vault: Vault,
     vaultPath: string,

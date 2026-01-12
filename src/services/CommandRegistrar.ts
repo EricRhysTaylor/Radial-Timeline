@@ -17,7 +17,7 @@ import { generateSceneContent } from '../utils/sceneGenerator';
 import { sanitizeSourcePath, buildInitialSceneFilename, buildInitialBackdropFilename } from '../utils/sceneCreation';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { ensureAiOutputFolder, ensureManuscriptOutputFolder } from '../utils/aiOutput';
-import { buildOutlineExport, getExportFormatExtension, getTemplateForPreset, getVaultAbsolutePath, runPandocOnContent, writeTextFile } from '../utils/exportFormats';
+import { buildOutlineExport, getExportFormatExtension, getTemplateForPreset, getVaultAbsolutePath, resolveTemplatePath, runPandocOnContent, writeTextFile } from '../utils/exportFormats';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 
 export class CommandRegistrar {
@@ -232,14 +232,12 @@ export class CommandRegistrar {
                 const filename = `Manuscript ${friendlyTimestamp}.${extension}`;
                 const outputPath = `${absoluteOutputFolder}/${filename}`;
                 
-                // Resolve template
-                let templatePath = undefined;
+                // Resolve template path to absolute path for Pandoc
+                let templatePath: string | undefined = undefined;
                 if (result.manuscriptPreset) {
-                    const templateName = getTemplateForPreset(this.plugin, result.manuscriptPreset);
-                    if (templateName && this.plugin.settings.pandocTemplates) {
-                        // Check if user has defined a template path in settings
-                        const userTemplate = (this.plugin.settings.pandocTemplates as any)[result.manuscriptPreset];
-                        if (userTemplate) templatePath = userTemplate;
+                    const templateVaultPath = getTemplateForPreset(this.plugin, result.manuscriptPreset);
+                    if (templateVaultPath) {
+                        templatePath = resolveTemplatePath(this.plugin, templateVaultPath);
                     }
                 }
 

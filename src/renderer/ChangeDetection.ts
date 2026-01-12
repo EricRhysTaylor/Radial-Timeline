@@ -113,7 +113,9 @@ export function createSnapshot(
                 // Range field (rendered in Gossamer mode)
                 s.Range || '',
                 (s.Character || []).length,
-                s.place || ''
+                s.place || '',
+                // AI Pulse Analysis grade affects number square color
+                s.currentSceneAnalysis || ''
             ];
             
             // Include all Gossamer fields (Gossamer1 through Gossamer30)
