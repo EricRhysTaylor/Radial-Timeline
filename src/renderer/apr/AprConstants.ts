@@ -115,60 +115,52 @@ export const APR_MIN_SCENE_ARC_RAD = 0.02;
 import type { TeaserThresholds, TeaserPreset, TeaserRevealLevel } from '../../types/settings';
 
 /**
- * Preset thresholds for Teaser Reveal
+ * Preset thresholds for Teaser Reveal (4 stages)
  * Each number is the % at which that level unlocks
- * Order: scenes → colors → acts → subplots (full)
+ * Order: bar (0%) → scenes → colors → full
  */
 export const TEASER_PRESETS: Record<Exclude<TeaserPreset, 'custom'>, TeaserThresholds> = {
     slow: {
-        scenes: 15,    // Show scene cells at 15%
-        colors: 30,    // Show status colors at 30%
-        acts: 55,      // Show act divisions at 55%
-        subplots: 80,  // Show subplot rings at 80%
+        scenes: 15,    // Show scene cells + acts at 15%
+        colors: 40,    // Show full publish stage colors at 40%
+        full: 70,      // Show subplot rings at 70%
     },
     standard: {
-        scenes: 10,    // Show scene cells at 10%
-        colors: 25,    // Show status colors at 25%
-        acts: 50,      // Show act divisions at 50%
-        subplots: 75,  // Show subplot rings at 75%
+        scenes: 10,    // Show scene cells + acts at 10%
+        colors: 30,    // Show full publish stage colors at 30%
+        full: 60,      // Show subplot rings at 60%
     },
     fast: {
-        scenes: 5,     // Show scene cells at 5%
-        colors: 15,    // Show status colors at 15%
-        acts: 35,      // Show act divisions at 35%
-        subplots: 60,  // Show subplot rings at 60%
+        scenes: 5,     // Show scene cells + acts at 5%
+        colors: 20,    // Show full publish stage colors at 20%
+        full: 45,      // Show subplot rings at 45%
     },
 };
 
 /**
- * Reveal level labels with icons (matching publication stage icons)
- * Order: bar → scenes → colors → acts → full
+ * Reveal level labels with icons (4 stages)
+ * Order: bar → scenes → colors → full
  */
 export const TEASER_LEVEL_INFO: Record<TeaserRevealLevel, { label: string; icon: string; description: string }> = {
     bar: {
         label: 'Teaser',
         icon: 'circle',        // Minimal: just a ring
-        description: 'Progress ring only, no scene details',
+        description: 'Progress ring only — maximum mystery',
     },
     scenes: {
         label: 'Scenes',
-        icon: 'sprout',        // Zero stage icon: first sign of life
-        description: 'Scene cells visible (void colors)',
+        icon: 'sprout',        // First sign of life
+        description: 'Active work visible, completed = gray, act structure shown',
     },
     colors: {
         label: 'Colors',
-        icon: 'tree-pine',     // Author stage icon: growing
-        description: 'Status/stage colors revealed',
+        icon: 'tree-pine',     // Growing
+        description: 'Full publish stage colors revealed',
     },
-    acts: {
-        label: 'Structure',
-        icon: 'trees',         // House stage icon: forest
-        description: 'Act divisions appear',
-    },
-    subplots: {
+    full: {
         label: 'Full',
-        icon: 'shell',         // Press stage icon: complete
-        description: 'All subplots visible',
+        icon: 'shell',         // Complete
+        description: 'All subplot rings visible — complete picture',
     },
 };
 
@@ -182,44 +174,92 @@ export function getTeaserThresholds(preset: TeaserPreset, customThresholds?: Tea
     return TEASER_PRESETS[preset === 'custom' ? 'standard' : preset];
 }
 
+import type { TeaserDisabledStages } from '../../types/settings';
+
 /**
  * Calculate which reveal level is active based on current progress
- * Order: bar → scenes → colors → acts → subplots (full)
+ * Respects disabled stages - skips them in the progression
+ * Order: bar → scenes → colors → full
  */
-export function getTeaserRevealLevel(progress: number, thresholds: TeaserThresholds): TeaserRevealLevel {
-    if (progress >= thresholds.subplots) return 'subplots';
-    if (progress >= thresholds.acts) return 'acts';
-    if (progress >= thresholds.colors) return 'colors';
-    if (progress >= thresholds.scenes) return 'scenes';
+export function getTeaserRevealLevel(
+    progress: number, 
+    thresholds: TeaserThresholds,
+    disabledStages?: TeaserDisabledStages
+): TeaserRevealLevel {
+    // Full is always the end state
+    if (progress >= thresholds.full) return 'full';
+    
+    // Colors stage (if not disabled)
+    if (progress >= thresholds.colors) {
+        return disabledStages?.colors ? 'scenes' : 'colors';
+    }
+    
+    // Scenes stage (if not disabled)
+    if (progress >= thresholds.scenes) {
+        return disabledStages?.scenes ? 'bar' : 'scenes';
+    }
+    
     return 'bar';
 }
 
 /**
  * Convert reveal level to reveal options for APR renderer
- * Order: bar → scenes → colors → acts → subplots (full)
+ * 
+ * 4-stage progression:
+ * - bar:    Progress ring only, no scenes
+ * - scenes: Scene cells + acts, status colors for active work, completed = gray
+ * - colors: Full publish stage colors for all scenes
+ * - full:   All subplot rings visible
  */
 export function teaserLevelToRevealOptions(level: TeaserRevealLevel): {
     showScenes: boolean;
     showActs: boolean;
     showSubplots: boolean;
-    showStatusColors: boolean;
+    showStatusColors: boolean;       // Show status colors (Todo, In Progress, etc.)
+    showStageColors: boolean;        // Show publish stage colors (Zero, Author, House, Press)
+    grayCompletedScenes: boolean;    // Gray out completed scenes (for SCENES stage)
 } {
     switch (level) {
         case 'bar':
             // Just progress ring, no details
-            return { showScenes: false, showActs: false, showSubplots: false, showStatusColors: false };
+            return { 
+                showScenes: false, 
+                showActs: false, 
+                showSubplots: false, 
+                showStatusColors: false,
+                showStageColors: false,
+                grayCompletedScenes: false
+            };
         case 'scenes':
-            // Scene cells visible but void colors (no status coloring)
-            return { showScenes: true, showActs: false, showSubplots: false, showStatusColors: false };
+            // Scene cells + acts, status colors for active work, completed = gray
+            return { 
+                showScenes: true, 
+                showActs: true,  // Acts bundled with scenes
+                showSubplots: false, 
+                showStatusColors: true,   // Show Todo, In Progress, Overdue
+                showStageColors: false,   // Don't show Zero/Author/House/Press
+                grayCompletedScenes: true // Gray out completed scenes
+            };
         case 'colors':
-            // Scenes with status/stage colors, single ring, no acts
-            return { showScenes: true, showActs: false, showSubplots: false, showStatusColors: true };
-        case 'acts':
-            // Scenes + colors + act divisions, still single ring
-            return { showScenes: true, showActs: true, showSubplots: false, showStatusColors: true };
-        case 'subplots':
-            // Full view: scenes + colors + acts + subplots
-            return { showScenes: true, showActs: true, showSubplots: true, showStatusColors: true };
+            // Full colors including publish stage colors
+            return { 
+                showScenes: true, 
+                showActs: true, 
+                showSubplots: false, 
+                showStatusColors: true,
+                showStageColors: true,    // Now show all stage colors
+                grayCompletedScenes: false
+            };
+        case 'full':
+            // Complete view with all subplot rings
+            return { 
+                showScenes: true, 
+                showActs: true, 
+                showSubplots: true, 
+                showStatusColors: true,
+                showStageColors: true,
+                grayCompletedScenes: false
+            };
     }
 }
 

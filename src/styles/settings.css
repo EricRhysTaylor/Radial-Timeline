@@ -209,6 +209,60 @@
   margin-bottom: 8px;
 }
 
+/* Pro toggle for testing */
+.rt-pro-hero-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding: 4px 10px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.rt-pro-toggle-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.rt-pro-toggle-label.rt-pro-toggle-active {
+  color: var(--rt-pro-color);
+}
+
+.rt-pro-toggle-checkbox {
+  appearance: none;
+  width: 36px;
+  height: 20px;
+  background: var(--background-modifier-border);
+  border-radius: 10px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.rt-pro-toggle-checkbox::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s ease;
+}
+
+.rt-pro-toggle-checkbox:checked {
+  background: var(--rt-pro-color);
+}
+
+.rt-pro-toggle-checkbox:checked::before {
+  transform: translateX(16px);
+}
+
 .rt-pro-hero-badge {
   display: inline-flex;
   align-items: center;
@@ -497,9 +551,21 @@
   line-height: 1.5;
 }
 
+.rt-professional-reward-text {
+  margin: 12px 0 8px 0;
+  padding: 10px 12px;
+  background: rgba(var(--rt-pro-color-rgb, 168, 139, 91), 0.15);
+  border-left: 3px solid var(--rt-pro-color);
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .rt-professional-feedback-link {
-  font-size: 12px;
-  font-weight: 500;
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--rt-pro-color);
   text-decoration: none;
   opacity: 0.9;
@@ -2458,6 +2524,54 @@
   margin-bottom: 16px;
 }
 
+/* Pro upgrade teaser in non-Pro publishing section */
+.rt-settings-root .rt-apr-pro-teaser {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-top: 16px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, 
+    rgba(var(--rt-pro-color-rgb, 168, 139, 91), 0.12) 0%,
+    rgba(var(--rt-pro-color-rgb, 168, 139, 91), 0.06) 100%);
+  border: 1px solid rgba(var(--rt-pro-color-rgb, 168, 139, 91), 0.25);
+}
+
+.rt-settings-root .rt-apr-pro-teaser-icon {
+  color: var(--rt-pro-color);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.rt-settings-root .rt-apr-pro-teaser-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.rt-settings-root .rt-apr-pro-teaser-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.rt-settings-root .rt-apr-pro-teaser-text strong {
+  color: var(--rt-pro-color);
+}
+
+.rt-settings-root .rt-apr-pro-teaser-link {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rt-pro-color);
+  text-decoration: none;
+}
+
+.rt-settings-root .rt-apr-pro-teaser-link:hover {
+  text-decoration: underline;
+}
+
 /* Recommended setting highlight (for transparency toggle) */
 .rt-apr-recommended-setting {
   padding: 10px 14px;
@@ -3526,10 +3640,10 @@
   margin-left: auto;
 }
 
-/* Row 2: Custom inputs - 5-column grid to match preview stages */
+/* Row 2: Custom inputs - 4-column grid to match 4 preview stages */
 .rt-settings-root .rt-teaser-custom-row {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
   margin-top: 12px;
   padding-top: 12px;
@@ -3610,6 +3724,42 @@
   min-width: 90px;
   flex: 1;
   max-width: 120px;
+  position: relative;
+  transition: opacity 0.2s ease;
+}
+
+/* Clickable middle stages */
+.rt-settings-root .rt-teaser-stage-clickable {
+  cursor: pointer;
+}
+
+.rt-settings-root .rt-teaser-stage-clickable:hover {
+  opacity: 0.85;
+}
+
+/* Disabled stage styling */
+.rt-settings-root .rt-teaser-stage-disabled {
+  opacity: 0.4;
+}
+
+.rt-settings-root .rt-teaser-stage-disabled .rt-teaser-stage-svg {
+  filter: grayscale(100%);
+}
+
+.rt-settings-root .rt-teaser-stage-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 5;
 }
 
 .rt-settings-root .rt-teaser-stage-svg {

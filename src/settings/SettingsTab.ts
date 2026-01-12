@@ -325,6 +325,23 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const badge = badgeRow.createSpan({ cls: 'rt-pro-hero-badge' });
         setIcon(badge, 'signature');
         badge.createSpan({ text: 'Pro · Signature' });
+        
+        // Pro activation toggle for testing
+        const isProActive = this.plugin.settings.devProActive !== false; // Default true during beta
+        const toggleContainer = badgeRow.createDiv({ cls: 'rt-pro-hero-toggle' });
+        const toggleLabel = toggleContainer.createSpan({ 
+            text: isProActive ? 'Active' : 'Inactive',
+            cls: isProActive ? 'rt-pro-toggle-label rt-pro-toggle-active' : 'rt-pro-toggle-label'
+        });
+        const toggle = toggleContainer.createEl('input', { type: 'checkbox', cls: 'rt-pro-toggle-checkbox' });
+        toggle.checked = isProActive;
+        toggle.onchange = async () => {
+            this.plugin.settings.devProActive = toggle.checked;
+            await this.plugin.saveSettings();
+            // Refresh the entire settings display
+            this.display();
+        };
+        
         hero.createEl('h3', { cls: 'rt-pro-hero-title', text: 'Signature tools for professional workflows.' });
         hero.createEl('p', { cls: 'rt-pro-hero-subtitle', text: 'Premium exports, runtime intelligence, and Pandoc templates. Make your publishing pipeline radial and your story ever revolving.' });
         const featuresSection = hero.createDiv({ cls: 'rt-pro-hero-features' });
@@ -333,6 +350,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         [
             { icon: 'film', text: 'Runtime Estimation — Screenplay and audiobook duration analysis' },
             { icon: 'file-output', text: 'Pro Exports — Screenplay, podcast, and novel manuscript formats via Pandoc' },
+            { icon: 'radio', text: 'Teaser Campaign — Progressive reveal for Author Progress Reports (APR)' },
         ].forEach(feature => {
             const li = featuresList.createEl('li');
             const iconSpan = li.createSpan({ cls: 'rt-pro-hero-feature-icon' });
@@ -340,7 +358,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             li.createSpan({ text: feature.text });
         });
         const meta = hero.createDiv({ cls: 'rt-pro-hero-meta' });
-        meta.createSpan({ text: 'Active Pro session' });
+        meta.createSpan({ text: isProActive ? 'Active Pro session' : 'Pro features disabled' });
         meta.createSpan({ text: 'Early Access perks' });
         meta.createSpan({ text: 'Configure below' });
     }

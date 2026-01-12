@@ -3,7 +3,7 @@
  * Allows managing multiple APR campaigns with independent refresh schedules
  */
 
-import { App, Setting, setIcon, ButtonComponent, TextComponent, Notice } from 'obsidian';
+import { App, Setting, setIcon, setTooltip, ButtonComponent, TextComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { AprCampaign, TeaserPreset, TeaserRevealLevel } from '../../types/settings';
 import { isProfessionalActive } from './ProfessionalSection';
@@ -34,6 +34,7 @@ export function createDefaultCampaign(name: string): AprCampaign {
         name,
         description: '',
         isActive: true,
+        updateFrequency: 'manual',
         refreshThresholdDays: 7,
         lastPublishedDate: undefined,
         embedPath: `Radial Timeline/Social/${name.toLowerCase().replace(/\s+/g, '-')}-progress.svg`,
@@ -294,13 +295,13 @@ function renderCampaignRow(
     const statusIndicator = row.createDiv({ cls: 'rt-campaign-status' });
     if (needsRefresh) {
         setIcon(statusIndicator, 'alert-triangle');
-        statusIndicator.title = 'Needs refresh';
+        setTooltip(statusIndicator, 'Needs refresh');
     } else if (campaign.isActive) {
         setIcon(statusIndicator, 'check-circle');
-        statusIndicator.title = 'Up to date';
+        setTooltip(statusIndicator, 'Up to date');
     } else {
         setIcon(statusIndicator, 'pause-circle');
-        statusIndicator.title = 'Paused';
+        setTooltip(statusIndicator, 'Paused');
     }
     
     // Campaign info
@@ -327,7 +328,7 @@ function renderCampaignRow(
     // Toggle active
     const toggleBtn = actions.createEl('button', { cls: 'rt-campaign-action-btn' });
     setIcon(toggleBtn, campaign.isActive ? 'pause' : 'play');
-    toggleBtn.title = campaign.isActive ? 'Pause campaign' : 'Resume campaign';
+    setTooltip(toggleBtn, campaign.isActive ? 'Pause campaign' : 'Resume campaign');
     toggleBtn.onclick = async () => {
         if (!plugin.settings.authorProgress?.campaigns) return;
         plugin.settings.authorProgress.campaigns[index].isActive = !campaign.isActive;
@@ -338,7 +339,7 @@ function renderCampaignRow(
     // Edit (expand to show more options)
     const editBtn = actions.createEl('button', { cls: 'rt-campaign-action-btn' });
     setIcon(editBtn, 'settings');
-    editBtn.title = 'Edit campaign settings';
+    setTooltip(editBtn, 'Edit campaign settings');
     editBtn.onclick = () => {
         // Toggle expanded state - add details to wrapper, not row
         const existingDetails = wrapper.querySelector('.rt-campaign-details');
@@ -354,7 +355,7 @@ function renderCampaignRow(
     // Delete
     const deleteBtn = actions.createEl('button', { cls: 'rt-campaign-action-btn rt-campaign-delete-btn' });
     setIcon(deleteBtn, 'trash-2');
-    deleteBtn.title = 'Delete campaign';
+    setTooltip(deleteBtn, 'Delete campaign');
     deleteBtn.onclick = async () => {
         if (!plugin.settings.authorProgress?.campaigns) return;
         plugin.settings.authorProgress.campaigns.splice(index, 1);
@@ -376,10 +377,29 @@ function renderCampaignDetails(
 ): void {
     const details = parentRow.createDiv({ cls: 'rt-campaign-details' });
     
-    // Refresh threshold
+    // Update Frequency
     new Setting(details)
-        .setName('Refresh Reminder')
-        .setDesc('Days before showing a refresh reminder')
+        .setName('Update Frequency')
+        .setDesc('How often to auto-update this campaign\'s embed file. "Manual" requires clicking the Publish button.')
+        .addDropdown(dropdown => {
+            dropdown
+                .addOption('manual', 'Manual Only')
+                .addOption('daily', 'Daily')
+                .addOption('weekly', 'Weekly')
+                .addOption('monthly', 'Monthly')
+                .setValue(campaign.updateFrequency || 'manual')
+                .onChange(async (val) => {
+                    if (!plugin.settings.authorProgress?.campaigns) return;
+                    plugin.settings.authorProgress.campaigns[index].updateFrequency = val as 'manual' | 'daily' | 'weekly' | 'monthly';
+                    await plugin.saveSettings();
+                });
+        });
+    
+    // Refresh threshold (with dynamic description and value label)
+    let refreshValueLabel: HTMLSpanElement | undefined;
+    const refreshSetting = new Setting(details)
+        .setName('Refresh Alert Threshold')
+        .setDesc(`Days before showing a refresh reminder in the timeline view. Currently: ${campaign.refreshThresholdDays} days.`)
         .addSlider(slider => {
             slider.setLimits(1, 90, 1)
                 .setValue(campaign.refreshThresholdDays)
@@ -388,25 +408,81 @@ function renderCampaignDetails(
                     if (!plugin.settings.authorProgress?.campaigns) return;
                     plugin.settings.authorProgress.campaigns[index].refreshThresholdDays = val;
                     await plugin.saveSettings();
+                    // Update description with new value
+                    const descEl = refreshSetting.descEl;
+                    if (descEl) {
+                        descEl.setText(`Days before showing a refresh reminder in the timeline view. Currently: ${val} days.`);
+                    }
+                    // Update value label
+                    if (refreshValueLabel) {
+                        refreshValueLabel.setText(String(val));
+                    }
                 });
+            
+            // Add value label next to the slider
+            const sliderEl = slider.sliderEl;
+            refreshValueLabel = sliderEl.parentElement?.createEl('span', {
+                cls: 'rt-slider-value-label',
+                text: String(campaign.refreshThresholdDays)
+            });
+            
+            return slider;
         });
     
-    // Embed path
-    new Setting(details)
-        .setName('Embed Path')
-        .setDesc('Where to save the SVG for this campaign')
-        .addText(text => {
-            text.setValue(campaign.embedPath)
-                .onChange(async (val) => {
-                    if (!plugin.settings.authorProgress?.campaigns) return;
-                    plugin.settings.authorProgress.campaigns[index].embedPath = val;
-                    await plugin.saveSettings();
-                });
-        });
+    // Embed path (with validation and reset)
+    const defaultPath = `Radial Timeline/Social/${campaign.name.toLowerCase().replace(/\s+/g, '-')}-progress.svg`;
+    const embedPathSetting = new Setting(details)
+        .setName('Embed File Path')
+        .setDesc(`Location for the embed SVG file. Must end with .svg. Default: ${defaultPath}`);
+    
+    embedPathSetting.settingEl.addClass('rt-setting-full-width-input');
+    
+    embedPathSetting.addText(text => {
+        text.inputEl.addClass('rt-input-full');
+        text.setPlaceholder(defaultPath)
+            .setValue(campaign.embedPath);
+        
+        // Validate on blur
+        const handleBlur = async () => {
+            const val = text.getValue().trim();
+            text.inputEl.removeClass('rt-setting-input-success');
+            text.inputEl.removeClass('rt-setting-input-error');
+            
+            if (val && !val.endsWith('.svg')) {
+                text.inputEl.addClass('rt-setting-input-error');
+                new Notice('Embed path must end with .svg');
+                return;
+            }
+            
+            if (val) {
+                text.inputEl.addClass('rt-setting-input-success');
+            }
+            
+            if (!plugin.settings.authorProgress?.campaigns) return;
+            plugin.settings.authorProgress.campaigns[index].embedPath = val || defaultPath;
+            await plugin.saveSettings();
+        };
+        
+        text.inputEl.addEventListener('blur', handleBlur);
+    });
+    
+    // Reset button
+    embedPathSetting.addExtraButton(btn => {
+        btn.setIcon('rotate-ccw')
+            .setTooltip('Reset to default path')
+            .onClick(async () => {
+                if (!plugin.settings.authorProgress?.campaigns) return;
+                plugin.settings.authorProgress.campaigns[index].embedPath = defaultPath;
+                await plugin.saveSettings();
+                // Re-render to update the text input
+                onUpdate();
+            });
+    });
     
     // Size
     new Setting(details)
         .setName('Export Size')
+        .setDesc('SVG dimensions for different use cases: Small for social posts, Medium for newsletters, Large for website embeds.')
         .addDropdown(drop => {
             drop.addOption('compact', 'Small (600px)')
                 .addOption('standard', 'Medium (800px)')
@@ -528,9 +604,9 @@ function renderCampaignDetails(
             
             const dropdown = scheduleRow.createEl('select', { cls: 'rt-teaser-preset-dropdown dropdown' });
             const options = [
-                { value: 'slow', label: 'Slow (15/30/55/80%)' },
-                { value: 'standard', label: 'Standard (10/25/50/75%)' },
-                { value: 'fast', label: 'Fast (5/15/35/60%)' },
+                { value: 'slow', label: 'Slow (15/40/70%)' },
+                { value: 'standard', label: 'Standard (10/30/60%)' },
+                { value: 'fast', label: 'Fast (5/20/45%)' },
                 { value: 'custom', label: 'Custom' },
             ];
             options.forEach(opt => {
@@ -554,9 +630,9 @@ function renderCampaignDetails(
                 renderTeaserContent();
             };
             
-            // Row 2: Custom inputs (5-column grid to align with previews below)
+            // Row 2: Custom inputs (4-column grid to align with 4 previews below)
             if (isCustom) {
-                const customThresholds = teaserSettings.customThresholds ?? { scenes: 10, colors: 25, acts: 50, subplots: 75 };
+                const customThresholds = teaserSettings.customThresholds ?? { scenes: 10, colors: 30, full: 60 };
                 const customRow = scheduleContainer.createDiv({ cls: 'rt-teaser-custom-row' });
                 
                 // Column 1: Save button (aligns with TEASER preview)
@@ -566,12 +642,11 @@ function renderCampaignDetails(
                     cls: 'rt-teaser-save-btn'
                 });
                 
-                // Columns 2-5: Input fields (align with SCENES, COLORS, STRUCTURE, FULL)
-                const fields: { key: 'scenes' | 'colors' | 'acts' | 'subplots'; label: string }[] = [
+                // Columns 2-4: Input fields (align with SCENES, COLORS, FULL)
+                const fields: { key: 'scenes' | 'colors' | 'full'; label: string }[] = [
                     { key: 'scenes', label: 'Scenes' },
                     { key: 'colors', label: 'Colors' },
-                    { key: 'acts', label: 'Structure' },
-                    { key: 'subplots', label: 'Full' },
+                    { key: 'full', label: 'Full' },
                 ];
                 
                 const inputs: Record<string, HTMLInputElement> = {};
@@ -592,8 +667,7 @@ function renderCampaignDetails(
                     const vals = {
                         scenes: parseInt(inputs.scenes.value) || 0,
                         colors: parseInt(inputs.colors.value) || 0,
-                        acts: parseInt(inputs.acts.value) || 0,
-                        subplots: parseInt(inputs.subplots.value) || 0,
+                        full: parseInt(inputs.full.value) || 0,
                     };
                     
                     // Validate range (1-99)
@@ -604,8 +678,8 @@ function renderCampaignDetails(
                         }
                     }
                     
-                    // Validate order: scenes < colors < acts < subplots
-                    if (vals.scenes >= vals.colors || vals.colors >= vals.acts || vals.acts >= vals.subplots) {
+                    // Validate order: scenes < colors < full
+                    if (vals.scenes >= vals.colors || vals.colors >= vals.full) {
                         new Notice('Thresholds must be in ascending order');
                         return;
                     }
@@ -637,7 +711,7 @@ function renderCampaignDetails(
             // Show SVG previews of each reveal stage
             const thresholds = getTeaserThresholds(teaserSettings.preset, teaserSettings.customThresholds);
             const svgPreviewRow = teaserContentContainer.createDiv({ cls: 'rt-teaser-svg-preview-row' });
-            renderTeaserStagesPreviews(svgPreviewRow, plugin, currentCampaign, thresholds);
+            renderTeaserStagesPreviews(svgPreviewRow, plugin, currentCampaign, index, thresholds, renderTeaserContent);
         }
     };
     
@@ -658,13 +732,16 @@ function renderCampaignDetails(
 }
 
 /**
- * Render mini SVG previews for each teaser reveal stage
+ * Render mini SVG previews for each teaser reveal stage (4 stages)
+ * Clickable cards allow disabling middle stages
  */
 async function renderTeaserStagesPreviews(
     container: HTMLElement,
     plugin: RadialTimelinePlugin,
     campaign: AprCampaign,
-    thresholds: { scenes: number; acts: number; subplots: number; colors: number }
+    campaignIndex: number,
+    thresholds: { scenes: number; colors: number; full: number },
+    onUpdate: () => void
 ): Promise<void> {
     const settings = plugin.settings.authorProgress;
     if (!settings) return;
@@ -679,21 +756,54 @@ async function renderTeaserStagesPreviews(
         return;
     }
     
-    // Stages to preview with their simulated progress percentages
-    // Order: bar → scenes → colors → acts → subplots (full)
+    // Get disabled stages
+    const disabledStages = campaign.teaserReveal?.disabledStages ?? {};
+    
+    // 4 stages with their properties
     // Note: Teaser uses 5% for preview (shows ring) even though threshold is 0%
-    const stages: { level: TeaserRevealLevel; label: string; progress: number; icon: string }[] = [
-        { level: 'bar', label: 'Teaser', progress: 5, icon: 'circle' },
-        { level: 'scenes', label: 'Scenes', progress: thresholds.scenes, icon: 'sprout' },
-        { level: 'colors', label: 'Colors', progress: thresholds.colors, icon: 'tree-pine' },
-        { level: 'acts', label: 'Structure', progress: thresholds.acts, icon: 'trees' },
-        { level: 'subplots', label: 'Full', progress: thresholds.subplots, icon: 'shell' },
+    const stages: { 
+        level: TeaserRevealLevel; 
+        label: string; 
+        progress: number; 
+        icon: string;
+        canDisable: boolean;
+        isDisabled: boolean;
+        disableKey?: 'scenes' | 'colors';
+    }[] = [
+        { level: 'bar', label: 'Teaser', progress: 5, icon: 'circle', canDisable: false, isDisabled: false },
+        { level: 'scenes', label: 'Scenes', progress: thresholds.scenes, icon: 'sprout', canDisable: true, isDisabled: !!disabledStages.scenes, disableKey: 'scenes' },
+        { level: 'colors', label: 'Colors', progress: thresholds.colors, icon: 'tree-pine', canDisable: true, isDisabled: !!disabledStages.colors, disableKey: 'colors' },
+        { level: 'full', label: 'Full', progress: thresholds.full, icon: 'shell', canDisable: false, isDisabled: false },
     ];
     
     stages.forEach(stage => {
         const revealOptions = teaserLevelToRevealOptions(stage.level);
         
-        const card = container.createDiv({ cls: 'rt-teaser-stage-card' });
+        const cardClasses = ['rt-teaser-stage-card'];
+        if (stage.isDisabled) cardClasses.push('rt-teaser-stage-disabled');
+        if (stage.canDisable) cardClasses.push('rt-teaser-stage-clickable');
+        
+        const card = container.createDiv({ cls: cardClasses.join(' ') });
+        
+        // Click to toggle for middle stages
+        if (stage.canDisable && stage.disableKey) {
+            const key = stage.disableKey;
+            setTooltip(card, stage.isDisabled ? 'Click to enable this stage' : 'Click to skip this stage');
+            card.onclick = async () => {
+                if (!plugin.settings.authorProgress?.campaigns) return;
+                const targetCampaign = plugin.settings.authorProgress.campaigns[campaignIndex];
+                if (!targetCampaign.teaserReveal) {
+                    targetCampaign.teaserReveal = { enabled: true, preset: 'standard' };
+                }
+                if (!targetCampaign.teaserReveal.disabledStages) {
+                    targetCampaign.teaserReveal.disabledStages = {};
+                }
+                // Toggle the disabled state
+                targetCampaign.teaserReveal.disabledStages[key] = !stage.isDisabled;
+                await plugin.saveSettings();
+                onUpdate();
+            };
+        }
         
         // SVG preview container
         const svgContainer = card.createDiv({ cls: 'rt-teaser-stage-svg' });
@@ -709,6 +819,8 @@ async function renderTeaserStagesPreviews(
                 showSubplots: revealOptions.showSubplots,
                 showActs: revealOptions.showActs,
                 showStatusColors: revealOptions.showStatusColors,
+                showStageColors: revealOptions.showStageColors,
+                grayCompletedScenes: revealOptions.grayCompletedScenes,
                 showProgressPercent: true,
                 stageColors: plugin.settings.publishStageColors,
                 actCount: plugin.settings.actCount,
@@ -720,6 +832,12 @@ async function renderTeaserStagesPreviews(
             svgContainer.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
         } catch {
             svgContainer.createEl('span', { text: '⚠', cls: 'rt-teaser-stage-error' });
+        }
+        
+        // Disabled overlay
+        if (stage.isDisabled) {
+            const overlay = card.createDiv({ cls: 'rt-teaser-stage-overlay' });
+            overlay.setText('SKIPPED');
         }
         
         // Label row

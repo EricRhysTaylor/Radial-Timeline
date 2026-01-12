@@ -5,6 +5,7 @@ import { DEFAULT_SETTINGS } from '../defaults';
 import { getAllScenes } from '../../utils/manuscript';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { renderCampaignManagerSection } from './CampaignManagerSection';
+import { isProfessionalActive } from './ProfessionalSection';
 
 export interface AuthorProgressSectionProps {
     app: App;
@@ -263,7 +264,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             });
     });
 
-    // Publishing & Automation
+    // ─────────────────────────────────────────────────────────────────────────
+    // PUBLISHING SECTION
+    // Pro users use Campaign Manager instead, non-Pro users see basic publishing options
+    // ─────────────────────────────────────────────────────────────────────────
+    const isProActive = isProfessionalActive(plugin);
+    
+    // Only show basic Publishing & Automation for non-Pro users
+    if (!isProActive) {
     const automationCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-automation-card rt-apr-stack-gap' });
     automationCard.createEl('h4', { text: 'Publishing & Automation', cls: 'rt-section-title' });
 
@@ -405,19 +413,39 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             });
         });
     });
+    
+    // Pro upgrade teaser for non-Pro users
+    const proTeaser = automationCard.createDiv({ cls: 'rt-apr-pro-teaser' });
+    const teaserIcon = proTeaser.createSpan({ cls: 'rt-apr-pro-teaser-icon' });
+    setIcon(teaserIcon, 'signature');
+    const teaserText = proTeaser.createDiv({ cls: 'rt-apr-pro-teaser-text' });
+    teaserText.createEl('strong', { text: 'Want more?' });
+    teaserText.createEl('span', { 
+        text: ' Campaign Manager lets you create multiple embeds with Teaser Reveal—progressively show more detail as you write.' 
+    });
+    const teaserLink = proTeaser.createEl('a', {
+        text: 'Upgrade to Pro →',
+        href: 'https://radialtimeline.com/pro',
+        cls: 'rt-apr-pro-teaser-link',
+        attr: { target: '_blank', rel: 'noopener' }
+    });
+    } // End of non-Pro publishing section
 
     // ─────────────────────────────────────────────────────────────────────────
     // CAMPAIGN MANAGER (PRO FEATURE)
+    // Only shown to Pro users - replaces basic Publishing & Automation
     // ─────────────────────────────────────────────────────────────────────────
-    renderCampaignManagerSection({
-        app,
-        plugin,
-        containerEl: contentWrapper,
-        onCampaignChange: () => {
-            // Refresh the hero preview when campaigns change
-            void renderHeroPreview(app, plugin, previewContainer);
-        }
-    });
+    if (isProActive) {
+        renderCampaignManagerSection({
+            app,
+            plugin,
+            containerEl: contentWrapper,
+            onCampaignChange: () => {
+                // Refresh the hero preview when campaigns change
+                void renderHeroPreview(app, plugin, previewContainer);
+            }
+        });
+    }
 }
 
 /**

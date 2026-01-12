@@ -35,9 +35,14 @@ export function isProfessionalLicenseValid(key: string | undefined): boolean {
 
 /**
  * Check if the professional tier is active
- * During Open Beta, Pro features are enabled for everyone
+ * During Open Beta, Pro features are enabled for everyone (unless dev toggle is off)
  */
 export function isProfessionalActive(plugin: RadialTimelinePlugin): boolean {
+    // Check dev toggle for testing (defaults to true if undefined)
+    if (plugin.settings.devProActive === false) {
+        return false;
+    }
+    
     // During Open Beta, everyone gets Pro access
     if (OPEN_BETA_ACTIVE) {
         return true;
@@ -104,12 +109,19 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
         const bannerText = betaBanner.createDiv({ cls: 'rt-professional-beta-text' });
         bannerText.createEl('strong', { text: 'Thank you for being an early adopter!' });
         bannerText.createEl('p', { 
-            text: 'Pro features are free during the Open Beta. Your feedback helps shape the future of Radial Timeline. When we launch paid licensing, early supporters may receive special perks.'
+            text: 'Pro features are free during the Open Beta. Your feedback helps shape the future of Radial Timeline.'
+        });
+        
+        // Reward callout
+        const rewardText = bannerText.createEl('p', { cls: 'rt-professional-reward-text' });
+        rewardText.createEl('strong', { text: '🎁 Early Adopter Reward: ' });
+        rewardText.createSpan({ 
+            text: 'Submit helpful feedback or bug reports and receive one year of Pro free when we launch paid licensing!' 
         });
         
         // Feedback link
         const feedbackLink = bannerText.createEl('a', {
-            text: 'Share feedback →',
+            text: 'Share feedback & claim your reward →',
             href: 'https://radial-timeline.com/feedback',
             cls: 'rt-professional-feedback-link',
             attr: { target: '_blank', rel: 'noopener' }

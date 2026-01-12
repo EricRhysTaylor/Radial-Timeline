@@ -104,10 +104,15 @@ export interface AuthorProgressSettings {
 }
 
 /**
- * Teaser Reveal Levels
+ * Teaser Reveal stages for progressive reveal (4 stages)
  * Each level unlocks more visual detail as progress increases
+ * 
+ * bar     = Progress ring only, no scenes
+ * scenes  = Scene cells with status colors (active work visible, completed = gray) + act dividers
+ * colors  = Full publish stage colors revealed
+ * full    = All subplot rings visible
  */
-export type TeaserRevealLevel = 'bar' | 'scenes' | 'acts' | 'subplots' | 'colors';
+export type TeaserRevealLevel = 'bar' | 'scenes' | 'colors' | 'full';
 
 /**
  * Teaser Reveal preset configurations
@@ -116,13 +121,21 @@ export type TeaserPreset = 'slow' | 'standard' | 'fast' | 'custom';
 
 /**
  * Teaser Reveal thresholds - percentage at which each level unlocks
- * Order: bar (0%) → scenes → colors → acts → subplots (full)
+ * Order: bar (0%) → scenes → colors → full
  */
 export interface TeaserThresholds {
-    scenes: number;    // When to show scene cells (e.g., 10%)
-    colors: number;    // When to show status colors (e.g., 25%)
-    acts: number;      // When to show act divisions (e.g., 50%)
-    subplots: number;  // When to show subplot rings / full view (e.g., 75%)
+    scenes: number;    // When to show scene cells + acts (e.g., 10%)
+    colors: number;    // When to show full publish stage colors (e.g., 30%)
+    full: number;      // When to show subplot rings / complete view (e.g., 60%)
+}
+
+/**
+ * Disabled stages for Teaser Reveal
+ * Authors can skip middle stages by clicking on preview cards
+ */
+export interface TeaserDisabledStages {
+    scenes?: boolean;  // Skip SCENES stage
+    colors?: boolean;  // Skip COLORS stage
 }
 
 /**
@@ -132,6 +145,7 @@ export interface TeaserRevealSettings {
     enabled: boolean;
     preset: TeaserPreset;
     customThresholds?: TeaserThresholds;
+    disabledStages?: TeaserDisabledStages;
 }
 
 /**
@@ -144,8 +158,9 @@ export interface AprCampaign {
     description?: string;            // Optional notes about this campaign
     isActive: boolean;               // Whether this campaign is currently being used
     
-    // Refresh Schedule
-    refreshThresholdDays: number;    // Days before reminder appears
+    // Update Schedule
+    updateFrequency?: 'manual' | 'daily' | 'weekly' | 'monthly';  // How often to auto-update
+    refreshThresholdDays: number;    // Days before reminder appears (for manual mode)
     lastPublishedDate?: string;      // ISO string - when last updated
     
     // Output
@@ -240,6 +255,7 @@ export interface RadialTimelineSettings {
     
     // Professional License
     professionalLicenseKey?: string;
+    devProActive?: boolean;  // Dev toggle to test Pro features as active/inactive (defaults to true during beta)
     
     // Runtime Estimation Settings (Professional feature)
     enableRuntimeEstimation?: boolean;

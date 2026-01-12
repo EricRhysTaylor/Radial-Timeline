@@ -18,10 +18,12 @@ export interface AprRenderOptions {
     authorName?: string;
     authorUrl?: string;
     progressPercent: number;
-    showScenes?: boolean;      // When false, show solid progress ring (bar mode)
+    showScenes?: boolean;           // When false, show solid progress ring (bar mode)
     showSubplots?: boolean;
     showActs?: boolean;
-    showStatusColors?: boolean;
+    showStatusColors?: boolean;     // Show status colors (Todo, In Progress, etc.)
+    showStageColors?: boolean;      // Show publish stage colors (Zero, Author, House, Press)
+    grayCompletedScenes?: boolean;  // For SCENES stage: gray out completed scenes
     showProgressPercent?: boolean;
     stageColors?: Record<string, string>; // optional override (publishStage map)
     actCount?: number; // optional explicit act count override
@@ -56,6 +58,8 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         showSubplots = true,
         showActs = true,
         showStatusColors = true,
+        showStageColors = true,
+        grayCompletedScenes = false,
         showProgressPercent = true,
         stageColors,
         actCount,
@@ -154,7 +158,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         // Normal mode: Draw rings with scene cells
         svg += `<g class="apr-rings">`;
         ringsToRender.forEach(ring => {
-            svg += renderRing(ring, safeScenes, borderWidth, showStatusColors, stageColorMap, numActs, structural);
+            svg += renderRing(ring, safeScenes, borderWidth, showStatusColors, showStageColors, grayCompletedScenes, stageColorMap, numActs, structural);
         });
         svg += `</g>`;
 
@@ -199,6 +203,8 @@ function renderRing(
     allScenes: TimelineItem[],
     borderWidth: number,
     showStatusColors: boolean,
+    showStageColors: boolean,
+    grayCompletedScenes: boolean,
     stageColors: Record<string, string>,
     numActs: number,
     structural: ReturnType<typeof resolveStructuralColors>
@@ -240,7 +246,7 @@ function renderRing(
             const pos = positions.get(idx);
             if (!pos) return;
             used += pos.endAngle - pos.startAngle;
-            const color = resolveSceneColor(scene, showStatusColors, stageColors);
+            const color = resolveSceneColor(scene, showStatusColors, showStageColors, grayCompletedScenes, stageColors);
             const path = sceneArcPath(ring.innerR, ring.outerR, pos.startAngle, pos.endAngle);
             svg += `<path d="${path}" fill="${color}" stroke="${structural.border}" stroke-width="${borderWidth}" />`;
         });
@@ -277,9 +283,46 @@ function renderActSpokes(numActs: number, innerR: number, outerR: number, spokeW
     return svg;
 }
 
-function resolveSceneColor(scene: TimelineItem, showStatusColors: boolean, stageColors: Record<string, string>): string {
-    // When colors disabled, use neutral gray; otherwise use settings colors via getFillForScene
-    if (!showStatusColors) return APR_COLORS.sceneNeutral;
+/**
+ * Resolve the fill color for a scene based on teaser reveal settings
+ * 
+ * @param scene - The scene to color
+ * @param showStatusColors - Show Todo/In Progress/Done/Overdue colors
+ * @param showStageColors - Show Zero/Author/House/Press colors  
+ * @param grayCompletedScenes - Gray out completed scenes (for SCENES stage)
+ * @param stageColors - Color map from settings
+ */
+function resolveSceneColor(
+    scene: TimelineItem, 
+    showStatusColors: boolean, 
+    showStageColors: boolean,
+    grayCompletedScenes: boolean,
+    stageColors: Record<string, string>
+): string {
+    // When no colors at all, use neutral gray
+    if (!showStatusColors && !showStageColors) return APR_COLORS.sceneNeutral;
+    
+    // Check if scene is "completed" (has a publish stage set)
+    // Use bracket notation since 'Publish Stage' has a space
+    const rawStageValue = scene['Publish Stage'];
+    const rawStage = Array.isArray(rawStageValue) ? rawStageValue[0] : rawStageValue;
+    const stage = (rawStage || '').toString().trim().toLowerCase();
+    const isCompleted = stage && stage !== '' && stage !== 'zero';
+    
+    // SCENES stage: gray out completed scenes to hide publishing progress
+    if (grayCompletedScenes && isCompleted) {
+        return APR_COLORS.sceneNeutral;
+    }
+    
+    // When only status colors (not stage colors), show active work but not publish stages
+    if (showStatusColors && !showStageColors) {
+        // For completed scenes, use neutral (we don't want to show Zero/Author/House/Press)
+        if (isCompleted) return APR_COLORS.sceneNeutral;
+        // For active work, use getFillForScene which respects status
+        return getFillForScene(scene, stageColors);
+    }
+    
+    // Full colors: use getFillForScene for everything
     return getFillForScene(scene, stageColors);
 }
 
