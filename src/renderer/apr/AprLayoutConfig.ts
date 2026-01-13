@@ -36,7 +36,7 @@ export const APR_LAYOUT = {
         // RING GEOMETRY (Scene rings)
         // ─────────────────────────────────────────────────────────────────────
         innerRadius: 20,           // Center hole radius
-        outerRadius: 66,           // Outer edge of scene ring
+        outerRadius: 64,           // Outer edge of scene ring
         spokeWidth: 0.75,           // Width of radial spokes
         borderWidth: 0.5,           // Width of ring borders
         actSpokeWidth: 1,           // Width of act division spokes
@@ -46,7 +46,7 @@ export const APR_LAYOUT = {
         // CENTER PERCENT (Inner element)
         // ─────────────────────────────────────────────────────────────────────
         centerPercentFontSize: 32,  // Max font size for the % number (auto-fits to inner circle)
-        percentYOffset: 3.6,          // Y offset for the number (positive = down)
+        percentYOffset: 3.2,          // Y offset for the number (positive = down)
         percentNumberOpacity: 0.95,  // Number visibility: 0.0 = invisible, 1.0 = fully opaque
         percentSymbolYOffset: 4,   // Y offset for % symbol
         percentSymbolOpacity: 0.28, // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
@@ -90,11 +90,11 @@ export const APR_LAYOUT = {
         // CENTER PERCENT (Inner element)
         // ─────────────────────────────────────────────────────────────────────
         centerPercentFontSize: 105,  // Max font size for the % number (auto-fits to inner circle)
-        percentYOffset: 16,          // Y offset for the number (positive = down)
+        percentYOffset: 8,          // Y offset for the number (positive = down)
         percentNumberOpacity: 0.95,   // Number visibility: 0.0 = invisible, 1.0 = fully opaque
-        percentSymbolYOffset: 22,    // Y offset for % symbol
+        percentSymbolYOffset: 9.5,    // Y offset for % symbol
         percentSymbolOpacity: 0.28,   // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
-        percentSymbolSizeMultiplier: 1.9, // % symbol size: 1.0 = small, 2.5 = large (relative to inner radius)
+        percentSymbolSizeMultiplier: 2, // % symbol size: 1.0 = small, 2.5 = large (relative to inner radius)
         
         // ─────────────────────────────────────────────────────────────────────
         // RT BADGE (Bottom-right corner)
@@ -124,7 +124,7 @@ export const APR_LAYOUT = {
         // RING GEOMETRY (Scene rings)
         // ─────────────────────────────────────────────────────────────────────
         innerRadius: 80,
-        outerRadius: 204,
+        outerRadius: 200,
         spokeWidth: 1.5,
         borderWidth: 1.5,
         actSpokeWidth: 2.5,
@@ -133,12 +133,12 @@ export const APR_LAYOUT = {
         // ─────────────────────────────────────────────────────────────────────
         // CENTER PERCENT (Inner element)
         // ─────────────────────────────────────────────────────────────────────
-        centerPercentFontSize: 160,  // Max font size for the % number (auto-fits to inner circle)
-        percentYOffset: 24,         // Y offset for the number (positive = down)
+        centerPercentFontSize: 150,  // Max font size for the % number (auto-fits to inner circle)
+        percentYOffset: 11,         // Y offset for the number (positive = down)
         percentNumberOpacity: 0.95,   // Number visibility: 0.0 = invisible, 1.0 = fully opaque
-        percentSymbolYOffset: 33,   // Y offset for % symbol
+        percentSymbolYOffset: 15,   // Y offset for % symbol
         percentSymbolOpacity: 0.28,  // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
-        percentSymbolSizeMultiplier: 1.9, // % symbol size: 1.0 = small, 2.5 = large (relative to inner radius)
+        percentSymbolSizeMultiplier: 2, // % symbol size: 1.0 = small, 2.5 = large (relative to inner radius)
         
         // ─────────────────────────────────────────────────────────────────────
         // RT BADGE (Bottom-right corner)

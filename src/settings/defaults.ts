@@ -235,6 +235,8 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
         aprBookAuthorColor: '#6FB971', // Press stage default
         aprAuthorColor: '#6FB971', // Defaults to same as book title
         aprEngineColor: '#e5e5e5',
+        aprPercentNumberColor: '#6FB971', // Color for center percent number
+        aprPercentSymbolColor: '#6FB971', // Color for center % symbol
         aprTheme: 'dark',
         aprSpokeColorMode: 'dark', // Use theme-based spokes by default
         aprSpokeColor: '#ffffff', // Default custom color (not used unless mode is 'custom')

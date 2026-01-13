@@ -32,6 +32,8 @@ export interface AprRenderOptions {
     bookAuthorColor?: string;
     authorColor?: string;
     engineColor?: string;
+    percentNumberColor?: string; // Color for center percent number
+    percentSymbolColor?: string; // Color for center % symbol
     theme?: 'dark' | 'light' | 'none';
     spokeColor?: string; // Custom spokes color (used when theme mode allows custom)
 }
@@ -70,6 +72,8 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         bookAuthorColor,
         authorColor,
         engineColor,
+        percentNumberColor,
+        percentSymbolColor,
         theme = 'dark',
         spokeColor
     } = opts;
@@ -179,7 +183,9 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
 
     // Center percent (optional)
     if (showProgressPercent) {
-        svg += renderAprCenterPercent(progressPercent, size, stageColorMap, innerRadius);
+        // TEMPORARY: Force double-digit for testing
+        const testPercent = 99;
+        svg += renderAprCenterPercent(testPercent, size, innerRadius, percentNumberColor, percentSymbolColor);
     }
 
     // Branding on the perimeter (sanitize placeholder/dummy URLs)
@@ -342,19 +348,21 @@ function sanitizeAuthorUrl(url?: string): string | undefined {
 }
 
 function resolveStructuralColors(theme: 'dark' | 'light' | 'none', customSpokeColor?: string) {
-    // If custom color provided, use it (overrides theme)
-    const actSpokeColor = customSpokeColor 
-        ? customSpokeColor 
-        : theme === 'none' 
-            ? 'none'
-            : theme === 'light'
-                ? 'rgba(0, 0, 0, 0.65)'
-                : 'rgba(255, 255, 255, 0.7)'; // dark theme default
+    // If custom color provided, apply it to all structural elements (spokes, borders, act spokes)
+    if (customSpokeColor) {
+        return {
+            spoke: customSpokeColor,
+            actSpoke: customSpokeColor,
+            border: customSpokeColor,
+            centerHole: theme === 'light' ? '#ffffff' : '#0a0a0a',
+            background: theme === 'light' ? '#ffffff' : 'transparent'
+        };
+    }
     
     if (theme === 'light') {
         return {
             spoke: 'rgba(0, 0, 0, 0.5)',
-            actSpoke: actSpokeColor,
+            actSpoke: 'rgba(0, 0, 0, 0.65)',
             border: 'rgba(0, 0, 0, 0.35)',
             centerHole: '#ffffff',
             background: '#ffffff'
@@ -373,7 +381,7 @@ function resolveStructuralColors(theme: 'dark' | 'light' | 'none', customSpokeCo
     // Default: dark theme
     return {
         spoke: 'rgba(255, 255, 255, 0.4)',
-        actSpoke: actSpokeColor,
+        actSpoke: 'rgba(255, 255, 255, 0.7)',
         border: 'rgba(255, 255, 255, 0.25)',
         centerHole: '#0a0a0a',
         background: 'transparent'

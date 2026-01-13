@@ -202,8 +202,8 @@ export class RuntimeProcessingModal extends Modal {
             this.updateCount();
         });
 
-        // Current scene display (shown only when current scope is selected)
-        this.currentSceneContainer = scopeCard.createDiv({ cls: 'rt-runtime-current-scene rt-hidden' });
+        // Current scene display (always visible, muted when not in current scope)
+        this.currentSceneContainer = scopeCard.createDiv({ cls: 'rt-runtime-current-scene' });
         this.currentSceneContainer.createSpan({ text: 'Scene: ', cls: 'rt-runtime-label' });
         this.currentSceneNameEl = this.currentSceneContainer.createSpan({ cls: 'rt-runtime-current-scene-name' });
 
@@ -389,13 +389,13 @@ export class RuntimeProcessingModal extends Modal {
             }
         }
         
-        // Show/hide current scene display
+        // Show/mute current scene display
         if (this.currentSceneContainer) {
             if (showCurrentScene) {
-                this.currentSceneContainer.removeClass('rt-hidden');
+                this.currentSceneContainer.removeClass('rt-runtime-current-scene-muted');
                 this.updateCurrentSceneDisplay();
             } else {
-                this.currentSceneContainer.addClass('rt-hidden');
+                this.currentSceneContainer.addClass('rt-runtime-current-scene-muted');
             }
         }
     }

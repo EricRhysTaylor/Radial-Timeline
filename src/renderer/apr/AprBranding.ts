@@ -63,11 +63,12 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     `;
     
     // Build text content with tspan elements for separate colors
-    // Use textLength on parent to maintain exact spacing
+    // textLength applies spacing to the entire text content including all tspan children
+    const hasAuthor = authorName && authorName.trim().length > 0;
     let textContent = '';
     for (let i = 0; i < repetitions; i++) {
         textContent += `<tspan fill="${bookColor}">${bookTitleUpper}</tspan>`;
-        if (authorName) {
+        if (hasAuthor) {
             textContent += `<tspan fill="${authColor}">${bullet}${authorNameUpper}</tspan>`;
         }
         textContent += `<tspan fill="${bookColor}">${separator}</tspan>`;
@@ -135,20 +136,27 @@ export function renderAprBranding(options: AprBrandingOptions): string {
 export function renderAprCenterPercent(
     percent: number, 
     size: AprSize, 
-    stageColors: Record<string, string>, 
-    innerRadius: number
+    innerRadius: number,
+    numberColor?: string,
+    symbolColor?: string
 ): string {
     const preset = getPreset(size);
-    // Use Press stage color from settings (or default green)
-    const pressColor = stageColors.Press || '#6FB971';
+    // Fallback to Press stage green if colors not provided
+    const defaultColor = '#6FB971';
+    const numColor = numberColor || defaultColor;
+    const symColor = symbolColor || defaultColor;
+    
     const numStr = String(percent);
     const charCount = numStr.length;
 
     // Calculate font size: use max size, but fit to inner circle
     const maxFont = preset.centerFontSize;
-    // Fit to inner circle (rough estimate: each char is ~0.6 × fontSize wide)
-    const maxWidth = innerRadius * 2.3; // Allow number to use ~115% of inner radius
-    const fitFont = maxWidth / (0.6 * charCount);
+    // More aggressive scaling for multi-digit numbers
+    // Reduce maxWidth for 2+ digits: single digit uses full size, multi-digit gets tighter
+    const maxWidthMultiplier = charCount === 1 ? 2.3 : (charCount === 2 ? 1.7 : 1.4); // More aggressive for 2-3 digits
+    const maxWidth = innerRadius * maxWidthMultiplier;
+    // Character width estimate: digits are wider than average, use ~0.65 × fontSize
+    const fitFont = maxWidth / (0.65 * charCount);
     const fontSize = Math.min(fitFont, maxFont);
 
     const ghostFontSize = innerRadius * preset.percentSymbolSizeMultiplier;
@@ -168,7 +176,7 @@ export function renderAprCenterPercent(
                 font-family="${APR_FONTS.percent}" 
                 font-weight="800" 
                 font-size="${ghostFontSize}" 
-                fill="${pressColor}"
+                fill="${symColor}"
                 opacity="${ghostOpacity}">
                 %
             </text>
@@ -180,7 +188,8 @@ export function renderAprCenterPercent(
                 font-family="${APR_FONTS.percent}" 
                 font-weight="800" 
                 font-size="${fontSize}" 
-                fill="${pressColor}"
+                letter-spacing="-0.02em"
+                fill="${numColor}"
                 opacity="${numberOpacity}">
                 ${numStr}
             </text>

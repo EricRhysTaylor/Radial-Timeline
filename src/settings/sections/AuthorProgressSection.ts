@@ -1,9 +1,11 @@
-import { App, Setting, Notice, setIcon, normalizePath, ColorComponent, TextComponent } from 'obsidian';
+import { App, Setting, Notice, setIcon, normalizePath, ColorComponent, TextComponent, Modal, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { AuthorProgressService } from '../../services/AuthorProgressService';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { getAllScenes } from '../../utils/manuscript';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
+import { getPresetPalettes, generatePaletteFromColor } from '../../utils/aprPaletteGenerator';
+import { AprPaletteModal } from '../../modals/AprPaletteModal';
 import { renderCampaignManagerSection } from './CampaignManagerSection';
 import { isProfessionalActive } from './ProfessionalSection';
 import { addWikiLink } from '../wikiLink';
@@ -218,147 +220,247 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Set initial emphasis state after controls are created
     updateEmphasis(currentTransparent);
 
-    // Theme selector
-    const themeSetting = new Setting(stylingCard)
-        .setName('Theme Contrast')
-        .setDesc('Choose stroke/border contrast to match your background.')
-        .addDropdown(drop => {
-            drop.addOption('dark', 'Light Strokes');
-            drop.addOption('light', 'Dark Strokes');
-            drop.addOption('none', 'No Strokes');
-            drop.setValue(currentTheme);
-            drop.onChange(async (val) => {
-                if (!plugin.settings.authorProgress) return;
-                plugin.settings.authorProgress.aprTheme = (val as 'dark' | 'light' | 'none') || 'dark';
-                await plugin.saveSettings();
-                refreshPreview();
-            });
-        });
-
-    // Spokes Color setting (with custom option)
+    // Theme/Spokes Color setting (unified - controls both theme and spokes)
     const spokeColorSetting = new Setting(stylingCard)
-        .setName('Act Spokes Color')
-        .setDesc('Color for act division spokes (the lines dividing acts).');
-    
-    // Container for color picker (hidden unless custom) - created before dropdown for closure access
-    const spokeColorPickerContainer = spokeColorSetting.settingEl.createDiv({ cls: 'rt-apr-spoke-color-picker' });
+        .setName('Theme Contrast & Spokes')
+        .setDesc('Choose stroke/border contrast. Controls all structural elements including scene borders and act division spokes.');
     
     let spokeColorPickerRef: ColorComponent | undefined;
     let spokeColorInputRef: TextComponent | undefined;
     
-    const createSpokeColorPicker = () => {
-        spokeColorPickerContainer.empty();
-        
-        const controlWrapper = spokeColorPickerContainer.createDiv({ cls: 'rt-color-control-wrapper' });
-        
-        // Color picker with swatch
-        spokeColorPickerRef = new ColorComponent(controlWrapper)
-            .setValue(currentSpokeColor)
-            .onChange(async (value) => {
-                if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value)) {
-                    if (!plugin.settings.authorProgress) return;
-                    plugin.settings.authorProgress.aprSpokeColor = value;
-                    await plugin.saveSettings();
-                    refreshPreview();
-                    spokeColorInputRef?.setValue(value);
-                    // Update swatch background using CSS custom property (SAFE: CSS variable, not inline style)
-                    const swatch = controlWrapper.querySelector('.rt-swatch-trigger') as HTMLElement;
-                    if (swatch) swatch.style.setProperty('--rt-apr-spoke-color', value);
-                }
-            });
-        
-        const colorInput = controlWrapper.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
-        if (colorInput) colorInput.classList.add('rt-hidden-color-input');
-        const swatchEl = controlWrapper.createDiv({ cls: 'rt-swatch-trigger rt-apr-spoke-swatch' });
-        // Set initial color using CSS custom property (SAFE: CSS variable, not inline style)
-        swatchEl.style.setProperty('--rt-apr-spoke-color', currentSpokeColor);
-        plugin.registerDomEvent(swatchEl, 'click', () => { colorInput?.click(); });
-        
-        // Hex input
-        new Setting(controlWrapper)
-            .addText(text => {
-                spokeColorInputRef = text;
-                text.inputEl.classList.add('rt-hex-input');
-                text.setValue(currentSpokeColor)
-                    .onChange(async (value) => {
-                        if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value)) {
-                            if (!plugin.settings.authorProgress) return;
-                            plugin.settings.authorProgress.aprSpokeColor = value;
-                            await plugin.saveSettings();
-                            refreshPreview();
-                            spokeColorPickerRef?.setValue(value);
-                            // Update swatch background using CSS custom property (SAFE: CSS variable, not inline style)
-                            const swatch = controlWrapper.querySelector('.rt-swatch-trigger') as HTMLElement;
-                            if (swatch) swatch.style.setProperty('--rt-apr-spoke-color', value);
-                        }
-                    });
-            });
-    };
-    
-    const updateSpokeColorVisibility = () => {
-        const isCustom = plugin.settings.authorProgress?.aprSpokeColorMode === 'custom';
-        if (isCustom) {
-            if (spokeColorPickerContainer.children.length === 0) {
-                createSpokeColorPicker();
+    // Match Book Title Color layout exactly - always show color picker and text input
+    const isCustomMode = currentSpokeMode === 'custom';
+    const fallbackColor = '#ffffff';
+    spokeColorSetting.addColorPicker(picker => {
+        spokeColorPickerRef = picker;
+        picker.setValue(isCustomMode ? currentSpokeColor : fallbackColor);
+        picker.setDisabled(!isCustomMode);
+        picker.onChange(async (val) => {
+            if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
+                if (!plugin.settings.authorProgress) return;
+                plugin.settings.authorProgress.aprSpokeColor = val || fallbackColor;
+                await plugin.saveSettings();
+                refreshPreview();
+                spokeColorInputRef?.setValue(val);
             }
-            spokeColorPickerContainer.classList.remove('rt-hidden');
-        } else {
-            spokeColorPickerContainer.classList.add('rt-hidden');
-        }
-    };
+        });
+    });
     
-    // Dropdown for mode
+    spokeColorSetting.addText(text => {
+        spokeColorInputRef = text;
+        text.inputEl.classList.add('rt-hex-input');
+        text.setPlaceholder(fallbackColor).setValue(isCustomMode ? currentSpokeColor : fallbackColor);
+        text.setDisabled(!isCustomMode);
+        text.onChange(async (val) => {
+            if (!val) return;
+            if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
+                if (!plugin.settings.authorProgress) return;
+                plugin.settings.authorProgress.aprSpokeColor = val;
+                await plugin.saveSettings();
+                refreshPreview();
+                spokeColorPickerRef?.setValue(val);
+            }
+        });
+    });
+    
+    // Dropdown for mode (added after color controls, appears to the right)
     spokeColorSetting.addDropdown(drop => {
         drop.addOption('dark', 'Light Strokes');
         drop.addOption('light', 'Dark Strokes');
         drop.addOption('none', 'No Strokes');
         drop.addOption('custom', 'Custom Color');
-        drop.setValue(currentSpokeMode);
+        // Use spoke mode if set, otherwise fall back to theme
+        const currentValue = currentSpokeMode !== 'dark' ? currentSpokeMode : (currentTheme !== 'dark' ? currentTheme : 'dark');
+        drop.setValue(currentValue);
         drop.onChange(async (val) => {
             if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprSpokeColorMode = (val as 'dark' | 'light' | 'none' | 'custom') || 'dark';
+            const mode = (val as 'dark' | 'light' | 'none' | 'custom') || 'dark';
+            // Update both theme and spoke mode to keep them in sync
+            plugin.settings.authorProgress.aprTheme = mode === 'custom' ? 'dark' : (mode as 'dark' | 'light' | 'none');
+            plugin.settings.authorProgress.aprSpokeColorMode = mode;
             await plugin.saveSettings();
+            
+            // Enable/disable color controls based on mode (always visible, just disabled)
+            const isCustom = mode === 'custom';
+            spokeColorPickerRef?.setDisabled(!isCustom);
+            spokeColorInputRef?.setDisabled(!isCustom);
+            if (isCustom && spokeColorInputRef) {
+                const current = plugin.settings.authorProgress.aprSpokeColor || fallbackColor;
+                spokeColorInputRef.setValue(current);
+                spokeColorPickerRef?.setValue(current);
+            } else if (spokeColorInputRef) {
+                spokeColorInputRef.setValue(fallbackColor);
+                spokeColorPickerRef?.setValue(fallbackColor);
+            }
+            
             refreshPreview();
-            updateSpokeColorVisibility();
         });
     });
-    
-    // Initial setup
-    updateSpokeColorVisibility();
 
     const setColorPicker = (
         setting: Setting, 
-        key: 'aprBookAuthorColor' | 'aprAuthorColor' | 'aprEngineColor', 
-        fallback: string
+        key: 'aprAuthorColor' | 'aprEngineColor' | 'aprPercentNumberColor' | 'aprPercentSymbolColor', 
+        fallback: string,
+        onColorChange?: () => void
     ) => {
         const current = (settings as any)?.[key] || fallback;
         setting.addColorPicker(picker => {
+            if (key === 'aprAuthorColor') authorColorPickerRef = picker;
+            else if (key === 'aprPercentNumberColor') percentNumberColorPickerRef = picker;
+            else if (key === 'aprPercentSymbolColor') percentSymbolColorPickerRef = picker;
+            
             picker.setValue(current);
             picker.onChange(async (val) => {
                 if (!plugin.settings.authorProgress) return;
                 (plugin.settings.authorProgress as any)[key] = val || fallback;
+                onColorChange?.();
                 await plugin.saveSettings();
                 refreshPreview();
             });
         });
         setting.addText(text => {
+            if (key === 'aprAuthorColor') authorTextRef = text;
+            else if (key === 'aprPercentNumberColor') percentNumberTextRef = text;
+            else if (key === 'aprPercentSymbolColor') percentSymbolTextRef = text;
+            
             text.setPlaceholder(fallback).setValue(current);
             text.inputEl.classList.add('rt-hex-input');
             text.onChange(async (val) => {
                 if (!val) return;
                 if (!plugin.settings.authorProgress) return;
                 (plugin.settings.authorProgress as any)[key] = val;
+                onColorChange?.();
                 await plugin.saveSettings();
                 refreshPreview();
             });
         });
     };
 
-    const bookColorSetting = new Setting(stylingCard).setName('Book Title Color').setDesc('Used for the book title in the perimeter text.');
-    setColorPicker(bookColorSetting, 'aprBookAuthorColor', plugin.settings.publishStageColors?.Press || '#6FB971');
+    // Color Palette and Book Title Color - grouped together with border
+    const bookTitleColorFallback = plugin.settings.publishStageColors?.Press || '#6FB971';
+    const currentBookTitleColor = settings?.aprBookAuthorColor || bookTitleColorFallback;
+    const paletteGroupWrapper = stylingCard.createDiv({ cls: 'rt-apr-palette-book-title-group' });
+    
+    // Track last applied palette and color picker refs
+    let lastAppliedPalette: { bookTitle: string; authorName: string; percentNumber: string; percentSymbol: string } | null = null;
+    let bookTitleColorPickerRef: ColorComponent | undefined;
+    let bookTitleTextRef: TextComponent | undefined;
+    let authorColorPickerRef: ColorComponent | undefined;
+    let authorTextRef: TextComponent | undefined;
+    let percentNumberColorPickerRef: ColorComponent | undefined;
+    let percentNumberTextRef: TextComponent | undefined;
+    let percentSymbolColorPickerRef: ColorComponent | undefined;
+    let percentSymbolTextRef: TextComponent | undefined;
+    
+    // Set border color and active state
+    const updateBorderState = (color: string, isActive: boolean) => {
+        paletteGroupWrapper.style.setProperty('--rt-palette-border-color', color);
+        if (isActive) {
+            paletteGroupWrapper.classList.remove('rt-palette-inactive');
+        } else {
+            paletteGroupWrapper.classList.add('rt-palette-inactive');
+        }
+    };
+    
+    // Check if current colors match the last applied palette
+    const checkPaletteActive = () => {
+        if (!lastAppliedPalette || !plugin.settings.authorProgress) {
+            updateBorderState(currentBookTitleColor, false);
+            return;
+        }
+        const current = plugin.settings.authorProgress;
+        const matches = 
+            (current.aprBookAuthorColor || bookTitleColorFallback) === lastAppliedPalette.bookTitle &&
+            (current.aprAuthorColor || bookTitleColorFallback) === lastAppliedPalette.authorName &&
+            (current.aprPercentNumberColor || bookTitleColorFallback) === lastAppliedPalette.percentNumber &&
+            (current.aprPercentSymbolColor || bookTitleColorFallback) === lastAppliedPalette.percentSymbol;
+        updateBorderState(current.aprBookAuthorColor || bookTitleColorFallback, matches);
+    };
+    
+    updateBorderState(currentBookTitleColor, false);
+    
+    // Color Palette Helper - moved above Book Title Color
+    const paletteHelperSetting = new Setting(paletteGroupWrapper)
+        .setName('Color Palette')
+        .setDesc('Apply a preset color palette or generate one from your Book Title Color.');
+    // Add palette icon to the name (prepend before text)
+    const paletteIcon = paletteHelperSetting.nameEl.createSpan({ cls: 'rt-setting-icon' });
+    setIcon(paletteIcon, 'palette');
+    // Insert icon at the beginning
+    if (paletteHelperSetting.nameEl.firstChild) {
+        paletteHelperSetting.nameEl.insertBefore(paletteIcon, paletteHelperSetting.nameEl.firstChild);
+    } else {
+        paletteHelperSetting.nameEl.prepend(paletteIcon);
+    }
+    paletteHelperSetting.addButton(button => {
+        button.setButtonText('Choose Palette...');
+        button.setCta();
+        button.onClick(() => {
+            if (!plugin.settings.authorProgress) return;
+            const modal = new AprPaletteModal(app, plugin, plugin.settings.authorProgress, (palette) => {
+                // Update settings
+                if (!plugin.settings.authorProgress) return;
+                plugin.settings.authorProgress.aprBookAuthorColor = palette.bookTitle;
+                plugin.settings.authorProgress.aprAuthorColor = palette.authorName;
+                plugin.settings.authorProgress.aprPercentNumberColor = palette.percentNumber;
+                plugin.settings.authorProgress.aprPercentSymbolColor = palette.percentSymbol;
+                
+                // Update color picker components
+                bookTitleColorPickerRef?.setValue(palette.bookTitle);
+                bookTitleTextRef?.setValue(palette.bookTitle);
+                authorColorPickerRef?.setValue(palette.authorName);
+                authorTextRef?.setValue(palette.authorName);
+                percentNumberColorPickerRef?.setValue(palette.percentNumber);
+                percentNumberTextRef?.setValue(palette.percentNumber);
+                percentSymbolColorPickerRef?.setValue(palette.percentSymbol);
+                percentSymbolTextRef?.setValue(palette.percentSymbol);
+                
+                // Store as last applied palette
+                lastAppliedPalette = palette;
+                updateBorderState(palette.bookTitle, true);
+                
+                refreshPreview();
+            });
+            modal.open();
+        });
+    });
+
+    // Book Title Color with border color update
+    const bookColorSetting = new Setting(paletteGroupWrapper).setName('Book Title Color').setDesc('Used for the book title in the perimeter text.');
+    const currentBookColor = settings?.aprBookAuthorColor || bookTitleColorFallback;
+    bookColorSetting.addColorPicker(picker => {
+        bookTitleColorPickerRef = picker;
+        picker.setValue(currentBookColor);
+        picker.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprBookAuthorColor = val || bookTitleColorFallback;
+            checkPaletteActive();
+            await plugin.saveSettings();
+            refreshPreview();
+        });
+    });
+    bookColorSetting.addText(text => {
+        bookTitleTextRef = text;
+        text.setPlaceholder(bookTitleColorFallback).setValue(currentBookColor);
+        text.inputEl.classList.add('rt-hex-input');
+        text.onChange(async (val) => {
+            if (!val) return;
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprBookAuthorColor = val;
+            checkPaletteActive();
+            await plugin.saveSettings();
+            refreshPreview();
+        });
+    });
 
     const authorColorSetting = new Setting(stylingCard).setName('Author Name Color').setDesc('Used for the author name in the perimeter text.');
-    setColorPicker(authorColorSetting, 'aprAuthorColor', plugin.settings.publishStageColors?.Press || '#6FB971');
+    setColorPicker(authorColorSetting, 'aprAuthorColor', plugin.settings.publishStageColors?.Press || '#6FB971', checkPaletteActive);
+
+    const percentNumberColorSetting = new Setting(stylingCard).setName('% number color').setDesc('Color for the center % number.');
+    setColorPicker(percentNumberColorSetting, 'aprPercentNumberColor', plugin.settings.publishStageColors?.Press || '#6FB971', checkPaletteActive);
+
+    const percentSymbolColorSetting = new Setting(stylingCard).setName('% symbol color').setDesc('Color for the center % symbol.');
+    setColorPicker(percentSymbolColorSetting, 'aprPercentSymbolColor', plugin.settings.publishStageColors?.Press || '#6FB971', checkPaletteActive);
 
     const engineColorSetting = new Setting(stylingCard).setName('Radial Timeline Engine Color').setDesc('Used on the Radial Timeline Logo link in the bottom right corner.');
     setColorPicker(engineColorSetting, 'aprEngineColor', '#e5e5e5');
@@ -645,6 +747,8 @@ async function renderHeroPreview(
             bookAuthorColor: aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
             authorColor: aprSettings?.aprAuthorColor ?? aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
             engineColor: aprSettings?.aprEngineColor,
+            percentNumberColor: aprSettings?.aprPercentNumberColor ?? aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
+            percentSymbolColor: aprSettings?.aprPercentSymbolColor ?? aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
             theme: aprSettings?.aprTheme || 'dark',
             spokeColor: aprSettings?.aprSpokeColorMode === 'custom' ? aprSettings?.aprSpokeColor : undefined
         });

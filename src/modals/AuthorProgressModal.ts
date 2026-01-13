@@ -330,6 +330,8 @@ export class AuthorProgressModal extends Modal {
                     bookAuthorColor: settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
                     authorColor: settings?.aprAuthorColor ?? settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
                     engineColor: settings?.aprEngineColor ?? '#e5e5e5',
+                    percentNumberColor: settings?.aprPercentNumberColor ?? settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
+                    percentSymbolColor: settings?.aprPercentSymbolColor ?? settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
                     theme: settings?.aprTheme ?? 'dark'
                 });
 

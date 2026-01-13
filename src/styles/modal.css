@@ -2182,3 +2182,62 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+
+/* APR Color Palette Modal Styles */
+.rt-apr-palette-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.rt-apr-palette-card {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--background-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rt-apr-palette-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-normal);
+}
+
+.rt-apr-palette-swatches {
+  display: flex;
+  gap: 4px;
+  margin: 4px 0;
+}
+
+.rt-apr-palette-swatch {
+  flex: 1;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rt-apr-palette-card .setting-item-control {
+  margin-top: 4px;
+}
+
+.rt-apr-palette-generate-card {
+  margin-top: 20px;
+}
+
+.rt-apr-palette-generate-card .setting-item {
+  border-top: 1px solid var(--background-modifier-border);
+  padding-top: 12px;
+}
+
+.rt-apr-palette-generate-card .setting-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.rt-apr-palette-generate-card .rt-apr-palette-swatches {
+  margin-right: 8px;
+}

@@ -2231,6 +2231,11 @@
   gap: 4px;
 }
 
+.rt-runtime-current-scene-muted {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 .rt-runtime-current-scene-name {
   font-weight: 500;
   color: var(--text-normal);
@@ -2787,6 +2792,36 @@
 
 .rt-apr-stack-gap:not(:last-child) {
   margin-bottom: 16px;
+}
+
+/* Color Palette and Book Title Color group - with dynamic border */
+.rt-apr-palette-book-title-group {
+  border: 2px solid var(--rt-palette-border-color, #6FB971);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 8px 0;
+  background: var(--background-secondary);
+  transition: border-color 0.2s ease;
+}
+
+.rt-apr-palette-book-title-group.rt-palette-inactive {
+  /* Mute only the border, keep container fully visible */
+  opacity: 1;
+  /* Use a muted border color - blend with background to create muted effect */
+  border-color: color-mix(in srgb, var(--background-modifier-border) 25%, var(--background-secondary));
+}
+
+/* Icon in setting name */
+.rt-setting-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.rt-setting-icon svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* Pro upgrade teaser in non-Pro publishing section */

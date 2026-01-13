@@ -86,6 +86,8 @@ export interface AuthorProgressSettings {
     aprBookAuthorColor?: string;
     aprAuthorColor?: string;
     aprEngineColor?: string;
+    aprPercentNumberColor?: string; // Color for the center percent number
+    aprPercentSymbolColor?: string; // Color for the center % symbol
     aprTheme?: 'dark' | 'light' | 'none'; // Controls stroke/border contrast
     aprSpokeColorMode?: 'dark' | 'light' | 'none' | 'custom'; // Act spokes color mode
     aprSpokeColor?: string; // Custom spokes color (used when mode is 'custom')

@@ -106,6 +106,8 @@ export class AuthorProgressService {
             bookAuthorColor: settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
             authorColor: settings.aprAuthorColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
             engineColor: settings.aprEngineColor,
+            percentNumberColor: settings.aprPercentNumberColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
+            percentSymbolColor: settings.aprPercentSymbolColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
             theme: settings.aprTheme || 'dark',
             spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor : undefined
         });
