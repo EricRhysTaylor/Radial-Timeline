@@ -2811,6 +2811,74 @@
   border-color: color-mix(in srgb, var(--background-modifier-border) 25%, var(--background-secondary));
 }
 
+/* Typography container */
+.rt-apr-typography-container {
+  padding: 8px 0;
+}
+
+.rt-apr-typography-separator {
+  margin: 8px 0;
+  border: none;
+  border-top: 1px solid var(--background-modifier-border);
+  opacity: 0.4;
+}
+
+/* Unified row layout for APR typography settings */
+.rt-settings-root .rt-apr-unified-group {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  padding: 12px 12px 8px;
+  margin: 12px 0;
+}
+
+/* Remove nested dark backgrounds from setting items - use high specificity to override Obsidian defaults */
+.rt-settings-root .rt-apr-unified-group .setting-item.setting-item {
+  margin: 0;
+  padding-left: 0;
+  padding-right: 0;
+  background: transparent;
+  border: none;
+}
+
+.rt-settings-root .rt-apr-unified-row.setting-item {
+  padding: 8px 0 4px 0;
+  border-top: none;
+}
+
+/* Add left padding to section headers */
+.rt-settings-root .rt-apr-unified-row .setting-item-name {
+  padding-left: 8px;
+  min-width: 80px;
+}
+
+.rt-settings-root .rt-apr-unified-row .setting-item-control {
+  gap: 8px;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.rt-settings-root .rt-apr-unified-row .rt-apr-text-input {
+  min-width: 120px;
+  max-width: 160px;
+}
+
+.rt-settings-root .rt-apr-unified-row-secondary.setting-item {
+  padding: 0 0 8px 0;
+  border-top: none;
+}
+
+/* Right align the font/weight row */
+.rt-settings-root .rt-apr-unified-row-secondary .setting-item-control {
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.rt-settings-root .rt-apr-unified-row-secondary .setting-item-control select {
+  min-width: 100px;
+}
+
 /* Icon in setting name */
 .rt-setting-icon {
   display: inline-flex;
