@@ -31,7 +31,7 @@ export const APR_LAYOUT = {
         svgSize: 150,
         
         // Ring geometry
-        innerRadius: 30,           // Center hole radius
+        innerRadius: 20,           // Center hole radius
         outerRadius: 68,           // Outer edge of scene ring
         
         // Branding positions
@@ -40,7 +40,7 @@ export const APR_LAYOUT = {
         // Font sizes (in px)
         bookAuthorFontSize: 7,     // Book title + author name on perimeter
         rtBadgeFontSize: 7,        // RT badge (match to bookAuthorFontSize for consistency)
-        centerPercentFontSize: 24, // The big % number in center
+        centerPercentFontSize: 20, // The big % number in center
         
         // RT Badge positioning (bottom-right corner)
         rtBadgeOffsetX: 8,         // Inset from right edge
@@ -70,7 +70,7 @@ export const APR_LAYOUT = {
         svgSize: 300,
         
         // Ring geometry
-        innerRadius: 60,
+        innerRadius: 50,
         outerRadius: 136,
         
         // Branding positions
@@ -109,11 +109,11 @@ export const APR_LAYOUT = {
         svgSize: 450,
         
         // Ring geometry
-        innerRadius: 90,
+        innerRadius: 80,
         outerRadius: 204,
         
         // Branding positions
-        brandingRadius: 210,
+        brandingRadius: 208,
         
         // Font sizes
         bookAuthorFontSize: 21,

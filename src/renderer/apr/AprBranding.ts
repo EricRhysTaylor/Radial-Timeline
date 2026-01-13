@@ -19,35 +19,40 @@ export interface AprBrandingOptions {
 /**
  * Generate the perimeter branding SVG elements
  * Creates a continuous text ring of book/author, plus a minimal RT badge at bottom-right
+ * 
+ * Uses SVG textLength to force text to fill exactly 360° with no gap or overlap.
  */
 export function renderAprBranding(options: AprBrandingOptions): string {
     const { bookTitle, authorName, authorUrl, size, bookAuthorColor, engineColor } = options;
     const preset = getPreset(size);
-    const { brandingRadius, brandingFontSize, rtBrandingFontSize, brandingLetterSpacing } = preset;
+    const { brandingRadius, brandingFontSize, rtBrandingFontSize } = preset;
     
     const rtUrl = 'https://radialtimeline.com';
     // Fallback to Press stage green if no color provided (matches RT default)
     const baColor = bookAuthorColor || '#6FB971';
     const engColor = engineColor || APR_TEXT_COLORS.primary;
     
-    // Build the repeating title text
+    // Build the repeating title segment
     const separator = ' ~ ';
     const pair = authorName 
         ? `${bookTitle.toUpperCase()} • ${authorName.toUpperCase()}`
         : bookTitle.toUpperCase();
-    const titleSegment = pair;
+    const singleSegment = pair + separator;
     
-    // Calculate how many repetitions we need to fill the circle
+    // Calculate exact circumference
     const circumference = 2 * Math.PI * brandingRadius;
-    const avgCharWidth = brandingFontSize * 0.55;
-    const segmentWidth = titleSegment.length * avgCharWidth + (separator.length * avgCharWidth);
-    const repetitions = Math.max(Math.ceil(circumference / segmentWidth), 4);
     
-    // Build the full repeating string (all book/author, no engine text in the ring)
-    const fullBrandingText = Array(repetitions).fill(titleSegment).join(separator);
+    // Estimate how many reps fit comfortably (rough estimate for count only)
+    const baseCharWidth = brandingFontSize * 0.55;
+    const segmentBaseWidth = singleSegment.length * baseCharWidth;
+    const idealReps = Math.round(circumference / segmentBaseWidth);
+    const repetitions = Math.max(4, Math.min(10, idealReps));
+    
+    // Build the full text - use separator between all segments for seamless wrap
+    // The last separator connects back to the first segment visually
+    const fullBrandingText = Array(repetitions).fill(pair).join(separator) + separator;
     
     // Full circle path starting from top (12 o'clock) going clockwise
-    // Clockwise (sweep-flag=1) places text on the OUTSIDE of the curve, readable at top
     const circlePathId = 'apr-branding-circle';
     const circlePath = `M 0 -${brandingRadius} A ${brandingRadius} ${brandingRadius} 0 1 1 0 ${brandingRadius} A ${brandingRadius} ${brandingRadius} 0 1 1 0 -${brandingRadius}`;
     
@@ -57,19 +62,16 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         </defs>
     `;
     
-    // Wrap in link if URL provided
-    const wrapLink = (url: string | undefined, content: string): string => {
-        if (!url?.trim()) return content;
-        return `<a href="${url}" target="_blank" rel="noopener">${content}</a>`;
-    };
-    
+    // Use textLength to force the text to fill EXACTLY the circumference
+    // lengthAdjust="spacing" adjusts only inter-character spacing, not glyph shapes
     const brandingText = `
         <text 
             font-family="${APR_FONTS.branding}" 
             font-size="${brandingFontSize}" 
             font-weight="700" 
             fill="${baColor}"
-            letter-spacing="${brandingLetterSpacing}">
+            textLength="${circumference.toFixed(2)}"
+            lengthAdjust="spacing">
             <textPath href="#${circlePathId}" startOffset="0%">
                 ${fullBrandingText}
             </textPath>

@@ -155,6 +155,13 @@ export interface TranslationKeys {
         presetScreenplay: string;
         presetPodcast: string;
         presetNovel: string;
+        presetNovelDesc: string;
+        presetScreenplayDesc: string;
+        presetPodcastDesc: string;
+        outlineBeatSheetDesc: string;
+        outlineEpisodeRundownDesc: string;
+        outlineShootingScheduleDesc: string;
+        outlineIndexCardsDesc: string;
         formatMarkdown: string;
         formatDocx: string;
         formatPdf: string;
@@ -189,6 +196,10 @@ export interface TranslationKeys {
         actionCreate: string;
         actionCancel: string;
         emptyNotice: string;
+        templateNotConfigured: string;
+        templateNotFound: string;
+        templateFound: string;
+        configureInSettings: string;
         rangeEmpty: string;
         loadError: string;
         wordCountHeading: string;
@@ -373,6 +384,13 @@ export const en: TranslationKeys = {
         presetScreenplay: 'Screenplay (Pandoc template)',
         presetPodcast: 'Podcast script (Pandoc template)',
         presetNovel: 'Novel manuscript',
+        presetNovelDesc: 'Traditional book manuscript format. Scenes become chapters/sections. For publishing, editing, or sharing.',
+        presetScreenplayDesc: 'Industry-standard screenplay format (slug lines, dialogue, action). Requires Pandoc template for DOCX/PDF. Best for film/TV scripts.',
+        presetPodcastDesc: 'Audio script format with host/guest cues, timing, and segments. Requires Pandoc template for DOCX/PDF. Best for podcast episodes.',
+        outlineBeatSheetDesc: 'Blake Snyder\'s Save the Cat structure. Simple numbered list of scenes. Best for story structure planning.',
+        outlineEpisodeRundownDesc: 'TV-style scene list with timing. Each scene numbered with runtime. Best for episodic content planning.',
+        outlineShootingScheduleDesc: 'Production-ready table with scenes, locations, timing, subplots. Includes session planning estimates if configured. Best for film/TV production.',
+        outlineIndexCardsDesc: 'Scene metadata as structured data (CSV/JSON). Includes runtime, word counts, synopsis. Best for external tools, scripts, or databases.',
         formatMarkdown: 'Markdown',
         formatDocx: 'DOCX',
         formatPdf: 'PDF',
@@ -407,6 +425,10 @@ export const en: TranslationKeys = {
         actionCreate: 'Manuscript generate',
         actionCancel: 'Cancel',
         emptyNotice: 'No scenes available to assemble.',
+        templateNotConfigured: '⚠️ Template not configured. DOCX/PDF will use Pandoc defaults (may not match screenplay/podcast format).',
+        templateNotFound: '⚠️ Template file not found: {{path}}. Export may fail or use defaults.',
+        templateFound: '✅ Template configured: {{path}}',
+        configureInSettings: 'Configure in Settings → Pro',
         rangeEmpty: 'Selected range is empty.',
         loadError: 'Failed to load scenes.',
         wordCountHeading: 'Update metadata',

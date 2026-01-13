@@ -5,7 +5,7 @@ import { App, ButtonComponent, DropdownComponent, Modal, Notice, setIcon, Toggle
 import type RadialTimelinePlugin from '../main';
 import { getSceneFilesByOrder, ManuscriptOrder, TocMode } from '../utils/manuscript';
 import { t } from '../i18n';
-import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset } from '../utils/exportFormats';
+import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, presetRequiresTemplate, validateTemplateForPreset } from '../utils/exportFormats';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 
 export interface ManuscriptModalResult {
@@ -65,6 +65,17 @@ export class ManuscriptOptionsModal extends Modal {
     private tocCard?: HTMLElement;
     private manuscriptOptionsCard?: HTMLElement;
     private outlineOptionsCard?: HTMLElement;
+    private templateWarningEl?: HTMLElement;
+    private manuscriptPresetDescEl?: HTMLElement;
+    private outlinePresetDescEl?: HTMLElement;
+    private manuscriptPreviewToggle?: HTMLElement;
+    private manuscriptPreviewPanel?: HTMLElement;
+    private manuscriptPreviewIcon?: HTMLElement;
+    private outlinePreviewToggle?: HTMLElement;
+    private outlinePreviewPanel?: HTMLElement;
+    private outlinePreviewIcon?: HTMLElement;
+    private manuscriptPreviewExpanded: boolean = false;
+    private outlinePreviewExpanded: boolean = false;
 
     private activeHandle: DragHandle = null;
     private detachEvents?: () => void;
@@ -104,6 +115,19 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     // Layout -----------------------------------------------------------------
+    /**
+     * Create a section heading with optional icon
+     */
+    private createSectionHeading(parent: HTMLElement, text: string, iconName?: string): HTMLElement {
+        const heading = parent.createDiv({ cls: 'rt-sub-card-head' });
+        if (iconName) {
+            const icon = heading.createSpan({ cls: 'rt-sub-card-head-icon' });
+            setIcon(icon, iconName);
+        }
+        heading.createSpan({ cls: 'rt-sub-card-head-text', text });
+        return heading;
+    }
+
     private renderSkeleton(container: HTMLElement): void {
         const hero = container.createDiv({ cls: 'rt-modal-header' });
         
@@ -130,7 +154,7 @@ export class ManuscriptOptionsModal extends Modal {
         // SCENE ORDERING
         // ═══════════════════════════════════════════════════════════════════
         const orderCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        orderCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.orderHeading') });
+        this.createSectionHeading(orderCard, t('manuscriptModal.orderHeading'), 'arrow-down-up');
         const orderRow = orderCard.createDiv({ cls: 'rt-manuscript-pill-row' });
         this.createOrderPill(orderRow, t('manuscriptModal.orderNarrative'), 'narrative');
         this.createOrderPill(orderRow, t('manuscriptModal.orderReverseNarrative'), 'reverse-narrative');
@@ -145,7 +169,7 @@ export class ManuscriptOptionsModal extends Modal {
         // SUBPLOT FILTER
         // ═══════════════════════════════════════════════════════════════════
         const filterCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        filterCard.createDiv({ cls: 'rt-sub-card-head', text: 'Subplot filter' });
+        this.createSectionHeading(filterCard, 'Subplot filter', 'filter');
         const filterContainer = filterCard.createDiv({ cls: 'rt-manuscript-input-container' });
         this.subplotDropdown = new DropdownComponent(filterContainer)
             .addOption('All Subplots', 'All Subplots')
@@ -166,7 +190,7 @@ export class ManuscriptOptionsModal extends Modal {
         // SCENE RANGE SELECTOR
         // ═══════════════════════════════════════════════════════════════════
         const rangeCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        rangeCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.rangeHeading') });
+        this.createSectionHeading(rangeCard, t('manuscriptModal.rangeHeading'), 'sliders-horizontal');
         this.rangeStatusEl = rangeCard.createDiv({ cls: 'rt-manuscript-range-status', text: t('manuscriptModal.rangeLoading') });
 
         const rangeShell = rangeCard.createDiv({ cls: 'rt-manuscript-range-shell' });
@@ -186,7 +210,7 @@ export class ManuscriptOptionsModal extends Modal {
         // EXPORT TYPE (Manuscript vs Outline)
         // ═══════════════════════════════════════════════════════════════════
         const exportCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        exportCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.exportHeading') });
+        this.createSectionHeading(exportCard, t('manuscriptModal.exportHeading'), 'file-output');
         const exportRow = exportCard.createDiv({ cls: 'rt-manuscript-pill-row' });
         this.createExportTypePill(exportRow, t('manuscriptModal.exportTypeManuscript'), 'manuscript');
         this.createExportTypePill(exportRow, t('manuscriptModal.exportTypeOutline'), 'outline', !this.isPro, true);
@@ -195,7 +219,7 @@ export class ManuscriptOptionsModal extends Modal {
         // MANUSCRIPT PRESET + FORMAT (Core feature)
         // ═══════════════════════════════════════════════════════════════════
         this.manuscriptOptionsCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        this.manuscriptOptionsCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.manuscriptPresetHeading') });
+        this.createSectionHeading(this.manuscriptOptionsCard, t('manuscriptModal.manuscriptPresetHeading'), 'book-open');
         const presetRow = this.manuscriptOptionsCard.createDiv({ cls: 'rt-manuscript-input-container' });
         this.manuscriptPresetDropdown = new DropdownComponent(presetRow)
             .addOption('novel', t('manuscriptModal.presetNovel'))
@@ -211,20 +235,48 @@ export class ManuscriptOptionsModal extends Modal {
                     return;
                 }
                 this.manuscriptPreset = preset;
+                this.updateTemplateWarning();
+                this.updateManuscriptPresetDescription();
+                this.updateManuscriptPreview();
             });
         // Style Pro options in dropdown
         this.styleDropdownProOptions(this.manuscriptPresetDropdown, ['screenplay', 'podcast']);
+
+        // Description for manuscript preset
+        this.manuscriptPresetDescEl = this.manuscriptOptionsCard.createDiv({ cls: 'rt-sub-card-note' });
+        this.updateManuscriptPresetDescription();
+
+        // Preview toggle for manuscript preset
+        this.manuscriptPreviewToggle = this.manuscriptOptionsCard.createDiv({ cls: 'rt-manuscript-preview-toggle' });
+        this.manuscriptPreviewToggle.createSpan({ text: 'Preview', cls: 'rt-manuscript-preview-toggle-text' });
+        this.manuscriptPreviewIcon = this.manuscriptPreviewToggle.createSpan({ cls: 'rt-manuscript-preview-toggle-icon' });
+        setIcon(this.manuscriptPreviewIcon, 'chevron-right');
+        this.manuscriptPreviewToggle.onClickEvent(() => {
+            this.manuscriptPreviewExpanded = !this.manuscriptPreviewExpanded;
+            if (this.manuscriptPreviewPanel) {
+                this.manuscriptPreviewPanel.toggleClass('rt-hidden', !this.manuscriptPreviewExpanded);
+                setIcon(this.manuscriptPreviewIcon!, this.manuscriptPreviewExpanded ? 'chevron-down' : 'chevron-right');
+            }
+        });
+
+        // Preview panel for manuscript preset
+        this.manuscriptPreviewPanel = this.manuscriptOptionsCard.createDiv({ cls: 'rt-manuscript-preview-panel rt-hidden' });
+        this.updateManuscriptPreview();
 
         const formatRow = this.manuscriptOptionsCard.createDiv({ cls: 'rt-manuscript-pill-row' });
         this.createOutputFormatPill(formatRow, t('manuscriptModal.formatMarkdown'), 'markdown');
         this.createOutputFormatPill(formatRow, t('manuscriptModal.formatDocx'), 'docx', !this.isPro, 'both', true);
         this.createOutputFormatPill(formatRow, t('manuscriptModal.formatPdf'), 'pdf', !this.isPro, 'both', true);
 
+        // Template validation warning
+        this.templateWarningEl = this.manuscriptOptionsCard.createDiv({ cls: 'rt-manuscript-template-warning' });
+        this.updateTemplateWarning();
+
         // ═══════════════════════════════════════════════════════════════════
         // OUTLINE PRESETS (Pro feature - entire card)
         // ═══════════════════════════════════════════════════════════════════
         this.outlineOptionsCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        this.outlineOptionsCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.outlinePresetHeading') });
+        this.createSectionHeading(this.outlineOptionsCard, t('manuscriptModal.outlinePresetHeading'), 'layout-list');
         const outlinePresetRow = this.outlineOptionsCard.createDiv({ cls: 'rt-manuscript-input-container' });
         this.outlinePresetDropdown = new DropdownComponent(outlinePresetRow)
             .addOption('beat-sheet', t('manuscriptModal.outlineBeatSheet'))
@@ -243,9 +295,32 @@ export class ManuscriptOptionsModal extends Modal {
                 this.outlinePreset = preset;
                 this.normalizeOutputFormatForOutline();
                 this.syncOutputFormatPills();
+                this.updateOutlinePresetDescription();
+                this.updateOutlinePreview();
             });
         // Style Pro options in dropdown
         this.styleDropdownProOptions(this.outlinePresetDropdown, ['index-cards-csv', 'index-cards-json']);
+
+        // Description for outline preset
+        this.outlinePresetDescEl = this.outlineOptionsCard.createDiv({ cls: 'rt-sub-card-note' });
+        this.updateOutlinePresetDescription();
+
+        // Preview toggle for outline preset
+        this.outlinePreviewToggle = this.outlineOptionsCard.createDiv({ cls: 'rt-manuscript-preview-toggle' });
+        this.outlinePreviewToggle.createSpan({ text: 'Preview', cls: 'rt-manuscript-preview-toggle-text' });
+        this.outlinePreviewIcon = this.outlinePreviewToggle.createSpan({ cls: 'rt-manuscript-preview-toggle-icon' });
+        setIcon(this.outlinePreviewIcon, 'chevron-right');
+        this.outlinePreviewToggle.onClickEvent(() => {
+            this.outlinePreviewExpanded = !this.outlinePreviewExpanded;
+            if (this.outlinePreviewPanel) {
+                this.outlinePreviewPanel.toggleClass('rt-hidden', !this.outlinePreviewExpanded);
+                setIcon(this.outlinePreviewIcon!, this.outlinePreviewExpanded ? 'chevron-down' : 'chevron-right');
+            }
+        });
+
+        // Preview panel for outline preset
+        this.outlinePreviewPanel = this.outlineOptionsCard.createDiv({ cls: 'rt-manuscript-preview-panel rt-hidden' });
+        this.updateOutlinePreview();
 
         const outlineFormatRow = this.outlineOptionsCard.createDiv({ cls: 'rt-manuscript-pill-row' });
         this.createOutputFormatPill(outlineFormatRow, t('manuscriptModal.formatMarkdown'), 'markdown', false, 'outline');
@@ -269,7 +344,7 @@ export class ManuscriptOptionsModal extends Modal {
         // TABLE OF CONTENTS
         // ═══════════════════════════════════════════════════════════════════
         this.tocCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        this.tocCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.tocHeading') });
+        this.createSectionHeading(this.tocCard, t('manuscriptModal.tocHeading'), 'list-ordered');
         const tocActions = this.tocCard.createDiv({ cls: 'rt-manuscript-pill-row' });
         this.createPill(tocActions, t('manuscriptModal.tocMarkdown'), this.tocMode === 'markdown', () => {
             this.tocMode = 'markdown';
@@ -292,7 +367,7 @@ export class ManuscriptOptionsModal extends Modal {
         // WORD COUNT UPDATE
         // ═══════════════════════════════════════════════════════════════════
         const wordCountCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        wordCountCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.wordCountHeading') });
+        this.createSectionHeading(wordCountCard, t('manuscriptModal.wordCountHeading'), 'hash');
         const wordCountRow = wordCountCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
         wordCountRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: t('manuscriptModal.wordCountToggle') });
         new ToggleComponent(wordCountRow)
@@ -405,7 +480,22 @@ export class ManuscriptOptionsModal extends Modal {
     private createOutputFormatPill(parent: HTMLElement, label: string, format: ExportFormat, disabled = false, scope: ExportType | 'both' = 'both', isPro = false): void {
         const pill = parent.createDiv({ cls: 'rt-manuscript-pill', attr: { 'data-scope': scope } });
         if (isPro) pill.classList.add('rt-manuscript-pill-pro');
-        pill.createSpan({ text: label });
+        
+        // Add icon based on format
+        const iconMap: Record<ExportFormat, string> = {
+            'markdown': 'file-text',
+            'docx': 'file-type',
+            'pdf': 'file-text',
+            'csv': 'table',
+            'json': 'code'
+        };
+        const iconName = iconMap[format];
+        if (iconName) {
+            const icon = pill.createSpan({ cls: 'rt-manuscript-pill-icon' });
+            setIcon(icon, iconName);
+        }
+        
+        pill.createSpan({ cls: 'rt-manuscript-pill-text', text: label });
         const isActive = this.outputFormat === format;
         if (isActive) pill.classList.add('rt-is-active');
         if (disabled) pill.classList.add('rt-is-disabled');
@@ -427,6 +517,7 @@ export class ManuscriptOptionsModal extends Modal {
             pill.classList.add('rt-is-active');
             this.outputFormat = format;
             this.normalizeOutputFormatForOutline();
+            this.updateTemplateWarning();
         });
     }
 
@@ -458,6 +549,186 @@ export class ManuscriptOptionsModal extends Modal {
         this.manuscriptOptionsCard?.toggleClass('rt-hidden', this.exportType !== 'manuscript');
         this.outlineOptionsCard?.toggleClass('rt-hidden', this.exportType !== 'outline');
         this.syncOutputFormatPills();
+        this.updateTemplateWarning();
+    }
+
+    /**
+     * Update template validation warning based on current preset and format
+     */
+    private updateTemplateWarning(): void {
+        if (!this.templateWarningEl || this.exportType !== 'manuscript') {
+            if (this.templateWarningEl) this.templateWarningEl.empty();
+            return;
+        }
+
+        this.templateWarningEl.empty();
+        this.templateWarningEl.removeClass('rt-warning-error');
+        this.templateWarningEl.removeClass('rt-warning-info');
+
+        // Only check templates for DOCX/PDF formats
+        if (this.outputFormat === 'markdown') {
+            return; // No template needed for markdown
+        }
+
+        const requiresTemplate = presetRequiresTemplate(this.manuscriptPreset, this.outputFormat);
+        if (!requiresTemplate) {
+            return; // Novel can use Pandoc defaults
+        }
+
+        const validation = validateTemplateForPreset(this.plugin, this.manuscriptPreset);
+
+        if (!validation.configured) {
+            // No template configured
+            this.templateWarningEl.addClass('rt-warning-error');
+            const icon = this.templateWarningEl.createSpan({ cls: 'rt-warning-icon' });
+            setIcon(icon, 'alert-triangle');
+            const text = this.templateWarningEl.createSpan({ cls: 'rt-warning-text' });
+            text.createSpan({ text: t('manuscriptModal.templateNotConfigured') });
+            text.createSpan({ text: ' ' });
+            const link = text.createEl('a', { 
+                text: t('manuscriptModal.configureInSettings'),
+                attr: { href: '#', style: 'text-decoration: underline;' }
+            });
+            link.onClickEvent((e) => {
+                e.preventDefault();
+                this.close();
+                // Open settings - user will need to navigate to Pro section manually
+                // @ts-ignore - Obsidian API
+                this.app.setting.open();
+                // @ts-ignore - Obsidian API
+                this.app.setting.openTabById('radial-timeline');
+            });
+            return;
+        }
+
+        if (!validation.exists) {
+            // Template configured but file doesn't exist
+            this.templateWarningEl.addClass('rt-warning-error');
+            const icon = this.templateWarningEl.createSpan({ cls: 'rt-warning-icon' });
+            setIcon(icon, 'alert-triangle');
+            const text = this.templateWarningEl.createSpan({ cls: 'rt-warning-text' });
+            text.createSpan({ text: t('manuscriptModal.templateNotFound', { path: validation.path || '' }) });
+            return;
+        }
+
+        // Template exists - show success indicator
+        this.templateWarningEl.addClass('rt-warning-info');
+        const icon = this.templateWarningEl.createSpan({ cls: 'rt-warning-icon' });
+        setIcon(icon, 'check-circle-2');
+        const text = this.templateWarningEl.createSpan({ cls: 'rt-warning-text' });
+        const pathDisplay = validation.path || '';
+        text.createSpan({ text: t('manuscriptModal.templateFound', { path: pathDisplay }) });
+    }
+
+    /**
+     * Update manuscript preset description
+     */
+    private updateManuscriptPresetDescription(): void {
+        if (!this.manuscriptPresetDescEl) return;
+        const descriptions: Record<ManuscriptPreset, string> = {
+            'novel': t('manuscriptModal.presetNovelDesc'),
+            'screenplay': t('manuscriptModal.presetScreenplayDesc'),
+            'podcast': t('manuscriptModal.presetPodcastDesc')
+        };
+        this.manuscriptPresetDescEl.textContent = descriptions[this.manuscriptPreset] || '';
+    }
+
+    /**
+     * Update outline preset description
+     */
+    private updateOutlinePresetDescription(): void {
+        if (!this.outlinePresetDescEl) return;
+        const descriptions: Record<OutlinePreset, string> = {
+            'beat-sheet': t('manuscriptModal.outlineBeatSheetDesc'),
+            'episode-rundown': t('manuscriptModal.outlineEpisodeRundownDesc'),
+            'shooting-schedule': t('manuscriptModal.outlineShootingScheduleDesc'),
+            'index-cards-csv': t('manuscriptModal.outlineIndexCardsDesc'),
+            'index-cards-json': t('manuscriptModal.outlineIndexCardsDesc')
+        };
+        this.outlinePresetDescEl.textContent = descriptions[this.outlinePreset] || '';
+    }
+
+    /**
+     * Update manuscript preset preview content
+     */
+    private updateManuscriptPreview(): void {
+        if (!this.manuscriptPreviewPanel) return;
+        this.manuscriptPreviewPanel.empty();
+
+        const previewContent = this.manuscriptPreviewPanel.createDiv({ cls: 'rt-manuscript-preview-content' });
+        
+        const samples: Record<ManuscriptPreset, string> = {
+            'novel': `## Scene 1: Opening
+
+The morning sun cast long shadows across the empty street. 
+Sarah stood at the window, watching the world wake up.`,
+            'screenplay': `INT. SARAH'S APARTMENT - MORNING
+
+The sun streams through dusty windows. Sarah (30s) 
+stares out at the city below.
+
+                    SARAH
+          Today changes everything.`,
+            'podcast': `[COLD OPEN - 0:00-0:30]
+
+HOST: Welcome back to the show. Today we're 
+talking about change.
+
+[SEGMENT 1 - 0:30-5:00]
+
+HOST: Let's start with Sarah's story...`
+        };
+
+        const sample = samples[this.manuscriptPreset] || '';
+        previewContent.createEl('pre', { 
+            text: sample,
+            cls: 'rt-manuscript-preview-sample'
+        });
+    }
+
+    /**
+     * Update outline preset preview content
+     */
+    private updateOutlinePreview(): void {
+        if (!this.outlinePreviewPanel) return;
+        this.outlinePreviewPanel.empty();
+
+        const previewContent = this.outlinePreviewPanel.createDiv({ cls: 'rt-manuscript-preview-content' });
+        
+        const samples: Record<OutlinePreset, string> = {
+            'beat-sheet': `1. Opening Image
+2. Theme Stated
+3. Setup
+4. Catalyst
+5. Debate`,
+            'episode-rundown': `1. Cold Open · Jan 1 [2:30]
+2. Theme Song [0:15]
+3. Act One · Jan 1 [8:45]
+4. Act Two · Jan 2 [12:20]
+5. Closing [1:00]`,
+            'shooting-schedule': `Scene | Location      | Time  | Subplot
+------|---------------|-------|----------
+1     | Apartment     | 2:30  | Main Plot
+2     | Street        | 5:15  | Main Plot
+3     | Office        | 8:45  | Subplot A`,
+            'index-cards-csv': `Scene,Title,When,Runtime,Words,Subplot
+1,Opening,2024-01-01,2:30,450,Main Plot
+2,Confrontation,2024-01-02,5:15,820,Main Plot`,
+            'index-cards-json': `{
+  "scenes": [
+    {"scene": 1, "title": "Opening", 
+     "when": "2024-01-01", "runtime": "2:30"},
+    {"scene": 2, "title": "Confrontation",
+     "when": "2024-01-02", "runtime": "5:15"}
+  ]
+}`
+        };
+
+        const sample = samples[this.outlinePreset] || '';
+        previewContent.createEl('pre', { 
+            text: sample,
+            cls: 'rt-manuscript-preview-sample'
+        });
     }
 
     private updateOrderPillsState(): void {

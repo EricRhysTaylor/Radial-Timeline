@@ -2,7 +2,7 @@
  * Export format helpers (manuscript + outline + Pandoc)
  */
 
-import { normalizePath, FileSystemAdapter, Vault } from 'obsidian';
+import { normalizePath, FileSystemAdapter, Vault, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { ManuscriptSceneSelection, ManuscriptOrder } from './manuscript';
 import * as fs from 'fs'; // SAFE: Node fs required for Pandoc temp files
@@ -393,6 +393,43 @@ export function getTemplateForPreset(
         default:
             return templates.novel || undefined;
     }
+}
+
+/**
+ * Check if a template is configured and exists for a preset
+ * Returns: { configured: boolean, exists: boolean, path: string | null }
+ */
+export function validateTemplateForPreset(
+    plugin: RadialTimelinePlugin,
+    preset: ManuscriptPreset
+): { configured: boolean; exists: boolean; path: string | null; isAbsolute: boolean } {
+    const templatePath = getTemplateForPreset(plugin, preset);
+    
+    if (!templatePath || !templatePath.trim()) {
+        return { configured: false, exists: false, path: null, isAbsolute: false };
+    }
+    
+    const trimmed = templatePath.trim();
+    const isAbsolute = path.isAbsolute(trimmed);
+    
+    // For vault-relative paths, check if file exists
+    if (!isAbsolute) {
+        const file = plugin.app.vault.getAbstractFileByPath(trimmed);
+        const exists = file instanceof TFile;
+        return { configured: true, exists, path: trimmed, isAbsolute: false };
+    }
+    
+    // For absolute paths, we can't verify existence in Obsidian
+    // Assume it exists if configured (user responsibility)
+    return { configured: true, exists: true, path: trimmed, isAbsolute: true };
+}
+
+/**
+ * Check if a preset requires a template for DOCX/PDF export
+ */
+export function presetRequiresTemplate(preset: ManuscriptPreset, format: ExportFormat): boolean {
+    if (format === 'markdown') return false; // Markdown never needs templates
+    return preset === 'screenplay' || preset === 'podcast'; // Novel can use defaults
 }
 
 export function getExportFormatExtension(format: ExportFormat): string {
