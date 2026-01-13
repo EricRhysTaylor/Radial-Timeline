@@ -332,7 +332,30 @@ export class AuthorProgressModal extends Modal {
                     engineColor: settings?.aprEngineColor ?? '#e5e5e5',
                     percentNumberColor: settings?.aprPercentNumberColor ?? settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
                     percentSymbolColor: settings?.aprPercentSymbolColor ?? settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
-                    theme: settings?.aprTheme ?? 'dark'
+                    theme: settings?.aprTheme ?? 'dark',
+                    spokeColor: settings?.aprSpokeColorMode === 'custom' ? settings?.aprSpokeColor : undefined,
+                    // Typography settings
+                    bookTitleFontFamily: settings?.aprBookTitleFontFamily,
+                    bookTitleFontWeight: settings?.aprBookTitleFontWeight,
+                    bookTitleFontItalic: settings?.aprBookTitleFontItalic,
+                    bookTitleFontSize: settings?.aprBookTitleFontSize,
+                    authorNameFontFamily: settings?.aprAuthorNameFontFamily,
+                    authorNameFontWeight: settings?.aprAuthorNameFontWeight,
+                    authorNameFontItalic: settings?.aprAuthorNameFontItalic,
+                    authorNameFontSize: settings?.aprAuthorNameFontSize,
+                    percentNumberFontFamily: settings?.aprPercentNumberFontFamily,
+                    percentNumberFontWeight: settings?.aprPercentNumberFontWeight,
+                    percentNumberFontItalic: settings?.aprPercentNumberFontItalic,
+                    percentNumberFontSize1Digit: settings?.aprPercentNumberFontSize1Digit,
+                    percentNumberFontSize2Digit: settings?.aprPercentNumberFontSize2Digit,
+                    percentNumberFontSize3Digit: settings?.aprPercentNumberFontSize3Digit,
+                    percentSymbolFontFamily: settings?.aprPercentSymbolFontFamily,
+                    percentSymbolFontWeight: settings?.aprPercentSymbolFontWeight,
+                    percentSymbolFontItalic: settings?.aprPercentSymbolFontItalic,
+                    rtBadgeFontFamily: settings?.aprRtBadgeFontFamily,
+                    rtBadgeFontWeight: settings?.aprRtBadgeFontWeight,
+                    rtBadgeFontItalic: settings?.aprRtBadgeFontItalic,
+                    rtBadgeFontSize: settings?.aprRtBadgeFontSize
                 });
 
                 container.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection

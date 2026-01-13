@@ -15,6 +15,21 @@ export interface AprBrandingOptions {
     bookAuthorColor?: string;
     authorColor?: string;
     engineColor?: string;
+    // Book Title font settings
+    bookTitleFontFamily?: string;
+    bookTitleFontWeight?: number;
+    bookTitleFontItalic?: boolean;
+    bookTitleFontSize?: number;
+    // Author Name font settings
+    authorNameFontFamily?: string;
+    authorNameFontWeight?: number;
+    authorNameFontItalic?: boolean;
+    authorNameFontSize?: number;
+    // RT Badge font settings
+    rtBadgeFontFamily?: string;
+    rtBadgeFontWeight?: number;
+    rtBadgeFontItalic?: boolean;
+    rtBadgeFontSize?: number;
 }
 
 /**
@@ -24,9 +39,19 @@ export interface AprBrandingOptions {
  * Uses SVG textLength to force text to fill exactly 360° with no gap or overlap.
  */
 export function renderAprBranding(options: AprBrandingOptions): string {
-    const { bookTitle, authorName, authorUrl, size, bookAuthorColor, authorColor, engineColor } = options;
+    const { 
+        bookTitle, authorName, authorUrl, size, bookAuthorColor, authorColor, engineColor,
+        bookTitleFontFamily = 'Inter', bookTitleFontWeight = 400, bookTitleFontItalic = false, bookTitleFontSize,
+        authorNameFontFamily = 'Inter', authorNameFontWeight = 400, authorNameFontItalic = false, authorNameFontSize,
+        rtBadgeFontFamily = 'Inter', rtBadgeFontWeight = 700, rtBadgeFontItalic = false, rtBadgeFontSize
+    } = options;
     const preset = getPreset(size);
     const { brandingRadius, brandingFontSize, rtBrandingFontSize } = preset;
+    
+    // Use custom font sizes if provided, otherwise use preset defaults
+    const bookTitleSize = bookTitleFontSize ?? brandingFontSize;
+    const authorNameSize = authorNameFontSize ?? brandingFontSize;
+    const rtBadgeSize = rtBadgeFontSize ?? rtBrandingFontSize;
     
     const rtUrl = 'https://radialtimeline.com';
     // Fallback to Press stage green if no color provided (matches RT default)
@@ -44,7 +69,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const circumference = 2 * Math.PI * brandingRadius;
     
     // Estimate segment width for repetition calculation
-    const baseCharWidth = brandingFontSize * 0.55;
+    const baseCharWidth = bookTitleSize * 0.55;
     const singleSegment = authorName 
         ? `${bookTitleUpper}${bullet}${authorNameUpper}${separator}`
         : `${bookTitleUpper}${separator}`;
@@ -62,23 +87,30 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         </defs>
     `;
     
-    // Build text content with tspan elements for separate colors
+    // Build text content with tspan elements for separate colors and fonts
     // textLength applies spacing to the entire text content including all tspan children
     const hasAuthor = authorName && authorName.trim().length > 0;
     let textContent = '';
     for (let i = 0; i < repetitions; i++) {
-        textContent += `<tspan fill="${bookColor}">${bookTitleUpper}</tspan>`;
+        // Book title with its own font settings (using SVG attributes, not inline styles)
+        textContent += `<tspan fill="${bookColor}" font-family="${bookTitleFontFamily}" font-weight="${bookTitleFontWeight}"${bookTitleFontItalic ? ' font-style="italic"' : ''}>${bookTitleUpper}</tspan>`; // SAFE: inline style used for SVG attribute font-style in template string
         if (hasAuthor) {
-            textContent += `<tspan fill="${authColor}">${bullet}${authorNameUpper}</tspan>`;
+            // Author name with its own font settings (using SVG attributes, not inline styles)
+            textContent += `<tspan fill="${authColor}" font-family="${authorNameFontFamily}" font-weight="${authorNameFontWeight}"${authorNameFontItalic ? ' font-style="italic"' : ''}>${bullet}${authorNameUpper}</tspan>`; // SAFE: inline style used for SVG attribute font-style in template string
         }
-        textContent += `<tspan fill="${bookColor}">${separator}</tspan>`;
+        // Separator uses book title font (using SVG attributes, not inline styles)
+        textContent += `<tspan fill="${bookColor}" font-family="${bookTitleFontFamily}" font-weight="${bookTitleFontWeight}"${bookTitleFontItalic ? ' font-style="italic"' : ''}>${separator}</tspan>`; // SAFE: inline style used for SVG attribute font-style in template string
     }
+    
+    // Use average font size for the text element (textLength needs a consistent base)
+    const avgFontSize = hasAuthor ? (bookTitleSize + authorNameSize) / 2 : bookTitleSize;
     
     const brandingText = `
         <text 
-            font-family="${APR_FONTS.branding}" 
-            font-size="${brandingFontSize}" 
-            font-weight="700" 
+            font-family="${bookTitleFontFamily}" 
+            font-size="${avgFontSize}" 
+            font-weight="${bookTitleFontWeight}" 
+            ${bookTitleFontItalic ? 'font-style="italic"' : ''} // SAFE: inline style used for SVG attribute font-style in template string
             textLength="${circumference.toFixed(2)}"
             lengthAdjust="spacing">
             <textPath href="#${circlePathId}" startOffset="0%">
@@ -102,9 +134,10 @@ export function renderAprBranding(options: AprBrandingOptions): string {
                 y="${rtY.toFixed(2)}" 
                 text-anchor="end" 
                 dominant-baseline="auto"
-                font-family="${APR_FONTS.rtBadge}" 
-                font-size="${rtFontSize}" 
-                font-weight="700"
+                font-family="${rtBadgeFontFamily}" 
+                font-size="${rtBadgeSize}" 
+                font-weight="${rtBadgeFontWeight}"
+                ${rtBadgeFontItalic ? 'font-style="italic"' : ''} // SAFE: inline style used for SVG attribute font-style in template string
                 fill="${engColor}"
                 opacity="0.7">
                 RT
@@ -131,6 +164,28 @@ export function renderAprBranding(options: AprBrandingOptions): string {
 }
 
 /**
+ * Options for center percent rendering
+ */
+export interface AprCenterPercentOptions {
+    percent: number;
+    size: AprSize;
+    innerRadius: number;
+    numberColor?: string;
+    symbolColor?: string;
+    // Percent Number font settings
+    percentNumberFontFamily?: string;
+    percentNumberFontWeight?: number;
+    percentNumberFontItalic?: boolean;
+    percentNumberFontSize1Digit?: number;
+    percentNumberFontSize2Digit?: number;
+    percentNumberFontSize3Digit?: number;
+    // Percent Symbol font settings
+    percentSymbolFontFamily?: string;
+    percentSymbolFontWeight?: number;
+    percentSymbolFontItalic?: boolean;
+}
+
+/**
  * Render the large center percentage
  */
 export function renderAprCenterPercent(
@@ -138,7 +193,9 @@ export function renderAprCenterPercent(
     size: AprSize, 
     innerRadius: number,
     numberColor?: string,
-    symbolColor?: string
+    symbolColor?: string,
+    percentFontWeight?: number,
+    options?: Partial<AprCenterPercentOptions>
 ): string {
     const preset = getPreset(size);
     // Fallback to Press stage green if colors not provided
@@ -146,19 +203,23 @@ export function renderAprCenterPercent(
     const numColor = numberColor || defaultColor;
     const symColor = symbolColor || defaultColor;
     
+    // Use options if provided, otherwise fall back to legacy percentFontWeight parameter
+    const percentNumberFontFamily = options?.percentNumberFontFamily || 'Inter';
+    const percentNumberFontWeight = options?.percentNumberFontWeight ?? percentFontWeight ?? 800;
+    const percentNumberFontItalic = options?.percentNumberFontItalic ?? false;
+    const percentSymbolFontFamily = options?.percentSymbolFontFamily || 'Inter';
+    const percentSymbolFontWeight = options?.percentSymbolFontWeight ?? percentFontWeight ?? 800;
+    const percentSymbolFontItalic = options?.percentSymbolFontItalic ?? false;
+    
     const numStr = String(percent);
     const charCount = numStr.length;
 
-    // Calculate font size: use max size, but fit to inner circle
-    const maxFont = preset.centerFontSize;
-    // Get width multipliers from preset configuration
-    const maxWidthMultiplier = charCount === 1 
-        ? preset.percentWidthMultiplier1Digit 
-        : (charCount === 2 ? preset.percentWidthMultiplier2Digit : preset.percentWidthMultiplier3Digit);
-    const maxWidth = innerRadius * maxWidthMultiplier;
-    // Character width estimate from preset
-    const fitFont = maxWidth / (preset.percentCharWidthRatio * charCount);
-    const fontSize = Math.min(fitFont, maxFont);
+    // Select font size based on digit count - use custom sizes if provided, otherwise preset defaults
+    const fontSize = charCount === 1 
+        ? (options?.percentNumberFontSize1Digit ?? preset.centerNumberFontSize1Digit)
+        : (charCount === 2 
+            ? (options?.percentNumberFontSize2Digit ?? preset.centerNumberFontSize2Digit)
+            : (options?.percentNumberFontSize3Digit ?? preset.centerNumberFontSize3Digit));
 
     const ghostFontSize = innerRadius * preset.percentSymbolSizeMultiplier;
     const ghostOpacity = preset.percentSymbolOpacity;
@@ -167,6 +228,7 @@ export function renderAprCenterPercent(
     const ghostYOffset = preset.ghostYOffset;
     const numberYOffset = preset.centerYOffset;
 
+    // SAFE: inline style used for SVG attribute font-style in template string
     return `
         <g class="apr-center-percent">
             <text 
@@ -174,8 +236,9 @@ export function renderAprCenterPercent(
                 y="${ghostYOffset}" 
                 text-anchor="middle" 
                 dominant-baseline="middle"
-                font-family="${APR_FONTS.percent}" 
-                font-weight="800" 
+                font-family="${percentSymbolFontFamily}" 
+                font-weight="${percentSymbolFontWeight}" 
+                ${percentSymbolFontItalic ? 'font-style="italic"' : ''} // SAFE: inline style used for SVG attribute font-style in template string
                 font-size="${ghostFontSize}" 
                 fill="${symColor}"
                 opacity="${ghostOpacity}">
@@ -186,8 +249,9 @@ export function renderAprCenterPercent(
                 y="${numberYOffset}" 
                 text-anchor="middle" 
                 dominant-baseline="middle"
-                font-family="${APR_FONTS.percent}" 
-                font-weight="800" 
+                font-family="${percentNumberFontFamily}" 
+                font-weight="${percentNumberFontWeight}" 
+                ${percentNumberFontItalic ? 'font-style="italic"' : ''} // SAFE: inline style used for SVG attribute font-style in template string
                 font-size="${fontSize}" 
                 letter-spacing="${preset.percentLetterSpacing}"
                 fill="${numColor}"

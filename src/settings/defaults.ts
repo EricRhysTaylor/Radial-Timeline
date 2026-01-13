@@ -240,6 +240,32 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
         aprTheme: 'dark',
         aprSpokeColorMode: 'dark', // Use theme-based spokes by default
         aprSpokeColor: '#ffffff', // Default custom color (not used unless mode is 'custom')
+        // Typography defaults
+        aprBookTitleFontFamily: 'Inter',
+        aprBookTitleFontWeight: 400,
+        aprBookTitleFontItalic: false,
+        aprBookTitleFontSize: undefined, // Uses preset default
+        
+        aprAuthorNameFontFamily: 'Inter',
+        aprAuthorNameFontWeight: 400,
+        aprAuthorNameFontItalic: false,
+        aprAuthorNameFontSize: undefined, // Uses preset default
+        
+        aprPercentNumberFontFamily: 'Inter',
+        aprPercentNumberFontWeight: 800,
+        aprPercentNumberFontItalic: false,
+        aprPercentNumberFontSize1Digit: undefined, // Uses preset default
+        aprPercentNumberFontSize2Digit: undefined, // Uses preset default
+        aprPercentNumberFontSize3Digit: undefined, // Uses preset default
+        
+        aprPercentSymbolFontFamily: 'Inter',
+        aprPercentSymbolFontWeight: 800,
+        aprPercentSymbolFontItalic: false,
+        
+        aprRtBadgeFontFamily: 'Inter',
+        aprRtBadgeFontWeight: 700,
+        aprRtBadgeFontItalic: false,
+        aprRtBadgeFontSize: undefined, // Uses preset default
         
         bookTitle: '',
         authorUrl: '',

@@ -44,6 +44,38 @@ export class AprPaletteModal extends Modal {
             this.close();
         };
 
+        // Generate from Color Section (moved to top)
+        const generateCard = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-palette-generate-card' });
+        generateCard.createEl('h4', { text: 'Generate from Book Title Color', cls: 'rt-section-title' });
+        generateCard.createDiv({ text: 'Create a harmonious palette based on your current Book Title Color.', cls: 'rt-modal-desc' });
+
+        const currentBookColor = this.settings?.aprBookAuthorColor || '#6FB971';
+        const schemes: Array<{ value: 'analogous' | 'complementary' | 'triadic' | 'monochromatic'; label: string }> = [
+            { value: 'analogous', label: 'Analogous (adjacent colors)' },
+            { value: 'complementary', label: 'Complementary (opposite colors)' },
+            { value: 'triadic', label: 'Triadic (three-way split)' },
+            { value: 'monochromatic', label: 'Monochromatic (tints & shades)' }
+        ];
+
+        schemes.forEach(({ value, label }) => {
+            const schemeSetting = new Setting(generateCard)
+                .setName(label)
+                .setDesc('');
+            
+            const generated = generatePaletteFromColor(currentBookColor, value);
+            const swatches = schemeSetting.controlEl.createDiv({ cls: 'rt-apr-palette-swatches rt-apr-palette-swatches-generate' });
+            [generated.bookTitle, generated.authorName, generated.percentNumber, generated.percentSymbol].forEach(color => {
+                const swatch = swatches.createDiv({ cls: 'rt-apr-palette-swatch rt-apr-palette-swatch-generate' });
+                swatch.style.backgroundColor = color; // SAFE: inline style used for dynamic color preview swatch
+            });
+            
+            schemeSetting.addButton(button => {
+                button.setButtonText('Apply');
+                button.setCta();
+                button.onClick(() => applyPalette(generated));
+            });
+        });
+
         // Preset Palettes Section
         const presetsCard = contentEl.createDiv({ cls: 'rt-glass-card' });
         presetsCard.createEl('h4', { text: 'Preset Palettes', cls: 'rt-section-title' });
@@ -66,38 +98,6 @@ export class AprPaletteModal extends Modal {
                 .setButtonText('Apply')
                 .setCta()
                 .onClick(() => applyPalette(palette));
-        });
-
-        // Generate from Color Section
-        const generateCard = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-palette-generate-card' });
-        generateCard.createEl('h4', { text: 'Generate from Book Title Color', cls: 'rt-section-title' });
-        generateCard.createDiv({ text: 'Create a harmonious palette based on your current Book Title Color.', cls: 'rt-modal-desc' });
-
-        const currentBookColor = this.settings?.aprBookAuthorColor || '#6FB971';
-        const schemes: Array<{ value: 'analogous' | 'complementary' | 'triadic' | 'monochromatic'; label: string }> = [
-            { value: 'analogous', label: 'Analogous (adjacent colors)' },
-            { value: 'complementary', label: 'Complementary (opposite colors)' },
-            { value: 'triadic', label: 'Triadic (three-way split)' },
-            { value: 'monochromatic', label: 'Monochromatic (tints & shades)' }
-        ];
-
-        schemes.forEach(({ value, label }) => {
-            const schemeSetting = new Setting(generateCard)
-                .setName(label)
-                .setDesc('');
-            
-            const generated = generatePaletteFromColor(currentBookColor, value);
-            const swatches = schemeSetting.controlEl.createDiv({ cls: 'rt-apr-palette-swatches' });
-            [generated.bookTitle, generated.authorName, generated.percentNumber, generated.percentSymbol].forEach(color => {
-                const swatch = swatches.createDiv({ cls: 'rt-apr-palette-swatch' });
-                swatch.style.backgroundColor = color; // SAFE: inline style used for dynamic color preview swatch
-            });
-            
-            schemeSetting.addButton(button => {
-                button.setButtonText('Apply');
-                button.setCta();
-                button.onClick(() => applyPalette(generated));
-            });
         });
     }
 

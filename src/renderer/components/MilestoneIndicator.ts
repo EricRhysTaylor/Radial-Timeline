@@ -126,16 +126,17 @@ export function renderMilestoneIndicator(params: {
     return `
         <g id="progress-milestone-indicator" class="rt-milestone-indicator" transform="translate(${formatNumber(x)}, ${formatNumber(y)})">
             <!-- Hit area for click -->
-            <rect class="rt-milestone-hitarea" x="-60" y="-32" width="120" height="50" rx="6" ry="6"
+            <rect class="rt-milestone-hitarea" x="-60" y="-12" width="120" height="50" rx="6" ry="6"
                 fill="white" fill-opacity="0" stroke="none" pointer-events="all" />
 
             <!-- Text label above icon - single text, no swap -->
-            <text class="rt-milestone-indicator-text" x="0" y="-20" text-anchor="middle" dominant-baseline="baseline" fill="${color}">
+            <!-- Spacing matches help icon: text baseline at y=0, icon center at y=10 (2px gap) -->
+            <text class="rt-milestone-indicator-text" x="0" y="0" text-anchor="middle" dominant-baseline="baseline" fill="${color}">
                 ${label}
             </text>
 
-            <!-- Pulsing icon below text - moved up 30px from original position -->
-            <g class="rt-milestone-icon" transform="translate(0, -6)">
+            <!-- Pulsing icon below text - same spacing as help icon (icon center 10px below text baseline) -->
+            <g class="rt-milestone-icon" transform="translate(0, 10)">
                 <!-- Outer pulse ring -->
                 <circle r="16" fill="${pulseColor}" opacity="0.15">
                     <animate attributeName="r" values="16;22;16" dur="1.8s" repeatCount="indefinite" />

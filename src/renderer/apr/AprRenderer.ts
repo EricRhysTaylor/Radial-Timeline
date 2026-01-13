@@ -36,6 +36,28 @@ export interface AprRenderOptions {
     percentSymbolColor?: string; // Color for center % symbol
     theme?: 'dark' | 'light' | 'none';
     spokeColor?: string; // Custom spokes color (used when theme mode allows custom)
+    // Typography settings
+    bookTitleFontFamily?: string;
+    bookTitleFontWeight?: number;
+    bookTitleFontItalic?: boolean;
+    bookTitleFontSize?: number;
+    authorNameFontFamily?: string;
+    authorNameFontWeight?: number;
+    authorNameFontItalic?: boolean;
+    authorNameFontSize?: number;
+    percentNumberFontFamily?: string;
+    percentNumberFontWeight?: number;
+    percentNumberFontItalic?: boolean;
+    percentNumberFontSize1Digit?: number;
+    percentNumberFontSize2Digit?: number;
+    percentNumberFontSize3Digit?: number;
+    percentSymbolFontFamily?: string;
+    percentSymbolFontWeight?: number;
+    percentSymbolFontItalic?: boolean;
+    rtBadgeFontFamily?: string;
+    rtBadgeFontWeight?: number;
+    rtBadgeFontItalic?: boolean;
+    rtBadgeFontSize?: number;
 }
 
 export interface AprRenderResult {
@@ -54,6 +76,13 @@ type RingData = {
 export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): AprRenderResult {
     const {
         size,
+        // Typography options
+        bookTitleFontFamily, bookTitleFontWeight, bookTitleFontItalic, bookTitleFontSize,
+        authorNameFontFamily, authorNameFontWeight, authorNameFontItalic, authorNameFontSize,
+        percentNumberFontFamily, percentNumberFontWeight, percentNumberFontItalic,
+        percentNumberFontSize1Digit, percentNumberFontSize2Digit, percentNumberFontSize3Digit,
+        percentSymbolFontFamily, percentSymbolFontWeight, percentSymbolFontItalic,
+        rtBadgeFontFamily, rtBadgeFontWeight, rtBadgeFontItalic, rtBadgeFontSize,
         bookTitle,
         authorName,
         authorUrl,
@@ -196,7 +225,19 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         size,
         bookAuthorColor,
         authorColor,
-        engineColor
+        engineColor,
+        bookTitleFontFamily,
+        bookTitleFontWeight,
+        bookTitleFontItalic,
+        bookTitleFontSize,
+        authorNameFontFamily,
+        authorNameFontWeight,
+        authorNameFontItalic,
+        authorNameFontSize,
+        rtBadgeFontFamily,
+        rtBadgeFontWeight,
+        rtBadgeFontItalic,
+        rtBadgeFontSize
     });
 
     svg += `</svg>`;

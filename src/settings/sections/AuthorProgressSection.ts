@@ -8,7 +8,7 @@ import { getPresetPalettes, generatePaletteFromColor } from '../../utils/aprPale
 import { AprPaletteModal } from '../../modals/AprPaletteModal';
 import { renderCampaignManagerSection } from './CampaignManagerSection';
 import { isProfessionalActive } from './ProfessionalSection';
-import { addWikiLink } from '../wikiLink';
+import { addWikiLinkToElement } from '../wikiLink';
 
 export interface AuthorProgressSectionProps {
     app: App;
@@ -18,12 +18,6 @@ export interface AuthorProgressSectionProps {
 
 export function renderAuthorProgressSection({ app, plugin, containerEl }: AuthorProgressSectionProps): void {
     const section = containerEl.createDiv({ cls: 'rt-settings-section rt-apr-section' });
-    
-    // Add heading with wiki link
-    const heading = new Setting(section)
-        .setName('Social Media · Author Progress Report')
-        .setHeading();
-    addWikiLink(heading, 'Settings#social-media');
     
     // Check if APR needs refresh
     const aprService = new AuthorProgressService(plugin, app);
@@ -40,6 +34,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const badge = badgeRow.createSpan({ cls: badgeClasses });
     setIcon(badge, needsRefresh ? 'alert-triangle' : 'radio');
     badge.createSpan({ text: needsRefresh ? 'Reminder to Refresh' : 'Social · Share' });
+    // Add wiki link to the badge
+    addWikiLinkToElement(badge, 'Settings#social-media');
     
     // Big headline
     hero.createEl('h3', { 
@@ -220,6 +216,396 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Set initial emphasis state after controls are created
     updateEmphasis(currentTransparent);
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // TYPOGRAPHY & COLOR CONTROLS (Compact two-row layout)
+    // ─────────────────────────────────────────────────────────────────────────
+    // Curated font list - cross-platform compatible
+    const FONT_OPTIONS = [
+        { value: 'default', label: 'Default' },
+        { value: 'Inter', label: 'Inter' },
+        { value: 'system-ui', label: 'System UI' },
+        { value: 'Exo', label: 'Exo' },
+        { value: 'Roboto', label: 'Roboto' },
+        { value: 'Montserrat', label: 'Montserrat' },
+        { value: 'Open Sans', label: 'Open Sans' },
+        { value: 'Dancing Script', label: 'Dancing Script' },
+        { value: 'Caveat', label: 'Caveat' }
+    ];
+    
+    // Weight options with italic variants
+    const WEIGHT_OPTIONS = [
+        { value: '300', label: 'Light (300)' },
+        { value: '300-italic', label: 'Light (300) Italic' },
+        { value: '400', label: 'Normal (400)' },
+        { value: '400-italic', label: 'Normal (400) Italic' },
+        { value: '500', label: 'Medium (500)' },
+        { value: '500-italic', label: 'Medium (500) Italic' },
+        { value: '600', label: 'Semi-Bold (600)' },
+        { value: '600-italic', label: 'Semi-Bold (600) Italic' },
+        { value: '700', label: 'Bold (700)' },
+        { value: '700-italic', label: 'Bold (700) Italic' },
+        { value: '800', label: 'Extra-Bold (800)' },
+        { value: '800-italic', label: 'Extra-Bold (800) Italic' },
+        { value: '900', label: 'Black (900)' },
+        { value: '900-italic', label: 'Black (900) Italic' }
+    ];
+    
+    // Helper to parse weight/italic from dropdown value
+    const parseWeightValue = (val: string): { weight: number; italic: boolean } => {
+        if (val.includes('-italic')) {
+            return { weight: parseInt(val.split('-')[0], 10), italic: true };
+        }
+        return { weight: parseInt(val, 10), italic: false };
+    };
+    
+    // Helper to format weight/italic to dropdown value
+    const formatWeightValue = (weight: number, italic: boolean): string => {
+        return italic ? `${weight}-italic` : String(weight);
+    };
+    
+    // Book Title - Row 1: Font & Weight/Italic, Row 2: Color
+    const bookTitleSetting = new Setting(stylingCard).setName('Book Title');
+    bookTitleSetting.descEl.remove(); // Remove description area
+    
+    bookTitleSetting.addDropdown(drop => {
+        FONT_OPTIONS.forEach(font => drop.addOption(font.value, font.label));
+        const currentFont = settings?.aprBookTitleFontFamily || 'Inter';
+        drop.setValue(currentFont === 'Inter' ? 'default' : currentFont);
+        drop.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprBookTitleFontFamily = val === 'default' ? 'Inter' : val;
+            await plugin.saveSettings();
+            refreshPreview();
+        });
+    });
+    
+    bookTitleSetting.addDropdown(drop => {
+        WEIGHT_OPTIONS.forEach(opt => drop.addOption(opt.value, opt.label));
+        const currentWeight = settings?.aprBookTitleFontWeight || 400;
+        const currentItalic = settings?.aprBookTitleFontItalic ?? false;
+        drop.setValue(formatWeightValue(currentWeight, currentItalic));
+        drop.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            const { weight, italic } = parseWeightValue(val);
+            plugin.settings.authorProgress.aprBookTitleFontWeight = weight;
+            plugin.settings.authorProgress.aprBookTitleFontItalic = italic;
+            await plugin.saveSettings();
+            refreshPreview();
+        });
+    });
+    
+    // Row 2: Color
+    const bookTitleColorSetting = new Setting(stylingCard);
+    bookTitleColorSetting.nameEl.remove();
+    bookTitleColorSetting.descEl.remove();
+    
+    const bookTitleColorFallback = plugin.settings.publishStageColors?.Press || '#6FB971';
+    const currentBookTitleColorVal = settings?.aprBookAuthorColor || bookTitleColorFallback;
+    
+    let bookTitleColorPickerRef: ColorComponent | undefined;
+    let bookTitleTextRef: TextComponent | undefined;
+    
+    bookTitleColorSetting.addColorPicker(picker => {
+        bookTitleColorPickerRef = picker;
+        picker.setValue(currentBookTitleColorVal);
+        picker.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprBookAuthorColor = val || bookTitleColorFallback;
+            await plugin.saveSettings();
+            refreshPreview();
+            bookTitleTextRef?.setValue(val);
+        });
+    });
+    
+    bookTitleColorSetting.addText(text => {
+        bookTitleTextRef = text;
+        text.inputEl.classList.add('rt-hex-input');
+        text.setPlaceholder(bookTitleColorFallback).setValue(currentBookTitleColorVal);
+        text.onChange(async (val) => {
+            if (!val) return;
+            if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
+                if (!plugin.settings.authorProgress) return;
+                plugin.settings.authorProgress.aprBookAuthorColor = val;
+                await plugin.saveSettings();
+                refreshPreview();
+                bookTitleColorPickerRef?.setValue(val);
+            }
+        });
+    });
+    
+    // Author Name - Row 1: Font & Weight/Italic, Row 2: Color
+    const authorNameSetting = new Setting(stylingCard).setName('Author Name');
+    authorNameSetting.descEl.remove();
+    
+    authorNameSetting.addDropdown(drop => {
+        FONT_OPTIONS.forEach(font => drop.addOption(font.value, font.label));
+        const currentFont = settings?.aprAuthorNameFontFamily || 'Inter';
+        drop.setValue(currentFont === 'Inter' ? 'default' : currentFont);
+        drop.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprAuthorNameFontFamily = val === 'default' ? 'Inter' : val;
+            await plugin.saveSettings();
+            refreshPreview();
+        });
+    });
+    
+    authorNameSetting.addDropdown(drop => {
+        WEIGHT_OPTIONS.forEach(opt => drop.addOption(opt.value, opt.label));
+        const currentWeight = settings?.aprAuthorNameFontWeight || 400;
+        const currentItalic = settings?.aprAuthorNameFontItalic ?? false;
+        drop.setValue(formatWeightValue(currentWeight, currentItalic));
+        drop.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            const { weight, italic } = parseWeightValue(val);
+            plugin.settings.authorProgress.aprAuthorNameFontWeight = weight;
+            plugin.settings.authorProgress.aprAuthorNameFontItalic = italic;
+            await plugin.saveSettings();
+            refreshPreview();
+        });
+    });
+    
+    // Row 2: Color
+    const authorNameColorSetting = new Setting(stylingCard);
+    authorNameColorSetting.nameEl.remove();
+    authorNameColorSetting.descEl.remove();
+    
+    let authorColorPickerRef: ColorComponent | undefined;
+    let authorTextRef: TextComponent | undefined;
+    
+    const authorColorFallback = settings?.aprBookAuthorColor || bookTitleColorFallback;
+    const currentAuthorColor = settings?.aprAuthorColor || authorColorFallback;
+    
+    authorNameColorSetting.addColorPicker(picker => {
+        authorColorPickerRef = picker;
+        picker.setValue(currentAuthorColor);
+        picker.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprAuthorColor = val || authorColorFallback;
+            await plugin.saveSettings();
+            refreshPreview();
+            authorTextRef?.setValue(val);
+        });
+    });
+    
+    authorNameColorSetting.addText(text => {
+        authorTextRef = text;
+        text.inputEl.classList.add('rt-hex-input');
+        text.setPlaceholder(authorColorFallback).setValue(currentAuthorColor);
+        text.onChange(async (val) => {
+            if (!val) return;
+            if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
+                if (!plugin.settings.authorProgress) return;
+                plugin.settings.authorProgress.aprAuthorColor = val;
+                await plugin.saveSettings();
+                refreshPreview();
+                authorColorPickerRef?.setValue(val);
+            }
+        });
+    });
+    
+    // Center Percent Number - Row 1: Font & Weight/Italic, Row 2: Color
+    const percentNumberSetting = new Setting(stylingCard).setName('% Number');
+    percentNumberSetting.descEl.remove();
+    
+    percentNumberSetting.addDropdown(drop => {
+        FONT_OPTIONS.forEach(font => drop.addOption(font.value, font.label));
+        const currentFont = settings?.aprPercentNumberFontFamily || 'Inter';
+        drop.setValue(currentFont === 'Inter' ? 'default' : currentFont);
+        drop.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprPercentNumberFontFamily = val === 'default' ? 'Inter' : val;
+            await plugin.saveSettings();
+            refreshPreview();
+        });
+    });
+    
+    percentNumberSetting.addDropdown(drop => {
+        WEIGHT_OPTIONS.forEach(opt => drop.addOption(opt.value, opt.label));
+        const currentWeight = settings?.aprPercentNumberFontWeight || 800;
+        const currentItalic = settings?.aprPercentNumberFontItalic ?? false;
+        drop.setValue(formatWeightValue(currentWeight, currentItalic));
+        drop.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            const { weight, italic } = parseWeightValue(val);
+            plugin.settings.authorProgress.aprPercentNumberFontWeight = weight;
+            plugin.settings.authorProgress.aprPercentNumberFontItalic = italic;
+            await plugin.saveSettings();
+            refreshPreview();
+        });
+    });
+    
+    // Row 2: Color
+    const percentNumberColorSettingRow = new Setting(stylingCard);
+    percentNumberColorSettingRow.nameEl.remove();
+    percentNumberColorSettingRow.descEl.remove();
+    
+    let percentNumberColorPickerRef: ColorComponent | undefined;
+    let percentNumberTextRef: TextComponent | undefined;
+    
+    const percentNumberColorFallback = settings?.aprBookAuthorColor || bookTitleColorFallback;
+    const currentPercentNumberColor = settings?.aprPercentNumberColor || percentNumberColorFallback;
+    
+    percentNumberColorSettingRow.addColorPicker(picker => {
+        percentNumberColorPickerRef = picker;
+        picker.setValue(currentPercentNumberColor);
+        picker.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprPercentNumberColor = val || percentNumberColorFallback;
+            await plugin.saveSettings();
+            refreshPreview();
+            percentNumberTextRef?.setValue(val);
+        });
+    });
+    
+    percentNumberColorSettingRow.addText(text => {
+        percentNumberTextRef = text;
+        text.inputEl.classList.add('rt-hex-input');
+        text.setPlaceholder(percentNumberColorFallback).setValue(currentPercentNumberColor);
+        text.onChange(async (val) => {
+            if (!val) return;
+            if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
+                if (!plugin.settings.authorProgress) return;
+                plugin.settings.authorProgress.aprPercentNumberColor = val;
+                await plugin.saveSettings();
+                refreshPreview();
+                percentNumberColorPickerRef?.setValue(val);
+            }
+        });
+    });
+    
+    // % Symbol - Row 1: Font & Weight/Italic, Row 2: Color
+    const percentSymbolSetting = new Setting(stylingCard).setName('% Symbol');
+    percentSymbolSetting.descEl.remove();
+    
+    percentSymbolSetting.addDropdown(drop => {
+        FONT_OPTIONS.forEach(font => drop.addOption(font.value, font.label));
+        const currentFont = settings?.aprPercentSymbolFontFamily || 'Inter';
+        drop.setValue(currentFont === 'Inter' ? 'default' : currentFont);
+        drop.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprPercentSymbolFontFamily = val === 'default' ? 'Inter' : val;
+            await plugin.saveSettings();
+            refreshPreview();
+        });
+    });
+    
+    percentSymbolSetting.addDropdown(drop => {
+        WEIGHT_OPTIONS.forEach(opt => drop.addOption(opt.value, opt.label));
+        const currentWeight = settings?.aprPercentSymbolFontWeight || 800;
+        const currentItalic = settings?.aprPercentSymbolFontItalic ?? false;
+        drop.setValue(formatWeightValue(currentWeight, currentItalic));
+        drop.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            const { weight, italic } = parseWeightValue(val);
+            plugin.settings.authorProgress.aprPercentSymbolFontWeight = weight;
+            plugin.settings.authorProgress.aprPercentSymbolFontItalic = italic;
+            await plugin.saveSettings();
+            refreshPreview();
+        });
+    });
+    
+    // Row 2: Color
+    const percentSymbolColorSettingRow = new Setting(stylingCard);
+    percentSymbolColorSettingRow.nameEl.remove();
+    percentSymbolColorSettingRow.descEl.remove();
+    
+    let percentSymbolColorPickerRef: ColorComponent | undefined;
+    let percentSymbolTextRef: TextComponent | undefined;
+    
+    const percentSymbolColorFallback = settings?.aprBookAuthorColor || bookTitleColorFallback;
+    const currentPercentSymbolColor = settings?.aprPercentSymbolColor || percentSymbolColorFallback;
+    
+    percentSymbolColorSettingRow.addColorPicker(picker => {
+        percentSymbolColorPickerRef = picker;
+        picker.setValue(currentPercentSymbolColor);
+        picker.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprPercentSymbolColor = val || percentSymbolColorFallback;
+            await plugin.saveSettings();
+            refreshPreview();
+            percentSymbolTextRef?.setValue(val);
+        });
+    });
+    
+    percentSymbolColorSettingRow.addText(text => {
+        percentSymbolTextRef = text;
+        text.inputEl.classList.add('rt-hex-input');
+        text.setPlaceholder(percentSymbolColorFallback).setValue(currentPercentSymbolColor);
+        text.onChange(async (val) => {
+            if (!val) return;
+            if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
+                if (!plugin.settings.authorProgress) return;
+                plugin.settings.authorProgress.aprPercentSymbolColor = val;
+                await plugin.saveSettings();
+                refreshPreview();
+                percentSymbolColorPickerRef?.setValue(val);
+            }
+        });
+    });
+    
+    // RT Badge - Row 1: Font & Weight/Italic, Row 2: Color (engine color)
+    const rtBadgeSetting = new Setting(stylingCard).setName('RT Badge');
+    rtBadgeSetting.descEl.remove();
+    
+    rtBadgeSetting.addDropdown(drop => {
+        FONT_OPTIONS.forEach(font => drop.addOption(font.value, font.label));
+        const currentFont = settings?.aprRtBadgeFontFamily || 'Inter';
+        drop.setValue(currentFont === 'Inter' ? 'default' : currentFont);
+        drop.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprRtBadgeFontFamily = val === 'default' ? 'Inter' : val;
+            await plugin.saveSettings();
+            refreshPreview();
+        });
+    });
+    
+    rtBadgeSetting.addDropdown(drop => {
+        WEIGHT_OPTIONS.forEach(opt => drop.addOption(opt.value, opt.label));
+        const currentWeight = settings?.aprRtBadgeFontWeight || 700;
+        const currentItalic = settings?.aprRtBadgeFontItalic ?? false;
+        drop.setValue(formatWeightValue(currentWeight, currentItalic));
+        drop.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            const { weight, italic } = parseWeightValue(val);
+            plugin.settings.authorProgress.aprRtBadgeFontWeight = weight;
+            plugin.settings.authorProgress.aprRtBadgeFontItalic = italic;
+            await plugin.saveSettings();
+            refreshPreview();
+        });
+    });
+    
+    // Row 2: Color (uses engineColor)
+    const rtBadgeColorSetting = new Setting(stylingCard);
+    rtBadgeColorSetting.nameEl.remove();
+    rtBadgeColorSetting.descEl.remove();
+    
+    const rtBadgeColorFallback = '#e5e5e5';
+    const currentRtBadgeColor = settings?.aprEngineColor || rtBadgeColorFallback;
+    
+    rtBadgeColorSetting.addColorPicker(picker => {
+        picker.setValue(currentRtBadgeColor);
+        picker.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprEngineColor = val || rtBadgeColorFallback;
+            await plugin.saveSettings();
+            refreshPreview();
+        });
+    });
+    
+    rtBadgeColorSetting.addText(text => {
+        text.inputEl.classList.add('rt-hex-input');
+        text.setPlaceholder(rtBadgeColorFallback).setValue(currentRtBadgeColor);
+        text.onChange(async (val) => {
+            if (!val) return;
+            if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
+                if (!plugin.settings.authorProgress) return;
+                plugin.settings.authorProgress.aprEngineColor = val;
+                await plugin.saveSettings();
+                refreshPreview();
+            }
+        });
+    });
+
     // Theme/Spokes Color setting (unified - controls both theme and spokes)
     const spokeColorSetting = new Setting(stylingCard)
         .setName('Theme Contrast & Spokes')
@@ -297,173 +683,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
     });
 
-    const setColorPicker = (
-        setting: Setting, 
-        key: 'aprAuthorColor' | 'aprEngineColor' | 'aprPercentNumberColor' | 'aprPercentSymbolColor', 
-        fallback: string,
-        onColorChange?: () => void
-    ) => {
-        const current = (settings as any)?.[key] || fallback;
-        setting.addColorPicker(picker => {
-            if (key === 'aprAuthorColor') authorColorPickerRef = picker;
-            else if (key === 'aprPercentNumberColor') percentNumberColorPickerRef = picker;
-            else if (key === 'aprPercentSymbolColor') percentSymbolColorPickerRef = picker;
-            
-            picker.setValue(current);
-            picker.onChange(async (val) => {
-                if (!plugin.settings.authorProgress) return;
-                (plugin.settings.authorProgress as any)[key] = val || fallback;
-                onColorChange?.();
-                await plugin.saveSettings();
-                refreshPreview();
-            });
-        });
-        setting.addText(text => {
-            if (key === 'aprAuthorColor') authorTextRef = text;
-            else if (key === 'aprPercentNumberColor') percentNumberTextRef = text;
-            else if (key === 'aprPercentSymbolColor') percentSymbolTextRef = text;
-            
-            text.setPlaceholder(fallback).setValue(current);
-            text.inputEl.classList.add('rt-hex-input');
-            text.onChange(async (val) => {
-                if (!val) return;
-                if (!plugin.settings.authorProgress) return;
-                (plugin.settings.authorProgress as any)[key] = val;
-                onColorChange?.();
-                await plugin.saveSettings();
-                refreshPreview();
-            });
-        });
-    };
-
-    // Color Palette and Book Title Color - grouped together with border
-    const bookTitleColorFallback = plugin.settings.publishStageColors?.Press || '#6FB971';
-    const currentBookTitleColor = settings?.aprBookAuthorColor || bookTitleColorFallback;
-    const paletteGroupWrapper = stylingCard.createDiv({ cls: 'rt-apr-palette-book-title-group' });
-    
-    // Track last applied palette and color picker refs
-    let lastAppliedPalette: { bookTitle: string; authorName: string; percentNumber: string; percentSymbol: string } | null = null;
-    let bookTitleColorPickerRef: ColorComponent | undefined;
-    let bookTitleTextRef: TextComponent | undefined;
-    let authorColorPickerRef: ColorComponent | undefined;
-    let authorTextRef: TextComponent | undefined;
-    let percentNumberColorPickerRef: ColorComponent | undefined;
-    let percentNumberTextRef: TextComponent | undefined;
-    let percentSymbolColorPickerRef: ColorComponent | undefined;
-    let percentSymbolTextRef: TextComponent | undefined;
-    
-    // Set border color and active state
-    const updateBorderState = (color: string, isActive: boolean) => {
-        paletteGroupWrapper.style.setProperty('--rt-palette-border-color', color);
-        if (isActive) {
-            paletteGroupWrapper.classList.remove('rt-palette-inactive');
-        } else {
-            paletteGroupWrapper.classList.add('rt-palette-inactive');
-        }
-    };
-    
-    // Check if current colors match the last applied palette
-    const checkPaletteActive = () => {
-        if (!lastAppliedPalette || !plugin.settings.authorProgress) {
-            updateBorderState(currentBookTitleColor, false);
-            return;
-        }
-        const current = plugin.settings.authorProgress;
-        const matches = 
-            (current.aprBookAuthorColor || bookTitleColorFallback) === lastAppliedPalette.bookTitle &&
-            (current.aprAuthorColor || bookTitleColorFallback) === lastAppliedPalette.authorName &&
-            (current.aprPercentNumberColor || bookTitleColorFallback) === lastAppliedPalette.percentNumber &&
-            (current.aprPercentSymbolColor || bookTitleColorFallback) === lastAppliedPalette.percentSymbol;
-        updateBorderState(current.aprBookAuthorColor || bookTitleColorFallback, matches);
-    };
-    
-    updateBorderState(currentBookTitleColor, false);
-    
-    // Color Palette Helper - moved above Book Title Color
-    const paletteHelperSetting = new Setting(paletteGroupWrapper)
-        .setName('Color Palette')
-        .setDesc('Apply a preset color palette or generate one from your Book Title Color.');
-    // Add palette icon to the name (prepend before text)
-    const paletteIcon = paletteHelperSetting.nameEl.createSpan({ cls: 'rt-setting-icon' });
-    setIcon(paletteIcon, 'palette');
-    // Insert icon at the beginning
-    if (paletteHelperSetting.nameEl.firstChild) {
-        paletteHelperSetting.nameEl.insertBefore(paletteIcon, paletteHelperSetting.nameEl.firstChild);
-    } else {
-        paletteHelperSetting.nameEl.prepend(paletteIcon);
-    }
-    paletteHelperSetting.addButton(button => {
-        button.setButtonText('Choose Palette...');
-        button.setCta();
-        button.onClick(() => {
-            if (!plugin.settings.authorProgress) return;
-            const modal = new AprPaletteModal(app, plugin, plugin.settings.authorProgress, (palette) => {
-                // Update settings
-                if (!plugin.settings.authorProgress) return;
-                plugin.settings.authorProgress.aprBookAuthorColor = palette.bookTitle;
-                plugin.settings.authorProgress.aprAuthorColor = palette.authorName;
-                plugin.settings.authorProgress.aprPercentNumberColor = palette.percentNumber;
-                plugin.settings.authorProgress.aprPercentSymbolColor = palette.percentSymbol;
-                
-                // Update color picker components
-                bookTitleColorPickerRef?.setValue(palette.bookTitle);
-                bookTitleTextRef?.setValue(palette.bookTitle);
-                authorColorPickerRef?.setValue(palette.authorName);
-                authorTextRef?.setValue(palette.authorName);
-                percentNumberColorPickerRef?.setValue(palette.percentNumber);
-                percentNumberTextRef?.setValue(palette.percentNumber);
-                percentSymbolColorPickerRef?.setValue(palette.percentSymbol);
-                percentSymbolTextRef?.setValue(palette.percentSymbol);
-                
-                // Store as last applied palette
-                lastAppliedPalette = palette;
-                updateBorderState(palette.bookTitle, true);
-                
-                refreshPreview();
-            });
-            modal.open();
-        });
-    });
-
-    // Book Title Color with border color update
-    const bookColorSetting = new Setting(paletteGroupWrapper).setName('Book Title Color').setDesc('Used for the book title in the perimeter text.');
-    const currentBookColor = settings?.aprBookAuthorColor || bookTitleColorFallback;
-    bookColorSetting.addColorPicker(picker => {
-        bookTitleColorPickerRef = picker;
-        picker.setValue(currentBookColor);
-        picker.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprBookAuthorColor = val || bookTitleColorFallback;
-            checkPaletteActive();
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-    bookColorSetting.addText(text => {
-        bookTitleTextRef = text;
-        text.setPlaceholder(bookTitleColorFallback).setValue(currentBookColor);
-        text.inputEl.classList.add('rt-hex-input');
-        text.onChange(async (val) => {
-            if (!val) return;
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprBookAuthorColor = val;
-            checkPaletteActive();
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-
-    const authorColorSetting = new Setting(stylingCard).setName('Author Name Color').setDesc('Used for the author name in the perimeter text.');
-    setColorPicker(authorColorSetting, 'aprAuthorColor', plugin.settings.publishStageColors?.Press || '#6FB971', checkPaletteActive);
-
-    const percentNumberColorSetting = new Setting(stylingCard).setName('% number color').setDesc('Color for the center % number.');
-    setColorPicker(percentNumberColorSetting, 'aprPercentNumberColor', plugin.settings.publishStageColors?.Press || '#6FB971', checkPaletteActive);
-
-    const percentSymbolColorSetting = new Setting(stylingCard).setName('% symbol color').setDesc('Color for the center % symbol.');
-    setColorPicker(percentSymbolColorSetting, 'aprPercentSymbolColor', plugin.settings.publishStageColors?.Press || '#6FB971', checkPaletteActive);
-
-    const engineColorSetting = new Setting(stylingCard).setName('Radial Timeline Engine Color').setDesc('Used on the Radial Timeline Logo link in the bottom right corner.');
-    setColorPicker(engineColorSetting, 'aprEngineColor', '#e5e5e5');
 
     // Identity & Links
     const identityCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-identity-card rt-apr-stack-gap' });
@@ -750,7 +969,29 @@ async function renderHeroPreview(
             percentNumberColor: aprSettings?.aprPercentNumberColor ?? aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
             percentSymbolColor: aprSettings?.aprPercentSymbolColor ?? aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
             theme: aprSettings?.aprTheme || 'dark',
-            spokeColor: aprSettings?.aprSpokeColorMode === 'custom' ? aprSettings?.aprSpokeColor : undefined
+            spokeColor: aprSettings?.aprSpokeColorMode === 'custom' ? aprSettings?.aprSpokeColor : undefined,
+            // Typography settings
+            bookTitleFontFamily: aprSettings?.aprBookTitleFontFamily,
+            bookTitleFontWeight: aprSettings?.aprBookTitleFontWeight,
+            bookTitleFontItalic: aprSettings?.aprBookTitleFontItalic,
+            bookTitleFontSize: aprSettings?.aprBookTitleFontSize,
+            authorNameFontFamily: aprSettings?.aprAuthorNameFontFamily,
+            authorNameFontWeight: aprSettings?.aprAuthorNameFontWeight,
+            authorNameFontItalic: aprSettings?.aprAuthorNameFontItalic,
+            authorNameFontSize: aprSettings?.aprAuthorNameFontSize,
+            percentNumberFontFamily: aprSettings?.aprPercentNumberFontFamily,
+            percentNumberFontWeight: aprSettings?.aprPercentNumberFontWeight,
+            percentNumberFontItalic: aprSettings?.aprPercentNumberFontItalic,
+            percentNumberFontSize1Digit: aprSettings?.aprPercentNumberFontSize1Digit,
+            percentNumberFontSize2Digit: aprSettings?.aprPercentNumberFontSize2Digit,
+            percentNumberFontSize3Digit: aprSettings?.aprPercentNumberFontSize3Digit,
+            percentSymbolFontFamily: aprSettings?.aprPercentSymbolFontFamily,
+            percentSymbolFontWeight: aprSettings?.aprPercentSymbolFontWeight,
+            percentSymbolFontItalic: aprSettings?.aprPercentSymbolFontItalic,
+            rtBadgeFontFamily: aprSettings?.aprRtBadgeFontFamily,
+            rtBadgeFontWeight: aprSettings?.aprRtBadgeFontWeight,
+            rtBadgeFontItalic: aprSettings?.aprRtBadgeFontItalic,
+            rtBadgeFontSize: aprSettings?.aprRtBadgeFontSize
         });
         
         container.empty();

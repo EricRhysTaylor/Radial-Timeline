@@ -109,7 +109,29 @@ export class AuthorProgressService {
             percentNumberColor: settings.aprPercentNumberColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
             percentSymbolColor: settings.aprPercentSymbolColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
             theme: settings.aprTheme || 'dark',
-            spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor : undefined
+            spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor : undefined,
+            // Typography settings
+            bookTitleFontFamily: settings.aprBookTitleFontFamily,
+            bookTitleFontWeight: settings.aprBookTitleFontWeight,
+            bookTitleFontItalic: settings.aprBookTitleFontItalic,
+            bookTitleFontSize: settings.aprBookTitleFontSize,
+            authorNameFontFamily: settings.aprAuthorNameFontFamily,
+            authorNameFontWeight: settings.aprAuthorNameFontWeight,
+            authorNameFontItalic: settings.aprAuthorNameFontItalic,
+            authorNameFontSize: settings.aprAuthorNameFontSize,
+            percentNumberFontFamily: settings.aprPercentNumberFontFamily,
+            percentNumberFontWeight: settings.aprPercentNumberFontWeight,
+            percentNumberFontItalic: settings.aprPercentNumberFontItalic,
+            percentNumberFontSize1Digit: settings.aprPercentNumberFontSize1Digit,
+            percentNumberFontSize2Digit: settings.aprPercentNumberFontSize2Digit,
+            percentNumberFontSize3Digit: settings.aprPercentNumberFontSize3Digit,
+            percentSymbolFontFamily: settings.aprPercentSymbolFontFamily,
+            percentSymbolFontWeight: settings.aprPercentSymbolFontWeight,
+            percentSymbolFontItalic: settings.aprPercentSymbolFontItalic,
+            rtBadgeFontFamily: settings.aprRtBadgeFontFamily,
+            rtBadgeFontWeight: settings.aprRtBadgeFontWeight,
+            rtBadgeFontItalic: settings.aprRtBadgeFontItalic,
+            rtBadgeFontSize: settings.aprRtBadgeFontSize
         });
 
         let finalSvg = svgString;
@@ -229,8 +251,32 @@ export class AuthorProgressService {
             bookAuthorColor: settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
             authorColor: settings.aprAuthorColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
             engineColor: settings.aprEngineColor,
+            percentNumberColor: settings.aprPercentNumberColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
+            percentSymbolColor: settings.aprPercentSymbolColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
             theme: campaign.customTheme ?? settings.aprTheme ?? 'dark',
-            spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor : undefined
+            spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor : undefined,
+            // Typography settings
+            bookTitleFontFamily: settings.aprBookTitleFontFamily,
+            bookTitleFontWeight: settings.aprBookTitleFontWeight,
+            bookTitleFontItalic: settings.aprBookTitleFontItalic,
+            bookTitleFontSize: settings.aprBookTitleFontSize,
+            authorNameFontFamily: settings.aprAuthorNameFontFamily,
+            authorNameFontWeight: settings.aprAuthorNameFontWeight,
+            authorNameFontItalic: settings.aprAuthorNameFontItalic,
+            authorNameFontSize: settings.aprAuthorNameFontSize,
+            percentNumberFontFamily: settings.aprPercentNumberFontFamily,
+            percentNumberFontWeight: settings.aprPercentNumberFontWeight,
+            percentNumberFontItalic: settings.aprPercentNumberFontItalic,
+            percentNumberFontSize1Digit: settings.aprPercentNumberFontSize1Digit,
+            percentNumberFontSize2Digit: settings.aprPercentNumberFontSize2Digit,
+            percentNumberFontSize3Digit: settings.aprPercentNumberFontSize3Digit,
+            percentSymbolFontFamily: settings.aprPercentSymbolFontFamily,
+            percentSymbolFontWeight: settings.aprPercentSymbolFontWeight,
+            percentSymbolFontItalic: settings.aprPercentSymbolFontItalic,
+            rtBadgeFontFamily: settings.aprRtBadgeFontFamily,
+            rtBadgeFontWeight: settings.aprRtBadgeFontWeight,
+            rtBadgeFontItalic: settings.aprRtBadgeFontItalic,
+            rtBadgeFontSize: settings.aprRtBadgeFontSize
         });
 
         // Save to campaign's embed path

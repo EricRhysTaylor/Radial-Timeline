@@ -478,9 +478,9 @@
 
 @keyframes rt-milestone-pulse {
   0%, 100% {
-    transform: translate(0, -6px) scale(1);
+    transform: translate(0, 10px) scale(1);
   }
   50% {
-    transform: translate(0, -6px) scale(1.05);
+    transform: translate(0, 10px) scale(1.05);
   }
 }

@@ -43,19 +43,17 @@ export const APR_LAYOUT = {
         patternScale: 0.25,         // Pattern density (1.0 = default, smaller = denser)
         
         // ─────────────────────────────────────────────────────────────────────
-        // CENTER PERCENT (Inner element)
+        // CENTER NUMBER & PERCENT SYMBOL (Inner element)
         // ─────────────────────────────────────────────────────────────────────
-        centerPercentFontSize: 32,  // Max font size for the % number (auto-fits to inner circle)
-        percentYOffset: 3.2,          // Y offset for the number (positive = down)
-        percentNumberOpacity: 0.95,  // Number visibility: 0.0 = invisible, 1.0 = fully opaque
+        centerNumberFontSize1Digit: 38,  // Font size for single-digit numbers (e.g., "5")
+        centerNumberFontSize2Digit: 28,  // Font size for double-digit numbers (e.g., "42")
+        centerNumberFontSize3Digit: 24,  // Font size for triple-digit numbers (e.g., "100")
+        centerNumberYOffset: 3.2,          // Y offset for the center number (positive = down)
+        centerNumberOpacity: 1,  // Center number visibility: 0.0 = invisible, 1.0 = fully opaque
+        centerNumberLetterSpacing: '-0.05em', // Letter spacing for multi-digit numbers
         percentSymbolYOffset: 4,   // Y offset for % symbol
-        percentSymbolOpacity: 0.28, // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
+        percentSymbolOpacity: 0.20, // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
         percentSymbolSizeMultiplier: 1.9, // % symbol size: 1.0 = small, 2.5 = large (relative to inner radius)
-        percentWidthMultiplier1Digit: 2.3, // Width multiplier for single-digit numbers
-        percentWidthMultiplier2Digit: 1.7, // Width multiplier for double-digit numbers
-        percentWidthMultiplier3Digit: 1.8, // Width multiplier for triple-digit numbers
-        percentCharWidthRatio: 0.65, // Character width estimate (charWidth = fontSize × this ratio)
-        percentLetterSpacing: '-0.02em', // Letter spacing for multi-digit numbers
         
         // ─────────────────────────────────────────────────────────────────────
         // RT BADGE (Bottom-right corner)
@@ -69,7 +67,7 @@ export const APR_LAYOUT = {
         // ─────────────────────────────────────────────────────────────────────
         brandingRadius: 68,         // Radius for book/author text path
         bookAuthorFontSize: 9,      // Font size for book title + author name
-        brandingLetterSpacing: '0.12em', // Letter spacing for branding text
+        brandingLetterSpacing: '0.2em', // Letter spacing for branding text
     },
     
     // ─────────────────────────────────────────────────────────────────────────
@@ -92,19 +90,17 @@ export const APR_LAYOUT = {
         patternScale: 0.4,         // Pattern density (1.0 = default, smaller = denser)
         
         // ─────────────────────────────────────────────────────────────────────
-        // CENTER PERCENT (Inner element)
+        // CENTER NUMBER & PERCENT SYMBOL (Inner element)
         // ─────────────────────────────────────────────────────────────────────
-        centerPercentFontSize: 105,  // Max font size for the % number (auto-fits to inner circle)
-        percentYOffset: 8,          // Y offset for the number (positive = down)
-        percentNumberOpacity: 0.95,   // Number visibility: 0.0 = invisible, 1.0 = fully opaque
+        centerNumberFontSize1Digit: 105,  // Font size for single-digit numbers (e.g., "5")
+        centerNumberFontSize2Digit: 80,  // Font size for double-digit numbers (e.g., "42")
+        centerNumberFontSize3Digit: 70,  // Font size for triple-digit numbers (e.g., "100")
+        centerNumberYOffset: 8,          // Y offset for the center number (positive = down)
+        centerNumberOpacity: 0.95,   // Center number visibility: 0.0 = invisible, 1.0 = fully opaque
+        centerNumberLetterSpacing: '-0.05em', // Letter spacing for multi-digit numbers
         percentSymbolYOffset: 9.5,    // Y offset for % symbol
-        percentSymbolOpacity: 0.15,   // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
+        percentSymbolOpacity: 0.20,   // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
         percentSymbolSizeMultiplier: 2, // % symbol size: 1.0 = small, 2.5 = large (relative to inner radius)
-        percentWidthMultiplier1Digit: 2.3, // Width multiplier for single-digit numbers
-        percentWidthMultiplier2Digit: 1.7, // Width multiplier for double-digit numbers
-        percentWidthMultiplier3Digit: 1.8, // Width multiplier for triple-digit numbers
-        percentCharWidthRatio: 0.65, // Character width estimate (charWidth = fontSize × this ratio)
-        percentLetterSpacing: '-0.02em', // Letter spacing for multi-digit numbers
         
         // ─────────────────────────────────────────────────────────────────────
         // RT BADGE (Bottom-right corner)
@@ -141,19 +137,17 @@ export const APR_LAYOUT = {
         patternScale: 0.55,        // Pattern density (1.0 = default, smaller = denser)
         
         // ─────────────────────────────────────────────────────────────────────
-        // CENTER PERCENT (Inner element)
+        // CENTER NUMBER & PERCENT SYMBOL (Inner element)
         // ─────────────────────────────────────────────────────────────────────
-        centerPercentFontSize: 150,  // Max font size for the % number (auto-fits to inner circle)
-        percentYOffset: 11,         // Y offset for the number (positive = down)
-        percentNumberOpacity: 0.95,   // Number visibility: 0.0 = invisible, 1.0 = fully opaque
+        centerNumberFontSize1Digit: 150,  // Font size for single-digit numbers (e.g., "5")
+        centerNumberFontSize2Digit: 115,  // Font size for double-digit numbers (e.g., "42")
+        centerNumberFontSize3Digit: 100,  // Font size for triple-digit numbers (e.g., "100")
+        centerNumberYOffset: 11,         // Y offset for the center number (positive = down)
+        centerNumberOpacity: 0.95,   // Center number visibility: 0.0 = invisible, 1.0 = fully opaque
+        centerNumberLetterSpacing: '-0.05em', // Letter spacing for multi-digit numbers (0 = natural spacing)
         percentSymbolYOffset: 15,   // Y offset for % symbol
-        percentSymbolOpacity: 0.15,  // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
+        percentSymbolOpacity: 0.20,  // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
         percentSymbolSizeMultiplier: 2, // % symbol size: 1.0 = small, 2.5 = large (relative to inner radius)
-        percentWidthMultiplier1Digit: 2.3, // Width multiplier for single-digit numbers
-        percentWidthMultiplier2Digit: 1.7, // Width multiplier for double-digit numbers
-        percentWidthMultiplier3Digit: 2, // Width multiplier for triple-digit numbers
-        percentCharWidthRatio: 0.65, // Character width estimate (charWidth = fontSize × this ratio)
-        percentLetterSpacing: '0em', // Letter spacing for multi-digit numbers (0 = natural spacing)
         
         // ─────────────────────────────────────────────────────────────────────
         // RT BADGE (Bottom-right corner)
@@ -185,24 +179,22 @@ export function getPreset(size: AprSize) {
         brandingRadius: p.brandingRadius,
         brandingFontSize: p.bookAuthorFontSize,
         rtBrandingFontSize: p.rtBadgeFontSize,
-        centerFontSize: p.centerPercentFontSize,
-        rtCornerOffset: p.rtBadgeOffsetX, // Used for X positioning
-        centerYOffset: p.percentYOffset,
+        centerYOffset: p.centerNumberYOffset,
         ghostYOffset: p.percentSymbolYOffset,
         spokeWidth: p.spokeWidth,
         borderWidth: p.borderWidth,
         actSpokeWidth: p.actSpokeWidth,
         brandingLetterSpacing: p.brandingLetterSpacing,
         patternScale: p.patternScale,
-        // Center percent controls
-        percentNumberOpacity: p.percentNumberOpacity,
+        rtCornerOffset: p.rtBadgeOffsetX, // Used for X positioning
+        // Center number & percent symbol controls
+        centerNumberFontSize1Digit: p.centerNumberFontSize1Digit,
+        centerNumberFontSize2Digit: p.centerNumberFontSize2Digit,
+        centerNumberFontSize3Digit: p.centerNumberFontSize3Digit,
+        percentNumberOpacity: p.centerNumberOpacity,
+        percentLetterSpacing: p.centerNumberLetterSpacing,
         percentSymbolOpacity: p.percentSymbolOpacity,
         percentSymbolSizeMultiplier: p.percentSymbolSizeMultiplier,
-        percentWidthMultiplier1Digit: p.percentWidthMultiplier1Digit,
-        percentWidthMultiplier2Digit: p.percentWidthMultiplier2Digit,
-        percentWidthMultiplier3Digit: p.percentWidthMultiplier3Digit,
-        percentCharWidthRatio: p.percentCharWidthRatio,
-        percentLetterSpacing: p.percentLetterSpacing,
     };
 }
 

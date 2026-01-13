@@ -92,6 +92,33 @@ export interface AuthorProgressSettings {
     aprSpokeColorMode?: 'dark' | 'light' | 'none' | 'custom'; // Act spokes color mode
     aprSpokeColor?: string; // Custom spokes color (used when mode is 'custom')
     
+    // Typography Settings (since SVG embeds fonts, these are user-configurable)
+    aprBookTitleFontFamily?: string;  // Font family for book title (default: 'Inter')
+    aprBookTitleFontWeight?: number;  // Font weight for book title (default: 400)
+    aprBookTitleFontItalic?: boolean; // Italic for book title (default: false)
+    aprBookTitleFontSize?: number;    // Font size for book title (default: from preset)
+    
+    aprAuthorNameFontFamily?: string;  // Font family for author name (default: 'Inter' or script font)
+    aprAuthorNameFontWeight?: number;  // Font weight for author name (default: 400)
+    aprAuthorNameFontItalic?: boolean; // Italic for author name (default: false)
+    aprAuthorNameFontSize?: number;    // Font size for author name (default: from preset)
+    
+    aprPercentNumberFontFamily?: string;  // Font family for center percent number (default: 'Inter')
+    aprPercentNumberFontWeight?: number;   // Font weight for center percent number (default: 800)
+    aprPercentNumberFontItalic?: boolean;  // Italic for center percent number (default: false)
+    aprPercentNumberFontSize1Digit?: number;  // Font size for single-digit (default: from preset)
+    aprPercentNumberFontSize2Digit?: number;  // Font size for double-digit (default: from preset)
+    aprPercentNumberFontSize3Digit?: number;  // Font size for triple-digit (default: from preset)
+    
+    aprPercentSymbolFontFamily?: string;  // Font family for % symbol (default: 'Inter')
+    aprPercentSymbolFontWeight?: number;  // Font weight for % symbol (default: 800)
+    aprPercentSymbolFontItalic?: boolean; // Italic for % symbol (default: false)
+    
+    aprRtBadgeFontFamily?: string;  // Font family for RT badge (default: 'Inter')
+    aprRtBadgeFontWeight?: number;  // Font weight for RT badge (default: 700)
+    aprRtBadgeFontItalic?: boolean; // Italic for RT badge (default: false)
+    aprRtBadgeFontSize?: number;    // Font size for RT badge (default: from preset)
+    
     // Identity & Branding
     bookTitle: string;
     authorName?: string;

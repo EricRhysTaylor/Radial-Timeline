@@ -2235,6 +2235,7 @@
 
 .rt-apr-palette-generate-card {
   margin-top: 20px;
+  margin-bottom: 24px;
 }
 
 .rt-apr-palette-generate-card .setting-item {
@@ -2249,4 +2250,10 @@
 
 .rt-apr-palette-generate-card .rt-apr-palette-swatches {
   margin-right: 8px;
+}
+
+.rt-apr-palette-swatches-generate .rt-apr-palette-swatch-generate {
+  flex: 0 0 10px;
+  width: 10px;
+  min-width: 10px;
 }
