@@ -6,9 +6,15 @@
 
 export { createAprSVG, type AprRenderOptions, type AprRenderResult } from './AprRenderer';
 export { 
-    APR_SIZE_PRESETS, 
     APR_VIEW_MODE_LABELS,
-    type AprSize, 
     type AprViewMode 
 } from './AprConstants';
+export { 
+    APR_LAYOUT,
+    getPreset, 
+    APR_COLORS, 
+    APR_TEXT_COLORS, 
+    APR_FONTS,
+    type AprSize 
+} from './AprLayoutConfig';
 export { renderAprBranding, renderAprCenterPercent } from './AprBranding';

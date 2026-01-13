@@ -67,19 +67,18 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     sizeSelectorRow.createSpan({ text: 'Preview Size:', cls: 'rt-apr-size-label' });
     
     const sizeButtons = [
-        { size: 'small', label: 'Small', dimension: '150×150' },
-        { size: 'medium', label: 'Medium', dimension: '300×300' },
-        { size: 'large', label: 'Large', dimension: '450×450' },
+        { size: 'small', dimension: '150' },
+        { size: 'medium', dimension: '300' },
+        { size: 'large', dimension: '450' },
     ] as const;
     
     const currentSize = plugin.settings.authorProgress?.aprSize || 'medium';
     
-    sizeButtons.forEach(({ size, label, dimension }) => {
+    sizeButtons.forEach(({ size, dimension }) => {
         const btn = sizeSelectorRow.createEl('button', { 
             cls: `rt-apr-size-btn ${size === currentSize ? 'rt-apr-size-btn-active' : ''}`,
-            text: label
+            text: `${dimension}•${dimension}`
         });
-        btn.createEl('span', { text: dimension, cls: 'rt-apr-size-dimension' });
         
         btn.onclick = async () => {
             if (!plugin.settings.authorProgress) return;
@@ -92,7 +91,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             
             // Update dimension label
             const dimLabel = previewSection.querySelector('.rt-apr-preview-dimension-label');
-            if (dimLabel) dimLabel.setText(`${dimension} — Actual size (scroll to see full preview)`);
+            if (dimLabel) dimLabel.setText(`${dimension}×${dimension} — Actual size (scroll to see full preview)`);
             
             // Re-render preview at new size
             void renderHeroPreview(app, plugin, previewContainer, size);
@@ -100,10 +99,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     });
     
     // Dimension info
-    const currentDim = sizeButtons.find(s => s.size === currentSize)?.dimension || '800×800';
+    const currentDim = sizeButtons.find(s => s.size === currentSize)?.dimension || '300';
     previewSection.createDiv({ 
         cls: 'rt-apr-preview-dimension-label',
-        text: `${currentDim} — Actual size (scroll to see full preview)`
+        text: `${currentDim}×${currentDim} — Actual size (scroll to see full preview)`
     });
     
     // SVG Preview container - shows at 1:1 actual size

@@ -16,9 +16,11 @@ import { AuthorProgressModal } from '../modals/AuthorProgressModal';
 import { generateSceneContent } from '../utils/sceneGenerator';
 import { sanitizeSourcePath, buildInitialSceneFilename, buildInitialBackdropFilename } from '../utils/sceneCreation';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
-import { ensureAiOutputFolder, ensureManuscriptOutputFolder } from '../utils/aiOutput';
-import { buildOutlineExport, getExportFormatExtension, getTemplateForPreset, getVaultAbsolutePath, resolveTemplatePath, runPandocOnContent, writeTextFile } from '../utils/exportFormats';
+import { ensureManuscriptOutputFolder, ensureOutlineOutputFolder } from '../utils/aiOutput';
+import { buildExportFilename, buildOutlineExport, getExportFormatExtension, getTemplateForPreset, getVaultAbsolutePath, resolveTemplatePath, runPandocOnContent, writeTextFile } from '../utils/exportFormats';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
+
+import { getRuntimeSettings } from '../utils/runtimeEstimator';
 
 export class CommandRegistrar {
     constructor(private plugin: RadialTimelinePlugin, private app: App) { }
@@ -148,6 +150,8 @@ export class CommandRegistrar {
                 sceneNumbers: scenes.sceneNumbers,
                 subplots: scenes.subplots,
                 synopses: scenes.synopses,
+                runtimes: scenes.runtimes,
+                wordCounts: scenes.wordCounts,
                 sortOrder: scenes.sortOrder
             };
 
@@ -162,6 +166,8 @@ export class CommandRegistrar {
                     sceneNumbers: indices.map(i => selection.sceneNumbers[i]),
                     subplots: indices.map(i => selection.subplots[i]),
                     synopses: indices.map(i => selection.synopses[i]),
+                    runtimes: indices.map(i => selection.runtimes[i]),
+                    wordCounts: indices.map(i => selection.wordCounts[i]),
                     sortOrder: selection.sortOrder
                 };
             }
@@ -171,11 +177,25 @@ export class CommandRegistrar {
             
             // Handle output generation
             if (result.exportType === 'outline') {
+                // Get runtime settings for session planning
+                const runtimeSettings = getRuntimeSettings(this.plugin.settings);
+
                 // outline export expects ManuscriptSceneSelection
                 const slicedSelection = this.sliceSelection(filteredSelection, result.rangeStart, result.rangeEnd);
-                const outline = buildOutlineExport(slicedSelection, result.outlinePreset || 'beat-sheet', result.includeSynopsis ?? false);
-                const outputFolder = await ensureAiOutputFolder(this.plugin);
-                const filename = `outline-${Date.now()}.${outline.extension}`;
+                const outline = buildOutlineExport(
+                    slicedSelection, 
+                    result.outlinePreset || 'beat-sheet', 
+                    result.includeSynopsis ?? false,
+                    runtimeSettings
+                );
+                const outputFolder = await ensureOutlineOutputFolder(this.plugin);
+                const filename = buildExportFilename({
+                    exportType: 'outline',
+                    order: result.order,
+                    subplotFilter: result.subplot,
+                    outlinePreset: result.outlinePreset,
+                    extension: outline.extension
+                });
                 const path = `${outputFolder}/${filename}`;
                 await this.app.vault.create(path, outline.text);
                 new Notice(`Outline exported to ${path}`);
@@ -199,27 +219,24 @@ export class CommandRegistrar {
                 await updateSceneWordCounts(this.app, slicedFiles, assembled.scenes);
             }
 
-            // Generate friendly timestamp for filename: "Manuscript Jan 12 @ 2.21PM"
-            const now = new Date();
-            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            const month = months[now.getMonth()];
-            const day = now.getDate();
-            const hours = now.getHours();
-            const minutes = now.getMinutes().toString().padStart(2, '0');
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            const hour12 = hours % 12 || 12;
-            const friendlyTimestamp = `${month} ${day} @ ${hour12}.${minutes}${ampm}`;
+            // Build filename with acronyms
+            const extension = getExportFormatExtension(result.outputFormat);
+            const filename = buildExportFilename({
+                exportType: 'manuscript',
+                order: result.order,
+                subplotFilter: result.subplot,
+                manuscriptPreset: result.manuscriptPreset,
+                extension
+            });
 
             if (result.outputFormat === 'markdown') {
                 const outputFolder = await ensureManuscriptOutputFolder(this.plugin);
-                const filename = `Manuscript ${friendlyTimestamp}.md`;
                 const path = `${outputFolder}/${filename}`;
                 await this.app.vault.create(path, assembled.text);
                 new Notice(`Manuscript exported to ${path}`);
             } else {
                 // Pandoc export (Pro)
                 // We need to write a temp markdown file, then run pandoc
-                const extension = getExportFormatExtension(result.outputFormat);
                 const outputFolder = await ensureManuscriptOutputFolder(this.plugin); // Normalized relative path
                 const absoluteOutputFolder = getVaultAbsolutePath(this.plugin, outputFolder);
                 
@@ -229,7 +246,6 @@ export class CommandRegistrar {
                     return;
                 }
 
-                const filename = `Manuscript ${friendlyTimestamp}.${extension}`;
                 const outputPath = `${absoluteOutputFolder}/${filename}`;
                 
                 // Resolve template path to absolute path for Pandoc
@@ -278,6 +294,8 @@ export class CommandRegistrar {
             sceneNumbers: selection.sceneNumbers.slice(startIdx, endIdx),
             subplots: selection.subplots.slice(startIdx, endIdx),
             synopses: selection.synopses.slice(startIdx, endIdx),
+            runtimes: selection.runtimes.slice(startIdx, endIdx),
+            wordCounts: selection.wordCounts.slice(startIdx, endIdx),
             sortOrder: selection.sortOrder
         };
     }

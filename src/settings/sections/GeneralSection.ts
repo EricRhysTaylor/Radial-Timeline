@@ -246,4 +246,71 @@ export function renderGeneralSection(params: {
             });
         });
     });
+
+    // --- Outline Export Folder ---
+    const outlineSetting = new ObsidianSetting(containerEl)
+        .setName(t('settings.advanced.outlineOutputFolder.name'))
+        .setDesc(t('settings.advanced.outlineOutputFolder.desc'));
+    outlineSetting.addText(text => {
+        const defaultPath = DEFAULT_SETTINGS.outlineOutputFolder || 'Radial Timeline/Outline';
+        const fallbackFolder = plugin.settings.outlineOutputFolder?.trim() || defaultPath;
+        const illegalChars = /[<>:"|?*]/;
+
+        text.setPlaceholder(t('settings.advanced.outlineOutputFolder.placeholder'))
+            .setValue(fallbackFolder);
+        text.inputEl.addClass('rt-input-full');
+
+        const inputEl = text.inputEl;
+
+        const flashClass = (cls: string) => {
+            inputEl.addClass(cls);
+            window.setTimeout(() => inputEl.removeClass(cls), cls === 'rt-setting-input-success' ? 1000 : 2000);
+        };
+
+        const validatePath = async () => {
+            inputEl.removeClass('rt-setting-input-success');
+            inputEl.removeClass('rt-setting-input-error');
+
+            const rawValue = text.getValue();
+            const trimmed = rawValue.trim() || fallbackFolder;
+
+            if (illegalChars.test(trimmed)) {
+                flashClass('rt-setting-input-error');
+                new Notice('Folder path cannot contain the characters < > : " | ? *');
+                return;
+            }
+
+            const normalized = normalizePath(trimmed);
+
+            try { await plugin.app.vault.createFolder(normalized); } catch { /* folder may already exist */ }
+
+            const isValid = await plugin.validateAndRememberPath(normalized);
+            if (!isValid) {
+                flashClass('rt-setting-input-error');
+                return;
+            }
+
+            plugin.settings.outlineOutputFolder = normalized;
+            await plugin.saveSettings();
+            flashClass('rt-setting-input-success');
+        };
+
+        text.onChange(() => {
+            inputEl.removeClass('rt-setting-input-success');
+            inputEl.removeClass('rt-setting-input-error');
+        });
+
+        plugin.registerDomEvent(text.inputEl, 'blur', () => { void validatePath(); });
+
+        outlineSetting.addExtraButton(button => {
+            button.setIcon('rotate-ccw');
+            button.setTooltip(`Reset to ${defaultPath}`);
+            button.onClick(async () => {
+                text.setValue(defaultPath);
+                plugin.settings.outlineOutputFolder = normalizePath(defaultPath);
+                await plugin.saveSettings();
+                flashClass('rt-setting-input-success');
+            });
+        });
+    });
 }

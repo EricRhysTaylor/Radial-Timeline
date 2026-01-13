@@ -62,6 +62,11 @@ export interface TranslationKeys {
                 desc: string;
                 placeholder: string;
             };
+            outlineOutputFolder: {
+                name: string;
+                desc: string;
+                placeholder: string;
+            };
             autoExpand: {
                 name: string;
                 desc: string;
@@ -274,6 +279,11 @@ export const en: TranslationKeys = {
                 name: 'Manuscript export folder',
                 desc: 'Folder where manuscript exports (Markdown, DOCX, PDF) are saved. Default: Radial Timeline/Manuscript.',
                 placeholder: 'Radial Timeline/Manuscript',
+            },
+            outlineOutputFolder: {
+                name: 'Outline export folder',
+                desc: 'Folder where outline exports (beat sheets, episode rundowns, index cards) are saved. Default: Radial Timeline/Outline.',
+                placeholder: 'Radial Timeline/Outline',
             },
             autoExpand: {
                 name: 'Auto-expand clipped scene titles',

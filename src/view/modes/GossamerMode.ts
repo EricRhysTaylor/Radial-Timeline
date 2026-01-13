@@ -73,6 +73,9 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
                 // Highlight range deviation segments
                 const rangeSegments = svg.querySelectorAll(`.rt-gossamer-range-segment[data-beat="${beatName}"]`);
                 rangeSegments.forEach(seg => seg.classList.add('rt-hover'));
+                // Highlight ideal range line
+                const idealRange = svg.querySelector(`.rt-gossamer-ideal-range[data-beat="${beatName}"]`);
+                if (idealRange) idealRange.classList.add('rt-hover');
                 // Highlight all historical dots with matching beat name
                 const historicalDots = svg.querySelectorAll(`.rt-gossamer-dot-historical[data-beat="${beatName}"]`);
                 historicalDots.forEach(hd => hd.classList.add('rt-hover'));
@@ -135,6 +138,9 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
                 // Remove range segment highlight
                 const rangeSegments = svg.querySelectorAll(`.rt-gossamer-range-segment[data-beat="${beatName}"]`);
                 rangeSegments.forEach(seg => seg.classList.remove('rt-hover'));
+                // Remove ideal range highlight
+                const idealRange = svg.querySelector(`.rt-gossamer-ideal-range[data-beat="${beatName}"]`);
+                if (idealRange) idealRange.classList.remove('rt-hover');
                 // Remove hover from historical dots
                 const historicalDots = svg.querySelectorAll(`.rt-gossamer-dot-historical[data-beat="${beatName}"]`);
                 historicalDots.forEach(hd => hd.classList.remove('rt-hover'));
@@ -200,6 +206,8 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
             }
             const rangeSegments = svg.querySelectorAll(`.rt-gossamer-range-segment[data-beat="${beatName}"]`);
             rangeSegments.forEach(seg => seg.classList.add('rt-hover'));
+            const idealRange = svg.querySelector(`.rt-gossamer-ideal-range[data-beat="${beatName}"]`);
+            if (idealRange) idealRange.classList.add('rt-hover');
             const beatOutline = svg.querySelector(`.rt-gossamer-beat-outline[data-beat="${beatName}"]`);
             if (beatOutline) {
                 beatOutline.classList.add('rt-hover');
@@ -249,6 +257,9 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
             el.classList.remove('rt-hover');
         });
         svg.querySelectorAll('.rt-gossamer-range-segment.rt-hover').forEach(el => {
+            el.classList.remove('rt-hover');
+        });
+        svg.querySelectorAll('.rt-gossamer-ideal-range.rt-hover').forEach(el => {
             el.classList.remove('rt-hover');
         });
         svg.querySelectorAll('.rt-gossamer-dot-historical.rt-hover').forEach(hd => {

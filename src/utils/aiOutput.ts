@@ -50,3 +50,14 @@ export async function ensureManuscriptOutputFolder(plugin: RadialTimelinePlugin)
     try { await plugin.app.vault.createFolder(folder); } catch { /* folder may already exist */ }
     return folder;
 }
+
+export function resolveOutlineOutputFolder(plugin: RadialTimelinePlugin): string {
+    const raw = plugin.settings.outlineOutputFolder?.trim() || DEFAULT_SETTINGS.outlineOutputFolder || 'Outline';
+    return normalizePath(raw);
+}
+
+export async function ensureOutlineOutputFolder(plugin: RadialTimelinePlugin): Promise<string> {
+    const folder = resolveOutlineOutputFolder(plugin);
+    try { await plugin.app.vault.createFolder(folder); } catch { /* folder may already exist */ }
+    return folder;
+}

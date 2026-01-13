@@ -29,6 +29,12 @@ export interface RuntimeSettings {
     longPauseSeconds: number;
     momentSeconds: number;
     silenceSeconds: number;
+    sessionPlanning?: {
+        draftingWpm?: number;
+        recordingWpm?: number;
+        editingWpm?: number;
+        dailyMinutes?: number;
+    };
 }
 
 function selectRuntimeProfile(settings: RadialTimelineSettings, profileId?: string): RuntimeRateProfile | null {
@@ -75,6 +81,7 @@ export function getRuntimeSettings(settings: RadialTimelineSettings, profileId?:
         longPauseSeconds: profile.longPauseSeconds ?? settings.runtimeLongPauseSeconds ?? 5,
         momentSeconds: profile.momentSeconds ?? settings.runtimeMomentSeconds ?? 4,
         silenceSeconds: profile.silenceSeconds ?? settings.runtimeSilenceSeconds ?? 5,
+        sessionPlanning: profile.sessionPlanning
     };
 }
 

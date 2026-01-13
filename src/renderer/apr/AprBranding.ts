@@ -5,7 +5,7 @@
  * of Radial Timeline branding replacing one iteration near the bottom.
  */
 
-import { APR_SIZE_PRESETS, APR_TEXT_COLORS, AprSize } from './AprConstants';
+import { getPreset, APR_TEXT_COLORS, APR_FONTS, AprSize } from './AprLayoutConfig';
 
 export interface AprBrandingOptions {
     bookTitle: string;
@@ -22,8 +22,8 @@ export interface AprBrandingOptions {
  */
 export function renderAprBranding(options: AprBrandingOptions): string {
     const { bookTitle, authorName, authorUrl, size, bookAuthorColor, engineColor } = options;
-    const preset = APR_SIZE_PRESETS[size];
-    const { brandingRadius, brandingFontSize, rtBrandingFontSize } = preset;
+    const preset = getPreset(size);
+    const { brandingRadius, brandingFontSize, rtBrandingFontSize, brandingLetterSpacing } = preset;
     
     const rtUrl = 'https://radialtimeline.com';
     // Fallback to Press stage green if no color provided (matches RT default)
@@ -65,11 +65,11 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     
     const brandingText = `
         <text 
-            font-family="var(--font-interface, system-ui, sans-serif)" 
+            font-family="${APR_FONTS.branding}" 
             font-size="${brandingFontSize}" 
             font-weight="700" 
             fill="${baColor}"
-            letter-spacing="0.15em">
+            letter-spacing="${brandingLetterSpacing}">
             <textPath href="#${circlePathId}" startOffset="0%">
                 ${fullBrandingText}
             </textPath>
@@ -91,8 +91,9 @@ export function renderAprBranding(options: AprBrandingOptions): string {
                 y="${rtY.toFixed(2)}" 
                 text-anchor="end" 
                 dominant-baseline="auto"
-                font-family="'04b03b', monospace" 
+                font-family="${APR_FONTS.rtBadge}" 
                 font-size="${rtFontSize}" 
+                font-weight="700"
                 fill="${engColor}"
                 opacity="0.7">
                 RT
@@ -127,7 +128,7 @@ export function renderAprCenterPercent(
     stageColors: Record<string, string>, 
     innerRadius: number
 ): string {
-    const preset = APR_SIZE_PRESETS[size];
+    const preset = getPreset(size);
     // Use Press stage color from settings (or default green)
     const pressColor = stageColors.Press || '#6FB971';
     const numStr = String(percent);
@@ -152,7 +153,7 @@ export function renderAprCenterPercent(
                 y="${ghostYOffset}" 
                 text-anchor="middle" 
                 dominant-baseline="middle"
-                font-family="var(--font-interface, system-ui, sans-serif)" 
+                font-family="${APR_FONTS.percent}" 
                 font-weight="800" 
                 font-size="${ghostFontSize}" 
                 fill="${pressColor}"
@@ -164,7 +165,7 @@ export function renderAprCenterPercent(
                 y="${numberYOffset}" 
                 text-anchor="middle" 
                 dominant-baseline="middle"
-                font-family="var(--font-interface, system-ui, sans-serif)" 
+                font-family="${APR_FONTS.percent}" 
                 font-weight="800" 
                 font-size="${fontSize}" 
                 fill="${pressColor}"

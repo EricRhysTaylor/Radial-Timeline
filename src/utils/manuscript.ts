@@ -30,6 +30,8 @@ export interface ManuscriptSceneSelection {
   sceneNumbers: number[];
   subplots: string[];
   synopses: (string | null)[];
+  runtimes: (number | null)[];
+  wordCounts: (number | null)[];
 }
  
 export type TocMode = 'markdown' | 'plain' | 'none';
@@ -127,6 +129,8 @@ export async function getSortedSceneFiles(plugin: RadialTimelinePlugin): Promise
   return { files: sceneFiles, sortOrder };
 }
 
+import { parseRuntimeField } from './runtimeEstimator';
+
 /**
  * Get all valid scenes from the timeline (wrapper for getting timeline items directly)
  */
@@ -183,12 +187,15 @@ export async function getSceneFilesByOrder(
     }
   }
 
+  const synopses: (string | null)[] = [];
+  const runtimes: (number | null)[] = [];
+  const wordCounts: (number | null)[] = [];
+
   const files: TFile[] = [];
   const titles: string[] = [];
   const whenDates: (string | null)[] = [];
   const sceneNumbers: number[] = [];
   const subplots: string[] = [];
-  const synopses: (string | null)[] = [];
 
   for (const scene of sortedScenes) {
     if (!scene.path) continue;
@@ -201,10 +208,30 @@ export async function getSceneFilesByOrder(
     sceneNumbers.push(numStr ? parseInt(numStr, 10) || 0 : 0);
     const sceneSubplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
     subplots.push(sceneSubplot);
-    synopses.push(scene.synopsis && scene.synopsis.trim().length > 0 ? scene.synopsis : null);
+
+    const rf = scene.rawFrontmatter as Record<string, unknown> | undefined;
+
+    // Prefer Synopsis, fallback to Summary, then scene.synopsis
+    let synopsis: string | null = null;
+    if (rf && typeof rf.Synopsis === 'string') synopsis = rf.Synopsis as string;
+    else if (rf && typeof rf.Summary === 'string') synopsis = rf.Summary as string;
+    else if (scene.synopsis && scene.synopsis.trim().length > 0) synopsis = scene.synopsis;
+    synopses.push(synopsis);
+
+    const rt = rf?.Runtime as string | number | undefined;
+    runtimes.push(parseRuntimeField(rt));
+
+    const w = rf?.Words;
+    if (typeof w === 'number') wordCounts.push(w);
+    else if (typeof w === 'string') {
+      const parsed = parseInt(w, 10);
+      wordCounts.push(Number.isFinite(parsed) ? parsed : null);
+    } else {
+      wordCounts.push(null);
+    }
   }
 
-  return { files, sortOrder, titles, whenDates, sceneNumbers, subplots, synopses };
+  return { files, sortOrder, titles, whenDates, sceneNumbers, subplots, synopses, runtimes, wordCounts };
 }
 
 function formatWhenDate(date: Date): string {

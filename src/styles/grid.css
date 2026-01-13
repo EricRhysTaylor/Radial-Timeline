@@ -246,6 +246,7 @@
 .radial-timeline-svg.gossamer-hover .rt-gossamer-spoke:not(.rt-gossamer-spoke-hover),
 .radial-timeline-svg.gossamer-hover .rt-gossamer-beat-outline:not(.rt-hover),
 .radial-timeline-svg.gossamer-hover .rt-gossamer-range-segment:not(.rt-hover),
+.radial-timeline-svg.gossamer-hover .rt-gossamer-ideal-range:not(.rt-hover),
 .radial-timeline-svg.gossamer-hover .rt-gossamer-dot:not(.rt-hover),
 .radial-timeline-svg.gossamer-hover .rt-gossamer-dot-center:not(.rt-hover),
 .radial-timeline-svg.gossamer-hover .rt-gossamer-dot-historical:not(.rt-hover),

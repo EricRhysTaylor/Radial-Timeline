@@ -6,7 +6,7 @@ import type { TimelineItem } from '../../types';
 import { isBeatNote, sortScenes } from '../../utils/sceneHelpers';
 import { computePositions } from '../utils/SceneLayout';
 import { sceneArcPath } from '../components/SceneArcs';
-import { APR_SIZE_PRESETS, APR_COLORS, AprSize } from './AprConstants';
+import { getPreset, APR_COLORS, AprSize } from './AprLayoutConfig';
 import { renderDefs } from '../components/Defs';
 import { getFillForScene } from '../utils/SceneFill';
 import { DEFAULT_SETTINGS } from '../../settings/defaults';
@@ -70,8 +70,8 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         theme = 'dark'
     } = opts;
 
-    const preset = APR_SIZE_PRESETS[size];
-    const { svgSize, innerRadius, outerRadius, spokeWidth, borderWidth, actSpokeWidth } = preset;
+    const preset = getPreset(size);
+    const { svgSize, innerRadius, outerRadius, spokeWidth, borderWidth, actSpokeWidth, patternScale } = preset;
     const half = svgSize / 2;
 
     // Structural palette based on theme
@@ -142,12 +142,13 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     svg += `<rect x="-${half}" y="-${half}" width="${svgSize}" height="${svgSize}" fill="${bgFill}" />`;
 
     // Publication-mode defs (plaid patterns etc.) + percent shadow filter
+    // Use patternScale from preset for denser patterns at smaller sizes
     const percentShadow = `
         <filter id="aprPercentShadow" x="-50%" y="-50%" width="200%" height="200%">
             <feDropShadow dx="0" dy="2" stdDeviation="2.2" flood-color="#000" flood-opacity="0.45"/>
         </filter>
     `;
-    svg += `<defs>${renderDefs(stageColorMap)}${percentShadow}</defs>`;
+    svg += `<defs>${renderDefs(stageColorMap, patternScale)}${percentShadow}</defs>`;
 
     // ─────────────────────────────────────────────────────────────────────────
     // BAR-ONLY MODE (Teaser): Solid progress ring, no scene details

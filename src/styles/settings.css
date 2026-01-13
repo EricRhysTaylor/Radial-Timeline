@@ -2033,11 +2033,6 @@
   color: var(--text-normal);
 }
 
-/* First subheader in a container doesn't need top margin */
-.rt-settings-root h4.rt-runtime-subheader:first-child {
-  margin-top: 0;
-}
-
 .rt-runtime-explanation {
   margin-bottom: 16px;
 }
@@ -2680,19 +2675,16 @@
 }
 
 .rt-settings-root .rt-apr-size-btn {
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: 8px 24px;
-  min-width: 110px;
+  justify-content: center;
+  padding: 6px 16px;
   background: var(--background-modifier-border);
   border: 2px solid transparent;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  line-height: 1.2;
   color: var(--text-muted);
   transition: all 0.2s ease;
 }
@@ -2708,11 +2700,7 @@
   color: var(--text-normal);
 }
 
-.rt-apr-size-dimension {
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--text-faint);
-}
+/* .rt-apr-size-dimension no longer used - dimensions inline in button text */
 
 .rt-apr-preview-dimension-label {
   font-size: 11px;

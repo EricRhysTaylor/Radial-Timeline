@@ -462,6 +462,7 @@ function renderCampaignDetails(
             await plugin.saveSettings();
         };
         
+        // SAFE: Settings sections rebuild DOM on any change; input element cleanup handles listener
         text.inputEl.addEventListener('blur', handleBlur);
     });
     

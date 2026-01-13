@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     validFolderPaths: [], // Default empty array for folder path history
     aiOutputFolder: 'Radial Timeline/AI Logs',
     manuscriptOutputFolder: 'Radial Timeline/Manuscript',
+    outlineOutputFolder: 'Radial Timeline/Outline',
     actCount: 3,
     actLabelsRaw: 'Act 1, Act 2, Act 3',
     showActLabels: true,

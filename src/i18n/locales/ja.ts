@@ -63,6 +63,11 @@ export const ja: DeepPartial<TranslationKeys> = {
                 desc: '原稿のエクスポート（Markdown、DOCX、PDF）を保存するフォルダです。デフォルト: Radial Timeline/Manuscript。',
                 placeholder: 'Radial Timeline/Manuscript',
             },
+            outlineOutputFolder: {
+                name: 'アウトラインエクスポートフォルダ',
+                desc: 'アウトラインのエクスポート（ビートシート、エピソードランダウン、インデックスカード）を保存するフォルダです。デフォルト: Radial Timeline/Outline。',
+                placeholder: 'Radial Timeline/Outline',
+            },
             autoExpand: {
                 name: 'クリップされたシーンタイトルを自動展開',
                 desc: 'シーンにホバーしたとき、タイトルテキストがクリップされている場合は自動的に展開します。',
