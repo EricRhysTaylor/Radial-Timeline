@@ -44,7 +44,7 @@ export function renderAuthorProgressIndicator(params: {
                 <circle r="14" fill="var(--text-error, #ef4444)" opacity="0.15">
                     <animate attributeName="r" values="14;18;14" dur="1.5s" repeatCount="indefinite" />
                     <animate attributeName="opacity" values="0.15;0.3;0.15" dur="1.5s" repeatCount="indefinite" />
-                </circle>
+            </circle>
                 <!-- Inner solid circle -->
                 <circle r="10" fill="var(--text-error, #ef4444)" opacity="0.85" />
                 <!-- Alert icon -->

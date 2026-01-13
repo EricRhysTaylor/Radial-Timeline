@@ -31,7 +31,7 @@ export function renderAprOverlay(params: {
     const brandingR = APR_BRANDING_RADIUS;
     const outerR = (SVG_SIZE / 2) - 15; // 785px - just inside the edge for RT branding
     const rtUrl = "https://radialtimeline.com"; 
-    
+
     // Build repeating title text - escape for XML safety
     const separator = ' ~ ';
     const safeTitle = escapeXml(bookTitle.toUpperCase()) || 'WORKING TITLE';

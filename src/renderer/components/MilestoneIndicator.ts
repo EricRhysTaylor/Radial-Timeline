@@ -89,11 +89,22 @@ function getIconForMilestone(type: MilestoneType): { icon: string; color: string
 }
 
 /**
- * Render the Progress Milestone indicator in the timeline view
- * Positioned above the Help icon (bottom-right corner)
- * Shows pulsing icon when there's a milestone to celebrate or encouragement needed
+ * Render the Milestone indicator in the timeline view.
+ * 
+ * MILESTONES SYSTEM (this component):
+ * - Shows celebration icons when stages are COMPLETELY done (all scenes at that stage complete)
+ * - Shows encouragement icons when author is getting behind (staleness warnings)
+ * - Syncs with PublicationSection Progress Tracker (hero cards in settings)
+ * 
+ * SEPARATE FROM: Estimation/Tick Tracking System
+ * - TimelineMetricsService handles progress tracking, completion estimates, target dates
+ * - Shows tick marks on timeline, calculates pace, estimates completion dates
+ * - Much more nuanced - tracks continuous progress through stages
+ * 
+ * Positioned above the Help icon (bottom-right corner).
+ * Shows pulsing icon when there's a milestone to celebrate or encouragement needed.
  */
-export function renderProgressMilestoneIndicator(params: {
+export function renderMilestoneIndicator(params: {
     milestone: MilestoneInfo | null;
     x?: number;
     y?: number;
@@ -122,7 +133,7 @@ export function renderProgressMilestoneIndicator(params: {
             <text class="rt-milestone-indicator-text rt-milestone-label" x="0" y="0" text-anchor="middle" dominant-baseline="middle" fill="${color}">
                 ${label}
             </text>
-            <text class="rt-milestone-indicator-text rt-milestone-action" x="0" y="0" text-anchor="middle" dominant-baseline="middle">
+            <text class="rt-milestone-indicator-text rt-milestone-action" x="0" y="0" text-anchor="middle" dominant-baseline="middle" fill="var(--text-normal, currentColor)">
                 VIEW PROGRESS
             </text>
 

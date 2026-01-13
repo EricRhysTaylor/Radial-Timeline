@@ -84,8 +84,11 @@ export interface AuthorProgressSettings {
     aprBackgroundColor?: string;
     aprCenterTransparent?: boolean;
     aprBookAuthorColor?: string;
+    aprAuthorColor?: string;
     aprEngineColor?: string;
     aprTheme?: 'dark' | 'light' | 'none'; // Controls stroke/border contrast
+    aprSpokeColorMode?: 'dark' | 'light' | 'none' | 'custom'; // Act spokes color mode
+    aprSpokeColor?: string; // Custom spokes color (used when mode is 'custom')
     
     // Identity & Branding
     bookTitle: string;

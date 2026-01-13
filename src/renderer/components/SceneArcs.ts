@@ -87,7 +87,7 @@ export function renderVoidCellPath(
   if (metadata?.fill) dataAttrs.push(`fill="${metadata.fill}"`);
   if (metadata?.stroke) dataAttrs.push(`stroke="${metadata.stroke}"`);
   if (metadata?.strokeWidth !== undefined) dataAttrs.push(`stroke-width="${metadata.strokeWidth}"`);
-
+  
   const attrString = dataAttrs.length > 0 ? ` ${dataAttrs.join(' ')}` : '';
   return `<path d="${path}"${attrString}/>`;
 }

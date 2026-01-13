@@ -13,6 +13,7 @@ export interface AprBrandingOptions {
     authorUrl?: string;
     size: AprSize;
     bookAuthorColor?: string;
+    authorColor?: string;
     engineColor?: string;
 }
 
@@ -23,34 +24,33 @@ export interface AprBrandingOptions {
  * Uses SVG textLength to force text to fill exactly 360° with no gap or overlap.
  */
 export function renderAprBranding(options: AprBrandingOptions): string {
-    const { bookTitle, authorName, authorUrl, size, bookAuthorColor, engineColor } = options;
+    const { bookTitle, authorName, authorUrl, size, bookAuthorColor, authorColor, engineColor } = options;
     const preset = getPreset(size);
     const { brandingRadius, brandingFontSize, rtBrandingFontSize } = preset;
     
     const rtUrl = 'https://radialtimeline.com';
     // Fallback to Press stage green if no color provided (matches RT default)
-    const baColor = bookAuthorColor || '#6FB971';
+    const bookColor = bookAuthorColor || '#6FB971';
+    const authColor = authorColor || bookColor; // Default to book color if not specified
     const engColor = engineColor || APR_TEXT_COLORS.primary;
     
     // Build the repeating title segment
     const separator = ' ~ ';
-    const pair = authorName 
-        ? `${bookTitle.toUpperCase()} • ${authorName.toUpperCase()}`
-        : bookTitle.toUpperCase();
-    const singleSegment = pair + separator;
+    const bookTitleUpper = bookTitle.toUpperCase();
+    const authorNameUpper = authorName?.toUpperCase() || '';
+    const bullet = ' • ';
     
     // Calculate exact circumference
     const circumference = 2 * Math.PI * brandingRadius;
     
-    // Estimate how many reps fit comfortably (rough estimate for count only)
+    // Estimate segment width for repetition calculation
     const baseCharWidth = brandingFontSize * 0.55;
+    const singleSegment = authorName 
+        ? `${bookTitleUpper}${bullet}${authorNameUpper}${separator}`
+        : `${bookTitleUpper}${separator}`;
     const segmentBaseWidth = singleSegment.length * baseCharWidth;
     const idealReps = Math.round(circumference / segmentBaseWidth);
     const repetitions = Math.max(4, Math.min(10, idealReps));
-    
-    // Build the full text - use separator between all segments for seamless wrap
-    // The last separator connects back to the first segment visually
-    const fullBrandingText = Array(repetitions).fill(pair).join(separator) + separator;
     
     // Full circle path starting from top (12 o'clock) going clockwise
     const circlePathId = 'apr-branding-circle';
@@ -62,18 +62,26 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         </defs>
     `;
     
-    // Use textLength to force the text to fill EXACTLY the circumference
-    // lengthAdjust="spacing" adjusts only inter-character spacing, not glyph shapes
+    // Build text content with tspan elements for separate colors
+    // Use textLength on parent to maintain exact spacing
+    let textContent = '';
+    for (let i = 0; i < repetitions; i++) {
+        textContent += `<tspan fill="${bookColor}">${bookTitleUpper}</tspan>`;
+        if (authorName) {
+            textContent += `<tspan fill="${authColor}">${bullet}${authorNameUpper}</tspan>`;
+        }
+        textContent += `<tspan fill="${bookColor}">${separator}</tspan>`;
+    }
+    
     const brandingText = `
         <text 
             font-family="${APR_FONTS.branding}" 
             font-size="${brandingFontSize}" 
             font-weight="700" 
-            fill="${baColor}"
             textLength="${circumference.toFixed(2)}"
             lengthAdjust="spacing">
             <textPath href="#${circlePathId}" startOffset="0%">
-                ${fullBrandingText}
+                ${textContent}
             </textPath>
         </text>
     `;
@@ -136,14 +144,16 @@ export function renderAprCenterPercent(
     const numStr = String(percent);
     const charCount = numStr.length;
 
-    // Fit the number to the inner circle: rough width = fontSize * 0.6 * chars
-    const targetDiameter = innerRadius * 2.3;
-    const baseFont = preset.centerFontSize * 2.2;
-    const fitFont = targetDiameter / (0.6 * charCount);
-    const fontSize = Math.min(fitFont, baseFont);
+    // Calculate font size: use max size, but fit to inner circle
+    const maxFont = preset.centerFontSize;
+    // Fit to inner circle (rough estimate: each char is ~0.6 × fontSize wide)
+    const maxWidth = innerRadius * 2.3; // Allow number to use ~115% of inner radius
+    const fitFont = maxWidth / (0.6 * charCount);
+    const fontSize = Math.min(fitFont, maxFont);
 
-    const ghostFontSize = innerRadius * 1.9;
-    const ghostOpacity = 0.28;
+    const ghostFontSize = innerRadius * preset.percentSymbolSizeMultiplier;
+    const ghostOpacity = preset.percentSymbolOpacity;
+    const numberOpacity = preset.percentNumberOpacity;
     // Use preset-specific offsets for proper scaling at each size
     const ghostYOffset = preset.ghostYOffset;
     const numberYOffset = preset.centerYOffset;
@@ -171,7 +181,7 @@ export function renderAprCenterPercent(
                 font-weight="800" 
                 font-size="${fontSize}" 
                 fill="${pressColor}"
-                opacity="0.95">
+                opacity="${numberOpacity}">
                 ${numStr}
             </text>
         </g>

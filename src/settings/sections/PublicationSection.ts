@@ -396,27 +396,12 @@ export function renderPublicationSection(params: {
             if (!estimate) {
                 previewContainer.removeClass('rt-completion-preview-warn', 'rt-completion-preview-late', 'rt-completion-preview-stalled');
                 
-                // Detect which stage is complete
-                const normalizeStage = (raw: unknown): string => {
-                    const v = (raw ?? 'Zero').toString().trim().toLowerCase();
-                    const match = STAGE_ORDER.find(s => s.toLowerCase() === v);
-                    return match ?? 'Zero';
-                };
-                const isCompleted = (status: unknown): boolean => {
-                    const val = Array.isArray(status) ? status[0] : status;
-                    const normalized = (val ?? '').toString().trim().toLowerCase();
-                    return normalized === 'complete' || normalized === 'completed' || normalized === 'done';
-                };
+                // Use shared MilestonesService - single source of truth
+                // This ensures the hero cards match the timeline indicator exactly
+                // Note: This is the MILESTONES system, separate from TimelineMetricsService (estimation/tick tracking)
+                const milestone = plugin.milestonesService.detectMilestone(scenes);
                 
-                const highestStageWithScenes = [...STAGE_ORDER].reverse().find(stage =>
-                    scenes.some(scene => normalizeStage(scene['Publish Stage']) === stage)
-                );
-                
-                // Check if the highest stage actually has ALL scenes complete
-                const stageScenes = scenes.filter(scene => normalizeStage(scene['Publish Stage']) === highestStageWithScenes);
-                const allComplete = stageScenes.length > 0 && stageScenes.every(scene => isCompleted(scene.status));
-                
-                if (!allComplete) {
+                if (!milestone || !milestone.type.includes('complete')) {
                     // Not actually complete - show a simple "no estimate available" message
                     const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
                     heading.setText('Completion Estimate');
@@ -425,7 +410,8 @@ export function renderPublicationSection(params: {
                     return;
                 }
                 
-                if (highestStageWithScenes === 'Press') {
+                // Show hero card based on milestone type (single source of truth)
+                if (milestone.type === 'book-complete') {
                     // ULTIMATE celebration - the book is DONE!
                     previewContainer.addClass('rt-completion-preview-book-complete');
                     
@@ -451,7 +437,7 @@ export function renderPublicationSection(params: {
                     const completeContent = body.createDiv({ cls: 'rt-completion-complete' });
                     completeContent.createDiv({ cls: 'rt-completion-complete-title', text: celebration.title });
                     completeContent.createDiv({ cls: 'rt-completion-complete-subtitle', text: celebration.subtitle });
-                } else if (highestStageWithScenes === 'Zero') {
+                } else if (milestone.type === 'stage-zero-complete') {
                     // Zero draft complete - first major milestone! Sprout icon
                     previewContainer.addClass('rt-completion-preview-zero-complete');
                     
@@ -477,7 +463,7 @@ export function renderPublicationSection(params: {
                     const completeContent = body.createDiv({ cls: 'rt-completion-complete' });
                     completeContent.createDiv({ cls: 'rt-completion-complete-title', text: celebration.title });
                     completeContent.createDiv({ cls: 'rt-completion-complete-subtitle', text: celebration.subtitle });
-                } else if (highestStageWithScenes === 'Author') {
+                } else if (milestone.type === 'stage-author-complete') {
                     // Author stage complete - the sapling grows! Tree-pine icon
                     previewContainer.addClass('rt-completion-preview-author-complete');
                     
@@ -503,7 +489,7 @@ export function renderPublicationSection(params: {
                     const completeContent = body.createDiv({ cls: 'rt-completion-complete' });
                     completeContent.createDiv({ cls: 'rt-completion-complete-title', text: celebration.title });
                     completeContent.createDiv({ cls: 'rt-completion-complete-subtitle', text: celebration.subtitle });
-                } else if (highestStageWithScenes === 'House') {
+                } else if (milestone.type === 'stage-house-complete') {
                     // House stage complete - the forest grows! Trees icon
                     previewContainer.addClass('rt-completion-preview-house-complete');
                     

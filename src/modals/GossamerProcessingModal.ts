@@ -17,7 +17,7 @@ export interface ManuscriptInfo {
     estimatedTokens: number;
     beatCount: number;
     beatSystem: string; // Beat system name (e.g., "Save The Cat", "Custom")
-    hasIterativeContext?: boolean; // True if any beats have previous justifications for comparison
+    hasIterativeContext?: boolean; // Always false - previous scores not sent to avoid anchoring bias
 }
 
 export interface AnalysisOptions {
@@ -126,7 +126,7 @@ export class GossamerProcessingModal extends Modal {
         contentEl.empty();
 
         const modelName = this.getActiveModelDisplayName();
-        this.renderProcessingHero(contentEl, 'Evaluate narrative momentum at each story beat. This will pass the entire manuscript to the AI, with instructions including the ideal beat ranges and context such as the previous score and justification. The AI will return a score and an updated justification for each beat.', modelName);
+        this.renderProcessingHero(contentEl, 'Evaluate narrative momentum at each story beat. This will pass the entire manuscript to the AI for fresh analysis. The AI evaluates the manuscript with fresh eyes each time, without reference to previous scores, to avoid anchoring bias. The AI will return a score and justification for each beat.', modelName);
 
         this.confirmationView = contentEl;
 
@@ -248,13 +248,8 @@ export class GossamerProcessingModal extends Modal {
             createStat('Est. Tokens', `~${info.estimatedTokens.toLocaleString()}`);
             createStat('Story Beats', info.beatCount.toString());
 
-            // Add note if this is iterative refinement with previous analysis
-            if (info.hasIterativeContext) {
-                stats.createDiv({
-                    cls: 'rt-gossamer-proc-stat-row rt-gossamer-proc-iterative-note',
-                    text: `Iterative refinement: Previous analysis will be sent for comparison`
-                });
-            }
+            // Note: Previous scores are not sent to AI to avoid anchoring bias.
+            // Each analysis is fresh based on manuscript content only.
         }
 
         // Precompute estimated processing time for smoother progress animation
@@ -506,7 +501,7 @@ export class GossamerProcessingModal extends Modal {
         const tokenSeconds = tokens / 4000; // Calibrated to ~40s for 139k tokens
         const sceneSeconds = Math.min(8, info.totalScenes * 0.08);
         const beatSeconds = Math.min(4, info.beatCount * 0.1);
-        const iterativeSeconds = info.hasIterativeContext ? 3 : 0;
+        const iterativeSeconds = 0; // No longer used - previous scores not sent to avoid anchoring bias
 
         const totalSeconds = this.clamp(
             tokenSeconds + sceneSeconds + beatSeconds + iterativeSeconds,

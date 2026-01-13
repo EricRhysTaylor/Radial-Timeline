@@ -312,10 +312,10 @@ export class AuthorProgressModal extends Modal {
                 continue;
             }
 
-            try {
+        try {
                 const { svgString } = createAprSVG(this.cachedScenes, {
                     size,
-                    progressPercent: this.progressPercent,
+                progressPercent: this.progressPercent,
                     bookTitle: settings?.bookTitle || 'Working Title',
                     authorName: settings?.authorName || '',
                     authorUrl: settings?.authorUrl || '',
@@ -328,12 +328,13 @@ export class AuthorProgressModal extends Modal {
                     backgroundColor: settings?.aprBackgroundColor ?? '#0d0d0f',
                     transparentCenter: settings?.aprCenterTransparent ?? true,
                     bookAuthorColor: settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
+                    authorColor: settings?.aprAuthorColor ?? settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
                     engineColor: settings?.aprEngineColor ?? '#e5e5e5',
                     theme: settings?.aprTheme ?? 'dark'
                 });
 
                 container.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
-            } catch (e) {
+        } catch (e) {
                 container.createDiv({ text: 'Error', cls: 'rt-apr-error' });
                 console.error(`APR Preview render error (${size}):`, e);
             }

@@ -7,8 +7,8 @@ export interface UnifiedBeatInfo {
   beatName: string;
   beatNumber: number;
   idealRange: string; // e.g., "0-20"
-  previousScore?: number; // For Gossamer2-30 iterations
-  previousJustification?: string; // For Gossamer2-30 iterations
+  // Note: previousScore and previousJustification are intentionally NOT included
+  // to avoid anchoring bias. Each analysis is fresh based on manuscript content only.
 }
 
 /**
@@ -75,7 +75,7 @@ export function getUnifiedBeatAnalysisJsonSchema() {
 /**
  * Build unified beat analysis prompt
  * @param manuscriptText - Full manuscript text with table of contents and scene headings
- * @param beats - Array of story beats with ranges and previous scores
+ * @param beats - Array of story beats with ranges
  * @param beatSystem - Name of the beat system (e.g., "Save The Cat")
  * @returns Prompt string for Gemini API
  */
@@ -84,24 +84,15 @@ export function buildUnifiedBeatAnalysisPrompt(
   beats: UnifiedBeatInfo[],
   beatSystem: string
 ): string {
-  // Build beat list - ranges intentionally omitted to avoid anchoring bias
-  // AI should assess momentum based purely on manuscript content
+  // Build beat list - ranges and previous scores intentionally omitted to avoid anchoring bias
+  // AI should assess momentum based purely on manuscript content with fresh eyes each time
   const beatList = beats
-    .map((b, i) => {
-      const parts = [`${i + 1}. ${b.beatName}`];
-      if (typeof b.previousScore === 'number') {
-        parts.push(`previous score: ${b.previousScore}`);
-      }
-      if (b.previousJustification) {
-        parts.push(`previous note: ${b.previousJustification}`);
-      }
-      return parts.join(' | ');
-    })
+    .map((b, i) => `${i + 1}. ${b.beatName}`)
     .join('\n');
 
   const prompt = `Beat system: ${beatSystem}
 
-Story beats (oldest history first):
+Story beats:
 ${beatList}
 
 Score momentum (0-100) for each listed beat based on the actual tension, stakes, and emotional intensity you perceive in the manuscript. Include a brief justification for each score. Respond strictly in the JSON schema that accompanies this prompt.

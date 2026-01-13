@@ -30,8 +30,10 @@ export interface AprRenderOptions {
     backgroundColor?: string;
     transparentCenter?: boolean;
     bookAuthorColor?: string;
+    authorColor?: string;
     engineColor?: string;
     theme?: 'dark' | 'light' | 'none';
+    spokeColor?: string; // Custom spokes color (used when theme mode allows custom)
 }
 
 export interface AprRenderResult {
@@ -66,16 +68,18 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         backgroundColor,
         transparentCenter,
         bookAuthorColor,
+        authorColor,
         engineColor,
-        theme = 'dark'
+        theme = 'dark',
+        spokeColor
     } = opts;
 
     const preset = getPreset(size);
     const { svgSize, innerRadius, outerRadius, spokeWidth, borderWidth, actSpokeWidth, patternScale } = preset;
     const half = svgSize / 2;
 
-    // Structural palette based on theme
-    const structural = resolveStructuralColors(theme);
+    // Structural palette based on theme (with optional custom spokes color)
+    const structural = resolveStructuralColors(theme, spokeColor);
 
     // Normalize stage colors to match Publication mode (settings or defaults)
     const stageColorMap = stageColors || DEFAULT_SETTINGS.publishStageColors;
@@ -185,6 +189,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         authorUrl: sanitizeAuthorUrl(authorUrl),
         size,
         bookAuthorColor,
+        authorColor,
         engineColor
     });
 
@@ -336,11 +341,20 @@ function sanitizeAuthorUrl(url?: string): string | undefined {
     return trimmed;
 }
 
-function resolveStructuralColors(theme: 'dark' | 'light' | 'none') {
+function resolveStructuralColors(theme: 'dark' | 'light' | 'none', customSpokeColor?: string) {
+    // If custom color provided, use it (overrides theme)
+    const actSpokeColor = customSpokeColor 
+        ? customSpokeColor 
+        : theme === 'none' 
+            ? 'none'
+            : theme === 'light'
+                ? 'rgba(0, 0, 0, 0.65)'
+                : 'rgba(255, 255, 255, 0.7)'; // dark theme default
+    
     if (theme === 'light') {
         return {
             spoke: 'rgba(0, 0, 0, 0.5)',
-            actSpoke: 'rgba(0, 0, 0, 0.65)',
+            actSpoke: actSpokeColor,
             border: 'rgba(0, 0, 0, 0.35)',
             centerHole: '#ffffff',
             background: '#ffffff'
@@ -359,7 +373,7 @@ function resolveStructuralColors(theme: 'dark' | 'light' | 'none') {
     // Default: dark theme
     return {
         spoke: 'rgba(255, 255, 255, 0.4)',
-        actSpoke: 'rgba(255, 255, 255, 0.7)',
+        actSpoke: actSpokeColor,
         border: 'rgba(255, 255, 255, 0.25)',
         centerHole: '#0a0a0a',
         background: 'transparent'

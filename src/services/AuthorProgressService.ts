@@ -88,7 +88,7 @@ export class AuthorProgressService {
 
         const scenes = await getAllScenes(this.app, this.plugin);
         const progressPercent = this.calculateProgress(scenes);
-
+        
         const { svgString } = createAprSVG(scenes, {
             size: settings.aprSize || 'medium',
             progressPercent,
@@ -104,8 +104,10 @@ export class AuthorProgressService {
             backgroundColor: settings.aprBackgroundColor,
             transparentCenter: settings.aprCenterTransparent,
             bookAuthorColor: settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
+            authorColor: settings.aprAuthorColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
             engineColor: settings.aprEngineColor,
-            theme: settings.aprTheme || 'dark'
+            theme: settings.aprTheme || 'dark',
+            spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor : undefined
         });
 
         let finalSvg = svgString;
@@ -223,8 +225,10 @@ export class AuthorProgressService {
             backgroundColor: campaign.customBackgroundColor ?? settings.aprBackgroundColor,
             transparentCenter: campaign.customTransparent ?? settings.aprCenterTransparent,
             bookAuthorColor: settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
+            authorColor: settings.aprAuthorColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
             engineColor: settings.aprEngineColor,
-            theme: campaign.customTheme ?? settings.aprTheme ?? 'dark'
+            theme: campaign.customTheme ?? settings.aprTheme ?? 'dark',
+            spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor : undefined
         });
 
         // Save to campaign's embed path

@@ -19,6 +19,30 @@ export interface CompletionEstimate {
     stragglerCount?: number;
 }
 
+/**
+ * Timeline Metrics Service - Estimation and tick tracking system.
+ * 
+ * ESTIMATION/TICK TRACKING SYSTEM (this service):
+ * - Calculates completion estimates based on pace (scenes per week)
+ * - Tracks progress through stages (continuous, not binary)
+ * - Shows tick marks on timeline with target dates
+ * - Calculates staleness (warn/late/stalled) for pace tracking
+ * - Much more nuanced - tracks continuous progress, not just completions
+ * 
+ * Used by:
+ * - Timeline tick marks (target date ticks, estimation ticks)
+ * - Completion estimate calculations
+ * - Pace tracking and remaining scene counts
+ * 
+ * SEPARATE FROM: MilestonesService (stage completion milestones)
+ * - MilestonesService: Binary detection (stage done or not)
+ * - Shows hero cards in settings, pulsing indicator on timeline
+ * - Celebration & encouragement, not progress tracking
+ * 
+ * Keep these systems separate - they serve different purposes:
+ * - Estimation: Progress tracking & planning (continuous: pace, dates, remaining)
+ * - Milestones: Celebration & encouragement (binary: stage done or not)
+ */
 export class TimelineMetricsService {
     private lastFreshEstimate: CompletionEstimate | null = null;
 

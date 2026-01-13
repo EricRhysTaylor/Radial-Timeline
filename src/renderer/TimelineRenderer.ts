@@ -92,7 +92,7 @@ import { renderRotationToggle } from './utils/RotationToggle';
 import { renderVersionIndicator } from './components/VersionIndicator';
 import { renderHelpIcon } from './components/HelpIcon';
 import { renderAuthorProgressIndicator } from './components/AuthorProgressIndicator';
-import { renderProgressMilestoneIndicator, type MilestoneInfo } from './components/ProgressMilestoneIndicator';
+import { renderMilestoneIndicator, type MilestoneInfo } from './components/MilestoneIndicator';
 import type { CompletionEstimate } from './utils/Estimation';
 import { renderProgressRingBaseLayer } from './utils/ProgressRing';
 import { getReadabilityMultiplier, getReadabilityScale } from '../utils/readability';
@@ -727,9 +727,10 @@ export function createTimelineSVG(
         svg += renderAuthorProgressIndicator({ needsRefresh: true });
     }
 
-    // Add progress milestone indicator if there's a milestone (right side)
+    // Add milestone indicator if there's a milestone (right side, above Help icon)
+    // This is the MILESTONES system, separate from estimation/tick tracking
     if (options?.milestone) {
-        svg += renderProgressMilestoneIndicator({ milestone: options.milestone });
+        svg += renderMilestoneIndicator({ milestone: options.milestone });
     }
 
     // Add JavaScript to handle synopsis visibility

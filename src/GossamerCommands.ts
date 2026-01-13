@@ -573,13 +573,10 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         return {
           beatName: (beat.title || 'Unknown Beat').replace(/^\d+(?:\.\d+)?\s+/, ''),
           beatNumber: index + 1,
-          idealRange: rangeValue,
-          previousScore: typeof beatData[beatData.GossamerLatestRun ? `Gossamer${beatData.GossamerLatestRun}` : 'Gossamer1'] === 'number' 
-            ? beatData[beatData.GossamerLatestRun ? `Gossamer${beatData.GossamerLatestRun}` : 'Gossamer1'] 
-            : undefined,
-          previousJustification: typeof beatData[beatData.GossamerLatestRun ? `Gossamer${beatData.GossamerLatestRun} Justification` : 'Gossamer1 Justification'] === 'string' 
-            ? beatData[beatData.GossamerLatestRun ? `Gossamer${beatData.GossamerLatestRun} Justification` : 'Gossamer1 Justification']
-            : undefined
+          idealRange: rangeValue
+          // Note: Previous scores/justifications are intentionally NOT included
+          // to avoid anchoring bias. Each analysis is fresh based on manuscript content only.
+          // Historical scores remain in metadata (Gossamer1, Gossamer2, etc.) for user reference.
         };
       });
 
@@ -616,7 +613,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       estimatedTokens: estimatedTokens,
       beatCount: beats.length,
       beatSystem: beatSystemDisplayName, // Use display name (may include custom name)
-      hasIterativeContext: beats.some(b => b.previousScore !== undefined)
+      hasIterativeContext: false // Always false - we don't send previous scores to avoid anchoring bias
     };
     modal.setManuscriptInfo(manuscriptInfo);
 
@@ -933,20 +930,13 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     const manuscript = await assembleManuscript(sceneFiles, plugin.app.vault);
     const estimatedTokens = Math.ceil(manuscript.text.length / 4);
     
-    // Check if any beats have previous justifications (for iterative refinement)
-    const beatsWithPreviousAnalysis = plotBeats.filter(beat => {
-      const beatData = beat as any;
-      const latestRun = beatData.GossamerLatestRun || 1;
-      return typeof beatData[`Gossamer${latestRun} Justification`] === 'string';
-    }).length;
-    
     const manuscriptInfo: ManuscriptInfo = {
       totalScenes: manuscript.totalScenes,
       totalWords: manuscript.totalWords,
       estimatedTokens: estimatedTokens,
       beatCount: plotBeats.length,
       beatSystem: beatSystemDisplayName, // Use display name (may include custom name)
-      hasIterativeContext: beatsWithPreviousAnalysis > 0
+      hasIterativeContext: false // Always false - we don't send previous scores to avoid anchoring bias
     };
 
     // Create modal with the processing callback

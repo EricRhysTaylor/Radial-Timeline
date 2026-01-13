@@ -27,117 +27,132 @@ export const APR_LAYOUT = {
     // SMALL (150×150) - Widgets, sidebars, inline embeds
     // ─────────────────────────────────────────────────────────────────────────
     small: {
-        // Canvas
+        // ─────────────────────────────────────────────────────────────────────
+        // CANVAS
+        // ─────────────────────────────────────────────────────────────────────
         svgSize: 150,
         
-        // Ring geometry
+        // ─────────────────────────────────────────────────────────────────────
+        // RING GEOMETRY (Scene rings)
+        // ─────────────────────────────────────────────────────────────────────
         innerRadius: 20,           // Center hole radius
-        outerRadius: 68,           // Outer edge of scene ring
+        outerRadius: 66,           // Outer edge of scene ring
+        spokeWidth: 0.75,           // Width of radial spokes
+        borderWidth: 0.5,           // Width of ring borders
+        actSpokeWidth: 1,           // Width of act division spokes
+        patternScale: 0.25,         // Pattern density (1.0 = default, smaller = denser)
         
-        // Branding positions
-        brandingRadius: 70,        // Radius for book/author text path
+        // ─────────────────────────────────────────────────────────────────────
+        // CENTER PERCENT (Inner element)
+        // ─────────────────────────────────────────────────────────────────────
+        centerPercentFontSize: 32,  // Max font size for the % number (auto-fits to inner circle)
+        percentYOffset: 3.6,          // Y offset for the number (positive = down)
+        percentNumberOpacity: 0.95,  // Number visibility: 0.0 = invisible, 1.0 = fully opaque
+        percentSymbolYOffset: 4,   // Y offset for % symbol
+        percentSymbolOpacity: 0.28, // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
+        percentSymbolSizeMultiplier: 1.9, // % symbol size: 1.0 = small, 2.5 = large (relative to inner radius)
         
-        // Font sizes (in px)
-        bookAuthorFontSize: 7,     // Book title + author name on perimeter
-        rtBadgeFontSize: 7,        // RT badge (match to bookAuthorFontSize for consistency)
-        centerPercentFontSize: 20, // The big % number in center
+        // ─────────────────────────────────────────────────────────────────────
+        // RT BADGE (Bottom-right corner)
+        // ─────────────────────────────────────────────────────────────────────
+        rtBadgeFontSize: 9,         // Font size for RT badge
+        rtBadgeOffsetX: 8,           // Inset from right edge
+        rtBadgeOffsetY: 8,           // Inset from bottom edge
         
-        // RT Badge positioning (bottom-right corner)
-        rtBadgeOffsetX: 8,         // Inset from right edge
-        rtBadgeOffsetY: 8,         // Inset from bottom edge
-        
-        // Center percent positioning
-        percentYOffset: 8,         // Y offset for the number (positive = down)
-        percentSymbolYOffset: 11,  // Y offset for ghost % symbol
-        
-        // Stroke widths
-        spokeWidth: 0.75,
-        borderWidth: 0.5,
-        actSpokeWidth: 1,
-        
-        // Letter spacing for branding text
-        brandingLetterSpacing: '0.12em',
-        
-        // Pattern scaling (1.0 = default pattern size, smaller = denser)
-        patternScale: 0.25,        // Very dense for tiny size
+        // ─────────────────────────────────────────────────────────────────────
+        // BRANDING TEXT (Outermost - perimeter text)
+        // ─────────────────────────────────────────────────────────────────────
+        brandingRadius: 68,         // Radius for book/author text path
+        bookAuthorFontSize: 9,      // Font size for book title + author name
+        brandingLetterSpacing: '0.12em', // Letter spacing for branding text
     },
     
     // ─────────────────────────────────────────────────────────────────────────
     // MEDIUM (300×300) - Social posts, newsletters
     // ─────────────────────────────────────────────────────────────────────────
     medium: {
-        // Canvas
+        // ─────────────────────────────────────────────────────────────────────
+        // CANVAS
+        // ─────────────────────────────────────────────────────────────────────
         svgSize: 300,
         
-        // Ring geometry
+        // ─────────────────────────────────────────────────────────────────────
+        // RING GEOMETRY (Scene rings)
+        // ─────────────────────────────────────────────────────────────────────
         innerRadius: 50,
         outerRadius: 136,
-        
-        // Branding positions
-        brandingRadius: 140,
-        
-        // Font sizes
-        bookAuthorFontSize: 14,
-        rtBadgeFontSize: 14,       // Match book/author for consistency
-        centerPercentFontSize: 48,
-        
-        // RT Badge positioning
-        rtBadgeOffsetX: 16,
-        rtBadgeOffsetY: 16,
-        
-        // Center percent positioning
-        percentYOffset: 16,
-        percentSymbolYOffset: 22,
-        
-        // Stroke widths
         spokeWidth: 1,
         borderWidth: 1,
         actSpokeWidth: 1.5,
+        patternScale: 0.4,         // Pattern density (1.0 = default, smaller = denser)
         
-        // Letter spacing
-        brandingLetterSpacing: '0.15em',
+        // ─────────────────────────────────────────────────────────────────────
+        // CENTER PERCENT (Inner element)
+        // ─────────────────────────────────────────────────────────────────────
+        centerPercentFontSize: 105,  // Max font size for the % number (auto-fits to inner circle)
+        percentYOffset: 16,          // Y offset for the number (positive = down)
+        percentNumberOpacity: 0.95,   // Number visibility: 0.0 = invisible, 1.0 = fully opaque
+        percentSymbolYOffset: 22,    // Y offset for % symbol
+        percentSymbolOpacity: 0.28,   // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
+        percentSymbolSizeMultiplier: 1.9, // % symbol size: 1.0 = small, 2.5 = large (relative to inner radius)
         
-        // Pattern scaling (1.0 = default pattern size, smaller = denser)
-        patternScale: 0.4,         // Medium density
+        // ─────────────────────────────────────────────────────────────────────
+        // RT BADGE (Bottom-right corner)
+        // ─────────────────────────────────────────────────────────────────────
+        rtBadgeFontSize: 14,         // Font size for RT badge
+        rtBadgeOffsetX: 16,          // Inset from right edge
+        rtBadgeOffsetY: 16,          // Inset from bottom edge
+        
+        // ─────────────────────────────────────────────────────────────────────
+        // BRANDING TEXT (Outermost - perimeter text)
+        // ─────────────────────────────────────────────────────────────────────
+        brandingRadius: 140,        // Radius for book/author text path
+        bookAuthorFontSize: 14,     // Font size for book title + author name
+        brandingLetterSpacing: '0.15em', // Letter spacing for branding text
     },
     
     // ─────────────────────────────────────────────────────────────────────────
     // LARGE (450×450) - Website embeds, high-DPI displays
     // ─────────────────────────────────────────────────────────────────────────
     large: {
-        // Canvas
+        // ─────────────────────────────────────────────────────────────────────
+        // CANVAS
+        // ─────────────────────────────────────────────────────────────────────
         svgSize: 450,
         
-        // Ring geometry
+        // ─────────────────────────────────────────────────────────────────────
+        // RING GEOMETRY (Scene rings)
+        // ─────────────────────────────────────────────────────────────────────
         innerRadius: 80,
         outerRadius: 204,
-        
-        // Branding positions
-        brandingRadius: 208,
-        
-        // Font sizes
-        bookAuthorFontSize: 21,
-        rtBadgeFontSize: 21,       // Match book/author for consistency
-        centerPercentFontSize: 72,
-        
-        // RT Badge positioning
-        rtBadgeOffsetX: 24,
-        rtBadgeOffsetY: 24,
-        
-        // Center percent positioning
-        percentYOffset: 24,
-        percentSymbolYOffset: 33,
-        
-        // Stroke widths
         spokeWidth: 1.5,
         borderWidth: 1.5,
         actSpokeWidth: 2.5,
+        patternScale: 0.55,        // Pattern density (1.0 = default, smaller = denser)
         
-        // Letter spacing
-        brandingLetterSpacing: '0.15em',
+        // ─────────────────────────────────────────────────────────────────────
+        // CENTER PERCENT (Inner element)
+        // ─────────────────────────────────────────────────────────────────────
+        centerPercentFontSize: 160,  // Max font size for the % number (auto-fits to inner circle)
+        percentYOffset: 24,         // Y offset for the number (positive = down)
+        percentNumberOpacity: 0.95,   // Number visibility: 0.0 = invisible, 1.0 = fully opaque
+        percentSymbolYOffset: 33,   // Y offset for % symbol
+        percentSymbolOpacity: 0.28,  // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
+        percentSymbolSizeMultiplier: 1.9, // % symbol size: 1.0 = small, 2.5 = large (relative to inner radius)
         
-        // Pattern scaling (1.0 = default pattern size, smaller = denser)
-        patternScale: 0.55,        // Slightly denser than default
+        // ─────────────────────────────────────────────────────────────────────
+        // RT BADGE (Bottom-right corner)
+        // ─────────────────────────────────────────────────────────────────────
+        rtBadgeFontSize: 21,         // Font size for RT badge
+        rtBadgeOffsetX: 24,          // Inset from right edge
+        rtBadgeOffsetY: 24,          // Inset from bottom edge
+        
+        // ─────────────────────────────────────────────────────────────────────
+        // BRANDING TEXT (Outermost - perimeter text)
+        // ─────────────────────────────────────────────────────────────────────
+        brandingRadius: 208,        // Radius for book/author text path
+        bookAuthorFontSize: 21,     // Font size for book title + author name
+        brandingLetterSpacing: '0.15em', // Letter spacing for branding text
     },
 } as const;
 
@@ -164,6 +179,10 @@ export function getPreset(size: AprSize) {
         actSpokeWidth: p.actSpokeWidth,
         brandingLetterSpacing: p.brandingLetterSpacing,
         patternScale: p.patternScale,
+        // Center percent controls
+        percentNumberOpacity: p.percentNumberOpacity,
+        percentSymbolOpacity: p.percentSymbolOpacity,
+        percentSymbolSizeMultiplier: p.percentSymbolSizeMultiplier,
     };
 }
 

@@ -1,4 +1,4 @@
-import { App, Setting, Notice, setIcon, normalizePath } from 'obsidian';
+import { App, Setting, Notice, setIcon, normalizePath, ColorComponent, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { AuthorProgressService } from '../../services/AuthorProgressService';
 import { DEFAULT_SETTINGS } from '../defaults';
@@ -6,6 +6,7 @@ import { getAllScenes } from '../../utils/manuscript';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { renderCampaignManagerSection } from './CampaignManagerSection';
 import { isProfessionalActive } from './ProfessionalSection';
+import { addWikiLink } from '../wikiLink';
 
 export interface AuthorProgressSectionProps {
     app: App;
@@ -15,6 +16,12 @@ export interface AuthorProgressSectionProps {
 
 export function renderAuthorProgressSection({ app, plugin, containerEl }: AuthorProgressSectionProps): void {
     const section = containerEl.createDiv({ cls: 'rt-settings-section rt-apr-section' });
+    
+    // Add heading with wiki link
+    const heading = new Setting(section)
+        .setName('Social Media · Author Progress Report')
+        .setHeading();
+    addWikiLink(heading, 'Settings#social-media');
     
     // Check if APR needs refresh
     const aprService = new AuthorProgressService(plugin, app);
@@ -41,7 +48,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Description paragraph
     hero.createEl('p', { 
         cls: 'rt-apr-hero-subtitle', 
-        text: 'Generate beautiful, spoiler-safe progress graphics for social media and crowdfunding. Perfect for Kickstarter updates, Patreon posts, or sharing your writing journey with fans.' 
+        text: 'Generate vibrant, spoiler-safe progress graphics for social media and crowdfunding. Perfect for Kickstarter updates, Patreon posts, or sharing your writing journey with fans.' 
     });
     
     // Features section
@@ -49,7 +56,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     featuresSection.createEl('h5', { text: 'Key Benefits:' });
     const featuresList = featuresSection.createEl('ul');
     [
-        { icon: 'eye-off', text: 'Spoiler-Safe — Scene titles and content automatically hidden' },
+        { icon: 'eye-off', text: 'Spoiler-Safe — Scene titles and content are not part of the graphic build process.' },
         { icon: 'share-2', text: 'Shareable — Export as static snapshot or live-updating embed' },
         { icon: 'trending-up', text: 'Stage-Weighted Progress — Tracks advancement through Zero → Author → House → Press' },
     ].forEach(feature => {
@@ -139,6 +146,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
     const currentTransparent = settings?.aprCenterTransparent ?? true; // Default to true (recommended)
     const currentTheme = settings?.aprTheme || 'dark';
+    const currentSpokeMode = settings?.aprSpokeColorMode || 'dark';
+    const currentSpokeColor = settings?.aprSpokeColor || '#ffffff';
 
     // Transparency (Recommended) - placed FIRST with special styling
     const transparencySetting = new Setting(stylingCard)
@@ -226,9 +235,100 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             });
         });
 
+    // Spokes Color setting (with custom option)
+    const spokeColorSetting = new Setting(stylingCard)
+        .setName('Act Spokes Color')
+        .setDesc('Color for act division spokes (the lines dividing acts).');
+    
+    // Container for color picker (hidden unless custom) - created before dropdown for closure access
+    const spokeColorPickerContainer = spokeColorSetting.settingEl.createDiv({ cls: 'rt-apr-spoke-color-picker' });
+    
+    let spokeColorPickerRef: ColorComponent | undefined;
+    let spokeColorInputRef: TextComponent | undefined;
+    
+    const createSpokeColorPicker = () => {
+        spokeColorPickerContainer.empty();
+        
+        const controlWrapper = spokeColorPickerContainer.createDiv({ cls: 'rt-color-control-wrapper' });
+        
+        // Color picker with swatch
+        spokeColorPickerRef = new ColorComponent(controlWrapper)
+            .setValue(currentSpokeColor)
+            .onChange(async (value) => {
+                if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value)) {
+                    if (!plugin.settings.authorProgress) return;
+                    plugin.settings.authorProgress.aprSpokeColor = value;
+                    await plugin.saveSettings();
+                    refreshPreview();
+                    spokeColorInputRef?.setValue(value);
+                    // Update swatch background using CSS custom property (SAFE: CSS variable, not inline style)
+                    const swatch = controlWrapper.querySelector('.rt-swatch-trigger') as HTMLElement;
+                    if (swatch) swatch.style.setProperty('--rt-apr-spoke-color', value);
+                }
+            });
+        
+        const colorInput = controlWrapper.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
+        if (colorInput) colorInput.classList.add('rt-hidden-color-input');
+        const swatchEl = controlWrapper.createDiv({ cls: 'rt-swatch-trigger rt-apr-spoke-swatch' });
+        // Set initial color using CSS custom property (SAFE: CSS variable, not inline style)
+        swatchEl.style.setProperty('--rt-apr-spoke-color', currentSpokeColor);
+        plugin.registerDomEvent(swatchEl, 'click', () => { colorInput?.click(); });
+        
+        // Hex input
+        new Setting(controlWrapper)
+            .addText(text => {
+                spokeColorInputRef = text;
+                text.inputEl.classList.add('rt-hex-input');
+                text.setValue(currentSpokeColor)
+                    .onChange(async (value) => {
+                        if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value)) {
+                            if (!plugin.settings.authorProgress) return;
+                            plugin.settings.authorProgress.aprSpokeColor = value;
+                            await plugin.saveSettings();
+                            refreshPreview();
+                            spokeColorPickerRef?.setValue(value);
+                            // Update swatch background using CSS custom property (SAFE: CSS variable, not inline style)
+                            const swatch = controlWrapper.querySelector('.rt-swatch-trigger') as HTMLElement;
+                            if (swatch) swatch.style.setProperty('--rt-apr-spoke-color', value);
+                        }
+                    });
+            });
+    };
+    
+    const updateSpokeColorVisibility = () => {
+        const isCustom = plugin.settings.authorProgress?.aprSpokeColorMode === 'custom';
+        if (isCustom) {
+            if (spokeColorPickerContainer.children.length === 0) {
+                createSpokeColorPicker();
+            }
+            spokeColorPickerContainer.classList.remove('rt-hidden');
+        } else {
+            spokeColorPickerContainer.classList.add('rt-hidden');
+        }
+    };
+    
+    // Dropdown for mode
+    spokeColorSetting.addDropdown(drop => {
+        drop.addOption('dark', 'Light Strokes');
+        drop.addOption('light', 'Dark Strokes');
+        drop.addOption('none', 'No Strokes');
+        drop.addOption('custom', 'Custom Color');
+        drop.setValue(currentSpokeMode);
+        drop.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprSpokeColorMode = (val as 'dark' | 'light' | 'none' | 'custom') || 'dark';
+            await plugin.saveSettings();
+            refreshPreview();
+            updateSpokeColorVisibility();
+        });
+    });
+    
+    // Initial setup
+    updateSpokeColorVisibility();
+
     const setColorPicker = (
         setting: Setting, 
-        key: 'aprBookAuthorColor' | 'aprEngineColor', 
+        key: 'aprBookAuthorColor' | 'aprAuthorColor' | 'aprEngineColor', 
         fallback: string
     ) => {
         const current = (settings as any)?.[key] || fallback;
@@ -254,8 +354,11 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
     };
 
-    const bookColorSetting = new Setting(stylingCard).setName('Book + Author Color').setDesc('Used for the perimeter text.');
+    const bookColorSetting = new Setting(stylingCard).setName('Book Title Color').setDesc('Used for the book title in the perimeter text.');
     setColorPicker(bookColorSetting, 'aprBookAuthorColor', plugin.settings.publishStageColors?.Press || '#6FB971');
+
+    const authorColorSetting = new Setting(stylingCard).setName('Author Name Color').setDesc('Used for the author name in the perimeter text.');
+    setColorPicker(authorColorSetting, 'aprAuthorColor', plugin.settings.publishStageColors?.Press || '#6FB971');
 
     const engineColorSetting = new Setting(stylingCard).setName('Radial Timeline Engine Color').setDesc('Used on the Radial Timeline Logo link in the bottom right corner.');
     setColorPicker(engineColorSetting, 'aprEngineColor', '#e5e5e5');
@@ -540,8 +643,10 @@ async function renderHeroPreview(
             backgroundColor: aprSettings?.aprBackgroundColor,
             transparentCenter: aprSettings?.aprCenterTransparent,
             bookAuthorColor: aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
+            authorColor: aprSettings?.aprAuthorColor ?? aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
             engineColor: aprSettings?.aprEngineColor,
-            theme: aprSettings?.aprTheme || 'dark'
+            theme: aprSettings?.aprTheme || 'dark',
+            spokeColor: aprSettings?.aprSpokeColorMode === 'custom' ? aprSettings?.aprSpokeColor : undefined
         });
         
         container.empty();

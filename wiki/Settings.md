@@ -4,6 +4,16 @@ Access via Obsidian **Settings → Community Plugins → Radial Timeline**.
 
 This page serves as a comprehensive reference for all plugin settings.
 
+## Settings Tabs
+
+The settings interface is organized into three tabs:
+
+*   **Core** — Essential settings for timeline configuration, metadata, and workflow
+*   **Pro** — Professional features including runtime estimation and manuscript exports
+*   **Social Media** — Author Progress Report (APR) for sharing your writing journey
+
+Use the tab bar at the top of the settings panel to switch between sections.
+
 <a name="general"></a>
 ### Source path
 *   **Source path**: The root folder in your vault containing your manuscript scene files (e.g., `Book 1`). Leave blank to scan the entire vault.
@@ -12,7 +22,15 @@ This page serves as a comprehensive reference for all plugin settings.
 <a name="publication"></a>
 ### Publication and progress
 Manage your project's milestones and status tracking.
-*   **Target completion date**: Set an optional target date (YYYY-MM-DD). A marker will appear on the outer ring of the timeline.
+
+**Stage Target Dates:**
+*   **Zero target date**: Target completion date for the Zero Draft stage (YYYY-MM-DD). A marker appears on the timeline when set.
+*   **Author target date**: Target completion date for the Author's Draft stage. Must be after the Zero target date.
+*   **House target date**: Target completion date for the House Edit stage. Must be after the Author target date.
+*   **Press target date**: Target completion date for the Press Ready stage. Must be after the House target date.
+
+Target dates are validated to ensure proper stage ordering. Overdue dates are highlighted in red. Each stage has its own color-coded marker on the timeline.
+
 *   **Zero draft mode**: A focused mode for reviewing. Intercepts clicks on scenes with `Publish Stage: Zero` and `Status: Complete` to open a "Pending Edits" modal instead of the full note.
 *   **Show completion estimate**: Toggles the predicted completion tick mark on the timeline.
 *   **Completion estimate window (days)**: Rolling window (default 30, min 14, max 90) used to measure pace. Pace = completions in the active publish stage within the last N days ÷ N (scenes/day).
@@ -158,6 +176,11 @@ The Signature tier unlocks advanced capabilities for professional workflows. Dur
 *   **Runtime Estimation** — Screen time, audiobook duration, and manuscript length analysis with custom profiles
 *   **Pro Exports** — Manuscript generation via Pandoc for screenplay, podcast, and novel formats
 *   **Chronologue Runtime Mode** — Blue wireframe sub-mode showing scene runtime duration arcs
+*   **Campaign Manager** — Manage multiple Author Progress Report campaigns with independent refresh schedules and Teaser Reveal settings
+*   **Teaser Reveal** — Progressive reveal system that automatically shows more timeline detail as your book progresses (Pro feature within Campaign Manager)
+
+> [!NOTE]
+> Campaign Manager, Teaser Reveal, and Pandoc Manuscript Export (including templates) are undergoing final testing and will be available soon. During the Open Beta, all Pro features are free to early adopters.
 
 **Export & Pandoc settings:**
 *   **Pandoc binary path**: Optional custom path to your pandoc executable. If blank, system PATH is used.
@@ -166,7 +189,75 @@ The Signature tier unlocks advanced capabilities for professional workflows. Dur
 *   **Pandoc templates**: Custom LaTeX templates for Screenplay, Podcast Script, and Novel Manuscript formats.
 
 > [!NOTE]
+> Pandoc Manuscript Export and templates are undergoing final testing and will be available soon.
+
+> [!NOTE]
 > See [[Signature]] for full Pro feature documentation.
+
+<a name="social-media"></a>
+### Social Media · Author Progress Report
+Generate shareable, spoiler-safe progress graphics for social media, crowdfunding campaigns, and newsletters.
+
+> [!NOTE]
+> For detailed information about how APR works, see [[Author-Progress-Report]].
+
+**Preview & Size:**
+*   **Preview Size**: Choose Small (150×150px), Medium (300×300px), or Large (450×450px). The preview updates in real-time as you adjust settings.
+*   **Export Size**: Controls the final SVG dimensions. Small is ideal for widgets, Medium for social media and newsletters, Large for website embeds.
+
+**Styling:**
+*   **Transparent Mode (Recommended)**: No background fill—adapts to any page or app. Ideal for websites, blogs, and platforms that preserve SVG transparency.
+*   **Background Color**: Bakes in a solid background. Use when transparency isn't reliable: email newsletters, Kickstarter, PDF exports, or platforms that rasterize SVGs.
+*   **Theme Contrast**: Choose Light Strokes, Dark Strokes, or No Strokes to match your background.
+*   **Book + Author Color**: Color for the perimeter text ring (title and author name).
+*   **Radial Timeline Engine Color**: Color for the "RT" badge link in the bottom right corner.
+
+**Identity & Links:**
+*   **Book Title**: Appears on your public report graphic.
+*   **Author Name**: Appears alongside the title (e.g., "Title • Author").
+*   **Link URL**: Where the graphic should link to (e.g., your website, Kickstarter, or shop).
+
+**Publishing & Automation** (Core features):
+*   **Update Frequency**: How often to auto-update the live embed file. Options: Manual Only, Daily, Weekly, or Monthly. "Manual" requires clicking the update button in the Author Progress Report modal.
+*   **Refresh Alert Threshold**: Days before showing a refresh reminder in the timeline view (1-90 days, default 30). Only shown when Update Frequency is set to Manual.
+*   **Embed File Path**: Location for the "Live Embed" SVG file. Must end with `.svg`. Default: `Radial Timeline/Social/progress.svg`.
+
+**Campaign Manager** ✦ Pro:
+Create multiple APR configurations for different platforms (Kickstarter, Patreon, Newsletter, Website) with independent refresh schedules.
+
+*   **Quick Start Templates**: One-click setup for common platforms:
+    *   Kickstarter (7-day refresh reminders)
+    *   Patreon (14-day refresh reminders)
+    *   Newsletter (14-day refresh reminders)
+    *   Website (30-day refresh reminders)
+
+*   **Per-Campaign Settings:**
+    *   **Update Frequency**: Manual, Daily, Weekly, or Monthly auto-updates
+    *   **Refresh Alert Threshold**: Days before showing refresh reminder (1-90 days)
+    *   **Embed File Path**: Custom SVG path for each campaign
+    *   **Export Size**: Small, Medium, or Large
+    *   **Manual Reveal Options**: Show/hide Subplots, Acts, Status, and Progress Percent (only when Teaser Reveal is disabled)
+
+*   **Teaser Reveal** ✦ Pro:
+    Automatically reveal more detail as your book progresses. Creates anticipation as your audience sees more of your timeline structure.
+
+    *   **Enable Teaser Reveal**: Toggle progressive reveal on/off
+    *   **Reveal Schedule**: Choose a preset or customize:
+        *   **Slow**: Reveals at 15%, 40%, and 70% progress
+        *   **Standard**: Reveals at 10%, 30%, and 60% progress (default)
+        *   **Fast**: Reveals at 5%, 20%, and 45% progress
+        *   **Custom**: Set your own thresholds (1-99%)
+    
+    *   **Reveal Stages:**
+        *   **Teaser** (0%): Progress ring only
+        *   **Scenes** (threshold 1): Scene cells appear (no colors)
+        *   **Colors** (threshold 2): Scene cells with status colors
+        *   **Full** (threshold 3): Complete timeline with subplots and acts
+    
+    *   **Stage Skipping**: Click on middle stages (Scenes, Colors) in the preview to skip them entirely, jumping directly to the next stage.
+
+> [!NOTE]
+> Campaign Manager and Teaser Reveal are undergoing final testing and will be available soon. During the Open Beta, all Pro features are free to early adopters.
 
 ---
 

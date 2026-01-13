@@ -1067,6 +1067,11 @@
   flex-shrink: 0;
 }
 
+/* APR spoke color swatch - uses CSS custom property for dynamic color */
+.rt-apr-spoke-swatch {
+  background-color: var(--rt-apr-spoke-color, #ffffff);
+}
+
 /* Stage swatch backgrounds map to CSS variables that the plugin updates */
 .rt-color-grid-controls .rt-swatch-trigger.rt-stage-Zero {
   background: var(--rt-publishStageColors-Zero);

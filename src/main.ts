@@ -93,6 +93,7 @@ export default class RadialTimelinePlugin extends Plugin {
     private themeService!: ThemeService;
     private timelineMetricsService!: TimelineMetricsService;
     private settingsService!: SettingsService;
+    public milestonesService!: import('./services/MilestonesService').MilestonesService;
     public lastSceneData?: TimelineItem[];
     
     // APR Service
@@ -204,6 +205,11 @@ export default class RadialTimelinePlugin extends Plugin {
         this.beatsProcessingService = new BeatsProcessingService(this.statusBarService);
         this.themeService = new ThemeService(this);
         this.timelineMetricsService = new TimelineMetricsService(this);
+        
+        // Milestones Service (single source of truth for stage completion milestones)
+        // Separate from TimelineMetricsService (estimation/tick tracking)
+        const { MilestonesService } = await import('./services/MilestonesService');
+        this.milestonesService = new MilestonesService(this);
         
         // APR Service
         this.authorProgressService = new AuthorProgressService(this, this.app);

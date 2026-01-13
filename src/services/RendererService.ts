@@ -22,9 +22,9 @@ import { updateSubplotLabels, updateSubplotLabelVisibility } from '../renderer/d
 import { createTimelineSVG as buildTimelineSVG } from '../renderer/TimelineRenderer';
 import { adjustBeatLabelsAfterRender } from '../renderer/dom/BeatLabelAdjuster';
 import { PluginRendererFacade, isBeatNote } from '../utils/sceneHelpers';
-import { AuthorProgressService } from './AuthorProgressService';
 import { STAGE_ORDER } from '../utils/constants';
-import type { MilestoneInfo } from '../renderer/components/ProgressMilestoneIndicator';
+import { AuthorProgressService } from './AuthorProgressService';
+import type { MilestoneInfo } from '../renderer/components/MilestoneIndicator';
 
 export interface RenderResult {
     svgString: string;
@@ -53,86 +53,16 @@ export class RendererService {
     }
 
     /**
-     * Detect if there's a progress milestone to celebrate or encouragement needed
-     * Priority: Book complete > Stage complete > Staleness encouragement
+     * Get milestone using the shared MilestonesService.
+     * This ensures the timeline indicator always matches the Progress Tracker in settings.
      * 
-     * A stage is only "complete" when ALL scenes have reached that stage AND are complete.
-     * Scenes at lower stages waiting to be promoted mean the higher stage is NOT complete.
+     * Note: This is the MILESTONES system (stage completions), separate from
+     * TimelineMetricsService which handles estimation/tick tracking.
      */
     private detectProgressMilestone(scenes: TimelineItem[]): MilestoneInfo | null {
-        const sceneNotesOnly = scenes.filter(scene => !isBeatNote(scene));
-        if (sceneNotesOnly.length === 0) return null;
-
-        const normalizeStage = (raw: unknown): (typeof STAGE_ORDER)[number] => {
-            const v = (raw ?? 'Zero').toString().trim().toLowerCase();
-            const match = STAGE_ORDER.find(stage => stage.toLowerCase() === v);
-            return match ?? 'Zero';
-        };
-
-        const isCompleted = (status: unknown): boolean => {
-            const val = Array.isArray(status) ? status[0] : status;
-            const normalized = (val ?? '').toString().trim().toLowerCase();
-            return normalized === 'complete' || normalized === 'completed' || normalized === 'done';
-        };
-
-        // For a stage to be "complete", ALL scenes must be AT that stage (or higher) AND complete
-        // Check from highest stage down
-        for (const stage of [...STAGE_ORDER].reverse()) {
-            const stageIndex = STAGE_ORDER.indexOf(stage);
-            
-            // Count scenes at this stage or higher
-            const scenesAtOrAbove = sceneNotesOnly.filter(s => {
-                const sceneStageIndex = STAGE_ORDER.indexOf(normalizeStage(s['Publish Stage']));
-                return sceneStageIndex >= stageIndex;
-            });
-            
-            // If no scenes have reached this stage yet, skip
-            if (scenesAtOrAbove.length === 0) continue;
-            
-            // Check if ALL scenes are at this stage or higher
-            const allScenesAtOrAbove = scenesAtOrAbove.length === sceneNotesOnly.length;
-            
-            // Check if all scenes at this exact stage are complete
-            const scenesAtExactStage = sceneNotesOnly.filter(s => normalizeStage(s['Publish Stage']) === stage);
-            const allAtExactStageComplete = scenesAtExactStage.length > 0 && 
-                scenesAtExactStage.every(s => isCompleted(s.status));
-            
-            // Stage is complete only if:
-            // 1. ALL scenes have reached this stage (no scenes at lower stages)
-            // 2. All scenes at this exact stage are complete
-            if (allScenesAtOrAbove && allAtExactStageComplete) {
-                if (stage === 'Press') {
-                    return { type: 'book-complete', stage };
-                } else if (stage === 'House') {
-                    return { type: 'stage-house-complete', stage };
-                } else if (stage === 'Author') {
-                    return { type: 'stage-author-complete', stage };
-                } else if (stage === 'Zero') {
-                    return { type: 'stage-zero-complete', stage };
-                }
-            }
-            
-            // If some scenes are at this stage but not all complete, or some scenes are below,
-            // no celebration yet - keep checking lower stages
-        }
-
-        // Check for staleness (encouragement needed)
-        try {
-            const estimate = this.plugin.calculateCompletionEstimate(scenes);
-            if (estimate && estimate.staleness !== 'fresh') {
-                if (estimate.staleness === 'stalled') {
-                    return { type: 'staleness-stalled' };
-                } else if (estimate.staleness === 'late') {
-                    return { type: 'staleness-late' };
-                } else if (estimate.staleness === 'warn') {
-                    return { type: 'staleness-warn' };
-                }
-            }
-        } catch {
-            // Estimate calculation failed - skip staleness check
-        }
-
-        return null;
+        // Use the shared service - single source of truth
+        // This ensures timeline indicator matches PublicationSection Progress Tracker exactly
+        return this.plugin.milestonesService.detectMilestone(scenes);
     }
 
     public generateTimeline(scenes: TimelineItem[]): RenderResult {
