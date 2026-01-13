@@ -449,34 +449,26 @@
 }
 
 .rt-milestone-indicator:hover {
-  filter: drop-shadow(0 0 8px currentColor);
+  filter: drop-shadow(0 0 5px var(--text-muted));
 }
 
-/* Text styles */
+/* Text styles - matches help button text */
 .rt-milestone-indicator-text {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-family: '04b03b', 'Monaco', 'Courier New', monospace;
+  font-size: 20px;
+  text-anchor: middle;
+  dominant-baseline: baseline;
+  letter-spacing: 0;
+  pointer-events: none;
+  fill: var(--text-muted);
+  opacity: 0;
   transition: opacity 0.2s ease, fill 0.2s ease;
 }
 
-.rt-milestone-indicator-text.rt-milestone-label {
+/* Show text on hover - matches help button behavior */
+.rt-milestone-indicator:hover .rt-milestone-indicator-text {
   opacity: 1;
-}
-
-.rt-milestone-indicator-text.rt-milestone-action {
   fill: var(--text-normal);
-  opacity: 0;
-}
-
-/* Swap text on hover */
-.rt-milestone-indicator:hover .rt-milestone-indicator-text.rt-milestone-label {
-  opacity: 0;
-}
-
-.rt-milestone-indicator:hover .rt-milestone-indicator-text.rt-milestone-action {
-  opacity: 1;
 }
 
 /* Icon pulse animation */
@@ -486,9 +478,9 @@
 
 @keyframes rt-milestone-pulse {
   0%, 100% {
-    transform: translate(0, 24px) scale(1);
+    transform: translate(0, -6px) scale(1);
   }
   50% {
-    transform: translate(0, 24px) scale(1.05);
+    transform: translate(0, -6px) scale(1.05);
   }
 }

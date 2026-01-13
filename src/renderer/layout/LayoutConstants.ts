@@ -19,7 +19,7 @@ export const SVG_SIZE = 1600;
 // =============================================================================
 
 /** Horizontal offset for update alert icon from version text */
-export const VERSION_INDICATOR_POS_X = -780;
+export const VERSION_INDICATOR_POS_X = -750;
 
 /** Vertical position for version indicator (bottom, positive Y in SVG coords) */
 export const VERSION_INDICATOR_POS_Y = 734;
@@ -32,7 +32,7 @@ export const VERSION_ALERT_OFFSET_X = 8;
 // =============================================================================
 
 /** Horizontal position for help icon */
-export const HELP_ICON_POS_X = 730;
+export const HELP_ICON_POS_X = 700;
 
 /** Vertical position for help icon (bottom, positive Y in SVG coords) */
 export const HELP_ICON_POS_Y = 734;

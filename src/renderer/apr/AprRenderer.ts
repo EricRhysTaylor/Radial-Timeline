@@ -183,8 +183,8 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
 
     // Center percent (optional)
     if (showProgressPercent) {
-        // TEMPORARY: Force double-digit for testing
-        const testPercent = 99;
+        // TEMPORARY: Force triple-digit for testing
+        const testPercent = 100;
         svg += renderAprCenterPercent(testPercent, size, innerRadius, percentNumberColor, percentSymbolColor);
     }
 

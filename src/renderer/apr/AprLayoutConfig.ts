@@ -51,6 +51,11 @@ export const APR_LAYOUT = {
         percentSymbolYOffset: 4,   // Y offset for % symbol
         percentSymbolOpacity: 0.28, // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
         percentSymbolSizeMultiplier: 1.9, // % symbol size: 1.0 = small, 2.5 = large (relative to inner radius)
+        percentWidthMultiplier1Digit: 2.3, // Width multiplier for single-digit numbers
+        percentWidthMultiplier2Digit: 1.7, // Width multiplier for double-digit numbers
+        percentWidthMultiplier3Digit: 1.8, // Width multiplier for triple-digit numbers
+        percentCharWidthRatio: 0.65, // Character width estimate (charWidth = fontSize × this ratio)
+        percentLetterSpacing: '-0.02em', // Letter spacing for multi-digit numbers
         
         // ─────────────────────────────────────────────────────────────────────
         // RT BADGE (Bottom-right corner)
@@ -93,8 +98,13 @@ export const APR_LAYOUT = {
         percentYOffset: 8,          // Y offset for the number (positive = down)
         percentNumberOpacity: 0.95,   // Number visibility: 0.0 = invisible, 1.0 = fully opaque
         percentSymbolYOffset: 9.5,    // Y offset for % symbol
-        percentSymbolOpacity: 0.28,   // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
+        percentSymbolOpacity: 0.15,   // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
         percentSymbolSizeMultiplier: 2, // % symbol size: 1.0 = small, 2.5 = large (relative to inner radius)
+        percentWidthMultiplier1Digit: 2.3, // Width multiplier for single-digit numbers
+        percentWidthMultiplier2Digit: 1.7, // Width multiplier for double-digit numbers
+        percentWidthMultiplier3Digit: 1.8, // Width multiplier for triple-digit numbers
+        percentCharWidthRatio: 0.65, // Character width estimate (charWidth = fontSize × this ratio)
+        percentLetterSpacing: '-0.02em', // Letter spacing for multi-digit numbers
         
         // ─────────────────────────────────────────────────────────────────────
         // RT BADGE (Bottom-right corner)
@@ -137,8 +147,13 @@ export const APR_LAYOUT = {
         percentYOffset: 11,         // Y offset for the number (positive = down)
         percentNumberOpacity: 0.95,   // Number visibility: 0.0 = invisible, 1.0 = fully opaque
         percentSymbolYOffset: 15,   // Y offset for % symbol
-        percentSymbolOpacity: 0.28,  // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
+        percentSymbolOpacity: 0.15,  // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
         percentSymbolSizeMultiplier: 2, // % symbol size: 1.0 = small, 2.5 = large (relative to inner radius)
+        percentWidthMultiplier1Digit: 2.3, // Width multiplier for single-digit numbers
+        percentWidthMultiplier2Digit: 1.7, // Width multiplier for double-digit numbers
+        percentWidthMultiplier3Digit: 2, // Width multiplier for triple-digit numbers
+        percentCharWidthRatio: 0.65, // Character width estimate (charWidth = fontSize × this ratio)
+        percentLetterSpacing: '0em', // Letter spacing for multi-digit numbers (0 = natural spacing)
         
         // ─────────────────────────────────────────────────────────────────────
         // RT BADGE (Bottom-right corner)
@@ -183,6 +198,11 @@ export function getPreset(size: AprSize) {
         percentNumberOpacity: p.percentNumberOpacity,
         percentSymbolOpacity: p.percentSymbolOpacity,
         percentSymbolSizeMultiplier: p.percentSymbolSizeMultiplier,
+        percentWidthMultiplier1Digit: p.percentWidthMultiplier1Digit,
+        percentWidthMultiplier2Digit: p.percentWidthMultiplier2Digit,
+        percentWidthMultiplier3Digit: p.percentWidthMultiplier3Digit,
+        percentCharWidthRatio: p.percentCharWidthRatio,
+        percentLetterSpacing: p.percentLetterSpacing,
     };
 }
 

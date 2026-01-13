@@ -112,9 +112,9 @@ export function renderMilestoneIndicator(params: {
     if (!params.milestone) return '';
 
     // Position: Above the Help icon (bottom-right corner)
-    // Help icon is at X=730, Y=734
+    // Help icon is at X=700, Y=734 (moved 30px left to prevent clipping)
     // Place this 50px above (similar gap as APR above Version indicator)
-    const x = params.x ?? 730;
+    const x = params.x ?? 700;
     const y = params.y ?? 684;
 
     const { icon, color, label } = getIconForMilestone(params.milestone.type);
@@ -126,19 +126,16 @@ export function renderMilestoneIndicator(params: {
     return `
         <g id="progress-milestone-indicator" class="rt-milestone-indicator" transform="translate(${formatNumber(x)}, ${formatNumber(y)})">
             <!-- Hit area for click -->
-            <rect class="rt-milestone-hitarea" x="-60" y="-12" width="120" height="50" rx="6" ry="6"
+            <rect class="rt-milestone-hitarea" x="-60" y="-32" width="120" height="50" rx="6" ry="6"
                 fill="white" fill-opacity="0" stroke="none" pointer-events="all" />
 
-            <!-- Text label above icon -->
-            <text class="rt-milestone-indicator-text rt-milestone-label" x="0" y="0" text-anchor="middle" dominant-baseline="middle" fill="${color}">
+            <!-- Text label above icon - single text, no swap -->
+            <text class="rt-milestone-indicator-text" x="0" y="-20" text-anchor="middle" dominant-baseline="baseline" fill="${color}">
                 ${label}
             </text>
-            <text class="rt-milestone-indicator-text rt-milestone-action" x="0" y="0" text-anchor="middle" dominant-baseline="middle" fill="var(--text-normal, currentColor)">
-                VIEW PROGRESS
-            </text>
 
-            <!-- Pulsing icon below text -->
-            <g class="rt-milestone-icon" transform="translate(0, 24)">
+            <!-- Pulsing icon below text - moved up 30px from original position -->
+            <g class="rt-milestone-icon" transform="translate(0, -6)">
                 <!-- Outer pulse ring -->
                 <circle r="16" fill="${pulseColor}" opacity="0.15">
                     <animate attributeName="r" values="16;22;16" dur="1.8s" repeatCount="indefinite" />
@@ -154,7 +151,6 @@ export function renderMilestoneIndicator(params: {
                 </g>
             </g>
 
-            <title>${label} — Click to view progress details</title>
         </g>
     `;
 }

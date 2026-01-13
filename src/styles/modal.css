@@ -1802,12 +1802,21 @@
   cursor: pointer;
 }
 
-/* APR RT badge link - no underline */
+/* APR RT badge link - no underline, color shift on hover */
 .rt-apr-rt-badge {
   text-decoration: none;
 }
 
+.rt-apr-rt-badge text {
+  transition: fill 0.2s ease, opacity 0.2s ease;
+}
+
+.rt-apr-rt-badge:hover {
+  text-decoration: none;
+}
+
 .rt-apr-rt-badge:hover text {
+  fill: var(--rt-social-color, #ffd41d);
   opacity: 1;
 }
 

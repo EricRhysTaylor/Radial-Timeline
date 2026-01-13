@@ -13,9 +13,10 @@ export function renderAuthorProgressIndicator(params: {
     if (!params.needsRefresh) return '';
 
     // Position: Above the version indicator (bottom-left)
-    // Version is around Y=400, so we go ~50px above it
-    const x = params.x ?? -380;
-    const y = params.y ?? 350;
+    // Version is at X=-750 (moved 30px right to prevent clipping), Y=734
+    // Place this 50px above version indicator
+    const x = params.x ?? -350;
+    const y = params.y ?? 684;
 
     // Alert icon path (triangle with exclamation)
     const alertIcon = `

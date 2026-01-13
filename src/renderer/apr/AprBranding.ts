@@ -151,12 +151,13 @@ export function renderAprCenterPercent(
 
     // Calculate font size: use max size, but fit to inner circle
     const maxFont = preset.centerFontSize;
-    // More aggressive scaling for multi-digit numbers
-    // Reduce maxWidth for 2+ digits: single digit uses full size, multi-digit gets tighter
-    const maxWidthMultiplier = charCount === 1 ? 2.3 : (charCount === 2 ? 1.7 : 1.4); // More aggressive for 2-3 digits
+    // Get width multipliers from preset configuration
+    const maxWidthMultiplier = charCount === 1 
+        ? preset.percentWidthMultiplier1Digit 
+        : (charCount === 2 ? preset.percentWidthMultiplier2Digit : preset.percentWidthMultiplier3Digit);
     const maxWidth = innerRadius * maxWidthMultiplier;
-    // Character width estimate: digits are wider than average, use ~0.65 × fontSize
-    const fitFont = maxWidth / (0.65 * charCount);
+    // Character width estimate from preset
+    const fitFont = maxWidth / (preset.percentCharWidthRatio * charCount);
     const fontSize = Math.min(fitFont, maxFont);
 
     const ghostFontSize = innerRadius * preset.percentSymbolSizeMultiplier;
@@ -188,7 +189,7 @@ export function renderAprCenterPercent(
                 font-family="${APR_FONTS.percent}" 
                 font-weight="800" 
                 font-size="${fontSize}" 
-                letter-spacing="-0.02em"
+                letter-spacing="${preset.percentLetterSpacing}"
                 fill="${numColor}"
                 opacity="${numberOpacity}">
                 ${numStr}
