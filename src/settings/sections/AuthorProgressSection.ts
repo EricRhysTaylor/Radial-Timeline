@@ -197,6 +197,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     const root = mountRoot(containerEl);
     root.addClass(ERT_CLASSES.SKIN_APR);
+    root.addClass(ERT_CLASSES.DENSITY_COMPACT);
     let previewHost: HTMLElement | null = null;
     let previewTimer: number | undefined;
     let disposed = false;
@@ -247,7 +248,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     }, (body) => {
         const { left, right } = heroLayout(body);
         const lastPublished = settings.lastPublishedDate ? new Date(settings.lastPublishedDate).toLocaleDateString() : 'Never published';
-        const statusRow = left.createDiv({ cls: ERT_CLASSES.CARD });
+        const statusRow = left.createDiv({ cls: ERT_CLASSES.CARD_APR });
         const statusChips = inline(statusRow, {});
         const statusChip = statusChips.createSpan({ cls: ERT_CLASSES.CHIP });
         statusChip.createSpan({ text: settings.enabled ? 'Enabled' : 'Disabled' });
@@ -358,11 +359,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Identity
     section(root, { title: 'Identity & links' }, (body) => {
-        const titleStack = stack(body, {
+        const identityCard = body.createDiv({ cls: ERT_CLASSES.CARD_APR });
+        const identityStack = stack(identityCard, {
             label: 'Book title',
             desc: 'Shown prominently in the APR.',
         });
-        textInput(titleStack, {
+        textInput(identityStack, {
             value: settings.bookTitle ?? '',
             placeholder: 'Working Title',
             onChange: async (val) => {
@@ -371,7 +373,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             },
         });
 
-        const authorStack = stack(body, {
+        const authorStack = stack(identityCard, {
             label: 'Author name',
             desc: 'Optional secondary line.',
         });
@@ -384,7 +386,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             },
         });
 
-        const urlStack = stack(body, {
+        const urlStack = stack(identityCard, {
             label: 'Author URL',
             desc: 'Link attached to the embed.',
         });
@@ -495,7 +497,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Colors
     section(root, { title: 'Colors' }, (body) => {
-        const primaryStack = stack(body, {
+        const primaryCard = body.createDiv({ cls: ERT_CLASSES.CARD_APR });
+        const primaryStack = stack(primaryCard, {
             label: 'Primary colors',
             desc: 'Book title, author name, engine stroke.',
         });
@@ -522,7 +525,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             },
         });
 
-        const percentStack = stack(body, {
+        const percentStack = stack(primaryCard, {
             label: 'Percent badge',
             desc: 'Number and % symbol colors.',
         });
@@ -544,7 +547,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
         divider(body, {});
 
-        const paletteStack = stack(body, {
+        const paletteStack = stack(primaryCard, {
             label: 'Palette helper',
             desc: 'Generate harmonized colors from your book title hue.',
         });
@@ -560,7 +563,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Typography
     section(root, { title: 'Typography' }, (body) => {
-        const bookTitleStack = stack(body, {
+        const typoCard = body.createDiv({ cls: ERT_CLASSES.CARD_APR });
+        const bookTitleStack = stack(typoCard, {
             label: 'Book title',
             desc: 'Font family, weight, italic, and size.',
         });
@@ -593,7 +597,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             },
         });
 
-        const authorNameStack = stack(body, {
+        const authorNameStack = stack(typoCard, {
             label: 'Author name',
             desc: 'Font family, weight, italic, and size.',
         });
@@ -626,7 +630,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             },
         });
 
-        const percentStack = stack(body, {
+        const percentStack = stack(typoCard, {
             label: 'Percent number',
             desc: 'Number font and sizes for 1/2/3 digits.',
         });
@@ -675,7 +679,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             },
         });
 
-        const symbolStack = stack(body, {
+        const symbolStack = stack(typoCard, {
             label: 'Percent symbol',
             desc: 'Font family, weight, and italic.',
         });
@@ -700,7 +704,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             await saveAndPreview();
         });
 
-        const badgeStack = stack(body, {
+        const badgeStack = stack(typoCard, {
             label: 'RT badge',
             desc: 'Font family, weight, italic, size.',
         });
@@ -752,9 +756,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         tipsStack.createDiv({ cls: ERT_CLASSES.FIELD_NOTE, text: 'If preview still fails, open the APR modal and generate once to refresh cached data.' });
     });
 
-    // Campaign Manager (legacy UI wrapped)
+    // Campaign Manager (legacy UI wrapped, Pro skin)
     section(root, { title: 'Campaign Manager (Pro)', desc: 'Create multiple embeds with independent refresh schedules.' }, (body) => {
-        const legacyHost = body.createDiv({ attr: { 'data-ert-skip-validate': 'true' } });
+        const skinWrapper = body.createDiv({ cls: `${ERT_CLASSES.SKIN_PRO} ${ERT_CLASSES.DENSITY_COMPACT}` });
+        const legacyHost = skinWrapper.createDiv({ attr: { 'data-ert-skip-validate': 'true' } });
         renderCampaignManagerSection({ app, plugin, containerEl: legacyHost, onCampaignChange: () => void plugin.saveSettings() });
     });
 

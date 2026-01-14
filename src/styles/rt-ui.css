@@ -22,6 +22,14 @@
   width: 100%;
 }
 
+/* Density variants */
+.ert-ui.ert-density--compact,
+.ert-ui .ert-density--compact {
+  --ert-gap-sm: 6px;
+  --ert-gap-md: 10px;
+  --ert-pad-md: 14px;
+}
+
 /* Guard rails: reset margins that may leak in from themes */
 .ert-ui input,
 .ert-ui select,
@@ -253,7 +261,8 @@
 }
 
 /* APR skin overrides (visual only; no spacing changes) */
-.ert-ui.ert-skin--apr {
+.ert-ui.ert-skin--apr,
+.ert-ui .ert-skin--apr {
   --ert-surface-hero: color-mix(in srgb, var(--background-primary) 80%, var(--interactive-accent) 8%);
   --ert-border-hero: color-mix(in srgb, var(--interactive-accent) 25%, transparent);
   --ert-shadow-hero: 0 10px 36px color-mix(in srgb, var(--interactive-accent) 18%, transparent);
@@ -265,22 +274,66 @@
 }
 
 .ert-ui.ert-skin--apr .ert-card--hero,
-.ert-ui.ert-skin--apr .ert-section--hero {
+.ert-ui.ert-skin--apr .ert-section--hero,
+.ert-ui .ert-skin--apr .ert-card--hero,
+.ert-ui .ert-skin--apr .ert-section--hero {
   background: var(--ert-surface-hero);
   background-image: var(--ert-hero-grad);
   border: 1px solid var(--ert-border-hero);
   box-shadow: var(--ert-shadow-hero);
 }
 
-.ert-ui.ert-skin--apr .ert-iconBadge {
+.ert-ui.ert-skin--apr .ert-iconBadge,
+.ert-ui .ert-skin--apr .ert-iconBadge {
   background: var(--ert-iconBadge-bg);
 }
 
-.ert-ui.ert-skin--apr .ert-chip {
+.ert-ui.ert-skin--apr .ert-chip,
+.ert-ui .ert-skin--apr .ert-chip {
   background: var(--ert-chip-bg);
 }
 
-.ert-ui.ert-skin--apr .ert-previewFrame {
+.ert-ui.ert-skin--apr .ert-previewFrame,
+.ert-ui .ert-skin--apr .ert-previewFrame {
+  background: var(--ert-previewFrame-bg);
+  border-color: var(--ert-previewFrame-border);
+}
+
+/* Pro skin overrides (visual only; no spacing changes) */
+.ert-ui.ert-skin--pro,
+.ert-ui .ert-skin--pro {
+  --ert-surface-hero: color-mix(in srgb, var(--background-primary) 80%, var(--rt-pro-color, #d946ef) 10%);
+  --ert-border-hero: color-mix(in srgb, var(--rt-pro-color, #d946ef) 30%, transparent);
+  --ert-shadow-hero: 0 10px 36px color-mix(in srgb, var(--rt-pro-color, #d946ef) 18%, transparent);
+  --ert-hero-grad: radial-gradient(circle at 12% 20%, color-mix(in srgb, var(--rt-pro-color, #d946ef) 22%, transparent) 0%, transparent 46%), linear-gradient(135deg, color-mix(in srgb, var(--rt-pro-color, #d946ef) 14%, transparent) 0%, color-mix(in srgb, var(--rt-pro-color, #d946ef) 6%, transparent) 100%);
+  --ert-iconBadge-bg: color-mix(in srgb, var(--rt-pro-color, #d946ef) 18%, transparent);
+  --ert-chip-bg: color-mix(in srgb, var(--rt-pro-color, #d946ef) 12%, var(--background-secondary) 78%);
+  --ert-previewFrame-bg: color-mix(in srgb, var(--background-secondary) 82%, var(--rt-pro-color, #d946ef) 8%);
+  --ert-previewFrame-border: color-mix(in srgb, var(--rt-pro-color, #d946ef) 22%, transparent);
+}
+
+.ert-ui.ert-skin--pro .ert-card--hero,
+.ert-ui.ert-skin--pro .ert-section--hero,
+.ert-ui .ert-skin--pro .ert-card--hero,
+.ert-ui .ert-skin--pro .ert-section--hero {
+  background: var(--ert-surface-hero);
+  background-image: var(--ert-hero-grad);
+  border: 1px solid var(--ert-border-hero);
+  box-shadow: var(--ert-shadow-hero);
+}
+
+.ert-ui.ert-skin--pro .ert-iconBadge,
+.ert-ui .ert-skin--pro .ert-iconBadge {
+  background: var(--ert-iconBadge-bg);
+}
+
+.ert-ui.ert-skin--pro .ert-chip,
+.ert-ui .ert-skin--pro .ert-chip {
+  background: var(--ert-chip-bg);
+}
+
+.ert-ui.ert-skin--pro .ert-previewFrame,
+.ert-ui .ert-skin--pro .ert-previewFrame {
   background: var(--ert-previewFrame-bg);
   border-color: var(--ert-previewFrame-border);
 }
