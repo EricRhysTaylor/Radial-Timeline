@@ -2183,6 +2183,7 @@
   font-weight: 600;
   color: var(--text-normal);
   letter-spacing: 0.02em;
+  border-bottom: none;
 }
 
 /* Row utility */

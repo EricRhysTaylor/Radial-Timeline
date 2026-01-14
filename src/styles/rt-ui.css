@@ -1,0 +1,149 @@
+.ert-ui {
+  --ert-gap-xs: 4px;
+  --ert-gap-sm: 8px;
+  --ert-gap-md: 12px;
+  --ert-pad-sm: 12px;
+  --ert-pad-md: 16px;
+  --ert-label-w: 180px;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-md);
+  width: 100%;
+}
+
+/* Guard rails: reset margins that may leak in from themes */
+.ert-ui input,
+.ert-ui select,
+.ert-ui textarea,
+.ert-ui button,
+.ert-ui p,
+.ert-ui h1,
+.ert-ui h2,
+.ert-ui h3,
+.ert-ui h4,
+.ert-ui h5,
+.ert-ui h6 {
+  margin: 0;
+}
+
+.ert-ui .ert-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-sm);
+  padding: var(--ert-pad-md);
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+}
+
+.ert-ui .ert-section--tight {
+  padding: var(--ert-pad-sm);
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui .ert-section-title {
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.ert-ui .ert-section-desc {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.ert-ui .ert-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui .ert-row {
+  display: grid;
+  grid-template-columns: minmax(var(--ert-label-w), var(--ert-label-w)) 1fr;
+  gap: var(--ert-gap-sm);
+  align-items: flex-start;
+}
+
+.ert-ui .ert-row--compact {
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui .ert-row--tight {
+  margin-top: calc(-1 * var(--ert-gap-xs));
+}
+
+.ert-ui .ert-label {
+  font-weight: 600;
+  color: var(--text-muted);
+  padding-top: 4px;
+}
+
+.ert-ui .ert-row-desc {
+  grid-column: 2 / 3;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ert-ui .ert-control {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui .ert-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui .ert-stack--tight {
+  gap: 2px;
+}
+
+.ert-ui .ert-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui .ert-inline--split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui .ert-toggle-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ert-ui .ert-field-note {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ert-ui .ert-divider {
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin: var(--ert-gap-sm) 0;
+}
+
+/* Debug overlay (opt-in via .is-debug) */
+.ert-ui.is-debug .ert-section {
+  outline: 1px dashed rgba(255, 200, 0, 0.8);
+}
+
+.ert-ui.is-debug .ert-row,
+.ert-ui.is-debug .ert-stack,
+.ert-ui.is-debug .ert-inline {
+  outline: 1px dashed rgba(0, 200, 255, 0.7);
+}
+
+.ert-ui.is-debug .ert-control {
+  outline: 1px dotted rgba(255, 0, 128, 0.6);
+}

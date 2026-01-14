@@ -47,7 +47,6 @@ export class AprPaletteModal extends Modal {
         // Generate from Color Section (moved to top)
         const generateCard = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-palette-generate-card' });
         generateCard.createEl('h4', { text: 'Generate from Book Title Color', cls: 'rt-section-title' });
-        generateCard.createDiv({ text: 'Create a harmonious palette based on your current Book Title Color.', cls: 'rt-modal-desc' });
 
         const currentBookColor = this.settings?.aprBookAuthorColor || '#6FB971';
         const schemes: Array<{ value: 'analogous' | 'complementary' | 'triadic' | 'monochromatic'; label: string }> = [

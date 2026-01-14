@@ -1,14 +1,18 @@
-import { App, Setting, Notice, setIcon, normalizePath, ColorComponent, TextComponent, Modal, ButtonComponent } from 'obsidian';
+/*
+ * Social Media Tab: Author Progress Report (APR)
+ * Rebuilt with ERT UI primitives to standardize layout and spacing.
+ */
+
+import { App, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import { AuthorProgressService } from '../../services/AuthorProgressService';
+import type { AuthorProgressSettings, AuthorProgressFrequency, AuthorProgressPublishTarget } from '../../types/settings';
 import { DEFAULT_SETTINGS } from '../defaults';
-import { getAllScenes } from '../../utils/manuscript';
-import { createAprSVG } from '../../renderer/apr/AprRenderer';
-import { getPresetPalettes, generatePaletteFromColor } from '../../utils/aprPaletteGenerator';
+import { mountRoot, section, row, stack, inline, divider, textInput, dropdown, toggle, button, slider, colorPicker } from '../../ui/ui';
+import { ERT_CLASSES } from '../../ui/classes';
+import { validateErtLayout } from '../../ui/validator';
+import { AuthorProgressModal } from '../../modals/AuthorProgressModal';
 import { AprPaletteModal } from '../../modals/AprPaletteModal';
 import { renderCampaignManagerSection } from './CampaignManagerSection';
-import { isProfessionalActive } from './ProfessionalSection';
-import { addWikiLinkToElement } from '../wikiLink';
 
 export interface AuthorProgressSectionProps {
     app: App;
@@ -16,1046 +20,623 @@ export interface AuthorProgressSectionProps {
     containerEl: HTMLElement;
 }
 
-export function renderAuthorProgressSection({ app, plugin, containerEl }: AuthorProgressSectionProps): void {
-    const section = containerEl.createDiv({ cls: 'rt-settings-section rt-apr-section' });
-    
-    // Check if APR needs refresh
-    const aprService = new AuthorProgressService(plugin, app);
-    const needsRefresh = aprService.isStale();
-    
-    // ─────────────────────────────────────────────────────────────────────────
-    // APR HERO SECTION
-    // ─────────────────────────────────────────────────────────────────────────
-    const hero = section.createDiv({ cls: 'rt-apr-hero' });
-    
-    // Badge row with pill - turns red when refresh needed
-    const badgeRow = hero.createDiv({ cls: 'rt-apr-hero-badge-row' });
-    const badgeClasses = needsRefresh ? 'rt-apr-hero-badge rt-apr-badge-alert' : 'rt-apr-hero-badge';
-    const badge = badgeRow.createSpan({ cls: badgeClasses });
-    setIcon(badge, needsRefresh ? 'alert-triangle' : 'radio');
-    badge.createSpan({ text: needsRefresh ? 'Reminder to Refresh' : 'Share · Author Progress Report' });
-    // Add wiki link to the badge
-    addWikiLinkToElement(badge, 'Settings#social-media');
-    
-    // Big headline
-    hero.createEl('h3', { 
-        cls: 'rt-apr-hero-title', 
-        text: 'Promote your work in progress.' 
-    });
-    
-    // Description paragraph
-    hero.createEl('p', { 
-        cls: 'rt-apr-hero-subtitle', 
-        text: 'Generate vibrant, spoiler-safe progress graphics for social media and crowdfunding. Perfect for Kickstarter updates, Patreon posts, or sharing your writing journey with fans.' 
-    });
-    
-    // Features section
-    const featuresSection = hero.createDiv({ cls: 'rt-apr-hero-features' });
-    featuresSection.createEl('h5', { text: 'Key Benefits:' });
-    const featuresList = featuresSection.createEl('ul');
-    [
-        { icon: 'eye-off', text: 'Spoiler-Safe — Scene titles and content are not part of the graphic build process.' },
-        { icon: 'share-2', text: 'Shareable — Export as static snapshot or live-updating embed' },
-        { icon: 'trending-up', text: 'Stage-Weighted Progress — Tracks advancement through Zero → Author → House → Press' },
-    ].forEach(feature => {
-        const li = featuresList.createEl('li');
-        const iconSpan = li.createSpan({ cls: 'rt-apr-hero-feature-icon' });
-        setIcon(iconSpan, feature.icon);
-        li.createSpan({ text: feature.text });
-    });
-    
-    // Size selector and 1:1 preview
-    const previewSection = hero.createDiv({ cls: 'rt-apr-preview-section' });
-    
-    // Size selector row
-    const sizeSelectorRow = previewSection.createDiv({ cls: 'rt-apr-size-selector-row' });
-    sizeSelectorRow.createSpan({ text: 'Preview Size:', cls: 'rt-apr-size-label' });
-    
-    const sizeButtons = [
-        { size: 'small', dimension: '150' },
-        { size: 'medium', dimension: '300' },
-        { size: 'large', dimension: '450' },
-    ] as const;
-    
-    const currentSize = plugin.settings.authorProgress?.aprSize || 'medium';
-    
-    sizeButtons.forEach(({ size, dimension }) => {
-        const btn = sizeSelectorRow.createEl('button', { 
-            cls: `rt-apr-size-btn ${size === currentSize ? 'rt-apr-size-btn-active' : ''}`,
-            text: `${dimension}•${dimension}`
-        });
-        
-        btn.onclick = async () => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprSize = size;
-            await plugin.saveSettings();
-            
-            // Update button states
-            sizeSelectorRow.querySelectorAll('.rt-apr-size-btn').forEach(b => b.removeClass('rt-apr-size-btn-active'));
-            btn.addClass('rt-apr-size-btn-active');
-            
-            // Update dimension label
-            const dimLabel = previewSection.querySelector('.rt-apr-preview-dimension-label');
-            if (dimLabel) dimLabel.setText(`${dimension}×${dimension} — Actual size (scroll to see full preview)`);
-            
-            // Re-render preview at new size
-            void renderHeroPreview(app, plugin, previewContainer, size);
-        };
-    });
-    
-    // Dimension info
-    const currentDim = sizeButtons.find(s => s.size === currentSize)?.dimension || '300';
-    previewSection.createDiv({ 
-        cls: 'rt-apr-preview-dimension-label',
-        text: `${currentDim}×${currentDim} — Actual size (scroll to see full preview)`
-    });
-    
-    // SVG Preview container - shows at 1:1 actual size
-    const previewContainer = previewSection.createDiv({ cls: 'rt-apr-hero-preview rt-apr-preview-actual' });
-    previewContainer.createDiv({ cls: 'rt-apr-hero-preview-loading', text: 'Loading preview...' });
-    
-    // Load and render preview asynchronously at actual size
-    renderHeroPreview(app, plugin, previewContainer, currentSize);
-    const refreshPreview = () => { 
-        const size = plugin.settings.authorProgress?.aprSize || 'medium';
-        void renderHeroPreview(app, plugin, previewContainer, size); 
-    };
-    
-    // Meta tags
-    const settings = plugin.settings.authorProgress;
-    const lastDate = settings?.lastPublishedDate 
-        ? new Date(settings.lastPublishedDate).toLocaleDateString() 
-        : 'Never';
-    
-    const meta = hero.createDiv({ cls: 'rt-apr-hero-meta' });
-    meta.createSpan({ text: `Last update: ${lastDate}` });
-    meta.createSpan({ text: 'Kickstarter ready' });
-    meta.createSpan({ text: 'Patreon friendly' });
-    
-    // ─────────────────────────────────────────────────────────────────────────
-    // CONFIGURATION SECTION
-    // ─────────────────────────────────────────────────────────────────────────
-    const contentWrapper = section.createDiv({ cls: 'rt-apr-content-wrapper' });
-    
-    // Styling (background + branding colors) - placed first, close to preview
-    const stylingCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-styling-card rt-apr-stack-gap' });
-    stylingCard.createEl('h4', { text: 'Styling', cls: 'rt-section-title' });
+const sizeOptions: Record<'small' | 'medium' | 'large', string> = {
+    small: 'Small (150×150)',
+    medium: 'Medium (300×300)',
+    large: 'Large (450×450)',
+};
 
-    const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
-    const currentTransparent = settings?.aprCenterTransparent ?? true; // Default to true (recommended)
-    const currentTheme = settings?.aprTheme || 'dark';
-    const currentSpokeMode = settings?.aprSpokeColorMode || 'dark';
-    const currentSpokeColor = settings?.aprSpokeColor || '#ffffff';
+const publishTargets: Record<AuthorProgressPublishTarget, string> = {
+    folder: 'Obsidian vault folder',
+    github_pages: 'GitHub Pages (or similar static hosting)',
+};
 
-    // Transparency (Recommended) - placed FIRST with special styling
-    const transparencySetting = new Setting(stylingCard)
-        .setName('Transparent Mode (Recommended)')
-        .setDesc('No background fill — adapts to any page or app. Ideal for websites, blogs, and platforms that preserve SVG transparency.');
-    
-    // Background color - for special situations only (when transparency is off)
-    const bgSetting = new Setting(stylingCard)
-        .setName('Background Color')
-        .setDesc('Bakes in a solid background. Use when transparency isn\'t reliable: email newsletters, Kickstarter, PDF exports, or platforms that rasterize SVGs.');
-    
-    // Store references to the color picker and text input for enabling/disabling
-    let bgColorPicker: any = null; // SAFE: any type used for Obsidian color picker component reference
-    let bgTextInput: any = null; // SAFE: any type used for Obsidian text component reference
-    
-    // Helper to swap emphasis and enable/disable background controls
-    const updateEmphasis = (isTransparent: boolean) => {
-        if (isTransparent) {
-            transparencySetting.settingEl.classList.add('rt-apr-recommended-setting');
-            bgSetting.settingEl.classList.remove('rt-apr-recommended-setting');
-            bgSetting.settingEl.classList.add('rt-setting-muted');
-            if (bgColorPicker) bgColorPicker.setDisabled(true);
-            if (bgTextInput) bgTextInput.setDisabled(true);
-        } else {
-            transparencySetting.settingEl.classList.remove('rt-apr-recommended-setting');
-            bgSetting.settingEl.classList.add('rt-apr-recommended-setting');
-            bgSetting.settingEl.classList.remove('rt-setting-muted');
-            if (bgColorPicker) bgColorPicker.setDisabled(false);
-            if (bgTextInput) bgTextInput.setDisabled(false);
-        }
-    };
-    
-    transparencySetting.addToggle(toggle => {
-        toggle.setValue(currentTransparent);
-        toggle.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprCenterTransparent = val;
-            await plugin.saveSettings();
-            updateEmphasis(val);
-            refreshPreview();
-        });
-    });
+const frequencyOptions: Record<AuthorProgressFrequency, string> = {
+    manual: 'Manual (no auto-updates)',
+    daily: 'Daily',
+    weekly: 'Weekly',
+    monthly: 'Monthly',
+};
 
-    bgSetting.addColorPicker(picker => {
-        bgColorPicker = picker;
-        picker.setValue(currentBg);
-        picker.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprBackgroundColor = val || '#0d0d0f';
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
+const themeOptions: Record<'dark' | 'light' | 'none', string> = {
+    dark: 'Dark (recommended)',
+    light: 'Light',
+    none: 'No stroke contrast',
+};
 
-    bgSetting.addText(text => {
-        bgTextInput = text;
-        text.setPlaceholder('#0d0d0f').setValue(currentBg);
-        text.inputEl.classList.add('rt-hex-input');
-        text.onChange(async (val) => {
-            if (!val) return;
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprBackgroundColor = val;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-    
-    // Set initial emphasis state after controls are created
-    updateEmphasis(currentTransparent);
+const spokeColorModeOptions: Record<'dark' | 'light' | 'none' | 'custom', string> = {
+    dark: 'Match dark theme',
+    light: 'Match light theme',
+    none: 'Hide spokes',
+    custom: 'Custom color',
+};
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // UNIFIED TYPOGRAPHY & COLOR CONTROLS
-    // Each element: Row 1 = Label + Text Input (if applicable) + Color + Hex
-    //               Row 2 = Font + Weight
-    // ─────────────────────────────────────────────────────────────────────────
-    const typographyContainer = stylingCard.createDiv({ cls: 'rt-apr-typography-container' });
-    
-    // Palette tracking & color picker refs
-    let lastAppliedPalette: { bookTitle: string; authorName: string; percentNumber: string; percentSymbol: string } | null = null;
-    let bookTitleColorPickerRef: ColorComponent | undefined;
-    let bookTitleTextRef: TextComponent | undefined;
-    let authorColorPickerRef: ColorComponent | undefined;
-    let authorTextRef: TextComponent | undefined;
-    let percentNumberColorPickerRef: ColorComponent | undefined;
-    let percentNumberTextRef: TextComponent | undefined;
-    let percentSymbolColorPickerRef: ColorComponent | undefined;
-    let percentSymbolTextRef: TextComponent | undefined;
-    
-    const bookTitleColorFallback = plugin.settings.publishStageColors?.Press || '#6FB971';
-    
-    // Curated font list
-    const FONT_OPTIONS = [
-        { value: 'default', label: 'Default' },
-        { value: 'Inter', label: 'Inter' },
-        { value: 'system-ui', label: 'System UI' },
-        { value: 'Exo', label: 'Exo' },
-        { value: 'Roboto', label: 'Roboto' },
-        { value: 'Montserrat', label: 'Montserrat' },
-        { value: 'Open Sans', label: 'Open Sans' },
-        { value: 'Dancing Script', label: 'Dancing Script' },
-        { value: 'Caveat', label: 'Caveat' }
-    ];
-    
-    // Weight options with italic variants
-    const WEIGHT_OPTIONS = [
-        { value: '300', label: 'Light (300)' },
-        { value: '300-italic', label: 'Light Italic' },
-        { value: '400', label: 'Normal (400)' },
-        { value: '400-italic', label: 'Normal Italic' },
-        { value: '500', label: 'Medium (500)' },
-        { value: '500-italic', label: 'Medium Italic' },
-        { value: '600', label: 'Semi-Bold (600)' },
-        { value: '600-italic', label: 'Semi-Bold Italic' },
-        { value: '700', label: 'Bold (700)' },
-        { value: '700-italic', label: 'Bold Italic' },
-        { value: '800', label: 'Extra-Bold (800)' },
-        { value: '800-italic', label: 'Extra-Bold Italic' },
-        { value: '900', label: 'Black (900)' },
-        { value: '900-italic', label: 'Black Italic' }
-    ];
-    
-    const parseWeightValue = (val: string): { weight: number; italic: boolean } => {
-        if (val.includes('-italic')) {
-            return { weight: parseInt(val.split('-')[0], 10), italic: true };
-        }
-        return { weight: parseInt(val, 10), italic: false };
-    };
-    
-    const formatWeightValue = (weight: number, italic: boolean): string => {
-        return italic ? `${weight}-italic` : String(weight);
-    };
-    
-    // ─────────────────────────────────────────────────────────────────────────
-    // COLOR PALETTE (at top, inside bordered group)
-    // ─────────────────────────────────────────────────────────────────────────
-    const currentBookTitleColorVal = settings?.aprBookAuthorColor || bookTitleColorFallback;
-    const paletteGroupWrapper = typographyContainer.createDiv({ cls: 'rt-apr-palette-book-title-group rt-apr-unified-group' });
-    paletteGroupWrapper.style.setProperty('--rt-palette-border-color', currentBookTitleColorVal);
-    
-    const paletteHelperSetting = new Setting(paletteGroupWrapper).setName('Color Palette');
-    paletteHelperSetting.descEl.remove();
-    const paletteIcon = paletteHelperSetting.nameEl.createSpan({ cls: 'rt-setting-icon' });
-    setIcon(paletteIcon, 'palette');
-    
-    paletteHelperSetting.addButton(button => {
-        button.setButtonText('Choose Palette');
-        button.setCta();
-        button.onClick(() => {
-            const modal = new AprPaletteModal(app, plugin, plugin.settings.authorProgress || DEFAULT_SETTINGS.authorProgress || {} as any, (palette) => {
-                bookTitleColorPickerRef?.setValue(palette.bookTitle);
-                bookTitleTextRef?.setValue(palette.bookTitle);
-                authorColorPickerRef?.setValue(palette.authorName);
-                authorTextRef?.setValue(palette.authorName);
-                percentNumberColorPickerRef?.setValue(palette.percentNumber);
-                percentNumberTextRef?.setValue(palette.percentNumber);
-                percentSymbolColorPickerRef?.setValue(palette.percentSymbol);
-                percentSymbolTextRef?.setValue(palette.percentSymbol);
-                paletteGroupWrapper.style.setProperty('--rt-palette-border-color', palette.bookTitle);
-                lastAppliedPalette = palette;
-                refreshPreview();
-            });
-            modal.open();
-        });
-    });
-    
-    // ─────────────────────────────────────────────────────────────────────────
-    // TITLE SECTION
-    // Row 1: Title label + text input + color swatch + hex
-    // Row 2: Font + Weight
-    // ─────────────────────────────────────────────────────────────────────────
-    const titleRow1 = new Setting(paletteGroupWrapper).setName('Title');
-    titleRow1.descEl.remove();
-    titleRow1.settingEl.addClass('rt-apr-unified-row');
-    
-    titleRow1.addText(text => {
-        text.setPlaceholder('Working Title');
-        text.setValue(settings?.bookTitle || '');
-        text.inputEl.addClass('rt-apr-text-input');
-        text.onChange(async (val) => {
-            if (plugin.settings.authorProgress) {
-                plugin.settings.authorProgress.bookTitle = val;
-                await plugin.saveSettings();
-                refreshPreview();
-            }
-        });
-    });
-    
-    titleRow1.addColorPicker(picker => {
-        bookTitleColorPickerRef = picker;
-        picker.setValue(currentBookTitleColorVal);
-        picker.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprBookAuthorColor = val || bookTitleColorFallback;
-            await plugin.saveSettings();
-            refreshPreview();
-            bookTitleTextRef?.setValue(val);
-            paletteGroupWrapper.style.setProperty('--rt-palette-border-color', val);
-        });
-    });
-    
-    titleRow1.addText(text => {
-        bookTitleTextRef = text;
-        text.inputEl.classList.add('rt-hex-input');
-        text.setPlaceholder(bookTitleColorFallback).setValue(currentBookTitleColorVal);
-        text.onChange(async (val) => {
-            if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprBookAuthorColor = val;
-            await plugin.saveSettings();
-            refreshPreview();
-            bookTitleColorPickerRef?.setValue(val);
-            paletteGroupWrapper.style.setProperty('--rt-palette-border-color', val);
-        });
-    });
-    
-    const titleRow2 = new Setting(paletteGroupWrapper);
-    titleRow2.nameEl.remove();
-    titleRow2.descEl.remove();
-    titleRow2.settingEl.addClass('rt-apr-unified-row-secondary');
-    
-    titleRow2.addDropdown(drop => {
-        FONT_OPTIONS.forEach(font => drop.addOption(font.value, font.label));
-        const currentFont = settings?.aprBookTitleFontFamily || 'Inter';
-        drop.setValue(currentFont === 'Inter' ? 'default' : currentFont);
-        drop.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprBookTitleFontFamily = val === 'default' ? 'Inter' : val;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-    
-    titleRow2.addDropdown(drop => {
-        WEIGHT_OPTIONS.forEach(opt => drop.addOption(opt.value, opt.label));
-        const currentWeight = settings?.aprBookTitleFontWeight || 400;
-        const currentItalic = settings?.aprBookTitleFontItalic ?? false;
-        drop.setValue(formatWeightValue(currentWeight, currentItalic));
-        drop.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            const { weight, italic } = parseWeightValue(val);
-            plugin.settings.authorProgress.aprBookTitleFontWeight = weight;
-            plugin.settings.authorProgress.aprBookTitleFontItalic = italic;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-    
-    // ─────────────────────────────────────────────────────────────────────────
-    // AUTHOR SECTION
-    // ─────────────────────────────────────────────────────────────────────────
-    const authorGroup = typographyContainer.createDiv({ cls: 'rt-apr-unified-group' });
-    
-    const authorColorFallback = settings?.aprBookAuthorColor || bookTitleColorFallback;
-    const currentAuthorColor = settings?.aprAuthorColor || authorColorFallback;
-    
-    const authorRow1 = new Setting(authorGroup).setName('Author');
-    authorRow1.descEl.remove();
-    authorRow1.settingEl.addClass('rt-apr-unified-row');
-    
-    authorRow1.addText(text => {
-        text.setPlaceholder('Author Name');
-        text.setValue(settings?.authorName || '');
-        text.inputEl.addClass('rt-apr-text-input');
-        text.onChange(async (val) => {
-            if (plugin.settings.authorProgress) {
-                plugin.settings.authorProgress.authorName = val;
-                await plugin.saveSettings();
-                refreshPreview();
-            }
-        });
-    });
-    
-    authorRow1.addColorPicker(picker => {
-        authorColorPickerRef = picker;
-        picker.setValue(currentAuthorColor);
-        picker.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprAuthorColor = val || authorColorFallback;
-            await plugin.saveSettings();
-            refreshPreview();
-            authorTextRef?.setValue(val);
-        });
-    });
-    
-    authorRow1.addText(text => {
-        authorTextRef = text;
-        text.inputEl.classList.add('rt-hex-input');
-        text.setPlaceholder(authorColorFallback).setValue(currentAuthorColor);
-        text.onChange(async (val) => {
-            if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprAuthorColor = val;
-            await plugin.saveSettings();
-            refreshPreview();
-            authorColorPickerRef?.setValue(val);
-        });
-    });
-    
-    const authorRow2 = new Setting(authorGroup);
-    authorRow2.nameEl.remove();
-    authorRow2.descEl.remove();
-    authorRow2.settingEl.addClass('rt-apr-unified-row-secondary');
-    
-    authorRow2.addDropdown(drop => {
-        FONT_OPTIONS.forEach(font => drop.addOption(font.value, font.label));
-        const currentFont = settings?.aprAuthorNameFontFamily || 'Inter';
-        drop.setValue(currentFont === 'Inter' ? 'default' : currentFont);
-        drop.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprAuthorNameFontFamily = val === 'default' ? 'Inter' : val;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-    
-    authorRow2.addDropdown(drop => {
-        WEIGHT_OPTIONS.forEach(opt => drop.addOption(opt.value, opt.label));
-        const currentWeight = settings?.aprAuthorNameFontWeight || 400;
-        const currentItalic = settings?.aprAuthorNameFontItalic ?? false;
-        drop.setValue(formatWeightValue(currentWeight, currentItalic));
-        drop.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            const { weight, italic } = parseWeightValue(val);
-            plugin.settings.authorProgress.aprAuthorNameFontWeight = weight;
-            plugin.settings.authorProgress.aprAuthorNameFontItalic = italic;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-    
-    // ─────────────────────────────────────────────────────────────────────────
-    // % SYMBOL SECTION
-    // ─────────────────────────────────────────────────────────────────────────
-    const symbolGroup = typographyContainer.createDiv({ cls: 'rt-apr-unified-group' });
-    
-    const percentSymbolColorFallback = settings?.aprBookAuthorColor || bookTitleColorFallback;
-    const currentPercentSymbolColor = settings?.aprPercentSymbolColor || percentSymbolColorFallback;
-    
-    const symbolRow1 = new Setting(symbolGroup).setName('% Symbol');
-    symbolRow1.descEl.remove();
-    symbolRow1.settingEl.addClass('rt-apr-unified-row');
-    
-    symbolRow1.addColorPicker(picker => {
-        percentSymbolColorPickerRef = picker;
-        picker.setValue(currentPercentSymbolColor);
-        picker.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprPercentSymbolColor = val || percentSymbolColorFallback;
-            await plugin.saveSettings();
-            refreshPreview();
-            percentSymbolTextRef?.setValue(val);
-        });
-    });
-    
-    symbolRow1.addText(text => {
-        percentSymbolTextRef = text;
-        text.inputEl.classList.add('rt-hex-input');
-        text.setPlaceholder(percentSymbolColorFallback).setValue(currentPercentSymbolColor);
-        text.onChange(async (val) => {
-            if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprPercentSymbolColor = val;
-            await plugin.saveSettings();
-            refreshPreview();
-            percentSymbolColorPickerRef?.setValue(val);
-        });
-    });
-    
-    const symbolRow2 = new Setting(symbolGroup);
-    symbolRow2.nameEl.remove();
-    symbolRow2.descEl.remove();
-    symbolRow2.settingEl.addClass('rt-apr-unified-row-secondary');
-    
-    symbolRow2.addDropdown(drop => {
-        FONT_OPTIONS.forEach(font => drop.addOption(font.value, font.label));
-        const currentFont = settings?.aprPercentSymbolFontFamily || 'Inter';
-        drop.setValue(currentFont === 'Inter' ? 'default' : currentFont);
-        drop.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprPercentSymbolFontFamily = val === 'default' ? 'Inter' : val;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-    
-    symbolRow2.addDropdown(drop => {
-        WEIGHT_OPTIONS.forEach(opt => drop.addOption(opt.value, opt.label));
-        const currentWeight = settings?.aprPercentSymbolFontWeight || 800;
-        const currentItalic = settings?.aprPercentSymbolFontItalic ?? false;
-        drop.setValue(formatWeightValue(currentWeight, currentItalic));
-        drop.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            const { weight, italic } = parseWeightValue(val);
-            plugin.settings.authorProgress.aprPercentSymbolFontWeight = weight;
-            plugin.settings.authorProgress.aprPercentSymbolFontItalic = italic;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-    
-    // ─────────────────────────────────────────────────────────────────────────
-    // % NUMBER SECTION
-    // ─────────────────────────────────────────────────────────────────────────
-    const numberGroup = typographyContainer.createDiv({ cls: 'rt-apr-unified-group' });
-    
-    const percentNumberColorFallback = settings?.aprBookAuthorColor || bookTitleColorFallback;
-    const currentPercentNumberColor = settings?.aprPercentNumberColor || percentNumberColorFallback;
-    
-    const numberRow1 = new Setting(numberGroup).setName('% Number');
-    numberRow1.descEl.remove();
-    numberRow1.settingEl.addClass('rt-apr-unified-row');
-    
-    numberRow1.addColorPicker(picker => {
-        percentNumberColorPickerRef = picker;
-        picker.setValue(currentPercentNumberColor);
-        picker.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprPercentNumberColor = val || percentNumberColorFallback;
-            await plugin.saveSettings();
-            refreshPreview();
-            percentNumberTextRef?.setValue(val);
-        });
-    });
-    
-    numberRow1.addText(text => {
-        percentNumberTextRef = text;
-        text.inputEl.classList.add('rt-hex-input');
-        text.setPlaceholder(percentNumberColorFallback).setValue(currentPercentNumberColor);
-        text.onChange(async (val) => {
-            if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprPercentNumberColor = val;
-            await plugin.saveSettings();
-            refreshPreview();
-            percentNumberColorPickerRef?.setValue(val);
-        });
-    });
-    
-    const numberRow2 = new Setting(numberGroup);
-    numberRow2.nameEl.remove();
-    numberRow2.descEl.remove();
-    numberRow2.settingEl.addClass('rt-apr-unified-row-secondary');
-    
-    numberRow2.addDropdown(drop => {
-        FONT_OPTIONS.forEach(font => drop.addOption(font.value, font.label));
-        const currentFont = settings?.aprPercentNumberFontFamily || 'Inter';
-        drop.setValue(currentFont === 'Inter' ? 'default' : currentFont);
-        drop.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprPercentNumberFontFamily = val === 'default' ? 'Inter' : val;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-    
-    numberRow2.addDropdown(drop => {
-        WEIGHT_OPTIONS.forEach(opt => drop.addOption(opt.value, opt.label));
-        const currentWeight = settings?.aprPercentNumberFontWeight || 800;
-        const currentItalic = settings?.aprPercentNumberFontItalic ?? false;
-        drop.setValue(formatWeightValue(currentWeight, currentItalic));
-        drop.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            const { weight, italic } = parseWeightValue(val);
-            plugin.settings.authorProgress.aprPercentNumberFontWeight = weight;
-            plugin.settings.authorProgress.aprPercentNumberFontItalic = italic;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-    
-    // ─────────────────────────────────────────────────────────────────────────
-    // RT BADGE SECTION
-    // ─────────────────────────────────────────────────────────────────────────
-    const badgeGroup = typographyContainer.createDiv({ cls: 'rt-apr-unified-group' });
-    
-    const rtBadgeColorFallback = '#e5e5e5';
-    const currentRtBadgeColor = settings?.aprEngineColor || rtBadgeColorFallback;
-    
-    const badgeRow1 = new Setting(badgeGroup).setName('RT Badge');
-    badgeRow1.descEl.remove();
-    badgeRow1.settingEl.addClass('rt-apr-unified-row');
-    
-    badgeRow1.addColorPicker(picker => {
-        picker.setValue(currentRtBadgeColor);
-        picker.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprEngineColor = val || rtBadgeColorFallback;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-    
-    badgeRow1.addText(text => {
-        text.inputEl.classList.add('rt-hex-input');
-        text.setPlaceholder(rtBadgeColorFallback).setValue(currentRtBadgeColor);
-        text.onChange(async (val) => {
-            if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprEngineColor = val;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-    
-    const badgeRow2 = new Setting(badgeGroup);
-    badgeRow2.nameEl.remove();
-    badgeRow2.descEl.remove();
-    badgeRow2.settingEl.addClass('rt-apr-unified-row-secondary');
-    
-    badgeRow2.addDropdown(drop => {
-        FONT_OPTIONS.forEach(font => drop.addOption(font.value, font.label));
-        const currentFont = settings?.aprRtBadgeFontFamily || 'Inter';
-        drop.setValue(currentFont === 'Inter' ? 'default' : currentFont);
-        drop.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprRtBadgeFontFamily = val === 'default' ? 'Inter' : val;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-    
-    badgeRow2.addDropdown(drop => {
-        WEIGHT_OPTIONS.forEach(opt => drop.addOption(opt.value, opt.label));
-        const currentWeight = settings?.aprRtBadgeFontWeight || 700;
-        const currentItalic = settings?.aprRtBadgeFontItalic ?? false;
-        drop.setValue(formatWeightValue(currentWeight, currentItalic));
-        drop.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            const { weight, italic } = parseWeightValue(val);
-            plugin.settings.authorProgress.aprRtBadgeFontWeight = weight;
-            plugin.settings.authorProgress.aprRtBadgeFontItalic = italic;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
+const fontWeightOptions: Record<string, string> = {
+    '300': '300 · Light',
+    '400': '400 · Regular',
+    '500': '500 · Medium',
+    '600': '600 · Semi-bold',
+    '700': '700 · Bold',
+    '800': '800 · Extra-bold',
+};
 
-    // Theme/Spokes Color setting (unified - controls both theme and spokes)
-    const spokeColorSetting = new Setting(stylingCard)
-        .setName('Theme Contrast & Spokes')
-        .setDesc('Choose stroke/border contrast. Controls all structural elements including scene borders and act division spokes.');
-    
-    let spokeColorPickerRef: ColorComponent | undefined;
-    let spokeColorInputRef: TextComponent | undefined;
-    
-    // Match Book Title Color layout exactly - always show color picker and text input
-    const isCustomMode = currentSpokeMode === 'custom';
-    const fallbackColor = '#ffffff';
-    spokeColorSetting.addColorPicker(picker => {
-        spokeColorPickerRef = picker;
-        picker.setValue(isCustomMode ? currentSpokeColor : fallbackColor);
-        picker.setDisabled(!isCustomMode);
-        picker.onChange(async (val) => {
-            if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
-                if (!plugin.settings.authorProgress) return;
-                plugin.settings.authorProgress.aprSpokeColor = val || fallbackColor;
-                await plugin.saveSettings();
-                refreshPreview();
-                spokeColorInputRef?.setValue(val);
-            }
-        });
-    });
-    
-    spokeColorSetting.addText(text => {
-        spokeColorInputRef = text;
-        text.inputEl.classList.add('rt-hex-input');
-        text.setPlaceholder(fallbackColor).setValue(isCustomMode ? currentSpokeColor : fallbackColor);
-        text.setDisabled(!isCustomMode);
-        text.onChange(async (val) => {
-            if (!val) return;
-            if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
-                if (!plugin.settings.authorProgress) return;
-                plugin.settings.authorProgress.aprSpokeColor = val;
-                await plugin.saveSettings();
-                refreshPreview();
-                spokeColorPickerRef?.setValue(val);
-            }
-        });
-    });
-    
-    // Dropdown for mode (added after color controls, appears to the right)
-    spokeColorSetting.addDropdown(drop => {
-        drop.addOption('dark', 'Light Strokes');
-        drop.addOption('light', 'Dark Strokes');
-        drop.addOption('none', 'No Strokes');
-        drop.addOption('custom', 'Custom Color');
-        // Use spoke mode if set, otherwise fall back to theme
-        const currentValue = currentSpokeMode !== 'dark' ? currentSpokeMode : (currentTheme !== 'dark' ? currentTheme : 'dark');
-        drop.setValue(currentValue);
-        drop.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            const mode = (val as 'dark' | 'light' | 'none' | 'custom') || 'dark';
-            // Update both theme and spoke mode to keep them in sync
-            plugin.settings.authorProgress.aprTheme = mode === 'custom' ? 'dark' : (mode as 'dark' | 'light' | 'none');
-            plugin.settings.authorProgress.aprSpokeColorMode = mode;
-            await plugin.saveSettings();
-            
-            // Enable/disable color controls based on mode (always visible, just disabled)
-            const isCustom = mode === 'custom';
-            spokeColorPickerRef?.setDisabled(!isCustom);
-            spokeColorInputRef?.setDisabled(!isCustom);
-            if (isCustom && spokeColorInputRef) {
-                const current = plugin.settings.authorProgress.aprSpokeColor || fallbackColor;
-                spokeColorInputRef.setValue(current);
-                spokeColorPickerRef?.setValue(current);
-            } else if (spokeColorInputRef) {
-                spokeColorInputRef.setValue(fallbackColor);
-                spokeColorPickerRef?.setValue(fallbackColor);
-            }
-            
-            refreshPreview();
-        });
-    });
+function ensureAprSettings(plugin: RadialTimelinePlugin): AuthorProgressSettings {
+    const base = (DEFAULT_SETTINGS.authorProgress ?? {
+        enabled: false,
+        defaultNoteBehavior: 'preset',
+        defaultPublishTarget: 'folder',
+        showSubplots: true,
+        showActs: true,
+        showStatus: true,
+        showProgressPercent: true,
+        aprSize: 'medium',
+        aprBackgroundColor: '#0d0d0f',
+        aprCenterTransparent: true,
+        bookTitle: '',
+        authorUrl: '',
+        updateFrequency: 'manual',
+        stalenessThresholdDays: 30,
+        enableReminders: true,
+        dynamicEmbedPath: 'Radial Timeline/Social/progress.svg',
+    }) as AuthorProgressSettings;
 
-
-    // Link URL (Title and Author are now in the typography section above)
-    const linkUrlSetting = new Setting(stylingCard)
-        .setName('Link URL')
-        .setDesc('Where the graphic should link to (e.g. your website, Kickstarter, or shop).');
-    
-    linkUrlSetting.settingEl.addClass('rt-setting-full-width-input');
-    
-    linkUrlSetting.addText(text => {
-        text.inputEl.addClass('rt-input-full');
-        text.setPlaceholder('https://your-site.com')
-            .setValue(settings?.authorUrl || '')
-            .onChange(async (val) => {
-                if (plugin.settings.authorProgress) {
-                    plugin.settings.authorProgress.authorUrl = val;
-                    await plugin.saveSettings();
-                    refreshPreview();
-                }
-            });
-    });
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // PUBLISHING SECTION
-    // Pro users use Campaign Manager instead, non-Pro users see basic publishing options
-    // ─────────────────────────────────────────────────────────────────────────
-    const isProActive = isProfessionalActive(plugin);
-    
-    // Only show basic Publishing & Automation for non-Pro users
-    if (!isProActive) {
-    const automationCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-automation-card rt-apr-stack-gap' });
-    automationCard.createEl('h4', { text: 'Publishing & Automation', cls: 'rt-section-title' });
-
-    const frequencySetting = new Setting(automationCard)
-        .setName('Update Frequency')
-        .setDesc('How often to auto-update the live embed file. "Manual" requires clicking the update button in the Author Progress Report modal.')
-        .addDropdown(dropdown => dropdown
-            .addOption('manual', 'Manual Only')
-            .addOption('daily', 'Daily')
-            .addOption('weekly', 'Weekly')
-            .addOption('monthly', 'Monthly')
-            .setValue(settings?.updateFrequency || 'manual')
-            .onChange(async (val) => {
-                if (plugin.settings.authorProgress) {
-                    plugin.settings.authorProgress.updateFrequency = val as any;
-                    await plugin.saveSettings();
-                }
-            })
-        );
-    
-    // Add red alert border when refresh is needed
-    if (needsRefresh) {
-        frequencySetting.settingEl.classList.add('rt-apr-refresh-alert');
+    if (!plugin.settings.authorProgress) {
+        plugin.settings.authorProgress = { ...base };
+    } else {
+        const ap = plugin.settings.authorProgress;
+        if (ap.enabled === undefined) ap.enabled = base.enabled;
+        if (!ap.defaultNoteBehavior) ap.defaultNoteBehavior = base.defaultNoteBehavior;
+        if (!ap.defaultPublishTarget) ap.defaultPublishTarget = base.defaultPublishTarget;
+        if (ap.showSubplots === undefined) ap.showSubplots = base.showSubplots;
+        if (ap.showActs === undefined) ap.showActs = base.showActs;
+        if (ap.showStatus === undefined) ap.showStatus = base.showStatus;
+        if (ap.showProgressPercent === undefined) ap.showProgressPercent = base.showProgressPercent;
+        if (!ap.aprSize) ap.aprSize = base.aprSize;
+        if (ap.aprBackgroundColor === undefined) ap.aprBackgroundColor = base.aprBackgroundColor;
+        if (ap.aprCenterTransparent === undefined) ap.aprCenterTransparent = base.aprCenterTransparent;
+        if (ap.bookTitle === undefined) ap.bookTitle = '';
+        if (ap.authorUrl === undefined) ap.authorUrl = '';
+        if (!ap.updateFrequency) ap.updateFrequency = base.updateFrequency;
+        if (ap.stalenessThresholdDays === undefined) ap.stalenessThresholdDays = base.stalenessThresholdDays;
+        if (ap.enableReminders === undefined) ap.enableReminders = base.enableReminders;
+        if (!ap.dynamicEmbedPath) ap.dynamicEmbedPath = base.dynamicEmbedPath;
     }
 
-    // Conditional Manual Settings
-    if (settings?.updateFrequency === 'manual') {
-        const currentDays = settings?.stalenessThresholdDays || 30;
-        const stalenessSetting = new Setting(automationCard)
-            .setName('Refresh Alert Threshold')
-            .setDesc(`Days before showing a refresh reminder in the timeline view. Currently: ${currentDays} days.`)
-            .addSlider(slider => {
-                slider
-                    .setLimits(1, 90, 1)
-                    .setValue(currentDays)
-                    .onChange(async (val) => {
-                        if (plugin.settings.authorProgress) {
-                            plugin.settings.authorProgress.stalenessThresholdDays = val;
-                            await plugin.saveSettings();
-                            // Update description with new value
-                            const descEl = stalenessSetting.descEl;
-                            if (descEl) {
-                                descEl.setText(`Days before showing a refresh reminder in the timeline view. Currently: ${val} days.`);
-                            }
-                            // Update value label
-                            if (valueLabel) {
-                                valueLabel.setText(String(val));
-                            }
-                        }
-                    });
-                
-                // Add value label above the slider thumb
-                const sliderEl = slider.sliderEl;
-                const valueLabel = sliderEl.parentElement?.createEl('span', {
-                    cls: 'rt-slider-value-label',
-                    text: String(currentDays)
-                });
-                
-                return slider;
-            });
-        
-        // Add red alert border when refresh is needed
-        if (needsRefresh) {
-            stalenessSetting.settingEl.classList.add('rt-apr-refresh-alert');
-        }
-    }
-
-    const embedPathSetting = new Setting(automationCard)
-        .setName('Embed File Path')
-        .setDesc(`Location for the "Live Embed" SVG file. Must end with .svg. Default: ${DEFAULT_SETTINGS.authorProgress?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg'}`);
-    
-    embedPathSetting.settingEl.addClass('rt-setting-full-width-input');
-    
-    embedPathSetting.addText(text => {
-        const defaultPath = DEFAULT_SETTINGS.authorProgress?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg';
-        text.inputEl.addClass('rt-input-full');
-        text.setPlaceholder(defaultPath)
-            .setValue(settings?.dynamicEmbedPath || defaultPath);
-        
-        // Validate on blur
-        const handleBlur = async () => {
-            const val = text.getValue().trim();
-            text.inputEl.removeClass('rt-setting-input-success');
-            text.inputEl.removeClass('rt-setting-input-error');
-            
-            if (!val) {
-                // Empty is invalid - needs a path
-                text.inputEl.addClass('rt-setting-input-error');
-                window.setTimeout(() => {
-                    text.inputEl.removeClass('rt-setting-input-error');
-                }, 2000);
-                return;
-            }
-            
-            if (!val.toLowerCase().endsWith('.svg')) {
-                text.inputEl.addClass('rt-setting-input-error');
-                window.setTimeout(() => {
-                    text.inputEl.removeClass('rt-setting-input-error');
-                }, 2000);
-                return;
-            }
-            
-            // Valid - save
-            if (plugin.settings.authorProgress) {
-                plugin.settings.authorProgress.dynamicEmbedPath = val;
-                await plugin.saveSettings();
-                text.inputEl.addClass('rt-setting-input-success');
-                window.setTimeout(() => {
-                    text.inputEl.removeClass('rt-setting-input-success');
-                }, 1000);
-            }
-        };
-        
-        plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
-        
-        // Also handle Enter key
-        plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-            if (evt.key === 'Enter') {
-                evt.preventDefault();
-                text.inputEl.blur();
-            }
-        });
-
-        embedPathSetting.addExtraButton(button => {
-            button.setIcon('rotate-ccw');
-            button.setTooltip(`Reset to ${defaultPath}`);
-            button.onClick(async () => {
-                text.setValue(defaultPath);
-                if (!plugin.settings.authorProgress) {
-                    plugin.settings.authorProgress = { ...DEFAULT_SETTINGS.authorProgress! };
-                }
-                plugin.settings.authorProgress.dynamicEmbedPath = normalizePath(defaultPath);
-                await plugin.saveSettings();
-                text.inputEl.addClass('rt-setting-input-success');
-                window.setTimeout(() => {
-                    text.inputEl.removeClass('rt-setting-input-success');
-                }, 1000);
-            });
-        });
-    });
-    
-    // Pro upgrade teaser for non-Pro users
-    const proTeaser = automationCard.createDiv({ cls: 'rt-apr-pro-teaser' });
-    const teaserIcon = proTeaser.createSpan({ cls: 'rt-apr-pro-teaser-icon' });
-    setIcon(teaserIcon, 'signature');
-    const teaserText = proTeaser.createDiv({ cls: 'rt-apr-pro-teaser-text' });
-    teaserText.createEl('strong', { text: 'Want more?' });
-    teaserText.createEl('span', { 
-        text: ' Campaign Manager lets you create multiple embeds with Teaser Reveal—progressively show more detail as you write.' 
-    });
-    const teaserLink = proTeaser.createEl('a', {
-        text: 'Upgrade to Pro →',
-        href: 'https://radialtimeline.com/pro',
-        cls: 'rt-apr-pro-teaser-link',
-        attr: { target: '_blank', rel: 'noopener' }
-    });
-    } // End of non-Pro publishing section
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // CAMPAIGN MANAGER (PRO FEATURE)
-    // Only shown to Pro users - replaces basic Publishing & Automation
-    // ─────────────────────────────────────────────────────────────────────────
-    if (isProActive) {
-        renderCampaignManagerSection({
-            app,
-            plugin,
-            containerEl: contentWrapper,
-            onCampaignChange: () => {
-                // Refresh the hero preview when campaigns change
-                const size = plugin.settings.authorProgress?.aprSize || 'medium';
-                void renderHeroPreview(app, plugin, previewContainer, size);
-            }
-        });
-    }
+    return plugin.settings.authorProgress as AuthorProgressSettings;
 }
 
-/**
- * Render the APR SVG preview in the hero section
- * Uses the dedicated APR renderer at 1:1 actual size
- */
-async function renderHeroPreview(
-    app: App, 
-    plugin: RadialTimelinePlugin, 
-    container: HTMLElement,
-    size: 'small' | 'medium' | 'large' = 'medium'
-): Promise<void> {
-    try {
-        const scenes = await getAllScenes(app, plugin);
-        
-        if (scenes.length === 0) {
-            container.empty();
-            container.createDiv({ 
-                cls: 'rt-apr-hero-preview-empty',
-                text: 'Create scenes to see a preview of your Author Progress Report.' 
-            });
-            return;
+function labeledToggle(parent: HTMLElement, label: string, value: boolean, onChange: (val: boolean) => void): void {
+    const wrap = parent.createDiv({ cls: 'ert-toggle-item' });
+    toggle(wrap, { value, onChange });
+    wrap.createSpan({ text: label });
+}
+
+function numberFromText(value: string): number | undefined {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : undefined;
+}
+
+export function renderAuthorProgressSection({ app, plugin, containerEl }: AuthorProgressSectionProps): void {
+    const settings = ensureAprSettings(plugin);
+    containerEl.empty();
+
+    const root = mountRoot(containerEl);
+
+    // Hero / quick actions
+    section(root, {
+        title: 'Author Progress Reports',
+        desc: 'Share a spoiler-safe, branded progress ring for fans, newsletters, and campaigns.',
+    }, (body) => {
+        const infoInline = inline(body, { variant: ERT_CLASSES.INLINE_SPLIT });
+        const statusSlot = stack(infoInline, { label: 'Status' });
+        const lastPublished = settings.lastPublishedDate ? new Date(settings.lastPublishedDate).toLocaleDateString() : 'Never published';
+        statusSlot.createDiv({ text: settings.enabled ? 'Enabled' : 'Disabled' });
+        statusSlot.createDiv({ text: `Last published: ${lastPublished}`, cls: 'ert-field-note' });
+
+        const freqSlot = stack(infoInline, { label: 'Auto-updates' });
+        const freqLabel = frequencyOptions[settings.updateFrequency || 'manual'];
+        freqSlot.createDiv({ text: freqLabel });
+        if (settings.updateFrequency === 'manual') {
+            freqSlot.createDiv({ text: `Refresh reminder after ${settings.stalenessThresholdDays ?? 30} days`, cls: 'ert-field-note' });
         }
-        
-        // Calculate progress using AuthorProgressService
-        const service = new AuthorProgressService(plugin, app);
-        const progressPercent = service.calculateProgress(scenes);
-        
-        const aprSettings = plugin.settings.authorProgress;
-        
-        const { svgString, width, height } = createAprSVG(scenes, {
-            size: size,
-            progressPercent,
-            bookTitle: aprSettings?.bookTitle || 'Working Title',
-            authorName: aprSettings?.authorName || '',
-            authorUrl: aprSettings?.authorUrl || '',
-            showSubplots: aprSettings?.showSubplots ?? true,
-            showActs: aprSettings?.showActs ?? true,
-            showStatusColors: aprSettings?.showStatus ?? true,
-            showProgressPercent: aprSettings?.showProgressPercent ?? true,
-            stageColors: (plugin.settings as any).publishStageColors,
-            actCount: plugin.settings.actCount || undefined,
-            backgroundColor: aprSettings?.aprBackgroundColor,
-            transparentCenter: aprSettings?.aprCenterTransparent,
-            bookAuthorColor: aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
-            authorColor: aprSettings?.aprAuthorColor ?? aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
-            engineColor: aprSettings?.aprEngineColor,
-            percentNumberColor: aprSettings?.aprPercentNumberColor ?? aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
-            percentSymbolColor: aprSettings?.aprPercentSymbolColor ?? aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
-            theme: aprSettings?.aprTheme || 'dark',
-            spokeColor: aprSettings?.aprSpokeColorMode === 'custom' ? aprSettings?.aprSpokeColor : undefined,
-            // Typography settings
-            bookTitleFontFamily: aprSettings?.aprBookTitleFontFamily,
-            bookTitleFontWeight: aprSettings?.aprBookTitleFontWeight,
-            bookTitleFontItalic: aprSettings?.aprBookTitleFontItalic,
-            bookTitleFontSize: aprSettings?.aprBookTitleFontSize,
-            authorNameFontFamily: aprSettings?.aprAuthorNameFontFamily,
-            authorNameFontWeight: aprSettings?.aprAuthorNameFontWeight,
-            authorNameFontItalic: aprSettings?.aprAuthorNameFontItalic,
-            authorNameFontSize: aprSettings?.aprAuthorNameFontSize,
-            percentNumberFontFamily: aprSettings?.aprPercentNumberFontFamily,
-            percentNumberFontWeight: aprSettings?.aprPercentNumberFontWeight,
-            percentNumberFontItalic: aprSettings?.aprPercentNumberFontItalic,
-            percentNumberFontSize1Digit: aprSettings?.aprPercentNumberFontSize1Digit,
-            percentNumberFontSize2Digit: aprSettings?.aprPercentNumberFontSize2Digit,
-            percentNumberFontSize3Digit: aprSettings?.aprPercentNumberFontSize3Digit,
-            percentSymbolFontFamily: aprSettings?.aprPercentSymbolFontFamily,
-            percentSymbolFontWeight: aprSettings?.aprPercentSymbolFontWeight,
-            percentSymbolFontItalic: aprSettings?.aprPercentSymbolFontItalic,
-            rtBadgeFontFamily: aprSettings?.aprRtBadgeFontFamily,
-            rtBadgeFontWeight: aprSettings?.aprRtBadgeFontWeight,
-            rtBadgeFontItalic: aprSettings?.aprRtBadgeFontItalic,
-            rtBadgeFontSize: aprSettings?.aprRtBadgeFontSize
+
+        const actionSlot = stack(infoInline, { label: 'Actions' });
+        const actionsRow = inline(actionSlot, {});
+        button(actionsRow, {
+            text: 'Open APR modal',
+            cta: true,
+            onClick: () => {
+                const modal = new AuthorProgressModal(app, plugin);
+                modal.open();
+            },
         });
-        
-        container.empty();
-        
-        // Create a wrapper to ensure SVG displays at natural size
-        const svgWrapper = container.createDiv({ cls: 'rt-apr-svg-wrapper' });
-        svgWrapper.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
-        
-        // Ensure the SVG has explicit dimensions for 1:1 display
-        const svgEl = svgWrapper.querySelector('svg');
-        if (svgEl) {
-            svgEl.setAttribute('width', String(width));
-            svgEl.setAttribute('height', String(height));
-        }
-        
-    } catch (e) {
-        container.empty();
-        container.createDiv({ 
-            cls: 'rt-apr-hero-preview-error',
-            text: 'Failed to render preview.' 
+        button(actionsRow, {
+            text: 'Generate palette',
+            onClick: () => {
+                new AprPaletteModal(app, plugin, settings, () => {
+                    new Notice('Palette applied to APR.');
+                }).open();
+            },
         });
-        console.error('APR Settings Preview error:', e);
-    }
+    });
+
+    // Activation & publishing
+    section(root, { title: 'Activation & publishing' }, (body) => {
+        const enabledRow = row(body, {
+            label: 'Enable APR',
+            desc: 'Allow APR generation, embedding, and reminders.',
+        });
+        toggle(enabledRow, {
+            value: settings.enabled ?? false,
+            onChange: async (val) => {
+                settings.enabled = val;
+                await plugin.saveSettings();
+            },
+        });
+
+        const defaultBehaviorRow = row(body, {
+            label: 'Default note behavior',
+            desc: 'Use preset layout or a custom note template.',
+        });
+        dropdown(defaultBehaviorRow, {
+            options: { preset: 'Preset (recommended)', custom: 'Custom' },
+            value: settings.defaultNoteBehavior ?? 'preset',
+            onChange: async (val) => {
+                settings.defaultNoteBehavior = val as 'preset' | 'custom';
+                await plugin.saveSettings();
+            },
+        });
+
+        const targetRow = row(body, {
+            label: 'Publish target',
+            desc: 'Where the dynamic SVG is written.',
+        });
+        dropdown(targetRow, {
+            options: publishTargets,
+            value: settings.defaultPublishTarget ?? 'folder',
+            onChange: async (val) => {
+                settings.defaultPublishTarget = val as AuthorProgressPublishTarget;
+                await plugin.saveSettings();
+            },
+        });
+
+        const embedRow = row(body, {
+            label: 'Dynamic embed path',
+            desc: 'Vault path for live SVG updates.',
+        });
+        textInput(embedRow, {
+            value: settings.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg',
+            onChange: async (val) => {
+                settings.dynamicEmbedPath = val || 'Radial Timeline/Social/progress.svg';
+                await plugin.saveSettings();
+            },
+        });
+
+        const updateRow = row(body, {
+            label: 'Update frequency',
+            desc: 'Automatic refresh cadence for dynamic embeds.',
+        });
+        dropdown(updateRow, {
+            options: frequencyOptions,
+            value: settings.updateFrequency || 'manual',
+            onChange: async (val) => {
+                settings.updateFrequency = val as AuthorProgressFrequency;
+                await plugin.saveSettings();
+            },
+        });
+
+        const staleRow = row(body, {
+            label: 'Staleness threshold',
+            desc: 'Manual mode reminder after N days.',
+        });
+        slider(staleRow, {
+            min: 7,
+            max: 90,
+            step: 1,
+            value: settings.stalenessThresholdDays ?? 30,
+            onChange: async (val) => {
+                settings.stalenessThresholdDays = val;
+                await plugin.saveSettings();
+            },
+        });
+        staleRow.createDiv({ cls: 'ert-field-note', text: 'Applies only when update frequency is Manual.' });
+
+        const reminderRow = row(body, {
+            label: 'Reminders',
+            desc: 'Show in-app refresh reminder for manual mode.',
+        });
+        toggle(reminderRow, {
+            value: settings.enableReminders ?? true,
+            onChange: async (val) => {
+                settings.enableReminders = val;
+                await plugin.saveSettings();
+            },
+        });
+    });
+
+    // Identity
+    section(root, { title: 'Identity & links' }, (body) => {
+        const titleRow = row(body, {
+            label: 'Book title',
+            desc: 'Shown prominently in the APR.',
+        });
+        textInput(titleRow, {
+            value: settings.bookTitle ?? '',
+            placeholder: 'Working Title',
+            onChange: async (val) => {
+                settings.bookTitle = val;
+                await plugin.saveSettings();
+            },
+        });
+
+        const authorRow = row(body, {
+            label: 'Author name',
+            desc: 'Optional secondary line.',
+        });
+        textInput(authorRow, {
+            value: settings.authorName ?? '',
+            placeholder: 'Pen name',
+            onChange: async (val) => {
+                settings.authorName = val;
+                await plugin.saveSettings();
+            },
+        });
+
+        const urlRow = row(body, {
+            label: 'Author URL',
+            desc: 'Link attached to the embed.',
+        });
+        textInput(urlRow, {
+            value: settings.authorUrl ?? '',
+            placeholder: 'https://example.com',
+            onChange: async (val) => {
+                settings.authorUrl = val;
+                await plugin.saveSettings();
+            },
+        });
+    });
+
+    // Reveal & layout
+    section(root, { title: 'Reveal & layout' }, (body) => {
+        const revealRow = row(body, {
+            label: 'Reveal options',
+            desc: 'Control how much structure to show.',
+        });
+        const revealInline = inline(revealRow, {});
+        labeledToggle(revealInline, 'Show subplots', settings.showSubplots ?? true, async (val) => {
+            settings.showSubplots = val;
+            await plugin.saveSettings();
+        });
+        labeledToggle(revealInline, 'Show acts', settings.showActs ?? true, async (val) => {
+            settings.showActs = val;
+            await plugin.saveSettings();
+        });
+        labeledToggle(revealInline, 'Show status colors', settings.showStatus ?? true, async (val) => {
+            settings.showStatus = val;
+            await plugin.saveSettings();
+        });
+        labeledToggle(revealInline, 'Show % complete', settings.showProgressPercent ?? true, async (val) => {
+            settings.showProgressPercent = val;
+            await plugin.saveSettings();
+        });
+
+        const sizeRow = row(body, {
+            label: 'APR size',
+            desc: 'Affects canvas size and text scaling.',
+        });
+        dropdown(sizeRow, {
+            options: sizeOptions,
+            value: settings.aprSize || 'medium',
+            onChange: async (val) => {
+                settings.aprSize = val as 'small' | 'medium' | 'large';
+                await plugin.saveSettings();
+            },
+        });
+
+        const themeRow = row(body, {
+            label: 'Theme',
+            desc: 'Stroke contrast and engine styling.',
+        });
+        dropdown(themeRow, {
+            options: themeOptions,
+            value: settings.aprTheme || 'dark',
+            onChange: async (val) => {
+                settings.aprTheme = val as 'dark' | 'light' | 'none';
+                await plugin.saveSettings();
+            },
+        });
+
+        const spokeRow = row(body, {
+            label: 'Act spokes',
+            desc: 'Choose spoke style or a custom color.',
+        });
+        const spokeInline = inline(spokeRow, {});
+        let spokePicker: ReturnType<typeof colorPicker>;
+        dropdown(spokeInline, {
+            options: spokeColorModeOptions,
+            value: settings.aprSpokeColorMode || 'dark',
+            onChange: async (val) => {
+                settings.aprSpokeColorMode = val as 'dark' | 'light' | 'none' | 'custom';
+                if (spokePicker) {
+                    spokePicker.setDisabled(val !== 'custom');
+                }
+                await plugin.saveSettings();
+            },
+        });
+        const spokeColorSlot = stack(spokeInline, { label: 'Custom color' });
+        spokePicker = colorPicker(spokeColorSlot, {
+            value: settings.aprSpokeColor ?? '#ffffff',
+            onChange: async (val) => {
+                settings.aprSpokeColor = val;
+                await plugin.saveSettings();
+            },
+        });
+        spokePicker.setDisabled((settings.aprSpokeColorMode || 'dark') !== 'custom');
+
+        const centerRow = row(body, {
+            label: 'Center style',
+            desc: 'Background and transparency.',
+        });
+        const centerInline = inline(centerRow, {});
+        colorPicker(centerInline, {
+            value: settings.aprBackgroundColor ?? '#0d0d0f',
+            onChange: async (val) => {
+                settings.aprBackgroundColor = val;
+                await plugin.saveSettings();
+            },
+        });
+        labeledToggle(centerInline, 'Transparent center', settings.aprCenterTransparent ?? true, async (val) => {
+            settings.aprCenterTransparent = val;
+            await plugin.saveSettings();
+        });
+    });
+
+    // Colors
+    section(root, { title: 'Colors' }, (body) => {
+        const primaryRow = row(body, {
+            label: 'Primary colors',
+            desc: 'Book title, author name, engine stroke.',
+        });
+        const primaryInline = inline(primaryRow, { variant: ERT_CLASSES.INLINE_SPLIT });
+        colorPicker(primaryInline, {
+            value: settings.aprBookAuthorColor ?? '#6FB971',
+            onChange: async (val) => {
+                settings.aprBookAuthorColor = val;
+                await plugin.saveSettings();
+            },
+        });
+        colorPicker(primaryInline, {
+            value: settings.aprAuthorColor ?? settings.aprBookAuthorColor ?? '#6FB971',
+            onChange: async (val) => {
+                settings.aprAuthorColor = val;
+                await plugin.saveSettings();
+            },
+        });
+        colorPicker(primaryInline, {
+            value: settings.aprEngineColor ?? '#e5e5e5',
+            onChange: async (val) => {
+                settings.aprEngineColor = val;
+                await plugin.saveSettings();
+            },
+        });
+
+        const percentRow = row(body, {
+            label: 'Percent badge',
+            desc: 'Number and % symbol colors.',
+        });
+        const percentInline = inline(percentRow, {});
+        colorPicker(percentInline, {
+            value: settings.aprPercentNumberColor ?? settings.aprBookAuthorColor ?? '#6FB971',
+            onChange: async (val) => {
+                settings.aprPercentNumberColor = val;
+                await plugin.saveSettings();
+            },
+        });
+        colorPicker(percentInline, {
+            value: settings.aprPercentSymbolColor ?? settings.aprBookAuthorColor ?? '#6FB971',
+            onChange: async (val) => {
+                settings.aprPercentSymbolColor = val;
+                await plugin.saveSettings();
+            },
+        });
+
+        divider(body, {});
+
+        const paletteRow = row(body, {
+            label: 'Palette helper',
+            desc: 'Generate harmonized colors from your book title hue.',
+        });
+        button(paletteRow, {
+            text: 'Open palette helper',
+            onClick: () => {
+                new AprPaletteModal(app, plugin, settings, () => {
+                    new Notice('Palette applied to APR.');
+                }).open();
+            },
+        });
+    });
+
+    // Typography
+    section(root, { title: 'Typography' }, (body) => {
+        const bookTitleRow = row(body, {
+            label: 'Book title',
+            desc: 'Font family, weight, italic, and size.',
+        });
+        const bookInline = inline(bookTitleRow, { variant: ERT_CLASSES.INLINE_SPLIT });
+        textInput(bookInline, {
+            value: settings.aprBookTitleFontFamily ?? 'Inter',
+            onChange: async (val) => {
+                settings.aprBookTitleFontFamily = val || 'Inter';
+                await plugin.saveSettings();
+            },
+        });
+        dropdown(bookInline, {
+            options: fontWeightOptions,
+            value: String(settings.aprBookTitleFontWeight ?? 400),
+            onChange: async (val) => {
+                settings.aprBookTitleFontWeight = Number(val);
+                await plugin.saveSettings();
+            },
+        });
+        labeledToggle(bookInline, 'Italic', settings.aprBookTitleFontItalic ?? false, async (val) => {
+            settings.aprBookTitleFontItalic = val;
+            await plugin.saveSettings();
+        });
+        textInput(bookInline, {
+            value: settings.aprBookTitleFontSize?.toString() ?? '',
+            placeholder: 'Auto',
+            onChange: async (val) => {
+                settings.aprBookTitleFontSize = numberFromText(val);
+                await plugin.saveSettings();
+            },
+        });
+
+        const authorNameRow = row(body, {
+            label: 'Author name',
+            desc: 'Font family, weight, italic, and size.',
+        });
+        const authorInline = inline(authorNameRow, { variant: ERT_CLASSES.INLINE_SPLIT });
+        textInput(authorInline, {
+            value: settings.aprAuthorNameFontFamily ?? 'Inter',
+            onChange: async (val) => {
+                settings.aprAuthorNameFontFamily = val || 'Inter';
+                await plugin.saveSettings();
+            },
+        });
+        dropdown(authorInline, {
+            options: fontWeightOptions,
+            value: String(settings.aprAuthorNameFontWeight ?? 400),
+            onChange: async (val) => {
+                settings.aprAuthorNameFontWeight = Number(val);
+                await plugin.saveSettings();
+            },
+        });
+        labeledToggle(authorInline, 'Italic', settings.aprAuthorNameFontItalic ?? false, async (val) => {
+            settings.aprAuthorNameFontItalic = val;
+            await plugin.saveSettings();
+        });
+        textInput(authorInline, {
+            value: settings.aprAuthorNameFontSize?.toString() ?? '',
+            placeholder: 'Auto',
+            onChange: async (val) => {
+                settings.aprAuthorNameFontSize = numberFromText(val);
+                await plugin.saveSettings();
+            },
+        });
+
+        const percentRow = row(body, {
+            label: 'Percent number',
+            desc: 'Number font and sizes for 1/2/3 digits.',
+        });
+        const percentInline = inline(percentRow, { variant: ERT_CLASSES.INLINE_SPLIT });
+        textInput(percentInline, {
+            value: settings.aprPercentNumberFontFamily ?? 'Inter',
+            onChange: async (val) => {
+                settings.aprPercentNumberFontFamily = val || 'Inter';
+                await plugin.saveSettings();
+            },
+        });
+        dropdown(percentInline, {
+            options: fontWeightOptions,
+            value: String(settings.aprPercentNumberFontWeight ?? 800),
+            onChange: async (val) => {
+                settings.aprPercentNumberFontWeight = Number(val);
+                await plugin.saveSettings();
+            },
+        });
+        labeledToggle(percentInline, 'Italic', settings.aprPercentNumberFontItalic ?? false, async (val) => {
+            settings.aprPercentNumberFontItalic = val;
+            await plugin.saveSettings();
+        });
+        textInput(percentInline, {
+            value: settings.aprPercentNumberFontSize1Digit?.toString() ?? '',
+            placeholder: '1-digit size',
+            onChange: async (val) => {
+                settings.aprPercentNumberFontSize1Digit = numberFromText(val);
+                await plugin.saveSettings();
+            },
+        });
+        textInput(percentInline, {
+            value: settings.aprPercentNumberFontSize2Digit?.toString() ?? '',
+            placeholder: '2-digit size',
+            onChange: async (val) => {
+                settings.aprPercentNumberFontSize2Digit = numberFromText(val);
+                await plugin.saveSettings();
+            },
+        });
+        textInput(percentInline, {
+            value: settings.aprPercentNumberFontSize3Digit?.toString() ?? '',
+            placeholder: '3-digit size',
+            onChange: async (val) => {
+                settings.aprPercentNumberFontSize3Digit = numberFromText(val);
+                await plugin.saveSettings();
+            },
+        });
+
+        const symbolRow = row(body, {
+            label: 'Percent symbol',
+            desc: 'Font family, weight, and italic.',
+        });
+        const symbolInline = inline(symbolRow, { variant: ERT_CLASSES.INLINE_SPLIT });
+        textInput(symbolInline, {
+            value: settings.aprPercentSymbolFontFamily ?? 'Inter',
+            onChange: async (val) => {
+                settings.aprPercentSymbolFontFamily = val || 'Inter';
+                await plugin.saveSettings();
+            },
+        });
+        dropdown(symbolInline, {
+            options: fontWeightOptions,
+            value: String(settings.aprPercentSymbolFontWeight ?? 800),
+            onChange: async (val) => {
+                settings.aprPercentSymbolFontWeight = Number(val);
+                await plugin.saveSettings();
+            },
+        });
+        labeledToggle(symbolInline, 'Italic', settings.aprPercentSymbolFontItalic ?? false, async (val) => {
+            settings.aprPercentSymbolFontItalic = val;
+            await plugin.saveSettings();
+        });
+
+        const badgeRow = row(body, {
+            label: 'RT badge',
+            desc: 'Font family, weight, italic, size.',
+        });
+        const badgeInline = inline(badgeRow, { variant: ERT_CLASSES.INLINE_SPLIT });
+        textInput(badgeInline, {
+            value: settings.aprRtBadgeFontFamily ?? 'Inter',
+            onChange: async (val) => {
+                settings.aprRtBadgeFontFamily = val || 'Inter';
+                await plugin.saveSettings();
+            },
+        });
+        dropdown(badgeInline, {
+            options: fontWeightOptions,
+            value: String(settings.aprRtBadgeFontWeight ?? 700),
+            onChange: async (val) => {
+                settings.aprRtBadgeFontWeight = Number(val);
+                await plugin.saveSettings();
+            },
+        });
+        labeledToggle(badgeInline, 'Italic', settings.aprRtBadgeFontItalic ?? false, async (val) => {
+            settings.aprRtBadgeFontItalic = val;
+            await plugin.saveSettings();
+        });
+        textInput(badgeInline, {
+            value: settings.aprRtBadgeFontSize?.toString() ?? '',
+            placeholder: 'Auto',
+            onChange: async (val) => {
+                settings.aprRtBadgeFontSize = numberFromText(val);
+                await plugin.saveSettings();
+            },
+        });
+    });
+
+    // Campaign Manager (legacy UI wrapped)
+    section(root, { title: 'Campaign Manager (Pro)', desc: 'Create multiple embeds with independent refresh schedules.' }, (body) => {
+        const legacyHost = body.createDiv({ attr: { 'data-ert-skip-validate': 'true' } });
+        renderCampaignManagerSection({ app, plugin, containerEl: legacyHost, onCampaignChange: () => void plugin.saveSettings() });
+    });
+
+    validateErtLayout(root, { rootLabel: 'social-apr' });
 }

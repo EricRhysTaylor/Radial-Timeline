@@ -26,6 +26,7 @@ const files = [
     'chronologue-alt.css',
     'chronologue-runtime.css',
     'modal.css',
+    'rt-ui.css',
     'pulse.css',
     'book-designer.css',
     'settings.css',

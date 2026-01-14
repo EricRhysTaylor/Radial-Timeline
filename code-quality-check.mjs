@@ -95,8 +95,8 @@ const ALLOWED_CLASS_NAMES = [
 
 // Check if a CSS class name is allowed (has proper prefix or is in exception list)
 function isAllowedClassName(className) {
-  // Check if it starts with rt- or radial-timeline-
-  if (className.startsWith('rt-') || className.startsWith('radial-timeline-')) {
+  // Check if it starts with ert-, rt-, or radial-timeline-
+  if (className.startsWith('ert-') || className.startsWith('rt-') || className.startsWith('radial-timeline-')) {
     return true;
   }
   
@@ -176,7 +176,7 @@ function processFile(filePath) {
             violations.push({
               line: lineNumber + 1,
               content: line.trim(),
-              message: `${message}: '${className}' should be 'rt-${className}'`
+              message: `${message}: '${className}' should be prefixed (ert-/rt-/radial-timeline-)`
             });
           }
         }
@@ -260,8 +260,8 @@ function main() {
     console.error('  - If you must use "any", add a comment explaining why: // SAFE: any type used for <reason>');
     
     console.error('\n\x1b[33mFor CSS class naming:\x1b[0m');
-    console.error('  - All CSS class names MUST start with "rt-" or "radial-timeline-"');
-    console.error('  - Example: addClass(\'rt-beats-modal\') NOT addClass(\'beats-modal\')');
+    console.error('  - All CSS class names MUST start with "ert-", "rt-" or "radial-timeline-"');
+    console.error('  - Example: addClass(\'ert-settings-row\') NOT addClass(\'settings-row\')');
     console.error('  - This prevents conflicts with Obsidian core styles and other plugins');
     
     console.error('\n\x1b[33mFor opening files:\x1b[0m');

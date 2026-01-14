@@ -2812,6 +2812,13 @@
 }
 
 /* Typography container */
+/* Ensure Color Palette section title has same spacing as Styling section title */
+.rt-settings-root .rt-apr-styling-card .rt-section-title {
+  margin-top: 0;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+}
+
 .rt-apr-typography-container {
   padding: 8px 0;
 }
@@ -2828,7 +2835,7 @@
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 10px;
-  padding: 12px 12px 8px;
+  padding: 16px;
   margin: 12px 0;
 }
 
@@ -2842,7 +2849,7 @@
 }
 
 .rt-settings-root .rt-apr-unified-row.setting-item {
-  padding: 8px 0 4px 0;
+  padding: 8px 0 12px 0;
   border-top: none;
 }
 
@@ -2864,7 +2871,7 @@
 }
 
 .rt-settings-root .rt-apr-unified-row-secondary.setting-item {
-  padding: 0 0 8px 0;
+  padding: 8px 0 8px 0;
   border-top: none;
 }
 
@@ -2879,12 +2886,28 @@
   min-width: 100px;
 }
 
-/* Icon in setting name */
+/* Palette button row styling */
+.rt-settings-root .rt-apr-palette-button-row.setting-item {
+  padding: 8px 0;
+  border-top: none;
+  margin-bottom: 0;
+}
+
+.rt-settings-root .rt-apr-palette-button-row .setting-item-control {
+  justify-content: flex-end;
+}
+
+/* Icon in setting name and section title */
 .rt-setting-icon {
   display: inline-flex;
   align-items: center;
   margin-right: 6px;
   vertical-align: middle;
+}
+
+/* Icon in section title headers */
+.rt-section-title .rt-setting-icon {
+  margin-right: 8px;
 }
 
 .rt-setting-icon svg {
