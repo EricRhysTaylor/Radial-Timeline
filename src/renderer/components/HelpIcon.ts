@@ -2,12 +2,25 @@
  * Radial Timeline Plugin for Obsidian — Help Icon Component
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
+ *
+ * =============================================================================
+ * ICON-CENTERED POSITIONING (canonical pattern for all status icons)
+ * =============================================================================
+ * 
+ *   Group origin: (ICON_X, ICON_Y) ← CENTER of the icon
+ *   ├── Icon: translate(-12, -12) → centers 24px icon at origin
+ *   └── Text: y = -22 → positioned above icon center
+ * 
+ * All positions in LayoutConstants define icon centers, not text baselines.
+ * =============================================================================
  */
 
 import { formatNumber } from '../../utils/svg';
 import {
-    HELP_ICON_POS_X,
-    HELP_ICON_POS_Y
+    HELP_ICON_X,
+    HELP_ICON_Y,
+    STATUS_ICON_CENTER_OFFSET,
+    STATUS_TEXT_ABOVE_ICON
 } from '../layout/LayoutConstants';
 
 const LIFE_BUOY_ICON = `
@@ -22,36 +35,36 @@ const LIFE_BUOY_ICON = `
 /**
  * Render the help icon SVG element
  * Positioned at the bottom-right corner of the timeline
+ * Uses ICON-CENTERED positioning - group origin is icon center.
  */
 export function renderHelpIcon(): string {
-    const x = formatNumber(HELP_ICON_POS_X);
-    const y = formatNumber(HELP_ICON_POS_Y);
+    const x = formatNumber(HELP_ICON_X);
+    const y = formatNumber(HELP_ICON_Y);
 
-    const iconSize = 24;
-    const iconHalfSize = iconSize / 2;
-    
-    // Center the icon relative to the position
-    // Matches alignment of VersionIndicator icon which is roughly at the same Y level
-    const iconX = -iconHalfSize;
-    // Align vertically with the version icon (which is at Y + 10 in VersionIndicator)
-    // VersionIndicator Y is 734. Its icon is at y=10. So absolute Y ~ 744.
-    // If we use HELP_ICON_POS_Y = 734, we should add 10 to match visual weight.
-    const iconY = 10; 
+    const hitAreaWidth = 120;
+    const hitAreaHeight = 60;
 
     return `
         <g id="help-icon" class="rt-help-icon" transform="translate(${x}, ${y})">
-            <!-- Hover Text: "GET HELP" -->
-            <text class="rt-help-text" x="0" y="0">GET HELP</text>
+            <!-- Hit area centered on icon -->
+            <rect class="rt-help-icon-hitarea" 
+                x="${formatNumber(-hitAreaWidth / 2)}" 
+                y="${formatNumber(STATUS_TEXT_ABOVE_ICON - 10)}" 
+                width="${hitAreaWidth}" 
+                height="${hitAreaHeight}" 
+                fill="white" fill-opacity="0" stroke="none" pointer-events="all" />
 
-            <g transform="translate(${formatNumber(iconX)}, ${formatNumber(iconY)})">
-                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-life-buoy-icon lucide-life-buoy">
+            <!-- Text: positioned above icon center -->
+            <text class="rt-help-text" x="0" y="${STATUS_TEXT_ABOVE_ICON}" text-anchor="middle" dominant-baseline="baseline">GET HELP</text>
+
+            <!-- Icon: centered at origin -->
+            <g transform="translate(${STATUS_ICON_CENTER_OFFSET}, ${STATUS_ICON_CENTER_OFFSET})">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" 
+                     fill="none" stroke="currentColor" stroke-width="1" 
+                     stroke-linecap="round" stroke-linejoin="round">
                     ${LIFE_BUOY_ICON}
                 </svg>
             </g>
-            
-            <!-- Hit area -->
-             <rect class="rt-help-icon-hitarea" x="${formatNumber(iconX - 8)}" y="${formatNumber(iconY - 8)}" width="${iconSize + 16}" height="${iconSize + 16}" fill="white" fill-opacity="0" stroke="none" pointer-events="all">
-            </rect>
         </g>
     `;
 }

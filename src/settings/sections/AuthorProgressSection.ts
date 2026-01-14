@@ -297,14 +297,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     }, (body) => {
         const panel = body.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.CARD_APR}` });
 
-        const header = panel.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
-        const headerBadge = header.createSpan({ cls: ERT_CLASSES.ICON_BADGE });
-        const badgeIcon = headerBadge.createSpan();
-        setIcon(badgeIcon, 'radio');
-        headerBadge.createSpan({ text: 'APR' });
-        const headerText = header.createDiv({ cls: ERT_CLASSES.SECTION_TITLE, text: 'Social Progress Reports' });
-        headerText.createDiv({ text: 'Spoiler-safe branded progress ring for fans, newsletters, and campaigns.', cls: ERT_CLASSES.SECTION_DESC });
-
         const bodyWrap = panel.createDiv({ cls: ERT_CLASSES.PANEL_BODY });
         const sizeRow = inline(bodyWrap, {});
         sizeRow.createSpan({ text: 'Size:' });

@@ -15,27 +15,85 @@
 export const SVG_SIZE = 1600;
 
 // =============================================================================
-// VERSION INDICATOR POSITIONING (bottom-left edge)
+// TIMELINE STATUS ICONS - ICON-CENTERED POSITIONING
+// =============================================================================
+// 
+// All positions define the CENTER of the 24x24 icon.
+// This is the canonical reference point for alignment.
+//
+// Layout pattern for each indicator:
+//   Group at (ICON_X, ICON_Y) ← icon center position
+//   ├── Icon: translate(-12, -12) ← centers 24px icon at origin
+//   └── Text: y = TEXT_ABOVE_ICON_OFFSET ← positioned above icon
+//
+// To add a new icon: define its center position, use the same pattern.
 // =============================================================================
 
-/** Horizontal offset for update alert icon from version text */
-export const VERSION_INDICATOR_POS_X = -750;
+/** Standard icon size (px) */
+export const STATUS_ICON_SIZE = 24;
 
-/** Vertical position for version indicator (bottom, positive Y in SVG coords) */
-export const VERSION_INDICATOR_POS_Y = 734;
+/** Offset to center a 24px icon at origin: -12 */
+export const STATUS_ICON_CENTER_OFFSET = -(STATUS_ICON_SIZE / 2);
+
+/** Text baseline offset above icon center (negative = above) */
+export const STATUS_TEXT_ABOVE_ICON = -22;
+
+// -----------------------------------------------------------------------------
+// BOTTOM-LEFT: Version/Bug Indicator
+// -----------------------------------------------------------------------------
+
+/** X position for Version/Bug icon CENTER */
+export const VERSION_ICON_X = -750;
+
+/** Y position for Version/Bug icon CENTER */
+export const VERSION_ICON_Y = 756;
+
+// Legacy aliases (deprecated - use VERSION_ICON_X/Y)
+export const VERSION_INDICATOR_POS_X = VERSION_ICON_X;
+export const VERSION_INDICATOR_POS_Y = VERSION_ICON_Y + STATUS_TEXT_ABOVE_ICON; // text baseline for backwards compat
 
 /** Horizontal offset for update alert icon from version text */
 export const VERSION_ALERT_OFFSET_X = 8;
 
-// =============================================================================
-// HELP ICON POSITIONING (bottom-right edge)
-// =============================================================================
+// -----------------------------------------------------------------------------
+// BOTTOM-LEFT: APR Refresh Indicator (above Version)
+// -----------------------------------------------------------------------------
 
-/** Horizontal position for help icon */
-export const HELP_ICON_POS_X = 700;
+/** Vertical gap between APR and Version icon centers */
+export const APR_ABOVE_VERSION_GAP = 70;
 
-/** Vertical position for help icon (bottom, positive Y in SVG coords) */
-export const HELP_ICON_POS_Y = 734;
+/** X position for APR icon CENTER (same as Version for alignment) */
+export const APR_ICON_X = VERSION_ICON_X;
+
+/** Y position for APR icon CENTER */
+export const APR_ICON_Y = VERSION_ICON_Y - APR_ABOVE_VERSION_GAP;
+
+// -----------------------------------------------------------------------------
+// BOTTOM-RIGHT: Help Icon
+// -----------------------------------------------------------------------------
+
+/** X position for Help icon CENTER */
+export const HELP_ICON_X = 700;
+
+/** Y position for Help icon CENTER */
+export const HELP_ICON_Y = 756;
+
+// Legacy aliases (deprecated - use HELP_ICON_X/Y)
+export const HELP_ICON_POS_X = HELP_ICON_X;
+export const HELP_ICON_POS_Y = HELP_ICON_Y + STATUS_TEXT_ABOVE_ICON; // text baseline for backwards compat
+
+// -----------------------------------------------------------------------------
+// BOTTOM-RIGHT: Milestone Indicator (above Help)
+// -----------------------------------------------------------------------------
+
+/** Vertical gap between Milestone and Help icon centers */
+export const MILESTONE_ABOVE_HELP_GAP = 70;
+
+/** X position for Milestone icon CENTER (same as Help for alignment) */
+export const MILESTONE_ICON_X = HELP_ICON_X;
+
+/** Y position for Milestone icon CENTER */
+export const MILESTONE_ICON_Y = HELP_ICON_Y - MILESTONE_ABOVE_HELP_GAP;
 
 // =============================================================================
 // RADII - CORE STRUCTURE

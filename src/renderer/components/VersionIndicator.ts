@@ -2,14 +2,30 @@
  * Radial Timeline Plugin for Obsidian — Version Indicator Component
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
+ *
+ * =============================================================================
+ * ICON-CENTERED POSITIONING (canonical pattern for all status icons)
+ * =============================================================================
+ * 
+ *   Group origin: (ICON_X, ICON_Y) ← CENTER of the icon
+ *   ├── Icon: translate(-12, -12) → centers 24px icon at origin
+ *   └── Text: y = -22 → positioned above icon center
+ * 
+ * All positions in LayoutConstants define icon centers, not text baselines.
+ * 
+ * NOTE: VersionIndicator has dynamic X positioning to prevent text clipping.
+ * The Y position uses VERSION_ICON_Y from LayoutConstants.
+ * =============================================================================
  */
 
 import { formatNumber } from '../../utils/svg';
 import {
     MONTH_LABEL_RADIUS,
     SVG_SIZE,
-    VERSION_INDICATOR_POS_X,
-    VERSION_INDICATOR_POS_Y
+    VERSION_ICON_X,
+    VERSION_ICON_Y,
+    STATUS_ICON_CENTER_OFFSET,
+    STATUS_TEXT_ABOVE_ICON
 } from '../layout/LayoutConstants';
 
 /**
@@ -99,6 +115,9 @@ function getUpdateSeverity(current: string, latest: string | undefined): 'none' 
  * Render the version indicator SVG element
  * Positioned at the bottom-left corner of the timeline
  * Shows bug icon when up-to-date, update icon when new version available
+ * 
+ * Uses ICON-CENTERED positioning - group origin is icon center.
+ * NOTE: X position is dynamically computed to prevent text clipping.
  */
 export function renderVersionIndicator(options: VersionIndicatorOptions): string {
     const { version, hasUpdate, latestVersion } = options;
@@ -119,16 +138,19 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
     const versionTextHalfWidth = estimateTextHalfWidth(versionText);
     const actionTextHalfWidth = estimateTextHalfWidth(actionText);
     
-    // Ensure we have enough space for the widest text (likely the action text)
+    // Ensure we have enough space for the widest text
     const maxHalfWidth = Math.max(versionTextHalfWidth, actionTextHalfWidth, ICON_HITAREA_HALF_WIDTH);
 
+    // Dynamic X to prevent text clipping at edge
     const viewboxLeftEdge = -(SVG_SIZE / 2);
     const circleLeftEdge = -MONTH_LABEL_RADIUS;
     const safeCanvasCenterX = viewboxLeftEdge + VERSION_INDICATOR_SAFE_PADDING + maxHalfWidth;
     const safeCircleCenterX = circleLeftEdge + VERSION_INDICATOR_SAFE_PADDING + maxHalfWidth;
-    const computedX = Math.max(VERSION_INDICATOR_POS_X, safeCanvasCenterX, safeCircleCenterX);
+    const computedX = Math.max(VERSION_ICON_X, safeCanvasCenterX, safeCircleCenterX);
+    
+    // Position is ICON CENTER
     const x = formatNumber(computedX);
-    const y = formatNumber(VERSION_INDICATOR_POS_Y);
+    const y = formatNumber(VERSION_ICON_Y);
 
     // Determine update severity
     const severity = hasUpdate ? getUpdateSeverity(version, latestVersion) : 'none';
@@ -139,21 +161,12 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
         groupClasses.push('rt-has-update');
     }
 
-    // Icon positioned below the version text (centered)
-    // Scale is 1.0, so width is 24. Center offset is -12
-    const iconScale = 1;
-    const iconSize = 24 * iconScale;
-    const iconX = -(iconSize / 2);
-    const iconY = 10;  // Below the text baseline
-
-    // Hit area sized to cover text + icon to prevent hover flicker
+    // Hit area covers text and icon
     const hitAreaWidth = Math.max(
         ICON_HITAREA_SIZE + HITAREA_HORIZONTAL_PADDING * 2,
         (maxHalfWidth * 2) + (HITAREA_HORIZONTAL_PADDING * 2)
     );
-    const hitAreaX = -(hitAreaWidth / 2);
-    const hitAreaY = -(VERSION_TEXT_FONT_SIZE_PX + HITAREA_VERTICAL_PADDING);
-    const hitAreaHeight = (VERSION_TEXT_FONT_SIZE_PX + HITAREA_VERTICAL_PADDING) + (iconY + iconSize + HITAREA_VERTICAL_PADDING);
+    const hitAreaHeight = 60;
 
     // Choose icon based on update state
     const iconContent = hasUpdate ? BADGE_ALERT_ICON : BUG_ICON;
@@ -161,28 +174,28 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
 
     return `
         <g id="version-indicator" class="${groupClasses.join(' ')}" transform="translate(${x}, ${y})">
-            <!-- Unified hit area covers text and icon for consistent hover/click -->
+            <!-- Hit area centered on icon -->
             <rect class="rt-version-hitarea"
-                x="${formatNumber(hitAreaX)}"
-                y="${formatNumber(hitAreaY)}"
+                x="${formatNumber(-hitAreaWidth / 2)}"
+                y="${formatNumber(STATUS_TEXT_ABOVE_ICON - 10)}"
                 width="${formatNumber(hitAreaWidth)}"
-                height="${formatNumber(hitAreaHeight)}"
+                height="${hitAreaHeight}"
                 rx="6" ry="6"
                 fill="white" fill-opacity="0" stroke="none" pointer-events="all">
             </rect>
 
-            <!-- Version text (visible by default) -->
-            <text class="rt-version-text rt-version-number" x="0" y="0">
+            <!-- Version text: positioned above icon center -->
+            <text class="rt-version-text rt-version-number" x="0" y="${STATUS_TEXT_ABOVE_ICON}" text-anchor="middle" dominant-baseline="baseline">
                 ${versionText}
             </text>
 
-            <!-- Action text (visible on hover) -->
-            <text class="rt-version-text rt-version-action" x="0" y="0">
+            <!-- Action text (visible on hover): same position as version text -->
+            <text class="rt-version-text rt-version-action" x="0" y="${STATUS_TEXT_ABOVE_ICON}" text-anchor="middle" dominant-baseline="baseline">
                 ${actionText}
             </text>
             
-            <!-- Icon below version: Bug icon (no update) or Alert icon (update available) -->
-            <g class="${iconClass}" transform="translate(${formatNumber(iconX)}, ${formatNumber(iconY)}) scale(${iconScale})">
+            <!-- Icon: centered at origin -->
+            <g class="${iconClass}" transform="translate(${STATUS_ICON_CENTER_OFFSET}, ${STATUS_ICON_CENTER_OFFSET})">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
                     ${iconContent}
                 </svg>

@@ -16,7 +16,6 @@ Type "Radial Timeline" to filter the list.
 | :--- | :--- | :--- |
 | **Open** | Opens the main Radial Timeline view. | [[Home#getting-started]] |
 | **Search timeline** | Opens the search bar in the timeline view to filter scenes. | [[How-to#search]] |
-| **Clear search** | Clears the active search filter. | [[How-to#search]] |
 | **Manage subplots** | Opens the Subplot Manager to rename or delete subplots in bulk across all files. | [[How-to#manage-subplots-in-bulk]] |
 | **Create basic scene note** | Creates a new scene note using the **Base** scene YAML template. | [[Core Workflows#creating-scenes]] |
 | **Create advanced scene note** | Creates a new scene note using the **Advanced** scene YAML template (including any Advanced YAML editor customizations). | [[Advanced-YAML]] |

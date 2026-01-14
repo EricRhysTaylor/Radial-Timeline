@@ -1,6 +1,28 @@
 /* =============================================================================
+   TIMELINE CORNER INDICATORS - STYLING
+   =============================================================================
+   
+   ICON-CENTERED POSITIONING (canonical pattern):
+   
+     Group origin: (ICON_X, ICON_Y) ← CENTER of the 24x24 icon
+     ├── Icon: translate(-12, -12) → centers 24px icon at origin
+     └── Text: y = -22 → positioned above icon center
+   
+   All positions in LayoutConstants.ts define ICON CENTERS, not text baselines.
+   This ensures perfect alignment between stacked icons.
+   
+   CSS RESPONSIBILITIES:
+   - Cursor, transitions, hover effects (filter, opacity, scale)
+   - Text visibility (hidden by default, shown on hover for some)
+   - Pulse animations for alert states (Milestone uses animated circles)
+   
+   POSITIONING is handled in the .ts component files and LayoutConstants.ts.
+   
+   ============================================================================= */
+
+/* =============================================================================
    VERSION INDICATOR
-   Bottom-right corner version display with update alert
+   Bottom-left corner version display with update alert
    ============================================================================= */
 .rt-version-indicator {
   cursor: pointer;
@@ -387,6 +409,8 @@
 /* =============================================================================
    APR REFRESH INDICATOR
    Bottom-left corner alert when Author Progress Report needs refresh
+   
+   MATCHES BUG ICON STYLING - just icon with glow on hover, no pulse circles.
    ============================================================================= */
 .rt-apr-indicator {
   cursor: pointer;
@@ -397,7 +421,7 @@
   filter: drop-shadow(0 0 5px var(--text-muted));
 }
 
-/* Text styles - matches help/milestone text */
+/* Text styles - matches version/help text exactly */
 .rt-apr-indicator-text {
   font-family: '04b03b', 'Monaco', 'Courier New', monospace;
   font-size: 20px;
@@ -416,18 +440,9 @@
   fill: var(--text-normal);
 }
 
-/* Alert icon pulse animation - matches milestone indicator */
+/* Alert icon - matches bug icon styling exactly */
 .rt-apr-alert-icon {
-  animation: rt-apr-pulse 1.8s ease-in-out infinite;
-}
-
-@keyframes rt-apr-pulse {
-  0%, 100% {
-    transform: translate(0, 10px) scale(1);
-  }
-  50% {
-    transform: translate(0, 10px) scale(1.05);
-  }
+  color: var(--text-error, #ef4444);
 }
 
 /* =============================================================================

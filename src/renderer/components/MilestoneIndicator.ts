@@ -1,4 +1,25 @@
+/*
+ * =============================================================================
+ * MILESTONE INDICATOR
+ * =============================================================================
+ * 
+ * ICON-CENTERED POSITIONING (canonical pattern for all status icons):
+ * 
+ *   Group origin: (ICON_X, ICON_Y) ← CENTER of the icon
+ *   ├── Icon: centered at origin (pulse circles at 0,0, SVG at -12,-12)
+ *   └── Text: y = -22 → positioned above icon center
+ * 
+ * All positions in LayoutConstants define icon centers, not text baselines.
+ * =============================================================================
+ */
+
 import { formatNumber } from '../../utils/svg';
+import {
+    MILESTONE_ICON_X,
+    MILESTONE_ICON_Y,
+    STATUS_ICON_CENTER_OFFSET,
+    STATUS_TEXT_ABOVE_ICON
+} from '../layout/LayoutConstants';
 
 export type MilestoneType = 
     | 'stage-zero-complete'
@@ -101,8 +122,7 @@ function getIconForMilestone(type: MilestoneType): { icon: string; color: string
  * - Shows tick marks on timeline, calculates pace, estimates completion dates
  * - Much more nuanced - tracks continuous progress through stages
  * 
- * Positioned above the Help icon (bottom-right corner).
- * Shows pulsing icon when there's a milestone to celebrate or encouragement needed.
+ * Uses ICON-CENTERED positioning - group origin is icon center.
  */
 export function renderMilestoneIndicator(params: {
     milestone: MilestoneInfo | null;
@@ -111,47 +131,49 @@ export function renderMilestoneIndicator(params: {
 }): string {
     if (!params.milestone) return '';
 
-    // Position: Above the Help icon (bottom-right corner)
-    // Help icon is at X=700, Y=734 (moved 30px left to prevent clipping)
-    // Place this 50px above (similar gap as APR above Version indicator)
-    const x = params.x ?? 700;
-    const y = params.y ?? 684;
+    // Position is ICON CENTER
+    const x = params.x ?? MILESTONE_ICON_X;
+    const y = params.y ?? MILESTONE_ICON_Y;
 
     const { icon, color, label } = getIconForMilestone(params.milestone.type);
-    
-    // Determine if this is a celebration (green pulse) or encouragement (amber/red pulse)
-    const isCelebration = params.milestone.type.includes('complete');
-    const pulseColor = isCelebration ? color : color;
+    const pulseColor = color;
+
+    // Hit area covers text and icon
+    const hitAreaWidth = 120;
+    const hitAreaHeight = 60;
 
     return `
         <g id="progress-milestone-indicator" class="rt-milestone-indicator" transform="translate(${formatNumber(x)}, ${formatNumber(y)})">
-            <!-- Hit area for click -->
-            <rect class="rt-milestone-hitarea" x="-60" y="-12" width="120" height="50" rx="6" ry="6"
+            <!-- Hit area centered on icon -->
+            <rect class="rt-milestone-hitarea" 
+                x="${formatNumber(-hitAreaWidth / 2)}" 
+                y="${formatNumber(STATUS_TEXT_ABOVE_ICON - 10)}" 
+                width="${hitAreaWidth}" 
+                height="${hitAreaHeight}" 
+                rx="6" ry="6"
                 fill="white" fill-opacity="0" stroke="none" pointer-events="all" />
 
-            <!-- Text label above icon - single text, no swap -->
-            <!-- Spacing matches help icon: text baseline at y=0, icon center at y=10 (2px gap) -->
-            <text class="rt-milestone-indicator-text" x="0" y="0" text-anchor="middle" dominant-baseline="baseline" fill="${color}">
+            <!-- Text: positioned above icon center -->
+            <text class="rt-milestone-indicator-text" x="0" y="${STATUS_TEXT_ABOVE_ICON}" text-anchor="middle" dominant-baseline="baseline" fill="${color}">
                 ${label}
             </text>
 
-            <!-- Pulsing icon below text - same spacing as help icon (icon center 10px below text baseline) -->
-            <g class="rt-milestone-icon" transform="translate(0, 10)">
-                <!-- Outer pulse ring -->
+            <!-- Pulsing icon: centered at origin (group position IS icon center) -->
+            <g class="rt-milestone-icon">
+                <!-- Outer pulse ring centered at origin -->
                 <circle r="16" fill="${pulseColor}" opacity="0.15">
                     <animate attributeName="r" values="16;22;16" dur="1.8s" repeatCount="indefinite" />
                     <animate attributeName="opacity" values="0.15;0.35;0.15" dur="1.8s" repeatCount="indefinite" />
                 </circle>
                 <!-- Inner solid circle -->
                 <circle r="12" fill="${pulseColor}" opacity="0.9" />
-                <!-- Icon -->
-                <g transform="translate(-12, -12) scale(1)" stroke="white" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <!-- Icon SVG centered at origin -->
+                <g transform="translate(${STATUS_ICON_CENTER_OFFSET}, ${STATUS_ICON_CENTER_OFFSET})" stroke="white" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
                         ${icon}
                     </svg>
                 </g>
             </g>
-
         </g>
     `;
 }

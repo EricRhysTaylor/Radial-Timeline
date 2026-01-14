@@ -582,9 +582,11 @@
 .ert-ui .ert-pillBtn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 8px 14px;
+  padding: 0 14px;
   height: 32px;
+  line-height: 1;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--background-modifier-border);
   border-radius: 999px;
