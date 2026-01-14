@@ -1,4 +1,4 @@
-import { ButtonComponent, DropdownComponent, ToggleComponent, TextComponent, SliderComponent, ColorComponent } from 'obsidian';
+import { ButtonComponent, DropdownComponent, ToggleComponent, TextComponent, SliderComponent, ColorComponent, setIcon } from 'obsidian';
 import { ERT_CLASSES, ERT_CLASS_SET, ERT_DATA, type ErtVariant } from './classes';
 
 type SectionOpts = { title?: string; desc?: string; variant?: ErtVariant | ErtVariant[]; icon?: (iconEl: HTMLElement) => void; actions?: (actionsEl: HTMLElement) => void };
@@ -13,6 +13,7 @@ type ToggleOpts = { value?: boolean; onChange?: (value: boolean) => void };
 type ButtonOpts = { text: string; onClick?: () => void; variant?: string; cta?: boolean };
 type SliderOpts = { value?: number; min: number; max: number; step?: number; onChange?: (value: number) => void };
 type ColorPickerOpts = { value?: string; onChange?: (value: string) => void; disabled?: boolean };
+type BadgePillOpts = { icon: string; label: string; variant?: ErtVariant | ErtVariant[]; size?: ErtVariant };
 
 const __ERT_DEV__ = typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
 
@@ -186,4 +187,20 @@ export function colorPicker(slot: HTMLElement, opts: ColorPickerOpts): ColorComp
   if (opts.disabled) colorComponent.setDisabled(true);
   if (opts.onChange) colorComponent.onChange(opts.onChange);
   return colorComponent;
+}
+
+export function badgePill(parent: HTMLElement, opts: BadgePillOpts): HTMLElement {
+  const pill = parent.createDiv({ cls: ERT_CLASSES.BADGE_PILL });
+  warnUnknownErtClasses([ERT_CLASSES.BADGE_PILL], pill);
+  applyVariant(pill, opts.variant);
+  applyVariant(pill, opts.size);
+
+  const iconEl = pill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
+  warnUnknownErtClasses([ERT_CLASSES.BADGE_PILL_ICON], iconEl);
+  setIcon(iconEl, opts.icon);
+
+  const textEl = pill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: opts.label });
+  warnUnknownErtClasses([ERT_CLASSES.BADGE_PILL_TEXT], textEl);
+
+  return pill;
 }

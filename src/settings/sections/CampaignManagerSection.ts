@@ -10,6 +10,8 @@ import { isProfessionalActive } from './ProfessionalSection';
 import { TEASER_PRESETS, TEASER_LEVEL_INFO, getTeaserThresholds, teaserLevelToRevealOptions } from '../../renderer/apr/AprConstants';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { getAllScenes } from '../../utils/manuscript';
+import { badgePill } from '../../ui/ui';
+import { ERT_CLASSES } from '../../ui/classes';
 
 export interface CampaignManagerProps {
     app: App;
@@ -84,9 +86,12 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     const headerRow = card.createDiv({ cls: 'rt-campaign-manager-header' });
     const titleArea = headerRow.createDiv({ cls: 'rt-campaign-manager-title-area' });
     
-    const proBadge = titleArea.createSpan({ cls: 'rt-pro-feature-badge' });
-    setIcon(proBadge, 'signature');
-    proBadge.createSpan({ text: 'Pro' });
+    const proBadge = badgePill(titleArea, {
+        icon: 'signature',
+        label: 'PRO',
+        variant: ERT_CLASSES.BADGE_PILL_PRO,
+        size: ERT_CLASSES.BADGE_PILL_SM,
+    });
     
     titleArea.createEl('span', { text: 'Campaign Manager', cls: 'setting-item-name' });
     

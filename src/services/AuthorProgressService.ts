@@ -3,8 +3,9 @@ import type RadialTimelinePlugin from '../main';
 import { TimelineItem } from '../types/timeline';
 import { createAprSVG } from '../renderer/apr/AprRenderer';
 import { getAllScenes } from '../utils/manuscript';
-import type { AprCampaign } from '../types/settings';
+import type { AprCampaign, AuthorProgressSettings } from '../types/settings';
 import { getTeaserThresholds, getTeaserRevealLevel, teaserLevelToRevealOptions, calculateAprProgress } from '../renderer/apr/AprConstants';
+import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 
 export class AuthorProgressService {
     constructor(private plugin: RadialTimelinePlugin, private app: App) {}
@@ -138,6 +139,15 @@ export class AuthorProgressService {
 
         // Save logic
         if (mode === 'dynamic') {
+            // Check if target is 'note' (Pro feature)
+            if (settings.defaultPublishTarget === 'note') {
+                if (!isProfessionalActive(this.plugin)) {
+                    new Notice('Note publishing is a Pro feature. Upgrade to Pro to use this feature.');
+                    return null;
+                }
+                return await this.createNoteWithApr(finalSvg, settings);
+            }
+
             const path = settings.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg';
             await this.ensureFolder(path);
             
@@ -163,6 +173,81 @@ export class AuthorProgressService {
             await this.app.vault.create(path, finalSvg);
             return path;
         }
+    }
+
+    /**
+     * Create a note with embedded APR SVG (Pro feature).
+     * Supports preset layout or custom template based on defaultNoteBehavior.
+     */
+    private async createNoteWithApr(svgString: string, settings: AuthorProgressSettings): Promise<string | null> {
+        // First, save the SVG file
+        const svgPath = settings.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg';
+        await this.ensureFolder(svgPath);
+        const existingSvgFile = this.app.vault.getAbstractFileByPath(svgPath);
+        if (existingSvgFile) {
+            await this.app.vault.modify(existingSvgFile as any, svgString);
+        } else {
+            await this.app.vault.create(svgPath, svgString);
+        }
+
+        // Determine note path (same folder as SVG, different filename)
+        const svgFolder = svgPath.substring(0, svgPath.lastIndexOf('/')) || 'Radial Timeline/Social';
+        const svgFileName = svgPath.substring(svgPath.lastIndexOf('/') + 1);
+        const noteFileName = svgFileName.replace(/\.svg$/, '.md');
+        const notePath = `${svgFolder}/${noteFileName}`;
+
+        let noteContent: string;
+
+        if (settings.defaultNoteBehavior === 'custom' && settings.customNoteTemplatePath) {
+            // Use custom template
+            try {
+                const templateFile = this.app.vault.getAbstractFileByPath(settings.customNoteTemplatePath);
+                if (templateFile && 'path' in templateFile) {
+                    const templateContent = await this.app.vault.read(templateFile as any);
+                    // Replace placeholders: {{SVG_PATH}}, {{AUTHOR_COMMENT}}
+                    noteContent = templateContent
+                        .replace(/{{SVG_PATH}}/g, svgPath)
+                        .replace(/{{AUTHOR_COMMENT}}/g, '');
+                } else {
+                    // Template not found, fall back to preset
+                    noteContent = this.createPresetNoteContent(svgPath);
+                }
+            } catch (error) {
+                console.warn('Failed to load custom template, using preset:', error);
+                noteContent = this.createPresetNoteContent(svgPath);
+            }
+        } else {
+            // Use preset layout
+            noteContent = this.createPresetNoteContent(svgPath);
+        }
+
+        // Create or update the note
+        const existingNote = this.app.vault.getAbstractFileByPath(notePath);
+        if (existingNote) {
+            await this.app.vault.modify(existingNote as any, noteContent);
+        } else {
+            await this.app.vault.create(notePath, noteContent);
+        }
+
+        // Update last published
+        settings.lastPublishedDate = new Date().toISOString();
+        await this.plugin.saveSettings();
+
+        return notePath;
+    }
+
+    /**
+     * Create preset note content with SVG embed and author comment placeholder.
+     */
+    private createPresetNoteContent(svgPath: string): string {
+        const bookTitle = this.plugin.settings.authorProgress?.bookTitle || 'Working Title';
+        const authorName = this.plugin.settings.authorProgress?.authorName || '';
+        
+        let content = `# ${bookTitle}${authorName ? ` by ${authorName}` : ''}\n\n`;
+        content += `![Author Progress Report](${svgPath})\n\n`;
+        content += `<!-- Add your author comment here -->\n`;
+        
+        return content;
     }
 
     public async checkAutoUpdate(): Promise<void> {

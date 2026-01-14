@@ -29,12 +29,34 @@ export const ERT_CLASSES = {
   CARD_APR: 'ert-card--apr',
   ICON_BADGE: 'ert-iconBadge',
   CHIP: 'ert-chip',
+  BADGE_PILL: 'ert-badgePill',
+  BADGE_PILL_ICON: 'ert-badgePill__icon',
+  BADGE_PILL_TEXT: 'ert-badgePill__text',
+  BADGE_PILL_PRO: 'ert-badgePill--pro',
+  BADGE_PILL_APR: 'ert-badgePill--apr',
+  BADGE_PILL_NEUTRAL: 'ert-badgePill--neutral',
+  BADGE_PILL_SM: 'ert-badgePill--sm',
+  PILL: 'ert-pill',
   PREVIEW_FRAME: 'ert-previewFrame',
   PREVIEW_INNER: 'ert-previewFrame__inner',
   HERO_LAYOUT: 'ert-heroLayout',
   HERO_LEFT: 'ert-heroLayout__left',
   HERO_RIGHT: 'ert-heroLayout__right',
   DENSITY_COMPACT: 'ert-density--compact',
+  PANEL: 'ert-panel',
+  PANEL_ELEV: 'ert-panel--elev',
+  PANEL_HEADER: 'ert-panel__header',
+  PANEL_BODY: 'ert-panel__body',
+  GRID_FORM: 'ert-gridForm',
+  GRID_FORM_2: 'ert-gridForm--2',
+  GRID_FORM_3: 'ert-gridForm--3',
+  GRID_FORM_CELL: 'ert-gridForm__cell',
+  OBJECT_ROW: 'ert-objectRow',
+  OBJECT_ROW_LEFT: 'ert-objectRow__left',
+  OBJECT_ROW_META: 'ert-objectRow__meta',
+  OBJECT_ROW_ACTIONS: 'ert-objectRow__actions',
+  ICON_BTN_GROUP: 'ert-iconBtnGroup',
+  ICON_BTN: 'ert-iconBtn',
   DEBUG: 'is-debug',
 } as const;
 
@@ -49,6 +71,10 @@ export type ErtVariant =
   | typeof ERT_CLASSES.SECTION_TIGHT
   | typeof ERT_CLASSES.SECTION_HERO
   | typeof ERT_CLASSES.SECTION_ACCENT
+  | typeof ERT_CLASSES.BADGE_PILL_PRO
+  | typeof ERT_CLASSES.BADGE_PILL_APR
+  | typeof ERT_CLASSES.BADGE_PILL_NEUTRAL
+  | typeof ERT_CLASSES.BADGE_PILL_SM
   | typeof ERT_CLASSES.DEBUG
   | string | undefined;
 

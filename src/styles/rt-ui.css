@@ -149,6 +149,107 @@
   gap: var(--ert-gap-sm);
 }
 
+.ert-ui .ert-panel {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  padding: var(--ert-pad-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui .ert-panel--elev {
+  box-shadow: var(--ert-shadow-hero);
+}
+
+.ert-ui .ert-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui .ert-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui .ert-gridForm {
+  display: grid;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui .ert-gridForm--2 {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.ert-ui .ert-gridForm--3 {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.ert-ui .ert-gridForm__cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui .ert-objectRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--ert-gap-sm);
+  align-items: center;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  padding: var(--ert-pad-sm);
+  background: var(--background-primary);
+}
+
+.ert-ui .ert-objectRow__left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ert-ui .ert-objectRow__meta {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.ert-ui .ert-objectRow__actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.ert-ui .ert-iconBtnGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ert-ui .ert-iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.ert-ui .ert-iconBtn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  border-color: var(--background-modifier-border);
+}
+
 .ert-ui .ert-card {
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
@@ -178,6 +279,66 @@
 .ert-ui .ert-iconBadge svg {
   width: 16px;
   height: 16px;
+}
+
+.ert-ui .ert-badgePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.2;
+  box-shadow: var(--shadow-s1, 0 6px 18px rgba(0, 0, 0, 0.08));
+}
+
+.ert-ui .ert-badgePill--sm {
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+.ert-ui .ert-badgePill__icon {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ert-ui .ert-badgePill__icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ert-ui .ert-badgePill__text {
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.ert-ui .ert-badgePill--neutral {
+  background: var(--background-secondary);
+  border-color: var(--background-modifier-border);
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-skin--pro .ert-badgePill--pro,
+.ert-ui .ert-skin--pro .ert-badgePill--pro {
+  background: color-mix(in srgb, var(--rt-pro-color, #d946ef) 88%, var(--background-primary) 12%);
+  border-color: color-mix(in srgb, var(--rt-pro-color, #d946ef) 60%, var(--background-modifier-border) 40%);
+  color: #ffffff;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--rt-pro-color, #d946ef) 25%, transparent);
+}
+
+.ert-ui.ert-skin--apr .ert-badgePill--apr,
+.ert-ui .ert-skin--apr .ert-badgePill--apr {
+  background: color-mix(in srgb, var(--interactive-accent) 86%, var(--background-primary) 14%);
+  border-color: color-mix(in srgb, var(--interactive-accent) 55%, var(--background-modifier-border) 45%);
+  color: #2b2100;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--interactive-accent) 22%, transparent);
 }
 
 .ert-ui .ert-chip {
@@ -276,7 +437,9 @@
 .ert-ui.ert-skin--apr .ert-card--hero,
 .ert-ui.ert-skin--apr .ert-section--hero,
 .ert-ui .ert-skin--apr .ert-card--hero,
-.ert-ui .ert-skin--apr .ert-section--hero {
+.ert-ui .ert-skin--apr .ert-section--hero,
+.ert-ui.ert-skin--apr .ert-card--apr,
+.ert-ui .ert-skin--apr .ert-card--apr {
   background: var(--ert-surface-hero);
   background-image: var(--ert-hero-grad);
   border: 1px solid var(--ert-border-hero);

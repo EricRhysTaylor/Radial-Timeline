@@ -67,13 +67,14 @@ export interface HoverMetadataField {
     enabled: boolean;      // Show in hover synopsis
 }
 
-export type AuthorProgressPublishTarget = 'folder' | 'github_pages';
+export type AuthorProgressPublishTarget = 'folder' | 'github_pages' | 'note';
 export type AuthorProgressFrequency = 'manual' | 'daily' | 'weekly' | 'monthly';
 
 export interface AuthorProgressSettings {
     enabled: boolean;
     defaultNoteBehavior: 'preset' | 'custom';
     defaultPublishTarget: AuthorProgressPublishTarget;
+    customNoteTemplatePath?: string; // Path to custom note template (Pro feature)
     
     // Reveal Options (checkboxes)
     showSubplots: boolean;  // Show all rings vs single Main Plot ring
