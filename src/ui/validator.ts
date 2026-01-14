@@ -31,8 +31,15 @@ export function validateErtLayout(root: HTMLElement | null, opts: ValidatorOptio
   const log = opts.log ?? ((message: string, el?: Element) => console.warn(`[ERT-UI drift] ${message}`, el));
   const rootLabel = opts.rootLabel ?? 'ert-ui';
 
-  // Skip validation for explicitly opted-out subtrees.
-  const shouldSkip = (el: Element) => (el as HTMLElement).dataset.ertSkipValidate === 'true';
+  // Skip validation for explicitly opted-out subtrees (self or any ancestor).
+  const shouldSkip = (el: Element | null): boolean => {
+    let cur: Element | null = el;
+    while (cur) {
+      if ((cur as HTMLElement).dataset?.ertSkipValidate === 'true') return true;
+      cur = cur.parentElement;
+    }
+    return false;
+  };
 
   // Inline spacing detection
   root.querySelectorAll<HTMLElement>('*').forEach(el => {

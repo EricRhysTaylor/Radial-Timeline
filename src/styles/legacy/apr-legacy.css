@@ -1,0 +1,478 @@
+/*
+ * Legacy APR CSS. Do not use for ERT UI. Scheduled for removal.
+ */
+
+/* APR spoke color swatch - uses CSS custom property for dynamic color */
+.rt-apr-spoke-swatch {
+  background-color: var(--rt-apr-spoke-color, #ffffff);
+}
+
+/* -------------------------------------------------------------------------- */
+/* AUTHOR PROGRESS REPORT (APR) SECTION (Legacy)                               */
+/* -------------------------------------------------------------------------- */
+
+.rt-apr-section {
+  margin-top: 8px;
+  margin-bottom: 24px;
+}
+
+/* APR Hero Section (mirrors Pro hero but with social media colors) */
+.rt-apr-hero {
+  position: relative;
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.35);
+  background: radial-gradient(circle at 12% 20%, rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.16), transparent 40%),
+              linear-gradient(135deg, rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.12), rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.04));
+  box-shadow: 0 10px 40px rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.12);
+  overflow: hidden;
+}
+
+.rt-apr-hero-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.rt-apr-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.15);
+  color: var(--rt-social-color);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.rt-apr-hero-badge svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Alert state for badge when APR needs refresh */
+.rt-apr-hero-badge.rt-apr-badge-alert {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--text-error, #ef4444);
+  animation: rt-apr-badge-pulse 2s ease-in-out infinite;
+}
+
+.rt-apr-hero-badge.rt-apr-badge-alert svg {
+  color: var(--text-error, #ef4444);
+}
+
+@keyframes rt-apr-badge-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Alert border for settings rows when refresh is needed */
+.rt-settings-root .rt-apr-refresh-alert {
+  border-left: 3px solid var(--text-error, #ef4444);
+  padding-left: 12px;
+  background: rgba(239, 68, 68, 0.05);
+  border-radius: 6px;
+}
+
+.rt-settings-root .rt-apr-refresh-alert .setting-item-name {
+  color: var(--text-error, #ef4444);
+}
+
+/* High specificity to override Obsidian's default h3 styles */
+.rt-settings-root .rt-apr-hero h3.rt-apr-hero-title,
+.rt-settings-root .rt-apr-hero .rt-apr-hero-title,
+.rt-settings-root .rt-apr-hero-title {
+  margin: 0 0 4px 0;
+  padding: 0;
+  margin-left: 0;
+  padding-left: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-normal);
+  text-indent: 0;
+}
+
+.rt-apr-hero-subtitle {
+  margin: 4px 0 10px 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.rt-apr-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.rt-apr-hero-meta span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.10);
+  color: var(--rt-social-color);
+  font-size: 12px;
+}
+
+/* APR hero features list */
+.rt-apr-hero-features {
+  margin: 12px 0 14px 0;
+  padding: 10px 12px;
+  background: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.06);
+  border-radius: 8px;
+}
+
+.rt-apr-hero-features h5 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rt-social-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rt-apr-hero-features ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rt-apr-hero-features li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.rt-apr-hero-feature-icon {
+  display: flex;
+  align-items: center;
+  color: var(--rt-social-color);
+}
+
+.rt-apr-hero-feature-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* APR Preview Section with Size Selector */
+.rt-apr-preview-section {
+  margin: 16px 0;
+}
+
+.rt-apr-size-selector-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.rt-apr-size-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.rt-settings-root .rt-apr-size-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 16px;
+  background: var(--background-modifier-border);
+  border: 2px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+
+.rt-settings-root .rt-apr-size-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.rt-settings-root .rt-apr-size-btn-active {
+  border-color: var(--rt-social-color);
+  background: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.15);
+  color: var(--text-normal);
+}
+
+/* .rt-apr-size-dimension no longer used - dimensions inline in button text */
+
+.rt-apr-preview-dimension-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  font-style: italic;
+}
+
+/* APR Hero Preview (1:1 actual size, scrollable) */
+.rt-apr-hero-preview.rt-apr-preview-actual {
+  margin: 0;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  overflow: auto;
+  max-height: 520px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rt-apr-hero-preview.rt-apr-preview-actual .rt-apr-svg-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rt-apr-hero-preview.rt-apr-preview-actual svg {
+  display: block;
+  border-radius: 4px;
+  flex-shrink: 0;
+  /* SVG renders at its natural width/height from viewBox */
+}
+
+/* Legacy scaled preview (for thumbnails) */
+.rt-apr-hero-preview:not(.rt-apr-preview-actual) {
+  margin: 16px 0 8px 0;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  max-height: 240px;
+  overflow: hidden;
+}
+
+.rt-apr-hero-preview:not(.rt-apr-preview-actual) svg {
+  width: 100%;
+  height: auto;
+  max-height: 220px;
+  border-radius: 4px;
+}
+
+.rt-apr-hero-preview-loading,
+.rt-apr-hero-preview-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  padding: 40px;
+}
+
+.rt-apr-hero-preview-error {
+  text-align: center;
+  color: var(--text-error);
+  font-size: 0.95rem;
+  padding: 40px;
+}
+
+.rt-apr-content-wrapper {
+  display: grid;
+  gap: 12px;
+}
+
+.rt-apr-stack-gap:not(:last-child) {
+  margin-bottom: 12px;
+}
+
+.rt-apr-palette-book-title-group {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.rt-apr-palette-book-title-group.rt-palette-inactive {
+  opacity: 0.6;
+}
+
+.rt-settings-root .rt-apr-styling-card .rt-section-title {
+  margin-bottom: 6px;
+}
+
+.rt-apr-typography-container {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.rt-apr-typography-separator {
+  border-top: 1px dashed var(--background-modifier-border);
+  margin: 8px 0;
+}
+
+.rt-settings-root .rt-apr-unified-group {
+  display: grid;
+  gap: 6px;
+}
+
+.rt-settings-root .rt-apr-unified-group .setting-item.setting-item {
+  margin: 0;
+}
+
+.rt-settings-root .rt-apr-unified-row.setting-item {
+  display: grid;
+  grid-template-columns: minmax(120px, 200px) 1fr;
+  align-items: center;
+  column-gap: 10px;
+}
+
+.rt-settings-root .rt-apr-unified-row .setting-item-name {
+  margin: 0;
+}
+
+.rt-settings-root .rt-apr-unified-row .setting-item-control {
+  margin: 0;
+}
+
+.rt-settings-root .rt-apr-unified-row .rt-apr-text-input {
+  width: 100%;
+}
+
+.rt-settings-root .rt-apr-unified-row-secondary.setting-item {
+  padding: 8px 10px;
+  background: var(--background-secondary);
+  border-radius: 8px;
+}
+
+.rt-settings-root .rt-apr-unified-row-secondary .setting-item-control {
+  margin: 0;
+}
+
+.rt-settings-root .rt-apr-unified-row-secondary .setting-item-control select {
+  width: 100%;
+}
+
+.rt-settings-root .rt-apr-palette-button-row.setting-item {
+  align-items: flex-start;
+}
+
+.rt-settings-root .rt-apr-palette-button-row .setting-item-control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.rt-settings-root .rt-apr-pro-teaser {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  background: rgba(var(--rt-social-color-rgb), 0.08);
+  border: 1px dashed rgba(var(--rt-social-color-rgb), 0.2);
+  border-radius: 10px;
+}
+
+.rt-settings-root .rt-apr-pro-teaser-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(var(--rt-social-color-rgb), 0.12);
+  color: var(--rt-social-color);
+}
+
+.rt-settings-root .rt-apr-pro-teaser-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.rt-settings-root .rt-apr-pro-teaser-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-muted);
+}
+
+.rt-settings-root .rt-apr-pro-teaser-text strong {
+  color: var(--text-normal);
+}
+
+.rt-settings-root .rt-apr-pro-teaser-link {
+  color: var(--rt-social-color);
+  font-weight: 600;
+}
+
+.rt-settings-root .rt-apr-pro-teaser-link:hover {
+  text-decoration: underline;
+}
+
+.rt-apr-recommended-setting {
+  border-left: 3px solid var(--rt-social-color);
+  padding-left: 8px;
+  margin-bottom: 6px;
+}
+
+.rt-settings-root .rt-apr-recommended-setting .setting-item-name {
+  color: var(--rt-social-color);
+}
+
+.rt-apr-section input[type="color"] {
+  padding: 0;
+  width: 60px;
+  height: 32px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  overflow: hidden;
+  box-shadow: none;
+  outline: none;
+  cursor: pointer;
+}
+
+.rt-apr-section input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.rt-apr-section input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+
+/* Legacy styles kept for backwards compatibility */
+.rt-apr-header-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 12px 16px;
+  background: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.08);
+  border-radius: 8px;
+  border: 1px solid rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.2);
+}
+
+.rt-apr-header-banner .rt-apr-header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  color: var(--rt-social-color);
+}
+
+.rt-apr-header-banner .rt-apr-header-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.rt-apr-header-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--rt-social-color);
+}

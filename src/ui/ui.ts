@@ -1,7 +1,7 @@
 import { ButtonComponent, DropdownComponent, ToggleComponent, TextComponent, SliderComponent, ColorComponent } from 'obsidian';
-import { ERT_CLASSES, ERT_DATA, type ErtVariant } from './classes';
+import { ERT_CLASSES, ERT_CLASS_SET, ERT_DATA, type ErtVariant } from './classes';
 
-type SectionOpts = { title?: string; desc?: string; variant?: ErtVariant };
+type SectionOpts = { title?: string; desc?: string; variant?: ErtVariant | ErtVariant[]; icon?: (iconEl: HTMLElement) => void; actions?: (actionsEl: HTMLElement) => void };
 type RowOpts = { label: string; desc?: string; variant?: ErtVariant };
 type StackOpts = { label?: string; desc?: string; variant?: ErtVariant };
 type InlineOpts = { variant?: ErtVariant };
@@ -14,19 +14,50 @@ type ButtonOpts = { text: string; onClick?: () => void; variant?: string; cta?: 
 type SliderOpts = { value?: number; min: number; max: number; step?: number; onChange?: (value: number) => void };
 type ColorPickerOpts = { value?: string; onChange?: (value: string) => void; disabled?: boolean };
 
-const applyVariant = (el: HTMLElement, variant?: ErtVariant) => {
-  if (variant) el.addClass(variant);
+const __ERT_DEV__ = typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
+
+const warnUnknownErtClasses = (clsTokens: (string | null | undefined)[], el: HTMLElement) => {
+  if (!__ERT_DEV__) return;
+  clsTokens
+    .flatMap(token => (token ? token.split(/\s+/) : []))
+    .filter(Boolean)
+    .forEach(token => {
+      if (token.startsWith('ert-') && !ERT_CLASS_SET.has(token)) {
+        console.warn('[ERT] Unknown class', token, el);
+      }
+    });
+};
+
+const applyVariant = (el: HTMLElement, variant?: ErtVariant | ErtVariant[]) => {
+  if (!variant) return;
+  if (Array.isArray(variant)) {
+    const tokens = variant.filter(Boolean) as string[];
+    warnUnknownErtClasses(tokens, el);
+    tokens.forEach(v => el.addClass(v));
+  } else {
+    const token = variant as string;
+    warnUnknownErtClasses([token], el);
+    el.addClass(token);
+  }
 };
 
 export function mountRoot(parentEl: HTMLElement): HTMLElement {
   const root = parentEl.createDiv({ cls: ERT_CLASSES.ROOT });
+  warnUnknownErtClasses([ERT_CLASSES.ROOT], root);
   return root;
 }
 
 export function section(parent: HTMLElement, opts: SectionOpts, buildFn?: (bodyEl: HTMLElement) => void): HTMLElement {
   const sectionEl = parent.createDiv({ cls: ERT_CLASSES.SECTION });
+  warnUnknownErtClasses([ERT_CLASSES.SECTION], sectionEl);
   sectionEl.setAttribute(ERT_DATA.SECTION, 'true');
   applyVariant(sectionEl, opts.variant);
+
+  if (opts.icon) {
+    const iconSlot = sectionEl.createDiv({ cls: ERT_CLASSES.SECTION_ICON });
+    warnUnknownErtClasses([ERT_CLASSES.SECTION_ICON], iconSlot);
+    opts.icon(iconSlot);
+  }
 
   if (opts.title) {
     sectionEl.createEl('div', { cls: ERT_CLASSES.SECTION_TITLE, text: opts.title });
@@ -35,13 +66,21 @@ export function section(parent: HTMLElement, opts: SectionOpts, buildFn?: (bodyE
     sectionEl.createEl('div', { cls: ERT_CLASSES.SECTION_DESC, text: opts.desc });
   }
 
+  if (opts.actions) {
+    const actionSlot = sectionEl.createDiv({ cls: ERT_CLASSES.SECTION_ACTIONS });
+    warnUnknownErtClasses([ERT_CLASSES.SECTION_ACTIONS], actionSlot);
+    opts.actions(actionSlot);
+  }
+
   const bodyEl = sectionEl.createDiv({ cls: ERT_CLASSES.SECTION_BODY });
+  warnUnknownErtClasses([ERT_CLASSES.SECTION_BODY], bodyEl);
   if (buildFn) buildFn(bodyEl);
   return bodyEl;
 }
 
 export function row(parent: HTMLElement, opts: RowOpts): HTMLElement {
   const rowEl = parent.createDiv({ cls: ERT_CLASSES.ROW });
+  warnUnknownErtClasses([ERT_CLASSES.ROW], rowEl);
   rowEl.setAttribute(ERT_DATA.ROW, 'true');
   applyVariant(rowEl, opts.variant);
 
@@ -53,11 +92,13 @@ export function row(parent: HTMLElement, opts: RowOpts): HTMLElement {
   }
 
   const controlEl = rowEl.createDiv({ cls: ERT_CLASSES.CONTROL });
+  warnUnknownErtClasses([ERT_CLASSES.CONTROL], controlEl);
   return controlEl;
 }
 
 export function stack(parent: HTMLElement, opts: StackOpts): HTMLElement {
   const stackEl = parent.createDiv({ cls: ERT_CLASSES.STACK });
+  warnUnknownErtClasses([ERT_CLASSES.STACK], stackEl);
   stackEl.setAttribute(ERT_DATA.STACK, 'true');
   applyVariant(stackEl, opts.variant);
 
@@ -70,11 +111,13 @@ export function stack(parent: HTMLElement, opts: StackOpts): HTMLElement {
   }
 
   const controlEl = stackEl.createDiv({ cls: ERT_CLASSES.CONTROL });
+  warnUnknownErtClasses([ERT_CLASSES.CONTROL], controlEl);
   return controlEl;
 }
 
 export function inline(parent: HTMLElement, opts: InlineOpts = {}): HTMLElement {
   const inlineEl = parent.createDiv({ cls: ERT_CLASSES.INLINE });
+  warnUnknownErtClasses([ERT_CLASSES.INLINE], inlineEl);
   inlineEl.setAttribute(ERT_DATA.INLINE, 'true');
   applyVariant(inlineEl, opts.variant);
   return inlineEl;
@@ -82,8 +125,19 @@ export function inline(parent: HTMLElement, opts: InlineOpts = {}): HTMLElement 
 
 export function divider(parent: HTMLElement, opts: DividerOpts = {}): HTMLElement {
   const dividerEl = parent.createDiv({ cls: ERT_CLASSES.DIVIDER });
+  warnUnknownErtClasses([ERT_CLASSES.DIVIDER], dividerEl);
   applyVariant(dividerEl, opts.variant);
   return dividerEl;
+}
+
+export function heroLayout(parent: HTMLElement): { left: HTMLElement; right: HTMLElement } {
+  const layout = parent.createDiv({ cls: ERT_CLASSES.HERO_LAYOUT });
+  warnUnknownErtClasses([ERT_CLASSES.HERO_LAYOUT], layout);
+  const left = layout.createDiv({ cls: ERT_CLASSES.HERO_LEFT });
+  warnUnknownErtClasses([ERT_CLASSES.HERO_LEFT], left);
+  const right = layout.createDiv({ cls: ERT_CLASSES.HERO_RIGHT });
+  warnUnknownErtClasses([ERT_CLASSES.HERO_RIGHT], right);
+  return { left, right };
 }
 
 export function textInput(slot: HTMLElement, opts: TextInputOpts = {}): TextComponent {

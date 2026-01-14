@@ -5,6 +5,16 @@
   --ert-pad-sm: 12px;
   --ert-pad-md: 16px;
   --ert-label-w: 180px;
+  /* Neutral defaults for surfaces; skins override as needed */
+  --ert-accent: var(--interactive-accent);
+  --ert-surface-hero: color-mix(in srgb, var(--background-primary) 92%, var(--interactive-accent) 4%);
+  --ert-border-hero: color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
+  --ert-shadow-hero: 0 8px 28px color-mix(in srgb, var(--background-modifier-border) 35%, transparent);
+  --ert-hero-grad: radial-gradient(circle at 10% 15%, color-mix(in srgb, var(--background-secondary) 20%, transparent) 0%, transparent 40%), linear-gradient(135deg, color-mix(in srgb, var(--background-secondary) 16%, transparent) 0%, color-mix(in srgb, var(--background-secondary) 8%, transparent) 100%);
+  --ert-iconBadge-bg: color-mix(in srgb, var(--background-secondary) 80%, var(--interactive-accent) 6%);
+  --ert-chip-bg: color-mix(in srgb, var(--background-secondary) 88%, var(--interactive-accent) 4%);
+  --ert-previewFrame-bg: color-mix(in srgb, var(--background-secondary) 90%, var(--interactive-accent) 2%);
+  --ert-previewFrame-border: color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
 
   display: flex;
   flex-direction: column;
@@ -58,6 +68,21 @@
   display: flex;
   flex-direction: column;
   gap: var(--ert-gap-sm);
+}
+
+.ert-ui .ert-section__icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.ert-ui .ert-section__actions {
+  display: flex;
+  gap: var(--ert-gap-xs);
+  margin-left: auto;
+  align-items: center;
 }
 
 .ert-ui .ert-row {
@@ -116,6 +141,70 @@
   gap: var(--ert-gap-sm);
 }
 
+.ert-ui .ert-card {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  padding: var(--ert-pad-md);
+}
+
+.ert-ui .ert-card--hero {
+  background: var(--ert-surface-hero);
+  background-image: var(--ert-hero-grad);
+  border: 1px solid var(--ert-border-hero);
+  box-shadow: var(--ert-shadow-hero);
+}
+
+.ert-ui .ert-iconBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--ert-iconBadge-bg);
+  color: var(--text-normal);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.ert-ui .ert-iconBadge svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ert-ui .ert-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--ert-chip-bg);
+  color: var(--text-normal);
+  font-size: 12px;
+}
+
+.ert-ui .ert-previewFrame {
+  background: var(--ert-previewFrame-bg);
+  border: 1px solid var(--ert-previewFrame-border);
+  border-radius: 12px;
+  padding: var(--ert-pad-md);
+  overflow: hidden;
+}
+
+.ert-ui .ert-previewFrame__inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: 520px;
+  overflow: auto;
+}
+
+.ert-ui .ert-previewFrame__inner svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
 .ert-ui .ert-toggle-item {
   display: flex;
   align-items: center;
@@ -131,6 +220,69 @@
 .ert-ui .ert-divider {
   border-bottom: 1px solid var(--background-modifier-border);
   margin: var(--ert-gap-sm) 0;
+}
+
+.ert-ui .ert-section--hero {
+  background: var(--ert-surface-hero);
+  background-image: var(--ert-hero-grad);
+  border: 1px solid var(--ert-border-hero);
+  box-shadow: var(--ert-shadow-hero);
+}
+
+.ert-ui .ert-section--accent {
+  border-left: 3px solid var(--ert-border-hero);
+}
+
+.ert-ui .ert-heroLayout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--ert-gap-md);
+  align-items: stretch;
+}
+
+.ert-ui .ert-heroLayout__right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui .ert-heroLayout__left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-sm);
+}
+
+/* APR skin overrides (visual only; no spacing changes) */
+.ert-ui.ert-skin--apr {
+  --ert-surface-hero: color-mix(in srgb, var(--background-primary) 80%, var(--interactive-accent) 8%);
+  --ert-border-hero: color-mix(in srgb, var(--interactive-accent) 25%, transparent);
+  --ert-shadow-hero: 0 10px 36px color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+  --ert-hero-grad: radial-gradient(circle at 12% 20%, color-mix(in srgb, var(--interactive-accent) 24%, transparent) 0%, transparent 46%), linear-gradient(135deg, color-mix(in srgb, var(--interactive-accent) 18%, transparent) 0%, color-mix(in srgb, var(--interactive-accent) 6%, transparent) 100%);
+  --ert-iconBadge-bg: color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+  --ert-chip-bg: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-secondary) 80%);
+  --ert-previewFrame-bg: color-mix(in srgb, var(--background-secondary) 82%, var(--interactive-accent) 8%);
+  --ert-previewFrame-border: color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+}
+
+.ert-ui.ert-skin--apr .ert-card--hero,
+.ert-ui.ert-skin--apr .ert-section--hero {
+  background: var(--ert-surface-hero);
+  background-image: var(--ert-hero-grad);
+  border: 1px solid var(--ert-border-hero);
+  box-shadow: var(--ert-shadow-hero);
+}
+
+.ert-ui.ert-skin--apr .ert-iconBadge {
+  background: var(--ert-iconBadge-bg);
+}
+
+.ert-ui.ert-skin--apr .ert-chip {
+  background: var(--ert-chip-bg);
+}
+
+.ert-ui.ert-skin--apr .ert-previewFrame {
+  background: var(--ert-previewFrame-bg);
+  border-color: var(--ert-previewFrame-border);
 }
 
 /* Debug overlay (opt-in via .is-debug) */
