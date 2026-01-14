@@ -9,6 +9,7 @@
 
   /* Neutral defaults for surfaces; skins override as needed */
   --ert-accent: var(--interactive-accent);
+  --ert-accent-rgb: var(--interactive-accent-rgb, 0, 0, 0);
   --ert-surface-hero: color-mix(in srgb, var(--background-primary) 92%, var(--interactive-accent) 4%);
   --ert-border-hero: color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
   --ert-shadow-hero: 0 8px 28px color-mix(in srgb, var(--background-modifier-border) 35%, transparent);
@@ -17,6 +18,38 @@
   --ert-chip-bg: color-mix(in srgb, var(--background-secondary) 88%, var(--interactive-accent) 4%);
   --ert-previewFrame-bg: color-mix(in srgb, var(--background-secondary) 90%, var(--interactive-accent) 2%);
   --ert-previewFrame-border: color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
+  --ert-panel-bg: var(--background-primary);
+  --ert-panel-border: var(--background-modifier-border);
+  --ert-panel-radius: 12px;
+  --ert-panel-pad: var(--ert-pad-md);
+  --ert-panel-shadow: none;
+  --ert-panel-shadow-elev: var(--ert-shadow-hero);
+  --ert-iconBtn-bg: var(--background-secondary);
+  --ert-iconBtn-border: var(--background-modifier-border);
+  --ert-iconBtn-color: var(--text-muted);
+  --ert-iconBtn-hover-bg: var(--background-modifier-hover);
+  --ert-iconBtn-hover-border: var(--background-modifier-border);
+  --ert-iconBtn-hover-color: var(--text-normal);
+  --ert-pill-bg: rgba(255, 255, 255, 0.08);
+  --ert-pill-border: var(--background-modifier-border);
+  --ert-pill-color: var(--text-normal);
+  --ert-pill-radius: 20px;
+  --ert-pill-pad-y: 8px;
+  --ert-pill-pad-x: 14px;
+  --ert-pill-min-height: 32px;
+  --ert-pill-font-size: 13px;
+  --ert-pill-font-weight: 500;
+  --ert-pill-hover-bg: rgba(255, 255, 255, 0.12);
+  --ert-pill-hover-border: var(--text-muted);
+  --ert-pill-hover-color: var(--text-normal);
+  --ert-pill-active-border: var(--ert-accent);
+  --ert-pill-active-shadow: 0 0 0 2px color-mix(in srgb, var(--ert-accent) 25%, transparent),
+                            inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  --ert-pill-icon-color: var(--text-muted);
+  --ert-pill-icon-opacity: 0.7;
+  --ert-pill-icon-hover-color: var(--ert-pill-hover-color);
+  --ert-pill-icon-active-color: var(--ert-accent);
+  --ert-pill-disabled-opacity: 0.4;
 
   /* Layout */
   display: flex;
@@ -159,17 +192,18 @@
 }
 
 .ert-ui .ert-panel {
-  background: var(--background-primary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 12px;
-  padding: var(--ert-pad-md);
+  background: var(--ert-panel-bg);
+  border: 1px solid var(--ert-panel-border);
+  border-radius: var(--ert-panel-radius);
+  padding: var(--ert-panel-pad);
+  box-shadow: var(--ert-panel-shadow);
   display: flex;
   flex-direction: column;
   gap: var(--ert-gap-sm);
 }
 
 .ert-ui .ert-panel--elev {
-  box-shadow: var(--ert-shadow-hero);
+  box-shadow: var(--ert-panel-shadow-elev);
 }
 
 .ert-ui .ert-panel__header {
@@ -246,17 +280,17 @@
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  border: 1px solid var(--background-modifier-border);
-  background: var(--background-secondary);
-  color: var(--text-muted);
+  border: 1px solid var(--ert-iconBtn-border);
+  background: var(--ert-iconBtn-bg);
+  color: var(--ert-iconBtn-color);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .ert-ui .ert-iconBtn:hover {
-  background: var(--background-modifier-hover);
-  color: var(--text-normal);
-  border-color: var(--background-modifier-border);
+  background: var(--ert-iconBtn-hover-bg);
+  color: var(--ert-iconBtn-hover-color);
+  border-color: var(--ert-iconBtn-hover-border);
 }
 
 .ert-ui .ert-card {
@@ -336,18 +370,20 @@
 
 .ert-ui.ert-skin--pro .ert-badgePill--pro,
 .ert-ui .ert-skin--pro .ert-badgePill--pro {
-  background: color-mix(in srgb, var(--rt-pro-color, #d946ef) 88%, var(--background-primary) 12%);
-  border-color: color-mix(in srgb, var(--rt-pro-color, #d946ef) 60%, var(--background-modifier-border) 40%);
+  background: color-mix(in srgb, var(--ert-accent) 88%, var(--background-primary) 12%);
+  border-color: color-mix(in srgb, var(--ert-accent) 60%, var(--background-modifier-border) 40%);
   color: #ffffff;
-  box-shadow: 0 8px 22px color-mix(in srgb, var(--rt-pro-color, #d946ef) 25%, transparent);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--ert-accent) 25%, transparent);
 }
 
+.ert-ui.ert-skin--social .ert-badgePill--apr,
+.ert-ui .ert-skin--social .ert-badgePill--apr,
 .ert-ui.ert-skin--apr .ert-badgePill--apr,
 .ert-ui .ert-skin--apr .ert-badgePill--apr {
-  background: color-mix(in srgb, var(--interactive-accent) 86%, var(--background-primary) 14%);
-  border-color: color-mix(in srgb, var(--interactive-accent) 55%, var(--background-modifier-border) 45%);
+  background: color-mix(in srgb, var(--ert-accent) 86%, var(--background-primary) 14%);
+  border-color: color-mix(in srgb, var(--ert-accent) 55%, var(--background-modifier-border) 45%);
   color: #2b2100;
-  box-shadow: 0 8px 22px color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--ert-accent) 22%, transparent);
 }
 
 .ert-ui .ert-chip {
@@ -365,13 +401,13 @@
 }
 
 .ert-ui .ert-chip:hover {
-  background: color-mix(in srgb, var(--ert-chip-bg) 80%, var(--interactive-accent) 20%);
+  background: color-mix(in srgb, var(--ert-chip-bg) 80%, var(--ert-accent) 20%);
 }
 
 .ert-ui .ert-chip.is-active {
-  background: color-mix(in srgb, var(--interactive-accent) 20%, var(--ert-chip-bg) 80%);
-  border-color: var(--interactive-accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 15%, transparent);
+  background: color-mix(in srgb, var(--ert-accent) 20%, var(--ert-chip-bg) 80%);
+  border-color: var(--ert-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ert-accent) 15%, transparent);
 }
 
 .ert-ui .ert-previewFrame {
@@ -443,19 +479,47 @@
   gap: var(--ert-gap-sm);
 }
 
-/* APR skin overrides (visual only; no spacing changes) */
+/* Social/APR skin overrides (visual only; no spacing changes) */
+.ert-ui.ert-skin--social,
+.ert-ui .ert-skin--social,
 .ert-ui.ert-skin--apr,
 .ert-ui .ert-skin--apr {
-  --ert-surface-hero: color-mix(in srgb, var(--background-primary) 80%, var(--interactive-accent) 8%);
-  --ert-border-hero: color-mix(in srgb, var(--interactive-accent) 25%, transparent);
-  --ert-shadow-hero: 0 10px 36px color-mix(in srgb, var(--interactive-accent) 18%, transparent);
-  --ert-hero-grad: radial-gradient(circle at 12% 20%, color-mix(in srgb, var(--interactive-accent) 24%, transparent) 0%, transparent 46%), linear-gradient(135deg, color-mix(in srgb, var(--interactive-accent) 18%, transparent) 0%, color-mix(in srgb, var(--interactive-accent) 6%, transparent) 100%);
-  --ert-iconBadge-bg: color-mix(in srgb, var(--interactive-accent) 18%, transparent);
-  --ert-chip-bg: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-secondary) 80%);
-  --ert-previewFrame-bg: color-mix(in srgb, var(--background-secondary) 82%, var(--interactive-accent) 8%);
-  --ert-previewFrame-border: color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+  --ert-accent: var(--rt-social-color, #ffd41d);
+  --ert-accent-rgb: var(--rt-social-color-rgb, 255, 212, 29);
+  --ert-surface-hero: color-mix(in srgb, var(--background-primary) 80%, var(--ert-accent) 8%);
+  --ert-border-hero: color-mix(in srgb, var(--ert-accent) 25%, transparent);
+  --ert-shadow-hero: 0 10px 36px color-mix(in srgb, var(--ert-accent) 18%, transparent);
+  --ert-hero-grad: radial-gradient(circle at 12% 20%, color-mix(in srgb, var(--ert-accent) 24%, transparent) 0%, transparent 46%), linear-gradient(135deg, color-mix(in srgb, var(--ert-accent) 18%, transparent) 0%, color-mix(in srgb, var(--ert-accent) 6%, transparent) 100%);
+  --ert-iconBadge-bg: color-mix(in srgb, var(--ert-accent) 18%, transparent);
+  --ert-chip-bg: color-mix(in srgb, var(--ert-accent) 10%, var(--background-secondary) 80%);
+  --ert-previewFrame-bg: color-mix(in srgb, var(--background-secondary) 82%, var(--ert-accent) 8%);
+  --ert-previewFrame-border: color-mix(in srgb, var(--ert-accent) 22%, transparent);
+  --ert-panel-bg: rgba(255, 255, 255, 0.03);
+  --ert-panel-border: rgba(255, 255, 255, 0.08);
+  --ert-panel-radius: 18px;
+  --ert-panel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 20px 45px rgba(0, 0, 0, 0.35);
+  --ert-panel-shadow-elev: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 20px 45px rgba(0, 0, 0, 0.35);
+  --ert-iconBtn-bg: rgba(255, 255, 255, 0.06);
+  --ert-iconBtn-border: rgba(255, 255, 255, 0.08);
+  --ert-iconBtn-hover-bg: rgba(var(--ert-accent-rgb), 0.12);
+  --ert-iconBtn-hover-border: rgba(var(--ert-accent-rgb), 0.22);
+  --ert-iconBtn-hover-color: var(--ert-accent);
+  --ert-pill-hover-bg: rgba(var(--ert-accent-rgb), 0.12);
+  --ert-pill-hover-border: var(--ert-accent);
+  --ert-pill-hover-color: var(--ert-accent);
+  --ert-pill-active-border: var(--ert-accent);
+  --ert-pill-active-shadow: 0 0 0 2px color-mix(in srgb, var(--ert-accent) 25%, transparent),
+                            inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  --ert-pill-icon-hover-color: var(--ert-accent);
+  --ert-pill-icon-active-color: var(--ert-accent);
 }
 
+.ert-ui.ert-skin--social .ert-card--hero,
+.ert-ui.ert-skin--social .ert-section--hero,
+.ert-ui .ert-skin--social .ert-card--hero,
+.ert-ui .ert-skin--social .ert-section--hero,
+.ert-ui.ert-skin--social .ert-card--apr,
+.ert-ui .ert-skin--social .ert-card--apr,
 .ert-ui.ert-skin--apr .ert-card--hero,
 .ert-ui.ert-skin--apr .ert-section--hero,
 .ert-ui .ert-skin--apr .ert-card--hero,
@@ -468,16 +532,22 @@
   box-shadow: var(--ert-shadow-hero);
 }
 
+.ert-ui.ert-skin--social .ert-iconBadge,
+.ert-ui .ert-skin--social .ert-iconBadge,
 .ert-ui.ert-skin--apr .ert-iconBadge,
 .ert-ui .ert-skin--apr .ert-iconBadge {
   background: var(--ert-iconBadge-bg);
 }
 
+.ert-ui.ert-skin--social .ert-chip,
+.ert-ui .ert-skin--social .ert-chip,
 .ert-ui.ert-skin--apr .ert-chip,
 .ert-ui .ert-skin--apr .ert-chip {
   background: var(--ert-chip-bg);
 }
 
+.ert-ui.ert-skin--social .ert-previewFrame,
+.ert-ui .ert-skin--social .ert-previewFrame,
 .ert-ui.ert-skin--apr .ert-previewFrame,
 .ert-ui .ert-skin--apr .ert-previewFrame {
   background: var(--ert-previewFrame-bg);
@@ -487,14 +557,16 @@
 /* Pro skin overrides (visual only; no spacing changes) */
 .ert-ui.ert-skin--pro,
 .ert-ui .ert-skin--pro {
-  --ert-surface-hero: color-mix(in srgb, var(--background-primary) 80%, var(--rt-pro-color, #d946ef) 10%);
-  --ert-border-hero: color-mix(in srgb, var(--rt-pro-color, #d946ef) 30%, transparent);
-  --ert-shadow-hero: 0 10px 36px color-mix(in srgb, var(--rt-pro-color, #d946ef) 18%, transparent);
-  --ert-hero-grad: radial-gradient(circle at 12% 20%, color-mix(in srgb, var(--rt-pro-color, #d946ef) 22%, transparent) 0%, transparent 46%), linear-gradient(135deg, color-mix(in srgb, var(--rt-pro-color, #d946ef) 14%, transparent) 0%, color-mix(in srgb, var(--rt-pro-color, #d946ef) 6%, transparent) 100%);
-  --ert-iconBadge-bg: color-mix(in srgb, var(--rt-pro-color, #d946ef) 18%, transparent);
-  --ert-chip-bg: color-mix(in srgb, var(--rt-pro-color, #d946ef) 12%, var(--background-secondary) 78%);
-  --ert-previewFrame-bg: color-mix(in srgb, var(--background-secondary) 82%, var(--rt-pro-color, #d946ef) 8%);
-  --ert-previewFrame-border: color-mix(in srgb, var(--rt-pro-color, #d946ef) 22%, transparent);
+  --ert-accent: var(--rt-pro-color, #d946ef);
+  --ert-accent-rgb: var(--rt-pro-color-rgb, 217, 70, 239);
+  --ert-surface-hero: color-mix(in srgb, var(--background-primary) 80%, var(--ert-accent) 10%);
+  --ert-border-hero: color-mix(in srgb, var(--ert-accent) 30%, transparent);
+  --ert-shadow-hero: 0 10px 36px color-mix(in srgb, var(--ert-accent) 18%, transparent);
+  --ert-hero-grad: radial-gradient(circle at 12% 20%, color-mix(in srgb, var(--ert-accent) 22%, transparent) 0%, transparent 46%), linear-gradient(135deg, color-mix(in srgb, var(--ert-accent) 14%, transparent) 0%, color-mix(in srgb, var(--ert-accent) 6%, transparent) 100%);
+  --ert-iconBadge-bg: color-mix(in srgb, var(--ert-accent) 18%, transparent);
+  --ert-chip-bg: color-mix(in srgb, var(--ert-accent) 12%, var(--background-secondary) 78%);
+  --ert-previewFrame-bg: color-mix(in srgb, var(--background-secondary) 82%, var(--ert-accent) 8%);
+  --ert-previewFrame-border: color-mix(in srgb, var(--ert-accent) 22%, transparent);
 }
 
 .ert-ui.ert-skin--pro .ert-card--hero,
@@ -584,23 +656,23 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 0 14px;
-  height: 32px;
+  padding: var(--ert-pill-pad-y) var(--ert-pill-pad-x);
+  min-height: var(--ert-pill-min-height);
   line-height: 1;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 999px;
+  background: var(--ert-pill-bg);
+  border: 1px solid var(--ert-pill-border);
+  border-radius: var(--ert-pill-radius);
   cursor: pointer;
-  color: var(--text-normal);
-  font-size: 13px;
-  font-weight: 500;
+  color: var(--ert-pill-color);
+  font-size: var(--ert-pill-font-size);
+  font-weight: var(--ert-pill-font-weight);
   line-height: 1;
   transition: all 0.15s ease;
   box-sizing: border-box;
 }
 
 .ert-ui .ert-pillBtn:focus-visible {
-  outline: 2px solid var(--interactive-accent);
+  outline: 2px solid var(--ert-accent);
   outline-offset: 2px;
 }
 
@@ -614,8 +686,8 @@
 .ert-ui .ert-pillBtn__icon svg {
   width: 14px;
   height: 14px;
-  color: var(--text-muted);
-  opacity: 0.7;
+  color: var(--ert-pill-icon-color);
+  opacity: var(--ert-pill-icon-opacity);
   transition: all 0.15s ease;
 }
 
@@ -625,81 +697,60 @@
 
 /* Hover state — standard */
 .ert-ui .ert-pillBtn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: var(--text-muted);
+  background: var(--ert-pill-hover-bg);
+  border-color: var(--ert-pill-hover-border);
+  color: var(--ert-pill-hover-color);
 }
 
 .ert-ui .ert-pillBtn:hover:not(:disabled) .ert-pillBtn__icon svg {
+  color: var(--ert-pill-icon-hover-color);
   opacity: 1;
 }
 
 /* Active state — standard */
 .ert-ui .ert-pillBtn.is-active {
-  border-color: var(--interactive-accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 25%, transparent),
-              inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  border-color: var(--ert-pill-active-border);
+  box-shadow: var(--ert-pill-active-shadow);
 }
 
 .ert-ui .ert-pillBtn.is-active .ert-pillBtn__icon svg {
-  color: var(--interactive-accent);
+  color: var(--ert-pill-icon-active-color);
   opacity: 1;
 }
 
 /* Used/disabled state */
 .ert-ui .ert-pillBtn.ert-pillBtn--used,
 .ert-ui .ert-pillBtn:disabled {
-  opacity: 0.4;
+  opacity: var(--ert-pill-disabled-opacity);
   cursor: not-allowed;
 }
 
 .ert-ui .ert-pillBtn.ert-pillBtn--used .ert-pillBtn__icon svg,
 .ert-ui .ert-pillBtn:disabled .ert-pillBtn__icon svg {
-  color: var(--text-muted);
+  color: var(--ert-pill-icon-color);
   opacity: 0.5;
 }
 
 /* Pro variant */
-.ert-ui .ert-pillBtn--pro:hover:not(:disabled) {
-  background: rgba(var(--rt-pro-color-rgb, 217, 70, 239), 0.15);
-  border-color: var(--rt-pro-color, #d946ef);
-  color: var(--rt-pro-color, #d946ef);
-}
-
-.ert-ui .ert-pillBtn--pro:hover:not(:disabled) .ert-pillBtn__icon svg {
-  color: var(--rt-pro-color, #d946ef);
-  opacity: 1;
-}
-
-.ert-ui .ert-pillBtn--pro.is-active {
-  border-color: var(--rt-pro-color, #d946ef);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--rt-pro-color, #d946ef) 25%, transparent),
-              inset 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.ert-ui .ert-pillBtn--pro.is-active .ert-pillBtn__icon svg {
-  color: var(--rt-pro-color, #d946ef);
-  opacity: 1;
+.ert-ui .ert-pillBtn--pro {
+  --ert-pill-hover-bg: rgba(var(--rt-pro-color-rgb, 217, 70, 239), 0.15);
+  --ert-pill-hover-border: var(--rt-pro-color, #d946ef);
+  --ert-pill-hover-color: var(--rt-pro-color, #d946ef);
+  --ert-pill-active-border: var(--rt-pro-color, #d946ef);
+  --ert-pill-active-shadow: 0 0 0 2px color-mix(in srgb, var(--rt-pro-color, #d946ef) 25%, transparent),
+                            inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  --ert-pill-icon-hover-color: var(--rt-pro-color, #d946ef);
+  --ert-pill-icon-active-color: var(--rt-pro-color, #d946ef);
 }
 
 /* Social variant (yellow) */
-.ert-ui .ert-pillBtn--social:hover:not(:disabled) {
-  background: rgba(var(--interactive-accent-rgb, 255, 212, 29), 0.15);
-  border-color: var(--interactive-accent);
-  color: var(--interactive-accent);
-}
-
-.ert-ui .ert-pillBtn--social:hover:not(:disabled) .ert-pillBtn__icon svg {
-  color: var(--interactive-accent);
-  opacity: 1;
-}
-
-.ert-ui .ert-pillBtn--social.is-active {
-  border-color: var(--interactive-accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 25%, transparent),
-              inset 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.ert-ui .ert-pillBtn--social.is-active .ert-pillBtn__icon svg {
-  color: var(--interactive-accent);
-  opacity: 1;
+.ert-ui .ert-pillBtn--social {
+  --ert-pill-hover-bg: rgba(var(--ert-accent-rgb, 255, 212, 29), 0.15);
+  --ert-pill-hover-border: var(--ert-accent);
+  --ert-pill-hover-color: var(--ert-accent);
+  --ert-pill-active-border: var(--ert-accent);
+  --ert-pill-active-shadow: 0 0 0 2px color-mix(in srgb, var(--ert-accent) 25%, transparent),
+                            inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  --ert-pill-icon-hover-color: var(--ert-accent);
+  --ert-pill-icon-active-color: var(--ert-accent);
 }

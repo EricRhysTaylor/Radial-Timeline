@@ -136,7 +136,6 @@ export function renderMilestoneIndicator(params: {
     const y = params.y ?? MILESTONE_ICON_Y;
 
     const { icon, color, label } = getIconForMilestone(params.milestone.type);
-    const pulseColor = color;
 
     // Hit area covers text and icon
     const hitAreaWidth = 120;
@@ -153,26 +152,17 @@ export function renderMilestoneIndicator(params: {
                 rx="6" ry="6"
                 fill="white" fill-opacity="0" stroke="none" pointer-events="all" />
 
-            <!-- Text: positioned above icon center -->
+            <!-- Text: positioned above icon center, pulses via CSS -->
             <text class="rt-milestone-indicator-text" x="0" y="${STATUS_TEXT_ABOVE_ICON}" text-anchor="middle" dominant-baseline="baseline" fill="${color}">
                 ${label}
             </text>
 
-            <!-- Pulsing icon: centered at origin (group position IS icon center) -->
-            <g class="rt-milestone-icon">
-                <!-- Outer pulse ring centered at origin -->
-                <circle r="16" fill="${pulseColor}" opacity="0.15">
-                    <animate attributeName="r" values="16;22;16" dur="1.8s" repeatCount="indefinite" />
-                    <animate attributeName="opacity" values="0.15;0.35;0.15" dur="1.8s" repeatCount="indefinite" />
-                </circle>
-                <!-- Inner solid circle -->
-                <circle r="12" fill="${pulseColor}" opacity="0.9" />
-                <!-- Icon SVG centered at origin -->
-                <g transform="translate(${STATUS_ICON_CENTER_OFFSET}, ${STATUS_ICON_CENTER_OFFSET})" stroke="white" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                        ${icon}
-                    </svg>
-                </g>
+            <!-- Icon: centered at origin, pulses via CSS (no dot/circle) -->
+            <g class="rt-milestone-icon" transform="translate(${STATUS_ICON_CENTER_OFFSET}, ${STATUS_ICON_CENTER_OFFSET})">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                     fill="none" stroke="${color}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                    ${icon}
+                </svg>
             </g>
         </g>
     `;

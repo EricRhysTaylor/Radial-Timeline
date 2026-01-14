@@ -372,7 +372,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         const proContent = containerEl.createDiv({ cls: 'rt-settings-tab-content rt-settings-pro-content' });
         const coreContent = containerEl.createDiv({ cls: 'rt-settings-tab-content rt-settings-core-content' });
-        const socialContent = containerEl.createDiv({ cls: 'rt-settings-tab-content rt-settings-social-content' });
+        const socialContent = containerEl.createDiv({
+            cls: 'rt-settings-tab-content rt-settings-social-content ert-ui ert-skin--social ert-density--compact'
+        });
 
         const updateTabState = () => {
             proTab.toggleClass('rt-settings-tab-active', this._activeTab === 'pro');

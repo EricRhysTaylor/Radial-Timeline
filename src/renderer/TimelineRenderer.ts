@@ -706,14 +706,18 @@ export function createTimelineSVG(
     // Place the button near the Act 2 label (start of Act 2 boundary) and slightly outside along local y-axis
     svg += renderRotationToggle({ numActs, actualOuterRadius });
 
-    // Add version indicator (bottom-right corner)
+    // Add version indicator (bottom-left corner)
+    // Returns computed X position for aligning APR indicator above it
+    let versionIndicatorX: number | undefined;
     try {
         const versionService = getVersionCheckService();
-        svg += renderVersionIndicator({
+        const versionResult = renderVersionIndicator({
             version: versionService.getCurrentVersion(),
             hasUpdate: versionService.isUpdateAvailable(),
             latestVersion: versionService.getLatestVersion() || undefined
         });
+        svg += versionResult.svg;
+        versionIndicatorX = versionResult.computedX;
     } catch {
         // Version service not initialized yet - render without update info
         // Will be updated on next render after version check completes
@@ -723,8 +727,12 @@ export function createTimelineSVG(
     svg += renderHelpIcon();
     
     // Add APR refresh indicator if needed (bottom-left, above version indicator)
+    // Uses same X as version indicator to ensure vertical alignment
     if (options?.aprNeedsRefresh) {
-        svg += renderAuthorProgressIndicator({ needsRefresh: true });
+        svg += renderAuthorProgressIndicator({ 
+            needsRefresh: true,
+            x: versionIndicatorX  // Align with version indicator
+        });
     }
 
     // Add milestone indicator if there's a milestone (right side, above Help icon)

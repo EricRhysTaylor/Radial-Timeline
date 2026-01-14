@@ -88,6 +88,24 @@ export interface VersionIndicatorOptions {
     latestVersion?: string;
 }
 
+export interface VersionIndicatorResult {
+    svg: string;
+    computedX: number;  // The actual X position used (for aligning APR above)
+}
+
+/**
+ * Compute the safe X position for bottom-left indicators.
+ * Ensures text doesn't clip the edge. Used by both Version and APR indicators.
+ */
+export function computeBottomLeftIndicatorX(textWidths: number[]): number {
+    const maxHalfWidth = Math.max(...textWidths, ICON_HITAREA_HALF_WIDTH);
+    const viewboxLeftEdge = -(SVG_SIZE / 2);
+    const circleLeftEdge = -MONTH_LABEL_RADIUS;
+    const safeCanvasCenterX = viewboxLeftEdge + VERSION_INDICATOR_SAFE_PADDING + maxHalfWidth;
+    const safeCircleCenterX = circleLeftEdge + VERSION_INDICATOR_SAFE_PADDING + maxHalfWidth;
+    return Math.max(VERSION_ICON_X, safeCanvasCenterX, safeCircleCenterX);
+}
+
 /**
  * Determine update severity based on version comparison
  * Returns: 'major' (red), 'minor' (orange), or 'none' (green)
@@ -118,8 +136,10 @@ function getUpdateSeverity(current: string, latest: string | undefined): 'none' 
  * 
  * Uses ICON-CENTERED positioning - group origin is icon center.
  * NOTE: X position is dynamically computed to prevent text clipping.
+ * 
+ * Returns both the SVG and the computed X for aligning APR indicator above.
  */
-export function renderVersionIndicator(options: VersionIndicatorOptions): string {
+export function renderVersionIndicator(options: VersionIndicatorOptions): VersionIndicatorResult {
     const { version, hasUpdate, latestVersion } = options;
 
     const currentVersionLabel = version.trim() || version;
@@ -137,16 +157,10 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
 
     const versionTextHalfWidth = estimateTextHalfWidth(versionText);
     const actionTextHalfWidth = estimateTextHalfWidth(actionText);
-    
-    // Ensure we have enough space for the widest text
     const maxHalfWidth = Math.max(versionTextHalfWidth, actionTextHalfWidth, ICON_HITAREA_HALF_WIDTH);
-
-    // Dynamic X to prevent text clipping at edge
-    const viewboxLeftEdge = -(SVG_SIZE / 2);
-    const circleLeftEdge = -MONTH_LABEL_RADIUS;
-    const safeCanvasCenterX = viewboxLeftEdge + VERSION_INDICATOR_SAFE_PADDING + maxHalfWidth;
-    const safeCircleCenterX = circleLeftEdge + VERSION_INDICATOR_SAFE_PADDING + maxHalfWidth;
-    const computedX = Math.max(VERSION_ICON_X, safeCanvasCenterX, safeCircleCenterX);
+    
+    // Compute safe X position (shared logic)
+    const computedX = computeBottomLeftIndicatorX([versionTextHalfWidth, actionTextHalfWidth]);
     
     // Position is ICON CENTER
     const x = formatNumber(computedX);
@@ -172,7 +186,7 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
     const iconContent = hasUpdate ? BADGE_ALERT_ICON : BUG_ICON;
     const iconClass = hasUpdate ? 'rt-version-alert-icon' : 'rt-version-bug-icon';
 
-    return `
+    const svg = `
         <g id="version-indicator" class="${groupClasses.join(' ')}" transform="translate(${x}, ${y})">
             <!-- Hit area centered on icon -->
             <rect class="rt-version-hitarea"
@@ -202,4 +216,6 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
             </g>
         </g>
     `;
+    
+    return { svg, computedX };
 }

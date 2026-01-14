@@ -410,7 +410,7 @@
    APR REFRESH INDICATOR
    Bottom-left corner alert when Author Progress Report needs refresh
    
-   MATCHES BUG ICON STYLING - just icon with glow on hover, no pulse circles.
+   Styled like update indicator - pulsing icon, text reveals on hover.
    ============================================================================= */
 .rt-apr-indicator {
   cursor: pointer;
@@ -418,10 +418,10 @@
 }
 
 .rt-apr-indicator:hover {
-  filter: drop-shadow(0 0 5px var(--text-muted));
+  filter: drop-shadow(0 0 5px var(--text-error, #ef4444));
 }
 
-/* Text styles - matches version/help text exactly */
+/* Text styles - matches version text, pulses by default */
 .rt-apr-indicator-text {
   font-family: '04b03b', 'Monaco', 'Courier New', monospace;
   font-size: 20px;
@@ -429,20 +429,46 @@
   dominant-baseline: baseline;
   letter-spacing: 0;
   pointer-events: none;
-  fill: var(--text-muted);
-  opacity: 0;
+  fill: var(--text-error, #ef4444);
+  opacity: 1;
   transition: opacity 0.2s ease, fill 0.2s ease;
+  animation: rt-apr-text-pulse 2s ease-in-out infinite;
 }
 
-/* Show text on hover */
+/* Text stops pulsing and shows action text on hover */
 .rt-apr-indicator:hover .rt-apr-indicator-text {
   opacity: 1;
-  fill: var(--text-normal);
+  fill: var(--text-error, #ef4444);
+  animation: none;
 }
 
-/* Alert icon - matches bug icon styling exactly */
+/* Alert icon - pulsing like update indicator */
 .rt-apr-alert-icon {
   color: var(--text-error, #ef4444);
+  stroke: var(--text-error, #ef4444);
+  animation: rt-apr-icon-pulse 2s ease-in-out infinite;
+}
+
+.rt-apr-indicator:hover .rt-apr-alert-icon {
+  filter: drop-shadow(0 0 5px var(--text-error, #ef4444));
+}
+
+@keyframes rt-apr-text-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes rt-apr-icon-pulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* =============================================================================
@@ -458,7 +484,7 @@
   filter: drop-shadow(0 0 5px var(--text-muted));
 }
 
-/* Text styles - matches help button text */
+/* Text styles - visible by default, pulses like APR */
 .rt-milestone-indicator-text {
   font-family: '04b03b', 'Monaco', 'Courier New', monospace;
   font-size: 20px;
@@ -466,27 +492,42 @@
   dominant-baseline: baseline;
   letter-spacing: 0;
   pointer-events: none;
-  fill: var(--text-muted);
-  opacity: 0;
+  /* Fill color is set inline from the milestone type */
+  opacity: 1;
   transition: opacity 0.2s ease, fill 0.2s ease;
+  animation: rt-milestone-text-pulse 2s ease-in-out infinite;
 }
 
-/* Show text on hover - matches help button behavior */
+/* Stop pulsing on hover */
 .rt-milestone-indicator:hover .rt-milestone-indicator-text {
   opacity: 1;
-  fill: var(--text-normal);
+  animation: none;
 }
 
-/* Icon pulse animation */
+/* Icon pulse animation - opacity-based like APR, no scale/dot */
 .rt-milestone-icon {
-  animation: rt-milestone-pulse 1.8s ease-in-out infinite;
+  animation: rt-milestone-icon-pulse 2s ease-in-out infinite;
 }
 
-@keyframes rt-milestone-pulse {
+.rt-milestone-indicator:hover .rt-milestone-icon {
+  animation: none;
+  filter: drop-shadow(0 0 5px currentColor);
+}
+
+@keyframes rt-milestone-text-pulse {
   0%, 100% {
-    transform: translate(0, 10px) scale(1);
+    opacity: 1;
   }
   50% {
-    transform: translate(0, 10px) scale(1.05);
+    opacity: 0.5;
+  }
+}
+
+@keyframes rt-milestone-icon-pulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
   }
 }

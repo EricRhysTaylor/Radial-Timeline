@@ -21,6 +21,7 @@ export const ERT_CLASSES = {
   SECTION_ICON: 'ert-section__icon',
   SECTION_ACTIONS: 'ert-section__actions',
   SKIN_APR: 'ert-skin--apr',
+  SKIN_SOCIAL: 'ert-skin--social',
   SKIN_PRO: 'ert-skin--pro',
   FIELD_NOTE: 'ert-field-note',
   TOGGLE_ITEM: 'ert-toggle-item',

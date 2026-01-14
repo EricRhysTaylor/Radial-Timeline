@@ -1,6 +1,6 @@
 import type RadialTimelinePlugin from '../main';
 import { TimelineItem } from '../types/timeline';
-import { isBeatNote } from '../utils/sceneHelpers';
+import { isNonSceneItem } from '../utils/sceneHelpers';
 import { STAGE_ORDER } from '../utils/constants';
 import type { MilestoneInfo } from '../renderer/components/MilestoneIndicator';
 
@@ -35,6 +35,7 @@ export class MilestonesService {
      * Milestone detection logic:
      * 1. Find the highest stage that has ANY scenes
      * 2. Check if ALL scenes at that highest stage are complete
+     *    AND no scenes remain at lower stages (must be promoted up)
      * 3. If yes → celebrate that stage completion (Zero/Author/House/Press)
      * 4. If no completion → check for staleness warnings (author getting behind)
      * 
@@ -44,7 +45,7 @@ export class MilestonesService {
      * For progress tracking, see TimelineMetricsService.calculateCompletionEstimate()
      */
     public detectMilestone(scenes: TimelineItem[]): MilestoneInfo | null {
-        const sceneNotesOnly = scenes.filter(scene => !isBeatNote(scene));
+        const sceneNotesOnly = scenes.filter(scene => !isNonSceneItem(scene));
         if (sceneNotesOnly.length === 0) return null;
 
         const normalizeStage = (raw: unknown): (typeof STAGE_ORDER)[number] => {
@@ -67,7 +68,14 @@ export class MilestonesService {
         
         if (!highestStageWithScenes) return null;
         
+        const highestStageIndex = STAGE_ORDER.indexOf(highestStageWithScenes);
+        const hasLowerStageScenes = sceneNotesOnly.some(scene => {
+            const sceneStageIndex = STAGE_ORDER.indexOf(normalizeStage(scene['Publish Stage']));
+            return sceneStageIndex < highestStageIndex;
+        });
+
         // Check if ALL scenes at the highest stage are complete
+        // AND there are no scenes still at lower stages.
         // This is what triggers the hero card celebrations in PublicationSection
         const scenesAtHighestStage = sceneNotesOnly.filter(scene => 
             normalizeStage(scene['Publish Stage']) === highestStageWithScenes
@@ -75,7 +83,7 @@ export class MilestonesService {
         const allComplete = scenesAtHighestStage.length > 0 && 
             scenesAtHighestStage.every(scene => isCompleted(scene.status));
         
-        if (allComplete) {
+        if (allComplete && !hasLowerStageScenes) {
             // Stage is completely done → show celebration milestone
             // This syncs with the hero cards in PublicationSection (Zero/Author/House/Press complete)
             if (highestStageWithScenes === 'Press') {
