@@ -95,8 +95,18 @@ const ALLOWED_CLASS_NAMES = [
 
 // Check if a CSS class name is allowed (has proper prefix or is in exception list)
 function isAllowedClassName(className) {
-  // Check if it starts with ert-, rt-, or radial-timeline-
-  if (className.startsWith('ert-') || className.startsWith('rt-') || className.startsWith('radial-timeline-')) {
+  // Check if it starts with ert- (primary UI namespace)
+  if (className.startsWith('ert-')) {
+    return true;
+  }
+  
+  // Allow state modifier classes: is-* and has-*
+  if (className.startsWith('is-') || className.startsWith('has-')) {
+    return true;
+  }
+  
+  // Legacy: still allow rt- and radial-timeline- for backwards compatibility
+  if (className.startsWith('rt-') || className.startsWith('radial-timeline-')) {
     return true;
   }
   
@@ -260,8 +270,10 @@ function main() {
     console.error('  - If you must use "any", add a comment explaining why: // SAFE: any type used for <reason>');
     
     console.error('\n\x1b[33mFor CSS class naming:\x1b[0m');
-    console.error('  - All CSS class names MUST start with "ert-", "rt-" or "radial-timeline-"');
-    console.error('  - Example: addClass(\'ert-settings-row\') NOT addClass(\'settings-row\')');
+    console.error('  - Component base classes MUST start with "ert-" (primary UI namespace)');
+    console.error('  - State modifier classes may use "is-*" or "has-*" (e.g., is-active, has-error)');
+    console.error('  - Legacy "rt-" and "radial-timeline-" prefixes are still allowed');
+    console.error('  - Example: addClass(\'ert-settings-row\') or addClass(\'is-active\')');
     console.error('  - This prevents conflicts with Obsidian core styles and other plugins');
     
     console.error('\n\x1b[33mFor opening files:\x1b[0m');

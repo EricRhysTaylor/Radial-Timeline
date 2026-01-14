@@ -46,6 +46,22 @@ export class CommandRegistrar {
         });
 
         this.plugin.addCommand({
+            id: 'search-timeline',
+            name: 'Search timeline',
+            callback: () => {
+                this.plugin.openSearchPrompt();
+            }
+        });
+
+        this.plugin.addCommand({
+            id: 'clear-search',
+            name: 'Clear search',
+            callback: () => {
+                this.plugin.clearSearch();
+            }
+        });
+
+        this.plugin.addCommand({
             id: 'create-basic-scene-note',
             name: 'Create basic scene note',
             callback: async () => {

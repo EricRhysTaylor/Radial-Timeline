@@ -7,7 +7,7 @@ import { App, Notice, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { AuthorProgressSettings, AuthorProgressFrequency, AuthorProgressPublishTarget } from '../../types/settings';
 import { DEFAULT_SETTINGS } from '../defaults';
-import { mountRoot, section, row, stack, inline, divider, textInput, dropdown, toggle, button, slider, colorPicker, heroLayout } from '../../ui/ui';
+import { mountRoot, section, row, stack, inline, divider, textInput, dropdown, toggle, button, slider, colorPicker } from '../../ui/ui';
 import { ERT_CLASSES } from '../../ui/classes';
 import { validateErtLayout } from '../../ui/validator';
 import { AuthorProgressModal } from '../../modals/AuthorProgressModal';
@@ -27,6 +27,29 @@ const sizeOptions: Record<'small' | 'medium' | 'large', string> = {
     small: 'Small (150×150)',
     medium: 'Medium (300×300)',
     large: 'Large (450×450)',
+};
+
+const fontFamilyOptions: Record<string, string> = {
+    interface: 'Interface (var(--font-interface))',
+    text: 'Text (var(--font-text))',
+    system: 'System UI (system-ui)',
+    serif: 'Serif (serif)',
+    sans: 'Sans-serif (sans-serif)',
+    mono: 'Monospace (monospace)',
+    custom: 'Custom…',
+};
+
+const resolveFamily = (key: string | undefined, fallback?: string) => {
+    switch (key) {
+        case 'interface': return 'var(--font-interface)';
+        case 'text': return 'var(--font-text)';
+        case 'system': return 'system-ui';
+        case 'serif': return 'serif';
+        case 'sans': return 'sans-serif';
+        case 'mono': return 'monospace';
+        case 'custom': return fallback;
+        default: return fallback;
+    }
 };
 
 import { isProfessionalActive } from './ProfessionalSection';
@@ -138,13 +161,25 @@ function numberFromText(value: string): number | undefined {
 
 async function renderAprPreview(previewEl: HTMLElement, app: App, plugin: RadialTimelinePlugin, settings: AuthorProgressSettings): Promise<void> {
     previewEl.empty();
-    if (!settings.enabled) {
-        previewEl.createDiv({ text: 'Enable APR to see a live preview.', cls: ERT_CLASSES.FIELD_NOTE });
-        return;
-    }
-    const loading = previewEl.createDiv({ text: 'Rendering preview…', cls: ERT_CLASSES.FIELD_NOTE });
+    const inner = previewEl.createDiv({ cls: ERT_CLASSES.PREVIEW_INNER });
+
+    const showOverlay = (text: string) => {
+        inner.createDiv({ text, cls: ERT_CLASSES.FIELD_NOTE });
+    };
+
     try {
         const scenes = await getAllScenes(app, plugin);
+
+        if (!settings.enabled) {
+            showOverlay('Enable APR to render a preview.');
+            return;
+        }
+
+        if (!scenes.length) {
+            showOverlay('No scenes found. Add scenes to view your APR.');
+            return;
+        }
+
         const progressPercent = calculateAprProgress(scenes);
         const { svgString } = createAprSVG(scenes, {
             size: settings.aprSize || 'medium',
@@ -160,11 +195,11 @@ async function renderAprPreview(previewEl: HTMLElement, app: App, plugin: Radial
             actCount: plugin.settings.actCount || undefined,
             backgroundColor: settings.aprBackgroundColor,
             transparentCenter: settings.aprCenterTransparent,
-            bookAuthorColor: settings.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
-            authorColor: settings.aprAuthorColor ?? settings.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
+            bookAuthorColor: settings.aprBookAuthorColor ?? plugin.settings.publishStageColors?.Press,
+            authorColor: settings.aprAuthorColor ?? settings.aprBookAuthorColor ?? plugin.settings.publishStageColors?.Press,
             engineColor: settings.aprEngineColor,
-            percentNumberColor: settings.aprPercentNumberColor ?? settings.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
-            percentSymbolColor: settings.aprPercentSymbolColor ?? settings.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
+            percentNumberColor: settings.aprPercentNumberColor ?? settings.aprBookAuthorColor ?? plugin.settings.publishStageColors?.Press,
+            percentSymbolColor: settings.aprPercentSymbolColor ?? settings.aprBookAuthorColor ?? plugin.settings.publishStageColors?.Press,
             theme: settings.aprTheme || 'dark',
             spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor : undefined,
             // Typography settings
@@ -190,21 +225,18 @@ async function renderAprPreview(previewEl: HTMLElement, app: App, plugin: Radial
             rtBadgeFontItalic: settings.aprRtBadgeFontItalic,
             rtBadgeFontSize: settings.aprRtBadgeFontSize
         });
-        loading.remove();
-        const inner = previewEl.createDiv({ cls: ERT_CLASSES.PREVIEW_INNER });
+
         const parser = new DOMParser();
         const doc = parser.parseFromString(svgString, 'image/svg+xml');
         const svgEl = doc.querySelector('svg');
         if (svgEl) {
-            // Import the parsed SVG node to avoid cross-document issues
             inner.appendChild(document.importNode(svgEl, true));
         } else {
-            inner.createDiv({ text: 'Preview unavailable (no SVG found).', cls: ERT_CLASSES.FIELD_NOTE });
+            showOverlay('Preview unavailable (no SVG found).');
         }
     } catch (err) {
-        loading.remove();
         console.warn('APR preview failed', err);
-        previewEl.createDiv({ text: 'Preview unavailable (see console).', cls: ERT_CLASSES.FIELD_NOTE });
+        showOverlay('Preview unavailable (see console).');
     }
 }
 
@@ -231,7 +263,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         requestPreview();
     };
 
-    // Hero / quick actions
+    // Hero / quick actions + always-on preview
     section(root, {
         title: 'Author Progress Reports',
         desc: 'Share a spoiler-safe, branded progress ring for fans, newsletters, and campaigns.',
@@ -264,31 +296,38 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         }
     }, (body) => {
         const panel = body.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.CARD_APR}` });
+
         const header = panel.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
-        const headerLeft = inline(header, {});
-        const headerBadge = headerLeft.createSpan({ cls: ERT_CLASSES.ICON_BADGE });
+        const headerBadge = header.createSpan({ cls: ERT_CLASSES.ICON_BADGE });
         const badgeIcon = headerBadge.createSpan();
         setIcon(badgeIcon, 'radio');
         headerBadge.createSpan({ text: 'APR' });
-        headerLeft.createDiv({ text: 'Social Progress Reports', cls: ERT_CLASSES.SECTION_TITLE });
+        const headerText = header.createDiv({ cls: ERT_CLASSES.SECTION_TITLE, text: 'Social Progress Reports' });
+        headerText.createDiv({ text: 'Spoiler-safe branded progress ring for fans, newsletters, and campaigns.', cls: ERT_CLASSES.SECTION_DESC });
 
-        const headerChips = inline(header, {});
-        const chipStatus = headerChips.createSpan({ cls: ERT_CLASSES.CHIP });
-        chipStatus.createSpan({ text: settings.enabled ? 'Enabled' : 'Disabled' });
-        const chipFreq = headerChips.createSpan({ cls: ERT_CLASSES.CHIP });
-        chipFreq.createSpan({ text: frequencyOptions[settings.updateFrequency || 'manual'] });
+        const bodyWrap = panel.createDiv({ cls: ERT_CLASSES.PANEL_BODY });
+        const sizeRow = inline(bodyWrap, {});
+        sizeRow.createSpan({ text: 'Size:' });
+        (['small', 'medium', 'large'] as const).forEach((key) => {
+            const chip = sizeRow.createSpan({ cls: ERT_CLASSES.CHIP });
+            chip.createSpan({ text: sizeOptions[key] });
+            if ((settings.aprSize || 'medium') === key) {
+                chip.addClass(ERT_CLASSES.IS_ACTIVE);
+            }
+            chip.onclick = async () => {
+                if (settings.aprSize === key) return;
+                settings.aprSize = key;
+                await saveAndPreview();
+                sizeRow.childNodes.forEach((node) => {
+                    if (node instanceof HTMLElement && node.hasClass && node.hasClass(ERT_CLASSES.CHIP)) {
+                        node.removeClass(ERT_CLASSES.IS_ACTIVE);
+                    }
+                });
+                chip.addClass(ERT_CLASSES.IS_ACTIVE);
+            };
+        });
 
-        const panelBody = panel.createDiv({ cls: ERT_CLASSES.PANEL_BODY });
-        const { left, right } = heroLayout(panelBody);
-        const lastPublished = settings.lastPublishedDate ? new Date(settings.lastPublishedDate).toLocaleDateString() : 'Never published';
-        const statusRow = left.createDiv({ cls: ERT_CLASSES.CARD_APR });
-        const statusChips = inline(statusRow, {});
-        const publishChip = statusChips.createSpan({ cls: ERT_CLASSES.CHIP });
-        publishChip.createSpan({ text: `Last published: ${lastPublished}` });
-        statusRow.createDiv({ text: 'APR uses your current scene data and branding to render a live SVG preview.', cls: ERT_CLASSES.FIELD_NOTE });
-
-        const previewFrame = right.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.PANEL_ELEV}` });
-        previewFrame.addClass(ERT_CLASSES.PREVIEW_FRAME);
+        const previewFrame = bodyWrap.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ${ERT_CLASSES.PANEL_ELEV}` });
         previewHost = previewFrame;
     });
 
@@ -310,20 +349,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             },
         });
 
-        const defaultBehaviorCell = grid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
-        const defaultBehaviorStack = stack(defaultBehaviorCell, {
-            label: 'Default note behavior',
-            desc: 'Use preset layout or a custom note template.',
-        });
-        dropdown(defaultBehaviorStack, {
-            options: { preset: 'Preset (recommended)', custom: 'Custom' },
-            value: settings.defaultNoteBehavior ?? 'preset',
-            onChange: async (val) => {
-                settings.defaultNoteBehavior = val as 'preset' | 'custom';
-                await saveAndPreview();
-            },
-        });
-
         const targetCell = grid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
         const targetStack = stack(targetCell, {
             label: 'Publish target',
@@ -338,23 +363,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 await saveAndPreview();
             },
         });
-
-        // Show custom note template path field only if note target is selected and Pro is active
-        if (settings.defaultPublishTarget === 'note' && isProfessionalActive(plugin) && settings.defaultNoteBehavior === 'custom') {
-            const templateCell = grid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
-            const templateStack = stack(templateCell, {
-                label: 'Custom note template',
-                desc: 'Path to your custom markdown template. Use {{SVG_PATH}} and {{AUTHOR_COMMENT}} placeholders.',
-            });
-            textInput(templateStack, {
-                value: settings.customNoteTemplatePath ?? '',
-                placeholder: 'Templates/APR-template.md',
-                onChange: async (val) => {
-                    settings.customNoteTemplatePath = val || undefined;
-                    await saveAndPreview();
-                },
-            });
-        }
 
         const freqCell = grid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
         const freqStack = stack(freqCell, {
@@ -402,9 +410,11 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
     });
 
-    // Embeds
-    section(root, { title: 'Embeds' }, (body) => {
-        const embedStack = stack(body, {
+    // Embeds & output
+    section(root, { title: 'Embeds & output' }, (body) => {
+        const panel = body.createDiv({ cls: ERT_CLASSES.PANEL });
+
+        const embedStack = stack(panel, {
             label: 'Dynamic embed path',
             desc: 'Vault path for live SVG updates.',
         });
@@ -415,6 +425,34 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 await saveAndPreview();
             },
         });
+
+        const noteLayoutStack = stack(panel, {
+            label: 'Embed note layout',
+            desc: 'Used when publishing APR to a note (Pro). Choose preset note or a custom template.',
+        });
+        dropdown(noteLayoutStack, {
+            options: { preset: 'Preset note layout', custom: 'Custom template (Pro)' },
+            value: settings.defaultNoteBehavior ?? 'preset',
+            onChange: async (val) => {
+                settings.defaultNoteBehavior = val as 'preset' | 'custom';
+                await saveAndPreview();
+            },
+        });
+
+        if (settings.defaultNoteBehavior === 'custom' && isProfessionalActive(plugin)) {
+            const templateStack = stack(panel, {
+                label: 'Custom note template',
+                desc: 'Path to your markdown template. Use {{SVG_PATH}} and {{AUTHOR_COMMENT}} placeholders.',
+            });
+            textInput(templateStack, {
+                value: settings.customNoteTemplatePath ?? '',
+                placeholder: 'Templates/APR-template.md',
+                onChange: async (val) => {
+                    settings.customNoteTemplatePath = val || undefined;
+                    await saveAndPreview();
+                },
+            });
+        }
     });
 
     // Identity
@@ -633,83 +671,191 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Typography
     section(root, { title: 'Typography' }, (body) => {
-        const typoCard = body.createDiv({ cls: ERT_CLASSES.CARD_APR });
-        const typoGrid = typoCard.createDiv({ cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_3}` });
+        const panel = body.createDiv({ cls: ERT_CLASSES.PANEL });
 
-        const fontRow = (
-            label: string,
-            familyVal: string | undefined,
-            weightVal: number | undefined,
-            italicVal: boolean | undefined,
-            sizeVal: number | undefined,
-            onChange: (family: string, weight: number, italic: boolean, size?: number) => Promise<void>
-        ) => {
-            const cell = typoGrid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
-            const cellStack = stack(cell, { label, desc: '' });
-            const rowInline = inline(cellStack, { variant: ERT_CLASSES.INLINE_SPLIT });
-            const familyInput = textInput(rowInline, {
-                value: familyVal ?? 'Inter',
-                onChange: async (val) => {
-                    await onChange(val || 'Inter', weightVal ?? 400, italicVal ?? false, sizeVal);
-                },
-            });
-            dropdown(rowInline, {
+        const keyFromFamily = (val?: string) => {
+            if (!val) return 'interface';
+            if (val === 'var(--font-interface)') return 'interface';
+            if (val === 'var(--font-text)') return 'text';
+            if (val === 'system-ui') return 'system';
+            if (val === 'serif') return 'serif';
+            if (val === 'sans-serif') return 'sans';
+            if (val === 'monospace') return 'mono';
+            return 'custom';
+        };
+
+        const styleDropdown = (slot: HTMLElement, weightVal?: number, italicVal?: boolean, onStyle?: (weight: number, italic: boolean) => void) => {
+            const dd = dropdown(slot, {
                 options: Object.fromEntries(Object.entries(fontStyleOptions).map(([k, v]) => [k, v.label])),
                 value: `${weightVal ?? 400}-${italicVal ? 'italic' : 'regular'}`,
-                onChange: async (val) => {
+                onChange: (val) => {
                     const style = fontStyleOptions[val] || fontStyleOptions['400-regular'];
-                    await onChange(familyInput.getValue(), style.weight, style.italic, sizeVal);
+                    onStyle?.(style.weight, style.italic);
                 },
             });
-            textInput(rowInline, {
-                value: sizeVal?.toString() ?? '',
-                placeholder: 'Auto',
-                onChange: async (val) => {
-                    const nextSize = numberFromText(val);
-                    await onChange(familyInput.getValue(), weightVal ?? 400, italicVal ?? false, nextSize);
+            return dd;
+        };
+
+        const familyControl = (
+            slot: HTMLElement,
+            current: string | undefined,
+            onFamily: (family: string | undefined) => void
+        ) => {
+            const famInline = inline(slot, {});
+            const selectedKey = keyFromFamily(current);
+            const customWrap = famInline.createDiv({ cls: 'ert-hidden' });
+            if (selectedKey === 'custom') customWrap.removeClass('ert-hidden');
+
+            const dd = dropdown(famInline, {
+                options: fontFamilyOptions,
+                value: selectedKey,
+                onChange: (val) => {
+                    if (val === 'custom') {
+                        customWrap.removeClass('ert-hidden');
+                        return;
+                    }
+                    customWrap.addClass('ert-hidden');
+                    onFamily(resolveFamily(val, current));
                 },
+            });
+
+            const customInput = textInput(customWrap, {
+                value: selectedKey === 'custom' ? current ?? '' : '',
+                placeholder: 'Auto',
+                onChange: (val) => {
+                    const trimmed = val.trim();
+                    if (!trimmed) {
+                        new Notice('Font not found. Reverting.');
+                        customInput.setValue(current ?? '');
+                        onFamily(current);
+                        return;
+                    }
+                    onFamily(trimmed);
+                },
+            });
+
+            const setAuto = () => {
+                dd.setValue('custom');
+                customWrap.removeClass('ert-hidden');
+                customInput.setValue('');
+                onFamily(undefined);
+            };
+
+            return { setAuto, dropdown: dd, customInput };
+        };
+
+        const autoPill = (parent: HTMLElement, clear: () => void) => {
+            const pill = parent.createSpan({ cls: ERT_CLASSES.CHIP });
+            pill.createSpan({ text: 'Auto' });
+            pill.onclick = clear;
+        };
+
+        const addRow = (
+            label: string,
+            opts: {
+                familyKey: keyof AuthorProgressSettings;
+                weightKey?: keyof AuthorProgressSettings;
+                italicKey?: keyof AuthorProgressSettings;
+                sizeKeys?: (keyof AuthorProgressSettings)[];
+                sizePlaceholders?: string[];
+            }
+        ) => {
+            const rowEl = row(panel, { label });
+            const inlineEl = inline(rowEl, {});
+
+            const setVal = async <V>(k: keyof AuthorProgressSettings | undefined, v: V) => {
+                if (!k) return;
+                (settings as unknown as Record<string, unknown>)[k] = v;
+                await saveAndPreview();
+            };
+
+            const famCtrl = familyControl(inlineEl, settings[opts.familyKey] as string | undefined, async (family) => {
+                await setVal(opts.familyKey, family);
+            });
+
+            const styleCtrl = styleDropdown(
+                inlineEl,
+                opts.weightKey ? settings[opts.weightKey] as number | undefined : undefined,
+                opts.italicKey ? settings[opts.italicKey] as boolean | undefined : undefined,
+                async (w, i) => {
+                    await setVal(opts.weightKey, w);
+                    await setVal(opts.italicKey, i);
+                }
+            );
+
+            const sizeInputs: { setValue: (v: string) => void; setPlaceholder: (p: string) => void; inputEl: HTMLInputElement }[] = [];
+            if (opts.sizeKeys?.length) {
+                const sizeInline = inline(inlineEl, {});
+                opts.sizeKeys.forEach((key, idx) => {
+                    const sizeVal = settings[key] as number | undefined;
+                    const input = textInput(sizeInline, {
+                        value: sizeVal?.toString() ?? '',
+                        placeholder: opts.sizePlaceholders?.[idx] ?? 'Auto',
+                        onChange: async (val) => {
+                            const next = numberFromText(val);
+                            await setVal(key, next);
+                        },
+                    });
+                    sizeInputs.push(input as unknown as typeof sizeInputs[0]);
+                });
+            }
+
+            autoPill(inlineEl, async () => {
+                famCtrl.setAuto();
+                await setVal(opts.familyKey, undefined);
+                await setVal(opts.weightKey, undefined);
+                await setVal(opts.italicKey, undefined);
+                if (opts.sizeKeys) {
+                    for (const k of opts.sizeKeys) {
+                        await setVal(k, undefined);
+                    }
+                }
+                sizeInputs.forEach((inp, idx) => {
+                    inp.setValue('');
+                    inp.setPlaceholder(opts.sizePlaceholders?.[idx] ?? 'Auto');
+                });
+                const weight = opts.weightKey ? settings[opts.weightKey] as number | undefined : undefined;
+                const italic = opts.italicKey ? settings[opts.italicKey] as boolean | undefined : undefined;
+                styleCtrl.setValue?.(`${weight ?? 400}-${italic ? 'italic' : 'regular'}`);
             });
         };
 
-        fontRow('Book title', settings.aprBookTitleFontFamily, settings.aprBookTitleFontWeight, settings.aprBookTitleFontItalic, settings.aprBookTitleFontSize, async (family, weight, italic, size) => {
-            settings.aprBookTitleFontFamily = family;
-            settings.aprBookTitleFontWeight = weight;
-            settings.aprBookTitleFontItalic = italic;
-            settings.aprBookTitleFontSize = size;
-            await saveAndPreview();
+        addRow('Book title', {
+            familyKey: 'aprBookTitleFontFamily',
+            weightKey: 'aprBookTitleFontWeight',
+            italicKey: 'aprBookTitleFontItalic',
+            sizeKeys: ['aprBookTitleFontSize'],
+            sizePlaceholders: ['Auto'],
         });
 
-        fontRow('Author name', settings.aprAuthorNameFontFamily, settings.aprAuthorNameFontWeight, settings.aprAuthorNameFontItalic, settings.aprAuthorNameFontSize, async (family, weight, italic, size) => {
-            settings.aprAuthorNameFontFamily = family;
-            settings.aprAuthorNameFontWeight = weight;
-            settings.aprAuthorNameFontItalic = italic;
-            settings.aprAuthorNameFontSize = size;
-            await saveAndPreview();
+        addRow('Author name', {
+            familyKey: 'aprAuthorNameFontFamily',
+            weightKey: 'aprAuthorNameFontWeight',
+            italicKey: 'aprAuthorNameFontItalic',
+            sizeKeys: ['aprAuthorNameFontSize'],
+            sizePlaceholders: ['Auto'],
         });
 
-        fontRow('Percent number', settings.aprPercentNumberFontFamily, settings.aprPercentNumberFontWeight, settings.aprPercentNumberFontItalic, settings.aprPercentNumberFontSize1Digit, async (family, weight, italic, size) => {
-            settings.aprPercentNumberFontFamily = family;
-            settings.aprPercentNumberFontWeight = weight;
-            settings.aprPercentNumberFontItalic = italic;
-            settings.aprPercentNumberFontSize1Digit = size;
-            settings.aprPercentNumberFontSize2Digit = size;
-            settings.aprPercentNumberFontSize3Digit = size;
-            await saveAndPreview();
+        addRow('Percent number', {
+            familyKey: 'aprPercentNumberFontFamily',
+            weightKey: 'aprPercentNumberFontWeight',
+            italicKey: 'aprPercentNumberFontItalic',
+            sizeKeys: ['aprPercentNumberFontSize1Digit', 'aprPercentNumberFontSize2Digit', 'aprPercentNumberFontSize3Digit'],
+            sizePlaceholders: ['1d', '2d', '3d'],
         });
 
-        fontRow('Percent symbol', settings.aprPercentSymbolFontFamily, settings.aprPercentSymbolFontWeight, settings.aprPercentSymbolFontItalic, undefined, async (family, weight, italic, size) => {
-            settings.aprPercentSymbolFontFamily = family;
-            settings.aprPercentSymbolFontWeight = weight;
-            settings.aprPercentSymbolFontItalic = italic;
-            await saveAndPreview();
+        addRow('Percent symbol', {
+            familyKey: 'aprPercentSymbolFontFamily',
+            weightKey: 'aprPercentSymbolFontWeight',
+            italicKey: 'aprPercentSymbolFontItalic',
         });
 
-        fontRow('RT badge', settings.aprRtBadgeFontFamily, settings.aprRtBadgeFontWeight, settings.aprRtBadgeFontItalic, settings.aprRtBadgeFontSize, async (family, weight, italic, size) => {
-            settings.aprRtBadgeFontFamily = family;
-            settings.aprRtBadgeFontWeight = weight;
-            settings.aprRtBadgeFontItalic = italic;
-            settings.aprRtBadgeFontSize = size;
-            await saveAndPreview();
+        addRow('RT badge', {
+            familyKey: 'aprRtBadgeFontFamily',
+            weightKey: 'aprRtBadgeFontWeight',
+            italicKey: 'aprRtBadgeFontItalic',
+            sizeKeys: ['aprRtBadgeFontSize'],
+            sizePlaceholders: ['Auto'],
         });
     });
 

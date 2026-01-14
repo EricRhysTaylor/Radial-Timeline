@@ -93,7 +93,7 @@ const filesToCopy = [
 	async function copyBuildAssets() {
 		try {
 			// Generate styles.css directly to the project root first
-			await bundleCSS();
+			await bundleCSS({ quiet: true });
 		} catch (err) {
 			logErrorDetails('Error bundling CSS:', err);
 		}

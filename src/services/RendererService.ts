@@ -185,7 +185,12 @@ export class RendererService {
 
         // Re-apply text highlights if search is active
         try {
-            addHighlightRectanglesExt({ containerEl, plugin: this.plugin } as any); // SAFE: any type used for view interface compatibility
+            // addHighlightRectangles expects a view-like object with contentEl + plugin
+            addHighlightRectanglesExt({
+                contentEl: container,
+                plugin: this.plugin,
+                registerDomEvent: () => { /* no-op: highlights don't attach events */ }
+            } as any);
         } catch {}
         return true;
     }

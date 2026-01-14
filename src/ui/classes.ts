@@ -57,6 +57,14 @@ export const ERT_CLASSES = {
   OBJECT_ROW_ACTIONS: 'ert-objectRow__actions',
   ICON_BTN_GROUP: 'ert-iconBtnGroup',
   ICON_BTN: 'ert-iconBtn',
+  PILL_BTN: 'ert-pillBtn',
+  PILL_BTN_ICON: 'ert-pillBtn__icon',
+  PILL_BTN_LABEL: 'ert-pillBtn__label',
+  PILL_BTN_STANDARD: 'ert-pillBtn--standard',
+  PILL_BTN_PRO: 'ert-pillBtn--pro',
+  PILL_BTN_SOCIAL: 'ert-pillBtn--social',
+  PILL_BTN_USED: 'ert-pillBtn--used',
+  IS_ACTIVE: 'is-active',
   DEBUG: 'is-debug',
 } as const;
 

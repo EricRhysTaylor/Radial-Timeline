@@ -394,48 +394,39 @@
 }
 
 .rt-apr-indicator:hover {
-  filter: drop-shadow(0 0 8px var(--text-error, #ef4444));
+  filter: drop-shadow(0 0 5px var(--text-muted));
 }
 
-/* Text styles - similar to version indicator */
+/* Text styles - matches help/milestone text */
 .rt-apr-indicator-text {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-family: '04b03b', 'Monaco', 'Courier New', monospace;
+  font-size: 20px;
+  text-anchor: middle;
+  dominant-baseline: baseline;
+  letter-spacing: 0;
+  pointer-events: none;
+  fill: var(--text-muted);
+  opacity: 0;
   transition: opacity 0.2s ease, fill 0.2s ease;
 }
 
-.rt-apr-indicator-text.rt-apr-label {
-  fill: var(--text-error, #ef4444);
+/* Show text on hover */
+.rt-apr-indicator:hover .rt-apr-indicator-text {
   opacity: 1;
-}
-
-.rt-apr-indicator-text.rt-apr-action {
   fill: var(--text-normal);
-  opacity: 0;
 }
 
-/* Swap text on hover */
-.rt-apr-indicator:hover .rt-apr-indicator-text.rt-apr-label {
-  opacity: 0;
-}
-
-.rt-apr-indicator:hover .rt-apr-indicator-text.rt-apr-action {
-  opacity: 1;
-}
-
-/* Alert icon pulse animation */
+/* Alert icon pulse animation - matches milestone indicator */
 .rt-apr-alert-icon {
-  animation: rt-apr-pulse 1.5s ease-in-out infinite;
+  animation: rt-apr-pulse 1.8s ease-in-out infinite;
 }
 
 @keyframes rt-apr-pulse {
   0%, 100% {
-    transform: translate(0, 22px) scale(1);
+    transform: translate(0, 10px) scale(1);
   }
   50% {
-    transform: translate(0, 22px) scale(1.1);
+    transform: translate(0, 10px) scale(1.05);
   }
 }
 

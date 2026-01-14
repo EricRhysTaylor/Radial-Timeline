@@ -36,8 +36,11 @@ const files = [
     'timeline-repair.css'
 ];
 
-async function bundle() {
-    console.log('Bundling CSS...');
+async function bundle(options = {}) {
+    const quiet = options.quiet || process.argv.includes('--quiet');
+    
+    if (!quiet) console.log('Bundling CSS...');
+    
     // Build absolute, deduped file list
     const inputPaths = Array.from(
         new Set(
@@ -48,10 +51,6 @@ async function bundle() {
     // Guard: ensure output is not among inputs
     const outputPath = outputFile;
     const filteredInputs = inputPaths.filter(p => path.resolve(p) !== path.resolve(outputPath));
-
-    // Log inputs (dev aid)
-    console.log('[bundle-css] Inputs:');
-    filteredInputs.forEach(p => console.log('  -', path.relative(process.cwd(), p)));
 
     let bundleContent = '';
 
@@ -74,7 +73,9 @@ async function bundle() {
     }
 
     fs.writeFileSync(outputFile, bundleContent);
-    console.log(`CSS bundled to ${outputFile} (${bundleContent.length} bytes)`);
+    if (!quiet) {
+        console.log(`CSS bundled to ${outputFile} (${bundleContent.length} bytes)`);
+    }
 }
 
 // Allow direct execution

@@ -1,10 +1,12 @@
 .ert-ui {
+  /* Spacing tokens */
   --ert-gap-xs: 4px;
   --ert-gap-sm: 8px;
   --ert-gap-md: 12px;
   --ert-pad-sm: 12px;
   --ert-pad-md: 16px;
   --ert-label-w: 180px;
+
   /* Neutral defaults for surfaces; skins override as needed */
   --ert-accent: var(--interactive-accent);
   --ert-surface-hero: color-mix(in srgb, var(--background-primary) 92%, var(--interactive-accent) 4%);
@@ -16,10 +18,17 @@
   --ert-previewFrame-bg: color-mix(in srgb, var(--background-secondary) 90%, var(--interactive-accent) 2%);
   --ert-previewFrame-border: color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
 
+  /* Layout */
   display: flex;
   flex-direction: column;
   gap: var(--ert-gap-md);
   width: 100%;
+}
+
+/* Utility: hidden (doubled specificity for override) */
+.ert-ui .ert-hidden,
+.ert-ui .ert-hidden.ert-hidden {
+  display: none;
 }
 
 /* Density variants */
@@ -350,6 +359,19 @@
   background: var(--ert-chip-bg);
   color: var(--text-normal);
   font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.ert-ui .ert-chip:hover {
+  background: color-mix(in srgb, var(--ert-chip-bg) 80%, var(--interactive-accent) 20%);
+}
+
+.ert-ui .ert-chip.is-active {
+  background: color-mix(in srgb, var(--interactive-accent) 20%, var(--ert-chip-bg) 80%);
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 15%, transparent);
 }
 
 .ert-ui .ert-previewFrame {
@@ -514,4 +536,168 @@
 
 .ert-ui.is-debug .ert-control {
   outline: 1px dotted rgba(255, 0, 128, 0.6);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   OPTIMIZED: Pro pill v1 — do not normalize
+   Design-locked reference. Changes require explicit approval.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.rt-optimized-pro-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #9333ea, #6366f1);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.rt-optimized-pro-pill__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rt-optimized-pro-pill__icon svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.rt-optimized-pro-pill__text {
+  line-height: 1;
+  padding-top: 1px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ERT Pill Button — reusable template/action buttons
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ert-ui .ert-pillBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--text-normal);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.ert-ui .ert-pillBtn:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
+.ert-ui .ert-pillBtn__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ert-ui .ert-pillBtn__icon svg {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+  opacity: 0.7;
+  transition: all 0.15s ease;
+}
+
+.ert-ui .ert-pillBtn__label {
+  line-height: 1;
+}
+
+/* Hover state — standard */
+.ert-ui .ert-pillBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--text-muted);
+}
+
+.ert-ui .ert-pillBtn:hover:not(:disabled) .ert-pillBtn__icon svg {
+  opacity: 1;
+}
+
+/* Active state — standard */
+.ert-ui .ert-pillBtn.is-active {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 25%, transparent),
+              inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.ert-ui .ert-pillBtn.is-active .ert-pillBtn__icon svg {
+  color: var(--interactive-accent);
+  opacity: 1;
+}
+
+/* Used/disabled state */
+.ert-ui .ert-pillBtn.ert-pillBtn--used,
+.ert-ui .ert-pillBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ert-ui .ert-pillBtn.ert-pillBtn--used .ert-pillBtn__icon svg,
+.ert-ui .ert-pillBtn:disabled .ert-pillBtn__icon svg {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+/* Pro variant */
+.ert-ui .ert-pillBtn--pro:hover:not(:disabled) {
+  background: rgba(var(--rt-pro-color-rgb, 217, 70, 239), 0.15);
+  border-color: var(--rt-pro-color, #d946ef);
+  color: var(--rt-pro-color, #d946ef);
+}
+
+.ert-ui .ert-pillBtn--pro:hover:not(:disabled) .ert-pillBtn__icon svg {
+  color: var(--rt-pro-color, #d946ef);
+  opacity: 1;
+}
+
+.ert-ui .ert-pillBtn--pro.is-active {
+  border-color: var(--rt-pro-color, #d946ef);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--rt-pro-color, #d946ef) 25%, transparent),
+              inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.ert-ui .ert-pillBtn--pro.is-active .ert-pillBtn__icon svg {
+  color: var(--rt-pro-color, #d946ef);
+  opacity: 1;
+}
+
+/* Social variant (yellow) */
+.ert-ui .ert-pillBtn--social:hover:not(:disabled) {
+  background: rgba(var(--interactive-accent-rgb, 255, 212, 29), 0.15);
+  border-color: var(--interactive-accent);
+  color: var(--interactive-accent);
+}
+
+.ert-ui .ert-pillBtn--social:hover:not(:disabled) .ert-pillBtn__icon svg {
+  color: var(--interactive-accent);
+  opacity: 1;
+}
+
+.ert-ui .ert-pillBtn--social.is-active {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 25%, transparent),
+              inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.ert-ui .ert-pillBtn--social.is-active .ert-pillBtn__icon svg {
+  color: var(--interactive-accent);
+  opacity: 1;
 }

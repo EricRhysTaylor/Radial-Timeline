@@ -10,7 +10,7 @@ import { isProfessionalActive } from './ProfessionalSection';
 import { TEASER_PRESETS, TEASER_LEVEL_INFO, getTeaserThresholds, teaserLevelToRevealOptions } from '../../renderer/apr/AprConstants';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { getAllScenes } from '../../utils/manuscript';
-import { badgePill } from '../../ui/ui';
+import { renderOptimizedProPill } from '../../ui/optimized/ProPill';
 import { ERT_CLASSES } from '../../ui/classes';
 
 export interface CampaignManagerProps {
@@ -86,12 +86,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     const headerRow = card.createDiv({ cls: 'rt-campaign-manager-header' });
     const titleArea = headerRow.createDiv({ cls: 'rt-campaign-manager-title-area' });
     
-    const proBadge = badgePill(titleArea, {
-        icon: 'signature',
-        label: 'PRO',
-        variant: ERT_CLASSES.BADGE_PILL_PRO,
-        size: ERT_CLASSES.BADGE_PILL_SM,
-    });
+    renderOptimizedProPill(titleArea);
     
     titleArea.createEl('span', { text: 'Campaign Manager', cls: 'setting-item-name' });
     
@@ -192,15 +187,15 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     ];
     
     templates.forEach(template => {
-        const btn = templateRow.createEl('button', { cls: 'rt-campaign-template-btn' });
-        const iconSpan = btn.createSpan();
+        const btn = templateRow.createEl('button', { cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_PRO}`, attr: { 'aria-label': template.name } });
+        const iconSpan = btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_ICON });
         setIcon(iconSpan, template.icon);
-        btn.createSpan({ text: template.name });
+        btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: template.name });
         
         // Check if already exists
         const exists = campaigns.find(c => c.name.toLowerCase() === template.name.toLowerCase());
         if (exists) {
-            btn.addClass('rt-campaign-template-used');
+            btn.addClass(ERT_CLASSES.PILL_BTN_USED);
             btn.disabled = true;
         }
         
@@ -243,14 +238,14 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
         // Update template button states
         templateRow.empty();
         templates.forEach(template => {
-            const btn = templateRow.createEl('button', { cls: 'rt-campaign-template-btn' });
-            const iconSpan = btn.createSpan();
+            const btn = templateRow.createEl('button', { cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_PRO}`, attr: { 'aria-label': template.name } });
+            const iconSpan = btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_ICON });
             setIcon(iconSpan, template.icon);
-            btn.createSpan({ text: template.name });
+            btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: template.name });
             
             const exists = updatedCampaigns.find(c => c.name.toLowerCase() === template.name.toLowerCase());
             if (exists) {
-                btn.addClass('rt-campaign-template-used');
+                btn.addClass(ERT_CLASSES.PILL_BTN_USED);
                 btn.disabled = true;
             }
             

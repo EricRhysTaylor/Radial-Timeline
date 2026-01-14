@@ -225,19 +225,25 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         title.createSpan({ text: 'Backup your Work' });
         const description = contentContainer.createEl('p', { cls: 'rt-backup-description' });
         const backupPara = description.createDiv();
-        backupPara.createSpan({ text: 'It is strongly recommended for you to ' });
-        backupPara.createEl('a', { text: 'automate backups', href: 'https://help.obsidian.md/backup' });
-        backupPara.createSpan({ text: '. The native ' });
-        backupPara.createEl('a', { text: 'Obsidian Sync', href: 'https://obsidian.md/sync' });
-        backupPara.createSpan({ text: ' service and community favorite ' });
-        backupPara.createEl('a', { text: 'Obsidian Git', href: 'https://obsidian.md/plugins?id=obsidian-git' });
-        backupPara.createSpan({ text: ' are excellent choices.' });
+        backupPara.createSpan({ text: 'It is strongly recommended that you regularly ' });
+        backupPara.createEl('a', { text: 'back up your Obsidian vault', href: 'https://help.obsidian.md/backup' });
+        backupPara.createSpan({ text: ' to protect against data loss. Learn more about ' });
+        backupPara.createEl('a', { text: 'how Obsidian stores your data', href: 'https://help.obsidian.md/data-storage' });
+        backupPara.createSpan({ text: ' and best practices for creating reliable backups.' });
         const syncPara = description.createDiv({ cls: 'rt-backup-sync-para' });
-        syncPara.createEl('strong', { text: 'Sync Conflicts: ' });
-        syncPara.createSpan({ text: 'Avoid mixing sync services. If using iCloud on macOS alongside another sync tool, append ' });
-        syncPara.createEl('code', { text: '.nosync' });
-        syncPara.createSpan({ text: ' to the folder name to stop iCloud from syncing the vault. ' });
-        syncPara.createEl('a', { text: 'Read the Obsidian Sync Guide.', href: 'https://help.obsidian.md/sync/switch' });
+        syncPara.createEl('strong', { text: 'Syncing vs. Backing Up: ' });
+        syncPara.createSpan({ text: 'Sync services like ' });
+        syncPara.createEl('a', { text: 'Obsidian Sync', href: 'https://obsidian.md/sync' });
+        syncPara.createSpan({ text: ' and ' });
+        syncPara.createEl('a', { text: 'Obsidian Git', href: 'https://obsidian.md/plugins?id=obsidian-git' });
+        syncPara.createSpan({ text: ' synchronize your notes across devices but serve a different purpose than backups. ' });
+        syncPara.createEl('a', { text: 'Read the Obsidian Sync Guide', href: 'https://help.obsidian.md/sync/switch' });
+        syncPara.createSpan({ text: ' to understand the differences.' });
+        const conflictPara = description.createDiv({ cls: 'rt-backup-sync-para' });
+        conflictPara.createEl('strong', { text: 'Sync Conflicts: ' });
+        conflictPara.createSpan({ text: 'Avoid mixing sync services. If using iCloud on macOS alongside another sync tool, append ' });
+        conflictPara.createEl('code', { text: '.nosync' });
+        conflictPara.createSpan({ text: ' to the folder name to stop iCloud from syncing the vault.' });
     }
 
     private renderSearchBox(containerEl: HTMLElement): HTMLInputElement {
