@@ -24,12 +24,15 @@
   --ert-panel-pad: var(--ert-pad-md);
   --ert-panel-shadow: none;
   --ert-panel-shadow-elev: var(--ert-shadow-hero);
+  --ert-panel-backdrop: none;
   --ert-iconBtn-bg: var(--background-secondary);
   --ert-iconBtn-border: var(--background-modifier-border);
   --ert-iconBtn-color: var(--text-muted);
   --ert-iconBtn-hover-bg: var(--background-modifier-hover);
   --ert-iconBtn-hover-border: var(--background-modifier-border);
   --ert-iconBtn-hover-color: var(--text-normal);
+  --ert-iconBtn-size: 28px;
+  --ert-iconBtn-radius: 8px;
   --ert-pill-bg: rgba(255, 255, 255, 0.08);
   --ert-pill-border: var(--background-modifier-border);
   --ert-pill-color: var(--text-normal);
@@ -50,6 +53,14 @@
   --ert-pill-icon-hover-color: var(--ert-pill-hover-color);
   --ert-pill-icon-active-color: var(--ert-accent);
   --ert-pill-disabled-opacity: 0.4;
+  --ert-control-height: var(--input-height, 32px);
+  --ert-control-pad-x: 10px;
+  --ert-control-pad-y: 6px;
+  --ert-control-font-size: var(--font-ui-small, 13px);
+  --ert-control-radius: 8px;
+  --ert-control-bg: var(--background-modifier-form-field);
+  --ert-control-border: var(--background-modifier-border);
+  --ert-control-color: var(--text-normal);
 
   /* Layout */
   display: flex;
@@ -197,6 +208,7 @@
   border-radius: var(--ert-panel-radius);
   padding: var(--ert-panel-pad);
   box-shadow: var(--ert-panel-shadow);
+  backdrop-filter: var(--ert-panel-backdrop);
   display: flex;
   flex-direction: column;
   gap: var(--ert-gap-sm);
@@ -277,9 +289,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: var(--ert-iconBtn-size);
+  height: var(--ert-iconBtn-size);
+  border-radius: var(--ert-iconBtn-radius);
   border: 1px solid var(--ert-iconBtn-border);
   background: var(--ert-iconBtn-bg);
   color: var(--ert-iconBtn-color);
@@ -497,13 +509,22 @@
   --ert-panel-bg: rgba(255, 255, 255, 0.03);
   --ert-panel-border: rgba(255, 255, 255, 0.08);
   --ert-panel-radius: 18px;
+  --ert-panel-pad: 18px 20px;
   --ert-panel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 20px 45px rgba(0, 0, 0, 0.35);
   --ert-panel-shadow-elev: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 20px 45px rgba(0, 0, 0, 0.35);
+  --ert-panel-backdrop: blur(14px);
   --ert-iconBtn-bg: rgba(255, 255, 255, 0.06);
   --ert-iconBtn-border: rgba(255, 255, 255, 0.08);
   --ert-iconBtn-hover-bg: rgba(var(--ert-accent-rgb), 0.12);
   --ert-iconBtn-hover-border: rgba(var(--ert-accent-rgb), 0.22);
   --ert-iconBtn-hover-color: var(--ert-accent);
+  --ert-iconBtn-size: 34px;
+  --ert-iconBtn-radius: 8px;
+  --ert-control-height: 32px;
+  --ert-control-pad-x: 12px;
+  --ert-control-pad-y: 6px;
+  --ert-control-font-size: var(--font-ui-small, 13px);
+  --ert-control-radius: 8px;
   --ert-pill-hover-bg: rgba(var(--ert-accent-rgb), 0.12);
   --ert-pill-hover-border: var(--ert-accent);
   --ert-pill-hover-color: var(--ert-accent);
@@ -552,6 +573,56 @@
 .ert-ui .ert-skin--apr .ert-previewFrame {
   background: var(--ert-previewFrame-bg);
   border-color: var(--ert-previewFrame-border);
+}
+
+.ert-ui.ert-skin--social input[type="text"],
+.ert-ui.ert-skin--social input[type="number"],
+.ert-ui.ert-skin--social input[type="password"],
+.ert-ui.ert-skin--social select,
+.ert-ui .ert-skin--social input[type="text"],
+.ert-ui .ert-skin--social input[type="number"],
+.ert-ui .ert-skin--social input[type="password"],
+.ert-ui .ert-skin--social select {
+  height: var(--ert-control-height);
+  padding: var(--ert-control-pad-y) var(--ert-control-pad-x);
+  font-size: var(--ert-control-font-size);
+  border-radius: var(--ert-control-radius);
+  background: var(--ert-control-bg);
+  border: 1px solid var(--ert-control-border);
+  color: var(--ert-control-color);
+  line-height: 1.2;
+}
+
+.ert-ui.ert-skin--social textarea,
+.ert-ui .ert-skin--social textarea {
+  padding: var(--ert-control-pad-y) var(--ert-control-pad-x);
+  font-size: var(--ert-control-font-size);
+  border-radius: var(--ert-control-radius);
+  background: var(--ert-control-bg);
+  border: 1px solid var(--ert-control-border);
+  color: var(--ert-control-color);
+}
+
+.ert-ui.ert-skin--social button:not(.ert-pillBtn):not(.ert-iconBtn),
+.ert-ui .ert-skin--social button:not(.ert-pillBtn):not(.ert-iconBtn) {
+  min-height: var(--ert-control-height);
+  padding: 0 var(--ert-control-pad-x);
+  font-size: var(--ert-control-font-size);
+  border-radius: var(--ert-control-radius);
+}
+
+.ert-ui.ert-skin--social .ert-section-title,
+.ert-ui .ert-skin--social .ert-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.ert-ui.ert-skin--social .ert-label,
+.ert-ui .ert-skin--social .ert-label {
+  font-weight: 600;
+  color: var(--text-normal);
 }
 
 /* Pro skin overrides (visual only; no spacing changes) */

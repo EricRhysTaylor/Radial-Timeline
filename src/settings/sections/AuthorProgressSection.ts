@@ -1,6 +1,7 @@
 import { App, Setting, Notice, setIcon, normalizePath, ColorComponent, TextComponent, Modal, ButtonComponent, DropdownComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { AuthorProgressService } from '../../services/AuthorProgressService';
+import type { AuthorProgressSettings } from '../../types/settings';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { getAllScenes } from '../../utils/manuscript';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
@@ -390,6 +391,89 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const formatWeightValue = (weight: number, italic: boolean): string => {
         return italic ? `${weight}-italic` : String(weight);
     };
+
+    const numberFromText = (value: string): number | undefined => {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : undefined;
+    };
+
+    const setAprSetting = async (
+        key: keyof AuthorProgressSettings,
+        value: AuthorProgressSettings[keyof AuthorProgressSettings] | undefined
+    ): Promise<void> => {
+        if (!plugin.settings.authorProgress) return;
+        (plugin.settings.authorProgress as unknown as Record<string, unknown>)[key as string] = value;
+        await plugin.saveSettings();
+        refreshPreview();
+    };
+
+    const addTypographyRow = (
+        parent: HTMLElement,
+        label: string,
+        opts: {
+            familyKey: keyof AuthorProgressSettings;
+            weightKey: keyof AuthorProgressSettings;
+            italicKey: keyof AuthorProgressSettings;
+            sizeKeys?: (keyof AuthorProgressSettings)[];
+            sizePlaceholders?: string[];
+        }
+    ): void => {
+        const row = new Setting(parent).setName(label);
+        row.descEl.remove();
+        row.settingEl.addClass('rt-apr-typography-row');
+
+        const controls = row.controlEl.createDiv({ cls: 'rt-apr-typography-controls' });
+
+        const fontDrop = new DropdownComponent(controls);
+        void applyFontDropdown(fontDrop, settings?.[opts.familyKey] as string | undefined, async (val) => {
+            await setAprSetting(opts.familyKey, val as AuthorProgressSettings[typeof opts.familyKey]);
+        });
+
+        const styleDrop = new DropdownComponent(controls);
+        WEIGHT_OPTIONS.forEach(opt => styleDrop.addOption(opt.value, opt.label));
+        const currentWeight = settings?.[opts.weightKey] as number | undefined;
+        const currentItalic = settings?.[opts.italicKey] as boolean | undefined;
+        styleDrop.setValue(formatWeightValue(currentWeight || 400, currentItalic ?? false));
+        styleDrop.onChange(async (val) => {
+            const { weight, italic } = parseWeightValue(val);
+            await setAprSetting(opts.weightKey, weight as AuthorProgressSettings[typeof opts.weightKey]);
+            await setAprSetting(opts.italicKey, italic as AuthorProgressSettings[typeof opts.italicKey]);
+        });
+
+        const sizeInputs: TextComponent[] = [];
+        if (opts.sizeKeys?.length) {
+            const sizeGroup = controls.createDiv({ cls: 'rt-apr-typography-size-group' });
+            opts.sizeKeys.forEach((key, idx) => {
+                const sizeInput = new TextComponent(sizeGroup);
+                const currentValue = settings?.[key] as number | undefined;
+                sizeInput.setValue(currentValue?.toString() ?? '');
+                sizeInput.setPlaceholder(opts.sizePlaceholders?.[idx] ?? 'Auto');
+                sizeInput.inputEl.classList.add('rt-apr-typography-size-input');
+                sizeInput.onChange(async (val) => {
+                    const next = val.trim() ? numberFromText(val) : undefined;
+                    await setAprSetting(key, next as AuthorProgressSettings[typeof key]);
+                });
+                sizeInputs.push(sizeInput);
+            });
+
+            const autoBtn = controls.createEl('button', {
+                text: 'Auto',
+                cls: 'ert-chip rt-apr-typography-auto',
+                attr: { type: 'button' },
+            });
+            autoBtn.onclick = async () => {
+                if (opts.sizeKeys) {
+                    for (const key of opts.sizeKeys) {
+                        await setAprSetting(key, undefined);
+                    }
+                }
+                sizeInputs.forEach((input, idx) => {
+                    input.setValue('');
+                    input.setPlaceholder(opts.sizePlaceholders?.[idx] ?? 'Auto');
+                });
+            };
+        }
+    };
     
     // ─────────────────────────────────────────────────────────────────────────
     // COLOR PALETTE (at top, inside bordered group)
@@ -425,9 +509,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     });
     
     // ─────────────────────────────────────────────────────────────────────────
-    // TITLE SECTION
-    // Row 1: Title label + text input + color swatch + hex
-    // Row 2: Font + Weight
+    // TITLE SECTION (color + label inputs)
     // ─────────────────────────────────────────────────────────────────────────
     const titleRow1 = new Setting(paletteGroupWrapper).setName('Title');
     titleRow1.descEl.remove();
@@ -471,35 +553,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             refreshPreview();
             bookTitleColorPickerRef?.setValue(val);
             paletteGroupWrapper.style.setProperty('--rt-palette-border-color', val);
-        });
-    });
-    
-    const titleRow2 = new Setting(paletteGroupWrapper);
-    titleRow2.nameEl.remove();
-    titleRow2.descEl.remove();
-    titleRow2.settingEl.addClass('rt-apr-unified-row-secondary');
-    
-    titleRow2.addDropdown(drop => {
-        void applyFontDropdown(drop, settings?.aprBookTitleFontFamily, async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprBookTitleFontFamily = val;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-    
-    titleRow2.addDropdown(drop => {
-        WEIGHT_OPTIONS.forEach(opt => drop.addOption(opt.value, opt.label));
-        const currentWeight = settings?.aprBookTitleFontWeight || 400;
-        const currentItalic = settings?.aprBookTitleFontItalic ?? false;
-        drop.setValue(formatWeightValue(currentWeight, currentItalic));
-        drop.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            const { weight, italic } = parseWeightValue(val);
-            plugin.settings.authorProgress.aprBookTitleFontWeight = weight;
-            plugin.settings.authorProgress.aprBookTitleFontItalic = italic;
-            await plugin.saveSettings();
-            refreshPreview();
         });
     });
     
@@ -554,35 +607,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
     });
     
-    const authorRow2 = new Setting(authorGroup);
-    authorRow2.nameEl.remove();
-    authorRow2.descEl.remove();
-    authorRow2.settingEl.addClass('rt-apr-unified-row-secondary');
-    
-    authorRow2.addDropdown(drop => {
-        void applyFontDropdown(drop, settings?.aprAuthorNameFontFamily, async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprAuthorNameFontFamily = val;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-    
-    authorRow2.addDropdown(drop => {
-        WEIGHT_OPTIONS.forEach(opt => drop.addOption(opt.value, opt.label));
-        const currentWeight = settings?.aprAuthorNameFontWeight || 400;
-        const currentItalic = settings?.aprAuthorNameFontItalic ?? false;
-        drop.setValue(formatWeightValue(currentWeight, currentItalic));
-        drop.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            const { weight, italic } = parseWeightValue(val);
-            plugin.settings.authorProgress.aprAuthorNameFontWeight = weight;
-            plugin.settings.authorProgress.aprAuthorNameFontItalic = italic;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-    
     // ─────────────────────────────────────────────────────────────────────────
     // % SYMBOL SECTION
     // ─────────────────────────────────────────────────────────────────────────
@@ -618,35 +642,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             await plugin.saveSettings();
             refreshPreview();
             percentSymbolColorPickerRef?.setValue(val);
-        });
-    });
-    
-    const symbolRow2 = new Setting(symbolGroup);
-    symbolRow2.nameEl.remove();
-    symbolRow2.descEl.remove();
-    symbolRow2.settingEl.addClass('rt-apr-unified-row-secondary');
-    
-    symbolRow2.addDropdown(drop => {
-        void applyFontDropdown(drop, settings?.aprPercentSymbolFontFamily, async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprPercentSymbolFontFamily = val;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-    
-    symbolRow2.addDropdown(drop => {
-        WEIGHT_OPTIONS.forEach(opt => drop.addOption(opt.value, opt.label));
-        const currentWeight = settings?.aprPercentSymbolFontWeight || 800;
-        const currentItalic = settings?.aprPercentSymbolFontItalic ?? false;
-        drop.setValue(formatWeightValue(currentWeight, currentItalic));
-        drop.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            const { weight, italic } = parseWeightValue(val);
-            plugin.settings.authorProgress.aprPercentSymbolFontWeight = weight;
-            plugin.settings.authorProgress.aprPercentSymbolFontItalic = italic;
-            await plugin.saveSettings();
-            refreshPreview();
         });
     });
     
@@ -688,35 +683,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
     });
     
-    const numberRow2 = new Setting(numberGroup);
-    numberRow2.nameEl.remove();
-    numberRow2.descEl.remove();
-    numberRow2.settingEl.addClass('rt-apr-unified-row-secondary');
-    
-    numberRow2.addDropdown(drop => {
-        void applyFontDropdown(drop, settings?.aprPercentNumberFontFamily, async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprPercentNumberFontFamily = val;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-    
-    numberRow2.addDropdown(drop => {
-        WEIGHT_OPTIONS.forEach(opt => drop.addOption(opt.value, opt.label));
-        const currentWeight = settings?.aprPercentNumberFontWeight || 800;
-        const currentItalic = settings?.aprPercentNumberFontItalic ?? false;
-        drop.setValue(formatWeightValue(currentWeight, currentItalic));
-        drop.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            const { weight, italic } = parseWeightValue(val);
-            plugin.settings.authorProgress.aprPercentNumberFontWeight = weight;
-            plugin.settings.authorProgress.aprPercentNumberFontItalic = italic;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
-    });
-    
     // ─────────────────────────────────────────────────────────────────────────
     // RT BADGE SECTION
     // ─────────────────────────────────────────────────────────────────────────
@@ -751,33 +717,45 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
     });
     
-    const badgeRow2 = new Setting(badgeGroup);
-    badgeRow2.nameEl.remove();
-    badgeRow2.descEl.remove();
-    badgeRow2.settingEl.addClass('rt-apr-unified-row-secondary');
-    
-    badgeRow2.addDropdown(drop => {
-        void applyFontDropdown(drop, settings?.aprRtBadgeFontFamily, async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprRtBadgeFontFamily = val;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
+    typographyContainer.createDiv({ cls: 'rt-apr-typography-separator' });
+
+    const typographyRows = typographyContainer.createDiv({ cls: 'rt-apr-typography-rows' });
+    addTypographyRow(typographyRows, 'Title', {
+        familyKey: 'aprBookTitleFontFamily',
+        weightKey: 'aprBookTitleFontWeight',
+        italicKey: 'aprBookTitleFontItalic',
+        sizeKeys: ['aprBookTitleFontSize'],
+        sizePlaceholders: ['Auto'],
     });
-    
-    badgeRow2.addDropdown(drop => {
-        WEIGHT_OPTIONS.forEach(opt => drop.addOption(opt.value, opt.label));
-        const currentWeight = settings?.aprRtBadgeFontWeight || 700;
-        const currentItalic = settings?.aprRtBadgeFontItalic ?? false;
-        drop.setValue(formatWeightValue(currentWeight, currentItalic));
-        drop.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            const { weight, italic } = parseWeightValue(val);
-            plugin.settings.authorProgress.aprRtBadgeFontWeight = weight;
-            plugin.settings.authorProgress.aprRtBadgeFontItalic = italic;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
+
+    addTypographyRow(typographyRows, 'Author', {
+        familyKey: 'aprAuthorNameFontFamily',
+        weightKey: 'aprAuthorNameFontWeight',
+        italicKey: 'aprAuthorNameFontItalic',
+        sizeKeys: ['aprAuthorNameFontSize'],
+        sizePlaceholders: ['Auto'],
+    });
+
+    addTypographyRow(typographyRows, '% Symbol', {
+        familyKey: 'aprPercentSymbolFontFamily',
+        weightKey: 'aprPercentSymbolFontWeight',
+        italicKey: 'aprPercentSymbolFontItalic',
+    });
+
+    addTypographyRow(typographyRows, '% Number', {
+        familyKey: 'aprPercentNumberFontFamily',
+        weightKey: 'aprPercentNumberFontWeight',
+        italicKey: 'aprPercentNumberFontItalic',
+        sizeKeys: ['aprPercentNumberFontSize1Digit', 'aprPercentNumberFontSize2Digit', 'aprPercentNumberFontSize3Digit'],
+        sizePlaceholders: ['1d', '2d', '3d'],
+    });
+
+    addTypographyRow(typographyRows, 'RT Badge', {
+        familyKey: 'aprRtBadgeFontFamily',
+        weightKey: 'aprRtBadgeFontWeight',
+        italicKey: 'aprRtBadgeFontItalic',
+        sizeKeys: ['aprRtBadgeFontSize'],
+        sizePlaceholders: ['Auto'],
     });
 
     // Theme/Spokes Color setting (unified - controls both theme and spokes)
