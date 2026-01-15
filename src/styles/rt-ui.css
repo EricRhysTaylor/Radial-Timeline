@@ -537,6 +537,23 @@
 
 .ert-ui.ert-skin--social,
 .ert-ui .ert-skin--social {
+  --ert-social-accent: var(--ert-accent);
+  --ert-social-border: color-mix(in srgb, var(--ert-social-accent) 28%, transparent);
+  --ert-social-surface: color-mix(in srgb, var(--background-primary) 88%, var(--ert-social-accent) 6%);
+  --ert-social-surface-2: color-mix(in srgb, var(--background-secondary) 88%, var(--ert-social-accent) 8%);
+  --ert-social-glow: 0 18px 40px color-mix(in srgb, var(--ert-social-accent) 20%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --ert-social-grad: linear-gradient(135deg,
+    color-mix(in srgb, var(--ert-social-accent) 16%, transparent) 0%,
+    color-mix(in srgb, var(--ert-social-accent) 5%, transparent) 100%);
+  --ert-surface-hero: var(--ert-social-surface);
+  --ert-border-hero: var(--ert-social-border);
+  --ert-shadow-hero: var(--ert-social-glow);
+  --ert-hero-grad: var(--ert-social-grad);
+  --ert-panel-bg: var(--ert-social-grad), var(--ert-social-surface);
+  --ert-panel-border: var(--ert-social-border);
+  --ert-panel-shadow: var(--ert-social-glow);
+  --ert-panel-shadow-elev: var(--ert-social-glow);
   --ert-row-pad: 16px;
   --ert-row-gap: 8px;
   --ert-group-gap: var(--ert-row-gap);
@@ -558,6 +575,20 @@
   background-image: var(--ert-hero-grad);
   border: 1px solid var(--ert-border-hero);
   box-shadow: var(--ert-shadow-hero);
+}
+
+.ert-ui.ert-skin--social .ert-card:not(.ert-card--hero):not(.ert-card--apr),
+.ert-ui .ert-skin--social .ert-card:not(.ert-card--hero):not(.ert-card--apr) {
+  background: var(--ert-social-grad), var(--ert-social-surface);
+  border: 1px solid var(--ert-social-border);
+  box-shadow: var(--ert-social-glow);
+}
+
+.ert-ui.ert-skin--social .rt-glass-card,
+.ert-ui .ert-skin--social .rt-glass-card {
+  background: var(--ert-social-grad), var(--ert-social-surface);
+  border: 1px solid var(--ert-social-border);
+  box-shadow: var(--ert-social-glow);
 }
 
 .ert-ui.ert-skin--social .ert-iconBadge,
@@ -610,8 +641,8 @@
   color: var(--ert-control-color);
 }
 
-.ert-ui.ert-skin--social button:not(.ert-pillBtn):not(.ert-iconBtn),
-.ert-ui .ert-skin--social button:not(.ert-pillBtn):not(.ert-iconBtn) {
+.ert-ui.ert-skin--social button:not(.ert-pillBtn):not(.ert-iconBtn):not(.ert-swatch),
+.ert-ui .ert-skin--social button:not(.ert-pillBtn):not(.ert-iconBtn):not(.ert-swatch) {
   min-height: var(--ert-control-height);
   padding: 0 var(--ert-control-pad-x);
   font-size: var(--ert-control-font-size);
@@ -670,6 +701,36 @@
   resize: vertical;
 }
 
+.ert-ui.ert-skin--social .ert-swatch,
+.ert-ui .ert-skin--social .ert-swatch {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 3px;
+  background: var(--ert-swatch-color, transparent);
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ert-ui.ert-skin--social .ert-swatch:focus-visible,
+.ert-ui .ert-skin--social .ert-swatch:focus-visible {
+  outline: 2px solid var(--ert-accent);
+  outline-offset: 2px;
+}
+
+.ert-ui.ert-skin--social .ert-colorInput--hidden,
+.ert-ui .ert-skin--social .ert-colorInput--hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .ert-ui.ert-skin--social .ert-elementBlock.setting-item,
 .ert-ui .ert-skin--social .ert-elementBlock.setting-item {
   display: grid;
@@ -680,9 +741,17 @@
   width: 100%;
   grid-column: 1 / -1;
   padding: var(--ert-row-pad);
-  background: var(--background-secondary);
+  background: var(--ert-social-surface-2);
+  border: 1px solid var(--ert-social-border);
   border-radius: 8px;
   overflow: visible;
+}
+
+.ert-ui.ert-skin--social .rt-glass-card .setting-item:not(.setting-item-heading),
+.ert-ui .ert-skin--social .rt-glass-card .setting-item:not(.setting-item-heading) {
+  background: var(--ert-social-surface-2);
+  border: 1px solid var(--ert-social-border);
+  border-radius: 8px;
 }
 
 .ert-ui.ert-skin--social .ert-elementBlock.setting-item .setting-item-info,

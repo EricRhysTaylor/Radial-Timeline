@@ -13,7 +13,15 @@ type ToggleOpts = { value?: boolean; onChange?: (value: boolean) => void };
 type ButtonOpts = { text: string; onClick?: () => void; variant?: string; cta?: boolean };
 type SliderOpts = { value?: number; min: number; max: number; step?: number; onChange?: (value: number) => void };
 type ColorPickerOpts = { value?: string; onChange?: (value: string) => void; disabled?: boolean };
+type ColorSwatchOpts = { value?: string; onChange?: (value: string) => void; ariaLabel?: string };
 type BadgePillOpts = { icon: string; label: string; variant?: ErtVariant | ErtVariant[]; size?: ErtVariant };
+
+export type ColorSwatchHandle = {
+  picker: ColorComponent;
+  swatchEl: HTMLButtonElement;
+  setValue: (value: string) => void;
+  setDisabled: (disabled: boolean) => void;
+};
 
 const __ERT_DEV__ = typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
 
@@ -187,6 +195,58 @@ export function colorPicker(slot: HTMLElement, opts: ColorPickerOpts): ColorComp
   if (opts.disabled) colorComponent.setDisabled(true);
   if (opts.onChange) colorComponent.onChange(opts.onChange);
   return colorComponent;
+}
+
+export function colorSwatch(slot: HTMLElement, opts: ColorSwatchOpts = {}): ColorSwatchHandle {
+  const colorComponent = new ColorComponent(slot);
+  if (opts.value !== undefined) colorComponent.setValue(opts.value);
+
+  const inputEl = slot.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
+  if (inputEl) {
+    inputEl.classList.add(ERT_CLASSES.COLOR_INPUT_HIDDEN);
+    warnUnknownErtClasses([ERT_CLASSES.COLOR_INPUT_HIDDEN], inputEl);
+  }
+
+  const swatchEl = slot.createEl('button', { cls: ERT_CLASSES.SWATCH });
+  warnUnknownErtClasses([ERT_CLASSES.SWATCH], swatchEl);
+  swatchEl.type = 'button';
+  if (opts.ariaLabel) swatchEl.setAttribute('aria-label', opts.ariaLabel);
+
+  let isSetting = false;
+  const applyColor = (value?: string) => {
+    if (!value) return;
+    swatchEl.style.setProperty('--ert-swatch-color', value);
+  };
+
+  applyColor(opts.value);
+  swatchEl.addEventListener('click', () => {
+    inputEl?.click();
+  });
+
+  colorComponent.onChange((value) => {
+    if (isSetting) return;
+    applyColor(value);
+    opts.onChange?.(value);
+  });
+
+  const setValue = (value: string) => {
+    isSetting = true;
+    colorComponent.setValue(value);
+    applyColor(value);
+    isSetting = false;
+  };
+
+  const setDisabled = (disabled: boolean) => {
+    colorComponent.setDisabled(disabled);
+    swatchEl.toggleAttribute('disabled', disabled);
+  };
+
+  return {
+    picker: colorComponent,
+    swatchEl,
+    setValue,
+    setDisabled
+  };
 }
 
 export function badgePill(parent: HTMLElement, opts: BadgePillOpts): HTMLElement {

@@ -286,16 +286,6 @@
   margin-bottom: 12px;
 }
 
-.rt-apr-palette-book-title-group {
-  display: grid;
-  gap: 6px;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-}
-
-.rt-apr-palette-book-title-group.rt-palette-inactive {
-  opacity: 0.6;
-}
-
 .rt-settings-root .rt-apr-styling-card .rt-section-title {
   margin-bottom: 6px;
 }
@@ -318,16 +308,6 @@
 
 .rt-settings-root .rt-apr-unified-group .setting-item.setting-item {
   margin: 0;
-}
-
-.rt-settings-root .rt-apr-palette-button-row.setting-item {
-  align-items: flex-start;
-}
-
-.rt-settings-root .rt-apr-palette-button-row .setting-item-control {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
 }
 
 .rt-settings-root .rt-apr-pro-teaser {
