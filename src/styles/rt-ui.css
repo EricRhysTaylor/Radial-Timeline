@@ -625,25 +625,86 @@
   color: var(--text-normal);
 }
 
-.ert-ui.ert-skin--social .ert-typography-row.setting-item,
-.ert-ui .ert-skin--social .ert-typography-row.setting-item {
+.ert-ui.ert-skin--social .ert-row--wideControl,
+.ert-ui .ert-skin--social .ert-row--wideControl {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto;
+  gap: 12px;
+}
+
+.ert-ui.ert-skin--social .ert-row--wideControl .setting-item-info,
+.ert-ui .ert-skin--social .ert-row--wideControl .setting-item-info {
+  grid-column: 1 / -1;
+  grid-row: 1 / 2;
+}
+
+.ert-ui.ert-skin--social .ert-row--wideControl .setting-item-control,
+.ert-ui .ert-skin--social .ert-row--wideControl .setting-item-control {
+  grid-column: 1 / -1;
+  grid-row: 2 / 3;
+  width: 100%;
+}
+
+.ert-ui.ert-skin--social .ert-row--wideControl .setting-item-control input[type="text"],
+.ert-ui .ert-skin--social .ert-row--wideControl .setting-item-control input[type="text"] {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.ert-ui.ert-skin--social .ert-row--wideControl .setting-item-control textarea,
+.ert-ui .ert-skin--social .ert-row--wideControl .setting-item-control textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  resize: vertical;
+}
+
+.ert-ui.ert-skin--social .ert-elementBlock.setting-item,
+.ert-ui .ert-skin--social .ert-elementBlock.setting-item {
   display: grid;
   grid-template-columns: minmax(120px, 180px) 1fr;
+  grid-template-rows: auto auto;
   align-items: center;
   column-gap: 12px;
+  width: 100%;
+  grid-column: 1 / -1;
   padding: 8px 10px;
   background: var(--background-secondary);
   border-radius: 8px;
   overflow: visible;
 }
 
-.ert-ui.ert-skin--social .ert-typography-row.setting-item .setting-item-control,
-.ert-ui .ert-skin--social .ert-typography-row.setting-item .setting-item-control {
+.ert-ui.ert-skin--social .ert-elementBlock.setting-item .setting-item-info,
+.ert-ui .ert-skin--social .ert-elementBlock.setting-item .setting-item-info {
+  grid-row: 1 / -1;
+}
+
+.ert-ui.ert-skin--social .ert-typography-stack,
+.ert-ui .ert-skin--social .ert-typography-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  grid-column: 1 / -1;
+}
+
+.ert-ui.ert-skin--social .ert-elementBlock.setting-item .setting-item-control,
+.ert-ui .ert-skin--social .ert-elementBlock.setting-item .setting-item-control {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
   min-width: 0;
+  grid-row: 1 / -1;
+}
+
+.ert-ui.ert-skin--social .ert-elementBlock__row,
+.ert-ui .ert-skin--social .ert-elementBlock__row {
+  width: 100%;
 }
 
 .ert-ui.ert-skin--social .ert-typography-controls,

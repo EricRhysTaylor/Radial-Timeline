@@ -434,7 +434,7 @@ function renderCampaignDetails(
         .setName('Embed File Path')
         .setDesc(`Location for the embed SVG file. Must end with .svg. Default: ${defaultPath}`);
     
-    embedPathSetting.settingEl.addClass('rt-setting-full-width-input');
+    embedPathSetting.settingEl.addClass('ert-row--wideControl');
     
     embedPathSetting.addText(text => {
         text.inputEl.addClass('rt-input-full');

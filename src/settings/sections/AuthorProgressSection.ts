@@ -223,6 +223,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     //               Row 2 = Font + Weight
     // ─────────────────────────────────────────────────────────────────────────
     const typographyContainer = stylingCard.createDiv({ cls: 'rt-apr-typography-container' });
+    const typographyStack = typographyContainer.createDiv({ cls: 'ert-typography-stack' });
     
     // Palette tracking & color picker refs
     let lastAppliedPalette: { bookTitle: string; authorName: string; percentNumber: string; percentSymbol: string } | null = null;
@@ -302,7 +303,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         drop: DropdownComponent,
         currentValue: string | undefined,
         onSave: (value: string) => Promise<void>
-    ): void => {
+    ): { setValue: (value: string) => void } => {
         const customValue = '__custom__';
         let currentFont = currentValue || 'Inter';
         let isUpdating = false;
@@ -381,64 +382,92 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             await onSave(next);
             currentFont = next;
         });
+
+        const setValue = (value: string): void => {
+            const next = value || 'Inter';
+            currentFont = next;
+            updateOptions(currentFont);
+        };
+
+        return { setValue };
     };
 
-    const addTypographyRow = (
-        parent: HTMLElement,
-        label: string,
-        opts: {
-            familyKey: keyof AuthorProgressSettings;
-            weightKey: keyof AuthorProgressSettings;
-            italicKey: keyof AuthorProgressSettings;
-            sizeKeys?: (keyof AuthorProgressSettings)[];
-            sizePlaceholders?: string[];
-            weightDefault: number;
-            italicDefault?: boolean;
-            fontDefault?: string;
-            dataTypo?: string;
-        }
-    ): void => {
-        const row = new Setting(parent).setName(label);
-        row.descEl.remove();
-        row.settingEl.addClass('ert-typography-row');
-        if (opts.dataTypo) {
-            row.settingEl.dataset.ertTypo = opts.dataTypo;
-        }
+    type TypographyControlOptions = {
+        familyKey: keyof AuthorProgressSettings;
+        weightKey: keyof AuthorProgressSettings;
+        italicKey: keyof AuthorProgressSettings;
+        sizeKeys?: (keyof AuthorProgressSettings)[];
+        sizePlaceholders?: string[];
+        weightDefault: number;
+        italicDefault?: boolean;
+        fontDefault?: string;
+    };
 
-        const controls = row.controlEl.createDiv({ cls: 'ert-typography-controls' });
+    type ElementBlockOptions = {
+        label: string;
+        desc: string;
+        dataTypo: string;
+        text?: {
+            placeholder: string;
+            value: string;
+            onChange: (value: string) => Promise<void>;
+        };
+        color: {
+            key: keyof AuthorProgressSettings;
+            value: string;
+            fallback: string;
+            onAfterChange?: (value: string) => void;
+            setPickerRef?: (picker: ColorComponent) => void;
+            setTextRef?: (text: TextComponent) => void;
+        };
+        typography: TypographyControlOptions;
+    };
 
-        const fontDrop = new DropdownComponent(controls);
+    const buildTypographyControls = (
+        rowEl: HTMLElement,
+        opts: TypographyControlOptions,
+        onUpdateAutoState: () => void,
+        isSyncing: () => boolean
+    ): {
+        setFontValue: (value: string) => void;
+        setStyleValue: (weight: number, italic: boolean) => void;
+        sizeInputs: TextComponent[];
+    } => {
+        const fontDrop = new DropdownComponent(rowEl);
         fontDrop.selectEl.addClass('ert-typography-select');
         const currentFont = (settings?.[opts.familyKey] as string | undefined) ?? opts.fontDefault ?? 'Inter';
-        applyFontDropdown(fontDrop, currentFont, async (val) => {
+        const { setValue: setFontValue } = applyFontDropdown(fontDrop, currentFont, async (val) => {
+            if (isSyncing()) return;
             await setAprSetting(opts.familyKey, val as AuthorProgressSettings[typeof opts.familyKey]);
+            onUpdateAutoState();
         });
 
-        const styleDrop = new DropdownComponent(controls);
+        const styleDrop = new DropdownComponent(rowEl);
         styleDrop.selectEl.addClass('ert-typography-select');
         WEIGHT_OPTIONS.forEach(opt => styleDrop.addOption(opt.value, opt.label));
         const currentWeight = (settings?.[opts.weightKey] as number | undefined) ?? opts.weightDefault;
         const currentItalic = (settings?.[opts.italicKey] as boolean | undefined) ?? opts.italicDefault ?? false;
+        let isStyleUpdating = false;
         styleDrop.setValue(formatWeightValue(currentWeight, currentItalic));
         styleDrop.onChange(async (val) => {
+            if (isStyleUpdating || isSyncing()) return;
             const { weight, italic } = parseWeightValue(val);
             await setAprSettings({
                 [opts.weightKey]: weight,
                 [opts.italicKey]: italic
             } as Partial<AuthorProgressSettings>);
+            onUpdateAutoState();
         });
 
-        const sizeInputs: Array<{ key: keyof AuthorProgressSettings; input: TextComponent }> = [];
-        let autoButton: HTMLButtonElement | null = null;
-
-        const updateAutoState = (): void => {
-            if (!autoButton || !opts.sizeKeys?.length) return;
-            const isAuto = opts.sizeKeys.every(key => settings?.[key] === undefined);
-            autoButton.classList.toggle('is-active', isAuto);
+        const setStyleValue = (weight: number, italic: boolean): void => {
+            isStyleUpdating = true;
+            styleDrop.setValue(formatWeightValue(weight, italic));
+            isStyleUpdating = false;
         };
 
+        const sizeInputs: TextComponent[] = [];
         if (opts.sizeKeys?.length) {
-            const sizeGroup = controls.createDiv({ cls: 'ert-typography-size-group' });
+            const sizeGroup = rowEl.createDiv({ cls: 'ert-typography-size-group' });
             opts.sizeKeys.forEach((key, index) => {
                 const input = new TextComponent(sizeGroup);
                 input.inputEl.addClass('ert-typography-size-input');
@@ -446,26 +475,121 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 const currentValue = settings?.[key] as number | undefined;
                 input.setValue(currentValue !== undefined ? String(currentValue) : '');
                 input.onChange(async (val) => {
+                    if (isSyncing()) return;
                     const next = val.trim() ? numberFromText(val) : undefined;
                     if (val.trim() && next === undefined) return;
                     await setAprSetting(key, next as AuthorProgressSettings[typeof key]);
-                    updateAutoState();
+                    onUpdateAutoState();
                 });
-                sizeInputs.push({ key, input });
-            });
-
-            autoButton = controls.createEl('button', { text: 'Auto', cls: 'ert-chip ert-typography-auto' });
-            autoButton.type = 'button';
-            autoButton.addEventListener('click', async () => {
-                const updates: Partial<AuthorProgressSettings> = {};
-                opts.sizeKeys?.forEach((key) => {
-                    updates[key] = undefined;
-                });
-                await setAprSettings(updates);
-                sizeInputs.forEach(({ input }) => input.setValue(''));
-                updateAutoState();
+                sizeInputs.push(input);
             });
         }
+
+        return { setFontValue, setStyleValue, sizeInputs };
+    };
+
+    const addElementBlock = (parent: HTMLElement, opts: ElementBlockOptions): void => {
+        const block = new Setting(parent).setName(opts.label).setDesc(opts.desc);
+        block.settingEl.addClass('ert-elementBlock');
+        block.settingEl.dataset.ertTypo = opts.dataTypo;
+        block.controlEl.addClass('ert-elementBlock__right');
+        const infoEl = block.settingEl.querySelector('.setting-item-info');
+        infoEl?.classList.add('ert-elementBlock__left');
+
+        const rowPrimary = block.controlEl.createDiv({ cls: 'ert-elementBlock__row ert-elementBlock__row--primary ert-typography-controls' });
+        const rowSecondary = block.controlEl.createDiv({ cls: 'ert-elementBlock__row ert-elementBlock__row--secondary ert-typography-controls' });
+
+        let isSyncing = false;
+        const isSyncingCheck = () => isSyncing;
+
+        let autoButton: HTMLButtonElement | null = null;
+
+        const normalizeHex = (val: string): string => val.trim().toLowerCase();
+        const defaultFont = opts.typography.fontDefault ?? 'Inter';
+        const defaultWeight = opts.typography.weightDefault;
+        const defaultItalic = opts.typography.italicDefault ?? false;
+
+        const updateAutoState = (): void => {
+            if (!autoButton) return;
+            const currentColor = normalizeHex((settings?.[opts.color.key] as string | undefined) ?? opts.color.fallback);
+            const defaultColor = normalizeHex(opts.color.fallback);
+            const currentFont = (settings?.[opts.typography.familyKey] as string | undefined) ?? defaultFont;
+            const currentWeight = (settings?.[opts.typography.weightKey] as number | undefined) ?? defaultWeight;
+            const currentItalic = (settings?.[opts.typography.italicKey] as boolean | undefined) ?? defaultItalic;
+            const isSizeAuto = opts.typography.sizeKeys?.length
+                ? opts.typography.sizeKeys.every(key => settings?.[key] === undefined)
+                : true;
+            autoButton.classList.toggle('is-active', currentColor === defaultColor
+                && currentFont === defaultFont
+                && currentWeight === defaultWeight
+                && currentItalic === defaultItalic
+                && isSizeAuto);
+        };
+
+        if (opts.text) {
+            const textConfig = opts.text;
+            const textInput = new TextComponent(rowPrimary);
+            textInput.setPlaceholder(textConfig.placeholder);
+            textInput.setValue(textConfig.value);
+            textInput.inputEl.addClass('ert-typography-text-input');
+            textInput.onChange(async (val) => {
+                if (isSyncing) return;
+                await textConfig.onChange(val);
+            });
+        }
+
+        const colorPicker = new ColorComponent(rowPrimary);
+        opts.color.setPickerRef?.(colorPicker);
+        colorPicker.setValue(opts.color.value);
+        colorPicker.onChange(async (val) => {
+            if (isSyncing) return;
+            const next = val || opts.color.fallback;
+            await setAprSetting(opts.color.key, next as AuthorProgressSettings[typeof opts.color.key]);
+            colorText?.setValue(next);
+            opts.color.onAfterChange?.(next);
+            updateAutoState();
+        });
+
+        const colorText = new TextComponent(rowPrimary);
+        opts.color.setTextRef?.(colorText);
+        colorText.inputEl.classList.add('rt-hex-input');
+        colorText.setPlaceholder(opts.color.fallback).setValue(opts.color.value);
+        colorText.onChange(async (val) => {
+            if (isSyncing) return;
+            if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
+            await setAprSetting(opts.color.key, val as AuthorProgressSettings[typeof opts.color.key]);
+            colorPicker.setValue(val);
+            opts.color.onAfterChange?.(val);
+            updateAutoState();
+        });
+
+        autoButton = rowPrimary.createEl('button', { text: 'Auto', cls: 'ert-chip ert-typography-auto' });
+        autoButton.type = 'button';
+
+        const typographyRefs = buildTypographyControls(rowSecondary, opts.typography, updateAutoState, isSyncingCheck);
+
+        autoButton.addEventListener('click', async () => {
+            if (!plugin.settings.authorProgress) return;
+            const updates: Partial<AuthorProgressSettings> = {
+                [opts.color.key]: opts.color.fallback,
+                [opts.typography.familyKey]: defaultFont,
+                [opts.typography.weightKey]: defaultWeight,
+                [opts.typography.italicKey]: defaultItalic
+            };
+            opts.typography.sizeKeys?.forEach((key) => {
+                updates[key] = undefined;
+            });
+            await setAprSettings(updates);
+            isSyncing = true;
+            colorPicker.setValue(opts.color.fallback);
+            colorText.setValue(opts.color.fallback);
+            typographyRefs.setFontValue(defaultFont);
+            typographyRefs.setStyleValue(defaultWeight, defaultItalic);
+            typographyRefs.sizeInputs.forEach(input => input.setValue(''));
+            opts.color.onAfterChange?.(opts.color.fallback);
+            isSyncing = false;
+            updateAutoState();
+        });
 
         updateAutoState();
     };
@@ -474,7 +598,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // COLOR PALETTE (at top, inside bordered group)
     // ─────────────────────────────────────────────────────────────────────────
     const currentBookTitleColorVal = settings?.aprBookAuthorColor || bookTitleColorFallback;
-    const paletteGroupWrapper = typographyContainer.createDiv({ cls: 'rt-apr-palette-book-title-group rt-apr-unified-group' });
+    const paletteGroupWrapper = typographyStack.createDiv({ cls: 'rt-apr-palette-book-title-group rt-apr-unified-group' });
     paletteGroupWrapper.style.setProperty('--rt-palette-border-color', currentBookTitleColorVal);
     
     const paletteHelperSetting = new Setting(paletteGroupWrapper).setName('Color Palette');
@@ -504,264 +628,185 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     });
     
     // ─────────────────────────────────────────────────────────────────────────
-    // TITLE SECTION
-    // Row 1: Title label + text input + color swatch + hex
-    // Row 2: Font + Weight
+    // ELEMENT BLOCKS (Title, Author, % Symbol, % Number, RT Badge)
     // ─────────────────────────────────────────────────────────────────────────
-    const titleRow1 = new Setting(paletteGroupWrapper).setName('Title');
-    titleRow1.descEl.remove();
-    titleRow1.settingEl.addClass('ert-typography-row');
-
-    const titleTextRow = titleRow1.controlEl.createDiv({ cls: 'ert-typography-controls' });
-    const titleColorRow = titleRow1.controlEl.createDiv({ cls: 'ert-typography-controls' });
-
-    const titleInput = new TextComponent(titleTextRow);
-    titleInput.setPlaceholder('Working Title');
-    titleInput.setValue(settings?.bookTitle || '');
-    titleInput.inputEl.addClass('ert-typography-text-input');
-    titleInput.onChange(async (val) => {
-        if (plugin.settings.authorProgress) {
-            plugin.settings.authorProgress.bookTitle = val;
-            await plugin.saveSettings();
-            refreshPreview();
+    addElementBlock(paletteGroupWrapper, {
+        label: 'Title',
+        desc: 'Outer ring book title text.',
+        dataTypo: 'title',
+        text: {
+            placeholder: 'Working Title',
+            value: settings?.bookTitle || '',
+            onChange: async (val) => {
+                await setAprSetting('bookTitle', val as AuthorProgressSettings['bookTitle']);
+            }
+        },
+        color: {
+            key: 'aprBookAuthorColor',
+            value: currentBookTitleColorVal,
+            fallback: bookTitleColorFallback,
+            onAfterChange: (val) => {
+                paletteGroupWrapper.style.setProperty('--rt-palette-border-color', val);
+            },
+            setPickerRef: (picker) => {
+                bookTitleColorPickerRef = picker;
+            },
+            setTextRef: (text) => {
+                bookTitleTextRef = text;
+            }
+        },
+        typography: {
+            familyKey: 'aprBookTitleFontFamily',
+            weightKey: 'aprBookTitleFontWeight',
+            italicKey: 'aprBookTitleFontItalic',
+            sizeKeys: ['aprBookTitleFontSize'],
+            sizePlaceholders: ['Auto'],
+            weightDefault: 400
         }
     });
-
-    bookTitleColorPickerRef = new ColorComponent(titleColorRow);
-    bookTitleColorPickerRef.setValue(currentBookTitleColorVal);
-    bookTitleColorPickerRef.onChange(async (val) => {
-        if (!plugin.settings.authorProgress) return;
-        plugin.settings.authorProgress.aprBookAuthorColor = val || bookTitleColorFallback;
-        await plugin.saveSettings();
-        refreshPreview();
-        bookTitleTextRef?.setValue(val);
-        paletteGroupWrapper.style.setProperty('--rt-palette-border-color', val);
-    });
-
-    bookTitleTextRef = new TextComponent(titleColorRow);
-    bookTitleTextRef.inputEl.classList.add('rt-hex-input');
-    bookTitleTextRef.setPlaceholder(bookTitleColorFallback).setValue(currentBookTitleColorVal);
-    bookTitleTextRef.onChange(async (val) => {
-        if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
-        if (!plugin.settings.authorProgress) return;
-        plugin.settings.authorProgress.aprBookAuthorColor = val;
-        await plugin.saveSettings();
-        refreshPreview();
-        bookTitleColorPickerRef?.setValue(val);
-        paletteGroupWrapper.style.setProperty('--rt-palette-border-color', val);
-    });
-    
-    addTypographyRow(paletteGroupWrapper, 'Title', {
-        familyKey: 'aprBookTitleFontFamily',
-        weightKey: 'aprBookTitleFontWeight',
-        italicKey: 'aprBookTitleFontItalic',
-        sizeKeys: ['aprBookTitleFontSize'],
-        sizePlaceholders: ['Auto'],
-        weightDefault: 400,
-        dataTypo: 'title'
-    });
     
     // ─────────────────────────────────────────────────────────────────────────
-    // AUTHOR SECTION
+    // AUTHOR
     // ─────────────────────────────────────────────────────────────────────────
-    const authorGroup = typographyContainer.createDiv({ cls: 'rt-apr-unified-group' });
+    const authorGroup = typographyStack.createDiv({ cls: 'rt-apr-unified-group' });
     
     const authorColorFallback = settings?.aprBookAuthorColor || bookTitleColorFallback;
     const currentAuthorColor = settings?.aprAuthorColor || authorColorFallback;
-    
-    const authorRow1 = new Setting(authorGroup).setName('Author');
-    authorRow1.descEl.remove();
-    authorRow1.settingEl.addClass('ert-typography-row');
 
-    const authorTextRow = authorRow1.controlEl.createDiv({ cls: 'ert-typography-controls' });
-    const authorColorRow = authorRow1.controlEl.createDiv({ cls: 'ert-typography-controls' });
-
-    const authorInput = new TextComponent(authorTextRow);
-    authorInput.setPlaceholder('Author Name');
-    authorInput.setValue(settings?.authorName || '');
-    authorInput.inputEl.addClass('ert-typography-text-input');
-    authorInput.onChange(async (val) => {
-        if (plugin.settings.authorProgress) {
-            plugin.settings.authorProgress.authorName = val;
-            await plugin.saveSettings();
-            refreshPreview();
+    addElementBlock(authorGroup, {
+        label: 'Author',
+        desc: 'Outer ring author name text.',
+        dataTypo: 'author',
+        text: {
+            placeholder: 'Author Name',
+            value: settings?.authorName || '',
+            onChange: async (val) => {
+                await setAprSetting('authorName', val as AuthorProgressSettings['authorName']);
+            }
+        },
+        color: {
+            key: 'aprAuthorColor',
+            value: currentAuthorColor,
+            fallback: authorColorFallback,
+            setPickerRef: (picker) => {
+                authorColorPickerRef = picker;
+            },
+            setTextRef: (text) => {
+                authorTextRef = text;
+            }
+        },
+        typography: {
+            familyKey: 'aprAuthorNameFontFamily',
+            weightKey: 'aprAuthorNameFontWeight',
+            italicKey: 'aprAuthorNameFontItalic',
+            sizeKeys: ['aprAuthorNameFontSize'],
+            sizePlaceholders: ['Auto'],
+            weightDefault: 400
         }
     });
-
-    authorColorPickerRef = new ColorComponent(authorColorRow);
-    authorColorPickerRef.setValue(currentAuthorColor);
-    authorColorPickerRef.onChange(async (val) => {
-        if (!plugin.settings.authorProgress) return;
-        plugin.settings.authorProgress.aprAuthorColor = val || authorColorFallback;
-        await plugin.saveSettings();
-        refreshPreview();
-        authorTextRef?.setValue(val);
-    });
-
-    authorTextRef = new TextComponent(authorColorRow);
-    authorTextRef.inputEl.classList.add('rt-hex-input');
-    authorTextRef.setPlaceholder(authorColorFallback).setValue(currentAuthorColor);
-    authorTextRef.onChange(async (val) => {
-        if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
-        if (!plugin.settings.authorProgress) return;
-        plugin.settings.authorProgress.aprAuthorColor = val;
-        await plugin.saveSettings();
-        refreshPreview();
-        authorColorPickerRef?.setValue(val);
-    });
-    
-    addTypographyRow(authorGroup, 'Author', {
-        familyKey: 'aprAuthorNameFontFamily',
-        weightKey: 'aprAuthorNameFontWeight',
-        italicKey: 'aprAuthorNameFontItalic',
-        sizeKeys: ['aprAuthorNameFontSize'],
-        sizePlaceholders: ['Auto'],
-        weightDefault: 400,
-        dataTypo: 'author'
-    });
     
     // ─────────────────────────────────────────────────────────────────────────
-    // % SYMBOL SECTION
+    // % SYMBOL
     // ─────────────────────────────────────────────────────────────────────────
-    const symbolGroup = typographyContainer.createDiv({ cls: 'rt-apr-unified-group' });
+    const symbolGroup = typographyStack.createDiv({ cls: 'rt-apr-unified-group' });
     
     const percentSymbolColorFallback = settings?.aprBookAuthorColor || bookTitleColorFallback;
     const currentPercentSymbolColor = settings?.aprPercentSymbolColor || percentSymbolColorFallback;
-    
-    const symbolRow1 = new Setting(symbolGroup).setName('% Symbol');
-    symbolRow1.descEl.remove();
-    symbolRow1.settingEl.addClass('ert-typography-row');
 
-    const symbolColorRow = symbolRow1.controlEl.createDiv({ cls: 'ert-typography-controls' });
-
-    percentSymbolColorPickerRef = new ColorComponent(symbolColorRow);
-    percentSymbolColorPickerRef.setValue(currentPercentSymbolColor);
-    percentSymbolColorPickerRef.onChange(async (val) => {
-        if (!plugin.settings.authorProgress) return;
-        plugin.settings.authorProgress.aprPercentSymbolColor = val || percentSymbolColorFallback;
-        await plugin.saveSettings();
-        refreshPreview();
-        percentSymbolTextRef?.setValue(val);
-    });
-
-    percentSymbolTextRef = new TextComponent(symbolColorRow);
-    percentSymbolTextRef.inputEl.classList.add('rt-hex-input');
-    percentSymbolTextRef.setPlaceholder(percentSymbolColorFallback).setValue(currentPercentSymbolColor);
-    percentSymbolTextRef.onChange(async (val) => {
-        if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
-        if (!plugin.settings.authorProgress) return;
-        plugin.settings.authorProgress.aprPercentSymbolColor = val;
-        await plugin.saveSettings();
-        refreshPreview();
-        percentSymbolColorPickerRef?.setValue(val);
-    });
-    
-    addTypographyRow(symbolGroup, '% Symbol', {
-        familyKey: 'aprPercentSymbolFontFamily',
-        weightKey: 'aprPercentSymbolFontWeight',
-        italicKey: 'aprPercentSymbolFontItalic',
-        weightDefault: 800,
-        dataTypo: 'percent-symbol'
+    addElementBlock(symbolGroup, {
+        label: '% Symbol',
+        desc: 'Center percent symbol.',
+        dataTypo: 'percent-symbol',
+        color: {
+            key: 'aprPercentSymbolColor',
+            value: currentPercentSymbolColor,
+            fallback: percentSymbolColorFallback,
+            setPickerRef: (picker) => {
+                percentSymbolColorPickerRef = picker;
+            },
+            setTextRef: (text) => {
+                percentSymbolTextRef = text;
+            }
+        },
+        typography: {
+            familyKey: 'aprPercentSymbolFontFamily',
+            weightKey: 'aprPercentSymbolFontWeight',
+            italicKey: 'aprPercentSymbolFontItalic',
+            weightDefault: 800
+        }
     });
     
     // ─────────────────────────────────────────────────────────────────────────
-    // % NUMBER SECTION
+    // % NUMBER
     // ─────────────────────────────────────────────────────────────────────────
-    const numberGroup = typographyContainer.createDiv({ cls: 'rt-apr-unified-group' });
+    const numberGroup = typographyStack.createDiv({ cls: 'rt-apr-unified-group' });
     
     const percentNumberColorFallback = settings?.aprBookAuthorColor || bookTitleColorFallback;
     const currentPercentNumberColor = settings?.aprPercentNumberColor || percentNumberColorFallback;
-    
-    const numberRow1 = new Setting(numberGroup).setName('% Number');
-    numberRow1.descEl.remove();
-    numberRow1.settingEl.addClass('ert-typography-row');
 
-    const numberColorRow = numberRow1.controlEl.createDiv({ cls: 'ert-typography-controls' });
-
-    percentNumberColorPickerRef = new ColorComponent(numberColorRow);
-    percentNumberColorPickerRef.setValue(currentPercentNumberColor);
-    percentNumberColorPickerRef.onChange(async (val) => {
-        if (!plugin.settings.authorProgress) return;
-        plugin.settings.authorProgress.aprPercentNumberColor = val || percentNumberColorFallback;
-        await plugin.saveSettings();
-        refreshPreview();
-        percentNumberTextRef?.setValue(val);
-    });
-
-    percentNumberTextRef = new TextComponent(numberColorRow);
-    percentNumberTextRef.inputEl.classList.add('rt-hex-input');
-    percentNumberTextRef.setPlaceholder(percentNumberColorFallback).setValue(currentPercentNumberColor);
-    percentNumberTextRef.onChange(async (val) => {
-        if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
-        if (!plugin.settings.authorProgress) return;
-        plugin.settings.authorProgress.aprPercentNumberColor = val;
-        await plugin.saveSettings();
-        refreshPreview();
-        percentNumberColorPickerRef?.setValue(val);
-    });
-    
-    addTypographyRow(numberGroup, '% Number', {
-        familyKey: 'aprPercentNumberFontFamily',
-        weightKey: 'aprPercentNumberFontWeight',
-        italicKey: 'aprPercentNumberFontItalic',
-        sizeKeys: [
-            'aprPercentNumberFontSize1Digit',
-            'aprPercentNumberFontSize2Digit',
-            'aprPercentNumberFontSize3Digit'
-        ],
-        sizePlaceholders: ['1d', '2d', '3d'],
-        weightDefault: 800,
-        dataTypo: 'percent-number'
+    addElementBlock(numberGroup, {
+        label: '% Number',
+        desc: 'Center progress number.',
+        dataTypo: 'percent-number',
+        color: {
+            key: 'aprPercentNumberColor',
+            value: currentPercentNumberColor,
+            fallback: percentNumberColorFallback,
+            setPickerRef: (picker) => {
+                percentNumberColorPickerRef = picker;
+            },
+            setTextRef: (text) => {
+                percentNumberTextRef = text;
+            }
+        },
+        typography: {
+            familyKey: 'aprPercentNumberFontFamily',
+            weightKey: 'aprPercentNumberFontWeight',
+            italicKey: 'aprPercentNumberFontItalic',
+            sizeKeys: [
+                'aprPercentNumberFontSize1Digit',
+                'aprPercentNumberFontSize2Digit',
+                'aprPercentNumberFontSize3Digit'
+            ],
+            sizePlaceholders: ['1d', '2d', '3d'],
+            weightDefault: 800
+        }
     });
     
     // ─────────────────────────────────────────────────────────────────────────
-    // RT BADGE SECTION
+    // RT BADGE
     // ─────────────────────────────────────────────────────────────────────────
-    const badgeGroup = typographyContainer.createDiv({ cls: 'rt-apr-unified-group' });
+    const badgeGroup = typographyStack.createDiv({ cls: 'rt-apr-unified-group' });
     
     const rtBadgeColorFallback = '#e5e5e5';
     const currentRtBadgeColor = settings?.aprEngineColor || rtBadgeColorFallback;
-    
-    const badgeRow1 = new Setting(badgeGroup).setName('RT Badge');
-    badgeRow1.descEl.remove();
-    badgeRow1.settingEl.addClass('ert-typography-row');
 
-    const badgeColorRow = badgeRow1.controlEl.createDiv({ cls: 'ert-typography-controls' });
-
-    const badgeColorPicker = new ColorComponent(badgeColorRow);
-    badgeColorPicker.setValue(currentRtBadgeColor);
-    badgeColorPicker.onChange(async (val) => {
-        if (!plugin.settings.authorProgress) return;
-        plugin.settings.authorProgress.aprEngineColor = val || rtBadgeColorFallback;
-        await plugin.saveSettings();
-        refreshPreview();
-    });
-
-    const badgeColorInput = new TextComponent(badgeColorRow);
-    badgeColorInput.inputEl.classList.add('rt-hex-input');
-    badgeColorInput.setPlaceholder(rtBadgeColorFallback).setValue(currentRtBadgeColor);
-    badgeColorInput.onChange(async (val) => {
-        if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
-        if (!plugin.settings.authorProgress) return;
-        plugin.settings.authorProgress.aprEngineColor = val;
-        await plugin.saveSettings();
-        refreshPreview();
-    });
-    
-    addTypographyRow(badgeGroup, 'RT Badge', {
-        familyKey: 'aprRtBadgeFontFamily',
-        weightKey: 'aprRtBadgeFontWeight',
-        italicKey: 'aprRtBadgeFontItalic',
-        sizeKeys: ['aprRtBadgeFontSize'],
-        sizePlaceholders: ['Auto'],
-        weightDefault: 700,
-        dataTypo: 'rt-badge'
+    addElementBlock(badgeGroup, {
+        label: 'RT Badge',
+        desc: 'Radial Timeline badge text.',
+        dataTypo: 'rt-badge',
+        color: {
+            key: 'aprEngineColor',
+            value: currentRtBadgeColor,
+            fallback: rtBadgeColorFallback
+        },
+        typography: {
+            familyKey: 'aprRtBadgeFontFamily',
+            weightKey: 'aprRtBadgeFontWeight',
+            italicKey: 'aprRtBadgeFontItalic',
+            sizeKeys: ['aprRtBadgeFontSize'],
+            sizePlaceholders: ['Auto'],
+            weightDefault: 700
+        }
     });
 
     // Theme/Spokes Color setting (unified - controls both theme and spokes)
     const spokeColorSetting = new Setting(stylingCard)
         .setName('Theme Contrast & Spokes')
         .setDesc('Choose stroke/border contrast. Controls all structural elements including scene borders and act division spokes.');
+    spokeColorSetting.settingEl.addClass('ert-elementBlock');
+    spokeColorSetting.controlEl.addClass('ert-elementBlock__right');
+    spokeColorSetting.settingEl.querySelector('.setting-item-info')?.classList.add('ert-elementBlock__left');
     
     let spokeColorPickerRef: ColorComponent | undefined;
     let spokeColorInputRef: TextComponent | undefined;
@@ -769,70 +814,68 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Match Book Title Color layout exactly - always show color picker and text input
     const isCustomMode = currentSpokeMode === 'custom';
     const fallbackColor = '#ffffff';
-    spokeColorSetting.addColorPicker(picker => {
-        spokeColorPickerRef = picker;
-        picker.setValue(isCustomMode ? currentSpokeColor : fallbackColor);
-        picker.setDisabled(!isCustomMode);
-        picker.onChange(async (val) => {
-            if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
-                if (!plugin.settings.authorProgress) return;
-                plugin.settings.authorProgress.aprSpokeColor = val || fallbackColor;
-                await plugin.saveSettings();
-                refreshPreview();
-                spokeColorInputRef?.setValue(val);
-            }
-        });
+    const spokeControlRow = spokeColorSetting.controlEl.createDiv({ cls: 'ert-elementBlock__row ert-typography-controls' });
+    const spokeColorPicker = new ColorComponent(spokeControlRow);
+    spokeColorPickerRef = spokeColorPicker;
+    spokeColorPicker.setValue(isCustomMode ? currentSpokeColor : fallbackColor);
+    spokeColorPicker.setDisabled(!isCustomMode);
+    spokeColorPicker.onChange(async (val) => {
+        if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprSpokeColor = val || fallbackColor;
+            await plugin.saveSettings();
+            refreshPreview();
+            spokeColorInputRef?.setValue(val);
+        }
     });
     
-    spokeColorSetting.addText(text => {
-        spokeColorInputRef = text;
-        text.inputEl.classList.add('rt-hex-input');
-        text.setPlaceholder(fallbackColor).setValue(isCustomMode ? currentSpokeColor : fallbackColor);
-        text.setDisabled(!isCustomMode);
-        text.onChange(async (val) => {
-            if (!val) return;
-            if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
-                if (!plugin.settings.authorProgress) return;
-                plugin.settings.authorProgress.aprSpokeColor = val;
-                await plugin.saveSettings();
-                refreshPreview();
-                spokeColorPickerRef?.setValue(val);
-            }
-        });
+    const spokeColorInput = new TextComponent(spokeControlRow);
+    spokeColorInputRef = spokeColorInput;
+    spokeColorInput.inputEl.classList.add('rt-hex-input');
+    spokeColorInput.setPlaceholder(fallbackColor).setValue(isCustomMode ? currentSpokeColor : fallbackColor);
+    spokeColorInput.setDisabled(!isCustomMode);
+    spokeColorInput.onChange(async (val) => {
+        if (!val) return;
+        if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprSpokeColor = val;
+            await plugin.saveSettings();
+            refreshPreview();
+            spokeColorPickerRef?.setValue(val);
+        }
     });
     
     // Dropdown for mode (added after color controls, appears to the right)
-    spokeColorSetting.addDropdown(drop => {
-        drop.addOption('dark', 'Light Strokes');
-        drop.addOption('light', 'Dark Strokes');
-        drop.addOption('none', 'No Strokes');
-        drop.addOption('custom', 'Custom Color');
-        // Use spoke mode if set, otherwise fall back to theme
-        const currentValue = currentSpokeMode !== 'dark' ? currentSpokeMode : (currentTheme !== 'dark' ? currentTheme : 'dark');
-        drop.setValue(currentValue);
-        drop.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            const mode = (val as 'dark' | 'light' | 'none' | 'custom') || 'dark';
-            // Update both theme and spoke mode to keep them in sync
-            plugin.settings.authorProgress.aprTheme = mode === 'custom' ? 'dark' : (mode as 'dark' | 'light' | 'none');
-            plugin.settings.authorProgress.aprSpokeColorMode = mode;
-            await plugin.saveSettings();
-            
-            // Enable/disable color controls based on mode (always visible, just disabled)
-            const isCustom = mode === 'custom';
-            spokeColorPickerRef?.setDisabled(!isCustom);
-            spokeColorInputRef?.setDisabled(!isCustom);
-            if (isCustom && spokeColorInputRef) {
-                const current = plugin.settings.authorProgress.aprSpokeColor || fallbackColor;
-                spokeColorInputRef.setValue(current);
-                spokeColorPickerRef?.setValue(current);
-            } else if (spokeColorInputRef) {
-                spokeColorInputRef.setValue(fallbackColor);
-                spokeColorPickerRef?.setValue(fallbackColor);
-            }
-            
-            refreshPreview();
-        });
+    const spokeModeDropdown = new DropdownComponent(spokeControlRow);
+    spokeModeDropdown.addOption('dark', 'Light Strokes');
+    spokeModeDropdown.addOption('light', 'Dark Strokes');
+    spokeModeDropdown.addOption('none', 'No Strokes');
+    spokeModeDropdown.addOption('custom', 'Custom Color');
+    // Use spoke mode if set, otherwise fall back to theme
+    const currentValue = currentSpokeMode !== 'dark' ? currentSpokeMode : (currentTheme !== 'dark' ? currentTheme : 'dark');
+    spokeModeDropdown.setValue(currentValue);
+    spokeModeDropdown.onChange(async (val) => {
+        if (!plugin.settings.authorProgress) return;
+        const mode = (val as 'dark' | 'light' | 'none' | 'custom') || 'dark';
+        // Update both theme and spoke mode to keep them in sync
+        plugin.settings.authorProgress.aprTheme = mode === 'custom' ? 'dark' : (mode as 'dark' | 'light' | 'none');
+        plugin.settings.authorProgress.aprSpokeColorMode = mode;
+        await plugin.saveSettings();
+        
+        // Enable/disable color controls based on mode (always visible, just disabled)
+        const isCustom = mode === 'custom';
+        spokeColorPickerRef?.setDisabled(!isCustom);
+        spokeColorInputRef?.setDisabled(!isCustom);
+        if (isCustom && spokeColorInputRef) {
+            const current = plugin.settings.authorProgress.aprSpokeColor || fallbackColor;
+            spokeColorInputRef.setValue(current);
+            spokeColorPickerRef?.setValue(current);
+        } else if (spokeColorInputRef) {
+            spokeColorInputRef.setValue(fallbackColor);
+            spokeColorPickerRef?.setValue(fallbackColor);
+        }
+        
+        refreshPreview();
     });
 
 
@@ -841,7 +884,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         .setName('Link URL')
         .setDesc('Where the graphic should link to (e.g. your website, Kickstarter, or shop).');
     
-    linkUrlSetting.settingEl.addClass('rt-setting-full-width-input');
+    linkUrlSetting.settingEl.addClass('ert-row--wideControl');
     
     linkUrlSetting.addText(text => {
         text.inputEl.addClass('rt-input-full');
@@ -935,7 +978,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         .setName('Embed File Path')
         .setDesc(`Location for the "Live Embed" SVG file. Must end with .svg. Default: ${DEFAULT_SETTINGS.authorProgress?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg'}`);
     
-    embedPathSetting.settingEl.addClass('rt-setting-full-width-input');
+    embedPathSetting.settingEl.addClass('ert-row--wideControl');
     
     embedPathSetting.addText(text => {
         const defaultPath = DEFAULT_SETTINGS.authorProgress?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg';
