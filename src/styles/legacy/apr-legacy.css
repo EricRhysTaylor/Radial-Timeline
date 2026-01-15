@@ -320,39 +320,6 @@
   margin: 0;
 }
 
-.rt-settings-root .rt-apr-unified-row.setting-item {
-  display: grid;
-  grid-template-columns: minmax(120px, 200px) 1fr;
-  align-items: center;
-  column-gap: 10px;
-}
-
-.rt-settings-root .rt-apr-unified-row .setting-item-name {
-  margin: 0;
-}
-
-.rt-settings-root .rt-apr-unified-row .setting-item-control {
-  margin: 0;
-}
-
-.rt-settings-root .rt-apr-unified-row .rt-apr-text-input {
-  width: 100%;
-}
-
-.rt-settings-root .rt-apr-unified-row-secondary.setting-item {
-  padding: 8px 10px;
-  background: var(--background-secondary);
-  border-radius: 8px;
-}
-
-.rt-settings-root .rt-apr-unified-row-secondary .setting-item-control {
-  margin: 0;
-}
-
-.rt-settings-root .rt-apr-unified-row-secondary .setting-item-control select {
-  width: 100%;
-}
-
 .rt-settings-root .rt-apr-palette-button-row.setting-item {
   align-items: flex-start;
 }

@@ -637,17 +637,34 @@
   overflow: visible;
 }
 
+.ert-ui.ert-skin--social .ert-typography-row.setting-item .setting-item-control,
+.ert-ui .ert-skin--social .ert-typography-row.setting-item .setting-item-control {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+}
+
 .ert-ui.ert-skin--social .ert-typography-controls,
 .ert-ui .ert-skin--social .ert-typography-controls {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+
+.ert-ui.ert-skin--social .ert-typography-controls > *,
+.ert-ui .ert-skin--social .ert-typography-controls > * {
+  min-width: 0;
 }
 
 .ert-ui.ert-skin--social select.ert-typography-select,
 .ert-ui .ert-skin--social select.ert-typography-select {
-  min-width: 150px;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 160px;
 }
 
 .ert-ui.ert-skin--social .ert-typography-size-group,
@@ -668,6 +685,11 @@
   min-height: var(--ert-control-height);
   padding: 0 12px;
   font-size: var(--ert-control-font-size);
+}
+
+.ert-ui.ert-skin--social input.ert-typography-text-input,
+.ert-ui .ert-skin--social input.ert-typography-text-input {
+  width: 100%;
 }
 
 .ert-typography-modal {

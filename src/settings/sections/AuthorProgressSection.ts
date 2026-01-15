@@ -395,11 +395,15 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             weightDefault: number;
             italicDefault?: boolean;
             fontDefault?: string;
+            dataTypo?: string;
         }
     ): void => {
         const row = new Setting(parent).setName(label);
         row.descEl.remove();
         row.settingEl.addClass('ert-typography-row');
+        if (opts.dataTypo) {
+            row.settingEl.dataset.ertTypo = opts.dataTypo;
+        }
 
         const controls = row.controlEl.createDiv({ cls: 'ert-typography-controls' });
 
@@ -506,47 +510,45 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     const titleRow1 = new Setting(paletteGroupWrapper).setName('Title');
     titleRow1.descEl.remove();
-    titleRow1.settingEl.addClass('rt-apr-unified-row');
-    
-    titleRow1.addText(text => {
-        text.setPlaceholder('Working Title');
-        text.setValue(settings?.bookTitle || '');
-        text.inputEl.addClass('rt-apr-text-input');
-        text.onChange(async (val) => {
-            if (plugin.settings.authorProgress) {
-                plugin.settings.authorProgress.bookTitle = val;
-                await plugin.saveSettings();
-                refreshPreview();
-            }
-        });
-    });
-    
-    titleRow1.addColorPicker(picker => {
-        bookTitleColorPickerRef = picker;
-        picker.setValue(currentBookTitleColorVal);
-        picker.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprBookAuthorColor = val || bookTitleColorFallback;
+    titleRow1.settingEl.addClass('ert-typography-row');
+
+    const titleTextRow = titleRow1.controlEl.createDiv({ cls: 'ert-typography-controls' });
+    const titleColorRow = titleRow1.controlEl.createDiv({ cls: 'ert-typography-controls' });
+
+    const titleInput = new TextComponent(titleTextRow);
+    titleInput.setPlaceholder('Working Title');
+    titleInput.setValue(settings?.bookTitle || '');
+    titleInput.inputEl.addClass('ert-typography-text-input');
+    titleInput.onChange(async (val) => {
+        if (plugin.settings.authorProgress) {
+            plugin.settings.authorProgress.bookTitle = val;
             await plugin.saveSettings();
             refreshPreview();
-            bookTitleTextRef?.setValue(val);
-            paletteGroupWrapper.style.setProperty('--rt-palette-border-color', val);
-        });
+        }
     });
-    
-    titleRow1.addText(text => {
-        bookTitleTextRef = text;
-        text.inputEl.classList.add('rt-hex-input');
-        text.setPlaceholder(bookTitleColorFallback).setValue(currentBookTitleColorVal);
-        text.onChange(async (val) => {
-            if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprBookAuthorColor = val;
-            await plugin.saveSettings();
-            refreshPreview();
-            bookTitleColorPickerRef?.setValue(val);
-            paletteGroupWrapper.style.setProperty('--rt-palette-border-color', val);
-        });
+
+    bookTitleColorPickerRef = new ColorComponent(titleColorRow);
+    bookTitleColorPickerRef.setValue(currentBookTitleColorVal);
+    bookTitleColorPickerRef.onChange(async (val) => {
+        if (!plugin.settings.authorProgress) return;
+        plugin.settings.authorProgress.aprBookAuthorColor = val || bookTitleColorFallback;
+        await plugin.saveSettings();
+        refreshPreview();
+        bookTitleTextRef?.setValue(val);
+        paletteGroupWrapper.style.setProperty('--rt-palette-border-color', val);
+    });
+
+    bookTitleTextRef = new TextComponent(titleColorRow);
+    bookTitleTextRef.inputEl.classList.add('rt-hex-input');
+    bookTitleTextRef.setPlaceholder(bookTitleColorFallback).setValue(currentBookTitleColorVal);
+    bookTitleTextRef.onChange(async (val) => {
+        if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
+        if (!plugin.settings.authorProgress) return;
+        plugin.settings.authorProgress.aprBookAuthorColor = val;
+        await plugin.saveSettings();
+        refreshPreview();
+        bookTitleColorPickerRef?.setValue(val);
+        paletteGroupWrapper.style.setProperty('--rt-palette-border-color', val);
     });
     
     addTypographyRow(paletteGroupWrapper, 'Title', {
@@ -555,7 +557,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         italicKey: 'aprBookTitleFontItalic',
         sizeKeys: ['aprBookTitleFontSize'],
         sizePlaceholders: ['Auto'],
-        weightDefault: 400
+        weightDefault: 400,
+        dataTypo: 'title'
     });
     
     // ─────────────────────────────────────────────────────────────────────────
@@ -568,45 +571,43 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     
     const authorRow1 = new Setting(authorGroup).setName('Author');
     authorRow1.descEl.remove();
-    authorRow1.settingEl.addClass('rt-apr-unified-row');
-    
-    authorRow1.addText(text => {
-        text.setPlaceholder('Author Name');
-        text.setValue(settings?.authorName || '');
-        text.inputEl.addClass('rt-apr-text-input');
-        text.onChange(async (val) => {
-            if (plugin.settings.authorProgress) {
-                plugin.settings.authorProgress.authorName = val;
-                await plugin.saveSettings();
-                refreshPreview();
-            }
-        });
-    });
-    
-    authorRow1.addColorPicker(picker => {
-        authorColorPickerRef = picker;
-        picker.setValue(currentAuthorColor);
-        picker.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprAuthorColor = val || authorColorFallback;
+    authorRow1.settingEl.addClass('ert-typography-row');
+
+    const authorTextRow = authorRow1.controlEl.createDiv({ cls: 'ert-typography-controls' });
+    const authorColorRow = authorRow1.controlEl.createDiv({ cls: 'ert-typography-controls' });
+
+    const authorInput = new TextComponent(authorTextRow);
+    authorInput.setPlaceholder('Author Name');
+    authorInput.setValue(settings?.authorName || '');
+    authorInput.inputEl.addClass('ert-typography-text-input');
+    authorInput.onChange(async (val) => {
+        if (plugin.settings.authorProgress) {
+            plugin.settings.authorProgress.authorName = val;
             await plugin.saveSettings();
             refreshPreview();
-            authorTextRef?.setValue(val);
-        });
+        }
     });
-    
-    authorRow1.addText(text => {
-        authorTextRef = text;
-        text.inputEl.classList.add('rt-hex-input');
-        text.setPlaceholder(authorColorFallback).setValue(currentAuthorColor);
-        text.onChange(async (val) => {
-            if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprAuthorColor = val;
-            await plugin.saveSettings();
-            refreshPreview();
-            authorColorPickerRef?.setValue(val);
-        });
+
+    authorColorPickerRef = new ColorComponent(authorColorRow);
+    authorColorPickerRef.setValue(currentAuthorColor);
+    authorColorPickerRef.onChange(async (val) => {
+        if (!plugin.settings.authorProgress) return;
+        plugin.settings.authorProgress.aprAuthorColor = val || authorColorFallback;
+        await plugin.saveSettings();
+        refreshPreview();
+        authorTextRef?.setValue(val);
+    });
+
+    authorTextRef = new TextComponent(authorColorRow);
+    authorTextRef.inputEl.classList.add('rt-hex-input');
+    authorTextRef.setPlaceholder(authorColorFallback).setValue(currentAuthorColor);
+    authorTextRef.onChange(async (val) => {
+        if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
+        if (!plugin.settings.authorProgress) return;
+        plugin.settings.authorProgress.aprAuthorColor = val;
+        await plugin.saveSettings();
+        refreshPreview();
+        authorColorPickerRef?.setValue(val);
     });
     
     addTypographyRow(authorGroup, 'Author', {
@@ -615,7 +616,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         italicKey: 'aprAuthorNameFontItalic',
         sizeKeys: ['aprAuthorNameFontSize'],
         sizePlaceholders: ['Auto'],
-        weightDefault: 400
+        weightDefault: 400,
+        dataTypo: 'author'
     });
     
     // ─────────────────────────────────────────────────────────────────────────
@@ -628,39 +630,38 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     
     const symbolRow1 = new Setting(symbolGroup).setName('% Symbol');
     symbolRow1.descEl.remove();
-    symbolRow1.settingEl.addClass('rt-apr-unified-row');
-    
-    symbolRow1.addColorPicker(picker => {
-        percentSymbolColorPickerRef = picker;
-        picker.setValue(currentPercentSymbolColor);
-        picker.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprPercentSymbolColor = val || percentSymbolColorFallback;
-            await plugin.saveSettings();
-            refreshPreview();
-            percentSymbolTextRef?.setValue(val);
-        });
+    symbolRow1.settingEl.addClass('ert-typography-row');
+
+    const symbolColorRow = symbolRow1.controlEl.createDiv({ cls: 'ert-typography-controls' });
+
+    percentSymbolColorPickerRef = new ColorComponent(symbolColorRow);
+    percentSymbolColorPickerRef.setValue(currentPercentSymbolColor);
+    percentSymbolColorPickerRef.onChange(async (val) => {
+        if (!plugin.settings.authorProgress) return;
+        plugin.settings.authorProgress.aprPercentSymbolColor = val || percentSymbolColorFallback;
+        await plugin.saveSettings();
+        refreshPreview();
+        percentSymbolTextRef?.setValue(val);
     });
-    
-    symbolRow1.addText(text => {
-        percentSymbolTextRef = text;
-        text.inputEl.classList.add('rt-hex-input');
-        text.setPlaceholder(percentSymbolColorFallback).setValue(currentPercentSymbolColor);
-        text.onChange(async (val) => {
-            if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprPercentSymbolColor = val;
-            await plugin.saveSettings();
-            refreshPreview();
-            percentSymbolColorPickerRef?.setValue(val);
-        });
+
+    percentSymbolTextRef = new TextComponent(symbolColorRow);
+    percentSymbolTextRef.inputEl.classList.add('rt-hex-input');
+    percentSymbolTextRef.setPlaceholder(percentSymbolColorFallback).setValue(currentPercentSymbolColor);
+    percentSymbolTextRef.onChange(async (val) => {
+        if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
+        if (!plugin.settings.authorProgress) return;
+        plugin.settings.authorProgress.aprPercentSymbolColor = val;
+        await plugin.saveSettings();
+        refreshPreview();
+        percentSymbolColorPickerRef?.setValue(val);
     });
     
     addTypographyRow(symbolGroup, '% Symbol', {
         familyKey: 'aprPercentSymbolFontFamily',
         weightKey: 'aprPercentSymbolFontWeight',
         italicKey: 'aprPercentSymbolFontItalic',
-        weightDefault: 800
+        weightDefault: 800,
+        dataTypo: 'percent-symbol'
     });
     
     // ─────────────────────────────────────────────────────────────────────────
@@ -673,32 +674,30 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     
     const numberRow1 = new Setting(numberGroup).setName('% Number');
     numberRow1.descEl.remove();
-    numberRow1.settingEl.addClass('rt-apr-unified-row');
-    
-    numberRow1.addColorPicker(picker => {
-        percentNumberColorPickerRef = picker;
-        picker.setValue(currentPercentNumberColor);
-        picker.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprPercentNumberColor = val || percentNumberColorFallback;
-            await plugin.saveSettings();
-            refreshPreview();
-            percentNumberTextRef?.setValue(val);
-        });
+    numberRow1.settingEl.addClass('ert-typography-row');
+
+    const numberColorRow = numberRow1.controlEl.createDiv({ cls: 'ert-typography-controls' });
+
+    percentNumberColorPickerRef = new ColorComponent(numberColorRow);
+    percentNumberColorPickerRef.setValue(currentPercentNumberColor);
+    percentNumberColorPickerRef.onChange(async (val) => {
+        if (!plugin.settings.authorProgress) return;
+        plugin.settings.authorProgress.aprPercentNumberColor = val || percentNumberColorFallback;
+        await plugin.saveSettings();
+        refreshPreview();
+        percentNumberTextRef?.setValue(val);
     });
-    
-    numberRow1.addText(text => {
-        percentNumberTextRef = text;
-        text.inputEl.classList.add('rt-hex-input');
-        text.setPlaceholder(percentNumberColorFallback).setValue(currentPercentNumberColor);
-        text.onChange(async (val) => {
-            if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprPercentNumberColor = val;
-            await plugin.saveSettings();
-            refreshPreview();
-            percentNumberColorPickerRef?.setValue(val);
-        });
+
+    percentNumberTextRef = new TextComponent(numberColorRow);
+    percentNumberTextRef.inputEl.classList.add('rt-hex-input');
+    percentNumberTextRef.setPlaceholder(percentNumberColorFallback).setValue(currentPercentNumberColor);
+    percentNumberTextRef.onChange(async (val) => {
+        if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
+        if (!plugin.settings.authorProgress) return;
+        plugin.settings.authorProgress.aprPercentNumberColor = val;
+        await plugin.saveSettings();
+        refreshPreview();
+        percentNumberColorPickerRef?.setValue(val);
     });
     
     addTypographyRow(numberGroup, '% Number', {
@@ -711,7 +710,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             'aprPercentNumberFontSize3Digit'
         ],
         sizePlaceholders: ['1d', '2d', '3d'],
-        weightDefault: 800
+        weightDefault: 800,
+        dataTypo: 'percent-number'
     });
     
     // ─────────────────────────────────────────────────────────────────────────
@@ -724,28 +724,28 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     
     const badgeRow1 = new Setting(badgeGroup).setName('RT Badge');
     badgeRow1.descEl.remove();
-    badgeRow1.settingEl.addClass('rt-apr-unified-row');
-    
-    badgeRow1.addColorPicker(picker => {
-        picker.setValue(currentRtBadgeColor);
-        picker.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprEngineColor = val || rtBadgeColorFallback;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
+    badgeRow1.settingEl.addClass('ert-typography-row');
+
+    const badgeColorRow = badgeRow1.controlEl.createDiv({ cls: 'ert-typography-controls' });
+
+    const badgeColorPicker = new ColorComponent(badgeColorRow);
+    badgeColorPicker.setValue(currentRtBadgeColor);
+    badgeColorPicker.onChange(async (val) => {
+        if (!plugin.settings.authorProgress) return;
+        plugin.settings.authorProgress.aprEngineColor = val || rtBadgeColorFallback;
+        await plugin.saveSettings();
+        refreshPreview();
     });
-    
-    badgeRow1.addText(text => {
-        text.inputEl.classList.add('rt-hex-input');
-        text.setPlaceholder(rtBadgeColorFallback).setValue(currentRtBadgeColor);
-        text.onChange(async (val) => {
-            if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprEngineColor = val;
-            await plugin.saveSettings();
-            refreshPreview();
-        });
+
+    const badgeColorInput = new TextComponent(badgeColorRow);
+    badgeColorInput.inputEl.classList.add('rt-hex-input');
+    badgeColorInput.setPlaceholder(rtBadgeColorFallback).setValue(currentRtBadgeColor);
+    badgeColorInput.onChange(async (val) => {
+        if (!val || !/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) return;
+        if (!plugin.settings.authorProgress) return;
+        plugin.settings.authorProgress.aprEngineColor = val;
+        await plugin.saveSettings();
+        refreshPreview();
     });
     
     addTypographyRow(badgeGroup, 'RT Badge', {
@@ -754,7 +754,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         italicKey: 'aprRtBadgeFontItalic',
         sizeKeys: ['aprRtBadgeFontSize'],
         sizePlaceholders: ['Auto'],
-        weightDefault: 700
+        weightDefault: 700,
+        dataTypo: 'rt-badge'
     });
 
     // Theme/Spokes Color setting (unified - controls both theme and spokes)
