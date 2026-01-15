@@ -1,8 +1,8 @@
-import { App, Setting, Notice, setIcon, normalizePath, ColorComponent, TextComponent, Modal, ButtonComponent, DropdownComponent } from 'obsidian';
+import { App, Setting, Notice, setIcon, normalizePath, ColorComponent, DropdownComponent, TextComponent, Modal, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { AuthorProgressService } from '../../services/AuthorProgressService';
-import type { AuthorProgressSettings } from '../../types/settings';
 import { DEFAULT_SETTINGS } from '../defaults';
+import type { AuthorProgressSettings } from '../../types/settings';
 import { getAllScenes } from '../../utils/manuscript';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { getPresetPalettes, generatePaletteFromColor } from '../../utils/aprPaletteGenerator';
@@ -249,119 +249,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         { value: 'Dancing Script', label: 'Dancing Script' },
         { value: 'Caveat', label: 'Caveat' }
     ];
-
-    const CUSTOM_FONT_VALUE = '__custom__';
-
-    const ensureCustomFontOption = (drop: DropdownComponent, value: string) => {
-        const options = Array.from(drop.selectEl.options);
-        const existing = options.find((opt) => opt.value === value);
-        const label = `Custom: ${value}`;
-        if (existing) {
-            existing.text = label;
-            return;
-        }
-        drop.addOption(value, label);
-    };
-
-    const promptForCustomFont = (current: string): Promise<string | null> => {
-        return new Promise((resolve) => {
-            class FontFamilyModal extends Modal {
-                private resolved = false;
-
-                onOpen(): void {
-                    const { contentEl } = this;
-                    contentEl.empty();
-                    contentEl.createEl('h3', { text: 'Custom font family' });
-                    const input = new TextComponent(contentEl);
-                    input.setPlaceholder('e.g., "Baskerville"');
-                    input.setValue(current);
-                    input.inputEl.addClass('rt-text-input-modal-field');
-
-                    const buttonRow = contentEl.createDiv({ cls: 'rt-text-input-modal-buttons' });
-                    const cancelBtn = new ButtonComponent(buttonRow);
-                    cancelBtn.setButtonText('Cancel');
-                    cancelBtn.onClick(() => this.closeWith(null));
-
-                    const applyBtn = new ButtonComponent(buttonRow);
-                    applyBtn.setButtonText('Apply');
-                    applyBtn.setCta();
-                    applyBtn.onClick(() => {
-                        const next = input.getValue().trim();
-                        if (!next) {
-                            new Notice('Please enter a font name.');
-                            return;
-                        }
-                        this.closeWith(next);
-                    });
-
-                    input.inputEl.addEventListener('keydown', (evt) => {
-                        if (evt.key !== 'Enter') return;
-                        evt.preventDefault();
-                        applyBtn.buttonEl.click();
-                    });
-                }
-
-                onClose(): void {
-                    this.contentEl.empty();
-                    if (!this.resolved) resolve(null);
-                }
-
-                private closeWith(value: string | null): void {
-                    this.resolved = true;
-                    resolve(value);
-                    this.close();
-                }
-            }
-
-            new FontFamilyModal(app).open();
-        });
-    };
-
-    const applyFontDropdown = async (
-        drop: DropdownComponent,
-        current: string | undefined,
-        onCommit: (next: string) => Promise<void>
-    ): Promise<void> => {
-        FONT_OPTIONS.forEach(font => drop.addOption(font.value, font.label));
-        drop.addOption(CUSTOM_FONT_VALUE, 'Custom...');
-
-        let activeFont = current || 'Inter';
-        let activeValue = activeFont === 'Inter' ? 'default' : activeFont;
-
-        if (!FONT_OPTIONS.some(opt => opt.value === activeValue)) {
-            ensureCustomFontOption(drop, activeValue);
-        }
-
-        drop.setValue(activeValue);
-
-        let isUpdating = false;
-        drop.onChange(async (val: string) => {
-            if (isUpdating) return;
-            if (val === CUSTOM_FONT_VALUE) {
-                const customValue = await promptForCustomFont(activeFont);
-                isUpdating = true;
-                if (!customValue) {
-                    drop.setValue(activeValue);
-                    isUpdating = false;
-                    return;
-                }
-                ensureCustomFontOption(drop, customValue);
-                drop.setValue(customValue);
-                isUpdating = false;
-                activeFont = customValue;
-                activeValue = customValue;
-                await onCommit(customValue);
-                return;
-            }
-
-            isUpdating = true;
-            const nextFont = val === 'default' ? 'Inter' : val;
-            activeFont = nextFont;
-            activeValue = val;
-            isUpdating = false;
-            await onCommit(nextFont);
-        });
-    };
     
     // Weight options with italic variants
     const WEIGHT_OPTIONS = [
@@ -392,19 +279,108 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         return italic ? `${weight}-italic` : String(weight);
     };
 
-    const numberFromText = (value: string): number | undefined => {
-        const num = Number(value);
-        return Number.isFinite(num) ? num : undefined;
+    const numberFromText = (val: string): number | undefined => {
+        const parsed = Number.parseFloat(val.trim());
+        return Number.isFinite(parsed) ? parsed : undefined;
     };
 
-    const setAprSetting = async (
-        key: keyof AuthorProgressSettings,
-        value: AuthorProgressSettings[keyof AuthorProgressSettings] | undefined
-    ): Promise<void> => {
+    const setAprSetting = async <K extends keyof AuthorProgressSettings>(key: K, value: AuthorProgressSettings[K] | undefined): Promise<void> => {
         if (!plugin.settings.authorProgress) return;
-        (plugin.settings.authorProgress as unknown as Record<string, unknown>)[key as string] = value;
+        plugin.settings.authorProgress[key] = value as AuthorProgressSettings[K];
         await plugin.saveSettings();
         refreshPreview();
+    };
+
+    const setAprSettings = async (updates: Partial<AuthorProgressSettings>): Promise<void> => {
+        if (!plugin.settings.authorProgress) return;
+        Object.assign(plugin.settings.authorProgress, updates);
+        await plugin.saveSettings();
+        refreshPreview();
+    };
+
+    const applyFontDropdown = (
+        drop: DropdownComponent,
+        currentValue: string | undefined,
+        onSave: (value: string) => Promise<void>
+    ): void => {
+        const customValue = '__custom__';
+        let currentFont = currentValue || 'Inter';
+        let isUpdating = false;
+
+        const updateOptions = (value: string): void => {
+            isUpdating = true;
+            while (drop.selectEl.firstChild) {
+                drop.selectEl.firstChild.remove();
+            }
+            FONT_OPTIONS.forEach(font => drop.addOption(font.value, font.label));
+            const normalized = value === 'Inter' ? 'default' : value;
+            const hasOption = FONT_OPTIONS.some(opt => opt.value === normalized);
+            if (!hasOption) {
+                drop.addOption(normalized, `Custom: ${normalized}`);
+            }
+            drop.addOption(customValue, 'Custom...');
+            drop.setValue(normalized);
+            isUpdating = false;
+        };
+
+        const openCustomModal = (): void => {
+            const modal = new Modal(app);
+            modal.modalEl.addClass('ert-typography-modal');
+            modal.titleEl.setText('Custom font');
+            modal.onClose = () => {
+                updateOptions(currentFont);
+            };
+
+            const body = modal.contentEl.createDiv({ cls: 'ert-typography-modal__body' });
+            body.createEl('p', { text: 'Enter a font family available on your system.', cls: 'ert-typography-modal__hint' });
+
+            const input = new TextComponent(body);
+            input.setPlaceholder('e.g., EB Garamond');
+            input.inputEl.addClass('ert-typography-modal__input');
+
+            const normalized = currentFont === 'Inter' ? 'default' : currentFont;
+            if (!FONT_OPTIONS.some(opt => opt.value === normalized)) {
+                input.setValue(currentFont);
+            }
+
+            const actions = modal.contentEl.createDiv({ cls: 'ert-typography-modal__actions' });
+            new ButtonComponent(actions)
+                .setButtonText('Cancel')
+                .onClick(() => {
+                    modal.close();
+                });
+
+            new ButtonComponent(actions)
+                .setButtonText('Save')
+                .setCta()
+                .onClick(async () => {
+                    const value = input.getValue().trim();
+                    if (!value) {
+                        input.inputEl.focus();
+                        return;
+                    }
+                    await onSave(value);
+                    currentFont = value;
+                    updateOptions(currentFont);
+                    modal.close();
+                });
+
+            modal.open();
+        };
+
+        updateOptions(currentFont);
+
+        drop.onChange(async (val) => {
+            if (isUpdating) return;
+            if (val === customValue) {
+                openCustomModal();
+                return;
+            }
+            const next = val === 'default' ? 'Inter' : val;
+            if (next === currentFont) return;
+            await onSave(next);
+            currentFont = next;
+        });
     };
 
     const addTypographyRow = (
@@ -416,63 +392,78 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             italicKey: keyof AuthorProgressSettings;
             sizeKeys?: (keyof AuthorProgressSettings)[];
             sizePlaceholders?: string[];
+            weightDefault: number;
+            italicDefault?: boolean;
+            fontDefault?: string;
         }
     ): void => {
         const row = new Setting(parent).setName(label);
         row.descEl.remove();
-        row.settingEl.addClass('rt-apr-typography-row');
+        row.settingEl.addClass('ert-typography-row');
 
-        const controls = row.controlEl.createDiv({ cls: 'rt-apr-typography-controls' });
+        const controls = row.controlEl.createDiv({ cls: 'ert-typography-controls' });
 
         const fontDrop = new DropdownComponent(controls);
-        void applyFontDropdown(fontDrop, settings?.[opts.familyKey] as string | undefined, async (val) => {
+        fontDrop.selectEl.addClass('ert-typography-select');
+        const currentFont = (settings?.[opts.familyKey] as string | undefined) ?? opts.fontDefault ?? 'Inter';
+        applyFontDropdown(fontDrop, currentFont, async (val) => {
             await setAprSetting(opts.familyKey, val as AuthorProgressSettings[typeof opts.familyKey]);
         });
 
         const styleDrop = new DropdownComponent(controls);
+        styleDrop.selectEl.addClass('ert-typography-select');
         WEIGHT_OPTIONS.forEach(opt => styleDrop.addOption(opt.value, opt.label));
-        const currentWeight = settings?.[opts.weightKey] as number | undefined;
-        const currentItalic = settings?.[opts.italicKey] as boolean | undefined;
-        styleDrop.setValue(formatWeightValue(currentWeight || 400, currentItalic ?? false));
+        const currentWeight = (settings?.[opts.weightKey] as number | undefined) ?? opts.weightDefault;
+        const currentItalic = (settings?.[opts.italicKey] as boolean | undefined) ?? opts.italicDefault ?? false;
+        styleDrop.setValue(formatWeightValue(currentWeight, currentItalic));
         styleDrop.onChange(async (val) => {
             const { weight, italic } = parseWeightValue(val);
-            await setAprSetting(opts.weightKey, weight as AuthorProgressSettings[typeof opts.weightKey]);
-            await setAprSetting(opts.italicKey, italic as AuthorProgressSettings[typeof opts.italicKey]);
+            await setAprSettings({
+                [opts.weightKey]: weight,
+                [opts.italicKey]: italic
+            } as Partial<AuthorProgressSettings>);
         });
 
-        const sizeInputs: TextComponent[] = [];
+        const sizeInputs: Array<{ key: keyof AuthorProgressSettings; input: TextComponent }> = [];
+        let autoButton: HTMLButtonElement | null = null;
+
+        const updateAutoState = (): void => {
+            if (!autoButton || !opts.sizeKeys?.length) return;
+            const isAuto = opts.sizeKeys.every(key => settings?.[key] === undefined);
+            autoButton.classList.toggle('is-active', isAuto);
+        };
+
         if (opts.sizeKeys?.length) {
-            const sizeGroup = controls.createDiv({ cls: 'rt-apr-typography-size-group' });
-            opts.sizeKeys.forEach((key, idx) => {
-                const sizeInput = new TextComponent(sizeGroup);
+            const sizeGroup = controls.createDiv({ cls: 'ert-typography-size-group' });
+            opts.sizeKeys.forEach((key, index) => {
+                const input = new TextComponent(sizeGroup);
+                input.inputEl.addClass('ert-typography-size-input');
+                input.setPlaceholder(opts.sizePlaceholders?.[index] ?? 'Auto');
                 const currentValue = settings?.[key] as number | undefined;
-                sizeInput.setValue(currentValue?.toString() ?? '');
-                sizeInput.setPlaceholder(opts.sizePlaceholders?.[idx] ?? 'Auto');
-                sizeInput.inputEl.classList.add('rt-apr-typography-size-input');
-                sizeInput.onChange(async (val) => {
+                input.setValue(currentValue !== undefined ? String(currentValue) : '');
+                input.onChange(async (val) => {
                     const next = val.trim() ? numberFromText(val) : undefined;
+                    if (val.trim() && next === undefined) return;
                     await setAprSetting(key, next as AuthorProgressSettings[typeof key]);
+                    updateAutoState();
                 });
-                sizeInputs.push(sizeInput);
+                sizeInputs.push({ key, input });
             });
 
-            const autoBtn = controls.createEl('button', {
-                text: 'Auto',
-                cls: 'ert-chip rt-apr-typography-auto',
-                attr: { type: 'button' },
-            });
-            autoBtn.onclick = async () => {
-                if (opts.sizeKeys) {
-                    for (const key of opts.sizeKeys) {
-                        await setAprSetting(key, undefined);
-                    }
-                }
-                sizeInputs.forEach((input, idx) => {
-                    input.setValue('');
-                    input.setPlaceholder(opts.sizePlaceholders?.[idx] ?? 'Auto');
+            autoButton = controls.createEl('button', { text: 'Auto', cls: 'ert-chip ert-typography-auto' });
+            autoButton.type = 'button';
+            autoButton.addEventListener('click', async () => {
+                const updates: Partial<AuthorProgressSettings> = {};
+                opts.sizeKeys?.forEach((key) => {
+                    updates[key] = undefined;
                 });
-            };
+                await setAprSettings(updates);
+                sizeInputs.forEach(({ input }) => input.setValue(''));
+                updateAutoState();
+            });
         }
+
+        updateAutoState();
     };
     
     // ─────────────────────────────────────────────────────────────────────────
@@ -509,7 +500,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     });
     
     // ─────────────────────────────────────────────────────────────────────────
-    // TITLE SECTION (color + label inputs)
+    // TITLE SECTION
+    // Row 1: Title label + text input + color swatch + hex
+    // Row 2: Font + Weight
     // ─────────────────────────────────────────────────────────────────────────
     const titleRow1 = new Setting(paletteGroupWrapper).setName('Title');
     titleRow1.descEl.remove();
@@ -554,6 +547,15 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             bookTitleColorPickerRef?.setValue(val);
             paletteGroupWrapper.style.setProperty('--rt-palette-border-color', val);
         });
+    });
+    
+    addTypographyRow(paletteGroupWrapper, 'Title', {
+        familyKey: 'aprBookTitleFontFamily',
+        weightKey: 'aprBookTitleFontWeight',
+        italicKey: 'aprBookTitleFontItalic',
+        sizeKeys: ['aprBookTitleFontSize'],
+        sizePlaceholders: ['Auto'],
+        weightDefault: 400
     });
     
     // ─────────────────────────────────────────────────────────────────────────
@@ -607,6 +609,15 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
     });
     
+    addTypographyRow(authorGroup, 'Author', {
+        familyKey: 'aprAuthorNameFontFamily',
+        weightKey: 'aprAuthorNameFontWeight',
+        italicKey: 'aprAuthorNameFontItalic',
+        sizeKeys: ['aprAuthorNameFontSize'],
+        sizePlaceholders: ['Auto'],
+        weightDefault: 400
+    });
+    
     // ─────────────────────────────────────────────────────────────────────────
     // % SYMBOL SECTION
     // ─────────────────────────────────────────────────────────────────────────
@@ -643,6 +654,13 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             refreshPreview();
             percentSymbolColorPickerRef?.setValue(val);
         });
+    });
+    
+    addTypographyRow(symbolGroup, '% Symbol', {
+        familyKey: 'aprPercentSymbolFontFamily',
+        weightKey: 'aprPercentSymbolFontWeight',
+        italicKey: 'aprPercentSymbolFontItalic',
+        weightDefault: 800
     });
     
     // ─────────────────────────────────────────────────────────────────────────
@@ -683,6 +701,19 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
     });
     
+    addTypographyRow(numberGroup, '% Number', {
+        familyKey: 'aprPercentNumberFontFamily',
+        weightKey: 'aprPercentNumberFontWeight',
+        italicKey: 'aprPercentNumberFontItalic',
+        sizeKeys: [
+            'aprPercentNumberFontSize1Digit',
+            'aprPercentNumberFontSize2Digit',
+            'aprPercentNumberFontSize3Digit'
+        ],
+        sizePlaceholders: ['1d', '2d', '3d'],
+        weightDefault: 800
+    });
+    
     // ─────────────────────────────────────────────────────────────────────────
     // RT BADGE SECTION
     // ─────────────────────────────────────────────────────────────────────────
@@ -717,45 +748,13 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
     });
     
-    typographyContainer.createDiv({ cls: 'rt-apr-typography-separator' });
-
-    const typographyRows = typographyContainer.createDiv({ cls: 'rt-apr-typography-rows' });
-    addTypographyRow(typographyRows, 'Title', {
-        familyKey: 'aprBookTitleFontFamily',
-        weightKey: 'aprBookTitleFontWeight',
-        italicKey: 'aprBookTitleFontItalic',
-        sizeKeys: ['aprBookTitleFontSize'],
-        sizePlaceholders: ['Auto'],
-    });
-
-    addTypographyRow(typographyRows, 'Author', {
-        familyKey: 'aprAuthorNameFontFamily',
-        weightKey: 'aprAuthorNameFontWeight',
-        italicKey: 'aprAuthorNameFontItalic',
-        sizeKeys: ['aprAuthorNameFontSize'],
-        sizePlaceholders: ['Auto'],
-    });
-
-    addTypographyRow(typographyRows, '% Symbol', {
-        familyKey: 'aprPercentSymbolFontFamily',
-        weightKey: 'aprPercentSymbolFontWeight',
-        italicKey: 'aprPercentSymbolFontItalic',
-    });
-
-    addTypographyRow(typographyRows, '% Number', {
-        familyKey: 'aprPercentNumberFontFamily',
-        weightKey: 'aprPercentNumberFontWeight',
-        italicKey: 'aprPercentNumberFontItalic',
-        sizeKeys: ['aprPercentNumberFontSize1Digit', 'aprPercentNumberFontSize2Digit', 'aprPercentNumberFontSize3Digit'],
-        sizePlaceholders: ['1d', '2d', '3d'],
-    });
-
-    addTypographyRow(typographyRows, 'RT Badge', {
+    addTypographyRow(badgeGroup, 'RT Badge', {
         familyKey: 'aprRtBadgeFontFamily',
         weightKey: 'aprRtBadgeFontWeight',
         italicKey: 'aprRtBadgeFontItalic',
         sizeKeys: ['aprRtBadgeFontSize'],
         sizePlaceholders: ['Auto'],
+        weightDefault: 700
     });
 
     // Theme/Spokes Color setting (unified - controls both theme and spokes)

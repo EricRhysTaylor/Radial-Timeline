@@ -625,6 +625,78 @@
   color: var(--text-normal);
 }
 
+.ert-ui.ert-skin--social .ert-typography-row.setting-item,
+.ert-ui .ert-skin--social .ert-typography-row.setting-item {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) 1fr;
+  align-items: center;
+  column-gap: 12px;
+  padding: 8px 10px;
+  background: var(--background-secondary);
+  border-radius: 8px;
+  overflow: visible;
+}
+
+.ert-ui.ert-skin--social .ert-typography-controls,
+.ert-ui .ert-skin--social .ert-typography-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ert-ui.ert-skin--social select.ert-typography-select,
+.ert-ui .ert-skin--social select.ert-typography-select {
+  min-width: 150px;
+}
+
+.ert-ui.ert-skin--social .ert-typography-size-group,
+.ert-ui .ert-skin--social .ert-typography-size-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ert-ui.ert-skin--social input.ert-typography-size-input,
+.ert-ui .ert-skin--social input.ert-typography-size-input {
+  width: 54px;
+  text-align: center;
+}
+
+.ert-ui.ert-skin--social .ert-typography-auto,
+.ert-ui .ert-skin--social .ert-typography-auto {
+  min-height: var(--ert-control-height);
+  padding: 0 12px;
+  font-size: var(--ert-control-font-size);
+}
+
+.ert-typography-modal {
+  width: min(420px, 92vw);
+}
+
+.ert-typography-modal .ert-typography-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ert-typography-modal .ert-typography-modal__hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.ert-typography-modal .ert-typography-modal__input {
+  width: 100%;
+}
+
+.ert-typography-modal .ert-typography-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 /* Pro skin overrides (visual only; no spacing changes) */
 .ert-ui.ert-skin--pro,
 .ert-ui .ert-skin--pro {

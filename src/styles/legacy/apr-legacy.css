@@ -301,9 +301,9 @@
 }
 
 .rt-apr-typography-container {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
 
 .rt-apr-typography-separator {
@@ -351,61 +351,6 @@
 
 .rt-settings-root .rt-apr-unified-row-secondary .setting-item-control select {
   width: 100%;
-}
-
-.rt-settings-root .rt-apr-typography-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.rt-settings-root .rt-apr-typography-row.setting-item {
-  display: grid;
-  grid-template-columns: minmax(120px, 200px) 1fr;
-  align-items: center;
-  column-gap: 12px;
-  margin: 0;
-  padding: 10px 12px;
-  background: var(--background-secondary);
-  border-radius: 10px;
-  border: 1px solid var(--background-modifier-border);
-  overflow: visible;
-}
-
-.rt-settings-root .rt-apr-typography-row .setting-item-name {
-  margin: 0;
-  font-weight: 600;
-  color: var(--text-normal);
-}
-
-.rt-settings-root .rt-apr-typography-row .setting-item-control {
-  margin: 0;
-}
-
-.rt-settings-root .rt-apr-typography-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.rt-settings-root .rt-apr-typography-controls select {
-  min-width: 140px;
-}
-
-.rt-settings-root .rt-apr-typography-size-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.rt-settings-root .rt-apr-typography-size-input {
-  width: 52px;
-  text-align: center;
-}
-
-.rt-settings-root .rt-apr-typography-auto {
-  white-space: nowrap;
 }
 
 .rt-settings-root .rt-apr-palette-button-row.setting-item {
