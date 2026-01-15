@@ -884,7 +884,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         .setName('Link URL')
         .setDesc('Where the graphic should link to (e.g. your website, Kickstarter, or shop).');
     
-    linkUrlSetting.settingEl.addClass('ert-row--wideControl');
+    linkUrlSetting.settingEl.addClass('ert-row');
     
     linkUrlSetting.addText(text => {
         text.inputEl.addClass('rt-input-full');

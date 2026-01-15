@@ -535,6 +535,13 @@
   --ert-pill-icon-active-color: var(--ert-accent);
 }
 
+.ert-ui.ert-skin--social,
+.ert-ui .ert-skin--social {
+  --ert-row-pad: 16px;
+  --ert-row-gap: 8px;
+  --ert-group-gap: var(--ert-row-gap);
+}
+
 .ert-ui.ert-skin--social .ert-card--hero,
 .ert-ui.ert-skin--social .ert-section--hero,
 .ert-ui .ert-skin--social .ert-card--hero,
@@ -630,7 +637,7 @@
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: auto auto;
-  gap: 12px;
+  gap: var(--ert-row-gap);
 }
 
 .ert-ui.ert-skin--social .ert-row--wideControl .setting-item-info,
@@ -672,7 +679,7 @@
   column-gap: 12px;
   width: 100%;
   grid-column: 1 / -1;
-  padding: 8px 10px;
+  padding: var(--ert-row-pad);
   background: var(--background-secondary);
   border-radius: 8px;
   overflow: visible;
@@ -687,9 +694,15 @@
 .ert-ui .ert-skin--social .ert-typography-stack {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--ert-group-gap);
   width: 100%;
   grid-column: 1 / -1;
+  margin-bottom: var(--ert-row-gap);
+}
+
+.ert-ui.ert-skin--social .ert-typography-stack > .setting-item,
+.ert-ui .ert-skin--social .ert-typography-stack > .setting-item {
+  margin-bottom: 0;
 }
 
 .ert-ui.ert-skin--social .ert-elementBlock.setting-item .setting-item-control,
