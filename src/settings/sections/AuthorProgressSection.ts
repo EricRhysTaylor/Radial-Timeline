@@ -11,6 +11,7 @@ import { renderCampaignManagerSection } from './CampaignManagerSection';
 import { isProfessionalActive } from './ProfessionalSection';
 import { addWikiLinkToElement } from '../wikiLink';
 import { colorSwatch, type ColorSwatchHandle } from '../../ui/ui';
+import { ERT_CLASSES } from '../../ui/classes';
 
 export interface AuthorProgressSectionProps {
     app: App;
@@ -403,6 +404,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         italicKey: keyof AuthorProgressSettings;
         sizeKeys?: (keyof AuthorProgressSettings)[];
         sizePlaceholders?: string[];
+        showSizeControls?: boolean;
         weightDefault: number;
         italicDefault?: boolean;
         fontDefault?: string;
@@ -472,11 +474,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         };
 
         const sizeInputs: TextComponent[] = [];
-        if (opts.sizeKeys?.length) {
+        if (opts.sizeKeys?.length && opts.showSizeControls !== false) {
             const sizeGroup = rowEl.createDiv({ cls: 'ert-typography-size-group' });
             opts.sizeKeys.forEach((key, index) => {
                 const input = new TextComponent(sizeGroup);
-                input.inputEl.addClass('ert-typography-size-input');
                 input.setPlaceholder(opts.sizePlaceholders?.[index] ?? 'Auto');
                 const currentValue = settings?.[key] as number | undefined;
                 input.setValue(currentValue !== undefined ? String(currentValue) : '');
@@ -665,6 +666,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             italicKey: 'aprBookTitleFontItalic',
             sizeKeys: ['aprBookTitleFontSize'],
             sizePlaceholders: ['Auto'],
+            showSizeControls: false,
             weightDefault: 400
         }
     });
@@ -705,6 +707,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             italicKey: 'aprAuthorNameFontItalic',
             sizeKeys: ['aprAuthorNameFontSize'],
             sizePlaceholders: ['Auto'],
+            showSizeControls: false,
             weightDefault: 400
         }
     });
@@ -800,6 +803,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             italicKey: 'aprRtBadgeFontItalic',
             sizeKeys: ['aprRtBadgeFontSize'],
             sizePlaceholders: ['Auto'],
+            showSizeControls: false,
             weightDefault: 700
         }
     });
@@ -1076,10 +1080,11 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Only shown to Pro users - replaces basic Publishing & Automation
     // ─────────────────────────────────────────────────────────────────────────
     if (isProActive) {
+        const proContainer = contentWrapper.createDiv({ cls: ERT_CLASSES.SKIN_PRO });
         renderCampaignManagerSection({
             app,
             plugin,
-            containerEl: contentWrapper,
+            containerEl: proContainer,
             onCampaignChange: () => {
                 // Refresh the hero preview when campaigns change
                 const size = plugin.settings.authorProgress?.aprSize || 'medium';
