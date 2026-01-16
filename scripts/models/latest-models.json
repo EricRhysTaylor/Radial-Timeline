@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-01-15T15:54:56.868Z",
+  "generatedAt": "2026-01-16T16:46:58.772Z",
   "summary": {
     "anthropic": 9,
     "openai": 115,
@@ -826,14 +826,6 @@
       "outputTokenLimit": 65536
     },
     {
-      "id": "gemini-2.5-flash-image-preview",
-      "name": "models/gemini-2.5-flash-image-preview",
-      "displayName": "Nano Banana",
-      "description": "Gemini 2.5 Flash Preview Image",
-      "inputTokenLimit": 32768,
-      "outputTokenLimit": 32768
-    },
-    {
       "id": "gemini-2.5-flash-image",
       "name": "models/gemini-2.5-flash-image",
       "displayName": "Nano Banana",
@@ -1030,6 +1022,14 @@
       "name": "models/veo-3.1-generate-preview",
       "displayName": "Veo 3.1",
       "description": "Veo 3.1",
+      "inputTokenLimit": 480,
+      "outputTokenLimit": 8192
+    },
+    {
+      "id": "veo-3.1-fast-generate-preview",
+      "name": "models/veo-3.1-fast-generate-preview",
+      "displayName": "Veo 3.1 fast",
+      "description": "Veo 3.1 fast",
       "inputTokenLimit": 480,
       "outputTokenLimit": 8192
     }
