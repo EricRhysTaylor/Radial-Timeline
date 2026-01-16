@@ -13,6 +13,9 @@ import { decodeHtmlEntities, parseSceneTitle } from './utils/text';
 import { STATUS_COLORS, SceneNumberInfo } from './utils/constants';
 import SynopsisManager from './SynopsisManager';
 import { RadialTimelineView } from './view/TimeLineView';
+import { InquiryView } from './inquiry/InquiryView';
+import { InquiryService } from './inquiry/InquiryService';
+import { INQUIRY_VIEW_TYPE } from './inquiry/constants';
 import { RendererService } from './services/RendererService';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 import { parseWhenField } from './utils/date';
@@ -79,6 +82,7 @@ export default class RadialTimelinePlugin extends Plugin {
 
     // Services
     private timelineService!: TimelineService;
+    private inquiryService!: InquiryService;
     private sceneDataService!: SceneDataService;
     private searchService!: import('./services/SearchService').SearchService;
     private fileTrackingService!: import('./services/FileTrackingService').FileTrackingService;
@@ -190,6 +194,7 @@ export default class RadialTimelinePlugin extends Plugin {
 
         // Initialize services and managers
         this.timelineService = new TimelineService(this.app, this);
+        this.inquiryService = new InquiryService(this.app, this);
         this.sceneDataService = new SceneDataService(this.app, this.settings);
         const { SearchService } = await import('./services/SearchService');
         const { FileTrackingService } = await import('./services/FileTrackingService');
@@ -221,6 +226,12 @@ export default class RadialTimelinePlugin extends Plugin {
             TIMELINE_VIEW_TYPE,
             (leaf: WorkspaceLeaf) => {
                 return new RadialTimelineView(leaf, this);
+            }
+        );
+        this.registerView(
+            INQUIRY_VIEW_TYPE,
+            (leaf: WorkspaceLeaf) => {
+                return new InquiryView(leaf, this);
             }
         );
 
@@ -277,6 +288,7 @@ export default class RadialTimelinePlugin extends Plugin {
     }
     public getRendererService(): RendererService { return this.rendererService; }
     public getTimelineService(): TimelineService { return this.timelineService; }
+    public getInquiryService(): InquiryService { return this.inquiryService; }
 
     public isSceneFile(path: string): boolean {
         return this.sceneHighlighter.isSceneFile(path);

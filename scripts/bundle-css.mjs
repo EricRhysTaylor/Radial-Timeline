@@ -28,6 +28,7 @@ const files = [
     'chronologue-runtime.css',
     'modal.css',
     'rt-ui.css',
+    'inquiry.css',
     'legacy/apr-legacy.css',
     'pulse.css',
     'book-designer.css',

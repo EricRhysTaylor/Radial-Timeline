@@ -34,6 +34,9 @@ export class CommandRegistrar {
         this.plugin.addRibbonIcon('shell', 'Radial timeline', () => {
             this.plugin.getTimelineService().activateView();
         });
+        this.plugin.addRibbonIcon('help-circle', 'Inquiry', () => {
+            this.plugin.getInquiryService().activateView();
+        });
     }
 
     private registerCommands(): void {
@@ -42,6 +45,13 @@ export class CommandRegistrar {
             name: 'Open',
             callback: () => {
                 this.plugin.getTimelineService().activateView();
+            },
+        });
+        this.plugin.addCommand({
+            id: 'open-inquiry-view',
+            name: 'Open Inquiry',
+            callback: () => {
+                this.plugin.getInquiryService().activateView();
             },
         });
 

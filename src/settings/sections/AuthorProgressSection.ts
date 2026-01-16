@@ -142,7 +142,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     
     // Styling (background + branding colors) - placed first, close to preview
     const stylingCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
-    stylingCard.createEl('h4', { text: 'Styling', cls: 'rt-section-title' });
+    stylingCard.createEl('h4', { text: 'Styling', cls: ERT_CLASSES.SECTION_TITLE });
 
     const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
     const currentTransparent = settings?.aprCenterTransparent ?? true; // Default to true (recommended)
@@ -167,14 +167,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Helper to swap emphasis and enable/disable background controls
     const updateEmphasis = (isTransparent: boolean) => {
         if (isTransparent) {
-            transparencySetting.settingEl.classList.add('rt-apr-recommended-setting');
-            bgSetting.settingEl.classList.remove('rt-apr-recommended-setting');
+            transparencySetting.settingEl.classList.add(ERT_CLASSES.ROW_RECOMMENDED);
+            bgSetting.settingEl.classList.remove(ERT_CLASSES.ROW_RECOMMENDED);
             bgSetting.settingEl.classList.add('rt-setting-muted');
             if (bgColorPicker) bgColorPicker.setDisabled(true);
             if (bgTextInput) bgTextInput.setDisabled(true);
         } else {
-            transparencySetting.settingEl.classList.remove('rt-apr-recommended-setting');
-            bgSetting.settingEl.classList.add('rt-apr-recommended-setting');
+            transparencySetting.settingEl.classList.remove(ERT_CLASSES.ROW_RECOMMENDED);
+            bgSetting.settingEl.classList.add(ERT_CLASSES.ROW_RECOMMENDED);
             bgSetting.settingEl.classList.remove('rt-setting-muted');
             if (bgColorPicker) bgColorPicker.setDisabled(false);
             if (bgTextInput) bgTextInput.setDisabled(false);
@@ -957,7 +957,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Only show basic Publishing & Automation for non-Pro users
     if (!isProActive) {
     const automationCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-automation-card rt-apr-stack-gap' });
-    automationCard.createEl('h4', { text: 'Publishing & Automation', cls: 'rt-section-title' });
+    automationCard.createEl('h4', { text: 'Publishing & Automation', cls: ERT_CLASSES.SECTION_TITLE });
 
     const frequencySetting = new Setting(automationCard)
         .setName('Update Frequency')

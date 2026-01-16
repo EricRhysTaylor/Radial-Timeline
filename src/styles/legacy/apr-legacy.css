@@ -357,16 +357,6 @@
   text-decoration: underline;
 }
 
-.rt-apr-recommended-setting {
-  border-left: 3px solid var(--rt-social-color);
-  padding-left: 8px;
-  margin-bottom: 6px;
-}
-
-.rt-settings-root .rt-apr-recommended-setting .setting-item-name {
-  color: var(--rt-social-color);
-}
-
 .rt-apr-section input[type="color"] {
   padding: 0;
   width: 60px;

@@ -14,6 +14,18 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     aiOutputFolder: 'Radial Timeline/AI Logs',
     manuscriptOutputFolder: 'Radial Timeline/Manuscript',
     outlineOutputFolder: 'Radial Timeline/Outline',
+    inquiryArtifactFolder: 'Radial Timeline/Inquiry/Artifacts',
+    inquiryEmbedJson: true,
+    inquiryCacheEnabled: true,
+    inquiryCacheMaxSessions: 30,
+    inquirySources: {
+        sceneFolders: [],
+        bookOutlineFiles: [],
+        sagaOutlineFile: '',
+        characterFolders: [],
+        placeFolders: [],
+        powerFolders: []
+    },
     actCount: 3,
     actLabelsRaw: 'Act 1, Act 2, Act 3',
     showActLabels: true,

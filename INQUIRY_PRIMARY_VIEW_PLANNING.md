@@ -1,7 +1,9 @@
 # Inquiry Primary View Planning Document (Planning Stage)
 
 ## Overview
-This document defines the planning-stage blueprint for the Inquiry Primary View in Radial Timeline. It translates the v1 Inquiry spec into UI structure, data flow, and implementation steps without changing any story files. Inquiry ships as a new view type, desktop-only for v1, and remains code-isolated from core timeline logic.
+This document defines the planning-stage blueprint for the Inquiry Primary View in Radial Timeline. It translates the v1 Inquiry spec into UI structure, data flow, and implementation steps without changing any story files. Inquiry ships as a new view type, desktop-only for v1, and remains code-isolated from core timeline logic. Inquiry uses only book and saga scopes; scenes are focus targets within book scope, not a standalone scope.
+
+**Inquiry enforces scope-locked evidence participation: saga outlines act only at saga scope, book outlines only at their own book scope, and lower-scope material may be consulted at higher scope solely to detect conflicts, never to compute diagnostic metrics or ring values.**
 
 ## Scope
 In scope for this planning stage:
@@ -21,6 +23,9 @@ No prose rewriting, no background scanning, no auto-fix workflows, no updates to
 - Inquiry operates only on configured sources, not the full vault.
 - All AI outputs are ephemeral unless saved as an Artifact.
 - Canon precedence: scene, book outline, saga outline, references.
+- Evidence participation is scope-locked; lower-scope material never influences higher-scope diagnostics.
+- Cross-scope references are allowed only for explicit conflict detection.
+- Inquiry evaluates collections (book or saga); scenes are focus only.
 
 ## Architecture and Code Boundaries
 - Inquiry ships as a new view type inside the existing plugin.
@@ -35,13 +40,22 @@ No prose rewriting, no background scanning, no auto-fix workflows, no updates to
   - View most recent Artifact (if present)
 - Artifacts remain readable on mobile.
 
+## Scope and Focus Model
+- Scope options: book or saga.
+- Focus target: scene (book scope) or book (saga scope).
+- Center glyph always shows focus, not scope.
+- Minimap always shows context (children of the current scope).
+- Context badge near the minimap indicates scope:
+  - Sigma badge for saga context (books in minimap).
+  - Book badge for book context (scenes in minimap).
+
 ## Primary View Layout (High-Level)
 The Inquiry Primary View is a focused inspector with a central glyph, dual rings, and three question zones. It replaces scrolling with navigation controls and a minimap.
 
 ```
-| [Scale: Scene | Book | Saga]  [Mode: Flow | Depth]  [Artifact] |
+| [Scope: Book | Saga]  [Mode: Flow | Depth]  [Artifact] |
 |                                                                |
-|  [Minimap strip / ticks]                       [Findings]      |
+|  [Minimap strip / ticks + Context Badge]       [Findings]      |
 |                                                                |
 |                 Setup   Pressure   Payoff      [Panel]         |
 |                     \     |     /                               |
@@ -51,19 +65,23 @@ The Inquiry Primary View is a focused inspector with a central glyph, dual rings
 ```
 
 Key elements:
-- Center glyph shows scope marker: S#, B#, or Sigma for saga.
-- Two rings render at all times: inner ring is Flow, outer ring is Depth.
+- Center glyph shows the numeric focus only (scene or book), with scope conveyed by the context badge.
+- Two rings render at all times: outer ring is Flow, inner ring is Depth.
 - Three inquiry zones surround the glyph: Setup, Pressure, Payoff.
 - Findings panel shows result summary, verdict, and structured findings list.
 - Findings panel is right-hand split on desktop and collapses into a bottom drawer on narrow widths.
+- Minimap always shows context and never disappears.
+- Glyph typography: Inter Black, ~40pt, tight tracking, numeric focus capped at three digits.
+
+**The outer ring represents narrative flow (surface / river) and is thinner and wider; the inner ring represents narrative depth (subsurface / integrity) and is thicker and heavier.**
 
 ## Interaction Model
 Primary interactions must be explicit, reversible, and non-destructive.
 
 Mode and scope:
 - Mode switch swaps available questions, orientation, and ring emphasis.
-- Scale selector changes target scope without auto-running Inquiry.
-- Navigation arrows move within scope or hierarchy based on mode.
+- Scope selector changes scope without auto-running Inquiry.
+- Navigation arrows are scope-based, not mode-based.
 - Minimap ticks allow drill-down and quick navigation.
 - View is launched via command palette and ribbon.
 
@@ -74,11 +92,21 @@ Inquiry triggers:
 - Artifact generation captures the active session and resets state.
 - Question icons use Lucide and are semantic, not decorative.
 
+## Navigation and Zoom Rules
+- Clicking the center glyph:
+  - Saga scope: drill into book scope focused on the selected book.
+  - Book scope: toggles focus expansion (no scope change).
+- Clicking a minimap tick changes focus only; it never auto-runs Inquiry.
+- Focus selection when drilling into a book:
+  1. Last focused scene for that book (sticky).
+  2. Highest-severity implicated scene from the last Inquiry.
+  3. Scene 1 fallback.
+
 ## Inquiry Run Pipeline (UI Perspective)
 The Primary View only orchestrates input, execution, and visualization.
 
 Inputs:
-- Target scope, target id, mode, selected question id, corpus fingerprint.
+- Scope, focus target, mode, selected question id, corpus fingerprint.
 - Configured sources, weighting rules, and canon precedence.
 - Custom question registry stored in plugin data.
 
@@ -86,6 +114,63 @@ Outputs:
 - Strict JSON result contract with verdict and findings.
 - At least one finding, even on errors or ambiguity.
 - Evidence type, confidence, and severity used for UI binding.
+- Each question resolves into two compressed answers (flow and depth) and implicated targets.
+- The dual-answer model is documented in code comments to avoid regression.
+
+## Hover vs Click Contract
+Hover (preview only):
+- Hover glyph shows contextual summary of current focus.
+- Hover rings show a 2 to 3 sentence micro-verdict for flow or depth.
+- Hover minimap ticks show a per-target finding summary.
+
+Click (commit or navigate):
+- Click minimap tick changes focus.
+- Click center glyph drills down or expands focus.
+- Click ring opens an in-memory Artifact view (read-only, not saved).
+- Click the Artifact icon saves the current session to disk.
+
+## Artifact Generation Refinement
+- Ring click opens an in-memory Artifact view that mirrors saved Artifacts.
+- Artifact icon explicitly persists the session to the configured folder.
+- Embedded JSON is written only when the setting is enabled.
+
+## Evidence Participation Locking (Scope Rules)
+Evidence participates only at the scope where it is authoritative. Lower-scope material never silently influences higher-scope diagnostics. Cross-scope access is permitted only to surface conflicts.
+
+### Saga Outline (class: outline, scope: saga)
+- Authoritative only at saga scope.
+- Disallowed at book scope for ring computation or verdicts.
+- At book scope, may be consulted only to emit conflict findings.
+
+### Book Outline (class: outline, scope: book)
+- Authoritative only at its own book scope.
+- Disallowed at saga scope for ring computation or verdicts.
+- At saga scope, contributes only as child aggregates; misalignment with saga outline emits conflict findings.
+
+### Scenes (class: scene)
+- Book scope: primary evidence for rings and findings across multiple scenes.
+- Saga scope: default is aggregate-only via books; scene-level inputs do not directly drive saga rings.
+- Optional future mode may allow sampled scene summaries for saga diagnostics.
+
+### Characters, Places, Powers (class: character | place | power)
+- Reference-only at all scopes.
+- Allowed for constraint validation and context.
+- Disallowed from directly influencing ring metrics or verdicts.
+
+## Ring Computation Rules (Clarified)
+Book scope rings:
+- Scenes in the book are primary evidence.
+- Book outline is secondary; absence lowers confidence.
+- Saga outline never participates in ring computation.
+
+Saga scope rings:
+- Computed from book-level aggregate results and saga outline intent.
+- Scenes only contribute via book aggregation unless explicitly enabled.
+
+## Conflict Detection (Only Cross-Scope Exception)
+- Lower-scope material may be consulted at higher scope solely to detect contradictions.
+- Conflict emits a `kind=conflict` finding and references both sources.
+- Conflicts never adjust ring values and are never averaged away.
 
 ## Corpus Fingerprint
 - Computed as a hash of evidence file paths, modified timestamps, question id, and schema version.
@@ -106,7 +191,7 @@ Rings:
 Findings:
 - Group by zone or kind for scanability.
 - Show evidence type and confidence per finding.
-- Conflicts are visible and never silently overridden.
+- Conflicts are visible, visually distinct, and never silently overridden.
 
 Status and errors:
 - Soft failure renders low confidence and kind=unclear.
@@ -117,13 +202,13 @@ Status and errors:
 The view owns display state and relies on services for execution.
 
 Suggested state fields:
-- scope, targetId, mode, activeQuestionId, activeSessionId.
+- scope (book or saga), focusSceneId, focusBookId, mode, activeQuestionId, activeSessionId.
 - activeResult, activeZone, isRunning, lastError.
 - cacheStatus, corpusFingerprint, settingsSnapshot, isNarrowLayout.
 
 Session cache:
 - LRU, max 30 sessions.
-- Keyed by question id, scope, target id, mode, corpus fingerprint.
+- Keyed by question id, scope, focus target, mode, corpus fingerprint.
 - Never auto-rerun; mark stale if question or corpus changes.
 
 ## Settings and Persistence
@@ -147,9 +232,10 @@ Phase 1: Structure and state
 - Create `src/inquiry/*` scaffolding and `inquiry.css`.
 - Add Inquiry Primary View container and layout scaffolding.
 - Implement view state model and service interfaces.
-- Wire scale, mode, and navigation controls without Inquiry execution.
+- Wire scope, mode, and navigation controls without Inquiry execution.
 - Add minimap rendering and drill-down behavior.
 - Add desktop-only gating with mobile message and artifact links.
+- Implement focus vs context separation and context badge.
 
 Phase 2: Inquiry execution and rendering
 - Integrate Inquiry runner and strict output parsing.
@@ -157,6 +243,9 @@ Phase 2: Inquiry execution and rendering
 - Render summary, verdict, findings, and evidence metadata.
 - Bind ring visuals to result severity and confidence.
 - Add Details expander for corpus fingerprint and cache metadata.
+- Enforce scope-locked evidence participation and conflict-only cross-scope checks.
+- Add hover previews and click interactions for glyph, rings, and minimap.
+- Add in-memory Artifact view on ring click.
 
 Phase 3: Cache, artifacts, and settings
 - Implement LRU session cache and staleness rules.
@@ -166,10 +255,14 @@ Phase 3: Cache, artifacts, and settings
 
 ## Acceptance Criteria (Planning Stage)
 - Inquiry launches as a new view type from command palette and ribbon.
-- The Primary View can render at scene, book, and saga scale with navigation.
+- The Primary View can render at book and saga scope with navigation.
+- Center glyph reflects focus, while minimap shows context with a scope badge.
 - Desktop renders a right-hand findings panel that collapses into a drawer when narrow.
 - Mobile shows a desktop-only message with artifact links.
 - Inquiry can be triggered and returns a strict result payload.
 - Findings and verdict visualize severity and confidence consistently.
 - Artifacts can be generated without modifying any story files and are stored in the configured folder.
 - Cache behavior is predictable, capped, and visibly stale when needed.
+
+## Implementation Anchor
+Inquiry always evaluates collections (book or saga); the center glyph shows focus, the minimap shows context, and each question resolves into two diagnostic answers (flow and depth), captured visually in the rings and durably in Artifacts only by explicit user action.

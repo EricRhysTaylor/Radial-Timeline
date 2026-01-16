@@ -4,6 +4,7 @@ import { renderPublicationSection } from './sections/PublicationSection';
 import { renderChronologueSection } from './sections/ChronologueSection';
 import { renderTemplatesSection } from './sections/TemplatesSection';
 import { renderAuthorProgressSection } from './sections/AuthorProgressSection';
+import { renderInquirySection } from './sections/InquirySection';
 import { fetchAnthropicModels } from '../api/anthropicApi';
 import { fetchOpenAiModels } from '../api/openaiApi';
 import { fetchGeminiModels } from '../api/geminiApi';
@@ -413,6 +414,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const generalSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'general' } });
         renderGeneralSection({ app: this.app, plugin: this.plugin, attachFolderSuggest: (t) => this.attachFolderSuggest(t), containerEl: generalSection });
         this.renderProCallout(generalSection, 'Manuscript exports via Pandoc', switchToProTab);
+
+        const inquirySection = searchableContent.createDiv({ attr: { 'data-rt-section': 'inquiry' } });
+        renderInquirySection({
+            app: this.app,
+            plugin: this.plugin,
+            containerEl: inquirySection,
+            attachFolderSuggest: (t) => this.attachFolderSuggest(t)
+        });
 
         const metadataSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'metadata' } });
         renderMetadataSection({ app: this.app, plugin: this.plugin, containerEl: metadataSection });

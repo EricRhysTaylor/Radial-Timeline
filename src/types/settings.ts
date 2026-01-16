@@ -215,6 +215,15 @@ export interface AprCampaign {
     teaserReveal?: TeaserRevealSettings;
 }
 
+export interface InquirySourcesSettings {
+    sceneFolders?: string[];
+    bookOutlineFiles?: string[];
+    sagaOutlineFile?: string;
+    characterFolders?: string[];
+    placeFolders?: string[];
+    powerFolders?: string[];
+}
+
 export interface RadialTimelineSettings {
     sourcePath: string;
     showSourcePathAsTitle?: boolean;
@@ -222,6 +231,11 @@ export interface RadialTimelineSettings {
     aiOutputFolder?: string;
     manuscriptOutputFolder?: string;
     outlineOutputFolder?: string;
+    inquiryArtifactFolder?: string;
+    inquiryEmbedJson?: boolean;
+    inquiryCacheEnabled?: boolean;
+    inquiryCacheMaxSessions?: number;
+    inquirySources?: InquirySourcesSettings;
     actCount?: number;
     actLabelsRaw?: string;
     showActLabels?: boolean;
