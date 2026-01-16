@@ -929,6 +929,7 @@
     radial-gradient(circle at 86% 78%, color-mix(in srgb, var(--ert-accent) 16%, transparent) 0%, transparent 55%),
     linear-gradient(135deg, color-mix(in srgb, var(--ert-accent) 12%, transparent) 0%, color-mix(in srgb, var(--ert-accent) 5%, transparent) 100%),
     color-mix(in srgb, var(--background-primary) 90%, var(--ert-accent) 6%);
+  --ert-pro-border: color-mix(in srgb, var(--ert-accent) 30%, transparent);
   --ert-surface-hero: var(--ert-pro-surface-bg);
   --ert-border-hero: color-mix(in srgb, var(--ert-accent) 30%, transparent);
   --ert-shadow-hero: 0 10px 36px color-mix(in srgb, var(--ert-accent) 18%, transparent);
@@ -938,6 +939,9 @@
   --ert-previewFrame-bg: color-mix(in srgb, var(--background-secondary) 82%, var(--ert-accent) 8%);
   --ert-previewFrame-border: color-mix(in srgb, var(--ert-accent) 22%, transparent);
   --ert-panel-bg: var(--ert-pro-surface-bg);
+  --ert-panel-border: var(--ert-pro-border);
+  --ert-panel-shadow: 0 8px 32px color-mix(in srgb, var(--ert-accent) 18%, transparent);
+  --ert-panel-shadow-elev: var(--ert-panel-shadow);
 }
 
 .ert-ui.ert-skin--pro .ert-card--hero,
@@ -970,6 +974,16 @@
 .ert-ui .ert-skin--pro .ert-previewFrame {
   background: var(--ert-previewFrame-bg);
   border-color: var(--ert-previewFrame-border);
+}
+
+.ert-ui .ert-skin--pro .rt-campaign-manager-card {
+  position: relative;
+  margin-top: 24px;
+  padding: 20px;
+  border-radius: 12px;
+  background: var(--ert-pro-surface-bg);
+  border: 1px solid var(--ert-pro-border);
+  box-shadow: var(--ert-panel-shadow);
 }
 
 /* Debug overlay (opt-in via .is-debug) */

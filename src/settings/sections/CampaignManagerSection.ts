@@ -80,7 +80,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     // ─────────────────────────────────────────────────────────────────────────
     // CAMPAIGN MANAGER CARD
     // ─────────────────────────────────────────────────────────────────────────
-    const card = containerEl.createDiv({ cls: 'rt-glass-card rt-campaign-manager-card rt-apr-stack-gap' });
+    const card = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} rt-campaign-manager-card` });
     
     // Header with Pro badge
     const headerRow = card.createDiv({ cls: 'rt-campaign-manager-header' });
