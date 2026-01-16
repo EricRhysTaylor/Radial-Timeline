@@ -571,11 +571,29 @@
   box-shadow: var(--ert-shadow-hero);
 }
 
+.ert-ui.ert-skin--social .ert-card--apr,
+.ert-ui .ert-skin--social .ert-card--apr {
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
 .ert-ui.ert-skin--social .ert-card:not(.ert-card--hero):not(.ert-card--apr),
 .ert-ui .ert-skin--social .ert-card:not(.ert-card--hero):not(.ert-card--apr) {
   background: var(--ert-social-grad), var(--ert-social-surface);
   border: 1px solid var(--ert-social-border);
   box-shadow: var(--ert-social-glow);
+}
+
+.ert-ui.ert-skin--social .ert-panel.ert-stack,
+.ert-ui .ert-skin--social .ert-panel.ert-stack {
+  gap: var(--ert-row-gap);
+}
+
+.ert-ui.ert-skin--social .ert-panel.ert-stack > .rt-section-title,
+.ert-ui .ert-skin--social .ert-panel.ert-stack > .rt-section-title {
+  margin-bottom: 0;
 }
 
 .ert-ui.ert-skin--social .rt-glass-card,

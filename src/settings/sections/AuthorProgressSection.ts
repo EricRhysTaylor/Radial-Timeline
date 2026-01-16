@@ -29,7 +29,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     // APR HERO SECTION
     // ─────────────────────────────────────────────────────────────────────────
-    const hero = section.createDiv({ cls: 'rt-apr-hero' });
+    const hero = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_APR}` });
     
     // Badge row with pill - turns red when refresh needed
     const badgeRow = hero.createDiv({ cls: 'rt-apr-hero-badge-row' });
@@ -141,7 +141,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const contentWrapper = section.createDiv({ cls: 'rt-apr-content-wrapper' });
     
     // Styling (background + branding colors) - placed first, close to preview
-    const stylingCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-styling-card rt-apr-stack-gap' });
+    const stylingCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
     stylingCard.createEl('h4', { text: 'Styling', cls: 'rt-section-title' });
 
     const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
