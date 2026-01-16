@@ -766,13 +766,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--ert-swatch-shadow);
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  transition: outline-color 0.15s ease, border-color 0.15s ease;
 }
 
 .ert-ui .ert-swatch:hover {
   border-color: var(--ert-accent);
-  box-shadow: var(--ert-swatch-shadow), var(--ert-swatch-hover-ring);
+  outline: 2px solid color-mix(in srgb, var(--ert-accent) 35%, transparent);
+  outline-offset: 2px;
 }
 
 .ert-ui .ert-swatch:focus-visible {
@@ -1036,15 +1036,12 @@
   padding: var(--ert-pill-pad-y) var(--ert-pill-pad-x);
   min-height: var(--ert-pill-min-height);
   line-height: 1;
-  background: var(--ert-pill-bg);
-  border: 1px solid var(--ert-pill-border);
   border-radius: var(--ert-pill-radius);
   cursor: pointer;
   color: var(--ert-pill-color);
   font-size: var(--ert-pill-font-size);
   font-weight: var(--ert-pill-font-weight);
   line-height: 1;
-  box-shadow: var(--ert-pill-shadow);
   transition: all 0.15s ease;
   box-sizing: border-box;
 }
@@ -1075,10 +1072,9 @@
 
 /* Hover state — standard */
 .ert-ui .ert-pillBtn:hover:not(:disabled) {
-  background: var(--ert-pill-hover-bg);
-  border-color: var(--ert-accent);
   color: var(--ert-pill-hover-color);
-  box-shadow: var(--ert-pill-shadow), var(--ert-pill-hover-ring);
+  outline: 2px solid color-mix(in srgb, var(--ert-accent) 35%, transparent);
+  outline-offset: 2px;
 }
 
 .ert-ui .ert-pillBtn:hover:not(:disabled) .ert-pillBtn__icon svg {
@@ -1088,8 +1084,8 @@
 
 /* Active state — standard */
 .ert-ui .ert-pillBtn.is-active {
-  border-color: var(--ert-pill-active-border);
-  box-shadow: var(--ert-pill-shadow), var(--ert-pill-active-ring);
+  outline: 2px solid color-mix(in srgb, var(--ert-accent) 45%, transparent);
+  outline-offset: 2px;
 }
 
 .ert-ui .ert-pillBtn.is-active .ert-pillBtn__icon svg {
