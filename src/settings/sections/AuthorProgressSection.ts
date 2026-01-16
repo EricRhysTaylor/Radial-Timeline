@@ -313,6 +313,43 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         const customValue = '__custom__';
         let currentFont = currentValue || 'Inter';
         let isUpdating = false;
+        const isCustomFont = (value: string): boolean => {
+            const normalized = value.trim();
+            const normalizedValue = normalized === 'Inter' ? 'default' : normalized;
+            return !FONT_OPTIONS.some(opt => opt.value === normalizedValue) && normalizedValue !== 'default';
+        };
+        const fontCanvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+        const fontContext = fontCanvas?.getContext('2d') ?? null;
+        const fontSample = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        const isFontLoaded = (value: string): boolean => {
+            if (!isCustomFont(value)) return true;
+            const trimmed = value.trim();
+            if (!trimmed) return false;
+            const fallback = 'monospace';
+            if (!fontContext) return true;
+            fontContext.font = `16px ${fallback}`;
+            const baseline = fontContext.measureText(fontSample).width;
+            fontContext.font = `16px "${trimmed}", ${fallback}`;
+            const measured = fontContext.measureText(fontSample).width;
+            const metricsMatch = measured === baseline;
+            if (metricsMatch) return false;
+            if (typeof document === 'undefined' || !('fonts' in document)) return true;
+            try {
+                return document.fonts.check(`16px "${trimmed}"`) || document.fonts.check(`16px ${trimmed}`);
+            } catch {
+                return false;
+            }
+        };
+        const updateWarningState = (value: string): void => {
+            const normalized = value.trim();
+            const showWarning = isCustomFont(normalized) && !isFontLoaded(normalized);
+            drop.selectEl.classList.toggle('ert-typography-select--warning', showWarning);
+            if (showWarning) {
+                drop.selectEl.title = `Font not loaded: ${normalized}. Check spelling or install the font.`;
+            } else {
+                drop.selectEl.removeAttribute('title');
+            }
+        };
 
         const updateOptions = (value: string): void => {
             isUpdating = true;
@@ -327,6 +364,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             }
             drop.addOption(customValue, 'Custom...');
             drop.setValue(normalized);
+            updateWarningState(currentFont);
             isUpdating = false;
         };
 
@@ -387,6 +425,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             if (next === currentFont) return;
             await onSave(next);
             currentFont = next;
+            updateWarningState(currentFont);
         });
 
         const setValue = (value: string): void => {

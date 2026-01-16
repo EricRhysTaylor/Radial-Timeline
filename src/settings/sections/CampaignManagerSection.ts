@@ -285,14 +285,15 @@ function renderCampaignRow(
     // Create a wrapper to contain both the row and expandable details
     const wrapper = container.createDiv({ cls: 'rt-campaign-wrapper' });
     
-    const rowClasses = ['rt-campaign-row'];
-    if (needsRefresh) rowClasses.push('rt-campaign-needs-refresh');
-    if (!campaign.isActive) rowClasses.push('rt-campaign-inactive');
+    const rowClasses: string[] = [ERT_CLASSES.OBJECT_ROW];
+    if (needsRefresh) rowClasses.push('is-needs-refresh');
+    if (!campaign.isActive) rowClasses.push('is-inactive');
     
     const row = wrapper.createDiv({ cls: rowClasses.join(' ') });
+    const rowLeft = row.createDiv({ cls: 'rt-campaign-left' });
     
     // Status indicator
-    const statusIndicator = row.createDiv({ cls: 'rt-campaign-status' });
+    const statusIndicator = rowLeft.createDiv({ cls: 'rt-campaign-status' });
     if (needsRefresh) {
         setIcon(statusIndicator, 'alert-triangle');
         setTooltip(statusIndicator, 'Needs refresh');
@@ -305,7 +306,7 @@ function renderCampaignRow(
     }
     
     // Campaign info
-    const infoArea = row.createDiv({ cls: 'rt-campaign-info' });
+    const infoArea = rowLeft.createDiv({ cls: 'rt-campaign-info' });
     const nameRow = infoArea.createDiv({ cls: 'rt-campaign-name-row' });
     nameRow.createSpan({ text: campaign.name, cls: 'rt-campaign-name' });
     
@@ -345,9 +346,9 @@ function renderCampaignRow(
         const existingDetails = wrapper.querySelector('.rt-campaign-details');
         if (existingDetails) {
             existingDetails.remove();
-            row.classList.remove('rt-campaign-row-expanded');
+            row.classList.remove('is-expanded');
         } else {
-            row.classList.add('rt-campaign-row-expanded');
+            row.classList.add('is-expanded');
             renderCampaignDetails(wrapper, campaign, index, plugin, onUpdate);
         }
     };

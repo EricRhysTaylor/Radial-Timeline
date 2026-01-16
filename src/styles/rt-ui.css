@@ -769,12 +769,6 @@
   transition: outline-color 0.15s ease, border-color 0.15s ease;
 }
 
-.ert-ui .ert-swatch:hover {
-  border-color: var(--ert-accent);
-  outline: 2px solid color-mix(in srgb, var(--ert-accent) 35%, transparent);
-  outline-offset: 2px;
-}
-
 .ert-ui .ert-swatch:focus-visible {
   outline: 2px solid var(--interactive-accent);
   outline-offset: 2px;
@@ -986,6 +980,53 @@
   box-shadow: var(--ert-panel-shadow);
 }
 
+.ert-ui .ert-skin--pro .ert-objectRow {
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+  transition: all 0.15s ease;
+}
+
+.ert-ui .ert-skin--pro .ert-objectRow:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--text-accent);
+}
+
+.ert-ui .ert-skin--pro .ert-objectRow.is-expanded {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-color: transparent;
+}
+
+.ert-ui .ert-skin--pro .ert-objectRow.is-needs-refresh {
+  border-left: 3px solid var(--text-error, #ef4444);
+}
+
+.ert-ui .ert-skin--pro .ert-objectRow.is-inactive {
+  opacity: 0.5;
+}
+
+.ert-ui .ert-skin--pro .ert-objectRow .rt-campaign-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ert-ui .ert-skin--pro .ert-objectRow.is-needs-refresh .rt-campaign-status {
+  color: var(--text-error, #ef4444);
+}
+
+.ert-ui .ert-skin--pro .ert-objectRow:not(.is-needs-refresh):not(.is-inactive) .rt-campaign-status {
+  color: var(--text-success, #22c55e);
+}
+
+.ert-ui .ert-skin--pro .ert-objectRow.is-inactive .rt-campaign-status {
+  color: var(--text-muted);
+}
+
 /* Debug overlay (opt-in via .is-debug) */
 .ert-ui.is-debug .ert-section {
   outline: 1px dashed rgba(255, 200, 0, 0.8);
@@ -1082,6 +1123,19 @@
 
 .ert-ui .ert-pillBtn__label {
   line-height: 1;
+}
+
+.ert-ui select.ert-typography-select.ert-typography-select--warning {
+  border-color: var(--text-error, #ef4444);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-error, #ef4444) 35%, transparent);
+}
+
+.ert-ui.ert-skin--social select.ert-typography-select.ert-typography-select--warning,
+.ert-ui .ert-skin--social select.ert-typography-select.ert-typography-select--warning,
+.ert-ui.ert-skin--pro select.ert-typography-select.ert-typography-select--warning,
+.ert-ui .ert-skin--pro select.ert-typography-select.ert-typography-select--warning {
+  border-color: var(--text-error, #ef4444);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-error, #ef4444) 35%, transparent);
 }
 
 /* Hover state — standard */
