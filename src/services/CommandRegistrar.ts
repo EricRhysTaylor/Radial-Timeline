@@ -34,7 +34,7 @@ export class CommandRegistrar {
         this.plugin.addRibbonIcon('shell', 'Radial timeline', () => {
             this.plugin.getTimelineService().activateView();
         });
-        this.plugin.addRibbonIcon('help-circle', 'Inquiry', () => {
+        this.plugin.addRibbonIcon('waves', 'Inquiry', () => {
             this.plugin.getInquiryService().activateView();
         });
     }

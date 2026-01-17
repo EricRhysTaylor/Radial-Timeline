@@ -113,7 +113,7 @@ export class InquiryView extends ItemView {
     }
 
     getIcon(): string {
-        return 'help-circle';
+        return 'waves';
     }
 
     async onOpen(): Promise<void> {

@@ -242,9 +242,26 @@
   display: block;
 }
 
+.rt-inquiry-glyph-frame {
+  fill: none;
+  stroke: color-mix(in srgb, var(--background-modifier-border) 75%, transparent);
+  stroke-width: 2;
+  stroke-dasharray: 18 14;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
 .rt-inquiry-ring-track {
   stroke: var(--rt-inquiry-neutral);
   opacity: 0.35;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.rt-inquiry-ring-glow {
+  stroke: var(--rt-inquiry-glow, var(--rt-color-press));
+  opacity: var(--rt-inquiry-glow-opacity, 0.3);
+  filter: url(#rt-inquiry-ring-glow);
   vector-effect: non-scaling-stroke;
   pointer-events: none;
 }
@@ -291,10 +308,48 @@
   opacity: 0.55;
 }
 
+.rt-inquiry-ring-badge {
+  pointer-events: none;
+}
+
+.rt-inquiry-ring-badge-circle {
+  fill: var(--rt-inquiry-neutral);
+  stroke: color-mix(in srgb, var(--background-primary) 60%, transparent);
+  stroke-width: 4;
+}
+
+.rt-inquiry-ring-badge-text {
+  fill: var(--text-on-accent, #fff);
+  font-family: 'Inter', var(--font-ui), sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+.rt-inquiry-ring--flow .rt-inquiry-ring-badge-text {
+  font-size: 44px;
+}
+
+.rt-inquiry-ring--depth .rt-inquiry-ring-badge-text {
+  font-size: 58px;
+}
+
+.rt-inquiry-ring.is-severity-low .rt-inquiry-ring-badge-circle {
+  fill: var(--rt-inquiry-low);
+}
+
+.rt-inquiry-ring.is-severity-medium .rt-inquiry-ring-badge-circle {
+  fill: var(--rt-inquiry-medium);
+}
+
+.rt-inquiry-ring.is-severity-high .rt-inquiry-ring-badge-circle {
+  fill: var(--rt-inquiry-high);
+}
+
 .rt-inquiry-glyph-label {
   fill: var(--text-normal);
   font-family: 'Inter', var(--font-ui), sans-serif;
-  font-size: 40px;
+  font-size: 190px;
   font-weight: 900;
   letter-spacing: -0.06em;
   font-variant-numeric: tabular-nums;
@@ -303,6 +358,7 @@
 .rt-inquiry-glyph-hit {
   fill: transparent;
   cursor: pointer;
+  pointer-events: all;
 }
 
 .rt-inquiry-glyph-stack.is-expanded .rt-inquiry-glyph-label {
@@ -343,6 +399,14 @@
   border-radius: 8px;
   background: var(--background-secondary);
   padding: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.rt-inquiry-findings:hover .rt-inquiry-details-toggle {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .rt-inquiry-details-icon svg {
@@ -453,6 +517,14 @@
 .rt-inquiry-nav {
   display: flex;
   gap: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.rt-inquiry-footer:hover .rt-inquiry-nav {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .rt-inquiry-nav-btn {

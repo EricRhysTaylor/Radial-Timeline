@@ -228,16 +228,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const backupPara = description.createDiv();
         backupPara.createSpan({ text: 'It is strongly recommended that you regularly ' });
         backupPara.createEl('a', { text: 'back up your Obsidian vault', href: 'https://help.obsidian.md/backup' });
-        backupPara.createSpan({ text: ' to protect against data loss. Learn more about ' });
-        backupPara.createEl('a', { text: 'how Obsidian stores your data', href: 'https://help.obsidian.md/data-storage' });
-        backupPara.createSpan({ text: ' and best practices for creating reliable backups.' });
+        backupPara.createSpan({ text: ' to protect against data loss.' });
         const syncPara = description.createDiv({ cls: 'rt-backup-sync-para' });
         syncPara.createEl('strong', { text: 'Syncing vs. Backing Up: ' });
         syncPara.createSpan({ text: 'Sync services like ' });
         syncPara.createEl('a', { text: 'Obsidian Sync', href: 'https://obsidian.md/sync' });
         syncPara.createSpan({ text: ' and ' });
         syncPara.createEl('a', { text: 'Obsidian Git', href: 'https://obsidian.md/plugins?id=obsidian-git' });
-        syncPara.createSpan({ text: ' synchronize your notes across devices but serve a different purpose than backups. ' });
+        syncPara.createSpan({ text: ' can protect your work from system crashes and device theft, but they do not protect from user deletions or situations where you need to roll back or recover a misplaced file. ' });
         syncPara.createEl('a', { text: 'Read the Obsidian Sync Guide', href: 'https://help.obsidian.md/sync/switch' });
         syncPara.createSpan({ text: ' to understand the differences.' });
         const conflictPara = description.createDiv({ cls: 'rt-backup-sync-para' });

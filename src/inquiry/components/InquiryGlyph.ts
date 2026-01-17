@@ -12,9 +12,11 @@ const GLYPH_VIEWBOX = '-800 -800 1600 1600';
 const FLOW_RADIUS = 260;
 const DEPTH_RADIUS = 195;
 const FLOW_STROKE = 14;
-const DEPTH_STROKE = 28;
+const DEPTH_STROKE = 24;
 const FLOW_HIT_STROKE = 38;
-const DEPTH_HIT_STROKE = 52;
+const DEPTH_HIT_STROKE = 48;
+const FLOW_BADGE_RADIUS = Math.round(FLOW_STROKE * 0.75);
+const DEPTH_BADGE_RADIUS = Math.round(DEPTH_STROKE * 0.75);
 
 export class InquiryGlyph {
     private props: InquiryGlyphProps;
@@ -27,6 +29,12 @@ export class InquiryGlyph {
 
     private flowProgress: SVGCircleElement;
     private depthProgress: SVGCircleElement;
+    private flowGlow: SVGCircleElement;
+    private depthGlow: SVGCircleElement;
+    private flowBadgeCircle: SVGCircleElement;
+    private flowBadgeText: SVGTextElement;
+    private depthBadgeCircle: SVGCircleElement;
+    private depthBadgeText: SVGTextElement;
     private labelText: SVGTextElement;
     private flowGroup: SVGGElement;
     private depthGroup: SVGGElement;
@@ -39,14 +47,22 @@ export class InquiryGlyph {
         this.svg.setAttribute('viewBox', GLYPH_VIEWBOX);
         this.svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
         this.svg.classList.add('rt-inquiry-glyph-svg');
+        this.svg.appendChild(this.buildDefs());
+        this.svg.appendChild(this.buildFrame());
 
-        this.flowGroup = this.buildRingGroup('flow', FLOW_RADIUS, FLOW_STROKE, FLOW_HIT_STROKE);
-        this.depthGroup = this.buildRingGroup('depth', DEPTH_RADIUS, DEPTH_STROKE, DEPTH_HIT_STROKE);
+        this.flowGroup = this.buildRingGroup('flow', FLOW_RADIUS, FLOW_STROKE, FLOW_HIT_STROKE, FLOW_BADGE_RADIUS);
+        this.depthGroup = this.buildRingGroup('depth', DEPTH_RADIUS, DEPTH_STROKE, DEPTH_HIT_STROKE, DEPTH_BADGE_RADIUS);
 
         this.flowProgress = this.flowGroup.querySelector('.rt-inquiry-ring-progress') as SVGCircleElement;
         this.depthProgress = this.depthGroup.querySelector('.rt-inquiry-ring-progress') as SVGCircleElement;
+        this.flowGlow = this.flowGroup.querySelector('.rt-inquiry-ring-glow') as SVGCircleElement;
+        this.depthGlow = this.depthGroup.querySelector('.rt-inquiry-ring-glow') as SVGCircleElement;
         this.flowRingHit = this.flowGroup.querySelector('.rt-inquiry-ring-hit') as SVGCircleElement;
         this.depthRingHit = this.depthGroup.querySelector('.rt-inquiry-ring-hit') as SVGCircleElement;
+        this.flowBadgeCircle = this.flowGroup.querySelector('.rt-inquiry-ring-badge-circle') as SVGCircleElement;
+        this.flowBadgeText = this.flowGroup.querySelector('.rt-inquiry-ring-badge-text') as SVGTextElement;
+        this.depthBadgeCircle = this.depthGroup.querySelector('.rt-inquiry-ring-badge-circle') as SVGCircleElement;
+        this.depthBadgeText = this.depthGroup.querySelector('.rt-inquiry-ring-badge-text') as SVGTextElement;
 
         const labelGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         labelGroup.classList.add('rt-inquiry-glyph-label-group');
@@ -87,22 +103,45 @@ export class InquiryGlyph {
         this.labelText.setAttribute('aria-label', `Focus target ${props.focusLabel}`);
         this.labelHit.setAttribute('aria-label', `Focus target ${props.focusLabel}`);
 
-        this.applyRingState(this.flowGroup, this.flowProgress, props.flowValue, props.severity, props.confidence);
-        this.applyRingState(this.depthGroup, this.depthProgress, props.depthValue, props.severity, props.confidence);
+        this.applyRingState(
+            this.flowGroup,
+            this.flowProgress,
+            this.flowGlow,
+            this.flowBadgeCircle,
+            this.flowBadgeText,
+            props.flowValue,
+            FLOW_RADIUS,
+            props.severity,
+            props.confidence
+        );
+        this.applyRingState(
+            this.depthGroup,
+            this.depthProgress,
+            this.depthGlow,
+            this.depthBadgeCircle,
+            this.depthBadgeText,
+            props.depthValue,
+            DEPTH_RADIUS,
+            props.severity,
+            props.confidence
+        );
     }
 
     private buildRingGroup(
         kind: 'flow' | 'depth',
         radius: number,
         strokeWidth: number,
-        hitStrokeWidth: number
+        hitStrokeWidth: number,
+        badgeRadius: number
     ): SVGGElement {
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         group.classList.add('rt-inquiry-ring', `rt-inquiry-ring--${kind}`);
 
+        const glow = this.buildCircle(radius, strokeWidth, 'rt-inquiry-ring-glow');
         const track = this.buildCircle(radius, strokeWidth, 'rt-inquiry-ring-track');
         const progress = this.buildCircle(radius, strokeWidth, 'rt-inquiry-ring-progress');
         const hit = this.buildCircle(radius, hitStrokeWidth, 'rt-inquiry-ring-hit');
+        const badgeGroup = this.buildBadgeGroup(badgeRadius);
 
         const circumference = 2 * Math.PI * radius;
         progress.setAttribute('stroke-dasharray', circumference.toFixed(2));
@@ -111,11 +150,59 @@ export class InquiryGlyph {
         progress.setAttribute('transform', 'rotate(-90 0 0)');
         progress.setAttribute('data-circumference', circumference.toFixed(2));
 
+        group.appendChild(glow);
         group.appendChild(track);
         group.appendChild(progress);
         group.appendChild(hit);
+        group.appendChild(badgeGroup);
 
         return group;
+    }
+
+    private buildBadgeGroup(badgeRadius: number): SVGGElement {
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.classList.add('rt-inquiry-ring-badge');
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.classList.add('rt-inquiry-ring-badge-circle');
+        circle.setAttribute('r', String(badgeRadius));
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.classList.add('rt-inquiry-ring-badge-text');
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'middle');
+
+        group.appendChild(circle);
+        group.appendChild(text);
+
+        return group;
+    }
+
+    private buildDefs(): SVGDefsElement {
+        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+        const filter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+        filter.setAttribute('id', 'rt-inquiry-ring-glow');
+        filter.setAttribute('x', '-50%');
+        filter.setAttribute('y', '-50%');
+        filter.setAttribute('width', '200%');
+        filter.setAttribute('height', '200%');
+
+        const blur = document.createElementNS('http://www.w3.org/2000/svg', 'feGaussianBlur');
+        blur.setAttribute('stdDeviation', '6');
+
+        filter.appendChild(blur);
+        defs.appendChild(filter);
+        return defs;
+    }
+
+    private buildFrame(): SVGRectElement {
+        const frame = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        frame.classList.add('rt-inquiry-glyph-frame');
+        frame.setAttribute('x', '-800');
+        frame.setAttribute('y', '-800');
+        frame.setAttribute('width', '1600');
+        frame.setAttribute('height', '1600');
+        return frame;
     }
 
     private buildCircle(radius: number, strokeWidth: number, cls: string): SVGCircleElement {
@@ -132,7 +219,11 @@ export class InquiryGlyph {
     private applyRingState(
         ring: SVGGElement,
         progress: SVGCircleElement,
+        glow: SVGCircleElement,
+        badgeCircle: SVGCircleElement,
+        badgeText: SVGTextElement,
         value: number,
+        radius: number,
         severity: InquirySeverity,
         confidence: InquiryConfidence
     ): void {
@@ -141,6 +232,8 @@ export class InquiryGlyph {
         ring.classList.add(`is-severity-${severity}`);
         ring.classList.add(`is-confidence-${confidence}`);
         this.updateRingProgress(progress, value);
+        this.updateGlow(glow, value);
+        this.updateBadge(badgeCircle, badgeText, value, radius);
     }
 
     private updateRingProgress(progress: SVGCircleElement, normalized: number): void {
@@ -149,5 +242,28 @@ export class InquiryGlyph {
         const safeValue = Math.min(Math.max(normalized, 0), 1);
         const offset = circumference * (1 - safeValue);
         progress.setAttribute('stroke-dashoffset', offset.toFixed(2));
+    }
+
+    private updateGlow(glow: SVGCircleElement, normalized: number): void {
+        const safeValue = Math.min(Math.max(normalized, 0), 1);
+        const opacity = 0.15 + (safeValue * 0.45);
+        glow.style.setProperty('--rt-inquiry-glow-opacity', opacity.toFixed(3));
+    }
+
+    private updateBadge(
+        badgeCircle: SVGCircleElement,
+        badgeText: SVGTextElement,
+        normalized: number,
+        radius: number
+    ): void {
+        const safeValue = Math.min(Math.max(normalized, 0), 1);
+        const theta = (-90 + (360 * safeValue)) * (Math.PI / 180);
+        const x = radius * Math.cos(theta);
+        const y = radius * Math.sin(theta);
+        badgeCircle.setAttribute('cx', x.toFixed(2));
+        badgeCircle.setAttribute('cy', y.toFixed(2));
+        badgeText.setAttribute('x', x.toFixed(2));
+        badgeText.setAttribute('y', y.toFixed(2));
+        badgeText.textContent = String(Math.round(safeValue * 100));
     }
 }
