@@ -214,7 +214,17 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     if (showProgressPercent) {
         // TEMPORARY: Force triple-digit for testing
         const testPercent = 100;
-        svg += renderAprCenterPercent(testPercent, size, innerRadius, percentNumberColor, percentSymbolColor);
+        svg += renderAprCenterPercent(testPercent, size, innerRadius, percentNumberColor, percentSymbolColor, undefined, {
+            percentNumberFontFamily,
+            percentNumberFontWeight,
+            percentNumberFontItalic,
+            percentNumberFontSize1Digit,
+            percentNumberFontSize2Digit,
+            percentNumberFontSize3Digit,
+            percentSymbolFontFamily,
+            percentSymbolFontWeight,
+            percentSymbolFontItalic
+        });
     }
 
     // Branding on the perimeter (sanitize placeholder/dummy URLs)

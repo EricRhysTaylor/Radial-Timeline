@@ -440,6 +440,23 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         refreshPreview();
     };
 
+    const clearPercentNumberOverrides = (): void => {
+        if (!settings) return;
+        const hasOverrides = [
+            settings.aprPercentNumberFontSize1Digit,
+            settings.aprPercentNumberFontSize2Digit,
+            settings.aprPercentNumberFontSize3Digit
+        ].some(value => value !== undefined && value !== null);
+        if (!hasOverrides) return;
+        void setAprSettings({
+            aprPercentNumberFontSize1Digit: undefined,
+            aprPercentNumberFontSize2Digit: undefined,
+            aprPercentNumberFontSize3Digit: undefined
+        });
+    };
+
+    clearPercentNumberOverrides();
+
     const applyFontDropdown = (
         drop: DropdownComponent,
         currentValue: string | undefined,
@@ -921,6 +938,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 'aprPercentNumberFontSize3Digit'
             ],
             sizePlaceholders: ['1d', '2d', '3d'],
+            showSizeControls: false,
             weightDefault: 800
         }
     });

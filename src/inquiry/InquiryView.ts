@@ -18,13 +18,16 @@ import {
 } from './state';
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
 import { openOrRevealFile } from '../utils/fileUtils';
-import { InquiryGlyph } from './components/InquiryGlyph';
+import { InquiryGlyph, GLYPH_OUTER_DIAMETER } from './components/InquiryGlyph';
 import { InquiryRunnerStub } from './runner/InquiryRunnerStub';
 import type { CorpusManifest, EvidenceParticipationRules } from './runner/types';
 import { InquirySessionStore } from './InquirySessionStore';
 
 const DEFAULT_BOOK_COUNT = 5;
 const DEFAULT_SCENE_COUNT = 12;
+const GLYPH_TARGET_PX = 190;
+const GLYPH_PLACEHOLDER_FLOW = 0.75;
+const GLYPH_PLACEHOLDER_DEPTH = 0.30;
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const VIEWBOX_MIN = -800;
 const VIEWBOX_MAX = 800;
@@ -85,6 +88,7 @@ export class InquiryView extends ItemView {
     private minimapBaseline?: SVGLineElement;
     private minimapTicks: SVGRectElement[] = [];
     private minimapLayout?: { startX: number; length: number };
+    private glyphAnchor?: SVGGElement;
     private glyph?: InquiryGlyph;
     private glyphHit?: SVGRectElement;
     private flowRingHit?: SVGCircleElement;
@@ -257,15 +261,18 @@ export class InquiryView extends ItemView {
         this.renderZone(zonesGroup, 'pressure', 'Pressure', zoneWidth + zoneGap, zoneWidth, zoneHeight);
         this.renderZone(zonesGroup, 'payoff', 'Payoff', (zoneWidth + zoneGap) * 2, zoneWidth, zoneHeight);
 
-        const focusGroup = this.createSvgGroup(uiGroup, 'ert-inquiry-focus-area', leftAreaCenter, 80);
-        this.glyph = new InquiryGlyph(focusGroup, {
+        this.glyphAnchor = this.createSvgGroup(uiGroup, 'ert-inquiry-focus-area', leftAreaCenter, 80);
+        this.glyph = new InquiryGlyph(this.glyphAnchor, {
             focusLabel: this.getFocusLabel(),
-            flowValue: 0,
-            depthValue: 0,
+            flowValue: GLYPH_PLACEHOLDER_FLOW,
+            depthValue: GLYPH_PLACEHOLDER_DEPTH,
             severity: 'low',
             confidence: 'low'
         });
         this.logInquirySvgDebug();
+        this.updateGlyphScale();
+        requestAnimationFrame(() => this.updateGlyphScale());
+        this.registerDomEvent(window, 'resize', () => this.updateGlyphScale());
 
         this.flowRingHit = this.glyph.flowRingHit;
         this.depthRingHit = this.glyph.depthRingHit;
@@ -492,6 +499,18 @@ export class InquiryView extends ItemView {
         });
     }
 
+    private updateGlyphScale(): void {
+        if (!this.rootSvg || !this.glyph) return;
+        const width = this.rootSvg.clientWidth || this.rootSvg.getBoundingClientRect().width;
+        if (!Number.isFinite(width) || width <= 0) return;
+        const unitsPerPx = VIEWBOX_SIZE / width;
+        const targetUnits = GLYPH_TARGET_PX * unitsPerPx;
+        const scale = targetUnits / GLYPH_OUTER_DIAMETER;
+        if (!Number.isFinite(scale) || scale <= 0) return;
+        this.glyph.root.setAttribute('transform', `scale(${scale.toFixed(4)})`);
+        this.glyph.setDisplayScale(scale);
+    }
+
     private buildFindingsPanel(parent: SVGElement, x: number, y: number, width: number, height: number): void {
         const findingsGroup = this.createSvgGroup(parent, 'ert-inquiry-findings', x, y);
         const bg = this.createSvgElement('rect');
@@ -682,8 +701,8 @@ export class InquiryView extends ItemView {
 
     private updateRings(): void {
         const result = this.state.activeResult;
-        const flowValue = result ? this.normalizeMetricValue(result.verdict.flow) : 0;
-        const depthValue = result ? this.normalizeMetricValue(result.verdict.depth) : 0;
+        const flowValue = result ? this.normalizeMetricValue(result.verdict.flow) : GLYPH_PLACEHOLDER_FLOW;
+        const depthValue = result ? this.normalizeMetricValue(result.verdict.depth) : GLYPH_PLACEHOLDER_DEPTH;
         const severity = result ? result.verdict.severity : 'low';
         const confidence = result ? result.verdict.confidence : 'low';
 

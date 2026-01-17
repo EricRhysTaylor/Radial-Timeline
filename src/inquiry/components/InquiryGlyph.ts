@@ -15,8 +15,13 @@ const FLOW_STROKE = 14;
 const DEPTH_STROKE = 24;
 const FLOW_HIT_STROKE = 38;
 const DEPTH_HIT_STROKE = 48;
-const FLOW_BADGE_RADIUS = Math.round(FLOW_STROKE * 0.75);
-const DEPTH_BADGE_RADIUS = Math.round(DEPTH_STROKE * 0.75);
+const FLOW_BADGE_RADIUS_PX = FLOW_STROKE;
+const DEPTH_BADGE_RADIUS_PX = DEPTH_STROKE;
+const FLOW_BADGE_TEXT_PX = 16;
+const DEPTH_BADGE_TEXT_PX = 20;
+const LABEL_TEXT_PX = 30;
+
+export const GLYPH_OUTER_DIAMETER = (FLOW_RADIUS * 2) + FLOW_STROKE;
 
 export class InquiryGlyph {
     private props: InquiryGlyphProps;
@@ -44,8 +49,8 @@ export class InquiryGlyph {
         this.root.classList.add('ert-inquiry-glyph');
         container.appendChild(this.root);
 
-        this.flowGroup = this.buildRingGroup('flow', FLOW_RADIUS, FLOW_STROKE, FLOW_HIT_STROKE, FLOW_BADGE_RADIUS);
-        this.depthGroup = this.buildRingGroup('depth', DEPTH_RADIUS, DEPTH_STROKE, DEPTH_HIT_STROKE, DEPTH_BADGE_RADIUS);
+        this.flowGroup = this.buildRingGroup('flow', FLOW_RADIUS, FLOW_STROKE, FLOW_HIT_STROKE, FLOW_BADGE_RADIUS_PX);
+        this.depthGroup = this.buildRingGroup('depth', DEPTH_RADIUS, DEPTH_STROKE, DEPTH_HIT_STROKE, DEPTH_BADGE_RADIUS_PX);
 
         this.flowProgress = this.flowGroup.querySelector('.ert-inquiry-ring-progress') as SVGCircleElement;
         this.depthProgress = this.depthGroup.querySelector('.ert-inquiry-ring-progress') as SVGCircleElement;
@@ -84,11 +89,22 @@ export class InquiryGlyph {
         this.root.appendChild(labelGroup);
 
         this.applyProps(props);
+        this.setDisplayScale(1);
     }
 
     update(next: Partial<InquiryGlyphProps>): void {
         this.props = { ...this.props, ...next };
         this.applyProps(this.props);
+    }
+
+    setDisplayScale(scale: number): void {
+        const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
+        const inverse = 1 / safeScale;
+        this.labelText.setAttribute('font-size', (LABEL_TEXT_PX * inverse).toFixed(2));
+        this.flowBadgeText.setAttribute('font-size', (FLOW_BADGE_TEXT_PX * inverse).toFixed(2));
+        this.depthBadgeText.setAttribute('font-size', (DEPTH_BADGE_TEXT_PX * inverse).toFixed(2));
+        this.flowBadgeCircle.setAttribute('r', (FLOW_BADGE_RADIUS_PX * inverse).toFixed(2));
+        this.depthBadgeCircle.setAttribute('r', (DEPTH_BADGE_RADIUS_PX * inverse).toFixed(2));
     }
 
     private applyProps(props: InquiryGlyphProps): void {

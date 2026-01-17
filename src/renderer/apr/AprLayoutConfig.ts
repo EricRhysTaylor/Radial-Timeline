@@ -40,14 +40,14 @@ export const APR_LAYOUT = {
         spokeWidth: 0.75,           // Width of radial spokes
         borderWidth: 0.5,           // Width of ring borders
         actSpokeWidth: 1,           // Width of act division spokes
-        patternScale: 0.25,         // Pattern density (1.0 = default, smaller = denser)
+        patternScale: 0.1,         // Pattern density (1.0 = default, smaller = denser)
         
         // ─────────────────────────────────────────────────────────────────────
         // CENTER NUMBER & PERCENT SYMBOL (Inner element)
         // ─────────────────────────────────────────────────────────────────────
         centerNumberFontSize1Digit: 38,  // Font size for single-digit numbers (e.g., "5")
         centerNumberFontSize2Digit: 28,  // Font size for double-digit numbers (e.g., "42")
-        centerNumberFontSize3Digit: 24,  // Font size for triple-digit numbers (e.g., "100")
+        centerNumberFontSize3Digit: 22,  // Font size for triple-digit numbers (e.g., "100")
         centerNumberYOffset: 3.2,          // Y offset for the center number (positive = down)
         centerNumberOpacity: 1,  // Center number visibility: 0.0 = invisible, 1.0 = fully opaque
         centerNumberLetterSpacing: '-0.05em', // Letter spacing for multi-digit numbers
@@ -67,7 +67,7 @@ export const APR_LAYOUT = {
         // ─────────────────────────────────────────────────────────────────────
         brandingRadius: 66,         // Radius for book/author text path
         bookAuthorFontSize: 9,      // Font size for book title + author name
-        brandingLetterSpacing: '0.2em', // Letter spacing for branding text
+        brandingLetterSpacing: '20em', // Letter spacing for branding text
     },
     
     // ─────────────────────────────────────────────────────────────────────────
@@ -141,7 +141,7 @@ export const APR_LAYOUT = {
         // ─────────────────────────────────────────────────────────────────────
         centerNumberFontSize1Digit: 150,  // Font size for single-digit numbers (e.g., "5")
         centerNumberFontSize2Digit: 115,  // Font size for double-digit numbers (e.g., "42")
-        centerNumberFontSize3Digit: 96,  // Font size for triple-digit numbers (e.g., "100")
+        centerNumberFontSize3Digit: 92,  // Font size for triple-digit numbers (e.g., "100")
         centerNumberYOffset: 11,         // Y offset for the center number (positive = down)
         centerNumberOpacity: 0.95,   // Center number visibility: 0.0 = invisible, 1.0 = fully opaque
         centerNumberLetterSpacing: '-0.05em', // Letter spacing for multi-digit numbers (0 = natural spacing)

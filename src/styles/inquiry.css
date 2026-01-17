@@ -302,14 +302,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.ert-inquiry-ring--flow .ert-inquiry-ring-badge-text {
-  font-size: 44px;
-}
-
-.ert-inquiry-ring--depth .ert-inquiry-ring-badge-text {
-  font-size: 58px;
-}
-
 .ert-inquiry-ring.is-severity-low .ert-inquiry-ring-badge-circle {
   fill: var(--ert-inquiry-low);
 }
@@ -325,7 +317,6 @@
 .ert-inquiry-glyph-label {
   fill: var(--text-normal);
   font-family: 'Inter', var(--font-ui), sans-serif;
-  font-size: 190px;
   font-weight: 900;
   letter-spacing: -0.06em;
   font-variant-numeric: tabular-nums;
