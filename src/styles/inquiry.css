@@ -244,7 +244,8 @@
 
 .rt-inquiry-glyph-frame {
   fill: none;
-  stroke: color-mix(in srgb, var(--background-modifier-border) 75%, transparent);
+  stroke: var(--background-modifier-border);
+  opacity: 0.6;
   stroke-width: 2;
   stroke-dasharray: 18 14;
   vector-effect: non-scaling-stroke;

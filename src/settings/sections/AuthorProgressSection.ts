@@ -228,8 +228,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Each element: Row 1 = Label + Text Input (if applicable) + Color + Hex
     //               Row 2 = Font + Weight
     // ─────────────────────────────────────────────────────────────────────────
-    const typographyContainer = stylingCard.createDiv({ cls: 'rt-apr-typography-container' });
-    const typographyStack = typographyContainer.createDiv({ cls: 'ert-typography-stack' });
+    const themeContainer = stylingCard.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
+    themeContainer.createEl('h4', { text: 'Theme', cls: ERT_CLASSES.SECTION_TITLE });
+    const typographyStack = themeContainer.createDiv({ cls: 'ert-typography-stack' });
     
     // Palette tracking & color picker refs
     let lastAppliedPalette: { bookTitle: string; authorName: string; percentNumber: string; percentSymbol: string } | null = null;
@@ -556,7 +557,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         const defaultItalic = opts.typography.italicDefault ?? false;
 
         const updateAutoState = (): void => {
-            if (!autoButton) return;
             const currentColor = normalizeHex((settings?.[opts.color.key] as string | undefined) ?? opts.color.fallback);
             const defaultColor = normalizeHex(opts.color.fallback);
             const currentFont = (settings?.[opts.typography.familyKey] as string | undefined) ?? defaultFont;
@@ -565,11 +565,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             const isSizeAuto = opts.typography.sizeKeys?.length
                 ? opts.typography.sizeKeys.every(key => settings?.[key] === undefined)
                 : true;
-            autoButton.classList.toggle('is-active', currentColor === defaultColor
+            const isAuto = currentColor === defaultColor
                 && currentFont === defaultFont
                 && currentWeight === defaultWeight
                 && currentItalic === defaultItalic
-                && isSizeAuto);
+                && isSizeAuto;
+            if (autoButton) {
+                autoButton.classList.toggle('is-active', isAuto);
+            }
         };
 
         if (opts.text) {
@@ -675,10 +678,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             }
         },
         primaryAction: (rowEl) => {
-            const paletteButton = rowEl.createEl('button', { cls: 'ert-pillBtn ert-pillBtn--social' });
-            paletteButton.type = 'button';
-            paletteButton.createSpan({ cls: 'ert-pillBtn__label', text: 'Palette' });
-            paletteButton.addEventListener('click', () => {
+            const themeButton = rowEl.createEl('button', { cls: 'ert-pillBtn ert-pillBtn--social' });
+            themeButton.type = 'button';
+            themeButton.createSpan({ cls: 'ert-pillBtn__label', text: 'Theme' });
+            themeButton.addEventListener('click', () => {
                 const modal = new AprPaletteModal(
                     app,
                     plugin,
@@ -713,12 +716,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     // AUTHOR
     // ─────────────────────────────────────────────────────────────────────────
-    const authorGroup = typographyStack.createDiv({ cls: 'rt-apr-unified-group' });
-    
     const authorColorFallback = settings?.aprBookAuthorColor || bookTitleColorFallback;
     const currentAuthorColor = settings?.aprAuthorColor || authorColorFallback;
 
-    addElementBlock(authorGroup, {
+    addElementBlock(typographyStack, {
         label: 'Author',
         desc: 'Outer ring author name text.',
         dataTypo: 'author',
@@ -754,12 +755,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     // % SYMBOL
     // ─────────────────────────────────────────────────────────────────────────
-    const symbolGroup = typographyStack.createDiv({ cls: 'rt-apr-unified-group' });
-    
     const percentSymbolColorFallback = settings?.aprBookAuthorColor || bookTitleColorFallback;
     const currentPercentSymbolColor = settings?.aprPercentSymbolColor || percentSymbolColorFallback;
 
-    addElementBlock(symbolGroup, {
+    addElementBlock(typographyStack, {
         label: '% Symbol',
         desc: 'Center percent symbol.',
         dataTypo: 'percent-symbol',
@@ -785,12 +784,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     // % NUMBER
     // ─────────────────────────────────────────────────────────────────────────
-    const numberGroup = typographyStack.createDiv({ cls: 'rt-apr-unified-group' });
-    
     const percentNumberColorFallback = settings?.aprBookAuthorColor || bookTitleColorFallback;
     const currentPercentNumberColor = settings?.aprPercentNumberColor || percentNumberColorFallback;
 
-    addElementBlock(numberGroup, {
+    addElementBlock(typographyStack, {
         label: '% Number',
         desc: 'Center progress number.',
         dataTypo: 'percent-number',
@@ -822,12 +819,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     // RT BADGE
     // ─────────────────────────────────────────────────────────────────────────
-    const badgeGroup = typographyStack.createDiv({ cls: 'rt-apr-unified-group' });
-    
     const rtBadgeColorFallback = '#e5e5e5';
     const currentRtBadgeColor = settings?.aprEngineColor || rtBadgeColorFallback;
 
-    addElementBlock(badgeGroup, {
+    addElementBlock(typographyStack, {
         label: 'RT Badge',
         desc: 'Radial Timeline badge text.',
         dataTypo: 'rt-badge',
