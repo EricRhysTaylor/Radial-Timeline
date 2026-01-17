@@ -131,36 +131,36 @@ export class InquiryView extends ItemView {
     }
 
     private renderMobileGate(): void {
-        const wrapper = this.contentEl.createDiv({ cls: 'rt-inquiry-mobile ert-ui' });
-        wrapper.createDiv({ cls: 'rt-inquiry-mobile-title', text: 'Desktop required' });
+        const wrapper = this.contentEl.createDiv({ cls: 'ert-inquiry-mobile ert-ui' });
+        wrapper.createDiv({ cls: 'ert-inquiry-mobile-title', text: 'Desktop required' });
         wrapper.createDiv({
-            cls: 'rt-inquiry-mobile-subtitle',
+            cls: 'ert-inquiry-mobile-subtitle',
             text: 'Inquiry is available on desktop only. Artifacts remain readable on mobile.'
         });
 
-        const actions = wrapper.createDiv({ cls: 'rt-inquiry-mobile-actions' });
-        const openFolderBtn = actions.createEl('button', { cls: 'rt-inquiry-mobile-btn', text: 'Open Artifacts folder' });
-        const openLatestBtn = actions.createEl('button', { cls: 'rt-inquiry-mobile-btn', text: 'View most recent Artifact' });
+        const actions = wrapper.createDiv({ cls: 'ert-inquiry-mobile-actions' });
+        const openFolderBtn = actions.createEl('button', { cls: 'ert-inquiry-mobile-btn', text: 'Open Artifacts folder' });
+        const openLatestBtn = actions.createEl('button', { cls: 'ert-inquiry-mobile-btn', text: 'View most recent Artifact' });
 
         this.registerDomEvent(openFolderBtn, 'click', () => { void this.openArtifactsFolder(); });
         this.registerDomEvent(openLatestBtn, 'click', () => { void this.openMostRecentArtifact(); });
     }
 
     private renderDesktopLayout(): void {
-        this.rootEl = this.contentEl.createDiv({ cls: 'rt-inquiry-view ert-ui' });
+        this.rootEl = this.contentEl.createDiv({ cls: 'ert-inquiry-view ert-ui' });
 
-        const header = this.rootEl.createDiv({ cls: 'rt-inquiry-header' });
-        const headerLeft = header.createDiv({ cls: 'rt-inquiry-header-group' });
-        const headerRight = header.createDiv({ cls: 'rt-inquiry-header-group rt-inquiry-header-right' });
+        const header = this.rootEl.createDiv({ cls: 'ert-inquiry-header' });
+        const headerLeft = header.createDiv({ cls: 'ert-inquiry-header-group' });
+        const headerRight = header.createDiv({ cls: 'ert-inquiry-header-group ert-inquiry-header-right' });
 
-        const scopeField = headerLeft.createDiv({ cls: 'rt-inquiry-control' });
-        scopeField.createDiv({ cls: 'rt-inquiry-control-label', text: 'Scope' });
-        const scopeToggle = scopeField.createDiv({ cls: 'rt-inquiry-toggle' });
+        const scopeField = headerLeft.createDiv({ cls: 'ert-inquiry-control' });
+        scopeField.createDiv({ cls: 'ert-inquiry-control-label', text: 'Scope' });
+        const scopeToggle = scopeField.createDiv({ cls: 'ert-inquiry-toggle' });
         this.scopeBookButton = scopeToggle.createEl('button', {
-            cls: 'rt-inquiry-icon-btn',
+            cls: 'ert-inquiry-icon-btn',
             attr: { type: 'button', 'aria-label': 'Book scope' }
         });
-        const scopeBookIcon = this.scopeBookButton.createSpan({ cls: 'rt-inquiry-toggle-icon' });
+        const scopeBookIcon = this.scopeBookButton.createSpan({ cls: 'ert-inquiry-toggle-icon' });
         setIcon(scopeBookIcon, 'columns-2');
         setTooltip(this.scopeBookButton, 'Book scope');
         this.registerDomEvent(this.scopeBookButton, 'click', () => {
@@ -168,24 +168,24 @@ export class InquiryView extends ItemView {
         });
 
         this.scopeSagaButton = scopeToggle.createEl('button', {
-            cls: 'rt-inquiry-icon-btn',
+            cls: 'ert-inquiry-icon-btn',
             attr: { type: 'button', 'aria-label': 'Saga scope' }
         });
-        const scopeSagaIcon = this.scopeSagaButton.createSpan({ cls: 'rt-inquiry-toggle-icon' });
+        const scopeSagaIcon = this.scopeSagaButton.createSpan({ cls: 'ert-inquiry-toggle-icon' });
         this.setSigmaIcon(scopeSagaIcon);
         setTooltip(this.scopeSagaButton, 'Saga scope');
         this.registerDomEvent(this.scopeSagaButton, 'click', () => {
             this.handleScopeChange('saga');
         });
 
-        const modeField = headerLeft.createDiv({ cls: 'rt-inquiry-control' });
-        modeField.createDiv({ cls: 'rt-inquiry-control-label', text: 'Mode' });
-        const modeToggle = modeField.createDiv({ cls: 'rt-inquiry-toggle' });
+        const modeField = headerLeft.createDiv({ cls: 'ert-inquiry-control' });
+        modeField.createDiv({ cls: 'ert-inquiry-control-label', text: 'Mode' });
+        const modeToggle = modeField.createDiv({ cls: 'ert-inquiry-toggle' });
         this.modeFlowButton = modeToggle.createEl('button', {
-            cls: 'rt-inquiry-icon-btn',
+            cls: 'ert-inquiry-icon-btn',
             attr: { type: 'button', 'aria-label': 'Flow mode' }
         });
-        const modeFlowIcon = this.modeFlowButton.createSpan({ cls: 'rt-inquiry-toggle-icon' });
+        const modeFlowIcon = this.modeFlowButton.createSpan({ cls: 'ert-inquiry-toggle-icon' });
         setIcon(modeFlowIcon, 'waves');
         setTooltip(this.modeFlowButton, 'Flow');
         this.registerDomEvent(this.modeFlowButton, 'click', () => {
@@ -193,10 +193,10 @@ export class InquiryView extends ItemView {
         });
 
         this.modeDepthButton = modeToggle.createEl('button', {
-            cls: 'rt-inquiry-icon-btn',
+            cls: 'ert-inquiry-icon-btn',
             attr: { type: 'button', 'aria-label': 'Depth mode' }
         });
-        const modeDepthIcon = this.modeDepthButton.createSpan({ cls: 'rt-inquiry-toggle-icon' });
+        const modeDepthIcon = this.modeDepthButton.createSpan({ cls: 'ert-inquiry-toggle-icon' });
         setIcon(modeDepthIcon, 'waves-arrow-down');
         setTooltip(this.modeDepthButton, 'Depth');
         this.registerDomEvent(this.modeDepthButton, 'click', () => {
@@ -204,30 +204,30 @@ export class InquiryView extends ItemView {
         });
 
         const artifactBtn = headerRight.createEl('button', {
-            cls: 'rt-inquiry-icon-btn',
+            cls: 'ert-inquiry-icon-btn',
             attr: { type: 'button', 'aria-label': 'Save artifact' }
         });
         setIcon(artifactBtn, 'aperture');
         setTooltip(artifactBtn, 'Save artifact');
         this.registerDomEvent(artifactBtn, 'click', () => { void this.saveArtifact(); });
 
-        const body = this.rootEl.createDiv({ cls: 'rt-inquiry-body' });
-        const main = body.createDiv({ cls: 'rt-inquiry-main' });
-        const findings = body.createDiv({ cls: 'rt-inquiry-findings' });
+        const body = this.rootEl.createDiv({ cls: 'ert-inquiry-body' });
+        const main = body.createDiv({ cls: 'ert-inquiry-main' });
+        const findings = body.createDiv({ cls: 'ert-inquiry-findings' });
 
-        const minimap = main.createDiv({ cls: 'rt-inquiry-minimap' });
-        const badge = minimap.createDiv({ cls: 'rt-inquiry-context-badge' });
-        this.contextBadgeIcon = badge.createSpan({ cls: 'rt-inquiry-context-badge-icon' });
-        this.contextBadgeLabel = badge.createSpan({ cls: 'rt-inquiry-context-badge-label' });
-        this.minimapTicksEl = minimap.createDiv({ cls: 'rt-inquiry-minimap-ticks' });
+        const minimap = main.createDiv({ cls: 'ert-inquiry-minimap' });
+        const badge = minimap.createDiv({ cls: 'ert-inquiry-context-badge' });
+        this.contextBadgeIcon = badge.createSpan({ cls: 'ert-inquiry-context-badge-icon' });
+        this.contextBadgeLabel = badge.createSpan({ cls: 'ert-inquiry-context-badge-label' });
+        this.minimapTicksEl = minimap.createDiv({ cls: 'ert-inquiry-minimap-ticks' });
 
-        const zones = main.createDiv({ cls: 'rt-inquiry-zones' });
+        const zones = main.createDiv({ cls: 'ert-inquiry-zones' });
         this.renderZone(zones, 'setup', 'Setup');
         this.renderZone(zones, 'pressure', 'Pressure');
         this.renderZone(zones, 'payoff', 'Payoff');
 
-        const focusArea = main.createDiv({ cls: 'rt-inquiry-focus-area' });
-        const glyphHost = focusArea.createDiv({ cls: 'rt-inquiry-glyph-host' });
+        const focusArea = main.createDiv({ cls: 'ert-inquiry-focus-area' });
+        const glyphHost = focusArea.createDiv({ cls: 'ert-inquiry-glyph-host' });
         this.glyph = new InquiryGlyph(glyphHost, {
             focusLabel: this.getFocusLabel(),
             flowValue: 0,
@@ -235,6 +235,7 @@ export class InquiryView extends ItemView {
             severity: 'low',
             confidence: 'low'
         });
+        this.logInquirySvgDebug();
 
         this.flowRingHit = this.glyph.flowRingHit;
         this.depthRingHit = this.glyph.depthRingHit;
@@ -257,62 +258,62 @@ export class InquiryView extends ItemView {
         });
         this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'pointerleave', () => this.clearHoverText());
 
-        this.hoverTextEl = main.createDiv({ cls: 'rt-inquiry-hover', text: 'Hover to preview context.' });
+        this.hoverTextEl = main.createDiv({ cls: 'ert-inquiry-hover', text: 'Hover to preview context.' });
 
-        const findingsHeader = findings.createDiv({ cls: 'rt-inquiry-findings-header' });
-        findingsHeader.createDiv({ cls: 'rt-inquiry-findings-title', text: 'Findings' });
+        const findingsHeader = findings.createDiv({ cls: 'ert-inquiry-findings-header' });
+        findingsHeader.createDiv({ cls: 'ert-inquiry-findings-title', text: 'Findings' });
         this.detailsToggle = findingsHeader.createEl('button', {
-            cls: 'rt-inquiry-details-toggle',
+            cls: 'ert-inquiry-details-toggle',
             attr: { type: 'button', 'aria-label': 'Toggle details' }
         });
-        const detailsIcon = this.detailsToggle.createSpan({ cls: 'rt-inquiry-details-icon' });
+        const detailsIcon = this.detailsToggle.createSpan({ cls: 'ert-inquiry-details-icon' });
         setIcon(detailsIcon, 'chevron-down');
         this.registerDomEvent(this.detailsToggle, 'click', () => this.toggleDetails());
 
-        this.detailsEl = findings.createDiv({ cls: 'rt-inquiry-details rt-hidden' });
-        this.detailsEl.createDiv({ cls: 'rt-inquiry-detail-row', text: 'Corpus fingerprint: not available' });
-        this.detailsEl.createDiv({ cls: 'rt-inquiry-detail-row', text: 'Cache status: not available' });
+        this.detailsEl = findings.createDiv({ cls: 'ert-inquiry-details ert-hidden' });
+        this.detailsEl.createDiv({ cls: 'ert-inquiry-detail-row', text: 'Corpus fingerprint: not available' });
+        this.detailsEl.createDiv({ cls: 'ert-inquiry-detail-row', text: 'Cache status: not available' });
 
-        this.summaryEl = findings.createDiv({ cls: 'rt-inquiry-summary', text: 'No inquiry run yet.' });
-        this.verdictEl = findings.createDiv({ cls: 'rt-inquiry-verdict', text: 'Run an inquiry to see verdicts.' });
-        this.findingsListEl = findings.createDiv({ cls: 'rt-inquiry-findings-list' });
+        this.summaryEl = findings.createDiv({ cls: 'ert-inquiry-summary', text: 'No inquiry run yet.' });
+        this.verdictEl = findings.createDiv({ cls: 'ert-inquiry-verdict', text: 'Run an inquiry to see verdicts.' });
+        this.findingsListEl = findings.createDiv({ cls: 'ert-inquiry-findings-list' });
 
-        this.artifactPreviewEl = findings.createDiv({ cls: 'rt-inquiry-report-preview rt-hidden' });
+        this.artifactPreviewEl = findings.createDiv({ cls: 'ert-inquiry-report-preview ert-hidden' });
 
-        const footer = this.rootEl.createDiv({ cls: 'rt-inquiry-footer' });
-        const nav = footer.createDiv({ cls: 'rt-inquiry-nav' });
+        const footer = this.rootEl.createDiv({ cls: 'ert-inquiry-footer' });
+        const nav = footer.createDiv({ cls: 'ert-inquiry-nav' });
         this.navPrevButton = nav.createEl('button', {
-            cls: 'rt-inquiry-nav-btn rt-inquiry-icon-btn',
+            cls: 'ert-inquiry-nav-btn ert-inquiry-icon-btn',
             attr: { type: 'button', 'aria-label': 'Previous focus' }
         });
         this.navNextButton = nav.createEl('button', {
-            cls: 'rt-inquiry-nav-btn rt-inquiry-icon-btn',
+            cls: 'ert-inquiry-nav-btn ert-inquiry-icon-btn',
             attr: { type: 'button', 'aria-label': 'Next focus' }
         });
         this.registerDomEvent(this.navPrevButton, 'click', () => this.shiftFocus(-1));
         this.registerDomEvent(this.navNextButton, 'click', () => this.shiftFocus(1));
 
-        const status = footer.createDiv({ cls: 'rt-inquiry-status' });
-        this.cacheStatusEl = status.createDiv({ cls: 'rt-inquiry-status-item', text: 'Cache: none' });
-        this.confidenceEl = status.createDiv({ cls: 'rt-inquiry-status-item', text: 'Confidence: none' });
+        const status = footer.createDiv({ cls: 'ert-inquiry-status' });
+        this.cacheStatusEl = status.createDiv({ cls: 'ert-inquiry-status-item', text: 'Cache: none' });
+        this.confidenceEl = status.createDiv({ cls: 'ert-inquiry-status-item', text: 'Confidence: none' });
     }
 
     private renderZone(container: HTMLElement, zone: InquiryZone, label: string): void {
-        const zoneEl = container.createDiv({ cls: `rt-inquiry-zone rt-inquiry-zone--${zone}` });
-        zoneEl.createDiv({ cls: 'rt-inquiry-zone-label', text: label });
-        const tray = zoneEl.createDiv({ cls: 'rt-inquiry-zone-tray' });
+        const zoneEl = container.createDiv({ cls: `ert-inquiry-zone ert-inquiry-zone--${zone}` });
+        zoneEl.createDiv({ cls: 'ert-inquiry-zone-label', text: label });
+        const tray = zoneEl.createDiv({ cls: 'ert-inquiry-zone-tray' });
         for (let i = 0; i < 3; i += 1) {
-            tray.createSpan({ cls: 'rt-inquiry-zone-tray-dot' });
+            tray.createSpan({ cls: 'ert-inquiry-zone-tray-dot' });
         }
-        const icons = zoneEl.createDiv({ cls: 'rt-inquiry-zone-icons' });
+        const icons = zoneEl.createDiv({ cls: 'ert-inquiry-zone-icons' });
 
         const questions = BUILT_IN_QUESTIONS.filter(q => q.zone === zone);
         questions.forEach(question => {
             const btn = icons.createEl('button', {
-                cls: 'rt-inquiry-zone-icon rt-inquiry-icon-btn',
+                cls: 'ert-inquiry-zone-icon ert-inquiry-icon-btn',
                 attr: { type: 'button', 'aria-label': question.label }
             });
-            const iconEl = btn.createSpan({ cls: 'rt-inquiry-zone-icon-svg' });
+            const iconEl = btn.createSpan({ cls: 'ert-inquiry-zone-icon-svg' });
             setIcon(iconEl, question.icon);
             setTooltip(btn, question.label);
             this.registerDomEvent(btn, 'click', () => this.handleQuestionClick(question));
@@ -366,13 +367,26 @@ export class InquiryView extends ItemView {
         this.contextBadgeLabel.textContent = isSaga ? 'Saga context' : 'Book context';
     }
 
+    private logInquirySvgDebug(): void {
+        const svg = this.glyph?.svg;
+        const viewBox = svg?.getAttribute('viewBox');
+        const frame = svg?.querySelector('.ert-inquiry-glyph-frame');
+        const rings = svg?.querySelectorAll('.ert-inquiry-ring-progress')?.length || 0;
+        console.info('[Inquiry] SVG debug', {
+            hasSvg: !!svg,
+            viewBox,
+            hasFrame: !!frame,
+            ringCount: rings
+        });
+    }
+
     private setSigmaIcon(target: HTMLElement): void {
         target.empty?.();
         setIcon(target, 'sigma');
         if (target.querySelector('svg')) return;
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('viewBox', '0 0 24 24');
-        svg.classList.add('rt-inquiry-sigma-fallback');
+        svg.classList.add('ert-inquiry-sigma-fallback');
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         text.setAttribute('x', '12');
         text.setAttribute('y', '12');
@@ -391,7 +405,7 @@ export class InquiryView extends ItemView {
         const count = this.state.scope === 'saga' ? DEFAULT_BOOK_COUNT : DEFAULT_SCENE_COUNT;
         for (let i = 1; i <= count; i += 1) {
             const tick = this.minimapTicksEl.createEl('button', {
-                cls: 'rt-inquiry-minimap-tick',
+                cls: 'ert-inquiry-minimap-tick',
                 attr: { type: 'button', 'data-index': String(i) }
             });
             const label = this.state.scope === 'saga' ? `B${i}` : `S${i}`;
@@ -447,7 +461,7 @@ export class InquiryView extends ItemView {
             this.summaryEl.textContent = 'No inquiry run yet.';
             this.verdictEl.textContent = 'Run an inquiry to see verdicts.';
             this.findingsListEl.empty();
-            this.detailsEl.querySelectorAll('.rt-inquiry-detail-row').forEach(el => el.textContent = 'Details not available');
+            this.detailsEl.querySelectorAll('.ert-inquiry-detail-row').forEach(el => el.textContent = 'Details not available');
             this.updateArtifactPreview();
             return;
         }
@@ -457,18 +471,18 @@ export class InquiryView extends ItemView {
 
         this.findingsListEl.empty();
         result.findings.forEach(finding => {
-            const item = this.findingsListEl!.createDiv({ cls: 'rt-inquiry-finding' });
+            const item = this.findingsListEl!.createDiv({ cls: 'ert-inquiry-finding' });
             item.classList.add(`is-severity-${finding.severity}`);
-            item.createDiv({ cls: 'rt-inquiry-finding-head', text: finding.headline });
-            const meta = item.createDiv({ cls: 'rt-inquiry-finding-meta' });
+            item.createDiv({ cls: 'ert-inquiry-finding-head', text: finding.headline });
+            const meta = item.createDiv({ cls: 'ert-inquiry-finding-meta' });
             meta.createSpan({ text: `Kind: ${finding.kind}` });
             meta.createSpan({ text: `Evidence: ${finding.evidenceType}` });
             meta.createSpan({ text: `Confidence: ${finding.confidence}` });
-            const bullets = item.createDiv({ cls: 'rt-inquiry-finding-bullets' });
+            const bullets = item.createDiv({ cls: 'ert-inquiry-finding-bullets' });
             finding.bullets.forEach(bullet => bullets.createDiv({ text: bullet }));
         });
 
-        const detailRows = this.detailsEl.querySelectorAll('.rt-inquiry-detail-row');
+        const detailRows = this.detailsEl.querySelectorAll('.ert-inquiry-detail-row');
         if (detailRows.length >= 2) {
             detailRows[0].textContent = `Corpus fingerprint: ${result.corpusFingerprint || 'not available'}`;
             const cacheEnabled = this.plugin.settings.inquiryCacheEnabled ?? true;
@@ -482,7 +496,7 @@ export class InquiryView extends ItemView {
     private updateArtifactPreview(): void {
         if (!this.artifactPreviewEl) return;
         const isOpen = !!this.state.reportPreviewOpen;
-        this.artifactPreviewEl.classList.toggle('rt-hidden', !isOpen);
+        this.artifactPreviewEl.classList.toggle('ert-hidden', !isOpen);
         if (!isOpen) {
             this.artifactPreviewEl.empty();
             return;
@@ -493,8 +507,8 @@ export class InquiryView extends ItemView {
             return;
         }
         this.artifactPreviewEl.empty();
-        this.artifactPreviewEl.createDiv({ cls: 'rt-inquiry-report-preview-title', text: 'Report preview (unsaved)' });
-        const pre = this.artifactPreviewEl.createEl('pre', { cls: 'rt-inquiry-report-preview-body' });
+        this.artifactPreviewEl.createDiv({ cls: 'ert-inquiry-report-preview-title', text: 'Report preview (unsaved)' });
+        const pre = this.artifactPreviewEl.createEl('pre', { cls: 'ert-inquiry-report-preview-body' });
         pre.textContent = this.buildArtifactContent(result, this.plugin.settings.inquiryEmbedJson ?? true);
     }
 
@@ -816,9 +830,9 @@ export class InquiryView extends ItemView {
 
     private toggleDetails(): void {
         if (!this.detailsEl || !this.detailsToggle) return;
-        const isOpen = !this.detailsEl.classList.contains('rt-hidden');
-        this.detailsEl.classList.toggle('rt-hidden', isOpen);
-        const icon = this.detailsToggle.querySelector('.rt-inquiry-details-icon');
+        const isOpen = !this.detailsEl.classList.contains('ert-hidden');
+        this.detailsEl.classList.toggle('ert-hidden', isOpen);
+        const icon = this.detailsToggle.querySelector('.ert-inquiry-details-icon');
         if (icon instanceof HTMLElement) {
             icon.empty?.();
             setIcon(icon, isOpen ? 'chevron-down' : 'chevron-up');

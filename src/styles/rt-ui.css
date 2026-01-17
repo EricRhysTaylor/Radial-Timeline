@@ -591,6 +591,43 @@
   gap: var(--ert-row-gap);
 }
 
+.ert-ui.ert-skin--social .ert-panel__header,
+.ert-ui .ert-skin--social .ert-panel__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--ert-gap-sm);
+  align-items: stretch;
+}
+
+.ert-ui.ert-skin--social .ert-panel__header .ert-control,
+.ert-ui .ert-skin--social .ert-panel__header .ert-control {
+  min-width: 0;
+}
+
+.ert-ui.ert-skin--social .ert-panel__header .ert-section-title,
+.ert-ui .ert-skin--social .ert-panel__header .ert-section-desc {
+  margin: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.ert-ui.ert-skin--social .ert-panel__header .ert-section__actions,
+.ert-ui .ert-skin--social .ert-panel__header .ert-section__actions {
+  justify-self: end;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+  padding-left: var(--ert-gap-sm);
+  border-left: 1px solid color-mix(in srgb, var(--ert-social-accent) 18%, var(--background-modifier-border));
+}
+
+.ert-ui.ert-skin--social .ert-panel__header .ert-pillBtn .ert-pillBtn__icon svg,
+.ert-ui .ert-skin--social .ert-panel__header .ert-pillBtn .ert-pillBtn__icon svg {
+  color: currentColor;
+  opacity: 1;
+}
+
 .ert-ui.ert-skin--social .ert-panel.ert-stack > .ert-section-title,
 .ert-ui .ert-skin--social .ert-panel.ert-stack > .ert-section-title {
   margin-bottom: 0;

@@ -41,33 +41,33 @@ export class InquiryGlyph {
 
     constructor(container: HTMLElement, props: InquiryGlyphProps) {
         this.props = props;
-        this.root = container.createDiv({ cls: 'rt-inquiry-glyph-stack' });
+        this.root = container.createDiv({ cls: 'ert-inquiry-glyph-stack' });
 
         this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         this.svg.setAttribute('viewBox', GLYPH_VIEWBOX);
         this.svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-        this.svg.classList.add('rt-inquiry-glyph-svg');
+        this.svg.classList.add('ert-inquiry-glyph-svg');
         this.svg.appendChild(this.buildDefs());
         this.svg.appendChild(this.buildFrame());
 
         this.flowGroup = this.buildRingGroup('flow', FLOW_RADIUS, FLOW_STROKE, FLOW_HIT_STROKE, FLOW_BADGE_RADIUS);
         this.depthGroup = this.buildRingGroup('depth', DEPTH_RADIUS, DEPTH_STROKE, DEPTH_HIT_STROKE, DEPTH_BADGE_RADIUS);
 
-        this.flowProgress = this.flowGroup.querySelector('.rt-inquiry-ring-progress') as SVGCircleElement;
-        this.depthProgress = this.depthGroup.querySelector('.rt-inquiry-ring-progress') as SVGCircleElement;
-        this.flowGlow = this.flowGroup.querySelector('.rt-inquiry-ring-glow') as SVGCircleElement;
-        this.depthGlow = this.depthGroup.querySelector('.rt-inquiry-ring-glow') as SVGCircleElement;
-        this.flowRingHit = this.flowGroup.querySelector('.rt-inquiry-ring-hit') as SVGCircleElement;
-        this.depthRingHit = this.depthGroup.querySelector('.rt-inquiry-ring-hit') as SVGCircleElement;
-        this.flowBadgeCircle = this.flowGroup.querySelector('.rt-inquiry-ring-badge-circle') as SVGCircleElement;
-        this.flowBadgeText = this.flowGroup.querySelector('.rt-inquiry-ring-badge-text') as SVGTextElement;
-        this.depthBadgeCircle = this.depthGroup.querySelector('.rt-inquiry-ring-badge-circle') as SVGCircleElement;
-        this.depthBadgeText = this.depthGroup.querySelector('.rt-inquiry-ring-badge-text') as SVGTextElement;
+        this.flowProgress = this.flowGroup.querySelector('.ert-inquiry-ring-progress') as SVGCircleElement;
+        this.depthProgress = this.depthGroup.querySelector('.ert-inquiry-ring-progress') as SVGCircleElement;
+        this.flowGlow = this.flowGroup.querySelector('.ert-inquiry-ring-glow') as SVGCircleElement;
+        this.depthGlow = this.depthGroup.querySelector('.ert-inquiry-ring-glow') as SVGCircleElement;
+        this.flowRingHit = this.flowGroup.querySelector('.ert-inquiry-ring-hit') as SVGCircleElement;
+        this.depthRingHit = this.depthGroup.querySelector('.ert-inquiry-ring-hit') as SVGCircleElement;
+        this.flowBadgeCircle = this.flowGroup.querySelector('.ert-inquiry-ring-badge-circle') as SVGCircleElement;
+        this.flowBadgeText = this.flowGroup.querySelector('.ert-inquiry-ring-badge-text') as SVGTextElement;
+        this.depthBadgeCircle = this.depthGroup.querySelector('.ert-inquiry-ring-badge-circle') as SVGCircleElement;
+        this.depthBadgeText = this.depthGroup.querySelector('.ert-inquiry-ring-badge-text') as SVGTextElement;
 
         const labelGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        labelGroup.classList.add('rt-inquiry-glyph-label-group');
+        labelGroup.classList.add('ert-inquiry-glyph-label-group');
         this.labelHit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        this.labelHit.classList.add('rt-inquiry-glyph-hit');
+        this.labelHit.classList.add('ert-inquiry-glyph-hit');
         this.labelHit.setAttribute('x', '-180');
         this.labelHit.setAttribute('y', '-110');
         this.labelHit.setAttribute('width', '360');
@@ -76,7 +76,7 @@ export class InquiryGlyph {
         this.labelHit.setAttribute('ry', '60');
 
         this.labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        this.labelText.classList.add('rt-inquiry-glyph-label');
+        this.labelText.classList.add('ert-inquiry-glyph-label');
         this.labelText.setAttribute('x', '0');
         this.labelText.setAttribute('y', '0');
         this.labelText.setAttribute('text-anchor', 'middle');
@@ -135,12 +135,12 @@ export class InquiryGlyph {
         badgeRadius: number
     ): SVGGElement {
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        group.classList.add('rt-inquiry-ring', `rt-inquiry-ring--${kind}`);
+        group.classList.add('ert-inquiry-ring', `ert-inquiry-ring--${kind}`);
 
-        const glow = this.buildCircle(radius, strokeWidth, 'rt-inquiry-ring-glow');
-        const track = this.buildCircle(radius, strokeWidth, 'rt-inquiry-ring-track');
-        const progress = this.buildCircle(radius, strokeWidth, 'rt-inquiry-ring-progress');
-        const hit = this.buildCircle(radius, hitStrokeWidth, 'rt-inquiry-ring-hit');
+        const glow = this.buildCircle(radius, strokeWidth, 'ert-inquiry-ring-glow');
+        const track = this.buildCircle(radius, strokeWidth, 'ert-inquiry-ring-track');
+        const progress = this.buildCircle(radius, strokeWidth, 'ert-inquiry-ring-progress');
+        const hit = this.buildCircle(radius, hitStrokeWidth, 'ert-inquiry-ring-hit');
         const badgeGroup = this.buildBadgeGroup(badgeRadius);
 
         const circumference = 2 * Math.PI * radius;
@@ -161,14 +161,14 @@ export class InquiryGlyph {
 
     private buildBadgeGroup(badgeRadius: number): SVGGElement {
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        group.classList.add('rt-inquiry-ring-badge');
+        group.classList.add('ert-inquiry-ring-badge');
 
         const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        circle.classList.add('rt-inquiry-ring-badge-circle');
+        circle.classList.add('ert-inquiry-ring-badge-circle');
         circle.setAttribute('r', String(badgeRadius));
 
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        text.classList.add('rt-inquiry-ring-badge-text');
+        text.classList.add('ert-inquiry-ring-badge-text');
         text.setAttribute('text-anchor', 'middle');
         text.setAttribute('dominant-baseline', 'middle');
 
@@ -181,7 +181,7 @@ export class InquiryGlyph {
     private buildDefs(): SVGDefsElement {
         const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
         const filter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
-        filter.setAttribute('id', 'rt-inquiry-ring-glow');
+        filter.setAttribute('id', 'ert-inquiry-ring-glow');
         filter.setAttribute('x', '-50%');
         filter.setAttribute('y', '-50%');
         filter.setAttribute('width', '200%');
@@ -197,7 +197,7 @@ export class InquiryGlyph {
 
     private buildFrame(): SVGRectElement {
         const frame = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        frame.classList.add('rt-inquiry-glyph-frame');
+        frame.classList.add('ert-inquiry-glyph-frame');
         frame.setAttribute('x', '-800');
         frame.setAttribute('y', '-800');
         frame.setAttribute('width', '1600');
@@ -247,7 +247,7 @@ export class InquiryGlyph {
     private updateGlow(glow: SVGCircleElement, normalized: number): void {
         const safeValue = Math.min(Math.max(normalized, 0), 1);
         const opacity = 0.15 + (safeValue * 0.45);
-        glow.style.setProperty('--rt-inquiry-glow-opacity', opacity.toFixed(3));
+        glow.style.setProperty('--ert-inquiry-glow-opacity', opacity.toFixed(3));
     }
 
     private updateBadge(

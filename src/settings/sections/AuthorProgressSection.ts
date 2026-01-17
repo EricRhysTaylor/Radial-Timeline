@@ -223,13 +223,121 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Set initial emphasis state after controls are created
     updateEmphasis(currentTransparent);
 
+    // Spokes & border controls (placed before Theme section)
+    const spokeColorSetting = new Setting(stylingCard)
+        .setName('Spokes and borders')
+        .setDesc('Choose stroke/border contrast. Controls all structural elements including scene borders and act division spokes.');
+    spokeColorSetting.settingEl.addClass('ert-elementBlock');
+    spokeColorSetting.controlEl.addClass('ert-elementBlock__right');
+    spokeColorSetting.settingEl.querySelector('.setting-item-info')?.classList.add('ert-elementBlock__left');
+    
+    let spokeColorPickerRef: ColorSwatchHandle | undefined;
+    let spokeColorInputRef: TextComponent | undefined;
+    
+    // Match Book Title Color layout exactly - always show color picker and text input
+    const isCustomMode = currentSpokeMode === 'custom';
+    const fallbackColor = '#ffffff';
+    const spokeControlRow = spokeColorSetting.controlEl.createDiv({ cls: 'ert-elementBlock__row ert-typography-controls' });
+    const spokeColorPicker = colorSwatch(spokeControlRow, {
+        value: isCustomMode ? currentSpokeColor : fallbackColor,
+        ariaLabel: 'Spoke color',
+        onChange: async (val) => {
+            if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
+                if (!plugin.settings.authorProgress) return;
+                plugin.settings.authorProgress.aprSpokeColor = val || fallbackColor;
+                await plugin.saveSettings();
+                refreshPreview();
+                spokeColorInputRef?.setValue(val);
+            }
+        }
+    });
+    spokeColorPickerRef = spokeColorPicker;
+    spokeColorPicker.setDisabled(!isCustomMode);
+    
+    const spokeColorInput = new TextComponent(spokeControlRow);
+    spokeColorInputRef = spokeColorInput;
+    spokeColorInput.inputEl.classList.add('rt-hex-input');
+    spokeColorInput.setPlaceholder(fallbackColor).setValue(isCustomMode ? currentSpokeColor : fallbackColor);
+    spokeColorInput.setDisabled(!isCustomMode);
+    spokeColorInput.onChange(async (val) => {
+        if (!val) return;
+        if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprSpokeColor = val;
+            await plugin.saveSettings();
+            refreshPreview();
+            spokeColorPickerRef?.setValue(val);
+        }
+    });
+    
+    // Dropdown for mode (added after color controls, appears to the right)
+    const spokeModeDropdown = new DropdownComponent(spokeControlRow);
+    spokeModeDropdown.addOption('dark', 'Light Strokes');
+    spokeModeDropdown.addOption('light', 'Dark Strokes');
+    spokeModeDropdown.addOption('none', 'No Strokes');
+    spokeModeDropdown.addOption('custom', 'Custom Color');
+    spokeModeDropdown.selectEl.classList.add('rt-setting-dropdown');
+    // Use spoke mode if set, otherwise fall back to theme
+    const currentValue = currentSpokeMode !== 'dark' ? currentSpokeMode : (currentTheme !== 'dark' ? currentTheme : 'dark');
+    spokeModeDropdown.setValue(currentValue);
+    spokeModeDropdown.onChange(async (val) => {
+        if (!plugin.settings.authorProgress) return;
+        const mode = (val as 'dark' | 'light' | 'none' | 'custom') || 'dark';
+        // Update both theme and spoke mode to keep them in sync
+        plugin.settings.authorProgress.aprTheme = mode === 'custom' ? 'dark' : (mode as 'dark' | 'light' | 'none');
+        plugin.settings.authorProgress.aprSpokeColorMode = mode;
+        await plugin.saveSettings();
+        
+        // Enable/disable color controls based on mode (always visible, just disabled)
+        const isCustom = mode === 'custom';
+        spokeColorPickerRef?.setDisabled(!isCustom);
+        spokeColorInputRef?.setDisabled(!isCustom);
+        if (isCustom && spokeColorInputRef) {
+            const current = plugin.settings.authorProgress.aprSpokeColor || fallbackColor;
+            spokeColorInputRef.setValue(current);
+            spokeColorPickerRef?.setValue(current);
+        } else if (spokeColorInputRef) {
+            spokeColorInputRef.setValue(fallbackColor);
+            spokeColorPickerRef?.setValue(fallbackColor);
+        }
+        
+        refreshPreview();
+    });
+
+    // Link URL
+    const linkUrlSetting = new Setting(stylingCard)
+        .setName('Link URL')
+        .setDesc('Where the graphic should link to (e.g. your website, Kickstarter, or shop).');
+    
+    linkUrlSetting.settingEl.addClass('ert-row');
+    
+    linkUrlSetting.addText(text => {
+        text.inputEl.addClass('rt-input-full');
+        text.setPlaceholder('https://your-site.com')
+            .setValue(settings?.authorUrl || '')
+            .onChange(async (val) => {
+                if (plugin.settings.authorProgress) {
+                    plugin.settings.authorProgress.authorUrl = val;
+                    await plugin.saveSettings();
+                    refreshPreview();
+                }
+            });
+    });
+
     // ─────────────────────────────────────────────────────────────────────────
     // UNIFIED TYPOGRAPHY & COLOR CONTROLS
     // Each element: Row 1 = Label + Text Input (if applicable) + Color + Hex
     //               Row 2 = Font + Weight
     // ─────────────────────────────────────────────────────────────────────────
     const themeContainer = stylingCard.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
-    themeContainer.createEl('h4', { text: 'Theme', cls: ERT_CLASSES.SECTION_TITLE });
+    const themeHeader = themeContainer.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
+    const themeHeaderLeft = themeHeader.createDiv({ cls: ERT_CLASSES.CONTROL });
+    themeHeaderLeft.createEl('h4', { text: 'Theme', cls: ERT_CLASSES.SECTION_TITLE });
+    themeHeaderLeft.createDiv({
+        text: 'Theme palette applies curated colors across Title, Author, % Symbol, % Number, and RT Badge based on the Title color. Manual edits override per row.',
+        cls: ERT_CLASSES.SECTION_DESC
+    });
+    const themeHeaderActions = themeHeader.createDiv({ cls: ERT_CLASSES.SECTION_ACTIONS });
     const typographyStack = themeContainer.createDiv({ cls: 'ert-typography-stack' });
     
     // Palette tracking & color picker refs
@@ -242,6 +350,32 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     let percentNumberTextRef: TextComponent | undefined;
     let percentSymbolColorPickerRef: ColorSwatchHandle | undefined;
     let percentSymbolTextRef: TextComponent | undefined;
+
+    const themeButton = themeHeaderActions.createEl('button', { cls: 'ert-pillBtn ert-pillBtn--social' });
+    themeButton.type = 'button';
+    const themeIcon = themeButton.createSpan({ cls: 'ert-pillBtn__icon' });
+    setIcon(themeIcon, 'swatch-book');
+    themeButton.createSpan({ cls: 'ert-pillBtn__label', text: 'Choose Palette' });
+    themeButton.addEventListener('click', () => {
+        const modal = new AprPaletteModal(
+            app,
+            plugin,
+            plugin.settings.authorProgress || DEFAULT_SETTINGS.authorProgress || {} as any,
+            (palette) => {
+                bookTitleColorPickerRef?.setValue(palette.bookTitle);
+                bookTitleTextRef?.setValue(palette.bookTitle);
+                authorColorPickerRef?.setValue(palette.authorName);
+                authorTextRef?.setValue(palette.authorName);
+                percentNumberColorPickerRef?.setValue(palette.percentNumber);
+                percentNumberTextRef?.setValue(palette.percentNumber);
+                percentSymbolColorPickerRef?.setValue(palette.percentSymbol);
+                percentSymbolTextRef?.setValue(palette.percentSymbol);
+                lastAppliedPalette = palette;
+                refreshPreview();
+            }
+        );
+        modal.open();
+    });
     
     const bookTitleColorFallback = plugin.settings.publishStageColors?.Press || '#6FB971';
     
@@ -677,31 +811,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 bookTitleTextRef = text;
             }
         },
-        primaryAction: (rowEl) => {
-            const themeButton = rowEl.createEl('button', { cls: 'ert-pillBtn ert-pillBtn--social' });
-            themeButton.type = 'button';
-            themeButton.createSpan({ cls: 'ert-pillBtn__label', text: 'Theme' });
-            themeButton.addEventListener('click', () => {
-                const modal = new AprPaletteModal(
-                    app,
-                    plugin,
-                    plugin.settings.authorProgress || DEFAULT_SETTINGS.authorProgress || {} as any,
-                    (palette) => {
-                        bookTitleColorPickerRef?.setValue(palette.bookTitle);
-                        bookTitleTextRef?.setValue(palette.bookTitle);
-                        authorColorPickerRef?.setValue(palette.authorName);
-                        authorTextRef?.setValue(palette.authorName);
-                        percentNumberColorPickerRef?.setValue(palette.percentNumber);
-                        percentNumberTextRef?.setValue(palette.percentNumber);
-                        percentSymbolColorPickerRef?.setValue(palette.percentSymbol);
-                        percentSymbolTextRef?.setValue(palette.percentSymbol);
-                        lastAppliedPalette = palette;
-                        refreshPreview();
-                    }
-                );
-                modal.open();
-            });
-        },
         typography: {
             familyKey: 'aprBookTitleFontFamily',
             weightKey: 'aprBookTitleFontWeight',
@@ -840,107 +949,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             showSizeControls: false,
             weightDefault: 700
         }
-    });
-
-    // Theme/Spokes Color setting (unified - controls both theme and spokes)
-    const spokeColorSetting = new Setting(stylingCard)
-        .setName('Theme Contrast & Spokes')
-        .setDesc('Choose stroke/border contrast. Controls all structural elements including scene borders and act division spokes.');
-    spokeColorSetting.settingEl.addClass('ert-elementBlock');
-    spokeColorSetting.controlEl.addClass('ert-elementBlock__right');
-    spokeColorSetting.settingEl.querySelector('.setting-item-info')?.classList.add('ert-elementBlock__left');
-    
-    let spokeColorPickerRef: ColorSwatchHandle | undefined;
-    let spokeColorInputRef: TextComponent | undefined;
-    
-    // Match Book Title Color layout exactly - always show color picker and text input
-    const isCustomMode = currentSpokeMode === 'custom';
-    const fallbackColor = '#ffffff';
-    const spokeControlRow = spokeColorSetting.controlEl.createDiv({ cls: 'ert-elementBlock__row ert-typography-controls' });
-    const spokeColorPicker = colorSwatch(spokeControlRow, {
-        value: isCustomMode ? currentSpokeColor : fallbackColor,
-        ariaLabel: 'Spoke color',
-        onChange: async (val) => {
-            if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
-                if (!plugin.settings.authorProgress) return;
-                plugin.settings.authorProgress.aprSpokeColor = val || fallbackColor;
-                await plugin.saveSettings();
-                refreshPreview();
-                spokeColorInputRef?.setValue(val);
-            }
-        }
-    });
-    spokeColorPickerRef = spokeColorPicker;
-    spokeColorPicker.setDisabled(!isCustomMode);
-    
-    const spokeColorInput = new TextComponent(spokeControlRow);
-    spokeColorInputRef = spokeColorInput;
-    spokeColorInput.inputEl.classList.add('rt-hex-input');
-    spokeColorInput.setPlaceholder(fallbackColor).setValue(isCustomMode ? currentSpokeColor : fallbackColor);
-    spokeColorInput.setDisabled(!isCustomMode);
-    spokeColorInput.onChange(async (val) => {
-        if (!val) return;
-        if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprSpokeColor = val;
-            await plugin.saveSettings();
-            refreshPreview();
-            spokeColorPickerRef?.setValue(val);
-        }
-    });
-    
-    // Dropdown for mode (added after color controls, appears to the right)
-    const spokeModeDropdown = new DropdownComponent(spokeControlRow);
-    spokeModeDropdown.addOption('dark', 'Light Strokes');
-    spokeModeDropdown.addOption('light', 'Dark Strokes');
-    spokeModeDropdown.addOption('none', 'No Strokes');
-    spokeModeDropdown.addOption('custom', 'Custom Color');
-    // Use spoke mode if set, otherwise fall back to theme
-    const currentValue = currentSpokeMode !== 'dark' ? currentSpokeMode : (currentTheme !== 'dark' ? currentTheme : 'dark');
-    spokeModeDropdown.setValue(currentValue);
-    spokeModeDropdown.onChange(async (val) => {
-        if (!plugin.settings.authorProgress) return;
-        const mode = (val as 'dark' | 'light' | 'none' | 'custom') || 'dark';
-        // Update both theme and spoke mode to keep them in sync
-        plugin.settings.authorProgress.aprTheme = mode === 'custom' ? 'dark' : (mode as 'dark' | 'light' | 'none');
-        plugin.settings.authorProgress.aprSpokeColorMode = mode;
-        await plugin.saveSettings();
-        
-        // Enable/disable color controls based on mode (always visible, just disabled)
-        const isCustom = mode === 'custom';
-        spokeColorPickerRef?.setDisabled(!isCustom);
-        spokeColorInputRef?.setDisabled(!isCustom);
-        if (isCustom && spokeColorInputRef) {
-            const current = plugin.settings.authorProgress.aprSpokeColor || fallbackColor;
-            spokeColorInputRef.setValue(current);
-            spokeColorPickerRef?.setValue(current);
-        } else if (spokeColorInputRef) {
-            spokeColorInputRef.setValue(fallbackColor);
-            spokeColorPickerRef?.setValue(fallbackColor);
-        }
-        
-        refreshPreview();
-    });
-
-
-    // Link URL (Title and Author are now in the typography section above)
-    const linkUrlSetting = new Setting(stylingCard)
-        .setName('Link URL')
-        .setDesc('Where the graphic should link to (e.g. your website, Kickstarter, or shop).');
-    
-    linkUrlSetting.settingEl.addClass('ert-row');
-    
-    linkUrlSetting.addText(text => {
-        text.inputEl.addClass('rt-input-full');
-        text.setPlaceholder('https://your-site.com')
-            .setValue(settings?.authorUrl || '')
-            .onChange(async (val) => {
-                if (plugin.settings.authorProgress) {
-                    plugin.settings.authorProgress.authorUrl = val;
-                    await plugin.saveSettings();
-                    refreshPreview();
-                }
-            });
     });
 
     // ─────────────────────────────────────────────────────────────────────────
