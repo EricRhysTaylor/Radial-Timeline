@@ -224,6 +224,18 @@ export interface InquirySourcesSettings {
     powerFolders?: string[];
 }
 
+export interface InquirySessionCacheRecord {
+    sessions: {
+        key: string;
+        baseKey: string;
+        result: unknown;
+        createdAt: number;
+        lastAccessed: number;
+        stale?: boolean;
+    }[];
+    max: number;
+}
+
 export interface RadialTimelineSettings {
     sourcePath: string;
     showSourcePathAsTitle?: boolean;
@@ -236,6 +248,7 @@ export interface RadialTimelineSettings {
     inquiryCacheEnabled?: boolean;
     inquiryCacheMaxSessions?: number;
     inquirySources?: InquirySourcesSettings;
+    inquirySessionCache?: InquirySessionCacheRecord;
     actCount?: number;
     actLabelsRaw?: string;
     showActLabels?: boolean;

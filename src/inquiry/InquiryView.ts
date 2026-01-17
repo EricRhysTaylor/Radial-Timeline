@@ -9,17 +9,20 @@ import {
     normalizePath
 } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { INQUIRY_VIEW_DISPLAY_TEXT, INQUIRY_VIEW_TYPE } from './constants';
+import { INQUIRY_SCHEMA_VERSION, INQUIRY_VIEW_DISPLAY_TEXT, INQUIRY_VIEW_TYPE } from './constants';
 import {
     createDefaultInquiryState,
     InquiryMode,
     InquiryScope,
     InquiryZone,
-    InquiryResult,
-    InquiryFinding
+    InquiryResult
 } from './state';
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
 import { openOrRevealFile } from '../utils/fileUtils';
+import { InquiryGlyph } from './components/InquiryGlyph';
+import { InquiryRunnerStub } from './runner/InquiryRunnerStub';
+import type { CorpusManifest, EvidenceParticipationRules } from './runner/types';
+import { InquirySessionStore } from './InquirySessionStore';
 
 const DEFAULT_BOOK_COUNT = 5;
 const DEFAULT_SCENE_COUNT = 12;
@@ -67,17 +70,18 @@ export class InquiryView extends ItemView {
     private state = createDefaultInquiryState();
 
     private rootEl?: HTMLElement;
-    private scopeSelect?: HTMLSelectElement;
-    private modeSelect?: HTMLSelectElement;
+    private scopeBookButton?: HTMLButtonElement;
+    private scopeSagaButton?: HTMLButtonElement;
+    private modeFlowButton?: HTMLButtonElement;
+    private modeDepthButton?: HTMLButtonElement;
     private contextBadgeIcon?: HTMLElement;
     private contextBadgeLabel?: HTMLElement;
     private minimapTicksEl?: HTMLElement;
     private minimapTicks: HTMLButtonElement[] = [];
-    private glyphButton?: HTMLButtonElement;
-    private flowRingButton?: HTMLButtonElement;
-    private depthRingButton?: HTMLButtonElement;
-    private flowRingProgress?: SVGCircleElement;
-    private depthRingProgress?: SVGCircleElement;
+    private glyph?: InquiryGlyph;
+    private glyphHit?: SVGRectElement;
+    private flowRingHit?: SVGCircleElement;
+    private depthRingHit?: SVGCircleElement;
     private summaryEl?: HTMLElement;
     private verdictEl?: HTMLElement;
     private findingsListEl?: HTMLElement;
@@ -90,10 +94,14 @@ export class InquiryView extends ItemView {
     private navPrevButton?: HTMLButtonElement;
     private navNextButton?: HTMLButtonElement;
     private lastFocusSceneByBookId = new Map<string, string>();
+    private runner: InquiryRunnerStub;
+    private sessionStore: InquirySessionStore;
 
     constructor(leaf: WorkspaceLeaf, plugin: RadialTimelinePlugin) {
         super(leaf);
         this.plugin = plugin;
+        this.runner = new InquiryRunnerStub();
+        this.sessionStore = new InquirySessionStore(plugin);
     }
 
     getViewType(): string {
@@ -147,27 +155,59 @@ export class InquiryView extends ItemView {
 
         const scopeField = headerLeft.createDiv({ cls: 'rt-inquiry-control' });
         scopeField.createDiv({ cls: 'rt-inquiry-control-label', text: 'Scope' });
-        this.scopeSelect = scopeField.createEl('select', { cls: 'rt-inquiry-select' });
-        this.scopeSelect.createEl('option', { value: 'book', text: 'Book' });
-        this.scopeSelect.createEl('option', { value: 'saga', text: 'Saga' });
-        this.registerDomEvent(this.scopeSelect, 'change', () => {
-            this.handleScopeChange(this.scopeSelect?.value as InquiryScope);
+        const scopeToggle = scopeField.createDiv({ cls: 'rt-inquiry-toggle' });
+        this.scopeBookButton = scopeToggle.createEl('button', {
+            cls: 'rt-inquiry-icon-btn',
+            attr: { type: 'button', 'aria-label': 'Book scope' }
+        });
+        const scopeBookIcon = this.scopeBookButton.createSpan({ cls: 'rt-inquiry-toggle-icon' });
+        setIcon(scopeBookIcon, 'columns-2');
+        setTooltip(this.scopeBookButton, 'Book scope');
+        this.registerDomEvent(this.scopeBookButton, 'click', () => {
+            this.handleScopeChange('book');
+        });
+
+        this.scopeSagaButton = scopeToggle.createEl('button', {
+            cls: 'rt-inquiry-icon-btn',
+            attr: { type: 'button', 'aria-label': 'Saga scope' }
+        });
+        const scopeSagaIcon = this.scopeSagaButton.createSpan({ cls: 'rt-inquiry-toggle-icon' });
+        this.setSigmaIcon(scopeSagaIcon);
+        setTooltip(this.scopeSagaButton, 'Saga scope');
+        this.registerDomEvent(this.scopeSagaButton, 'click', () => {
+            this.handleScopeChange('saga');
         });
 
         const modeField = headerLeft.createDiv({ cls: 'rt-inquiry-control' });
         modeField.createDiv({ cls: 'rt-inquiry-control-label', text: 'Mode' });
-        this.modeSelect = modeField.createEl('select', { cls: 'rt-inquiry-select' });
-        this.modeSelect.createEl('option', { value: 'flow', text: 'Flow' });
-        this.modeSelect.createEl('option', { value: 'depth', text: 'Depth' });
-        this.registerDomEvent(this.modeSelect, 'change', () => {
-            this.handleModeChange(this.modeSelect?.value as InquiryMode);
+        const modeToggle = modeField.createDiv({ cls: 'rt-inquiry-toggle' });
+        this.modeFlowButton = modeToggle.createEl('button', {
+            cls: 'rt-inquiry-icon-btn',
+            attr: { type: 'button', 'aria-label': 'Flow mode' }
+        });
+        const modeFlowIcon = this.modeFlowButton.createSpan({ cls: 'rt-inquiry-toggle-icon' });
+        setIcon(modeFlowIcon, 'waves');
+        setTooltip(this.modeFlowButton, 'Flow');
+        this.registerDomEvent(this.modeFlowButton, 'click', () => {
+            this.handleModeChange('flow');
+        });
+
+        this.modeDepthButton = modeToggle.createEl('button', {
+            cls: 'rt-inquiry-icon-btn',
+            attr: { type: 'button', 'aria-label': 'Depth mode' }
+        });
+        const modeDepthIcon = this.modeDepthButton.createSpan({ cls: 'rt-inquiry-toggle-icon' });
+        setIcon(modeDepthIcon, 'waves-arrow-down');
+        setTooltip(this.modeDepthButton, 'Depth');
+        this.registerDomEvent(this.modeDepthButton, 'click', () => {
+            this.handleModeChange('depth');
         });
 
         const artifactBtn = headerRight.createEl('button', {
-            cls: 'rt-inquiry-icon-btn ert-iconBtn',
+            cls: 'rt-inquiry-icon-btn',
             attr: { type: 'button', 'aria-label': 'Save artifact' }
         });
-        setIcon(artifactBtn, 'archive');
+        setIcon(artifactBtn, 'aperture');
         setTooltip(artifactBtn, 'Save artifact');
         this.registerDomEvent(artifactBtn, 'click', () => { void this.saveArtifact(); });
 
@@ -187,43 +227,35 @@ export class InquiryView extends ItemView {
         this.renderZone(zones, 'payoff', 'Payoff');
 
         const focusArea = main.createDiv({ cls: 'rt-inquiry-focus-area' });
-        const glyphStack = focusArea.createDiv({ cls: 'rt-inquiry-glyph-stack' });
-
-        this.depthRingButton = glyphStack.createEl('button', {
-            cls: 'rt-inquiry-ring rt-inquiry-ring--depth',
-            attr: { type: 'button', 'aria-label': 'Depth ring' }
-        });
-        this.flowRingButton = glyphStack.createEl('button', {
-            cls: 'rt-inquiry-ring rt-inquiry-ring--flow',
-            attr: { type: 'button', 'aria-label': 'Flow ring' }
-        });
-        if (this.depthRingButton) {
-            this.depthRingProgress = this.attachRingSvg(this.depthRingButton, 'depth');
-        }
-        if (this.flowRingButton) {
-            this.flowRingProgress = this.attachRingSvg(this.flowRingButton, 'flow');
-        }
-        this.glyphButton = glyphStack.createEl('button', {
-            cls: 'rt-inquiry-glyph',
-            attr: { type: 'button', 'aria-label': 'Focus target' }
+        const glyphHost = focusArea.createDiv({ cls: 'rt-inquiry-glyph-host' });
+        this.glyph = new InquiryGlyph(glyphHost, {
+            focusLabel: this.getFocusLabel(),
+            flowValue: 0,
+            depthValue: 0,
+            severity: 'low',
+            confidence: 'low'
         });
 
-        this.registerDomEvent(this.glyphButton, 'click', () => this.handleGlyphClick());
-        this.registerDomEvent(this.flowRingButton, 'click', () => this.openArtifactPreview());
-        this.registerDomEvent(this.depthRingButton, 'click', () => this.openArtifactPreview());
+        this.flowRingHit = this.glyph.flowRingHit;
+        this.depthRingHit = this.glyph.depthRingHit;
+        this.glyphHit = this.glyph.labelHit;
 
-        this.registerDomEvent(this.glyphButton, 'pointerenter', () => {
+        this.registerDomEvent(this.glyphHit as unknown as HTMLElement, 'click', () => this.handleGlyphClick());
+        this.registerDomEvent(this.flowRingHit as unknown as HTMLElement, 'click', () => this.openReportPreview());
+        this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'click', () => this.openReportPreview());
+
+        this.registerDomEvent(this.glyphHit as unknown as HTMLElement, 'pointerenter', () => {
             this.setHoverText(this.buildFocusHoverText());
         });
-        this.registerDomEvent(this.glyphButton, 'pointerleave', () => this.clearHoverText());
-        this.registerDomEvent(this.flowRingButton, 'pointerenter', () => {
+        this.registerDomEvent(this.glyphHit as unknown as HTMLElement, 'pointerleave', () => this.clearHoverText());
+        this.registerDomEvent(this.flowRingHit as unknown as HTMLElement, 'pointerenter', () => {
             this.setHoverText(this.buildRingHoverText('flow'));
         });
-        this.registerDomEvent(this.flowRingButton, 'pointerleave', () => this.clearHoverText());
-        this.registerDomEvent(this.depthRingButton, 'pointerenter', () => {
+        this.registerDomEvent(this.flowRingHit as unknown as HTMLElement, 'pointerleave', () => this.clearHoverText());
+        this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'pointerenter', () => {
             this.setHoverText(this.buildRingHoverText('depth'));
         });
-        this.registerDomEvent(this.depthRingButton, 'pointerleave', () => this.clearHoverText());
+        this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'pointerleave', () => this.clearHoverText());
 
         this.hoverTextEl = main.createDiv({ cls: 'rt-inquiry-hover', text: 'Hover to preview context.' });
 
@@ -245,16 +277,16 @@ export class InquiryView extends ItemView {
         this.verdictEl = findings.createDiv({ cls: 'rt-inquiry-verdict', text: 'Run an inquiry to see verdicts.' });
         this.findingsListEl = findings.createDiv({ cls: 'rt-inquiry-findings-list' });
 
-        this.artifactPreviewEl = findings.createDiv({ cls: 'rt-inquiry-artifact-preview rt-hidden' });
+        this.artifactPreviewEl = findings.createDiv({ cls: 'rt-inquiry-report-preview rt-hidden' });
 
         const footer = this.rootEl.createDiv({ cls: 'rt-inquiry-footer' });
         const nav = footer.createDiv({ cls: 'rt-inquiry-nav' });
         this.navPrevButton = nav.createEl('button', {
-            cls: 'rt-inquiry-nav-btn',
+            cls: 'rt-inquiry-nav-btn rt-inquiry-icon-btn',
             attr: { type: 'button', 'aria-label': 'Previous focus' }
         });
         this.navNextButton = nav.createEl('button', {
-            cls: 'rt-inquiry-nav-btn',
+            cls: 'rt-inquiry-nav-btn rt-inquiry-icon-btn',
             attr: { type: 'button', 'aria-label': 'Next focus' }
         });
         this.registerDomEvent(this.navPrevButton, 'click', () => this.shiftFocus(-1));
@@ -268,23 +300,29 @@ export class InquiryView extends ItemView {
     private renderZone(container: HTMLElement, zone: InquiryZone, label: string): void {
         const zoneEl = container.createDiv({ cls: `rt-inquiry-zone rt-inquiry-zone--${zone}` });
         zoneEl.createDiv({ cls: 'rt-inquiry-zone-label', text: label });
+        const tray = zoneEl.createDiv({ cls: 'rt-inquiry-zone-tray' });
+        for (let i = 0; i < 3; i += 1) {
+            tray.createSpan({ cls: 'rt-inquiry-zone-tray-dot' });
+        }
         const icons = zoneEl.createDiv({ cls: 'rt-inquiry-zone-icons' });
 
         const questions = BUILT_IN_QUESTIONS.filter(q => q.zone === zone);
         questions.forEach(question => {
             const btn = icons.createEl('button', {
-                cls: 'rt-inquiry-zone-icon',
+                cls: 'rt-inquiry-zone-icon rt-inquiry-icon-btn',
                 attr: { type: 'button', 'aria-label': question.label }
             });
             const iconEl = btn.createSpan({ cls: 'rt-inquiry-zone-icon-svg' });
             setIcon(iconEl, question.icon);
+            setTooltip(btn, question.label);
             this.registerDomEvent(btn, 'click', () => this.handleQuestionClick(question));
         });
     }
 
     private refreshUI(): void {
-        this.updateScopeSelect();
-        this.updateModeSelect();
+        this.updateScopeToggle();
+        this.updateModeToggle();
+        this.updateModeClass();
         this.updateContextBadge();
         this.renderMinimapTicks();
         this.updateFocusGlyph();
@@ -294,24 +332,55 @@ export class InquiryView extends ItemView {
         this.updateNavigationIcons();
     }
 
-    private updateScopeSelect(): void {
-        if (this.scopeSelect) {
-            this.scopeSelect.value = this.state.scope;
-        }
+    private updateModeClass(): void {
+        if (!this.rootEl) return;
+        this.rootEl.classList.toggle('is-mode-flow', this.state.mode === 'flow');
+        this.rootEl.classList.toggle('is-mode-depth', this.state.mode === 'depth');
     }
 
-    private updateModeSelect(): void {
-        if (this.modeSelect) {
-            this.modeSelect.value = this.state.mode;
-        }
+    private updateScopeToggle(): void {
+        this.updateToggleButton(this.scopeBookButton, this.state.scope === 'book');
+        this.updateToggleButton(this.scopeSagaButton, this.state.scope === 'saga');
+    }
+
+    private updateModeToggle(): void {
+        this.updateToggleButton(this.modeFlowButton, this.state.mode === 'flow');
+        this.updateToggleButton(this.modeDepthButton, this.state.mode === 'depth');
+    }
+
+    private updateToggleButton(button: HTMLButtonElement | undefined, isActive: boolean): void {
+        if (!button) return;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     }
 
     private updateContextBadge(): void {
         if (!this.contextBadgeIcon || !this.contextBadgeLabel) return;
         const isSaga = this.state.scope === 'saga';
         this.contextBadgeIcon.empty?.();
-        setIcon(this.contextBadgeIcon, isSaga ? 'sigma' : 'book-open');
+        if (isSaga) {
+            this.setSigmaIcon(this.contextBadgeIcon);
+        } else {
+            setIcon(this.contextBadgeIcon, 'columns-2');
+        }
         this.contextBadgeLabel.textContent = isSaga ? 'Saga context' : 'Book context';
+    }
+
+    private setSigmaIcon(target: HTMLElement): void {
+        target.empty?.();
+        setIcon(target, 'sigma');
+        if (target.querySelector('svg')) return;
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.classList.add('rt-inquiry-sigma-fallback');
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', '12');
+        text.setAttribute('y', '12');
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'middle');
+        text.textContent = String.fromCharCode(931);
+        svg.appendChild(text);
+        target.appendChild(svg);
     }
 
     private renderMinimapTicks(): void {
@@ -325,10 +394,11 @@ export class InquiryView extends ItemView {
                 cls: 'rt-inquiry-minimap-tick',
                 attr: { type: 'button', 'data-index': String(i) }
             });
-            tick.setAttribute('aria-label', this.state.scope === 'saga' ? `Focus book ${i}` : `Focus scene ${i}`);
+            const label = this.state.scope === 'saga' ? `B${i}` : `S${i}`;
+            tick.setAttribute('aria-label', `Focus ${label}`);
             this.registerDomEvent(tick, 'click', () => this.setFocusByIndex(i));
             this.registerDomEvent(tick, 'pointerenter', () => {
-                this.setHoverText(`Focus ${this.state.scope === 'saga' ? 'book' : 'scene'} ${i}. No findings yet.`);
+                this.setHoverText(`Focus ${label}. No findings yet.`);
             });
             this.registerDomEvent(tick, 'pointerleave', () => this.clearHoverText());
             this.minimapTicks.push(tick);
@@ -346,98 +416,32 @@ export class InquiryView extends ItemView {
     }
 
     private updateFocusGlyph(): void {
-        if (!this.glyphButton) return;
-        const focusLabel = this.getFocusLabel();
-        this.glyphButton.textContent = focusLabel;
-        this.glyphButton.setAttribute('aria-label', `Focus target ${focusLabel}`);
-        this.glyphButton.setAttribute('data-scope', this.state.scope);
+        this.glyph?.update({ focusLabel: this.getFocusLabel() });
     }
 
     private updateRings(): void {
         const result = this.state.activeResult;
-        const flowValue = result ? result.verdict.flow : 0;
-        const depthValue = result ? result.verdict.depth : 0;
+        const flowValue = result ? this.normalizeMetricValue(result.verdict.flow) : 0;
+        const depthValue = result ? this.normalizeMetricValue(result.verdict.depth) : 0;
         const severity = result ? result.verdict.severity : 'low';
         const confidence = result ? result.verdict.confidence : 'low';
 
-        this.applyRingState(this.flowRingButton, this.flowRingProgress, flowValue, severity, confidence);
-        this.applyRingState(this.depthRingButton, this.depthRingProgress, depthValue, severity, confidence);
-    }
-
-    private applyRingState(
-        ring: HTMLButtonElement | undefined,
-        progress: SVGCircleElement | undefined,
-        value: number,
-        severity: InquiryResult['verdict']['severity'],
-        confidence: InquiryResult['verdict']['confidence']
-    ): void {
-        if (!ring) return;
-        ring.classList.remove('is-severity-low', 'is-severity-medium', 'is-severity-high');
-        ring.classList.remove('is-confidence-low', 'is-confidence-medium', 'is-confidence-high');
-        const normalized = this.normalizeMetricValue(value);
-        this.updateRingProgress(progress, normalized);
-
-        ring.classList.add(`is-severity-${severity}`);
-        ring.classList.add(`is-confidence-${confidence}`);
-    }
-
-    private normalizeMetricValue(value: number): number {
-        if (!Number.isFinite(value)) return 0;
-        if (value > 1) {
-            const clamped = Math.min(Math.max(value, 5), 100);
-            return clamped / 100;
-        }
-        return Math.min(Math.max(value, 0), 1);
-    }
-
-    private updateRingProgress(progress: SVGCircleElement | undefined, normalized: number): void {
-        if (!progress) return;
-        const circumference = Number(progress.getAttribute('data-circumference') || '0');
-        if (!Number.isFinite(circumference) || circumference <= 0) return;
-        const offset = circumference * (1 - normalized);
-        progress.setAttribute('stroke-dashoffset', offset.toFixed(2));
-    }
-
-    private attachRingSvg(button: HTMLButtonElement, ring: InquiryMode): SVGCircleElement {
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('viewBox', '0 0 120 120');
-        svg.classList.add('rt-inquiry-ring-svg');
-        const strokeWidth = ring === 'flow' ? 2 : 5;
-        const radius = 48;
-        const center = 60;
-        const circumference = 2 * Math.PI * radius;
-
-        const track = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        track.classList.add('rt-inquiry-ring-track');
-        track.setAttribute('cx', String(center));
-        track.setAttribute('cy', String(center));
-        track.setAttribute('r', String(radius));
-        track.setAttribute('fill', 'none');
-        track.setAttribute('stroke-width', String(strokeWidth));
-
-        const progress = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        progress.classList.add('rt-inquiry-ring-progress');
-        progress.setAttribute('cx', String(center));
-        progress.setAttribute('cy', String(center));
-        progress.setAttribute('r', String(radius));
-        progress.setAttribute('fill', 'none');
-        progress.setAttribute('stroke-width', String(strokeWidth));
-        progress.setAttribute('stroke-dasharray', circumference.toFixed(2));
-        progress.setAttribute('stroke-dashoffset', circumference.toFixed(2));
-        progress.setAttribute('stroke-linecap', 'round');
-        progress.setAttribute('transform', `rotate(-90 ${center} ${center})`);
-        progress.setAttribute('data-circumference', circumference.toFixed(2));
-
-        svg.appendChild(track);
-        svg.appendChild(progress);
-        button.appendChild(svg);
-
-        return progress;
+        this.glyph?.update({
+            focusLabel: this.getFocusLabel(),
+            flowValue,
+            depthValue,
+            severity,
+            confidence
+        });
     }
 
     private updateFindingsPanel(): void {
         if (!this.summaryEl || !this.verdictEl || !this.findingsListEl || !this.detailsEl) return;
         const result = this.state.activeResult;
+        if (this.rootEl) {
+            const hasError = !!result?.findings.some(finding => finding.kind === 'error');
+            this.rootEl.classList.toggle('is-error', hasError);
+        }
 
         if (!result) {
             this.summaryEl.textContent = 'No inquiry run yet.';
@@ -467,7 +471,9 @@ export class InquiryView extends ItemView {
         const detailRows = this.detailsEl.querySelectorAll('.rt-inquiry-detail-row');
         if (detailRows.length >= 2) {
             detailRows[0].textContent = `Corpus fingerprint: ${result.corpusFingerprint || 'not available'}`;
-            detailRows[1].textContent = `Cache status: ${this.state.cacheStatus || 'missing'}`;
+            const cacheEnabled = this.plugin.settings.inquiryCacheEnabled ?? true;
+            const cacheText = cacheEnabled ? (this.state.cacheStatus || 'missing') : 'off';
+            detailRows[1].textContent = `Cache status: ${cacheText}`;
         }
 
         this.updateArtifactPreview();
@@ -475,7 +481,7 @@ export class InquiryView extends ItemView {
 
     private updateArtifactPreview(): void {
         if (!this.artifactPreviewEl) return;
-        const isOpen = !!this.state.artifactPreviewOpen;
+        const isOpen = !!this.state.reportPreviewOpen;
         this.artifactPreviewEl.classList.toggle('rt-hidden', !isOpen);
         if (!isOpen) {
             this.artifactPreviewEl.empty();
@@ -483,18 +489,20 @@ export class InquiryView extends ItemView {
         }
         const result = this.state.activeResult;
         if (!result) {
-            this.artifactPreviewEl.textContent = 'Run an inquiry to preview the artifact.';
+            this.artifactPreviewEl.textContent = 'Run an inquiry to preview the report.';
             return;
         }
         this.artifactPreviewEl.empty();
-        this.artifactPreviewEl.createDiv({ cls: 'rt-inquiry-artifact-preview-title', text: 'Artifact preview (unsaved)' });
-        const pre = this.artifactPreviewEl.createEl('pre', { cls: 'rt-inquiry-artifact-preview-body' });
+        this.artifactPreviewEl.createDiv({ cls: 'rt-inquiry-report-preview-title', text: 'Report preview (unsaved)' });
+        const pre = this.artifactPreviewEl.createEl('pre', { cls: 'rt-inquiry-report-preview-body' });
         pre.textContent = this.buildArtifactContent(result, this.plugin.settings.inquiryEmbedJson ?? true);
     }
 
     private updateFooterStatus(): void {
         if (this.cacheStatusEl) {
-            this.cacheStatusEl.textContent = `Cache: ${this.state.cacheStatus || 'none'}`;
+            const cacheEnabled = this.plugin.settings.inquiryCacheEnabled ?? true;
+            const cacheText = cacheEnabled ? (this.state.cacheStatus || 'none') : 'off';
+            this.cacheStatusEl.textContent = `Cache: ${cacheText}`;
         }
         if (this.confidenceEl) {
             const confidence = this.state.activeResult?.verdict.confidence || 'none';
@@ -539,55 +547,185 @@ export class InquiryView extends ItemView {
             this.refreshUI();
             return;
         }
-        this.glyphButton?.classList.toggle('is-expanded');
+        this.glyph?.root.classList.toggle('is-expanded');
     }
 
-    private handleQuestionClick(question: InquiryQuestion): void {
+    private async handleQuestionClick(question: InquiryQuestion): Promise<void> {
         this.state.activeQuestionId = question.id;
         this.state.activeZone = question.zone;
+        this.state.isRunning = true;
 
-        // Each inquiry produces two compressed answers (flow + depth). Keep this dual-answer model intact.
-        const result = this.buildPlaceholderResult(question);
-        this.state.activeResult = result;
-        this.state.cacheStatus = 'fresh';
-        this.state.corpusFingerprint = result.corpusFingerprint;
+        const manifest = this.buildCorpusManifest(question.id);
+        const focusLabel = this.getFocusLabel();
+        const baseKey = this.sessionStore.buildBaseKey({
+            questionId: question.id,
+            scope: this.state.scope,
+            focusId: focusLabel,
+            mode: this.state.mode
+        });
+        const cacheEnabled = this.plugin.settings.inquiryCacheEnabled ?? true;
+        const key = this.sessionStore.buildKey(baseKey, manifest.fingerprint);
+
+        if (cacheEnabled) {
+            const cached = this.sessionStore.getSession(key);
+            if (cached) {
+                this.applySession(cached, 'fresh');
+                return;
+            }
+            const prior = this.sessionStore.getLatestByBaseKey(baseKey);
+            if (prior && prior.result.corpusFingerprint !== manifest.fingerprint) {
+                this.state.cacheStatus = 'stale';
+                this.sessionStore.markStaleByBaseKey(baseKey);
+            } else {
+                this.state.cacheStatus = 'missing';
+            }
+        } else {
+            this.state.cacheStatus = 'missing';
+        }
+
+        try {
+            // Each inquiry produces two compressed answers (flow + depth). Keep this dual-answer model intact.
+            const result = await this.runner.run({
+                scope: this.state.scope,
+                focusLabel,
+                focusSceneId: this.state.scope === 'book' ? this.state.focusSceneId : undefined,
+                focusBookId: this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusBookId,
+                mode: this.state.mode,
+                questionId: question.id,
+                questionText: question.question,
+                questionZone: question.zone,
+                corpus: manifest,
+                rules: this.getEvidenceRules()
+            });
+
+            this.state.activeResult = result;
+            this.state.corpusFingerprint = result.corpusFingerprint;
+            this.state.cacheStatus = 'fresh';
+
+            if (cacheEnabled) {
+                this.sessionStore.setSession({
+                    key,
+                    baseKey,
+                    result,
+                    createdAt: Date.now(),
+                    lastAccessed: Date.now()
+                });
+            }
+        } catch (error) {
+            const fallback = this.buildErrorFallback(question, focusLabel, manifest.fingerprint, error);
+            this.state.activeResult = fallback;
+            this.state.cacheStatus = 'missing';
+        } finally {
+            this.state.isRunning = false;
+            this.updateMinimapFocus();
+            this.refreshUI();
+        }
+    }
+
+    private applySession(session: { result: InquiryResult }, cacheStatus: 'fresh' | 'stale' | 'missing'): void {
+        this.state.activeResult = session.result;
+        this.state.corpusFingerprint = session.result.corpusFingerprint;
+        this.state.cacheStatus = cacheStatus;
+        this.state.isRunning = false;
         this.updateMinimapFocus();
         this.refreshUI();
     }
 
-    private buildPlaceholderResult(question: InquiryQuestion): InquiryResult {
-        const focusId = this.getFocusLabel();
-        const runId = `run-${Date.now()}`;
-        const findings: InquiryFinding[] = [
-            {
-                refId: focusId,
-                kind: 'continuity',
-                status: 'unclear',
-                severity: 'medium',
-                confidence: 'low',
-                headline: 'Potential continuity gap detected.',
-                bullets: ['Focus relies on prior setup not yet confirmed.'],
-                related: [],
-                evidenceType: 'scene'
-            }
-        ];
-
+    private buildErrorFallback(
+        question: InquiryQuestion,
+        focusLabel: string,
+        fingerprint: string,
+        error: unknown
+    ): InquiryResult {
+        const message = error instanceof Error ? error.message : 'Runner error';
         return {
-            runId,
+            runId: `run-${Date.now()}`,
             scope: this.state.scope,
-            focusId,
+            focusId: focusLabel,
             mode: this.state.mode,
             questionId: question.id,
-            summary: `Preview result for ${question.label.toLowerCase()}.`,
+            summary: 'Inquiry failed; fallback result returned.',
             verdict: {
-                flow: 62,
-                depth: 48,
-                severity: 'medium',
+                flow: 0,
+                depth: 0,
+                severity: 'high',
                 confidence: 'low'
             },
-            findings,
-            corpusFingerprint: 'placeholder'
+            findings: [{
+                refId: focusLabel,
+                kind: 'error',
+                status: 'unclear',
+                severity: 'high',
+                confidence: 'low',
+                headline: 'Inquiry runner error.',
+                bullets: [message],
+                related: [],
+                evidenceType: 'mixed'
+            }],
+            corpusFingerprint: fingerprint
         };
+    }
+
+    private getEvidenceRules(): EvidenceParticipationRules {
+        return {
+            sagaOutlineScope: 'saga-only',
+            bookOutlineScope: 'book-only',
+            crossScopeUsage: 'conflict-only'
+        };
+    }
+
+    private buildCorpusManifest(questionId: string): CorpusManifest {
+        const sources = this.plugin.settings.inquirySources || {};
+        const entries: CorpusManifest['entries'] = [];
+        const now = Date.now();
+
+        const addEntries = (paths: string[] | undefined, data: { class: 'scene' | 'outline' | 'character' | 'place' | 'power'; scope?: InquiryScope }) => {
+            if (!paths) return;
+            paths.forEach(rawPath => {
+                const path = normalizePath(rawPath);
+                if (!path) return;
+                const file = this.app.vault.getAbstractFileByPath(path);
+                const mtime = file && 'stat' in file ? (file as { stat: { mtime: number } }).stat.mtime : now;
+                entries.push({
+                    path,
+                    mtime,
+                    class: data.class,
+                    scope: data.scope
+                });
+            });
+        };
+
+        addEntries(sources.sceneFolders, { class: 'scene', scope: 'book' });
+        addEntries(sources.bookOutlineFiles, { class: 'outline', scope: 'book' });
+        addEntries(sources.characterFolders, { class: 'character' });
+        addEntries(sources.placeFolders, { class: 'place' });
+        addEntries(sources.powerFolders, { class: 'power' });
+
+        if (sources.sagaOutlineFile) {
+            addEntries([sources.sagaOutlineFile], { class: 'outline', scope: 'saga' });
+        }
+
+        const fingerprintSource = entries
+            .map(entry => `${entry.path}:${entry.mtime}`)
+            .sort()
+            .join('|');
+        const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${fingerprintSource}`;
+        const fingerprint = this.hashString(fingerprintRaw);
+
+        return {
+            entries,
+            fingerprint,
+            generatedAt: now
+        };
+    }
+
+    private hashString(value: string): string {
+        let hash = 0;
+        for (let i = 0; i < value.length; i += 1) {
+            hash = ((hash << 5) - hash) + value.charCodeAt(i);
+            hash |= 0;
+        }
+        return `h${Math.abs(hash)}`;
     }
 
     private setFocusByIndex(index: number): void {
@@ -618,7 +756,8 @@ export class InquiryView extends ItemView {
 
     private getFocusLabel(): string {
         const raw = this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusSceneId;
-        return this.formatFocusNumber(raw);
+        const prefix = this.state.scope === 'saga' ? 'B' : 'S';
+        return `${prefix}${this.formatFocusNumber(raw)}`;
     }
 
     private formatFocusNumber(raw?: string): string {
@@ -654,6 +793,15 @@ export class InquiryView extends ItemView {
         return String(Math.round(value * 100));
     }
 
+    private normalizeMetricValue(value: number): number {
+        if (!Number.isFinite(value)) return 0;
+        if (value > 1) {
+            const clamped = Math.min(Math.max(value, 5), 100);
+            return clamped / 100;
+        }
+        return Math.min(Math.max(value, 0), 1);
+    }
+
     private setHoverText(text: string): void {
         if (this.hoverTextEl) {
             this.hoverTextEl.textContent = text;
@@ -677,12 +825,12 @@ export class InquiryView extends ItemView {
         }
     }
 
-    private openArtifactPreview(): void {
+    private openReportPreview(): void {
         if (!this.state.activeResult) {
-            new Notice('Run an inquiry before previewing an artifact.');
+            new Notice('Run an inquiry before previewing a report.');
             return;
         }
-        this.state.artifactPreviewOpen = true;
+        this.state.reportPreviewOpen = true;
         this.updateArtifactPreview();
     }
 
@@ -744,8 +892,8 @@ export class InquiryView extends ItemView {
             result.summary,
             '',
             '## Verdict',
-            `Flow: ${result.verdict.flow.toFixed(2)}`,
-            `Depth: ${result.verdict.depth.toFixed(2)}`,
+            `Flow: ${this.formatMetricDisplay(result.verdict.flow)}`,
+            `Depth: ${this.formatMetricDisplay(result.verdict.depth)}`,
             `Severity: ${result.verdict.severity}`,
             `Confidence: ${result.verdict.confidence}`,
             '',

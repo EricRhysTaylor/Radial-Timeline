@@ -14,7 +14,7 @@ export interface InquiryVerdict {
 
 export interface InquiryFinding {
     refId: string;
-    kind: 'loose_end' | 'continuity' | 'escalation' | 'conflict' | 'unclear' | 'error';
+    kind: 'none' | 'loose_end' | 'continuity' | 'escalation' | 'conflict' | 'unclear' | 'error';
     status: 'introduced' | 'escalated' | 'resolved' | 'dropped' | 'unclear';
     severity: InquirySeverity;
     confidence: InquiryConfidence;
@@ -51,7 +51,7 @@ export interface InquiryState {
     corpusFingerprint?: string;
     settingsSnapshot?: string;
     isNarrowLayout: boolean;
-    artifactPreviewOpen?: boolean;
+    reportPreviewOpen?: boolean;
 }
 
 export const createDefaultInquiryState = (): InquiryState => ({
@@ -63,5 +63,5 @@ export const createDefaultInquiryState = (): InquiryState => ({
     activeResult: null,
     isRunning: false,
     isNarrowLayout: false,
-    artifactPreviewOpen: false,
+    reportPreviewOpen: false,
 });

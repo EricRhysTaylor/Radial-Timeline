@@ -65,7 +65,7 @@ The Inquiry Primary View is a focused inspector with a central glyph, dual rings
 ```
 
 Key elements:
-- Center glyph shows the numeric focus only (scene or book), with scope conveyed by the context badge.
+- Center glyph shows focus label (S# for scene focus, B# for book focus).
 - Two rings render at all times: outer ring is Flow, inner ring is Depth.
 - Three inquiry zones surround the glyph: Setup, Pressure, Payoff.
 - Findings panel shows result summary, verdict, and structured findings list.
@@ -126,11 +126,11 @@ Hover (preview only):
 Click (commit or navigate):
 - Click minimap tick changes focus.
 - Click center glyph drills down or expands focus.
-- Click ring opens an in-memory Artifact view (read-only, not saved).
+- Click ring opens a report preview (unsaved, read-only).
 - Click the Artifact icon saves the current session to disk.
 
 ## Artifact Generation Refinement
-- Ring click opens an in-memory Artifact view that mirrors saved Artifacts.
+- Ring click opens a report preview rendered from the current session (unsaved).
 - Artifact icon explicitly persists the session to the configured folder.
 - Embedded JSON is written only when the setting is enabled.
 
@@ -210,6 +210,7 @@ Session cache:
 - LRU, max 30 sessions.
 - Keyed by question id, scope, focus target, mode, corpus fingerprint.
 - Never auto-rerun; mark stale if question or corpus changes.
+- Sessions live in plugin data; report previews render from sessions, not files.
 
 ## Settings and Persistence
 Inquiry relies on plugin settings and plugin data only.
