@@ -65,7 +65,7 @@ export const APR_LAYOUT = {
         // ─────────────────────────────────────────────────────────────────────
         // BRANDING TEXT (Outermost - perimeter text)
         // ─────────────────────────────────────────────────────────────────────
-        brandingRadius: 68,         // Radius for book/author text path
+        brandingRadius: 66,         // Radius for book/author text path
         bookAuthorFontSize: 9,      // Font size for book title + author name
         brandingLetterSpacing: '0.2em', // Letter spacing for branding text
     },
@@ -94,7 +94,7 @@ export const APR_LAYOUT = {
         // ─────────────────────────────────────────────────────────────────────
         centerNumberFontSize1Digit: 105,  // Font size for single-digit numbers (e.g., "5")
         centerNumberFontSize2Digit: 80,  // Font size for double-digit numbers (e.g., "42")
-        centerNumberFontSize3Digit: 70,  // Font size for triple-digit numbers (e.g., "100")
+        centerNumberFontSize3Digit: 58,  // Font size for triple-digit numbers (e.g., "100")
         centerNumberYOffset: 8,          // Y offset for the center number (positive = down)
         centerNumberOpacity: 0.95,   // Center number visibility: 0.0 = invisible, 1.0 = fully opaque
         centerNumberLetterSpacing: '-0.05em', // Letter spacing for multi-digit numbers
@@ -141,7 +141,7 @@ export const APR_LAYOUT = {
         // ─────────────────────────────────────────────────────────────────────
         centerNumberFontSize1Digit: 150,  // Font size for single-digit numbers (e.g., "5")
         centerNumberFontSize2Digit: 115,  // Font size for double-digit numbers (e.g., "42")
-        centerNumberFontSize3Digit: 100,  // Font size for triple-digit numbers (e.g., "100")
+        centerNumberFontSize3Digit: 96,  // Font size for triple-digit numbers (e.g., "100")
         centerNumberYOffset: 11,         // Y offset for the center number (positive = down)
         centerNumberOpacity: 0.95,   // Center number visibility: 0.0 = invisible, 1.0 = fully opaque
         centerNumberLetterSpacing: '-0.05em', // Letter spacing for multi-digit numbers (0 = natural spacing)
@@ -159,7 +159,7 @@ export const APR_LAYOUT = {
         // ─────────────────────────────────────────────────────────────────────
         // BRANDING TEXT (Outermost - perimeter text)
         // ─────────────────────────────────────────────────────────────────────
-        brandingRadius: 208,        // Radius for book/author text path
+        brandingRadius: 206,        // Radius for book/author text path
         bookAuthorFontSize: 21,     // Font size for book title + author name
         brandingLetterSpacing: '0.15em', // Letter spacing for branding text
     },

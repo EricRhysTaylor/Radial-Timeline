@@ -828,7 +828,7 @@
 .ert-ui.ert-skin--social .ert-elementBlock.setting-item,
 .ert-ui .ert-skin--social .ert-elementBlock.setting-item {
   display: grid;
-  grid-template-columns: minmax(120px, 180px) 1fr;
+  grid-template-columns: minmax(220px, 0.9fr) 1.1fr;
   grid-template-rows: auto auto;
   align-items: center;
   column-gap: 12px;
@@ -890,6 +890,11 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
+}
+
+.ert-ui.ert-skin--social .ert-typography-controls--end,
+.ert-ui .ert-skin--social .ert-typography-controls--end {
+  justify-content: flex-end;
 }
 
 .ert-ui.ert-skin--social .ert-typography-controls > *,

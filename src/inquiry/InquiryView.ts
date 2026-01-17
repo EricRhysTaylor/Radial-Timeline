@@ -4,7 +4,6 @@ import {
     Platform,
     Notice,
     setIcon,
-    setTooltip,
     TAbstractFile,
     normalizePath
 } from 'obsidian';
@@ -26,6 +25,10 @@ import { InquirySessionStore } from './InquirySessionStore';
 
 const DEFAULT_BOOK_COUNT = 5;
 const DEFAULT_SCENE_COUNT = 12;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const VIEWBOX_MIN = -800;
+const VIEWBOX_MAX = 800;
+const VIEWBOX_SIZE = 1600;
 
 type InquiryQuestion = {
     id: string;
@@ -69,30 +72,40 @@ export class InquiryView extends ItemView {
     private plugin: RadialTimelinePlugin;
     private state = createDefaultInquiryState();
 
-    private rootEl?: HTMLElement;
-    private scopeBookButton?: HTMLButtonElement;
-    private scopeSagaButton?: HTMLButtonElement;
-    private modeFlowButton?: HTMLButtonElement;
-    private modeDepthButton?: HTMLButtonElement;
-    private contextBadgeIcon?: HTMLElement;
-    private contextBadgeLabel?: HTMLElement;
-    private minimapTicksEl?: HTMLElement;
-    private minimapTicks: HTMLButtonElement[] = [];
+    private rootSvg?: SVGSVGElement;
+    private scopeToggleButton?: SVGGElement;
+    private scopeToggleIcon?: SVGUseElement;
+    private modeToggleButton?: SVGGElement;
+    private modeToggleIcon?: SVGUseElement;
+    private artifactButton?: SVGGElement;
+    private contextBadgeIcon?: SVGUseElement;
+    private contextBadgeSigmaText?: SVGTextElement;
+    private contextBadgeLabel?: SVGTextElement;
+    private minimapTicksEl?: SVGGElement;
+    private minimapBaseline?: SVGLineElement;
+    private minimapTicks: SVGRectElement[] = [];
+    private minimapLayout?: { startX: number; length: number };
     private glyph?: InquiryGlyph;
     private glyphHit?: SVGRectElement;
     private flowRingHit?: SVGCircleElement;
     private depthRingHit?: SVGCircleElement;
-    private summaryEl?: HTMLElement;
-    private verdictEl?: HTMLElement;
-    private findingsListEl?: HTMLElement;
-    private detailsToggle?: HTMLButtonElement;
-    private detailsEl?: HTMLElement;
-    private artifactPreviewEl?: HTMLElement;
-    private hoverTextEl?: HTMLElement;
-    private cacheStatusEl?: HTMLElement;
-    private confidenceEl?: HTMLElement;
-    private navPrevButton?: HTMLButtonElement;
-    private navNextButton?: HTMLButtonElement;
+    private summaryEl?: SVGTextElement;
+    private verdictEl?: SVGTextElement;
+    private findingsListEl?: SVGGElement;
+    private detailsToggle?: SVGGElement;
+    private detailsIcon?: SVGUseElement;
+    private detailsEl?: SVGGElement;
+    private detailRows: SVGTextElement[] = [];
+    private artifactPreviewEl?: SVGGElement;
+    private artifactPreviewBg?: SVGRectElement;
+    private hoverTextEl?: SVGTextElement;
+    private cacheStatusEl?: SVGTextElement;
+    private confidenceEl?: SVGTextElement;
+    private navPrevButton?: SVGGElement;
+    private navNextButton?: SVGGElement;
+    private navPrevIcon?: SVGUseElement;
+    private navNextIcon?: SVGUseElement;
+    private iconSymbols = new Set<string>();
     private lastFocusSceneByBookId = new Map<string, string>();
     private runner: InquiryRunnerStub;
     private sessionStore: InquirySessionStore;
@@ -147,88 +160,105 @@ export class InquiryView extends ItemView {
     }
 
     private renderDesktopLayout(): void {
-        this.rootEl = this.contentEl.createDiv({ cls: 'ert-inquiry-view ert-ui' });
+        const svg = this.createSvgElement('svg');
+        svg.classList.add('ert-ui', 'ert-inquiry-svg');
+        svg.setAttribute('viewBox', `${VIEWBOX_MIN} ${VIEWBOX_MIN} ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`);
+        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        this.rootSvg = svg;
+        this.contentEl.appendChild(svg);
 
-        const header = this.rootEl.createDiv({ cls: 'ert-inquiry-header' });
-        const headerLeft = header.createDiv({ cls: 'ert-inquiry-header-group' });
-        const headerRight = header.createDiv({ cls: 'ert-inquiry-header-group ert-inquiry-header-right' });
+        const defs = this.createSvgElement('defs');
+        this.buildGlowFilter(defs);
+        this.buildIconSymbols(defs);
+        svg.appendChild(defs);
 
-        const scopeField = headerLeft.createDiv({ cls: 'ert-inquiry-control' });
-        scopeField.createDiv({ cls: 'ert-inquiry-control-label', text: 'Scope' });
-        const scopeToggle = scopeField.createDiv({ cls: 'ert-inquiry-toggle' });
-        this.scopeBookButton = scopeToggle.createEl('button', {
-            cls: 'ert-inquiry-icon-btn',
-            attr: { type: 'button', 'aria-label': 'Book scope' }
-        });
-        const scopeBookIcon = this.scopeBookButton.createSpan({ cls: 'ert-inquiry-toggle-icon' });
-        setIcon(scopeBookIcon, 'columns-2');
-        setTooltip(this.scopeBookButton, 'Book scope');
-        this.registerDomEvent(this.scopeBookButton, 'click', () => {
-            this.handleScopeChange('book');
-        });
+        const background = this.createSvgElement('rect');
+        background.classList.add('ert-inquiry-bg');
+        background.setAttribute('x', String(VIEWBOX_MIN));
+        background.setAttribute('y', String(VIEWBOX_MIN));
+        background.setAttribute('width', String(VIEWBOX_SIZE));
+        background.setAttribute('height', String(VIEWBOX_SIZE));
+        svg.appendChild(background);
 
-        this.scopeSagaButton = scopeToggle.createEl('button', {
-            cls: 'ert-inquiry-icon-btn',
-            attr: { type: 'button', 'aria-label': 'Saga scope' }
-        });
-        const scopeSagaIcon = this.scopeSagaButton.createSpan({ cls: 'ert-inquiry-toggle-icon' });
-        this.setSigmaIcon(scopeSagaIcon);
-        setTooltip(this.scopeSagaButton, 'Saga scope');
-        this.registerDomEvent(this.scopeSagaButton, 'click', () => {
-            this.handleScopeChange('saga');
-        });
+        const frame = this.createSvgElement('rect');
+        frame.classList.add('ert-inquiry-svg-frame');
+        frame.setAttribute('x', String(VIEWBOX_MIN));
+        frame.setAttribute('y', String(VIEWBOX_MIN));
+        frame.setAttribute('width', String(VIEWBOX_SIZE));
+        frame.setAttribute('height', String(VIEWBOX_SIZE));
+        svg.appendChild(frame);
 
-        const modeField = headerLeft.createDiv({ cls: 'ert-inquiry-control' });
-        modeField.createDiv({ cls: 'ert-inquiry-control-label', text: 'Mode' });
-        const modeToggle = modeField.createDiv({ cls: 'ert-inquiry-toggle' });
-        this.modeFlowButton = modeToggle.createEl('button', {
-            cls: 'ert-inquiry-icon-btn',
-            attr: { type: 'button', 'aria-label': 'Flow mode' }
-        });
-        const modeFlowIcon = this.modeFlowButton.createSpan({ cls: 'ert-inquiry-toggle-icon' });
-        setIcon(modeFlowIcon, 'waves');
-        setTooltip(this.modeFlowButton, 'Flow');
-        this.registerDomEvent(this.modeFlowButton, 'click', () => {
-            this.handleModeChange('flow');
-        });
+        const uiGroup = this.createSvgGroup(svg, 'ert-inquiry-ui');
 
-        this.modeDepthButton = modeToggle.createEl('button', {
-            cls: 'ert-inquiry-icon-btn',
-            attr: { type: 'button', 'aria-label': 'Depth mode' }
-        });
-        const modeDepthIcon = this.modeDepthButton.createSpan({ cls: 'ert-inquiry-toggle-icon' });
-        setIcon(modeDepthIcon, 'waves-arrow-down');
-        setTooltip(this.modeDepthButton, 'Depth');
-        this.registerDomEvent(this.modeDepthButton, 'click', () => {
-            this.handleModeChange('depth');
+        const padding = 80;
+        const panelWidth = 420;
+        const panelLeft = VIEWBOX_MAX - padding - panelWidth;
+        const panelTop = VIEWBOX_MIN + padding;
+        const panelHeight = VIEWBOX_MAX - padding - panelTop;
+        const leftAreaLeft = VIEWBOX_MIN + padding;
+        const leftAreaRight = panelLeft - padding;
+        const leftAreaCenter = (leftAreaLeft + leftAreaRight) / 2;
+
+        const headerX = leftAreaLeft;
+        const headerY = panelTop;
+        const iconSize = 56;
+        const iconGap = 16;
+
+        const headerGroup = this.createSvgGroup(uiGroup, 'ert-inquiry-header', headerX, headerY);
+        this.scopeToggleButton = this.createIconButton(headerGroup, 0, 0, iconSize, 'columns-2', 'Toggle scope');
+        this.scopeToggleIcon = this.scopeToggleButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
+        this.registerDomEvent(this.scopeToggleButton as unknown as HTMLElement, 'click', () => {
+            this.handleScopeChange(this.state.scope === 'book' ? 'saga' : 'book');
         });
 
-        const artifactBtn = headerRight.createEl('button', {
-            cls: 'ert-inquiry-icon-btn',
-            attr: { type: 'button', 'aria-label': 'Save artifact' }
+        this.modeToggleButton = this.createIconButton(headerGroup, iconSize + iconGap, 0, iconSize, 'waves', 'Toggle mode');
+        this.modeToggleIcon = this.modeToggleButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
+        this.registerDomEvent(this.modeToggleButton as unknown as HTMLElement, 'click', () => {
+            this.handleModeChange(this.state.mode === 'flow' ? 'depth' : 'flow');
         });
-        setIcon(artifactBtn, 'aperture');
-        setTooltip(artifactBtn, 'Save artifact');
-        this.registerDomEvent(artifactBtn, 'click', () => { void this.saveArtifact(); });
 
-        const body = this.rootEl.createDiv({ cls: 'ert-inquiry-body' });
-        const main = body.createDiv({ cls: 'ert-inquiry-main' });
-        const findings = body.createDiv({ cls: 'ert-inquiry-findings' });
+        const artifactX = panelLeft + panelWidth - iconSize;
+        this.artifactButton = this.createIconButton(uiGroup, artifactX, headerY, iconSize, 'aperture', 'Save artifact');
+        this.registerDomEvent(this.artifactButton as unknown as HTMLElement, 'click', () => { void this.saveArtifact(); });
 
-        const minimap = main.createDiv({ cls: 'ert-inquiry-minimap' });
-        const badge = minimap.createDiv({ cls: 'ert-inquiry-context-badge' });
-        this.contextBadgeIcon = badge.createSpan({ cls: 'ert-inquiry-context-badge-icon' });
-        this.contextBadgeLabel = badge.createSpan({ cls: 'ert-inquiry-context-badge-label' });
-        this.minimapTicksEl = minimap.createDiv({ cls: 'ert-inquiry-minimap-ticks' });
+        const minimapY = headerY + 120;
+        const minimapGroup = this.createSvgGroup(uiGroup, 'ert-inquiry-minimap', leftAreaLeft, minimapY);
+        const badgeWidth = 160;
+        const badgeHeight = 34;
+        const badgeGroup = this.createSvgGroup(minimapGroup, 'ert-inquiry-context-badge', 0, -badgeHeight / 2);
+        const badgeRect = this.createSvgElement('rect');
+        badgeRect.classList.add('ert-inquiry-context-badge-bg');
+        badgeRect.setAttribute('width', String(badgeWidth));
+        badgeRect.setAttribute('height', String(badgeHeight));
+        badgeRect.setAttribute('rx', '18');
+        badgeRect.setAttribute('ry', '18');
+        badgeGroup.appendChild(badgeRect);
+        this.contextBadgeIcon = this.createIconUse('columns-2', 12, 8, 18);
+        this.contextBadgeIcon.classList.add('ert-inquiry-context-badge-icon');
+        badgeGroup.appendChild(this.contextBadgeIcon);
+        this.contextBadgeSigmaText = this.createSvgText(badgeGroup, 'ert-inquiry-context-badge-sigma ert-hidden', String.fromCharCode(931), 20, 18);
+        this.contextBadgeLabel = this.createSvgText(badgeGroup, 'ert-inquiry-context-badge-label', 'Book context', 38, 21);
 
-        const zones = main.createDiv({ cls: 'ert-inquiry-zones' });
-        this.renderZone(zones, 'setup', 'Setup');
-        this.renderZone(zones, 'pressure', 'Pressure');
-        this.renderZone(zones, 'payoff', 'Payoff');
+        const baselineStartX = badgeWidth + 24;
+        const baselineLength = Math.max(120, leftAreaRight - leftAreaLeft - baselineStartX);
+        this.minimapLayout = { startX: baselineStartX, length: baselineLength };
+        this.minimapBaseline = this.createSvgElement('line');
+        this.minimapBaseline.classList.add('ert-inquiry-minimap-baseline');
+        minimapGroup.appendChild(this.minimapBaseline);
 
-        const focusArea = main.createDiv({ cls: 'ert-inquiry-focus-area' });
-        const glyphHost = focusArea.createDiv({ cls: 'ert-inquiry-glyph-host' });
-        this.glyph = new InquiryGlyph(glyphHost, {
+        this.minimapTicksEl = this.createSvgGroup(minimapGroup, 'ert-inquiry-minimap-ticks', baselineStartX, 0);
+
+        const zonesY = minimapY + 80;
+        const zonesGroup = this.createSvgGroup(uiGroup, 'ert-inquiry-zones', leftAreaLeft, zonesY);
+        const zoneGap = 20;
+        const zoneHeight = 120;
+        const zoneWidth = (leftAreaRight - leftAreaLeft - (zoneGap * 2)) / 3;
+        this.renderZone(zonesGroup, 'setup', 'Setup', 0, zoneWidth, zoneHeight);
+        this.renderZone(zonesGroup, 'pressure', 'Pressure', zoneWidth + zoneGap, zoneWidth, zoneHeight);
+        this.renderZone(zonesGroup, 'payoff', 'Payoff', (zoneWidth + zoneGap) * 2, zoneWidth, zoneHeight);
+
+        const focusGroup = this.createSvgGroup(uiGroup, 'ert-inquiry-focus-area', leftAreaCenter, 80);
+        this.glyph = new InquiryGlyph(focusGroup, {
             focusLabel: this.getFocusLabel(),
             flowValue: 0,
             depthValue: 0,
@@ -258,66 +288,245 @@ export class InquiryView extends ItemView {
         });
         this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'pointerleave', () => this.clearHoverText());
 
-        this.hoverTextEl = main.createDiv({ cls: 'ert-inquiry-hover', text: 'Hover to preview context.' });
+        const hoverY = VIEWBOX_MAX - padding - 40;
+        this.hoverTextEl = this.createSvgText(uiGroup, 'ert-inquiry-hover', 'Hover to preview context.', leftAreaLeft, hoverY);
 
-        const findingsHeader = findings.createDiv({ cls: 'ert-inquiry-findings-header' });
-        findingsHeader.createDiv({ cls: 'ert-inquiry-findings-title', text: 'Findings' });
-        this.detailsToggle = findingsHeader.createEl('button', {
-            cls: 'ert-inquiry-details-toggle',
-            attr: { type: 'button', 'aria-label': 'Toggle details' }
-        });
-        const detailsIcon = this.detailsToggle.createSpan({ cls: 'ert-inquiry-details-icon' });
-        setIcon(detailsIcon, 'chevron-down');
-        this.registerDomEvent(this.detailsToggle, 'click', () => this.toggleDetails());
+        this.buildFindingsPanel(uiGroup, panelLeft, panelTop, panelWidth, panelHeight);
 
-        this.detailsEl = findings.createDiv({ cls: 'ert-inquiry-details ert-hidden' });
-        this.detailsEl.createDiv({ cls: 'ert-inquiry-detail-row', text: 'Corpus fingerprint: not available' });
-        this.detailsEl.createDiv({ cls: 'ert-inquiry-detail-row', text: 'Cache status: not available' });
+        const footerY = VIEWBOX_MAX - padding;
+        const footerGroup = this.createSvgGroup(uiGroup, 'ert-inquiry-footer', leftAreaLeft, footerY);
+        const navGroup = this.createSvgGroup(footerGroup, 'ert-inquiry-nav', 0, 0);
+        this.navPrevButton = this.createIconButton(navGroup, 0, -18, 44, 'chevron-left', 'Previous focus', 'ert-inquiry-nav-btn');
+        this.navPrevIcon = this.navPrevButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
+        this.navNextButton = this.createIconButton(navGroup, 54, -18, 44, 'chevron-right', 'Next focus', 'ert-inquiry-nav-btn');
+        this.navNextIcon = this.navNextButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
+        this.registerDomEvent(this.navPrevButton as unknown as HTMLElement, 'click', () => this.shiftFocus(-1));
+        this.registerDomEvent(this.navNextButton as unknown as HTMLElement, 'click', () => this.shiftFocus(1));
 
-        this.summaryEl = findings.createDiv({ cls: 'ert-inquiry-summary', text: 'No inquiry run yet.' });
-        this.verdictEl = findings.createDiv({ cls: 'ert-inquiry-verdict', text: 'Run an inquiry to see verdicts.' });
-        this.findingsListEl = findings.createDiv({ cls: 'ert-inquiry-findings-list' });
-
-        this.artifactPreviewEl = findings.createDiv({ cls: 'ert-inquiry-report-preview ert-hidden' });
-
-        const footer = this.rootEl.createDiv({ cls: 'ert-inquiry-footer' });
-        const nav = footer.createDiv({ cls: 'ert-inquiry-nav' });
-        this.navPrevButton = nav.createEl('button', {
-            cls: 'ert-inquiry-nav-btn ert-inquiry-icon-btn',
-            attr: { type: 'button', 'aria-label': 'Previous focus' }
-        });
-        this.navNextButton = nav.createEl('button', {
-            cls: 'ert-inquiry-nav-btn ert-inquiry-icon-btn',
-            attr: { type: 'button', 'aria-label': 'Next focus' }
-        });
-        this.registerDomEvent(this.navPrevButton, 'click', () => this.shiftFocus(-1));
-        this.registerDomEvent(this.navNextButton, 'click', () => this.shiftFocus(1));
-
-        const status = footer.createDiv({ cls: 'ert-inquiry-status' });
-        this.cacheStatusEl = status.createDiv({ cls: 'ert-inquiry-status-item', text: 'Cache: none' });
-        this.confidenceEl = status.createDiv({ cls: 'ert-inquiry-status-item', text: 'Confidence: none' });
+        const statusGroup = this.createSvgGroup(footerGroup, 'ert-inquiry-status', leftAreaRight - 220, 0);
+        this.cacheStatusEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'Cache: none', 0, 0);
+        this.confidenceEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'Confidence: none', 140, 0);
     }
 
-    private renderZone(container: HTMLElement, zone: InquiryZone, label: string): void {
-        const zoneEl = container.createDiv({ cls: `ert-inquiry-zone ert-inquiry-zone--${zone}` });
-        zoneEl.createDiv({ cls: 'ert-inquiry-zone-label', text: label });
-        const tray = zoneEl.createDiv({ cls: 'ert-inquiry-zone-tray' });
-        for (let i = 0; i < 3; i += 1) {
-            tray.createSpan({ cls: 'ert-inquiry-zone-tray-dot' });
-        }
-        const icons = zoneEl.createDiv({ cls: 'ert-inquiry-zone-icons' });
+    private createSvgElement<K extends keyof SVGElementTagNameMap>(tag: K): SVGElementTagNameMap[K] {
+        return document.createElementNS(SVG_NS, tag);
+    }
 
-        const questions = BUILT_IN_QUESTIONS.filter(q => q.zone === zone);
-        questions.forEach(question => {
-            const btn = icons.createEl('button', {
-                cls: 'ert-inquiry-zone-icon ert-inquiry-icon-btn',
-                attr: { type: 'button', 'aria-label': question.label }
-            });
-            const iconEl = btn.createSpan({ cls: 'ert-inquiry-zone-icon-svg' });
-            setIcon(iconEl, question.icon);
-            setTooltip(btn, question.label);
-            this.registerDomEvent(btn, 'click', () => this.handleQuestionClick(question));
+    private createSvgGroup(parent: SVGElement, cls: string, x?: number, y?: number): SVGGElement {
+        const group = this.createSvgElement('g');
+        group.classList.add(...cls.split(' ').filter(Boolean));
+        if (typeof x === 'number' || typeof y === 'number') {
+            group.setAttribute('transform', `translate(${x ?? 0} ${y ?? 0})`);
+        }
+        parent.appendChild(group);
+        return group;
+    }
+
+    private createSvgText(parent: SVGElement, cls: string, text: string, x: number, y: number): SVGTextElement {
+        const textEl = this.createSvgElement('text');
+        textEl.classList.add(...cls.split(' ').filter(Boolean));
+        textEl.setAttribute('x', String(x));
+        textEl.setAttribute('y', String(y));
+        textEl.textContent = text;
+        parent.appendChild(textEl);
+        return textEl;
+    }
+
+    private clearSvgChildren(el: SVGElement): void {
+        while (el.firstChild) {
+            el.removeChild(el.firstChild);
+        }
+    }
+
+    private buildGlowFilter(defs: SVGDefsElement): void {
+        const filter = this.createSvgElement('filter');
+        filter.setAttribute('id', 'ert-inquiry-ring-glow');
+        filter.setAttribute('x', '-50%');
+        filter.setAttribute('y', '-50%');
+        filter.setAttribute('width', '200%');
+        filter.setAttribute('height', '200%');
+
+        const blur = this.createSvgElement('feGaussianBlur');
+        blur.setAttribute('stdDeviation', '6');
+        filter.appendChild(blur);
+        defs.appendChild(filter);
+    }
+
+    private buildIconSymbols(defs: SVGDefsElement): void {
+        this.iconSymbols.clear();
+        [
+            'waves',
+            'waves-arrow-down',
+            'columns-2',
+            'aperture',
+            'chevron-left',
+            'chevron-right',
+            'chevron-up',
+            'chevron-down',
+            'help-circle',
+            'activity',
+            'check-circle',
+            'sigma'
+        ].forEach(icon => {
+            const symbolId = this.createIconSymbol(defs, icon);
+            if (symbolId) {
+                this.iconSymbols.add(symbolId);
+            }
         });
+    }
+
+    private createIconSymbol(defs: SVGDefsElement, iconName: string): string | null {
+        const holder = document.createElement('span');
+        setIcon(holder, iconName);
+        const source = holder.querySelector('svg');
+        if (!source) {
+            if (iconName !== 'sigma') return null;
+            const symbol = this.createSvgElement('symbol');
+            const symbolId = `ert-icon-${iconName}`;
+            symbol.setAttribute('id', symbolId);
+            symbol.setAttribute('viewBox', '0 0 24 24');
+            const text = this.createSvgElement('text');
+            text.setAttribute('x', '12');
+            text.setAttribute('y', '13');
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('dominant-baseline', 'middle');
+            text.setAttribute('font-size', '16');
+            text.setAttribute('font-weight', '700');
+            text.textContent = String.fromCharCode(931);
+            symbol.appendChild(text);
+            defs.appendChild(symbol);
+            return symbolId;
+        }
+        const symbol = this.createSvgElement('symbol');
+        const symbolId = `ert-icon-${iconName}`;
+        symbol.setAttribute('id', symbolId);
+        symbol.setAttribute('viewBox', source.getAttribute('viewBox') || '0 0 24 24');
+        Array.from(source.children).forEach(child => {
+            symbol.appendChild(child.cloneNode(true));
+        });
+        defs.appendChild(symbol);
+        return symbolId;
+    }
+
+    private createIconButton(
+        parent: SVGElement,
+        x: number,
+        y: number,
+        size: number,
+        iconName: string,
+        label: string,
+        extraClass = ''
+    ): SVGGElement {
+        const group = this.createSvgGroup(parent, `ert-inquiry-icon-btn ${extraClass}`.trim(), x, y);
+        group.setAttribute('role', 'button');
+        group.setAttribute('tabindex', '0');
+        group.setAttribute('aria-label', label);
+        const rect = this.createSvgElement('rect');
+        rect.classList.add('ert-inquiry-icon-btn-bg');
+        rect.setAttribute('width', String(size));
+        rect.setAttribute('height', String(size));
+        rect.setAttribute('rx', String(Math.round(size * 0.3)));
+        rect.setAttribute('ry', String(Math.round(size * 0.3)));
+        group.appendChild(rect);
+        const iconSize = Math.round(size * 0.5);
+        const icon = this.createIconUse(iconName, (size - iconSize) / 2, (size - iconSize) / 2, iconSize);
+        icon.classList.add('ert-inquiry-icon');
+        group.appendChild(icon);
+        const title = this.createSvgElement('title');
+        title.textContent = label;
+        group.appendChild(title);
+        return group;
+    }
+
+    private createIconUse(iconName: string, x: number, y: number, size: number): SVGUseElement {
+        const use = this.createSvgElement('use');
+        use.setAttribute('x', String(x));
+        use.setAttribute('y', String(y));
+        use.setAttribute('width', String(size));
+        use.setAttribute('height', String(size));
+        this.setIconUse(use, iconName);
+        return use;
+    }
+
+    private setIconUse(use: SVGUseElement | undefined, iconName: string): void {
+        if (!use) return;
+        const symbolId = `ert-icon-${iconName}`;
+        use.setAttribute('href', `#${symbolId}`);
+        use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${symbolId}`);
+    }
+
+    private renderZone(
+        container: SVGGElement,
+        zone: InquiryZone,
+        label: string,
+        x: number,
+        width: number,
+        height: number
+    ): void {
+        const zoneEl = this.createSvgGroup(container, `ert-inquiry-zone ert-inquiry-zone--${zone}`, x, 0);
+        const bg = this.createSvgElement('rect');
+        bg.classList.add('ert-inquiry-zone-bg');
+        bg.setAttribute('width', String(width));
+        bg.setAttribute('height', String(height));
+        bg.setAttribute('rx', '18');
+        bg.setAttribute('ry', '18');
+        zoneEl.appendChild(bg);
+
+        this.createSvgText(zoneEl, 'ert-inquiry-zone-label', label, 16, 30);
+
+        const tray = this.createSvgGroup(zoneEl, 'ert-inquiry-zone-tray', 16, 48);
+        for (let i = 0; i < 3; i += 1) {
+            const dot = this.createSvgElement('circle');
+            dot.classList.add('ert-inquiry-zone-tray-dot');
+            dot.setAttribute('cx', String(i * 14));
+            dot.setAttribute('cy', '0');
+            dot.setAttribute('r', '5');
+            tray.appendChild(dot);
+        }
+
+        const icons = this.createSvgGroup(zoneEl, 'ert-inquiry-zone-icons', 12, 68);
+        const questions = BUILT_IN_QUESTIONS.filter(q => q.zone === zone);
+        questions.forEach((question, idx) => {
+            const btn = this.createIconButton(icons, idx * 40, 0, 34, question.icon, question.label, 'ert-inquiry-zone-icon');
+            this.registerDomEvent(btn as unknown as HTMLElement, 'click', () => this.handleQuestionClick(question));
+        });
+    }
+
+    private buildFindingsPanel(parent: SVGElement, x: number, y: number, width: number, height: number): void {
+        const findingsGroup = this.createSvgGroup(parent, 'ert-inquiry-findings', x, y);
+        const bg = this.createSvgElement('rect');
+        bg.classList.add('ert-inquiry-panel-bg');
+        bg.setAttribute('width', String(width));
+        bg.setAttribute('height', String(height));
+        bg.setAttribute('rx', '22');
+        bg.setAttribute('ry', '22');
+        findingsGroup.appendChild(bg);
+
+        this.createSvgText(findingsGroup, 'ert-inquiry-findings-title', 'Findings', 24, 36);
+        this.detailsToggle = this.createIconButton(findingsGroup, width - 48, 14, 32, 'chevron-down', 'Toggle details', 'ert-inquiry-details-toggle');
+        this.detailsIcon = this.detailsToggle.querySelector('.ert-inquiry-icon') as SVGUseElement;
+        this.registerDomEvent(this.detailsToggle as unknown as HTMLElement, 'click', () => this.toggleDetails());
+
+        this.detailsEl = this.createSvgGroup(findingsGroup, 'ert-inquiry-details ert-hidden', 24, 64);
+        this.detailRows = [
+            this.createSvgText(this.detailsEl, 'ert-inquiry-detail-row', 'Corpus fingerprint: not available', 0, 0),
+            this.createSvgText(this.detailsEl, 'ert-inquiry-detail-row', 'Cache status: not available', 0, 20)
+        ];
+
+        this.summaryEl = this.createSvgText(findingsGroup, 'ert-inquiry-summary', 'No inquiry run yet.', 24, 120);
+        this.verdictEl = this.createSvgText(findingsGroup, 'ert-inquiry-verdict', 'Run an inquiry to see verdicts.', 24, 144);
+
+        this.findingsListEl = this.createSvgGroup(findingsGroup, 'ert-inquiry-findings-list', 24, 176);
+
+        const previewY = height - 210;
+        this.artifactPreviewEl = this.createSvgGroup(findingsGroup, 'ert-inquiry-report-preview ert-hidden', 24, previewY);
+        this.artifactPreviewBg = this.createSvgElement('rect');
+        this.artifactPreviewBg.classList.add('ert-inquiry-report-preview-bg');
+        this.artifactPreviewBg.setAttribute('width', String(width - 48));
+        this.artifactPreviewBg.setAttribute('height', '180');
+        this.artifactPreviewBg.setAttribute('rx', '14');
+        this.artifactPreviewBg.setAttribute('ry', '14');
+        this.artifactPreviewEl.appendChild(this.artifactPreviewBg);
     }
 
     private refreshUI(): void {
@@ -334,22 +543,32 @@ export class InquiryView extends ItemView {
     }
 
     private updateModeClass(): void {
-        if (!this.rootEl) return;
-        this.rootEl.classList.toggle('is-mode-flow', this.state.mode === 'flow');
-        this.rootEl.classList.toggle('is-mode-depth', this.state.mode === 'depth');
+        if (!this.rootSvg) return;
+        this.rootSvg.classList.toggle('is-mode-flow', this.state.mode === 'flow');
+        this.rootSvg.classList.toggle('is-mode-depth', this.state.mode === 'depth');
     }
 
     private updateScopeToggle(): void {
-        this.updateToggleButton(this.scopeBookButton, this.state.scope === 'book');
-        this.updateToggleButton(this.scopeSagaButton, this.state.scope === 'saga');
+        this.updateToggleButton(this.scopeToggleButton, this.state.scope === 'saga');
+        if (this.scopeToggleIcon) {
+            const icon = this.state.scope === 'saga' ? 'sigma' : 'columns-2';
+            if (this.scopeToggleIcon instanceof SVGUseElement) {
+                this.setIconUse(this.scopeToggleIcon, icon);
+            }
+        }
+        this.scopeToggleButton?.setAttribute('aria-label', this.state.scope === 'saga' ? 'Saga scope' : 'Book scope');
     }
 
     private updateModeToggle(): void {
-        this.updateToggleButton(this.modeFlowButton, this.state.mode === 'flow');
-        this.updateToggleButton(this.modeDepthButton, this.state.mode === 'depth');
+        this.updateToggleButton(this.modeToggleButton, this.state.mode === 'depth');
+        if (this.modeToggleIcon) {
+            const icon = this.state.mode === 'depth' ? 'waves-arrow-down' : 'waves';
+            this.setIconUse(this.modeToggleIcon, icon);
+        }
+        this.modeToggleButton?.setAttribute('aria-label', this.state.mode === 'depth' ? 'Depth mode' : 'Flow mode');
     }
 
-    private updateToggleButton(button: HTMLButtonElement | undefined, isActive: boolean): void {
+    private updateToggleButton(button: SVGElement | undefined, isActive: boolean): void {
         if (!button) return;
         button.classList.toggle('is-active', isActive);
         button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
@@ -358,19 +577,25 @@ export class InquiryView extends ItemView {
     private updateContextBadge(): void {
         if (!this.contextBadgeIcon || !this.contextBadgeLabel) return;
         const isSaga = this.state.scope === 'saga';
-        this.contextBadgeIcon.empty?.();
-        if (isSaga) {
-            this.setSigmaIcon(this.contextBadgeIcon);
+        if (isSaga && this.iconSymbols.has('ert-icon-sigma')) {
+            this.contextBadgeIcon.classList.remove('ert-hidden');
+            this.contextBadgeSigmaText?.classList.add('ert-hidden');
+            this.setIconUse(this.contextBadgeIcon, 'sigma');
+        } else if (isSaga && this.contextBadgeSigmaText) {
+            this.contextBadgeIcon.classList.add('ert-hidden');
+            this.contextBadgeSigmaText.classList.remove('ert-hidden');
         } else {
-            setIcon(this.contextBadgeIcon, 'columns-2');
+            this.contextBadgeSigmaText?.classList.add('ert-hidden');
+            this.contextBadgeIcon.classList.remove('ert-hidden');
+            this.setIconUse(this.contextBadgeIcon, 'columns-2');
         }
         this.contextBadgeLabel.textContent = isSaga ? 'Saga context' : 'Book context';
     }
 
     private logInquirySvgDebug(): void {
-        const svg = this.glyph?.svg;
+        const svg = this.rootSvg;
         const viewBox = svg?.getAttribute('viewBox');
-        const frame = svg?.querySelector('.ert-inquiry-glyph-frame');
+        const frame = svg?.querySelector('.ert-inquiry-svg-frame');
         const rings = svg?.querySelectorAll('.ert-inquiry-ring-progress')?.length || 0;
         console.info('[Inquiry] SVG debug', {
             hasSvg: !!svg,
@@ -380,41 +605,63 @@ export class InquiryView extends ItemView {
         });
     }
 
-    private setSigmaIcon(target: HTMLElement): void {
-        target.empty?.();
-        setIcon(target, 'sigma');
-        if (target.querySelector('svg')) return;
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('viewBox', '0 0 24 24');
-        svg.classList.add('ert-inquiry-sigma-fallback');
-        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        text.setAttribute('x', '12');
-        text.setAttribute('y', '12');
-        text.setAttribute('text-anchor', 'middle');
-        text.setAttribute('dominant-baseline', 'middle');
-        text.textContent = String.fromCharCode(931);
-        svg.appendChild(text);
-        target.appendChild(svg);
-    }
-
     private renderMinimapTicks(): void {
-        if (!this.minimapTicksEl) return;
-        this.minimapTicksEl.empty();
+        if (!this.minimapTicksEl || !this.minimapLayout || !this.minimapBaseline) return;
+        this.clearSvgChildren(this.minimapTicksEl);
         this.minimapTicks = [];
 
         const count = this.state.scope === 'saga' ? DEFAULT_BOOK_COUNT : DEFAULT_SCENE_COUNT;
+        const length = this.minimapLayout.length;
+        const isVertical = this.state.mode === 'depth';
+        const tickLength = 20;
+        const tickThickness = 6;
+        const step = count > 1 ? length / (count - 1) : 0;
+
+        if (isVertical) {
+            const baselineX = this.minimapLayout.startX + (length / 2);
+            this.minimapBaseline.setAttribute('x1', String(baselineX));
+            this.minimapBaseline.setAttribute('y1', '0');
+            this.minimapBaseline.setAttribute('x2', String(baselineX));
+            this.minimapBaseline.setAttribute('y2', String(length));
+            this.minimapTicksEl.setAttribute('transform', `translate(${baselineX} 0)`);
+        } else {
+            const baselineStart = this.minimapLayout.startX;
+            const baselineEnd = this.minimapLayout.startX + length;
+            this.minimapBaseline.setAttribute('x1', String(baselineStart));
+            this.minimapBaseline.setAttribute('y1', '0');
+            this.minimapBaseline.setAttribute('x2', String(baselineEnd));
+            this.minimapBaseline.setAttribute('y2', '0');
+            this.minimapTicksEl.setAttribute('transform', `translate(${baselineStart} 0)`);
+        }
+
         for (let i = 1; i <= count; i += 1) {
-            const tick = this.minimapTicksEl.createEl('button', {
-                cls: 'ert-inquiry-minimap-tick',
-                attr: { type: 'button', 'data-index': String(i) }
-            });
+            const tick = this.createSvgElement('rect');
+            tick.classList.add('ert-inquiry-minimap-tick');
+            const pos = step * (i - 1);
+            if (isVertical) {
+                tick.setAttribute('x', String(-tickThickness / 2));
+                tick.setAttribute('y', String(pos - (tickLength / 2)));
+                tick.setAttribute('width', String(tickThickness));
+                tick.setAttribute('height', String(tickLength));
+                tick.setAttribute('rx', '3');
+                tick.setAttribute('ry', '3');
+            } else {
+                tick.setAttribute('x', String(pos - (tickLength / 2)));
+                tick.setAttribute('y', String(-tickThickness / 2));
+                tick.setAttribute('width', String(tickLength));
+                tick.setAttribute('height', String(tickThickness));
+                tick.setAttribute('rx', '3');
+                tick.setAttribute('ry', '3');
+            }
             const label = this.state.scope === 'saga' ? `B${i}` : `S${i}`;
+            tick.setAttribute('data-index', String(i));
             tick.setAttribute('aria-label', `Focus ${label}`);
-            this.registerDomEvent(tick, 'click', () => this.setFocusByIndex(i));
-            this.registerDomEvent(tick, 'pointerenter', () => {
+            this.registerDomEvent(tick as unknown as HTMLElement, 'click', () => this.setFocusByIndex(i));
+            this.registerDomEvent(tick as unknown as HTMLElement, 'pointerenter', () => {
                 this.setHoverText(`Focus ${label}. No findings yet.`);
             });
-            this.registerDomEvent(tick, 'pointerleave', () => this.clearHoverText());
+            this.registerDomEvent(tick as unknown as HTMLElement, 'pointerleave', () => this.clearHoverText());
+            this.minimapTicksEl.appendChild(tick);
             this.minimapTicks.push(tick);
         }
 
@@ -452,16 +699,18 @@ export class InquiryView extends ItemView {
     private updateFindingsPanel(): void {
         if (!this.summaryEl || !this.verdictEl || !this.findingsListEl || !this.detailsEl) return;
         const result = this.state.activeResult;
-        if (this.rootEl) {
+        if (this.rootSvg) {
             const hasError = !!result?.findings.some(finding => finding.kind === 'error');
-            this.rootEl.classList.toggle('is-error', hasError);
+            this.rootSvg.classList.toggle('is-error', hasError);
         }
 
         if (!result) {
             this.summaryEl.textContent = 'No inquiry run yet.';
             this.verdictEl.textContent = 'Run an inquiry to see verdicts.';
-            this.findingsListEl.empty();
-            this.detailsEl.querySelectorAll('.ert-inquiry-detail-row').forEach(el => el.textContent = 'Details not available');
+            this.clearSvgChildren(this.findingsListEl);
+            this.detailRows.forEach(row => {
+                row.textContent = 'Details not available';
+            });
             this.updateArtifactPreview();
             return;
         }
@@ -469,25 +718,28 @@ export class InquiryView extends ItemView {
         this.summaryEl.textContent = result.summary;
         this.verdictEl.textContent = `Flow ${this.formatMetricDisplay(result.verdict.flow)} · Depth ${this.formatMetricDisplay(result.verdict.depth)} · Severity ${result.verdict.severity} · Confidence ${result.verdict.confidence}`;
 
-        this.findingsListEl.empty();
+        this.clearSvgChildren(this.findingsListEl);
+        let y = 0;
+        const lineHeight = 18;
         result.findings.forEach(finding => {
-            const item = this.findingsListEl!.createDiv({ cls: 'ert-inquiry-finding' });
-            item.classList.add(`is-severity-${finding.severity}`);
-            item.createDiv({ cls: 'ert-inquiry-finding-head', text: finding.headline });
-            const meta = item.createDiv({ cls: 'ert-inquiry-finding-meta' });
-            meta.createSpan({ text: `Kind: ${finding.kind}` });
-            meta.createSpan({ text: `Evidence: ${finding.evidenceType}` });
-            meta.createSpan({ text: `Confidence: ${finding.confidence}` });
-            const bullets = item.createDiv({ cls: 'ert-inquiry-finding-bullets' });
-            finding.bullets.forEach(bullet => bullets.createDiv({ text: bullet }));
+            const head = this.createSvgText(this.findingsListEl!, `ert-inquiry-finding-head is-severity-${finding.severity}`, finding.headline, 0, y);
+            head.setAttribute('data-kind', finding.kind);
+            y += lineHeight;
+            const metaText = `Kind: ${finding.kind} · Evidence: ${finding.evidenceType} · Confidence: ${finding.confidence}`;
+            this.createSvgText(this.findingsListEl!, 'ert-inquiry-finding-meta', metaText, 0, y);
+            y += lineHeight;
+            finding.bullets.forEach(bullet => {
+                this.createSvgText(this.findingsListEl!, 'ert-inquiry-finding-bullet', `• ${bullet}`, 0, y);
+                y += lineHeight;
+            });
+            y += 6;
         });
 
-        const detailRows = this.detailsEl.querySelectorAll('.ert-inquiry-detail-row');
-        if (detailRows.length >= 2) {
-            detailRows[0].textContent = `Corpus fingerprint: ${result.corpusFingerprint || 'not available'}`;
+        if (this.detailRows.length >= 2) {
+            this.detailRows[0].textContent = `Corpus fingerprint: ${result.corpusFingerprint || 'not available'}`;
             const cacheEnabled = this.plugin.settings.inquiryCacheEnabled ?? true;
             const cacheText = cacheEnabled ? (this.state.cacheStatus || 'missing') : 'off';
-            detailRows[1].textContent = `Cache status: ${cacheText}`;
+            this.detailRows[1].textContent = `Cache status: ${cacheText}`;
         }
 
         this.updateArtifactPreview();
@@ -498,18 +750,40 @@ export class InquiryView extends ItemView {
         const isOpen = !!this.state.reportPreviewOpen;
         this.artifactPreviewEl.classList.toggle('ert-hidden', !isOpen);
         if (!isOpen) {
-            this.artifactPreviewEl.empty();
+            this.clearSvgChildren(this.artifactPreviewEl);
+            if (this.artifactPreviewBg) {
+                this.artifactPreviewEl.appendChild(this.artifactPreviewBg);
+            }
             return;
         }
         const result = this.state.activeResult;
         if (!result) {
-            this.artifactPreviewEl.textContent = 'Run an inquiry to preview the report.';
+            this.clearSvgChildren(this.artifactPreviewEl);
+            if (this.artifactPreviewBg) {
+                this.artifactPreviewEl.appendChild(this.artifactPreviewBg);
+            }
+            this.createSvgText(this.artifactPreviewEl, 'ert-inquiry-report-preview-empty', 'Run an inquiry to preview the report.', 12, 28);
             return;
         }
-        this.artifactPreviewEl.empty();
-        this.artifactPreviewEl.createDiv({ cls: 'ert-inquiry-report-preview-title', text: 'Report preview (unsaved)' });
-        const pre = this.artifactPreviewEl.createEl('pre', { cls: 'ert-inquiry-report-preview-body' });
-        pre.textContent = this.buildArtifactContent(result, this.plugin.settings.inquiryEmbedJson ?? true);
+        this.clearSvgChildren(this.artifactPreviewEl);
+        if (this.artifactPreviewBg) {
+            this.artifactPreviewEl.appendChild(this.artifactPreviewBg);
+        }
+        this.createSvgText(this.artifactPreviewEl, 'ert-inquiry-report-preview-title', 'Report preview (unsaved)', 12, 22);
+        const payload = this.buildArtifactContent(result, this.plugin.settings.inquiryEmbedJson ?? true);
+        const lines = payload.split('\n').slice(0, 12);
+        const body = this.createSvgElement('text');
+        body.classList.add('ert-inquiry-report-preview-body');
+        body.setAttribute('x', '12');
+        body.setAttribute('y', '44');
+        lines.forEach((line, idx) => {
+            const tspan = this.createSvgElement('tspan');
+            tspan.setAttribute('x', '12');
+            tspan.setAttribute('dy', idx === 0 ? '0' : '14');
+            tspan.textContent = line;
+            body.appendChild(tspan);
+        });
+        this.artifactPreviewEl.appendChild(body);
     }
 
     private updateFooterStatus(): void {
@@ -527,10 +801,8 @@ export class InquiryView extends ItemView {
     private updateNavigationIcons(): void {
         if (!this.navPrevButton || !this.navNextButton) return;
         const isSaga = this.state.scope === 'saga';
-        this.navPrevButton.empty?.();
-        this.navNextButton.empty?.();
-        setIcon(this.navPrevButton, isSaga ? 'chevron-up' : 'chevron-left');
-        setIcon(this.navNextButton, isSaga ? 'chevron-down' : 'chevron-right');
+        this.setIconUse(this.navPrevIcon, isSaga ? 'chevron-up' : 'chevron-left');
+        this.setIconUse(this.navNextIcon, isSaga ? 'chevron-down' : 'chevron-right');
     }
 
     private handleScopeChange(scope: InquiryScope): void {
@@ -832,11 +1104,7 @@ export class InquiryView extends ItemView {
         if (!this.detailsEl || !this.detailsToggle) return;
         const isOpen = !this.detailsEl.classList.contains('ert-hidden');
         this.detailsEl.classList.toggle('ert-hidden', isOpen);
-        const icon = this.detailsToggle.querySelector('.ert-inquiry-details-icon');
-        if (icon instanceof HTMLElement) {
-            icon.empty?.();
-            setIcon(icon, isOpen ? 'chevron-down' : 'chevron-up');
-        }
+        this.setIconUse(this.detailsIcon, isOpen ? 'chevron-down' : 'chevron-up');
     }
 
     private openReportPreview(): void {

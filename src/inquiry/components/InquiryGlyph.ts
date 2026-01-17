@@ -8,7 +8,7 @@ export interface InquiryGlyphProps {
     confidence: InquiryConfidence;
 }
 
-const GLYPH_VIEWBOX = '-800 -800 1600 1600';
+const SVG_NS = 'http://www.w3.org/2000/svg';
 const FLOW_RADIUS = 260;
 const DEPTH_RADIUS = 195;
 const FLOW_STROKE = 14;
@@ -21,8 +21,7 @@ const DEPTH_BADGE_RADIUS = Math.round(DEPTH_STROKE * 0.75);
 export class InquiryGlyph {
     private props: InquiryGlyphProps;
 
-    readonly root: HTMLDivElement;
-    readonly svg: SVGSVGElement;
+    readonly root: SVGGElement;
     readonly flowRingHit: SVGCircleElement;
     readonly depthRingHit: SVGCircleElement;
     readonly labelHit: SVGRectElement;
@@ -39,16 +38,11 @@ export class InquiryGlyph {
     private flowGroup: SVGGElement;
     private depthGroup: SVGGElement;
 
-    constructor(container: HTMLElement, props: InquiryGlyphProps) {
+    constructor(container: SVGElement, props: InquiryGlyphProps) {
         this.props = props;
-        this.root = container.createDiv({ cls: 'ert-inquiry-glyph-stack' });
-
-        this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        this.svg.setAttribute('viewBox', GLYPH_VIEWBOX);
-        this.svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-        this.svg.classList.add('ert-inquiry-glyph-svg');
-        this.svg.appendChild(this.buildDefs());
-        this.svg.appendChild(this.buildFrame());
+        this.root = document.createElementNS(SVG_NS, 'g');
+        this.root.classList.add('ert-inquiry-glyph');
+        container.appendChild(this.root);
 
         this.flowGroup = this.buildRingGroup('flow', FLOW_RADIUS, FLOW_STROKE, FLOW_HIT_STROKE, FLOW_BADGE_RADIUS);
         this.depthGroup = this.buildRingGroup('depth', DEPTH_RADIUS, DEPTH_STROKE, DEPTH_HIT_STROKE, DEPTH_BADGE_RADIUS);
@@ -64,9 +58,9 @@ export class InquiryGlyph {
         this.depthBadgeCircle = this.depthGroup.querySelector('.ert-inquiry-ring-badge-circle') as SVGCircleElement;
         this.depthBadgeText = this.depthGroup.querySelector('.ert-inquiry-ring-badge-text') as SVGTextElement;
 
-        const labelGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const labelGroup = document.createElementNS(SVG_NS, 'g');
         labelGroup.classList.add('ert-inquiry-glyph-label-group');
-        this.labelHit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        this.labelHit = document.createElementNS(SVG_NS, 'rect');
         this.labelHit.classList.add('ert-inquiry-glyph-hit');
         this.labelHit.setAttribute('x', '-180');
         this.labelHit.setAttribute('y', '-110');
@@ -75,7 +69,7 @@ export class InquiryGlyph {
         this.labelHit.setAttribute('rx', '60');
         this.labelHit.setAttribute('ry', '60');
 
-        this.labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        this.labelText = document.createElementNS(SVG_NS, 'text');
         this.labelText.classList.add('ert-inquiry-glyph-label');
         this.labelText.setAttribute('x', '0');
         this.labelText.setAttribute('y', '0');
@@ -85,10 +79,9 @@ export class InquiryGlyph {
         labelGroup.appendChild(this.labelHit);
         labelGroup.appendChild(this.labelText);
 
-        this.svg.appendChild(this.flowGroup);
-        this.svg.appendChild(this.depthGroup);
-        this.svg.appendChild(labelGroup);
-        this.root.appendChild(this.svg);
+        this.root.appendChild(this.flowGroup);
+        this.root.appendChild(this.depthGroup);
+        this.root.appendChild(labelGroup);
 
         this.applyProps(props);
     }
@@ -134,7 +127,7 @@ export class InquiryGlyph {
         hitStrokeWidth: number,
         badgeRadius: number
     ): SVGGElement {
-        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const group = document.createElementNS(SVG_NS, 'g');
         group.classList.add('ert-inquiry-ring', `ert-inquiry-ring--${kind}`);
 
         const glow = this.buildCircle(radius, strokeWidth, 'ert-inquiry-ring-glow');
@@ -160,14 +153,14 @@ export class InquiryGlyph {
     }
 
     private buildBadgeGroup(badgeRadius: number): SVGGElement {
-        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const group = document.createElementNS(SVG_NS, 'g');
         group.classList.add('ert-inquiry-ring-badge');
 
-        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        const circle = document.createElementNS(SVG_NS, 'circle');
         circle.classList.add('ert-inquiry-ring-badge-circle');
         circle.setAttribute('r', String(badgeRadius));
 
-        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        const text = document.createElementNS(SVG_NS, 'text');
         text.classList.add('ert-inquiry-ring-badge-text');
         text.setAttribute('text-anchor', 'middle');
         text.setAttribute('dominant-baseline', 'middle');
@@ -178,35 +171,8 @@ export class InquiryGlyph {
         return group;
     }
 
-    private buildDefs(): SVGDefsElement {
-        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-        const filter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
-        filter.setAttribute('id', 'ert-inquiry-ring-glow');
-        filter.setAttribute('x', '-50%');
-        filter.setAttribute('y', '-50%');
-        filter.setAttribute('width', '200%');
-        filter.setAttribute('height', '200%');
-
-        const blur = document.createElementNS('http://www.w3.org/2000/svg', 'feGaussianBlur');
-        blur.setAttribute('stdDeviation', '6');
-
-        filter.appendChild(blur);
-        defs.appendChild(filter);
-        return defs;
-    }
-
-    private buildFrame(): SVGRectElement {
-        const frame = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        frame.classList.add('ert-inquiry-glyph-frame');
-        frame.setAttribute('x', '-800');
-        frame.setAttribute('y', '-800');
-        frame.setAttribute('width', '1600');
-        frame.setAttribute('height', '1600');
-        return frame;
-    }
-
     private buildCircle(radius: number, strokeWidth: number, cls: string): SVGCircleElement {
-        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        const circle = document.createElementNS(SVG_NS, 'circle');
         circle.classList.add(cls);
         circle.setAttribute('cx', '0');
         circle.setAttribute('cy', '0');

@@ -226,7 +226,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Spokes & border controls (placed before Theme section)
     const spokeColorSetting = new Setting(stylingCard)
         .setName('Spokes and borders')
-        .setDesc('Choose stroke/border contrast. Controls all structural elements including scene borders and act division spokes.');
+        .setDesc('Choose contrasting color or none. Controls all structural elements including scene borders and act division spokes.');
     spokeColorSetting.settingEl.addClass('ert-elementBlock');
     spokeColorSetting.controlEl.addClass('ert-elementBlock__right');
     spokeColorSetting.settingEl.querySelector('.setting-item-info')?.classList.add('ert-elementBlock__left');
@@ -237,7 +237,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Match Book Title Color layout exactly - always show color picker and text input
     const isCustomMode = currentSpokeMode === 'custom';
     const fallbackColor = '#ffffff';
-    const spokeControlRow = spokeColorSetting.controlEl.createDiv({ cls: 'ert-elementBlock__row ert-typography-controls' });
+    const spokeControlRow = spokeColorSetting.controlEl.createDiv({ cls: 'ert-elementBlock__row ert-typography-controls ert-typography-controls--end' });
     const spokeColorPicker = colorSwatch(spokeControlRow, {
         value: isCustomMode ? currentSpokeColor : fallbackColor,
         ariaLabel: 'Spoke color',

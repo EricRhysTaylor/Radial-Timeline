@@ -3,7 +3,7 @@
  * Keeps geometry simple and crisp for sharing, independent from the main renderer.
  */
 import type { TimelineItem } from '../../types';
-import { isBeatNote, sortScenes } from '../../utils/sceneHelpers';
+import { isBeatNote, sortScenes, sortByManuscriptOrder } from '../../utils/sceneHelpers';
 import { computePositions } from '../utils/SceneLayout';
 import { sceneArcPath } from '../components/SceneArcs';
 import { getPreset, APR_COLORS, AprSize } from './AprLayoutConfig';
@@ -278,13 +278,8 @@ function renderRing(
         const actEnd = -Math.PI / 2 + ((act + 1) * 2 * Math.PI) / numActs;
         const scenesInAct = actScenes[act];
 
-        // Sort by scene number (fallback to title) to mirror Publication order
-        scenesInAct.sort((a, b) => {
-            const na = parseFloat(String(a.number ?? a.title ?? 0)) || 0;
-            const nb = parseFloat(String(b.number ?? b.title ?? 0)) || 0;
-            if (na !== nb) return na - nb;
-            return (a.title || '').localeCompare(b.title || '');
-        });
+        // Keep consistent manuscript ordering with timeline sorting
+        scenesInAct.sort(sortByManuscriptOrder);
 
         if (scenesInAct.length === 0) {
             // full void arc for this act - use light gray void color
