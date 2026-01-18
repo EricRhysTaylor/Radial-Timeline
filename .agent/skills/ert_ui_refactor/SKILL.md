@@ -14,6 +14,7 @@ This skill guides the refactoring of Obsidian plugin settings and modals to the 
 3.  **Tokens**: Use `--ert-*` tokens for spacing and rhythm. Avoid literal pixels.
 4.  **Archetypes**: Use reusable layout patterns (`ert-panel`, `ert-row`, `ert-stack`). Do not use ad-hoc wrappers.
 5.  **Additive**: Add accents (glows, borders) rather than replacing theme surfaces.
+6.  **Preservation**: Do NOT delete legacy `rt-` styles or files until the entire refactor is verified and complete. Keep them in reserve.
 
 ## Refactoring Checklist
 

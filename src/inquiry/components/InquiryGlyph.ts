@@ -183,7 +183,7 @@ export class InquiryGlyph {
         const text = document.createElementNS(SVG_NS, 'text');
         text.classList.add('ert-inquiry-ring-badge-text');
         text.setAttribute('text-anchor', 'middle');
-        text.setAttribute('dominant-baseline', 'middle');
+        text.setAttribute('dominant-baseline', 'central');
 
         group.appendChild(circle);
         group.appendChild(text);

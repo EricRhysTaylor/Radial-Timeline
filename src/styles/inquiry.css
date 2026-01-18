@@ -325,8 +325,8 @@
 
 .ert-inquiry-ring-badge-circle {
   fill: var(--ert-inquiry-badge-color, var(--ert-inquiry-neutral));
-  stroke: color-mix(in srgb, var(--background-primary) 60%, transparent);
-  stroke-width: 4;
+  stroke: none;
+  stroke-width: 0;
 }
 
 .ert-inquiry-ring-badge-text {
