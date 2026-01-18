@@ -2005,6 +2005,17 @@
   transform: translateY(-2px);
 }
 
+.rt-apr-preview-card.is-locked {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.rt-apr-preview-card.is-locked:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: none;
+  box-shadow: none;
+}
+
 .rt-apr-preview-card.rt-active {
   border-color: var(--rt-social-color, #ffd41d);
   box-shadow: 0 0 12px rgba(255, 212, 29, 0.25);

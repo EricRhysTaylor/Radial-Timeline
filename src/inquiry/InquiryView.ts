@@ -28,6 +28,7 @@ const DEFAULT_SCENE_COUNT = 12;
 const GLYPH_TARGET_PX = 190;
 const GLYPH_PLACEHOLDER_FLOW = 0.75;
 const GLYPH_PLACEHOLDER_DEPTH = 0.30;
+const DEBUG_SVG_OVERLAY = true;
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const VIEWBOX_MIN = -800;
 const VIEWBOX_MAX = 800;
@@ -191,41 +192,35 @@ export class InquiryView extends ItemView {
         frame.setAttribute('height', String(VIEWBOX_SIZE));
         svg.appendChild(frame);
 
-        const uiGroup = this.createSvgGroup(svg, 'ert-inquiry-ui');
+        svg.classList.toggle('is-debug', DEBUG_SVG_OVERLAY);
+        this.buildDebugOverlay(svg);
 
-        const padding = 80;
-        const panelWidth = 420;
-        const panelLeft = VIEWBOX_MAX - padding - panelWidth;
-        const panelTop = VIEWBOX_MIN + padding;
-        const panelHeight = VIEWBOX_MAX - padding - panelTop;
-        const leftAreaLeft = VIEWBOX_MIN + padding;
-        const leftAreaRight = panelLeft - padding;
-        const leftAreaCenter = (leftAreaLeft + leftAreaRight) / 2;
+        const hudGroup = this.createSvgGroup(svg, 'ert-inquiry-hud', -760, -740);
+        hudGroup.setAttribute('id', 'inq-hud');
+        const findingsGroup = this.createSvgGroup(svg, 'ert-inquiry-findings', 260, -720);
+        findingsGroup.setAttribute('id', 'inq-findings');
+        const canvasGroup = this.createSvgGroup(svg, 'ert-inquiry-canvas');
+        canvasGroup.setAttribute('id', 'inq-canvas');
 
-        const headerX = leftAreaLeft;
-        const headerY = panelTop;
         const iconSize = 56;
         const iconGap = 16;
 
-        const headerGroup = this.createSvgGroup(uiGroup, 'ert-inquiry-header', headerX, headerY);
-        this.scopeToggleButton = this.createIconButton(headerGroup, 0, 0, iconSize, 'columns-2', 'Toggle scope');
+        this.scopeToggleButton = this.createIconButton(hudGroup, 0, 0, iconSize, 'columns-2', 'Toggle scope');
         this.scopeToggleIcon = this.scopeToggleButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
         this.registerDomEvent(this.scopeToggleButton as unknown as HTMLElement, 'click', () => {
             this.handleScopeChange(this.state.scope === 'book' ? 'saga' : 'book');
         });
 
-        this.modeToggleButton = this.createIconButton(headerGroup, iconSize + iconGap, 0, iconSize, 'waves', 'Toggle mode');
+        this.modeToggleButton = this.createIconButton(hudGroup, iconSize + iconGap, 0, iconSize, 'waves', 'Toggle mode');
         this.modeToggleIcon = this.modeToggleButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
         this.registerDomEvent(this.modeToggleButton as unknown as HTMLElement, 'click', () => {
             this.handleModeChange(this.state.mode === 'flow' ? 'depth' : 'flow');
         });
 
-        const artifactX = panelLeft + panelWidth - iconSize;
-        this.artifactButton = this.createIconButton(uiGroup, artifactX, headerY, iconSize, 'aperture', 'Save artifact');
+        this.artifactButton = this.createIconButton(hudGroup, (iconSize + iconGap) * 2, 0, iconSize, 'aperture', 'Save artifact');
         this.registerDomEvent(this.artifactButton as unknown as HTMLElement, 'click', () => { void this.saveArtifact(); });
 
-        const minimapY = headerY + 120;
-        const minimapGroup = this.createSvgGroup(uiGroup, 'ert-inquiry-minimap', leftAreaLeft, minimapY);
+        const minimapGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-minimap', 0, 120);
         const badgeWidth = 160;
         const badgeHeight = 34;
         const badgeGroup = this.createSvgGroup(minimapGroup, 'ert-inquiry-context-badge', 0, -badgeHeight / 2);
@@ -243,7 +238,7 @@ export class InquiryView extends ItemView {
         this.contextBadgeLabel = this.createSvgText(badgeGroup, 'ert-inquiry-context-badge-label', 'Book context', 38, 21);
 
         const baselineStartX = badgeWidth + 24;
-        const baselineLength = Math.max(120, leftAreaRight - leftAreaLeft - baselineStartX);
+        const baselineLength = 420;
         this.minimapLayout = { startX: baselineStartX, length: baselineLength };
         this.minimapBaseline = this.createSvgElement('line');
         this.minimapBaseline.classList.add('ert-inquiry-minimap-baseline');
@@ -251,16 +246,9 @@ export class InquiryView extends ItemView {
 
         this.minimapTicksEl = this.createSvgGroup(minimapGroup, 'ert-inquiry-minimap-ticks', baselineStartX, 0);
 
-        const zonesY = minimapY + 80;
-        const zonesGroup = this.createSvgGroup(uiGroup, 'ert-inquiry-zones', leftAreaLeft, zonesY);
-        const zoneGap = 20;
-        const zoneHeight = 120;
-        const zoneWidth = (leftAreaRight - leftAreaLeft - (zoneGap * 2)) / 3;
-        this.renderZone(zonesGroup, 'setup', 'Setup', 0, zoneWidth, zoneHeight);
-        this.renderZone(zonesGroup, 'pressure', 'Pressure', zoneWidth + zoneGap, zoneWidth, zoneHeight);
-        this.renderZone(zonesGroup, 'payoff', 'Payoff', (zoneWidth + zoneGap) * 2, zoneWidth, zoneHeight);
+        this.renderZonePods(canvasGroup);
 
-        this.glyphAnchor = this.createSvgGroup(uiGroup, 'ert-inquiry-focus-area', leftAreaCenter, 80);
+        this.glyphAnchor = this.createSvgGroup(canvasGroup, 'ert-inquiry-focus-area');
         this.glyph = new InquiryGlyph(this.glyphAnchor, {
             focusLabel: this.getFocusLabel(),
             flowValue: GLYPH_PLACEHOLDER_FLOW,
@@ -294,14 +282,12 @@ export class InquiryView extends ItemView {
         });
         this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'pointerleave', () => this.clearHoverText());
 
-        const hoverY = VIEWBOX_MAX - padding - 40;
-        this.hoverTextEl = this.createSvgText(uiGroup, 'ert-inquiry-hover', 'Hover to preview context.', leftAreaLeft, hoverY);
+        this.hoverTextEl = this.createSvgText(canvasGroup, 'ert-inquiry-hover', 'Hover to preview context.', -200, 360);
 
-        this.buildFindingsPanel(uiGroup, panelLeft, panelTop, panelWidth, panelHeight);
+        this.buildFindingsPanel(findingsGroup, 480, 1440);
 
-        const footerY = VIEWBOX_MAX - padding;
-        const footerGroup = this.createSvgGroup(uiGroup, 'ert-inquiry-footer', leftAreaLeft, footerY);
-        const navGroup = this.createSvgGroup(footerGroup, 'ert-inquiry-nav', 0, 0);
+        const hudFooterY = 1360;
+        const navGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-nav', 0, hudFooterY);
         this.navPrevButton = this.createIconButton(navGroup, 0, -18, 44, 'chevron-left', 'Previous focus', 'ert-inquiry-nav-btn');
         this.navPrevIcon = this.navPrevButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
         this.navNextButton = this.createIconButton(navGroup, 54, -18, 44, 'chevron-right', 'Next focus', 'ert-inquiry-nav-btn');
@@ -309,7 +295,7 @@ export class InquiryView extends ItemView {
         this.registerDomEvent(this.navPrevButton as unknown as HTMLElement, 'click', () => this.shiftFocus(-1));
         this.registerDomEvent(this.navNextButton as unknown as HTMLElement, 'click', () => this.shiftFocus(1));
 
-        const statusGroup = this.createSvgGroup(footerGroup, 'ert-inquiry-status', leftAreaRight - 220, 0);
+        const statusGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-status', 180, hudFooterY + 6);
         this.cacheStatusEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'Cache: none', 0, 0);
         this.confidenceEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'Confidence: none', 140, 0);
     }
@@ -447,41 +433,82 @@ export class InquiryView extends ItemView {
         use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${symbolId}`);
     }
 
-    private renderZone(
-        container: SVGGElement,
-        zone: InquiryZone,
-        label: string,
-        x: number,
-        width: number,
-        height: number
-    ): void {
-        const zoneEl = this.createSvgGroup(container, `ert-inquiry-zone ert-inquiry-zone--${zone}`, x, 0);
-        const bg = this.createSvgElement('rect');
-        bg.classList.add('ert-inquiry-zone-bg');
-        bg.setAttribute('width', String(width));
-        bg.setAttribute('height', String(height));
-        bg.setAttribute('rx', '18');
-        bg.setAttribute('ry', '18');
-        zoneEl.appendChild(bg);
+    private renderZonePods(parent: SVGGElement): void {
+        const rZone = FLOW_RADIUS + FLOW_STROKE + 90;
+        const zones: Array<{ id: InquiryZone; label: string; angle: number }> = [
+            { id: 'setup', label: 'Setup', angle: 210 },
+            { id: 'pressure', label: 'Pressure', angle: 330 },
+            { id: 'payoff', label: 'Payoff', angle: 90 }
+        ];
 
-        this.createSvgText(zoneEl, 'ert-inquiry-zone-label', label, 16, 30);
+        zones.forEach(zone => {
+            const pos = this.polarToCartesian(rZone, zone.angle);
+            const zoneEl = this.createSvgGroup(parent, `ert-inquiry-zone-pod ert-inquiry-zone--${zone.id}`, pos.x, pos.y);
+            const podWidth = 150;
+            const podHeight = 64;
+            const bg = this.createSvgElement('rect');
+            bg.classList.add('ert-inquiry-zone-bg');
+            bg.setAttribute('x', String(-podWidth / 2));
+            bg.setAttribute('y', String(-podHeight / 2));
+            bg.setAttribute('width', String(podWidth));
+            bg.setAttribute('height', String(podHeight));
+            bg.setAttribute('rx', '18');
+            bg.setAttribute('ry', '18');
+            zoneEl.appendChild(bg);
 
-        const tray = this.createSvgGroup(zoneEl, 'ert-inquiry-zone-tray', 16, 48);
-        for (let i = 0; i < 3; i += 1) {
-            const dot = this.createSvgElement('circle');
-            dot.classList.add('ert-inquiry-zone-tray-dot');
-            dot.setAttribute('cx', String(i * 14));
-            dot.setAttribute('cy', '0');
-            dot.setAttribute('r', '5');
-            tray.appendChild(dot);
-        }
+            this.createSvgText(zoneEl, 'ert-inquiry-zone-label', zone.label, -podWidth / 2 + 16, -10);
 
-        const icons = this.createSvgGroup(zoneEl, 'ert-inquiry-zone-icons', 12, 68);
-        const questions = BUILT_IN_QUESTIONS.filter(q => q.zone === zone);
-        questions.forEach((question, idx) => {
-            const btn = this.createIconButton(icons, idx * 40, 0, 34, question.icon, question.label, 'ert-inquiry-zone-icon');
-            this.registerDomEvent(btn as unknown as HTMLElement, 'click', () => this.handleQuestionClick(question));
+            const tray = this.createSvgGroup(zoneEl, 'ert-inquiry-zone-tray', -podWidth / 2 + 16, 16);
+            for (let i = 0; i < 3; i += 1) {
+                const dot = this.createSvgElement('circle');
+                dot.classList.add('ert-inquiry-zone-dot');
+                dot.setAttribute('cx', String(i * 16));
+                dot.setAttribute('cy', '0');
+                dot.setAttribute('r', '5');
+                tray.appendChild(dot);
+            }
         });
+    }
+
+    private polarToCartesian(radius: number, degrees: number): { x: number; y: number } {
+        const radians = (degrees * Math.PI) / 180;
+        return {
+            x: radius * Math.cos(radians),
+            y: radius * Math.sin(radians)
+        };
+    }
+
+    private buildDebugOverlay(parent: SVGElement): void {
+        const debugGroup = this.createSvgGroup(parent, 'ert-inquiry-debug');
+        debugGroup.setAttribute('id', 'inq-debug');
+
+        const rect = this.createSvgElement('rect');
+        rect.classList.add('ert-inquiry-debug-frame');
+        rect.setAttribute('x', String(VIEWBOX_MIN));
+        rect.setAttribute('y', String(VIEWBOX_MIN));
+        rect.setAttribute('width', String(VIEWBOX_SIZE));
+        rect.setAttribute('height', String(VIEWBOX_SIZE));
+        debugGroup.appendChild(rect);
+
+        const xAxis = this.createSvgElement('line');
+        xAxis.classList.add('ert-inquiry-debug-axis');
+        xAxis.setAttribute('x1', String(VIEWBOX_MIN));
+        xAxis.setAttribute('y1', '0');
+        xAxis.setAttribute('x2', String(VIEWBOX_MAX));
+        xAxis.setAttribute('y2', '0');
+        debugGroup.appendChild(xAxis);
+
+        const yAxis = this.createSvgElement('line');
+        yAxis.classList.add('ert-inquiry-debug-axis');
+        yAxis.setAttribute('x1', '0');
+        yAxis.setAttribute('y1', String(VIEWBOX_MIN));
+        yAxis.setAttribute('x2', '0');
+        yAxis.setAttribute('y2', String(VIEWBOX_MAX));
+        debugGroup.appendChild(yAxis);
+
+        const label = this.createSvgText(debugGroup, 'ert-inquiry-debug-label', 'ORIGIN', 0, 0);
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('dominant-baseline', 'middle');
     }
 
     private updateGlyphScale(): void {
@@ -496,8 +523,7 @@ export class InquiryView extends ItemView {
         this.glyph.setDisplayScale(scale, unitsPerPx);
     }
 
-    private buildFindingsPanel(parent: SVGElement, x: number, y: number, width: number, height: number): void {
-        const findingsGroup = this.createSvgGroup(parent, 'ert-inquiry-findings', x, y);
+    private buildFindingsPanel(findingsGroup: SVGGElement, width: number, height: number): void {
         const bg = this.createSvgElement('rect');
         bg.classList.add('ert-inquiry-panel-bg');
         bg.setAttribute('width', String(width));
@@ -723,20 +749,24 @@ export class InquiryView extends ItemView {
         this.verdictEl.textContent = `Flow ${this.formatMetricDisplay(result.verdict.flow)} · Depth ${this.formatMetricDisplay(result.verdict.depth)} · Severity ${result.verdict.severity} · Confidence ${result.verdict.confidence}`;
 
         this.clearSvgChildren(this.findingsListEl);
-        let y = 0;
-        const lineHeight = 18;
-        result.findings.forEach(finding => {
-            const head = this.createSvgText(this.findingsListEl!, `ert-inquiry-finding-head is-severity-${finding.severity}`, finding.headline, 0, y);
-            head.setAttribute('data-kind', finding.kind);
-            y += lineHeight;
-            const metaText = `Kind: ${finding.kind} · Evidence: ${finding.evidenceType} · Confidence: ${finding.confidence}`;
-            this.createSvgText(this.findingsListEl!, 'ert-inquiry-finding-meta', metaText, 0, y);
-            y += lineHeight;
-            finding.bullets.forEach(bullet => {
-                this.createSvgText(this.findingsListEl!, 'ert-inquiry-finding-bullet', `• ${bullet}`, 0, y);
-                y += lineHeight;
-            });
-            y += 6;
+        const iconSize = 20;
+        const iconGap = 12;
+        const perRow = 8;
+        result.findings.forEach((finding, index) => {
+            const col = index % perRow;
+            const row = Math.floor(index / perRow);
+            const x = col * (iconSize + iconGap);
+            const y = row * (iconSize + iconGap);
+            const iconGroup = this.createSvgGroup(this.findingsListEl!, `ert-inquiry-finding-icon is-severity-${finding.severity}`, x, y);
+            const circle = this.createSvgElement('circle');
+            circle.classList.add('ert-inquiry-finding-icon-circle');
+            circle.setAttribute('cx', String(iconSize / 2));
+            circle.setAttribute('cy', String(iconSize / 2));
+            circle.setAttribute('r', String(iconSize / 2));
+            iconGroup.appendChild(circle);
+            const title = this.createSvgElement('title');
+            title.textContent = `${finding.headline} (${finding.kind})`;
+            iconGroup.appendChild(title);
         });
 
         if (this.detailRows.length >= 2) {

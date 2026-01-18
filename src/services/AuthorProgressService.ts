@@ -286,6 +286,52 @@ export class AuthorProgressService {
     public async generateCampaignReport(campaignId: string): Promise<string | null> {
         const settings = this.plugin.settings.authorProgress;
         if (!settings) return null;
+        const result = await this.buildCampaignSvg(campaignId);
+        if (!result) return null;
+        const { svgString, campaign } = result;
+
+        // Save to campaign's embed path
+        const path = campaign.embedPath;
+        await this.ensureFolder(path);
+        
+        const existingFile = this.app.vault.getAbstractFileByPath(path);
+        if (existingFile && 'path' in existingFile) {
+            // SAFE: Cast required for Obsidian API compatibility
+            await this.app.vault.modify(existingFile as Parameters<typeof this.app.vault.modify>[0], svgString);
+        } else {
+            await this.app.vault.create(path, svgString);
+        }
+        
+        // Update campaign's last published date
+        const campaignIndex = settings.campaigns?.findIndex((c: AprCampaign) => c.id === campaignId);
+        if (campaignIndex !== undefined && campaignIndex >= 0 && settings.campaigns) {
+            settings.campaigns[campaignIndex].lastPublishedDate = new Date().toISOString();
+            await this.plugin.saveSettings();
+        }
+        
+        new Notice(`Campaign "${campaign.name}" published!`);
+        return path;
+    }
+
+    /**
+     * Generate a one-time snapshot for a specific campaign.
+     * Saves to the Output folder using campaign-specific reveal settings.
+     */
+    public async generateCampaignSnapshot(campaignId: string): Promise<string | null> {
+        const result = await this.buildCampaignSvg(campaignId);
+        if (!result) return null;
+        const { svgString, campaign } = result;
+        const fileName = `apr-snapshot-${campaign.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.svg`;
+        const folder = this.plugin.settings.aiOutputFolder || 'Radial Timeline/AI Logs';
+        const path = `${folder}/${fileName}`;
+        await this.ensureFolder(path);
+        await this.app.vault.create(path, svgString);
+        return path;
+    }
+
+    private async buildCampaignSvg(campaignId: string): Promise<{ svgString: string; campaign: AprCampaign } | null> {
+        const settings = this.plugin.settings.authorProgress;
+        if (!settings) return null;
 
         const campaign = settings.campaigns?.find(c => c.id === campaignId);
         if (!campaign) {
@@ -296,28 +342,31 @@ export class AuthorProgressService {
         const scenes = await getAllScenes(this.app, this.plugin);
         const progressPercent = this.calculateProgress(scenes);
 
-        // Determine reveal options based on Momentum Builder or static settings
         let showScenes = true;
         let showSubplots = campaign.showSubplots;
         let showActs = campaign.showActs;
         let showStatusColors = campaign.showStatus;
-        
-        // Apply Teaser Reveal if enabled
+        let showStageColors = true;
+        let grayCompletedScenes = false;
+
         if (campaign.teaserReveal?.enabled) {
-            const thresholds = getTeaserThresholds(
-                campaign.teaserReveal.preset,
-                campaign.teaserReveal.customThresholds
+            const preset = campaign.teaserReveal.preset ?? 'standard';
+            const thresholds = getTeaserThresholds(preset, campaign.teaserReveal.customThresholds);
+            const revealLevel = getTeaserRevealLevel(
+                progressPercent,
+                thresholds,
+                campaign.teaserReveal.disabledStages
             );
-            const revealLevel = getTeaserRevealLevel(progressPercent, thresholds);
             const revealOptions = teaserLevelToRevealOptions(revealLevel);
-            
+
             showScenes = revealOptions.showScenes;
             showSubplots = revealOptions.showSubplots;
             showActs = revealOptions.showActs;
             showStatusColors = revealOptions.showStatusColors;
+            showStageColors = revealOptions.showStageColors;
+            grayCompletedScenes = revealOptions.grayCompletedScenes;
         }
 
-        // Use campaign-specific settings with fallbacks to main settings
         const { svgString } = createAprSVG(scenes, {
             size: campaign.aprSize || settings.aprSize || 'medium',
             progressPercent,
@@ -328,6 +377,8 @@ export class AuthorProgressService {
             showSubplots,
             showActs,
             showStatusColors,
+            showStageColors,
+            grayCompletedScenes,
             showProgressPercent: campaign.showProgressPercent,
             stageColors: this.plugin.settings.publishStageColors,
             actCount: this.plugin.settings.actCount || undefined,
@@ -364,27 +415,7 @@ export class AuthorProgressService {
             rtBadgeFontSize: settings.aprRtBadgeFontSize
         });
 
-        // Save to campaign's embed path
-        const path = campaign.embedPath;
-        await this.ensureFolder(path);
-        
-        const existingFile = this.app.vault.getAbstractFileByPath(path);
-        if (existingFile && 'path' in existingFile) {
-            // SAFE: Cast required for Obsidian API compatibility
-            await this.app.vault.modify(existingFile as Parameters<typeof this.app.vault.modify>[0], svgString);
-        } else {
-            await this.app.vault.create(path, svgString);
-        }
-        
-        // Update campaign's last published date
-        const campaignIndex = settings.campaigns?.findIndex(c => c.id === campaignId);
-        if (campaignIndex !== undefined && campaignIndex >= 0 && settings.campaigns) {
-            settings.campaigns[campaignIndex].lastPublishedDate = new Date().toISOString();
-            await this.plugin.saveSettings();
-        }
-        
-        new Notice(`Campaign "${campaign.name}" published!`);
-        return path;
+        return { svgString, campaign };
     }
 
     /**
