@@ -485,13 +485,14 @@ function renderCampaignDetails(
         .setName('Export Size')
         .setDesc('SVG dimensions: Small for widgets, Medium for social/newsletters, Large for website embeds.')
         .addDropdown(drop => {
-            drop.addOption('small', 'Small (150px)')
+            drop.addOption('thumb', 'Thumb (100px)')
+                .addOption('small', 'Small (150px)')
                 .addOption('medium', 'Medium (300px)')
                 .addOption('large', 'Large (450px)')
                 .setValue(campaign.aprSize)
                 .onChange(async (val) => {
                     if (!plugin.settings.authorProgress?.campaigns) return;
-                    plugin.settings.authorProgress.campaigns[index].aprSize = val as 'small' | 'medium' | 'large';
+                    plugin.settings.authorProgress.campaigns[index].aprSize = val as 'thumb' | 'small' | 'medium' | 'large';
                     await plugin.saveSettings();
                 });
         });
@@ -810,19 +811,21 @@ async function renderTeaserStagesPreviews(
         const svgContainer = card.createDiv({ cls: 'rt-teaser-stage-svg' });
         
         try {
+            const isRingOnly = stage.level === 'bar';
             const { svgString } = createAprSVG(scenes, {
                 size: 'small',
                 progressPercent: stage.progress,
                 bookTitle: settings.bookTitle || 'Book',
                 authorName: settings.authorName || '',
                 authorUrl: '',
-                showScenes: revealOptions.showScenes,
+                showScenes: isRingOnly ? false : revealOptions.showScenes,
                 showSubplots: revealOptions.showSubplots,
                 showActs: revealOptions.showActs,
                 showStatusColors: revealOptions.showStatusColors,
                 showStageColors: revealOptions.showStageColors,
                 grayCompletedScenes: revealOptions.grayCompletedScenes,
-                showProgressPercent: true,
+                showProgressPercent: !isRingOnly,
+                showBranding: !isRingOnly,
                 stageColors: plugin.settings.publishStageColors,
                 actCount: plugin.settings.actCount,
                 backgroundColor: campaign.customBackgroundColor ?? settings.aprBackgroundColor,

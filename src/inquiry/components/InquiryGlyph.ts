@@ -17,8 +17,8 @@ const FLOW_HIT_STROKE = 38;
 const DEPTH_HIT_STROKE = 48;
 const FLOW_BADGE_RADIUS_PX = FLOW_STROKE / 2;
 const DEPTH_BADGE_RADIUS_PX = DEPTH_STROKE / 2;
-const FLOW_BADGE_TEXT_PX = 16;
-const DEPTH_BADGE_TEXT_PX = 20;
+const FLOW_BADGE_TEXT_PX = Math.round(16 / 2);
+const DEPTH_BADGE_TEXT_PX = Math.round(20 * (2 / 3));
 const LABEL_TEXT_PX = 70;
 const ARC_BASE_TINT = '#dff5e7';
 const ARC_MAX_GREEN = '#22c55e';
@@ -83,6 +83,7 @@ export class InquiryGlyph {
         this.labelText.setAttribute('y', '0');
         this.labelText.setAttribute('text-anchor', 'middle');
         this.labelText.setAttribute('dominant-baseline', 'middle');
+        this.labelText.setAttribute('dy', '0.12em');
 
         labelGroup.appendChild(this.labelHit);
         labelGroup.appendChild(this.labelText);

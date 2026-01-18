@@ -75,6 +75,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     sizeSelectorRow.createSpan({ text: 'Preview Size:', cls: 'rt-apr-size-label' });
     
     const sizeButtons = [
+        { size: 'thumb', dimension: '100' },
         { size: 'small', dimension: '150' },
         { size: 'medium', dimension: '300' },
         { size: 'large', dimension: '450' },
@@ -85,7 +86,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     sizeButtons.forEach(({ size, dimension }) => {
         const btn = sizeSelectorRow.createEl('button', { 
             cls: `rt-apr-size-btn ${size === currentSize ? 'rt-apr-size-btn-active' : ''}`,
-            text: `${dimension}•${dimension}`
+            text: `${dimension}^2`
         });
         
         btn.onclick = async () => {
@@ -99,7 +100,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             
             // Update dimension label
             const dimLabel = previewSection.querySelector('.rt-apr-preview-dimension-label');
-            if (dimLabel) dimLabel.setText(`${dimension}×${dimension} — Actual size (scroll to see full preview)`);
+            if (dimLabel) dimLabel.setText(`${dimension}^2 — Actual size (scroll to see full preview)`);
             
             // Re-render preview at new size
             void renderHeroPreview(app, plugin, previewContainer, size);
@@ -110,7 +111,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const currentDim = sizeButtons.find(s => s.size === currentSize)?.dimension || '300';
     previewSection.createDiv({ 
         cls: 'rt-apr-preview-dimension-label',
-        text: `${currentDim}×${currentDim} — Actual size (scroll to see full preview)`
+        text: `${currentDim}^2 — Actual size (scroll to see full preview)`
     });
     
     // SVG Preview container - shows at 1:1 actual size
@@ -1162,7 +1163,7 @@ async function renderHeroPreview(
     app: App, 
     plugin: RadialTimelinePlugin, 
     container: HTMLElement,
-    size: 'small' | 'medium' | 'large' = 'medium'
+    size: 'thumb' | 'small' | 'medium' | 'large' = 'medium'
 ): Promise<void> {
     try {
         const scenes = await getAllScenes(app, plugin);
@@ -1182,16 +1183,19 @@ async function renderHeroPreview(
         
         const aprSettings = plugin.settings.authorProgress;
         
+        const isThumb = size === 'thumb';
         const { svgString, width, height } = createAprSVG(scenes, {
             size: size,
             progressPercent,
             bookTitle: aprSettings?.bookTitle || 'Working Title',
             authorName: aprSettings?.authorName || '',
             authorUrl: aprSettings?.authorUrl || '',
+            showScenes: !isThumb,
             showSubplots: aprSettings?.showSubplots ?? true,
             showActs: aprSettings?.showActs ?? true,
             showStatusColors: aprSettings?.showStatus ?? true,
-            showProgressPercent: aprSettings?.showProgressPercent ?? true,
+            showProgressPercent: isThumb ? false : (aprSettings?.showProgressPercent ?? true),
+            showBranding: !isThumb,
             stageColors: (plugin.settings as any).publishStageColors,
             actCount: plugin.settings.actCount || undefined,
             backgroundColor: aprSettings?.aprBackgroundColor,

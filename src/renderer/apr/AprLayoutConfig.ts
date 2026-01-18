@@ -16,13 +16,59 @@
  * - Large (450px) = 3x base
  */
 
-export type AprSize = 'small' | 'medium' | 'large';
+export type AprSize = 'thumb' | 'small' | 'medium' | 'large';
 
 // =============================================================================
 // MAIN SIZE PRESETS - Edit these values directly
 // =============================================================================
 
 export const APR_LAYOUT = {
+    // ─────────────────────────────────────────────────────────────────────────
+    // THUMB (100×100) - Minimal progress ring preview
+    // ─────────────────────────────────────────────────────────────────────────
+    thumb: {
+        // ─────────────────────────────────────────────────────────────────────
+        // CANVAS
+        // ─────────────────────────────────────────────────────────────────────
+        svgSize: 100,
+        
+        // ─────────────────────────────────────────────────────────────────────
+        // RING GEOMETRY (Scene rings)
+        // ─────────────────────────────────────────────────────────────────────
+        innerRadius: 14,
+        outerRadius: 43,
+        spokeWidth: 0.5,
+        borderWidth: 0.35,
+        actSpokeWidth: 0.8,
+        patternScale: 0.07,
+        
+        // ─────────────────────────────────────────────────────────────────────
+        // CENTER NUMBER & PERCENT SYMBOL (Inner element)
+        // ─────────────────────────────────────────────────────────────────────
+        centerNumberFontSize1Digit: 26,
+        centerNumberFontSize2Digit: 19,
+        centerNumberFontSize3Digit: 15,
+        centerNumberYOffset: 2.1,
+        centerNumberOpacity: 1,
+        centerNumberLetterSpacing: '-0.05em',
+        percentSymbolYOffset: 2.6,
+        percentSymbolOpacity: 0.20,
+        percentSymbolSizeMultiplier: 1.9,
+        
+        // ─────────────────────────────────────────────────────────────────────
+        // RT BADGE (Bottom-right corner)
+        // ─────────────────────────────────────────────────────────────────────
+        rtBadgeFontSize: 6,
+        rtBadgeOffsetX: 5,
+        rtBadgeOffsetY: 5,
+        
+        // ─────────────────────────────────────────────────────────────────────
+        // BRANDING TEXT (Outermost - perimeter text)
+        // ─────────────────────────────────────────────────────────────────────
+        brandingRadius: 44,
+        bookAuthorFontSize: 6,
+        brandingLetterSpacing: '0.2em',
+    },
     // ─────────────────────────────────────────────────────────────────────────
     // SMALL (150×150) - Widgets, sidebars, inline embeds
     // ─────────────────────────────────────────────────────────────────────────

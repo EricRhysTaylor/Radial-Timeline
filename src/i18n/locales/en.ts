@@ -49,6 +49,21 @@ export interface TranslationKeys {
                 omni: string;
                 objective: string;
             };
+            preview: {
+                heading: string;
+                examples: {
+                    sceneFirst: string;
+                    sceneThird: string;
+                    sceneSecond: string;
+                    sceneOmni: string;
+                    sceneObjective: string;
+                    countTwoThird: string;
+                    countThreeThird: string;
+                    countFourThird: string;
+                    countTwoFirstNumeric: string;
+                    countAllFirst: string;
+                };
+            };
         };
         advanced: {
             heading: string;
@@ -268,7 +283,7 @@ export const en: TranslationKeys = {
             },
             yamlOverrides: {
                 name: 'Scene level YAML overrides',
-                desc: 'In scene frontmatter, you can use `POV:` first, second, third, omni, objective, or a number such as two, four, count, or all to designate more than one character is carrying the scene POV. If two, for example, then the first two characters in `Character:` YAML list will get a POV mark for scene synopsis.',
+                desc: 'In scene frontmatter, you can use `POV:` first, second, third, omni, objective, or a number such as two, four, count, or all to designate more than one character is carrying the scene POV. Count values mark the first N names in `Character:` and use the Global POV mode to choose the marker.',
             },
             modes: {
                 off: 'Legacy (first listed character, POV)',
@@ -277,6 +292,21 @@ export const en: TranslationKeys = {
                 third: 'Third-person limited (³)',
                 omni: 'Omni narrator (Omni³)',
                 objective: 'Objective — camera-eye narrator (Narrator°)',
+            },
+            preview: {
+                heading: 'POV Examples',
+                examples: {
+                    sceneFirst: 'Scene YAML: POV: first | Character: [Alice]',
+                    sceneThird: 'Scene YAML: POV: third | Character: [Bob]',
+                    sceneSecond: 'Scene YAML: POV: second | Character: [Alice, Bob]',
+                    sceneOmni: 'Scene YAML: POV: omni | Character: [Alice, Bob]',
+                    sceneObjective: 'Scene YAML: POV: objective | Character: [Alice, Bob]',
+                    countTwoThird: 'Global setting: POV = third | Scene YAML: POV: two | Character: [Alice, Bob]',
+                    countThreeThird: 'Global setting: POV = third | Scene YAML: POV: three | Character: [Alice, Bob, Charlie]',
+                    countFourThird: 'Global setting: POV = third | Scene YAML: POV: four | Character: [Alice, Bob, Charlie, Diana]',
+                    countTwoFirstNumeric: 'Global setting: POV = first | Scene YAML: POV: 2 | Character: [Alice, Bob]',
+                    countAllFirst: 'Global setting: POV = first | Scene YAML: POV: all | Character: [Alice, Bob, Charlie]',
+                },
             },
         },
         advanced: {

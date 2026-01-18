@@ -81,7 +81,7 @@ export interface AuthorProgressSettings {
     showActs: boolean;      // Show act divisions vs full circle
     showStatus: boolean;    // Show real stage colors vs neutral gray
     showProgressPercent?: boolean; // Show big center %
-    aprSize?: 'small' | 'medium' | 'large';
+    aprSize?: 'thumb' | 'small' | 'medium' | 'large';
     aprBackgroundColor?: string;
     aprCenterTransparent?: boolean;
     aprBookAuthorColor?: string;
@@ -204,7 +204,7 @@ export interface AprCampaign {
     showActs: boolean;
     showStatus: boolean;
     showProgressPercent: boolean;
-    aprSize: 'small' | 'medium' | 'large';
+    aprSize: 'thumb' | 'small' | 'medium' | 'large';
     
     // Per-campaign styling (optional overrides)
     customBackgroundColor?: string;

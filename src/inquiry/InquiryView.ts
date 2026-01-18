@@ -11,10 +11,12 @@ import type RadialTimelinePlugin from '../main';
 import { INQUIRY_SCHEMA_VERSION, INQUIRY_VIEW_DISPLAY_TEXT, INQUIRY_VIEW_TYPE } from './constants';
 import {
     createDefaultInquiryState,
+    InquiryFinding,
     InquiryMode,
+    InquiryResult,
     InquiryScope,
-    InquiryZone,
-    InquiryResult
+    InquirySeverity,
+    InquiryZone
 } from './state';
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
 import { openOrRevealFile } from '../utils/fileUtils';
@@ -195,15 +197,16 @@ export class InquiryView extends ItemView {
         svg.classList.toggle('is-debug', DEBUG_SVG_OVERLAY);
         this.buildDebugOverlay(svg);
 
-        const hudGroup = this.createSvgGroup(svg, 'ert-inquiry-hud', -760, -740);
+        const hudOffsetX = -760;
+        const hudOffsetY = -740;
+        const hudGroup = this.createSvgGroup(svg, 'ert-inquiry-hud', hudOffsetX, hudOffsetY);
         hudGroup.setAttribute('id', 'inq-hud');
-        const findingsGroup = this.createSvgGroup(svg, 'ert-inquiry-findings', 260, -720);
-        findingsGroup.setAttribute('id', 'inq-findings');
         const canvasGroup = this.createSvgGroup(svg, 'ert-inquiry-canvas');
         canvasGroup.setAttribute('id', 'inq-canvas');
 
         const iconSize = 56;
         const iconGap = 16;
+        const hudMargin = 40;
 
         this.scopeToggleButton = this.createIconButton(hudGroup, 0, 0, iconSize, 'columns-2', 'Toggle scope');
         this.scopeToggleIcon = this.scopeToggleButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
@@ -217,7 +220,8 @@ export class InquiryView extends ItemView {
             this.handleModeChange(this.state.mode === 'flow' ? 'depth' : 'flow');
         });
 
-        this.artifactButton = this.createIconButton(hudGroup, (iconSize + iconGap) * 2, 0, iconSize, 'aperture', 'Save artifact');
+        const artifactX = (VIEWBOX_MAX - hudMargin - iconSize) - hudOffsetX;
+        this.artifactButton = this.createIconButton(hudGroup, artifactX, 0, iconSize, 'aperture', 'Save artifact');
         this.registerDomEvent(this.artifactButton as unknown as HTMLElement, 'click', () => { void this.saveArtifact(); });
 
         const minimapGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-minimap', 0, 120);
@@ -283,8 +287,6 @@ export class InquiryView extends ItemView {
         this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'pointerleave', () => this.clearHoverText());
 
         this.hoverTextEl = this.createSvgText(canvasGroup, 'ert-inquiry-hover', 'Hover to preview context.', -200, 360);
-
-        this.buildFindingsPanel(findingsGroup, 480, 1440);
 
         const hudFooterY = 1360;
         const navGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-nav', 0, hudFooterY);
@@ -467,6 +469,10 @@ export class InquiryView extends ItemView {
                 dot.setAttribute('r', '5');
                 tray.appendChild(dot);
             }
+            this.registerDomEvent(zoneEl as unknown as HTMLElement, 'pointerenter', () => {
+                this.setHoverText(this.buildZoneHoverText(zone.id));
+            });
+            this.registerDomEvent(zoneEl as unknown as HTMLElement, 'pointerleave', () => this.clearHoverText());
         });
     }
 
@@ -533,7 +539,7 @@ export class InquiryView extends ItemView {
         findingsGroup.appendChild(bg);
 
         this.createSvgText(findingsGroup, 'ert-inquiry-findings-title', 'Findings', 24, 36);
-        this.detailsToggle = this.createIconButton(findingsGroup, width - 48, 14, 32, 'chevron-down', 'Toggle details', 'ert-inquiry-details-toggle');
+        this.detailsToggle = this.createIconButton(findingsGroup, width - 88, 14, 32, 'chevron-down', 'Toggle details', 'ert-inquiry-details-toggle');
         this.detailsIcon = this.detailsToggle.querySelector('.ert-inquiry-icon') as SVGUseElement;
         this.registerDomEvent(this.detailsToggle as unknown as HTMLElement, 'click', () => this.toggleDetails());
 
@@ -567,7 +573,7 @@ export class InquiryView extends ItemView {
         this.renderMinimapTicks();
         this.updateFocusGlyph();
         this.updateRings();
-        this.updateFindingsPanel();
+        this.updateFindingsIndicators();
         this.updateFooterStatus();
         this.updateNavigationIcons();
     }
@@ -688,7 +694,7 @@ export class InquiryView extends ItemView {
             tick.setAttribute('aria-label', `Focus ${label}`);
             this.registerDomEvent(tick as unknown as HTMLElement, 'click', () => this.setFocusByIndex(i));
             this.registerDomEvent(tick as unknown as HTMLElement, 'pointerenter', () => {
-                this.setHoverText(`Focus ${label}. No findings yet.`);
+                this.setHoverText(this.buildMinimapHoverText(label));
             });
             this.registerDomEvent(tick as unknown as HTMLElement, 'pointerleave', () => this.clearHoverText());
             this.minimapTicksEl.appendChild(tick);
@@ -726,98 +732,40 @@ export class InquiryView extends ItemView {
         });
     }
 
-    private updateFindingsPanel(): void {
-        if (!this.summaryEl || !this.verdictEl || !this.findingsListEl || !this.detailsEl) return;
+    private updateFindingsIndicators(): void {
         const result = this.state.activeResult;
         if (this.rootSvg) {
             const hasError = !!result?.findings.some(finding => finding.kind === 'error');
             this.rootSvg.classList.toggle('is-error', hasError);
         }
+        this.updateMinimapHitStates(result);
+    }
 
-        if (!result) {
-            this.summaryEl.textContent = 'No inquiry run yet.';
-            this.verdictEl.textContent = 'Run an inquiry to see verdicts.';
-            this.clearSvgChildren(this.findingsListEl);
-            this.detailRows.forEach(row => {
-                row.textContent = 'Details not available';
-            });
-            this.updateArtifactPreview();
-            return;
-        }
+    private updateMinimapHitStates(result: InquiryResult | null | undefined): void {
+        if (!this.minimapTicks.length) return;
+        const hitMap = this.buildHitFindingMap(result);
+        const prefix = this.state.scope === 'saga' ? 'B' : 'S';
+        const severityClasses = ['is-severity-low', 'is-severity-medium', 'is-severity-high'];
 
-        this.summaryEl.textContent = result.summary;
-        this.verdictEl.textContent = `Flow ${this.formatMetricDisplay(result.verdict.flow)} · Depth ${this.formatMetricDisplay(result.verdict.depth)} · Severity ${result.verdict.severity} · Confidence ${result.verdict.confidence}`;
-
-        this.clearSvgChildren(this.findingsListEl);
-        const iconSize = 20;
-        const iconGap = 12;
-        const perRow = 8;
-        result.findings.forEach((finding, index) => {
-            const col = index % perRow;
-            const row = Math.floor(index / perRow);
-            const x = col * (iconSize + iconGap);
-            const y = row * (iconSize + iconGap);
-            const iconGroup = this.createSvgGroup(this.findingsListEl!, `ert-inquiry-finding-icon is-severity-${finding.severity}`, x, y);
-            const circle = this.createSvgElement('circle');
-            circle.classList.add('ert-inquiry-finding-icon-circle');
-            circle.setAttribute('cx', String(iconSize / 2));
-            circle.setAttribute('cy', String(iconSize / 2));
-            circle.setAttribute('r', String(iconSize / 2));
-            iconGroup.appendChild(circle);
-            const title = this.createSvgElement('title');
-            title.textContent = `${finding.headline} (${finding.kind})`;
-            iconGroup.appendChild(title);
+        this.minimapTicks.forEach((tick, idx) => {
+            const label = `${prefix}${idx + 1}`;
+            const finding = hitMap.get(label);
+            tick.classList.toggle('is-hit', !!finding);
+            severityClasses.forEach(cls => tick.classList.remove(cls));
+            if (finding) {
+                tick.classList.add(`is-severity-${finding.severity}`);
+            }
+            let title = tick.querySelector('title') as SVGTitleElement | null;
+            if (!title) {
+                title = this.createSvgElement('title');
+                tick.appendChild(title);
+            }
+            title.textContent = finding ? `${label} hit: ${finding.headline}` : `Focus ${label}`;
         });
-
-        if (this.detailRows.length >= 2) {
-            this.detailRows[0].textContent = `Corpus fingerprint: ${result.corpusFingerprint || 'not available'}`;
-            const cacheEnabled = this.plugin.settings.inquiryCacheEnabled ?? true;
-            const cacheText = cacheEnabled ? (this.state.cacheStatus || 'missing') : 'off';
-            this.detailRows[1].textContent = `Cache status: ${cacheText}`;
-        }
-
-        this.updateArtifactPreview();
     }
 
     private updateArtifactPreview(): void {
-        if (!this.artifactPreviewEl) return;
-        const isOpen = !!this.state.reportPreviewOpen;
-        this.artifactPreviewEl.classList.toggle('ert-hidden', !isOpen);
-        if (!isOpen) {
-            this.clearSvgChildren(this.artifactPreviewEl);
-            if (this.artifactPreviewBg) {
-                this.artifactPreviewEl.appendChild(this.artifactPreviewBg);
-            }
-            return;
-        }
-        const result = this.state.activeResult;
-        if (!result) {
-            this.clearSvgChildren(this.artifactPreviewEl);
-            if (this.artifactPreviewBg) {
-                this.artifactPreviewEl.appendChild(this.artifactPreviewBg);
-            }
-            this.createSvgText(this.artifactPreviewEl, 'ert-inquiry-report-preview-empty', 'Run an inquiry to preview the report.', 12, 28);
-            return;
-        }
-        this.clearSvgChildren(this.artifactPreviewEl);
-        if (this.artifactPreviewBg) {
-            this.artifactPreviewEl.appendChild(this.artifactPreviewBg);
-        }
-        this.createSvgText(this.artifactPreviewEl, 'ert-inquiry-report-preview-title', 'Report preview (unsaved)', 12, 22);
-        const payload = this.buildArtifactContent(result, this.plugin.settings.inquiryEmbedJson ?? true);
-        const lines = payload.split('\n').slice(0, 12);
-        const body = this.createSvgElement('text');
-        body.classList.add('ert-inquiry-report-preview-body');
-        body.setAttribute('x', '12');
-        body.setAttribute('y', '44');
-        lines.forEach((line, idx) => {
-            const tspan = this.createSvgElement('tspan');
-            tspan.setAttribute('x', '12');
-            tspan.setAttribute('dy', idx === 0 ? '0' : '14');
-            tspan.textContent = line;
-            body.appendChild(tspan);
-        });
-        this.artifactPreviewEl.appendChild(body);
+        // No-op while findings panel is removed.
     }
 
     private updateFooterStatus(): void {
@@ -1105,6 +1053,53 @@ export class InquiryView extends ItemView {
         const verdict = this.state.activeResult.verdict;
         const score = ring === 'flow' ? verdict.flow : verdict.depth;
         return `${ring === 'flow' ? 'Flow' : 'Depth'} score ${this.formatMetricDisplay(score)}. Severity ${verdict.severity}. Confidence ${verdict.confidence}.`;
+    }
+
+    private buildZoneHoverText(zone: InquiryZone): string {
+        const label = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
+        if (!this.state.activeResult) {
+            return `${label} verdict unavailable. Run an inquiry.`;
+        }
+        if (this.state.activeZone !== zone) {
+            return `${label} verdict unavailable for the current inquiry.`;
+        }
+        return `${label}: ${this.state.activeResult.summary}`;
+    }
+
+    private buildMinimapHoverText(label: string): string {
+        const result = this.state.activeResult;
+        if (!result) {
+            return `Focus ${label}. Run an inquiry.`;
+        }
+        const finding = this.buildHitFindingMap(result).get(label);
+        if (!finding) {
+            return `Focus ${label}. No hits in current inquiry.`;
+        }
+        const bullet = finding.bullets?.[0];
+        return bullet ? `${label} hit: ${finding.headline} ${bullet}` : `${label} hit: ${finding.headline}`;
+    }
+
+    private buildHitFindingMap(result: InquiryResult | null | undefined): Map<string, InquiryFinding> {
+        const map = new Map<string, InquiryFinding>();
+        if (!result) return map;
+        result.findings.forEach(finding => {
+            if (!this.isFindingHit(finding)) return;
+            const existing = map.get(finding.refId);
+            if (!existing || this.getSeverityRank(finding.severity) > this.getSeverityRank(existing.severity)) {
+                map.set(finding.refId, finding);
+            }
+        });
+        return map;
+    }
+
+    private isFindingHit(finding: InquiryFinding): boolean {
+        return finding.kind !== 'none';
+    }
+
+    private getSeverityRank(severity: InquirySeverity): number {
+        if (severity === 'high') return 3;
+        if (severity === 'medium') return 2;
+        return 1;
     }
 
     private formatMetricDisplay(value: number): string {

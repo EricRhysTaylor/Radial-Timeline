@@ -25,6 +25,7 @@ export interface AprRenderOptions {
     showStageColors?: boolean;      // Show publish stage colors (Zero, Author, House, Press)
     grayCompletedScenes?: boolean;  // For SCENES stage: gray out completed scenes
     showProgressPercent?: boolean;
+    showBranding?: boolean;
     stageColors?: Record<string, string>; // optional override (publishStage map)
     actCount?: number; // optional explicit act count override
     backgroundColor?: string;
@@ -94,6 +95,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         showStageColors = true,
         grayCompletedScenes = false,
         showProgressPercent = true,
+        showBranding = true,
         stageColors,
         actCount,
         backgroundColor,
@@ -227,28 +229,30 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         });
     }
 
-    // Branding on the perimeter (sanitize placeholder/dummy URLs)
-    svg += renderAprBranding({
-        bookTitle: bookTitle || 'Working Title',
-        authorName,
-        authorUrl: sanitizeAuthorUrl(authorUrl),
-        size,
-        bookAuthorColor,
-        authorColor,
-        engineColor,
-        bookTitleFontFamily,
-        bookTitleFontWeight,
-        bookTitleFontItalic,
-        bookTitleFontSize,
-        authorNameFontFamily,
-        authorNameFontWeight,
-        authorNameFontItalic,
-        authorNameFontSize,
-        rtBadgeFontFamily,
-        rtBadgeFontWeight,
-        rtBadgeFontItalic,
-        rtBadgeFontSize
-    });
+    if (showBranding) {
+        // Branding on the perimeter (sanitize placeholder/dummy URLs)
+        svg += renderAprBranding({
+            bookTitle: bookTitle || 'Working Title',
+            authorName,
+            authorUrl: sanitizeAuthorUrl(authorUrl),
+            size,
+            bookAuthorColor,
+            authorColor,
+            engineColor,
+            bookTitleFontFamily,
+            bookTitleFontWeight,
+            bookTitleFontItalic,
+            bookTitleFontSize,
+            authorNameFontFamily,
+            authorNameFontWeight,
+            authorNameFontItalic,
+            authorNameFontSize,
+            rtBadgeFontFamily,
+            rtBadgeFontWeight,
+            rtBadgeFontItalic,
+            rtBadgeFontSize
+        });
+    }
 
     svg += `</svg>`;
 

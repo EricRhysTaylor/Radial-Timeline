@@ -1,15 +1,15 @@
 import { Setting as ObsidianSetting } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { GlobalPovMode } from '../../types/settings';
+import { resolveScenePov } from '../../utils/pov';
+import { t } from '../../i18n';
 import { addWikiLink } from '../wikiLink';
 
-const POV_MODE_OPTIONS: Record<GlobalPovMode, string> = {
-    off: 'first listed character (pov)',
-    first: 'First-person (¹)',
-    second: 'Second-person (You²)',
-    third: 'Third-person limited (³)',
-    omni: 'Omni narrator (Omni³)',
-    objective: 'Objective (Narrator°)'
+const POV_LABELS: Record<string, string> = {
+    '0': '°',
+    '1': '¹',
+    '2': '²',
+    '3': '³'
 };
 
 export function renderPovSection(params: {
@@ -19,22 +19,31 @@ export function renderPovSection(params: {
     const { plugin, containerEl } = params;
 
     const povHeading = new ObsidianSetting(containerEl)
-        .setName('Point of view')
+        .setName(t('settings.pov.heading'))
         .setHeading();
     addWikiLink(povHeading, 'Settings#pov');
 
+    const povModeOptions: Record<GlobalPovMode, string> = {
+        off: t('settings.pov.modes.off'),
+        first: t('settings.pov.modes.first'),
+        second: t('settings.pov.modes.second'),
+        third: t('settings.pov.modes.third'),
+        omni: t('settings.pov.modes.omni'),
+        objective: t('settings.pov.modes.objective')
+    };
+
     const storedMode = plugin.settings.globalPovMode;
-    const currentMode: GlobalPovMode = storedMode && storedMode in POV_MODE_OPTIONS ? storedMode : 'off';
+    const currentMode: GlobalPovMode = storedMode && storedMode in povModeOptions ? storedMode : 'off';
     if (storedMode !== currentMode) {
         plugin.settings.globalPovMode = currentMode;
         void plugin.saveSettings();
     }
     new ObsidianSetting(containerEl)
-        .setName('Global POV')
-        .setDesc('Choose a default mode to apply. Scene level POV will override this global setting.')
+        .setName(t('settings.pov.global.name'))
+        .setDesc(t('settings.pov.global.desc'))
         .addDropdown(dropdown => {
-            (Object.keys(POV_MODE_OPTIONS) as GlobalPovMode[]).forEach((key) => {
-                dropdown.addOption(key, POV_MODE_OPTIONS[key]);
+            (Object.keys(povModeOptions) as GlobalPovMode[]).forEach((key) => {
+                dropdown.addOption(key, povModeOptions[key]);
             });
             dropdown.setValue(currentMode);
             dropdown.onChange(async (value) => {
@@ -47,13 +56,43 @@ export function renderPovSection(params: {
         });
 
     new ObsidianSetting(containerEl)
-        .setName('Scene level YAML overrides')
-        .setDesc('Values you can use for YAML field `POV:` first, second, third, omni, objective, or a number such as two, four, count, or all to designate more than one character is carrying the scene POV. Count values mark the first N names in `Character:` and use the Global POV mode to choose the marker.');
+        .setName(t('settings.pov.yamlOverrides.name'))
+        .setDesc(t('settings.pov.yamlOverrides.desc'));
 
     // Preview section
     const previewContainer = containerEl.createDiv({ cls: 'rt-planetary-preview rt-pov-preview' });
-    const previewHeading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading', text: 'POV Examples' });
+    const previewHeading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading', text: t('settings.pov.preview.heading') });
     const previewBody = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-pov-preview-body' });
+
+    const buildPreviewEntries = (
+        characters: string[],
+        povValue: string,
+        globalMode?: GlobalPovMode
+    ) => {
+        const povInfo = resolveScenePov(
+            {
+                Character: characters,
+                pov: povValue
+            } as any,
+            { globalMode }
+        );
+
+        const entries: Array<{ name: string; sup: string }> = [];
+        povInfo.syntheticEntries.forEach(entry => {
+            entries.push({ name: entry.text, sup: POV_LABELS[entry.label] || '' });
+        });
+
+        const markerMap = new Map<number, string>();
+        povInfo.characterMarkers.forEach(marker => {
+            markerMap.set(marker.index, POV_LABELS[marker.label] || '');
+        });
+
+        characters.forEach((name, index) => {
+            entries.push({ name, sup: markerMap.get(index) ?? '' });
+        });
+
+        return entries;
+    };
 
     const renderNamesWithSup = (parent: HTMLElement, entries: Array<{ name: string; sup: string }>) => {
         parent.empty();
@@ -70,96 +109,72 @@ export function renderPovSection(params: {
     const renderPreview = () => {
         previewBody.empty();
 
+        const renderExample = (
+            label: string,
+            characters: string[],
+            povValue: string,
+            globalMode?: GlobalPovMode
+        ) => {
+            const example = previewBody.createDiv({ cls: 'rt-pov-example' });
+            example.createDiv({ cls: 'rt-pov-example-label', text: label });
+            const content = example.createDiv({ cls: 'rt-pov-example-content' });
+            renderNamesWithSup(content, buildPreviewEntries(characters, povValue, globalMode));
+        };
+
         // Example 1: Single character with first-person
-        const example1 = previewBody.createDiv({ cls: 'rt-pov-example' });
-        example1.createDiv({ cls: 'rt-pov-example-label', text: 'Scene YAML: POV: first' });
-        const content1 = example1.createDiv({ cls: 'rt-pov-example-content' });
-        renderNamesWithSup(content1, [{ name: 'Alice', sup: '¹' }]);
+        renderExample(t('settings.pov.preview.examples.sceneFirst'), ['Alice'], 'first');
 
         // Example 2: Single character with third-person
-        const example2 = previewBody.createDiv({ cls: 'rt-pov-example' });
-        example2.createDiv({ cls: 'rt-pov-example-label', text: 'Scene YAML: POV: third' });
-        const content2 = example2.createDiv({ cls: 'rt-pov-example-content' });
-        renderNamesWithSup(content2, [{ name: 'Bob', sup: '³' }]);
+        renderExample(t('settings.pov.preview.examples.sceneThird'), ['Bob'], 'third');
 
         // Example 3: Second-person
-        const example3 = previewBody.createDiv({ cls: 'rt-pov-example' });
-        example3.createDiv({ cls: 'rt-pov-example-label', text: 'Scene YAML: POV: second' });
-        const content3 = example3.createDiv({ cls: 'rt-pov-example-content' });
-        renderNamesWithSup(content3, [
-            { name: 'You', sup: '²' },
-            { name: 'Alice', sup: '' },
-            { name: 'Bob', sup: '' },
-        ]);
+        renderExample(t('settings.pov.preview.examples.sceneSecond'), ['Alice', 'Bob'], 'second');
 
         // Example 4: Omni narrator
-        const example4 = previewBody.createDiv({ cls: 'rt-pov-example' });
-        example4.createDiv({ cls: 'rt-pov-example-label', text: 'Scene YAML: POV: omni' });
-        const content4 = example4.createDiv({ cls: 'rt-pov-example-content' });
-        renderNamesWithSup(content4, [
-            { name: 'Omni', sup: '³' },
-            { name: 'Alice', sup: '' },
-            { name: 'Bob', sup: '' },
-        ]);
+        renderExample(t('settings.pov.preview.examples.sceneOmni'), ['Alice', 'Bob'], 'omni');
 
         // Example 5: Objective narrator
-        const example5 = previewBody.createDiv({ cls: 'rt-pov-example' });
-        example5.createDiv({ cls: 'rt-pov-example-label', text: 'Scene YAML: POV: objective' });
-        const content5 = example5.createDiv({ cls: 'rt-pov-example-content' });
-        renderNamesWithSup(content5, [
-            { name: 'Narrator', sup: '°' },
-            { name: 'Alice', sup: '' },
-            { name: 'Bob', sup: '' },
-        ]);
+        renderExample(t('settings.pov.preview.examples.sceneObjective'), ['Alice', 'Bob'], 'objective');
 
         // Example 6: Two characters with third-person
-        const example6 = previewBody.createDiv({ cls: 'rt-pov-example' });
-        example6.createDiv({ cls: 'rt-pov-example-label', text: 'Global setting: POV = third | Scene YAML: POV: two | Character: [Alice, Bob]' });
-        const content6 = example6.createDiv({ cls: 'rt-pov-example-content' });
-        renderNamesWithSup(content6, [
-            { name: 'Alice', sup: '³' },
-            { name: 'Bob', sup: '³' },
-        ]);
+        renderExample(
+            t('settings.pov.preview.examples.countTwoThird'),
+            ['Alice', 'Bob'],
+            'two',
+            'third'
+        );
 
         // Example 7: Three characters with third-person
-        const example7 = previewBody.createDiv({ cls: 'rt-pov-example' });
-        example7.createDiv({ cls: 'rt-pov-example-label', text: 'Global setting: POV = third | Scene YAML: POV: three | Character: [Alice, Bob, Charlie]' });
-        const content7 = example7.createDiv({ cls: 'rt-pov-example-content' });
-        renderNamesWithSup(content7, [
-            { name: 'Alice', sup: '³' },
-            { name: 'Bob', sup: '³' },
-            { name: 'Charlie', sup: '³' },
-        ]);
+        renderExample(
+            t('settings.pov.preview.examples.countThreeThird'),
+            ['Alice', 'Bob', 'Charlie'],
+            'three',
+            'third'
+        );
 
         // Example 8: Four characters with third-person
-        const example8 = previewBody.createDiv({ cls: 'rt-pov-example' });
-        example8.createDiv({ cls: 'rt-pov-example-label', text: 'Global setting: POV = third | Scene YAML: POV: four | Character: [Alice, Bob, Charlie, Diana]' });
-        const content8 = example8.createDiv({ cls: 'rt-pov-example-content' });
-        renderNamesWithSup(content8, [
-            { name: 'Alice', sup: '³' },
-            { name: 'Bob', sup: '³' },
-            { name: 'Charlie', sup: '³' },
-            { name: 'Diana', sup: '³' },
-        ]);
+        renderExample(
+            t('settings.pov.preview.examples.countFourThird'),
+            ['Alice', 'Bob', 'Charlie', 'Diana'],
+            'four',
+            'third'
+        );
 
-        // Example 9: Two characters with first-person (global POV: first, scene POV: two)
-        const example9 = previewBody.createDiv({ cls: 'rt-pov-example' });
-        example9.createDiv({ cls: 'rt-pov-example-label', text: 'Global setting: POV = first | Scene YAML: POV: two | Character: [Alice, Bob]' });
-        const content9 = example9.createDiv({ cls: 'rt-pov-example-content' });
-        renderNamesWithSup(content9, [
-            { name: 'Alice', sup: '¹' },
-            { name: 'Bob', sup: '¹' },
-        ]);
+        // Example 9: Numeric count override with first-person
+        renderExample(
+            t('settings.pov.preview.examples.countTwoFirstNumeric'),
+            ['Alice', 'Bob'],
+            '2',
+            'first'
+        );
 
         // Example 10: All characters with first-person
-        const example10 = previewBody.createDiv({ cls: 'rt-pov-example' });
-        example10.createDiv({ cls: 'rt-pov-example-label', text: 'Global setting: POV = first | Scene YAML: POV: all | Character: [Alice, Bob, Charlie]' });
-        const content10 = example10.createDiv({ cls: 'rt-pov-example-content' });
-        renderNamesWithSup(content10, [
-            { name: 'Alice', sup: '¹' },
-            { name: 'Bob', sup: '¹' },
-            { name: 'Charlie', sup: '¹' },
-        ]);
+        renderExample(
+            t('settings.pov.preview.examples.countAllFirst'),
+            ['Alice', 'Bob', 'Charlie'],
+            'all',
+            'first'
+        );
     };
 
     renderPreview();

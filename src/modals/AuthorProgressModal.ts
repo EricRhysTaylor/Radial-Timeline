@@ -20,7 +20,7 @@ export class AuthorProgressModal extends Modal {
     private showActs: boolean;
     private showStatus: boolean;
     private showPercent: boolean;
-    private aprSize: 'small' | 'medium' | 'large';
+    private aprSize: 'thumb' | 'small' | 'medium' | 'large';
     private selectedTargetId: 'default' | string = 'default';
 
     private alertContainer: HTMLElement | null = null;
@@ -29,8 +29,8 @@ export class AuthorProgressModal extends Modal {
     private actionsContentEl: HTMLElement | null = null;
     private activePublishTab: 'snapshot' | 'dynamic' = 'snapshot';
     
-    private previewContainers: Map<'small' | 'medium' | 'large', HTMLElement> = new Map();
-    private previewCards: Map<'small' | 'medium' | 'large', HTMLElement> = new Map();
+    private previewContainers: Map<'thumb' | 'small' | 'medium' | 'large', HTMLElement> = new Map();
+    private previewCards: Map<'thumb' | 'small' | 'medium' | 'large', HTMLElement> = new Map();
     
     private cachedScenes: TimelineItem[] = [];
     private progressPercent: number = 0;
@@ -73,7 +73,7 @@ export class AuthorProgressModal extends Modal {
         return this.selectedTargetId !== 'default';
     }
 
-    private getActiveAprSize(): 'small' | 'medium' | 'large' {
+    private getActiveAprSize(): 'thumb' | 'small' | 'medium' | 'large' {
         return this.getSelectedCampaign()?.aprSize ?? this.aprSize;
     }
 
@@ -226,7 +226,7 @@ export class AuthorProgressModal extends Modal {
 
     private createPreviewCard(
         container: HTMLElement, 
-        size: 'small' | 'medium' | 'large', 
+        size: 'thumb' | 'small' | 'medium' | 'large', 
         label: string,
         dimensions: string,
         useCase: string,
@@ -430,9 +430,10 @@ export class AuthorProgressModal extends Modal {
 
         const previewRow = this.sizeSectionEl.createDiv({ cls: 'rt-apr-preview-row' });
         const locked = isCampaign;
-        this.createPreviewCard(previewRow, 'small', 'Small', '150×150', 'Widgets, sidebars', { locked });
-        this.createPreviewCard(previewRow, 'medium', 'Medium', '300×300', 'Social posts, newsletters', { locked });
-        this.createPreviewCard(previewRow, 'large', 'Large', '450×450', 'Website embeds', { locked });
+        this.createPreviewCard(previewRow, 'thumb', 'Thumb', '100^2', 'Teaser ring', { locked });
+        this.createPreviewCard(previewRow, 'small', 'Small', '150^2', 'Widgets, sidebars', { locked });
+        this.createPreviewCard(previewRow, 'medium', 'Medium', '300^2', 'Social posts, newsletters', { locked });
+        this.createPreviewCard(previewRow, 'large', 'Large', '450^2', 'Website embeds', { locked });
 
         const infoNote = this.sizeSectionEl.createDiv({ cls: 'rt-apr-density-note' });
         setIcon(infoNote.createSpan({ cls: 'rt-apr-density-icon' }), 'info');
@@ -456,7 +457,7 @@ export class AuthorProgressModal extends Modal {
         const settings = this.plugin.settings.authorProgress;
         const campaign = this.getSelectedCampaign();
         const isCampaign = !!campaign;
-        const sizes: Array<'small' | 'medium' | 'large'> = ['small', 'medium', 'large'];
+        const sizes: Array<'thumb' | 'small' | 'medium' | 'large'> = ['thumb', 'small', 'medium', 'large'];
 
         let showScenes = true;
         let showSubplots = this.showSubplots;
@@ -465,6 +466,7 @@ export class AuthorProgressModal extends Modal {
         let showStageColors = true;
         let grayCompletedScenes = false;
         let showProgressPercent = this.showPercent;
+        let isTeaserBar = false;
 
         if (isCampaign && campaign) {
             showSubplots = campaign.showSubplots;
@@ -481,6 +483,7 @@ export class AuthorProgressModal extends Modal {
                     campaign.teaserReveal.disabledStages
                 );
                 const revealOptions = teaserLevelToRevealOptions(revealLevel);
+                isTeaserBar = revealLevel === 'bar';
                 showScenes = revealOptions.showScenes;
                 showSubplots = revealOptions.showSubplots;
                 showActs = revealOptions.showActs;
@@ -500,20 +503,22 @@ export class AuthorProgressModal extends Modal {
                 continue;
             }
 
-        try {
-            const { svgString } = createAprSVG(this.cachedScenes, {
+            try {
+                const ringOnly = isTeaserBar || size === 'thumb';
+                const { svgString } = createAprSVG(this.cachedScenes, {
                 size,
                 progressPercent: this.progressPercent,
                 bookTitle: settings?.bookTitle || 'Working Title',
                 authorName: settings?.authorName || '',
                 authorUrl: settings?.authorUrl || '',
-                showScenes,
+                showScenes: ringOnly ? false : showScenes,
                 showSubplots,
                 showActs,
                 showStatusColors,
                 showStageColors,
                 grayCompletedScenes,
-                showProgressPercent,
+                showProgressPercent: ringOnly ? false : showProgressPercent,
+                showBranding: !ringOnly,
                 stageColors: (this.plugin.settings as any).publishStageColors,
                 actCount: this.plugin.settings.actCount || undefined,
                 backgroundColor: campaign?.customBackgroundColor ?? settings?.aprBackgroundColor ?? '#0d0d0f',
@@ -547,10 +552,10 @@ export class AuthorProgressModal extends Modal {
                 rtBadgeFontWeight: settings?.aprRtBadgeFontWeight,
                 rtBadgeFontItalic: settings?.aprRtBadgeFontItalic,
                 rtBadgeFontSize: settings?.aprRtBadgeFontSize
-            });
+                });
 
                 container.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
-        } catch (e) {
+            } catch (e) {
                 container.createDiv({ text: 'Error', cls: 'rt-apr-error' });
                 console.error(`APR Preview render error (${size}):`, e);
             }

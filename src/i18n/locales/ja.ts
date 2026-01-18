@@ -42,6 +42,10 @@ export const ja: DeepPartial<TranslationKeys> = {
                 name: 'グローバルPOV',
                 desc: 'オプション。適用するデフォルトモードを選択します。シーンレベルのPOVはこのグローバル設定を上書きします。',
             },
+            yamlOverrides: {
+                name: 'シーンレベルのYAML上書き',
+                desc: 'シーンのフロントマターでは、`POV:` に first, second, third, omni, objective、または two, four, count, all などの数値を指定できます。count系は `Character:` の先頭N人に印を付け、グローバルPOVのマーカーを使います。',
+            },
             modes: {
                 off: 'レガシー（最初にリストされたキャラクター、「pov」上付き文字）',
                 first: '一人称視点（キャラクターに¹マーカー）',
@@ -49,6 +53,21 @@ export const ja: DeepPartial<TranslationKeys> = {
                 third: '三人称限定視点（キャラクターに³マーカー）',
                 omni: '全知の語り手（Omni³ラベル）',
                 objective: '客観視点 — カメラアイの語り手（Narrator°ラベル）',
+            },
+            preview: {
+                heading: 'POV例',
+                examples: {
+                    sceneFirst: 'シーンYAML: POV: first | Character: [Alice]',
+                    sceneThird: 'シーンYAML: POV: third | Character: [Bob]',
+                    sceneSecond: 'シーンYAML: POV: second | Character: [Alice, Bob]',
+                    sceneOmni: 'シーンYAML: POV: omni | Character: [Alice, Bob]',
+                    sceneObjective: 'シーンYAML: POV: objective | Character: [Alice, Bob]',
+                    countTwoThird: 'グローバル設定: POV = third | シーンYAML: POV: two | Character: [Alice, Bob]',
+                    countThreeThird: 'グローバル設定: POV = third | シーンYAML: POV: three | Character: [Alice, Bob, Charlie]',
+                    countFourThird: 'グローバル設定: POV = third | シーンYAML: POV: four | Character: [Alice, Bob, Charlie, Diana]',
+                    countTwoFirstNumeric: 'グローバル設定: POV = first | シーンYAML: POV: 2 | Character: [Alice, Bob]',
+                    countAllFirst: 'グローバル設定: POV = first | シーンYAML: POV: all | Character: [Alice, Bob, Charlie]',
+                },
             },
         },
         advanced: {

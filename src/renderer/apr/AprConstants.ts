@@ -9,9 +9,26 @@
 // SIZE PRESETS
 // =============================================================================
 
-export type AprSize = 'small' | 'medium' | 'large';
+export type AprSize = 'thumb' | 'small' | 'medium' | 'large';
 
 export const APR_SIZE_PRESETS = {
+    // 100×100 - Minimal thumb preview
+    thumb: {
+        svgSize: 100,
+        innerRadius: 20,
+        outerRadius: 46,
+        brandingRadius: 0,
+        rtBrandingRadius: 0,
+        centerFontSize: 0,
+        brandingFontSize: 0,
+        rtBrandingFontSize: 0,
+        rtCornerOffset: 0,
+        centerYOffset: 0,
+        ghostYOffset: 0,
+        spokeWidth: 0.5,
+        borderWidth: 0.35,
+        actSpokeWidth: 0.8,
+    },
     // 150×150 - Like Brandon Sanderson's progress tracker
     // All dimensions at 1x base scale
     small: {

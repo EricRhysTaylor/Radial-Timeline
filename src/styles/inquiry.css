@@ -105,7 +105,7 @@
 .ert-inquiry-icon-btn {
   color: var(--text-muted);
   cursor: pointer;
-  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, color 140ms ease;
+  transition: box-shadow 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 
 .ert-inquiry-icon-btn-bg {
@@ -125,13 +125,11 @@
 .ert-inquiry-icon-btn:hover,
 .ert-inquiry-icon-btn:focus-visible {
   color: var(--text-normal);
-  transform: translateY(-1px);
 }
 
 .ert-inquiry-icon-btn:hover .ert-inquiry-icon-btn-bg,
 .ert-inquiry-icon-btn:focus-visible .ert-inquiry-icon-btn-bg {
   stroke: var(--interactive-accent);
-  filter: drop-shadow(0 4px 12px color-mix(in srgb, var(--background-modifier-border) 55%, transparent));
 }
 
 .ert-inquiry-icon-btn.is-active,
@@ -142,7 +140,6 @@
 .ert-inquiry-icon-btn.is-active .ert-inquiry-icon-btn-bg,
 .ert-inquiry-icon-btn[aria-pressed="true"] .ert-inquiry-icon-btn-bg {
   stroke: color-mix(in srgb, var(--interactive-accent) 70%, var(--background-modifier-border));
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--interactive-accent) 40%, transparent));
 }
 
 .ert-inquiry-context-badge-bg {
@@ -201,6 +198,25 @@
   opacity: 1;
   stroke: var(--interactive-accent);
   fill: color-mix(in srgb, var(--interactive-accent) 20%, var(--background-secondary));
+}
+
+.ert-inquiry-minimap-tick.is-hit {
+  opacity: 0.95;
+}
+
+.ert-inquiry-minimap-tick.is-hit.is-severity-low {
+  stroke: var(--ert-inquiry-low);
+  fill: color-mix(in srgb, var(--ert-inquiry-low) 25%, var(--background-secondary));
+}
+
+.ert-inquiry-minimap-tick.is-hit.is-severity-medium {
+  stroke: var(--ert-inquiry-medium);
+  fill: color-mix(in srgb, var(--ert-inquiry-medium) 25%, var(--background-secondary));
+}
+
+.ert-inquiry-minimap-tick.is-hit.is-severity-high {
+  stroke: var(--ert-inquiry-high);
+  fill: color-mix(in srgb, var(--ert-inquiry-high) 25%, var(--background-secondary));
 }
 
 .ert-inquiry-zones {

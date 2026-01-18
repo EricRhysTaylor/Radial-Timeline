@@ -90,16 +90,20 @@ export class AuthorProgressService {
         const scenes = await getAllScenes(this.app, this.plugin);
         const progressPercent = this.calculateProgress(scenes);
         
+        const size = settings.aprSize || 'medium';
+        const isThumb = size === 'thumb';
         const { svgString } = createAprSVG(scenes, {
-            size: settings.aprSize || 'medium',
+            size,
             progressPercent,
             bookTitle: settings.bookTitle || 'Working Title',
             authorName: settings.authorName || '',
             authorUrl: settings.authorUrl || '',
+            showScenes: !isThumb,
             showSubplots: settings.showSubplots ?? true,
             showActs: settings.showActs ?? true,
             showStatusColors: settings.showStatus ?? true,
-            showProgressPercent: settings.showProgressPercent ?? true,
+            showProgressPercent: isThumb ? false : (settings.showProgressPercent ?? true),
+            showBranding: !isThumb,
             stageColors: (this.plugin.settings as any).publishStageColors,
             actCount: this.plugin.settings.actCount || undefined,
             backgroundColor: settings.aprBackgroundColor,
@@ -348,6 +352,8 @@ export class AuthorProgressService {
         let showStatusColors = campaign.showStatus;
         let showStageColors = true;
         let grayCompletedScenes = false;
+        let showProgressPercent = campaign.showProgressPercent;
+        let isTeaserBar = false;
 
         if (campaign.teaserReveal?.enabled) {
             const preset = campaign.teaserReveal.preset ?? 'standard';
@@ -358,6 +364,7 @@ export class AuthorProgressService {
                 campaign.teaserReveal.disabledStages
             );
             const revealOptions = teaserLevelToRevealOptions(revealLevel);
+            isTeaserBar = revealLevel === 'bar';
 
             showScenes = revealOptions.showScenes;
             showSubplots = revealOptions.showSubplots;
@@ -367,19 +374,22 @@ export class AuthorProgressService {
             grayCompletedScenes = revealOptions.grayCompletedScenes;
         }
 
+        const size = campaign.aprSize || settings.aprSize || 'medium';
+        const ringOnly = size === 'thumb' || isTeaserBar;
         const { svgString } = createAprSVG(scenes, {
-            size: campaign.aprSize || settings.aprSize || 'medium',
+            size,
             progressPercent,
             bookTitle: settings.bookTitle || 'Working Title',
             authorName: settings.authorName || '',
             authorUrl: settings.authorUrl || '',
-            showScenes,
+            showScenes: ringOnly ? false : showScenes,
             showSubplots,
             showActs,
             showStatusColors,
             showStageColors,
             grayCompletedScenes,
-            showProgressPercent: campaign.showProgressPercent,
+            showProgressPercent: ringOnly ? false : showProgressPercent,
+            showBranding: !ringOnly,
             stageColors: this.plugin.settings.publishStageColors,
             actCount: this.plugin.settings.actCount || undefined,
             backgroundColor: campaign.customBackgroundColor ?? settings.aprBackgroundColor,
