@@ -19,12 +19,9 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     inquiryCacheEnabled: true,
     inquiryCacheMaxSessions: 30,
     inquirySources: {
-        sceneFolders: [],
-        bookOutlineFiles: [],
-        sagaOutlineFile: '',
-        characterFolders: [],
-        placeFolders: [],
-        powerFolders: []
+        scanRoots: [''],
+        classes: [],
+        classCounts: {}
     },
     actCount: 3,
     actLabelsRaw: 'Act 1, Act 2, Act 3',

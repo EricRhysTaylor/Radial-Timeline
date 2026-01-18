@@ -1,6 +1,8 @@
 import { App, Setting as Settings, TextComponent, normalizePath, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { DEFAULT_SETTINGS } from '../defaults';
+import type { InquiryClassConfig, InquirySourcesSettings } from '../../types/settings';
+import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 
 interface SectionParams {
     app: App;
@@ -9,16 +11,143 @@ interface SectionParams {
     attachFolderSuggest?: (text: TextComponent) => void;
 }
 
-const parseListValue = (raw: string): string[] => {
-    return raw
-        .split(/[\n,]/)
-        .map(entry => entry.trim())
-        .filter(Boolean)
-        .map(entry => normalizePath(entry));
-};
-
 const listToText = (values?: string[]): string =>
     (values || []).join('\n');
+
+type LegacyInquirySourcesSettings = {
+    sceneFolders?: string[];
+    bookOutlineFiles?: string[];
+    sagaOutlineFile?: string;
+    characterFolders?: string[];
+    placeFolders?: string[];
+    powerFolders?: string[];
+};
+
+const REFERENCE_ONLY_CLASSES = new Set(['character', 'place', 'power']);
+
+const parseRootListValue = (raw: string): string[] => {
+    const entries = raw
+        .split(/[\n,]/)
+        .map(entry => entry.trim())
+        .map(entry => (entry === '/' || entry === '.' ? '' : entry))
+        .map(entry => normalizePath(entry));
+    const unique = Array.from(new Set(entries.filter(entry => entry !== undefined)));
+    return unique.length ? unique : [''];
+};
+
+const normalizeScanRoots = (roots?: string[]): string[] => {
+    const normalized = (roots && roots.length ? roots : ['']).map(entry => normalizePath(entry));
+    const unique = Array.from(new Set(normalized));
+    return unique.length ? unique : [''];
+};
+
+const isLegacySources = (sources?: InquirySourcesSettings | LegacyInquirySourcesSettings): sources is LegacyInquirySourcesSettings => {
+    if (!sources) return false;
+    return 'sceneFolders' in sources || 'bookOutlineFiles' in sources || 'sagaOutlineFile' in sources;
+};
+
+const defaultClassConfig = (className: string): InquiryClassConfig => {
+    const normalized = className.toLowerCase();
+    const isScene = normalized === 'scene';
+    const isOutline = normalized === 'outline';
+    const isReference = REFERENCE_ONLY_CLASSES.has(normalized);
+    return {
+        className: normalized,
+        enabled: false,
+        bookScope: isScene || isOutline || isReference,
+        sagaScope: isOutline || isReference
+    };
+};
+
+const mergeClassConfigs = (existing: InquiryClassConfig[], discovered: string[]): InquiryClassConfig[] => {
+    const byName = new Map(existing.map(config => [config.className, config]));
+    const names = new Set<string>(existing.map(config => config.className));
+    discovered.forEach(name => names.add(name));
+    const sorted = Array.from(names).sort((a, b) => {
+        const order = ['scene', 'outline', 'character', 'place', 'power'];
+        const aIdx = order.indexOf(a);
+        const bIdx = order.indexOf(b);
+        if (aIdx !== -1 || bIdx !== -1) {
+            return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
+        }
+        return a.localeCompare(b);
+    });
+    return sorted.map(name => byName.get(name) ?? defaultClassConfig(name));
+};
+
+const migrateLegacySources = (legacy: LegacyInquirySourcesSettings): InquirySourcesSettings => {
+    const roots = new Set<string>();
+    const addRoot = (path: string | undefined) => {
+        if (!path) return;
+        const normalized = normalizePath(path);
+        if (normalized) roots.add(normalized);
+    };
+    const addParent = (path: string | undefined) => {
+        if (!path) return;
+        const normalized = normalizePath(path);
+        if (!normalized) return;
+        const idx = normalized.lastIndexOf('/');
+        if (idx > 0) {
+            roots.add(normalized.slice(0, idx));
+        } else {
+            roots.add('');
+        }
+    };
+    legacy.sceneFolders?.forEach(addRoot);
+    legacy.characterFolders?.forEach(addRoot);
+    legacy.placeFolders?.forEach(addRoot);
+    legacy.powerFolders?.forEach(addRoot);
+    legacy.bookOutlineFiles?.forEach(addParent);
+    addParent(legacy.sagaOutlineFile);
+
+    const classes: InquiryClassConfig[] = [];
+    if (legacy.sceneFolders?.length) {
+        classes.push({ className: 'scene', enabled: true, bookScope: true, sagaScope: false });
+    }
+    if ((legacy.bookOutlineFiles?.length || 0) > 0 || legacy.sagaOutlineFile) {
+        classes.push({
+            className: 'outline',
+            enabled: true,
+            bookScope: (legacy.bookOutlineFiles?.length || 0) > 0,
+            sagaScope: !!legacy.sagaOutlineFile
+        });
+    }
+    if (legacy.characterFolders?.length) {
+        classes.push({ className: 'character', enabled: true, bookScope: true, sagaScope: true });
+    }
+    if (legacy.placeFolders?.length) {
+        classes.push({ className: 'place', enabled: true, bookScope: true, sagaScope: true });
+    }
+    if (legacy.powerFolders?.length) {
+        classes.push({ className: 'power', enabled: true, bookScope: true, sagaScope: true });
+    }
+
+    return {
+        scanRoots: roots.size ? Array.from(roots) : [''],
+        classes,
+        classCounts: {}
+    };
+};
+
+const normalizeInquirySources = (raw?: InquirySourcesSettings | LegacyInquirySourcesSettings): InquirySourcesSettings => {
+    if (!raw) {
+        return { scanRoots: [''], classes: [], classCounts: {} };
+    }
+    if (isLegacySources(raw)) {
+        return migrateLegacySources(raw);
+    }
+    return {
+        scanRoots: normalizeScanRoots(raw.scanRoots),
+        classes: (raw.classes || []).map(config => ({
+            className: config.className.toLowerCase(),
+            enabled: !!config.enabled,
+            bookScope: !!config.bookScope,
+            sagaScope: !!config.sagaScope
+        })),
+        classCounts: raw.classCounts || {},
+        lastScanAt: raw.lastScanAt
+    };
+};
 
 export function renderInquirySection(params: SectionParams): void {
     const { plugin, containerEl, attachFolderSuggest } = params;
@@ -144,97 +273,160 @@ export function renderInquirySection(params: SectionParams): void {
             plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
         });
 
-    const sources = plugin.settings.inquirySources || {
-        sceneFolders: [],
-        bookOutlineFiles: [],
-        sagaOutlineFile: '',
-        characterFolders: [],
-        placeFolders: [],
-        powerFolders: []
-    };
-    plugin.settings.inquirySources = sources;
+    let inquirySources = normalizeInquirySources(plugin.settings.inquirySources);
+    plugin.settings.inquirySources = inquirySources;
 
     const sourcesHeading = new Settings(containerEl)
         .setName('Inquiry sources')
-        .setDesc('List paths for the curated Inquiry corpus. One path per line.');
+        .setDesc('Inquiry reads notes based on YAML class values inside the scan roots.');
     sourcesHeading.settingEl.addClass('rt-inquiry-settings-heading');
 
-    new Settings(containerEl)
-        .setName('Scene folders')
-        .setDesc('Folders that contain scene notes (book scope evidence).')
-        .addTextArea(text => {
-            text.setValue(listToText(sources.sceneFolders));
-            text.inputEl.rows = 3;
-            text.onChange(async (value) => {
-                sources.sceneFolders = parseListValue(value);
-                plugin.settings.inquirySources = sources;
-                await plugin.saveSettings();
+    const scanRootsSetting = new Settings(containerEl)
+        .setName('Inquiry scan roots')
+        .setDesc('Inquiry only scans within these roots. One path per line. Leave blank for vault root.');
+
+    scanRootsSetting.addTextArea(text => {
+        text.setValue(listToText(inquirySources.scanRoots));
+        text.inputEl.rows = 2;
+        text.inputEl.addClass('rt-input-full');
+
+        plugin.registerDomEvent(text.inputEl, 'blur', () => {
+            const nextRoots = normalizeScanRoots(parseRootListValue(text.getValue()));
+            inquirySources = { ...inquirySources, scanRoots: nextRoots };
+            void refreshClassScan();
+        });
+    });
+
+    const classTableWrap = containerEl.createDiv({ cls: 'ert-inquiry-class-table' });
+
+    const scanInquiryClasses = async (roots: string[]): Promise<{ counts: Record<string, number>; classes: string[] }> => {
+        const counts: Record<string, number> = {};
+        const normalizedRoots = normalizeScanRoots(roots);
+        const files = plugin.app.vault.getMarkdownFiles();
+
+        const inRoots = (path: string) => {
+            return normalizedRoots.some(root => !root || path === root || path.startsWith(`${root}/`));
+        };
+
+        files.forEach(file => {
+            if (!inRoots(file.path)) return;
+            const cache = plugin.app.metadataCache.getFileCache(file);
+            const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
+            if (!frontmatter) return;
+            const normalized = normalizeFrontmatterKeys(frontmatter, plugin.settings.frontmatterMappings);
+            const rawClass = normalized['Class'];
+            if (!rawClass) return;
+            const values = Array.isArray(rawClass) ? rawClass : [rawClass];
+            values.forEach(value => {
+                const name = typeof value === 'string' ? value.trim() : String(value).trim();
+                if (!name) return;
+                const key = name.toLowerCase();
+                counts[key] = (counts[key] || 0) + 1;
             });
         });
 
-    new Settings(containerEl)
-        .setName('Book outline files')
-        .setDesc('Outline files used at book scope. One path per line.')
-        .addTextArea(text => {
-            text.setValue(listToText(sources.bookOutlineFiles));
-            text.inputEl.rows = 3;
-            text.onChange(async (value) => {
-                sources.bookOutlineFiles = parseListValue(value);
-                plugin.settings.inquirySources = sources;
-                await plugin.saveSettings();
-            });
-        });
+        return {
+            counts,
+            classes: Object.keys(counts).sort()
+        };
+    };
 
-    new Settings(containerEl)
-        .setName('Saga outline file')
-        .setDesc('Single saga-level outline file path.')
-        .addText(text => {
-            text.setPlaceholder('Path to saga outline file');
-            text.setValue(sources.sagaOutlineFile || '');
-            text.inputEl.addClass('rt-input-full');
-            text.onChange(async (value) => {
-                sources.sagaOutlineFile = value.trim() ? normalizePath(value.trim()) : '';
-                plugin.settings.inquirySources = sources;
-                await plugin.saveSettings();
-            });
-        });
+    const renderClassTable = (configs: InquiryClassConfig[], counts: Record<string, number>) => {
+        classTableWrap.empty();
 
-    new Settings(containerEl)
-        .setName('Character folders')
-        .setDesc('Reference folders for characters.')
-        .addTextArea(text => {
-            text.setValue(listToText(sources.characterFolders));
-            text.inputEl.rows = 2;
-            text.onChange(async (value) => {
-                sources.characterFolders = parseListValue(value);
-                plugin.settings.inquirySources = sources;
-                await plugin.saveSettings();
-            });
-        });
+        const header = classTableWrap.createDiv({ cls: 'ert-inquiry-class-row ert-inquiry-class-header' });
+        header.createDiv({ cls: 'ert-inquiry-class-cell', text: 'Enabled' });
+        header.createDiv({ cls: 'ert-inquiry-class-cell', text: 'Class' });
+        header.createDiv({ cls: 'ert-inquiry-class-cell', text: 'Book scope' });
+        header.createDiv({ cls: 'ert-inquiry-class-cell', text: 'Saga scope' });
+        header.createDiv({ cls: 'ert-inquiry-class-cell', text: 'Matches' });
 
-    new Settings(containerEl)
-        .setName('Place folders')
-        .setDesc('Reference folders for places.')
-        .addTextArea(text => {
-            text.setValue(listToText(sources.placeFolders));
-            text.inputEl.rows = 2;
-            text.onChange(async (value) => {
-                sources.placeFolders = parseListValue(value);
-                plugin.settings.inquirySources = sources;
-                await plugin.saveSettings();
+        configs.forEach(config => {
+            const row = classTableWrap.createDiv({ cls: 'ert-inquiry-class-row' });
+            const enabledCell = row.createDiv({ cls: 'ert-inquiry-class-cell' });
+            const enabledToggle = enabledCell.createEl('input', { type: 'checkbox' });
+            enabledToggle.checked = config.enabled;
+            plugin.registerDomEvent(enabledToggle, 'change', () => {
+                inquirySources = {
+                    ...inquirySources,
+                    classes: (inquirySources.classes || []).map(entry =>
+                        entry.className === config.className ? { ...entry, enabled: enabledToggle.checked } : entry
+                    )
+                };
+                void refreshClassScan();
             });
-        });
 
-    new Settings(containerEl)
-        .setName('Power folders')
-        .setDesc('Reference folders for powers or systems.')
-        .addTextArea(text => {
-            text.setValue(listToText(sources.powerFolders));
-            text.inputEl.rows = 2;
-            text.onChange(async (value) => {
-                sources.powerFolders = parseListValue(value);
-                plugin.settings.inquirySources = sources;
-                await plugin.saveSettings();
-            });
+            const nameCell = row.createDiv({ cls: 'ert-inquiry-class-cell ert-inquiry-class-name', text: config.className });
+
+            const isOutline = config.className === 'outline';
+            const isReference = REFERENCE_ONLY_CLASSES.has(config.className);
+
+            const bookCell = row.createDiv({ cls: 'ert-inquiry-class-cell' });
+            if (isReference) {
+                bookCell.createSpan({ cls: 'ert-inquiry-class-role', text: 'Reference' });
+            } else {
+                const bookToggle = bookCell.createEl('input', { type: 'checkbox' });
+                bookToggle.checked = config.bookScope;
+                plugin.registerDomEvent(bookToggle, 'change', () => {
+                    inquirySources = {
+                        ...inquirySources,
+                        classes: (inquirySources.classes || []).map(entry =>
+                            entry.className === config.className ? { ...entry, bookScope: bookToggle.checked } : entry
+                        )
+                    };
+                    void refreshClassScan();
+                });
+                if (isOutline) {
+                    bookCell.createSpan({ cls: 'ert-inquiry-class-sub-label', text: 'Book outline' });
+                }
+            }
+
+            const sagaCell = row.createDiv({ cls: 'ert-inquiry-class-cell' });
+            if (isReference) {
+                sagaCell.createSpan({ cls: 'ert-inquiry-class-role', text: 'Reference' });
+            } else {
+                const sagaToggle = sagaCell.createEl('input', { type: 'checkbox' });
+                sagaToggle.checked = config.sagaScope;
+                plugin.registerDomEvent(sagaToggle, 'change', () => {
+                    inquirySources = {
+                        ...inquirySources,
+                        classes: (inquirySources.classes || []).map(entry =>
+                            entry.className === config.className ? { ...entry, sagaScope: sagaToggle.checked } : entry
+                        )
+                    };
+                    void refreshClassScan();
+                });
+                if (isOutline) {
+                    sagaCell.createSpan({ cls: 'ert-inquiry-class-sub-label', text: 'Saga outline' });
+                }
+            }
+
+            const countCell = row.createDiv({ cls: 'ert-inquiry-class-cell ert-inquiry-class-count' });
+            const count = counts[config.className] ?? 0;
+            countCell.setText(`${count} matches`);
+
+            if (!count) {
+                countCell.addClass('ert-inquiry-class-count-empty');
+            }
+
+            nameCell.setAttribute('title', config.className);
         });
+    };
+
+    const refreshClassScan = async () => {
+        const scanRoots = normalizeScanRoots(inquirySources.scanRoots);
+        const scan = await scanInquiryClasses(scanRoots);
+        const merged = mergeClassConfigs(inquirySources.classes || [], scan.classes);
+        inquirySources = {
+            scanRoots,
+            classes: merged,
+            classCounts: scan.counts,
+            lastScanAt: new Date().toISOString()
+        };
+        plugin.settings.inquirySources = inquirySources;
+        await plugin.saveSettings();
+        renderClassTable(merged, scan.counts);
+    };
+
+    void refreshClassScan();
 }

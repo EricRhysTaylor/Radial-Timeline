@@ -24,6 +24,8 @@ import { InquiryGlyph, FLOW_RADIUS, FLOW_STROKE } from './components/InquiryGlyp
 import { InquiryRunnerStub } from './runner/InquiryRunnerStub';
 import type { CorpusManifest, EvidenceParticipationRules } from './runner/types';
 import { InquirySessionStore } from './InquirySessionStore';
+import { normalizeFrontmatterKeys } from '../utils/frontmatter';
+import type { InquirySourcesSettings } from '../types/settings';
 
 const DEFAULT_BOOK_COUNT = 5;
 const DEFAULT_SCENE_COUNT = 12;
@@ -35,6 +37,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const VIEWBOX_MIN = -800;
 const VIEWBOX_MAX = 800;
 const VIEWBOX_SIZE = 1600;
+const INQUIRY_REFERENCE_ONLY_CLASSES = new Set(['character', 'place', 'power']);
 
 type InquiryQuestion = {
     id: string;
@@ -943,11 +946,96 @@ export class InquiryView extends ItemView {
     }
 
     private buildCorpusManifest(questionId: string): CorpusManifest {
-        const sources = this.plugin.settings.inquirySources || {};
+        const rawSources = this.plugin.settings.inquirySources as Record<string, unknown> | undefined;
+        if (rawSources && ('sceneFolders' in rawSources || 'bookOutlineFiles' in rawSources || 'sagaOutlineFile' in rawSources)) {
+            return this.buildLegacyCorpusManifest(rawSources, questionId);
+        }
+
+        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
         const entries: CorpusManifest['entries'] = [];
         const now = Date.now();
+        const classConfigMap = new Map(
+            (sources.classes || []).map(config => [config.className, config])
+        );
+        const scanRoots = this.normalizeScanRoots(sources.scanRoots);
+        const files = this.app.vault.getMarkdownFiles();
 
-        const addEntries = (paths: string[] | undefined, data: { class: 'scene' | 'outline' | 'character' | 'place' | 'power'; scope?: InquiryScope }) => {
+        const inRoots = (path: string) => {
+            return scanRoots.some(root => !root || path === root || path.startsWith(`${root}/`));
+        };
+
+        files.forEach(file => {
+            if (!inRoots(file.path)) return;
+            const cache = this.app.metadataCache.getFileCache(file);
+            const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
+            if (!frontmatter) return;
+            const normalized = normalizeFrontmatterKeys(frontmatter, this.plugin.settings.frontmatterMappings);
+            const classValues = this.extractClassValues(normalized);
+            if (!classValues.length) return;
+
+            classValues.forEach(className => {
+                const config = classConfigMap.get(className);
+                if (!config || !config.enabled) return;
+                if (className === 'outline') {
+                    const outlineScope = this.getFrontmatterScope(frontmatter);
+                    if (outlineScope === 'book' && !config.bookScope) return;
+                    if (outlineScope === 'saga' && !config.sagaScope) return;
+                    entries.push({
+                        path: file.path,
+                        mtime: file.stat.mtime ?? now,
+                        class: className,
+                        scope: outlineScope
+                    });
+                    return;
+                }
+
+                if (INQUIRY_REFERENCE_ONLY_CLASSES.has(className)) {
+                    entries.push({
+                        path: file.path,
+                        mtime: file.stat.mtime ?? now,
+                        class: className
+                    });
+                    return;
+                }
+
+                if (this.state.scope === 'book' && !config.bookScope) return;
+                if (this.state.scope === 'saga' && !config.sagaScope) return;
+
+                entries.push({
+                    path: file.path,
+                    mtime: file.stat.mtime ?? now,
+                    class: className
+                });
+            });
+        });
+
+        const fingerprintSource = entries
+            .map(entry => `${entry.path}:${entry.mtime}`)
+            .sort()
+            .join('|');
+        const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${fingerprintSource}`;
+        const fingerprint = this.hashString(fingerprintRaw);
+
+        return {
+            entries,
+            fingerprint,
+            generatedAt: now
+        };
+    }
+
+    private buildLegacyCorpusManifest(rawSources: Record<string, unknown>, questionId: string): CorpusManifest {
+        const entries: CorpusManifest['entries'] = [];
+        const now = Date.now();
+        const sources = rawSources as {
+            sceneFolders?: string[];
+            bookOutlineFiles?: string[];
+            sagaOutlineFile?: string;
+            characterFolders?: string[];
+            placeFolders?: string[];
+            powerFolders?: string[];
+        };
+
+        const addEntries = (paths: string[] | undefined, data: { class: string; scope?: InquiryScope }) => {
             if (!paths) return;
             paths.forEach(rawPath => {
                 const path = normalizePath(rawPath);
@@ -985,6 +1073,53 @@ export class InquiryView extends ItemView {
             fingerprint,
             generatedAt: now
         };
+    }
+
+    private normalizeInquirySources(raw?: InquirySourcesSettings): InquirySourcesSettings {
+        if (!raw) {
+            return { scanRoots: [''], classes: [], classCounts: {} };
+        }
+        if ('sceneFolders' in raw || 'bookOutlineFiles' in raw || 'sagaOutlineFile' in raw) {
+            return { scanRoots: [''], classes: [], classCounts: {} };
+        }
+        return {
+            scanRoots: this.normalizeScanRoots(raw.scanRoots),
+            classes: (raw.classes || []).map(config => ({
+                className: config.className.toLowerCase(),
+                enabled: !!config.enabled,
+                bookScope: !!config.bookScope,
+                sagaScope: !!config.sagaScope
+            })),
+            classCounts: raw.classCounts || {},
+            lastScanAt: raw.lastScanAt
+        };
+    }
+
+    private normalizeScanRoots(roots?: string[]): string[] {
+        const normalized = (roots && roots.length ? roots : ['']).map(root => normalizePath(root));
+        return Array.from(new Set(normalized));
+    }
+
+    private extractClassValues(frontmatter: Record<string, unknown>): string[] {
+        const rawClass = frontmatter['Class'];
+        const values = Array.isArray(rawClass) ? rawClass : rawClass ? [rawClass] : [];
+        return values
+            .map(value => (typeof value === 'string' ? value : String(value)).trim())
+            .filter(Boolean)
+            .map(value => value.toLowerCase());
+    }
+
+    private getFrontmatterScope(frontmatter: Record<string, unknown>): InquiryScope | undefined {
+        const keys = Object.keys(frontmatter);
+        const scopeKey = keys.find(key => key.toLowerCase() === 'scope');
+        if (!scopeKey) return undefined;
+        const value = frontmatter[scopeKey];
+        if (typeof value !== 'string') return undefined;
+        const normalized = value.trim().toLowerCase();
+        if (normalized === 'book' || normalized === 'saga') {
+            return normalized as InquiryScope;
+        }
+        return undefined;
     }
 
     private hashString(value: string): string {

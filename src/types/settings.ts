@@ -215,13 +215,18 @@ export interface AprCampaign {
     teaserReveal?: TeaserRevealSettings;
 }
 
+export interface InquiryClassConfig {
+    className: string;
+    enabled: boolean;
+    bookScope: boolean;
+    sagaScope: boolean;
+}
+
 export interface InquirySourcesSettings {
-    sceneFolders?: string[];
-    bookOutlineFiles?: string[];
-    sagaOutlineFile?: string;
-    characterFolders?: string[];
-    placeFolders?: string[];
-    powerFolders?: string[];
+    scanRoots?: string[];
+    classes?: InquiryClassConfig[];
+    classCounts?: Record<string, number>;
+    lastScanAt?: string;
 }
 
 export interface InquirySessionCacheRecord {

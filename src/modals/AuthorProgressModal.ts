@@ -228,7 +228,7 @@ export class AuthorProgressModal extends Modal {
         container: HTMLElement, 
         size: 'thumb' | 'small' | 'medium' | 'large', 
         label: string,
-        dimensions: string,
+        dimension: string,
         useCase: string,
         options?: { locked?: boolean }
     ) {
@@ -250,7 +250,9 @@ export class AuthorProgressModal extends Modal {
         // Label area
         const labelArea = card.createDiv({ cls: 'rt-apr-preview-label' });
         labelArea.createEl('strong', { text: label });
-        labelArea.createEl('span', { text: dimensions, cls: 'rt-apr-preview-dims' });
+        const dims = labelArea.createEl('span', { cls: 'rt-apr-preview-dims' });
+        dims.append(document.createTextNode(dimension));
+        dims.createEl('sup', { text: '2' });
         labelArea.createEl('span', { text: useCase, cls: 'rt-apr-preview-usecase' });
         
         // Click to select
@@ -430,10 +432,10 @@ export class AuthorProgressModal extends Modal {
 
         const previewRow = this.sizeSectionEl.createDiv({ cls: 'rt-apr-preview-row' });
         const locked = isCampaign;
-        this.createPreviewCard(previewRow, 'thumb', 'Thumb', '100^2', 'Teaser ring', { locked });
-        this.createPreviewCard(previewRow, 'small', 'Small', '150^2', 'Widgets, sidebars', { locked });
-        this.createPreviewCard(previewRow, 'medium', 'Medium', '300^2', 'Social posts, newsletters', { locked });
-        this.createPreviewCard(previewRow, 'large', 'Large', '450^2', 'Website embeds', { locked });
+        this.createPreviewCard(previewRow, 'thumb', 'Thumb', '100', 'Teaser ring', { locked });
+        this.createPreviewCard(previewRow, 'small', 'Small', '150', 'Widgets, sidebars', { locked });
+        this.createPreviewCard(previewRow, 'medium', 'Medium', '300', 'Social posts, newsletters', { locked });
+        this.createPreviewCard(previewRow, 'large', 'Large', '450', 'Website embeds', { locked });
 
         const infoNote = this.sizeSectionEl.createDiv({ cls: 'rt-apr-density-note' });
         setIcon(infoNote.createSpan({ cls: 'rt-apr-density-icon' }), 'info');
@@ -505,9 +507,10 @@ export class AuthorProgressModal extends Modal {
 
             try {
                 const ringOnly = isTeaserBar || size === 'thumb';
+                const displayPercent = ringOnly && this.progressPercent <= 0 ? 5 : this.progressPercent;
                 const { svgString } = createAprSVG(this.cachedScenes, {
-                size,
-                progressPercent: this.progressPercent,
+                    size,
+                    progressPercent: displayPercent,
                 bookTitle: settings?.bookTitle || 'Working Title',
                 authorName: settings?.authorName || '',
                 authorUrl: settings?.authorUrl || '',

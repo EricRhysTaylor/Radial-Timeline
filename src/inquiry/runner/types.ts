@@ -1,6 +1,6 @@
 import type { InquiryMode, InquiryScope, InquiryZone, InquiryResult } from '../state';
 
-export type EvidenceClass = 'scene' | 'outline' | 'character' | 'place' | 'power';
+export type EvidenceClass = string;
 
 export interface CorpusManifestEntry {
     path: string;

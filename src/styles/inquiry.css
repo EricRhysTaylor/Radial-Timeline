@@ -533,6 +533,63 @@
   padding: 8px 12px;
 }
 
+.ert-inquiry-class-table {
+  margin-top: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.ert-inquiry-class-row {
+  display: grid;
+  grid-template-columns: 90px 1.1fr 140px 140px 110px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+}
+
+.ert-inquiry-class-header {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  background: var(--background-primary);
+}
+
+.ert-inquiry-class-cell {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-normal);
+}
+
+.ert-inquiry-class-name {
+  font-weight: 600;
+  text-transform: lowercase;
+}
+
+.ert-inquiry-class-role {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.ert-inquiry-class-sub-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.ert-inquiry-class-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.ert-inquiry-class-count-empty {
+  color: var(--text-faint);
+}
+
 .ert-inquiry-svg.is-error .ert-inquiry-glyph {
   animation: ert-inquiry-pulse 1.6s ease-in-out infinite;
 }

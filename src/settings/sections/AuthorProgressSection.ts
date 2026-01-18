@@ -20,40 +20,53 @@ export interface AuthorProgressSectionProps {
 }
 
 export function renderAuthorProgressSection({ app, plugin, containerEl }: AuthorProgressSectionProps): void {
-    const section = containerEl.createDiv({ cls: 'rt-settings-section rt-apr-section' });
-    
+    const section = containerEl.createDiv({ cls: `rt-settings-section rt-apr-section ${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_SOCIAL}` });
+
     // Check if APR needs refresh
     const aprService = new AuthorProgressService(plugin, app);
     const needsRefresh = aprService.isStale();
-    
+
     // ─────────────────────────────────────────────────────────────────────────
     // APR HERO SECTION
     // ─────────────────────────────────────────────────────────────────────────
     const hero = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_APR}` });
-    
+
     // Badge row with pill - turns red when refresh needed
-    const badgeRow = hero.createDiv({ cls: 'rt-apr-hero-badge-row' });
-    const badgeClasses = needsRefresh ? 'rt-apr-hero-badge rt-apr-badge-alert' : 'rt-apr-hero-badge';
+    const badgeRow = hero.createDiv({ cls: `rt-apr-hero-badge-row ${ERT_CLASSES.ROW}` });
+    const badgeClasses = needsRefresh ?
+        `rt-apr-badge-alert ${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_APR}` :
+        `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_APR}`;
     const badge = badgeRow.createSpan({ cls: badgeClasses });
-    setIcon(badge, needsRefresh ? 'alert-triangle' : 'radio');
-    badge.createSpan({ text: needsRefresh ? 'Reminder to Refresh' : 'Share · Author Progress Report' });
-    // Add wiki link to the badge
-    addWikiLinkToElement(badge, 'Settings#social-media');
-    
+    // Left Icon and Text
+    setIcon(badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), needsRefresh ? 'alert-triangle' : 'radio');
+    badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: needsRefresh ? 'Reminder to Refresh' : 'Share · Author Progress Report' });
+
+    // Right Icon (Wiki Link) - Manually constructed for ERT styling
+    const wikiLink = badge.createEl('a', {
+        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#social-media',
+        cls: 'ert-badgePill__rightIcon',
+        attr: {
+            'aria-label': 'Read more in the Wiki',
+            'target': '_blank',
+            'rel': 'noopener'
+        }
+    });
+    setIcon(wikiLink, 'external-link');
+
     // Big headline
-    hero.createEl('h3', { 
-        cls: 'rt-apr-hero-title', 
-        text: 'Promote your work in progress.' 
+    hero.createEl('h3', {
+        cls: `rt-apr-hero-title ${ERT_CLASSES.SECTION_TITLE}`,
+        text: 'Promote your work in progress.'
     });
-    
+
     // Description paragraph
-    hero.createEl('p', { 
-        cls: 'rt-apr-hero-subtitle', 
-        text: 'Generate vibrant, spoiler-safe progress graphics for social media and crowdfunding. Perfect for Kickstarter updates, Patreon posts, or sharing your writing journey with fans.' 
+    hero.createEl('p', {
+        cls: `rt-apr-hero-subtitle ${ERT_CLASSES.SECTION_DESC}`,
+        text: 'Generate vibrant, spoiler-safe progress graphics for social media and crowdfunding. Perfect for Kickstarter updates, Patreon posts, or sharing your writing journey with fans.'
     });
-    
+
     // Features section
-    const featuresSection = hero.createDiv({ cls: 'rt-apr-hero-features' });
+    const featuresSection = hero.createDiv({ cls: `rt-apr-hero-features ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
     featuresSection.createEl('h5', { text: 'Key Benefits:' });
     const featuresList = featuresSection.createEl('ul');
     [
@@ -66,81 +79,95 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         setIcon(iconSpan, feature.icon);
         li.createSpan({ text: feature.text });
     });
-    
+
     // Size selector and 1:1 preview
     const previewSection = hero.createDiv({ cls: 'rt-apr-preview-section' });
-    
+
     // Size selector row
-    const sizeSelectorRow = previewSection.createDiv({ cls: 'rt-apr-size-selector-row' });
+    const sizeSelectorRow = previewSection.createDiv({ cls: `rt-apr-size-selector-row ${ERT_CLASSES.INLINE}` });
     sizeSelectorRow.createSpan({ text: 'Preview Size:', cls: 'rt-apr-size-label' });
-    
+
     const sizeButtons = [
         { size: 'thumb', dimension: '100' },
         { size: 'small', dimension: '150' },
         { size: 'medium', dimension: '300' },
         { size: 'large', dimension: '450' },
     ] as const;
-    
+
     const currentSize = plugin.settings.authorProgress?.aprSize || 'medium';
-    
+    const setSizeLabel = (el: HTMLElement, dimension: string, suffix?: string) => {
+        el.textContent = '';
+        el.append(document.createTextNode(dimension));
+        el.createEl('sup', { text: '2' });
+        if (suffix) {
+            el.append(document.createTextNode(` — ${suffix}`));
+        }
+    };
+    let dimLabel: HTMLElement | null = null;
+
     sizeButtons.forEach(({ size, dimension }) => {
-        const btn = sizeSelectorRow.createEl('button', { 
-            cls: `rt-apr-size-btn ${size === currentSize ? 'rt-apr-size-btn-active' : ''}`,
-            text: `${dimension}^2`
+        const btn = sizeSelectorRow.createEl('button', {
+            cls: `rt-apr-size-btn ${size === currentSize ? `rt-apr-size-btn-active ${ERT_CLASSES.IS_ACTIVE}` : ''} ${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_STANDARD}`
         });
-        
+        setSizeLabel(btn, dimension);
+
         btn.onclick = async () => {
             if (!plugin.settings.authorProgress) return;
             plugin.settings.authorProgress.aprSize = size;
             await plugin.saveSettings();
-            
+
             // Update button states
-            sizeSelectorRow.querySelectorAll('.rt-apr-size-btn').forEach(b => b.removeClass('rt-apr-size-btn-active'));
+            sizeSelectorRow.querySelectorAll('.rt-apr-size-btn').forEach(b => {
+                b.removeClass('rt-apr-size-btn-active');
+                b.removeClass(ERT_CLASSES.IS_ACTIVE);
+            });
             btn.addClass('rt-apr-size-btn-active');
-            
+            btn.addClass(ERT_CLASSES.IS_ACTIVE);
+
             // Update dimension label
-            const dimLabel = previewSection.querySelector('.rt-apr-preview-dimension-label');
-            if (dimLabel) dimLabel.setText(`${dimension}^2 — Actual size (scroll to see full preview)`);
-            
+            if (dimLabel) {
+                setSizeLabel(dimLabel, dimension, 'Actual size (scroll to see full preview)');
+            }
+
             // Re-render preview at new size
             void renderHeroPreview(app, plugin, previewContainer, size);
         };
     });
-    
+
     // Dimension info
     const currentDim = sizeButtons.find(s => s.size === currentSize)?.dimension || '300';
-    previewSection.createDiv({ 
-        cls: 'rt-apr-preview-dimension-label',
-        text: `${currentDim}^2 — Actual size (scroll to see full preview)`
+    dimLabel = previewSection.createDiv({
+        cls: 'rt-apr-preview-dimension-label'
     });
-    
+    setSizeLabel(dimLabel, currentDim, 'Actual size (scroll to see full preview)');
+
     // SVG Preview container - shows at 1:1 actual size
-    const previewContainer = previewSection.createDiv({ cls: 'rt-apr-hero-preview rt-apr-preview-actual' });
-    previewContainer.createDiv({ cls: 'rt-apr-hero-preview-loading', text: 'Loading preview...' });
-    
+    const previewContainer = previewSection.createDiv({ cls: `rt-apr-hero-preview rt-apr-preview-actual ${ERT_CLASSES.PREVIEW_FRAME}` });
+    previewContainer.createDiv({ cls: `rt-apr-hero-preview-loading ${ERT_CLASSES.PREVIEW_INNER}`, text: 'Loading preview...' });
+
     // Load and render preview asynchronously at actual size
     renderHeroPreview(app, plugin, previewContainer, currentSize);
-    const refreshPreview = () => { 
+    const refreshPreview = () => {
         const size = plugin.settings.authorProgress?.aprSize || 'medium';
-        void renderHeroPreview(app, plugin, previewContainer, size); 
+        void renderHeroPreview(app, plugin, previewContainer, size);
     };
-    
+
     // Meta tags
     const settings = plugin.settings.authorProgress;
-    const lastDate = settings?.lastPublishedDate 
-        ? new Date(settings.lastPublishedDate).toLocaleDateString() 
+    const lastDate = settings?.lastPublishedDate
+        ? new Date(settings.lastPublishedDate).toLocaleDateString()
         : 'Never';
-    
-    const meta = hero.createDiv({ cls: 'rt-apr-hero-meta' });
-    meta.createSpan({ text: `Last update: ${lastDate}` });
-    meta.createSpan({ text: 'Kickstarter ready' });
-    meta.createSpan({ text: 'Patreon friendly' });
-    
+
+    const meta = hero.createDiv({ cls: `rt-apr-hero-meta ${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
+    meta.createSpan({ text: `Last update: ${lastDate}`, cls: ERT_CLASSES.FIELD_NOTE });
+    meta.createSpan({ text: 'Kickstarter ready', cls: ERT_CLASSES.CHIP });
+    meta.createSpan({ text: 'Patreon friendly', cls: ERT_CLASSES.CHIP });
+
     // ─────────────────────────────────────────────────────────────────────────
     // CONFIGURATION SECTION
     // ─────────────────────────────────────────────────────────────────────────
-    const contentWrapper = section.createDiv({ cls: 'rt-apr-content-wrapper' });
-    
+    const contentWrapper = section.createDiv({ cls: `rt-apr-content-wrapper ${ERT_CLASSES.STACK}` });
+
     // Styling (background + branding colors) - placed first, close to preview
     const stylingCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
     stylingCard.createEl('h4', { text: 'Styling', cls: ERT_CLASSES.SECTION_TITLE });
@@ -155,16 +182,16 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const transparencySetting = new Setting(stylingCard)
         .setName('Transparent Mode (Recommended)')
         .setDesc('No background fill — adapts to any page or app. Ideal for websites, blogs, and platforms that preserve SVG transparency.');
-    
+
     // Background color - for special situations only (when transparency is off)
     const bgSetting = new Setting(stylingCard)
         .setName('Background Color')
         .setDesc('Bakes in a solid background. Use when transparency isn\'t reliable: email newsletters, Kickstarter, PDF exports, or platforms that rasterize SVGs.');
-    
+
     // Store references to the color picker and text input for enabling/disabling
     let bgColorPicker: ColorSwatchHandle | null = null;
     let bgTextInput: TextComponent | null = null;
-    
+
     // Helper to swap emphasis and enable/disable background controls
     const updateEmphasis = (isTransparent: boolean) => {
         if (isTransparent) {
@@ -181,7 +208,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             if (bgTextInput) bgTextInput.setDisabled(false);
         }
     };
-    
+
     transparencySetting.addToggle(toggle => {
         toggle.setValue(currentTransparent);
         toggle.onChange(async (val) => {
@@ -220,7 +247,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             refreshPreview();
         });
     });
-    
+
     // Set initial emphasis state after controls are created
     updateEmphasis(currentTransparent);
 
@@ -231,10 +258,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     spokeColorSetting.settingEl.addClass('ert-elementBlock');
     spokeColorSetting.controlEl.addClass('ert-elementBlock__right');
     spokeColorSetting.settingEl.querySelector('.setting-item-info')?.classList.add('ert-elementBlock__left');
-    
+
     let spokeColorPickerRef: ColorSwatchHandle | undefined;
     let spokeColorInputRef: TextComponent | undefined;
-    
+
     // Match Book Title Color layout exactly - always show color picker and text input
     const isCustomMode = currentSpokeMode === 'custom';
     const fallbackColor = '#ffffff';
@@ -254,7 +281,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     });
     spokeColorPickerRef = spokeColorPicker;
     spokeColorPicker.setDisabled(!isCustomMode);
-    
+
     const spokeColorInput = new TextComponent(spokeControlRow);
     spokeColorInputRef = spokeColorInput;
     spokeColorInput.inputEl.classList.add('rt-hex-input');
@@ -270,7 +297,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             spokeColorPickerRef?.setValue(val);
         }
     });
-    
+
     // Dropdown for mode (added after color controls, appears to the right)
     const spokeModeDropdown = new DropdownComponent(spokeControlRow);
     spokeModeDropdown.addOption('dark', 'Light Strokes');
@@ -288,7 +315,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         plugin.settings.authorProgress.aprTheme = mode === 'custom' ? 'dark' : (mode as 'dark' | 'light' | 'none');
         plugin.settings.authorProgress.aprSpokeColorMode = mode;
         await plugin.saveSettings();
-        
+
         // Enable/disable color controls based on mode (always visible, just disabled)
         const isCustom = mode === 'custom';
         spokeColorPickerRef?.setDisabled(!isCustom);
@@ -301,7 +328,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             spokeColorInputRef.setValue(fallbackColor);
             spokeColorPickerRef?.setValue(fallbackColor);
         }
-        
+
         refreshPreview();
     });
 
@@ -309,9 +336,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const linkUrlSetting = new Setting(stylingCard)
         .setName('Link URL')
         .setDesc('Where the graphic should link to (e.g. your website, Kickstarter, or shop).');
-    
+
     linkUrlSetting.settingEl.addClass('ert-row');
-    
+
     linkUrlSetting.addText(text => {
         text.inputEl.addClass('rt-input-full');
         text.setPlaceholder('https://your-site.com')
@@ -340,7 +367,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     });
     const themeHeaderActions = themeHeader.createDiv({ cls: ERT_CLASSES.SECTION_ACTIONS });
     const typographyStack = themeContainer.createDiv({ cls: 'ert-typography-stack' });
-    
+
     // Palette tracking & color picker refs
     let lastAppliedPalette: { bookTitle: string; authorName: string; percentNumber: string; percentSymbol: string } | null = null;
     let bookTitleColorPickerRef: ColorSwatchHandle | undefined;
@@ -377,9 +404,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         );
         modal.open();
     });
-    
+
     const bookTitleColorFallback = plugin.settings.publishStageColors?.Press || '#6FB971';
-    
+
     // Curated font list
     const FONT_OPTIONS = [
         { value: 'default', label: 'Default' },
@@ -392,7 +419,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         { value: 'Dancing Script', label: 'Dancing Script' },
         { value: 'Caveat', label: 'Caveat' }
     ];
-    
+
     // Weight options with italic variants
     const WEIGHT_OPTIONS = [
         { value: '300', label: 'Light (300)' },
@@ -410,14 +437,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         { value: '900', label: 'Black (900)' },
         { value: '900-italic', label: 'Black Italic' }
     ];
-    
+
     const parseWeightValue = (val: string): { weight: number; italic: boolean } => {
         if (val.includes('-italic')) {
             return { weight: parseInt(val.split('-')[0], 10), italic: true };
         }
         return { weight: parseInt(val, 10), italic: false };
     };
-    
+
     const formatWeightValue = (weight: number, italic: boolean): string => {
         return italic ? `${weight}-italic` : String(weight);
     };
@@ -798,12 +825,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
         updateAutoState();
     };
-    
+
     // ─────────────────────────────────────────────────────────────────────────
     // COLOR PALETTE + TITLE BLOCK
     // ─────────────────────────────────────────────────────────────────────────
     const currentBookTitleColorVal = settings?.aprBookAuthorColor || bookTitleColorFallback;
-    
+
     // ─────────────────────────────────────────────────────────────────────────
     // ELEMENT BLOCKS (Title, Author, % Symbol, % Number, RT Badge)
     // ─────────────────────────────────────────────────────────────────────────
@@ -839,7 +866,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             weightDefault: 400
         }
     });
-    
+
     // ─────────────────────────────────────────────────────────────────────────
     // AUTHOR
     // ─────────────────────────────────────────────────────────────────────────
@@ -878,7 +905,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             weightDefault: 400
         }
     });
-    
+
     // ─────────────────────────────────────────────────────────────────────────
     // % SYMBOL
     // ─────────────────────────────────────────────────────────────────────────
@@ -907,7 +934,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             weightDefault: 800
         }
     });
-    
+
     // ─────────────────────────────────────────────────────────────────────────
     // % NUMBER
     // ─────────────────────────────────────────────────────────────────────────
@@ -943,7 +970,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             weightDefault: 800
         }
     });
-    
+
     // ─────────────────────────────────────────────────────────────────────────
     // RT BADGE
     // ─────────────────────────────────────────────────────────────────────────
@@ -975,165 +1002,165 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Pro users use Campaign Manager instead, non-Pro users see basic publishing options
     // ─────────────────────────────────────────────────────────────────────────
     const isProActive = isProfessionalActive(plugin);
-    
+
     // Only show basic Publishing & Automation for non-Pro users
     if (!isProActive) {
-    const automationCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-automation-card rt-apr-stack-gap' });
-    automationCard.createEl('h4', { text: 'Publishing & Automation', cls: ERT_CLASSES.SECTION_TITLE });
+        const automationCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-automation-card rt-apr-stack-gap' });
+        automationCard.createEl('h4', { text: 'Publishing & Automation', cls: ERT_CLASSES.SECTION_TITLE });
 
-    const frequencySetting = new Setting(automationCard)
-        .setName('Update Frequency')
-        .setDesc('How often to auto-update the live embed file. "Manual" requires clicking the update button in the Author Progress Report modal.')
-        .addDropdown(dropdown => dropdown
-            .addOption('manual', 'Manual Only')
-            .addOption('daily', 'Daily')
-            .addOption('weekly', 'Weekly')
-            .addOption('monthly', 'Monthly')
-            .setValue(settings?.updateFrequency || 'manual')
-            .onChange(async (val) => {
-                if (plugin.settings.authorProgress) {
-                    plugin.settings.authorProgress.updateFrequency = val as any;
-                    await plugin.saveSettings();
-                }
-            })
-        );
-    
-    // Add red alert border when refresh is needed
-    if (needsRefresh) {
-        frequencySetting.settingEl.classList.add('rt-apr-refresh-alert');
-    }
+        const frequencySetting = new Setting(automationCard)
+            .setName('Update Frequency')
+            .setDesc('How often to auto-update the live embed file. "Manual" requires clicking the update button in the Author Progress Report modal.')
+            .addDropdown(dropdown => dropdown
+                .addOption('manual', 'Manual Only')
+                .addOption('daily', 'Daily')
+                .addOption('weekly', 'Weekly')
+                .addOption('monthly', 'Monthly')
+                .setValue(settings?.updateFrequency || 'manual')
+                .onChange(async (val) => {
+                    if (plugin.settings.authorProgress) {
+                        plugin.settings.authorProgress.updateFrequency = val as any;
+                        await plugin.saveSettings();
+                    }
+                })
+            );
 
-    // Conditional Manual Settings
-    if (settings?.updateFrequency === 'manual') {
-        const currentDays = settings?.stalenessThresholdDays || 30;
-        const stalenessSetting = new Setting(automationCard)
-            .setName('Refresh Alert Threshold')
-            .setDesc(`Days before showing a refresh reminder in the timeline view. Currently: ${currentDays} days.`)
-            .addSlider(slider => {
-                slider
-                    .setLimits(1, 90, 1)
-                    .setValue(currentDays)
-                    .onChange(async (val) => {
-                        if (plugin.settings.authorProgress) {
-                            plugin.settings.authorProgress.stalenessThresholdDays = val;
-                            await plugin.saveSettings();
-                            // Update description with new value
-                            const descEl = stalenessSetting.descEl;
-                            if (descEl) {
-                                descEl.setText(`Days before showing a refresh reminder in the timeline view. Currently: ${val} days.`);
-                            }
-                            // Update value label
-                            if (valueLabel) {
-                                valueLabel.setText(String(val));
-                            }
-                        }
-                    });
-                
-                // Add value label above the slider thumb
-                const sliderEl = slider.sliderEl;
-                const valueLabel = sliderEl.parentElement?.createEl('span', {
-                    cls: 'rt-slider-value-label',
-                    text: String(currentDays)
-                });
-                
-                return slider;
-            });
-        
         // Add red alert border when refresh is needed
         if (needsRefresh) {
-            stalenessSetting.settingEl.classList.add('rt-apr-refresh-alert');
+            frequencySetting.settingEl.classList.add('rt-apr-refresh-alert');
         }
-    }
 
-    const embedPathSetting = new Setting(automationCard)
-        .setName('Embed File Path')
-        .setDesc(`Location for the "Live Embed" SVG file. Must end with .svg. Default: ${DEFAULT_SETTINGS.authorProgress?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg'}`);
-    
-    embedPathSetting.settingEl.addClass('ert-row--wideControl');
-    
-    embedPathSetting.addText(text => {
-        const defaultPath = DEFAULT_SETTINGS.authorProgress?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg';
-        text.inputEl.addClass('rt-input-full');
-        text.setPlaceholder(defaultPath)
-            .setValue(settings?.dynamicEmbedPath || defaultPath);
-        
-        // Validate on blur
-        const handleBlur = async () => {
-            const val = text.getValue().trim();
-            text.inputEl.removeClass('rt-setting-input-success');
-            text.inputEl.removeClass('rt-setting-input-error');
-            
-            if (!val) {
-                // Empty is invalid - needs a path
-                text.inputEl.addClass('rt-setting-input-error');
-                window.setTimeout(() => {
-                    text.inputEl.removeClass('rt-setting-input-error');
-                }, 2000);
-                return;
-            }
-            
-            if (!val.toLowerCase().endsWith('.svg')) {
-                text.inputEl.addClass('rt-setting-input-error');
-                window.setTimeout(() => {
-                    text.inputEl.removeClass('rt-setting-input-error');
-                }, 2000);
-                return;
-            }
-            
-            // Valid - save
-            if (plugin.settings.authorProgress) {
-                plugin.settings.authorProgress.dynamicEmbedPath = val;
-                await plugin.saveSettings();
-                text.inputEl.addClass('rt-setting-input-success');
-                window.setTimeout(() => {
-                    text.inputEl.removeClass('rt-setting-input-success');
-                }, 1000);
-            }
-        };
-        
-        plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
-        
-        // Also handle Enter key
-        plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-            if (evt.key === 'Enter') {
-                evt.preventDefault();
-                text.inputEl.blur();
-            }
-        });
+        // Conditional Manual Settings
+        if (settings?.updateFrequency === 'manual') {
+            const currentDays = settings?.stalenessThresholdDays || 30;
+            const stalenessSetting = new Setting(automationCard)
+                .setName('Refresh Alert Threshold')
+                .setDesc(`Days before showing a refresh reminder in the timeline view. Currently: ${currentDays} days.`)
+                .addSlider(slider => {
+                    slider
+                        .setLimits(1, 90, 1)
+                        .setValue(currentDays)
+                        .onChange(async (val) => {
+                            if (plugin.settings.authorProgress) {
+                                plugin.settings.authorProgress.stalenessThresholdDays = val;
+                                await plugin.saveSettings();
+                                // Update description with new value
+                                const descEl = stalenessSetting.descEl;
+                                if (descEl) {
+                                    descEl.setText(`Days before showing a refresh reminder in the timeline view. Currently: ${val} days.`);
+                                }
+                                // Update value label
+                                if (valueLabel) {
+                                    valueLabel.setText(String(val));
+                                }
+                            }
+                        });
 
-        embedPathSetting.addExtraButton(button => {
-            button.setIcon('rotate-ccw');
-            button.setTooltip(`Reset to ${defaultPath}`);
-            button.onClick(async () => {
-                text.setValue(defaultPath);
-                if (!plugin.settings.authorProgress) {
-                    plugin.settings.authorProgress = { ...DEFAULT_SETTINGS.authorProgress! };
+                    // Add value label above the slider thumb
+                    const sliderEl = slider.sliderEl;
+                    const valueLabel = sliderEl.parentElement?.createEl('span', {
+                        cls: 'rt-slider-value-label',
+                        text: String(currentDays)
+                    });
+
+                    return slider;
+                });
+
+            // Add red alert border when refresh is needed
+            if (needsRefresh) {
+                stalenessSetting.settingEl.classList.add('rt-apr-refresh-alert');
+            }
+        }
+
+        const embedPathSetting = new Setting(automationCard)
+            .setName('Embed File Path')
+            .setDesc(`Location for the "Live Embed" SVG file. Must end with .svg. Default: ${DEFAULT_SETTINGS.authorProgress?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg'}`);
+
+        embedPathSetting.settingEl.addClass('ert-row--wideControl');
+
+        embedPathSetting.addText(text => {
+            const defaultPath = DEFAULT_SETTINGS.authorProgress?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg';
+            text.inputEl.addClass('rt-input-full');
+            text.setPlaceholder(defaultPath)
+                .setValue(settings?.dynamicEmbedPath || defaultPath);
+
+            // Validate on blur
+            const handleBlur = async () => {
+                const val = text.getValue().trim();
+                text.inputEl.removeClass('rt-setting-input-success');
+                text.inputEl.removeClass('rt-setting-input-error');
+
+                if (!val) {
+                    // Empty is invalid - needs a path
+                    text.inputEl.addClass('rt-setting-input-error');
+                    window.setTimeout(() => {
+                        text.inputEl.removeClass('rt-setting-input-error');
+                    }, 2000);
+                    return;
                 }
-                plugin.settings.authorProgress.dynamicEmbedPath = normalizePath(defaultPath);
-                await plugin.saveSettings();
-                text.inputEl.addClass('rt-setting-input-success');
-                window.setTimeout(() => {
-                    text.inputEl.removeClass('rt-setting-input-success');
-                }, 1000);
+
+                if (!val.toLowerCase().endsWith('.svg')) {
+                    text.inputEl.addClass('rt-setting-input-error');
+                    window.setTimeout(() => {
+                        text.inputEl.removeClass('rt-setting-input-error');
+                    }, 2000);
+                    return;
+                }
+
+                // Valid - save
+                if (plugin.settings.authorProgress) {
+                    plugin.settings.authorProgress.dynamicEmbedPath = val;
+                    await plugin.saveSettings();
+                    text.inputEl.addClass('rt-setting-input-success');
+                    window.setTimeout(() => {
+                        text.inputEl.removeClass('rt-setting-input-success');
+                    }, 1000);
+                }
+            };
+
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
+
+            // Also handle Enter key
+            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+
+            embedPathSetting.addExtraButton(button => {
+                button.setIcon('rotate-ccw');
+                button.setTooltip(`Reset to ${defaultPath}`);
+                button.onClick(async () => {
+                    text.setValue(defaultPath);
+                    if (!plugin.settings.authorProgress) {
+                        plugin.settings.authorProgress = { ...DEFAULT_SETTINGS.authorProgress! };
+                    }
+                    plugin.settings.authorProgress.dynamicEmbedPath = normalizePath(defaultPath);
+                    await plugin.saveSettings();
+                    text.inputEl.addClass('rt-setting-input-success');
+                    window.setTimeout(() => {
+                        text.inputEl.removeClass('rt-setting-input-success');
+                    }, 1000);
+                });
             });
         });
-    });
-    
-    // Pro upgrade teaser for non-Pro users
-    const proTeaser = automationCard.createDiv({ cls: 'rt-apr-pro-teaser' });
-    const teaserIcon = proTeaser.createSpan({ cls: 'rt-apr-pro-teaser-icon' });
-    setIcon(teaserIcon, 'signature');
-    const teaserText = proTeaser.createDiv({ cls: 'rt-apr-pro-teaser-text' });
-    teaserText.createEl('strong', { text: 'Want more?' });
-    teaserText.createEl('span', { 
-        text: ' Campaign Manager lets you create multiple embeds with Teaser Reveal—progressively show more detail as you write.' 
-    });
-    const teaserLink = proTeaser.createEl('a', {
-        text: 'Upgrade to Pro →',
-        href: 'https://radialtimeline.com/pro',
-        cls: 'rt-apr-pro-teaser-link',
-        attr: { target: '_blank', rel: 'noopener' }
-    });
+
+        // Pro upgrade teaser for non-Pro users
+        const proTeaser = automationCard.createDiv({ cls: 'rt-apr-pro-teaser' });
+        const teaserIcon = proTeaser.createSpan({ cls: 'rt-apr-pro-teaser-icon' });
+        setIcon(teaserIcon, 'signature');
+        const teaserText = proTeaser.createDiv({ cls: 'rt-apr-pro-teaser-text' });
+        teaserText.createEl('strong', { text: 'Want more?' });
+        teaserText.createEl('span', {
+            text: ' Campaign Manager lets you create multiple embeds with Teaser Reveal—progressively show more detail as you write.'
+        });
+        const teaserLink = proTeaser.createEl('a', {
+            text: 'Upgrade to Pro →',
+            href: 'https://radialtimeline.com/pro',
+            cls: 'rt-apr-pro-teaser-link',
+            attr: { target: '_blank', rel: 'noopener' }
+        });
     } // End of non-Pro publishing section
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1160,33 +1187,34 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
  * Uses the dedicated APR renderer at 1:1 actual size
  */
 async function renderHeroPreview(
-    app: App, 
-    plugin: RadialTimelinePlugin, 
+    app: App,
+    plugin: RadialTimelinePlugin,
     container: HTMLElement,
     size: 'thumb' | 'small' | 'medium' | 'large' = 'medium'
 ): Promise<void> {
     try {
         const scenes = await getAllScenes(app, plugin);
-        
+
         if (scenes.length === 0) {
             container.empty();
-            container.createDiv({ 
+            container.createDiv({
                 cls: 'rt-apr-hero-preview-empty',
-                text: 'Create scenes to see a preview of your Author Progress Report.' 
+                text: 'Create scenes to see a preview of your Author Progress Report.'
             });
             return;
         }
-        
+
         // Calculate progress using AuthorProgressService
         const service = new AuthorProgressService(plugin, app);
         const progressPercent = service.calculateProgress(scenes);
-        
+
         const aprSettings = plugin.settings.authorProgress;
-        
+
         const isThumb = size === 'thumb';
+        const displayPercent = isThumb && progressPercent <= 0 ? 5 : progressPercent;
         const { svgString, width, height } = createAprSVG(scenes, {
             size: size,
-            progressPercent,
+            progressPercent: displayPercent,
             bookTitle: aprSettings?.bookTitle || 'Working Title',
             authorName: aprSettings?.authorName || '',
             authorUrl: aprSettings?.authorUrl || '',
@@ -1230,25 +1258,25 @@ async function renderHeroPreview(
             rtBadgeFontItalic: aprSettings?.aprRtBadgeFontItalic,
             rtBadgeFontSize: aprSettings?.aprRtBadgeFontSize
         });
-        
+
         container.empty();
-        
+
         // Create a wrapper to ensure SVG displays at natural size
         const svgWrapper = container.createDiv({ cls: 'rt-apr-svg-wrapper' });
         svgWrapper.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
-        
+
         // Ensure the SVG has explicit dimensions for 1:1 display
         const svgEl = svgWrapper.querySelector('svg');
         if (svgEl) {
             svgEl.setAttribute('width', String(width));
             svgEl.setAttribute('height', String(height));
         }
-        
+
     } catch (e) {
         container.empty();
-        container.createDiv({ 
+        container.createDiv({
             cls: 'rt-apr-hero-preview-error',
-            text: 'Failed to render preview.' 
+            text: 'Failed to render preview.'
         });
         console.error('APR Settings Preview error:', e);
     }

@@ -2057,6 +2057,12 @@
   font-family: var(--font-monospace);
 }
 
+.rt-apr-preview-dims sup {
+  font-size: 0.65em;
+  line-height: 0;
+  vertical-align: super;
+}
+
 .rt-apr-preview-usecase {
   font-size: 0.7rem;
   color: var(--text-faint);
