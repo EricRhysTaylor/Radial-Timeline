@@ -18,7 +18,7 @@ import {
 } from './state';
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
 import { openOrRevealFile } from '../utils/fileUtils';
-import { InquiryGlyph, GLYPH_OUTER_DIAMETER } from './components/InquiryGlyph';
+import { InquiryGlyph, FLOW_RADIUS, FLOW_STROKE } from './components/InquiryGlyph';
 import { InquiryRunnerStub } from './runner/InquiryRunnerStub';
 import type { CorpusManifest, EvidenceParticipationRules } from './runner/types';
 import { InquirySessionStore } from './InquirySessionStore';
@@ -172,7 +172,6 @@ export class InquiryView extends ItemView {
         this.contentEl.appendChild(svg);
 
         const defs = this.createSvgElement('defs');
-        this.buildGlowFilter(defs);
         this.buildIconSymbols(defs);
         svg.appendChild(defs);
 
@@ -345,20 +344,6 @@ export class InquiryView extends ItemView {
         }
     }
 
-    private buildGlowFilter(defs: SVGDefsElement): void {
-        const filter = this.createSvgElement('filter');
-        filter.setAttribute('id', 'ert-inquiry-ring-glow');
-        filter.setAttribute('x', '-50%');
-        filter.setAttribute('y', '-50%');
-        filter.setAttribute('width', '200%');
-        filter.setAttribute('height', '200%');
-
-        const blur = this.createSvgElement('feGaussianBlur');
-        blur.setAttribute('stdDeviation', '6');
-        filter.appendChild(blur);
-        defs.appendChild(filter);
-    }
-
     private buildIconSymbols(defs: SVGDefsElement): void {
         this.iconSymbols.clear();
         [
@@ -505,10 +490,10 @@ export class InquiryView extends ItemView {
         if (!Number.isFinite(width) || width <= 0) return;
         const unitsPerPx = VIEWBOX_SIZE / width;
         const targetUnits = GLYPH_TARGET_PX * unitsPerPx;
-        const scale = targetUnits / GLYPH_OUTER_DIAMETER;
+        const scale = targetUnits / ((FLOW_RADIUS + FLOW_STROKE) * 2);
         if (!Number.isFinite(scale) || scale <= 0) return;
         this.glyph.root.setAttribute('transform', `scale(${scale.toFixed(4)})`);
-        this.glyph.setDisplayScale(scale);
+        this.glyph.setDisplayScale(scale, unitsPerPx);
     }
 
     private buildFindingsPanel(parent: SVGElement, x: number, y: number, width: number, height: number): void {

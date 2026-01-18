@@ -234,19 +234,12 @@
   pointer-events: none;
 }
 
-.ert-inquiry-ring-glow {
-  stroke: var(--ert-inquiry-glow, var(--rt-color-press));
-  opacity: var(--ert-inquiry-glow-opacity, 0.3);
-  filter: url(#ert-inquiry-ring-glow);
-  vector-effect: non-scaling-stroke;
+.ert-inquiry-ring-progress {
   pointer-events: none;
 }
 
-.ert-inquiry-ring-progress {
-  stroke: var(--ert-inquiry-neutral);
-  transition: stroke-dashoffset 200ms ease, stroke 140ms ease;
+.ert-inquiry-ring-arc {
   vector-effect: non-scaling-stroke;
-  pointer-events: none;
 }
 
 .ert-inquiry-ring-hit {
@@ -255,18 +248,6 @@
   cursor: pointer;
   vector-effect: non-scaling-stroke;
   pointer-events: stroke;
-}
-
-.ert-inquiry-ring.is-severity-low .ert-inquiry-ring-progress {
-  stroke: var(--ert-inquiry-low);
-}
-
-.ert-inquiry-ring.is-severity-medium .ert-inquiry-ring-progress {
-  stroke: var(--ert-inquiry-medium);
-}
-
-.ert-inquiry-ring.is-severity-high .ert-inquiry-ring-progress {
-  stroke: var(--ert-inquiry-high);
 }
 
 .ert-inquiry-ring.is-confidence-low .ert-inquiry-ring-track {
@@ -289,7 +270,7 @@
 }
 
 .ert-inquiry-ring-badge-circle {
-  fill: var(--ert-inquiry-neutral);
+  fill: var(--ert-inquiry-badge-color, var(--ert-inquiry-neutral));
   stroke: color-mix(in srgb, var(--background-primary) 60%, transparent);
   stroke-width: 4;
 }
@@ -300,18 +281,6 @@
   font-weight: 700;
   letter-spacing: -0.05em;
   font-variant-numeric: tabular-nums;
-}
-
-.ert-inquiry-ring.is-severity-low .ert-inquiry-ring-badge-circle {
-  fill: var(--ert-inquiry-low);
-}
-
-.ert-inquiry-ring.is-severity-medium .ert-inquiry-ring-badge-circle {
-  fill: var(--ert-inquiry-medium);
-}
-
-.ert-inquiry-ring.is-severity-high .ert-inquiry-ring-badge-circle {
-  fill: var(--ert-inquiry-high);
 }
 
 .ert-inquiry-glyph-label {

@@ -9,17 +9,20 @@ export interface InquiryGlyphProps {
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const FLOW_RADIUS = 260;
-const DEPTH_RADIUS = 195;
-const FLOW_STROKE = 14;
-const DEPTH_STROKE = 24;
+export const FLOW_RADIUS = 260;
+export const DEPTH_RADIUS = 195;
+export const FLOW_STROKE = 14;
+export const DEPTH_STROKE = 24;
 const FLOW_HIT_STROKE = 38;
 const DEPTH_HIT_STROKE = 48;
 const FLOW_BADGE_RADIUS_PX = FLOW_STROKE;
 const DEPTH_BADGE_RADIUS_PX = DEPTH_STROKE;
 const FLOW_BADGE_TEXT_PX = 16;
 const DEPTH_BADGE_TEXT_PX = 20;
-const LABEL_TEXT_PX = 30;
+const LABEL_TEXT_PX = 70;
+const ARC_BASE_TINT = '#dff5e7';
+const ARC_MAX_GREEN = '#22c55e';
+const DOT_DARKEN = 0.35;
 
 export const GLYPH_OUTER_DIAMETER = (FLOW_RADIUS * 2) + FLOW_STROKE;
 
@@ -31,10 +34,10 @@ export class InquiryGlyph {
     readonly depthRingHit: SVGCircleElement;
     readonly labelHit: SVGRectElement;
 
-    private flowProgress: SVGCircleElement;
-    private depthProgress: SVGCircleElement;
-    private flowGlow: SVGCircleElement;
-    private depthGlow: SVGCircleElement;
+    private flowProgressGroup: SVGGElement;
+    private depthProgressGroup: SVGGElement;
+    private flowArc: SVGPathElement;
+    private depthArc: SVGPathElement;
     private flowBadgeCircle: SVGCircleElement;
     private flowBadgeText: SVGTextElement;
     private depthBadgeCircle: SVGCircleElement;
@@ -52,10 +55,10 @@ export class InquiryGlyph {
         this.flowGroup = this.buildRingGroup('flow', FLOW_RADIUS, FLOW_STROKE, FLOW_HIT_STROKE, FLOW_BADGE_RADIUS_PX);
         this.depthGroup = this.buildRingGroup('depth', DEPTH_RADIUS, DEPTH_STROKE, DEPTH_HIT_STROKE, DEPTH_BADGE_RADIUS_PX);
 
-        this.flowProgress = this.flowGroup.querySelector('.ert-inquiry-ring-progress') as SVGCircleElement;
-        this.depthProgress = this.depthGroup.querySelector('.ert-inquiry-ring-progress') as SVGCircleElement;
-        this.flowGlow = this.flowGroup.querySelector('.ert-inquiry-ring-glow') as SVGCircleElement;
-        this.depthGlow = this.depthGroup.querySelector('.ert-inquiry-ring-glow') as SVGCircleElement;
+        this.flowProgressGroup = this.flowGroup.querySelector('.ert-inquiry-ring-progress') as SVGGElement;
+        this.depthProgressGroup = this.depthGroup.querySelector('.ert-inquiry-ring-progress') as SVGGElement;
+        this.flowArc = this.flowGroup.querySelector('.ert-inquiry-ring-arc') as SVGPathElement;
+        this.depthArc = this.depthGroup.querySelector('.ert-inquiry-ring-arc') as SVGPathElement;
         this.flowRingHit = this.flowGroup.querySelector('.ert-inquiry-ring-hit') as SVGCircleElement;
         this.depthRingHit = this.depthGroup.querySelector('.ert-inquiry-ring-hit') as SVGCircleElement;
         this.flowBadgeCircle = this.flowGroup.querySelector('.ert-inquiry-ring-badge-circle') as SVGCircleElement;
@@ -89,7 +92,7 @@ export class InquiryGlyph {
         this.root.appendChild(labelGroup);
 
         this.applyProps(props);
-        this.setDisplayScale(1);
+        this.setDisplayScale(1, 1);
     }
 
     update(next: Partial<InquiryGlyphProps>): void {
@@ -97,14 +100,15 @@ export class InquiryGlyph {
         this.applyProps(this.props);
     }
 
-    setDisplayScale(scale: number): void {
+    setDisplayScale(scale: number, unitsPerPx: number): void {
         const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
-        const inverse = 1 / safeScale;
-        this.labelText.setAttribute('font-size', (LABEL_TEXT_PX * inverse).toFixed(2));
-        this.flowBadgeText.setAttribute('font-size', (FLOW_BADGE_TEXT_PX * inverse).toFixed(2));
-        this.depthBadgeText.setAttribute('font-size', (DEPTH_BADGE_TEXT_PX * inverse).toFixed(2));
-        this.flowBadgeCircle.setAttribute('r', (FLOW_BADGE_RADIUS_PX * inverse).toFixed(2));
-        this.depthBadgeCircle.setAttribute('r', (DEPTH_BADGE_RADIUS_PX * inverse).toFixed(2));
+        const safeUnits = Number.isFinite(unitsPerPx) && unitsPerPx > 0 ? unitsPerPx : 1;
+        const scaleFactor = safeUnits / safeScale;
+        this.labelText.setAttribute('font-size', (LABEL_TEXT_PX * scaleFactor).toFixed(2));
+        this.flowBadgeText.setAttribute('font-size', (FLOW_BADGE_TEXT_PX * scaleFactor).toFixed(2));
+        this.depthBadgeText.setAttribute('font-size', (DEPTH_BADGE_TEXT_PX * scaleFactor).toFixed(2));
+        this.flowBadgeCircle.setAttribute('r', (FLOW_BADGE_RADIUS_PX * scaleFactor).toFixed(2));
+        this.depthBadgeCircle.setAttribute('r', (DEPTH_BADGE_RADIUS_PX * scaleFactor).toFixed(2));
     }
 
     private applyProps(props: InquiryGlyphProps): void {
@@ -114,25 +118,29 @@ export class InquiryGlyph {
 
         this.applyRingState(
             this.flowGroup,
-            this.flowProgress,
-            this.flowGlow,
+            this.flowProgressGroup,
+            this.flowArc,
             this.flowBadgeCircle,
             this.flowBadgeText,
             props.flowValue,
             FLOW_RADIUS,
+            FLOW_STROKE,
             props.severity,
-            props.confidence
+            props.confidence,
+            'flow'
         );
         this.applyRingState(
             this.depthGroup,
-            this.depthProgress,
-            this.depthGlow,
+            this.depthProgressGroup,
+            this.depthArc,
             this.depthBadgeCircle,
             this.depthBadgeText,
             props.depthValue,
             DEPTH_RADIUS,
+            DEPTH_STROKE,
             props.severity,
-            props.confidence
+            props.confidence,
+            'depth'
         );
     }
 
@@ -146,20 +154,15 @@ export class InquiryGlyph {
         const group = document.createElementNS(SVG_NS, 'g');
         group.classList.add('ert-inquiry-ring', `ert-inquiry-ring--${kind}`);
 
-        const glow = this.buildCircle(radius, strokeWidth, 'ert-inquiry-ring-glow');
         const track = this.buildCircle(radius, strokeWidth, 'ert-inquiry-ring-track');
-        const progress = this.buildCircle(radius, strokeWidth, 'ert-inquiry-ring-progress');
+        const progress = document.createElementNS(SVG_NS, 'g');
+        progress.classList.add('ert-inquiry-ring-progress');
+        const arc = document.createElementNS(SVG_NS, 'path');
+        arc.classList.add('ert-inquiry-ring-arc');
+        progress.appendChild(arc);
         const hit = this.buildCircle(radius, hitStrokeWidth, 'ert-inquiry-ring-hit');
         const badgeGroup = this.buildBadgeGroup(badgeRadius);
 
-        const circumference = 2 * Math.PI * radius;
-        progress.setAttribute('stroke-dasharray', circumference.toFixed(2));
-        progress.setAttribute('stroke-dashoffset', circumference.toFixed(2));
-        progress.setAttribute('stroke-linecap', 'round');
-        progress.setAttribute('transform', 'rotate(-90 0 0)');
-        progress.setAttribute('data-circumference', circumference.toFixed(2));
-
-        group.appendChild(glow);
         group.appendChild(track);
         group.appendChild(progress);
         group.appendChild(hit);
@@ -200,36 +203,61 @@ export class InquiryGlyph {
 
     private applyRingState(
         ring: SVGGElement,
-        progress: SVGCircleElement,
-        glow: SVGCircleElement,
+        progress: SVGGElement,
+        arc: SVGPathElement,
         badgeCircle: SVGCircleElement,
         badgeText: SVGTextElement,
         value: number,
         radius: number,
+        strokeWidth: number,
         severity: InquirySeverity,
-        confidence: InquiryConfidence
+        confidence: InquiryConfidence,
+        kind: 'flow' | 'depth'
     ): void {
         ring.classList.remove('is-severity-low', 'is-severity-medium', 'is-severity-high');
         ring.classList.remove('is-confidence-low', 'is-confidence-medium', 'is-confidence-high');
         ring.classList.add(`is-severity-${severity}`);
         ring.classList.add(`is-confidence-${confidence}`);
-        this.updateRingProgress(progress, value);
-        this.updateGlow(glow, value);
+        this.updateRingArc(progress, arc, value, radius, strokeWidth);
         this.updateBadge(badgeCircle, badgeText, value, radius);
     }
 
-    private updateRingProgress(progress: SVGCircleElement, normalized: number): void {
-        const circumference = Number(progress.getAttribute('data-circumference') || '0');
-        if (!Number.isFinite(circumference) || circumference <= 0) return;
+    private updateRingArc(
+        progressGroup: SVGGElement,
+        arc: SVGPathElement,
+        normalized: number,
+        radius: number,
+        strokeWidth: number
+    ): void {
         const safeValue = Math.min(Math.max(normalized, 0), 1);
-        const offset = circumference * (1 - safeValue);
-        progress.setAttribute('stroke-dashoffset', offset.toFixed(2));
-    }
-
-    private updateGlow(glow: SVGCircleElement, normalized: number): void {
-        const safeValue = Math.min(Math.max(normalized, 0), 1);
-        const opacity = 0.15 + (safeValue * 0.45);
-        glow.style.setProperty('--ert-inquiry-glow-opacity', opacity.toFixed(3));
+        if (safeValue <= 0) {
+            arc.setAttribute('d', '');
+            progressGroup.setAttribute('opacity', '0');
+            return;
+        }
+        progressGroup.setAttribute('opacity', '1');
+        const startDeg = -90;
+        let sweepDeg = safeValue * 360;
+        if (sweepDeg > 359.999) sweepDeg = 359.999;
+        const endDeg = startDeg + sweepDeg;
+        const start = this.polarToCartesian(radius, startDeg);
+        const end = this.polarToCartesian(radius, endDeg);
+        const largeArc = sweepDeg > 180 ? 1 : 0;
+        let d = `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+        if (safeValue >= 0.9999) {
+            const mid = this.polarToCartesian(radius, startDeg + 180);
+            d = [
+                `M ${start.x} ${start.y}`,
+                `A ${radius} ${radius} 0 1 1 ${mid.x} ${mid.y}`,
+                `A ${radius} ${radius} 0 1 1 ${start.x} ${start.y}`
+            ].join(' ');
+        }
+        arc.setAttribute('d', d);
+        arc.setAttribute('stroke-width', String(strokeWidth));
+        arc.setAttribute('stroke-linecap', 'round');
+        arc.setAttribute('fill', 'none');
+        const arcColor = InquiryGlyph.mixColors(ARC_BASE_TINT, ARC_MAX_GREEN, safeValue);
+        arc.setAttribute('stroke', arcColor);
     }
 
     private updateBadge(
@@ -247,5 +275,49 @@ export class InquiryGlyph {
         badgeText.setAttribute('x', x.toFixed(2));
         badgeText.setAttribute('y', y.toFixed(2));
         badgeText.textContent = String(Math.round(safeValue * 100));
+        const arcColor = InquiryGlyph.mixColors(ARC_BASE_TINT, ARC_MAX_GREEN, safeValue);
+        const badgeColor = InquiryGlyph.darkenColor(arcColor, DOT_DARKEN);
+        badgeCircle.style.setProperty('--ert-inquiry-badge-color', badgeColor);
+    }
+
+    private static mixColors(start: string, end: string, t: number): string {
+        const clamp = Math.min(Math.max(t, 0), 1);
+        const parse = (hex: string) => {
+            const clean = hex.replace('#', '');
+            const num = parseInt(clean, 16);
+            return {
+                r: (num >> 16) & 0xff,
+                g: (num >> 8) & 0xff,
+                b: num & 0xff
+            };
+        };
+        const a = parse(start);
+        const b = parse(end);
+        const r = Math.round(a.r + (b.r - a.r) * clamp);
+        const g = Math.round(a.g + (b.g - a.g) * clamp);
+        const bl = Math.round(a.b + (b.b - a.b) * clamp);
+        return `#${((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1)}`;
+    }
+
+    private static darkenColor(hex: string, amount: number): string {
+        const clamp = Math.min(Math.max(amount, 0), 1);
+        const clean = hex.replace('#', '');
+        const num = parseInt(clean, 16);
+        const r = (num >> 16) & 0xff;
+        const g = (num >> 8) & 0xff;
+        const b = num & 0xff;
+        const factor = 1 - clamp;
+        const dr = Math.round(r * factor);
+        const dg = Math.round(g * factor);
+        const db = Math.round(b * factor);
+        return `#${((1 << 24) + (dr << 16) + (dg << 8) + db).toString(16).slice(1)}`;
+    }
+
+    private polarToCartesian(radius: number, degrees: number): { x: string; y: string } {
+        const radians = (degrees * Math.PI) / 180;
+        return {
+            x: (radius * Math.cos(radians)).toFixed(2),
+            y: (radius * Math.sin(radians)).toFixed(2)
+        };
     }
 }
