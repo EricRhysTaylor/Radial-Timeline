@@ -9,6 +9,10 @@ export function addWikiLink(setting: Setting, wikiPage: string): void {
     addWikiLinkToElement(setting.nameEl, wikiPage);
 }
 
+export function addHeadingIcon(setting: Setting, icon: string): void {
+    addHeadingIconToElement(setting.nameEl, icon);
+}
+
 /**
  * Adds a wiki link icon to any HTMLElement.
  * @param el The target HTMLElement (usually a header or label)
@@ -38,3 +42,10 @@ export function addWikiLinkToElement(el: HTMLElement, wikiPage: string): void {
     // Styling handled by .rt-wiki-link in src/styles/settings.css
 }
 
+function addHeadingIconToElement(el: HTMLElement, icon: string): void {
+    if (!el) return;
+
+    const iconEl = el.createSpan({ cls: 'rt-setting-heading-icon' });
+    setIcon(iconEl, icon);
+    el.insertBefore(iconEl, el.firstChild);
+}

@@ -1,12 +1,15 @@
 import { Setting as Settings, ColorComponent, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { DEFAULT_SETTINGS } from '../defaults';
+import { addHeadingIcon, addWikiLink } from '../wikiLink';
 
 export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTimelinePlugin): void {
     // --- Publishing Stage Colors ---
     const pubHeading = new Settings(containerEl)
         .setName('Publishing stage colors')
         .setHeading();
+    addHeadingIcon(pubHeading, 'paintbrush-vertical');
+    addWikiLink(pubHeading, 'Settings#publishing-stage-colors');
     pubHeading.settingEl.classList.add('rt-section-heading');
     containerEl.createEl('p', { cls: 'rt-color-section-desc', text: 'Used for completed scenes, stage matrix, act labels and more.' });
     const stageGrid = containerEl.createDiv({ cls: 'rt-color-grid' });
@@ -65,6 +68,8 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
     const subplotHeading = new Settings(containerEl)
         .setName('Subplot ring colors')
         .setHeading();
+    addHeadingIcon(subplotHeading, 'paintbrush-vertical');
+    addWikiLink(subplotHeading, 'Settings#subplot-ring-colors');
     subplotHeading.settingEl.classList.add('rt-section-heading');
     containerEl.createEl('p', { cls: 'rt-color-section-desc', text: 'Subplot ring colors used for rings 1 through 16 moving inward.' });
     const subplotGrid = containerEl.createDiv({ cls: 'rt-color-grid' });
@@ -128,5 +133,4 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
             });
     }
 }
-
 

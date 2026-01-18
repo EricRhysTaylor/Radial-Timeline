@@ -3,7 +3,7 @@ import type RadialTimelinePlugin from '../../main';
 import type { GlobalPovMode } from '../../types/settings';
 import { resolveScenePov } from '../../utils/pov';
 import { t } from '../../i18n';
-import { addWikiLink } from '../wikiLink';
+import { addHeadingIcon, addWikiLink } from '../wikiLink';
 
 const POV_LABELS: Record<string, string> = {
     '0': '°',
@@ -21,6 +21,7 @@ export function renderPovSection(params: {
     const povHeading = new ObsidianSetting(containerEl)
         .setName(t('settings.pov.heading'))
         .setHeading();
+    addHeadingIcon(povHeading, 'eye');
     addWikiLink(povHeading, 'Settings#pov');
 
     const povModeOptions: Record<GlobalPovMode, string> = {

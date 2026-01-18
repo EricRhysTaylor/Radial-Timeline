@@ -16,7 +16,7 @@ import { renderAiSection } from './sections/AiSection';
 import { renderReleaseNotesSection } from './sections/ReleaseNotesSection';
 import { renderPovSection } from './sections/PovSection';
 import { renderPlanetaryTimeSection } from './sections/PlanetaryTimeSection';
-import { renderMetadataSection } from './sections/MetadataSection';
+
 import { renderRuntimeSection } from './sections/RuntimeSection';
 import { renderProfessionalSection, isProfessionalActive } from './sections/ProfessionalSection';
 import { validateLocalModelAvailability } from '../api/localAiApi';
@@ -33,11 +33,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _localKeyInput?: HTMLInputElement;
     private _localBaseUrlInput?: HTMLInputElement;
     private _localModelIdInput?: HTMLInputElement;
-    private _aiRelatedElements: HTMLElement[] = []; 
-    private _activeTab: 'pro' | 'core' | 'social' = 'core'; 
+    private _aiRelatedElements: HTMLElement[] = [];
+    private _activeTab: 'pro' | 'core' | 'social' = 'core';
     private _searchDebounceTimer?: number;
     private _coreSearchableContent?: HTMLElement;
-    
+
     /** Public method to set active tab before/after opening settings */
     public setActiveTab(tab: 'pro' | 'core' | 'social'): void {
         this._activeTab = tab;
@@ -99,7 +99,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         if (provider === 'local') {
             const selectedProvider = (this.plugin.settings.defaultAiProvider || 'openai') as 'anthropic' | 'gemini' | 'openai' | 'local';
-            if (selectedProvider !== 'local') return; 
+            if (selectedProvider !== 'local') return;
             const baseInput = this._localBaseUrlInput;
             const modelInput = this._localModelIdInput;
             if (!baseInput || !modelInput) return;
@@ -277,7 +277,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
         return searchInput;
     }
-    
+
     private filterSettings(query: string): void {
         if (!this._coreSearchableContent) return;
         const normalizedQuery = query.toLowerCase().trim();
@@ -300,7 +300,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             section.classList.toggle('rt-search-section-hidden', visibleSettings.length === 0);
         });
     }
-    
+
     private renderProCallout(containerEl: HTMLElement, text: string, switchToProTab: () => void): void {
         const callout = containerEl.createDiv({ cls: 'rt-pro-callout' });
         const badge = callout.createSpan({ cls: 'rt-pro-callout-badge' });
@@ -330,7 +330,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const badge = badgeRow.createSpan({ cls: 'rt-pro-hero-badge' });
         setIcon(badge, 'signature');
         badge.createSpan({ text: 'Pro · Signature' });
-        
+
         hero.createEl('h3', { cls: 'rt-pro-hero-title', text: 'Signature tools for professional workflows.' });
         hero.createEl('p', { cls: 'rt-pro-hero-subtitle', text: 'Premium exports, runtime intelligence, and Pandoc templates. Make your publishing pipeline radial and your story ever revolving.' });
         const featuresSection = hero.createDiv({ cls: 'rt-pro-hero-features' });
@@ -363,7 +363,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const coreIcon = coreTab.createSpan({ cls: 'rt-settings-tab-icon' });
         setIcon(coreIcon, 'settings');
         coreTab.createSpan({ text: 'Core', cls: 'rt-settings-tab-label' });
-        
+
         const socialTab = tabBar.createDiv({ cls: 'rt-settings-tab rt-settings-tab-social' });
         const socialIcon = socialTab.createSpan({ cls: 'rt-settings-tab-icon' });
         setIcon(socialIcon, 'radio');
@@ -390,9 +390,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         updateTabState();
 
         const isProActive = isProfessionalActive(this.plugin);
-        renderProfessionalSection({ 
-            app: this.app, 
-            plugin: this.plugin, 
+        renderProfessionalSection({
+            app: this.app,
+            plugin: this.plugin,
             containerEl: proContent,
             renderHero: isProActive ? () => this.renderProHero(proContent) : undefined
         });
@@ -403,7 +403,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         this.renderBackupSafetySection(coreContent);
         this.renderSearchBox(coreContent);
-        
+
         const searchableContent = coreContent.createDiv({ cls: 'rt-settings-searchable-content' });
         this._coreSearchableContent = searchableContent;
         const switchToProTab = () => { this._activeTab = 'pro'; updateTabState(); };
@@ -421,12 +421,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             attachFolderSuggest: (t) => this.attachFolderSuggest(t)
         });
 
-        const metadataSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'metadata' } });
-        renderMetadataSection({ app: this.app, plugin: this.plugin, containerEl: metadataSection });
+
 
         const povSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'pov' } });
         renderPovSection({ plugin: this.plugin, containerEl: povSection });
-        
+
         const beatsSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'beats' } });
         renderTemplatesSection({ app: this.app, plugin: this.plugin, containerEl: beatsSection });
 

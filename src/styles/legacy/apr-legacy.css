@@ -194,8 +194,8 @@
   transition: all 0.2s ease;
 }
 
-.rt-settings-root .rt-apr-size-btn sup,
-.rt-settings-root .rt-apr-preview-dimension-label sup {
+.rt-apr-size-btn sup,
+.rt-apr-preview-dimension-label sup {
   font-size: 0.65em;
   line-height: 0;
   vertical-align: super;

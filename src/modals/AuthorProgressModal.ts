@@ -522,6 +522,7 @@ export class AuthorProgressModal extends Modal {
                 grayCompletedScenes,
                 showProgressPercent: ringOnly ? false : showProgressPercent,
                 showBranding: !ringOnly,
+                showCenterMark: size === 'thumb',
                 stageColors: (this.plugin.settings as any).publishStageColors,
                 actCount: this.plugin.settings.actCount || undefined,
                 backgroundColor: campaign?.customBackgroundColor ?? settings?.aprBackgroundColor ?? '#0d0d0f',

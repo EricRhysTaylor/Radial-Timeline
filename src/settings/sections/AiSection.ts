@@ -8,7 +8,7 @@ import { fetchLocalModels } from '../../api/localAiApi';
 import { CURATED_MODELS, CuratedModel, AiProvider } from '../../data/aiModels';
 import { AiContextModal } from '../AiContextModal';
 import { resolveAiOutputFolder, countAiLogFiles } from '../../utils/aiOutput';
-import { addWikiLink } from '../wikiLink';
+import { addHeadingIcon, addWikiLink } from '../wikiLink';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
 
@@ -30,6 +30,7 @@ export function renderAiSection(params: {
     const aiHeading = new Settings(containerEl)
         .setName('AI LLM for scene analysis')
         .setHeading();
+    addHeadingIcon(aiHeading, 'cpu');
     addWikiLink(aiHeading, 'Settings#ai');
 
     const getActiveTemplateName = (): string => {

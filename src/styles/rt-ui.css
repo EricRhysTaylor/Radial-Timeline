@@ -379,8 +379,7 @@
 .ert-ui .ert-badgePill__text {
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  white-space: normal;
-  overflow: visible;
+  white-space: nowrap;
 }
 
 .ert-ui .ert-badgePill--neutral {
@@ -403,7 +402,7 @@
 .ert-ui .ert-skin--apr .ert-badgePill--apr {
   background: linear-gradient(135deg, #fbbf24, #d97706);
   border: none;
-  color: #000000;
+  color: #ffffff;
   box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
 }
 

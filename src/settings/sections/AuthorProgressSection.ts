@@ -32,7 +32,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const hero = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_APR}` });
 
     // Badge row with pill - turns red when refresh needed
-    const badgeRow = hero.createDiv({ cls: `rt-apr-hero-badge-row ${ERT_CLASSES.ROW}` });
+    const badgeRow = hero.createDiv({ cls: `rt-apr-hero-badge-row ${ERT_CLASSES.INLINE}` });
     const badgeClasses = needsRefresh ?
         `rt-apr-badge-alert ${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_APR}` :
         `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_APR}`;
@@ -56,7 +56,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Big headline
     hero.createEl('h3', {
         cls: `rt-apr-hero-title ${ERT_CLASSES.SECTION_TITLE}`,
-        text: 'Promote your work in progress.'
+        text: 'Promote your latest work across social media.'
     });
 
     // Description paragraph
@@ -1224,6 +1224,7 @@ async function renderHeroPreview(
             showStatusColors: aprSettings?.showStatus ?? true,
             showProgressPercent: isThumb ? false : (aprSettings?.showProgressPercent ?? true),
             showBranding: !isThumb,
+            showCenterMark: isThumb,
             stageColors: (plugin.settings as any).publishStageColors,
             actCount: plugin.settings.actCount || undefined,
             backgroundColor: aprSettings?.aprBackgroundColor,

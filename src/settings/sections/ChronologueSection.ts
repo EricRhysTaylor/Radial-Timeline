@@ -2,7 +2,7 @@ import { App, Setting as Settings, Notice, DropdownComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
 import { parseDurationDetail, formatDurationSelectionLabel, calculateAutoDiscontinuityThreshold } from '../../utils/date';
-import { addWikiLink } from '../wikiLink';
+import { addHeadingIcon, addWikiLink } from '../wikiLink';
 
 interface DurationCapOption {
     key: string;
@@ -59,6 +59,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
     const chronoHeading = new Settings(containerEl)
         .setName('Chronologue mode settings')
         .setHeading();
+    addHeadingIcon(chronoHeading, 'clock-8');
     addWikiLink(chronoHeading, 'Settings#chronologue');
 
     // 1. Chronologue duration arc cap

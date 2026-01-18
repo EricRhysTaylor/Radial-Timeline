@@ -3,6 +3,7 @@ import type RadialTimelinePlugin from '../../main';
 import { DEFAULT_SETTINGS } from '../defaults';
 import type { InquiryClassConfig, InquirySourcesSettings } from '../../types/settings';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
+import { addHeadingIcon, addWikiLink } from '../wikiLink';
 
 interface SectionParams {
     app: App;
@@ -155,8 +156,8 @@ export function renderInquirySection(params: SectionParams): void {
     const heading = new Settings(containerEl)
         .setName('Inquiry')
         .setHeading();
-
-    heading.setDesc('Configure Inquiry artifacts, cache behavior, and source boundaries.');
+    addHeadingIcon(heading, 'waves');
+    addWikiLink(heading, 'Settings#inquiry');
 
     const artifactSetting = new Settings(containerEl)
         .setName('Artifact folder')

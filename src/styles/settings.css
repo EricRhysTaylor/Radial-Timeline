@@ -981,6 +981,14 @@
   margin-top: 0;
 }
 
+.rt-settings-root .setting-item.setting-item-heading .rt-setting-heading-icon {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  transform: translateY(1px);
+}
+
 .rt-settings-root .setting-item-control {
   display: flex;
   align-items: center;
