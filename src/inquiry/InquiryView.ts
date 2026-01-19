@@ -264,6 +264,7 @@ export class InquiryView extends ItemView {
 
         svg.classList.toggle('is-debug', DEBUG_SVG_OVERLAY);
         this.buildDebugOverlay(svg);
+        this.renderWaveHeader(svg);
 
         const hudOffsetX = -760;
         const hudOffsetY = -740;
@@ -719,6 +720,29 @@ export class InquiryView extends ItemView {
         const label = this.createSvgText(debugGroup, 'ert-inquiry-debug-label', 'ORIGIN', 0, 0);
         label.setAttribute('text-anchor', 'middle');
         label.setAttribute('dominant-baseline', 'middle');
+    }
+
+    private renderWaveHeader(parent: SVGElement): void {
+        const waveWidth = 993;
+        const targetWidth = VIEWBOX_SIZE * 0.5;
+        const scale = targetWidth / waveWidth;
+        const y = VIEWBOX_MIN + 100;
+        const group = this.createSvgGroup(parent, 'ert-inquiry-wave-header');
+        group.setAttribute('transform', `translate(0 ${y}) scale(${scale.toFixed(4)}) translate(${-waveWidth / 2} 0)`);
+        group.setAttribute('pointer-events', 'none');
+
+        const paths = [
+            'M13.7456 16.5C30.9122 26.3333 77.7885 43 128.246 43C246.246 43 262.216 1.49999 330.746 1.5C443.246 1.50002 468.746 43 553.246 43C675.246 43 688.246 1.5 764.246 1.5C840.246 1.5 913.246 48.5 987.246 48.5',
+            'M0.745567 45.5C17.9122 55.3333 64.7885 72 115.246 72C233.246 72 249.216 30.5 317.746 30.5C430.246 30.5 455.746 72 540.246 72C662.246 72 675.246 30.5 751.246 30.5C827.246 30.5 900.246 77.5 974.246 77.5',
+            'M18.7456 69.5C35.9122 79.3333 82.7885 96 133.246 96C251.246 96 267.216 54.5 335.746 54.5C448.246 54.5 473.746 96 558.246 96C680.246 96 693.246 54.5 769.246 54.5C845.246 54.5 918.246 101.5 992.246 101.5'
+        ];
+
+        paths.forEach(d => {
+            const path = this.createSvgElement('path');
+            path.classList.add('ert-inquiry-wave-path');
+            path.setAttribute('d', d);
+            group.appendChild(path);
+        });
     }
 
     private updateGlyphScale(): void {

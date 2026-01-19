@@ -155,7 +155,7 @@
 }
 
 .ert-inquiry-context-badge-icon {
-  color: var(--text-muted);
+  color: var(--icon-color, var(--text-normal));
   stroke: currentColor;
   fill: none;
   stroke-width: 2;
@@ -165,13 +165,13 @@
 
 .ert-inquiry-context-badge-label {
   font-size: 12px;
-  fill: var(--text-muted);
+  fill: var(--text-normal);
 }
 
 .ert-inquiry-context-badge-sigma {
   font-size: 14px;
   font-weight: 700;
-  fill: currentColor;
+  fill: var(--text-normal);
   dominant-baseline: middle;
 }
 
@@ -210,13 +210,13 @@
 }
 
 .ert-inquiry-minimap-baseline {
-  stroke: #ffffff;
+  stroke: var(--text-normal);
   stroke-width: 3;
   vector-effect: non-scaling-stroke;
 }
 
 .ert-inquiry-minimap-endcap {
-  fill: #ffffff;
+  fill: var(--text-normal);
   pointer-events: none;
 }
 
@@ -231,11 +231,22 @@
 }
 
 .ert-inquiry-minimap-tick {
-  fill: #b8b8b8;
-  stroke: #b8b8b8;
+  fill: var(--icon-color, var(--text-normal));
+  stroke: var(--icon-color, var(--text-normal));
   stroke-width: 1;
   opacity: 0.6;
   cursor: pointer;
+}
+
+.ert-inquiry-wave-header {
+  color: var(--text-normal);
+}
+
+.ert-inquiry-wave-path {
+  stroke: currentColor;
+  stroke-width: 3;
+  fill: none;
+  vector-effect: non-scaling-stroke;
 }
 
 .ert-inquiry-minimap-tick.is-active {
