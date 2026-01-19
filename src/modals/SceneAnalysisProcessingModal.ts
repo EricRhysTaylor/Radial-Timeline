@@ -6,14 +6,14 @@
  * AI Scene Analysis Processing Modal
  * This processes scenes for LLM analysis, not story beats (timeline slices)
  */
-import { App, Modal, ButtonComponent, Notice, setIcon } from 'obsidian';
+import { App, Modal, ButtonComponent, Notice, setIcon, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
 import { resolveAiOutputFolder } from '../utils/aiOutput';
 import { getModelDisplayName } from '../utils/modelResolver';
 import type { LlmTimingStats } from '../types/settings';
 
-export type ProcessingMode = 'flagged' | 'unprocessed' | 'force-all';
+export type ProcessingMode = 'flagged' | 'unprocessed' | 'force-all' | 'synopsis-missing-weak' | 'synopsis-missing' | 'synopsis-all';
 
 export type SceneQueueItem = {
     id: string;
@@ -37,7 +37,7 @@ class ConfirmationModal extends Modal {
     onOpen(): void {
         const { contentEl, titleEl, modalEl } = this;
         titleEl.setText('');
-        
+
         if (modalEl) {
             modalEl.classList.add('rt-modal-shell');
             modalEl.style.width = '520px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
@@ -88,6 +88,9 @@ export class SceneAnalysisProcessingModal extends Modal {
     private readonly resumeCommandId?: string; // Optional command ID to trigger on resume
     private readonly subplotName?: string; // Optional subplot name for resume (subplot processing only)
     private readonly isEntireSubplot?: boolean; // Track if this is "entire subplot" vs "flagged scenes"
+    private readonly taskType: 'pulse' | 'synopsis';
+
+    private processedResults: Map<string, string> = new Map(); // Store results for synopsis apply phase
 
     private selectedMode: ProcessingMode = 'flagged';
     public isProcessing: boolean = false;
@@ -131,7 +134,8 @@ export class SceneAnalysisProcessingModal extends Modal {
         onConfirm: (mode: ProcessingMode) => Promise<void>,
         resumeCommandId?: string,
         subplotName?: string,
-        isEntireSubplot?: boolean
+        isEntireSubplot?: boolean,
+        taskType: 'pulse' | 'synopsis' = 'pulse'
     ) {
         super(app);
         this.plugin = plugin;
@@ -140,6 +144,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.resumeCommandId = resumeCommandId;
         this.subplotName = subplotName;
         this.isEntireSubplot = isEntireSubplot;
+        this.taskType = taskType;
     }
 
     onOpen(): void {
@@ -191,6 +196,9 @@ export class SceneAnalysisProcessingModal extends Modal {
     }
 
     private getProcessingTitle(): string {
+        if (this.taskType === 'synopsis') {
+            return 'Scene Synopsis AI';
+        }
         if (this.subplotName) {
             return this.isEntireSubplot
                 ? `Processing entire subplot: ${this.subplotName}`
@@ -200,16 +208,21 @@ export class SceneAnalysisProcessingModal extends Modal {
     }
 
     private getModeLabel(mode: ProcessingMode): string {
-        if (mode === 'unprocessed') {
-            return 'Scenes missing pulse metadata';
+        switch (mode) {
+            case 'unprocessed': return 'Scenes missing pulse metadata';
+            case 'force-all': return 'Reprocessing every completed scene';
+            case 'flagged': return 'Analyze flagged scenes in manuscript order';
+            case 'synopsis-missing-weak': return 'Update missing or weak synopses';
+            case 'synopsis-missing': return 'Update missing synopses only';
+            case 'synopsis-all': return 'Regenerate ALL synopses';
+            default: return mode;
         }
-        if (mode === 'force-all') {
-            return 'Reprocessing every completed scene';
-        }
-        return 'Analyze flagged scenes in manuscript order';
     }
 
     private getProcessingSubtitle(): string {
+        if (this.taskType === 'synopsis') {
+            return this.getModeLabel(this.selectedMode);
+        }
         if (this.subplotName) {
             return this.isEntireSubplot
                 ? `Analyzing every scene in subplot "${this.subplotName}"`
@@ -225,7 +238,8 @@ export class SceneAnalysisProcessingModal extends Modal {
         // Use flat header style matching Book Designer (no border/background on header)
         const hero = parent.createDiv({ cls: 'rt-modal-header' });
         const modelLabel = this.getActiveModelDisplayName();
-        const badgeText = modelLabel ? `AI pulse run · ${modelLabel}` : 'AI pulse run';
+        const badgeLabel = this.taskType === 'synopsis' ? 'AI Synopsis' : 'AI Pulse Run';
+        const badgeText = modelLabel ? `${badgeLabel} · ${modelLabel}` : badgeLabel;
         hero.createSpan({ text: badgeText, cls: 'rt-scene-analysis-badge' });
         hero.createDiv({ text: this.getProcessingTitle(), cls: 'rt-modal-title' });
         const subtitleText = options?.subtitle ?? this.getProcessingSubtitle();
@@ -240,7 +254,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         const metaItems = options?.metaItems ?? [];
         if (metaItems.length > 0) {
             const metaEl = hero.createDiv({ cls: 'rt-scene-analysis-meta' });
-        for (const item of metaItems) {
+            for (const item of metaItems) {
                 metaEl.createSpan({ text: item, cls: 'rt-scene-analysis-meta-item' });
             }
         }
@@ -278,7 +292,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
             // Content wrapper to sit above the background
             const content = entry.createDiv({ cls: 'rt-pulse-card-content' });
-            
+
             const primaryLabel = item.label?.trim() || '—';
             content.createSpan({ cls: 'rt-pulse-ruler-value', text: primaryLabel });
 
@@ -342,17 +356,17 @@ export class SceneAnalysisProcessingModal extends Modal {
     private applyQueueStatus(entry: HTMLElement, status: 'success' | 'error', grade?: 'A' | 'B' | 'C'): void {
         // Remove old status classes
         entry.removeClass('rt-status-success', 'rt-status-error', 'rt-grade-a', 'rt-grade-b', 'rt-grade-c');
-        
+
         // For errors only (API failures), apply error styling
         if (status === 'error') {
             entry.addClass('rt-status-error');
             return;
         }
-        
+
         // For successful items, style by grade (not generic success)
         if (grade) {
             entry.addClass(`rt-grade-${grade.toLowerCase()}`);
-            
+
             // Find existing grade placeholder and update it (don't create new element to prevent resize)
             const gradeEl = entry.querySelector('.rt-pulse-grade') as HTMLElement;
             if (gradeEl) {
@@ -361,7 +375,7 @@ export class SceneAnalysisProcessingModal extends Modal {
                 gradeEl.addClass(`rt-pulse-grade-${grade.toLowerCase()}`);
                 gradeEl.removeAttribute('aria-hidden');
             }
-            
+
             // Add background icon based on grade
             const iconBg = entry.querySelector('.rt-pulse-card-icon-bg');
             if (iconBg) {
@@ -422,32 +436,52 @@ export class SceneAnalysisProcessingModal extends Modal {
         // Mode selection
         const modesSection = contentEl.createDiv({ cls: 'rt-pulse-modes rt-glass-card' });
 
-        // Mode 1: Process Flagged Scenes (Recommended)
-        const mode1 = this.createModeOption(
-            modesSection,
-            'flagged',
-            'Process flagged scenes (Recommended)',
-            'Processes scenes with Pulse Update: Yes and Status: Working or Complete. Use when you\'ve revised scenes and want to update their pulse.',
-            true
-        );
-
-        // Mode 2: Process Unprocessed
-        const mode2 = this.createModeOption(
-            modesSection,
-            'unprocessed',
-            'Process unprocessed scenes',
-            'Processes scenes with Status: Complete or Working that don\'t have pulse yet. Perfect for resuming after interruptions. Ignores Pulse Update flag.',
-            false
-        );
-
-        // Mode 3: Force All
-        const mode3 = this.createModeOption(
-            modesSection,
-            'force-all',
-            'Reprocess ALL scenes',
-            'Reprocesses ALL scenes with Status: Complete or Working, even if they already have pulse. Use when changing AI templates or doing complete reanalysis. WARNING: May be expensive!',
-            false
-        );
+        if (this.taskType === 'synopsis') {
+            this.createModeOption(
+                modesSection,
+                'synopsis-missing-weak',
+                'Update missing or weak synopses (Recommended)',
+                'Processes scenes with no synopsis or very short placeholder text (< 20 words).',
+                true
+            );
+            this.createModeOption(
+                modesSection,
+                'synopsis-missing',
+                'Update missing synopses only',
+                'Only processes scenes that have absolutely no synopsis text.',
+                false
+            );
+            this.createModeOption(
+                modesSection,
+                'synopsis-all',
+                'Regenerate ALL synopses (Warning)',
+                'Regenerates synopses for every scene in the book. Existing synopses will be overwritten on apply.',
+                false
+            );
+        } else {
+            // Pulse Modes
+            this.createModeOption(
+                modesSection,
+                'flagged',
+                'Process flagged scenes (Recommended)',
+                'Processes scenes with Pulse Update: Yes and Status: Working or Complete. Use when you\'ve revised scenes and want to update their pulse.',
+                true
+            );
+            this.createModeOption(
+                modesSection,
+                'unprocessed',
+                'Process unprocessed scenes',
+                'Processes scenes with Status: Complete or Working that don\'t have pulse yet. Perfect for resuming after interruptions. Ignores Pulse Update flag.',
+                false
+            );
+            this.createModeOption(
+                modesSection,
+                'force-all',
+                'Reprocess ALL scenes',
+                'Reprocesses ALL scenes with Status: Complete or Working, even if they already have pulse. Use when changing AI templates or doing complete reanalysis. WARNING: May be expensive!',
+                false
+            );
+        }
 
         // Scene count display
         const countSection = contentEl.createDiv({ cls: 'rt-pulse-count rt-glass-card' });
@@ -492,7 +526,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         // Update count when mode changes
         // Modal classes don't have registerDomEvent, use addEventListener
-        [mode1, mode2, mode3].forEach(radio => {
+        modesSection.querySelectorAll('input[type="radio"]').forEach(radio => {
             radio.addEventListener('change', () => updateCount());
         });
 
@@ -699,6 +733,96 @@ export class SceneAnalysisProcessingModal extends Modal {
         confirmModal.open();
     }
 
+    public setSynopsisPreview(oldSynopsis: string, newSynopsis: string): void {
+        if (!this.heroStatusEl) return;
+
+        // Use the hero status area for the preview
+        this.heroStatusEl.empty();
+        const container = this.heroStatusEl.createDiv({ cls: 'rt-synopsis-preview-container' });
+
+        // Old Synopsis (Collapsed)
+        const oldCol = container.createDiv({ cls: 'rt-synopsis-col rt-synopsis-old' });
+        oldCol.createDiv({ cls: 'rt-synopsis-label', text: 'Previous' });
+        const oldText = oldCol.createDiv({ cls: 'rt-synopsis-text' });
+        oldText.setText(oldSynopsis || '(No synopsis)');
+
+        // New Synopsis (Preview)
+        const newCol = container.createDiv({ cls: 'rt-synopsis-col rt-synopsis-new' });
+        newCol.createDiv({ cls: 'rt-synopsis-label', text: 'New Preview' });
+        const newText = newCol.createDiv({ cls: 'rt-synopsis-text' });
+        if (newSynopsis === 'Generating...') {
+            newText.addClass('rt-synopsis-generating');
+            newText.setText('Generating...');
+        } else {
+            newText.setText(newSynopsis);
+        }
+    }
+
+    public showApplyConfirmation(results: Map<string, string>): void {
+        this.processedResults = results;
+        const { contentEl, titleEl } = this;
+        contentEl.empty();
+        this.ensureModalShell();
+        titleEl.setText('');
+
+        this.renderProcessingHero(contentEl, {
+            subtitle: `Review and apply changes`
+        });
+
+        const card = contentEl.createDiv({ cls: 'rt-glass-card rt-apply-card' });
+        card.createDiv({ cls: 'rt-apply-message', text: `Processing complete. ${results.size} scenes have new synopses ready to apply.` });
+
+        const warning = card.createDiv({ cls: 'rt-apply-warning' });
+        warning.createSpan({ cls: 'rt-warning-icon', text: '⚠️' });
+        warning.createSpan({ text: 'This will overwrite existing Synopsis fields in your frontmatter.' });
+
+        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
+
+        new ButtonComponent(buttonRow)
+            .setButtonText(`Apply ${results.size} Changes`)
+            .setCta()
+            .onClick(async () => {
+                await this.applyChanges();
+                this.close();
+            });
+
+        new ButtonComponent(buttonRow)
+            .setButtonText('Discard')
+            .onClick(() => this.close());
+    }
+
+    private async applyChanges(): Promise<void> {
+        const { processedResults } = this;
+        if (processedResults.size === 0) return;
+
+        const note = new Notice(`Applying ${processedResults.size} synopsis updates...`, 0);
+        let updated = 0;
+
+        try {
+            for (const [path, newSynopsis] of processedResults.entries()) {
+                const file = this.plugin.app.vault.getAbstractFileByPath(path);
+                if (file && file instanceof TFile) { // Ensure import TFile if needed or use 'any' if TFile not imported
+                    await this.plugin.app.fileManager.processFrontMatter(file, (fm) => {
+                        fm['Synopsis'] = newSynopsis;
+                    });
+                    updated++;
+                }
+            }
+            new Notice(`Successfully updated ${updated} scenes.`);
+
+            // Trigger Hooks (Inquiry Rescan / Stats)
+            // Inquiry rescan is usually automatic on file modify, but we can trigger explicitly if needed.
+            // Stats update via settings save.
+            await this.plugin.saveSettings();
+
+        } catch (e) {
+            console.error(e);
+            new Notice('Error applying changes. Check console.');
+        } finally {
+            note.hide();
+        }
+    }
+
     public updateProgress(current: number, total: number, sceneName: string): void {
         if (!this.isProcessing) return;
 
@@ -724,7 +848,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             this.statusTextEl.setText(`Processing: ${sceneName}`);
         }
 
-        if (this.heroStatusEl) {
+        if (this.heroStatusEl && this.taskType !== 'synopsis') {
             this.heroStatusEl.setText(`Processing ${sceneName}`);
         }
     }

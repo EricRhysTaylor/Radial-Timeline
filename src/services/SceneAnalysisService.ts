@@ -25,12 +25,7 @@ export class SceneAnalysisService {
                 if (checking) return true;
                 (async () => {
                     if (!this.ensureApiKey()) return;
-                    try {
-                        await this.processByManuscriptOrder();
-                    } catch (error) {
-                        console.error('Error running manuscript order beat update:', error);
-                        new Notice('Error during manuscript order update.');
-                    }
+                    await this.processByManuscriptOrder();
                 })();
                 return true;
             }
@@ -293,7 +288,7 @@ class SubplotPickerModal extends Modal {
         this.statsEl.empty();
         const summaryLine = `${stats.flagged} flagged • ${stats.processable} processable • ${stats.total} total`;
         this.statsEl.createDiv({ cls: 'rt-subplot-picker-stats-line', text: summaryLine });
-        
+
         // Check if local LLM is bypassing YAML pulse write
         const isLocalReportOnly = this.service.isLocalReportOnlyMode();
         const infoText = isLocalReportOnly

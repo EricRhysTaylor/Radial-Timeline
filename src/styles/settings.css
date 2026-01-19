@@ -981,12 +981,20 @@
   margin-top: 0;
 }
 
+.rt-settings-root .setting-item.setting-item-heading .setting-item-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .rt-settings-root .setting-item.setting-item-heading .rt-setting-heading-icon {
   display: inline-flex;
   width: 14px;
   height: 14px;
-  margin-right: 6px;
-  transform: translateY(1px);
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  align-self: center;
 }
 
 .rt-settings-root .setting-item-control {
@@ -1918,7 +1926,7 @@
   vertical-align: middle;
   opacity: 0.6;
   transform: scale(0.8);
-  padding-bottom: 5px;
+  align-self: center;
   transition: opacity 0.2s ease;
 }
 

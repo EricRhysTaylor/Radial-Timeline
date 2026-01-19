@@ -433,6 +433,19 @@
   height: 12px;
 }
 
+.ert-ui .ert-badgePill--pro .ert-badgePill__rightIcon,
+.ert-ui .ert-badgePill--apr .ert-badgePill__rightIcon {
+  color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.ert-ui .ert-badgePill--pro .ert-badgePill__rightIcon:hover,
+.ert-ui .ert-badgePill--apr .ert-badgePill__rightIcon:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
 .ert-ui .ert-chip {
   display: inline-flex;
   align-items: center;

@@ -9,8 +9,13 @@ export function addWikiLink(setting: Setting, wikiPage: string): void {
     addWikiLinkToElement(setting.nameEl, wikiPage);
 }
 
+const HEADING_ICON_ALIASES: Record<string, string> = {
+    form: 'form-input'
+};
+
 export function addHeadingIcon(setting: Setting, icon: string): void {
-    addHeadingIconToElement(setting.nameEl, icon);
+    const resolved = HEADING_ICON_ALIASES[icon] ?? icon;
+    addHeadingIconToElement(setting.nameEl, resolved);
 }
 
 /**

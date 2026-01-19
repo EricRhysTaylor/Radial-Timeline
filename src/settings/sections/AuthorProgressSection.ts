@@ -158,7 +158,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         ? new Date(settings.lastPublishedDate).toLocaleDateString()
         : 'Never';
 
-    const meta = hero.createDiv({ cls: `rt-apr-hero-meta ${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
+    const meta = hero.createDiv({ cls: `rt-apr-hero-meta ${ERT_CLASSES.INLINE}` });
     meta.createSpan({ text: `Last update: ${lastDate}`, cls: ERT_CLASSES.FIELD_NOTE });
     meta.createSpan({ text: 'Kickstarter ready', cls: ERT_CLASSES.CHIP });
     meta.createSpan({ text: 'Patreon friendly', cls: ERT_CLASSES.CHIP });
