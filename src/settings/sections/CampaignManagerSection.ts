@@ -112,7 +112,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     // ─────────────────────────────────────────────────────────────────────────
     // CAMPAIGN LIST
     // ─────────────────────────────────────────────────────────────────────────
-    const listContainer = card.createDiv({ cls: 'rt-campaign-list' });
+    const listContainer = card.createDiv({ cls: `rt-campaign-list ${ERT_CLASSES.STACK}` });
 
     if (campaigns.length === 0) {
         const emptyState = listContainer.createDiv({ cls: 'rt-campaign-empty-state' });
@@ -134,7 +134,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     const addRow = addSection.createDiv({ cls: 'rt-campaign-add-row' });
     let nameInput: TextComponent;
 
-    new Setting(addRow)
+    const newCampaignSetting = new Setting(addRow)
         .setName('New Campaign')
         .setDesc('Give your campaign a name (e.g., "Kickstarter", "Newsletter")')
         .addText(text => {
@@ -174,6 +174,9 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
                 });
         });
 
+    newCampaignSetting.settingEl.addClass(ERT_CLASSES.ROW);
+    newCampaignSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
+
     // ─────────────────────────────────────────────────────────────────────────
     // QUICK TEMPLATES
     // ─────────────────────────────────────────────────────────────────────────
@@ -190,7 +193,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     ];
 
     templates.forEach(template => {
-        const btn = templateRow.createEl('button', { cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_PRO}`, attr: { 'aria-label': template.name } });
+        const btn = templateRow.createEl('button', { cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_PRO}` });
         const iconSpan = btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_ICON });
         setIcon(iconSpan, template.icon);
         btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: template.name });
@@ -241,7 +244,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
         // Update template button states
         templateRow.empty();
         templates.forEach(template => {
-            const btn = templateRow.createEl('button', { cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_PRO}`, attr: { 'aria-label': template.name } });
+            const btn = templateRow.createEl('button', { cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_PRO}` });
             const iconSpan = btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_ICON });
             setIcon(iconSpan, template.icon);
             btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: template.name });

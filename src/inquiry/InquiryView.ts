@@ -54,32 +54,72 @@ type InquiryQuestion = {
     icon: string;
 };
 
-const BUILT_IN_QUESTIONS: InquiryQuestion[] = [
-    {
-        id: 'setup-assumptions',
-        label: 'Setup',
-        question: 'What assumptions does this scene rely on?',
-        zone: 'setup',
-        mode: 'both',
-        icon: 'help-circle'
+const ZONE_PROMPTS: Record<InquiryMode, Record<InquiryZone, InquiryQuestion[]>> = {
+    flow: {
+        setup: [
+            {
+                id: 'setup-flow',
+                label: 'Setup',
+                question: 'What must already be true for this scene to move smoothly?',
+                zone: 'setup',
+                mode: 'flow',
+                icon: 'help-circle'
+            }
+        ],
+        pressure: [
+            {
+                id: 'pressure-flow',
+                label: 'Pressure',
+                question: "How does this scene change the story's momentum right now?",
+                zone: 'pressure',
+                mode: 'flow',
+                icon: 'activity'
+            }
+        ],
+        payoff: [
+            {
+                id: 'payoff-flow',
+                label: 'Payoff',
+                question: 'Are promises paid off or clearly handed forward at the right time?',
+                zone: 'payoff',
+                mode: 'flow',
+                icon: 'check-circle'
+            }
+        ]
     },
-    {
-        id: 'pressure-state',
-        label: 'Pressure',
-        question: 'How does this change the narrative state?',
-        zone: 'pressure',
-        mode: 'both',
-        icon: 'activity'
-    },
-    {
-        id: 'payoff-debt',
-        label: 'Payoff',
-        question: 'What narrative debt is introduced or resolved?',
-        zone: 'payoff',
-        mode: 'both',
-        icon: 'check-circle'
+    depth: {
+        setup: [
+            {
+                id: 'setup-depth',
+                label: 'Setup',
+                question: 'What assumptions does this scene rely on, and are they structurally sound?',
+                zone: 'setup',
+                mode: 'depth',
+                icon: 'help-circle'
+            }
+        ],
+        pressure: [
+            {
+                id: 'pressure-depth',
+                label: 'Pressure',
+                question: 'Does the change introduced here meaningfully deepen the story?',
+                zone: 'pressure',
+                mode: 'depth',
+                icon: 'activity'
+            }
+        ],
+        payoff: [
+            {
+                id: 'payoff-depth',
+                label: 'Payoff',
+                question: 'What narrative threads are resolved, deferred, dangling, or stillborn here?',
+                zone: 'payoff',
+                mode: 'depth',
+                icon: 'check-circle'
+            }
+        ]
     }
-];
+};
 
 export class InquiryView extends ItemView {
     static readonly viewType = INQUIRY_VIEW_TYPE;
@@ -102,9 +142,12 @@ export class InquiryView extends ItemView {
     private contextBadgeLabel?: SVGTextElement;
     private minimapTicksEl?: SVGGElement;
     private minimapBaseline?: SVGLineElement;
+    private minimapEndCapStart?: SVGRectElement;
+    private minimapEndCapEnd?: SVGRectElement;
     private minimapEmptyText?: SVGTextElement;
     private minimapTicks: SVGRectElement[] = [];
     private minimapLayout?: { startX: number; length: number };
+    private zonePromptElements = new Map<InquiryZone, { group: SVGGElement; bg: SVGRectElement; text: SVGTextElement }>();
     private glyphAnchor?: SVGGElement;
     private glyph?: InquiryGlyph;
     private glyphHit?: SVGRectElement;
@@ -133,11 +176,13 @@ export class InquiryView extends ItemView {
     private focusPersistTimer?: number;
     private runner: InquiryRunnerStub;
     private sessionStore: InquirySessionStore;
+    private activePrompts: Record<InquiryMode, Record<InquiryZone, string>>;
 
     constructor(leaf: WorkspaceLeaf, plugin: RadialTimelinePlugin) {
         super(leaf);
         this.plugin = plugin;
         this.runner = new InquiryRunnerStub();
+        this.activePrompts = this.buildDefaultPromptState();
         this.sessionStore = new InquirySessionStore(plugin);
         this.corpusResolver = new InquiryCorpusResolver(this.app.vault, this.app.metadataCache, this.plugin.settings.frontmatterMappings);
     }
@@ -265,10 +310,10 @@ export class InquiryView extends ItemView {
         this.engineBadgeGroup.appendChild(this.engineBadgeTitle);
         this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'click', () => this.openAiSettings());
 
-        const minimapGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-minimap', 0, 120);
+        const minimapGroup = this.createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, -400);
         const badgeWidth = 160;
         const badgeHeight = 34;
-        const badgeGroup = this.createSvgGroup(minimapGroup, 'ert-inquiry-context-badge', 0, -badgeHeight / 2);
+        const badgeGroup = this.createSvgGroup(minimapGroup, 'ert-inquiry-context-badge', -badgeWidth / 2, -badgeHeight - 12);
         const badgeRect = this.createSvgElement('rect');
         badgeRect.classList.add('ert-inquiry-context-badge-bg');
         badgeRect.setAttribute('width', String(badgeWidth));
@@ -282,16 +327,22 @@ export class InquiryView extends ItemView {
         this.contextBadgeSigmaText = this.createSvgText(badgeGroup, 'ert-inquiry-context-badge-sigma ert-hidden', String.fromCharCode(931), 20, 18);
         this.contextBadgeLabel = this.createSvgText(badgeGroup, 'ert-inquiry-context-badge-label', 'Book context', 38, 21);
 
-        const baselineStartX = badgeWidth + 24;
-        const baselineLength = 420;
+        const baselineLength = VIEWBOX_SIZE / 2;
+        const baselineStartX = -(baselineLength / 2);
         this.minimapLayout = { startX: baselineStartX, length: baselineLength };
         this.minimapBaseline = this.createSvgElement('line');
         this.minimapBaseline.classList.add('ert-inquiry-minimap-baseline');
         minimapGroup.appendChild(this.minimapBaseline);
+        this.minimapEndCapStart = this.createSvgElement('rect');
+        this.minimapEndCapStart.classList.add('ert-inquiry-minimap-endcap');
+        minimapGroup.appendChild(this.minimapEndCapStart);
+        this.minimapEndCapEnd = this.createSvgElement('rect');
+        this.minimapEndCapEnd.classList.add('ert-inquiry-minimap-endcap');
+        minimapGroup.appendChild(this.minimapEndCapEnd);
 
         this.minimapTicksEl = this.createSvgGroup(minimapGroup, 'ert-inquiry-minimap-ticks', baselineStartX, 0);
-        this.minimapEmptyText = this.createSvgText(minimapGroup, 'ert-inquiry-minimap-empty ert-hidden', '', baselineStartX, 26);
-        this.minimapEmptyText.setAttribute('text-anchor', 'start');
+        this.minimapEmptyText = this.createSvgText(minimapGroup, 'ert-inquiry-minimap-empty ert-hidden', '', 0, 22);
+        this.minimapEmptyText.setAttribute('text-anchor', 'middle');
 
         this.renderZonePods(canvasGroup);
 
@@ -510,40 +561,96 @@ export class InquiryView extends ItemView {
         use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${symbolId}`);
     }
 
+    private buildDefaultPromptState(): Record<InquiryMode, Record<InquiryZone, string>> {
+        const buildForMode = (mode: InquiryMode) => ({
+            setup: ZONE_PROMPTS[mode].setup[0]?.id ?? `${mode}-setup`,
+            pressure: ZONE_PROMPTS[mode].pressure[0]?.id ?? `${mode}-pressure`,
+            payoff: ZONE_PROMPTS[mode].payoff[0]?.id ?? `${mode}-payoff`
+        });
+        return {
+            flow: buildForMode('flow'),
+            depth: buildForMode('depth')
+        };
+    }
+
+    private getPromptOptions(mode: InquiryMode, zone: InquiryZone): InquiryQuestion[] {
+        return ZONE_PROMPTS[mode]?.[zone] ?? [];
+    }
+
+    private getActivePrompt(mode: InquiryMode, zone: InquiryZone): InquiryQuestion | undefined {
+        const options = this.getPromptOptions(mode, zone);
+        if (!options.length) return undefined;
+        const activeId = this.activePrompts[mode]?.[zone];
+        return options.find(prompt => prompt.id === activeId) ?? options[0];
+    }
+
+    private updateZonePrompts(): void {
+        const mode = this.state.mode;
+        const paddingX = 24;
+        const pillHeight = 40;
+        this.zonePromptElements.forEach((elements, zone) => {
+            const prompt = this.getActivePrompt(mode, zone);
+            if (!prompt) {
+                elements.text.textContent = '';
+                elements.bg.setAttribute('width', '0');
+                elements.bg.setAttribute('height', '0');
+                return;
+            }
+            elements.text.textContent = prompt.question;
+            const textLength = elements.text.getComputedTextLength();
+            const width = Math.max(textLength + (paddingX * 2), 180);
+            elements.bg.setAttribute('width', width.toFixed(2));
+            elements.bg.setAttribute('height', String(pillHeight));
+            elements.bg.setAttribute('x', String(-width / 2));
+            elements.bg.setAttribute('y', String(-pillHeight / 2));
+            elements.bg.setAttribute('rx', String(pillHeight / 2));
+            elements.bg.setAttribute('ry', String(pillHeight / 2));
+            elements.group.classList.toggle('is-active', this.activePrompts[mode]?.[zone] === prompt.id);
+            elements.group.setAttribute('data-prompt-id', prompt.id);
+            elements.group.setAttribute('aria-label', prompt.question);
+        });
+    }
+
+    private handlePromptClick(zone: InquiryZone): void {
+        const mode = this.state.mode;
+        const options = this.getPromptOptions(mode, zone);
+        if (!options.length) return;
+        const currentId = this.activePrompts[mode]?.[zone];
+        const currentIdx = options.findIndex(prompt => prompt.id === currentId);
+        const nextIdx = currentIdx >= 0 ? (currentIdx + 1) % options.length : 0;
+        const nextPrompt = options[nextIdx] ?? options[0];
+        this.activePrompts[mode][zone] = nextPrompt.id;
+        this.updateZonePrompts();
+        void this.handleQuestionClick(nextPrompt);
+    }
+
     private renderZonePods(parent: SVGGElement): void {
         const rZone = FLOW_RADIUS + FLOW_STROKE + 90;
-        const zones: Array<{ id: InquiryZone; label: string; angle: number }> = [
-            { id: 'setup', label: 'Setup', angle: 210 },
-            { id: 'pressure', label: 'Pressure', angle: 330 },
-            { id: 'payoff', label: 'Payoff', angle: 90 }
+        const zones: Array<{ id: InquiryZone; angle: number }> = [
+            { id: 'setup', angle: 210 },
+            { id: 'pressure', angle: 330 },
+            { id: 'payoff', angle: 90 }
         ];
+
+        this.zonePromptElements.clear();
 
         zones.forEach(zone => {
             const pos = this.polarToCartesian(rZone, zone.angle);
             const zoneEl = this.createSvgGroup(parent, `ert-inquiry-zone-pod ert-inquiry-zone--${zone.id}`, pos.x, pos.y);
-            const podWidth = 150;
-            const podHeight = 64;
+            zoneEl.setAttribute('role', 'button');
+            zoneEl.setAttribute('tabindex', '0');
             const bg = this.createSvgElement('rect');
-            bg.classList.add('ert-inquiry-zone-bg');
-            bg.setAttribute('x', String(-podWidth / 2));
-            bg.setAttribute('y', String(-podHeight / 2));
-            bg.setAttribute('width', String(podWidth));
-            bg.setAttribute('height', String(podHeight));
-            bg.setAttribute('rx', '18');
-            bg.setAttribute('ry', '18');
+            bg.classList.add('ert-inquiry-zone-pill');
             zoneEl.appendChild(bg);
 
-            this.createSvgText(zoneEl, 'ert-inquiry-zone-label', zone.label, -podWidth / 2 + 16, -10);
+            const text = this.createSvgText(zoneEl, 'ert-inquiry-zone-pill-text', '', 0, 0);
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('dominant-baseline', 'middle');
+            text.setAttribute('alignment-baseline', 'middle');
 
-            const tray = this.createSvgGroup(zoneEl, 'ert-inquiry-zone-tray', -podWidth / 2 + 16, 16);
-            for (let i = 0; i < 3; i += 1) {
-                const dot = this.createSvgElement('circle');
-                dot.classList.add('ert-inquiry-zone-dot');
-                dot.setAttribute('cx', String(i * 16));
-                dot.setAttribute('cy', '0');
-                dot.setAttribute('r', '5');
-                tray.appendChild(dot);
-            }
+            this.zonePromptElements.set(zone.id, { group: zoneEl, bg, text });
+
+            this.registerDomEvent(zoneEl as unknown as HTMLElement, 'click', () => this.handlePromptClick(zone.id));
             this.registerDomEvent(zoneEl as unknown as HTMLElement, 'pointerenter', () => {
                 this.setHoverText(this.buildZoneHoverText(zone.id));
             });
@@ -586,6 +693,28 @@ export class InquiryView extends ItemView {
         yAxis.setAttribute('x2', '0');
         yAxis.setAttribute('y2', String(VIEWBOX_MAX));
         debugGroup.appendChild(yAxis);
+
+        const tickOffsets = [VIEWBOX_MAX * 0.25, VIEWBOX_MAX * 0.5];
+        const tickHalf = 12;
+        tickOffsets.forEach(offset => {
+            [offset, -offset].forEach(position => {
+                const xTick = this.createSvgElement('line');
+                xTick.classList.add('ert-inquiry-debug-tick');
+                xTick.setAttribute('x1', String(position));
+                xTick.setAttribute('y1', String(-tickHalf));
+                xTick.setAttribute('x2', String(position));
+                xTick.setAttribute('y2', String(tickHalf));
+                debugGroup.appendChild(xTick);
+
+                const yTick = this.createSvgElement('line');
+                yTick.classList.add('ert-inquiry-debug-tick');
+                yTick.setAttribute('x1', String(-tickHalf));
+                yTick.setAttribute('y1', String(position));
+                yTick.setAttribute('x2', String(tickHalf));
+                yTick.setAttribute('y2', String(position));
+                debugGroup.appendChild(yTick);
+            });
+        });
 
         const label = this.createSvgText(debugGroup, 'ert-inquiry-debug-label', 'ORIGIN', 0, 0);
         label.setAttribute('text-anchor', 'middle');
@@ -647,6 +776,7 @@ export class InquiryView extends ItemView {
         this.updateModeClass();
         this.updateContextBadge();
         this.updateEngineBadge();
+        this.updateZonePrompts();
         this.renderMinimapTicks();
         this.updateFocusGlyph();
         this.updateRings();
@@ -855,33 +985,32 @@ export class InquiryView extends ItemView {
         const items = this.getCurrentItems();
         const count = items.length;
         const length = this.minimapLayout.length;
-        const isVertical = this.state.mode === 'depth';
-        const tickLength = 20;
-        const tickThickness = 6;
+        const tickWidth = 2;
+        const tickHeight = 12;
+        const capWidth = 4;
+        const capHeight = 30;
         const step = count > 1 ? length / (count - 1) : 0;
 
-        if (isVertical) {
-            const baselineX = this.minimapLayout.startX + (length / 2);
-            this.minimapBaseline.setAttribute('x1', String(baselineX));
-            this.minimapBaseline.setAttribute('y1', '0');
-            this.minimapBaseline.setAttribute('x2', String(baselineX));
-            this.minimapBaseline.setAttribute('y2', String(length));
-            this.minimapTicksEl.setAttribute('transform', `translate(${baselineX} 0)`);
-            this.minimapEmptyText.setAttribute('x', String(baselineX + 16));
-            this.minimapEmptyText.setAttribute('y', '8');
-            this.minimapEmptyText.setAttribute('text-anchor', 'start');
-        } else {
-            const baselineStart = this.minimapLayout.startX;
-            const baselineEnd = this.minimapLayout.startX + length;
-            this.minimapBaseline.setAttribute('x1', String(baselineStart));
-            this.minimapBaseline.setAttribute('y1', '0');
-            this.minimapBaseline.setAttribute('x2', String(baselineEnd));
-            this.minimapBaseline.setAttribute('y2', '0');
-            this.minimapTicksEl.setAttribute('transform', `translate(${baselineStart} 0)`);
-            this.minimapEmptyText.setAttribute('x', String(baselineStart));
-            this.minimapEmptyText.setAttribute('y', '24');
-            this.minimapEmptyText.setAttribute('text-anchor', 'start');
+        const baselineStart = this.minimapLayout.startX;
+        const baselineEnd = this.minimapLayout.startX + length;
+        this.minimapBaseline.setAttribute('x1', String(baselineStart));
+        this.minimapBaseline.setAttribute('y1', '0');
+        this.minimapBaseline.setAttribute('x2', String(baselineEnd));
+        this.minimapBaseline.setAttribute('y2', '0');
+        if (this.minimapEndCapStart && this.minimapEndCapEnd) {
+            this.minimapEndCapStart.setAttribute('x', String(baselineStart - (capWidth / 2)));
+            this.minimapEndCapStart.setAttribute('y', String(-(capHeight / 2)));
+            this.minimapEndCapStart.setAttribute('width', String(capWidth));
+            this.minimapEndCapStart.setAttribute('height', String(capHeight));
+            this.minimapEndCapEnd.setAttribute('x', String(baselineEnd - (capWidth / 2)));
+            this.minimapEndCapEnd.setAttribute('y', String(-(capHeight / 2)));
+            this.minimapEndCapEnd.setAttribute('width', String(capWidth));
+            this.minimapEndCapEnd.setAttribute('height', String(capHeight));
         }
+        this.minimapTicksEl.setAttribute('transform', `translate(${baselineStart} 0)`);
+        this.minimapEmptyText.setAttribute('x', '0');
+        this.minimapEmptyText.setAttribute('y', '20');
+        this.minimapEmptyText.setAttribute('text-anchor', 'middle');
 
         if (!count) {
             const emptyLabel = this.state.scope === 'saga' ? 'No books found.' : 'No scenes found.';
@@ -897,22 +1026,13 @@ export class InquiryView extends ItemView {
             const item = items[i];
             const tick = this.createSvgElement('rect');
             tick.classList.add('ert-inquiry-minimap-tick');
-            const pos = step * i;
-            if (isVertical) {
-                tick.setAttribute('x', String(-tickThickness / 2));
-                tick.setAttribute('y', String(pos - (tickLength / 2)));
-                tick.setAttribute('width', String(tickThickness));
-                tick.setAttribute('height', String(tickLength));
-                tick.setAttribute('rx', '3');
-                tick.setAttribute('ry', '3');
-            } else {
-                tick.setAttribute('x', String(pos - (tickLength / 2)));
-                tick.setAttribute('y', String(-tickThickness / 2));
-                tick.setAttribute('width', String(tickLength));
-                tick.setAttribute('height', String(tickThickness));
-                tick.setAttribute('rx', '3');
-                tick.setAttribute('ry', '3');
-            }
+            const pos = count > 1 ? step * i : length / 2;
+            tick.setAttribute('x', String(pos - (tickWidth / 2)));
+            tick.setAttribute('y', String(-tickHeight));
+            tick.setAttribute('width', String(tickWidth));
+            tick.setAttribute('height', String(tickHeight));
+            tick.setAttribute('rx', '1');
+            tick.setAttribute('ry', '1');
             const label = item.displayLabel;
             tick.setAttribute('data-index', String(i + 1));
             tick.setAttribute('data-id', item.id);

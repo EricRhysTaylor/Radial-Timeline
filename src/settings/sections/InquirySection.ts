@@ -314,6 +314,28 @@ export function renderInquirySection(params: SectionParams): void {
     let scanRootsInput: TextAreaComponent | null = null;
     let classScopeInput: TextAreaComponent | null = null;
 
+    const classScopeSetting = new Settings(containerEl)
+        .setName('Inquiry class scope')
+        .setDesc('One YAML class per line. Use / to allow all classes. Empty = no classes allowed.');
+
+    classScopeSetting.addTextArea(text => {
+        text.setValue(listToText(inquirySources.classScope));
+        text.inputEl.rows = 3;
+        text.inputEl.addClass('rt-input-full');
+        text.setPlaceholder('scene\noutline\n/');
+        classScopeInput = text;
+
+        plugin.registerDomEvent(text.inputEl, 'blur', () => {
+            const nextScope = parseClassScopeInput(text.getValue());
+            applyClassScope(nextScope);
+        });
+    });
+
+    const classScopeHint = containerEl.createDiv({
+        cls: 'ert-inquiry-class-scope-hint',
+        text: 'Add scene, outline, or / to begin.'
+    });
+
     const scanRootsSetting = new Settings(containerEl)
         .setName('Inquiry scan folders')
         .setDesc('Inquiry only scans within these folders. One path per line. Wildcards like /Book */ or /Book 1-7 */ are allowed. Use / for the vault root. Empty = no scan.');
@@ -356,28 +378,6 @@ export function renderInquirySection(params: SectionParams): void {
     addActionButton('Add Character folder', () => {
         const nextRoots = Array.from(new Set([...(inquirySources.scanRoots || []), '/Character/']));
         applyScanRoots(nextRoots);
-    });
-
-    const classScopeSetting = new Settings(containerEl)
-        .setName('Inquiry class scope')
-        .setDesc('One YAML class per line. Use / to allow all classes. Empty = no classes allowed.');
-
-    classScopeSetting.addTextArea(text => {
-        text.setValue(listToText(inquirySources.classScope));
-        text.inputEl.rows = 3;
-        text.inputEl.addClass('rt-input-full');
-        text.setPlaceholder('scene\noutline\n/');
-        classScopeInput = text;
-
-        plugin.registerDomEvent(text.inputEl, 'blur', () => {
-            const nextScope = parseClassScopeInput(text.getValue());
-            applyClassScope(nextScope);
-        });
-    });
-
-    const classScopeHint = containerEl.createDiv({
-        cls: 'ert-inquiry-class-scope-hint',
-        text: 'Add scene, outline, or / to begin.'
     });
 
     const resolvedPreview = containerEl.createEl('details', { cls: 'ert-inquiry-resolved-roots' });

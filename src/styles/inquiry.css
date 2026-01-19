@@ -66,6 +66,12 @@
   vector-effect: non-scaling-stroke;
 }
 
+.ert-inquiry-debug-tick {
+  stroke: #3cf0ff;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
 .ert-inquiry-debug-label {
   fill: #3cf0ff;
   font-size: 18px;
@@ -204,9 +210,14 @@
 }
 
 .ert-inquiry-minimap-baseline {
-  stroke: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
-  stroke-width: 1;
+  stroke: #ffffff;
+  stroke-width: 3;
   vector-effect: non-scaling-stroke;
+}
+
+.ert-inquiry-minimap-endcap {
+  fill: #ffffff;
+  pointer-events: none;
 }
 
 .ert-inquiry-minimap-ticks {
@@ -220,8 +231,8 @@
 }
 
 .ert-inquiry-minimap-tick {
-  fill: var(--background-secondary);
-  stroke: var(--background-modifier-border);
+  fill: #b8b8b8;
+  stroke: #b8b8b8;
   stroke-width: 1;
   opacity: 0.6;
   cursor: pointer;
@@ -256,24 +267,29 @@
   pointer-events: auto;
 }
 
-.ert-inquiry-zone-bg {
+.ert-inquiry-zone-pill {
   fill: var(--background-secondary);
-  stroke: var(--background-modifier-border);
+  stroke: color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
   stroke-width: 1;
 }
 
 .ert-inquiry-zone-pod {
   pointer-events: auto;
+  cursor: pointer;
 }
 
-.ert-inquiry-zone-pod:hover .ert-inquiry-zone-bg {
+.ert-inquiry-zone-pod.is-active .ert-inquiry-zone-pill,
+.ert-inquiry-zone-pod:hover .ert-inquiry-zone-pill {
   stroke: var(--interactive-accent);
 }
 
-.ert-inquiry-zone-label {
-  font-size: 13px;
+.ert-inquiry-zone-pill-text {
+  font-size: 14px;
   font-weight: 600;
   fill: var(--text-normal);
+  font-family: 'Inter', var(--font-ui), sans-serif;
+  letter-spacing: -0.01em;
+  pointer-events: none;
 }
 
 .ert-inquiry-zone-icons {

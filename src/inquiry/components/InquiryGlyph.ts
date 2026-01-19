@@ -45,6 +45,7 @@ export class InquiryGlyph {
     private labelText: SVGTextElement;
     private flowGroup: SVGGElement;
     private depthGroup: SVGGElement;
+    private badgeScaleFactor = 1;
 
     constructor(container: SVGElement, props: InquiryGlyphProps) {
         this.props = props;
@@ -105,11 +106,12 @@ export class InquiryGlyph {
         const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
         const safeUnits = Number.isFinite(unitsPerPx) && unitsPerPx > 0 ? unitsPerPx : 1;
         const scaleFactor = safeUnits / safeScale;
+        this.badgeScaleFactor = scaleFactor;
         this.labelText.setAttribute('font-size', (LABEL_TEXT_PX * scaleFactor).toFixed(2));
         this.flowBadgeText.setAttribute('font-size', (FLOW_BADGE_TEXT_PX * scaleFactor).toFixed(2));
         this.depthBadgeText.setAttribute('font-size', (DEPTH_BADGE_TEXT_PX * scaleFactor).toFixed(2));
-        this.flowBadgeCircle.setAttribute('r', (FLOW_BADGE_RADIUS_PX * scaleFactor).toFixed(2));
-        this.depthBadgeCircle.setAttribute('r', (DEPTH_BADGE_RADIUS_PX * scaleFactor).toFixed(2));
+        this.flowBadgeCircle.setAttribute('r', ((FLOW_STROKE / 2) * scaleFactor).toFixed(2));
+        this.depthBadgeCircle.setAttribute('r', ((DEPTH_STROKE / 2) * scaleFactor).toFixed(2));
     }
 
     private applyProps(props: InquiryGlyphProps): void {
@@ -224,7 +226,7 @@ export class InquiryGlyph {
         ring.classList.add(`is-severity-${severity}`);
         ring.classList.add(`is-confidence-${confidence}`);
         this.updateRingArc(progress, arc, value, radius, strokeWidth);
-        this.updateBadge(badgeCircle, badgeText, value, radius);
+        this.updateBadge(badgeCircle, badgeText, value, radius, strokeWidth);
     }
 
     private updateRingArc(
@@ -269,14 +271,17 @@ export class InquiryGlyph {
         badgeCircle: SVGCircleElement,
         badgeText: SVGTextElement,
         normalized: number,
-        radius: number
+        radius: number,
+        strokeWidth: number
     ): void {
         const safeValue = Math.min(Math.max(normalized, 0), 1);
         const theta = (-90 + (360 * safeValue)) * (Math.PI / 180);
         const x = radius * Math.cos(theta);
         const y = radius * Math.sin(theta);
+        const badgeRadius = (strokeWidth / 2) * this.badgeScaleFactor;
         badgeCircle.setAttribute('cx', x.toFixed(2));
         badgeCircle.setAttribute('cy', y.toFixed(2));
+        badgeCircle.setAttribute('r', badgeRadius.toFixed(2));
         badgeText.setAttribute('x', x.toFixed(2));
         badgeText.setAttribute('y', y.toFixed(2));
         badgeText.textContent = String(Math.round(safeValue * 100));

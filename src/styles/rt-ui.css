@@ -1411,3 +1411,24 @@
   font-size: 0.9em;
   color: var(--text-muted);
 }
+
+/* Reset margins for campaign list stack to fix excessive spacing */
+/* Reset margins for campaign list stack to fix excessive spacing */
+.ert-ui .rt-campaign-manager-card .rt-campaign-list,
+.ert-ui .rt-campaign-manager-card .rt-campaign-add-section {
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.ert-ui .rt-campaign-manager-card .rt-campaign-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure templates section has spacing from the element above it */
+.ert-ui .rt-campaign-manager-card .rt-campaign-templates {
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
