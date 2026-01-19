@@ -105,15 +105,15 @@ export class CommandRegistrar {
 
         this.plugin.addCommand({
             id: 'repair-timeline-order',
-            name: 'Repair timeline order',
+            name: 'Establish timeline order',
             callback: () => {
                 new TimelineRepairModal(this.app, this.plugin).open();
             }
         });
 
         this.plugin.addCommand({
-            id: 'export-manuscript',
-            name: 'Manuscript export',
+            id: 'manage-export',
+            name: 'Manage export',
             callback: () => {
                 new ManuscriptOptionsModal(this.app, this.plugin, this.handleManuscriptExport.bind(this)).open();
             }
@@ -192,7 +192,7 @@ export class CommandRegistrar {
 
             // Slice by range
             const slicedFiles = sliceScenesByRange(filteredSelection.files, result.rangeStart, result.rangeEnd);
-            
+
             // Handle output generation
             if (result.exportType === 'outline') {
                 // Get runtime settings for session planning
@@ -201,8 +201,8 @@ export class CommandRegistrar {
                 // outline export expects ManuscriptSceneSelection
                 const slicedSelection = this.sliceSelection(filteredSelection, result.rangeStart, result.rangeEnd);
                 const outline = buildOutlineExport(
-                    slicedSelection, 
-                    result.outlinePreset || 'beat-sheet', 
+                    slicedSelection,
+                    result.outlinePreset || 'beat-sheet',
                     result.includeSynopsis ?? false,
                     runtimeSettings
                 );
@@ -222,14 +222,14 @@ export class CommandRegistrar {
 
             // Manuscript assembly
             const assembled = await assembleManuscript(
-                slicedFiles, 
-                this.app.vault, 
-                undefined, 
-                false, 
+                slicedFiles,
+                this.app.vault,
+                undefined,
+                false,
                 filteredSelection.sortOrder,
                 result.tocMode !== 'none'
             );
-            
+
             // Update word counts if requested
             if (result.updateWordCounts) {
                 new Notice('Updating word counts...');
@@ -257,7 +257,7 @@ export class CommandRegistrar {
                 // We need to write a temp markdown file, then run pandoc
                 const outputFolder = await ensureManuscriptOutputFolder(this.plugin); // Normalized relative path
                 const absoluteOutputFolder = getVaultAbsolutePath(this.plugin, outputFolder);
-                
+
                 // If getVaultAbsolutePath returns null (mobile/sandbox), we can't run Pandoc
                 if (!absoluteOutputFolder) {
                     new Notice('Pandoc export not supported in this environment.');
@@ -265,7 +265,7 @@ export class CommandRegistrar {
                 }
 
                 const outputPath = `${absoluteOutputFolder}/${filename}`;
-                
+
                 // Resolve template path to absolute path for Pandoc
                 let templatePath: string | undefined = undefined;
                 if (result.manuscriptPreset) {
@@ -304,7 +304,7 @@ export class CommandRegistrar {
         if (!start && !end) return selection;
         const startIdx = (start || 1) - 1;
         const endIdx = end || selection.files.length;
-        
+
         return {
             files: selection.files.slice(startIdx, endIdx),
             titles: selection.titles.slice(startIdx, endIdx),
@@ -346,13 +346,13 @@ export class CommandRegistrar {
             }
 
             const path = `${sanitizedPath}/${filename}`;
-            
+
             // Use basic or advanced template based on type
             const templates = this.plugin.settings.sceneYamlTemplates || DEFAULT_SETTINGS.sceneYamlTemplates;
-            const template = type === 'advanced' 
+            const template = type === 'advanced'
                 ? (templates?.advanced || DEFAULT_SETTINGS.sceneYamlTemplates!.advanced)
                 : (templates?.base || DEFAULT_SETTINGS.sceneYamlTemplates!.base);
-            
+
             // Generate content with default placeholder values
             const content = generateSceneContent(template, {
                 act: 1,
@@ -364,11 +364,11 @@ export class CommandRegistrar {
                 characterList: ['Hero'],
                 placeList: ['Unknown']
             });
-            
+
             // Ensure the content has Class: Scene if not already present
             const finalContent = ensureClassScene(content);
             const fileContent = `---\n${finalContent}\n---\n\n`;
-            
+
             const newFile = await this.app.vault.create(path, fileContent);
             const leaf = this.app.workspace.getLeaf(true);
             await leaf.openFile(newFile);
@@ -399,20 +399,20 @@ export class CommandRegistrar {
             }
 
             const path = `${sanitizedPath}/${filename}`;
-            
+
             // Use backdrop template
-            const template = this.plugin.settings.backdropYamlTemplate 
-                || DEFAULT_SETTINGS.backdropYamlTemplate 
+            const template = this.plugin.settings.backdropYamlTemplate
+                || DEFAULT_SETTINGS.backdropYamlTemplate
                 || `Class: Backdrop\nWhen: {{When}}\nEnd: {{End}}\nSynopsis: `;
-            
+
             // Replace placeholders for backdrop
             const today = new Date().toISOString().split('T')[0];
             const content = template
                 .replace(/{{When}}/g, today)
                 .replace(/{{End}}/g, today);
-            
+
             const fileContent = `---\n${content}\n---\n\n`;
-            
+
             const newFile = await this.app.vault.create(path, fileContent);
             const leaf = this.app.workspace.getLeaf(true);
             await leaf.openFile(newFile);

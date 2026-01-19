@@ -224,6 +224,7 @@ export interface InquiryClassConfig {
 
 export interface InquirySourcesSettings {
     scanRoots?: string[];
+    resolvedScanRoots?: string[];
     classes?: InquiryClassConfig[];
     classCounts?: Record<string, number>;
     lastScanAt?: string;

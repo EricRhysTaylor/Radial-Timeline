@@ -98,7 +98,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const setSizeLabel = (el: HTMLElement, dimension: string, suffix?: string) => {
         el.textContent = '';
         el.append(document.createTextNode(dimension));
-        el.createEl('sup', { text: '2' });
+        el.append(document.createTextNode('²'));
         if (suffix) {
             el.append(document.createTextNode(` — ${suffix}`));
         }
@@ -107,7 +107,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     sizeButtons.forEach(({ size, dimension }) => {
         const btn = sizeSelectorRow.createEl('button', {
-            cls: `rt-apr-size-btn ${size === currentSize ? `rt-apr-size-btn-active ${ERT_CLASSES.IS_ACTIVE}` : ''} ${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_STANDARD}`
+            cls: `ert-apr-size-btn ${size === currentSize ? `ert-apr-size-btn--active ${ERT_CLASSES.IS_ACTIVE}` : ''} ${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_STANDARD}`
         });
         setSizeLabel(btn, dimension);
 
@@ -117,11 +117,11 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             await plugin.saveSettings();
 
             // Update button states
-            sizeSelectorRow.querySelectorAll('.rt-apr-size-btn').forEach(b => {
-                b.removeClass('rt-apr-size-btn-active');
+            sizeSelectorRow.querySelectorAll('.ert-apr-size-btn').forEach(b => {
+                b.removeClass('ert-apr-size-btn--active');
                 b.removeClass(ERT_CLASSES.IS_ACTIVE);
             });
-            btn.addClass('rt-apr-size-btn-active');
+            btn.addClass('ert-apr-size-btn--active');
             btn.addClass(ERT_CLASSES.IS_ACTIVE);
 
             // Update dimension label
@@ -197,13 +197,13 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         if (isTransparent) {
             transparencySetting.settingEl.classList.add(ERT_CLASSES.ROW_RECOMMENDED);
             bgSetting.settingEl.classList.remove(ERT_CLASSES.ROW_RECOMMENDED);
-            bgSetting.settingEl.classList.add('rt-setting-muted');
+            bgSetting.settingEl.classList.add('is-inactive');
             if (bgColorPicker) bgColorPicker.setDisabled(true);
             if (bgTextInput) bgTextInput.setDisabled(true);
         } else {
             transparencySetting.settingEl.classList.remove(ERT_CLASSES.ROW_RECOMMENDED);
             bgSetting.settingEl.classList.add(ERT_CLASSES.ROW_RECOMMENDED);
-            bgSetting.settingEl.classList.remove('rt-setting-muted');
+            bgSetting.settingEl.classList.remove('is-inactive');
             if (bgColorPicker) bgColorPicker.setDisabled(false);
             if (bgTextInput) bgTextInput.setDisabled(false);
         }
@@ -1224,7 +1224,7 @@ async function renderHeroPreview(
             showStatusColors: aprSettings?.showStatus ?? true,
             showProgressPercent: isThumb ? false : (aprSettings?.showProgressPercent ?? true),
             showBranding: !isThumb,
-            showCenterMark: isThumb,
+            centerMark: isThumb ? 'plus' : 'none',
             stageColors: (plugin.settings as any).publishStageColors,
             actCount: plugin.settings.actCount || undefined,
             backgroundColor: aprSettings?.aprBackgroundColor,

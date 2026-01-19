@@ -1,9 +1,16 @@
-import { App, Setting as Settings, TextComponent, normalizePath, Notice } from 'obsidian';
+import { App, Setting as Settings, TextComponent, TextAreaComponent, normalizePath, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { DEFAULT_SETTINGS } from '../defaults';
 import type { InquiryClassConfig, InquirySourcesSettings } from '../../types/settings';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { addHeadingIcon, addWikiLink } from '../wikiLink';
+import {
+    MAX_RESOLVED_SCAN_ROOTS,
+    normalizeScanRootPatterns,
+    parseScanRootInput,
+    resolveScanRoots,
+    toVaultRoot
+} from '../../inquiry/utils/scanRoots';
 
 interface SectionParams {
     app: App;
@@ -25,22 +32,6 @@ type LegacyInquirySourcesSettings = {
 };
 
 const REFERENCE_ONLY_CLASSES = new Set(['character', 'place', 'power']);
-
-const parseRootListValue = (raw: string): string[] => {
-    const entries = raw
-        .split(/[\n,]/)
-        .map(entry => entry.trim())
-        .map(entry => (entry === '/' || entry === '.' ? '' : entry))
-        .map(entry => normalizePath(entry));
-    const unique = Array.from(new Set(entries.filter(entry => entry !== undefined)));
-    return unique.length ? unique : [''];
-};
-
-const normalizeScanRoots = (roots?: string[]): string[] => {
-    const normalized = (roots && roots.length ? roots : ['']).map(entry => normalizePath(entry));
-    const unique = Array.from(new Set(normalized));
-    return unique.length ? unique : [''];
-};
 
 const isLegacySources = (sources?: InquirySourcesSettings | LegacyInquirySourcesSettings): sources is LegacyInquirySourcesSettings => {
     if (!sources) return false;
@@ -124,9 +115,11 @@ const migrateLegacySources = (legacy: LegacyInquirySourcesSettings): InquirySour
     }
 
     return {
-        scanRoots: roots.size ? Array.from(roots) : [''],
+        scanRoots: normalizeScanRootPatterns(roots.size ? Array.from(roots) : ['/']),
         classes,
-        classCounts: {}
+        classCounts: {},
+        resolvedScanRoots: [],
+        lastScanAt: undefined
     };
 };
 
@@ -138,7 +131,7 @@ const normalizeInquirySources = (raw?: InquirySourcesSettings | LegacyInquirySou
         return migrateLegacySources(raw);
     }
     return {
-        scanRoots: normalizeScanRoots(raw.scanRoots),
+        scanRoots: normalizeScanRootPatterns(raw.scanRoots),
         classes: (raw.classes || []).map(config => ({
             className: config.className.toLowerCase(),
             enabled: !!config.enabled,
@@ -146,6 +139,7 @@ const normalizeInquirySources = (raw?: InquirySourcesSettings | LegacyInquirySou
             sagaScope: !!config.sagaScope
         })),
         classCounts: raw.classCounts || {},
+        resolvedScanRoots: raw.resolvedScanRoots ? normalizeScanRootPatterns(raw.resolvedScanRoots) : [],
         lastScanAt: raw.lastScanAt
     };
 };
@@ -282,31 +276,72 @@ export function renderInquirySection(params: SectionParams): void {
         .setDesc('Inquiry reads notes based on YAML class values inside the scan roots.');
     sourcesHeading.settingEl.addClass('rt-inquiry-settings-heading');
 
+    let scanRootsInput: TextAreaComponent | null = null;
+
     const scanRootsSetting = new Settings(containerEl)
         .setName('Inquiry scan roots')
-        .setDesc('Inquiry only scans within these roots. One path per line. Leave blank for vault root.');
+        .setDesc('Inquiry only scans within these roots. One path per line. Wildcards like /Book */ are allowed.');
 
     scanRootsSetting.addTextArea(text => {
         text.setValue(listToText(inquirySources.scanRoots));
         text.inputEl.rows = 2;
         text.inputEl.addClass('rt-input-full');
+        scanRootsInput = text;
 
         plugin.registerDomEvent(text.inputEl, 'blur', () => {
-            const nextRoots = normalizeScanRoots(parseRootListValue(text.getValue()));
-            inquirySources = { ...inquirySources, scanRoots: nextRoots };
-            void refreshClassScan();
+            const nextRoots = parseScanRootInput(text.getValue());
+            applyScanRoots(nextRoots);
         });
     });
 
+    scanRootsSetting.addExtraButton(button => {
+        button.setIcon('rotate-ccw');
+        button.setTooltip('Refresh scan roots');
+        button.onClick(() => {
+            const nextRoots = parseScanRootInput(scanRootsInput?.getValue() ?? '');
+            applyScanRoots(nextRoots);
+        });
+    });
+
+    const scanRootActions = containerEl.createDiv({ cls: 'ert-inquiry-scan-root-actions' });
+    const addActionButton = (label: string, onClick: () => void) => {
+        const btn = scanRootActions.createEl('button', { text: label, cls: 'ert-inquiry-scan-root-btn' });
+        plugin.registerDomEvent(btn, 'click', (evt) => {
+            evt.preventDefault();
+            onClick();
+        });
+    };
+
+    addActionButton('Add all Book folders', () => {
+        const nextRoots = Array.from(new Set([...(inquirySources.scanRoots || []), '/Book */']));
+        applyScanRoots(nextRoots);
+    });
+    addActionButton('Add vault root /', () => {
+        const nextRoots = Array.from(new Set([...(inquirySources.scanRoots || []), '/']));
+        applyScanRoots(nextRoots);
+    });
+    addActionButton('Clear', () => {
+        applyScanRoots([]);
+    });
+
+    const resolvedPreview = containerEl.createEl('details', { cls: 'ert-inquiry-resolved-roots' });
+    const resolvedSummary = resolvedPreview.createEl('summary', { text: 'Resolved roots (0)' });
+    const resolvedList = resolvedPreview.createDiv({ cls: 'ert-inquiry-resolved-roots-list' });
+
+    let resolvedRootCache: { signature: string; resolvedRoots: string[]; total: number } | null = null;
+
     const classTableWrap = containerEl.createDiv({ cls: 'ert-inquiry-class-table' });
 
-    const scanInquiryClasses = async (roots: string[]): Promise<{ counts: Record<string, number>; classes: string[] }> => {
+    const scanInquiryClasses = async (roots: string[]): Promise<{
+        counts: Record<string, number>;
+        classes: string[];
+    }> => {
         const counts: Record<string, number> = {};
-        const normalizedRoots = normalizeScanRoots(roots);
         const files = plugin.app.vault.getMarkdownFiles();
+        const resolvedVaultRoots = roots;
 
         const inRoots = (path: string) => {
-            return normalizedRoots.some(root => !root || path === root || path.startsWith(`${root}/`));
+            return resolvedVaultRoots.some(root => !root || path === root || path.startsWith(`${root}/`));
         };
 
         files.forEach(file => {
@@ -344,6 +379,8 @@ export function renderInquirySection(params: SectionParams): void {
 
         configs.forEach(config => {
             const row = classTableWrap.createDiv({ cls: 'ert-inquiry-class-row' });
+            const rowDisabled = !config.enabled;
+            row.toggleClass('is-disabled', rowDisabled);
             const enabledCell = row.createDiv({ cls: 'ert-inquiry-class-cell' });
             const enabledToggle = enabledCell.createEl('input', { type: 'checkbox' });
             enabledToggle.checked = config.enabled;
@@ -368,6 +405,7 @@ export function renderInquirySection(params: SectionParams): void {
             } else {
                 const bookToggle = bookCell.createEl('input', { type: 'checkbox' });
                 bookToggle.checked = config.bookScope;
+                bookToggle.disabled = rowDisabled;
                 plugin.registerDomEvent(bookToggle, 'change', () => {
                     inquirySources = {
                         ...inquirySources,
@@ -388,6 +426,7 @@ export function renderInquirySection(params: SectionParams): void {
             } else {
                 const sagaToggle = sagaCell.createEl('input', { type: 'checkbox' });
                 sagaToggle.checked = config.sagaScope;
+                sagaToggle.disabled = rowDisabled;
                 plugin.registerDomEvent(sagaToggle, 'change', () => {
                     inquirySources = {
                         ...inquirySources,
@@ -414,19 +453,61 @@ export function renderInquirySection(params: SectionParams): void {
         });
     };
 
+    const renderResolvedRoots = (roots: string[], total: number) => {
+        resolvedSummary.setText(`Resolved roots (${total})`);
+        resolvedList.empty();
+
+        if (!roots.length) {
+            resolvedList.createDiv({ cls: 'ert-inquiry-resolved-empty', text: 'No roots resolved.' });
+            return;
+        }
+
+        const displayRoots = roots.slice(0, 10);
+        displayRoots.forEach(root => {
+            resolvedList.createDiv({ cls: 'ert-inquiry-resolved-item', text: root });
+        });
+
+        if (total > displayRoots.length) {
+            const more = total - displayRoots.length;
+            resolvedList.createDiv({ cls: 'ert-inquiry-resolved-more', text: `+ ${more} more` });
+        }
+    };
+
+    const applyScanRoots = (nextRoots: string[]) => {
+        const normalized = normalizeScanRootPatterns(nextRoots);
+        inquirySources = { ...inquirySources, scanRoots: normalized };
+        scanRootsInput?.setValue(listToText(normalized));
+        void refreshClassScan();
+    };
+
     const refreshClassScan = async () => {
-        const scanRoots = normalizeScanRoots(inquirySources.scanRoots);
-        const scan = await scanInquiryClasses(scanRoots);
+        const scanRoots = normalizeScanRootPatterns(inquirySources.scanRoots);
+        const signature = scanRoots.join('|');
+        if (!resolvedRootCache || resolvedRootCache.signature !== signature) {
+            const resolved = resolveScanRoots(scanRoots, plugin.app.vault, MAX_RESOLVED_SCAN_ROOTS);
+            resolvedRootCache = {
+                signature,
+                resolvedRoots: resolved.resolvedRoots,
+                total: resolved.totalMatches
+            };
+            if (resolved.totalMatches > MAX_RESOLVED_SCAN_ROOTS) {
+                new Notice(`Pattern expands to ${resolved.totalMatches} folders; refine your root.`);
+            }
+        }
+        const resolvedVaultRoots = resolvedRootCache.resolvedRoots.map(toVaultRoot);
+        const scan = await scanInquiryClasses(resolvedVaultRoots);
         const merged = mergeClassConfigs(inquirySources.classes || [], scan.classes);
         inquirySources = {
             scanRoots,
             classes: merged,
             classCounts: scan.counts,
+            resolvedScanRoots: resolvedRootCache.resolvedRoots,
             lastScanAt: new Date().toISOString()
         };
         plugin.settings.inquirySources = inquirySources;
         await plugin.saveSettings();
         renderClassTable(merged, scan.counts);
+        renderResolvedRoots(resolvedRootCache.resolvedRoots, resolvedRootCache.total);
     };
 
     void refreshClassScan();

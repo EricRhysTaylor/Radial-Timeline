@@ -26,7 +26,7 @@ export interface AprRenderOptions {
     grayCompletedScenes?: boolean;  // For SCENES stage: gray out completed scenes
     showProgressPercent?: boolean;
     showBranding?: boolean;
-    showCenterMark?: boolean;
+    centerMark?: 'dot' | 'plus' | 'none';
     stageColors?: Record<string, string>; // optional override (publishStage map)
     actCount?: number; // optional explicit act count override
     backgroundColor?: string;
@@ -97,7 +97,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         grayCompletedScenes = false,
         showProgressPercent = true,
         showBranding = true,
-        showCenterMark = false,
+        centerMark = 'none',
         stageColors,
         actCount,
         backgroundColor,
@@ -195,7 +195,15 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     // BAR-ONLY MODE (Teaser): Solid progress ring, no scene details
     // ─────────────────────────────────────────────────────────────────────────
     if (!showScenes) {
-        svg += renderProgressRing(innerRadius, outerRadius, progressPercent, structural, stageColorMap);
+        const ringOptions = size === 'thumb'
+            ? {
+                ghostColor: stageColorMap.Press || '#22c55e',
+                ghostOpacity: 0.1,
+                ghostWidth: (outerRadius - innerRadius) * 0.78,
+                showBorders: false
+            }
+            : undefined;
+        svg += renderProgressRing(innerRadius, outerRadius, progressPercent, structural, stageColorMap, ringOptions);
     } else {
         // Normal mode: Draw rings with scene cells
         svg += `<g class="apr-rings">`;
@@ -214,8 +222,8 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const holeFill = transparentCenter ? 'none' : (backgroundColor ?? structural.centerHole);
     svg += `<circle cx="0" cy="0" r="${innerRadius}" fill="${holeFill}" stroke="${structural.border}" stroke-opacity="0.35" />`;
 
-    if (showCenterMark) {
-        svg += renderCenterMark(innerRadius, structural, stageColorMap);
+    if (centerMark !== 'none') {
+        svg += renderCenterMark(innerRadius, centerMark, stageColorMap.Press || '#22c55e');
     }
 
     // Center percent (optional)
@@ -453,19 +461,29 @@ function renderProgressRing(
     outerR: number,
     progressPercent: number,
     structural: ReturnType<typeof resolveStructuralColors>,
-    stageColors: Record<string, string>
+    stageColors: Record<string, string>,
+    options?: {
+        ghostColor?: string;
+        ghostOpacity?: number;
+        ghostWidth?: number;
+        showBorders?: boolean;
+    }
 ): string {
     const midR = (innerR + outerR) / 2;
     const ringWidth = outerR - innerR;
     const progressWidth = ringWidth * 0.78;
+    const progressColor = stageColors.Press || '#22c55e';
+    const ghostColor = options?.ghostColor ?? structural.border;
+    const ghostOpacity = options?.ghostOpacity ?? 0.25;
+    const ghostWidth = options?.ghostWidth ?? ringWidth;
+    const showBorders = options?.showBorders ?? true;
     
     // Track (empty ring)
     let svg = `<g class="apr-progress-ring">`;
-    svg += `<circle cx="0" cy="0" r="${midR}" fill="none" stroke="${structural.border}" stroke-width="${ringWidth}" stroke-opacity="0.25" />`;
+    svg += `<circle cx="0" cy="0" r="${midR}" fill="none" stroke="${ghostColor}" stroke-width="${ghostWidth}" stroke-opacity="${ghostOpacity}" />`;
     
     // Progress arc
     if (progressPercent > 0) {
-        const progressColor = stageColors.Press || '#22c55e'; // Use Press stage color for progress
         const clampedPercent = Math.min(100, Math.max(0, progressPercent));
         
         if (clampedPercent >= 100) {
@@ -489,8 +507,10 @@ function renderProgressRing(
     }
     
     // Outer and inner border circles
-    svg += `<circle cx="0" cy="0" r="${outerR}" fill="none" stroke="${structural.border}" stroke-width="1.5" />`;
-    svg += `<circle cx="0" cy="0" r="${innerR}" fill="none" stroke="${structural.border}" stroke-width="1.5" />`;
+    if (showBorders) {
+        svg += `<circle cx="0" cy="0" r="${outerR}" fill="none" stroke="${structural.border}" stroke-width="1.5" />`;
+        svg += `<circle cx="0" cy="0" r="${innerR}" fill="none" stroke="${structural.border}" stroke-width="1.5" />`;
+    }
     
     svg += `</g>`;
     return svg;
@@ -498,11 +518,21 @@ function renderProgressRing(
 
 function renderCenterMark(
     innerR: number,
-    structural: ReturnType<typeof resolveStructuralColors>,
-    stageColors: Record<string, string>
+    mode: 'dot' | 'plus',
+    color: string
 ): string {
-    const markerRadius = Math.max(2, innerR * 0.1);
-    const fallbackColor = stageColors.Press || '#22c55e';
-    const markerColor = structural.border === 'none' ? fallbackColor : structural.border;
-    return `<circle cx="0" cy="0" r="${markerRadius}" fill="${markerColor}" fill-opacity="0.6" />`;
+    if (mode === 'dot') {
+        const markerRadius = Math.max(2, innerR * 0.1);
+        return `<circle cx="0" cy="0" r="${markerRadius}" fill="${color}" fill-opacity="0.6" />`;
+    }
+
+    const size = Math.max(6, innerR * 0.6);
+    const half = size / 2;
+    const strokeWidth = Math.max(1, innerR * 0.08);
+    return `
+        <g class="apr-center-plus" stroke="${color}" stroke-opacity="0.7" stroke-width="${strokeWidth}" stroke-linecap="round">
+            <line x1="0" y1="${-half}" x2="0" y2="${half}" />
+            <line x1="${-half}" y1="0" x2="${half}" y2="0" />
+        </g>
+    `;
 }

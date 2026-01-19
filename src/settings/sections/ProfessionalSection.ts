@@ -9,6 +9,7 @@
 import { App, Setting, setIcon, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { addWikiLink } from '../wikiLink';
+import { ERT_CLASSES } from '../../ui/classes';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // OPEN BETA CONFIGURATION
@@ -43,7 +44,7 @@ export function isProfessionalActive(plugin: RadialTimelinePlugin): boolean {
     if (plugin.settings.devProActive === false) {
         return false;
     }
-    
+
     // During Open Beta, everyone gets Pro access
     if (OPEN_BETA_ACTIVE) {
         return true;
@@ -61,114 +62,120 @@ export function isOpenBeta(): boolean {
 export function renderProfessionalSection({ plugin, containerEl, renderHero }: SectionParams): void {
     const hasValidKey = isProfessionalLicenseValid(plugin.settings.professionalLicenseKey);
     const isActive = isProfessionalActive(plugin);
-    
+
     // ─────────────────────────────────────────────────────────────────────────
-    // Combined Header/Status Bar
+    // ROOT CONTAINER (Pro Skin)
     // ─────────────────────────────────────────────────────────────────────────
-    const headerContainer = containerEl.createDiv({ cls: 'rt-professional-header' });
-    if (isActive) {
-        headerContainer.addClass('rt-professional-active');
-    } else {
-        headerContainer.addClass('rt-professional-inactive');
-    }
-    if (OPEN_BETA_ACTIVE) {
-        headerContainer.addClass('rt-professional-beta');
-    }
-    
-    const headerRow = headerContainer.createDiv({ cls: 'rt-professional-header-row' });
-    
-    // Icon - always use signature for brand consistency
-    const iconEl = headerRow.createSpan({ cls: 'rt-professional-icon' });
-    setIcon(iconEl, 'signature');
-    
-    // Title text
-    const titleEl = headerRow.createSpan({ cls: 'rt-professional-title' });
-    if (OPEN_BETA_ACTIVE) {
-        titleEl.setText('Pro · Early Access');
-    } else {
-        titleEl.setText(isActive ? 'Pro features active' : 'Pro');
-    }
-    
-    // Wiki link - always show
-    const linkContainer = headerRow.createSpan({ cls: 'rt-professional-wiki-link' });
-    const dummySetting = new Setting(linkContainer);
-    dummySetting.settingEl.addClass('rt-professional-heading-inline');
-    addWikiLink(dummySetting, 'Settings#professional');
-    
-    // Pro toggle on the right (for testing during beta)
-    const toggleContainer = headerRow.createDiv({ cls: 'rt-professional-header-toggle-container' });
-    const toggleLabel = toggleContainer.createSpan({ 
-        cls: isActive ? 'rt-professional-toggle-label rt-pro-toggle-active' : 'rt-professional-toggle-label',
-        text: isActive ? 'Active' : 'Inactive'
+    const section = containerEl.createDiv({ cls: `rt-settings-section rt-pro-section ${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_PRO}` });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // HERO / HEADER
+    // ─────────────────────────────────────────────────────────────────────────
+    const hero = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_HERO}` });
+
+    // Badge Row
+    const badgeRow = hero.createDiv({ cls: `rt-pro-hero-badge-row ${ERT_CLASSES.INLINE}` });
+
+    // Status Badge
+    const statusClasses = isActive ?
+        `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}` :
+        `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_NEUTRAL}`;
+
+    const badge = badgeRow.createSpan({ cls: statusClasses });
+    setIcon(badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), 'signature');
+    badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: isActive ? 'Pro features active' : 'Pro' });
+
+    // Wiki Link Icon
+    const wikiLink = badge.createEl('a', {
+        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#professional',
+        cls: 'ert-badgePill__rightIcon',
+        attr: {
+            'aria-label': 'Read more in the Wiki',
+            'target': '_blank',
+            'rel': 'noopener'
+        }
     });
-    const toggle = new Setting(toggleContainer);
-    toggle.settingEl.addClass('rt-professional-header-toggle');
-    toggle.addToggle(t => {
-        t.setValue(plugin.settings.devProActive !== false);
-        t.onChange(async (value) => {
-            plugin.settings.devProActive = value;
-            await plugin.saveSettings();
-            containerEl.empty();
-            renderProfessionalSection({ app: plugin.app, plugin, containerEl, renderHero });
+    setIcon(wikiLink, 'external-link');
+
+    // Beta Pill (if active)
+    if (OPEN_BETA_ACTIVE) {
+        const betaBadge = badgeRow.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_NEUTRAL}` });
+        betaBadge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Early Access Beta' });
+    }
+
+    // Title & Controls
+    const headerRow = hero.createDiv({ cls: `rt-pro-hero-header ${ERT_CLASSES.PANEL_HEADER}` });
+    const headerLeft = headerRow.createDiv({ cls: ERT_CLASSES.CONTROL });
+
+    headerLeft.createEl('h3', {
+        cls: ERT_CLASSES.SECTION_TITLE,
+        text: OPEN_BETA_ACTIVE ? 'Pro · Early Access' : 'Professional License'
+    });
+
+    // Toggle (for dev/testing)
+    const headerActions = headerRow.createDiv({ cls: ERT_CLASSES.SECTION_ACTIONS });
+    const toggleContainer = headerActions.createDiv({ cls: 'rt-pro-toggle-container' }); // Custom styling might be needed for alignment
+    new Setting(toggleContainer)
+        .setName(isActive ? 'Active' : 'Inactive')
+        .addToggle(t => {
+            t.setValue(plugin.settings.devProActive !== false);
+            t.onChange(async (value) => {
+                plugin.settings.devProActive = value;
+                await plugin.saveSettings();
+                containerEl.empty(); // Re-render from top container
+                renderProfessionalSection({ app: plugin.app, plugin, containerEl, renderHero });
+            });
         });
-    });
-    
-    // Render hero section after header when active
+
+    // Render external hero hook (if any)
     if (renderHero) {
         renderHero();
     }
-    
-    // Content container (always expanded during beta)
-    const contentContainer = containerEl.createDiv({ cls: 'rt-professional-content' });
-    if (!isActive) {
-        contentContainer.addClass('rt-professional-content-muted');
-    }
-    
+
     // ─────────────────────────────────────────────────────────────────────────
-    // Open Beta Banner (shown during beta period)
+    // CONTENT STACK
     // ─────────────────────────────────────────────────────────────────────────
+    const contentStack = section.createDiv({ cls: ERT_CLASSES.STACK });
+
+    // Open Beta Banner
     if (OPEN_BETA_ACTIVE) {
-        const betaBanner = contentContainer.createDiv({ cls: 'rt-professional-beta-banner' });
-        
-        const bannerIcon = betaBanner.createSpan({ cls: 'rt-professional-beta-icon' });
-        setIcon(bannerIcon, 'signature');
-        
-        const bannerText = betaBanner.createDiv({ cls: 'rt-professional-beta-text' });
-        bannerText.createEl('strong', { text: 'Thank you for being an early adopter!' });
-        bannerText.createEl('p', { 
+        const betaPanel = contentStack.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
+
+        const bannerHeader = betaPanel.createDiv({ cls: `${ERT_CLASSES.INLINE} rt-pro-beta-header` });
+        setIcon(bannerHeader.createSpan(), 'gift');
+        bannerHeader.createEl('strong', { text: 'Thank you for being an early adopter!' });
+
+        betaPanel.createEl('p', {
+            cls: ERT_CLASSES.SECTION_DESC,
             text: 'Pro features are free during the Open Beta. Your feedback helps shape the future of Radial Timeline.'
         });
-        
-        // Reward callout
-        const rewardText = bannerText.createEl('p', { cls: 'rt-professional-reward-text' });
-        rewardText.createEl('strong', { text: '🎁 Early Adopter Reward: ' });
-        rewardText.createSpan({ 
-            text: 'Submit helpful feedback or bug reports and receive six months of Pro free when we launch paid licensing!' 
-        });
-        
-        // Feedback link
-        const feedbackLink = bannerText.createEl('a', {
+
+        const rewardBox = betaPanel.createDiv({ cls: `rt-pro-reward-box ${ERT_CLASSES.ROW}` });
+        rewardBox.createSpan({ text: '🎁 Early Adopter Reward: Submit helpful feedback or bug reports and receive six months of Pro free when we launch paid licensing!' });
+
+        const feedbackLink = betaPanel.createEl('a', {
             text: 'Share feedback & claim your reward →',
             href: 'https://radial-timeline.com/feedback',
-            cls: 'rt-professional-feedback-link',
+            cls: 'rt-link-accent',
             attr: { target: '_blank', rel: 'noopener' }
         });
     }
-    
-    // ─────────────────────────────────────────────────────────────────────────
-    // License Key Section (post-beta only; hidden during early access)
+
+    // License Key (Post-Beta)
     if (!OPEN_BETA_ACTIVE) {
-        const licenseSetting = new Setting(contentContainer)
+        const licensePanel = contentStack.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
+        const licenseSetting = new Setting(licensePanel)
+            .setName('License Key')
             .setDesc('Enter your Pro license key to unlock advanced features.')
             .addText(text => {
                 text.setPlaceholder('XXXX-XXXX-XXXX-XXXX');
                 text.setValue(plugin.settings.professionalLicenseKey || '');
-                text.inputEl.addClass('rt-input-lg');
+                text.inputEl.addClass('rt-input-lg'); // Keep existing size class if standard
                 text.inputEl.type = 'password';
-                
-                // Add show/hide toggle
-                const toggleVis = text.inputEl.parentElement?.createEl('button', { 
-                    cls: 'rt-professional-key-toggle',
+
+                // Show/Hide Toggle
+                const toggleVis = text.inputEl.parentElement?.createEl('button', {
+                    cls: 'rt-pro-key-toggle clickable-icon', // Use Obsidian's clickable-icon
                     attr: { type: 'button', 'aria-label': 'Show/hide license key' }
                 });
                 if (toggleVis) {
@@ -183,7 +190,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
                         }
                     });
                 }
-                
+
                 plugin.registerDomEvent(text.inputEl, 'blur', async () => {
                     const value = text.getValue().trim();
                     plugin.settings.professionalLicenseKey = value || undefined;
@@ -192,53 +199,53 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
                     renderProfessionalSection({ app: plugin.app, plugin, containerEl });
                 });
             });
-        
-        // Custom name with inline link
+
+        // "Get key" link
         const nameEl = licenseSetting.nameEl;
-        nameEl.empty();
-        nameEl.createSpan({ text: 'License key' });
         nameEl.createEl('a', {
-            text: 'Get key →',
+            text: ' Get key →',
             href: 'https://radial-timeline.com/signature',
-            cls: 'rt-professional-get-key-link',
+            cls: 'rt-link-accent rt-pro-get-key',
             attr: { target: '_blank', rel: 'noopener' }
         });
     }
-    
+
     // ─────────────────────────────────────────────────────────────────────────
-    // Export / Pandoc Section (Pro feature with styled container)
+    // PANDOC & EXPORT SETTINGS
     // ─────────────────────────────────────────────────────────────────────────
-    const pandocContainer = contentContainer.createDiv({ cls: 'rt-pro-section-card' });
+    const pandocPanel = contentStack.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
 
-    // Heading with Pro badge
-    const pandocHeading = new Setting(pandocContainer)
-        .setName('Export & Pandoc')
-        .setDesc('Configure Pandoc binary paths and manuscript export templates for screenplay, podcast, and novel formats.');
-    pandocHeading.settingEl.addClass('rt-pro-setting');
+    // Header
+    const pandocHeader = pandocPanel.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
+    const pandocTitle = pandocHeader.createDiv({ cls: ERT_CLASSES.CONTROL });
 
-    // Add Pro badge BEFORE the heading text
-    const pandocNameEl = pandocHeading.nameEl;
-    const pandocBadge = createEl('span', { cls: 'rt-pro-badge' });
-    setIcon(pandocBadge, 'signature');
-    pandocBadge.createSpan({ text: 'Pro' });
-    pandocNameEl.insertBefore(pandocBadge, pandocNameEl.firstChild);
+    // Pro Label + Title
+    const titleRow = pandocTitle.createDiv({ cls: ERT_CLASSES.INLINE });
+    const proBadge = titleRow.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} rt-badge-sm` });
+    proBadge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
+    titleRow.createEl('h4', { text: 'Export & Pandoc', cls: ERT_CLASSES.SECTION_TITLE });
 
-    new Setting(pandocContainer)
+    pandocTitle.createDiv({
+        cls: ERT_CLASSES.SECTION_DESC,
+        text: 'Configure Pandoc binary paths and manuscript export templates for screenplay, podcast, and novel formats.'
+    });
+
+    // Settings
+    new Setting(pandocPanel)
         .setName('Pandoc binary path')
         .setDesc('Optional: set a custom pandoc executable path. If blank, system PATH is used.')
         .addText(text => {
-            text.inputEl.addClass('rt-input-lg');
+            text.inputEl.addClass('rt-input-full'); // Use standard class
             text.setPlaceholder('/usr/local/bin/pandoc');
             text.setValue(plugin.settings.pandocPath || '');
             plugin.registerDomEvent(text.inputEl, 'blur', async () => {
                 const value = text.getValue().trim();
-                const normalized = value ? normalizePath(value) : '';
-                plugin.settings.pandocPath = normalized;
+                plugin.settings.pandocPath = value ? normalizePath(value) : '';
                 await plugin.saveSettings();
             });
         });
 
-    new Setting(pandocContainer)
+    new Setting(pandocPanel)
         .setName('Enable fallback Pandoc')
         .setDesc('Attempt a secondary bundled/portable pandoc path if the primary is missing.')
         .addToggle(toggle => {
@@ -249,70 +256,44 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
             });
         });
 
-    new Setting(pandocContainer)
+    new Setting(pandocPanel)
         .setName('Fallback Pandoc path')
         .setDesc('Optional path to a portable/bundled pandoc binary.')
         .addText(text => {
-            text.inputEl.addClass('rt-input-lg');
+            text.inputEl.addClass('rt-input-full');
             text.setPlaceholder('/path/to/pandoc');
             text.setValue(plugin.settings.pandocFallbackPath || '');
             plugin.registerDomEvent(text.inputEl, 'blur', async () => {
                 const value = text.getValue().trim();
-                const normalized = value ? normalizePath(value) : '';
-                plugin.settings.pandocFallbackPath = normalized;
+                plugin.settings.pandocFallbackPath = value ? normalizePath(value) : '';
                 await plugin.saveSettings();
             });
         });
 
-    // Templates sub-section with proper container
-    const templatesCard = pandocContainer.createDiv({ cls: 'rt-pro-subsection' });
-    templatesCard.createDiv({ cls: 'rt-pro-subsection-heading', text: 'Pandoc templates' });
-    templatesCard.createDiv({ cls: 'rt-pro-subsection-note', text: 'Optional: leave blank to use Pandoc defaults.' });
+    // Templates Subsection
+    const templateSubSection = pandocPanel.createDiv({ cls: `rt-inner-panel ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+    templateSubSection.createEl('h5', { text: 'Pandoc Templates (Optional)', cls: ERT_CLASSES.SECTION_TITLE });
 
     const templates = plugin.settings.pandocTemplates || {};
 
-    new Setting(templatesCard)
-        .setName('Template: Screenplay')
-        .addText(text => {
-            text.inputEl.addClass('rt-input-lg');
-            text.setPlaceholder('vault/path/to/screenplay_template.tex');
-            text.setValue(templates.screenplay || '');
-            plugin.registerDomEvent(text.inputEl, 'blur', async () => {
-                plugin.settings.pandocTemplates = {
-                    ...plugin.settings.pandocTemplates,
-                    screenplay: text.getValue().trim()
-                };
-                await plugin.saveSettings();
+    const addTemplateSetting = (name: string, key: keyof typeof templates, placeholder: string) => {
+        new Setting(templateSubSection)
+            .setName(name)
+            .addText(text => {
+                text.inputEl.addClass('rt-input-full');
+                text.setPlaceholder(placeholder);
+                text.setValue(templates[key] || '');
+                plugin.registerDomEvent(text.inputEl, 'blur', async () => {
+                    plugin.settings.pandocTemplates = {
+                        ...plugin.settings.pandocTemplates,
+                        [key]: text.getValue().trim()
+                    };
+                    await plugin.saveSettings();
+                });
             });
-        });
+    };
 
-    new Setting(templatesCard)
-        .setName('Template: Podcast Script')
-        .addText(text => {
-            text.inputEl.addClass('rt-input-lg');
-            text.setPlaceholder('vault/path/to/podcast_template.tex');
-            text.setValue(templates.podcast || '');
-            plugin.registerDomEvent(text.inputEl, 'blur', async () => {
-                plugin.settings.pandocTemplates = {
-                    ...plugin.settings.pandocTemplates,
-                    podcast: text.getValue().trim()
-                };
-                await plugin.saveSettings();
-            });
-        });
-
-    new Setting(templatesCard)
-        .setName('Template: Novel Manuscript')
-        .addText(text => {
-            text.inputEl.addClass('rt-input-lg');
-            text.setPlaceholder('vault/path/to/novel_template.tex');
-            text.setValue(templates.novel || '');
-            plugin.registerDomEvent(text.inputEl, 'blur', async () => {
-                plugin.settings.pandocTemplates = {
-                    ...plugin.settings.pandocTemplates,
-                    novel: text.getValue().trim()
-                };
-                await plugin.saveSettings();
-            });
-        });
+    addTemplateSetting('Screenplay', 'screenplay', 'vault/path/to/screenplay_template.tex');
+    addTemplateSetting('Podcast Script', 'podcast', 'vault/path/to/podcast_template.tex');
+    addTemplateSetting('Novel Manuscript', 'novel', 'vault/path/to/novel_template.tex');
 }

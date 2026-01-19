@@ -455,12 +455,18 @@
   background: var(--ert-chip-bg);
   color: var(--text-normal);
   font-size: 12px;
-  cursor: pointer;
+  cursor: default;
   transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   border: 1px solid transparent;
 }
 
-.ert-ui .ert-chip:hover {
+.ert-ui button.ert-chip,
+.ert-ui a.ert-chip {
+  cursor: pointer;
+}
+
+.ert-ui button.ert-chip:hover,
+.ert-ui a.ert-chip:hover {
   background: color-mix(in srgb, var(--ert-chip-bg) 80%, var(--ert-accent) 20%);
 }
 
@@ -832,6 +838,15 @@
   resize: vertical;
 }
 
+.ert-ui.ert-skin--social .ert-row--recommended,
+.ert-ui .ert-skin--social .ert-row--recommended {
+  background: var(--ert-social-surface-2);
+  border: 1px solid var(--ert-social-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  /* Matches Obsidian/ERT padding feel */
+}
+
 .ert-ui.ert-skin--social .ert-row--recommended .setting-item-name,
 .ert-ui .ert-skin--social .ert-row--recommended .setting-item-name {
   color: var(--ert-social-accent);
@@ -1115,6 +1130,11 @@
   color: var(--text-muted);
 }
 
+.ert-ui .setting-item.is-inactive {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 /* Debug overlay (opt-in via .is-debug) */
 .ert-ui.is-debug .ert-section {
   outline: 1px dashed rgba(255, 200, 0, 0.8);
@@ -1277,4 +1297,104 @@
 .ert-ui .ert-pillBtn--social {
   --ert-accent: var(--rt-social-color, #ffd41d);
   --ert-accent-rgb: var(--rt-social-color-rgb, 255, 212, 29);
+}
+
+/* -------------------------------------------------------------------------- */
+/* APR Size Buttons (Migrated from Legacy)                                    */
+/* -------------------------------------------------------------------------- */
+
+.ert-ui .ert-apr-size-btn {
+  /* Inherits basic structure from ert-pillBtn */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 6px 16px;
+  background: var(--background-modifier-border);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  /* Slightly rounder than legacy 6px to match ERT */
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+
+.ert-ui .ert-apr-size-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.ert-ui .ert-apr-size-btn--active,
+.ert-ui .ert-apr-size-btn.is-active,
+.ert-ui.ert-skin--social .ert-apr-size-btn.is-active {
+  border-color: var(--ert-accent);
+  background: color-mix(in srgb, var(--ert-accent) 15%, transparent);
+  color: var(--text-normal);
+}
+
+/* Ensure the superscript 2 (now a character) doesn't break alignment */
+/* If using the character ², it behaves like text. If fallback to sup is needed, styling is here: */
+.ert-ui .ert-apr-size-btn sup {
+  font-size: 0.75em;
+  line-height: 0;
+  position: relative;
+  top: -0.25em;
+  /* Better vertical alignment than vertical-align: super in flex */
+  vertical-align: baseline;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Professional Section Utilities                                             */
+/* -------------------------------------------------------------------------- */
+
+.ert-ui .rt-input-full {
+  width: 100%;
+}
+
+.ert-ui .rt-link-accent {
+  color: var(--ert-accent);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.ert-ui .rt-link-accent:hover {
+  text-decoration: underline;
+  opacity: 0.9;
+}
+
+.ert-ui .rt-pro-hero-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ert-ui .rt-pro-hero-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.ert-ui .rt-pro-beta-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 1.1em;
+  color: var(--text-normal);
+}
+
+.ert-ui .rt-pro-reward-box {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--ert-accent) 10%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--ert-accent) 40%, transparent);
+  border-radius: 8px;
+  font-size: 0.9em;
+  color: var(--text-muted);
 }

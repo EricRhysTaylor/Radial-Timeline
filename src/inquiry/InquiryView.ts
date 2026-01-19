@@ -26,6 +26,12 @@ import type { CorpusManifest, EvidenceParticipationRules } from './runner/types'
 import { InquirySessionStore } from './InquirySessionStore';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import type { InquirySourcesSettings } from '../types/settings';
+import {
+    MAX_RESOLVED_SCAN_ROOTS,
+    normalizeScanRootPatterns,
+    resolveScanRoots,
+    toVaultRoot
+} from './utils/scanRoots';
 
 const DEFAULT_BOOK_COUNT = 5;
 const DEFAULT_SCENE_COUNT = 12;
@@ -957,11 +963,15 @@ export class InquiryView extends ItemView {
         const classConfigMap = new Map(
             (sources.classes || []).map(config => [config.className, config])
         );
-        const scanRoots = this.normalizeScanRoots(sources.scanRoots);
+        const scanRoots = normalizeScanRootPatterns(sources.scanRoots);
+        const resolvedRoots = (sources.resolvedScanRoots && sources.resolvedScanRoots.length)
+            ? sources.resolvedScanRoots
+            : resolveScanRoots(scanRoots, this.app.vault, MAX_RESOLVED_SCAN_ROOTS).resolvedRoots;
+        const resolvedVaultRoots = resolvedRoots.map(toVaultRoot);
         const files = this.app.vault.getMarkdownFiles();
 
         const inRoots = (path: string) => {
-            return scanRoots.some(root => !root || path === root || path.startsWith(`${root}/`));
+            return resolvedVaultRoots.some(root => !root || path === root || path.startsWith(`${root}/`));
         };
 
         files.forEach(file => {
@@ -1077,13 +1087,13 @@ export class InquiryView extends ItemView {
 
     private normalizeInquirySources(raw?: InquirySourcesSettings): InquirySourcesSettings {
         if (!raw) {
-            return { scanRoots: [''], classes: [], classCounts: {} };
+            return { scanRoots: ['/'], classes: [], classCounts: {}, resolvedScanRoots: [] };
         }
         if ('sceneFolders' in raw || 'bookOutlineFiles' in raw || 'sagaOutlineFile' in raw) {
-            return { scanRoots: [''], classes: [], classCounts: {} };
+            return { scanRoots: ['/'], classes: [], classCounts: {}, resolvedScanRoots: [] };
         }
         return {
-            scanRoots: this.normalizeScanRoots(raw.scanRoots),
+            scanRoots: normalizeScanRootPatterns(raw.scanRoots),
             classes: (raw.classes || []).map(config => ({
                 className: config.className.toLowerCase(),
                 enabled: !!config.enabled,
@@ -1091,13 +1101,9 @@ export class InquiryView extends ItemView {
                 sagaScope: !!config.sagaScope
             })),
             classCounts: raw.classCounts || {},
+            resolvedScanRoots: raw.resolvedScanRoots ? normalizeScanRootPatterns(raw.resolvedScanRoots) : [],
             lastScanAt: raw.lastScanAt
         };
-    }
-
-    private normalizeScanRoots(roots?: string[]): string[] {
-        const normalized = (roots && roots.length ? roots : ['']).map(root => normalizePath(root));
-        return Array.from(new Set(normalized));
     }
 
     private extractClassValues(frontmatter: Record<string, unknown>): string[] {

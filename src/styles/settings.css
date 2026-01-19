@@ -3769,3 +3769,120 @@
   text-align: center;
   padding: 20px;
 }
+
+.rt-settings-root .ert-inquiry-scan-root-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+
+.rt-settings-root .ert-inquiry-scan-root-btn {
+  border-radius: 999px;
+  padding: 6px 12px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.rt-settings-root .ert-inquiry-resolved-roots {
+  margin: 6px 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  padding: 8px 12px;
+}
+
+.rt-settings-root .ert-inquiry-resolved-roots summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.rt-settings-root .ert-inquiry-resolved-roots-list {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.rt-settings-root .ert-inquiry-resolved-item {
+  font-family: var(--font-monospace);
+}
+
+.rt-settings-root .ert-inquiry-resolved-more,
+.rt-settings-root .ert-inquiry-resolved-empty {
+  color: var(--text-faint);
+}
+
+.rt-settings-root .ert-inquiry-class-table {
+  margin-top: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.rt-settings-root .ert-inquiry-class-row {
+  display: grid;
+  grid-template-columns: 90px 1.1fr 140px 140px 110px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+}
+
+.rt-settings-root .ert-inquiry-class-row.is-disabled .ert-inquiry-class-cell {
+  opacity: 0.45;
+}
+
+.rt-settings-root .ert-inquiry-class-row.is-disabled .ert-inquiry-class-cell:first-child {
+  opacity: 1;
+}
+
+.rt-settings-root .ert-inquiry-class-row.is-disabled input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+
+.rt-settings-root .ert-inquiry-class-header {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  background: var(--background-primary);
+}
+
+.rt-settings-root .ert-inquiry-class-cell {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-normal);
+}
+
+.rt-settings-root .ert-inquiry-class-name {
+  font-weight: 600;
+  text-transform: lowercase;
+}
+
+.rt-settings-root .ert-inquiry-class-role {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.rt-settings-root .ert-inquiry-class-sub-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.rt-settings-root .ert-inquiry-class-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.rt-settings-root .ert-inquiry-class-count-empty {
+  color: var(--text-faint);
+}
