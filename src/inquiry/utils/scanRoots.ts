@@ -10,6 +10,8 @@ export type ResolvedScanRoots = {
 const escapeRegExp = (value: string): string =>
     value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+const MAX_RANGE_EXPANSION = 200;
+
 export const normalizeScanRootPattern = (raw: string): string => {
     const trimmed = raw.trim();
     if (!trimmed || trimmed === '/' || trimmed === '.') return '/';
@@ -66,7 +68,7 @@ export const resolveScanRoots = (
         }
         const vaultRoot = toVaultRoot(pattern);
         const segments = vaultRoot.split('/').filter(Boolean);
-        const hasWildcard = segments.some(segment => segment.includes('*'));
+        const hasWildcard = segments.some(segment => segment.includes('*') || /\d+\s*-\s*\d+/.test(segment));
         if (!hasWildcard) {
             const folder = vault.getAbstractFileByPath(vaultRoot);
             if (folder instanceof TFolder) {
@@ -74,9 +76,7 @@ export const resolveScanRoots = (
             }
             return;
         }
-        const regex = new RegExp(`^${segments
-            .map(segment => escapeRegExp(segment).replace(/\\\*/g, '[^/]*'))
-            .join('/')}$`);
+        const regex = new RegExp(`^${segments.map(buildSegmentRegex).join('/')}$`);
         folderPaths.forEach(path => {
             if (regex.test(path)) resolved.add(path);
         });
@@ -91,3 +91,40 @@ export const resolveScanRoots = (
         totalMatches
     };
 };
+
+function buildSegmentRegex(segment: string): string {
+    const tokenRegex = /(\d+\s*-\s*\d+)|\*/g;
+    let cursor = 0;
+    let output = '';
+    let match: RegExpExecArray | null;
+    while ((match = tokenRegex.exec(segment)) !== null) {
+        const index = match.index;
+        if (index > cursor) {
+            output += escapeRegExp(segment.slice(cursor, index));
+        }
+        const token = match[0];
+        if (token === '*') {
+            output += '[^/]*';
+        } else {
+            const rangeMatch = token.match(/(\d+)\s*-\s*(\d+)/);
+            if (rangeMatch) {
+                const start = Number(rangeMatch[1]);
+                const end = Number(rangeMatch[2]);
+                const min = Math.min(start, end);
+                const max = Math.max(start, end);
+                const span = max - min + 1;
+                if (span > 0 && span <= MAX_RANGE_EXPANSION) {
+                    const values = Array.from({ length: span }, (_, i) => String(min + i));
+                    output += `(?:${values.join('|')})`;
+                } else {
+                    output += '\\d+';
+                }
+            }
+        }
+        cursor = index + token.length;
+    }
+    if (cursor < segment.length) {
+        output += escapeRegExp(segment.slice(cursor));
+    }
+    return output;
+}

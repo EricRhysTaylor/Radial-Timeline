@@ -9,6 +9,7 @@ import {
     normalizeScanRootPatterns,
     parseScanRootInput,
     resolveScanRoots,
+    toDisplayRoot,
     toVaultRoot
 } from '../../inquiry/utils/scanRoots';
 
@@ -21,6 +22,35 @@ interface SectionParams {
 
 const listToText = (values?: string[]): string =>
     (values || []).join('\n');
+
+const parseClassScopeInput = (raw: string): string[] => {
+    const lines = raw
+        .split(/[\n,]/)
+        .map(entry => entry.trim().toLowerCase())
+        .filter(Boolean);
+    if (!lines.length) return [];
+    return Array.from(new Set(lines));
+};
+
+const getClassScopeConfig = (raw?: string[]): { allowAll: boolean; allowed: string[] } => {
+    const list = (raw || []).map(entry => entry.trim().toLowerCase()).filter(Boolean);
+    const allowAll = list.includes('/');
+    const allowed = list.filter(entry => entry !== '/');
+    return { allowAll, allowed };
+};
+
+const CLASS_ABBREVIATIONS: Record<string, string> = {
+    scene: 's',
+    outline: 'o',
+    character: 'c',
+    place: 'p',
+    power: 'pw'
+};
+
+const getClassAbbreviation = (className: string): string => {
+    if (CLASS_ABBREVIATIONS[className]) return CLASS_ABBREVIATIONS[className];
+    return className.charAt(0) || '?';
+};
 
 type LegacyInquirySourcesSettings = {
     sceneFolders?: string[];
@@ -116,6 +146,7 @@ const migrateLegacySources = (legacy: LegacyInquirySourcesSettings): InquirySour
 
     return {
         scanRoots: roots.size ? normalizeScanRootPatterns(Array.from(roots)) : [],
+        classScope: ['/'],
         classes,
         classCounts: {},
         resolvedScanRoots: [],
@@ -132,6 +163,7 @@ const normalizeInquirySources = (raw?: InquirySourcesSettings | LegacyInquirySou
     }
     return {
         scanRoots: raw.scanRoots && raw.scanRoots.length ? normalizeScanRootPatterns(raw.scanRoots) : [],
+        classScope: raw.classScope ? parseClassScopeInput(listToText(raw.classScope)) : [],
         classes: (raw.classes || []).map(config => ({
             className: config.className.toLowerCase(),
             enabled: !!config.enabled,
@@ -276,20 +308,21 @@ export function renderInquirySection(params: SectionParams): void {
 
     const sourcesHeading = new Settings(containerEl)
         .setName('Inquiry sources')
-        .setDesc('Inquiry reads notes based on YAML class values inside the scan roots.');
+        .setDesc('Inquiry reads notes based on YAML class values inside the scan folders.');
     sourcesHeading.settingEl.addClass('rt-inquiry-settings-heading');
 
     let scanRootsInput: TextAreaComponent | null = null;
+    let classScopeInput: TextAreaComponent | null = null;
 
     const scanRootsSetting = new Settings(containerEl)
-        .setName('Inquiry scan roots')
-        .setDesc('Inquiry only scans within these roots. One path per line. Wildcards like /Book */ are allowed. Empty = no scan.');
+        .setName('Inquiry scan folders')
+        .setDesc('Inquiry only scans within these folders. One path per line. Wildcards like /Book */ or /Book 1-7 */ are allowed. Use / for the vault root. Empty = no scan.');
 
     scanRootsSetting.addTextArea(text => {
         text.setValue(listToText(inquirySources.scanRoots));
         text.inputEl.rows = 4;
         text.inputEl.addClass('rt-input-full');
-        text.setPlaceholder('/Book */\n/Characters/\n/World/');
+        text.setPlaceholder('/Book */\n/Character/\n/World/');
         scanRootsInput = text;
 
         plugin.registerDomEvent(text.inputEl, 'blur', () => {
@@ -300,7 +333,7 @@ export function renderInquirySection(params: SectionParams): void {
 
     scanRootsSetting.addExtraButton(button => {
         button.setIcon('rotate-ccw');
-        button.setTooltip('Refresh scan roots');
+        button.setTooltip('Refresh scan folders');
         button.onClick(() => {
             const nextRoots = parseScanRootInput(scanRootsInput?.getValue() ?? '');
             applyScanRoots(nextRoots);
@@ -320,12 +353,35 @@ export function renderInquirySection(params: SectionParams): void {
         const nextRoots = Array.from(new Set([...(inquirySources.scanRoots || []), '/Book */']));
         applyScanRoots(nextRoots);
     });
-    addActionButton('Clear', () => {
-        applyScanRoots([]);
+    addActionButton('Add Character folder', () => {
+        const nextRoots = Array.from(new Set([...(inquirySources.scanRoots || []), '/Character/']));
+        applyScanRoots(nextRoots);
+    });
+
+    const classScopeSetting = new Settings(containerEl)
+        .setName('Inquiry class scope')
+        .setDesc('One YAML class per line. Use / to allow all classes. Empty = no classes allowed.');
+
+    classScopeSetting.addTextArea(text => {
+        text.setValue(listToText(inquirySources.classScope));
+        text.inputEl.rows = 3;
+        text.inputEl.addClass('rt-input-full');
+        text.setPlaceholder('scene\noutline\n/');
+        classScopeInput = text;
+
+        plugin.registerDomEvent(text.inputEl, 'blur', () => {
+            const nextScope = parseClassScopeInput(text.getValue());
+            applyClassScope(nextScope);
+        });
+    });
+
+    const classScopeHint = containerEl.createDiv({
+        cls: 'ert-inquiry-class-scope-hint',
+        text: 'Add scene, outline, or / to begin.'
     });
 
     const resolvedPreview = containerEl.createEl('details', { cls: 'ert-inquiry-resolved-roots' });
-    const resolvedSummary = resolvedPreview.createEl('summary', { text: 'Resolved roots (0)' });
+    const resolvedSummary = resolvedPreview.createEl('summary', { text: 'Resolved folders (0)' });
     const resolvedList = resolvedPreview.createDiv({ cls: 'ert-inquiry-resolved-roots-list' });
 
     let resolvedRootCache: { signature: string; resolvedRoots: string[]; total: number } | null = null;
@@ -333,19 +389,25 @@ export function renderInquirySection(params: SectionParams): void {
     const classTableWrap = containerEl.createDiv({ cls: 'ert-inquiry-class-table' });
 
     const scanInquiryClasses = async (roots: string[]): Promise<{
-        counts: Record<string, number>;
-        classes: string[];
+        discoveredCounts: Record<string, number>;
+        discoveredClasses: string[];
+        rootClassCounts: Record<string, Record<string, number>>;
     }> => {
         if (!roots.length) {
-            return { counts: {}, classes: [] };
+            return { discoveredCounts: {}, discoveredClasses: [], rootClassCounts: {} };
         }
-        const counts: Record<string, number> = {};
+        const discoveredCounts: Record<string, number> = {};
+        const rootClassCounts: Record<string, Record<string, number>> = {};
         const files = plugin.app.vault.getMarkdownFiles();
         const resolvedVaultRoots = roots;
 
         const inRoots = (path: string) => {
             return resolvedVaultRoots.some(root => !root || path === root || path.startsWith(`${root}/`));
         };
+
+        resolvedVaultRoots.forEach(root => {
+            rootClassCounts[toDisplayRoot(root)] = {};
+        });
 
         files.forEach(file => {
             if (!inRoots(file.path)) return;
@@ -360,13 +422,22 @@ export function renderInquirySection(params: SectionParams): void {
                 const name = typeof value === 'string' ? value.trim() : String(value).trim();
                 if (!name) return;
                 const key = name.toLowerCase();
-                counts[key] = (counts[key] || 0) + 1;
+                discoveredCounts[key] = (discoveredCounts[key] || 0) + 1;
+                resolvedVaultRoots.forEach(root => {
+                    if (!root || file.path === root || file.path.startsWith(`${root}/`)) {
+                        const display = toDisplayRoot(root);
+                        const bucket = rootClassCounts[display] || {};
+                        bucket[key] = (bucket[key] || 0) + 1;
+                        rootClassCounts[display] = bucket;
+                    }
+                });
             });
         });
 
         return {
-            counts,
-            classes: Object.keys(counts).sort()
+            discoveredCounts,
+            discoveredClasses: Object.keys(discoveredCounts).sort(),
+            rootClassCounts
         };
     };
 
@@ -456,20 +527,33 @@ export function renderInquirySection(params: SectionParams): void {
         });
     };
 
-    const renderResolvedRoots = (roots: string[], total: number) => {
-        resolvedSummary.setText(`Resolved roots (${total})`);
+    const renderResolvedRoots = (
+        roots: string[],
+        total: number,
+        rootClassCounts: Record<string, Record<string, number>>,
+        participatingClasses: Set<string>
+    ) => {
+        resolvedSummary.setText(`Resolved folders (${total})`);
         resolvedList.empty();
 
         if (!roots.length) {
             resolvedList.createDiv({
                 cls: 'ert-inquiry-resolved-empty',
-                text: 'No scan roots set. Add /Book */ or / to begin.'
+                text: 'No scan folders set. Add /Book */ or / to begin.'
             });
             return;
         }
 
         roots.forEach(root => {
-            resolvedList.createDiv({ cls: 'ert-inquiry-resolved-item', text: root });
+            const classCounts = rootClassCounts[root] || {};
+            const parts: string[] = [];
+            participatingClasses.forEach(className => {
+                const count = classCounts[className] || 0;
+                if (!count) return;
+                parts.push(`${count}${getClassAbbreviation(className)}`);
+            });
+            const suffix = parts.length ? `[${parts.join(', ')}]` : '[0]';
+            resolvedList.createDiv({ cls: 'ert-inquiry-resolved-item', text: `${root} ${suffix}` });
         });
     };
 
@@ -478,6 +562,13 @@ export function renderInquirySection(params: SectionParams): void {
         inquirySources = { ...inquirySources, scanRoots: normalized };
         scanRootsInput?.setValue(listToText(normalized));
         resolvedRootCache = null;
+        void refreshClassScan();
+    };
+
+    const applyClassScope = (nextScope: string[]) => {
+        const normalized = parseClassScopeInput(nextScope.join('\n'));
+        inquirySources = { ...inquirySources, classScope: normalized };
+        classScopeInput?.setValue(listToText(normalized));
         void refreshClassScan();
     };
 
@@ -502,18 +593,40 @@ export function renderInquirySection(params: SectionParams): void {
         }
         const resolvedVaultRoots = resolvedRootCache.resolvedRoots.map(toVaultRoot);
         const scan = await scanInquiryClasses(resolvedVaultRoots);
-        const merged = mergeClassConfigs(inquirySources.classes || [], scan.classes);
+        const scopeConfig = getClassScopeConfig(inquirySources.classScope);
+        const allowedClasses = scopeConfig.allowAll ? scan.discoveredClasses : scopeConfig.allowed;
+        const allowedSet = new Set(allowedClasses);
+        const allConfigNames = Array.from(new Set([...scan.discoveredClasses, ...scopeConfig.allowed]));
+        const merged = mergeClassConfigs(inquirySources.classes || [], allConfigNames);
+        const visibleConfigs = merged.filter(config => allowedSet.has(config.className));
         inquirySources = {
             scanRoots: rawRoots,
+            classScope: inquirySources.classScope || [],
             classes: merged,
-            classCounts: scan.counts,
+            classCounts: scan.discoveredCounts,
             resolvedScanRoots: resolvedRootCache.resolvedRoots,
             lastScanAt: new Date().toISOString()
         };
         plugin.settings.inquirySources = inquirySources;
         await plugin.saveSettings();
-        renderClassTable(merged, scan.counts);
-        renderResolvedRoots(resolvedRootCache.resolvedRoots, resolvedRootCache.total);
+        renderClassTable(visibleConfigs, scan.discoveredCounts);
+
+        const participatingClasses = new Set<string>();
+        visibleConfigs.forEach(config => {
+            const participates = config.enabled && (config.bookScope || config.sagaScope || REFERENCE_ONLY_CLASSES.has(config.className));
+            if (!participates) return;
+            participatingClasses.add(config.className);
+        });
+
+        renderResolvedRoots(
+            resolvedRootCache.resolvedRoots,
+            resolvedRootCache.total,
+            scan.rootClassCounts,
+            participatingClasses
+        );
+
+        const hasScope = scopeConfig.allowAll || scopeConfig.allowed.length > 0;
+        classScopeHint.toggleClass('ert-hidden', hasScope);
     };
 
     void refreshClassScan();

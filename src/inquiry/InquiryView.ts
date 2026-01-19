@@ -791,6 +791,13 @@ export class InquiryView extends ItemView {
         return modelId ? getModelDisplayName(modelId.replace(/^models\//, '')) : 'Unknown model';
     }
 
+    private getClassScopeConfig(raw?: string[]): { allowAll: boolean; allowed: Set<string> } {
+        const list = (raw || []).map(entry => entry.trim().toLowerCase()).filter(Boolean);
+        const allowAll = list.includes('/');
+        const allowed = new Set(list.filter(entry => entry !== '/'));
+        return { allowAll, allowed };
+    }
+
     private openAiSettings(): void {
         if (this.plugin.settingsTab) {
             this.plugin.settingsTab.setActiveTab('core');
@@ -1166,6 +1173,15 @@ export class InquiryView extends ItemView {
         const classConfigMap = new Map(
             (sources.classes || []).map(config => [config.className, config])
         );
+        const classScope = this.getClassScopeConfig(sources.classScope);
+        if (!classScope.allowAll && classScope.allowed.size === 0) {
+            const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${this.getActiveInquiryModelId()}|`;
+            return {
+                entries,
+                fingerprint: this.hashString(fingerprintRaw),
+                generatedAt: now
+            };
+        }
         const scanRoots = normalizeScanRootPatterns(sources.scanRoots);
         const resolvedRoots = scanRoots.length
             ? ((sources.resolvedScanRoots && sources.resolvedScanRoots.length)
@@ -1189,6 +1205,7 @@ export class InquiryView extends ItemView {
             if (!classValues.length) return;
 
             classValues.forEach(className => {
+                if (!classScope.allowAll && !classScope.allowed.has(className)) return;
                 const config = classConfigMap.get(className);
                 if (!config || !config.enabled) return;
                 if (className === 'outline') {
@@ -1242,6 +1259,17 @@ export class InquiryView extends ItemView {
     private buildLegacyCorpusManifest(rawSources: Record<string, unknown>, questionId: string): CorpusManifest {
         const entries: CorpusManifest['entries'] = [];
         const now = Date.now();
+        const classScope = this.getClassScopeConfig(
+            this.normalizeInquirySources(this.plugin.settings.inquirySources).classScope
+        );
+        if (!classScope.allowAll && classScope.allowed.size === 0) {
+            const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${this.getActiveInquiryModelId()}|`;
+            return {
+                entries,
+                fingerprint: this.hashString(fingerprintRaw),
+                generatedAt: now
+            };
+        }
         const sources = rawSources as {
             sceneFolders?: string[];
             bookOutlineFiles?: string[];
@@ -1253,6 +1281,7 @@ export class InquiryView extends ItemView {
 
         const addEntries = (paths: string[] | undefined, data: { class: string; scope?: InquiryScope }) => {
             if (!paths) return;
+            if (!classScope.allowAll && !classScope.allowed.has(data.class)) return;
             paths.forEach(rawPath => {
                 const path = normalizePath(rawPath);
                 if (!path) return;
@@ -1301,6 +1330,7 @@ export class InquiryView extends ItemView {
         }
         return {
             scanRoots: raw.scanRoots && raw.scanRoots.length ? normalizeScanRootPatterns(raw.scanRoots) : [],
+            classScope: raw.classScope ? raw.classScope.map(value => value.trim().toLowerCase()).filter(Boolean) : [],
             classes: (raw.classes || []).map(config => ({
                 className: config.className.toLowerCase(),
                 enabled: !!config.enabled,
@@ -1323,14 +1353,15 @@ export class InquiryView extends ItemView {
     }
 
     private getFrontmatterScope(frontmatter: Record<string, unknown>): InquiryScope | undefined {
-        const keys = Object.keys(frontmatter);
+        const normalizedFrontmatter = normalizeFrontmatterKeys(frontmatter, this.plugin.settings.frontmatterMappings);
+        const keys = Object.keys(normalizedFrontmatter);
         const scopeKey = keys.find(key => key.toLowerCase() === 'scope');
         if (!scopeKey) return undefined;
-        const value = frontmatter[scopeKey];
+        const value = normalizedFrontmatter[scopeKey];
         if (typeof value !== 'string') return undefined;
-        const normalized = value.trim().toLowerCase();
-        if (normalized === 'book' || normalized === 'saga') {
-            return normalized as InquiryScope;
+        const normalizedValue = value.trim().toLowerCase();
+        if (normalizedValue === 'book' || normalizedValue === 'saga') {
+            return normalizedValue as InquiryScope;
         }
         return undefined;
     }

@@ -51,6 +51,16 @@ export class InquiryCorpusResolver {
 
     resolve(params: InquiryCorpusResolveParams): InquiryCorpusSnapshot {
         const sources = params.sources;
+        const classScope = this.getClassScopeConfig(sources.classScope);
+        if (!classScope.allowAll && classScope.allowed.size === 0) {
+            return {
+                scope: params.scope,
+                resolvedRoots: [],
+                books: [],
+                scenes: [],
+                activeBookId: undefined
+            };
+        }
         const scanRoots = normalizeScanRootPatterns(sources.scanRoots);
         const resolvedRoots = scanRoots.length
             ? (sources.resolvedScanRoots && sources.resolvedScanRoots.length
@@ -62,7 +72,7 @@ export class InquiryCorpusResolver {
         const books = this.buildBookItems(resolvedVaultRoots);
         const activeBookId = this.getActiveBookId(books, params.focusBookId);
         const scenes = params.scope === 'book' && activeBookId
-            ? this.buildSceneItems(activeBookId, resolvedVaultRoots, sources.classes || [])
+            ? this.buildSceneItems(activeBookId, resolvedVaultRoots, sources.classes || [], classScope)
             : [];
 
         return {
@@ -119,10 +129,12 @@ export class InquiryCorpusResolver {
     private buildSceneItems(
         bookId: string,
         resolvedVaultRoots: string[],
-        classConfigs: InquiryClassConfig[]
+        classConfigs: InquiryClassConfig[],
+        classScope: { allowAll: boolean; allowed: Set<string> }
     ): InquirySceneItem[] {
         const classConfig = classConfigs.find(cfg => cfg.className === 'scene');
         if (!classConfig || !classConfig.enabled || !classConfig.bookScope) return [];
+        if (!classScope.allowAll && !classScope.allowed.has('scene')) return [];
 
         const inRoots = (path: string): boolean => {
             return resolvedVaultRoots.some(root => !root || path === root || path.startsWith(`${root}/`));
@@ -216,6 +228,13 @@ export class InquiryCorpusResolver {
         const parsed = Number(typeof value === 'string' ? value.trim() : value);
         if (!Number.isFinite(parsed)) return undefined;
         return Math.max(1, Math.floor(parsed));
+    }
+
+    private getClassScopeConfig(raw?: string[]): { allowAll: boolean; allowed: Set<string> } {
+        const list = (raw || []).map(entry => entry.trim().toLowerCase()).filter(Boolean);
+        const allowAll = list.includes('/');
+        const allowed = new Set(list.filter(entry => entry !== '/'));
+        return { allowAll, allowed };
     }
 
     private hasSynopsis(frontmatter: Record<string, unknown>): boolean {

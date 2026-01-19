@@ -3821,6 +3821,12 @@
   color: var(--text-faint);
 }
 
+.rt-settings-root .ert-inquiry-class-scope-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
 
 .rt-settings-root .ert-inquiry-class-table {
   margin-top: 12px;

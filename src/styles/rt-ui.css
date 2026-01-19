@@ -1103,6 +1103,19 @@
   border-bottom-color: transparent;
 }
 
+.ert-ui.ert-skin--pro .ert-row--recommended,
+.ert-ui .ert-skin--pro .ert-row--recommended {
+  background: var(--ert-pro-surface-2);
+  border: 1px solid var(--ert-pro-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.ert-ui.ert-skin--pro .ert-row--recommended .setting-item-name,
+.ert-ui .ert-skin--pro .ert-row--recommended .setting-item-name {
+  color: var(--ert-pro-accent);
+}
+
 .ert-ui .ert-skin--pro .ert-objectRow.is-needs-refresh {
   border-left: 3px solid var(--text-error, #ef4444);
 }

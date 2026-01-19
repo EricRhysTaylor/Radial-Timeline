@@ -80,7 +80,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     // ─────────────────────────────────────────────────────────────────────────
     // CAMPAIGN MANAGER CARD
     // ─────────────────────────────────────────────────────────────────────────
-    const card = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} rt-campaign-manager-card` });
+    const card = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} rt-campaign-manager-card ${ERT_CLASSES.SKIN_PRO}` });
 
     // Header with Pro badge
     const headerRow = card.createDiv({ cls: 'rt-campaign-manager-header' });
@@ -379,10 +379,9 @@ function renderCampaignDetails(
     plugin: RadialTimelinePlugin,
     onUpdate: () => void
 ): void {
-    const details = parentRow.createDiv({ cls: 'rt-campaign-details' });
+    const details = parentRow.createDiv({ cls: `rt-campaign-details ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
 
-    // Update Frequency
-    new Setting(details)
+    const freqSetting = new Setting(details)
         .setName('Update Frequency')
         .setDesc('How often to auto-update this campaign\'s embed file. "Manual" requires clicking the Publish button.')
         .addDropdown(dropdown => {
@@ -398,6 +397,8 @@ function renderCampaignDetails(
                     await plugin.saveSettings();
                 });
         });
+    freqSetting.settingEl.addClass(ERT_CLASSES.ROW);
+    freqSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
 
     // Refresh threshold (with dynamic description and value label)
     let refreshValueLabel: HTMLSpanElement | undefined;
@@ -431,6 +432,8 @@ function renderCampaignDetails(
 
             return slider;
         });
+    refreshSetting.settingEl.addClass(ERT_CLASSES.ROW);
+    refreshSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
 
     // Embed path (with validation and reset)
     const defaultPath = `Radial Timeline/Social/${campaign.name.toLowerCase().replace(/\s+/g, '-')}-progress.svg`;
@@ -439,6 +442,8 @@ function renderCampaignDetails(
         .setDesc(`Location for the embed SVG file. Must end with .svg. Default: ${defaultPath}`);
 
     embedPathSetting.settingEl.addClass('ert-row--wideControl');
+    embedPathSetting.settingEl.addClass(ERT_CLASSES.ROW);
+    embedPathSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
 
     embedPathSetting.addText(text => {
         text.inputEl.addClass('rt-input-full');
@@ -484,21 +489,23 @@ function renderCampaignDetails(
     });
 
     // Size
-    new Setting(details)
+    const exportSizeSetting = new Setting(details)
         .setName('Export Size')
         .setDesc('SVG dimensions: Small for widgets, Medium for social/newsletters, Large for website embeds.')
         .addDropdown(drop => {
             drop.addOption('thumb', 'Thumb (100px)')
-                .addOption('small', 'Small (150px)')
-                .addOption('medium', 'Medium (300px)')
-                .addOption('large', 'Large (450px)')
-                .setValue(campaign.aprSize)
-                .onChange(async (val) => {
-                    if (!plugin.settings.authorProgress?.campaigns) return;
-                    plugin.settings.authorProgress.campaigns[index].aprSize = val as 'thumb' | 'small' | 'medium' | 'large';
-                    await plugin.saveSettings();
-                });
+            drop.addOption('small', 'Small (150px)')
+            drop.addOption('medium', 'Medium (300px)')
+            drop.addOption('large', 'Large (450px)')
+            drop.setValue(campaign.aprSize)
+            drop.onChange(async (val) => {
+                if (!plugin.settings.authorProgress?.campaigns) return;
+                plugin.settings.authorProgress.campaigns[index].aprSize = val as 'thumb' | 'small' | 'medium' | 'large';
+                await plugin.saveSettings();
+            });
         });
+    exportSizeSetting.settingEl.addClass(ERT_CLASSES.ROW);
+    exportSizeSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
 
     // Container for reveal options (hidden when Teaser is enabled)
     const revealRowContainer = details.createDiv({ cls: 'rt-campaign-reveal-container' });
@@ -589,6 +596,9 @@ function renderCampaignDetails(
                         renderRevealOptions();
                     });
             });
+
+        teaserToggleSetting.settingEl.addClass(ERT_CLASSES.ROW);
+        teaserToggleSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
 
         // Add calendar icon to the teaser setting
         const teaserNameEl = teaserToggleSetting.nameEl;

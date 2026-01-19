@@ -20,6 +20,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     inquiryCacheMaxSessions: 30,
     inquirySources: {
         scanRoots: [],
+        classScope: [],
         classes: [],
         classCounts: {},
         resolvedScanRoots: []
