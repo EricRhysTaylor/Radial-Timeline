@@ -1226,7 +1226,7 @@
   font-size: var(--ert-pill-font-size);
   font-weight: var(--ert-pill-font-weight);
   line-height: 1;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
   box-sizing: border-box;
 }
 
@@ -1311,7 +1311,8 @@
 
 .ert-ui .ert-pillBtn--pro:hover:not(:disabled),
 .ert-ui .ert-pillBtn--pro.is-active {
-  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-accent) 35%, transparent));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--ert-accent) 40%, transparent);
+  border-color: var(--ert-accent);
 }
 
 /* Social variant (yellow) */

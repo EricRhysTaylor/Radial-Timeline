@@ -254,6 +254,22 @@ export class InquiryView extends ItemView {
         background.setAttribute('height', String(VIEWBOX_SIZE));
         svg.appendChild(background);
 
+        const bgImage = this.createSvgElement('image');
+        bgImage.classList.add('ert-inquiry-bg-image');
+        bgImage.setAttribute('x', String(VIEWBOX_MIN));
+        bgImage.setAttribute('y', String(VIEWBOX_MIN));
+        bgImage.setAttribute('width', String(VIEWBOX_SIZE));
+        bgImage.setAttribute('height', String(VIEWBOX_SIZE));
+        bgImage.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+        bgImage.setAttribute('pointer-events', 'none');
+        const configDir = (this.app.vault as unknown as { configDir?: string }).configDir ?? '.obsidian';
+        const pluginId = this.plugin.manifest.id;
+        const texturePath = normalizePath(`${configDir}/plugins/${pluginId}/inquiry/assets/radial_texture.png`);
+        const adapter = this.app.vault.adapter as unknown as { getResourcePath?: (path: string) => string };
+        const textureHref = adapter.getResourcePath ? adapter.getResourcePath(texturePath) : texturePath;
+        bgImage.setAttribute('href', textureHref);
+        svg.appendChild(bgImage);
+
         const frame = this.createSvgElement('rect');
         frame.classList.add('ert-inquiry-svg-frame');
         frame.setAttribute('x', String(VIEWBOX_MIN));

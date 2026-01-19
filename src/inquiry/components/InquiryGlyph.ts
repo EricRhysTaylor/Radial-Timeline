@@ -25,15 +25,15 @@ const ARC_MAX_GREEN = '#22c55e';
 const DOT_DARKEN = 0.35;
 const ZONE_SEGMENT_COUNT = 3;
 const ZONE_RING_OFFSET = 40;
-const ZONE_RING_THICKNESS = 200;
-const ZONE_RING_GAP_PX = 30;
+const ZONE_RING_THICKNESS = 140;
+const ZONE_RING_GAP_PX = 20;
 const ZONE_DOT_RADIUS_PX = 13;
 const ZONE_DOT_TEXT_PX = 12;
 const ZONE_SEGMENT_FILL = '#7b6448';
 const ZONE_SEGMENT_STROKE = '#d6c3ad';
-const ZONE_SEGMENT_STROKE_WIDTH = 1.4;
-const ZONE_OUTER_CORNER_RADIUS = 40;
-const ZONE_INNER_CORNER_RADIUS = 10;
+const ZONE_OUTLINE_WIDTH = 6;
+const ZONE_CAP_START_SCALE = 0.55;
+const ZONE_CAP_END_SCALE = 0.75;
 const ZONE_DOT_FILL = '#e7d5bf';
 const ZONE_DOT_STROKE = '#f4eadb';
 const ZONE_DOT_TEXT = '#2a2118';
@@ -203,36 +203,81 @@ export class InquiryGlyph {
         const flowOuterRadius = FLOW_RADIUS + (FLOW_STROKE / 2);
         const innerR = flowOuterRadius + ZONE_RING_OFFSET;
         const outerR = innerR + ZONE_RING_THICKNESS;
-        const midR = (innerR + outerR) / 2;
+        const midR = innerR + (ZONE_RING_THICKNESS / 2);
         const gapAngle = ZONE_RING_GAP_PX / midR;
         const segmentSpan = (2 * Math.PI) / ZONE_SEGMENT_COUNT;
         const segmentHalfSpan = (segmentSpan - gapAngle) / 2;
+        const capStartRadius = ZONE_RING_THICKNESS * ZONE_CAP_START_SCALE;
+        const capEndRadius = ZONE_RING_THICKNESS * ZONE_CAP_END_SCALE;
 
         const segments = [
-            { id: 'setup', label: '1', centerAngle: ZONE_BASE_ANGLE + segmentSpan },
-            { id: 'pressure', label: '2', centerAngle: ZONE_BASE_ANGLE + (segmentSpan * 2) },
-            { id: 'payoff', label: '3', centerAngle: ZONE_BASE_ANGLE }
+            { id: 'setup', label: '1', centerAngle: ZONE_BASE_ANGLE - (segmentSpan * 2) },
+            { id: 'pressure', label: '2', centerAngle: ZONE_BASE_ANGLE },
+            { id: 'payoff', label: '3', centerAngle: ZONE_BASE_ANGLE - segmentSpan }
         ];
 
         segments.forEach(segment => {
             const startAngle = segment.centerAngle - segmentHalfSpan;
             const endAngle = segment.centerAngle + segmentHalfSpan;
-            const path = document.createElementNS(SVG_NS, 'path');
-            path.classList.add('inq-zone-segment', `inq-zone-segment--${segment.id}`);
-            path.setAttribute('d', this.buildZoneSegmentPath(
-                innerR,
-                outerR,
-                startAngle,
-                endAngle,
-                ZONE_INNER_CORNER_RADIUS,
-                ZONE_OUTER_CORNER_RADIUS
-            ));
-            path.setAttribute('fill', ZONE_SEGMENT_FILL);
-            path.setAttribute('stroke', ZONE_SEGMENT_STROKE);
-            path.setAttribute('stroke-width', String(ZONE_SEGMENT_STROKE_WIDTH));
-            path.setAttribute('stroke-linejoin', 'round');
-            path.setAttribute('pointer-events', 'none');
-            group.appendChild(path);
+            const startPoint = this.polarToCartesianRad(midR, startAngle);
+            const endPoint = this.polarToCartesianRad(midR, endAngle);
+            const arcPath = this.buildArcPath(midR, startAngle, endAngle);
+
+            const outlineArc = document.createElementNS(SVG_NS, 'path');
+            outlineArc.classList.add('inq-zone-segment-outline', `inq-zone-segment-outline--${segment.id}`);
+            outlineArc.setAttribute('d', arcPath);
+            outlineArc.setAttribute('fill', 'none');
+            outlineArc.setAttribute('stroke', ZONE_SEGMENT_STROKE);
+            outlineArc.setAttribute('stroke-width', String(ZONE_RING_THICKNESS + (ZONE_OUTLINE_WIDTH * 2)));
+            outlineArc.setAttribute('stroke-linecap', 'round');
+            outlineArc.setAttribute('pointer-events', 'none');
+            group.appendChild(outlineArc);
+
+            const outlineStart = document.createElementNS(SVG_NS, 'circle');
+            outlineStart.classList.add('inq-zone-cap-outline', `inq-zone-cap-outline--${segment.id}`);
+            outlineStart.setAttribute('cx', startPoint.x);
+            outlineStart.setAttribute('cy', startPoint.y);
+            outlineStart.setAttribute('r', String(capStartRadius + ZONE_OUTLINE_WIDTH));
+            outlineStart.setAttribute('fill', ZONE_SEGMENT_STROKE);
+            outlineStart.setAttribute('pointer-events', 'none');
+            group.appendChild(outlineStart);
+
+            const outlineEnd = document.createElementNS(SVG_NS, 'circle');
+            outlineEnd.classList.add('inq-zone-cap-outline', `inq-zone-cap-outline--${segment.id}`);
+            outlineEnd.setAttribute('cx', endPoint.x);
+            outlineEnd.setAttribute('cy', endPoint.y);
+            outlineEnd.setAttribute('r', String(capEndRadius + ZONE_OUTLINE_WIDTH));
+            outlineEnd.setAttribute('fill', ZONE_SEGMENT_STROKE);
+            outlineEnd.setAttribute('pointer-events', 'none');
+            group.appendChild(outlineEnd);
+
+            const fillArc = document.createElementNS(SVG_NS, 'path');
+            fillArc.classList.add('inq-zone-segment', `inq-zone-segment--${segment.id}`);
+            fillArc.setAttribute('d', arcPath);
+            fillArc.setAttribute('fill', 'none');
+            fillArc.setAttribute('stroke', ZONE_SEGMENT_FILL);
+            fillArc.setAttribute('stroke-width', String(ZONE_RING_THICKNESS));
+            fillArc.setAttribute('stroke-linecap', 'round');
+            fillArc.setAttribute('pointer-events', 'none');
+            group.appendChild(fillArc);
+
+            const fillStart = document.createElementNS(SVG_NS, 'circle');
+            fillStart.classList.add('inq-zone-cap', `inq-zone-cap--${segment.id}`);
+            fillStart.setAttribute('cx', startPoint.x);
+            fillStart.setAttribute('cy', startPoint.y);
+            fillStart.setAttribute('r', String(capStartRadius));
+            fillStart.setAttribute('fill', ZONE_SEGMENT_FILL);
+            fillStart.setAttribute('pointer-events', 'none');
+            group.appendChild(fillStart);
+
+            const fillEnd = document.createElementNS(SVG_NS, 'circle');
+            fillEnd.classList.add('inq-zone-cap', `inq-zone-cap--${segment.id}`);
+            fillEnd.setAttribute('cx', endPoint.x);
+            fillEnd.setAttribute('cy', endPoint.y);
+            fillEnd.setAttribute('r', String(capEndRadius));
+            fillEnd.setAttribute('fill', ZONE_SEGMENT_FILL);
+            fillEnd.setAttribute('pointer-events', 'none');
+            group.appendChild(fillEnd);
 
             const dotPos = this.polarToCartesianRad(midR, segment.centerAngle);
             const dotGroup = document.createElementNS(SVG_NS, 'g');
@@ -280,59 +325,13 @@ export class InquiryGlyph {
         return group;
     }
 
-    private buildZoneSegmentPath(
-        innerR: number,
-        outerR: number,
-        startAngle: number,
-        endAngle: number,
-        innerCornerRadius: number,
-        outerCornerRadius: number
-    ): string {
-        const thickness = outerR - innerR;
-        const maxCorner = Math.max(0, thickness);
-        let outerCorner = Math.min(outerCornerRadius, maxCorner);
-        let innerCorner = Math.min(innerCornerRadius, maxCorner);
-        const totalCorner = outerCorner + innerCorner;
-        if (totalCorner > thickness) {
-            const scale = thickness / totalCorner;
-            outerCorner *= scale;
-            innerCorner *= scale;
-        }
-
-        const outerTrim = outerCorner / outerR;
-        const innerTrim = innerCorner / innerR;
-        const startOuterAngle = startAngle + outerTrim;
-        const endOuterAngle = endAngle - outerTrim;
-        const startInnerAngle = startAngle + innerTrim;
-        const endInnerAngle = endAngle - innerTrim;
+    private buildArcPath(radius: number, startAngle: number, endAngle: number): string {
         let sweepAngle = endAngle - startAngle;
         if (sweepAngle < 0) sweepAngle += Math.PI * 2;
-        const outerSweep = Math.max(0, sweepAngle - (outerTrim * 2));
-        const innerSweep = Math.max(0, sweepAngle - (innerTrim * 2));
-        const outerLargeArc = outerSweep > Math.PI ? 1 : 0;
-        const innerLargeArc = innerSweep > Math.PI ? 1 : 0;
-
-        const startOuter = this.polarToCartesianRad(outerR, startOuterAngle);
-        const endOuter = this.polarToCartesianRad(outerR, endOuterAngle);
-        const endOuterCorner = this.polarToCartesianRad(outerR + outerCorner, endAngle);
-        const endInnerCorner = this.polarToCartesianRad(innerR - innerCorner, endAngle);
-        const endInner = this.polarToCartesianRad(innerR, endInnerAngle);
-        const startInner = this.polarToCartesianRad(innerR, startInnerAngle);
-        const startInnerCorner = this.polarToCartesianRad(innerR - innerCorner, startAngle);
-        const startOuterCorner = this.polarToCartesianRad(outerR + outerCorner, startAngle);
-
-        return [
-            `M ${startOuter.x} ${startOuter.y}`,
-            `A ${outerR.toFixed(2)} ${outerR.toFixed(2)} 0 ${outerLargeArc} 1 ${endOuter.x} ${endOuter.y}`,
-            `A ${outerCorner.toFixed(2)} ${outerCorner.toFixed(2)} 0 0 1 ${endOuterCorner.x} ${endOuterCorner.y}`,
-            `L ${endInnerCorner.x} ${endInnerCorner.y}`,
-            `A ${innerCorner.toFixed(2)} ${innerCorner.toFixed(2)} 0 0 0 ${endInner.x} ${endInner.y}`,
-            `A ${innerR.toFixed(2)} ${innerR.toFixed(2)} 0 ${innerLargeArc} 0 ${startInner.x} ${startInner.y}`,
-            `A ${innerCorner.toFixed(2)} ${innerCorner.toFixed(2)} 0 0 0 ${startInnerCorner.x} ${startInnerCorner.y}`,
-            `L ${startOuterCorner.x} ${startOuterCorner.y}`,
-            `A ${outerCorner.toFixed(2)} ${outerCorner.toFixed(2)} 0 0 1 ${startOuter.x} ${startOuter.y}`,
-            'Z'
-        ].join(' ');
+        const largeArc = sweepAngle > Math.PI ? 1 : 0;
+        const start = this.polarToCartesianRad(radius, startAngle);
+        const end = this.polarToCartesianRad(radius, endAngle);
+        return `M ${start.x} ${start.y} A ${radius.toFixed(2)} ${radius.toFixed(2)} 0 ${largeArc} 1 ${end.x} ${end.y}`;
     }
 
     private polarToCartesianRad(radius: number, radians: number): { x: string; y: string } {

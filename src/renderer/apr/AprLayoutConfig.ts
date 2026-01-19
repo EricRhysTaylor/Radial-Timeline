@@ -97,7 +97,7 @@ export const APR_LAYOUT = {
         centerNumberFontSize2Digit: 28,  // Font size for double-digit numbers (e.g., "42")
         centerNumberFontSize3Digit: 22,  // Font size for triple-digit numbers (e.g., "100")
         centerNumberYOffset: 3.2,          // Y offset for the center number (positive = down)
-        centerNumberXOffset: 0,            // X offset for the center number
+        centerNumberXOffset: -1.3,            // X offset for the center number
         centerNumberLetterSpacing: '-0.05em', // Letter spacing for multi-digit numbers
         centerNumberOpacity: 1,  // Center number visibility: 0.0 = invisible, 1.0 = fully opaque
         percentSymbolYOffset: 4,   // Y offset for % symbol
@@ -146,7 +146,7 @@ export const APR_LAYOUT = {
         centerNumberFontSize2Digit: 80,  // Font size for double-digit numbers (e.g., "42")
         centerNumberFontSize3Digit: 58,  // Font size for triple-digit numbers (e.g., "100")
         centerNumberYOffset: 8,          // Y offset for the center number (positive = down)
-        centerNumberXOffset: 0,          // X offset for the center number
+        centerNumberXOffset: -4,          // X offset for the center number
         centerNumberOpacity: 0.95,   // Center number visibility: 0.0 = invisible, 1.0 = fully opaque
         centerNumberLetterSpacing: '-0.05em', // Letter spacing for multi-digit numbers
         percentSymbolYOffset: 9.5,    // Y offset for % symbol
@@ -195,7 +195,7 @@ export const APR_LAYOUT = {
         centerNumberFontSize2Digit: 115,  // Font size for double-digit numbers (e.g., "42")
         centerNumberFontSize3Digit: 92,  // Font size for triple-digit numbers (e.g., "100")
         centerNumberYOffset: 11,         // Y offset for the center number (positive = down)
-        centerNumberXOffset: 0,          // X offset for the center number
+        centerNumberXOffset: -8,          // X offset for the center number
         centerNumberOpacity: 0.95,   // Center number visibility: 0.0 = invisible, 1.0 = fully opaque
         centerNumberLetterSpacing: '-0.05em', // Letter spacing for multi-digit numbers (0 = natural spacing)
         percentSymbolYOffset: 15,   // Y offset for % symbol
