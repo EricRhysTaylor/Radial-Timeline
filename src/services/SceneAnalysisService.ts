@@ -14,6 +14,23 @@ export class SceneAnalysisService {
     registerCommands(): void {
         this.registerManuscriptCommand();
         this.registerSubplotCommand();
+        this.registerSynopsisCommand();
+    }
+
+    private registerSynopsisCommand(): void {
+        this.plugin.addCommand({
+            id: 'refresh-scene-synopses-ai',
+            name: 'Refresh Scene Synopses (AI)',
+            checkCallback: (checking) => {
+                if (!this.plugin.settings.enableAiSceneAnalysis) return false;
+                if (checking) return true;
+                (async () => {
+                    if (!this.ensureApiKey()) return;
+                    await this.processSynopsisAnalysis();
+                })();
+                return true;
+            }
+        });
     }
 
     private registerManuscriptCommand(): void {
@@ -160,6 +177,11 @@ export class SceneAnalysisService {
     async processEntireSubplot(subplotName: string): Promise<void> {
         const { processEntireSubplotWithModal } = await import('../SceneAnalysisCommands');
         await processEntireSubplotWithModal(this.plugin, this.plugin.app.vault, subplotName);
+    }
+
+    async processSynopsisAnalysis(): Promise<void> {
+        const { processSynopsisByManuscriptOrder } = await import('../sceneAnalysis/SynopsisCommands');
+        await processSynopsisByManuscriptOrder(this.plugin, this.plugin.app.vault);
     }
 
     async purgeBeatsForSubplot(subplotName: string): Promise<void> {

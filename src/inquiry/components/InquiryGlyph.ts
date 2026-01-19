@@ -175,15 +175,19 @@ export class InquiryGlyph {
     private buildBadgeGroup(badgeRadius: number): SVGGElement {
         const group = document.createElementNS(SVG_NS, 'g');
         group.classList.add('ert-inquiry-ring-badge');
+        group.setAttribute('stroke', 'none');
 
         const circle = document.createElementNS(SVG_NS, 'circle');
         circle.classList.add('ert-inquiry-ring-badge-circle');
         circle.setAttribute('r', String(badgeRadius));
+        circle.setAttribute('stroke', 'none');
+        circle.setAttribute('stroke-width', '0');
 
         const text = document.createElementNS(SVG_NS, 'text');
         text.classList.add('ert-inquiry-ring-badge-text');
         text.setAttribute('text-anchor', 'middle');
-        text.setAttribute('dominant-baseline', 'central');
+        text.setAttribute('dominant-baseline', 'middle');
+        text.setAttribute('alignment-baseline', 'middle');
 
         group.appendChild(circle);
         group.appendChild(text);

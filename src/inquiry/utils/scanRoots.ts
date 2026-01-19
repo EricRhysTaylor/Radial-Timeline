@@ -20,7 +20,8 @@ export const normalizeScanRootPattern = (raw: string): string => {
 };
 
 export const normalizeScanRootPatterns = (roots?: string[]): string[] => {
-    const list = (roots && roots.length ? roots : ['/']).map(normalizeScanRootPattern);
+    if (!roots || !roots.length) return [];
+    const list = roots.map(normalizeScanRootPattern).filter(Boolean);
     return Array.from(new Set(list));
 };
 
@@ -29,7 +30,7 @@ export const parseScanRootInput = (raw: string): string[] => {
         .split(/[\n,]/)
         .map(entry => entry.trim())
         .filter(Boolean);
-    if (!lines.length) return ['/'];
+    if (!lines.length) return [];
     return normalizeScanRootPatterns(lines);
 };
 
@@ -51,6 +52,9 @@ export const resolveScanRoots = (
     maxRoots = MAX_RESOLVED_SCAN_ROOTS
 ): ResolvedScanRoots => {
     const normalized = normalizeScanRootPatterns(patterns);
+    if (!normalized.length) {
+        return { resolvedRoots: [], totalMatches: 0 };
+    }
     const folders = vault.getAllLoadedFiles().filter((file): file is TFolder => file instanceof TFolder);
     const folderPaths = folders.map(folder => folder.path);
     const resolved = new Set<string>();

@@ -169,6 +169,33 @@
   dominant-baseline: middle;
 }
 
+.ert-inquiry-engine-badge {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.ert-inquiry-engine-badge-bg {
+  fill: var(--background-secondary);
+  stroke: var(--background-modifier-border);
+  stroke-width: 1;
+}
+
+.ert-inquiry-engine-badge-text {
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--text-muted);
+}
+
+.ert-inquiry-engine-badge:hover .ert-inquiry-engine-badge-bg,
+.ert-inquiry-engine-badge:focus-visible .ert-inquiry-engine-badge-bg {
+  stroke: var(--interactive-accent);
+}
+
+.ert-inquiry-engine-badge:hover .ert-inquiry-engine-badge-text,
+.ert-inquiry-engine-badge:focus-visible .ert-inquiry-engine-badge-text {
+  fill: var(--text-normal);
+}
+
 .ert-inquiry-sigma-fallback text {
   font-family: 'Inter', var(--font-ui), sans-serif;
   font-size: 16px;
@@ -184,6 +211,12 @@
 
 .ert-inquiry-minimap-ticks {
   pointer-events: auto;
+}
+
+.ert-inquiry-minimap-empty {
+  font-size: 12px;
+  fill: var(--text-muted);
+  pointer-events: none;
 }
 
 .ert-inquiry-minimap-tick {

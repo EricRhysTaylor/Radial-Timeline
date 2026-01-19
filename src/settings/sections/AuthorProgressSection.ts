@@ -194,15 +194,15 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Helper to swap emphasis and enable/disable background controls
     const updateEmphasis = (isTransparent: boolean) => {
+        // Always apply recommended styling to prevent layout shift
+        transparencySetting.settingEl.classList.add(ERT_CLASSES.ROW_RECOMMENDED);
+        bgSetting.settingEl.classList.add(ERT_CLASSES.ROW_RECOMMENDED);
+
         if (isTransparent) {
-            transparencySetting.settingEl.classList.add(ERT_CLASSES.ROW_RECOMMENDED);
-            bgSetting.settingEl.classList.remove(ERT_CLASSES.ROW_RECOMMENDED);
             bgSetting.settingEl.classList.add('is-inactive');
             if (bgColorPicker) bgColorPicker.setDisabled(true);
             if (bgTextInput) bgTextInput.setDisabled(true);
         } else {
-            transparencySetting.settingEl.classList.remove(ERT_CLASSES.ROW_RECOMMENDED);
-            bgSetting.settingEl.classList.add(ERT_CLASSES.ROW_RECOMMENDED);
             bgSetting.settingEl.classList.remove('is-inactive');
             if (bgColorPicker) bgColorPicker.setDisabled(false);
             if (bgTextInput) bgTextInput.setDisabled(false);
@@ -337,7 +337,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         .setName('Link URL')
         .setDesc('Where the graphic should link to (e.g. your website, Kickstarter, or shop).');
 
-    linkUrlSetting.settingEl.addClass('ert-row');
+    linkUrlSetting.settingEl.addClass(ERT_CLASSES.ROW);
+    linkUrlSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
 
     linkUrlSetting.addText(text => {
         text.inputEl.addClass('rt-input-full');

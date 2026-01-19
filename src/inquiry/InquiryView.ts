@@ -26,6 +26,8 @@ import type { CorpusManifest, EvidenceParticipationRules } from './runner/types'
 import { InquirySessionStore } from './InquirySessionStore';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import type { InquirySourcesSettings } from '../types/settings';
+import { InquiryCorpusResolver, InquiryCorpusSnapshot, InquiryCorpusItem } from './services/InquiryCorpusResolver';
+import { getModelDisplayName } from '../utils/modelResolver';
 import {
     MAX_RESOLVED_SCAN_ROOTS,
     normalizeScanRootPatterns,
@@ -33,8 +35,6 @@ import {
     toVaultRoot
 } from './utils/scanRoots';
 
-const DEFAULT_BOOK_COUNT = 5;
-const DEFAULT_SCENE_COUNT = 12;
 const GLYPH_TARGET_PX = 190;
 const GLYPH_PLACEHOLDER_FLOW = 0.75;
 const GLYPH_PLACEHOLDER_DEPTH = 0.30;
@@ -93,11 +93,16 @@ export class InquiryView extends ItemView {
     private modeToggleButton?: SVGGElement;
     private modeToggleIcon?: SVGUseElement;
     private artifactButton?: SVGGElement;
+    private engineBadgeGroup?: SVGGElement;
+    private engineBadgeBg?: SVGRectElement;
+    private engineBadgeText?: SVGTextElement;
+    private engineBadgeTitle?: SVGTitleElement;
     private contextBadgeIcon?: SVGUseElement;
     private contextBadgeSigmaText?: SVGTextElement;
     private contextBadgeLabel?: SVGTextElement;
     private minimapTicksEl?: SVGGElement;
     private minimapBaseline?: SVGLineElement;
+    private minimapEmptyText?: SVGTextElement;
     private minimapTicks: SVGRectElement[] = [];
     private minimapLayout?: { startX: number; length: number };
     private glyphAnchor?: SVGGElement;
@@ -123,6 +128,9 @@ export class InquiryView extends ItemView {
     private navNextIcon?: SVGUseElement;
     private iconSymbols = new Set<string>();
     private lastFocusSceneByBookId = new Map<string, string>();
+    private corpusResolver: InquiryCorpusResolver;
+    private corpus?: InquiryCorpusSnapshot;
+    private focusPersistTimer?: number;
     private runner: InquiryRunnerStub;
     private sessionStore: InquirySessionStore;
 
@@ -131,6 +139,7 @@ export class InquiryView extends ItemView {
         this.plugin = plugin;
         this.runner = new InquiryRunnerStub();
         this.sessionStore = new InquirySessionStore(plugin);
+        this.corpusResolver = new InquiryCorpusResolver(this.app.vault, this.app.metadataCache, this.plugin.settings.frontmatterMappings);
     }
 
     getViewType(): string {
@@ -151,11 +160,16 @@ export class InquiryView extends ItemView {
             this.renderMobileGate();
             return;
         }
+        this.loadFocusCache();
         this.renderDesktopLayout();
         this.refreshUI();
     }
 
     async onClose(): Promise<void> {
+        if (this.focusPersistTimer) {
+            window.clearTimeout(this.focusPersistTimer);
+            this.focusPersistTimer = undefined;
+        }
         this.contentEl.empty();
     }
 
@@ -233,6 +247,24 @@ export class InquiryView extends ItemView {
         this.artifactButton = this.createIconButton(hudGroup, artifactX, 0, iconSize, 'aperture', 'Save artifact');
         this.registerDomEvent(this.artifactButton as unknown as HTMLElement, 'click', () => { void this.saveArtifact(); });
 
+        const engineBadgeX = (iconSize * 2) + (iconGap * 2);
+        this.engineBadgeGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-engine-badge', engineBadgeX, 12);
+        this.engineBadgeGroup.setAttribute('role', 'button');
+        this.engineBadgeGroup.setAttribute('tabindex', '0');
+        this.engineBadgeGroup.setAttribute('aria-label', 'Inquiry engine (change in Settings → AI)');
+        this.engineBadgeBg = this.createSvgElement('rect');
+        this.engineBadgeBg.classList.add('ert-inquiry-engine-badge-bg');
+        this.engineBadgeBg.setAttribute('rx', '14');
+        this.engineBadgeBg.setAttribute('ry', '14');
+        this.engineBadgeGroup.appendChild(this.engineBadgeBg);
+        this.engineBadgeText = this.createSvgText(this.engineBadgeGroup, 'ert-inquiry-engine-badge-text', 'AI', 14, 14);
+        this.engineBadgeText.setAttribute('text-anchor', 'start');
+        this.engineBadgeText.setAttribute('dominant-baseline', 'middle');
+        this.engineBadgeTitle = this.createSvgElement('title');
+        this.engineBadgeTitle.textContent = 'Inquiry engine (change in Settings → AI)';
+        this.engineBadgeGroup.appendChild(this.engineBadgeTitle);
+        this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'click', () => this.openAiSettings());
+
         const minimapGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-minimap', 0, 120);
         const badgeWidth = 160;
         const badgeHeight = 34;
@@ -258,6 +290,8 @@ export class InquiryView extends ItemView {
         minimapGroup.appendChild(this.minimapBaseline);
 
         this.minimapTicksEl = this.createSvgGroup(minimapGroup, 'ert-inquiry-minimap-ticks', baselineStartX, 0);
+        this.minimapEmptyText = this.createSvgText(minimapGroup, 'ert-inquiry-minimap-empty ert-hidden', '', baselineStartX, 26);
+        this.minimapEmptyText.setAttribute('text-anchor', 'start');
 
         this.renderZonePods(canvasGroup);
 
@@ -339,6 +373,38 @@ export class InquiryView extends ItemView {
         while (el.firstChild) {
             el.removeChild(el.firstChild);
         }
+    }
+
+    private loadFocusCache(): void {
+        const cache = this.plugin.settings.inquiryFocusCache;
+        if (cache?.lastFocusSceneByBookId) {
+            this.lastFocusSceneByBookId = new Map(Object.entries(cache.lastFocusSceneByBookId));
+        }
+        if (cache?.lastFocusBookId) {
+            this.state.focusBookId = cache.lastFocusBookId;
+            const sceneId = this.lastFocusSceneByBookId.get(cache.lastFocusBookId);
+            if (sceneId) {
+                this.state.focusSceneId = sceneId;
+            }
+        }
+        if (this.focusPersistTimer) {
+            window.clearTimeout(this.focusPersistTimer);
+            this.focusPersistTimer = undefined;
+        }
+    }
+
+    private scheduleFocusPersist(): void {
+        if (this.focusPersistTimer) {
+            window.clearTimeout(this.focusPersistTimer);
+        }
+        this.focusPersistTimer = window.setTimeout(() => {
+            const cache = {
+                lastFocusBookId: this.state.focusBookId,
+                lastFocusSceneByBookId: Object.fromEntries(this.lastFocusSceneByBookId)
+            };
+            this.plugin.settings.inquiryFocusCache = cache;
+            void this.plugin.saveSettings();
+        }, 300);
     }
 
     private buildIconSymbols(defs: SVGDefsElement): void {
@@ -575,16 +641,65 @@ export class InquiryView extends ItemView {
     }
 
     private refreshUI(): void {
+        this.refreshCorpus();
         this.updateScopeToggle();
         this.updateModeToggle();
         this.updateModeClass();
         this.updateContextBadge();
+        this.updateEngineBadge();
         this.renderMinimapTicks();
         this.updateFocusGlyph();
         this.updateRings();
         this.updateFindingsIndicators();
         this.updateFooterStatus();
         this.updateNavigationIcons();
+    }
+
+    private refreshCorpus(): void {
+        this.corpusResolver = new InquiryCorpusResolver(this.app.vault, this.app.metadataCache, this.plugin.settings.frontmatterMappings);
+        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        this.corpus = this.corpusResolver.resolve({
+            scope: this.state.scope,
+            focusBookId: this.state.focusBookId,
+            sources
+        });
+
+        let shouldPersist = false;
+        if (this.corpus.activeBookId) {
+            if (this.state.focusBookId !== this.corpus.activeBookId) {
+                this.state.focusBookId = this.corpus.activeBookId;
+                shouldPersist = true;
+            }
+        } else {
+            if (this.state.focusBookId) {
+                this.state.focusBookId = undefined;
+                shouldPersist = true;
+            }
+        }
+
+        if (this.state.scope === 'book') {
+            const sceneId = this.pickFocusScene(this.corpus.activeBookId, this.corpus.scenes);
+            if (sceneId) {
+                if (this.state.focusSceneId !== sceneId) {
+                    this.state.focusSceneId = sceneId;
+                    shouldPersist = true;
+                }
+                if (this.corpus.activeBookId) {
+                    const prior = this.lastFocusSceneByBookId.get(this.corpus.activeBookId);
+                    if (prior !== sceneId) {
+                        this.lastFocusSceneByBookId.set(this.corpus.activeBookId, sceneId);
+                        shouldPersist = true;
+                    }
+                }
+            } else if (this.state.focusSceneId) {
+                this.state.focusSceneId = undefined;
+                shouldPersist = true;
+            }
+        }
+
+        if (shouldPersist) {
+            this.scheduleFocusPersist();
+        }
     }
 
     private updateModeClass(): void {
@@ -637,6 +752,81 @@ export class InquiryView extends ItemView {
         this.contextBadgeLabel.textContent = isSaga ? 'Saga context' : 'Book context';
     }
 
+    private updateEngineBadge(): void {
+        if (!this.engineBadgeGroup || !this.engineBadgeBg || !this.engineBadgeText) return;
+        const modelLabel = this.getActiveInquiryModelLabel();
+        this.engineBadgeText.textContent = modelLabel;
+        if (this.engineBadgeTitle) {
+            this.engineBadgeTitle.textContent = 'Inquiry engine (change in Settings → AI)';
+        }
+        requestAnimationFrame(() => {
+            if (!this.engineBadgeBg || !this.engineBadgeText) return;
+            const textLength = this.engineBadgeText.getComputedTextLength();
+            const padding = 28;
+            const minWidth = 120;
+            const maxWidth = 280;
+            const width = Math.min(maxWidth, Math.max(minWidth, textLength + padding));
+            this.engineBadgeBg.setAttribute('width', width.toFixed(2));
+            this.engineBadgeBg.setAttribute('height', '28');
+        });
+    }
+
+    private getActiveInquiryModelId(): string {
+        const provider = this.plugin.settings.defaultAiProvider || 'openai';
+        const clean = (value: string) => value.replace(/^models\//, '').trim();
+        if (provider === 'anthropic') {
+            return clean(this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929');
+        }
+        if (provider === 'gemini') {
+            return clean(this.plugin.settings.geminiModelId || 'gemini-pro-latest');
+        }
+        if (provider === 'local') {
+            return clean(this.plugin.settings.localModelId || 'local-model');
+        }
+        return clean(this.plugin.settings.openaiModelId || 'gpt-5.2-chat-latest');
+    }
+
+    private getActiveInquiryModelLabel(): string {
+        const modelId = this.getActiveInquiryModelId();
+        return modelId ? getModelDisplayName(modelId.replace(/^models\//, '')) : 'Unknown model';
+    }
+
+    private openAiSettings(): void {
+        if (this.plugin.settingsTab) {
+            this.plugin.settingsTab.setActiveTab('core');
+        }
+        // SAFE: any type used for accessing Obsidian's internal settings API
+        const setting = (this.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting;
+        if (setting) {
+            setting.open();
+            setting.openTabById('radial-timeline');
+        }
+    }
+
+    private getCurrentItems(): InquiryCorpusItem[] {
+        if (!this.corpus) return [];
+        return this.state.scope === 'saga' ? this.corpus.books : this.corpus.scenes;
+    }
+
+    private getFocusItem(): InquiryCorpusItem | undefined {
+        const items = this.getCurrentItems();
+        const focusId = this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusSceneId;
+        if (focusId) {
+            const match = items.find(item => item.id === focusId);
+            if (match) return match;
+        }
+        return items[0];
+    }
+
+    private pickFocusScene(bookId: string | undefined, scenes: InquiryCorpusItem[]): string | undefined {
+        if (!bookId || !scenes.length) return undefined;
+        const prior = this.lastFocusSceneByBookId.get(bookId);
+        if (prior && scenes.some(scene => scene.id === prior)) {
+            return prior;
+        }
+        return scenes[0]?.id;
+    }
+
     private logInquirySvgDebug(): void {
         const svg = this.rootSvg;
         const viewBox = svg?.getAttribute('viewBox');
@@ -651,11 +841,12 @@ export class InquiryView extends ItemView {
     }
 
     private renderMinimapTicks(): void {
-        if (!this.minimapTicksEl || !this.minimapLayout || !this.minimapBaseline) return;
+        if (!this.minimapTicksEl || !this.minimapLayout || !this.minimapBaseline || !this.minimapEmptyText) return;
         this.clearSvgChildren(this.minimapTicksEl);
         this.minimapTicks = [];
 
-        const count = this.state.scope === 'saga' ? DEFAULT_BOOK_COUNT : DEFAULT_SCENE_COUNT;
+        const items = this.getCurrentItems();
+        const count = items.length;
         const length = this.minimapLayout.length;
         const isVertical = this.state.mode === 'depth';
         const tickLength = 20;
@@ -669,6 +860,9 @@ export class InquiryView extends ItemView {
             this.minimapBaseline.setAttribute('x2', String(baselineX));
             this.minimapBaseline.setAttribute('y2', String(length));
             this.minimapTicksEl.setAttribute('transform', `translate(${baselineX} 0)`);
+            this.minimapEmptyText.setAttribute('x', String(baselineX + 16));
+            this.minimapEmptyText.setAttribute('y', '8');
+            this.minimapEmptyText.setAttribute('text-anchor', 'start');
         } else {
             const baselineStart = this.minimapLayout.startX;
             const baselineEnd = this.minimapLayout.startX + length;
@@ -677,12 +871,26 @@ export class InquiryView extends ItemView {
             this.minimapBaseline.setAttribute('x2', String(baselineEnd));
             this.minimapBaseline.setAttribute('y2', '0');
             this.minimapTicksEl.setAttribute('transform', `translate(${baselineStart} 0)`);
+            this.minimapEmptyText.setAttribute('x', String(baselineStart));
+            this.minimapEmptyText.setAttribute('y', '24');
+            this.minimapEmptyText.setAttribute('text-anchor', 'start');
         }
 
-        for (let i = 1; i <= count; i += 1) {
+        if (!count) {
+            const emptyLabel = this.state.scope === 'saga' ? 'No books found.' : 'No scenes found.';
+            this.minimapEmptyText.textContent = emptyLabel;
+            this.minimapEmptyText.classList.remove('ert-hidden');
+            this.updateMinimapFocus();
+            return;
+        }
+
+        this.minimapEmptyText.classList.add('ert-hidden');
+
+        for (let i = 0; i < count; i += 1) {
+            const item = items[i];
             const tick = this.createSvgElement('rect');
             tick.classList.add('ert-inquiry-minimap-tick');
-            const pos = step * (i - 1);
+            const pos = step * i;
             if (isVertical) {
                 tick.setAttribute('x', String(-tickThickness / 2));
                 tick.setAttribute('y', String(pos - (tickLength / 2)));
@@ -698,10 +906,12 @@ export class InquiryView extends ItemView {
                 tick.setAttribute('rx', '3');
                 tick.setAttribute('ry', '3');
             }
-            const label = this.state.scope === 'saga' ? `B${i}` : `S${i}`;
-            tick.setAttribute('data-index', String(i));
+            const label = item.displayLabel;
+            tick.setAttribute('data-index', String(i + 1));
+            tick.setAttribute('data-id', item.id);
+            tick.setAttribute('data-label', label);
             tick.setAttribute('aria-label', `Focus ${label}`);
-            this.registerDomEvent(tick as unknown as HTMLElement, 'click', () => this.setFocusByIndex(i));
+            this.registerDomEvent(tick as unknown as HTMLElement, 'click', () => this.setFocusByIndex(i + 1));
             this.registerDomEvent(tick as unknown as HTMLElement, 'pointerenter', () => {
                 this.setHoverText(this.buildMinimapHoverText(label));
             });
@@ -714,9 +924,10 @@ export class InquiryView extends ItemView {
     }
 
     private updateMinimapFocus(): void {
-        const focusIndex = this.getFocusIndex();
+        const focusId = this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusSceneId;
         this.minimapTicks.forEach((tick, idx) => {
-            const isActive = idx + 1 === focusIndex;
+            const tickId = tick.getAttribute('data-id') || '';
+            const isActive = !!focusId && tickId === focusId;
             tick.classList.toggle('is-active', isActive);
         });
     }
@@ -753,11 +964,10 @@ export class InquiryView extends ItemView {
     private updateMinimapHitStates(result: InquiryResult | null | undefined): void {
         if (!this.minimapTicks.length) return;
         const hitMap = this.buildHitFindingMap(result);
-        const prefix = this.state.scope === 'saga' ? 'B' : 'S';
         const severityClasses = ['is-severity-low', 'is-severity-medium', 'is-severity-high'];
 
         this.minimapTicks.forEach((tick, idx) => {
-            const label = `${prefix}${idx + 1}`;
+            const label = tick.getAttribute('data-label') || `T${idx + 1}`;
             const finding = hitMap.get(label);
             tick.classList.toggle('is-hit', !!finding);
             severityClasses.forEach(cls => tick.classList.remove(cls));
@@ -798,14 +1008,8 @@ export class InquiryView extends ItemView {
 
     private handleScopeChange(scope: InquiryScope): void {
         if (!scope || scope === this.state.scope) return;
-        if (scope === 'saga') {
-            this.state.scope = 'saga';
-            if (!this.state.focusBookId) this.state.focusBookId = '1';
-        } else {
-            const bookId = this.state.focusBookId || '1';
-            this.state.scope = 'book';
-            this.state.focusSceneId = this.getFocusSceneForBook(bookId);
-        }
+        this.state.scope = scope;
+        this.state.activeResult = null;
         this.refreshUI();
     }
 
@@ -818,9 +1022,7 @@ export class InquiryView extends ItemView {
 
     private handleGlyphClick(): void {
         if (this.state.scope === 'saga') {
-            const bookId = this.state.focusBookId || '1';
             this.state.scope = 'book';
-            this.state.focusSceneId = this.getFocusSceneForBook(bookId);
             this.refreshUI();
             return;
         }
@@ -834,10 +1036,11 @@ export class InquiryView extends ItemView {
 
         const manifest = this.buildCorpusManifest(question.id);
         const focusLabel = this.getFocusLabel();
+        const focusId = this.getFocusId();
         const baseKey = this.sessionStore.buildBaseKey({
             questionId: question.id,
             scope: this.state.scope,
-            focusId: focusLabel,
+            focusId,
             mode: this.state.mode
         });
         const cacheEnabled = this.plugin.settings.inquiryCacheEnabled ?? true;
@@ -964,9 +1167,11 @@ export class InquiryView extends ItemView {
             (sources.classes || []).map(config => [config.className, config])
         );
         const scanRoots = normalizeScanRootPatterns(sources.scanRoots);
-        const resolvedRoots = (sources.resolvedScanRoots && sources.resolvedScanRoots.length)
-            ? sources.resolvedScanRoots
-            : resolveScanRoots(scanRoots, this.app.vault, MAX_RESOLVED_SCAN_ROOTS).resolvedRoots;
+        const resolvedRoots = scanRoots.length
+            ? ((sources.resolvedScanRoots && sources.resolvedScanRoots.length)
+                ? sources.resolvedScanRoots
+                : resolveScanRoots(scanRoots, this.app.vault, MAX_RESOLVED_SCAN_ROOTS).resolvedRoots)
+            : [];
         const resolvedVaultRoots = resolvedRoots.map(toVaultRoot);
         const files = this.app.vault.getMarkdownFiles();
 
@@ -1023,7 +1228,8 @@ export class InquiryView extends ItemView {
             .map(entry => `${entry.path}:${entry.mtime}`)
             .sort()
             .join('|');
-        const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${fingerprintSource}`;
+        const modelId = this.getActiveInquiryModelId();
+        const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${modelId}|${fingerprintSource}`;
         const fingerprint = this.hashString(fingerprintRaw);
 
         return {
@@ -1075,7 +1281,8 @@ export class InquiryView extends ItemView {
             .map(entry => `${entry.path}:${entry.mtime}`)
             .sort()
             .join('|');
-        const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${fingerprintSource}`;
+        const modelId = this.getActiveInquiryModelId();
+        const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${modelId}|${fingerprintSource}`;
         const fingerprint = this.hashString(fingerprintRaw);
 
         return {
@@ -1087,13 +1294,13 @@ export class InquiryView extends ItemView {
 
     private normalizeInquirySources(raw?: InquirySourcesSettings): InquirySourcesSettings {
         if (!raw) {
-            return { scanRoots: ['/'], classes: [], classCounts: {}, resolvedScanRoots: [] };
+            return { scanRoots: [], classes: [], classCounts: {}, resolvedScanRoots: [] };
         }
         if ('sceneFolders' in raw || 'bookOutlineFiles' in raw || 'sagaOutlineFile' in raw) {
-            return { scanRoots: ['/'], classes: [], classCounts: {}, resolvedScanRoots: [] };
+            return { scanRoots: [], classes: [], classCounts: {}, resolvedScanRoots: [] };
         }
         return {
-            scanRoots: normalizeScanRootPatterns(raw.scanRoots),
+            scanRoots: raw.scanRoots && raw.scanRoots.length ? normalizeScanRootPatterns(raw.scanRoots) : [],
             classes: (raw.classes || []).map(config => ({
                 className: config.className.toLowerCase(),
                 enabled: !!config.enabled,
@@ -1138,12 +1345,17 @@ export class InquiryView extends ItemView {
     }
 
     private setFocusByIndex(index: number): void {
+        const items = this.getCurrentItems();
+        const item = items[index - 1];
+        if (!item) return;
         if (this.state.scope === 'saga') {
-            this.state.focusBookId = String(index);
+            this.state.focusBookId = item.id;
+            this.scheduleFocusPersist();
         } else {
-            this.state.focusSceneId = String(index);
+            this.state.focusSceneId = item.id;
             if (this.state.focusBookId) {
-                this.lastFocusSceneByBookId.set(this.state.focusBookId, String(index));
+                this.lastFocusSceneByBookId.set(this.state.focusBookId, item.id);
+                this.scheduleFocusPersist();
             }
         }
         this.updateMinimapFocus();
@@ -1151,34 +1363,30 @@ export class InquiryView extends ItemView {
     }
 
     private shiftFocus(delta: number): void {
-        const count = this.state.scope === 'saga' ? DEFAULT_BOOK_COUNT : DEFAULT_SCENE_COUNT;
+        const count = this.getCurrentItems().length;
+        if (!count) return;
         const current = this.getFocusIndex();
         const next = Math.min(Math.max(current + delta, 1), count);
         this.setFocusByIndex(next);
     }
 
     private getFocusIndex(): number {
-        const raw = this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusSceneId;
-        const parsed = Number(raw || '1');
-        return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+        const items = this.getCurrentItems();
+        if (!items.length) return 1;
+        const focusId = this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusSceneId;
+        const index = items.findIndex(item => item.id === focusId);
+        return index >= 0 ? index + 1 : 1;
     }
 
     private getFocusLabel(): string {
-        const raw = this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusSceneId;
-        const prefix = this.state.scope === 'saga' ? 'B' : 'S';
-        return `${prefix}${this.formatFocusNumber(raw)}`;
+        const item = this.getFocusItem();
+        if (item) return item.displayLabel;
+        return this.state.scope === 'saga' ? 'B0' : 'S0';
     }
 
-    private formatFocusNumber(raw?: string): string {
-        const parsed = Number(raw || '1');
-        if (!Number.isFinite(parsed)) return '1';
-        const clamped = Math.min(Math.max(Math.floor(parsed), 1), 999);
-        return String(clamped);
-    }
-
-    private getFocusSceneForBook(bookId: string): string {
-        const prior = this.lastFocusSceneByBookId.get(bookId);
-        return prior || '1';
+    private getFocusId(): string {
+        const item = this.getFocusItem();
+        return item?.id || this.getFocusLabel();
     }
 
     private buildFocusHoverText(): string {
@@ -1223,6 +1431,10 @@ export class InquiryView extends ItemView {
     private buildHitFindingMap(result: InquiryResult | null | undefined): Map<string, InquiryFinding> {
         const map = new Map<string, InquiryFinding>();
         if (!result) return map;
+        const stubHits = this.buildStubHitFindings(this.getCurrentItems());
+        stubHits.forEach(finding => {
+            map.set(finding.refId, finding);
+        });
         result.findings.forEach(finding => {
             if (!this.isFindingHit(finding)) return;
             const existing = map.get(finding.refId);
@@ -1231,6 +1443,37 @@ export class InquiryView extends ItemView {
             }
         });
         return map;
+    }
+
+    private buildStubHitFindings(items: InquiryCorpusItem[]): InquiryFinding[] {
+        if (!items.length) return [];
+        const findings: InquiryFinding[] = [];
+        items.forEach(item => {
+            const seed = item.filePaths?.[0] || item.id;
+            const hash = this.hashStringToNumber(seed);
+            if (hash % 5 !== 0) return;
+            findings.push({
+                refId: item.displayLabel,
+                kind: 'continuity',
+                status: 'unclear',
+                severity: 'medium',
+                confidence: 'low',
+                headline: 'Stub hit detected.',
+                bullets: ['Deterministic placeholder until AI runner is wired.'],
+                related: [],
+                evidenceType: this.state.scope === 'book' ? 'scene' : 'mixed'
+            });
+        });
+        return findings;
+    }
+
+    private hashStringToNumber(value: string): number {
+        let hash = 0;
+        for (let i = 0; i < value.length; i += 1) {
+            hash = ((hash << 5) - hash) + value.charCodeAt(i);
+            hash |= 0;
+        }
+        return Math.abs(hash);
     }
 
     private isFindingHit(finding: InquiryFinding): boolean {

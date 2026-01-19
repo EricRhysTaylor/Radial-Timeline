@@ -230,6 +230,11 @@ export interface InquirySourcesSettings {
     lastScanAt?: string;
 }
 
+export interface InquiryFocusCache {
+    lastFocusBookId?: string;
+    lastFocusSceneByBookId?: Record<string, string>;
+}
+
 export interface InquirySessionCacheRecord {
     sessions: {
         key: string;
@@ -255,6 +260,7 @@ export interface RadialTimelineSettings {
     inquiryCacheMaxSessions?: number;
     inquirySources?: InquirySourcesSettings;
     inquirySessionCache?: InquirySessionCacheRecord;
+    inquiryFocusCache?: InquiryFocusCache;
     actCount?: number;
     actLabelsRaw?: string;
     showActLabels?: boolean;

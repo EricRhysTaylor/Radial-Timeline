@@ -3807,6 +3807,9 @@
   margin-top: 8px;
   font-size: 12px;
   color: var(--text-muted);
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 6px;
 }
 
 .rt-settings-root .ert-inquiry-resolved-item {
@@ -3817,6 +3820,7 @@
 .rt-settings-root .ert-inquiry-resolved-empty {
   color: var(--text-faint);
 }
+
 
 .rt-settings-root .ert-inquiry-class-table {
   margin-top: 12px;

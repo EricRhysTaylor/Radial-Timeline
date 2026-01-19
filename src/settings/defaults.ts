@@ -19,10 +19,14 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     inquiryCacheEnabled: true,
     inquiryCacheMaxSessions: 30,
     inquirySources: {
-        scanRoots: ['/'],
+        scanRoots: [],
         classes: [],
         classCounts: {},
         resolvedScanRoots: []
+    },
+    inquiryFocusCache: {
+        lastFocusBookId: undefined,
+        lastFocusSceneByBookId: {}
     },
     actCount: 3,
     actLabelsRaw: 'Act 1, Act 2, Act 3',
