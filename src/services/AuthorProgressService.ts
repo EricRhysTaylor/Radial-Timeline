@@ -77,7 +77,15 @@ export class AuthorProgressService {
      * (estimated completion tick) and settings progression preview.
      */
     public calculateProgress(scenes: TimelineItem[]): number {
-        return calculateAprProgress(scenes);
+        // Use TimelineMetricsService for consistency with Settings "Completion Estimate" (e.g. 8/49 -> 16%)
+        // This replaces the weighted stage calculation (AprConstants) which was causing discrepancies (0%)
+        const estimate = this.plugin.calculateCompletionEstimate(scenes);
+        if (!estimate || estimate.total === 0) return 0;
+
+        const completed = estimate.total - estimate.remaining;
+        // Clamp to 0-100 just in case
+        const percent = (completed / estimate.total) * 100;
+        return Math.min(100, Math.max(0, Math.round(percent)));
     }
 
     /**
@@ -314,7 +322,7 @@ export class AuthorProgressService {
             await this.plugin.saveSettings();
         }
 
-        new Notice(`Campaign "${campaign.name}" published!`);
+        new Notice(`Campaign "${campaign.name}" published!\nSize: ${result.meta.size} | Stage: ${result.meta.stage} | Progress: ${result.meta.percent.toFixed(1)}%`);
         return path;
     }
 
@@ -334,7 +342,7 @@ export class AuthorProgressService {
         return path;
     }
 
-    private async buildCampaignSvg(campaignId: string): Promise<{ svgString: string; campaign: AprCampaign } | null> {
+    private async buildCampaignSvg(campaignId: string): Promise<{ svgString: string; campaign: AprCampaign; meta: { size: string; stage: string; percent: number } } | null> {
         const settings = this.plugin.settings.authorProgress;
         if (!settings) return null;
 
@@ -430,7 +438,15 @@ export class AuthorProgressService {
             debugLabel: `Size: ${size} | Stage: ${debugStage} | ${progressPercent.toFixed(1)}%`
         });
 
-        return { svgString, campaign };
+        return {
+            svgString,
+            campaign,
+            meta: {
+                size,
+                stage: debugStage,
+                percent: progressPercent
+            }
+        };
     }
 
     /**

@@ -24,7 +24,7 @@ const ARC_BASE_TINT = '#dff5e7';
 const ARC_MAX_GREEN = '#22c55e';
 const DOT_DARKEN = 0.35;
 const ZONE_SEGMENT_COUNT = 3;
-const ZONE_RING_OFFSET = 22;
+const ZONE_RING_OFFSET = 40;
 const ZONE_RING_THICKNESS = 200;
 const ZONE_RING_GAP_PX = 30;
 const ZONE_DOT_RADIUS_PX = 13;
@@ -32,10 +32,12 @@ const ZONE_DOT_TEXT_PX = 12;
 const ZONE_SEGMENT_FILL = '#7b6448';
 const ZONE_SEGMENT_STROKE = '#d6c3ad';
 const ZONE_SEGMENT_STROKE_WIDTH = 1.4;
+const ZONE_OUTER_CORNER_RADIUS = 40;
+const ZONE_INNER_CORNER_RADIUS = 10;
 const ZONE_DOT_FILL = '#e7d5bf';
 const ZONE_DOT_STROKE = '#f4eadb';
 const ZONE_DOT_TEXT = '#2a2118';
-const PRESSURE_CENTER_ANGLE = Math.PI / 2;
+const ZONE_BASE_ANGLE = Math.PI / 2;
 const DEBUG_INQUIRY_ZONES = false;
 
 export const GLYPH_OUTER_DIAMETER = (FLOW_RADIUS * 2) + FLOW_STROKE;
@@ -207,9 +209,9 @@ export class InquiryGlyph {
         const segmentHalfSpan = (segmentSpan - gapAngle) / 2;
 
         const segments = [
-            { id: 'setup', label: '1', centerAngle: PRESSURE_CENTER_ANGLE + segmentSpan },
-            { id: 'pressure', label: '2', centerAngle: PRESSURE_CENTER_ANGLE },
-            { id: 'payoff', label: '3', centerAngle: PRESSURE_CENTER_ANGLE - segmentSpan }
+            { id: 'setup', label: '1', centerAngle: ZONE_BASE_ANGLE + segmentSpan },
+            { id: 'pressure', label: '2', centerAngle: ZONE_BASE_ANGLE + (segmentSpan * 2) },
+            { id: 'payoff', label: '3', centerAngle: ZONE_BASE_ANGLE }
         ];
 
         segments.forEach(segment => {
@@ -217,7 +219,14 @@ export class InquiryGlyph {
             const endAngle = segment.centerAngle + segmentHalfSpan;
             const path = document.createElementNS(SVG_NS, 'path');
             path.classList.add('inq-zone-segment', `inq-zone-segment--${segment.id}`);
-            path.setAttribute('d', this.buildZoneSegmentPath(innerR, outerR, startAngle, endAngle));
+            path.setAttribute('d', this.buildZoneSegmentPath(
+                innerR,
+                outerR,
+                startAngle,
+                endAngle,
+                ZONE_INNER_CORNER_RADIUS,
+                ZONE_OUTER_CORNER_RADIUS
+            ));
             path.setAttribute('fill', ZONE_SEGMENT_FILL);
             path.setAttribute('stroke', ZONE_SEGMENT_STROKE);
             path.setAttribute('stroke-width', String(ZONE_SEGMENT_STROKE_WIDTH));
@@ -271,22 +280,57 @@ export class InquiryGlyph {
         return group;
     }
 
-    private buildZoneSegmentPath(innerR: number, outerR: number, startAngle: number, endAngle: number): string {
-        const capR = (outerR - innerR) / 2;
-        const startOuter = this.polarToCartesianRad(outerR, startAngle);
-        const endOuter = this.polarToCartesianRad(outerR, endAngle);
-        const endInner = this.polarToCartesianRad(innerR, endAngle);
-        const startInner = this.polarToCartesianRad(innerR, startAngle);
+    private buildZoneSegmentPath(
+        innerR: number,
+        outerR: number,
+        startAngle: number,
+        endAngle: number,
+        innerCornerRadius: number,
+        outerCornerRadius: number
+    ): string {
+        const thickness = outerR - innerR;
+        const maxCorner = Math.max(0, thickness);
+        let outerCorner = Math.min(outerCornerRadius, maxCorner);
+        let innerCorner = Math.min(innerCornerRadius, maxCorner);
+        const totalCorner = outerCorner + innerCorner;
+        if (totalCorner > thickness) {
+            const scale = thickness / totalCorner;
+            outerCorner *= scale;
+            innerCorner *= scale;
+        }
+
+        const outerTrim = outerCorner / outerR;
+        const innerTrim = innerCorner / innerR;
+        const startOuterAngle = startAngle + outerTrim;
+        const endOuterAngle = endAngle - outerTrim;
+        const startInnerAngle = startAngle + innerTrim;
+        const endInnerAngle = endAngle - innerTrim;
         let sweepAngle = endAngle - startAngle;
         if (sweepAngle < 0) sweepAngle += Math.PI * 2;
-        const largeArc = sweepAngle > Math.PI ? 1 : 0;
+        const outerSweep = Math.max(0, sweepAngle - (outerTrim * 2));
+        const innerSweep = Math.max(0, sweepAngle - (innerTrim * 2));
+        const outerLargeArc = outerSweep > Math.PI ? 1 : 0;
+        const innerLargeArc = innerSweep > Math.PI ? 1 : 0;
+
+        const startOuter = this.polarToCartesianRad(outerR, startOuterAngle);
+        const endOuter = this.polarToCartesianRad(outerR, endOuterAngle);
+        const endOuterCorner = this.polarToCartesianRad(outerR + outerCorner, endAngle);
+        const endInnerCorner = this.polarToCartesianRad(innerR - innerCorner, endAngle);
+        const endInner = this.polarToCartesianRad(innerR, endInnerAngle);
+        const startInner = this.polarToCartesianRad(innerR, startInnerAngle);
+        const startInnerCorner = this.polarToCartesianRad(innerR - innerCorner, startAngle);
+        const startOuterCorner = this.polarToCartesianRad(outerR + outerCorner, startAngle);
 
         return [
             `M ${startOuter.x} ${startOuter.y}`,
-            `A ${outerR.toFixed(2)} ${outerR.toFixed(2)} 0 ${largeArc} 1 ${endOuter.x} ${endOuter.y}`,
-            `A ${capR.toFixed(2)} ${capR.toFixed(2)} 0 0 1 ${endInner.x} ${endInner.y}`,
-            `A ${innerR.toFixed(2)} ${innerR.toFixed(2)} 0 ${largeArc} 0 ${startInner.x} ${startInner.y}`,
-            `A ${capR.toFixed(2)} ${capR.toFixed(2)} 0 0 0 ${startOuter.x} ${startOuter.y}`,
+            `A ${outerR.toFixed(2)} ${outerR.toFixed(2)} 0 ${outerLargeArc} 1 ${endOuter.x} ${endOuter.y}`,
+            `A ${outerCorner.toFixed(2)} ${outerCorner.toFixed(2)} 0 0 1 ${endOuterCorner.x} ${endOuterCorner.y}`,
+            `L ${endInnerCorner.x} ${endInnerCorner.y}`,
+            `A ${innerCorner.toFixed(2)} ${innerCorner.toFixed(2)} 0 0 0 ${endInner.x} ${endInner.y}`,
+            `A ${innerR.toFixed(2)} ${innerR.toFixed(2)} 0 ${innerLargeArc} 0 ${startInner.x} ${startInner.y}`,
+            `A ${innerCorner.toFixed(2)} ${innerCorner.toFixed(2)} 0 0 0 ${startInnerCorner.x} ${startInnerCorner.y}`,
+            `L ${startOuterCorner.x} ${startOuterCorner.y}`,
+            `A ${outerCorner.toFixed(2)} ${outerCorner.toFixed(2)} 0 0 1 ${startOuter.x} ${startOuter.y}`,
             'Z'
         ].join(' ');
     }

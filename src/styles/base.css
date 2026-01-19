@@ -59,11 +59,9 @@
   letter-spacing: -10px;
   padding: 0 12px;
   color: transparent;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.25) 0%,
-    rgba(255, 255, 255, 0.02) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.25) 0%,
+      rgba(255, 255, 255, 0.02) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   position: relative;
@@ -236,7 +234,7 @@
   height: 100%;
   max-width: 100%;
   max-height: 100%;
-  display: block; 
+  display: block;
 }
 
 .radial-timeline-container svg {
@@ -274,7 +272,8 @@
 /* Generic scene-path styling - excludes backdrop segments which have their own rules */
 .radial-timeline-container .rt-scene-path:not(.rt-backdrop-segment) {
   cursor: pointer;
-  stroke: var(--rt-color-empty);
+  stroke: white;
+  stroke-opacity: 1;
   stroke-width: 1px;
 }
 
@@ -579,14 +578,14 @@
 
 /* APR SVG Styles */
 .apr-svg .rt-apr-rt-badge {
-    text-decoration: none;
+  text-decoration: none;
 }
 
 .apr-svg .rt-apr-rt-badge:hover {
-    text-decoration: none;
-    fill: var(--rt-social-color, #ffd41d);
-    opacity: 1;
-    transition: fill 0.2s ease, opacity 0.2s ease;
+  text-decoration: none;
+  fill: var(--rt-social-color, #ffd41d);
+  opacity: 1;
+  transition: fill 0.2s ease, opacity 0.2s ease;
 }
 
 /* Icon button - consistent sizing (includes rt-template-icon-btn for settings) */

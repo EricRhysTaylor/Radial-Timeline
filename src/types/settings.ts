@@ -75,7 +75,7 @@ export interface AuthorProgressSettings {
     defaultNoteBehavior: 'preset' | 'custom';
     defaultPublishTarget: AuthorProgressPublishTarget;
     customNoteTemplatePath?: string; // Path to custom note template (Pro feature)
-    
+
     // Reveal Options (checkboxes)
     showSubplots: boolean;  // Show all rings vs single Main Plot ring
     showActs: boolean;      // Show act divisions vs full circle
@@ -92,34 +92,34 @@ export interface AuthorProgressSettings {
     aprTheme?: 'dark' | 'light' | 'none'; // Controls stroke/border contrast
     aprSpokeColorMode?: 'dark' | 'light' | 'none' | 'custom'; // Act spokes color mode
     aprSpokeColor?: string; // Custom spokes color (used when mode is 'custom')
-    
+
     // Typography Settings (since SVG embeds fonts, these are user-configurable)
     aprBookTitleFontFamily?: string;  // Font family for book title (default: 'Inter')
     aprBookTitleFontWeight?: number;  // Font weight for book title (default: 400)
     aprBookTitleFontItalic?: boolean; // Italic for book title (default: false)
     aprBookTitleFontSize?: number;    // Font size for book title (default: from preset)
-    
+
     aprAuthorNameFontFamily?: string;  // Font family for author name (default: 'Inter' or script font)
     aprAuthorNameFontWeight?: number;  // Font weight for author name (default: 400)
     aprAuthorNameFontItalic?: boolean; // Italic for author name (default: false)
     aprAuthorNameFontSize?: number;    // Font size for author name (default: from preset)
-    
+
     aprPercentNumberFontFamily?: string;  // Font family for center percent number (default: 'Inter')
     aprPercentNumberFontWeight?: number;   // Font weight for center percent number (default: 800)
     aprPercentNumberFontItalic?: boolean;  // Italic for center percent number (default: false)
     aprPercentNumberFontSize1Digit?: number;  // Font size for single-digit (default: from preset)
     aprPercentNumberFontSize2Digit?: number;  // Font size for double-digit (default: from preset)
     aprPercentNumberFontSize3Digit?: number;  // Font size for triple-digit (default: from preset)
-    
+
     aprPercentSymbolFontFamily?: string;  // Font family for % symbol (default: 'Inter')
     aprPercentSymbolFontWeight?: number;  // Font weight for % symbol (default: 800)
     aprPercentSymbolFontItalic?: boolean; // Italic for % symbol (default: false)
-    
+
     aprRtBadgeFontFamily?: string;  // Font family for RT badge (default: 'Inter')
     aprRtBadgeFontWeight?: number;  // Font weight for RT badge (default: 700)
     aprRtBadgeFontItalic?: boolean; // Italic for RT badge (default: false)
     aprRtBadgeFontSize?: number;    // Font size for RT badge (default: from preset)
-    
+
     // Identity & Branding
     bookTitle: string;
     authorName?: string;
@@ -131,7 +131,7 @@ export interface AuthorProgressSettings {
     stalenessThresholdDays: number; // For Manual mode
     enableReminders: boolean;
     dynamicEmbedPath: string;
-    
+
     // Pro Feature: Campaign Manager
     campaigns?: AprCampaign[];
 }
@@ -190,27 +190,27 @@ export interface AprCampaign {
     name: string;                    // "Kickstarter", "Newsletter", "Website", etc.
     description?: string;            // Optional notes about this campaign
     isActive: boolean;               // Whether this campaign is currently being used
-    
+
     // Update Schedule
     updateFrequency?: 'manual' | 'daily' | 'weekly' | 'monthly';  // How often to auto-update
     refreshThresholdDays: number;    // Days before reminder appears (for manual mode)
     lastPublishedDate?: string;      // ISO string - when last updated
-    
+
     // Output
     embedPath: string;               // Where to save the SVG for this campaign
-    
+
     // Per-campaign reveal options (override defaults when Teaser Reveal is OFF)
     showSubplots: boolean;
     showActs: boolean;
     showStatus: boolean;
     showProgressPercent: boolean;
-    aprSize: 'thumb' | 'small' | 'medium' | 'large';
-    
+    aprSize?: 'thumb' | 'small' | 'medium' | 'large';
+
     // Per-campaign styling (optional overrides)
     customBackgroundColor?: string;
     customTransparent?: boolean;
     customTheme?: 'dark' | 'light';
-    
+
     // Pro Feature: Teaser Reveal (Progressive Reveal)
     teaserReveal?: TeaserRevealSettings;
 }
@@ -332,11 +332,11 @@ export interface RadialTimelineSettings {
     backdropYamlTemplate?: string;
     showBackdropRing?: boolean;
     hoverMetadataFields?: HoverMetadataField[];
-    
+
     // Professional License
     professionalLicenseKey?: string;
     devProActive?: boolean;  // Dev toggle to test Pro features as active/inactive (defaults to true during beta)
-    
+
     // Runtime Estimation Settings (Professional feature)
     enableRuntimeEstimation?: boolean;
     runtimeRateProfiles?: RuntimeRateProfile[];

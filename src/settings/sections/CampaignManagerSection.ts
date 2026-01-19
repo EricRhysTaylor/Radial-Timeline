@@ -44,7 +44,7 @@ export function createDefaultCampaign(name: string): AprCampaign {
         showActs: true,
         showStatus: true,
         showProgressPercent: true,
-        aprSize: 'medium',
+        // aprSize defaults to global setting (undefined)
         customTransparent: true,
         customTheme: 'dark',
         // Teaser Reveal defaults (enabled by default for campaigns)
@@ -496,14 +496,16 @@ function renderCampaignDetails(
         .setName('Export Size')
         .setDesc('SVG dimensions: Small for widgets, Medium for social/newsletters, Large for website embeds.')
         .addDropdown(drop => {
-            drop.addOption('thumb', 'Thumb (100px)')
-            drop.addOption('small', 'Small (150px)')
-            drop.addOption('medium', 'Medium (300px)')
-            drop.addOption('large', 'Large (450px)')
-            drop.setValue(campaign.aprSize)
+            const globalSize = plugin.settings.authorProgress?.aprSize || 'medium';
+            drop.addOption('', `Default (Global: ${globalSize})`);
+            drop.addOption('thumb', 'Thumb (100px)');
+            drop.addOption('small', 'Small (150px)');
+            drop.addOption('medium', 'Medium (300px)');
+            drop.addOption('large', 'Large (450px)');
+            drop.setValue(campaign.aprSize || '');
             drop.onChange(async (val) => {
                 if (!plugin.settings.authorProgress?.campaigns) return;
-                plugin.settings.authorProgress.campaigns[index].aprSize = val as 'thumb' | 'small' | 'medium' | 'large';
+                plugin.settings.authorProgress.campaigns[index].aprSize = val === '' ? undefined : val as 'thumb' | 'small' | 'medium' | 'large';
                 await plugin.saveSettings();
             });
         });

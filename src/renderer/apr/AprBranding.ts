@@ -79,7 +79,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
 
     // Full circle path starting from top (12 o'clock) going clockwise
     const circlePathId = 'apr-branding-circle';
-    const circlePath = `M 0 -${brandingRadius} A ${brandingRadius} ${brandingRadius} 0 1 1 0 ${brandingRadius} A ${brandingRadius} ${brandingRadius} 0 1 1 0 -${brandingRadius}`;
+    const circlePath = `M ${brandingRadius} 0 A ${brandingRadius} ${brandingRadius} 0 1 1 -${brandingRadius} 0 A ${brandingRadius} ${brandingRadius} 0 1 1 ${brandingRadius} 0`;
 
     const brandingDefs = `
         <defs>
@@ -233,13 +233,15 @@ export function renderAprCenterPercent(
     const numberOpacity = preset.percentNumberOpacity;
     // Use preset-specific offsets for proper scaling at each size
     const ghostYOffset = preset.ghostYOffset;
+    const ghostXOffset = preset.ghostXOffset ?? 0;
     const numberYOffset = preset.centerYOffset;
+    const numberXOffset = preset.centerXOffset ?? 0;
 
     // SAFE: inline style used for SVG attribute font-style in template string
     return `
         <g class="apr-center-percent">
             <text 
-                x="0" 
+                x="${ghostXOffset}" 
                 y="${ghostYOffset}" 
                 text-anchor="middle" 
                 dominant-baseline="middle"
@@ -252,7 +254,7 @@ export function renderAprCenterPercent(
                 %
             </text>
             <text 
-                x="0" 
+                x="${numberXOffset}" 
                 y="${numberYOffset}" 
                 text-anchor="middle" 
                 dominant-baseline="middle"

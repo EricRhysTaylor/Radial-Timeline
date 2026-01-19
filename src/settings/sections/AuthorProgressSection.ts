@@ -126,7 +126,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
             // Update dimension label
             if (dimLabel) {
-                setSizeLabel(dimLabel, dimension, 'Actual size (scroll to see full preview)');
+                setSizeLabel(dimLabel, dimension, 'Actual size preview');
             }
 
             // Re-render preview at new size
@@ -139,7 +139,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     dimLabel = previewSection.createDiv({
         cls: 'rt-apr-preview-dimension-label'
     });
-    setSizeLabel(dimLabel, currentDim, 'Actual size (scroll to see full preview)');
+    setSizeLabel(dimLabel, currentDim, 'Actual size preview)');
 
     // SVG Preview container - shows at 1:1 actual size
     const previewContainer = previewSection.createDiv({ cls: `rt-apr-hero-preview rt-apr-preview-actual ${ERT_CLASSES.PREVIEW_FRAME}` });

@@ -31,7 +31,7 @@ export const APR_LAYOUT = {
         // CANVAS
         // ─────────────────────────────────────────────────────────────────────
         svgSize: 100,
-        
+
         // ─────────────────────────────────────────────────────────────────────
         // RING GEOMETRY (Scene rings)
         // ─────────────────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ export const APR_LAYOUT = {
         borderWidth: 0.35,
         actSpokeWidth: 0.8,
         patternScale: 0.07,
-        
+
         // ─────────────────────────────────────────────────────────────────────
         // CENTER NUMBER & PERCENT SYMBOL (Inner element)
         // ─────────────────────────────────────────────────────────────────────
@@ -49,19 +49,21 @@ export const APR_LAYOUT = {
         centerNumberFontSize2Digit: 19,
         centerNumberFontSize3Digit: 15,
         centerNumberYOffset: 2.1,
+        centerNumberXOffset: 0,
         centerNumberOpacity: 1,
         centerNumberLetterSpacing: '-0.05em',
         percentSymbolYOffset: 2.6,
+        percentSymbolXOffset: 0,
         percentSymbolOpacity: 0.20,
         percentSymbolSizeMultiplier: 1.9,
-        
+
         // ─────────────────────────────────────────────────────────────────────
         // RT BADGE (Bottom-right corner)
         // ─────────────────────────────────────────────────────────────────────
         rtBadgeFontSize: 6,
         rtBadgeOffsetX: 5,
         rtBadgeOffsetY: 5,
-        
+
         // ─────────────────────────────────────────────────────────────────────
         // BRANDING TEXT (Outermost - perimeter text)
         // ─────────────────────────────────────────────────────────────────────
@@ -77,7 +79,7 @@ export const APR_LAYOUT = {
         // CANVAS
         // ─────────────────────────────────────────────────────────────────────
         svgSize: 150,
-        
+
         // ─────────────────────────────────────────────────────────────────────
         // RING GEOMETRY (Scene rings)
         // ─────────────────────────────────────────────────────────────────────
@@ -87,7 +89,7 @@ export const APR_LAYOUT = {
         borderWidth: 0.5,           // Width of ring borders
         actSpokeWidth: 1,           // Width of act division spokes
         patternScale: 0.1,         // Pattern density (1.0 = default, smaller = denser)
-        
+
         // ─────────────────────────────────────────────────────────────────────
         // CENTER NUMBER & PERCENT SYMBOL (Inner element)
         // ─────────────────────────────────────────────────────────────────────
@@ -95,19 +97,21 @@ export const APR_LAYOUT = {
         centerNumberFontSize2Digit: 28,  // Font size for double-digit numbers (e.g., "42")
         centerNumberFontSize3Digit: 22,  // Font size for triple-digit numbers (e.g., "100")
         centerNumberYOffset: 3.2,          // Y offset for the center number (positive = down)
-        centerNumberOpacity: 1,  // Center number visibility: 0.0 = invisible, 1.0 = fully opaque
+        centerNumberXOffset: 0,            // X offset for the center number
         centerNumberLetterSpacing: '-0.05em', // Letter spacing for multi-digit numbers
+        centerNumberOpacity: 1,  // Center number visibility: 0.0 = invisible, 1.0 = fully opaque
         percentSymbolYOffset: 4,   // Y offset for % symbol
+        percentSymbolXOffset: 0,   // X offset for % symbol
         percentSymbolOpacity: 0.20, // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
         percentSymbolSizeMultiplier: 1.9, // % symbol size: 1.0 = small, 2.5 = large (relative to inner radius)
-        
+
         // ─────────────────────────────────────────────────────────────────────
         // RT BADGE (Bottom-right corner)
         // ─────────────────────────────────────────────────────────────────────
         rtBadgeFontSize: 9,         // Font size for RT badge
         rtBadgeOffsetX: 8,           // Inset from right edge
         rtBadgeOffsetY: 8,           // Inset from bottom edge
-        
+
         // ─────────────────────────────────────────────────────────────────────
         // BRANDING TEXT (Outermost - perimeter text)
         // ─────────────────────────────────────────────────────────────────────
@@ -115,7 +119,7 @@ export const APR_LAYOUT = {
         bookAuthorFontSize: 9,      // Font size for book title + author name
         brandingLetterSpacing: '20em', // Letter spacing for branding text
     },
-    
+
     // ─────────────────────────────────────────────────────────────────────────
     // MEDIUM (300×300) - Social posts, newsletters
     // ─────────────────────────────────────────────────────────────────────────
@@ -124,7 +128,7 @@ export const APR_LAYOUT = {
         // CANVAS
         // ─────────────────────────────────────────────────────────────────────
         svgSize: 300,
-        
+
         // ─────────────────────────────────────────────────────────────────────
         // RING GEOMETRY (Scene rings)
         // ─────────────────────────────────────────────────────────────────────
@@ -134,7 +138,7 @@ export const APR_LAYOUT = {
         borderWidth: 1,
         actSpokeWidth: 1.5,
         patternScale: 0.4,         // Pattern density (1.0 = default, smaller = denser)
-        
+
         // ─────────────────────────────────────────────────────────────────────
         // CENTER NUMBER & PERCENT SYMBOL (Inner element)
         // ─────────────────────────────────────────────────────────────────────
@@ -142,19 +146,21 @@ export const APR_LAYOUT = {
         centerNumberFontSize2Digit: 80,  // Font size for double-digit numbers (e.g., "42")
         centerNumberFontSize3Digit: 58,  // Font size for triple-digit numbers (e.g., "100")
         centerNumberYOffset: 8,          // Y offset for the center number (positive = down)
+        centerNumberXOffset: 0,          // X offset for the center number
         centerNumberOpacity: 0.95,   // Center number visibility: 0.0 = invisible, 1.0 = fully opaque
         centerNumberLetterSpacing: '-0.05em', // Letter spacing for multi-digit numbers
         percentSymbolYOffset: 9.5,    // Y offset for % symbol
+        percentSymbolXOffset: 0,    // X offset for % symbol
         percentSymbolOpacity: 0.20,   // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
         percentSymbolSizeMultiplier: 2, // % symbol size: 1.0 = small, 2.5 = large (relative to inner radius)
-        
+
         // ─────────────────────────────────────────────────────────────────────
         // RT BADGE (Bottom-right corner)
         // ─────────────────────────────────────────────────────────────────────
         rtBadgeFontSize: 14,         // Font size for RT badge
         rtBadgeOffsetX: 16,          // Inset from right edge
         rtBadgeOffsetY: 16,          // Inset from bottom edge
-        
+
         // ─────────────────────────────────────────────────────────────────────
         // BRANDING TEXT (Outermost - perimeter text)
         // ─────────────────────────────────────────────────────────────────────
@@ -162,7 +168,7 @@ export const APR_LAYOUT = {
         bookAuthorFontSize: 14,     // Font size for book title + author name
         brandingLetterSpacing: '0.15em', // Letter spacing for branding text
     },
-    
+
     // ─────────────────────────────────────────────────────────────────────────
     // LARGE (450×450) - Website embeds, high-DPI displays
     // ─────────────────────────────────────────────────────────────────────────
@@ -171,7 +177,7 @@ export const APR_LAYOUT = {
         // CANVAS
         // ─────────────────────────────────────────────────────────────────────
         svgSize: 450,
-        
+
         // ─────────────────────────────────────────────────────────────────────
         // RING GEOMETRY (Scene rings)
         // ─────────────────────────────────────────────────────────────────────
@@ -181,7 +187,7 @@ export const APR_LAYOUT = {
         borderWidth: 1.5,
         actSpokeWidth: 2.5,
         patternScale: 0.55,        // Pattern density (1.0 = default, smaller = denser)
-        
+
         // ─────────────────────────────────────────────────────────────────────
         // CENTER NUMBER & PERCENT SYMBOL (Inner element)
         // ─────────────────────────────────────────────────────────────────────
@@ -189,19 +195,21 @@ export const APR_LAYOUT = {
         centerNumberFontSize2Digit: 115,  // Font size for double-digit numbers (e.g., "42")
         centerNumberFontSize3Digit: 92,  // Font size for triple-digit numbers (e.g., "100")
         centerNumberYOffset: 11,         // Y offset for the center number (positive = down)
+        centerNumberXOffset: 0,          // X offset for the center number
         centerNumberOpacity: 0.95,   // Center number visibility: 0.0 = invisible, 1.0 = fully opaque
         centerNumberLetterSpacing: '-0.05em', // Letter spacing for multi-digit numbers (0 = natural spacing)
         percentSymbolYOffset: 15,   // Y offset for % symbol
+        percentSymbolXOffset: 0,    // X offset for % symbol
         percentSymbolOpacity: 0.20,  // % symbol visibility: 0.0 = invisible, 1.0 = fully opaque
         percentSymbolSizeMultiplier: 2, // % symbol size: 1.0 = small, 2.5 = large (relative to inner radius)
-        
+
         // ─────────────────────────────────────────────────────────────────────
         // RT BADGE (Bottom-right corner)
         // ─────────────────────────────────────────────────────────────────────
         rtBadgeFontSize: 21,         // Font size for RT badge
         rtBadgeOffsetX: 24,          // Inset from right edge
         rtBadgeOffsetY: 24,          // Inset from bottom edge
-        
+
         // ─────────────────────────────────────────────────────────────────────
         // BRANDING TEXT (Outermost - perimeter text)
         // ─────────────────────────────────────────────────────────────────────
@@ -226,7 +234,9 @@ export function getPreset(size: AprSize) {
         brandingFontSize: p.bookAuthorFontSize,
         rtBrandingFontSize: p.rtBadgeFontSize,
         centerYOffset: p.centerNumberYOffset,
+        centerXOffset: p.centerNumberXOffset,
         ghostYOffset: p.percentSymbolYOffset,
+        ghostXOffset: p.percentSymbolXOffset,
         spokeWidth: p.spokeWidth,
         borderWidth: p.borderWidth,
         actSpokeWidth: p.actSpokeWidth,
@@ -266,10 +276,10 @@ export const APR_TEXT_COLORS = {
 export const APR_FONTS = {
     // Primary branding font (book title, author, RT badge)
     branding: "var(--font-interface, system-ui, sans-serif)",
-    
+
     // Center percent font  
     percent: "var(--font-interface, system-ui, sans-serif)",
-    
+
     // RT badge font (set to same as branding for consistency, or use pixel font)
     rtBadge: "var(--font-interface, system-ui, sans-serif)",
     // Alternative: "'04b03b', monospace" for pixel font
