@@ -326,6 +326,13 @@
   box-shadow: var(--ert-shadow-hero);
 }
 
+.ert-ui .ert-card__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-sm);
+  margin-bottom: var(--ert-pad-md);
+}
+
 .ert-ui .ert-iconBadge {
   display: inline-flex;
   align-items: center;

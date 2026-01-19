@@ -32,7 +32,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const hero = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_APR}` });
 
     // Badge row with pill - turns red when refresh needed
-    const badgeRow = hero.createDiv({ cls: `rt-apr-hero-badge-row ${ERT_CLASSES.INLINE}` });
+    const badgeRow = hero.createDiv({ cls: `rt-apr-hero-badge-row ${ERT_CLASSES.CARD_HEADER}` });
     const badgeClasses = needsRefresh ?
         `rt-apr-badge-alert ${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_APR}` :
         `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_APR}`;

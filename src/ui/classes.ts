@@ -40,6 +40,7 @@ export const ERT_CLASSES = {
   CARD_APR: 'ert-card--apr',
   ICON_BADGE: 'ert-iconBadge',
   CHIP: 'ert-chip',
+  CARD_HEADER: 'ert-card__header',
   BADGE_PILL: 'ert-badgePill',
   BADGE_PILL_ICON: 'ert-badgePill__icon',
   BADGE_PILL_TEXT: 'ert-badgePill__text',

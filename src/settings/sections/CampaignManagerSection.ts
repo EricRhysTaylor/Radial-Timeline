@@ -83,7 +83,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     const card = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} rt-campaign-manager-card ${ERT_CLASSES.SKIN_PRO}` });
 
     // Header with Pro badge
-    const headerRow = card.createDiv({ cls: 'rt-campaign-manager-header' });
+    const headerRow = card.createDiv({ cls: `rt-campaign-manager-header ${ERT_CLASSES.CARD_HEADER}` });
     const titleArea = headerRow.createDiv({ cls: 'rt-campaign-manager-title-area' });
 
     // Pro Pill (ERT Style)
