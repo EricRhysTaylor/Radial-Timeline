@@ -6,7 +6,7 @@
 .rt-settings-root {
   --rt-pro-color: #d946ef;
   --rt-pro-color-rgb: 217, 70, 239;
-  
+
   /* Social Media color tokens (vibrant yellow) */
   --rt-social-color: #FFD41D;
   --rt-social-color-rgb: 255, 212, 29;
@@ -197,7 +197,7 @@
   border-radius: 10px;
   border: 1px solid rgba(var(--rt-pro-color-rgb), 0.35);
   background: radial-gradient(circle at 12% 20%, rgba(var(--rt-pro-color-rgb), 0.16), transparent 40%),
-              linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.12), rgba(var(--rt-pro-color-rgb), 0.04));
+    linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.12), rgba(var(--rt-pro-color-rgb), 0.04));
   box-shadow: 0 10px 40px rgba(var(--rt-pro-color-rgb), 0.18);
   overflow: hidden;
 }
@@ -640,7 +640,7 @@
   pointer-events: none;
 }
 
-.rt-professional-content.rt-professional-content-muted > * {
+.rt-professional-content.rt-professional-content-muted>* {
   opacity: 0.4;
   filter: saturate(0.3);
 }
@@ -972,12 +972,12 @@
    when there's a preceding sibling, but our sections are wrapped in container 
    divs so headings that are first-child don't get the margin. This fix ensures
    all major section headings get proper 24px top spacing. */
-.rt-settings-root .rt-settings-searchable-content [data-rt-section] > .setting-item.setting-item-heading {
+.rt-settings-root .rt-settings-searchable-content [data-rt-section]>.setting-item.setting-item-heading {
   margin-top: 24px;
 }
 
 /* Remove top margin from the very first section heading in the settings panel */
-.rt-settings-root .rt-settings-searchable-content [data-rt-section]:first-child > .setting-item.setting-item-heading:first-child {
+.rt-settings-root .rt-settings-searchable-content [data-rt-section]:first-child>.setting-item.setting-item-heading:first-child {
   margin-top: 0;
 }
 
@@ -1096,7 +1096,8 @@
   grid-template-columns: auto 1fr auto auto auto;
   align-items: center;
   gap: 12px;
-  padding: 10px 10px 10px 12px; /* No right padding - trash flush to edge */
+  padding: 10px 10px 10px 12px;
+  /* No right padding - trash flush to edge */
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 10px;
@@ -1196,7 +1197,8 @@
 
 .rt-template-indent {
   padding-left: 18px;
-  border-left: 2px solid var(--interactive-accent); /* Match beats accent color */
+  border-left: 2px solid var(--interactive-accent);
+  /* Match beats accent color */
 }
 
 .rt-settings-root .rt-template-grid .setting-item-info {
@@ -1264,7 +1266,8 @@
   grid-template-columns: auto 1fr auto auto auto auto;
   align-items: center;
   gap: 12px;
-  padding: 10px 10px 10px 12px; /* Minimal right padding - trash close to edge */
+  padding: 10px 10px 10px 12px;
+  /* Minimal right padding - trash close to edge */
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 10px;
@@ -2949,7 +2952,7 @@
   overflow: hidden;
   background: linear-gradient(135deg, #2d5a2d 0%, #3d7a3d 25%, #4a9a4a 50%, #3d7a3d 75%, #2d5a2d 100%);
   border: 2px solid #6FB971;
-  box-shadow: 
+  box-shadow:
     0 0 30px rgba(111, 185, 113, 0.3),
     inset 0 0 60px rgba(111, 185, 113, 0.1);
 }
@@ -2982,7 +2985,7 @@
   overflow: hidden;
   background: linear-gradient(135deg, #3d2d5a 0%, #5a3d7a 25%, #7a4d9a 50%, #5a3d7a 75%, #3d2d5a 100%);
   border: 2px solid #9E70CF;
-  box-shadow: 
+  box-shadow:
     0 0 30px rgba(158, 112, 207, 0.35),
     inset 0 0 60px rgba(158, 112, 207, 0.12);
 }
@@ -3011,7 +3014,7 @@
   overflow: hidden;
   background: linear-gradient(135deg, #2d3d5a 0%, #3d5a7a 25%, #4d7a9a 50%, #3d5a7a 75%, #2d3d5a 100%);
   border: 2px solid #5E85CF;
-  box-shadow: 
+  box-shadow:
     0 0 30px rgba(94, 133, 207, 0.35),
     inset 0 0 60px rgba(94, 133, 207, 0.12);
 }
@@ -3040,7 +3043,7 @@
   overflow: hidden;
   background: linear-gradient(135deg, #5a3d2d 0%, #7a4d3d 25%, #9a5d47 50%, #7a4d3d 75%, #5a3d2d 100%);
   border: 2px solid #DA7847;
-  box-shadow: 
+  box-shadow:
     0 0 30px rgba(218, 120, 71, 0.35),
     inset 0 0 60px rgba(218, 120, 71, 0.12);
 }
@@ -3069,7 +3072,7 @@
   overflow: hidden;
   background: linear-gradient(135deg, #5a4a0a 0%, #8b7a1a 20%, #c9a227 45%, #e6c340 55%, #c9a227 70%, #8b7a1a 90%, #5a4a0a 100%);
   border: 2px solid #ffd700;
-  box-shadow: 
+  box-shadow:
     0 0 40px rgba(255, 215, 0, 0.4),
     0 0 80px rgba(255, 215, 0, 0.2),
     inset 0 0 60px rgba(255, 215, 0, 0.15);
@@ -3077,8 +3080,15 @@
 }
 
 @keyframes rt-book-complete-glow {
-  0%, 100% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.4), 0 0 80px rgba(255, 215, 0, 0.2), inset 0 0 60px rgba(255, 215, 0, 0.15); }
-  50% { box-shadow: 0 0 50px rgba(255, 215, 0, 0.5), 0 0 100px rgba(255, 215, 0, 0.3), inset 0 0 80px rgba(255, 215, 0, 0.2); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 40px rgba(255, 215, 0, 0.4), 0 0 80px rgba(255, 215, 0, 0.2), inset 0 0 60px rgba(255, 215, 0, 0.15);
+  }
+
+  50% {
+    box-shadow: 0 0 50px rgba(255, 215, 0, 0.5), 0 0 100px rgba(255, 215, 0, 0.3), inset 0 0 80px rgba(255, 215, 0, 0.2);
+  }
 }
 
 .rt-completion-preview-book-complete .rt-planetary-preview-heading {
@@ -3189,7 +3199,7 @@
   border-radius: 12px;
   border: 1px solid rgba(var(--rt-pro-color-rgb), 0.35);
   background: radial-gradient(circle at 12% 20%, rgba(var(--rt-pro-color-rgb), 0.12), transparent 40%),
-              linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.08), rgba(var(--rt-pro-color-rgb), 0.03));
+    linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.08), rgba(var(--rt-pro-color-rgb), 0.03));
   box-shadow: 0 8px 32px rgba(var(--rt-pro-color-rgb), 0.12);
 }
 
@@ -3203,6 +3213,7 @@
 .rt-settings-root .rt-campaign-manager-title-area {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 12px;
 }
 

@@ -333,6 +333,19 @@
   stroke-width: 1;
 }
 
+.inq-zone-dot {
+  cursor: pointer;
+}
+
+.inq-zone-dot:hover .inq-zone-dot-circle {
+  fill: #f1e3d2;
+  stroke: #fff1df;
+}
+
+.inq-zone-dot:hover .inq-zone-dot-text {
+  fill: #1f160e;
+}
+
 .ert-inquiry-zone-icon .ert-inquiry-icon-btn-bg {
   fill: var(--background-primary);
 }

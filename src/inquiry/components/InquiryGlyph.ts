@@ -23,6 +23,20 @@ const LABEL_TEXT_PX = 70;
 const ARC_BASE_TINT = '#dff5e7';
 const ARC_MAX_GREEN = '#22c55e';
 const DOT_DARKEN = 0.35;
+const ZONE_SEGMENT_COUNT = 3;
+const ZONE_RING_OFFSET = 22;
+const ZONE_RING_THICKNESS = 200;
+const ZONE_RING_GAP_PX = 30;
+const ZONE_DOT_RADIUS_PX = 13;
+const ZONE_DOT_TEXT_PX = 12;
+const ZONE_SEGMENT_FILL = '#7b6448';
+const ZONE_SEGMENT_STROKE = '#d6c3ad';
+const ZONE_SEGMENT_STROKE_WIDTH = 1.4;
+const ZONE_DOT_FILL = '#e7d5bf';
+const ZONE_DOT_STROKE = '#f4eadb';
+const ZONE_DOT_TEXT = '#2a2118';
+const PRESSURE_CENTER_ANGLE = Math.PI / 2;
+const DEBUG_INQUIRY_ZONES = false;
 
 export const GLYPH_OUTER_DIAMETER = (FLOW_RADIUS * 2) + FLOW_STROKE;
 
@@ -46,6 +60,7 @@ export class InquiryGlyph {
     private flowGroup: SVGGElement;
     private depthGroup: SVGGElement;
     private badgeScaleFactor = 1;
+    private zoneDots: Array<{ circle: SVGCircleElement; text: SVGTextElement }> = [];
 
     constructor(container: SVGElement, props: InquiryGlyphProps) {
         this.props = props;
@@ -53,6 +68,7 @@ export class InquiryGlyph {
         this.root.classList.add('ert-inquiry-glyph');
         container.appendChild(this.root);
 
+        this.root.appendChild(this.buildZoneRing());
         this.flowGroup = this.buildRingGroup('flow', FLOW_RADIUS, FLOW_STROKE, FLOW_HIT_STROKE, FLOW_BADGE_RADIUS_PX);
         this.depthGroup = this.buildRingGroup('depth', DEPTH_RADIUS, DEPTH_STROKE, DEPTH_HIT_STROKE, DEPTH_BADGE_RADIUS_PX);
 
@@ -112,6 +128,10 @@ export class InquiryGlyph {
         this.depthBadgeText.setAttribute('font-size', (DEPTH_BADGE_TEXT_PX * scaleFactor).toFixed(2));
         this.flowBadgeCircle.setAttribute('r', ((FLOW_STROKE / 2) * scaleFactor).toFixed(2));
         this.depthBadgeCircle.setAttribute('r', ((DEPTH_STROKE / 2) * scaleFactor).toFixed(2));
+        this.zoneDots.forEach(dot => {
+            dot.circle.setAttribute('r', (ZONE_DOT_RADIUS_PX * scaleFactor).toFixed(2));
+            dot.text.setAttribute('font-size', (ZONE_DOT_TEXT_PX * scaleFactor).toFixed(2));
+        });
     }
 
     private applyProps(props: InquiryGlyphProps): void {
@@ -172,6 +192,110 @@ export class InquiryGlyph {
         group.appendChild(badgeGroup);
 
         return group;
+    }
+
+    private buildZoneRing(): SVGGElement {
+        const group = document.createElementNS(SVG_NS, 'g');
+        group.classList.add('inq-zones', 'ert-inquiry-zones');
+
+        const flowOuterRadius = FLOW_RADIUS + (FLOW_STROKE / 2);
+        const innerR = flowOuterRadius + ZONE_RING_OFFSET;
+        const outerR = innerR + ZONE_RING_THICKNESS;
+        const midR = (innerR + outerR) / 2;
+        const gapAngle = ZONE_RING_GAP_PX / midR;
+        const segmentSpan = (2 * Math.PI) / ZONE_SEGMENT_COUNT;
+        const segmentHalfSpan = (segmentSpan - gapAngle) / 2;
+
+        const segments = [
+            { id: 'setup', label: '1', centerAngle: PRESSURE_CENTER_ANGLE + segmentSpan },
+            { id: 'pressure', label: '2', centerAngle: PRESSURE_CENTER_ANGLE },
+            { id: 'payoff', label: '3', centerAngle: PRESSURE_CENTER_ANGLE - segmentSpan }
+        ];
+
+        segments.forEach(segment => {
+            const startAngle = segment.centerAngle - segmentHalfSpan;
+            const endAngle = segment.centerAngle + segmentHalfSpan;
+            const path = document.createElementNS(SVG_NS, 'path');
+            path.classList.add('inq-zone-segment', `inq-zone-segment--${segment.id}`);
+            path.setAttribute('d', this.buildZoneSegmentPath(innerR, outerR, startAngle, endAngle));
+            path.setAttribute('fill', ZONE_SEGMENT_FILL);
+            path.setAttribute('stroke', ZONE_SEGMENT_STROKE);
+            path.setAttribute('stroke-width', String(ZONE_SEGMENT_STROKE_WIDTH));
+            path.setAttribute('stroke-linejoin', 'round');
+            path.setAttribute('pointer-events', 'none');
+            group.appendChild(path);
+
+            const dotPos = this.polarToCartesianRad(midR, segment.centerAngle);
+            const dotGroup = document.createElementNS(SVG_NS, 'g');
+            dotGroup.classList.add('inq-zone-dot', `inq-zone-dot--${segment.id}`);
+            dotGroup.setAttribute('transform', `translate(${dotPos.x} ${dotPos.y})`);
+            dotGroup.setAttribute('aria-label', `${segment.id} prompt`);
+            dotGroup.setAttribute('role', 'note');
+
+            const dotCircle = document.createElementNS(SVG_NS, 'circle');
+            dotCircle.classList.add('inq-zone-dot-circle');
+            dotCircle.setAttribute('r', String(ZONE_DOT_RADIUS_PX));
+            dotCircle.setAttribute('fill', ZONE_DOT_FILL);
+            dotCircle.setAttribute('stroke', ZONE_DOT_STROKE);
+            dotCircle.setAttribute('stroke-width', '1');
+
+            const dotText = document.createElementNS(SVG_NS, 'text');
+            dotText.classList.add('inq-zone-dot-text');
+            dotText.setAttribute('text-anchor', 'middle');
+            dotText.setAttribute('dominant-baseline', 'middle');
+            dotText.setAttribute('font-size', String(ZONE_DOT_TEXT_PX));
+            dotText.setAttribute('fill', ZONE_DOT_TEXT);
+            dotText.textContent = segment.label;
+
+            dotGroup.appendChild(dotCircle);
+            dotGroup.appendChild(dotText);
+            group.appendChild(dotGroup);
+            this.zoneDots.push({ circle: dotCircle, text: dotText });
+        });
+
+        if (DEBUG_INQUIRY_ZONES) {
+            const debugGroup = document.createElementNS(SVG_NS, 'g');
+            debugGroup.classList.add('inq-zone-debug');
+            [innerR, midR, outerR].forEach(radius => {
+                const circle = document.createElementNS(SVG_NS, 'circle');
+                circle.setAttribute('r', radius.toFixed(2));
+                circle.setAttribute('fill', 'none');
+                circle.setAttribute('stroke', '#ffb400');
+                circle.setAttribute('stroke-width', '1');
+                circle.setAttribute('stroke-dasharray', '5 4');
+                debugGroup.appendChild(circle);
+            });
+            group.appendChild(debugGroup);
+        }
+
+        return group;
+    }
+
+    private buildZoneSegmentPath(innerR: number, outerR: number, startAngle: number, endAngle: number): string {
+        const capR = (outerR - innerR) / 2;
+        const startOuter = this.polarToCartesianRad(outerR, startAngle);
+        const endOuter = this.polarToCartesianRad(outerR, endAngle);
+        const endInner = this.polarToCartesianRad(innerR, endAngle);
+        const startInner = this.polarToCartesianRad(innerR, startAngle);
+        let sweepAngle = endAngle - startAngle;
+        if (sweepAngle < 0) sweepAngle += Math.PI * 2;
+        const largeArc = sweepAngle > Math.PI ? 1 : 0;
+
+        return [
+            `M ${startOuter.x} ${startOuter.y}`,
+            `A ${outerR.toFixed(2)} ${outerR.toFixed(2)} 0 ${largeArc} 1 ${endOuter.x} ${endOuter.y}`,
+            `A ${capR.toFixed(2)} ${capR.toFixed(2)} 0 0 1 ${endInner.x} ${endInner.y}`,
+            `A ${innerR.toFixed(2)} ${innerR.toFixed(2)} 0 ${largeArc} 0 ${startInner.x} ${startInner.y}`,
+            `A ${capR.toFixed(2)} ${capR.toFixed(2)} 0 0 0 ${startOuter.x} ${startOuter.y}`,
+            'Z'
+        ].join(' ');
+    }
+
+    private polarToCartesianRad(radius: number, radians: number): { x: string; y: string } {
+        return {
+            x: (radius * Math.cos(radians)).toFixed(2),
+            y: (radius * Math.sin(radians)).toFixed(2)
+        };
     }
 
     private buildBadgeGroup(badgeRadius: number): SVGGElement {

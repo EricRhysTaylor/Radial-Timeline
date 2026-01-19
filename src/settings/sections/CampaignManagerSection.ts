@@ -142,36 +142,36 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
             text.setPlaceholder('Campaign name...');
         })
         .addButton(button => {
-            button.setButtonText('Add Campaign')
-                .setCta()
-                .onClick(async () => {
-                    const name = nameInput.getValue().trim();
-                    if (!name) {
-                        new Notice('Please enter a campaign name');
-                        return;
-                    }
+            button.setButtonText('Add Campaign');
+            button.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro');
+            button.onClick(async () => {
+                const name = nameInput.getValue().trim();
+                if (!name) {
+                    new Notice('Please enter a campaign name');
+                    return;
+                }
 
-                    // Check for duplicate names
-                    const existing = campaigns.find(c => c.name.toLowerCase() === name.toLowerCase());
-                    if (existing) {
-                        new Notice('A campaign with this name already exists');
-                        return;
-                    }
+                // Check for duplicate names
+                const existing = campaigns.find(c => c.name.toLowerCase() === name.toLowerCase());
+                if (existing) {
+                    new Notice('A campaign with this name already exists');
+                    return;
+                }
 
-                    // Create and add the campaign
-                    const newCampaign = createDefaultCampaign(name);
-                    if (!plugin.settings.authorProgress) return;
-                    if (!plugin.settings.authorProgress.campaigns) {
-                        plugin.settings.authorProgress.campaigns = [];
-                    }
-                    plugin.settings.authorProgress.campaigns.push(newCampaign);
-                    await plugin.saveSettings();
+                // Create and add the campaign
+                const newCampaign = createDefaultCampaign(name);
+                if (!plugin.settings.authorProgress) return;
+                if (!plugin.settings.authorProgress.campaigns) {
+                    plugin.settings.authorProgress.campaigns = [];
+                }
+                plugin.settings.authorProgress.campaigns.push(newCampaign);
+                await plugin.saveSettings();
 
-                    nameInput.setValue('');
-                    new Notice(`Campaign "${name}" created!`);
-                    rerenderCampaignList();
-                    onCampaignChange?.();
-                });
+                nameInput.setValue('');
+                new Notice(`Campaign "${name}" created!`);
+                rerenderCampaignList();
+                onCampaignChange?.();
+            });
         });
 
     newCampaignSetting.settingEl.addClass(ERT_CLASSES.ROW);
@@ -738,15 +738,15 @@ function renderCampaignDetails(
 
     // Publish button
     const publishRow = details.createDiv({ cls: 'rt-campaign-publish-row' });
-    new ButtonComponent(publishRow)
+    const pubBtn = new ButtonComponent(publishRow)
         .setButtonText('Publish Now')
-        .setCta()
         .onClick(async () => {
             const { AuthorProgressService } = await import('../../services/AuthorProgressService');
             const aprService = new AuthorProgressService(plugin, plugin.app);
             await aprService.generateCampaignReport(campaign.id);
             onUpdate();
         });
+    pubBtn.buttonEl.addClass('ert-btn', 'ert-btn--primary-pro');
 }
 
 /**

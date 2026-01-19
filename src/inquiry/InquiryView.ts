@@ -1013,7 +1013,9 @@ export class InquiryView extends ItemView {
         const tickHeight = 12;
         const capWidth = 4;
         const capHeight = 30;
-        const step = count > 1 ? length / (count - 1) : 0;
+        const tickInset = capWidth + 6;
+        const availableLength = Math.max(0, length - (tickInset * 2));
+        const step = count > 1 ? availableLength / (count - 1) : 0;
 
         const baselineStart = this.minimapLayout.startX;
         const baselineEnd = this.minimapLayout.startX + length;
@@ -1050,7 +1052,7 @@ export class InquiryView extends ItemView {
             const item = items[i];
             const tick = this.createSvgElement('rect');
             tick.classList.add('ert-inquiry-minimap-tick');
-            const pos = count > 1 ? step * i : length / 2;
+            const pos = count > 1 ? tickInset + (step * i) : tickInset + (availableLength / 2);
             tick.setAttribute('x', String(pos - (tickWidth / 2)));
             tick.setAttribute('y', String(-tickHeight));
             tick.setAttribute('width', String(tickWidth));

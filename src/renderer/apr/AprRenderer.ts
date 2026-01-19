@@ -60,6 +60,7 @@ export interface AprRenderOptions {
     rtBadgeFontWeight?: number;
     rtBadgeFontItalic?: boolean;
     rtBadgeFontSize?: number;
+    debugLabel?: string;
 }
 
 export interface AprRenderResult {
@@ -108,7 +109,8 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         percentNumberColor,
         percentSymbolColor,
         theme = 'dark',
-        spokeColor
+        spokeColor,
+        debugLabel
     } = opts;
 
     const preset = getPreset(size);
@@ -152,7 +154,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const subplotOrder = Object.keys(scenesBySubplot)
         .filter(s => s !== 'Main Plot')
         .sort((a, b) => scenesBySubplot[a].length - scenesBySubplot[b].length); // least to most
-    
+
     // Main Plot goes last (outermost ring)
     if (scenesBySubplot['Main Plot']) {
         subplotOrder.push('Main Plot');
@@ -228,9 +230,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
 
     // Center percent (optional)
     if (showProgressPercent) {
-        // TEMPORARY: Force triple-digit for testing
-        const testPercent = 100;
-        svg += renderAprCenterPercent(testPercent, size, innerRadius, percentNumberColor, percentSymbolColor, undefined, {
+        svg += renderAprCenterPercent(progressPercent, size, innerRadius, percentNumberColor, percentSymbolColor, undefined, {
             percentNumberFontFamily,
             percentNumberFontWeight,
             percentNumberFontItalic,
@@ -266,6 +266,10 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
             rtBadgeFontItalic,
             rtBadgeFontSize
         });
+    }
+
+    if (debugLabel) {
+        svg += `<text x="${half - 10}" y="${half - 10}" text-anchor="end" font-family="sans-serif" font-size="10" fill="#ef4444" font-weight="bold">${debugLabel}</text>`;
     }
 
     svg += `</svg>`;
@@ -369,27 +373,27 @@ function renderActSpokes(numActs: number, innerR: number, outerR: number, spokeW
  * @param stageColors - Color map from settings
  */
 function resolveSceneColor(
-    scene: TimelineItem, 
-    showStatusColors: boolean, 
+    scene: TimelineItem,
+    showStatusColors: boolean,
     showStageColors: boolean,
     grayCompletedScenes: boolean,
     stageColors: Record<string, string>
 ): string {
     // When no colors at all, use neutral gray
     if (!showStatusColors && !showStageColors) return APR_COLORS.sceneNeutral;
-    
+
     // Check if scene is "completed" (has a publish stage set)
     // Use bracket notation since 'Publish Stage' has a space
     const rawStageValue = scene['Publish Stage'];
     const rawStage = Array.isArray(rawStageValue) ? rawStageValue[0] : rawStageValue;
     const stage = (rawStage || '').toString().trim().toLowerCase();
     const isCompleted = stage && stage !== '' && stage !== 'zero';
-    
+
     // SCENES stage: gray out completed scenes to hide publishing progress
     if (grayCompletedScenes && isCompleted) {
         return APR_COLORS.sceneNeutral;
     }
-    
+
     // When only status colors (not stage colors), show active work but not publish stages
     if (showStatusColors && !showStageColors) {
         // For completed scenes, use neutral (we don't want to show Zero/Author/House/Press)
@@ -397,7 +401,7 @@ function resolveSceneColor(
         // For active work, use getFillForScene which respects status
         return getFillForScene(scene, stageColors);
     }
-    
+
     // Full colors: use getFillForScene for everything
     return getFillForScene(scene, stageColors);
 }
@@ -422,7 +426,7 @@ function resolveStructuralColors(theme: 'dark' | 'light' | 'none', customSpokeCo
             background: theme === 'light' ? '#ffffff' : 'transparent'
         };
     }
-    
+
     if (theme === 'light') {
         return {
             spoke: 'rgba(0, 0, 0, 0.5)',
@@ -477,15 +481,15 @@ function renderProgressRing(
     const ghostOpacity = options?.ghostOpacity ?? 0.25;
     const ghostWidth = options?.ghostWidth ?? ringWidth;
     const showBorders = options?.showBorders ?? true;
-    
+
     // Track (empty ring)
     let svg = `<g class="apr-progress-ring">`;
     svg += `<circle cx="0" cy="0" r="${midR}" fill="none" stroke="${ghostColor}" stroke-width="${ghostWidth}" stroke-opacity="${ghostOpacity}" />`;
-    
+
     // Progress arc
     if (progressPercent > 0) {
         const clampedPercent = Math.min(100, Math.max(0, progressPercent));
-        
+
         if (clampedPercent >= 100) {
             // Full circle
             svg += `<circle cx="0" cy="0" r="${midR}" fill="none" stroke="${progressColor}" stroke-width="${progressWidth}" />`;
@@ -494,24 +498,24 @@ function renderProgressRing(
             const angle = (clampedPercent / 100) * 2 * Math.PI;
             const startAngle = -Math.PI / 2;
             const endAngle = startAngle + angle;
-            
+
             const x1 = midR * Math.cos(startAngle);
             const y1 = midR * Math.sin(startAngle);
             const x2 = midR * Math.cos(endAngle);
             const y2 = midR * Math.sin(endAngle);
-            
+
             const largeArcFlag = angle > Math.PI ? 1 : 0;
-            
+
             svg += `<path d="M ${x1.toFixed(3)} ${y1.toFixed(3)} A ${midR} ${midR} 0 ${largeArcFlag} 1 ${x2.toFixed(3)} ${y2.toFixed(3)}" fill="none" stroke="${progressColor}" stroke-width="${progressWidth}" stroke-linecap="round" />`;
         }
     }
-    
+
     // Outer and inner border circles
     if (showBorders) {
         svg += `<circle cx="0" cy="0" r="${outerR}" fill="none" stroke="${structural.border}" stroke-width="1.5" />`;
         svg += `<circle cx="0" cy="0" r="${innerR}" fill="none" stroke="${structural.border}" stroke-width="1.5" />`;
     }
-    
+
     svg += `</g>`;
     return svg;
 }

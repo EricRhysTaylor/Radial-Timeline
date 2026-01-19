@@ -39,7 +39,7 @@ export interface AprBrandingOptions {
  * Uses SVG textLength to force text to fill exactly 360° with no gap or overlap.
  */
 export function renderAprBranding(options: AprBrandingOptions): string {
-    const { 
+    const {
         bookTitle, authorName, authorUrl, size, bookAuthorColor, authorColor, engineColor,
         bookTitleFontFamily = 'Inter', bookTitleFontWeight = 400, bookTitleFontItalic = false, bookTitleFontSize,
         authorNameFontFamily = 'Inter', authorNameFontWeight = 400, authorNameFontItalic = false, authorNameFontSize,
@@ -47,46 +47,46 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     } = options;
     const preset = getPreset(size);
     const { brandingRadius, brandingFontSize, rtBrandingFontSize } = preset;
-    
+
     // Use custom font sizes if provided, otherwise use preset defaults
     const bookTitleSize = bookTitleFontSize ?? brandingFontSize;
     const authorNameSize = authorNameFontSize ?? brandingFontSize;
     const rtBadgeSize = rtBadgeFontSize ?? rtBrandingFontSize;
-    
+
     const rtUrl = 'https://radialtimeline.com';
     // Fallback to Press stage green if no color provided (matches RT default)
     const bookColor = bookAuthorColor || '#6FB971';
     const authColor = authorColor || bookColor; // Default to book color if not specified
     const engColor = engineColor || APR_TEXT_COLORS.primary;
-    
+
     // Build the repeating title segment
     const separator = ' ~ ';
     const bookTitleUpper = bookTitle.toUpperCase();
     const authorNameUpper = authorName?.toUpperCase() || '';
     const bullet = ' • ';
-    
+
     // Calculate exact circumference
     const circumference = 2 * Math.PI * brandingRadius;
-    
+
     // Estimate segment width for repetition calculation
     const baseCharWidth = bookTitleSize * 0.55;
-    const singleSegment = authorName 
+    const singleSegment = authorName
         ? `${bookTitleUpper}${bullet}${authorNameUpper}${separator}`
         : `${bookTitleUpper}${separator}`;
     const segmentBaseWidth = singleSegment.length * baseCharWidth;
     const idealReps = Math.round(circumference / segmentBaseWidth);
     const repetitions = Math.max(4, Math.min(10, idealReps));
-    
+
     // Full circle path starting from top (12 o'clock) going clockwise
     const circlePathId = 'apr-branding-circle';
     const circlePath = `M 0 -${brandingRadius} A ${brandingRadius} ${brandingRadius} 0 1 1 0 ${brandingRadius} A ${brandingRadius} ${brandingRadius} 0 1 1 0 -${brandingRadius}`;
-    
+
     const brandingDefs = `
         <defs>
             <path id="${circlePathId}" d="${circlePath}" />
         </defs>
     `;
-    
+
     // Build text content with tspan elements for separate colors and fonts
     // textLength applies spacing to the entire text content including all tspan children
     const hasAuthor = authorName && authorName.trim().length > 0;
@@ -101,10 +101,10 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         // Separator uses book title font (using SVG attributes, not inline styles)
         textContent += `<tspan fill="${bookColor}" font-family="${bookTitleFontFamily}" font-weight="${bookTitleFontWeight}"${bookTitleFontItalic ? ' font-style="italic"' : ''}>${separator}</tspan>`; // SAFE: inline style used for SVG attribute font-style in template string
     }
-    
+
     // Use average font size for the text element (textLength needs a consistent base)
     const avgFontSize = hasAuthor ? (bookTitleSize + authorNameSize) / 2 : bookTitleSize;
-    
+
     const brandingText = `
         <text 
             font-family="${bookTitleFontFamily}" 
@@ -118,7 +118,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             </textPath>
         </text>
     `;
-    
+
     // Minimal RT badge at bottom-right corner (outside the ring)
     // Position uses preset-specific offset for proper scaling at each size
     const half = preset.svgSize / 2;
@@ -126,7 +126,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const rtY = half - preset.rtCornerOffset;
     // Use rtBrandingFontSize which is set to multiples of 8 for crisp pixel font rendering
     const rtFontSize = rtBrandingFontSize;
-    
+
     const rtBadge = `
         <a href="${rtUrl}" target="_blank" rel="noopener" class="rt-apr-rt-badge">
             <text 
@@ -144,7 +144,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             </text>
         </a>
     `;
-    
+
     // Large clickable hotspot covering the entire timeline for author URL
     // Place it behind everything but in front of background
     const timelineHotspot = authorUrl?.trim() ? `
@@ -152,7 +152,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             <circle cx="0" cy="0" r="${brandingRadius}" fill="transparent" />
         </a>
     ` : '';
-    
+
     return `
         <g class="apr-branding">
             ${timelineHotspot}
@@ -189,8 +189,8 @@ export interface AprCenterPercentOptions {
  * Render the large center percentage
  */
 export function renderAprCenterPercent(
-    percent: number, 
-    size: AprSize, 
+    percent: number,
+    size: AprSize,
     innerRadius: number,
     numberColor?: string,
     symbolColor?: string,
@@ -202,7 +202,7 @@ export function renderAprCenterPercent(
     const defaultColor = '#6FB971';
     const numColor = numberColor || defaultColor;
     const symColor = symbolColor || defaultColor;
-    
+
     // Use options if provided, otherwise fall back to legacy percentFontWeight parameter
     const percentNumberFontFamily = options?.percentNumberFontFamily || 'Inter';
     const percentNumberFontWeight = options?.percentNumberFontWeight ?? percentFontWeight ?? 800;
@@ -210,16 +210,23 @@ export function renderAprCenterPercent(
     const percentSymbolFontFamily = options?.percentSymbolFontFamily || 'Inter';
     const percentSymbolFontWeight = options?.percentSymbolFontWeight ?? percentFontWeight ?? 800;
     const percentSymbolFontItalic = options?.percentSymbolFontItalic ?? false;
-    
+
     const numStr = String(percent);
     const charCount = numStr.length;
 
-    // Select font size based on digit count - use custom sizes if provided, otherwise preset defaults
-    const fontSize = charCount === 1 
-        ? (options?.percentNumberFontSize1Digit ?? preset.centerNumberFontSize1Digit)
-        : (charCount === 2 
-            ? (options?.percentNumberFontSize2Digit ?? preset.centerNumberFontSize2Digit)
-            : (options?.percentNumberFontSize3Digit ?? preset.centerNumberFontSize3Digit));
+    // Intelligent scaling algorithm:
+    // Pinned to the user's preferred 3-digit density (width constraint) 
+    // and 1-digit max height (height constraint).
+    // Formula: Size = Min(MaxHeight, (Reference3DigitSize * 3) / CharCount)
+
+    // Use the 1-digit size as the Max Height cap
+    const maxHeight = options?.percentNumberFontSize1Digit ?? preset.centerNumberFontSize1Digit;
+
+    // Use the 3-digit size as the Density Reference (width constraint)
+    const refSize3 = options?.percentNumberFontSize3Digit ?? preset.centerNumberFontSize3Digit;
+
+    // Calculate optimal size
+    const fontSize = Math.min(maxHeight, (refSize3 * 3) / charCount);
 
     const ghostFontSize = innerRadius * preset.percentSymbolSizeMultiplier;
     const ghostOpacity = preset.percentSymbolOpacity;

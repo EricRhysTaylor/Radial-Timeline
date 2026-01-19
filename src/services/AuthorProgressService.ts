@@ -8,7 +8,7 @@ import { getTeaserThresholds, getTeaserRevealLevel, teaserLevelToRevealOptions, 
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 
 export class AuthorProgressService {
-    constructor(private plugin: RadialTimelinePlugin, private app: App) {}
+    constructor(private plugin: RadialTimelinePlugin, private app: App) { }
 
     /**
      * Checks if the main APR report needs refresh based on settings.
@@ -89,7 +89,7 @@ export class AuthorProgressService {
 
         const scenes = await getAllScenes(this.app, this.plugin);
         const progressPercent = this.calculateProgress(scenes);
-        
+
         const size = settings.aprSize || 'medium';
         const isThumb = size === 'thumb';
         const { svgString } = createAprSVG(scenes, {
@@ -155,7 +155,7 @@ export class AuthorProgressService {
 
             const path = settings.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg';
             await this.ensureFolder(path);
-            
+
             // Use Vault API: modify if exists, create if not
             const existingFile = this.app.vault.getAbstractFileByPath(path);
             if (existingFile) {
@@ -163,11 +163,11 @@ export class AuthorProgressService {
             } else {
                 await this.app.vault.create(path, finalSvg);
             }
-            
+
             // Update last published
             settings.lastPublishedDate = new Date().toISOString();
             await this.plugin.saveSettings();
-            
+
             return path;
         } else {
             // Static snapshot - save to Output folder
@@ -247,11 +247,11 @@ export class AuthorProgressService {
     private createPresetNoteContent(svgPath: string): string {
         const bookTitle = this.plugin.settings.authorProgress?.bookTitle || 'Working Title';
         const authorName = this.plugin.settings.authorProgress?.authorName || '';
-        
+
         let content = `# ${bookTitle}${authorName ? ` by ${authorName}` : ''}\n\n`;
         content += `![Author Progress Report](${svgPath})\n\n`;
         content += `<!-- Add your author comment here -->\n`;
-        
+
         return content;
     }
 
@@ -263,7 +263,7 @@ export class AuthorProgressService {
         const last = settings.lastPublishedDate ? new Date(settings.lastPublishedDate).getTime() : 0;
         const now = Date.now();
         const diffMs = now - last;
-        
+
         let thresholdMs = 0;
         switch (settings.updateFrequency) {
             case 'daily': thresholdMs = 24 * 60 * 60 * 1000; break;
@@ -272,7 +272,7 @@ export class AuthorProgressService {
         }
 
         // Cooldown check (e.g., don't update if updated in last 5 mins to prevent spam on reload)
-        const COOLDOWN = 5 * 60 * 1000; 
+        const COOLDOWN = 5 * 60 * 1000;
 
         if (diffMs > thresholdMs && diffMs > COOLDOWN) {
             try {
@@ -298,7 +298,7 @@ export class AuthorProgressService {
         // Save to campaign's embed path
         const path = campaign.embedPath;
         await this.ensureFolder(path);
-        
+
         const existingFile = this.app.vault.getAbstractFileByPath(path);
         if (existingFile && 'path' in existingFile) {
             // SAFE: Cast required for Obsidian API compatibility
@@ -306,14 +306,14 @@ export class AuthorProgressService {
         } else {
             await this.app.vault.create(path, svgString);
         }
-        
+
         // Update campaign's last published date
         const campaignIndex = settings.campaigns?.findIndex((c: AprCampaign) => c.id === campaignId);
         if (campaignIndex !== undefined && campaignIndex >= 0 && settings.campaigns) {
             settings.campaigns[campaignIndex].lastPublishedDate = new Date().toISOString();
             await this.plugin.saveSettings();
         }
-        
+
         new Notice(`Campaign "${campaign.name}" published!`);
         return path;
     }
@@ -355,6 +355,7 @@ export class AuthorProgressService {
         let grayCompletedScenes = false;
         let showProgressPercent = campaign.showProgressPercent;
         let isTeaserBar = false;
+        let debugStage = 'Standard';
 
         if (campaign.teaserReveal?.enabled) {
             const preset = campaign.teaserReveal.preset ?? 'standard';
@@ -364,6 +365,7 @@ export class AuthorProgressService {
                 thresholds,
                 campaign.teaserReveal.disabledStages
             );
+            debugStage = revealLevel;
             const revealOptions = teaserLevelToRevealOptions(revealLevel);
             isTeaserBar = revealLevel === 'bar';
 
@@ -424,7 +426,8 @@ export class AuthorProgressService {
             rtBadgeFontFamily: settings.aprRtBadgeFontFamily,
             rtBadgeFontWeight: settings.aprRtBadgeFontWeight,
             rtBadgeFontItalic: settings.aprRtBadgeFontItalic,
-            rtBadgeFontSize: settings.aprRtBadgeFontSize
+            rtBadgeFontSize: settings.aprRtBadgeFontSize,
+            debugLabel: `Size: ${size} | Stage: ${debugStage} | ${progressPercent.toFixed(1)}%`
         });
 
         return { svgString, campaign };
@@ -437,7 +440,7 @@ export class AuthorProgressService {
     public async publishAllStale(): Promise<number> {
         const needsRefresh = this.getCampaignsNeedingRefresh();
         let count = 0;
-        
+
         for (const campaign of needsRefresh) {
             try {
                 await this.generateCampaignReport(campaign.id);
@@ -446,11 +449,11 @@ export class AuthorProgressService {
                 console.error(`Failed to publish campaign ${campaign.name}:`, e);
             }
         }
-        
+
         if (count > 0) {
             new Notice(`Published ${count} campaign${count > 1 ? 's' : ''}`);
         }
-        
+
         return count;
     }
 
