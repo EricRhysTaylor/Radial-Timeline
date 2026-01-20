@@ -1,7 +1,32 @@
 import { Setting as Settings, ColorComponent, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
+import type { TimelineItem } from '../../types';
+import type { PluginRendererFacade } from '../../utils/sceneHelpers';
+import { computeCacheableValues } from '../../renderer/utils/Precompute';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { addHeadingIcon, addWikiLink } from '../wikiLink';
+
+const SUBPLOT_LABEL_MAX_LENGTH = 16;
+
+function truncateSubplotLabel(value: string, maxLength = SUBPLOT_LABEL_MAX_LENGTH): string {
+    const trimmed = value.trim();
+    if (trimmed.length <= maxLength) return trimmed;
+    return `${trimmed.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+}
+
+async function getTimelineSubplotOrder(plugin: RadialTimelinePlugin): Promise<string[]> {
+    let scenes: TimelineItem[] | undefined = plugin.lastSceneData;
+    if (!Array.isArray(scenes) || scenes.length === 0) {
+        try {
+            scenes = await plugin.getSceneData();
+        } catch {
+            return [];
+        }
+    }
+    if (!Array.isArray(scenes) || scenes.length === 0) return [];
+    const { masterSubplotOrder } = computeCacheableValues(plugin as unknown as PluginRendererFacade, scenes);
+    return masterSubplotOrder.filter(subplot => subplot && subplot.trim().length > 0 && subplot !== 'Backdrop');
+}
 
 export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTimelinePlugin): void {
     // --- Publishing Stage Colors ---
@@ -75,12 +100,14 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
     const subplotGrid = containerEl.createDiv({ cls: 'rt-color-grid' });
     const ensureArray = (arr: unknown): string[] => Array.isArray(arr) ? arr as string[] : [];
     const subplotColors = ensureArray(plugin.settings.subplotColors);
+    const subplotLabels: HTMLDivElement[] = [];
     for (let i = 0; i < 16; i++) {
         const labelText = i === 0 ? 'MAIN PLOT' : `Ring ${i + 1}`;
         const current = subplotColors[i] || DEFAULT_SETTINGS.subplotColors[i];
         const cell = subplotGrid.createDiv({ cls: 'rt-color-grid-item' });
         const label = cell.createDiv({ cls: 'rt-color-grid-label' });
         label.setText(labelText);
+        subplotLabels.push(label);
 
         const control = cell.createDiv({ cls: 'rt-color-grid-controls' });
         let inputRef: TextComponent | undefined;
@@ -132,5 +159,14 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
                     });
             });
     }
-}
 
+    void (async () => {
+        const subplotOrder = await getTimelineSubplotOrder(plugin);
+        if (subplotOrder.length === 0) return;
+        for (let i = 1; i < subplotLabels.length; i++) {
+            const subplotName = subplotOrder[i];
+            if (!subplotName || subplotName.toLowerCase() === 'main plot') continue;
+            subplotLabels[i].setText(truncateSubplotLabel(subplotName));
+        }
+    })();
+}

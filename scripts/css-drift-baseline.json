@@ -1,0 +1,11 @@
+{
+  "totalWarnings": 3712,
+  "warningsByRule": {
+    "raw-hex": 317,
+    "spacing-px": 846,
+    "shadow-rgba": 97,
+    "rt-legacy": 2452
+  },
+  "updatedAt": "2026-01-20T18:05:51.485Z",
+  "migrationMode": true
+}

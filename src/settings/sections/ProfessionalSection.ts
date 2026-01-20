@@ -226,21 +226,18 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
     const pandocPanel = contentStack.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
 
     // Header
-    const pandocHeader = pandocPanel.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
-    const pandocHeaderRow = pandocHeader.createDiv({
-        cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_INLINE} ${ERT_CLASSES.HEADER_WITH_ICON}`
-    });
-    const pandocHeaderLeft = pandocHeaderRow.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
-    setIcon(pandocHeaderLeft, 'book-open-text');
-    const pandocHeaderMain = pandocHeaderRow.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
-    pandocHeaderMain.createEl('h4', {
+    const pandocHeader = pandocPanel.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
+    const pandocHeaderLeft = pandocHeader.createDiv({ cls: ERT_CLASSES.CONTROL });
+    const pandocHeaderEl = pandocHeaderLeft.createEl('h4', {
         text: 'Export & Pandoc',
-        cls: ERT_CLASSES.SECTION_TITLE
+        cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`
     });
-    const pandocHeaderRight = pandocHeaderRow.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
-    addWikiLinkToElement(pandocHeaderRight, 'Settings#professional');
-    pandocHeader.createDiv({
-        cls: ERT_CLASSES.HEADER_DESC,
+    const pandocHeaderIcon = pandocHeaderEl.createSpan({ cls: 'rt-setting-heading-icon' });
+    setIcon(pandocHeaderIcon, 'book-open-text');
+    pandocHeaderEl.prepend(pandocHeaderIcon);
+    addWikiLinkToElement(pandocHeaderEl, 'Settings#professional');
+    pandocHeaderLeft.createDiv({
+        cls: ERT_CLASSES.SECTION_DESC,
         text: 'Configure Pandoc binary paths and manuscript export templates for screenplay, podcast, and novel formats.'
     });
 

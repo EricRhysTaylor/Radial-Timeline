@@ -209,18 +209,17 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             const contentType = selectedProfile.contentType || 'novel';
             const ratesHeader = detailsContainer.createDiv({
-                cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_INLINE} ${ERT_CLASSES.HEADER_WITH_ICON} rt-runtime-subheader`
+                cls: `${ERT_CLASSES.CONTROL} rt-runtime-subheader`
             });
-            const ratesHeaderLeft = ratesHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
-            const ratesIconName = contentType === 'screenplay' ? 'projector' : 'mic-vocal';
-            setIcon(ratesHeaderLeft, ratesIconName);
-            const ratesHeaderMain = ratesHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
-            ratesHeaderMain.createEl('h4', {
-                cls: ERT_CLASSES.SECTION_TITLE,
+            const ratesHeaderEl = ratesHeader.createEl('h4', {
+                cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`,
                 text: 'Rates & timings'
             });
-            const ratesHeaderRight = ratesHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
-            addWikiLinkToElement(ratesHeaderRight, 'Settings#runtime-estimation');
+            const ratesIconName = contentType === 'screenplay' ? 'projector' : 'mic-vocal';
+            const ratesIcon = ratesHeaderEl.createSpan({ cls: 'rt-setting-heading-icon' });
+            setIcon(ratesIcon, ratesIconName);
+            ratesHeaderEl.prepend(ratesIcon);
+            addWikiLinkToElement(ratesHeaderEl, 'Settings#runtime-estimation');
 
             // Content Type Selection
             addProRow(new Setting(detailsContainer))
@@ -352,19 +351,18 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             // Session planning (optional, per profile)
             const sessionHeader = detailsContainer.createDiv({
-                cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_INLINE} ${ERT_CLASSES.HEADER_WITH_ICON} rt-runtime-subheader`
+                cls: `${ERT_CLASSES.CONTROL} rt-runtime-subheader`
             });
-            const sessionHeaderLeft = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
-            setIcon(sessionHeaderLeft, 'calendar-clock');
-            const sessionHeaderMain = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
-            sessionHeaderMain.createEl('h4', {
-                cls: ERT_CLASSES.SECTION_TITLE,
+            const sessionHeaderEl = sessionHeader.createEl('h4', {
+                cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`,
                 text: 'Session planning (optional)'
             });
-            const sessionHeaderRight = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
-            addWikiLinkToElement(sessionHeaderRight, 'Settings#runtime-estimation');
-            detailsContainer.createDiv({
-                cls: ERT_CLASSES.HEADER_DESC,
+            const sessionIcon = sessionHeaderEl.createSpan({ cls: 'rt-setting-heading-icon' });
+            setIcon(sessionIcon, 'calendar-clock');
+            sessionHeaderEl.prepend(sessionIcon);
+            addWikiLinkToElement(sessionHeaderEl, 'Settings#runtime-estimation');
+            sessionHeader.createDiv({
+                cls: ERT_CLASSES.SECTION_DESC,
                 text: 'Used in the Outline export: Index cards (JSON) summary to estimate writing hours and total sessions.'
             });
             const session = selectedProfile.sessionPlanning || {};
