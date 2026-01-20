@@ -21,6 +21,7 @@ import { renderRuntimeSection } from './sections/RuntimeSection';
 import { renderProfessionalSection, isProfessionalActive } from './sections/ProfessionalSection';
 import { validateLocalModelAvailability } from '../api/localAiApi';
 import { FolderSuggest } from './FolderSuggest';
+import { ERT_CLASSES } from '../ui/classes';
 
 export class RadialTimelineSettingsTab extends PluginSettingTab {
     plugin: RadialTimelinePlugin;
@@ -325,14 +326,25 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     }
 
     private renderProHero(containerEl: HTMLElement): void {
-        const hero = containerEl.createDiv({ cls: 'rt-pro-hero' });
-        const badgeRow = hero.createDiv({ cls: 'rt-pro-hero-badge-row' });
-        const badge = badgeRow.createSpan({ cls: 'rt-pro-hero-badge' });
-        setIcon(badge, 'signature');
-        badge.createSpan({ text: 'Pro · Signature' });
+        const hero = containerEl.createDiv({
+            cls: `${ERT_CLASSES.SECTION} ${ERT_CLASSES.SECTION_HERO} rt-pro-hero`
+        });
+        const badgeRow = hero.createDiv({ cls: `${ERT_CLASSES.INLINE} rt-pro-hero-badge-row` });
+        const badge = badgeRow.createSpan({
+            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
+        });
+        const badgeIcon = badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
+        setIcon(badgeIcon, 'signature');
+        badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro · Signature' });
 
-        hero.createEl('h3', { cls: 'rt-pro-hero-title', text: 'Signature tools for professional workflows.' });
-        hero.createEl('p', { cls: 'rt-pro-hero-subtitle', text: 'Premium exports, runtime intelligence, and Pandoc templates. Make your publishing pipeline radial and your story ever revolving.' });
+        hero.createEl('h3', {
+            cls: `${ERT_CLASSES.SECTION_TITLE} rt-pro-hero-title`,
+            text: 'Signature tools for professional workflows.'
+        });
+        hero.createEl('p', {
+            cls: `${ERT_CLASSES.SECTION_DESC} rt-pro-hero-subtitle`,
+            text: 'Premium exports, runtime intelligence, and Pandoc templates. Make your publishing pipeline radial and your story ever revolving.'
+        });
         const featuresSection = hero.createDiv({ cls: 'rt-pro-hero-features' });
         featuresSection.createEl('h5', { text: 'Included in Early Access:' });
         const featuresList = featuresSection.createEl('ul');
@@ -369,7 +381,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         setIcon(socialIcon, 'radio');
         socialTab.createSpan({ text: 'Social Media', cls: 'rt-settings-tab-label' });
 
-        const proContent = containerEl.createDiv({ cls: 'rt-settings-tab-content rt-settings-pro-content' });
+        const proContent = containerEl.createDiv({
+            cls: `rt-settings-tab-content rt-settings-pro-content ${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_PRO}`
+        });
         const coreContent = containerEl.createDiv({ cls: 'rt-settings-tab-content rt-settings-core-content' });
         const socialContent = containerEl.createDiv({
             cls: 'rt-settings-tab-content rt-settings-social-content ert-ui ert-skin--social ert-density--compact'

@@ -3,6 +3,9 @@
   --ert-gap-xs: 4px;
   --ert-gap-sm: 8px;
   --ert-gap-md: 12px;
+  --ert-gap-md: 12px;
+  --ert-group-gap: 16px;
+  /* Spacing between major containers */
   --ert-pad-sm: 12px;
   --ert-pad-md: 16px;
   --ert-label-w: 180px;
@@ -188,7 +191,7 @@
 .ert-ui .ert-stack {
   display: flex;
   flex-direction: column;
-  gap: var(--ert-gap-xs);
+  gap: var(--ert-group-gap);
 }
 
 .ert-ui .ert-stack--tight {
@@ -1045,6 +1048,8 @@
   --ert-previewFrame-border: color-mix(in srgb, var(--ert-accent) 22%, transparent);
   --ert-panel-bg: var(--ert-pro-surface-bg);
   --ert-panel-border: var(--ert-pro-border);
+  --ert-panel-pad: 24px 28px;
+  /* Restore legacy generous padding */
   --ert-panel-shadow: 0 8px 32px color-mix(in srgb, var(--ert-accent) 18%, transparent);
   --ert-panel-shadow-elev: var(--ert-panel-shadow);
 }
@@ -1063,6 +1068,8 @@
 .ert-ui.ert-skin--pro .ert-card:not(.ert-card--hero):not(.ert-card--apr),
 .ert-ui .ert-skin--pro .ert-card:not(.ert-card--hero):not(.ert-card--apr) {
   background: var(--ert-pro-surface-bg);
+  padding: 24px 28px;
+  /* Force generous padding */
 }
 
 .ert-ui.ert-skin--pro .ert-iconBadge,
@@ -1392,7 +1399,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 0;
 }
 
 .ert-ui .rt-pro-hero-header {

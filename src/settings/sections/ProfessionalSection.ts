@@ -66,7 +66,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
     // ─────────────────────────────────────────────────────────────────────────
     // ROOT CONTAINER (Pro Skin)
     // ─────────────────────────────────────────────────────────────────────────
-    const section = containerEl.createDiv({ cls: `rt-settings-section rt-pro-section ${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_PRO}` });
+    const section = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
 
     // ─────────────────────────────────────────────────────────────────────────
     // HERO / HEADER
@@ -74,10 +74,10 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
     // ─────────────────────────────────────────────────────────────────────────
     // HERO / HEADER (Legacy Layout Restored)
     // ─────────────────────────────────────────────────────────────────────────
-    const hero = section.createDiv({ cls: 'rt-pro-hero' });
+    const hero = section.createDiv({ cls: `${ERT_CLASSES.SECTION} ${ERT_CLASSES.SECTION_HERO} rt-pro-hero` });
 
     // Badge Row
-    const badgeRow = hero.createDiv({ cls: 'rt-pro-hero-badge-row' });
+    const badgeRow = hero.createDiv({ cls: `${ERT_CLASSES.INLINE} rt-pro-hero-badge-row` });
 
     // Status Badge (Standardized Pill)
     const badge = badgeRow.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}` });
@@ -104,12 +104,14 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
 
     // Beta Badge
     if (OPEN_BETA_ACTIVE) {
-        const betaBadge = badgeRow.createSpan({ cls: 'rt-pro-hero-badge rt-pro-hero-badge-beta' });
-        betaBadge.setText('EARLY ACCESS BETA');
+        const betaBadge = badgeRow.createSpan({
+            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_NEUTRAL} ${ERT_CLASSES.BADGE_PILL_SM}`
+        });
+        betaBadge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'EARLY ACCESS BETA' });
     }
 
     // Toggle (Moved to Top Right)
-    const toggleContainer = badgeRow.createDiv({ cls: 'rt-pro-hero-toggle' });
+    const toggleContainer = badgeRow.createDiv({ cls: `${ERT_CLASSES.INLINE} rt-pro-hero-toggle` });
     toggleContainer.style.marginLeft = 'auto'; // Right align in flex container
 
     toggleContainer.createSpan({
@@ -227,7 +229,9 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
 
     // Pro Label + Title
     const titleRow = pandocTitle.createDiv({ cls: ERT_CLASSES.INLINE });
-    const proBadge = titleRow.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} rt-badge-sm` });
+    const proBadge = titleRow.createSpan({
+        cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
+    });
     proBadge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
     titleRow.createEl('h4', { text: 'Export & Pandoc', cls: ERT_CLASSES.SECTION_TITLE });
 
@@ -277,7 +281,9 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
         });
 
     // Templates Subsection
-    const templateSubSection = pandocPanel.createDiv({ cls: `rt-inner-panel ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+    const templateSubSection = pandocPanel.createDiv({
+        cls: `rt-inner-panel ${ERT_CLASSES.SECTION} ${ERT_CLASSES.SECTION_TIGHT}`
+    });
     templateSubSection.createEl('h5', { text: 'Pandoc Templates (Optional)', cls: ERT_CLASSES.SECTION_TITLE });
 
     const templates = plugin.settings.pandocTemplates || {};

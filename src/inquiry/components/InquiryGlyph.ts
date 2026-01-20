@@ -24,13 +24,14 @@ const ARC_BASE_TINT = '#dff5e7';
 const ARC_MAX_GREEN = '#22c55e';
 const DOT_DARKEN = 0.35;
 const ZONE_SEGMENT_COUNT = 3;
-const ZONE_SEGMENT_RADIUS = 200;
+const ZONE_SEGMENT_RADIUS = FLOW_RADIUS + (FLOW_STROKE / 2) + 280;
 const ZONE_RING_THICKNESS = 140;
 const ZONE_RING_GAP_PX = 20;
 const ZONE_DOT_RADIUS_PX = 13;
 const ZONE_DOT_TEXT_PX = 12;
 const ZONE_SEGMENT_VIEWBOX_WIDTH = 159;
 const ZONE_SEGMENT_VIEWBOX_HEIGHT = 257;
+const ZONE_SEGMENT_SCALE = 2;
 const ZONE_SEGMENT_STROKE_WIDTH = 2;
 const ZONE_SEGMENT_PATH = 'M154.984 7.67055C154.316 3.30311 150.229 0.286294 145.895 1.14796C120.714 6.15504 96.8629 16.4983 75.9632 31.5162C52.8952 48.0921 34.0777 69.8922 21.0492 95.1341C8.02081 120.376 1.15135 148.343 1.00251 176.748C0.867659 202.484 6.25287 227.917 16.7583 251.344C18.5662 255.375 23.3927 256.959 27.3399 254.974L42.9203 247.138C57.7222 239.693 63.2828 221.65 59.5838 205.5C57.4532 196.197 56.3914 186.649 56.4417 177.039C56.5447 157.382 61.2984 138.029 70.3141 120.562C79.3298 103.094 92.3515 88.0087 108.315 76.5382C116.118 70.9305 124.517 66.2647 133.334 62.6127C148.641 56.2724 160.128 41.2878 157.622 24.9099L154.984 7.67055Z';
 const ZONE_SEGMENT_FILL = '#7b6448';
@@ -38,7 +39,7 @@ const ZONE_SEGMENT_STROKE = '#d6c3ad';
 const ZONE_DOT_FILL = '#e7d5bf';
 const ZONE_DOT_STROKE = '#f4eadb';
 const ZONE_DOT_TEXT = '#2a2118';
-const ZONE_BASE_ANGLE = Math.PI / 2;
+const ZONE_BASE_ANGLE = Math.PI;
 const DEBUG_INQUIRY_ZONES = false;
 
 export const GLYPH_OUTER_DIAMETER = (FLOW_RADIUS * 2) + FLOW_STROKE;
@@ -205,43 +206,37 @@ export class InquiryGlyph {
         const innerR = midR - (ZONE_RING_THICKNESS / 2);
         const outerR = midR + (ZONE_RING_THICKNESS / 2);
         const gapAngle = ZONE_RING_GAP_PX / midR;
-        const segmentStep = (2 * Math.PI) / ZONE_SEGMENT_COUNT;
-        const segmentSpacing = segmentStep + gapAngle;
-        const segmentTemplate = this.buildZoneSegmentTemplate();
+        const zoneStep = (2 * Math.PI) / ZONE_SEGMENT_COUNT;
+        const zoneSpacing = zoneStep + gapAngle;
+        const zoneTemplate = this.buildZoneSegmentTemplate();
 
-        const segments = [
-            { id: 'setup', label: '1', index: 1, offset: { x: 0, y: -200 }, fill: '#2fbf6a' },
-            { id: 'pressure', label: '2', index: 0, offset: { x: 200, y: 0 }, fill: '#3b7ddd' },
-            { id: 'payoff', label: '3', index: -1, offset: { x: 0, y: 200 }, fill: '#d65252' }
+        const zones = [
+            { id: 'setup', label: '1', index: 1, fill: '#2fbf6a' },
+            { id: 'pressure', label: '2', index: -1, fill: '#3b7ddd' },
+            { id: 'payoff', label: '3', index: 0, fill: '#d65252' }
         ];
 
-        segments.forEach(segment => {
-            const centerAngle = ZONE_BASE_ANGLE + (segment.index * segmentSpacing);
-            const segmentGroup = document.createElementNS(SVG_NS, 'g');
-            segmentGroup.classList.add('inq-zone-segment-wrap', `inq-zone-segment-wrap--${segment.id}`);
+        zones.forEach(zone => {
+            const centerAngle = ZONE_BASE_ANGLE + (zone.index * zoneSpacing);
+            const zoneGroup = document.createElementNS(SVG_NS, 'g');
+            zoneGroup.classList.add('inq-zone-segment-wrap', `inq-zone-segment-wrap--${zone.id}`);
 
-            const offsetGroup = document.createElementNS(SVG_NS, 'g');
-            offsetGroup.setAttribute('transform', `translate(${segment.offset.x} ${segment.offset.y})`);
             const rotateGroup = document.createElementNS(SVG_NS, 'g');
             rotateGroup.setAttribute('transform', `rotate(${(centerAngle * 180) / Math.PI})`);
             const radialGroup = document.createElementNS(SVG_NS, 'g');
             radialGroup.setAttribute('transform', `translate(0 ${-midR})`);
-            const segmentNode = segmentTemplate.cloneNode(true) as SVGGElement;
-            const segmentPath = segmentNode.querySelector('.inq-zone-segment-path') as SVGPathElement | null;
-            if (segmentPath) segmentPath.setAttribute('fill', segment.fill);
-            radialGroup.appendChild(segmentNode);
+            const zoneNode = zoneTemplate.cloneNode(true) as SVGGElement;
+            const zonePath = zoneNode.querySelector('.inq-zone-segment-path') as SVGPathElement | null;
+            if (zonePath) zonePath.setAttribute('fill', zone.fill);
+            radialGroup.appendChild(zoneNode);
             rotateGroup.appendChild(radialGroup);
-            offsetGroup.appendChild(rotateGroup);
-            segmentGroup.appendChild(offsetGroup);
-            group.appendChild(segmentGroup);
+            zoneGroup.appendChild(rotateGroup);
+            group.appendChild(zoneGroup);
 
-            const dotPos = this.polarToCartesianRad(midR, centerAngle);
-            const dotX = parseFloat(dotPos.x) + segment.offset.x;
-            const dotY = parseFloat(dotPos.y) + segment.offset.y;
             const dotGroup = document.createElementNS(SVG_NS, 'g');
-            dotGroup.classList.add('inq-zone-dot', `inq-zone-dot--${segment.id}`);
-            dotGroup.setAttribute('transform', `translate(${dotX.toFixed(2)} ${dotY.toFixed(2)})`);
-            dotGroup.setAttribute('aria-label', `${segment.id} prompt`);
+            dotGroup.classList.add('inq-zone-dot', `inq-zone-dot--${zone.id}`);
+            dotGroup.setAttribute('transform', `rotate(${(-centerAngle * 180) / Math.PI})`);
+            dotGroup.setAttribute('aria-label', `${zone.id} prompt`);
             dotGroup.setAttribute('role', 'note');
 
             const dotCircle = document.createElementNS(SVG_NS, 'circle');
@@ -257,11 +252,11 @@ export class InquiryGlyph {
             dotText.setAttribute('dominant-baseline', 'middle');
             dotText.setAttribute('font-size', String(ZONE_DOT_TEXT_PX));
             dotText.setAttribute('fill', ZONE_DOT_TEXT);
-            dotText.textContent = segment.label;
+            dotText.textContent = zone.label;
 
             dotGroup.appendChild(dotCircle);
             dotGroup.appendChild(dotText);
-            group.appendChild(dotGroup);
+            radialGroup.appendChild(dotGroup);
             this.zoneDots.push({ circle: dotCircle, text: dotText });
         });
 
@@ -286,10 +281,12 @@ export class InquiryGlyph {
     private buildZoneSegmentTemplate(): SVGGElement {
         const group = document.createElementNS(SVG_NS, 'g');
         group.classList.add('inq-zone-segment-template');
-        group.setAttribute(
-            'transform',
-            `translate(${-ZONE_SEGMENT_VIEWBOX_WIDTH / 2} ${-ZONE_SEGMENT_VIEWBOX_HEIGHT / 2})`
-        );
+        const offsetX = -(ZONE_SEGMENT_VIEWBOX_WIDTH * ZONE_SEGMENT_SCALE) / 2;
+        const offsetY = -(ZONE_SEGMENT_VIEWBOX_HEIGHT * ZONE_SEGMENT_SCALE) / 2;
+        group.setAttribute('transform', `translate(${offsetX} ${offsetY})`);
+
+        const scaleGroup = document.createElementNS(SVG_NS, 'g');
+        scaleGroup.setAttribute('transform', `scale(${ZONE_SEGMENT_SCALE})`);
 
         const path = document.createElementNS(SVG_NS, 'path');
         path.classList.add('inq-zone-segment-path');
@@ -298,7 +295,8 @@ export class InquiryGlyph {
         path.setAttribute('stroke', ZONE_SEGMENT_STROKE);
         path.setAttribute('stroke-width', String(ZONE_SEGMENT_STROKE_WIDTH));
         path.setAttribute('pointer-events', 'none');
-        group.appendChild(path);
+        scaleGroup.appendChild(path);
+        group.appendChild(scaleGroup);
 
         return group;
     }

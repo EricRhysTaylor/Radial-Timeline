@@ -11,6 +11,7 @@ import type RadialTimelinePlugin from '../../main';
 import type { RuntimeContentType, RuntimeRateProfile } from '../../types';
 import { addWikiLink } from '../wikiLink';
 import { isProfessionalActive } from './ProfessionalSection';
+import { ERT_CLASSES } from '../../ui/classes';
 
 interface SectionParams {
     app: App;
@@ -102,19 +103,20 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     // Professional Gate
     // ─────────────────────────────────────────────────────────────────────────
     if (!hasProfessional) {
-        const gateEl = containerEl.createDiv({ cls: 'rt-professional-gate' });
+        const gateEl = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} rt-professional-gate` });
         gateEl.createDiv({ 
-            cls: 'rt-professional-gate-message', 
+            cls: `${ERT_CLASSES.SECTION_DESC} rt-professional-gate-message`, 
             text: 'Runtime estimation requires a Pro license. Unlock this feature by entering your license key above. Run local or AI-powered estimates for screenplays and novels. Set custom word rates and parenthetical timings. Additional Chronologue duration arcs, sub-mode in blue and scene hover metadata.' 
         });
         return;
     }
 
     // Pro container wrapping all runtime controls
-    const proContainer = containerEl.createDiv({ cls: 'rt-pro-section-card' });
+    const proContainer = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} rt-pro-section-card` });
 
     // Heading row with Pro badge and toggle (double duty)
-    const heading = new Setting(proContainer)
+    const panelHeader = proContainer.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
+    const heading = new Setting(panelHeader)
         .setName('Runtime estimation')
         .setDesc('Activate film and book runtime estimates to the scene hover metadata, Chronologue Mode, and the Command Palette Runtime Estimator.')
         .addToggle(toggle => {
@@ -130,15 +132,20 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
     // Add Pro badge BEFORE the heading text
     const nameEl = heading.nameEl;
-    const badgeEl = createEl('span', { cls: 'rt-pro-badge' });
-    setIcon(badgeEl, 'signature');
-    badgeEl.createSpan({ text: 'Pro' });
+    const badgeEl = createEl('span', {
+        cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM} rt-pro-badge`
+    });
+    const badgeIcon = badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
+    setIcon(badgeIcon, 'signature');
+    badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro' });
     nameEl.insertBefore(badgeEl, nameEl.firstChild);
     
     addWikiLink(heading, 'Settings#runtime-estimation');
 
     // Container for conditional settings (shown when enabled)
-    const conditionalContainer = proContainer.createDiv({ cls: 'rt-runtime-conditional-settings' });
+    const conditionalContainer = proContainer.createDiv({
+        cls: `${ERT_CLASSES.PANEL_BODY} rt-runtime-conditional-settings`
+    });
 
     // Flash helper for input validation
     const flash = (input: HTMLInputElement, type: 'success' | 'error') => {
@@ -197,7 +204,10 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             }
 
             const contentType = selectedProfile.contentType || 'novel';
-            detailsContainer.createEl('h4', { cls: 'rt-runtime-subheader', text: 'Rates & timings' });
+            detailsContainer.createEl('h4', {
+                cls: `${ERT_CLASSES.SECTION_TITLE} rt-runtime-subheader`,
+                text: 'Rates & timings'
+            });
 
             // Content Type Selection
             new Setting(detailsContainer)
@@ -328,7 +338,10 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             }
 
             // Session planning (optional, per profile)
-            detailsContainer.createEl('h4', { cls: 'rt-runtime-subheader', text: 'Session planning (optional)' });
+            detailsContainer.createEl('h4', {
+                cls: `${ERT_CLASSES.SECTION_TITLE} rt-runtime-subheader`,
+                text: 'Session planning (optional)'
+            });
             const session = selectedProfile.sessionPlanning || {};
 
             new Setting(detailsContainer)
@@ -376,7 +389,9 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                 });
 
             // Explicit Duration Patterns (always shown when enabled)
-            const patternsInfo = detailsContainer.createDiv({ cls: 'setting-item-description rt-runtime-patterns-info' });
+            const patternsInfo = detailsContainer.createDiv({
+                cls: `setting-item-description ${ERT_CLASSES.SECTION_DESC} rt-runtime-patterns-info`
+            });
             patternsInfo.createEl('p', { text: 'Explicit duration patterns are always parsed and added to runtime:' });
             const patternsList = patternsInfo.createEl('ul');
             const patterns = [
