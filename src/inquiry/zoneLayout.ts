@@ -7,7 +7,7 @@ export interface InquiryZoneLayout {
 }
 
 export const ZONE_LAYOUT: Record<InquiryZoneId, InquiryZoneLayout> = {
-    setup: { x: -280, y: -200, axisRotationDeg: 10 }, //bigger rotates CCW
+    setup: { x: -300, y: -196, axisRotationDeg: 8 }, //bigger rotates CCW
     pressure: { x: 280, y: -200, axisRotationDeg: 120 },
-    payoff: { x: 0, y: 290, axisRotationDeg: 240 }
+    payoff: { x: 0, y: 310, axisRotationDeg: 244 }
 };

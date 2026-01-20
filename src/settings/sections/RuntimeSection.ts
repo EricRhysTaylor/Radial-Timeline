@@ -209,7 +209,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             const contentType = selectedProfile.contentType || 'novel';
             const ratesHeader = detailsContainer.createDiv({
-                cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_INLINE} rt-runtime-subheader`
+                cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_INLINE} ${ERT_CLASSES.HEADER_WITH_ICON} rt-runtime-subheader`
             });
             const ratesHeaderLeft = ratesHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
             const ratesIconName = contentType === 'screenplay' ? 'projector' : 'mic-vocal';
@@ -352,7 +352,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             // Session planning (optional, per profile)
             const sessionHeader = detailsContainer.createDiv({
-                cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK} rt-runtime-subheader`
+                cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_INLINE} ${ERT_CLASSES.HEADER_WITH_ICON} rt-runtime-subheader`
             });
             const sessionHeaderLeft = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
             setIcon(sessionHeaderLeft, 'calendar-clock');
@@ -361,12 +361,12 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                 cls: ERT_CLASSES.SECTION_TITLE,
                 text: 'Session planning (optional)'
             });
-            sessionHeaderMain.createDiv({
-                cls: ERT_CLASSES.SECTION_DESC,
-                text: 'Used in the Outline export: Index cards (JSON) summary to estimate writing hours and total sessions.'
-            });
             const sessionHeaderRight = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
             addWikiLinkToElement(sessionHeaderRight, 'Settings#runtime-estimation');
+            detailsContainer.createDiv({
+                cls: ERT_CLASSES.HEADER_DESC,
+                text: 'Used in the Outline export: Index cards (JSON) summary to estimate writing hours and total sessions.'
+            });
             const session = selectedProfile.sessionPlanning || {};
 
             addProRow(new Setting(detailsContainer))
