@@ -14,7 +14,7 @@ export const ZONE_LAYOUT: Record<InquiryZoneId, InquiryZoneLayout> = {
         x: -300,
         y: -171,
         axisRotationDeg: 3, // bigger rotates CW
-        numberRadius: 520,
+        numberRadius: 450,
         numberStartAngleDeg: 212,
         numberDirection: 'ccw'
     },
@@ -22,7 +22,7 @@ export const ZONE_LAYOUT: Record<InquiryZoneId, InquiryZoneLayout> = {
         x: 291,
         y: -181,
         axisRotationDeg: 123,
-        numberRadius: 520,
+        numberRadius: 450,
         numberStartAngleDeg: 328,
         numberDirection: 'cw'
     },
@@ -30,7 +30,7 @@ export const ZONE_LAYOUT: Record<InquiryZoneId, InquiryZoneLayout> = {
         x: 0,
         y: 328,
         axisRotationDeg: 243,
-        numberRadius: 520,
+        numberRadius: 450,
         numberStartAngleDeg: 90,
         numberDirection: 'cw'
     }

@@ -80,42 +80,42 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     // ─────────────────────────────────────────────────────────────────────────
     // CAMPAIGN MANAGER CARD
     // ─────────────────────────────────────────────────────────────────────────
-    const card = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} rt-campaign-manager-card ${ERT_CLASSES.SKIN_PRO}` });
+    const card = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ${ERT_CLASSES.SKIN_PRO} ert-campaign-card` });
 
     // Header with Pro badge
-    const headerRow = card.createDiv({ cls: `rt-campaign-manager-header ${ERT_CLASSES.CARD_HEADER}` });
-    const titleArea = headerRow.createDiv({ cls: 'rt-campaign-manager-title-area' });
+    const headerRow = card.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
+    const titleArea = headerRow.createDiv({ cls: ERT_CLASSES.CONTROL });
 
     // Pro Pill (ERT Style)
-    const proPill = titleArea.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}` });
+    const titleRow = titleArea.createEl('h4', { cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE} ert-campaign-title` });
+    const proPill = titleRow.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}` });
     setIcon(proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), 'signature');
     proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
-
-    titleArea.createEl('span', { text: 'Campaign Manager', cls: 'setting-item-name' });
+    titleRow.createSpan({ text: 'Campaign Manager' });
 
     // Description
     card.createEl('p', {
         text: 'Create multiple embed destinations with independent refresh schedules. Perfect for managing Kickstarter, Patreon, newsletter, and website embeds separately.',
-        cls: 'rt-campaign-manager-desc'
+        cls: `${ERT_CLASSES.SECTION_DESC} ert-campaign-desc`
     });
 
     // ─────────────────────────────────────────────────────────────────────────
     // PRO GATE - Coming Soon Overlay
     // ─────────────────────────────────────────────────────────────────────────
     if (!isProActive) {
-        const overlay = card.createDiv({ cls: 'rt-campaign-manager-overlay' });
-        overlay.createEl('div', { cls: 'rt-campaign-manager-coming-soon', text: 'Coming Soon with Pro' });
-        card.addClass('rt-campaign-manager-locked');
+        const overlay = card.createDiv({ cls: 'ert-campaign-overlay' });
+        overlay.createEl('div', { cls: 'ert-campaign-coming-soon', text: 'Coming Soon with Pro' });
+        card.addClass('ert-campaign-locked');
         return; // Don't render the rest if Pro is not active
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // CAMPAIGN LIST
     // ─────────────────────────────────────────────────────────────────────────
-    const listContainer = card.createDiv({ cls: `rt-campaign-list ${ERT_CLASSES.STACK}` });
+    const listContainer = card.createDiv({ cls: `${ERT_CLASSES.STACK} ert-campaign-list` });
 
     if (campaigns.length === 0) {
-        const emptyState = listContainer.createDiv({ cls: 'rt-campaign-empty-state' });
+        const emptyState = listContainer.createDiv({ cls: 'ert-campaign-empty-state' });
         emptyState.createEl('p', { text: 'No campaigns yet. Create your first campaign to track multiple embed destinations.' });
     } else {
         campaigns.forEach((campaign, index) => {
@@ -129,9 +129,9 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     // ─────────────────────────────────────────────────────────────────────────
     // ADD CAMPAIGN BUTTON
     // ─────────────────────────────────────────────────────────────────────────
-    const addSection = card.createDiv({ cls: 'rt-campaign-add-section' });
+    const addSection = card.createDiv({ cls: 'ert-campaign-add-section' });
 
-    const addRow = addSection.createDiv({ cls: 'rt-campaign-add-row' });
+    const addRow = addSection.createDiv({ cls: 'ert-campaign-add-row' });
     let nameInput: TextComponent;
 
     const newCampaignSetting = new Setting(addRow)
@@ -180,10 +180,10 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     // ─────────────────────────────────────────────────────────────────────────
     // QUICK TEMPLATES
     // ─────────────────────────────────────────────────────────────────────────
-    const templatesSection = card.createDiv({ cls: 'rt-campaign-templates' });
-    templatesSection.createEl('h5', { text: 'Quick Start Templates', cls: 'rt-campaign-templates-title' });
+    const templatesSection = card.createDiv({ cls: 'ert-campaign-templates' });
+    templatesSection.createEl('h5', { text: 'Quick Start Templates', cls: 'ert-kicker' });
 
-    const templateRow = templatesSection.createDiv({ cls: 'rt-campaign-template-row' });
+    const templateRow = templatesSection.createDiv({ cls: ERT_CLASSES.INLINE });
 
     const templates = [
         { name: 'Kickstarter', icon: 'rocket', days: 7 },
@@ -230,7 +230,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
         const updatedCampaigns = plugin.settings.authorProgress?.campaigns || [];
 
         if (updatedCampaigns.length === 0) {
-            const emptyState = listContainer.createDiv({ cls: 'rt-campaign-empty-state' });
+            const emptyState = listContainer.createDiv({ cls: 'ert-campaign-empty-state' });
             emptyState.createEl('p', { text: 'No campaigns yet. Create your first campaign to track multiple embed destinations.' });
         } else {
             updatedCampaigns.forEach((campaign, index) => {
@@ -289,17 +289,18 @@ function renderCampaignRow(
     const needsRefresh = campaignNeedsRefresh(campaign);
 
     // Create a wrapper to contain both the row and expandable details
-    const wrapper = container.createDiv({ cls: 'rt-campaign-wrapper' });
+    const wrapper = container.createDiv({ cls: 'ert-campaign-wrapper' });
 
     const rowClasses: string[] = [ERT_CLASSES.OBJECT_ROW];
     if (needsRefresh) rowClasses.push('is-needs-refresh');
     if (!campaign.isActive) rowClasses.push('is-inactive');
 
     const row = wrapper.createDiv({ cls: rowClasses.join(' ') });
-    const rowLeft = row.createDiv({ cls: 'rt-campaign-left' });
+    const rowLeft = row.createDiv({ cls: ERT_CLASSES.OBJECT_ROW_LEFT });
 
     // Status indicator
-    const statusIndicator = rowLeft.createDiv({ cls: 'rt-campaign-status' });
+    const titleRow = rowLeft.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-campaign-title-row` });
+    const statusIndicator = titleRow.createDiv({ cls: 'ert-campaign-status' });
     if (needsRefresh) {
         setIcon(statusIndicator, 'alert-triangle');
         setTooltip(statusIndicator, 'Needs refresh');
@@ -312,14 +313,12 @@ function renderCampaignRow(
     }
 
     // Campaign info
-    const infoArea = rowLeft.createDiv({ cls: 'rt-campaign-info' });
-    const nameRow = infoArea.createDiv({ cls: 'rt-campaign-name-row' });
-    nameRow.createSpan({ text: campaign.name, cls: 'rt-campaign-name' });
+    titleRow.createSpan({ text: campaign.name, cls: 'ert-campaign-name' });
 
     if (campaign.refreshThresholdDays) {
-        nameRow.createSpan({
+        titleRow.createSpan({
             text: `${campaign.refreshThresholdDays}d refresh`,
-            cls: 'rt-campaign-refresh-badge'
+            cls: 'ert-campaign-refresh-badge'
         });
     }
 
@@ -327,13 +326,14 @@ function renderCampaignRow(
     const lastPublished = campaign.lastPublishedDate
         ? `Updated ${new Date(campaign.lastPublishedDate).toLocaleDateString()}`
         : 'Never published';
-    infoArea.createSpan({ text: lastPublished, cls: 'rt-campaign-last-published' });
+    rowLeft.createSpan({ text: lastPublished, cls: `${ERT_CLASSES.OBJECT_ROW_META} ert-campaign-last-published` });
 
     // Actions
-    const actions = row.createDiv({ cls: 'rt-campaign-actions' });
+    const actions = row.createDiv({ cls: ERT_CLASSES.OBJECT_ROW_ACTIONS });
+    const actionGroup = actions.createDiv({ cls: ERT_CLASSES.ICON_BTN_GROUP });
 
     // Toggle active
-    const toggleBtn = actions.createEl('button', { cls: 'rt-campaign-action-btn' });
+    const toggleBtn = actionGroup.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
     setIcon(toggleBtn, campaign.isActive ? 'pause' : 'play');
     setTooltip(toggleBtn, campaign.isActive ? 'Pause campaign' : 'Resume campaign');
     toggleBtn.onclick = async () => {
@@ -344,12 +344,12 @@ function renderCampaignRow(
     };
 
     // Edit (expand to show more options)
-    const editBtn = actions.createEl('button', { cls: 'rt-campaign-action-btn' });
+    const editBtn = actionGroup.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
     setIcon(editBtn, 'settings');
     setTooltip(editBtn, 'Edit campaign settings');
     editBtn.onclick = () => {
         // Toggle expanded state - add details to wrapper, not row
-        const existingDetails = wrapper.querySelector('.rt-campaign-details');
+        const existingDetails = wrapper.querySelector('.ert-campaign-details');
         if (existingDetails) {
             existingDetails.remove();
             row.classList.remove('is-expanded');
@@ -360,7 +360,7 @@ function renderCampaignRow(
     };
 
     // Delete
-    const deleteBtn = actions.createEl('button', { cls: 'rt-campaign-action-btn rt-campaign-delete-btn' });
+    const deleteBtn = actionGroup.createEl('button', { cls: `${ERT_CLASSES.ICON_BTN} ert-iconBtn--danger` });
     setIcon(deleteBtn, 'trash-2');
     setTooltip(deleteBtn, 'Delete campaign');
     deleteBtn.onclick = async () => {
@@ -382,7 +382,7 @@ function renderCampaignDetails(
     plugin: RadialTimelinePlugin,
     onUpdate: () => void
 ): void {
-    const details = parentRow.createDiv({ cls: `rt-campaign-details ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+    const details = parentRow.createDiv({ cls: `ert-campaign-details ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
 
     const freqSetting = new Setting(details)
         .setName('Update Frequency')
@@ -513,7 +513,7 @@ function renderCampaignDetails(
     exportSizeSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
 
     // Container for reveal options (hidden when Teaser is enabled)
-    const revealRowContainer = details.createDiv({ cls: 'rt-campaign-reveal-container' });
+    const revealRowContainer = details.createDiv({ cls: 'ert-campaign-reveal-container' });
 
     // Function to render or hide reveal options based on teaser state
     const renderRevealOptions = () => {
@@ -525,14 +525,14 @@ function renderCampaignDetails(
         // If teaser is enabled, these manual options don't apply
         if (currentCampaign.teaserReveal?.enabled) {
             // Show a note instead
-            const note = revealRowContainer.createDiv({ cls: 'rt-campaign-reveal-note' });
+            const note = revealRowContainer.createDiv({ cls: 'ert-campaign-reveal-note' });
             note.setText('Visibility controlled by Teaser Reveal below');
             return;
         }
 
         // Show manual reveal checkboxes
-        const revealRow = revealRowContainer.createDiv({ cls: 'rt-campaign-reveal-row' });
-        revealRow.createEl('span', { text: 'Show:', cls: 'rt-campaign-reveal-label' });
+        const revealRow = revealRowContainer.createDiv({ cls: 'ert-campaign-reveal-row' });
+        revealRow.createEl('span', { text: 'Show:', cls: 'ert-campaign-reveal-label' });
 
         const revealOptions = [
             { key: 'showSubplots', label: 'Subplots' },
@@ -542,7 +542,7 @@ function renderCampaignDetails(
         ] as const;
 
         revealOptions.forEach(opt => {
-            const checkbox = revealRow.createEl('label', { cls: 'rt-campaign-checkbox' });
+            const checkbox = revealRow.createEl('label', { cls: 'ert-campaign-checkbox' });
             const input = checkbox.createEl('input', { type: 'checkbox' });
             input.checked = currentCampaign[opt.key];
             checkbox.createSpan({ text: opt.label });
@@ -568,7 +568,7 @@ function renderCampaignDetails(
     // ─────────────────────────────────────────────────────────────────────────
     // TEASER REVEAL (Progressive Reveal)
     // ─────────────────────────────────────────────────────────────────────────
-    const teaserSection = details.createDiv({ cls: 'rt-campaign-teaser-section' });
+    const teaserSection = details.createDiv({ cls: 'ert-campaign-teaser-section' });
 
     // Container for teaser content that can be re-rendered
     const teaserContentContainer = teaserSection.createDiv({ cls: 'rt-teaser-content' });

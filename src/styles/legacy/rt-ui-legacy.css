@@ -28,34 +28,6 @@
   border-radius: 8px;
 }
 
-.ert-ui .ert-skin--pro .rt-campaign-manager-card {
-  position: relative;
-  margin-top: 24px;
-  padding: 20px;
-  border-radius: 12px;
-  background: var(--ert-pro-surface-bg);
-  border: 1px solid var(--ert-pro-border);
-  box-shadow: var(--ert-panel-shadow);
-}
-
-.ert-ui .ert-skin--pro .ert-objectRow .rt-campaign-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.ert-ui .ert-skin--pro .ert-objectRow.is-needs-refresh .rt-campaign-status {
-  color: var(--text-error, #ef4444);
-}
-
-.ert-ui .ert-skin--pro .ert-objectRow:not(.is-needs-refresh):not(.is-inactive) .rt-campaign-status {
-  color: var(--text-success, #22c55e);
-}
-
-.ert-ui .ert-skin--pro .ert-objectRow.is-inactive .rt-campaign-status {
-  color: var(--text-muted);
-}
 
 /* ==========================================================================
    OPTIMIZED: Pro pill v1 - do not normalize
@@ -99,31 +71,6 @@
   width: 100%;
 }
 
-/* Reset margins for campaign list stack to fix excessive spacing */
-.ert-ui .rt-campaign-manager-card .rt-campaign-list,
-.ert-ui .rt-campaign-manager-card .rt-campaign-add-section {
-  margin: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-}
-
-.ert-ui .rt-campaign-manager-card .rt-campaign-list {
-  display: flex;
-  flex-direction: column;
-}
-
-/* Force left align for Campaign header to override legacy centering */
-.ert-ui .rt-campaign-manager-card .rt-campaign-manager-header.ert-card__header {
-  align-items: flex-start;
-  justify-content: flex-start;
-}
-
-/* Ensure templates section has spacing from the element above it */
-.ert-ui .rt-campaign-manager-card .rt-campaign-templates {
-  margin: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-}
 
 /* Pro Target Dropdown */
 .rt-apr-pro-target .dropdown {

@@ -250,7 +250,7 @@ export class InquiryGlyph {
             const numberDirection = layout?.numberDirection ?? 'ccw';
             const dotSpacingRad = (ZONE_NUMBER_SPACING_DEG * Math.PI) / 180;
             const startAngleRad = (numberStartAngle * Math.PI) / 180;
-            const step = numberDirection === 'ccw' ? dotSpacingRad : -dotSpacingRad;
+            const step = numberDirection === 'ccw' ? -dotSpacingRad : dotSpacingRad;
             for (let i = 0; i < ZONE_NUMBER_COUNT; i += 1) {
                 const dotAngle = startAngleRad + (step * i);
                 const dotX = numberRadius * Math.cos(dotAngle);
@@ -266,7 +266,7 @@ export class InquiryGlyph {
                 dotCircle.setAttribute('r', String(ZONE_DOT_RADIUS_PX));
                 dotCircle.setAttribute('fill', 'none');
                 dotCircle.setAttribute('stroke', ZONE_DOT_STROKE);
-                dotCircle.setAttribute('stroke-width', '2');
+                dotCircle.setAttribute('stroke-width', String(ZONE_DOT_RADIUS_PX / 2));
 
                 const dotText = document.createElementNS(SVG_NS, 'text');
                 dotText.classList.add('inq-zone-dot-text');

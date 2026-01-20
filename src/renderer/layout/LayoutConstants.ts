@@ -184,8 +184,6 @@ export const MICRO_RING_WIDTH = 6;
 /** Gap between micro ring lanes (px) */
 export const MICRO_RING_GAP = 2;
 
-/** Max number of micro ring lanes */
-export const MICRO_RING_MAX_LANES = 3;
 
 /** Offset for the progress ring in Chronologue mode (px, relative to lineInnerRadius) */
 export const CHRONOLOGUE_PROGRESS_RING_RADIUS_OFFSET = -3;

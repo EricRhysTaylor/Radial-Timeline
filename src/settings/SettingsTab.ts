@@ -2,6 +2,7 @@ import { App, PluginSettingTab, Component, Setting as Settings, setIcon, TextCom
 import { renderGeneralSection } from './sections/GeneralSection';
 import { renderPublicationSection } from './sections/PublicationSection';
 import { renderChronologueSection } from './sections/ChronologueSection';
+import { renderBackdropSection } from './sections/BackdropSection';
 import { renderTemplatesSection } from './sections/TemplatesSection';
 import { renderAuthorProgressSection } from './sections/AuthorProgressSection';
 import { renderInquirySection } from './sections/InquirySection';
@@ -449,6 +450,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         const chronologueSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'chronologue' } });
         renderChronologueSection({ app: this.app, plugin: this.plugin, containerEl: chronologueSection });
+
+        const backdropSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'backdrop' } });
+        renderBackdropSection({ app: this.app, plugin: this.plugin, containerEl: backdropSection });
 
         const planetarySection = searchableContent.createDiv({ attr: { 'data-rt-section': 'planetary' } });
         renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl: planetarySection });

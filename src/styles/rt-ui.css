@@ -1289,6 +1289,185 @@
   opacity: 0.5;
 }
 
+.ert-ui .ert-skin--pro .ert-campaign-card {
+  position: relative;
+  margin-top: calc(var(--ert-gap-md) * 2);
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-desc {
+  margin-bottom: var(--ert-gap-md);
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-locked {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--background-primary) 65%, transparent);
+  backdrop-filter: blur(2px);
+  border-radius: var(--ert-panel-radius);
+  z-index: 10;
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-coming-soon {
+  background: linear-gradient(135deg,
+      color-mix(in srgb, var(--ert-accent) 70%, transparent),
+      color-mix(in srgb, var(--ert-accent) 35%, transparent));
+  color: var(--text-normal);
+  font-size: 14px;
+  font-weight: 700;
+  padding: var(--ert-pad-sm) var(--ert-pad-md);
+  border-radius: var(--ert-control-radius);
+  box-shadow: var(--ert-panel-shadow);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-empty-state {
+  padding: var(--ert-pad-md);
+  text-align: center;
+  color: var(--text-muted);
+  background: var(--ert-pro-surface-2);
+  border-radius: var(--ert-control-radius);
+  border: 1px dashed var(--ert-pro-border);
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-title-row {
+  align-items: center;
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-status {
+  width: calc(var(--ert-gap-md) * 2);
+  height: calc(var(--ert-gap-md) * 2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.ert-ui .ert-skin--pro .ert-objectRow.is-needs-refresh .ert-campaign-status {
+  color: var(--text-error);
+}
+
+.ert-ui .ert-skin--pro .ert-objectRow:not(.is-needs-refresh):not(.is-inactive) .ert-campaign-status {
+  color: var(--text-success);
+}
+
+.ert-ui .ert-skin--pro .ert-objectRow.is-inactive .ert-campaign-status {
+  color: var(--text-muted);
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-name {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-refresh-badge {
+  font-size: 10px;
+  padding: calc(var(--ert-gap-xs) / 2) var(--ert-gap-xs);
+  background: color-mix(in srgb, var(--background-secondary) 65%, transparent);
+  border-radius: 999px;
+  color: var(--text-muted);
+}
+
+.ert-ui .ert-skin--pro .ert-iconBtn--danger:hover {
+  background: color-mix(in srgb, var(--text-error) 20%, transparent);
+  color: var(--text-error);
+  border-color: color-mix(in srgb, var(--text-error) 60%, transparent);
+  box-shadow: var(--ert-iconBtn-shadow), 0 0 0 2px color-mix(in srgb, var(--text-error) 35%, transparent);
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-details {
+  padding: var(--ert-pad-md);
+  background: color-mix(in srgb, var(--background-secondary) 85%, transparent);
+  border: 1px solid var(--background-modifier-border);
+  border-top: none;
+  border-radius: 0 0 var(--ert-control-radius) var(--ert-control-radius);
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-reveal-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  padding: var(--ert-gap-xs) 0;
+  flex-wrap: wrap;
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-reveal-note {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-muted);
+  padding: var(--ert-gap-xs) 0;
+  opacity: 0.8;
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-reveal-label {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-normal);
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-checkbox input {
+  margin: 0;
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-add-section {
+  margin-top: var(--ert-gap-md);
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-add-row .setting-item {
+  padding: var(--ert-pad-md);
+  gap: var(--ert-gap-md);
+  background: var(--ert-pro-surface-2);
+  border-radius: var(--ert-control-radius);
+  border: 1px solid var(--ert-pro-border);
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-add-row .setting-item-info {
+  flex: 1;
+  min-width: 200px;
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-add-row .setting-item-control {
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-templates {
+  padding-top: var(--ert-gap-md);
+}
+
+.ert-ui .ert-skin--pro .ert-campaign-teaser-section {
+  margin-top: var(--ert-gap-md);
+  padding-top: var(--ert-gap-md);
+  border-top: 1px solid var(--background-modifier-border);
+}
+
 .ert-ui .setting-item.is-inactive {
   opacity: 0.5;
   pointer-events: none;

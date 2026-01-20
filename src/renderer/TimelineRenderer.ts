@@ -53,7 +53,6 @@ import {
     ELAPSED_ARC_RADIUS,
     ELAPSED_TICK_LENGTH,
     MICRO_RING_GAP,
-    MICRO_RING_MAX_LANES,
     MICRO_RING_WIDTH,
     PROGRESS_RING_RADIUS_OFFSET,
     SCENE_TITLE_INSET,
@@ -303,7 +302,7 @@ export function createTimelineSVG(
 
     const showBackdropRing = (plugin.settings as any).showBackdropRing ?? true;
     const microRingConfigs = Array.isArray(plugin.settings.chronologueBackdropMicroRings)
-        ? plugin.settings.chronologueBackdropMicroRings.slice(0, MICRO_RING_MAX_LANES)
+        ? plugin.settings.chronologueBackdropMicroRings
         : [];
     const microRingLayout: BackdropMicroRingLayout | undefined = (isChronologueMode && showBackdropRing && microRingConfigs.length > 0)
         ? buildBackdropMicroRingLayout({ scenes, configs: microRingConfigs })
@@ -378,10 +377,13 @@ export function createTimelineSVG(
             const ringIndex = numRings - 1 - backdropSubplotIndex;
             if (ringIndex > 0) {
                 const backdropInnerRadius = ringStartRadii[ringIndex];
-                const laneCount = Math.min(microRingLayout.laneCount, MICRO_RING_MAX_LANES);
+                const laneCount = microRingLayout.laneCount;
                 const laneGap = MICRO_RING_WIDTH + MICRO_RING_GAP;
                 const outermostRadius = backdropInnerRadius - MICRO_RING_GAP - (MICRO_RING_WIDTH / 2);
                 microRingBaseRadius = outermostRadius - ((laneCount - 1) * laneGap);
+                if (!Number.isFinite(microRingBaseRadius) || microRingBaseRadius <= 0) {
+                    microRingBaseRadius = undefined;
+                }
             }
         }
     }
