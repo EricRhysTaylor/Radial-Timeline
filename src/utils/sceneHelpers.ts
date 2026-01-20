@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 import type { TimelineItem } from '../types';
-import type { GlobalPovMode } from '../types/settings';
+import type { ChronologueBackdropMicroRing, GlobalPovMode } from '../types/settings';
 import { parseWhenField } from './date';
 
 const STATUSES_REQUIRING_WHEN = new Set(['working', 'complete']);
@@ -92,6 +92,8 @@ export interface PluginRendererFacade {
         };
         enableAiSceneAnalysis: boolean;
         chronologueDurationCapSelection?: string;
+        showBackdropRing?: boolean;
+        chronologueBackdropMicroRings?: ChronologueBackdropMicroRing[];
         dominantSubplots?: Record<string, string>;
         discontinuityThreshold?: string;
         globalPovMode?: GlobalPovMode;

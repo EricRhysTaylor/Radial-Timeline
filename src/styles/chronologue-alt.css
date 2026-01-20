@@ -32,3 +32,8 @@
   pointer-events: none;
 }
 
+.radial-timeline-svg[data-shift-mode="alien"] .rt-backdrop-micro-ring,
+.radial-timeline-svg[data-shift-mode="alien"] .rt-backdrop-micro-tick {
+  opacity: 0.25;
+  pointer-events: none;
+}

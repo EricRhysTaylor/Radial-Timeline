@@ -175,6 +175,28 @@ export const ELAPSED_ARC_RADIUS = 766;
 export const ELAPSED_TICK_LENGTH = 14;
 
 // =============================================================================
+// RADII - CHRONOLOGUE MICRO RINGS
+// =============================================================================
+
+/** Width of backdrop micro rings (px) */
+export const MICRO_RING_WIDTH = 4;
+
+/** Gap between micro ring lanes (px) */
+export const MICRO_RING_GAP = 2;
+
+/** Max number of micro ring lanes */
+export const MICRO_RING_MAX_LANES = 3;
+
+/** Offset for the progress ring in Chronologue mode (px, relative to lineInnerRadius) */
+export const CHRONOLOGUE_PROGRESS_RING_RADIUS_OFFSET = -3;
+
+/** Default progress ring radius offset (px, relative to lineInnerRadius) */
+export const PROGRESS_RING_RADIUS_OFFSET = 15;
+
+/** Progress ring base stroke width (px) */
+export const PROGRESS_RING_BASE_WIDTH = 10;
+
+// =============================================================================
 // INSETS AND OFFSETS
 // =============================================================================
 
@@ -302,5 +324,4 @@ export const GRID_CELL_GAP_X = 2;
 export const GRID_CELL_GAP_Y = 4;
 export const GRID_HEADER_OFFSET_Y = 12;
 export const GRID_LINE_HEIGHT = 26;
-
 

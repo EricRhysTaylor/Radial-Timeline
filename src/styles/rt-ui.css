@@ -1038,6 +1038,7 @@
     linear-gradient(135deg, color-mix(in srgb, var(--ert-accent) 12%, transparent) 0%, color-mix(in srgb, var(--ert-accent) 5%, transparent) 100%),
     color-mix(in srgb, var(--background-primary) 90%, var(--ert-accent) 6%);
   --ert-pro-border: color-mix(in srgb, var(--ert-accent) 30%, transparent);
+  --ert-pro-surface-2: color-mix(in srgb, var(--background-secondary) 88%, var(--ert-accent) 8%);
   --ert-surface-hero: var(--ert-pro-surface-bg);
   --ert-border-hero: color-mix(in srgb, var(--ert-accent) 30%, transparent);
   --ert-shadow-hero: 0 10px 36px color-mix(in srgb, var(--ert-accent) 18%, transparent);
@@ -1116,6 +1117,15 @@
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
   border-bottom-color: transparent;
+}
+
+.ert-ui.ert-skin--pro .ert-elementBlock.setting-item,
+.ert-ui .ert-skin--pro .ert-elementBlock.setting-item {
+  background: var(--ert-pro-surface-2);
+  border: 1px solid var(--ert-pro-border);
+  border-radius: 8px;
+  padding: var(--ert-pad-md);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--ert-accent) 12%, transparent);
 }
 
 .ert-ui.ert-skin--pro .ert-row--recommended,

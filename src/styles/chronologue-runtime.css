@@ -32,6 +32,12 @@
   pointer-events: none;
 }
 
+.radial-timeline-container .radial-timeline-svg[data-shift-mode="runtime"] .rt-backdrop-micro-ring,
+.radial-timeline-container .radial-timeline-svg[data-shift-mode="runtime"] .rt-backdrop-micro-tick {
+  opacity: 0.25;
+  pointer-events: none;
+}
+
 /* Runtime mode elapsed time arc and label - blue styling */
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-elapsed-arc-path {
   stroke: rgba(60, 160, 220, 0.9);
@@ -85,4 +91,3 @@
 .rt-runtime-button.rt-runtime-no-data:hover .rt-runtime-lucide-icon {
   stroke: var(--text-error);
 }
-

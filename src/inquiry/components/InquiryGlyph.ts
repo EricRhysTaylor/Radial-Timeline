@@ -1,4 +1,5 @@
 import type { InquiryConfidence, InquirySeverity } from '../state';
+import { ZONE_LAYOUT, type InquiryZoneId } from '../zoneLayout';
 
 export interface InquiryGlyphProps {
     focusLabel: string;
@@ -40,6 +41,7 @@ const ZONE_DOT_FILL = '#e7d5bf';
 const ZONE_DOT_STROKE = '#f4eadb';
 const ZONE_DOT_TEXT = '#2a2118';
 const ZONE_BASE_ANGLE = Math.PI;
+const ZONE_SEGMENT_AXIS_ROTATION_DEG = 90;
 const DEBUG_INQUIRY_ZONES = false;
 
 export const GLYPH_OUTER_DIAMETER = (FLOW_RADIUS * 2) + FLOW_STROKE;
@@ -210,7 +212,7 @@ export class InquiryGlyph {
         const zoneSpacing = zoneStep + gapAngle;
         const zoneTemplate = this.buildZoneSegmentTemplate();
 
-        const zones = [
+        const zones: Array<{ id: InquiryZoneId; label: string; index: number; fill: string }> = [
             { id: 'setup', label: '1', index: 1, fill: '#2fbf6a' },
             { id: 'pressure', label: '2', index: -1, fill: '#3b7ddd' },
             { id: 'payoff', label: '3', index: 0, fill: '#d65252' }
@@ -218,24 +220,29 @@ export class InquiryGlyph {
 
         zones.forEach(zone => {
             const centerAngle = ZONE_BASE_ANGLE + (zone.index * zoneSpacing);
+            const layout = ZONE_LAYOUT[zone.id];
+            const fallbackX = midR * Math.sin(centerAngle);
+            const fallbackY = -midR * Math.cos(centerAngle);
+            const zoneX = layout?.x ?? fallbackX;
+            const zoneY = layout?.y ?? fallbackY;
+            const axisRotationDeg = layout?.axisRotationDeg ?? ZONE_SEGMENT_AXIS_ROTATION_DEG;
             const zoneGroup = document.createElementNS(SVG_NS, 'g');
             zoneGroup.classList.add('inq-zone-segment-wrap', `inq-zone-segment-wrap--${zone.id}`);
 
-            const rotateGroup = document.createElementNS(SVG_NS, 'g');
-            rotateGroup.setAttribute('transform', `rotate(${(centerAngle * 180) / Math.PI})`);
-            const radialGroup = document.createElementNS(SVG_NS, 'g');
-            radialGroup.setAttribute('transform', `translate(0 ${-midR})`);
+            const translateGroup = document.createElementNS(SVG_NS, 'g');
+            translateGroup.setAttribute('transform', `translate(${zoneX.toFixed(2)} ${zoneY.toFixed(2)})`);
+            const axisGroup = document.createElementNS(SVG_NS, 'g');
+            axisGroup.setAttribute('transform', `rotate(${axisRotationDeg})`);
             const zoneNode = zoneTemplate.cloneNode(true) as SVGGElement;
             const zonePath = zoneNode.querySelector('.inq-zone-segment-path') as SVGPathElement | null;
             if (zonePath) zonePath.setAttribute('fill', zone.fill);
-            radialGroup.appendChild(zoneNode);
-            rotateGroup.appendChild(radialGroup);
-            zoneGroup.appendChild(rotateGroup);
+            axisGroup.appendChild(zoneNode);
+            translateGroup.appendChild(axisGroup);
+            zoneGroup.appendChild(translateGroup);
             group.appendChild(zoneGroup);
 
             const dotGroup = document.createElementNS(SVG_NS, 'g');
             dotGroup.classList.add('inq-zone-dot', `inq-zone-dot--${zone.id}`);
-            dotGroup.setAttribute('transform', `rotate(${(-centerAngle * 180) / Math.PI})`);
             dotGroup.setAttribute('aria-label', `${zone.id} prompt`);
             dotGroup.setAttribute('role', 'note');
 
@@ -256,7 +263,7 @@ export class InquiryGlyph {
 
             dotGroup.appendChild(dotCircle);
             dotGroup.appendChild(dotText);
-            radialGroup.appendChild(dotGroup);
+            translateGroup.appendChild(dotGroup);
             this.zoneDots.push({ circle: dotCircle, text: dotText });
         });
 

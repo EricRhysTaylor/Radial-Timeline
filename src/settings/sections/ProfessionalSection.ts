@@ -141,6 +141,10 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
     // CONTENT STACK
     // ─────────────────────────────────────────────────────────────────────────
     const contentStack = section.createDiv({ cls: ERT_CLASSES.STACK });
+    const addProRow = (setting: Setting) => {
+        setting.settingEl.addClass(ERT_CLASSES.ELEMENT_BLOCK);
+        return setting;
+    };
 
     // Open Beta Banner
     if (OPEN_BETA_ACTIVE) {
@@ -172,7 +176,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
     // License Key (Post-Beta)
     if (!OPEN_BETA_ACTIVE) {
         const licensePanel = contentStack.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
-        const licenseSetting = new Setting(licensePanel)
+        const licenseSetting = addProRow(new Setting(licensePanel))
             .setName('License Key')
             .setDesc('Enter your Pro license key to unlock advanced features.')
             .addText(text => {
@@ -229,10 +233,8 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
 
     // Pro Label + Title
     const titleRow = pandocTitle.createDiv({ cls: ERT_CLASSES.INLINE });
-    const proBadge = titleRow.createSpan({
-        cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
-    });
-    proBadge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
+    const titleIcon = titleRow.createSpan({ cls: ERT_CLASSES.SECTION_ICON });
+    setIcon(titleIcon, 'book-open-text');
     titleRow.createEl('h4', { text: 'Export & Pandoc', cls: ERT_CLASSES.SECTION_TITLE });
 
     pandocTitle.createDiv({
@@ -241,7 +243,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
     });
 
     // Settings
-    new Setting(pandocPanel)
+    addProRow(new Setting(pandocPanel))
         .setName('Pandoc binary path')
         .setDesc('Optional: set a custom pandoc executable path. If blank, system PATH is used.')
         .addText(text => {
@@ -255,7 +257,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
             });
         });
 
-    new Setting(pandocPanel)
+    addProRow(new Setting(pandocPanel))
         .setName('Enable fallback Pandoc')
         .setDesc('Attempt a secondary bundled/portable pandoc path if the primary is missing.')
         .addToggle(toggle => {
@@ -266,7 +268,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
             });
         });
 
-    new Setting(pandocPanel)
+    addProRow(new Setting(pandocPanel))
         .setName('Fallback Pandoc path')
         .setDesc('Optional path to a portable/bundled pandoc binary.')
         .addText(text => {
@@ -282,14 +284,14 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
 
     // Templates Subsection
     const templateSubSection = pandocPanel.createDiv({
-        cls: `rt-inner-panel ${ERT_CLASSES.SECTION} ${ERT_CLASSES.SECTION_TIGHT}`
+        cls: `${ERT_CLASSES.SECTION} ${ERT_CLASSES.SECTION_TIGHT}`
     });
     templateSubSection.createEl('h5', { text: 'Pandoc Templates (Optional)', cls: ERT_CLASSES.SECTION_TITLE });
 
     const templates = plugin.settings.pandocTemplates || {};
 
     const addTemplateSetting = (name: string, key: keyof typeof templates, placeholder: string) => {
-        new Setting(templateSubSection)
+        addProRow(new Setting(templateSubSection))
             .setName(name)
             .addText(text => {
                 text.inputEl.addClass('rt-input-full');

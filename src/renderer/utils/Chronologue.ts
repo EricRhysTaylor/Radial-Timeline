@@ -5,7 +5,7 @@
 import type { TimelineItem } from '../../types';
 import { isBeatNote, sortScenes, type PluginRendererFacade } from '../../utils/sceneHelpers';
 import { calculateTimeSpan, generateChronologicalTicks, durationSelectionToMs, parseDurationDetail } from '../../utils/date';
-import { formatNumber } from '../../utils/svg';
+import { escapeXml, formatNumber } from '../../utils/svg';
 import { startPerfSegment } from '../utils/Performance';
 import {
     renderChronologueTimelineArc,
@@ -13,6 +13,8 @@ import {
     type ChronologueSceneEntry
 } from '../components/ChronologueTimeline';
 import { renderBackdropRing } from '../components/BackdropRing';
+import { renderBackdropMicroRings, type BackdropMicroRingLayout, type MicroRingTick } from '../components/BackdropMicroRings';
+import { MICRO_RING_GAP, MICRO_RING_WIDTH } from '../layout/LayoutConstants';
 
 export type ChronologueLabel = {
     name: string;
@@ -96,6 +98,8 @@ export type ChronologueOverlayOptions = {
     synopsesElements?: SVGGElement[];
     maxTextWidth?: number;
     useRuntimeMode?: boolean;
+    microRingLayout?: BackdropMicroRingLayout;
+    microRingBaseRadius?: number;
 };
 
 export function renderChronologueOverlays({
@@ -110,7 +114,9 @@ export function renderChronologueOverlays({
     durationArcRadius = 0,
     synopsesElements = [],
     maxTextWidth = 0,
-    useRuntimeMode = false
+    useRuntimeMode = false,
+    microRingLayout,
+    microRingBaseRadius
 }: ChronologueOverlayOptions): string {
     const stopChronoOverlays = startPerfSegment(plugin, 'timeline.chronologue-overlays');
     let svg = '';
@@ -130,6 +136,14 @@ export function renderChronologueOverlays({
     );
     if (chronologueTimelineArc) {
         svg += chronologueTimelineArc;
+    }
+
+    if (microRingLayout?.segments.length && Number.isFinite(microRingBaseRadius)) {
+        svg += renderBackdropMicroRings({
+            layout: microRingLayout,
+            baseRadius: microRingBaseRadius as number,
+            laneGap: MICRO_RING_WIDTH + MICRO_RING_GAP
+        });
     }
 
     const outerRingIndex = ringStartRadii.length - 1;
@@ -243,12 +257,14 @@ type ChronoTickParams = {
     outerLabels: ChronologueLabel[];
     monthTickStart: number;
     monthTickEnd: number;
+    microRingTicks?: MicroRingTick[];
 };
 
 export function renderChronologueOuterTicks({
     outerLabels,
     monthTickStart,
-    monthTickEnd
+    monthTickEnd,
+    microRingTicks
 }: ChronoTickParams): string {
     if (!outerLabels.length) {
         return '';
@@ -280,6 +296,23 @@ export function renderChronologueOuterTicks({
                 class="rt-chronological-tick rt-chronological-tick-minor"${dataAttrs}/>`;
         }
     });
+
+    if (microRingTicks?.length) {
+        microRingTicks.forEach(tick => {
+            const x1 = formatNumber(monthTickStart * Math.cos(tick.angle));
+            const y1 = formatNumber(monthTickStart * Math.sin(tick.angle));
+            const x2 = formatNumber(monthTickEnd * Math.cos(tick.angle));
+            const y2 = formatNumber(monthTickEnd * Math.sin(tick.angle));
+            const safeTitle = escapeXml(tick.title);
+
+            svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" 
+                class="rt-backdrop-micro-tick rt-tooltip-target"
+                stroke="${tick.color}"
+                data-tooltip="${safeTitle}"
+                data-tooltip-placement="top"
+            />`;
+        });
+    }
     svg += '</g>';
     return svg;
 }

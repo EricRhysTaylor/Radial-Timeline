@@ -177,6 +177,25 @@ export function parseWhenField(when: string): Date | null {
         const date = new Date(year, month, day, hour, minute, 0, 0); // Local time
         return isNaN(date.getTime()) ? null : date;
     }
+
+    // Try month/day/year with optional time (supports M/D/YYYY and MM/DD/YYYY)
+    const monthDayYearTimeMatch = /^(\d{1,2})-(\d{1,2})-(\d{4})(?:\s+(\d{1,2})(?::(\d{2}))?(?::(\d{2}))?)?\s*(am|pm)?$/i.exec(trimmed);
+    if (monthDayYearTimeMatch) {
+        const month = parseInt(monthDayYearTimeMatch[1], 10) - 1;
+        const day = parseInt(monthDayYearTimeMatch[2], 10);
+        const year = parseInt(monthDayYearTimeMatch[3], 10);
+        let hour = monthDayYearTimeMatch[4] ? parseInt(monthDayYearTimeMatch[4], 10) : 12;
+        const minute = monthDayYearTimeMatch[5] ? parseInt(monthDayYearTimeMatch[5], 10) : 0;
+        const second = monthDayYearTimeMatch[6] ? parseInt(monthDayYearTimeMatch[6], 10) : 0;
+        const ampm = monthDayYearTimeMatch[7]?.toLowerCase();
+
+        if (ampm) {
+            if (ampm === 'pm' && hour < 12) hour += 12;
+            if (ampm === 'am' && hour === 12) hour = 0;
+        }
+
+        return createLocalDate(year, month, day, hour, minute, second);
+    }
     const yearMonthMatch = /^(\d{4})-(\d{1,2})$/.exec(trimmed);
     if (yearMonthMatch) {
         const year = parseInt(yearMonthMatch[1], 10);
@@ -220,6 +239,29 @@ export function parseWhenField(when: string): Date | null {
     }
 
     return null;
+}
+
+export function parseDateRangeInput(value: string): { start: Date | null; end: Date | null } | null {
+    if (!value || typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    let parts: string[] | null = null;
+    if (/\s+to\s+/i.test(trimmed)) {
+        parts = trimmed.split(/\s+to\s+/i);
+    } else if (/\s[-–—]\s/.test(trimmed)) {
+        parts = trimmed.split(/\s[-–—]\s/);
+    } else {
+        const slashRangeMatch = /^(\d{1,2}\/\d{1,2}\/\d{4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?)?)\s*[-–—]\s*(\d{1,2}\/\d{1,2}\/\d{4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?)?)$/i.exec(trimmed);
+        if (slashRangeMatch) {
+            parts = [slashRangeMatch[1], slashRangeMatch[2]];
+        }
+    }
+
+    if (!parts || parts.length < 2) return null;
+    const start = parseWhenField(parts[0].trim());
+    const end = parseWhenField(parts[1].trim());
+    return { start, end };
 }
 
 /**

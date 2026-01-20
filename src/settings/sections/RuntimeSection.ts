@@ -146,6 +146,10 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     const conditionalContainer = proContainer.createDiv({
         cls: `${ERT_CLASSES.PANEL_BODY} rt-runtime-conditional-settings`
     });
+    const addProRow = (setting: Setting) => {
+        setting.settingEl.addClass(ERT_CLASSES.ELEMENT_BLOCK);
+        return setting;
+    };
 
     // Flash helper for input validation
     const flash = (input: HTMLInputElement, type: 'success' | 'error') => {
@@ -210,7 +214,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             });
 
             // Content Type Selection
-            new Setting(detailsContainer)
+            addProRow(new Setting(detailsContainer))
                 .setName('Content type')
                 .setDesc('Novel calculates all text at narration pace. Screenplay separates dialogue from action.')
                 .addDropdown((dropdown: DropdownComponent) => {
@@ -226,7 +230,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             // Word Rates (content-type specific)
             if (contentType === 'screenplay') {
-                new Setting(detailsContainer)
+                addProRow(new Setting(detailsContainer))
                     .setName('Dialogue words per minute')
                     .setDesc('Reading speed for quoted dialogue.')
                     .addText((text: TextComponent) => {
@@ -246,7 +250,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                         });
                     });
 
-                new Setting(detailsContainer)
+                addProRow(new Setting(detailsContainer))
                     .setName('Action words per minute')
                     .setDesc('Reading speed for scene descriptions and action lines.')
                     .addText((text: TextComponent) => {
@@ -281,7 +285,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                 ];
 
                 for (const p of parentheticals) {
-                    new Setting(detailsContainer)
+                    addProRow(new Setting(detailsContainer))
                         .setName(p.label)
                         .setDesc(p.desc)
                         .addText((text: TextComponent) => {
@@ -316,7 +320,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                 }
             } else {
                 // Novel / Audiobook mode
-                new Setting(detailsContainer)
+                addProRow(new Setting(detailsContainer))
                     .setName('Narration words per minute')
                     .setDesc('Reading pace for all content (audiobook narration).')
                     .addText((text: TextComponent) => {
@@ -344,7 +348,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             });
             const session = selectedProfile.sessionPlanning || {};
 
-            new Setting(detailsContainer)
+            addProRow(new Setting(detailsContainer))
                 .setName('Drafting words per minute (optional)')
                 .setDesc('Your writing speed for session time estimates.')
                 .addText((text: TextComponent) => {
@@ -366,7 +370,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     });
                 });
 
-            new Setting(detailsContainer)
+            addProRow(new Setting(detailsContainer))
                 .setName('Daily minutes available (optional)')
                 .setDesc('For shooting schedule time estimates.')
                 .addText((text: TextComponent) => {
@@ -414,7 +418,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             const isDefault = selectedProfile && selectedProfile.id === plugin.settings.defaultRuntimeProfileId;
             const defaultNote = isDefault ? ' (default)' : '';
 
-            const headerSetting = new Setting(headerContainer)
+            const headerSetting = addProRow(new Setting(headerContainer))
                 .setName('Profile')
                 .setDesc(`Select, rename, duplicate, delete, or set as default. Current default: ${currentDefault?.label || 'None'}`);
 

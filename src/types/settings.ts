@@ -331,6 +331,7 @@ export interface RadialTimelineSettings {
     bookDesignerTemplates?: BookDesignerTemplate[];
     backdropYamlTemplate?: string;
     showBackdropRing?: boolean;
+    chronologueBackdropMicroRings?: ChronologueBackdropMicroRing[];
     hoverMetadataFields?: HoverMetadataField[];
 
     // Professional License
@@ -369,6 +370,12 @@ export interface RadialTimelineSettings {
 
     // Pro experience (visual/hero activation)
     hasSeenProActivation?: boolean;
+}
+
+export interface ChronologueBackdropMicroRing {
+    title: string;
+    range: string;
+    color: string;
 }
 
 export interface PlanetaryProfile {

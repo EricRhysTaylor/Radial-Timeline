@@ -218,6 +218,23 @@
   stroke: none;
 }
 
+/* Backdrop micro rings */
+.rt-backdrop-micro-ring {
+  fill: none;
+  stroke-linecap: round;
+  opacity: 0.95;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.rt-backdrop-micro-tick {
+  stroke-width: 2px;
+  stroke-linecap: round;
+  opacity: 0.95;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
 .radial-timeline-container .radial-timeline-svg[data-mode="chronologue"]:not([data-shift-mode]).scene-hover .rt-backdrop-segment.rt-backdrop-overlap,
 .radial-timeline-container .radial-timeline-svg[data-chronologue-mode="true"]:not([data-shift-mode]).scene-hover .rt-backdrop-segment.rt-backdrop-overlap {
   opacity: 0;
@@ -235,4 +252,3 @@
   stroke: var(--rt-color-empty-selected);
   stroke-opacity: 1;
 }
-

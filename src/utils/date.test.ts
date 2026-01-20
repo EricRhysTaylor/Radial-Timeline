@@ -7,6 +7,7 @@ import {
   parseWhenField,
   parseDuration,
   parseDurationDetail,
+  parseDateRangeInput,
   calculateTimeSpan,
   formatElapsedTime,
   isOverdueDateString,
@@ -161,11 +162,39 @@ describe('parseWhenField', () => {
       expect(date!.getFullYear()).toBe(2024);
     });
 
+    it('parses month/day/year with time', () => {
+      const date = parseWhenField('4/24/2024 1:45pm');
+      expect(date).not.toBeNull();
+      expect(date!.getFullYear()).toBe(2024);
+      expect(date!.getMonth()).toBe(3); // April
+      expect(date!.getDate()).toBe(24);
+      expect(date!.getHours()).toBe(13);
+      expect(date!.getMinutes()).toBe(45);
+    });
+
     it('trims whitespace', () => {
       const date = parseWhenField('  2024-03-15  ');
       expect(date).not.toBeNull();
       expect(date!.getFullYear()).toBe(2024);
     });
+  });
+});
+
+describe('parseDateRangeInput', () => {
+  it('parses slash-delimited date ranges with optional time', () => {
+    const parsed = parseDateRangeInput('4/24/2024-4/25/2025 1:45pm');
+    expect(parsed).not.toBeNull();
+    expect(parsed!.start).not.toBeNull();
+    expect(parsed!.end).not.toBeNull();
+    expect(parsed!.start!.getFullYear()).toBe(2024);
+    expect(parsed!.end!.getFullYear()).toBe(2025);
+  });
+
+  it('parses dashed date ranges with spaces', () => {
+    const parsed = parseDateRangeInput('2024-04-24 - 2024-04-25');
+    expect(parsed).not.toBeNull();
+    expect(parsed!.start).not.toBeNull();
+    expect(parsed!.end).not.toBeNull();
   });
 });
 
@@ -427,4 +456,3 @@ describe('discontinuity detection', () => {
     });
   });
 });
-
