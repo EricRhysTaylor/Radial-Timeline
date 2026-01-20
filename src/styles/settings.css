@@ -2370,25 +2370,6 @@
 /* (APR legacy styles removed; see src/styles/legacy/apr-legacy.css) */
 
 /* -------------------------------------------------------------------------- */
-/* SLIDER VALUE LABEL                                                          */
-/* -------------------------------------------------------------------------- */
-
-.rt-slider-value-label {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 32px;
-  height: 24px;
-  padding: 0 8px;
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-normal);
-}
-
-/* -------------------------------------------------------------------------- */
 /* COMPLETION ESTIMATE PREVIEW                                                 */
 /* -------------------------------------------------------------------------- */
 

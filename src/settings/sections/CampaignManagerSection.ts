@@ -429,7 +429,7 @@ function renderCampaignDetails(
             // Add value label next to the slider
             const sliderEl = slider.sliderEl;
             refreshValueLabel = sliderEl.parentElement?.createEl('span', {
-                cls: 'rt-slider-value-label',
+                cls: 'ert-sliderValueLabel',
                 text: String(campaign.refreshThresholdDays)
             });
 
@@ -444,29 +444,45 @@ function renderCampaignDetails(
         .setName('Embed File Path')
         .setDesc(`Location for the embed SVG file. Must end with .svg. Default: ${defaultPath}`);
 
-    embedPathSetting.settingEl.addClass('ert-row--wideControl');
+    embedPathSetting.settingEl.addClass(ERT_CLASSES.ROW_WIDE_CONTROL);
     embedPathSetting.settingEl.addClass(ERT_CLASSES.ROW);
     embedPathSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
 
     embedPathSetting.addText(text => {
-        text.inputEl.addClass('rt-input-full');
+        const successClass = 'ert-input--success';
+        const errorClass = 'ert-input--error';
+        const clearInputState = () => {
+            text.inputEl.removeClass(successClass);
+            text.inputEl.removeClass(errorClass);
+        };
+        const flashError = (timeout = 2000) => {
+            text.inputEl.addClass(errorClass);
+            window.setTimeout(() => {
+                text.inputEl.removeClass(errorClass);
+            }, timeout);
+        };
+        const flashSuccess = (timeout = 1000) => {
+            text.inputEl.addClass(successClass);
+            window.setTimeout(() => {
+                text.inputEl.removeClass(successClass);
+            }, timeout);
+        };
         text.setPlaceholder(defaultPath)
             .setValue(campaign.embedPath);
 
         // Validate on blur
         const handleBlur = async () => {
             const val = text.getValue().trim();
-            text.inputEl.removeClass('rt-setting-input-success');
-            text.inputEl.removeClass('rt-setting-input-error');
+            clearInputState();
 
             if (val && !val.endsWith('.svg')) {
-                text.inputEl.addClass('rt-setting-input-error');
+                flashError();
                 new Notice('Embed path must end with .svg');
                 return;
             }
 
             if (val) {
-                text.inputEl.addClass('rt-setting-input-success');
+                flashSuccess();
             }
 
             if (!plugin.settings.authorProgress?.campaigns) return;

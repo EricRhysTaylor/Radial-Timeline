@@ -231,6 +231,19 @@ export interface InquirySourcesSettings {
     lastScanAt?: string;
 }
 
+export type InquiryPromptMode = 'flow' | 'depth';
+export type InquiryPromptZone = 'setup' | 'pressure' | 'payoff';
+
+export interface InquiryPromptSlot {
+    id: string;
+    label?: string;
+    question: string;
+    enabled: boolean;
+    builtIn?: boolean;
+}
+
+export type InquiryPromptConfig = Record<InquiryPromptMode, Record<InquiryPromptZone, InquiryPromptSlot[]>>;
+
 export interface InquiryFocusCache {
     lastFocusBookId?: string;
     lastFocusSceneByBookId?: Record<string, string>;
@@ -260,6 +273,7 @@ export interface RadialTimelineSettings {
     inquiryCacheEnabled?: boolean;
     inquiryCacheMaxSessions?: number;
     inquirySources?: InquirySourcesSettings;
+    inquiryPromptConfig?: InquiryPromptConfig;
     inquirySessionCache?: InquirySessionCacheRecord;
     inquiryFocusCache?: InquiryFocusCache;
     actCount?: number;

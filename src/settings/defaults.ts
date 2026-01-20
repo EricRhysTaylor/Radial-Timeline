@@ -6,6 +6,7 @@
 
 import type { RadialTimelineSettings } from '../types';
 import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
+import { buildDefaultInquiryPromptConfig } from '../inquiry/prompts';
 
 export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     sourcePath: '',
@@ -25,6 +26,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         classCounts: {},
         resolvedScanRoots: []
     },
+    inquiryPromptConfig: buildDefaultInquiryPromptConfig(),
     inquiryFocusCache: {
         lastFocusBookId: undefined,
         lastFocusSceneByBookId: {}

@@ -42,3 +42,9 @@
   pointer-events: none;
 }
 
+.radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-micro-ring,
+.radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-micro-tick {
+  stroke: var(--text-muted);
+  opacity: 0.2;
+  pointer-events: none;
+}

@@ -1,5 +1,5 @@
-import type { InquiryConfidence, InquirySeverity } from '../state';
-import { ZONE_LAYOUT, type InquiryZoneId } from '../zoneLayout';
+import type { InquiryConfidence, InquiryMode, InquirySeverity, InquiryZone } from '../state';
+import { ZONE_LAYOUT } from '../zoneLayout';
 
 export interface InquiryGlyphProps {
     focusLabel: string;
@@ -7,6 +7,20 @@ export interface InquiryGlyphProps {
     depthValue: number; // 0..1 normalized
     severity: InquirySeverity;
     confidence: InquiryConfidence;
+}
+
+export interface InquiryZonePromptItem {
+    id: string;
+    question: string;
+}
+
+export interface InquiryGlyphPromptState {
+    mode: InquiryMode;
+    promptsByZone: Record<InquiryZone, InquiryZonePromptItem[]>;
+    selectedPromptIds: Record<InquiryZone, string>;
+    onPromptSelect?: (zone: InquiryZone, promptId: string) => void;
+    onPromptHover?: (text: string) => void;
+    onPromptHoverEnd?: () => void;
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -68,6 +82,16 @@ export class InquiryGlyph {
     private depthGroup: SVGGElement;
     private badgeScaleFactor = 1;
     private zoneDots: Array<{ circle: SVGCircleElement; text: SVGTextElement }> = [];
+    private promptState?: InquiryGlyphPromptState;
+    private zoneNumberMarkers = new Map<InquiryZone, Array<{
+        group: SVGGElement;
+        circle: SVGCircleElement;
+        text: SVGTextElement;
+        zone: InquiryZone;
+        index: number;
+        promptId?: string;
+        promptText?: string;
+    }>>();
 
     constructor(container: SVGElement, props: InquiryGlyphProps) {
         this.props = props;
@@ -123,6 +147,11 @@ export class InquiryGlyph {
     update(next: Partial<InquiryGlyphProps>): void {
         this.props = { ...this.props, ...next };
         this.applyProps(this.props);
+    }
+
+    updatePromptState(state: InquiryGlyphPromptState): void {
+        this.promptState = state;
+        this.syncZoneNumberMarkers();
     }
 
     setDisplayScale(scale: number, unitsPerPx: number): void {
@@ -214,7 +243,7 @@ export class InquiryGlyph {
         const zoneArcRange = zoneStep - gapAngle;
         const zoneTemplate = this.buildZoneSegmentTemplate();
 
-        const zones: Array<{ id: InquiryZoneId; label: string; index: number; fill: string }> = [
+        const zones: Array<{ id: InquiryZone; label: string; index: number; fill: string }> = [
             { id: 'setup', label: '1', index: 1, fill: '#2fbf6a' },
             { id: 'pressure', label: '2', index: -1, fill: '#3b7ddd' },
             { id: 'payoff', label: '3', index: 0, fill: '#d65252' }
@@ -251,6 +280,15 @@ export class InquiryGlyph {
             const dotSpacingRad = (ZONE_NUMBER_SPACING_DEG * Math.PI) / 180;
             const startAngleRad = (numberStartAngle * Math.PI) / 180;
             const step = numberDirection === 'ccw' ? -dotSpacingRad : dotSpacingRad;
+            const markers: Array<{
+                group: SVGGElement;
+                circle: SVGCircleElement;
+                text: SVGTextElement;
+                zone: InquiryZone;
+                index: number;
+                promptId?: string;
+                promptText?: string;
+            }> = [];
             for (let i = 0; i < ZONE_NUMBER_COUNT; i += 1) {
                 const dotAngle = startAngleRad + (step * i);
                 const dotX = numberRadius * Math.cos(dotAngle);
@@ -280,7 +318,29 @@ export class InquiryGlyph {
                 dotGroup.appendChild(dotText);
                 zoneGroup.appendChild(dotGroup);
                 this.zoneDots.push({ circle: dotCircle, text: dotText });
+                const marker: {
+                    group: SVGGElement;
+                    circle: SVGCircleElement;
+                    text: SVGTextElement;
+                    zone: InquiryZone;
+                    index: number;
+                    promptId?: string;
+                    promptText?: string;
+                } = { group: dotGroup, circle: dotCircle, text: dotText, zone: zone.id, index: i };
+                dotGroup.addEventListener('click', () => {
+                    if (!marker.promptId) return;
+                    this.promptState?.onPromptSelect?.(marker.zone, marker.promptId);
+                });
+                dotGroup.addEventListener('pointerenter', () => {
+                    if (!marker.promptText) return;
+                    this.promptState?.onPromptHover?.(marker.promptText);
+                });
+                dotGroup.addEventListener('pointerleave', () => {
+                    this.promptState?.onPromptHoverEnd?.();
+                });
+                markers.push(marker);
             }
+            this.zoneNumberMarkers.set(zone.id, markers);
         });
 
         if (DEBUG_INQUIRY_ZONES) {
@@ -299,6 +359,31 @@ export class InquiryGlyph {
         }
 
         return group;
+    }
+
+    private syncZoneNumberMarkers(): void {
+        if (!this.promptState) return;
+        const { promptsByZone, selectedPromptIds } = this.promptState;
+        this.zoneNumberMarkers.forEach((markers, zone) => {
+            const prompts = promptsByZone[zone] ?? [];
+            const selectedId = selectedPromptIds[zone];
+            markers.forEach((marker, idx) => {
+                const prompt = prompts[idx];
+                marker.promptId = prompt?.id;
+                marker.promptText = prompt?.question;
+                marker.text.textContent = prompt ? String(idx + 1) : '';
+                marker.group.setAttribute('display', prompt ? 'inline' : 'none');
+                marker.group.classList.toggle('is-active', !!prompt && selectedId === prompt.id);
+                if (prompt) {
+                    marker.group.setAttribute('aria-label', prompt.question);
+                    marker.group.setAttribute('role', 'button');
+                    marker.group.setAttribute('tabindex', '0');
+                } else {
+                    marker.group.removeAttribute('role');
+                    marker.group.removeAttribute('tabindex');
+                }
+            });
+        });
     }
 
     private buildZoneSegmentTemplate(): SVGGElement {

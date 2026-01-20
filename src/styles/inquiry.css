@@ -345,6 +345,14 @@
   cursor: pointer;
 }
 
+.inq-zone-dot.is-active .inq-zone-dot-circle {
+  stroke: #fff1df;
+}
+
+.inq-zone-dot.is-active .inq-zone-dot-text {
+  fill: #1f160e;
+}
+
 .inq-zone-dot:hover .inq-zone-dot-circle {
   fill: #f1e3d2;
   stroke: #fff1df;

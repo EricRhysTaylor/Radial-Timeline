@@ -252,3 +252,11 @@
   stroke: var(--rt-color-empty-selected);
   stroke-opacity: 1;
 }
+
+.radial-timeline-svg[data-mode="chronologue"]:not([data-shift-mode]).scene-hover .rt-backdrop-micro-ring,
+.radial-timeline-svg[data-chronologue-mode="true"]:not([data-shift-mode]).scene-hover .rt-backdrop-micro-ring,
+.radial-timeline-svg[data-mode="chronologue"]:not([data-shift-mode]).scene-hover .rt-backdrop-micro-tick,
+.radial-timeline-svg[data-chronologue-mode="true"]:not([data-shift-mode]).scene-hover .rt-backdrop-micro-tick {
+  stroke: var(--rt-color-empty-selected);
+  opacity: 1;
+}

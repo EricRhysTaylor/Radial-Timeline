@@ -20,7 +20,7 @@ export interface AuthorProgressSectionProps {
 }
 
 export function renderAuthorProgressSection({ app, plugin, containerEl }: AuthorProgressSectionProps): void {
-    const section = containerEl.createDiv({ cls: `rt-settings-section ert-apr-section ${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_SOCIAL}` });
+    const section = containerEl.createDiv({ cls: `ert-apr-section ${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_SOCIAL}` });
 
     // Check if APR needs refresh
     const aprService = new AuthorProgressService(plugin, app);
@@ -244,7 +244,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     bgSetting.addText(text => {
         bgTextInput = text;
         text.setPlaceholder('#0d0d0f').setValue(currentBg);
-        text.inputEl.classList.add('rt-hex-input');
+        text.inputEl.classList.add('ert-input--hex');
         text.onChange(async (val) => {
             if (!val) return;
             if (!plugin.settings.authorProgress) return;
@@ -291,7 +291,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     const spokeColorInput = new TextComponent(spokeControlRow);
     spokeColorInputRef = spokeColorInput;
-    spokeColorInput.inputEl.classList.add('rt-hex-input');
+    spokeColorInput.inputEl.classList.add('ert-input--hex');
     spokeColorInput.setPlaceholder(fallbackColor).setValue(isCustomMode ? currentSpokeColor : fallbackColor);
     spokeColorInput.setDisabled(!isCustomMode);
     spokeColorInput.onChange(async (val) => {
@@ -311,7 +311,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     spokeModeDropdown.addOption('light', 'Dark Strokes');
     spokeModeDropdown.addOption('none', 'No Strokes');
     spokeModeDropdown.addOption('custom', 'Custom Color');
-    spokeModeDropdown.selectEl.classList.add('rt-setting-dropdown');
     // Use spoke mode if set, otherwise fall back to theme
     const currentValue = currentSpokeMode !== 'dark' ? currentSpokeMode : (currentTheme !== 'dark' ? currentTheme : 'dark');
     spokeModeDropdown.setValue(currentValue);
@@ -346,9 +345,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     linkUrlSetting.settingEl.addClass(ERT_CLASSES.ROW);
     linkUrlSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
+    linkUrlSetting.settingEl.addClass(ERT_CLASSES.ROW_WIDE_CONTROL);
 
     linkUrlSetting.addText(text => {
-        text.inputEl.addClass('rt-input-full');
         text.setPlaceholder('https://your-site.com')
             .setValue(settings?.authorUrl || '')
             .onChange(async (val) => {
@@ -797,7 +796,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
         const colorText = new TextComponent(rowPrimary);
         opts.color.setTextRef?.(colorText);
-        colorText.inputEl.classList.add('rt-hex-input');
+        colorText.inputEl.classList.add('ert-input--hex');
         colorText.setPlaceholder(opts.color.fallback).setValue(opts.color.value);
         colorText.onChange(async (val) => {
             if (isSyncing) return;
@@ -1020,7 +1019,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Only show basic Publishing & Automation for non-Pro users
     if (!isProActive) {
-        const automationCard = contentWrapper.createDiv({ cls: `rt-glass-card ${ERT_CLASSES.STACK}` });
+        const automationCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
         const automationHeader = automationCard.createEl('h4', {
             text: 'Publishing & Automation',
             cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`
@@ -1046,6 +1045,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                     }
                 })
             );
+        frequencySetting.settingEl.addClass(ERT_CLASSES.ROW);
+        frequencySetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
 
         // Add red alert border when refresh is needed
         if (needsRefresh) {
@@ -1081,12 +1082,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                     // Add value label above the slider thumb
                     const sliderEl = slider.sliderEl;
                     const valueLabel = sliderEl.parentElement?.createEl('span', {
-                        cls: 'rt-slider-value-label',
+                        cls: 'ert-sliderValueLabel',
                         text: String(currentDays)
                     });
 
                     return slider;
                 });
+            stalenessSetting.settingEl.addClass(ERT_CLASSES.ROW);
+            stalenessSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
 
             // Add red alert border when refresh is needed
             if (needsRefresh) {
@@ -1098,34 +1101,46 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             .setName('Embed File Path')
             .setDesc(`Location for the "Live Embed" SVG file. Must end with .svg. Default: ${DEFAULT_SETTINGS.authorProgress?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg'}`);
 
-        embedPathSetting.settingEl.addClass('ert-row--wideControl');
+        embedPathSetting.settingEl.addClass(ERT_CLASSES.ROW);
+        embedPathSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
+        embedPathSetting.settingEl.addClass(ERT_CLASSES.ROW_WIDE_CONTROL);
 
         embedPathSetting.addText(text => {
             const defaultPath = DEFAULT_SETTINGS.authorProgress?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg';
-            text.inputEl.addClass('rt-input-full');
+            const successClass = 'ert-input--success';
+            const errorClass = 'ert-input--error';
+            const clearInputState = () => {
+                text.inputEl.removeClass(successClass);
+                text.inputEl.removeClass(errorClass);
+            };
+            const flashError = (timeout = 2000) => {
+                text.inputEl.addClass(errorClass);
+                window.setTimeout(() => {
+                    text.inputEl.removeClass(errorClass);
+                }, timeout);
+            };
+            const flashSuccess = (timeout = 1000) => {
+                text.inputEl.addClass(successClass);
+                window.setTimeout(() => {
+                    text.inputEl.removeClass(successClass);
+                }, timeout);
+            };
             text.setPlaceholder(defaultPath)
                 .setValue(settings?.dynamicEmbedPath || defaultPath);
 
             // Validate on blur
             const handleBlur = async () => {
                 const val = text.getValue().trim();
-                text.inputEl.removeClass('rt-setting-input-success');
-                text.inputEl.removeClass('rt-setting-input-error');
+                clearInputState();
 
                 if (!val) {
                     // Empty is invalid - needs a path
-                    text.inputEl.addClass('rt-setting-input-error');
-                    window.setTimeout(() => {
-                        text.inputEl.removeClass('rt-setting-input-error');
-                    }, 2000);
+                    flashError();
                     return;
                 }
 
                 if (!val.toLowerCase().endsWith('.svg')) {
-                    text.inputEl.addClass('rt-setting-input-error');
-                    window.setTimeout(() => {
-                        text.inputEl.removeClass('rt-setting-input-error');
-                    }, 2000);
+                    flashError();
                     return;
                 }
 
@@ -1133,10 +1148,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 if (plugin.settings.authorProgress) {
                     plugin.settings.authorProgress.dynamicEmbedPath = val;
                     await plugin.saveSettings();
-                    text.inputEl.addClass('rt-setting-input-success');
-                    window.setTimeout(() => {
-                        text.inputEl.removeClass('rt-setting-input-success');
-                    }, 1000);
+                    flashSuccess();
                 }
             };
 
@@ -1160,10 +1172,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                     }
                     plugin.settings.authorProgress.dynamicEmbedPath = normalizePath(defaultPath);
                     await plugin.saveSettings();
-                    text.inputEl.addClass('rt-setting-input-success');
-                    window.setTimeout(() => {
-                        text.inputEl.removeClass('rt-setting-input-success');
-                    }, 1000);
+                    flashSuccess();
                 });
             });
         });

@@ -1,33 +1,5 @@
 /* Legacy rt-* selectors extracted from rt-ui.css during ERT migration. */
 
-.ert-ui.ert-skin--social .rt-glass-card,
-.ert-ui .ert-skin--social .rt-glass-card {
-  background: var(--ert-social-grad), var(--ert-social-surface);
-  border: 1px solid var(--ert-social-border);
-  box-shadow: var(--ert-social-glow);
-}
-
-.ert-ui.ert-skin--social .ert-skin--pro .rt-glass-card,
-.ert-ui .ert-skin--social .ert-skin--pro .rt-glass-card {
-  background: var(--ert-pro-surface-bg);
-  border: 1px solid var(--ert-pro-border);
-  box-shadow: var(--ert-pro-glow);
-}
-
-.ert-ui.ert-skin--social .ert-skin--pro .rt-glass-card .setting-item:not(.setting-item-heading),
-.ert-ui .ert-skin--social .ert-skin--pro .rt-glass-card .setting-item:not(.setting-item-heading) {
-  background: var(--ert-pro-surface-2);
-  border: 1px solid var(--ert-pro-border);
-  border-radius: 8px;
-}
-
-.ert-ui.ert-skin--social .rt-glass-card .setting-item:not(.setting-item-heading),
-.ert-ui .ert-skin--social .rt-glass-card .setting-item:not(.setting-item-heading) {
-  background: var(--ert-social-surface-2);
-  border: 1px solid var(--ert-social-border);
-  border-radius: 8px;
-}
-
 
 /* ==========================================================================
    OPTIMIZED: Pro pill v1 - do not normalize

@@ -18,6 +18,8 @@ import {
     InquirySeverity,
     InquiryZone
 } from './state';
+import type { InquiryPromptConfig } from '../types/settings';
+import { buildDefaultInquiryPromptConfig, normalizeInquiryPromptConfig } from './prompts';
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
 import { openOrRevealFile } from '../utils/fileUtils';
 import { InquiryGlyph, FLOW_RADIUS, FLOW_STROKE } from './components/InquiryGlyph';
@@ -52,73 +54,6 @@ type InquiryQuestion = {
     zone: InquiryZone;
     mode: InquiryMode | 'both';
     icon: string;
-};
-
-const ZONE_PROMPTS: Record<InquiryMode, Record<InquiryZone, InquiryQuestion[]>> = {
-    flow: {
-        setup: [
-            {
-                id: 'setup-flow',
-                label: 'Setup',
-                question: 'What must already be true for this scene to move smoothly?',
-                zone: 'setup',
-                mode: 'flow',
-                icon: 'help-circle'
-            }
-        ],
-        pressure: [
-            {
-                id: 'pressure-flow',
-                label: 'Pressure',
-                question: "How does this scene change the story's momentum right now?",
-                zone: 'pressure',
-                mode: 'flow',
-                icon: 'activity'
-            }
-        ],
-        payoff: [
-            {
-                id: 'payoff-flow',
-                label: 'Payoff',
-                question: 'Are promises paid off or clearly handed forward at the right time?',
-                zone: 'payoff',
-                mode: 'flow',
-                icon: 'check-circle'
-            }
-        ]
-    },
-    depth: {
-        setup: [
-            {
-                id: 'setup-depth',
-                label: 'Setup',
-                question: 'What assumptions does this scene rely on, and are they structurally sound?',
-                zone: 'setup',
-                mode: 'depth',
-                icon: 'help-circle'
-            }
-        ],
-        pressure: [
-            {
-                id: 'pressure-depth',
-                label: 'Pressure',
-                question: 'Does the change introduced here meaningfully deepen the story?',
-                zone: 'pressure',
-                mode: 'depth',
-                icon: 'activity'
-            }
-        ],
-        payoff: [
-            {
-                id: 'payoff-depth',
-                label: 'Payoff',
-                question: 'What narrative threads are resolved, deferred, dangling, or stillborn here?',
-                zone: 'payoff',
-                mode: 'depth',
-                icon: 'check-circle'
-            }
-        ]
-    }
 };
 
 export class InquiryView extends ItemView {
@@ -176,13 +111,13 @@ export class InquiryView extends ItemView {
     private focusPersistTimer?: number;
     private runner: InquiryRunnerStub;
     private sessionStore: InquirySessionStore;
-    private activePrompts: Record<InquiryMode, Record<InquiryZone, string>>;
 
     constructor(leaf: WorkspaceLeaf, plugin: RadialTimelinePlugin) {
         super(leaf);
         this.plugin = plugin;
         this.runner = new InquiryRunnerStub();
-        this.activePrompts = this.buildDefaultPromptState();
+        this.ensurePromptConfig();
+        this.state.selectedPromptIds = this.buildDefaultSelectedPromptIds();
         this.sessionStore = new InquirySessionStore(plugin);
         this.corpusResolver = new InquiryCorpusResolver(this.app.vault, this.app.metadataCache, this.plugin.settings.frontmatterMappings);
     }
@@ -578,30 +513,66 @@ export class InquiryView extends ItemView {
         use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${symbolId}`);
     }
 
-    private buildDefaultPromptState(): Record<InquiryMode, Record<InquiryZone, string>> {
-        const buildForMode = (mode: InquiryMode) => ({
-            setup: ZONE_PROMPTS[mode].setup[0]?.id ?? `${mode}-setup`,
-            pressure: ZONE_PROMPTS[mode].pressure[0]?.id ?? `${mode}-pressure`,
-            payoff: ZONE_PROMPTS[mode].payoff[0]?.id ?? `${mode}-payoff`
-        });
+    private buildDefaultSelectedPromptIds(): Record<InquiryMode, Record<InquiryZone, string>> {
+        const config = this.getPromptConfig();
+        const pickFirstEnabled = (mode: InquiryMode, zone: InquiryZone): string => {
+            const slots = config[mode]?.[zone] ?? [];
+            const firstEnabled = slots.find(slot => slot.enabled && slot.question.trim().length > 0);
+            return firstEnabled?.id ?? slots[0]?.id ?? `${mode}-${zone}`;
+        };
         return {
-            flow: buildForMode('flow'),
-            depth: buildForMode('depth')
+            flow: {
+                setup: pickFirstEnabled('flow', 'setup'),
+                pressure: pickFirstEnabled('flow', 'pressure'),
+                payoff: pickFirstEnabled('flow', 'payoff')
+            },
+            depth: {
+                setup: pickFirstEnabled('depth', 'setup'),
+                pressure: pickFirstEnabled('depth', 'pressure'),
+                payoff: pickFirstEnabled('depth', 'payoff')
+            }
         };
     }
 
+    private ensurePromptConfig(): void {
+        if (!this.plugin.settings.inquiryPromptConfig) {
+            this.plugin.settings.inquiryPromptConfig = buildDefaultInquiryPromptConfig();
+            void this.plugin.saveSettings();
+        }
+    }
+
+    private getPromptConfig(): InquiryPromptConfig {
+        return normalizeInquiryPromptConfig(this.plugin.settings.inquiryPromptConfig);
+    }
+
     private getPromptOptions(mode: InquiryMode, zone: InquiryZone): InquiryQuestion[] {
-        return ZONE_PROMPTS[mode]?.[zone] ?? [];
+        const config = this.getPromptConfig();
+        const icon = zone === 'setup' ? 'help-circle' : zone === 'pressure' ? 'activity' : 'check-circle';
+        return (config[mode]?.[zone] ?? [])
+            .filter(slot => slot.enabled && slot.question.trim().length > 0)
+            .map(slot => ({
+                id: slot.id,
+                label: slot.label || (zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff'),
+                question: slot.question,
+                zone,
+                mode,
+                icon
+            }));
     }
 
     private getActivePrompt(mode: InquiryMode, zone: InquiryZone): InquiryQuestion | undefined {
         const options = this.getPromptOptions(mode, zone);
         if (!options.length) return undefined;
-        const activeId = this.activePrompts[mode]?.[zone];
-        return options.find(prompt => prompt.id === activeId) ?? options[0];
+        const activeId = this.state.selectedPromptIds[mode]?.[zone];
+        const match = options.find(prompt => prompt.id === activeId);
+        if (match) return match;
+        const fallback = options[0];
+        this.state.selectedPromptIds[mode][zone] = fallback.id;
+        return fallback;
     }
 
     private updateZonePrompts(): void {
+        this.syncSelectedPromptIds();
         const mode = this.state.mode;
         const paddingX = 24;
         const pillHeight = 40;
@@ -622,22 +593,64 @@ export class InquiryView extends ItemView {
             elements.bg.setAttribute('y', String(-pillHeight / 2));
             elements.bg.setAttribute('rx', String(pillHeight / 2));
             elements.bg.setAttribute('ry', String(pillHeight / 2));
-            elements.group.classList.toggle('is-active', this.activePrompts[mode]?.[zone] === prompt.id);
+            elements.group.classList.toggle('is-active', this.state.selectedPromptIds[mode]?.[zone] === prompt.id);
             elements.group.setAttribute('data-prompt-id', prompt.id);
             elements.group.setAttribute('aria-label', prompt.question);
         });
+    }
+
+    private updateGlyphPromptState(): void {
+        if (!this.glyph) return;
+        this.syncSelectedPromptIds();
+        const mode = this.state.mode;
+        const promptsByZone = {
+            setup: this.getPromptOptions(mode, 'setup').map(prompt => ({ id: prompt.id, question: prompt.question })),
+            pressure: this.getPromptOptions(mode, 'pressure').map(prompt => ({ id: prompt.id, question: prompt.question })),
+            payoff: this.getPromptOptions(mode, 'payoff').map(prompt => ({ id: prompt.id, question: prompt.question }))
+        };
+        this.glyph.updatePromptState({
+            mode,
+            promptsByZone,
+            selectedPromptIds: this.state.selectedPromptIds[mode],
+            onPromptSelect: (zone, promptId) => this.setSelectedPrompt(this.state.mode, zone, promptId),
+            onPromptHover: (text) => this.setHoverText(text),
+            onPromptHoverEnd: () => this.clearHoverText()
+        });
+    }
+
+    private syncSelectedPromptIds(): void {
+        const config = this.getPromptConfig();
+        (['flow', 'depth'] as InquiryMode[]).forEach(mode => {
+            (['setup', 'pressure', 'payoff'] as InquiryZone[]).forEach(zone => {
+                const slots = config[mode]?.[zone] ?? [];
+                const custom = slots.find(slot => !slot.builtIn && slot.enabled && slot.question.trim().length > 0);
+                const builtIn = slots.find(slot => slot.enabled && slot.question.trim().length > 0);
+                const desired = custom?.id ?? builtIn?.id ?? slots[0]?.id;
+                if (desired && this.state.selectedPromptIds[mode][zone] !== desired) {
+                    this.state.selectedPromptIds[mode][zone] = desired;
+                }
+            });
+        });
+    }
+
+    private setSelectedPrompt(mode: InquiryMode, zone: InquiryZone, promptId: string): void {
+        const selected = this.state.selectedPromptIds[mode];
+        if (!selected) return;
+        if (selected[zone] === promptId) return;
+        selected[zone] = promptId;
+        this.updateZonePrompts();
+        this.updateGlyphPromptState();
     }
 
     private handlePromptClick(zone: InquiryZone): void {
         const mode = this.state.mode;
         const options = this.getPromptOptions(mode, zone);
         if (!options.length) return;
-        const currentId = this.activePrompts[mode]?.[zone];
+        const currentId = this.state.selectedPromptIds[mode]?.[zone];
         const currentIdx = options.findIndex(prompt => prompt.id === currentId);
         const nextIdx = currentIdx >= 0 ? (currentIdx + 1) % options.length : 0;
         const nextPrompt = options[nextIdx] ?? options[0];
-        this.activePrompts[mode][zone] = nextPrompt.id;
-        this.updateZonePrompts();
+        this.setSelectedPrompt(mode, zone, nextPrompt.id);
         void this.handleQuestionClick(nextPrompt);
     }
 
@@ -817,6 +830,7 @@ export class InquiryView extends ItemView {
         this.updateContextBadge();
         this.updateEngineBadge();
         this.updateZonePrompts();
+        this.updateGlyphPromptState();
         this.renderMinimapTicks();
         this.updateFocusGlyph();
         this.updateRings();

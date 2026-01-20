@@ -41,6 +41,7 @@ export interface InquiryState {
     focusSceneId?: string;
     focusBookId?: string;
     mode: InquiryMode;
+    selectedPromptIds: Record<InquiryMode, Record<InquiryZone, string>>;
     activeQuestionId?: string;
     activeSessionId?: string;
     activeZone?: InquiryZone | null;
@@ -59,6 +60,10 @@ export const createDefaultInquiryState = (): InquiryState => ({
     focusSceneId: '1',
     focusBookId: '1',
     mode: 'flow',
+    selectedPromptIds: {
+        flow: { setup: '', pressure: '', payoff: '' },
+        depth: { setup: '', pressure: '', payoff: '' }
+    },
     activeZone: null,
     activeResult: null,
     isRunning: false,

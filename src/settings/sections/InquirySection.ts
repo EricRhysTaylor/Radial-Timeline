@@ -1,9 +1,11 @@
 import { App, Setting as Settings, TextComponent, TextAreaComponent, normalizePath, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { DEFAULT_SETTINGS } from '../defaults';
-import type { InquiryClassConfig, InquirySourcesSettings } from '../../types/settings';
+import type { InquiryClassConfig, InquiryPromptConfig, InquiryPromptSlot, InquirySourcesSettings } from '../../types/settings';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { addHeadingIcon, addWikiLink } from '../wikiLink';
+import { isProfessionalActive } from './ProfessionalSection';
+import { buildDefaultInquiryPromptConfig, normalizeInquiryPromptConfig } from '../../inquiry/prompts';
 import {
     MAX_RESOLVED_SCAN_ROOTS,
     normalizeScanRootPatterns,
@@ -622,5 +624,89 @@ export function renderInquirySection(params: SectionParams): void {
 
     };
 
+    const renderPromptConfiguration = () => {
+        const promptHeading = new Settings(containerEl)
+            .setName('Inquiry prompts')
+            .setHeading();
+        addHeadingIcon(promptHeading, 'list');
+
+        const isPro = isProfessionalActive(plugin);
+        const maxCustomSlots = isPro ? 4 : 1;
+        let promptConfig: InquiryPromptConfig = normalizeInquiryPromptConfig(plugin.settings.inquiryPromptConfig);
+        if (!plugin.settings.inquiryPromptConfig) {
+            plugin.settings.inquiryPromptConfig = buildDefaultInquiryPromptConfig();
+            promptConfig = normalizeInquiryPromptConfig(plugin.settings.inquiryPromptConfig);
+            void plugin.saveSettings();
+        }
+
+        const modeLabels: Record<string, string> = { flow: 'Flow', depth: 'Depth' };
+        const zoneLabels: Record<string, string> = { setup: 'Setup', pressure: 'Pressure', payoff: 'Payoff' };
+
+        const updateSlot = async (
+            mode: 'flow' | 'depth',
+            zone: 'setup' | 'pressure' | 'payoff',
+            index: number,
+            patch: Partial<InquiryPromptSlot>
+        ) => {
+            promptConfig = normalizeInquiryPromptConfig(plugin.settings.inquiryPromptConfig);
+            const slots = promptConfig[mode][zone].slice();
+            slots[index] = { ...slots[index], ...patch };
+            promptConfig[mode][zone] = slots;
+            plugin.settings.inquiryPromptConfig = promptConfig;
+            await plugin.saveSettings();
+        };
+
+        (['flow', 'depth'] as const).forEach(mode => {
+            (['setup', 'pressure', 'payoff'] as const).forEach(zone => {
+                const block = containerEl.createDiv({ cls: 'rt-setting-block' });
+                block.createEl('div', { cls: 'setting-item-name', text: `${modeLabels[mode]} · ${zoneLabels[zone]}` });
+                const slots = promptConfig[mode][zone];
+
+                slots.forEach((slot, idx) => {
+                    const isBuiltIn = !!slot.builtIn;
+                    const customIndex = idx - 1;
+                    const isLocked = !isBuiltIn && customIndex >= maxCustomSlots;
+                    const slotLabel = isBuiltIn ? `Prompt ${idx + 1} (built-in)` : `Prompt ${idx + 1}`;
+                    const desc = isLocked
+                        ? 'Pro unlocks additional custom prompt slots.'
+                        : isBuiltIn
+                            ? 'Built-in prompt (text locked).'
+                            : 'Custom prompt slot.';
+
+                    const slotSetting = new Settings(block)
+                        .setName(slotLabel)
+                        .setDesc(desc);
+
+                    slotSetting.addToggle(toggle => {
+                        toggle.setValue(!!slot.enabled);
+                        toggle.setDisabled(isLocked);
+                        toggle.onChange(async (value) => {
+                            await updateSlot(mode, zone, idx, { enabled: value });
+                        });
+                    });
+
+                    slotSetting.addText(text => {
+                        text.setPlaceholder('Label (optional)')
+                            .setValue(slot.label || '')
+                            .setDisabled(isLocked || isBuiltIn);
+                        text.onChange(async (value) => {
+                            await updateSlot(mode, zone, idx, { label: value });
+                        });
+                    });
+
+                    slotSetting.addText(text => {
+                        text.setPlaceholder('Question text')
+                            .setValue(slot.question || '')
+                            .setDisabled(isLocked || isBuiltIn);
+                        text.onChange(async (value) => {
+                            await updateSlot(mode, zone, idx, { question: value });
+                        });
+                    });
+                });
+            });
+        });
+    };
+
+    renderPromptConfiguration();
     void refreshClassScan();
 }
