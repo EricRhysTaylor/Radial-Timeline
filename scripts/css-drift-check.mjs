@@ -8,6 +8,7 @@ const FILES = [
   "src/styles/rt-ui.css",
   "src/styles/settings.css",
   "src/styles/legacy/apr-legacy.css",
+  "src/styles/legacy/rt-ui-legacy.css",
   "styles.css", // optional: if your bundler emits this
 ].map((p) => path.join(ROOT, p));
 

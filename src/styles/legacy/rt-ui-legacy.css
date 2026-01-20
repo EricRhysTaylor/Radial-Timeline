@@ -1,0 +1,155 @@
+/* Legacy rt-* selectors extracted from rt-ui.css during ERT migration. */
+
+.ert-ui.ert-skin--social .rt-glass-card,
+.ert-ui .ert-skin--social .rt-glass-card {
+  background: var(--ert-social-grad), var(--ert-social-surface);
+  border: 1px solid var(--ert-social-border);
+  box-shadow: var(--ert-social-glow);
+}
+
+.ert-ui.ert-skin--social .ert-skin--pro .rt-glass-card,
+.ert-ui .ert-skin--social .ert-skin--pro .rt-glass-card {
+  background: var(--ert-pro-surface-bg);
+  border: 1px solid var(--ert-pro-border);
+  box-shadow: var(--ert-pro-glow);
+}
+
+.ert-ui.ert-skin--social .ert-skin--pro .rt-glass-card .setting-item:not(.setting-item-heading),
+.ert-ui .ert-skin--social .ert-skin--pro .rt-glass-card .setting-item:not(.setting-item-heading) {
+  background: var(--ert-pro-surface-2);
+  border: 1px solid var(--ert-pro-border);
+  border-radius: 8px;
+}
+
+.ert-ui.ert-skin--social .rt-glass-card .setting-item:not(.setting-item-heading),
+.ert-ui .ert-skin--social .rt-glass-card .setting-item:not(.setting-item-heading) {
+  background: var(--ert-social-surface-2);
+  border: 1px solid var(--ert-social-border);
+  border-radius: 8px;
+}
+
+.ert-ui .ert-skin--pro .rt-campaign-manager-card {
+  position: relative;
+  margin-top: 24px;
+  padding: 20px;
+  border-radius: 12px;
+  background: var(--ert-pro-surface-bg);
+  border: 1px solid var(--ert-pro-border);
+  box-shadow: var(--ert-panel-shadow);
+}
+
+.ert-ui .ert-skin--pro .ert-objectRow .rt-campaign-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ert-ui .ert-skin--pro .ert-objectRow.is-needs-refresh .rt-campaign-status {
+  color: var(--text-error, #ef4444);
+}
+
+.ert-ui .ert-skin--pro .ert-objectRow:not(.is-needs-refresh):not(.is-inactive) .rt-campaign-status {
+  color: var(--text-success, #22c55e);
+}
+
+.ert-ui .ert-skin--pro .ert-objectRow.is-inactive .rt-campaign-status {
+  color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   OPTIMIZED: Pro pill v1 — do not normalize
+   Design-locked reference. Changes require explicit approval.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.rt-optimized-pro-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #9333ea, #6366f1);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.rt-optimized-pro-pill__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rt-optimized-pro-pill__icon svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.rt-optimized-pro-pill__text {
+  line-height: 1;
+  padding-top: 1px;
+}
+
+.ert-ui .rt-input-full {
+  width: 100%;
+}
+
+/* Reset margins for campaign list stack to fix excessive spacing */
+.ert-ui .rt-campaign-manager-card .rt-campaign-list,
+.ert-ui .rt-campaign-manager-card .rt-campaign-add-section {
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.ert-ui .rt-campaign-manager-card .rt-campaign-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Force left align for Campaign header to override legacy centering */
+.ert-ui .rt-campaign-manager-card .rt-campaign-manager-header.ert-card__header {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+/* Ensure templates section has spacing from the element above it */
+.ert-ui .rt-campaign-manager-card .rt-campaign-templates {
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Pro Target Dropdown */
+.rt-apr-pro-target .dropdown {
+  background: color-mix(in srgb, var(--rt-pro-color, #d946ef) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rt-pro-color, #d946ef) 30%, transparent);
+  color: var(--text-normal);
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.rt-apr-pro-target .dropdown:hover,
+.rt-apr-pro-target .dropdown:focus {
+  border-color: var(--rt-pro-color, #d946ef);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--rt-pro-color, #d946ef) 20%, transparent);
+}
+
+/* Highlighted Checkbox (% Complete) - Social/Yellow styling */
+.rt-apr-highlight-check {
+  background: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.08);
+  border-radius: 6px;
+  padding: 2px 8px;
+  margin: -2px -8px;
+  /* Compensate for padding to alignment */
+}
+
+.rt-apr-highlight-check label {
+  color: var(--rt-social-color, #ffd41d);
+  font-weight: 600;
+}

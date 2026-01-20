@@ -33,7 +33,7 @@ export function addWikiLinkToElement(el: HTMLElement, wikiPage: string): void {
     
     const link = el.createEl('a', {
         href: `https://github.com/EricRhysTaylor/radial-timeline/wiki/${pageName}`,
-        cls: 'rt-wiki-link',
+        cls: 'ert-wiki-link',
         attr: {
             'aria-label': 'Read more in the Wiki',
             'target': '_blank',
@@ -44,13 +44,13 @@ export function addWikiLinkToElement(el: HTMLElement, wikiPage: string): void {
     // Add the diagonal arrow icon
     setIcon(link, 'external-link');
     
-    // Styling handled by .rt-wiki-link in src/styles/settings.css
+    // Styling handled by .ert-wiki-link in src/styles/settings.css
 }
 
 function addHeadingIconToElement(el: HTMLElement, icon: string): void {
     if (!el) return;
 
-    const iconEl = el.createSpan({ cls: 'rt-setting-heading-icon' });
+    const iconEl = el.createSpan({ cls: 'ert-setting-heading-icon' });
     setIcon(iconEl, icon);
     el.insertBefore(iconEl, el.firstChild);
 }

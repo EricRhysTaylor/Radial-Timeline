@@ -4,10 +4,34 @@ export interface InquiryZoneLayout {
     x: number;
     y: number;
     axisRotationDeg: number;
+    numberRadius: number;
+    numberStartAngleDeg: number;
+    numberDirection: 'ccw' | 'cw';
 }
 
 export const ZONE_LAYOUT: Record<InquiryZoneId, InquiryZoneLayout> = {
-    setup: { x: -292, y: -170, axisRotationDeg: 2}, //bigger rotates CW
-    pressure: { x: 292, y: -186, axisRotationDeg: 124 },
-    payoff: { x: 0, y: 322, axisRotationDeg: 243 }
+    setup: {
+        x: -300,
+        y: -171,
+        axisRotationDeg: 3, // bigger rotates CW
+        numberRadius: 520,
+        numberStartAngleDeg: 212,
+        numberDirection: 'ccw'
+    },
+    pressure: {
+        x: 291,
+        y: -181,
+        axisRotationDeg: 123,
+        numberRadius: 520,
+        numberStartAngleDeg: 328,
+        numberDirection: 'cw'
+    },
+    payoff: {
+        x: 0,
+        y: 328,
+        axisRotationDeg: 243,
+        numberRadius: 520,
+        numberStartAngleDeg: 90,
+        numberDirection: 'cw'
+    }
 };

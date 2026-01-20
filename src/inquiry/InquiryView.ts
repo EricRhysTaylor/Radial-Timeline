@@ -1025,12 +1025,12 @@ export class InquiryView extends ItemView {
         const items = this.getCurrentItems();
         const count = items.length;
         const length = this.minimapLayout.length;
-        const tickSize = 6;
-        const tickGap = 2;
+        const tickSize = 20;
+        const tickGap = 4;
         const baselineGap = 2;
-        const capWidth = 4;
-        const capHeight = 30;
-        const tickInset = capWidth + 6;
+        const capWidth = Math.max(6, Math.round(tickSize * 0.4));
+        const capHeight = Math.max(30, tickSize + 12);
+        const tickInset = capWidth + (tickSize / 2) + 4;
         const availableLength = Math.max(0, length - (tickInset * 2));
         const maxRowWidth = VIEWBOX_SIZE * 0.75;
         const minStep = tickSize + tickGap;
@@ -1038,24 +1038,33 @@ export class InquiryView extends ItemView {
         const rowCount = needsWrap ? 2 : 1;
         const firstRowCount = rowCount === 2 ? Math.ceil(count / 2) : count;
         const secondRowCount = count - firstRowCount;
-        const rowTopY = -(baselineGap + tickSize + (rowCount === 2 ? (tickSize + tickGap) : 0));
+        const columnCount = rowCount === 2 ? firstRowCount : count;
+        const rawColumnStep = columnCount > 1 ? (availableLength / (columnCount - 1)) : 0;
+        const columnStep = columnCount > 1 ? Math.max(1, Math.floor(rawColumnStep)) : 0;
+        const usedLength = columnStep * Math.max(0, columnCount - 1);
+        const extraSpace = Math.max(0, availableLength - usedLength);
+        const startOffset = Math.floor(extraSpace / 2);
+        const horizontalGap = Math.max(0, columnStep - tickSize);
+        const rowTopY = -(baselineGap + tickSize + (rowCount === 2 ? (tickSize + horizontalGap) : 0));
         const rowBottomY = -(baselineGap + tickSize);
 
-        const baselineStart = this.minimapLayout.startX;
-        const baselineEnd = this.minimapLayout.startX + length;
+        const baselineStart = Math.round(this.minimapLayout.startX);
+        const baselineEnd = Math.round(this.minimapLayout.startX + length);
         this.minimapBaseline.setAttribute('x1', String(baselineStart));
         this.minimapBaseline.setAttribute('y1', '0');
         this.minimapBaseline.setAttribute('x2', String(baselineEnd));
         this.minimapBaseline.setAttribute('y2', '0');
         if (this.minimapEndCapStart && this.minimapEndCapEnd) {
-            this.minimapEndCapStart.setAttribute('x', String(baselineStart - (capWidth / 2)));
-            this.minimapEndCapStart.setAttribute('y', String(-(capHeight / 2)));
-            this.minimapEndCapStart.setAttribute('width', String(capWidth));
-            this.minimapEndCapStart.setAttribute('height', String(capHeight));
-            this.minimapEndCapEnd.setAttribute('x', String(baselineEnd - (capWidth / 2)));
-            this.minimapEndCapEnd.setAttribute('y', String(-(capHeight / 2)));
-            this.minimapEndCapEnd.setAttribute('width', String(capWidth));
-            this.minimapEndCapEnd.setAttribute('height', String(capHeight));
+            const capHalfWidth = Math.round(capWidth / 2);
+            const capHalfHeight = Math.round(capHeight / 2);
+            this.minimapEndCapStart.setAttribute('x', String(baselineStart - capHalfWidth));
+            this.minimapEndCapStart.setAttribute('y', String(-capHalfHeight));
+            this.minimapEndCapStart.setAttribute('width', String(Math.round(capWidth)));
+            this.minimapEndCapStart.setAttribute('height', String(Math.round(capHeight)));
+            this.minimapEndCapEnd.setAttribute('x', String(baselineEnd - capHalfWidth));
+            this.minimapEndCapEnd.setAttribute('y', String(-capHalfHeight));
+            this.minimapEndCapEnd.setAttribute('width', String(Math.round(capWidth)));
+            this.minimapEndCapEnd.setAttribute('height', String(Math.round(capHeight)));
         }
         this.minimapTicksEl.setAttribute('transform', `translate(${baselineStart} 0)`);
         this.minimapEmptyText.setAttribute('x', '0');
@@ -1077,15 +1086,17 @@ export class InquiryView extends ItemView {
             const tick = this.createSvgElement('rect');
             tick.classList.add('ert-inquiry-minimap-tick');
             const rowIndex = rowCount === 2 && i >= firstRowCount ? 1 : 0;
-            const rowIndexOffset = rowIndex === 0 ? 0 : firstRowCount;
-            const rowItems = rowIndex === 0 ? firstRowCount : secondRowCount;
-            const rowStep = rowItems > 1 ? availableLength / (rowItems - 1) : 0;
-            const pos = rowItems > 1 ? tickInset + (rowStep * (i - rowIndexOffset)) : tickInset + (availableLength / 2);
+            const colIndex = rowIndex === 0 ? i : (i - firstRowCount);
+            const pos = columnCount > 1
+                ? tickInset + startOffset + (columnStep * colIndex)
+                : tickInset + startOffset + (availableLength / 2);
             const rowY = rowIndex === 0 ? rowTopY : rowBottomY;
-            tick.setAttribute('x', String(pos - (tickSize / 2)));
-            tick.setAttribute('y', String(rowY));
-            tick.setAttribute('width', String(tickSize));
-            tick.setAttribute('height', String(tickSize));
+            const x = Math.round(pos - (tickSize / 2));
+            const y = Math.round(rowY);
+            tick.setAttribute('x', String(x));
+            tick.setAttribute('y', String(y));
+            tick.setAttribute('width', String(Math.round(tickSize)));
+            tick.setAttribute('height', String(Math.round(tickSize)));
             tick.setAttribute('rx', '0');
             tick.setAttribute('ry', '0');
             const label = item.displayLabel;

@@ -174,7 +174,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         text: 'Styling',
         cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`
     });
-    const stylingIcon = stylingHeader.createSpan({ cls: 'rt-setting-heading-icon' });
+    const stylingIcon = stylingHeader.createSpan({ cls: 'ert-setting-heading-icon' });
     setIcon(stylingIcon, 'brush');
     stylingHeader.prepend(stylingIcon);
     addWikiLinkToElement(stylingHeader, 'Settings#social-media-styling');
@@ -372,7 +372,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         text: 'Theme',
         cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`
     });
-    const themeHeaderIcon = themeHeaderEl.createSpan({ cls: 'rt-setting-heading-icon' });
+    const themeHeaderIcon = themeHeaderEl.createSpan({ cls: 'ert-setting-heading-icon' });
     setIcon(themeHeaderIcon, 'swatch-book');
     themeHeaderEl.prepend(themeHeaderIcon);
     addWikiLinkToElement(themeHeaderEl, 'Settings#social-media-theme');
@@ -1025,7 +1025,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             text: 'Publishing & Automation',
             cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`
         });
-        const automationIcon = automationHeader.createSpan({ cls: 'rt-setting-heading-icon' });
+        const automationIcon = automationHeader.createSpan({ cls: 'ert-setting-heading-icon' });
         setIcon(automationIcon, 'rss');
         automationHeader.prepend(automationIcon);
         addWikiLinkToElement(automationHeader, 'Settings#social-media-publishing');

@@ -74,10 +74,10 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
     // ─────────────────────────────────────────────────────────────────────────
     // HERO / HEADER (Legacy Layout Restored)
     // ─────────────────────────────────────────────────────────────────────────
-    const hero = section.createDiv({ cls: `${ERT_CLASSES.SECTION} ${ERT_CLASSES.SECTION_HERO} rt-pro-hero` });
+    const hero = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_HERO} ${ERT_CLASSES.STACK}` });
 
     // Badge Row
-    const badgeRow = hero.createDiv({ cls: `${ERT_CLASSES.INLINE} rt-pro-hero-badge-row` });
+    const badgeRow = hero.createDiv({ cls: ERT_CLASSES.INLINE });
 
     // Status Badge (Standardized Pill)
     const badge = badgeRow.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}` });
@@ -111,18 +111,16 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
     }
 
     // Toggle (Moved to Top Right)
-    const toggleContainer = badgeRow.createDiv({ cls: `${ERT_CLASSES.INLINE} rt-pro-hero-toggle` });
-    toggleContainer.style.marginLeft = 'auto'; // Right align in flex container
+    const toggleContainer = badgeRow.createDiv({ cls: `${ERT_CLASSES.SECTION_ACTIONS} ${ERT_CLASSES.CHIP}` });
 
     toggleContainer.createSpan({
-        cls: `rt-pro-toggle-label ${isActive ? 'rt-pro-toggle-active' : ''}`,
+        cls: `ert-toggle-label ${isActive ? ERT_CLASSES.IS_ACTIVE : ''}`,
         text: isActive ? 'Active' : 'Inactive'
     });
 
     const checkbox = toggleContainer.createEl('input', {
         type: 'checkbox',
-        cls: 'rt-pro-toggle-checkbox',
-        attr: { style: '-webkit-appearance: none; appearance: none; margin: 0; outline: none;' }
+        cls: 'ert-toggle-input'
     });
     checkbox.checked = plugin.settings.devProActive !== false;
     checkbox.onchange = async () => {
@@ -148,8 +146,9 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
     if (OPEN_BETA_ACTIVE) {
         const betaPanel = contentStack.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
 
-        const bannerHeader = betaPanel.createDiv({ cls: `${ERT_CLASSES.INLINE} rt-pro-beta-header` });
-        setIcon(bannerHeader.createSpan(), 'gift');
+        const bannerHeader = betaPanel.createDiv({ cls: ERT_CLASSES.INLINE });
+        const bannerIcon = bannerHeader.createSpan({ cls: 'ert-setting-heading-icon' });
+        setIcon(bannerIcon, 'gift');
         bannerHeader.createEl('strong', { text: 'Thank you for being an early adopter!' });
 
         betaPanel.createEl('p', {
@@ -157,7 +156,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
             text: 'Pro features are free during the Open Beta. Your feedback helps shape the future of Radial Timeline.'
         });
 
-        const rewardBox = betaPanel.createDiv({ cls: 'rt-pro-reward-box' });
+        const rewardBox = betaPanel.createDiv({ cls: ERT_CLASSES.PREVIEW_FRAME });
         const p = rewardBox.createEl('p', { attr: { style: 'margin: 0; line-height: 1.5;' } });
         p.createSpan({ text: '🎁 ' });
         p.createEl('strong', { text: 'Early Adopter Reward: ' });
@@ -166,7 +165,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
         const feedbackLink = betaPanel.createEl('a', {
             text: 'Share feedback & claim your reward →',
             href: 'https://radial-timeline.com/feedback',
-            cls: 'rt-link-accent',
+            cls: 'ert-link-accent',
             attr: { target: '_blank', rel: 'noopener' }
         });
     }
@@ -215,7 +214,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
         nameEl.createEl('a', {
             text: ' Get key →',
             href: 'https://radial-timeline.com/signature',
-            cls: 'rt-link-accent rt-pro-get-key',
+            cls: 'ert-link-accent rt-pro-get-key',
             attr: { target: '_blank', rel: 'noopener' }
         });
     }
@@ -232,7 +231,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
         text: 'Export & Pandoc',
         cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`
     });
-    const pandocHeaderIcon = pandocHeaderEl.createSpan({ cls: 'rt-setting-heading-icon' });
+    const pandocHeaderIcon = pandocHeaderEl.createSpan({ cls: 'ert-setting-heading-icon' });
     setIcon(pandocHeaderIcon, 'book-open-text');
     pandocHeaderEl.prepend(pandocHeaderIcon);
     addWikiLinkToElement(pandocHeaderEl, 'Settings#professional');

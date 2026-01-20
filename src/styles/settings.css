@@ -189,237 +189,6 @@
   margin-bottom: 0;
 }
 
-/* Pro hero (shown at top of Pro tab when Pro is active) */
-.rt-pro-hero {
-  position: relative;
-  margin-bottom: 8px;
-  padding: 16px 18px;
-  border-radius: 10px;
-  border: 1px solid rgba(var(--rt-pro-color-rgb), 0.35);
-  background: radial-gradient(circle at 12% 20%, rgba(var(--rt-pro-color-rgb), 0.16), transparent 40%),
-    linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.12), rgba(var(--rt-pro-color-rgb), 0.04));
-  box-shadow: 0 10px 40px rgba(var(--rt-pro-color-rgb), 0.18);
-  overflow: hidden;
-}
-
-.rt-pro-hero-badge-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 0;
-}
-
-/* Pro toggle for testing */
-.rt-pro-hero-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-  padding: 4px 10px;
-  border-radius: 16px;
-  background: rgba(0, 0, 0, 0.3);
-}
-
-.rt-pro-toggle-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
-}
-
-.rt-pro-toggle-label.rt-pro-toggle-active {
-  color: var(--rt-pro-color);
-}
-
-/* High specificity to override theme checkbox styles */
-.rt-settings-root input.rt-pro-toggle-checkbox {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 36px;
-  height: 20px;
-  background: var(--background-modifier-border);
-  border-radius: 10px;
-  position: relative;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  border: none;
-  margin: 0;
-  outline: none;
-  box-shadow: none;
-}
-
-/* Ensure no checkmark artifact */
-.rt-settings-root input.rt-pro-toggle-checkbox::after {
-  content: none;
-  display: none;
-}
-
-.rt-settings-root input.rt-pro-toggle-checkbox::before {
-  content: '';
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  background: white;
-  border-radius: 50%;
-  top: 2px;
-  left: 2px;
-  transition: transform 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.rt-settings-root input.rt-pro-toggle-checkbox:checked {
-  background: var(--rt-pro-color);
-}
-
-.rt-settings-root input.rt-pro-toggle-checkbox:checked::before {
-  transform: translateX(16px);
-}
-
-.rt-pro-hero-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(var(--rt-pro-color-rgb), 0.12);
-  color: var(--rt-pro-color);
-  font-weight: 600;
-  font-size: 12px;
-}
-
-.rt-pro-hero-badge svg {
-  width: 16px;
-  height: 16px;
-}
-
-.rt-pro-hero-badge.rt-pro-hero-badge-beta {
-  background-color: #1f1a14;
-  color: #aa9370;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* High specificity to override Obsidian's default h3 styles */
-.rt-settings-root .rt-pro-hero h3.rt-pro-hero-title,
-.rt-settings-root .rt-pro-hero .rt-pro-hero-title,
-.rt-settings-root .rt-pro-hero-title {
-  margin: 0 0 4px 0;
-  padding: 0;
-  margin-left: 0;
-  padding-left: 0;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-normal);
-  text-indent: 0;
-}
-
-.rt-pro-hero-subtitle {
-  margin: 4px 0 10px 0;
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-
-.rt-pro-hero-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.rt-pro-hero-meta span {
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(var(--rt-pro-color-rgb), 0.10);
-  color: var(--rt-pro-color);
-  font-size: 12px;
-}
-
-/* Pro hero features list */
-.rt-pro-hero-features {
-  margin: 12px 0 14px 0;
-  padding: 10px 12px;
-  background: rgba(var(--rt-pro-color-rgb), 0.06);
-  border-radius: 8px;
-}
-
-.rt-pro-hero-features h5 {
-  margin: 0 0 8px 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--rt-pro-color);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.rt-pro-hero-features ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.rt-pro-hero-features li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.rt-pro-hero-feature-icon {
-  display: flex;
-  align-items: center;
-  color: var(--rt-pro-color);
-}
-
-.rt-pro-hero-feature-icon svg {
-  width: 14px;
-  height: 14px;
-}
-
-/* Pro setting rows inside logical sections */
-.rt-pro-setting {
-  border: 1px solid rgba(var(--rt-pro-color-rgb), 0.22);
-  background: linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.08), rgba(var(--rt-pro-color-rgb), 0.02));
-  border-radius: 8px;
-  padding: 6px 10px;
-}
-
-.rt-settings-root .rt-pro-setting .setting-item-name {
-  color: var(--rt-pro-color);
-  font-weight: 600;
-}
-
-/* Pro section card wrapper */
-.rt-pro-section-card {
-  border: 1px solid rgba(var(--rt-pro-color-rgb), 0.25);
-  background: linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.08), rgba(var(--rt-pro-color-rgb), 0.02));
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-bottom: 16px;
-}
-
-/* Pro subsection (nested card within a Pro section) */
-.rt-pro-subsection {
-  margin-top: 12px;
-  padding: 12px 14px;
-  background: rgba(var(--rt-pro-color-rgb), 0.04);
-  border: 1px solid rgba(var(--rt-pro-color-rgb), 0.15);
-  border-radius: 8px;
-}
-
-.rt-pro-subsection-heading {
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--rt-pro-color);
-  margin-bottom: 4px;
-}
-
-.rt-pro-subsection-note {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-bottom: 10px;
-}
-
 .rt-professional-header-toggle .checkbox-container {
   margin-left: 10px;
 }
@@ -664,17 +433,6 @@
   filter: saturate(0.3);
 }
 
-/* Keep Pro tint visible when muted */
-.rt-professional-content.rt-professional-content-muted .rt-pro-section-card {
-  border-color: rgba(var(--rt-pro-color-rgb), 0.15);
-}
-
-.rt-professional-content.rt-professional-content-muted .rt-pro-badge,
-.rt-professional-content.rt-professional-content-muted .rt-professional-beta-text strong {
-  opacity: 0.6;
-  color: rgba(var(--rt-pro-color-rgb), 0.6);
-}
-
 /* Future license note (during beta) */
 .rt-professional-future-note {
   font-size: 12px;
@@ -709,29 +467,6 @@
   margin-bottom: 0;
 }
 
-
-/* Pro badge on section headings (positioned BEFORE heading text) */
-.rt-pro-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-right: 10px;
-  padding: 4px 10px;
-  background: rgba(var(--rt-pro-color-rgb), 0.12);
-  border: 1px solid rgba(var(--rt-pro-color-rgb), 0.35);
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--rt-pro-color);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  vertical-align: middle;
-}
-
-.rt-pro-badge svg {
-  width: 16px;
-  height: 16px;
-}
 
 /* Legacy badge class - keep for compatibility */
 .rt-professional-badge {
@@ -1006,7 +741,7 @@
   gap: 6px;
 }
 
-.rt-settings-root .setting-item.setting-item-heading .rt-setting-heading-icon {
+.rt-settings-root .setting-item.setting-item-heading .ert-setting-heading-icon {
   display: inline-flex;
   width: 14px;
   height: 14px;
@@ -1941,7 +1676,7 @@
 }
 
 /* Wiki Link Styles */
-.rt-wiki-link {
+.ert-wiki-link {
   margin-left: 8px;
   display: inline-flex;
   align-items: center;
@@ -1954,7 +1689,7 @@
   transition: opacity 0.2s ease;
 }
 
-.rt-wiki-link:hover {
+.ert-wiki-link:hover {
   opacity: 1;
 }
 

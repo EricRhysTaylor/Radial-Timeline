@@ -112,7 +112,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     }
 
     // Pro container wrapping all runtime controls
-    const proContainer = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} rt-pro-section-card` });
+    const proContainer = containerEl.createDiv({ cls: ERT_CLASSES.PANEL });
 
     // Heading row with Pro badge and toggle (double duty)
     const panelHeader = proContainer.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
@@ -128,12 +128,12 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     renderConditionalContent();
                 });
         });
-    heading.settingEl.addClass('rt-pro-setting');
+    heading.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
 
     // Add Pro badge BEFORE the heading text
     const nameEl = heading.nameEl;
     const badgeEl = createEl('span', {
-        cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM} rt-pro-badge`
+        cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
     });
     const badgeIcon = badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
     setIcon(badgeIcon, 'signature');
@@ -144,7 +144,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
     // Container for conditional settings (shown when enabled)
     const conditionalContainer = proContainer.createDiv({
-        cls: `${ERT_CLASSES.PANEL_BODY} rt-runtime-conditional-settings`
+        cls: ERT_CLASSES.PANEL_BODY
     });
     const addProRow = (setting: Setting) => {
         setting.settingEl.addClass(ERT_CLASSES.ELEMENT_BLOCK);
@@ -216,7 +216,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                 text: 'Rates & timings'
             });
             const ratesIconName = contentType === 'screenplay' ? 'projector' : 'mic-vocal';
-            const ratesIcon = ratesHeaderEl.createSpan({ cls: 'rt-setting-heading-icon' });
+            const ratesIcon = ratesHeaderEl.createSpan({ cls: 'ert-setting-heading-icon' });
             setIcon(ratesIcon, ratesIconName);
             ratesHeaderEl.prepend(ratesIcon);
             addWikiLinkToElement(ratesHeaderEl, 'Settings#runtime-estimation');
@@ -357,7 +357,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                 cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`,
                 text: 'Session planning (optional)'
             });
-            const sessionIcon = sessionHeaderEl.createSpan({ cls: 'rt-setting-heading-icon' });
+            const sessionIcon = sessionHeaderEl.createSpan({ cls: 'ert-setting-heading-icon' });
             setIcon(sessionIcon, 'calendar-clock');
             sessionHeaderEl.prepend(sessionIcon);
             addWikiLinkToElement(sessionHeaderEl, 'Settings#runtime-estimation');

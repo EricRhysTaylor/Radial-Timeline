@@ -327,9 +327,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
     private renderProHero(containerEl: HTMLElement): void {
         const hero = containerEl.createDiv({
-            cls: `${ERT_CLASSES.SECTION} ${ERT_CLASSES.SECTION_HERO} rt-pro-hero`
+            cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_HERO} ${ERT_CLASSES.STACK}`
         });
-        const badgeRow = hero.createDiv({ cls: `${ERT_CLASSES.INLINE} rt-pro-hero-badge-row` });
+        const badgeRow = hero.createDiv({ cls: ERT_CLASSES.INLINE });
         const badge = badgeRow.createSpan({
             cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
         });
@@ -338,23 +338,23 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro · Signature' });
 
         hero.createEl('h3', {
-            cls: `${ERT_CLASSES.SECTION_TITLE} rt-pro-hero-title`,
+            cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title`,
             text: 'Signature tools for professional workflows.'
         });
         hero.createEl('p', {
-            cls: `${ERT_CLASSES.SECTION_DESC} rt-pro-hero-subtitle`,
+            cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
             text: 'Premium exports, runtime intelligence, and Pandoc templates. Make your publishing pipeline radial and your story ever revolving.'
         });
-        const featuresSection = hero.createDiv({ cls: 'rt-pro-hero-features' });
-        featuresSection.createEl('h5', { text: 'Included in Early Access:' });
-        const featuresList = featuresSection.createEl('ul');
+        const featuresSection = hero.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ${ERT_CLASSES.STACK}` });
+        featuresSection.createEl('h5', { text: 'Included in Early Access:', cls: ERT_CLASSES.SECTION_TITLE });
+        const featuresList = featuresSection.createEl('ul', { cls: ERT_CLASSES.STACK });
         [
             { icon: 'film', text: 'Runtime Estimation — Screenplay and audiobook duration analysis' },
             { icon: 'file-output', text: 'Pro Exports — Screenplay, podcast, and novel manuscript formats via Pandoc' },
             { icon: 'radio', text: 'Teaser Campaign — Progressive reveal for Author Progress Reports (APR)' },
         ].forEach(feature => {
-            const li = featuresList.createEl('li');
-            const iconSpan = li.createSpan({ cls: 'rt-pro-hero-feature-icon' });
+            const li = featuresList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
+            const iconSpan = li.createSpan({ cls: 'ert-feature-icon' });
             setIcon(iconSpan, feature.icon);
             li.createSpan({ text: feature.text });
         });

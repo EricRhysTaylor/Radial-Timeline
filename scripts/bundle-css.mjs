@@ -30,6 +30,7 @@ const files = [
     'rt-ui.css',
     'inquiry.css',
     'legacy/apr-legacy.css',
+    'legacy/rt-ui-legacy.css',
     'pulse.css',
     'book-designer.css',
     'settings.css',
