@@ -194,8 +194,8 @@ export const APR_LAYOUT = {
         centerNumberFontSize1Digit: 150,  // Font size for single-digit numbers (e.g., "5")
         centerNumberFontSize2Digit: 115,  // Font size for double-digit numbers (e.g., "42")
         centerNumberFontSize3Digit: 92,  // Font size for triple-digit numbers (e.g., "100")
-        centerNumberYOffset: 11,         // Y offset for the center number (positive = down)
-        centerNumberXOffset: -8,          // X offset for the center number
+        centerNumberYOffset: 16,         // Y offset for the center number (positive = down)
+        centerNumberXOffset: -0,      // X offset for the center number
         centerNumberOpacity: 0.95,   // Center number visibility: 0.0 = invisible, 1.0 = fully opaque
         centerNumberLetterSpacing: '-0.05em', // Letter spacing for multi-digit numbers (0 = natural spacing)
         percentSymbolYOffset: 15,   // Y offset for % symbol
