@@ -28,10 +28,10 @@ const ZONE_SEGMENT_COUNT = 3;
 const ZONE_SEGMENT_RADIUS = FLOW_RADIUS + (FLOW_STROKE / 2) + 280;
 const ZONE_RING_THICKNESS = 140;
 const ZONE_RING_GAP_PX = 20;
-const ZONE_DOT_RADIUS_PX = 20;
+const ZONE_DOT_RADIUS_PX = 10;
 const ZONE_DOT_TEXT_PX = 12;
 const ZONE_NUMBER_COUNT = 5;
-const ZONE_NUMBER_SPACING_DEG = 4;
+const ZONE_NUMBER_SPACING_DEG = 10;
 const ZONE_SEGMENT_VIEWBOX_WIDTH = 159;
 const ZONE_SEGMENT_VIEWBOX_HEIGHT = 257;
 const ZONE_SEGMENT_SCALE = 2.6;
@@ -266,7 +266,7 @@ export class InquiryGlyph {
                 dotCircle.setAttribute('r', String(ZONE_DOT_RADIUS_PX));
                 dotCircle.setAttribute('fill', 'none');
                 dotCircle.setAttribute('stroke', ZONE_DOT_STROKE);
-                dotCircle.setAttribute('stroke-width', String(ZONE_DOT_RADIUS_PX / 2));
+                dotCircle.setAttribute('stroke-width', '2');
 
                 const dotText = document.createElementNS(SVG_NS, 'text');
                 dotText.classList.add('inq-zone-dot-text');

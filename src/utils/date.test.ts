@@ -196,6 +196,21 @@ describe('parseDateRangeInput', () => {
     expect(parsed!.start).not.toBeNull();
     expect(parsed!.end).not.toBeNull();
   });
+
+  it('parses slash date ranges with spaces', () => {
+    const parsed = parseDateRangeInput('4/24/2024 - 4/25/2025');
+    expect(parsed).not.toBeNull();
+    expect(parsed!.start).not.toBeNull();
+    expect(parsed!.end).not.toBeNull();
+  });
+
+  it('parses mixed date/time ranges', () => {
+    const parsed = parseDateRangeInput('4/24/2024 1:45pm - 4/25/2025');
+    expect(parsed).not.toBeNull();
+    expect(parsed!.start).not.toBeNull();
+    expect(parsed!.end).not.toBeNull();
+    expect(parsed!.start!.getHours()).toBe(13);
+  });
 });
 
 describe('parseDuration', () => {

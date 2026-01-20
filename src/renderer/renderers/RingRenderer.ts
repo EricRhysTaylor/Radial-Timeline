@@ -131,7 +131,7 @@ export function renderRings(ctx: RingRenderContext): string {
             }
 
             const subplot = masterSubplotOrder[ringOffset];
-            if (subplot === 'Backdrop') continue; // SKIP VIRTUAL BACKDROP SUBPLOT
+            if (subplot === 'Backdrop' || subplot === 'MicroBackdrop') continue; // SKIP VIRTUAL BACKDROP SUBPLOTS
 
             const isOuterRing = ringOffset === 0;
 

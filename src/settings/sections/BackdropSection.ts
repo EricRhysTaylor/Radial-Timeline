@@ -33,11 +33,6 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
                 renderMicroBackdrops();
             }));
 
-    containerEl.createEl('p', {
-        cls: 'rt-color-section-desc',
-        text: 'Micro-backdrops are thin custom bands tucked under the backdrop ring (Chronologue mode only).'
-    });
-
     const listContainer = containerEl.createDiv({ cls: 'rt-micro-backdrop-body' });
     const list = listContainer.createDiv({ cls: 'rt-micro-backdrop-list' });
     let expandedIndex: number | null = null;
@@ -63,8 +58,11 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
 
     const renderMicroBackdropRow = (config: MicroBackdropConfig, index: number) => {
         const wrapper = list.createDiv({ cls: 'rt-micro-backdrop-wrapper' });
-        const title = config.title?.trim() || `Micro backdrop ${index + 1}`;
-        const rangeSummary = config.range?.trim() ? `Range: ${config.range.trim()}` : 'No date range set.';
+        const rawTitle = config.title?.trim();
+        const title = rawTitle ? `${rawTitle} microring` : `Micro backdrop ${index + 1}`;
+        const rangeValue = config.range?.trim() ?? '';
+        const parsedRange = rangeValue ? parseDateRangeInput(rangeValue) : null;
+        const rangeSummary = parsedRange?.start && parsedRange?.end ? `Range: ${rangeValue}` : 'No date range set.';
 
         const row = new Settings(wrapper)
             .setName(title)
@@ -99,23 +97,73 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
 
         const details = wrapper.createDiv({ cls: 'rt-micro-backdrop-details' });
 
-        const titleSetting = new Settings(details)
-            .setName('Title')
-            .setDesc('Used for tooltips and labels.');
-        titleSetting.addText(text => {
+        const titleColorSetting = new Settings(details)
+            .setName('Title + color')
+            .setDesc('Name the microring and set its color.');
+        titleColorSetting.controlEl.classList.add('rt-micro-backdrop-title-row');
+
+        titleColorSetting.addText(text => {
             text.setPlaceholder('Title')
                 .setValue(config.title || '');
             text.inputEl.classList.add('rt-input-md');
             text.onChange(async (value) => {
                 await updateMicroBackdrop(index, { title: value });
             });
+            const commitTitle = async () => {
+                await updateMicroBackdrop(index, { title: text.getValue() });
+                renderMicroBackdrops();
+            };
+            plugin.registerDomEvent(text.inputEl, 'blur', () => {
+                void commitTitle();
+            });
+            plugin.registerDomEvent(text.inputEl, 'keydown', (event: KeyboardEvent) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
         });
+
+        const colorControls = titleColorSetting.controlEl.createDiv({ cls: 'rt-color-grid-controls rt-micro-backdrop-color-controls' });
+        let colorTextInput: TextComponent | undefined;
+        let colorPickerRef: ColorComponent | undefined;
+        let swatchEl: HTMLDivElement | null = null;
+        const colorValue = config.color || '#ffffff';
+
+        colorPickerRef = new ColorComponent(colorControls)
+            .setValue(colorValue)
+            .onChange(async (value) => {
+                if (!isValidHexColor(value)) return;
+                const normalized = value.startsWith('#') ? value : `#${value}`;
+                await updateMicroBackdrop(index, { color: normalized });
+                colorTextInput?.setValue(normalized);
+                if (swatchEl) swatchEl.style.background = normalized;
+            });
+
+        const colorInput = colorControls.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
+        if (colorInput) colorInput.classList.add('rt-hidden-color-input');
+
+        swatchEl = colorControls.createDiv({ cls: 'rt-swatch-trigger' });
+        swatchEl.style.background = colorValue;
+        plugin.registerDomEvent(swatchEl, 'click', () => { colorInput?.click(); });
+
+        const hexInput = new TextComponent(colorControls);
+        colorTextInput = hexInput;
+        hexInput.inputEl.classList.add('rt-hex-input');
+        hexInput.setValue(colorValue)
+            .onChange(async (value) => {
+                if (!isValidHexColor(value)) return;
+                const normalized = value.startsWith('#') ? value : `#${value}`;
+                await updateMicroBackdrop(index, { color: normalized });
+                colorPickerRef?.setValue(normalized);
+                if (swatchEl) swatchEl.style.background = normalized;
+            });
 
         const rangeSetting = new Settings(details)
             .setName('Date range')
-            .setDesc('Format: "4/24/2024-4/25/2025 1:45pm" or "2024-04-24 - 2024-04-25".');
+            .setDesc('Example formats: "4/24/2024 - 4/25/2025 1:45pm" or "2024-04-24 - 2024-04-25 13:45".');
         rangeSetting.addText(text => {
-            text.setPlaceholder('Start - End')
+            text.setPlaceholder('4/24/2024 - 4/25/2025 1:45pm')
                 .setValue(config.range || '');
             text.inputEl.classList.add('rt-input-lg');
 
@@ -129,53 +177,28 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
                 }
             };
 
-            plugin.registerDomEvent(text.inputEl, 'blur', validateRange);
+            const commitRange = async () => {
+                await updateMicroBackdrop(index, { range: text.getValue() });
+                renderMicroBackdrops();
+            };
+
+            plugin.registerDomEvent(text.inputEl, 'blur', () => {
+                validateRange();
+                void commitRange();
+            });
+            plugin.registerDomEvent(text.inputEl, 'keydown', (event: KeyboardEvent) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
 
             text.onChange(async (value) => {
                 await updateMicroBackdrop(index, { range: value });
             });
+
+            validateRange();
         });
-
-        const colorSetting = new Settings(details)
-            .setName('Color')
-            .setDesc('Swatch + hex input.');
-        colorSetting.controlEl.classList.add('rt-color-grid-controls');
-
-        let colorTextInput: TextComponent | undefined;
-        let colorPickerRef: ColorComponent | undefined;
-        let swatchEl: HTMLDivElement | null = null;
-        const colorValue = config.color || '#ffffff';
-
-        colorPickerRef = new ColorComponent(colorSetting.controlEl)
-            .setValue(colorValue)
-            .onChange(async (value) => {
-                if (!isValidHexColor(value)) return;
-                const normalized = value.startsWith('#') ? value : `#${value}`;
-                await updateMicroBackdrop(index, { color: normalized });
-                colorTextInput?.setValue(normalized);
-                if (swatchEl) swatchEl.style.background = normalized;
-            });
-
-        const colorInput = colorSetting.controlEl.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
-        if (colorInput) colorInput.classList.add('rt-hidden-color-input');
-
-        swatchEl = colorSetting.controlEl.createDiv({ cls: 'rt-swatch-trigger' });
-        swatchEl.style.background = colorValue;
-        plugin.registerDomEvent(swatchEl, 'click', () => { colorInput?.click(); });
-
-        new Settings(colorSetting.controlEl)
-            .addText(textInput => {
-                colorTextInput = textInput;
-                textInput.inputEl.classList.add('rt-hex-input');
-                textInput.setValue(colorValue)
-                    .onChange(async (value) => {
-                        if (!isValidHexColor(value)) return;
-                        const normalized = value.startsWith('#') ? value : `#${value}`;
-                        await updateMicroBackdrop(index, { color: normalized });
-                        colorPickerRef?.setValue(normalized);
-                        if (swatchEl) swatchEl.style.background = normalized;
-                    });
-            });
     };
 
     const renderMicroBackdrops = () => {
@@ -190,20 +213,17 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
         list.empty();
 
         const microBackdrops = getMicroBackdrops();
-        if (microBackdrops.length === 0) {
-            list.createDiv({
-                cls: 'rt-micro-backdrop-empty rt-text-muted',
-                text: 'No micro-backdrops yet. Add one to get started.'
-            });
-        }
-
         microBackdrops.forEach((config, index) => {
             renderMicroBackdropRow(config, index);
         });
 
+        const emptyHint = microBackdrops.length === 0
+            ? ' No micro-backdrops yet. Add one to get started.'
+            : '';
+
         const addSetting = new Settings(list)
             .setName('Add micro-backdrop')
-            .setDesc('Creates a new ring configuration.');
+            .setDesc(`Creates a new ring configuration. Micro-backdrops are thin custom bands tucked under the backdrop ring (Chronologue mode only).${emptyHint}`);
         addSetting.addButton(button => button
             .setButtonText('Add')
             .onClick(async () => {

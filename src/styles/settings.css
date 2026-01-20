@@ -1584,12 +1584,29 @@
 }
 
 .rt-micro-backdrop-details {
-  margin: 8px 0 0 24px;
-  padding-left: 12px;
-  border-left: 1px solid var(--background-modifier-border);
+  margin: 8px 0 0 16px;
+  padding-left: 18px;
+  border-left: 2px solid var(--interactive-accent);
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.rt-micro-backdrop-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rt-micro-backdrop-title-row .rt-color-grid-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rt-micro-backdrop-title-row .rt-color-grid-controls .rt-hex-input {
+  width: 120px;
 }
 
 .rt-micro-backdrop-empty {

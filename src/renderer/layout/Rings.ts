@@ -6,10 +6,9 @@ export function computeRingGeometry(params: {
   numRings: number;
   monthTickTerminal: number;
   monthTextInset: number;
-  fixedRingIndex?: number;
-  fixedRingWidth?: number;
+  fixedRings?: Array<{ index: number; width: number }>;
 }) {
-  const { size, innerRadius, subplotOuterRadius, outerRadius, numRings, monthTickTerminal, monthTextInset, fixedRingIndex, fixedRingWidth } = params;
+  const { size, innerRadius, subplotOuterRadius, outerRadius, numRings, monthTickTerminal, monthTextInset, fixedRings } = params;
   // Guard against zero rings to avoid NaNs downstream
   if (!Number.isFinite(numRings) || numRings <= 0) {
     const lineInnerRadius = innerRadius;
@@ -20,10 +19,27 @@ export function computeRingGeometry(params: {
   const availableSpace = subplotOuterRadius - innerRadius;
 
   let ringWidths: number[] = [];
-  if (fixedRingIndex !== undefined && fixedRingWidth !== undefined && numRings > 1) {
-    const remainingSpace = availableSpace - fixedRingWidth;
-    const standardWidth = remainingSpace / (numRings - 1);
-    ringWidths = Array.from({ length: numRings }, (_, i) => i === fixedRingIndex ? fixedRingWidth : standardWidth);
+  const fixedRingEntries = (fixedRings ?? [])
+    .filter(entry => Number.isFinite(entry.width) && entry.width > 0)
+    .filter(entry => Number.isInteger(entry.index) && entry.index >= 0 && entry.index < numRings);
+  const fixedRingMap = new Map<number, number>();
+  fixedRingEntries.forEach(entry => fixedRingMap.set(entry.index, entry.width));
+  const fixedRingCount = fixedRingMap.size;
+
+  if (fixedRingCount > 0) {
+    const totalFixedWidth = Array.from(fixedRingMap.values()).reduce((sum, width) => sum + width, 0);
+    const remainingRings = numRings - fixedRingCount;
+    let remainingSpace = availableSpace - totalFixedWidth;
+    let fixedScale = 1;
+    if (remainingSpace < 0 && totalFixedWidth > 0) {
+      fixedScale = availableSpace / totalFixedWidth;
+      remainingSpace = 0;
+    }
+    const standardWidth = remainingRings > 0 ? (remainingSpace / remainingRings) : 0;
+    ringWidths = Array.from({ length: numRings }, (_, i) => {
+      const fixedWidth = fixedRingMap.get(i);
+      return fixedWidth !== undefined ? fixedWidth * fixedScale : standardWidth;
+    });
   } else {
     const reductionFactor = 1;
     const sumOfSeries = (reductionFactor === 1) ? numRings : (1 - Math.pow(reductionFactor, numRings)) / (1 - reductionFactor);
@@ -41,5 +57,4 @@ export function computeRingGeometry(params: {
   const monthLabelRadius = lineOuterRadius - monthTextInset;
   return { ringWidths, ringStartRadii, lineInnerRadius, lineOuterRadius, monthLabelRadius };
 }
-
 

@@ -25,7 +25,12 @@ async function getTimelineSubplotOrder(plugin: RadialTimelinePlugin): Promise<st
     }
     if (!Array.isArray(scenes) || scenes.length === 0) return [];
     const { masterSubplotOrder } = computeCacheableValues(plugin as unknown as PluginRendererFacade, scenes);
-    return masterSubplotOrder.filter(subplot => subplot && subplot.trim().length > 0 && subplot !== 'Backdrop');
+    return masterSubplotOrder.filter(subplot =>
+        subplot &&
+        subplot.trim().length > 0 &&
+        subplot !== 'Backdrop' &&
+        subplot !== 'MicroBackdrop'
+    );
 }
 
 export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTimelinePlugin): void {

@@ -18,7 +18,7 @@ export function renderSubplotLabels(params: {
   for (let ringOffset = 0; ringOffset < ringsToUse; ringOffset++) {
     const ring = totalRings - ringOffset - 1;
     const subplot = masterSubplotOrder[ringOffset];
-    if (!subplot || subplot === 'Backdrop') continue; // SKIP BACKDROP SUBPLOT LABEL
+    if (!subplot || subplot === 'Backdrop' || subplot === 'MicroBackdrop') continue; // SKIP VIRTUAL BACKDROP LABELS
     const innerR = ringStartRadii[ring];
     const outerR = innerR + ringWidths[ring];
     const labelPathId = `subplot-label-path-${ring}`;
@@ -43,5 +43,3 @@ export function renderSubplotLabels(params: {
   }
   return svg;
 }
-
-

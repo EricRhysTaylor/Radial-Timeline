@@ -20,7 +20,7 @@ export interface AuthorProgressSectionProps {
 }
 
 export function renderAuthorProgressSection({ app, plugin, containerEl }: AuthorProgressSectionProps): void {
-    const section = containerEl.createDiv({ cls: `rt-settings-section rt-apr-section ${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_SOCIAL}` });
+    const section = containerEl.createDiv({ cls: `rt-settings-section ert-apr-section ${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_SOCIAL}` });
 
     // Check if APR needs refresh
     const aprService = new AuthorProgressService(plugin, app);
@@ -32,9 +32,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const hero = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_APR}` });
 
     // Badge row with pill - turns red when refresh needed
-    const badgeRow = hero.createDiv({ cls: `rt-apr-hero-badge-row ${ERT_CLASSES.CARD_HEADER}` });
+    const badgeRow = hero.createDiv({ cls: `ert-apr-badge-row ${ERT_CLASSES.INLINE}` });
     const badgeClasses = needsRefresh ?
-        `rt-apr-badge-alert ${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_APR}` :
+        `ert-badgePill--alert ${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_APR}` :
         `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_APR}`;
     const badge = badgeRow.createSpan({ cls: badgeClasses });
     // Left Icon and Text
@@ -55,37 +55,37 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Big headline
     hero.createEl('h3', {
-        cls: `rt-apr-hero-title ${ERT_CLASSES.SECTION_TITLE}`,
+        cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title ert-apr-hero-title`,
         text: 'Promote your latest work across social media.'
     });
 
     // Description paragraph
     hero.createEl('p', {
-        cls: `rt-apr-hero-subtitle ${ERT_CLASSES.SECTION_DESC}`,
+        cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle ert-apr-hero-subtitle`,
         text: 'Generate vibrant, spoiler-safe progress graphics for social media and crowdfunding. Perfect for Kickstarter updates, Patreon posts, or sharing your writing journey with fans.'
     });
 
     // Features section
-    const featuresSection = hero.createDiv({ cls: `rt-apr-hero-features ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
-    featuresSection.createEl('h5', { text: 'Key Benefits:' });
-    const featuresList = featuresSection.createEl('ul');
+    const featuresSection = hero.createDiv({ cls: `ert-apr-hero-features ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+    featuresSection.createEl('h5', { text: 'Key Benefits:', cls: 'ert-kicker' });
+    const featuresList = featuresSection.createEl('ul', { cls: ERT_CLASSES.STACK });
     [
         { icon: 'eye-off', text: 'Spoiler-Safe — Scene titles and content are not part of the graphic build process.' },
         { icon: 'share-2', text: 'Shareable — Export as static snapshot or live-updating embed' },
         { icon: 'trending-up', text: 'Stage-Weighted Progress — Tracks advancement through Zero → Author → House → Press' },
     ].forEach(feature => {
-        const li = featuresList.createEl('li');
-        const iconSpan = li.createSpan({ cls: 'rt-apr-hero-feature-icon' });
+        const li = featuresList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
+        const iconSpan = li.createSpan({ cls: 'ert-feature-icon' });
         setIcon(iconSpan, feature.icon);
         li.createSpan({ text: feature.text });
     });
 
     // Size selector and 1:1 preview
-    const previewSection = hero.createDiv({ cls: 'rt-apr-preview-section' });
+    const previewSection = hero.createDiv({ cls: `ert-apr-preview ${ERT_CLASSES.STACK}` });
 
     // Size selector row
-    const sizeSelectorRow = previewSection.createDiv({ cls: `rt-apr-size-selector-row ${ERT_CLASSES.INLINE}` });
-    sizeSelectorRow.createSpan({ text: 'Preview Size:', cls: 'rt-apr-size-label' });
+    const sizeSelectorRow = previewSection.createDiv({ cls: `ert-apr-size-row ${ERT_CLASSES.INLINE}` });
+    sizeSelectorRow.createSpan({ text: 'Preview Size:', cls: 'ert-apr-size-label' });
 
     const sizeButtons = [
         { size: 'thumb', dimension: '100' },
@@ -137,13 +137,13 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Dimension info
     const currentDim = sizeButtons.find(s => s.size === currentSize)?.dimension || '300';
     dimLabel = previewSection.createDiv({
-        cls: 'rt-apr-preview-dimension-label'
+        cls: 'ert-apr-preview-dimension'
     });
     setSizeLabel(dimLabel, currentDim, 'Actual size preview)');
 
     // SVG Preview container - shows at 1:1 actual size
-    const previewContainer = previewSection.createDiv({ cls: `rt-apr-hero-preview rt-apr-preview-actual ${ERT_CLASSES.PREVIEW_FRAME}` });
-    previewContainer.createDiv({ cls: `rt-apr-hero-preview-loading ${ERT_CLASSES.PREVIEW_INNER}`, text: 'Loading preview...' });
+    const previewContainer = previewSection.createDiv({ cls: `ert-apr-preview-frame ert-apr-preview--actual ${ERT_CLASSES.PREVIEW_FRAME}` });
+    previewContainer.createDiv({ cls: `ert-apr-preview-loading ${ERT_CLASSES.PREVIEW_INNER}`, text: 'Loading preview...' });
 
     // Load and render preview asynchronously at actual size
     renderHeroPreview(app, plugin, previewContainer, currentSize);
@@ -158,7 +158,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         ? new Date(settings.lastPublishedDate).toLocaleDateString()
         : 'Never';
 
-    const meta = hero.createDiv({ cls: `rt-apr-hero-meta ${ERT_CLASSES.INLINE}` });
+    const meta = hero.createDiv({ cls: `ert-apr-meta ${ERT_CLASSES.INLINE}` });
     meta.createSpan({ text: `Last update: ${lastDate}`, cls: ERT_CLASSES.FIELD_NOTE });
     meta.createSpan({ text: 'Kickstarter ready', cls: ERT_CLASSES.CHIP });
     meta.createSpan({ text: 'Patreon friendly', cls: ERT_CLASSES.CHIP });
@@ -166,7 +166,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     // CONFIGURATION SECTION
     // ─────────────────────────────────────────────────────────────────────────
-    const contentWrapper = section.createDiv({ cls: `rt-apr-content-wrapper ${ERT_CLASSES.STACK}` });
+    const contentWrapper = section.createDiv({ cls: `ert-apr-content ${ERT_CLASSES.STACK}` });
 
     // Styling (background + branding colors) - placed first, close to preview
     const stylingCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
@@ -1020,7 +1020,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Only show basic Publishing & Automation for non-Pro users
     if (!isProActive) {
-        const automationCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-automation-card rt-apr-stack-gap' });
+        const automationCard = contentWrapper.createDiv({ cls: `rt-glass-card ${ERT_CLASSES.STACK}` });
         const automationHeader = automationCard.createEl('h4', {
             text: 'Publishing & Automation',
             cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`
@@ -1049,7 +1049,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
         // Add red alert border when refresh is needed
         if (needsRefresh) {
-            frequencySetting.settingEl.classList.add('rt-apr-refresh-alert');
+            frequencySetting.settingEl.classList.add('ert-apr-refresh-alert');
         }
 
         // Conditional Manual Settings
@@ -1090,7 +1090,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
             // Add red alert border when refresh is needed
             if (needsRefresh) {
-                stalenessSetting.settingEl.classList.add('rt-apr-refresh-alert');
+                stalenessSetting.settingEl.classList.add('ert-apr-refresh-alert');
             }
         }
 
@@ -1169,10 +1169,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
 
         // Pro upgrade teaser for non-Pro users
-        const proTeaser = automationCard.createDiv({ cls: 'rt-apr-pro-teaser' });
-        const teaserIcon = proTeaser.createSpan({ cls: 'rt-apr-pro-teaser-icon' });
+        const proTeaser = automationCard.createDiv({ cls: 'ert-apr-pro-teaser' });
+        const teaserIcon = proTeaser.createSpan({ cls: 'ert-apr-pro-teaser-icon' });
         setIcon(teaserIcon, 'signature');
-        const teaserText = proTeaser.createDiv({ cls: 'rt-apr-pro-teaser-text' });
+        const teaserText = proTeaser.createDiv({ cls: 'ert-apr-pro-teaser-text' });
         teaserText.createEl('strong', { text: 'Want more?' });
         teaserText.createEl('span', {
             text: ' Campaign Manager lets you create multiple embeds with Teaser Reveal—progressively show more detail as you write.'
@@ -1180,7 +1180,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         const teaserLink = proTeaser.createEl('a', {
             text: 'Upgrade to Pro →',
             href: 'https://radialtimeline.com/pro',
-            cls: 'rt-apr-pro-teaser-link',
+            cls: 'ert-apr-pro-teaser-link',
             attr: { target: '_blank', rel: 'noopener' }
         });
     } // End of non-Pro publishing section
@@ -1220,7 +1220,7 @@ async function renderHeroPreview(
         if (scenes.length === 0) {
             container.empty();
             container.createDiv({
-                cls: 'rt-apr-hero-preview-empty',
+                cls: 'ert-apr-preview-empty',
                 text: 'Create scenes to see a preview of your Author Progress Report.'
             });
             return;
@@ -1285,7 +1285,7 @@ async function renderHeroPreview(
         container.empty();
 
         // Create a wrapper to ensure SVG displays at natural size
-        const svgWrapper = container.createDiv({ cls: 'rt-apr-svg-wrapper' });
+        const svgWrapper = container.createDiv({ cls: 'ert-apr-svg-wrapper' });
         svgWrapper.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
 
         // Ensure the SVG has explicit dimensions for 1:1 display
@@ -1298,7 +1298,7 @@ async function renderHeroPreview(
     } catch (e) {
         container.empty();
         container.createDiv({
-            cls: 'rt-apr-hero-preview-error',
+            cls: 'ert-apr-preview-error',
             text: 'Failed to render preview.'
         });
         console.error('APR Settings Preview error:', e);

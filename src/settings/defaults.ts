@@ -188,7 +188,9 @@ When: {{When}}                       # Start Date/Time (YYYY-MM-DD HH:MM)
 End: {{End}}                         # End Date/Time (YYYY-MM-DD HH:MM)
 Synopsis: What this backdrop represents and how it shapes the story.`,
     showBackdropRing: true,
-    chronologueBackdropMicroRings: [],
+    chronologueBackdropMicroRings: [
+        { title: '', range: '', color: '#EFBDEB' }
+    ],
     
     // Runtime Estimation defaults
     enableRuntimeEstimation: false,

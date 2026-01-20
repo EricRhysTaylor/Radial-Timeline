@@ -35,8 +35,7 @@ import { normalizeBeatName } from '../utils/gossamer';
 import { buildChronologueOuterLabels, renderChronologueOverlays, renderOuterLabelTexts, renderChronologueOuterTicks } from './utils/Chronologue';
 import { isRuntimeModeActive } from '../view/interactions/ChronologueShiftController';
 import { getMostAdvancedStageColor } from '../utils/colour';
-import { computeCacheableValues, type PrecomputedRenderValues } from './utils/Precompute';
-import { computeRingGeometry } from './layout/Rings';
+import { computeCacheableValues } from './utils/Precompute';
 import { arcPath } from './layout/Paths';
 import {
     SVG_SIZE,
@@ -81,7 +80,6 @@ import { renderBeatSlice } from './components/BeatSlices';
 import { renderActBorders } from './components/Acts';
 import { renderActLabels } from './components/ActLabels';
 import { renderTargetDateTick, type TargetTickEnhancedData } from './components/ProgressTicks';
-import { buildBackdropMicroRingLayout, type BackdropMicroRingLayout } from './components/BackdropMicroRings';
 import { renderProgressRing } from './components/ProgressRing';
 import { serializeSynopsesToString } from './components/Synopses';
 import { renderSceneGroup } from './components/Scenes';
@@ -219,7 +217,8 @@ export function createTimelineSVG(
         ringStartRadii,
         lineInnerRadius,
         maxStageColor,
-        subplotDominanceStates
+        subplotDominanceStates,
+        microRingLayout
     } = precomputed;
 
     const NUM_RINGS = masterSubplotOrder.length;
@@ -300,17 +299,6 @@ export function createTimelineSVG(
         outerLabels = standardMonths;
     }
 
-    const showBackdropRing = (plugin.settings as any).showBackdropRing ?? true;
-    const microRingConfigs = Array.isArray(plugin.settings.chronologueBackdropMicroRings)
-        ? plugin.settings.chronologueBackdropMicroRings
-        : [];
-    const microRingLayout: BackdropMicroRingLayout | undefined = (isChronologueMode && showBackdropRing && microRingConfigs.length > 0)
-        ? buildBackdropMicroRingLayout({ scenes, configs: microRingConfigs })
-        : undefined;
-
-
-
-
     // After radii are known, compute global stacking map (outer-ring narrative only)
     if (shouldShowAllScenesInOuterRing(plugin)) {
         // No global stacking computation
@@ -371,15 +359,16 @@ export function createTimelineSVG(
     const progressRadius = lineInnerRadius + PROGRESS_RING_RADIUS_OFFSET;
     let microRingBaseRadius: number | undefined;
     if (hasMicroRings && microRingLayout) {
-        const backdropSubplotIndex = masterSubplotOrder.indexOf('Backdrop');
-        if (backdropSubplotIndex !== -1) {
+        const microBackdropSubplotIndex = masterSubplotOrder.indexOf('MicroBackdrop');
+        if (microBackdropSubplotIndex !== -1) {
             const numRings = ringStartRadii.length;
-            const ringIndex = numRings - 1 - backdropSubplotIndex;
-            if (ringIndex > 0) {
-                const backdropInnerRadius = ringStartRadii[ringIndex];
+            const ringIndex = numRings - 1 - microBackdropSubplotIndex;
+            if (ringIndex >= 0 && ringIndex < numRings) {
+                const ringInnerRadius = ringStartRadii[ringIndex];
+                const ringOuterRadius = ringInnerRadius + ringWidths[ringIndex];
                 const laneCount = microRingLayout.laneCount;
                 const laneGap = MICRO_RING_WIDTH + MICRO_RING_GAP;
-                const outermostRadius = backdropInnerRadius - MICRO_RING_GAP - (MICRO_RING_WIDTH / 2);
+                const outermostRadius = ringOuterRadius - MICRO_RING_GAP - (MICRO_RING_WIDTH / 2);
                 microRingBaseRadius = outermostRadius - ((laneCount - 1) * laneGap);
                 if (!Number.isFinite(microRingBaseRadius) || microRingBaseRadius <= 0) {
                     microRingBaseRadius = undefined;

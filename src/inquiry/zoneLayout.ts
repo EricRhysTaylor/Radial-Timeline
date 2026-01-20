@@ -15,7 +15,7 @@ export const ZONE_LAYOUT: Record<InquiryZoneId, InquiryZoneLayout> = {
         y: -171,
         axisRotationDeg: 3, // bigger rotates CW
         numberRadius: 450,
-        numberStartAngleDeg: 212,
+        numberStartAngleDeg: 250, //bigger moves CW
         numberDirection: 'ccw'
     },
     pressure: {
@@ -23,15 +23,15 @@ export const ZONE_LAYOUT: Record<InquiryZoneId, InquiryZoneLayout> = {
         y: -181,
         axisRotationDeg: 123,
         numberRadius: 450,
-        numberStartAngleDeg: 328,
+        numberStartAngleDeg: 290, //bigger moves CW
         numberDirection: 'cw'
     },
     payoff: {
         x: 0,
-        y: 328,
+        y: 346,
         axisRotationDeg: 243,
         numberRadius: 450,
-        numberStartAngleDeg: 90,
+        numberStartAngleDeg: 50, //bigger moves CW
         numberDirection: 'cw'
     }
 };

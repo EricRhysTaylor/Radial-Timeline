@@ -12,16 +12,18 @@ import {
     SUBPLOT_OUTER_RADIUS_MAINPLOT,
     SUBPLOT_OUTER_RADIUS_STANDARD,
     SUBPLOT_OUTER_RADIUS_CHRONOLOGUE,
-    MONTH_LABEL_RADIUS
+    MONTH_LABEL_RADIUS,
+    BACKDROP_RING_HEIGHT,
+    MICRO_RING_GAP,
+    MICRO_RING_WIDTH
 } from '../layout/LayoutConstants';
 import { computeRingGeometry } from '../layout/Rings';
+import { buildBackdropMicroRingLayout, type BackdropMicroRingLayout } from '../components/BackdropMicroRings';
 import { getMostAdvancedStageColor, getLatestGossamerSweepStageColor } from '../../utils/colour';
 import { startPerfSegment } from '../utils/Performance';
 import { computeSubplotDominanceStates, type SubplotDominanceState } from '../components/SubplotDominanceIndicators';
 import { getReadabilityScale } from '../../utils/readability';
 import { getConfiguredActCount } from '../../utils/acts';
-
-const BACKDROP_RING_HEIGHT = 20; // px
 
 export interface PrecomputedRenderValues {
     scenesByActAndSubplot: { [act: number]: { [subplot: string]: TimelineItem[] } };
@@ -35,6 +37,7 @@ export interface PrecomputedRenderValues {
     lineInnerRadius: number;
     maxStageColor: string;
     subplotDominanceStates: Map<string, SubplotDominanceState>;
+    microRingLayout?: BackdropMicroRingLayout;
 }
 
 export function computeCacheableValues(
@@ -64,8 +67,21 @@ export function computeCacheableValues(
 
     // Add virtual 'Backdrop' subplot for Chronologue mode to reserve space
     const showBackdropRing = (plugin.settings as any).showBackdropRing ?? true;
-    if (isChronologueMode && hasBackdrops && showBackdropRing) {
+    const shouldIncludeBackdrop = isChronologueMode && hasBackdrops && showBackdropRing;
+    const microRingConfigs = Array.isArray((plugin.settings as any).chronologueBackdropMicroRings)
+        ? (plugin.settings as any).chronologueBackdropMicroRings
+        : [];
+    const microRingLayout = (shouldIncludeBackdrop && microRingConfigs.length > 0)
+        ? buildBackdropMicroRingLayout({ scenes, configs: microRingConfigs })
+        : undefined;
+    const microRingLaneCount = microRingLayout?.laneCount ?? 0;
+    const shouldIncludeMicroBackdrop = shouldIncludeBackdrop && microRingLaneCount > 0;
+
+    if (shouldIncludeBackdrop) {
         allSubplots.push('Backdrop');
+    }
+    if (shouldIncludeMicroBackdrop) {
+        allSubplots.push('MicroBackdrop');
     }
 
     const NUM_RINGS = allSubplots.length;
@@ -154,13 +170,12 @@ export function computeCacheableValues(
     // For Chronologue mode, ensure 'Backdrop' is the second ring from the outside
     // Outer Ring (ringOffset=0) is typically Main Plot or All Scenes.
     // Backdrop (ringOffset=1) should be next.
-    if (isChronologueMode && hasBackdrops && showBackdropRing) {
-        masterSubplotOrder = masterSubplotOrder.filter(s => s !== 'Backdrop');
-        if (masterSubplotOrder.length > 0) {
-            // Insert after the first one (Main Plot)
-            masterSubplotOrder.splice(1, 0, 'Backdrop');
-        } else {
-            masterSubplotOrder.push('Backdrop');
+    if (shouldIncludeBackdrop) {
+        masterSubplotOrder = masterSubplotOrder.filter(s => s !== 'Backdrop' && s !== 'MicroBackdrop');
+        const insertIndex = masterSubplotOrder.length > 0 ? 1 : 0;
+        masterSubplotOrder.splice(insertIndex, 0, 'Backdrop');
+        if (shouldIncludeMicroBackdrop) {
+            masterSubplotOrder.splice(insertIndex + 1, 0, 'MicroBackdrop');
         }
     }
 
@@ -176,10 +191,23 @@ export function computeCacheableValues(
             ? SUBPLOT_OUTER_RADIUS_MAINPLOT
             : SUBPLOT_OUTER_RADIUS_STANDARD[readabilityScale];
 
+    const fixedRings: Array<{ index: number; width: number }> = [];
     const backdropSubplotIndex = masterSubplotOrder.indexOf('Backdrop');
-    let fixedRingIndex: number | undefined;
-    if (isChronologueMode && backdropSubplotIndex !== -1) {
-        fixedRingIndex = NUM_RINGS - 1 - backdropSubplotIndex;
+    if (shouldIncludeBackdrop && backdropSubplotIndex !== -1) {
+        fixedRings.push({
+            index: NUM_RINGS - 1 - backdropSubplotIndex,
+            width: BACKDROP_RING_HEIGHT
+        });
+    }
+    const microBackdropSubplotIndex = masterSubplotOrder.indexOf('MicroBackdrop');
+    if (shouldIncludeMicroBackdrop && microBackdropSubplotIndex !== -1) {
+        const microRingWidth = microRingLaneCount * (MICRO_RING_WIDTH + MICRO_RING_GAP);
+        if (microRingWidth > 0) {
+            fixedRings.push({
+                index: NUM_RINGS - 1 - microBackdropSubplotIndex,
+                width: microRingWidth
+            });
+        }
     }
 
     const ringGeo = computeRingGeometry({
@@ -190,8 +218,7 @@ export function computeCacheableValues(
         numRings: NUM_RINGS,
         monthTickTerminal: 0,
         monthTextInset: 0,
-        fixedRingIndex,
-        fixedRingWidth: isChronologueMode ? BACKDROP_RING_HEIGHT : undefined
+        fixedRings
     });
 
     // In Gossamer mode, use the latest sweep stage color (reflects when analysis was run)
@@ -214,6 +241,7 @@ export function computeCacheableValues(
         ringStartRadii: ringGeo.ringStartRadii,
         lineInnerRadius: ringGeo.lineInnerRadius,
         maxStageColor,
-        subplotDominanceStates
+        subplotDominanceStates,
+        microRingLayout
     };
 }
