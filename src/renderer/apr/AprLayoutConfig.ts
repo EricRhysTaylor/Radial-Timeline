@@ -97,7 +97,7 @@ export const APR_LAYOUT = {
         centerNumberFontSize2Digit: 28,  // Font size for double-digit numbers (e.g., "42")
         centerNumberFontSize3Digit: 22,  // Font size for triple-digit numbers (e.g., "100")
         centerNumberYOffset: 3.2,          // Y offset for the center number (positive = down)
-        centerNumberXOffset: -1.3,            // X offset for the center number
+        centerNumberXOffset: -1,            // X offset for the center number
         centerNumberLetterSpacing: '-0.05em', // Letter spacing for multi-digit numbers
         centerNumberOpacity: 1,  // Center number visibility: 0.0 = invisible, 1.0 = fully opaque
         percentSymbolYOffset: 4,   // Y offset for % symbol
@@ -145,8 +145,8 @@ export const APR_LAYOUT = {
         centerNumberFontSize1Digit: 105,  // Font size for single-digit numbers (e.g., "5")
         centerNumberFontSize2Digit: 80,  // Font size for double-digit numbers (e.g., "42")
         centerNumberFontSize3Digit: 58,  // Font size for triple-digit numbers (e.g., "100")
-        centerNumberYOffset: 8,          // Y offset for the center number (positive = down)
-        centerNumberXOffset: -4,          // X offset for the center number
+        centerNumberYOffset: 6,          // Y offset for the center number (positive = down)
+        centerNumberXOffset: -3,          // X offset for the center number
         centerNumberOpacity: 0.95,   // Center number visibility: 0.0 = invisible, 1.0 = fully opaque
         centerNumberLetterSpacing: '-0.05em', // Letter spacing for multi-digit numbers
         percentSymbolYOffset: 9.5,    // Y offset for % symbol
