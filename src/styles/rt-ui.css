@@ -141,6 +141,15 @@
   line-height: 1.5;
 }
 
+.ert-ui .ert-kicker {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ert-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .ert-ui .ert-feature-item {
   align-items: center;
   font-size: 13px;

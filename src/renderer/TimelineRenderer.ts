@@ -56,7 +56,6 @@ import {
     MICRO_RING_MAX_LANES,
     MICRO_RING_WIDTH,
     PROGRESS_RING_RADIUS_OFFSET,
-    PROGRESS_RING_BASE_WIDTH,
     SCENE_TITLE_INSET,
     SYNOPSIS_INSET,
     BEAT_TEXT_RADIUS,
@@ -369,20 +368,22 @@ export function createTimelineSVG(
     // const yearProgress = 1; // TEMP TEST: Force 100% to display all segments
 
     // Create progress ring
-    const hasMicroRings = isChronologueMode && (microRingLayout?.laneCount ?? 0) > 0 && ringStartRadii[0] !== undefined;
-    const desiredProgressRadius = lineInnerRadius + PROGRESS_RING_RADIUS_OFFSET;
-    let progressRadius = desiredProgressRadius;
+    const hasMicroRings = isChronologueMode && (microRingLayout?.laneCount ?? 0) > 0;
+    const progressRadius = lineInnerRadius + PROGRESS_RING_RADIUS_OFFSET;
     let microRingBaseRadius: number | undefined;
-    if (hasMicroRings && ringStartRadii[0] !== undefined && microRingLayout) {
-        const laneCount = Math.min(microRingLayout.laneCount, MICRO_RING_MAX_LANES);
-        const clearance = MICRO_RING_GAP;
-        const requiredSpace = clearance + (laneCount * MICRO_RING_WIDTH) + ((laneCount - 1) * MICRO_RING_GAP);
-        const maxProgressRadius = ringStartRadii[0] - (PROGRESS_RING_BASE_WIDTH / 2) - requiredSpace;
-        if (Number.isFinite(maxProgressRadius)) {
-            progressRadius = Math.min(desiredProgressRadius, maxProgressRadius);
+    if (hasMicroRings && microRingLayout) {
+        const backdropSubplotIndex = masterSubplotOrder.indexOf('Backdrop');
+        if (backdropSubplotIndex !== -1) {
+            const numRings = ringStartRadii.length;
+            const ringIndex = numRings - 1 - backdropSubplotIndex;
+            if (ringIndex > 0) {
+                const backdropInnerRadius = ringStartRadii[ringIndex];
+                const laneCount = Math.min(microRingLayout.laneCount, MICRO_RING_MAX_LANES);
+                const laneGap = MICRO_RING_WIDTH + MICRO_RING_GAP;
+                const outermostRadius = backdropInnerRadius - MICRO_RING_GAP - (MICRO_RING_WIDTH / 2);
+                microRingBaseRadius = outermostRadius - ((laneCount - 1) * laneGap);
+            }
         }
-        progressRadius = Math.max(progressRadius, 0);
-        microRingBaseRadius = progressRadius + (PROGRESS_RING_BASE_WIDTH / 2) + clearance + (MICRO_RING_WIDTH / 2);
     }
     const estimateResult: CompletionEstimate | null = plugin.calculateCompletionEstimate(scenes);
     const circumference = 2 * Math.PI * progressRadius;

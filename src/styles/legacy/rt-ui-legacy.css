@@ -57,10 +57,10 @@
   color: var(--text-muted);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   OPTIMIZED: Pro pill v1 — do not normalize
+/* ==========================================================================
+   OPTIMIZED: Pro pill v1 - do not normalize
    Design-locked reference. Changes require explicit approval.
-   ═══════════════════════════════════════════════════════════════════════════ */
+   ========================================================================== */
 .rt-optimized-pro-pill {
   display: inline-flex;
   align-items: center;

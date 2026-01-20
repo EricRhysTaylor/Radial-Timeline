@@ -179,7 +179,7 @@ export const ELAPSED_TICK_LENGTH = 14;
 // =============================================================================
 
 /** Width of backdrop micro rings (px) */
-export const MICRO_RING_WIDTH = 4;
+export const MICRO_RING_WIDTH = 6;
 
 /** Gap between micro ring lanes (px) */
 export const MICRO_RING_GAP = 2;
@@ -324,4 +324,3 @@ export const GRID_CELL_GAP_X = 2;
 export const GRID_CELL_GAP_Y = 4;
 export const GRID_HEADER_OFFSET_Y = 12;
 export const GRID_LINE_HEIGHT = 26;
-

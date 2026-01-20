@@ -280,7 +280,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
     microRingHeading.settingEl.classList.add('rt-section-heading');
     containerEl.createEl('p', {
         cls: 'rt-color-section-desc',
-        text: 'Three configurable micro-rings between the year progress ring and the inner subplot ring (Chronologue mode only).'
+        text: 'Three configurable micro-rings tucked under the backdrop ring (Chronologue mode only).'
     });
 
     const ensureMicroRingConfigs = () => {
