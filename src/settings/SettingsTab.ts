@@ -408,7 +408,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             app: this.app,
             plugin: this.plugin,
             containerEl: proContent,
-            renderHero: isProActive ? () => this.renderProHero(proContent) : undefined
+            renderHero: isProActive ? (target) => this.renderProHero(target) : undefined
         });
         renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: proContent });
 

@@ -8,7 +8,7 @@
 
 import { App, Setting, setIcon, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import { addWikiLink } from '../wikiLink';
+import { addWikiLinkToElement } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -21,7 +21,7 @@ interface SectionParams {
     app: App;
     plugin: RadialTimelinePlugin;
     containerEl: HTMLElement;
-    renderHero?: () => void;
+    renderHero?: (containerEl: HTMLElement) => void;
 }
 
 /**
@@ -133,9 +133,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
     };
 
     // Render external hero hook (if any)
-    if (renderHero) {
-        renderHero();
-    }
+    renderHero?.(section);
 
     // ─────────────────────────────────────────────────────────────────────────
     // CONTENT STACK
@@ -208,7 +206,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
                     plugin.settings.professionalLicenseKey = value || undefined;
                     await plugin.saveSettings();
                     containerEl.empty();
-                    renderProfessionalSection({ app: plugin.app, plugin, containerEl });
+                    renderProfessionalSection({ app: plugin.app, plugin, containerEl, renderHero });
                 });
             });
 
@@ -229,18 +227,20 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
 
     // Header
     const pandocHeader = pandocPanel.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
-    const pandocTitle = pandocHeader.createDiv({ cls: ERT_CLASSES.CONTROL });
-
-    // Pro Label + Title
-    const titleRow = pandocTitle.createDiv({ cls: ERT_CLASSES.INLINE });
-    const titleIcon = titleRow.createSpan({ cls: ERT_CLASSES.SECTION_ICON });
-    setIcon(titleIcon, 'book-open-text');
-    titleRow.createEl('h4', { text: 'Export & Pandoc', cls: ERT_CLASSES.SECTION_TITLE });
-
-    pandocTitle.createDiv({
+    const pandocHeaderRow = pandocHeader.createDiv({ cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK}` });
+    const pandocHeaderLeft = pandocHeaderRow.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
+    setIcon(pandocHeaderLeft, 'book-open-text');
+    const pandocHeaderMain = pandocHeaderRow.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
+    pandocHeaderMain.createEl('h4', {
+        text: 'Export & Pandoc',
+        cls: ERT_CLASSES.SECTION_TITLE
+    });
+    pandocHeaderMain.createDiv({
         cls: ERT_CLASSES.SECTION_DESC,
         text: 'Configure Pandoc binary paths and manuscript export templates for screenplay, podcast, and novel formats.'
     });
+    const pandocHeaderRight = pandocHeaderRow.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
+    addWikiLinkToElement(pandocHeaderRight, 'Settings#professional');
 
     // Settings
     addProRow(new Setting(pandocPanel))

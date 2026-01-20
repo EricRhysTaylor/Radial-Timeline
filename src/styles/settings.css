@@ -2109,11 +2109,13 @@
 }
 
 /* Runtime/Pro tab subheaders - styled like major section headings */
-.rt-settings-root h4.rt-runtime-subheader {
+.rt-settings-root .rt-runtime-subheader {
+  margin: 24px 0 8px 0;
+}
+
+.rt-settings-root .rt-runtime-subheader .ert-section-title {
   font-size: 14px;
   font-weight: 600;
-  margin: 24px 0 8px 0;
-  padding: 0 16px;
   color: var(--text-normal);
 }
 

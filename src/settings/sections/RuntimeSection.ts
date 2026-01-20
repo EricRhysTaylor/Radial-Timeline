@@ -9,7 +9,7 @@
 import { App, Setting, TextComponent, DropdownComponent, setIcon, Modal, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { RuntimeContentType, RuntimeRateProfile } from '../../types';
-import { addWikiLink } from '../wikiLink';
+import { addWikiLink, addWikiLinkToElement } from '../wikiLink';
 import { isProfessionalActive } from './ProfessionalSection';
 import { ERT_CLASSES } from '../../ui/classes';
 
@@ -208,10 +208,19 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             }
 
             const contentType = selectedProfile.contentType || 'novel';
-            detailsContainer.createEl('h4', {
-                cls: `${ERT_CLASSES.SECTION_TITLE} rt-runtime-subheader`,
+            const ratesHeader = detailsContainer.createDiv({
+                cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_INLINE} rt-runtime-subheader`
+            });
+            const ratesHeaderLeft = ratesHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
+            const ratesIconName = contentType === 'screenplay' ? 'projector' : 'mic-vocal';
+            setIcon(ratesHeaderLeft, ratesIconName);
+            const ratesHeaderMain = ratesHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
+            ratesHeaderMain.createEl('h4', {
+                cls: ERT_CLASSES.SECTION_TITLE,
                 text: 'Rates & timings'
             });
+            const ratesHeaderRight = ratesHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
+            addWikiLinkToElement(ratesHeaderRight, 'Settings#runtime-estimation');
 
             // Content Type Selection
             addProRow(new Setting(detailsContainer))
@@ -342,10 +351,22 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             }
 
             // Session planning (optional, per profile)
-            detailsContainer.createEl('h4', {
-                cls: `${ERT_CLASSES.SECTION_TITLE} rt-runtime-subheader`,
+            const sessionHeader = detailsContainer.createDiv({
+                cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK} rt-runtime-subheader`
+            });
+            const sessionHeaderLeft = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
+            setIcon(sessionHeaderLeft, 'calendar-clock');
+            const sessionHeaderMain = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
+            sessionHeaderMain.createEl('h4', {
+                cls: ERT_CLASSES.SECTION_TITLE,
                 text: 'Session planning (optional)'
             });
+            sessionHeaderMain.createDiv({
+                cls: ERT_CLASSES.SECTION_DESC,
+                text: 'Used in the Outline export: Index cards (JSON) summary to estimate writing hours and total sessions.'
+            });
+            const sessionHeaderRight = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
+            addWikiLinkToElement(sessionHeaderRight, 'Settings#runtime-estimation');
             const session = selectedProfile.sessionPlanning || {};
 
             addProRow(new Setting(detailsContainer))
@@ -394,7 +415,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             // Explicit Duration Patterns (always shown when enabled)
             const patternsInfo = detailsContainer.createDiv({
-                cls: `setting-item-description ${ERT_CLASSES.SECTION_DESC} rt-runtime-patterns-info`
+                cls: `setting-item-description ${ERT_CLASSES.SECTION_DESC} ${ERT_CLASSES.ELEMENT_BLOCK} rt-runtime-patterns-info`
             });
             patternsInfo.createEl('p', { text: 'Explicit duration patterns are always parsed and added to runtime:' });
             const patternsList = patternsInfo.createEl('ul');

@@ -331,11 +331,6 @@ export function renderInquirySection(params: SectionParams): void {
         });
     });
 
-    const classScopeHint = containerEl.createDiv({
-        cls: 'ert-inquiry-class-scope-hint',
-        text: 'Add scene, outline, or / to begin.'
-    });
-
     const scanRootsSetting = new Settings(containerEl)
         .setName('Inquiry scan folders')
         .setDesc('Inquiry only scans within these folders. One path per line. Wildcards like /Book */ or /Book 1-7 */ are allowed. Use / for the vault root. Empty = no scan.');
@@ -625,8 +620,6 @@ export function renderInquirySection(params: SectionParams): void {
             participatingClasses
         );
 
-        const hasScope = scopeConfig.allowAll || scopeConfig.allowed.length > 0;
-        classScopeHint.toggleClass('ert-hidden', hasScope);
     };
 
     void refreshClassScan();
