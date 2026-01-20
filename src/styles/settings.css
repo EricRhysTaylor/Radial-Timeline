@@ -232,8 +232,10 @@
   color: var(--rt-pro-color);
 }
 
-.rt-pro-toggle-checkbox {
+/* High specificity to override theme checkbox styles */
+.rt-settings-root input.rt-pro-toggle-checkbox {
   appearance: none;
+  -webkit-appearance: none;
   width: 36px;
   height: 20px;
   background: var(--background-modifier-border);
@@ -241,9 +243,19 @@
   position: relative;
   cursor: pointer;
   transition: background 0.2s ease;
+  border: none;
+  margin: 0;
+  outline: none;
+  box-shadow: none;
 }
 
-.rt-pro-toggle-checkbox::before {
+/* Ensure no checkmark artifact */
+.rt-settings-root input.rt-pro-toggle-checkbox::after {
+  content: none;
+  display: none;
+}
+
+.rt-settings-root input.rt-pro-toggle-checkbox::before {
   content: '';
   position: absolute;
   width: 16px;
@@ -253,13 +265,14 @@
   top: 2px;
   left: 2px;
   transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.rt-pro-toggle-checkbox:checked {
+.rt-settings-root input.rt-pro-toggle-checkbox:checked {
   background: var(--rt-pro-color);
 }
 
-.rt-pro-toggle-checkbox:checked::before {
+.rt-settings-root input.rt-pro-toggle-checkbox:checked::before {
   transform: translateX(16px);
 }
 
@@ -278,6 +291,12 @@
 .rt-pro-hero-badge svg {
   width: 16px;
   height: 16px;
+}
+
+.rt-pro-hero-badge.rt-pro-hero-badge-beta {
+  background-color: #1f1a14;
+  color: #aa9370;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* High specificity to override Obsidian's default h3 styles */
@@ -1929,6 +1948,8 @@
   vertical-align: middle;
   opacity: 0.6;
   transform: scale(0.8);
+  position: relative;
+  top: -2px;
   align-self: center;
   transition: opacity 0.2s ease;
 }

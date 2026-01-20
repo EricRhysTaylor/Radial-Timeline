@@ -71,19 +71,24 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
     // ─────────────────────────────────────────────────────────────────────────
     // HERO / HEADER
     // ─────────────────────────────────────────────────────────────────────────
-    const hero = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_HERO}` });
+    // ─────────────────────────────────────────────────────────────────────────
+    // HERO / HEADER (Legacy Layout Restored)
+    // ─────────────────────────────────────────────────────────────────────────
+    const hero = section.createDiv({ cls: 'rt-pro-hero' });
 
     // Badge Row
-    const badgeRow = hero.createDiv({ cls: `rt-pro-hero-badge-row ${ERT_CLASSES.INLINE}` });
+    const badgeRow = hero.createDiv({ cls: 'rt-pro-hero-badge-row' });
 
-    // Status Badge
-    const statusClasses = isActive ?
-        `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}` :
-        `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_NEUTRAL}`;
+    // Status Badge (Standardized Pill)
+    const badge = badgeRow.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}` });
 
-    const badge = badgeRow.createSpan({ cls: statusClasses });
-    setIcon(badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), 'signature');
-    badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: isActive ? 'Pro features active' : 'Pro' });
+    const iconSpan = badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
+    setIcon(iconSpan, 'signature');
+
+    badge.createSpan({
+        cls: ERT_CLASSES.BADGE_PILL_TEXT,
+        text: isActive ? 'PRO FEATURES ACTIVE' : 'PRO INACTIVE'
+    });
 
     // Wiki Link Icon
     const wikiLink = badge.createEl('a', {
@@ -97,35 +102,33 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
     });
     setIcon(wikiLink, 'external-link');
 
-    // Beta Pill (if active)
+    // Beta Badge
     if (OPEN_BETA_ACTIVE) {
-        const betaBadge = badgeRow.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_NEUTRAL}` });
-        betaBadge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Early Access Beta' });
+        const betaBadge = badgeRow.createSpan({ cls: 'rt-pro-hero-badge rt-pro-hero-badge-beta' });
+        betaBadge.setText('EARLY ACCESS BETA');
     }
 
-    // Title & Controls
-    const headerRow = hero.createDiv({ cls: `rt-pro-hero-header ${ERT_CLASSES.PANEL_HEADER}` });
-    const headerLeft = headerRow.createDiv({ cls: ERT_CLASSES.CONTROL });
+    // Toggle (Moved to Top Right)
+    const toggleContainer = badgeRow.createDiv({ cls: 'rt-pro-hero-toggle' });
+    toggleContainer.style.marginLeft = 'auto'; // Right align in flex container
 
-    headerLeft.createEl('h3', {
-        cls: ERT_CLASSES.SECTION_TITLE,
-        text: OPEN_BETA_ACTIVE ? 'Pro · Early Access' : 'Professional License'
+    toggleContainer.createSpan({
+        cls: `rt-pro-toggle-label ${isActive ? 'rt-pro-toggle-active' : ''}`,
+        text: isActive ? 'Active' : 'Inactive'
     });
 
-    // Toggle (for dev/testing)
-    const headerActions = headerRow.createDiv({ cls: ERT_CLASSES.SECTION_ACTIONS });
-    const toggleContainer = headerActions.createDiv({ cls: 'rt-pro-toggle-container' }); // Custom styling might be needed for alignment
-    new Setting(toggleContainer)
-        .setName(isActive ? 'Active' : 'Inactive')
-        .addToggle(t => {
-            t.setValue(plugin.settings.devProActive !== false);
-            t.onChange(async (value) => {
-                plugin.settings.devProActive = value;
-                await plugin.saveSettings();
-                containerEl.empty(); // Re-render from top container
-                renderProfessionalSection({ app: plugin.app, plugin, containerEl, renderHero });
-            });
-        });
+    const checkbox = toggleContainer.createEl('input', {
+        type: 'checkbox',
+        cls: 'rt-pro-toggle-checkbox',
+        attr: { style: '-webkit-appearance: none; appearance: none; margin: 0; outline: none;' }
+    });
+    checkbox.checked = plugin.settings.devProActive !== false;
+    checkbox.onchange = async () => {
+        plugin.settings.devProActive = checkbox.checked;
+        await plugin.saveSettings();
+        containerEl.empty();
+        renderProfessionalSection({ app: plugin.app, plugin, containerEl, renderHero });
+    };
 
     // Render external hero hook (if any)
     if (renderHero) {
@@ -150,8 +153,11 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
             text: 'Pro features are free during the Open Beta. Your feedback helps shape the future of Radial Timeline.'
         });
 
-        const rewardBox = betaPanel.createDiv({ cls: `rt-pro-reward-box ${ERT_CLASSES.ROW}` });
-        rewardBox.createSpan({ text: '🎁 Early Adopter Reward: Submit helpful feedback or bug reports and receive six months of Pro free when we launch paid licensing!' });
+        const rewardBox = betaPanel.createDiv({ cls: 'rt-pro-reward-box' });
+        const p = rewardBox.createEl('p', { attr: { style: 'margin: 0; line-height: 1.5;' } });
+        p.createSpan({ text: '🎁 ' });
+        p.createEl('strong', { text: 'Early Adopter Reward: ' });
+        p.createSpan({ text: 'Submit helpful feedback or bug reports and receive six months of Pro free when we launch paid licensing!' });
 
         const feedbackLink = betaPanel.createEl('a', {
             text: 'Share feedback & claim your reward →',

@@ -1513,3 +1513,36 @@
   background: rgba(255, 255, 255, 0.03);
   transform: translateY(0);
 }
+
+/* -------------------------------------------------------------------------- */
+/* APR Modal Refactor Styles                                                  */
+/* -------------------------------------------------------------------------- */
+
+/* Pro Target Dropdown */
+.rt-apr-pro-target .dropdown {
+  background: color-mix(in srgb, var(--rt-pro-color, #d946ef) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rt-pro-color, #d946ef) 30%, transparent);
+  color: var(--text-normal);
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.rt-apr-pro-target .dropdown:hover,
+.rt-apr-pro-target .dropdown:focus {
+  border-color: var(--rt-pro-color, #d946ef);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--rt-pro-color, #d946ef) 20%, transparent);
+}
+
+/* Highlighted Checkbox (% Complete) - Social/Yellow styling */
+.rt-apr-highlight-check {
+  background: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.08);
+  border-radius: 6px;
+  padding: 2px 8px;
+  margin: -2px -8px;
+  /* Compensate for padding to alignment */
+}
+
+.rt-apr-highlight-check label {
+  color: var(--rt-social-color, #ffd41d);
+  font-weight: 600;
+}

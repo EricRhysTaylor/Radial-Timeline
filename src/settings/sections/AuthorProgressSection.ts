@@ -170,7 +170,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Styling (background + branding colors) - placed first, close to preview
     const stylingCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
-    stylingCard.createEl('h4', { text: 'Styling', cls: ERT_CLASSES.SECTION_TITLE });
+    const stylingHeader = stylingCard.createEl('h4', {
+        text: 'Styling',
+        cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`
+    });
+    const stylingIcon = stylingHeader.createSpan({ cls: 'rt-setting-heading-icon' });
+    setIcon(stylingIcon, 'brush');
+    stylingHeader.prepend(stylingIcon);
+    addWikiLinkToElement(stylingHeader, 'Settings#social-media-styling');
 
     const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
     const currentTransparent = settings?.aprCenterTransparent ?? true; // Default to true (recommended)
@@ -361,7 +368,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const themeContainer = stylingCard.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
     const themeHeader = themeContainer.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const themeHeaderLeft = themeHeader.createDiv({ cls: ERT_CLASSES.CONTROL });
-    themeHeaderLeft.createEl('h4', { text: 'Theme', cls: ERT_CLASSES.SECTION_TITLE });
+    const themeHeaderEl = themeHeaderLeft.createEl('h4', {
+        text: 'Theme',
+        cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`
+    });
+    const themeHeaderIcon = themeHeaderEl.createSpan({ cls: 'rt-setting-heading-icon' });
+    setIcon(themeHeaderIcon, 'swatch-book');
+    themeHeaderEl.prepend(themeHeaderIcon);
+    addWikiLinkToElement(themeHeaderEl, 'Settings#social-media-theme');
     themeHeaderLeft.createDiv({
         text: 'Theme palette applies curated colors across Title, Author, % Symbol, % Number, and RT Badge based on the Title color. Manual edits override per row.',
         cls: ERT_CLASSES.SECTION_DESC
@@ -1007,7 +1021,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Only show basic Publishing & Automation for non-Pro users
     if (!isProActive) {
         const automationCard = contentWrapper.createDiv({ cls: 'rt-glass-card rt-apr-automation-card rt-apr-stack-gap' });
-        automationCard.createEl('h4', { text: 'Publishing & Automation', cls: ERT_CLASSES.SECTION_TITLE });
+        const automationHeader = automationCard.createEl('h4', {
+            text: 'Publishing & Automation',
+            cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`
+        });
+        const automationIcon = automationHeader.createSpan({ cls: 'rt-setting-heading-icon' });
+        setIcon(automationIcon, 'rss');
+        automationHeader.prepend(automationIcon);
+        addWikiLinkToElement(automationHeader, 'Settings#social-media-publishing');
 
         const frequencySetting = new Setting(automationCard)
             .setName('Update Frequency')

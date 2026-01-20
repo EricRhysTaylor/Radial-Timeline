@@ -14,7 +14,7 @@ export class AuthorProgressModal extends Modal {
     private plugin: RadialTimelinePlugin;
     private service: AuthorProgressService;
     private publishTarget: AuthorProgressPublishTarget;
-    
+
     // Reveal options (checkbox states)
     private showSubplots: boolean;
     private showActs: boolean;
@@ -28,10 +28,10 @@ export class AuthorProgressModal extends Modal {
     private sizeSectionEl: HTMLElement | null = null;
     private actionsContentEl: HTMLElement | null = null;
     private activePublishTab: 'snapshot' | 'dynamic' = 'snapshot';
-    
+
     private previewContainers: Map<'thumb' | 'small' | 'medium' | 'large', HTMLElement> = new Map();
     private previewCards: Map<'thumb' | 'small' | 'medium' | 'large', HTMLElement> = new Map();
-    
+
     private cachedScenes: TimelineItem[] = [];
     private progressPercent: number = 0;
 
@@ -39,7 +39,7 @@ export class AuthorProgressModal extends Modal {
         super(app);
         this.plugin = plugin;
         this.service = new AuthorProgressService(plugin, app);
-        
+
         const settings = plugin.settings.authorProgress || {
             enabled: false,
             defaultNoteBehavior: 'preset',
@@ -80,76 +80,65 @@ export class AuthorProgressModal extends Modal {
     async onOpen() {
         const { contentEl, modalEl } = this;
         contentEl.empty();
-        
+
         // Apply shell styling and sizing
         if (modalEl) {
             modalEl.classList.add('rt-modal-shell', 'rt-apr-modal');
             modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw';
         }
-        
+
         // Standard modal container with glassy styling
         contentEl.addClass('rt-modal-container', 'rt-apr-content');
 
         // Modal Header with Badge (following modal template pattern)
         const header = contentEl.createDiv({ cls: 'rt-modal-header' });
-        
+
         // Badge with Radio icon for social media theme
         const badge = header.createSpan({ cls: 'rt-modal-badge rt-apr-badge' });
         const badgeIcon = badge.createSpan({ cls: 'rt-modal-badge-icon' });
         setIcon(badgeIcon, 'radio');
         badge.createSpan({ text: 'Share' });
-        
+
         header.createDiv({ text: 'Author progress report', cls: 'rt-modal-title' });
         header.createDiv({ text: 'Public, spoiler-safe progress view for fans and backers', cls: 'rt-modal-subtitle' });
 
         // Target selection + dynamic sections
-        const targetSection = contentEl.createDiv({ cls: 'rt-apr-target-section' });
         const campaigns = this.plugin.settings.authorProgress?.campaigns || [];
         const isProActive = isProfessionalActive(this.plugin);
+
+        // Ensure valid target selection
         if (isProActive && campaigns.length > 0) {
             const campaignIds = new Set(campaigns.map(c => c.id));
             if (this.selectedTargetId !== 'default' && !campaignIds.has(this.selectedTargetId)) {
                 this.selectedTargetId = 'default';
             }
-            const targetSetting = new Setting(targetSection)
-                .setName('Publish Target')
-                .setDesc('Choose the default report or a specific campaign.');
-            targetSetting.addDropdown(dropdown => {
-                dropdown.addOption('default', 'Default Report');
-                campaigns.forEach(campaign => {
-                    dropdown.addOption(campaign.id, `Campaign: ${campaign.name}`);
-                });
-                dropdown.setValue(this.selectedTargetId);
-                dropdown.onChange(async (val) => {
-                    this.selectedTargetId = val === 'default' ? 'default' : val;
-                    this.renderTargetSections();
-                    this.renderPublishActions();
-                    await this.renderPreview(false);
-                });
-            });
         } else {
             this.selectedTargetId = 'default';
         }
 
+        // Render sections
         this.alertContainer = contentEl.createDiv({ cls: 'rt-apr-refresh-alert-container' });
         this.revealSectionEl = contentEl.createDiv({ cls: 'rt-apr-reveal-section' });
         this.sizeSectionEl = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-size-section' });
-        this.renderTargetSections();
+
+        this.renderRefreshAlert();
+        this.renderRevealSection();
+        this.renderSizeSection();
 
         // Actions Section with Tabs
         const actionsSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-actions-section' });
         actionsSection.createEl('h4', { text: 'Publish', cls: 'rt-section-title' });
-        
+
         const tabsContainer = actionsSection.createDiv({ cls: 'rt-apr-tabs-container' });
         const snapshotTab = tabsContainer.createDiv({ cls: 'rt-apr-tab rt-active' });
         setIcon(snapshotTab.createSpan(), 'camera');
         snapshotTab.createSpan({ text: 'Static Snapshot' });
-        
+
         const dynamicTab = tabsContainer.createDiv({ cls: 'rt-apr-tab' });
         setIcon(dynamicTab.createSpan(), 'refresh-cw');
         dynamicTab.createSpan({ text: 'Live Embed' });
-        
+
         const actionsContent = actionsSection.createDiv({ cls: 'rt-apr-actions-content' });
         this.actionsContentEl = actionsContent;
         this.activePublishTab = 'snapshot';
@@ -170,6 +159,38 @@ export class AuthorProgressModal extends Modal {
             this.renderPublishActions();
         };
 
+        // Target Selector at bottom of Publish container (Pro only)
+        if (isProActive && campaigns.length > 0) {
+            const targetContainer = actionsSection.createDiv({ cls: 'rt-apr-target-container' });
+            // Add spacing/divider
+            targetContainer.style.marginTop = '16px';
+            targetContainer.style.paddingTop = '16px';
+            targetContainer.style.borderTop = '1px solid var(--background-modifier-border)';
+
+            const targetSetting = new Setting(targetContainer)
+                .setName('Publish Target')
+                .setDesc('Choose user group');
+
+            // Add 'Pro' styling to the dropdown field
+            targetSetting.controlEl.addClass('rt-apr-pro-target');
+
+            targetSetting.addDropdown(dropdown => {
+                dropdown.addOption('default', 'Default Report');
+                campaigns.forEach(campaign => {
+                    dropdown.addOption(campaign.id, `Campaign: ${campaign.name}`);
+                });
+                dropdown.setValue(this.selectedTargetId);
+                dropdown.onChange(async (val) => {
+                    this.selectedTargetId = val === 'default' ? 'default' : val;
+                    this.renderRefreshAlert();
+                    this.renderRevealSection();
+                    this.renderSizeSection();
+                    this.renderPublishActions();
+                    await this.renderPreview(false);
+                });
+            });
+        }
+
         // Footer actions
         const footer = contentEl.createDiv({ cls: 'rt-modal-actions' });
         new ButtonComponent(footer)
@@ -189,7 +210,7 @@ export class AuthorProgressModal extends Modal {
             ? `Generate a one-time snapshot for "${campaign.name}". Saves to your Output folder.`
             : 'Generate a one-time image to share immediately. Saves to your Output folder.';
         container.createEl('p', { text: desc, cls: 'rt-apr-tab-desc' });
-        
+
         const btnRow = container.createDiv({ cls: 'rt-row' });
         new ButtonComponent(btnRow)
             .setButtonText('Save Snapshot')
@@ -204,7 +225,7 @@ export class AuthorProgressModal extends Modal {
             ? `Update the live embed file for "${campaign.name}".`
             : 'Update the persistent file for your hosted embed. Use with GitHub Pages or similar.';
         container.createEl('p', { text: desc, cls: 'rt-apr-tab-desc' });
-        
+
         const btnRow = container.createDiv({ cls: 'rt-row' });
         new ButtonComponent(btnRow)
             .setButtonText('Update Live File')
@@ -213,20 +234,20 @@ export class AuthorProgressModal extends Modal {
 
         const embedSection = container.createDiv({ cls: 'rt-apr-embed-codes' });
         embedSection.createEl('h5', { text: 'Embed Codes' });
-        
+
         const embedBtns = embedSection.createDiv({ cls: 'rt-row' });
         new ButtonComponent(embedBtns)
             .setButtonText('Copy Kickstarter Embed')
             .onClick(() => this.copyEmbed('kickstarter'));
-        
+
         new ButtonComponent(embedBtns)
             .setButtonText('Copy Patreon Embed')
             .onClick(() => this.copyEmbed('patreon'));
     }
 
     private createPreviewCard(
-        container: HTMLElement, 
-        size: 'thumb' | 'small' | 'medium' | 'large', 
+        container: HTMLElement,
+        size: 'thumb' | 'small' | 'medium' | 'large',
         label: string,
         dimension: string,
         useCase: string,
@@ -240,13 +261,13 @@ export class AuthorProgressModal extends Modal {
         if (this.getActiveAprSize() === size) {
             card.addClass('rt-active');
         }
-        
+
         // Preview container (will hold SVG)
         const previewArea = card.createDiv({ cls: 'rt-apr-preview-thumb' });
         previewArea.createDiv({ cls: 'rt-apr-loading', text: '...' });
         this.previewContainers.set(size, previewArea);
         this.previewCards.set(size, card);
-        
+
         // Label area
         const labelArea = card.createDiv({ cls: 'rt-apr-preview-label' });
         labelArea.createEl('strong', { text: label });
@@ -254,7 +275,7 @@ export class AuthorProgressModal extends Modal {
         dims.append(document.createTextNode(dimension));
         dims.createEl('sup', { text: '2' });
         labelArea.createEl('span', { text: useCase, cls: 'rt-apr-preview-usecase' });
-        
+
         // Click to select
         if (!isLocked) {
             card.onclick = async () => {
@@ -336,7 +357,7 @@ export class AuthorProgressModal extends Modal {
             } else {
                 const revealSummary = [
                     `Subplots ${campaign.showSubplots ? 'On' : 'Off'}`,
-                    `Acts ${campaign.showActs ? 'On' : 'Off'}`,
+                    // Acts always shown
                     `Status Colors ${campaign.showStatus ? 'On' : 'Off'}`
                 ].join(' · ');
                 this.revealSectionEl.createEl('p', {
@@ -377,6 +398,8 @@ export class AuthorProgressModal extends Modal {
         };
         subplotsItem.createEl('label', { text: 'Subplots', attr: { for: 'apr-subplots' } });
 
+        // Acts removed from UI (always on)
+        /*
         const actsItem = checkboxGrid.createDiv({ cls: 'rt-apr-checkbox-item' });
         const actsInput = actsItem.createEl('input', { type: 'checkbox' });
         actsInput.id = 'apr-acts';
@@ -387,6 +410,7 @@ export class AuthorProgressModal extends Modal {
             await this.renderPreview();
         };
         actsItem.createEl('label', { text: 'Acts', attr: { for: 'apr-acts' } });
+        */
 
         const statusItem = checkboxGrid.createDiv({ cls: 'rt-apr-checkbox-item' });
         const statusInput = statusItem.createEl('input', { type: 'checkbox' });
@@ -399,7 +423,7 @@ export class AuthorProgressModal extends Modal {
         };
         statusItem.createEl('label', { text: 'Status Colors', attr: { for: 'apr-status' } });
 
-        const percentItem = checkboxGrid.createDiv({ cls: 'rt-apr-checkbox-item' });
+        const percentItem = checkboxGrid.createDiv({ cls: 'rt-apr-checkbox-item rt-apr-highlight-check' });
         const percentInput = percentItem.createEl('input', { type: 'checkbox' });
         percentInput.id = 'apr-percent';
         percentInput.checked = this.showPercent;
@@ -511,51 +535,51 @@ export class AuthorProgressModal extends Modal {
                 const { svgString } = createAprSVG(this.cachedScenes, {
                     size,
                     progressPercent: displayPercent,
-                bookTitle: settings?.bookTitle || 'Working Title',
-                authorName: settings?.authorName || '',
-                authorUrl: settings?.authorUrl || '',
-                showScenes: ringOnly ? false : showScenes,
-                showSubplots,
-                showActs,
-                showStatusColors,
-                showStageColors,
-                grayCompletedScenes,
-                showProgressPercent: ringOnly ? false : showProgressPercent,
-                showBranding: !ringOnly,
-                centerMark: size === 'thumb' ? 'plus' : 'none',
-                stageColors: (this.plugin.settings as any).publishStageColors,
-                actCount: this.plugin.settings.actCount || undefined,
-                backgroundColor: campaign?.customBackgroundColor ?? settings?.aprBackgroundColor ?? '#0d0d0f',
-                transparentCenter: campaign?.customTransparent ?? settings?.aprCenterTransparent ?? true,
-                bookAuthorColor: settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
-                authorColor: settings?.aprAuthorColor ?? settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
-                engineColor: settings?.aprEngineColor ?? '#e5e5e5',
-                percentNumberColor: settings?.aprPercentNumberColor ?? settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
-                percentSymbolColor: settings?.aprPercentSymbolColor ?? settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
-                theme: campaign?.customTheme ?? settings?.aprTheme ?? 'dark',
-                spokeColor: settings?.aprSpokeColorMode === 'custom' ? settings?.aprSpokeColor : undefined,
-                // Typography settings
-                bookTitleFontFamily: settings?.aprBookTitleFontFamily,
-                bookTitleFontWeight: settings?.aprBookTitleFontWeight,
-                bookTitleFontItalic: settings?.aprBookTitleFontItalic,
-                bookTitleFontSize: settings?.aprBookTitleFontSize,
-                authorNameFontFamily: settings?.aprAuthorNameFontFamily,
-                authorNameFontWeight: settings?.aprAuthorNameFontWeight,
-                authorNameFontItalic: settings?.aprAuthorNameFontItalic,
-                authorNameFontSize: settings?.aprAuthorNameFontSize,
-                percentNumberFontFamily: settings?.aprPercentNumberFontFamily,
-                percentNumberFontWeight: settings?.aprPercentNumberFontWeight,
-                percentNumberFontItalic: settings?.aprPercentNumberFontItalic,
-                percentNumberFontSize1Digit: settings?.aprPercentNumberFontSize1Digit,
-                percentNumberFontSize2Digit: settings?.aprPercentNumberFontSize2Digit,
-                percentNumberFontSize3Digit: settings?.aprPercentNumberFontSize3Digit,
-                percentSymbolFontFamily: settings?.aprPercentSymbolFontFamily,
-                percentSymbolFontWeight: settings?.aprPercentSymbolFontWeight,
-                percentSymbolFontItalic: settings?.aprPercentSymbolFontItalic,
-                rtBadgeFontFamily: settings?.aprRtBadgeFontFamily,
-                rtBadgeFontWeight: settings?.aprRtBadgeFontWeight,
-                rtBadgeFontItalic: settings?.aprRtBadgeFontItalic,
-                rtBadgeFontSize: settings?.aprRtBadgeFontSize
+                    bookTitle: settings?.bookTitle || 'Working Title',
+                    authorName: settings?.authorName || '',
+                    authorUrl: settings?.authorUrl || '',
+                    showScenes: ringOnly ? false : showScenes,
+                    showSubplots,
+                    showActs,
+                    showStatusColors,
+                    showStageColors,
+                    grayCompletedScenes,
+                    showProgressPercent: ringOnly ? false : showProgressPercent,
+                    showBranding: !ringOnly,
+                    centerMark: size === 'thumb' ? 'plus' : 'none',
+                    stageColors: (this.plugin.settings as any).publishStageColors,
+                    actCount: this.plugin.settings.actCount || undefined,
+                    backgroundColor: campaign?.customBackgroundColor ?? settings?.aprBackgroundColor ?? '#0d0d0f',
+                    transparentCenter: campaign?.customTransparent ?? settings?.aprCenterTransparent ?? true,
+                    bookAuthorColor: settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
+                    authorColor: settings?.aprAuthorColor ?? settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
+                    engineColor: settings?.aprEngineColor ?? '#e5e5e5',
+                    percentNumberColor: settings?.aprPercentNumberColor ?? settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
+                    percentSymbolColor: settings?.aprPercentSymbolColor ?? settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
+                    theme: campaign?.customTheme ?? settings?.aprTheme ?? 'dark',
+                    spokeColor: settings?.aprSpokeColorMode === 'custom' ? settings?.aprSpokeColor : undefined,
+                    // Typography settings
+                    bookTitleFontFamily: settings?.aprBookTitleFontFamily,
+                    bookTitleFontWeight: settings?.aprBookTitleFontWeight,
+                    bookTitleFontItalic: settings?.aprBookTitleFontItalic,
+                    bookTitleFontSize: settings?.aprBookTitleFontSize,
+                    authorNameFontFamily: settings?.aprAuthorNameFontFamily,
+                    authorNameFontWeight: settings?.aprAuthorNameFontWeight,
+                    authorNameFontItalic: settings?.aprAuthorNameFontItalic,
+                    authorNameFontSize: settings?.aprAuthorNameFontSize,
+                    percentNumberFontFamily: settings?.aprPercentNumberFontFamily,
+                    percentNumberFontWeight: settings?.aprPercentNumberFontWeight,
+                    percentNumberFontItalic: settings?.aprPercentNumberFontItalic,
+                    percentNumberFontSize1Digit: settings?.aprPercentNumberFontSize1Digit,
+                    percentNumberFontSize2Digit: settings?.aprPercentNumberFontSize2Digit,
+                    percentNumberFontSize3Digit: settings?.aprPercentNumberFontSize3Digit,
+                    percentSymbolFontFamily: settings?.aprPercentSymbolFontFamily,
+                    percentSymbolFontWeight: settings?.aprPercentSymbolFontWeight,
+                    percentSymbolFontItalic: settings?.aprPercentSymbolFontItalic,
+                    rtBadgeFontFamily: settings?.aprRtBadgeFontFamily,
+                    rtBadgeFontWeight: settings?.aprRtBadgeFontWeight,
+                    rtBadgeFontItalic: settings?.aprRtBadgeFontItalic,
+                    rtBadgeFontSize: settings?.aprRtBadgeFontSize
                 });
 
                 container.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
@@ -574,7 +598,7 @@ export class AuthorProgressModal extends Modal {
             this.renderSnapshotActions(this.actionsContentEl);
         }
     }
-    
+
     private async saveRevealOptions() {
         if (this.isCampaignTarget()) return;
         if (!this.plugin.settings.authorProgress) {
@@ -642,7 +666,7 @@ export class AuthorProgressModal extends Modal {
         // Placeholder URL - user needs to replace with their actual hosted URL
         const url = `https://YOUR_GITHUB_PAGES_URL/${embedPath}`;
         let code = '';
-        
+
         if (type === 'kickstarter') {
             code = getKickstarterEmbed(url);
         } else if (type === 'patreon') {

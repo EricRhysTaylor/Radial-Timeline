@@ -738,17 +738,7 @@ function renderCampaignDetails(
     // Initial render
     renderTeaserContent();
 
-    // Publish button
-    const publishRow = details.createDiv({ cls: 'rt-campaign-publish-row' });
-    const pubBtn = new ButtonComponent(publishRow)
-        .setButtonText('Publish Now')
-        .onClick(async () => {
-            const { AuthorProgressService } = await import('../../services/AuthorProgressService');
-            const aprService = new AuthorProgressService(plugin, plugin.app);
-            await aprService.generateCampaignReport(campaign.id);
-            onUpdate();
-        });
-    pubBtn.buttonEl.addClass('ert-btn', 'ert-btn--primary-pro');
+
 }
 
 /**
