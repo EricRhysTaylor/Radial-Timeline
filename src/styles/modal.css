@@ -5,11 +5,30 @@
 }
 
 .rt-modal-container {
+  position: relative;
+  isolation: isolate;
   padding: 26px 50px 22px;
   border-radius: 20px;
-  background: linear-gradient(145deg, rgba(16, 16, 21, 0.95), rgba(36, 28, 24, 0.92));
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55);
+  background: var(--ert-modal-bg, color-mix(in srgb, var(--background-primary) 88%, transparent));
+  border: 1px solid var(--ert-modal-border, var(--background-modifier-border));
+  box-shadow: var(--ert-modal-shadow, var(--shadow-l)), var(--ert-modal-glow, none);
+  backdrop-filter: var(--ert-modal-blur, blur(16px));
+  -webkit-backdrop-filter: var(--ert-modal-blur, blur(16px));
+}
+
+.rt-modal-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--ert-modal-tint, transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.rt-modal-container > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Default sizing for modal inputs (override with utilities above when needed) */

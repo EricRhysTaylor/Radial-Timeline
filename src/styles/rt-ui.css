@@ -13,6 +13,14 @@
   /* Neutral defaults for surfaces; skins override as needed */
   --ert-accent: var(--interactive-accent);
   --ert-accent-rgb: var(--interactive-accent-rgb, 0, 0, 0);
+  --ert-color-white: #ffffff;
+  --ert-color-error: var(--text-error, #ef4444);
+  --ert-pro-accent-color: var(--rt-pro-color, #d946ef);
+  --ert-pro-accent-border: color-mix(in srgb, var(--ert-pro-accent-color) 35%, transparent);
+  --ert-pro-accent-border-strong: color-mix(in srgb, var(--ert-pro-accent-color) 60%, transparent);
+  --ert-pro-gradient-primary: linear-gradient(135deg, #9333ea, #6366f1);
+  --ert-pro-gradient-primary-hover: linear-gradient(135deg, #a855f7, #818cf8);
+  --ert-social-gradient-primary: linear-gradient(135deg, #fbbf24, #d97706);
   --ert-surface-hero: color-mix(in srgb, var(--background-primary) 92%, var(--interactive-accent) 4%);
   --ert-border-hero: color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
   --ert-shadow-hero: 0 8px 28px color-mix(in srgb, var(--background-modifier-border) 35%, transparent);
@@ -69,6 +77,12 @@
   --ert-control-bg: var(--background-modifier-form-field);
   --ert-control-border: var(--background-modifier-border);
   --ert-control-color: var(--text-normal);
+  --ert-modal-bg: color-mix(in srgb, var(--background-primary) 88%, transparent);
+  --ert-modal-border: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  --ert-modal-shadow: var(--shadow-l);
+  --ert-modal-blur: blur(16px);
+  --ert-modal-tint: linear-gradient(180deg, color-mix(in srgb, var(--background-primary) 12%, transparent) 0%, transparent 70%);
+  --ert-modal-glow: none;
   --ert-input-width-xs: var(--rt-input-width-xs, 6ch);
   --ert-input-width-sm: var(--rt-input-width-sm, 10ch);
   --ert-input-width-md: var(--rt-input-width-md, 16ch);
@@ -553,9 +567,9 @@
 
 .ert-ui.ert-skin--pro .ert-badgePill--pro,
 .ert-ui .ert-skin--pro .ert-badgePill--pro {
-  background: linear-gradient(135deg, #9333ea, #6366f1);
+  background: var(--ert-pro-gradient-primary);
   border: none;
-  color: #ffffff;
+  color: var(--ert-color-white);
   box-shadow: none;
 }
 
@@ -563,9 +577,9 @@
 .ert-ui .ert-skin--social .ert-badgePill--apr,
 .ert-ui.ert-skin--apr .ert-badgePill--apr,
 .ert-ui .ert-skin--apr .ert-badgePill--apr {
-  background: linear-gradient(135deg, #fbbf24, #d97706);
+  background: var(--ert-social-gradient-primary);
   border: none;
-  color: #ffffff;
+  color: var(--ert-color-white);
   box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
 }
 
@@ -605,7 +619,7 @@
 .ert-ui .ert-badgePill--pro .ert-badgePill__rightIcon:hover,
 .ert-ui .ert-badgePill--apr .ert-badgePill__rightIcon:hover {
   background: rgba(255, 255, 255, 0.15);
-  color: #ffffff;
+  color: var(--ert-color-white);
   border-color: rgba(255, 255, 255, 0.4);
 }
 
@@ -1532,6 +1546,12 @@
   --ert-panel-shadow-elev: var(--ert-panel-shadow);
 }
 
+.ert-ui.ert-modal--social,
+.ert-ui .ert-modal--social {
+  --ert-modal-tint: linear-gradient(180deg, color-mix(in srgb, var(--ert-accent) 14%, transparent) 0%, transparent 65%);
+  --ert-modal-glow: 0 18px 40px color-mix(in srgb, var(--ert-accent) 16%, transparent);
+}
+
 .ert-ui.ert-skin--pro .ert-panel--muted,
 .ert-ui .ert-skin--pro .ert-panel--muted {
   background: var(--ert-pro-surface-2);
@@ -1672,7 +1692,7 @@
 }
 
 .ert-ui .ert-skin--pro .ert-objectRow.is-needs-refresh {
-  border-left: 3px solid var(--text-error, #ef4444);
+  border-left: 3px solid var(--ert-color-error);
 }
 
 .ert-ui .ert-skin--pro .ert-objectRow.is-inactive {
@@ -2161,16 +2181,16 @@
 }
 
 .ert-ui select.ert-typography-select.ert-typography-select--warning {
-  border-color: var(--text-error, #ef4444);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-error, #ef4444) 35%, transparent);
+  border-color: var(--ert-color-error);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ert-color-error) 35%, transparent);
 }
 
 .ert-ui.ert-skin--social select.ert-typography-select.ert-typography-select--warning,
 .ert-ui .ert-skin--social select.ert-typography-select.ert-typography-select--warning,
 .ert-ui.ert-skin--pro select.ert-typography-select.ert-typography-select--warning,
 .ert-ui .ert-skin--pro select.ert-typography-select.ert-typography-select--warning {
-  border-color: var(--text-error, #ef4444);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-error, #ef4444) 35%, transparent);
+  border-color: var(--ert-color-error);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ert-color-error) 35%, transparent);
 }
 
 /* Hover state — standard */
@@ -2311,14 +2331,14 @@
 
 /* Primary Pro Button (Gradient) */
 .ert-ui .ert-btn--primary-pro {
-  background: linear-gradient(135deg, #9333ea, #6366f1);
-  color: #ffffff;
+  background: var(--ert-pro-gradient-primary);
+  color: var(--ert-color-white);
   border: none;
   box-shadow: 0 2px 8px rgba(147, 51, 234, 0.3);
 }
 
 .ert-ui .ert-btn--primary-pro:hover:not(:disabled) {
-  background: linear-gradient(135deg, #a855f7, #818cf8);
+  background: var(--ert-pro-gradient-primary-hover);
   box-shadow: 0 4px 12px rgba(147, 51, 234, 0.5);
   transform: translateY(-1px);
 }
@@ -2341,14 +2361,14 @@
   background: rgba(255, 255, 255, 0.05);
   /* Dark tint */
   color: var(--text-normal);
-  border: 1px solid color-mix(in srgb, #d946ef 35%, transparent);
+  border: 1px solid var(--ert-pro-accent-border);
   /* Pro accent tint */
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .ert-ui .ert-btn--standard-pro:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.08);
-  border-color: color-mix(in srgb, #d946ef 60%, transparent);
+  border-color: var(--ert-pro-accent-border-strong);
 }
 
 .ert-ui .ert-btn--standard-pro:active:not(:disabled) {

@@ -47,19 +47,21 @@ const VIEWBOX_MIN = -800;
 const VIEWBOX_MAX = 800;
 const VIEWBOX_SIZE = 1600;
 const INQUIRY_REFERENCE_ONLY_CLASSES = new Set(['character', 'place', 'power']);
-const PREVIEW_PANEL_WIDTH = 620;
-const PREVIEW_PANEL_Y = -320;
-const PREVIEW_PANEL_PADDING_X = 28;
-const PREVIEW_PANEL_PADDING_Y = 18;
-const PREVIEW_HERO_LINE_HEIGHT = 22;
+const PREVIEW_PANEL_WIDTH = 640;
+const PREVIEW_PANEL_Y = -490;
+const PREVIEW_PANEL_PADDING_X = 32;
+const PREVIEW_PANEL_PADDING_Y = 20;
+const PREVIEW_PANEL_RADIUS = 18;
+const PREVIEW_HERO_LINE_HEIGHT = 28;
 const PREVIEW_HERO_MAX_LINES = 2;
 const PREVIEW_DETAIL_GAP = 12;
-const PREVIEW_ROW_HEIGHT = 18;
+const PREVIEW_ROW_HEIGHT = 20;
+const PREVIEW_GROUP_GAP = 8;
 const PREVIEW_LABEL_X = 12;
-const PREVIEW_VALUE_X = 120;
+const PREVIEW_VALUE_X = 140;
 const PREVIEW_ICON_RADIUS = 3;
-const PREVIEW_FOOTER_GAP = 12;
-const PREVIEW_FOOTER_HEIGHT = 16;
+const PREVIEW_FOOTER_GAP = 10;
+const PREVIEW_FOOTER_HEIGHT = 18;
 
 type InquiryQuestion = {
     id: string;
@@ -285,7 +287,7 @@ export class InquiryView extends ItemView {
         this.engineBadgeGroup.appendChild(this.engineBadgeTitle);
         this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'click', () => this.openAiSettings());
 
-        const minimapGroup = this.createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, -400);
+        const minimapGroup = this.createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, -550);
         const badgeWidth = 160;
         const badgeHeight = 34;
         const badgeGroup = this.createSvgGroup(minimapGroup, 'ert-inquiry-context-badge', -badgeWidth / 2, -badgeHeight - 12);
@@ -318,8 +320,6 @@ export class InquiryView extends ItemView {
         this.minimapTicksEl = this.createSvgGroup(minimapGroup, 'ert-inquiry-minimap-ticks', baselineStartX, 0);
         this.minimapEmptyText = this.createSvgText(minimapGroup, 'ert-inquiry-minimap-empty ert-hidden', '', 0, 22);
         this.minimapEmptyText.setAttribute('text-anchor', 'middle');
-
-        this.renderZonePods(canvasGroup);
 
         this.glyphAnchor = this.createSvgGroup(canvasGroup, 'ert-inquiry-focus-area');
         this.glyph = new InquiryGlyph(this.glyphAnchor, {
@@ -382,8 +382,8 @@ export class InquiryView extends ItemView {
         bg.setAttribute('x', String(-PREVIEW_PANEL_WIDTH / 2));
         bg.setAttribute('y', '0');
         bg.setAttribute('width', String(PREVIEW_PANEL_WIDTH));
-        bg.setAttribute('rx', '16');
-        bg.setAttribute('ry', '16');
+        bg.setAttribute('rx', String(PREVIEW_PANEL_RADIUS));
+        bg.setAttribute('ry', String(PREVIEW_PANEL_RADIUS));
         panel.appendChild(bg);
         this.previewBg = bg;
 
@@ -1897,12 +1897,15 @@ export class InquiryView extends ItemView {
         ];
 
         this.previewRows.forEach((row, index) => {
-            const rowY = detailStartY + (index * PREVIEW_ROW_HEIGHT);
+            const groupOffset = index >= 4 ? PREVIEW_GROUP_GAP * 2 : index >= 2 ? PREVIEW_GROUP_GAP : 0;
+            const rowY = detailStartY + (index * PREVIEW_ROW_HEIGHT) + groupOffset;
             row.group.setAttribute('transform', `translate(${panelLeft + PREVIEW_PANEL_PADDING_X} ${rowY})`);
             row.value.textContent = rows[index] ?? '';
         });
 
-        const footerY = detailStartY + (this.previewRows.length * PREVIEW_ROW_HEIGHT) + PREVIEW_FOOTER_GAP;
+        const groupGapCount = Math.max(0, Math.ceil(this.previewRows.length / 2) - 1);
+        const rowsBlockHeight = (this.previewRows.length * PREVIEW_ROW_HEIGHT) + (groupGapCount * PREVIEW_GROUP_GAP);
+        const footerY = detailStartY + rowsBlockHeight + PREVIEW_FOOTER_GAP;
         if (this.previewFooter) {
             this.previewFooter.setAttribute('y', String(footerY));
         }

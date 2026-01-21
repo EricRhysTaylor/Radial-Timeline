@@ -16,6 +16,8 @@
   /* Orange */
   --rt-color-press: #6FB971;
   /* Green  */
+  --rt-pro-color-base: #d946ef;
+  --rt-social-color-base: #ffd41d;
 
   /* Runtime colours – the plugin overwrites these on load */
   --rt-publishStageColors-Zero: var(--rt-color-zero);

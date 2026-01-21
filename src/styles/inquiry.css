@@ -519,7 +519,7 @@
 }
 
 .ert-inquiry-preview-hero {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 600;
   font-style: italic;
   fill: var(--text-normal);
@@ -530,19 +530,21 @@
 }
 
 .ert-inquiry-preview-label {
-  font-size: 11px;
+  font-size: 12.5px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  fill: var(--text-faint);
+  fill: var(--text-muted);
+  opacity: 0.75;
 }
 
 .ert-inquiry-preview-value {
-  font-size: 12px;
+  font-size: 13.5px;
+  font-weight: 600;
   fill: var(--text-normal);
 }
 
 .ert-inquiry-preview-footer {
-  font-size: 11px;
+  font-size: 12px;
   fill: var(--text-faint);
 }
 

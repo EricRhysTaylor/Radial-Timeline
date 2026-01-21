@@ -322,8 +322,8 @@ export function renderInquirySection(params: SectionParams): void {
 
     classScopeSetting.addTextArea(text => {
         text.setValue(listToText(inquirySources.classScope));
-        text.inputEl.rows = 3;
-        text.inputEl.addClass('rt-input-full');
+        text.inputEl.rows = 4;
+        text.inputEl.addClass('rt-input-lg');
         text.setPlaceholder('scene\noutline\n/');
         classScopeInput = text;
 
@@ -340,7 +340,7 @@ export function renderInquirySection(params: SectionParams): void {
     scanRootsSetting.addTextArea(text => {
         text.setValue(listToText(inquirySources.scanRoots));
         text.inputEl.rows = 4;
-        text.inputEl.addClass('rt-input-full');
+        text.inputEl.addClass('rt-input-lg');
         text.setPlaceholder('/Book */\n/Character/\n/World/');
         scanRootsInput = text;
 
