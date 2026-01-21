@@ -152,6 +152,24 @@ if (WRITE_BASELINE) {
 
 if (MIGRATION_MODE && !WRITE_BASELINE) {
   const baseline = exists(BASELINE_PATH) ? JSON.parse(read(BASELINE_PATH)) : null;
+  if (baseline) {
+    const baselineTotal = baseline.totalWarnings ?? 0;
+    const currentTotal = warnSummary.total;
+    const delta = currentTotal - baselineTotal;
+    const keys = ["raw-hex", "spacing-px", "shadow-rgba", "rt-legacy"];
+    console.log("\nMigration WARN summary:");
+    console.log(`- current WARN total: ${currentTotal}`);
+    console.log(`- baseline WARN total: ${baselineTotal}`);
+    console.log(`- delta: ${delta >= 0 ? "+" : ""}${delta}`);
+    console.log("- breakdown deltas:");
+    for (const key of keys) {
+      const currentCount = warnSummary.byRule[key] ?? 0;
+      const baselineCount = baseline.warningsByRule?.[key] ?? 0;
+      const ruleDelta = currentCount - baselineCount;
+      console.log(`  - ${key}: ${currentCount} (baseline ${baselineCount}, delta ${ruleDelta >= 0 ? "+" : ""}${ruleDelta})`);
+    }
+  }
+
   if (!baseline) {
     addFail(
       BASELINE_PATH,

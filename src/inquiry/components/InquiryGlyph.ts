@@ -7,6 +7,7 @@ export interface InquiryGlyphProps {
     depthValue: number; // 0..1 normalized
     severity: InquirySeverity;
     confidence: InquiryConfidence;
+    errorRing?: 'flow' | 'depth' | null;
 }
 
 export interface InquiryZonePromptItem {
@@ -76,6 +77,8 @@ export class InquiryGlyph {
     private flowBadgeText: SVGTextElement;
     private depthBadgeCircle: SVGCircleElement;
     private depthBadgeText: SVGTextElement;
+    private flowBadgeIcon?: SVGUseElement;
+    private depthBadgeIcon?: SVGUseElement;
     private labelText: SVGTextElement;
     private flowGroup: SVGGElement;
     private depthGroup: SVGGElement;
@@ -86,7 +89,6 @@ export class InquiryGlyph {
         group: SVGGElement;
         circle: SVGCircleElement;
         text: SVGTextElement;
-        title: SVGTitleElement;
         zone: InquiryZone;
         index: number;
         promptId?: string;
@@ -113,6 +115,8 @@ export class InquiryGlyph {
         this.flowBadgeText = this.flowGroup.querySelector('.ert-inquiry-ring-badge-text') as SVGTextElement;
         this.depthBadgeCircle = this.depthGroup.querySelector('.ert-inquiry-ring-badge-circle') as SVGCircleElement;
         this.depthBadgeText = this.depthGroup.querySelector('.ert-inquiry-ring-badge-text') as SVGTextElement;
+        this.flowBadgeIcon = this.flowGroup.querySelector('.ert-inquiry-ring-badge-icon') as SVGUseElement;
+        this.depthBadgeIcon = this.depthGroup.querySelector('.ert-inquiry-ring-badge-icon') as SVGUseElement;
 
         const labelGroup = document.createElementNS(SVG_NS, 'g');
         labelGroup.classList.add('ert-inquiry-glyph-label-group');
@@ -176,18 +180,21 @@ export class InquiryGlyph {
         this.labelHit.setAttribute('aria-label', `Focus target ${props.focusLabel}`);
         this.updateLabelFontSize();
 
+        const errorRing = props.errorRing ?? null;
         this.applyRingState(
             this.flowGroup,
             this.flowProgressGroup,
             this.flowArc,
             this.flowBadgeCircle,
             this.flowBadgeText,
+            this.flowBadgeIcon,
             props.flowValue,
             FLOW_RADIUS,
             FLOW_STROKE,
             props.severity,
             props.confidence,
-            'flow'
+            'flow',
+            errorRing
         );
         this.applyRingState(
             this.depthGroup,
@@ -195,12 +202,14 @@ export class InquiryGlyph {
             this.depthArc,
             this.depthBadgeCircle,
             this.depthBadgeText,
+            this.depthBadgeIcon,
             props.depthValue,
             DEPTH_RADIUS,
             DEPTH_STROKE,
             props.severity,
             props.confidence,
-            'depth'
+            'depth',
+            errorRing
         );
     }
 
@@ -283,7 +292,6 @@ export class InquiryGlyph {
                 group: SVGGElement;
                 circle: SVGCircleElement;
                 text: SVGTextElement;
-                title: SVGTitleElement;
                 zone: InquiryZone;
                 index: number;
                 promptId?: string;
@@ -313,8 +321,6 @@ export class InquiryGlyph {
                 dotText.setAttribute('fill', ZONE_DOT_TEXT);
                 dotText.textContent = String(i + 1);
 
-                const dotTitle = document.createElementNS(SVG_NS, 'title');
-                dotGroup.appendChild(dotTitle);
                 dotGroup.appendChild(dotCircle);
                 dotGroup.appendChild(dotText);
                 zoneGroup.appendChild(dotGroup);
@@ -323,12 +329,11 @@ export class InquiryGlyph {
                     group: SVGGElement;
                     circle: SVGCircleElement;
                     text: SVGTextElement;
-                    title: SVGTitleElement;
                     zone: InquiryZone;
                     index: number;
                     promptId?: string;
                     promptText?: string;
-                } = { group: dotGroup, circle: dotCircle, text: dotText, title: dotTitle, zone: zone.id, index: i };
+                } = { group: dotGroup, circle: dotCircle, text: dotText, zone: zone.id, index: i };
                 dotGroup.addEventListener('click', () => {
                     if (!marker.promptId) return;
                     this.promptState?.onPromptSelect?.(marker.zone, marker.promptId);
@@ -376,7 +381,6 @@ export class InquiryGlyph {
                 marker.text.textContent = prompt ? String(idx + 1) : '';
                 marker.group.setAttribute('display', prompt ? 'inline' : 'none');
                 marker.group.classList.toggle('is-active', !!prompt && selectedId === prompt.id);
-                marker.title.textContent = prompt?.question ?? '';
                 marker.group.removeAttribute('aria-label');
                 if (prompt) {
                     marker.group.setAttribute('role', 'button');
@@ -441,8 +445,14 @@ export class InquiryGlyph {
         text.setAttribute('alignment-baseline', 'central');
         text.setAttribute('dy', '0');
 
+        const icon = document.createElementNS(SVG_NS, 'use');
+        icon.classList.add('ert-inquiry-ring-badge-icon');
+        icon.setAttribute('href', '#ert-icon-x');
+        icon.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#ert-icon-x');
+
         group.appendChild(circle);
         group.appendChild(text);
+        group.appendChild(icon);
 
         return group;
     }
@@ -464,19 +474,23 @@ export class InquiryGlyph {
         arc: SVGPathElement,
         badgeCircle: SVGCircleElement,
         badgeText: SVGTextElement,
+        badgeIcon: SVGUseElement | undefined,
         value: number,
         radius: number,
         strokeWidth: number,
         severity: InquirySeverity,
         confidence: InquiryConfidence,
-        kind: 'flow' | 'depth'
+        kind: 'flow' | 'depth',
+        errorRing: InquiryGlyphProps['errorRing']
     ): void {
         ring.classList.remove('is-severity-low', 'is-severity-medium', 'is-severity-high');
         ring.classList.remove('is-confidence-low', 'is-confidence-medium', 'is-confidence-high');
         ring.classList.add(`is-severity-${severity}`);
         ring.classList.add(`is-confidence-${confidence}`);
-        this.updateRingArc(progress, arc, value, radius, strokeWidth);
-        this.updateBadge(badgeCircle, badgeText, value, radius, strokeWidth);
+        const showError = errorRing === kind;
+        const errorColor = showError ? '#ff4d4d' : undefined;
+        this.updateRingArc(progress, arc, value, radius, strokeWidth, errorColor);
+        this.updateBadge(badgeCircle, badgeText, badgeIcon, value, radius, strokeWidth, showError, errorColor);
     }
 
     private updateRingArc(
@@ -484,7 +498,8 @@ export class InquiryGlyph {
         arc: SVGPathElement,
         normalized: number,
         radius: number,
-        strokeWidth: number
+        strokeWidth: number,
+        overrideColor?: string
     ): void {
         const safeValue = Math.min(Math.max(normalized, 0), 1);
         if (safeValue <= 0) {
@@ -513,16 +528,19 @@ export class InquiryGlyph {
         arc.setAttribute('stroke-width', String(strokeWidth));
         arc.setAttribute('stroke-linecap', 'round');
         arc.setAttribute('fill', 'none');
-        const arcColor = InquiryGlyph.mixColors(ARC_BASE_TINT, ARC_MAX_GREEN, safeValue);
+        const arcColor = overrideColor ?? InquiryGlyph.mixColors(ARC_BASE_TINT, ARC_MAX_GREEN, safeValue);
         arc.setAttribute('stroke', arcColor);
     }
 
     private updateBadge(
         badgeCircle: SVGCircleElement,
         badgeText: SVGTextElement,
+        badgeIcon: SVGUseElement | undefined,
         normalized: number,
         radius: number,
-        strokeWidth: number
+        strokeWidth: number,
+        showErrorIcon: boolean,
+        overrideColor?: string
     ): void {
         const safeValue = Math.min(Math.max(normalized, 0), 1);
         const theta = (-90 + (360 * safeValue)) * (Math.PI / 180);
@@ -534,15 +552,25 @@ export class InquiryGlyph {
         badgeCircle.setAttribute('r', badgeRadius.toFixed(2));
         badgeText.setAttribute('x', x.toFixed(2));
         badgeText.setAttribute('y', y.toFixed(2));
-        badgeText.textContent = String(Math.round(safeValue * 100));
-        const arcColor = InquiryGlyph.mixColors(ARC_BASE_TINT, ARC_MAX_GREEN, safeValue);
+        badgeText.textContent = showErrorIcon ? '' : String(Math.round(safeValue * 100));
+        badgeText.setAttribute('opacity', showErrorIcon ? '0' : '1');
+        const arcColor = overrideColor ?? InquiryGlyph.mixColors(ARC_BASE_TINT, ARC_MAX_GREEN, safeValue);
         badgeText.style.setProperty('--ert-inquiry-badge-text-color', arcColor);
         badgeText.style.setProperty('fill', arcColor);
-        const badgeColor = InquiryGlyph.darkenColor(arcColor, DOT_DARKEN);
+        const badgeColor = overrideColor ? overrideColor : InquiryGlyph.darkenColor(arcColor, DOT_DARKEN);
         badgeCircle.style.setProperty('--ert-inquiry-badge-color', badgeColor);
         const badgeStroke = 1 * this.badgeScaleFactor;
         badgeCircle.style.setProperty('stroke', badgeColor);
         badgeCircle.style.setProperty('stroke-width', badgeStroke.toFixed(2));
+        if (badgeIcon) {
+            const iconSize = (strokeWidth * 0.55) * this.badgeScaleFactor;
+            badgeIcon.setAttribute('x', (x - (iconSize / 2)).toFixed(2));
+            badgeIcon.setAttribute('y', (y - (iconSize / 2)).toFixed(2));
+            badgeIcon.setAttribute('width', iconSize.toFixed(2));
+            badgeIcon.setAttribute('height', iconSize.toFixed(2));
+            badgeIcon.style.setProperty('color', arcColor);
+            badgeIcon.setAttribute('opacity', showErrorIcon ? '1' : '0');
+        }
     }
 
     private updateLabelFontSize(): void {

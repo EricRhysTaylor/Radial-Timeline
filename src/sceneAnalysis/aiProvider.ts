@@ -444,7 +444,9 @@ export async function callAiProvider(
                     userPrompt,
                     maxTokens,
                     undefined,
-                    { type: 'json_schema', json_schema: { name: 'scene_analysis', schema: jsonSchema } }
+                    { type: 'json_schema', json_schema: { name: 'scene_analysis', schema: jsonSchema } },
+                    undefined,
+                    undefined
                 )
             );
 
@@ -536,7 +538,8 @@ export async function callAiProvider(
                     maxTokens,
                     localBaseUrl,
                     { type: 'json_schema', json_schema: { name: 'scene_analysis', schema: jsonSchema } },
-                    0.1
+                    0.1,
+                    undefined
                 )
             );
 

@@ -39,6 +39,7 @@ export interface InquiryRunnerInput {
     focusLabel: string;
     focusSceneId?: string;
     focusBookId?: string;
+    // UI emphasis only; inquiry computation must always include both flow + depth regardless of lens.
     mode: InquiryMode;
     questionId: string;
     questionText: string;

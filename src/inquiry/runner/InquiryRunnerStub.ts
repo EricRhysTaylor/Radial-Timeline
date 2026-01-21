@@ -1,11 +1,12 @@
 import type { InquiryRunner, InquiryRunnerInput } from './types';
-import type { InquiryFinding, InquiryResult } from '../state';
+import type { InquiryAiStatus, InquiryFinding, InquiryResult } from '../state';
 
 export class InquiryRunnerStub implements InquiryRunner {
     async run(input: InquiryRunnerInput): Promise<InquiryResult> {
         const variant = this.pickVariant(input.questionId);
         const findings = this.buildFindings(variant, input.focusLabel);
         const verdict = this.buildVerdict(variant);
+        const aiStatus: InquiryAiStatus = 'unavailable';
 
         return {
             runId: `run-${Date.now()}`,
@@ -16,7 +17,12 @@ export class InquiryRunnerStub implements InquiryRunner {
             summary: verdict.summary,
             verdict: verdict.metrics,
             findings,
-            corpusFingerprint: input.corpus.fingerprint
+            corpusFingerprint: input.corpus.fingerprint,
+            aiProvider: input.ai.provider,
+            aiModelRequested: input.ai.modelId,
+            aiModelResolved: input.ai.modelId,
+            aiStatus,
+            aiReason: 'stub'
         };
     }
 

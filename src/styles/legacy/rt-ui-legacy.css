@@ -836,13 +836,6 @@
   max-width: 100%;
 }
 
-/* Promoted section headings in settings (with bottom border and spacing) */
-.rt-section-heading {
-  margin-top: 18px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--background-modifier-border);
-}
-
 /* Dim non-selected provider sections in settings */
 .rt-provider-section {
   transition: opacity 120ms ease;

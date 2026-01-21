@@ -2,13 +2,9 @@ import { TFile } from 'obsidian';
 import type { MetadataCache, Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
-import { callAnthropicApi } from '../../api/anthropicApi';
-import { callGeminiApi } from '../../api/geminiApi';
-import { callOpenAiApi } from '../../api/openaiApi';
-import { resolveKey } from '../../api/providerRouter';
-import { DEFAULT_ANTHROPIC_MODEL_ID, DEFAULT_GEMINI_MODEL_ID, DEFAULT_OPENAI_MODEL_ID } from '../../constants/aiDefaults';
+import { callProvider, type ProviderResult } from '../../api/providerRouter';
 import { INQUIRY_SCHEMA_VERSION } from '../constants';
-import type { InquiryConfidence, InquiryFinding, InquiryResult, InquirySeverity } from '../state';
+import type { InquiryAiStatus, InquiryConfidence, InquiryFinding, InquiryResult, InquirySeverity } from '../state';
 import type { CorpusManifestEntry, InquiryRunner, InquiryRunnerInput } from './types';
 
 const BOOK_FOLDER_REGEX = /^Book\s+(\d+)/i;
@@ -58,13 +54,23 @@ export class InquiryRunnerService implements InquiryRunner {
     async run(input: InquiryRunnerInput): Promise<InquiryResult> {
         const evidenceBlocks = await this.buildEvidenceBlocks(input);
         const { systemPrompt, userPrompt } = this.buildPrompt(input, evidenceBlocks);
+        const jsonSchema = this.getJsonSchema();
+        const temperature = 0.2;
+        const maxTokens = 1200;
+        let response: ProviderResult | null = null;
 
         try {
-            const response = await this.callProvider(systemPrompt, userPrompt, input.ai);
+            response = await this.callProvider(systemPrompt, userPrompt, input.ai, jsonSchema, temperature, maxTokens);
+            if (!response.success || !response.content || response.aiStatus !== 'success') {
+                return this.buildStubResult(input, this.getAiMetaFromResponse(response), response.error);
+            }
             const parsed = this.parseResponse(response.content);
-            return this.buildResult(input, parsed);
+            return this.buildResult(input, parsed, this.getAiMetaFromResponse(response));
         } catch (error) {
-            return this.buildStubResult(input, error);
+            const fallbackMeta = response
+                ? this.withParseFailureMeta(this.getAiMetaFromResponse(response), response.aiStatus)
+                : this.buildFallbackAiMeta(input);
+            return this.buildStubResult(input, fallbackMeta, error);
         }
     }
 
@@ -202,6 +208,7 @@ export class InquiryRunnerService implements InquiryRunner {
 
     private buildPrompt(input: InquiryRunnerInput, evidence: EvidenceBlock[]): { systemPrompt: string; userPrompt: string } {
         const systemPrompt = 'You are an editorial analysis engine. Return JSON only. No prose outside JSON.';
+        // Lens choice is UI-only; always request both flow + depth in the same response.
         const schema = [
             '{',
             `  "schema_version": ${INQUIRY_SCHEMA_VERSION},`,
@@ -283,62 +290,21 @@ export class InquiryRunnerService implements InquiryRunner {
     private async callProvider(
         systemPrompt: string,
         userPrompt: string,
-        ai: InquiryRunnerInput['ai']
-    ): Promise<{ content: string }> {
-        const provider = ai.provider || (this.plugin.settings.defaultAiProvider || 'openai');
-        const jsonSchema = this.getJsonSchema();
-        const temperature = 0.2;
-        const maxTokens = 1200;
-
-        if (provider === 'anthropic') {
-            const rawKey = this.plugin.settings.anthropicApiKey || '';
-            const apiKey = await resolveKey(this.plugin.app, rawKey);
-            const modelId = ai.modelId || DEFAULT_ANTHROPIC_MODEL_ID;
-            if (!apiKey || !modelId) {
-                throw new Error('Anthropic API key or Model ID not configured in settings.');
-            }
-            const response = await callAnthropicApi(apiKey, modelId, systemPrompt, userPrompt, maxTokens);
-            if (!response.success || !response.content) {
-                throw new Error(response.error || 'Anthropic API returned no content.');
-            }
-            return { content: response.content };
-        }
-
-        if (provider === 'gemini') {
-            const rawKey = this.plugin.settings.geminiApiKey || '';
-            const apiKey = await resolveKey(this.plugin.app, rawKey);
-            const modelId = ai.modelId || DEFAULT_GEMINI_MODEL_ID;
-            if (!apiKey || !modelId) {
-                throw new Error('Gemini API key or Model ID not configured in settings.');
-            }
-            const response = await callGeminiApi(apiKey, modelId, systemPrompt, userPrompt, maxTokens, temperature, jsonSchema, true);
-            if (!response.success || !response.content) {
-                throw new Error(response.error || 'Gemini API returned no content.');
-            }
-            return { content: response.content };
-        }
-
-        const rawKey = provider === 'local' ? (this.plugin.settings.localApiKey || '') : (this.plugin.settings.openaiApiKey || '');
-        const apiKey = await resolveKey(this.plugin.app, rawKey);
-        const modelId = ai.modelId || DEFAULT_OPENAI_MODEL_ID;
-        const baseUrl = provider === 'local' ? (this.plugin.settings.localBaseUrl || 'http://localhost:11434/v1') : undefined;
-        if (!modelId) {
-            throw new Error('OpenAI/Local Model ID not configured in settings.');
-        }
-        const response = await callOpenAiApi(
-            apiKey,
-            modelId,
+        ai: InquiryRunnerInput['ai'],
+        jsonSchema: Record<string, unknown>,
+        temperature: number,
+        maxTokens: number
+    ): Promise<ProviderResult> {
+        return callProvider(this.plugin, {
+            provider: ai.provider,
+            modelId: ai.modelId,
             systemPrompt,
             userPrompt,
             maxTokens,
-            baseUrl,
-            { type: 'json_schema', json_schema: { name: 'inquiry_result', schema: jsonSchema } },
-            temperature
-        );
-        if (!response.success || !response.content) {
-            throw new Error(response.error || 'OpenAI API returned no content.');
-        }
-        return { content: response.content };
+            temperature,
+            jsonSchema,
+            responseFormat: { type: 'json_schema', json_schema: { name: 'inquiry_result', schema: jsonSchema } }
+        });
     }
 
     private parseResponse(content: string): RawInquiryResponse {
@@ -365,7 +331,11 @@ export class InquiryRunnerService implements InquiryRunner {
         return null;
     }
 
-    private buildResult(input: InquiryRunnerInput, parsed: RawInquiryResponse): InquiryResult {
+    private buildResult(
+        input: InquiryRunnerInput,
+        parsed: RawInquiryResponse,
+        aiMeta: Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'>
+    ): InquiryResult {
         const verdict = parsed.verdict || {};
         const flow = this.normalizeScore(verdict.flow);
         const depth = this.normalizeScore(verdict.depth);
@@ -389,7 +359,8 @@ export class InquiryRunnerService implements InquiryRunner {
                 confidence
             },
             findings: mappedFindings,
-            corpusFingerprint: input.corpus.fingerprint
+            corpusFingerprint: input.corpus.fingerprint,
+            ...aiMeta
         };
     }
 
@@ -412,11 +383,13 @@ export class InquiryRunnerService implements InquiryRunner {
         };
     }
 
-    private buildStubResult(input: InquiryRunnerInput, error?: unknown): InquiryResult {
+    private buildStubResult(
+        input: InquiryRunnerInput,
+        aiMeta: Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'>,
+        error?: unknown
+    ): InquiryResult {
         const message = error instanceof Error ? error.message : error ? String(error) : '';
-        const summary = message
-            ? 'Stub result returned (AI unavailable).'
-            : 'Preview result for inquiry.';
+        const summary = this.buildStubSummary(aiMeta.aiStatus, aiMeta.aiReason, message);
         const bullets = message ? [`Runner note: ${message}`] : ['Deterministic placeholder result.'];
 
         return {
@@ -443,8 +416,61 @@ export class InquiryRunnerService implements InquiryRunner {
                 related: [],
                 evidenceType: 'mixed'
             }],
-            corpusFingerprint: input.corpus.fingerprint
+            corpusFingerprint: input.corpus.fingerprint,
+            ...aiMeta
         };
+    }
+
+    private getAiMetaFromResponse(response: ProviderResult): Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'> {
+        return {
+            aiProvider: response.aiProvider,
+            aiModelRequested: response.aiModelRequested,
+            aiModelResolved: response.aiModelResolved,
+            aiStatus: response.aiStatus,
+            aiReason: response.aiReason
+        };
+    }
+
+    private buildFallbackAiMeta(input: InquiryRunnerInput): Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'> {
+        return {
+            aiProvider: input.ai.provider,
+            aiModelRequested: input.ai.modelId,
+            aiModelResolved: input.ai.modelId,
+            aiStatus: 'unavailable',
+            aiReason: 'exception'
+        };
+    }
+
+    private withParseFailureMeta(
+        meta: Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'>,
+        aiStatus: InquiryAiStatus
+    ): Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'> {
+        if (aiStatus === 'success') {
+            return { ...meta, aiStatus: 'rejected', aiReason: 'invalid_response' };
+        }
+        return meta;
+    }
+
+    private buildStubSummary(aiStatus?: InquiryAiStatus, aiReason?: string, message?: string): string {
+        if (aiStatus === 'rejected' && aiReason === 'unsupported_param') {
+            return 'AI request rejected: unsupported parameter.';
+        }
+        if (aiStatus === 'rejected') {
+            return 'AI request rejected.';
+        }
+        if (aiStatus === 'auth') {
+            return 'AI request failed: authentication error.';
+        }
+        if (aiStatus === 'timeout') {
+            return 'AI request timed out.';
+        }
+        if (aiStatus === 'rate_limit') {
+            return 'AI request rate limited.';
+        }
+        if (aiStatus === 'unavailable') {
+            return 'Stub result returned (AI unavailable).';
+        }
+        return message ? 'Stub result returned (AI unavailable).' : 'Preview result for inquiry.';
     }
 
     private normalizeScore(value: unknown): number {

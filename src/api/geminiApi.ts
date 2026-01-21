@@ -34,10 +34,11 @@ export async function callGeminiApi(
   systemPrompt: string | null,
   userPrompt: string,
   maxTokens: number | null = 4000,
-  temperature: number = 0.7,
+  temperature?: number,
   jsonSchema?: Record<string, unknown>,  // Optional JSON schema for structured output
   disableThinking: boolean = false,  // Disable extended thinking mode (for 2.5-pro models)
-  cachedContentName?: string // Optional: name of cached content resource (e.g. "cachedContents/...")
+  cachedContentName?: string, // Optional: name of cached content resource (e.g. "cachedContents/...")
+  topP?: number
 ): Promise<GeminiApiResponse> {
   if (!apiKey) {
     return { success: false, content: null, responseData: { error: { message: 'Gemini API key not configured.' } }, error: 'Gemini API key not configured.' };
@@ -53,7 +54,8 @@ export async function callGeminiApi(
   type GeminiRequest = {
     contents: { role: 'user'; parts: { text: string }[] }[];
     generationConfig: { 
-      temperature: number; 
+      temperature?: number; 
+      topP?: number;
       maxOutputTokens?: number;
       responseMimeType?: string;
       responseSchema?: Record<string, unknown>;
@@ -69,9 +71,7 @@ export async function callGeminiApi(
         parts: [{ text: userPrompt }],
       },
     ],
-    generationConfig: {
-      temperature,
-    },
+    generationConfig: {},
   };
   if (cachedContentName) {
     body.cachedContent = cachedContentName;
@@ -82,6 +82,12 @@ export async function callGeminiApi(
   }
   if (maxTokens !== null) {
     body.generationConfig.maxOutputTokens = maxTokens;
+  }
+  if (typeof temperature === 'number') {
+    body.generationConfig.temperature = temperature;
+  }
+  if (typeof topP === 'number') {
+    body.generationConfig.topP = topP;
   }
   // Disable thinking mode if requested (for 2.5-pro models)
   if (disableThinking) {

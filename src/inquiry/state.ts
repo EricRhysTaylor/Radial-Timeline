@@ -4,12 +4,13 @@ export type InquiryZone = 'setup' | 'pressure' | 'payoff';
 
 export type InquirySeverity = 'low' | 'medium' | 'high';
 export type InquiryConfidence = 'low' | 'medium' | 'high';
+export type InquiryAiStatus = 'success' | 'rejected' | 'unavailable' | 'timeout' | 'auth' | 'rate_limit';
 
 export interface InquiryVerdict {
     flow: number;
     depth: number;
-    severity: InquirySeverity;
-    confidence: InquiryConfidence;
+    severity: InquirySeverity; // Impact rating (always present).
+    confidence: InquiryConfidence; // Assessment confidence (always present).
 }
 
 export interface InquiryFinding {
@@ -34,6 +35,11 @@ export interface InquiryResult {
     verdict: InquiryVerdict;
     findings: InquiryFinding[];
     corpusFingerprint?: string;
+    aiProvider?: string;
+    aiModelRequested?: string;
+    aiModelResolved?: string;
+    aiStatus?: InquiryAiStatus;
+    aiReason?: string;
 }
 
 export interface InquiryState {

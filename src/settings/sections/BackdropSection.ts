@@ -1,8 +1,8 @@
-import { App, Setting as Settings, ColorComponent, TextComponent } from 'obsidian';
+import { App, Setting as Settings, ColorComponent, TextComponent, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { parseDateRangeInput } from '../../utils/date';
-import { addHeadingIcon } from '../wikiLink';
 import { DEFAULT_SETTINGS } from '../defaults';
+import { ERT_CLASSES } from '../../ui/classes';
 
 type MicroBackdropConfig = {
     title: string;
@@ -15,11 +15,14 @@ const isValidHexColor = (value: string) => /^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/
 export function renderBackdropSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { plugin, containerEl } = params;
 
-    const backdropHeading = new Settings(containerEl)
-        .setName('Backdrop')
-        .setHeading();
-    addHeadingIcon(backdropHeading, 'layers-3');
-    backdropHeading.settingEl.classList.add('rt-section-heading');
+    const backdropHeader = containerEl.createDiv({
+        cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_INLINE} ${ERT_CLASSES.HEADER_SECTION}`
+    });
+    const backdropHeaderLeft = backdropHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
+    const backdropHeaderIcon = backdropHeaderLeft.createSpan();
+    setIcon(backdropHeaderIcon, 'layers-3');
+    const backdropHeaderMain = backdropHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
+    backdropHeaderMain.createEl('h4', { text: 'Backdrop', cls: ERT_CLASSES.SECTION_TITLE });
 
     new Settings(containerEl)
         .setName('Show backdrop ring')

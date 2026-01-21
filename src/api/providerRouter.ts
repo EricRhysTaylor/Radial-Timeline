@@ -3,24 +3,30 @@
  */
 import { App } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
-import { callOpenAiApi, OpenAiApiResponse } from './openaiApi';
-import { callAnthropicApi, AnthropicApiResponse } from './anthropicApi';
-import { callGeminiApi, GeminiApiResponse } from './geminiApi';
+import { DEFAULT_ANTHROPIC_MODEL_ID, DEFAULT_GEMINI_MODEL_ID, DEFAULT_OPENAI_MODEL_ID } from '../constants/aiDefaults';
+import { callOpenAiApi, type OpenAiApiResponse } from './openaiApi';
+import { callAnthropicApi, type AnthropicApiResponse } from './anthropicApi';
+import { callGeminiApi, type GeminiApiResponse } from './geminiApi';
+import { sanitizeProviderArgs, type AiProvider, type ProviderCallArgs as ProviderCallArgsBase } from './providerCapabilities';
+import { classifyProviderError, type AiStatus } from './providerErrors';
 
-export interface ProviderCallArgs {
-  userPrompt: string;
-  systemPrompt?: string | null;
-  maxTokens?: number | null;
-  temperature?: number;
+export interface ProviderCallArgs extends ProviderCallArgsBase {
+  provider?: AiProvider;
+  modelId?: string;
 }
 
 export interface ProviderResult<T = unknown> {
   success: boolean;
   content: string | null;
   responseData: T;
-  provider: 'openai' | 'anthropic' | 'gemini' | 'local';
+  provider: AiProvider;
   modelId: string;
+  aiProvider: AiProvider;
+  aiModelRequested: string;
+  aiModelResolved: string;
+  aiStatus: AiStatus;
+  aiReason?: string;
+  error?: string;
 }
 
 export async function resolveKey(app: App, key: string): Promise<string> {
@@ -38,46 +44,152 @@ export async function resolveKey(app: App, key: string): Promise<string> {
 }
 
 export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderCallArgs): Promise<ProviderResult> {
-  const provider = plugin.settings.defaultAiProvider || 'openai';
-  const max = typeof args.maxTokens === 'number' ? args.maxTokens : 4000;
-  const temp = typeof args.temperature === 'number' ? args.temperature : 0.7;
-  
-  if (provider === 'anthropic') {
-    const rawKey = plugin.settings.anthropicApiKey || '';
-    const apiKey = await resolveKey(plugin.app, rawKey);
-    const modelId = plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
-    const resp: AnthropicApiResponse = await callAnthropicApi(apiKey, modelId, args.systemPrompt || null, args.userPrompt, max ?? 4000);
-    return { success: resp.success, content: resp.content, responseData: resp.responseData, provider, modelId };
-  } else if (provider === 'gemini') {
-    const rawKey = plugin.settings.geminiApiKey || '';
-    const apiKey = await resolveKey(plugin.app, rawKey);
-    const modelId = plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
-    const resp: GeminiApiResponse = await callGeminiApi(apiKey, modelId, args.systemPrompt || null, args.userPrompt, max, temp);
-    return { success: resp.success, content: resp.content, responseData: resp.responseData, provider, modelId };
-  } else if (provider === 'local') {
-    const rawKey = plugin.settings.localApiKey || '';
-    const apiKey = await resolveKey(plugin.app, rawKey);
-    const modelId = plugin.settings.localModelId || 'llama3';
-    const baseUrl = plugin.settings.localBaseUrl || 'http://localhost:11434/v1';
-    
-    // Enforce JSON mode for local models to improve formatting reliability
-    // The API client handles fallback if the server doesn't support it.
-    const resp: OpenAiApiResponse = await callOpenAiApi(
-        apiKey, 
-        modelId, 
-        args.systemPrompt || null, 
-        args.userPrompt, 
-        max, 
-        baseUrl, 
-        { type: 'json_object' }, 
-        temp
-    );
-    return { success: resp.success, content: resp.content, responseData: resp.responseData, provider, modelId };
-  } else {
+  const provider = args.provider || plugin.settings.defaultAiProvider || 'openai';
+  const maxTokens = typeof args.maxTokens === 'number'
+    ? args.maxTokens
+    : args.maxTokens === null ? null : 4000;
+
+  const requestedModelId = args.modelId || (() => {
+    if (provider === 'anthropic') return plugin.settings.anthropicModelId || DEFAULT_ANTHROPIC_MODEL_ID;
+    if (provider === 'gemini') return plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
+    if (provider === 'local') return plugin.settings.localModelId || 'llama3';
+    return plugin.settings.openaiModelId || DEFAULT_OPENAI_MODEL_ID;
+  })();
+
+  const rawArgs: ProviderCallArgsBase = {
+    userPrompt: args.userPrompt,
+    systemPrompt: args.systemPrompt ?? null,
+    maxTokens,
+    temperature: args.temperature,
+    top_p: args.top_p,
+    responseFormat: args.responseFormat,
+    jsonSchema: args.jsonSchema,
+    disableThinking: args.disableThinking
+  };
+  if (provider === 'local' && !rawArgs.responseFormat) {
+    rawArgs.responseFormat = { type: 'json_object' };
+  }
+
+  const baseArgs = sanitizeProviderArgs(provider, requestedModelId, rawArgs);
+
+  const runCall = async (callArgs: ProviderCallArgsBase): Promise<ProviderResult> => {
+    const resolvedMaxTokens = typeof callArgs.maxTokens === 'number' ? callArgs.maxTokens : 4000;
+    const openAiMaxTokens = callArgs.maxTokens === null ? null : resolvedMaxTokens;
+    if (provider === 'anthropic') {
+      const rawKey = plugin.settings.anthropicApiKey || '';
+      const apiKey = await resolveKey(plugin.app, rawKey);
+      const resp: AnthropicApiResponse = await callAnthropicApi(
+        apiKey,
+        requestedModelId,
+        callArgs.systemPrompt || null,
+        callArgs.userPrompt,
+        resolvedMaxTokens
+      );
+      return buildProviderResult(provider, requestedModelId, resp);
+    }
+    if (provider === 'gemini') {
+      const rawKey = plugin.settings.geminiApiKey || '';
+      const apiKey = await resolveKey(plugin.app, rawKey);
+      const resp: GeminiApiResponse = await callGeminiApi(
+        apiKey,
+        requestedModelId,
+        callArgs.systemPrompt || null,
+        callArgs.userPrompt,
+        openAiMaxTokens,
+        callArgs.temperature,
+        callArgs.jsonSchema,
+        callArgs.disableThinking,
+        undefined,
+        callArgs.top_p
+      );
+      return buildProviderResult(provider, requestedModelId, resp);
+    }
+    if (provider === 'local') {
+      const rawKey = plugin.settings.localApiKey || '';
+      const apiKey = await resolveKey(plugin.app, rawKey);
+      const baseUrl = plugin.settings.localBaseUrl || 'http://localhost:11434/v1';
+      const resp: OpenAiApiResponse = await callOpenAiApi(
+        apiKey,
+        requestedModelId,
+        callArgs.systemPrompt || null,
+        callArgs.userPrompt,
+        openAiMaxTokens,
+        baseUrl,
+        callArgs.responseFormat,
+        callArgs.temperature,
+        callArgs.top_p
+      );
+      return buildProviderResult(provider, requestedModelId, resp);
+    }
     const rawKey = plugin.settings.openaiApiKey || '';
     const apiKey = await resolveKey(plugin.app, rawKey);
-    const modelId = plugin.settings.openaiModelId || 'gpt-4.1';
-    const resp: OpenAiApiResponse = await callOpenAiApi(apiKey, modelId, args.systemPrompt || null, args.userPrompt, max, undefined, undefined, temp);
-    return { success: resp.success, content: resp.content, responseData: resp.responseData, provider, modelId };
+    const resp: OpenAiApiResponse = await callOpenAiApi(
+      apiKey,
+      requestedModelId,
+      callArgs.systemPrompt || null,
+      callArgs.userPrompt,
+      openAiMaxTokens,
+      undefined,
+      callArgs.responseFormat,
+      callArgs.temperature,
+      callArgs.top_p
+    );
+    return buildProviderResult(provider, requestedModelId, resp);
+  };
+
+  let result = await runCall(baseArgs);
+  if (result.aiStatus === 'rejected' && result.aiReason === 'unsupported_param') {
+    const retryArgs = sanitizeProviderArgs(provider, requestedModelId, {
+      ...rawArgs,
+      temperature: undefined,
+      top_p: undefined,
+      responseFormat: undefined,
+      jsonSchema: undefined,
+      disableThinking: undefined
+    });
+    result = await runCall(retryArgs);
   }
+
+  return result;
+}
+
+function buildProviderResult<T extends { success: boolean; content: string | null; responseData: unknown; error?: string }>(
+  provider: AiProvider,
+  requestedModelId: string,
+  resp: T
+): ProviderResult {
+  const resolvedModelId = readResolvedModelId(provider, resp.responseData) || requestedModelId;
+  const classification = resp.success
+    ? { aiStatus: 'success' as AiStatus }
+    : classifyProviderError({ error: resp.error, responseData: resp.responseData });
+
+  return {
+    success: resp.success,
+    content: resp.content,
+    responseData: resp.responseData,
+    provider,
+    modelId: resolvedModelId,
+    aiProvider: provider,
+    aiModelRequested: requestedModelId,
+    aiModelResolved: resolvedModelId,
+    aiStatus: classification.aiStatus,
+    aiReason: classification.aiReason,
+    error: resp.error
+  };
+}
+
+function readResolvedModelId(provider: AiProvider, responseData: unknown): string | null {
+  if (!responseData || typeof responseData !== 'object') return null;
+  const data = responseData as Record<string, unknown>;
+  if ((provider === 'openai' || provider === 'local') && typeof data.model === 'string') {
+    return data.model;
+  }
+  if (provider === 'gemini') {
+    if (typeof data.modelVersion === 'string') return data.modelVersion;
+    if (typeof data.model === 'string') return data.model;
+  }
+  if (provider === 'anthropic' && typeof data.model === 'string') {
+    return data.model;
+  }
+  return null;
 }

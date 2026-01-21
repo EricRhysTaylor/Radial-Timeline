@@ -30,7 +30,7 @@ import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import type { InquirySourcesSettings } from '../types/settings';
 import { InquiryCorpusResolver, InquiryCorpusSnapshot, InquiryCorpusItem } from './services/InquiryCorpusResolver';
 import { getModelDisplayName } from '../utils/modelResolver';
-import { setupTooltipsFromDataAttributes } from '../utils/tooltip';
+import { addTooltipData, setupTooltipsFromDataAttributes } from '../utils/tooltip';
 import {
     MAX_RESOLVED_SCAN_ROOTS,
     normalizeScanRootPatterns,
@@ -62,6 +62,10 @@ const PREVIEW_PILL_GAP_Y = 14;
 const PREVIEW_PILL_MIN_GAP_X = 8;
 const PREVIEW_FOOTER_GAP = 12;
 const PREVIEW_FOOTER_HEIGHT = 22;
+const PREVIEW_SHIMMER_WIDTH = 42;
+const STAGE_LABELS = ['ASSEMBLE', 'SEND', 'THINK', 'APPLY'] as const;
+const STAGE_DURATION_MS = 700;
+const SWEEP_DURATION_MS = STAGE_DURATION_MS * STAGE_LABELS.length;
 
 type InquiryQuestion = {
     id: string;
@@ -103,13 +107,20 @@ export class InquiryView extends ItemView {
     private minimapEndCapEnd?: SVGRectElement;
     private minimapEmptyText?: SVGTextElement;
     private minimapTicks: SVGRectElement[] = [];
+    private minimapGroup?: SVGGElement;
+    private minimapStageGroup?: SVGGElement;
+    private minimapStageSegments: SVGRectElement[] = [];
+    private minimapStageLabels: SVGTextElement[] = [];
+    private minimapStageTicks: SVGLineElement[] = [];
+    private minimapStagePulse?: SVGRectElement;
+    private minimapStageLayout?: { startX: number; segmentWidth: number; barY: number; barHeight: number; pulseWidth: number };
+    private minimapSweepTicks: Array<{ rect: SVGRectElement; centerX: number }> = [];
+    private minimapSweepLayout?: { startX: number; endX: number; bandWidth: number };
+    private runningAnimationFrame?: number;
+    private runningAnimationStart?: number;
+    private runningStageIndex = 0;
     private minimapLayout?: { startX: number; length: number };
-    private zonePromptElements = new Map<InquiryZone, {
-        group: SVGGElement;
-        bg: SVGRectElement;
-        text: SVGTextElement;
-        title: SVGTitleElement;
-    }>();
+    private zonePromptElements = new Map<InquiryZone, { group: SVGGElement; bg: SVGRectElement; text: SVGTextElement }>();
     private glyphAnchor?: SVGGElement;
     private glyph?: InquiryGlyph;
     private glyphHit?: SVGRectElement;
@@ -132,13 +143,22 @@ export class InquiryView extends ItemView {
     private previewRows: InquiryPreviewRow[] = [];
     private previewHideTimer?: number;
     private previewLast?: { zone: InquiryZone; question: string };
+    private previewLocked = false;
+    private previewShimmerRect?: SVGRectElement;
+    private previewShimmerMask?: SVGMaskElement;
+    private previewShimmerMaskText?: SVGGElement;
+    private previewShimmerMaskBackdrop?: SVGRectElement;
+    private previewPanelHeight = 0;
     private cacheStatusEl?: SVGTextElement;
     private confidenceEl?: SVGTextElement;
     private navPrevButton?: SVGGElement;
     private navNextButton?: SVGGElement;
     private navPrevIcon?: SVGUseElement;
     private navNextIcon?: SVGUseElement;
+    private helpToggleButton?: SVGGElement;
+    private helpTipsEnabled = false;
     private iconSymbols = new Set<string>();
+    private svgDefs?: SVGDefsElement;
     private lastFocusSceneByBookId = new Map<string, string>();
     private corpusResolver: InquiryCorpusResolver;
     private corpus?: InquiryCorpusSnapshot;
@@ -213,6 +233,7 @@ export class InquiryView extends ItemView {
         setupTooltipsFromDataAttributes(svg, this.registerDomEvent.bind(this));
 
         const defs = this.createSvgElement('defs');
+        this.svgDefs = defs;
         this.buildIconSymbols(defs);
         this.buildZoneGradients(defs);
         svg.appendChild(defs);
@@ -271,6 +292,13 @@ export class InquiryView extends ItemView {
         });
 
         const artifactX = (VIEWBOX_MAX - hudMargin - iconSize) - hudOffsetX;
+        const helpX = artifactX - (iconSize + iconGap);
+        this.helpToggleButton = this.createIconButton(hudGroup, helpX, 0, iconSize, 'help-circle', 'Help tips');
+        this.helpToggleButton.setAttribute('aria-pressed', 'false');
+        this.helpToggleButton.querySelector('title')?.remove();
+        addTooltipData(this.helpToggleButton, 'Hover previews what will be sent. Click runs the inquiry.', 'left');
+        this.registerDomEvent(this.helpToggleButton as unknown as HTMLElement, 'click', () => this.toggleHelpTips());
+
         this.artifactButton = this.createIconButton(hudGroup, artifactX, 0, iconSize, 'aperture', 'Save artifact');
         this.registerDomEvent(this.artifactButton as unknown as HTMLElement, 'click', () => { void this.saveArtifact(); });
 
@@ -293,6 +321,7 @@ export class InquiryView extends ItemView {
         this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'click', () => this.openAiSettings());
 
         const minimapGroup = this.createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, -600);
+        this.minimapGroup = minimapGroup;
         const badgeWidth = 160;
         const badgeHeight = 34;
         const badgeGroup = this.createSvgGroup(minimapGroup, 'ert-inquiry-context-badge', -badgeWidth / 2, -badgeHeight - 12);
@@ -344,8 +373,8 @@ export class InquiryView extends ItemView {
         this.glyphHit = this.glyph.labelHit;
 
         this.registerDomEvent(this.glyphHit as unknown as HTMLElement, 'click', () => this.handleGlyphClick());
-        this.registerDomEvent(this.flowRingHit as unknown as HTMLElement, 'click', () => this.setActiveLens('flow'));
-        this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'click', () => this.setActiveLens('depth'));
+        this.registerDomEvent(this.flowRingHit as unknown as HTMLElement, 'click', () => this.handleRingClick('flow'));
+        this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'click', () => this.handleRingClick('depth'));
 
         this.buildPromptPreviewPanel(canvasGroup);
 
@@ -376,6 +405,8 @@ export class InquiryView extends ItemView {
         const statusGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-status', 180, hudFooterY + 6);
         this.cacheStatusEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'Cache: none', 0, 0);
         this.confidenceEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'Confidence: none', 140, 0);
+
+        this.applyHelpTips();
     }
 
     private buildPromptPreviewPanel(parent: SVGGElement): void {
@@ -399,17 +430,32 @@ export class InquiryView extends ItemView {
             bg.classList.add('ert-inquiry-preview-pill-bg');
             group.appendChild(bg);
 
-            const textEl = this.createSvgText(group, 'ert-inquiry-preview-pill-text', '', PREVIEW_PILL_PADDING_X, PREVIEW_PILL_HEIGHT / 2);
+            const pillTextY = (PREVIEW_PILL_HEIGHT / 2) + 1;
+            const textEl = this.createSvgText(group, 'ert-inquiry-preview-pill-text', '', PREVIEW_PILL_PADDING_X, pillTextY);
+            textEl.setAttribute('xml:space', 'preserve');
             textEl.setAttribute('dominant-baseline', 'middle');
+            textEl.setAttribute('alignment-baseline', 'middle');
             textEl.setAttribute('text-anchor', 'start');
 
             return { group, bg, text: textEl, label };
         });
 
-        const footer = this.createSvgText(panel, 'ert-inquiry-preview-footer', 'Hover previews what will be sent. Click runs the inquiry.', -PREVIEW_PANEL_WIDTH / 2 + PREVIEW_PANEL_PADDING_X, 0);
+        const footer = this.createSvgText(panel, 'ert-inquiry-preview-footer', '', -PREVIEW_PANEL_WIDTH / 2 + PREVIEW_PANEL_PADDING_X, 0);
         footer.setAttribute('text-anchor', 'start');
         footer.setAttribute('dominant-baseline', 'hanging');
         this.previewFooter = footer;
+
+        this.ensurePreviewShimmerMask();
+        if (!this.previewShimmerRect) {
+            const shimmer = this.createSvgElement('rect');
+            shimmer.classList.add('ert-inquiry-preview-shimmer');
+            if (this.previewShimmerMask) {
+                shimmer.setAttribute('mask', `url(#${this.previewShimmerMask.getAttribute('id')})`);
+            }
+            panel.appendChild(shimmer);
+            this.previewShimmerRect = shimmer;
+            panel.style.setProperty('--ert-inquiry-shimmer-travel', `${Math.max(0, PREVIEW_PANEL_WIDTH - PREVIEW_SHIMMER_WIDTH)}px`);
+        }
 
         this.updatePromptPreview('setup', this.state.mode, 'Hover a question to preview its payload.');
         this.hidePromptPreview(true);
@@ -491,7 +537,8 @@ export class InquiryView extends ItemView {
             'help-circle',
             'activity',
             'check-circle',
-            'sigma'
+            'sigma',
+            'x'
         ].forEach(icon => {
             const symbolId = this.createIconSymbol(defs, icon);
             if (symbolId) {
@@ -803,7 +850,6 @@ export class InquiryView extends ItemView {
             elements.bg.setAttribute('ry', String(pillHeight / 2));
             elements.group.classList.toggle('is-active', this.state.selectedPromptIds[zone] === prompt.id);
             elements.group.setAttribute('data-prompt-id', prompt.id);
-            elements.title.textContent = prompt.question;
             elements.group.removeAttribute('aria-label');
         });
     }
@@ -850,6 +896,7 @@ export class InquiryView extends ItemView {
     }
 
     private setSelectedPrompt(zone: InquiryZone, promptId: string): void {
+        if (this.state.isRunning) return;
         if (this.state.selectedPromptIds[zone] === promptId) return;
         this.state.selectedPromptIds[zone] = promptId;
         this.updateZonePrompts();
@@ -857,6 +904,7 @@ export class InquiryView extends ItemView {
     }
 
     private handlePromptClick(zone: InquiryZone): void {
+        if (this.state.isRunning) return;
         const options = this.getPromptOptions(zone);
         if (!options.length) return;
         const currentId = this.state.selectedPromptIds[zone];
@@ -891,9 +939,7 @@ export class InquiryView extends ItemView {
             text.setAttribute('dominant-baseline', 'middle');
             text.setAttribute('alignment-baseline', 'middle');
 
-            const title = this.createSvgElement('title');
-            zoneEl.appendChild(title);
-            this.zonePromptElements.set(zone.id, { group: zoneEl, bg, text, title });
+            this.zonePromptElements.set(zone.id, { group: zoneEl, bg, text });
 
             this.registerDomEvent(zoneEl as unknown as HTMLElement, 'click', () => this.handlePromptClick(zone.id));
             this.registerDomEvent(zoneEl as unknown as HTMLElement, 'pointerenter', () => {
@@ -1042,6 +1088,7 @@ export class InquiryView extends ItemView {
         this.updateScopeToggle();
         this.updateModeToggle();
         this.updateModeClass();
+        this.updateActiveZoneStyling();
         this.updateContextBadge();
         this.updateEngineBadge();
         this.updateZonePrompts();
@@ -1052,6 +1099,7 @@ export class InquiryView extends ItemView {
         this.updateFindingsIndicators();
         this.updateFooterStatus();
         this.updateNavigationIcons();
+        this.updateRunningState();
     }
 
     private refreshCorpus(): void {
@@ -1105,6 +1153,29 @@ export class InquiryView extends ItemView {
         if (!this.rootSvg) return;
         this.rootSvg.classList.toggle('is-mode-flow', this.state.mode === 'flow');
         this.rootSvg.classList.toggle('is-mode-depth', this.state.mode === 'depth');
+    }
+
+    private getZoneColorVar(zone: InquiryZone): string {
+        if (zone === 'pressure') return 'var(--ert-inquiry-zone-pressure)';
+        if (zone === 'payoff') return 'var(--ert-inquiry-zone-payoff)';
+        return 'var(--ert-inquiry-zone-setup)';
+    }
+
+    private getStageColors(): string[] {
+        return [
+            'var(--ert-inquiry-zone-setup)',
+            'var(--ert-inquiry-zone-pressure)',
+            'var(--ert-inquiry-zone-payoff)',
+            'var(--ert-inquiry-zone-setup)'
+        ];
+    }
+
+    private updateActiveZoneStyling(): void {
+        if (!this.rootSvg) return;
+        const zone = this.state.activeZone ?? 'setup';
+        const zoneColor = this.getZoneColorVar(zone);
+        this.rootSvg.style.setProperty('--ert-inquiry-active-zone-color', zoneColor);
+        this.rootSvg.style.setProperty('--ert-inquiry-hit-color', zoneColor);
     }
 
     private updateScopeToggle(): void {
@@ -1250,6 +1321,7 @@ export class InquiryView extends ItemView {
         if (!this.minimapTicksEl || !this.minimapLayout || !this.minimapBaseline || !this.minimapEmptyText) return;
         this.clearSvgChildren(this.minimapTicksEl);
         this.minimapTicks = [];
+        this.minimapSweepTicks = [];
 
         const items = this.getCurrentItems();
         const count = items.length;
@@ -1300,21 +1372,26 @@ export class InquiryView extends ItemView {
         this.minimapEmptyText.setAttribute('x', '0');
         this.minimapEmptyText.setAttribute('y', '20');
         this.minimapEmptyText.setAttribute('text-anchor', 'middle');
+        this.renderMinimapStages(baselineStart, length);
 
         if (!count) {
             const emptyLabel = this.state.scope === 'saga' ? 'No books found.' : 'No scenes found.';
             this.minimapEmptyText.textContent = emptyLabel;
             this.minimapEmptyText.classList.remove('ert-hidden');
+            this.minimapStageGroup?.setAttribute('display', 'none');
             this.updateMinimapFocus();
             return;
         }
 
         this.minimapEmptyText.classList.add('ert-hidden');
+        this.minimapStageGroup?.removeAttribute('display');
+        const tickLayouts: Array<{ x: number; y: number; size: number }> = [];
 
         for (let i = 0; i < count; i += 1) {
             const item = items[i];
             const tick = this.createSvgElement('rect');
             tick.classList.add('ert-inquiry-minimap-tick');
+            tick.classList.add('rt-tooltip-target');
             const rowIndex = rowCount === 2 && i >= firstRowCount ? 1 : 0;
             const colIndex = rowIndex === 0 ? i : (i - firstRowCount);
             const pos = columnCount > 1
@@ -1333,7 +1410,9 @@ export class InquiryView extends ItemView {
             tick.setAttribute('data-index', String(i + 1));
             tick.setAttribute('data-id', item.id);
             tick.setAttribute('data-label', label);
-            tick.setAttribute('aria-label', `Focus ${label}`);
+            tick.setAttribute('data-tooltip', `Focus ${label}`);
+            tick.setAttribute('data-tooltip-placement', 'bottom');
+            tick.setAttribute('data-tooltip-offset-y', '6');
             this.registerDomEvent(tick as unknown as HTMLElement, 'click', () => this.setFocusByIndex(i + 1));
             this.registerDomEvent(tick as unknown as HTMLElement, 'pointerenter', () => {
                 this.setHoverText(this.buildMinimapHoverText(label));
@@ -1341,9 +1420,110 @@ export class InquiryView extends ItemView {
             this.registerDomEvent(tick as unknown as HTMLElement, 'pointerleave', () => this.clearHoverText());
             this.minimapTicksEl.appendChild(tick);
             this.minimapTicks.push(tick);
+            tickLayouts.push({ x, y, size: tickSize });
         }
 
+        this.buildMinimapSweepLayer(tickLayouts, tickSize, length);
         this.updateMinimapFocus();
+    }
+
+    private renderMinimapStages(baselineStart: number, length: number): void {
+        if (!this.minimapGroup) return;
+        const stageGroup = this.minimapStageGroup ?? this.createSvgGroup(this.minimapGroup, 'ert-inquiry-minimap-stages');
+        this.minimapStageGroup = stageGroup;
+        const segmentWidth = length / STAGE_LABELS.length;
+        const barHeight = 6;
+        const barY = -3;
+        const pulseWidth = Math.max(24, Math.min(42, segmentWidth * 0.35));
+        this.minimapStageLayout = { startX: baselineStart, segmentWidth, barY, barHeight, pulseWidth };
+
+        const stageColors = this.getStageColors();
+        STAGE_LABELS.forEach((label, index) => {
+            let segment = this.minimapStageSegments[index];
+            if (!segment) {
+                segment = this.createSvgElement('rect');
+                segment.classList.add('ert-inquiry-minimap-stage-segment');
+                stageGroup.appendChild(segment);
+                this.minimapStageSegments[index] = segment;
+            }
+            const segX = baselineStart + (segmentWidth * index);
+            segment.setAttribute('x', segX.toFixed(2));
+            segment.setAttribute('y', String(barY));
+            segment.setAttribute('width', segmentWidth.toFixed(2));
+            segment.setAttribute('height', String(barHeight));
+            segment.setAttribute('rx', String(Math.round(barHeight / 2)));
+            segment.setAttribute('ry', String(Math.round(barHeight / 2)));
+            segment.style.setProperty('--ert-inquiry-stage-color', stageColors[index] ?? 'var(--text-muted)');
+
+            let text = this.minimapStageLabels[index];
+            if (!text) {
+                text = this.createSvgText(stageGroup, 'ert-inquiry-minimap-stage-label', label, 0, 0);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('dominant-baseline', 'hanging');
+                this.minimapStageLabels[index] = text;
+            }
+            const labelX = baselineStart + (segmentWidth * (index + 0.5));
+            const labelY = 24;
+            text.textContent = label;
+            text.setAttribute('x', labelX.toFixed(2));
+            text.setAttribute('y', String(labelY));
+            text.style.setProperty('--ert-inquiry-stage-color', stageColors[index] ?? 'var(--text-muted)');
+        });
+
+        const tickCount = STAGE_LABELS.length + 1;
+        for (let i = 0; i < tickCount; i += 1) {
+            let tick = this.minimapStageTicks[i];
+            if (!tick) {
+                tick = this.createSvgElement('line');
+                tick.classList.add('ert-inquiry-minimap-stage-tick');
+                stageGroup.appendChild(tick);
+                this.minimapStageTicks[i] = tick;
+            }
+            const x = baselineStart + (segmentWidth * i);
+            tick.setAttribute('x1', x.toFixed(2));
+            tick.setAttribute('x2', x.toFixed(2));
+            tick.setAttribute('y1', String(barY - 6));
+            tick.setAttribute('y2', String(barY + barHeight + 6));
+        }
+
+        if (!this.minimapStagePulse) {
+            this.minimapStagePulse = this.createSvgElement('rect');
+            this.minimapStagePulse.classList.add('ert-inquiry-minimap-stage-pulse');
+            stageGroup.appendChild(this.minimapStagePulse);
+        }
+        this.minimapStagePulse.setAttribute('width', pulseWidth.toFixed(2));
+        this.minimapStagePulse.setAttribute('height', String(barHeight + 6));
+        this.minimapStagePulse.setAttribute('y', String(barY - 3));
+    }
+
+    private buildMinimapSweepLayer(
+        tickLayouts: Array<{ x: number; y: number; size: number }>,
+        tickSize: number,
+        length: number
+    ): void {
+        if (!this.minimapTicksEl) return;
+        this.minimapTicksEl.querySelector('.ert-inquiry-minimap-sweep')?.remove();
+        const sweepGroup = this.createSvgGroup(this.minimapTicksEl, 'ert-inquiry-minimap-sweep');
+        const inset = Math.max(3, Math.round(tickSize * 0.28));
+        const innerSize = Math.max(6, tickSize - (inset * 2));
+        tickLayouts.forEach(layout => {
+            const inner = this.createSvgElement('rect');
+            inner.classList.add('ert-inquiry-minimap-sweep-inner');
+            inner.setAttribute('x', String(layout.x + inset));
+            inner.setAttribute('y', String(layout.y + inset));
+            inner.setAttribute('width', String(innerSize));
+            inner.setAttribute('height', String(innerSize));
+            inner.setAttribute('rx', '2');
+            inner.setAttribute('ry', '2');
+            inner.setAttribute('opacity', '0');
+            sweepGroup.appendChild(inner);
+            this.minimapSweepTicks.push({ rect: inner, centerX: layout.x + (tickSize / 2) });
+        });
+        this.minimapSweepLayout = {
+            startX: 0,
+            endX: length,
+            bandWidth: Math.max(tickSize * 1.6, 36)
+        };
     }
 
     private updateMinimapFocus(): void {
@@ -1365,44 +1545,66 @@ export class InquiryView extends ItemView {
         const depthValue = result ? this.normalizeMetricValue(result.verdict.depth) : GLYPH_PLACEHOLDER_DEPTH;
         const severity = result ? result.verdict.severity : 'low';
         const confidence = result ? result.verdict.confidence : 'low';
+        const hasError = !!result?.findings.some(finding => finding.kind === 'error');
+        const errorRing = hasError ? this.state.mode : null;
 
         this.glyph?.update({
             focusLabel: this.getFocusLabel(),
             flowValue,
             depthValue,
             severity,
-            confidence
+            confidence,
+            errorRing
         });
     }
 
     private updateFindingsIndicators(): void {
         const result = this.state.activeResult;
         if (this.rootSvg) {
-            const hasError = !!result?.findings.some(finding => finding.kind === 'error');
-            this.rootSvg.classList.toggle('is-error', hasError);
+            if (this.state.isRunning) {
+                this.rootSvg.classList.remove('is-error');
+            } else {
+                const hasError = !!result?.findings.some(finding => finding.kind === 'error');
+                this.rootSvg.classList.toggle('is-error', hasError);
+            }
         }
         this.updateMinimapHitStates(result);
     }
 
     private updateMinimapHitStates(result: InquiryResult | null | undefined): void {
         if (!this.minimapTicks.length) return;
-        const hitMap = this.buildHitFindingMap(result);
         const severityClasses = ['is-severity-low', 'is-severity-medium', 'is-severity-high'];
+        if (this.state.isRunning) {
+            this.minimapTicks.forEach(tick => {
+                tick.classList.remove('is-hit');
+                severityClasses.forEach(cls => tick.classList.remove(cls));
+                const label = tick.getAttribute('data-label') || '';
+                if (label) {
+                    tick.setAttribute('data-tooltip', `Focus ${label}`);
+                }
+            });
+            return;
+        }
+        if (this.rootSvg?.classList.contains('is-error')) {
+            this.minimapTicks.forEach(tick => {
+                tick.classList.remove('is-hit');
+                severityClasses.forEach(cls => tick.classList.remove(cls));
+                const label = tick.getAttribute('data-label') || '';
+                if (label) {
+                    tick.setAttribute('data-tooltip', `Focus ${label}`);
+                }
+            });
+            return;
+        }
+        const hitMap = this.buildHitFindingMap(result);
 
         this.minimapTicks.forEach((tick, idx) => {
             const label = tick.getAttribute('data-label') || `T${idx + 1}`;
             const finding = hitMap.get(label);
             tick.classList.toggle('is-hit', !!finding);
             severityClasses.forEach(cls => tick.classList.remove(cls));
-            if (finding) {
-                tick.classList.add(`is-severity-${finding.severity}`);
-            }
-            let title = tick.querySelector('title') as SVGTitleElement | null;
-            if (!title) {
-                title = this.createSvgElement('title');
-                tick.appendChild(title);
-            }
-            title.textContent = finding ? `${label} hit: ${finding.headline}` : `Focus ${label}`;
+            const tooltip = finding ? `${label} hit: ${finding.headline}` : `Focus ${label}`;
+            tick.setAttribute('data-tooltip', tooltip);
         });
     }
 
@@ -1412,9 +1614,15 @@ export class InquiryView extends ItemView {
 
     private updateFooterStatus(): void {
         if (this.cacheStatusEl) {
-            const cacheEnabled = this.plugin.settings.inquiryCacheEnabled ?? true;
-            const cacheText = cacheEnabled ? (this.state.cacheStatus || 'none') : 'off';
-            this.cacheStatusEl.textContent = `Cache: ${cacheText}`;
+            if (this.rootSvg?.classList.contains('is-error') && this.state.activeResult) {
+                const status = this.state.activeResult.aiStatus || 'unknown';
+                const reason = this.state.activeResult.aiReason || 'unknown';
+                this.cacheStatusEl.textContent = `Status: ${status} (${reason})`;
+            } else {
+                const cacheEnabled = this.plugin.settings.inquiryCacheEnabled ?? true;
+                const cacheText = cacheEnabled ? (this.state.cacheStatus || 'none') : 'off';
+                this.cacheStatusEl.textContent = `Cache: ${cacheText}`;
+            }
         }
         if (this.confidenceEl) {
             const confidence = this.state.activeResult?.verdict.confidence || 'none';
@@ -1429,6 +1637,91 @@ export class InquiryView extends ItemView {
         this.setIconUse(this.navNextIcon, isSaga ? 'chevron-down' : 'chevron-right');
     }
 
+    private updateRunningState(): void {
+        if (!this.rootSvg) return;
+        const isRunning = this.state.isRunning;
+        this.rootSvg.classList.toggle('is-running', isRunning);
+        const isError = this.rootSvg.classList.contains('is-error');
+        const hasResult = !!this.state.activeResult && !isError;
+        this.rootSvg.classList.toggle('is-results', !isRunning && hasResult);
+        if (isRunning) {
+            this.startRunningAnimations();
+        } else {
+            this.stopRunningAnimations();
+        }
+    }
+
+    private startRunningAnimations(): void {
+        if (this.runningAnimationFrame) return;
+        this.runningAnimationStart = performance.now();
+        this.runningStageIndex = -1;
+        const animate = (now: number) => {
+            if (!this.state.isRunning) {
+                this.stopRunningAnimations();
+                return;
+            }
+            const elapsed = now - (this.runningAnimationStart ?? now);
+            const stageIndex = Math.floor(elapsed / STAGE_DURATION_MS) % STAGE_LABELS.length;
+            const stageProgress = (elapsed % STAGE_DURATION_MS) / STAGE_DURATION_MS;
+            this.updateStagePulse(stageIndex, stageProgress);
+            this.updateSweep(elapsed);
+            this.runningAnimationFrame = window.requestAnimationFrame(animate);
+        };
+        this.runningAnimationFrame = window.requestAnimationFrame(animate);
+    }
+
+    private stopRunningAnimations(): void {
+        if (this.runningAnimationFrame) {
+            window.cancelAnimationFrame(this.runningAnimationFrame);
+            this.runningAnimationFrame = undefined;
+        }
+        this.runningAnimationStart = undefined;
+        this.runningStageIndex = 0;
+        this.minimapStageSegments.forEach(segment => segment.classList.remove('is-active'));
+        this.minimapStageLabels.forEach(label => label.classList.remove('is-active'));
+        this.minimapSweepTicks.forEach(tick => tick.rect.setAttribute('opacity', '0'));
+    }
+
+    private updateStagePulse(stageIndex: number, stageProgress: number): void {
+        if (!this.minimapStagePulse || !this.minimapStageLayout) return;
+        if (stageIndex !== this.runningStageIndex) {
+            this.runningStageIndex = stageIndex;
+            this.minimapStageSegments.forEach((segment, idx) => {
+                segment.classList.toggle('is-active', idx === stageIndex);
+            });
+            this.minimapStageLabels.forEach((label, idx) => {
+                label.classList.toggle('is-active', idx === stageIndex);
+            });
+            const stageColors = this.getStageColors();
+            this.minimapStagePulse.style.setProperty('--ert-inquiry-stage-color', stageColors[stageIndex] ?? 'var(--text-muted)');
+        }
+        const { startX, segmentWidth, barY, barHeight, pulseWidth } = this.minimapStageLayout;
+        const segStart = startX + (segmentWidth * stageIndex);
+        const travel = Math.max(0, segmentWidth - pulseWidth);
+        const x = segStart + (travel * stageProgress);
+        this.minimapStagePulse.setAttribute('x', x.toFixed(2));
+        this.minimapStagePulse.setAttribute('y', String(barY - 3));
+        this.minimapStagePulse.setAttribute('height', String(barHeight + 6));
+        this.minimapStagePulse.setAttribute('width', pulseWidth.toFixed(2));
+    }
+
+    private updateSweep(elapsed: number): void {
+        if (!this.minimapSweepLayout || !this.minimapSweepTicks.length) return;
+        const progress = (elapsed % SWEEP_DURATION_MS) / SWEEP_DURATION_MS;
+        const { startX, endX, bandWidth } = this.minimapSweepLayout;
+        const bandCenter = startX + ((endX - startX) * progress);
+        const bandHalf = bandWidth / 2;
+        this.minimapSweepTicks.forEach(tick => {
+            const distance = Math.abs(tick.centerX - bandCenter);
+            if (distance > bandHalf) {
+                tick.rect.setAttribute('opacity', '0');
+                return;
+            }
+            const intensity = 1 - (distance / bandHalf);
+            tick.rect.setAttribute('opacity', intensity.toFixed(2));
+        });
+    }
+
     private handleScopeChange(scope: InquiryScope): void {
         if (!scope || scope === this.state.scope) return;
         this.state.scope = scope;
@@ -1438,11 +1731,23 @@ export class InquiryView extends ItemView {
 
     private setActiveLens(mode: InquiryMode): void {
         if (!mode || mode === this.state.mode) return;
+        // Lens is UI emphasis only; inquiry computation must always include flow + depth.
         this.state.mode = mode;
         this.updateModeClass();
-        if (this.previewGroup?.classList.contains('is-visible') && this.previewLast) {
+        this.updateRings();
+        if (!this.previewLocked && this.previewGroup?.classList.contains('is-visible') && this.previewLast) {
             this.updatePromptPreview(this.previewLast.zone, mode, this.previewLast.question);
         }
+    }
+
+    private handleRingClick(mode: InquiryMode): void {
+        if (this.state.isRunning) return;
+        this.setActiveLens(mode);
+        const zone = this.state.activeZone;
+        if (!zone) return;
+        const prompt = this.getActivePrompt(zone);
+        if (!prompt) return;
+        void this.handleQuestionClick(prompt);
     }
 
     private handleGlyphClick(): void {
@@ -1455,9 +1760,9 @@ export class InquiryView extends ItemView {
     }
 
     private async handleQuestionClick(question: InquiryQuestion): Promise<void> {
+        if (this.state.isRunning) return;
         this.state.activeQuestionId = question.id;
         this.state.activeZone = question.zone;
-        this.state.isRunning = true;
 
         const manifest = this.buildCorpusManifest(question.id);
         const focusLabel = this.getFocusLabel();
@@ -1487,7 +1792,12 @@ export class InquiryView extends ItemView {
             this.state.cacheStatus = 'missing';
         }
 
+        this.lockPromptPreview(question);
+        this.state.isRunning = true;
+        this.refreshUI();
+
         try {
+            // Lens selection is UI-only; do not vary question, evidence, or verdict structure by lens.
             // Each inquiry produces two compressed answers (flow + depth). Keep this dual-answer model intact.
             const result = await this.runner.run({
                 scope: this.state.scope,
@@ -1526,6 +1836,7 @@ export class InquiryView extends ItemView {
             this.state.cacheStatus = 'missing';
         } finally {
             this.state.isRunning = false;
+            this.unlockPromptPreview();
             this.updateMinimapFocus();
             this.refreshUI();
         }
@@ -1536,6 +1847,7 @@ export class InquiryView extends ItemView {
         this.state.corpusFingerprint = session.result.corpusFingerprint;
         this.state.cacheStatus = cacheStatus;
         this.state.isRunning = false;
+        this.unlockPromptPreview();
         this.updateMinimapFocus();
         this.refreshUI();
     }
@@ -1560,6 +1872,8 @@ export class InquiryView extends ItemView {
                 severity: 'high',
                 confidence: 'low'
             },
+            aiStatus: 'unavailable',
+            aiReason: 'exception',
             findings: [{
                 refId: focusLabel,
                 kind: 'error',
@@ -2001,6 +2315,7 @@ export class InquiryView extends ItemView {
     }
 
     private showPromptPreview(zone: InquiryZone, mode: InquiryMode, question: string): void {
+        if (this.previewLocked) return;
         if (!this.previewGroup) return;
         if (this.previewHideTimer) {
             window.clearTimeout(this.previewHideTimer);
@@ -2012,6 +2327,7 @@ export class InquiryView extends ItemView {
     }
 
     private hidePromptPreview(immediate = false): void {
+        if (this.previewLocked) return;
         if (!this.previewGroup) return;
         if (this.previewHideTimer) {
             window.clearTimeout(this.previewHideTimer);
@@ -2027,7 +2343,7 @@ export class InquiryView extends ItemView {
         this.previewHideTimer = window.setTimeout(hide, 140);
     }
 
-    private updatePromptPreview(zone: InquiryZone, mode: InquiryMode, question: string): void {
+    private updatePromptPreview(zone: InquiryZone, mode: InquiryMode, question: string, rowsOverride?: string[]): void {
         if (!this.previewGroup || !this.previewHero) return;
         ['setup', 'pressure', 'payoff'].forEach(zoneName => {
             this.previewGroup?.classList.remove(`is-zone-${zoneName}`);
@@ -2043,7 +2359,7 @@ export class InquiryView extends ItemView {
         );
         if (this.previewMeta) {
             const metaY = PREVIEW_PANEL_PADDING_Y + (heroLines * PREVIEW_HERO_LINE_HEIGHT) + PREVIEW_META_GAP;
-            this.previewMeta.textContent = `${zoneLabel} · ${modeLabel}`;
+            this.previewMeta.textContent = `${zoneLabel} · ${modeLabel}`.toUpperCase();
             this.previewMeta.setAttribute('y', String(metaY));
         }
 
@@ -2052,7 +2368,7 @@ export class InquiryView extends ItemView {
             + PREVIEW_META_GAP
             + PREVIEW_META_LINE_HEIGHT
             + PREVIEW_DETAIL_GAP;
-        const rows = [
+        const rows = rowsOverride ?? [
             this.getPreviewScopeValue(),
             this.getPreviewEvidenceValue(),
             this.getPreviewClassesValue(),
@@ -2069,6 +2385,9 @@ export class InquiryView extends ItemView {
         if (this.previewFooter) {
             this.previewFooter.setAttribute('y', String(footerY));
         }
+        this.previewPanelHeight = footerY + PREVIEW_FOOTER_HEIGHT;
+        this.updatePreviewShimmerLayout();
+        this.updatePreviewShimmerMask();
     }
 
     private setBalancedHeroText(
@@ -2127,11 +2446,92 @@ export class InquiryView extends ItemView {
         return 2;
     }
 
+    private ensurePreviewShimmerMask(): void {
+        if (this.previewShimmerMask || !this.svgDefs) return;
+        const mask = this.createSvgElement('mask');
+        mask.setAttribute('id', 'ert-inquiry-preview-shimmer-mask');
+        mask.setAttribute('maskUnits', 'userSpaceOnUse');
+        const backdrop = this.createSvgElement('rect');
+        backdrop.setAttribute('x', String(-PREVIEW_PANEL_WIDTH / 2));
+        backdrop.setAttribute('y', '0');
+        backdrop.setAttribute('width', String(PREVIEW_PANEL_WIDTH));
+        backdrop.setAttribute('height', String(PREVIEW_PANEL_PADDING_Y * 6));
+        backdrop.setAttribute('fill', '#000');
+        mask.appendChild(backdrop);
+        const textGroup = this.createSvgGroup(mask, 'ert-inquiry-preview-shimmer-mask-text');
+        this.previewShimmerMask = mask;
+        this.previewShimmerMaskText = textGroup;
+        this.previewShimmerMaskBackdrop = backdrop;
+        this.svgDefs.appendChild(mask);
+    }
+
+    private updatePreviewShimmerMask(): void {
+        if (!this.previewShimmerMaskText) return;
+        this.clearSvgChildren(this.previewShimmerMaskText);
+        const textNodes: SVGTextElement[] = [];
+        if (this.previewHero) textNodes.push(this.previewHero);
+        if (this.previewMeta) textNodes.push(this.previewMeta);
+        this.previewRows.forEach(row => {
+            if (row.text) textNodes.push(row.text);
+        });
+        textNodes.forEach(node => {
+            const clone = node.cloneNode(true) as SVGTextElement;
+            clone.setAttribute('fill', '#fff');
+            clone.setAttribute('opacity', '1');
+            this.previewShimmerMaskText?.appendChild(clone);
+        });
+    }
+
+    private updatePreviewShimmerLayout(): void {
+        if (!this.previewShimmerRect || !this.previewShimmerMaskBackdrop) return;
+        const height = Math.max(this.previewPanelHeight, PREVIEW_PILL_HEIGHT * 2);
+        const startX = -PREVIEW_PANEL_WIDTH / 2;
+        this.previewShimmerRect.setAttribute('x', String(startX));
+        this.previewShimmerRect.setAttribute('y', '0');
+        this.previewShimmerRect.setAttribute('width', String(PREVIEW_SHIMMER_WIDTH));
+        this.previewShimmerRect.setAttribute('height', String(height));
+        this.previewShimmerMaskBackdrop.setAttribute('x', String(startX));
+        this.previewShimmerMaskBackdrop.setAttribute('y', '0');
+        this.previewShimmerMaskBackdrop.setAttribute('width', String(PREVIEW_PANEL_WIDTH));
+        this.previewShimmerMaskBackdrop.setAttribute('height', String(height));
+        if (this.previewShimmerMask) {
+            this.previewShimmerMask.setAttribute('x', String(startX));
+            this.previewShimmerMask.setAttribute('y', '0');
+            this.previewShimmerMask.setAttribute('width', String(PREVIEW_PANEL_WIDTH));
+            this.previewShimmerMask.setAttribute('height', String(height));
+        }
+    }
+
+    private lockPromptPreview(question: InquiryQuestion): void {
+        if (!this.previewGroup) return;
+        if (this.previewHideTimer) {
+            window.clearTimeout(this.previewHideTimer);
+            this.previewHideTimer = undefined;
+        }
+        const rows = [
+            this.getPreviewScopeValue(),
+            this.getPreviewEvidenceValue(),
+            this.getPreviewClassesValue(),
+            this.getPreviewRootsValue(),
+            this.getPreviewEngineValue(),
+            this.getPreviewCostValue()
+        ];
+        this.previewLocked = true;
+        this.previewGroup.classList.add('is-visible', 'is-locked');
+        this.updatePromptPreview(question.zone, this.state.mode, question.question, rows);
+    }
+
+    private unlockPromptPreview(): void {
+        this.previewLocked = false;
+        if (this.previewGroup) {
+            this.previewGroup.classList.remove('is-locked', 'is-visible');
+        }
+    }
+
     private layoutPreviewPills(startY: number, values: string[]): number {
         const items = this.previewRows.map((row, index) => {
             const value = values[index] ?? '';
-            const text = value ? `${row.label} ${value}` : row.label;
-            row.text.textContent = text;
+            this.setPreviewPillText(row, value);
             const textWidth = row.text.getComputedTextLength();
             const width = Math.ceil(textWidth + (PREVIEW_PILL_PADDING_X * 2));
             row.bg.setAttribute('width', String(width));
@@ -2165,6 +2565,19 @@ export class InquiryView extends ItemView {
         });
 
         return rows.length;
+    }
+
+    private setPreviewPillText(row: InquiryPreviewRow, value: string): void {
+        this.clearSvgChildren(row.text);
+        const label = this.createSvgElement('tspan');
+        label.classList.add('ert-inquiry-preview-pill-label');
+        label.textContent = value ? `${row.label} ` : row.label;
+        row.text.appendChild(label);
+        if (!value) return;
+        const detail = this.createSvgElement('tspan');
+        detail.classList.add('ert-inquiry-preview-pill-value');
+        detail.textContent = value;
+        row.text.appendChild(detail);
     }
 
     private pickPillSplit(widths: number[], maxWidth: number): number {
@@ -2280,7 +2693,7 @@ export class InquiryView extends ItemView {
         const scopeLabel = this.state.scope === 'saga' ? 'Saga' : 'Book';
         const focusLabel = this.getFocusLabel();
         const focusType = this.state.scope === 'saga' ? 'Book' : 'Scene';
-        return `${scopeLabel} · ${focusType} ${focusLabel}`;
+        return `${scopeLabel} · ${focusType.toUpperCase()} ${focusLabel}`;
     }
 
     private getPreviewEvidenceValue(): string {
@@ -2357,6 +2770,80 @@ export class InquiryView extends ItemView {
         this.setIconUse(this.detailsIcon, isOpen ? 'chevron-down' : 'chevron-up');
     }
 
+    private toggleHelpTips(): void {
+        this.helpTipsEnabled = !this.helpTipsEnabled;
+        this.applyHelpTips();
+    }
+
+    private applyHelpTips(): void {
+        if (this.helpToggleButton) {
+            this.helpToggleButton.classList.toggle('is-active', this.helpTipsEnabled);
+            this.helpToggleButton.setAttribute('aria-pressed', this.helpTipsEnabled ? 'true' : 'false');
+        }
+        this.syncHelpTooltips();
+    }
+
+    private syncHelpTooltips(): void {
+        const targets = this.getHelpTooltipTargets();
+        targets.forEach(({ element, text, placement }) => {
+            if (!element) return;
+            if (this.helpTipsEnabled) {
+                addTooltipData(element, text, placement ?? 'bottom');
+                return;
+            }
+            if (element.getAttribute('data-tooltip') === text) {
+                element.removeAttribute('data-tooltip');
+            }
+            element.removeAttribute('data-tooltip-placement');
+            element.classList.remove('rt-tooltip-target');
+        });
+    }
+
+    private getHelpTooltipTargets(): Array<{ element?: SVGElement; text: string; placement?: 'top' | 'bottom' | 'left' | 'right' }> {
+        return [
+            {
+                element: this.scopeToggleButton,
+                text: 'Toggle between Book and Saga scope.',
+                placement: 'bottom'
+            },
+            {
+                element: this.engineBadgeGroup,
+                text: 'Open Inquiry engine settings.',
+                placement: 'bottom'
+            },
+            {
+                element: this.artifactButton,
+                text: 'Save the latest inquiry as an artifact.',
+                placement: 'bottom'
+            },
+            {
+                element: this.flowRingHit,
+                text: 'Switch to Flow lens.',
+                placement: 'top'
+            },
+            {
+                element: this.depthRingHit,
+                text: 'Switch to Depth lens.',
+                placement: 'top'
+            },
+            {
+                element: this.glyphHit,
+                text: 'Toggle focus ring expansion.',
+                placement: 'top'
+            },
+            {
+                element: this.navPrevButton,
+                text: 'Previous focus.',
+                placement: 'top'
+            },
+            {
+                element: this.navNextButton,
+                text: 'Next focus.',
+                placement: 'top'
+            }
+        ];
+    }
+
     private openReportPreview(): void {
         if (!this.state.activeResult) {
             new Notice('Run an inquiry before previewing a report.');
@@ -2399,6 +2886,11 @@ export class InquiryView extends ItemView {
         const artifactId = `artifact-${Date.now()}`;
         const questionIds = result.questionId ? `\n  - ${result.questionId}` : '';
         const fingerprint = result.corpusFingerprint || 'not available';
+        const aiProvider = result.aiProvider || 'unknown';
+        const aiModelRequested = result.aiModelRequested || 'unknown';
+        const aiModelResolved = result.aiModelResolved || 'unknown';
+        const aiStatus = result.aiStatus || 'unknown';
+        const aiReason = result.aiReason || 'none';
 
         const frontmatter = [
             '---',
@@ -2410,6 +2902,11 @@ export class InquiryView extends ItemView {
             `questionIds:${questionIds}`,
             `pluginVersion: ${this.plugin.manifest.version}`,
             `corpusFingerprint: ${fingerprint}`,
+            `aiProvider: ${aiProvider}`,
+            `aiModelRequested: ${aiModelRequested}`,
+            `aiModelResolved: ${aiModelResolved}`,
+            `aiStatus: ${aiStatus}`,
+            `aiReason: ${aiReason}`,
             '---',
             ''
         ].join('\n');
@@ -2419,6 +2916,7 @@ export class InquiryView extends ItemView {
             return `- ${finding.headline} (${finding.kind}, ${finding.severity}, ${finding.confidence})\n${bullets}`;
         }).join('\n');
 
+        // Briefs always include both flow + depth; never omit based on active lens.
         const summarySection = [
             '## Executive summary',
             result.summary,

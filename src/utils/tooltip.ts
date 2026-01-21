@@ -244,7 +244,8 @@ function updateTooltipWidth(text: string): void {
     const maxContentWidth = Number.isFinite(maxWidthValue)
         ? Math.max(0, maxWidthValue - paddingLeft - paddingRight)
         : maxLineWidth;
-    const targetWidth = Math.min(maxLineWidth, maxContentWidth);
+    const contentWidth = Math.min(maxLineWidth, maxContentWidth);
+    const targetWidth = contentWidth + paddingLeft + paddingRight;
 
     if (targetWidth > 0) {
         customTooltipEl.style.setProperty('--rt-tooltip-width', `${Math.ceil(targetWidth)}px`);

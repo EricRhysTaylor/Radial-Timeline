@@ -229,6 +229,12 @@
   align-items: start;
 }
 
+.ert-ui .ert-header--section {
+  margin-top: 18px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
 .ert-ui .ert-header__left {
   display: inline-flex;
   align-items: center;
