@@ -1588,6 +1588,13 @@
   color: var(--ert-pro-accent);
 }
 
+.ert-ui.ert-skin--pro .ert-pillBtn--pro,
+.ert-ui .ert-skin--pro .ert-pillBtn--pro {
+  background: color-mix(in srgb, var(--ert-accent) 18%, var(--background-secondary) 80%);
+  border: 1px solid color-mix(in srgb, var(--ert-accent) 35%, transparent);
+  box-shadow: var(--ert-pill-shadow);
+}
+
 .ert-ui .ert-skin--pro .ert-objectRow.is-needs-refresh {
   border-left: 3px solid var(--text-error, #ef4444);
 }
@@ -1773,6 +1780,243 @@
   margin-top: var(--ert-gap-md);
   padding-top: var(--ert-gap-md);
   border-top: 1px solid var(--background-modifier-border);
+}
+
+.ert-ui.ert-skin--pro .ert-teaser,
+.ert-ui .ert-skin--pro .ert-teaser {
+  gap: var(--ert-gap-md);
+}
+
+.ert-ui.ert-skin--pro .ert-teaser__icon,
+.ert-ui .ert-skin--pro .ert-teaser__icon {
+  display: inline-flex;
+  align-items: center;
+  margin-right: var(--ert-gap-sm);
+  color: var(--ert-accent);
+}
+
+.ert-ui.ert-skin--pro .ert-teaser__icon svg,
+.ert-ui .ert-skin--pro .ert-teaser__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.ert-ui.ert-skin--pro .ert-teaser__schedule,
+.ert-ui .ert-skin--pro .ert-teaser__schedule {
+  margin-top: var(--ert-gap-sm);
+  padding: var(--ert-pad-sm) var(--ert-pad-md);
+  background: var(--ert-pro-surface-2);
+  border-radius: var(--ert-control-radius);
+  border: 1px solid var(--ert-pro-border);
+  box-shadow: none;
+}
+
+.ert-ui.ert-skin--pro .ert-teaser__scheduleRow,
+.ert-ui .ert-skin--pro .ert-teaser__scheduleRow {
+  align-items: center;
+  gap: var(--ert-gap-md);
+}
+
+.ert-ui.ert-skin--pro .ert-teaser__scheduleLabel,
+.ert-ui .ert-skin--pro .ert-teaser__scheduleLabel {
+  font-weight: 600;
+  color: var(--text-normal);
+  white-space: nowrap;
+}
+
+.ert-ui.ert-skin--pro .ert-teaser__preset,
+.ert-ui .ert-skin--pro .ert-teaser__preset {
+  margin-left: auto;
+}
+
+.ert-ui.ert-skin--pro .ert-teaser__customRow,
+.ert-ui .ert-skin--pro .ert-teaser__customRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ert-gap-md);
+  margin-top: var(--ert-gap-md);
+  padding-top: var(--ert-gap-md);
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.ert-ui.ert-skin--pro .ert-teaser__field,
+.ert-ui .ert-skin--pro .ert-teaser__field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-skin--pro .ert-teaser__fieldLabel,
+.ert-ui .ert-skin--pro .ert-teaser__fieldLabel {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ert-ui.ert-skin--pro .ert-teaser__fieldInput,
+.ert-ui .ert-skin--pro .ert-teaser__fieldInput {
+  width: 54px;
+  padding: calc(var(--ert-gap-sm) + var(--ert-gap-xs) / 2);
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--background-secondary) 80%, var(--ert-accent) 8%);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--ert-control-radius);
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-skin--pro .ert-teaser__fieldInput:focus,
+.ert-ui .ert-skin--pro .ert-teaser__fieldInput:focus {
+  border-color: var(--ert-accent);
+  outline: none;
+}
+
+.ert-ui.ert-skin--pro .ert-teaser__saveCell,
+.ert-ui .ert-skin--pro .ert-teaser__saveCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ert-ui.ert-skin--pro .ert-teaser__previewRow,
+.ert-ui .ert-skin--pro .ert-teaser__previewRow {
+  display: flex;
+  gap: var(--ert-gap-md);
+  margin-top: var(--ert-pad-md);
+  padding: var(--ert-pad-md);
+  background: color-mix(in srgb, var(--background-primary) 80%, transparent);
+  border-radius: var(--ert-panel-radius);
+  overflow-x: auto;
+  justify-content: space-between;
+}
+
+.ert-ui.ert-skin--pro .ert-stageCard,
+.ert-ui .ert-skin--pro .ert-stageCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  min-width: 90px;
+  flex: 1;
+  max-width: 120px;
+  position: relative;
+  transition: opacity 0.2s ease;
+}
+
+.ert-ui.ert-skin--pro .ert-stageCard.is-clickable,
+.ert-ui .ert-skin--pro .ert-stageCard.is-clickable {
+  cursor: pointer;
+}
+
+.ert-ui.ert-skin--pro .ert-stageCard.is-clickable:hover,
+.ert-ui .ert-skin--pro .ert-stageCard.is-clickable:hover {
+  opacity: 0.85;
+}
+
+.ert-ui.ert-skin--pro .ert-stageCard.is-disabled,
+.ert-ui .ert-skin--pro .ert-stageCard.is-disabled {
+  opacity: 0.4;
+}
+
+.ert-ui.ert-skin--pro .ert-stageCard.is-disabled .ert-stageCard__svg,
+.ert-ui .ert-skin--pro .ert-stageCard.is-disabled .ert-stageCard__svg {
+  filter: grayscale(100%);
+}
+
+.ert-ui.ert-skin--pro .ert-stageCard__overlay,
+.ert-ui .ert-skin--pro .ert-stageCard__overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: color-mix(in srgb, var(--background-primary) 70%, transparent);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: var(--ert-gap-xs) var(--ert-gap-sm);
+  border-radius: var(--ert-gap-xs);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.ert-ui.ert-skin--pro .ert-stageCard__svg,
+.ert-ui .ert-skin--pro .ert-stageCard__svg {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--background-primary) 70%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--background-modifier-border);
+  transition: all 0.2s ease;
+}
+
+.ert-ui.ert-skin--pro .ert-stageCard.is-clickable:hover .ert-stageCard__svg,
+.ert-ui .ert-skin--pro .ert-stageCard.is-clickable:hover .ert-stageCard__svg {
+  border-color: var(--ert-accent);
+  transform: scale(1.05);
+}
+
+.ert-ui.ert-skin--pro .ert-stageCard__svg svg,
+.ert-ui .ert-skin--pro .ert-stageCard__svg svg {
+  width: 100%;
+  height: 100%;
+}
+
+.ert-ui.ert-skin--pro .ert-stageCard__error,
+.ert-ui .ert-skin--pro .ert-stageCard__error {
+  font-size: 24px;
+  color: var(--text-error);
+}
+
+.ert-ui.ert-skin--pro .ert-stageCard__labelRow,
+.ert-ui .ert-skin--pro .ert-stageCard__labelRow {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-skin--pro .ert-stageCard__icon,
+.ert-ui .ert-skin--pro .ert-stageCard__icon {
+  color: var(--ert-accent);
+  opacity: 0.9;
+}
+
+.ert-ui.ert-skin--pro .ert-stageCard__icon svg,
+.ert-ui .ert-skin--pro .ert-stageCard__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.ert-ui.ert-skin--pro .ert-stageCard__percent,
+.ert-ui .ert-skin--pro .ert-stageCard__percent {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-skin--pro .ert-stageCard__name,
+.ert-ui .ert-skin--pro .ert-stageCard__name {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ert-ui.ert-skin--pro .ert-teaser__empty,
+.ert-ui .ert-skin--pro .ert-teaser__empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: var(--ert-pad-md);
 }
 
 .ert-ui .setting-item.is-inactive {

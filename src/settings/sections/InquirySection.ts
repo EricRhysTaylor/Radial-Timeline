@@ -1,4 +1,4 @@
-import { App, Setting as Settings, TextComponent, TextAreaComponent, normalizePath, Notice } from 'obsidian';
+import { App, Setting as Settings, TextComponent, TextAreaComponent, ToggleComponent, normalizePath, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { DEFAULT_SETTINGS } from '../defaults';
 import type { InquiryClassConfig, InquiryPromptConfig, InquiryPromptSlot, InquirySourcesSettings } from '../../types/settings';
@@ -630,8 +630,12 @@ export function renderInquirySection(params: SectionParams): void {
             .setHeading();
         addHeadingIcon(promptHeading, 'list');
 
+        containerEl.createDiv({
+            cls: 'ert-inquiry-prompts-helper setting-item-description',
+            text: 'Inquiry ships with editorial defaults. Enable Customize to override any question.'
+        });
+
         const isPro = isProfessionalActive(plugin);
-        const maxCustomSlots = isPro ? 4 : 1;
         let promptConfig: InquiryPromptConfig = normalizeInquiryPromptConfig(plugin.settings.inquiryPromptConfig);
         if (!plugin.settings.inquiryPromptConfig) {
             plugin.settings.inquiryPromptConfig = buildDefaultInquiryPromptConfig();
@@ -656,10 +660,88 @@ export function renderInquirySection(params: SectionParams): void {
             await plugin.saveSettings();
         };
 
+        const getSlotInfo = (mode: 'flow' | 'depth', zone: 'setup' | 'pressure' | 'payoff') => {
+            const slots = promptConfig[mode][zone] ?? [];
+            const builtInIndex = slots.findIndex(slot => slot.builtIn);
+            const builtInSlot = slots[builtInIndex >= 0 ? builtInIndex : 0];
+            const customIndex = slots.findIndex(slot => !slot.builtIn);
+            const customSlot = customIndex >= 0 ? slots[customIndex] : undefined;
+            return { slots, builtInIndex, builtInSlot, customIndex, customSlot };
+        };
+
+        const renderSimpleRow = (zone: 'setup' | 'pressure' | 'payoff') => {
+            const card = containerEl.createDiv({ cls: 'ert-inquiry-prompt-card' });
+            card.createEl('div', { cls: 'ert-inquiry-prompt-title', text: zoneLabels[zone] });
+
+            (['flow', 'depth'] as const).forEach(mode => {
+                const { builtInSlot, customIndex, customSlot } = getSlotInfo(mode, zone);
+                const builtInQuestion = builtInSlot?.question ?? '';
+                let customQuestion = customSlot?.question ?? '';
+                let isCustomEnabled = !!customSlot?.enabled;
+
+                const row = card.createDiv({ cls: 'ert-inquiry-prompt-row' });
+                row.createDiv({ cls: 'ert-inquiry-prompt-label', text: modeLabels[mode] });
+
+                const inputWrap = row.createDiv({ cls: 'ert-inquiry-prompt-input' });
+                const text = new TextComponent(inputWrap);
+                const activeQuestion = isCustomEnabled && customQuestion.trim().length ? customQuestion : builtInQuestion;
+                text.setPlaceholder('Question')
+                    .setValue(activeQuestion);
+                text.inputEl.addClass('ert-inquiry-prompt-input-el');
+                text.inputEl.readOnly = !isCustomEnabled;
+                text.inputEl.toggleClass('is-readonly', !isCustomEnabled);
+
+                text.onChange(async (value) => {
+                    if (!isCustomEnabled || customIndex < 0) return;
+                    customQuestion = value;
+                    await updateSlot(mode, zone, customIndex, { question: value, enabled: true });
+                });
+
+                const toggleWrap = inputWrap.createDiv({ cls: 'ert-inquiry-prompt-toggle' });
+                toggleWrap.createSpan({ text: 'Customize' });
+                const toggle = new ToggleComponent(toggleWrap);
+                toggle.setValue(isCustomEnabled);
+                toggle.setDisabled(customIndex < 0);
+
+                toggle.onChange(async (value) => {
+                    if (customIndex < 0) return;
+                    isCustomEnabled = value;
+                    if (value) {
+                        if (!customQuestion.trim().length) customQuestion = builtInQuestion;
+                        text.setValue(customQuestion);
+                    } else {
+                        text.setValue(builtInQuestion);
+                    }
+                    text.inputEl.readOnly = !value;
+                    text.inputEl.toggleClass('is-readonly', !value);
+                    await updateSlot(mode, zone, customIndex, { enabled: value, question: customQuestion });
+                });
+            });
+        };
+
+        (['setup', 'pressure', 'payoff'] as const).forEach(zone => {
+            renderSimpleRow(zone);
+        });
+
+        const advancedDetails = containerEl.createEl('details', { cls: 'rt-setting-block ert-inquiry-prompts-advanced' });
+        advancedDetails.createEl('summary', { text: 'Advanced prompt slots' });
+        advancedDetails.createEl('div', {
+            cls: 'ert-inquiry-prompts-advanced-hint',
+            text: 'Pro / advanced use only.'
+        });
+        if (!isPro) {
+            advancedDetails.createEl('div', {
+                cls: 'setting-item-description',
+                text: 'Pro unlocks additional prompt slots and advanced editing.'
+            });
+            return;
+        }
+
+        const maxCustomSlots = 4;
         (['flow', 'depth'] as const).forEach(mode => {
             (['setup', 'pressure', 'payoff'] as const).forEach(zone => {
-                const block = containerEl.createDiv({ cls: 'rt-setting-block' });
-                block.createEl('div', { cls: 'setting-item-name', text: `${modeLabels[mode]} · ${zoneLabels[zone]}` });
+                const block = advancedDetails.createDiv({ cls: 'rt-setting-block' });
+                block.createEl('div', { cls: 'setting-item-name', text: `${modeLabels[mode]} - ${zoneLabels[zone]}` });
                 const slots = promptConfig[mode][zone];
 
                 slots.forEach((slot, idx) => {

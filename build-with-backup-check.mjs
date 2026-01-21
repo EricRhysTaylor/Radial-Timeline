@@ -21,6 +21,7 @@ try {
   // Run the actual build steps
   console.log('\n[build] Running build steps...\n');
   run('node show-scripts.mjs');
+  run('node scripts/check-social-ert-lock.mjs');
   run('node check-gross-deletions.mjs');
   run('node scripts/bundle-css.mjs'); // Generate CSS before checking it
   run('npx tsc --noEmit');
@@ -41,4 +42,3 @@ try {
   console.error('[build] Build failed:', err?.message || err);
   process.exit(1);
 }
-

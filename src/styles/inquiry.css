@@ -7,6 +7,9 @@
   --ert-inquiry-low: var(--rt-color-press);
   --ert-inquiry-medium: var(--rt-color-house);
   --ert-inquiry-high: var(--rt-color-due);
+  --ert-inquiry-zone-setup: #2fbf6a;
+  --ert-inquiry-zone-pressure: #3b7ddd;
+  --ert-inquiry-zone-payoff: #d65252;
 }
 
 .ert-inquiry-svg text {
@@ -286,6 +289,18 @@
   pointer-events: auto;
 }
 
+.inq-zone-segment-wrap--setup .inq-zone-segment-path {
+  fill: var(--ert-inquiry-zone-setup);
+}
+
+.inq-zone-segment-wrap--pressure .inq-zone-segment-path {
+  fill: var(--ert-inquiry-zone-pressure);
+}
+
+.inq-zone-segment-wrap--payoff .inq-zone-segment-path {
+  fill: var(--ert-inquiry-zone-payoff);
+}
+
 .ert-inquiry-zone-pill {
   fill: var(--background-secondary);
   stroke: color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
@@ -345,17 +360,43 @@
   cursor: pointer;
 }
 
-.inq-zone-dot.is-active .inq-zone-dot-circle {
-  stroke: #fff1df;
+.inq-zone-dot--setup {
+  --ert-inquiry-zone-color: var(--ert-inquiry-zone-setup);
+  --ert-inquiry-zone-fill: url(#ert-inquiry-zone-setup-raised);
+  --ert-inquiry-zone-fill-pressed: url(#ert-inquiry-zone-setup-pressed);
+}
+
+.inq-zone-dot--pressure {
+  --ert-inquiry-zone-color: var(--ert-inquiry-zone-pressure);
+  --ert-inquiry-zone-fill: url(#ert-inquiry-zone-pressure-raised);
+  --ert-inquiry-zone-fill-pressed: url(#ert-inquiry-zone-pressure-pressed);
+}
+
+.inq-zone-dot--payoff {
+  --ert-inquiry-zone-color: var(--ert-inquiry-zone-payoff);
+  --ert-inquiry-zone-fill: url(#ert-inquiry-zone-payoff-raised);
+  --ert-inquiry-zone-fill-pressed: url(#ert-inquiry-zone-payoff-pressed);
+}
+
+.inq-zone-dot-circle {
+  fill: var(--ert-inquiry-zone-fill);
+  stroke: color-mix(in srgb, var(--ert-inquiry-zone-color) 35%, #ffffff);
+  transition: fill 160ms ease, stroke 160ms ease, filter 160ms ease;
+}
+
+.inq-zone-dot.is-active .inq-zone-dot-circle,
+.inq-zone-dot:active .inq-zone-dot-circle {
+  fill: var(--ert-inquiry-zone-fill-pressed);
+  stroke: color-mix(in srgb, var(--ert-inquiry-zone-color) 55%, #000000);
+  filter: none;
+}
+
+.inq-zone-dot:hover .inq-zone-dot-circle {
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-zone-color) 70%, transparent));
 }
 
 .inq-zone-dot.is-active .inq-zone-dot-text {
   fill: #1f160e;
-}
-
-.inq-zone-dot:hover .inq-zone-dot-circle {
-  fill: #f1e3d2;
-  stroke: #fff1df;
 }
 
 .inq-zone-dot:hover .inq-zone-dot-text {

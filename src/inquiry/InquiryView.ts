@@ -30,6 +30,7 @@ import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import type { InquirySourcesSettings } from '../types/settings';
 import { InquiryCorpusResolver, InquiryCorpusSnapshot, InquiryCorpusItem } from './services/InquiryCorpusResolver';
 import { getModelDisplayName } from '../utils/modelResolver';
+import { setupTooltipsFromDataAttributes } from '../utils/tooltip';
 import {
     MAX_RESOLVED_SCAN_ROOTS,
     normalizeScanRootPatterns,
@@ -176,9 +177,11 @@ export class InquiryView extends ItemView {
         svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
         this.rootSvg = svg;
         this.contentEl.appendChild(svg);
+        setupTooltipsFromDataAttributes(svg, this.registerDomEvent.bind(this));
 
         const defs = this.createSvgElement('defs');
         this.buildIconSymbols(defs);
+        this.buildZoneGradients(defs);
         svg.appendChild(defs);
 
         const background = this.createSvgElement('rect');
@@ -433,6 +436,49 @@ export class InquiryView extends ItemView {
         });
     }
 
+    private buildZoneGradients(defs: SVGDefsElement): void {
+        const zones: InquiryZone[] = ['setup', 'pressure', 'payoff'];
+        const createStop = (offset: string, color: string): SVGStopElement => {
+            const stop = this.createSvgElement('stop');
+            stop.setAttribute('offset', offset);
+            stop.setAttribute('stop-color', color);
+            return stop;
+        };
+        const createGradient = (id: string, stops: Array<[string, string]>): SVGRadialGradientElement => {
+            const gradient = this.createSvgElement('radialGradient');
+            gradient.setAttribute('id', id);
+            gradient.setAttribute('cx', '0.5');
+            gradient.setAttribute('cy', '0.5');
+            gradient.setAttribute('fx', '0.5');
+            gradient.setAttribute('fy', '0.5');
+            gradient.setAttribute('r', '0.5');
+            stops.forEach(([offset, color]) => {
+                gradient.appendChild(createStop(offset, color));
+            });
+            return gradient;
+        };
+
+        zones.forEach(zone => {
+            const zoneVar = `var(--ert-inquiry-zone-${zone})`;
+            defs.appendChild(createGradient(
+                `ert-inquiry-zone-${zone}-raised`,
+                [
+                    ['0%', `color-mix(in srgb, ${zoneVar} 70%, #ffffff)`],
+                    ['55%', zoneVar],
+                    ['100%', `color-mix(in srgb, ${zoneVar} 70%, #000000)`]
+                ]
+            ));
+            defs.appendChild(createGradient(
+                `ert-inquiry-zone-${zone}-pressed`,
+                [
+                    ['0%', `color-mix(in srgb, ${zoneVar} 68%, #000000)`],
+                    ['65%', zoneVar],
+                    ['100%', `color-mix(in srgb, ${zoneVar} 68%, #ffffff)`]
+                ]
+            ));
+        });
+    }
+
     private createIconSymbol(defs: SVGDefsElement, iconName: string): string | null {
         const holder = document.createElement('span');
         setIcon(holder, iconName);
@@ -612,9 +658,7 @@ export class InquiryView extends ItemView {
             mode,
             promptsByZone,
             selectedPromptIds: this.state.selectedPromptIds[mode],
-            onPromptSelect: (zone, promptId) => this.setSelectedPrompt(this.state.mode, zone, promptId),
-            onPromptHover: (text) => this.setHoverText(text),
-            onPromptHoverEnd: () => this.clearHoverText()
+            onPromptSelect: (zone, promptId) => this.setSelectedPrompt(this.state.mode, zone, promptId)
         });
     }
 

@@ -159,7 +159,7 @@ export class InquiryGlyph {
         const safeUnits = Number.isFinite(unitsPerPx) && unitsPerPx > 0 ? unitsPerPx : 1;
         const scaleFactor = safeUnits / safeScale;
         this.badgeScaleFactor = scaleFactor;
-        this.labelText.setAttribute('font-size', (LABEL_TEXT_PX * scaleFactor).toFixed(2));
+        this.updateLabelFontSize();
         this.flowBadgeText.setAttribute('font-size', (FLOW_BADGE_TEXT_PX * scaleFactor).toFixed(2));
         this.depthBadgeText.setAttribute('font-size', (DEPTH_BADGE_TEXT_PX * scaleFactor).toFixed(2));
         this.flowBadgeCircle.setAttribute('r', ((FLOW_STROKE / 2) * scaleFactor).toFixed(2));
@@ -174,6 +174,7 @@ export class InquiryGlyph {
         this.labelText.textContent = props.focusLabel;
         this.labelText.setAttribute('aria-label', `Focus target ${props.focusLabel}`);
         this.labelHit.setAttribute('aria-label', `Focus target ${props.focusLabel}`);
+        this.updateLabelFontSize();
 
         this.applyRingState(
             this.flowGroup,
@@ -243,10 +244,10 @@ export class InquiryGlyph {
         const zoneArcRange = zoneStep - gapAngle;
         const zoneTemplate = this.buildZoneSegmentTemplate();
 
-        const zones: Array<{ id: InquiryZone; label: string; index: number; fill: string }> = [
-            { id: 'setup', label: '1', index: 1, fill: '#2fbf6a' },
-            { id: 'pressure', label: '2', index: -1, fill: '#3b7ddd' },
-            { id: 'payoff', label: '3', index: 0, fill: '#d65252' }
+        const zones: Array<{ id: InquiryZone; label: string; index: number }> = [
+            { id: 'setup', label: '1', index: 1 },
+            { id: 'pressure', label: '2', index: -1 },
+            { id: 'payoff', label: '3', index: 0 }
         ];
 
         zones.forEach(zone => {
@@ -267,8 +268,6 @@ export class InquiryGlyph {
             const axisGroup = document.createElementNS(SVG_NS, 'g');
             axisGroup.setAttribute('transform', `rotate(${axisRotationDeg})`);
             const zoneNode = zoneTemplate.cloneNode(true) as SVGGElement;
-            const zonePath = zoneNode.querySelector('.inq-zone-segment-path') as SVGPathElement | null;
-            if (zonePath) zonePath.setAttribute('fill', zone.fill);
             axisGroup.appendChild(zoneNode);
             translateGroup.appendChild(axisGroup);
             zoneGroup.appendChild(translateGroup);
@@ -378,9 +377,15 @@ export class InquiryGlyph {
                     marker.group.setAttribute('aria-label', prompt.question);
                     marker.group.setAttribute('role', 'button');
                     marker.group.setAttribute('tabindex', '0');
+                    marker.group.classList.add('rt-tooltip-target');
+                    marker.group.setAttribute('data-tooltip', prompt.question);
+                    marker.group.setAttribute('data-tooltip-placement', 'top');
                 } else {
                     marker.group.removeAttribute('role');
                     marker.group.removeAttribute('tabindex');
+                    marker.group.classList.remove('rt-tooltip-target');
+                    marker.group.removeAttribute('data-tooltip');
+                    marker.group.removeAttribute('data-tooltip-placement');
                 }
             });
         });
@@ -430,9 +435,9 @@ export class InquiryGlyph {
         const text = document.createElementNS(SVG_NS, 'text');
         text.classList.add('ert-inquiry-ring-badge-text');
         text.setAttribute('text-anchor', 'middle');
-        text.setAttribute('dominant-baseline', 'middle');
-        text.setAttribute('alignment-baseline', 'middle');
-        text.setAttribute('dy', '0.35em');
+        text.setAttribute('dominant-baseline', 'central');
+        text.setAttribute('alignment-baseline', 'central');
+        text.setAttribute('dy', '0');
 
         group.appendChild(circle);
         group.appendChild(text);
@@ -530,8 +535,35 @@ export class InquiryGlyph {
         badgeText.textContent = String(Math.round(safeValue * 100));
         const arcColor = InquiryGlyph.mixColors(ARC_BASE_TINT, ARC_MAX_GREEN, safeValue);
         badgeText.style.setProperty('--ert-inquiry-badge-text-color', arcColor);
+        badgeText.setAttribute('fill', arcColor);
         const badgeColor = InquiryGlyph.darkenColor(arcColor, DOT_DARKEN);
         badgeCircle.style.setProperty('--ert-inquiry-badge-color', badgeColor);
+    }
+
+    private updateLabelFontSize(): void {
+        const label = this.labelText.textContent?.trim() ?? '';
+        const baseSize = LABEL_TEXT_PX * this.badgeScaleFactor;
+        if (!label) {
+            this.labelText.setAttribute('font-size', baseSize.toFixed(2));
+            return;
+        }
+        const length = Math.min(Math.max(label.length, 2), 4);
+        const lengthScale = Math.min(1, 2.8 / length);
+        let fontSize = baseSize * lengthScale;
+        this.labelText.setAttribute('font-size', fontSize.toFixed(2));
+
+        const innerRadius = DEPTH_RADIUS - (DEPTH_STROKE * 0.6);
+        const maxWidth = innerRadius * 2;
+        try {
+            const measured = this.labelText.getComputedTextLength();
+            if (Number.isFinite(measured) && measured > maxWidth && measured > 0) {
+                const fitScale = maxWidth / measured;
+                fontSize *= fitScale;
+                this.labelText.setAttribute('font-size', fontSize.toFixed(2));
+            }
+        } catch {
+            // Skip fit scaling if text metrics are unavailable.
+        }
     }
 
     private static mixColors(start: string, end: string, t: number): string {

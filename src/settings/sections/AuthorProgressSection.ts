@@ -20,6 +20,7 @@ export interface AuthorProgressSectionProps {
 }
 
 export function renderAuthorProgressSection({ app, plugin, containerEl }: AuthorProgressSectionProps): void {
+    // Social is ERT-only; do not add rt-* classes.
     const section = containerEl.createDiv({ cls: `ert-apr-section ${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_SOCIAL}` });
 
     // Check if APR needs refresh

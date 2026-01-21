@@ -587,7 +587,7 @@ function renderCampaignDetails(
     const teaserSection = details.createDiv({ cls: 'ert-campaign-teaser-section' });
 
     // Container for teaser content that can be re-rendered
-    const teaserContentContainer = teaserSection.createDiv({ cls: 'rt-teaser-content' });
+    const teaserContentContainer = teaserSection.createDiv({ cls: `${ERT_CLASSES.STACK} ert-teaser` });
 
     // Function to render teaser content (toggle + optional presets/previews)
     const renderTeaserContent = () => {
@@ -623,7 +623,7 @@ function renderCampaignDetails(
 
         // Add calendar icon to the teaser setting
         const teaserNameEl = teaserToggleSetting.nameEl;
-        const iconSpan = teaserNameEl.createSpan({ cls: 'rt-teaser-icon' });
+        const iconSpan = teaserNameEl.createSpan({ cls: 'ert-teaser__icon' });
         setIcon(iconSpan, 'calendar-clock');
         teaserNameEl.prepend(iconSpan);
 
@@ -632,13 +632,15 @@ function renderCampaignDetails(
             const isCustom = teaserSettings.preset === 'custom';
 
             // Container for schedule (wraps both rows)
-            const scheduleContainer = teaserContentContainer.createDiv({ cls: 'rt-teaser-schedule-container' });
+            const scheduleContainer = teaserContentContainer.createDiv({
+                cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-teaser__schedule`
+            });
 
             // Row 1: Label + Dropdown (always shown)
-            const scheduleRow = scheduleContainer.createDiv({ cls: 'rt-teaser-schedule-row' });
-            scheduleRow.createSpan({ text: 'Reveal Schedule', cls: 'rt-teaser-schedule-label' });
+            const scheduleRow = scheduleContainer.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-teaser__scheduleRow` });
+            scheduleRow.createSpan({ text: 'Reveal Schedule', cls: 'ert-teaser__scheduleLabel' });
 
-            const dropdown = scheduleRow.createEl('select', { cls: 'rt-teaser-preset-dropdown dropdown' });
+            const dropdown = scheduleRow.createEl('select', { cls: 'ert-teaser__preset dropdown' });
             const options = [
                 { value: 'slow', label: 'Slow (15/40/70%)' },
                 { value: 'standard', label: 'Standard (10/30/60%)' },
@@ -669,13 +671,13 @@ function renderCampaignDetails(
             // Row 2: Custom inputs (4-column grid to align with 4 previews below)
             if (isCustom) {
                 const customThresholds = teaserSettings.customThresholds ?? { scenes: 10, colors: 30, full: 60 };
-                const customRow = scheduleContainer.createDiv({ cls: 'rt-teaser-custom-row' });
+                const customRow = scheduleContainer.createDiv({ cls: 'ert-teaser__customRow' });
 
                 // Column 1: Save button (aligns with TEASER preview)
-                const saveCell = customRow.createDiv({ cls: 'rt-teaser-save-cell' });
+                const saveCell = customRow.createDiv({ cls: 'ert-teaser__saveCell' });
                 const saveBtn = saveCell.createEl('button', {
                     text: 'Save',
-                    cls: 'rt-teaser-save-btn'
+                    cls: 'ert-btn ert-btn--standard-pro'
                 });
 
                 // Columns 2-4: Input fields (align with SCENES, COLORS, FULL)
@@ -688,11 +690,11 @@ function renderCampaignDetails(
                 const inputs: Record<string, HTMLInputElement> = {};
 
                 fields.forEach(({ key, label }) => {
-                    const field = customRow.createDiv({ cls: 'rt-teaser-field' });
-                    field.createSpan({ text: label, cls: 'rt-teaser-field-label' });
+                    const field = customRow.createDiv({ cls: 'ert-teaser__field' });
+                    field.createSpan({ text: label, cls: 'ert-teaser__fieldLabel' });
                     const input = field.createEl('input', {
                         type: 'text',
-                        cls: 'rt-teaser-field-input',
+                        cls: 'ert-teaser__fieldInput',
                         value: String(customThresholds[key])
                     });
                     input.maxLength = 2;
@@ -746,7 +748,7 @@ function renderCampaignDetails(
 
             // Show SVG previews of each reveal stage
             const thresholds = getTeaserThresholds(teaserSettings.preset, teaserSettings.customThresholds);
-            const svgPreviewRow = teaserContentContainer.createDiv({ cls: 'rt-teaser-svg-preview-row' });
+            const svgPreviewRow = teaserContentContainer.createDiv({ cls: 'ert-teaser__previewRow' });
             renderTeaserStagesPreviews(svgPreviewRow, plugin, currentCampaign, index, thresholds, renderTeaserContent);
         }
     };
@@ -777,7 +779,7 @@ async function renderTeaserStagesPreviews(
     if (scenes.length === 0) {
         container.createEl('p', {
             text: 'No scenes to preview. Add scenes to see teaser stages.',
-            cls: 'rt-teaser-no-scenes'
+            cls: 'ert-teaser__empty'
         });
         return;
     }
@@ -805,9 +807,9 @@ async function renderTeaserStagesPreviews(
     stages.forEach(stage => {
         const revealOptions = teaserLevelToRevealOptions(stage.level);
 
-        const cardClasses = ['rt-teaser-stage-card'];
-        if (stage.isDisabled) cardClasses.push('rt-teaser-stage-disabled');
-        if (stage.canDisable) cardClasses.push('rt-teaser-stage-clickable');
+        const cardClasses: string[] = [ERT_CLASSES.STAGE_CARD];
+        if (stage.isDisabled) cardClasses.push('is-disabled');
+        if (stage.canDisable) cardClasses.push('is-clickable');
 
         const card = container.createDiv({ cls: cardClasses.join(' ') });
 
@@ -832,7 +834,7 @@ async function renderTeaserStagesPreviews(
         }
 
         // SVG preview container
-        const svgContainer = card.createDiv({ cls: 'rt-teaser-stage-svg' });
+        const svgContainer = card.createDiv({ cls: 'ert-stageCard__svg' });
 
         try {
             const isRingOnly = stage.level === 'bar';
@@ -859,21 +861,21 @@ async function renderTeaserStagesPreviews(
 
             svgContainer.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
         } catch {
-            svgContainer.createEl('span', { text: '⚠', cls: 'rt-teaser-stage-error' });
+            svgContainer.createEl('span', { text: '⚠', cls: 'ert-stageCard__error' });
         }
 
         // Disabled overlay
         if (stage.isDisabled) {
-            const overlay = card.createDiv({ cls: 'rt-teaser-stage-overlay' });
+            const overlay = card.createDiv({ cls: 'ert-stageCard__overlay' });
             overlay.setText('SKIPPED');
         }
 
         // Label row
-        const labelRow = card.createDiv({ cls: 'rt-teaser-stage-label-row' });
-        const iconSpan = labelRow.createSpan({ cls: 'rt-teaser-stage-icon' });
+        const labelRow = card.createDiv({ cls: 'ert-stageCard__labelRow' });
+        const iconSpan = labelRow.createSpan({ cls: 'ert-stageCard__icon' });
         setIcon(iconSpan, stage.icon);
-        labelRow.createSpan({ text: `${stage.progress}%`, cls: 'rt-teaser-stage-percent' });
+        labelRow.createSpan({ text: `${stage.progress}%`, cls: 'ert-stageCard__percent' });
 
-        card.createDiv({ cls: 'rt-teaser-stage-name', text: stage.label });
+        card.createDiv({ cls: 'ert-stageCard__name', text: stage.label });
     });
 }
