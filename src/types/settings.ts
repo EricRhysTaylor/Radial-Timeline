@@ -231,7 +231,6 @@ export interface InquirySourcesSettings {
     lastScanAt?: string;
 }
 
-export type InquiryPromptMode = 'flow' | 'depth';
 export type InquiryPromptZone = 'setup' | 'pressure' | 'payoff';
 
 export interface InquiryPromptSlot {
@@ -242,7 +241,7 @@ export interface InquiryPromptSlot {
     builtIn?: boolean;
 }
 
-export type InquiryPromptConfig = Record<InquiryPromptMode, Record<InquiryPromptZone, InquiryPromptSlot[]>>;
+export type InquiryPromptConfig = Record<InquiryPromptZone, InquiryPromptSlot[]>;
 
 export interface InquiryFocusCache {
     lastFocusBookId?: string;

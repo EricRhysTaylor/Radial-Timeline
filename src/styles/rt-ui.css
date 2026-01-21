@@ -69,6 +69,11 @@
   --ert-control-bg: var(--background-modifier-form-field);
   --ert-control-border: var(--background-modifier-border);
   --ert-control-color: var(--text-normal);
+  --ert-input-width-xs: var(--rt-input-width-xs, 6ch);
+  --ert-input-width-sm: var(--rt-input-width-sm, 10ch);
+  --ert-input-width-md: var(--rt-input-width-md, 16ch);
+  --ert-input-width-lg: var(--rt-input-width-lg, 24ch);
+  --ert-input-width-xl: var(--rt-input-width-xl, 48ch);
 
   /* Layout */
   display: flex;
@@ -104,6 +109,21 @@
 .ert-ui h5,
 .ert-ui h6 {
   margin: 0;
+}
+
+.ert-ui input.ert-input--xs {
+  width: var(--ert-input-width-xs);
+  min-width: var(--ert-input-width-xs);
+}
+
+.ert-ui input.ert-input--lg {
+  width: var(--ert-input-width-lg);
+  min-width: var(--ert-input-width-lg);
+}
+
+.ert-ui input.ert-input--full {
+  width: 100%;
+  min-width: var(--ert-input-width-xl);
 }
 
 .ert-ui .ert-section {
@@ -1510,6 +1530,62 @@
   /* Restore legacy generous padding */
   --ert-panel-shadow: 0 8px 32px color-mix(in srgb, var(--ert-accent) 18%, transparent);
   --ert-panel-shadow-elev: var(--ert-panel-shadow);
+}
+
+.ert-ui.ert-skin--pro .ert-panel--muted,
+.ert-ui .ert-skin--pro .ert-panel--muted {
+  background: var(--ert-pro-surface-2);
+  border: 1px solid var(--ert-pro-border);
+  box-shadow: none;
+}
+
+.ert-ui.ert-skin--pro .ert-runtime-subheader,
+.ert-ui .ert-skin--pro .ert-runtime-subheader {
+  margin: var(--ert-pad-md) 0 var(--ert-gap-sm);
+}
+
+.ert-ui.ert-skin--pro .ert-runtime-gate-note,
+.ert-ui .ert-skin--pro .ert-runtime-gate-note {
+  text-align: center;
+  font-size: var(--font-ui-small, 13px);
+}
+
+.ert-ui.ert-skin--pro .ert-runtime-patterns ul,
+.ert-ui .ert-skin--pro .ert-runtime-patterns ul {
+  margin: 0;
+  padding-left: calc(var(--ert-pad-sm) + var(--ert-gap-xs));
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-skin--pro .ert-runtime-patterns li,
+.ert-ui .ert-skin--pro .ert-runtime-patterns li {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-skin--pro .ert-runtime-patterns code,
+.ert-ui .ert-skin--pro .ert-runtime-patterns code {
+  background: var(--background-primary);
+  padding: calc(var(--ert-gap-xs) / 2) var(--ert-gap-sm);
+  border-radius: var(--ert-control-radius);
+  font-size: 11px;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-skin--pro input.ert-input--error,
+.ert-ui .ert-skin--pro input.ert-input--error {
+  border-color: var(--text-error);
+  background-color: color-mix(in srgb, var(--text-error) 10%, transparent);
+  box-shadow: 0 0 0 calc(var(--ert-gap-xs) / 2) color-mix(in srgb, var(--text-error) 30%, transparent);
+}
+
+.ert-ui.ert-skin--pro input.ert-input--success,
+.ert-ui .ert-skin--pro input.ert-input--success {
+  border-color: var(--text-success);
+  background-color: color-mix(in srgb, var(--text-success) 10%, transparent);
+  box-shadow: 0 0 0 calc(var(--ert-gap-xs) / 2) color-mix(in srgb, var(--text-success) 30%, transparent);
 }
 
 .ert-ui.ert-skin--pro .ert-card--hero,

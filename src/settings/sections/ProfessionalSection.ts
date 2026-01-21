@@ -179,12 +179,12 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
             .addText(text => {
                 text.setPlaceholder('XXXX-XXXX-XXXX-XXXX');
                 text.setValue(plugin.settings.professionalLicenseKey || '');
-                text.inputEl.addClass('rt-input-lg'); // Keep existing size class if standard
+                text.inputEl.addClass('ert-input--lg');
                 text.inputEl.type = 'password';
 
                 // Show/Hide Toggle
                 const toggleVis = text.inputEl.parentElement?.createEl('button', {
-                    cls: 'rt-pro-key-toggle clickable-icon', // Use Obsidian's clickable-icon
+                    cls: 'ert-clickable-icon clickable-icon', // SAFE: clickable-icon used for Obsidian icon button styling
                     attr: { type: 'button', 'aria-label': 'Show/hide license key' }
                 });
                 if (toggleVis) {
@@ -214,7 +214,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
         nameEl.createEl('a', {
             text: ' Get key →',
             href: 'https://radial-timeline.com/signature',
-            cls: 'ert-link-accent rt-pro-get-key',
+            cls: 'ert-link-accent',
             attr: { target: '_blank', rel: 'noopener' }
         });
     }
@@ -245,7 +245,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
         .setName('Pandoc binary path')
         .setDesc('Optional: set a custom pandoc executable path. If blank, system PATH is used.')
         .addText(text => {
-            text.inputEl.addClass('rt-input-full'); // Use standard class
+            text.inputEl.addClass('ert-input--full');
             text.setPlaceholder('/usr/local/bin/pandoc');
             text.setValue(plugin.settings.pandocPath || '');
             plugin.registerDomEvent(text.inputEl, 'blur', async () => {
@@ -270,7 +270,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
         .setName('Fallback Pandoc path')
         .setDesc('Optional path to a portable/bundled pandoc binary.')
         .addText(text => {
-            text.inputEl.addClass('rt-input-full');
+            text.inputEl.addClass('ert-input--full');
             text.setPlaceholder('/path/to/pandoc');
             text.setValue(plugin.settings.pandocFallbackPath || '');
             plugin.registerDomEvent(text.inputEl, 'blur', async () => {
@@ -292,7 +292,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
         addProRow(new Setting(templateSubSection))
             .setName(name)
             .addText(text => {
-                text.inputEl.addClass('rt-input-full');
+                text.inputEl.addClass('ert-input--full');
                 text.setPlaceholder(placeholder);
                 text.setValue(templates[key] || '');
                 plugin.registerDomEvent(text.inputEl, 'blur', async () => {

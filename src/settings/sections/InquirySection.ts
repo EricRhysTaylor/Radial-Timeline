@@ -636,6 +636,7 @@ export function renderInquirySection(params: SectionParams): void {
         });
 
         const isPro = isProfessionalActive(plugin);
+        const maxCustomSlots = isPro ? 4 : 1;
         let promptConfig: InquiryPromptConfig = normalizeInquiryPromptConfig(plugin.settings.inquiryPromptConfig);
         if (!plugin.settings.inquiryPromptConfig) {
             plugin.settings.inquiryPromptConfig = buildDefaultInquiryPromptConfig();
@@ -643,25 +644,23 @@ export function renderInquirySection(params: SectionParams): void {
             void plugin.saveSettings();
         }
 
-        const modeLabels: Record<string, string> = { flow: 'Flow', depth: 'Depth' };
         const zoneLabels: Record<string, string> = { setup: 'Setup', pressure: 'Pressure', payoff: 'Payoff' };
 
         const updateSlot = async (
-            mode: 'flow' | 'depth',
             zone: 'setup' | 'pressure' | 'payoff',
             index: number,
             patch: Partial<InquiryPromptSlot>
         ) => {
             promptConfig = normalizeInquiryPromptConfig(plugin.settings.inquiryPromptConfig);
-            const slots = promptConfig[mode][zone].slice();
+            const slots = promptConfig[zone].slice();
             slots[index] = { ...slots[index], ...patch };
-            promptConfig[mode][zone] = slots;
+            promptConfig[zone] = slots;
             plugin.settings.inquiryPromptConfig = promptConfig;
             await plugin.saveSettings();
         };
 
-        const getSlotInfo = (mode: 'flow' | 'depth', zone: 'setup' | 'pressure' | 'payoff') => {
-            const slots = promptConfig[mode][zone] ?? [];
+        const getSlotInfo = (zone: 'setup' | 'pressure' | 'payoff') => {
+            const slots = promptConfig[zone] ?? [];
             const builtInIndex = slots.findIndex(slot => slot.builtIn);
             const builtInSlot = slots[builtInIndex >= 0 ? builtInIndex : 0];
             const customIndex = slots.findIndex(slot => !slot.builtIn);
@@ -673,49 +672,47 @@ export function renderInquirySection(params: SectionParams): void {
             const card = containerEl.createDiv({ cls: 'ert-inquiry-prompt-card' });
             card.createEl('div', { cls: 'ert-inquiry-prompt-title', text: zoneLabels[zone] });
 
-            (['flow', 'depth'] as const).forEach(mode => {
-                const { builtInSlot, customIndex, customSlot } = getSlotInfo(mode, zone);
-                const builtInQuestion = builtInSlot?.question ?? '';
-                let customQuestion = customSlot?.question ?? '';
-                let isCustomEnabled = !!customSlot?.enabled;
+            const { builtInSlot, customIndex, customSlot } = getSlotInfo(zone);
+            const builtInQuestion = builtInSlot?.question ?? '';
+            let customQuestion = customSlot?.question ?? '';
+            let isCustomEnabled = !!customSlot?.enabled;
 
-                const row = card.createDiv({ cls: 'ert-inquiry-prompt-row' });
-                row.createDiv({ cls: 'ert-inquiry-prompt-label', text: modeLabels[mode] });
+            const row = card.createDiv({ cls: 'ert-inquiry-prompt-row' });
+            row.createDiv({ cls: 'ert-inquiry-prompt-label', text: 'Question' });
 
-                const inputWrap = row.createDiv({ cls: 'ert-inquiry-prompt-input' });
-                const text = new TextComponent(inputWrap);
-                const activeQuestion = isCustomEnabled && customQuestion.trim().length ? customQuestion : builtInQuestion;
-                text.setPlaceholder('Question')
-                    .setValue(activeQuestion);
-                text.inputEl.addClass('ert-inquiry-prompt-input-el');
-                text.inputEl.readOnly = !isCustomEnabled;
-                text.inputEl.toggleClass('is-readonly', !isCustomEnabled);
+            const inputWrap = row.createDiv({ cls: 'ert-inquiry-prompt-input' });
+            const text = new TextComponent(inputWrap);
+            const activeQuestion = isCustomEnabled && customQuestion.trim().length ? customQuestion : builtInQuestion;
+            text.setPlaceholder('Question')
+                .setValue(activeQuestion);
+            text.inputEl.addClass('ert-inquiry-prompt-input-el');
+            text.inputEl.readOnly = !isCustomEnabled;
+            text.inputEl.toggleClass('is-readonly', !isCustomEnabled);
 
-                text.onChange(async (value) => {
-                    if (!isCustomEnabled || customIndex < 0) return;
-                    customQuestion = value;
-                    await updateSlot(mode, zone, customIndex, { question: value, enabled: true });
-                });
+            text.onChange(async (value) => {
+                if (!isCustomEnabled || customIndex < 0) return;
+                customQuestion = value;
+                await updateSlot(zone, customIndex, { question: value, enabled: true });
+            });
 
-                const toggleWrap = inputWrap.createDiv({ cls: 'ert-inquiry-prompt-toggle' });
-                toggleWrap.createSpan({ text: 'Customize' });
-                const toggle = new ToggleComponent(toggleWrap);
-                toggle.setValue(isCustomEnabled);
-                toggle.setDisabled(customIndex < 0);
+            const toggleWrap = inputWrap.createDiv({ cls: 'ert-inquiry-prompt-toggle' });
+            toggleWrap.createSpan({ text: 'Customize' });
+            const toggle = new ToggleComponent(toggleWrap);
+            toggle.setValue(isCustomEnabled);
+            toggle.setDisabled(customIndex < 0);
 
-                toggle.onChange(async (value) => {
-                    if (customIndex < 0) return;
-                    isCustomEnabled = value;
-                    if (value) {
-                        if (!customQuestion.trim().length) customQuestion = builtInQuestion;
-                        text.setValue(customQuestion);
-                    } else {
-                        text.setValue(builtInQuestion);
-                    }
-                    text.inputEl.readOnly = !value;
-                    text.inputEl.toggleClass('is-readonly', !value);
-                    await updateSlot(mode, zone, customIndex, { enabled: value, question: customQuestion });
-                });
+            toggle.onChange(async (value) => {
+                if (customIndex < 0) return;
+                isCustomEnabled = value;
+                if (value) {
+                    if (!customQuestion.trim().length) customQuestion = builtInQuestion;
+                    text.setValue(customQuestion);
+                } else {
+                    text.setValue(builtInQuestion);
+                }
+                text.inputEl.readOnly = !value;
+                text.inputEl.toggleClass('is-readonly', !value);
+                await updateSlot(zone, customIndex, { enabled: value, question: customQuestion });
             });
         };
 
@@ -734,55 +731,52 @@ export function renderInquirySection(params: SectionParams): void {
                 cls: 'setting-item-description',
                 text: 'Pro unlocks additional prompt slots and advanced editing.'
             });
-            return;
         }
 
-        const maxCustomSlots = 4;
-        (['flow', 'depth'] as const).forEach(mode => {
-            (['setup', 'pressure', 'payoff'] as const).forEach(zone => {
-                const block = advancedDetails.createDiv({ cls: 'rt-setting-block' });
-                block.createEl('div', { cls: 'setting-item-name', text: `${modeLabels[mode]} - ${zoneLabels[zone]}` });
-                const slots = promptConfig[mode][zone];
+        (['setup', 'pressure', 'payoff'] as const).forEach(zone => {
+            const block = advancedDetails.createDiv({ cls: 'rt-setting-block' });
+            block.createEl('div', { cls: 'setting-item-name', text: zoneLabels[zone] });
+            const slots = promptConfig[zone];
+            const builtInCount = slots.filter(slot => slot.builtIn).length;
 
-                slots.forEach((slot, idx) => {
-                    const isBuiltIn = !!slot.builtIn;
-                    const customIndex = idx - 1;
-                    const isLocked = !isBuiltIn && customIndex >= maxCustomSlots;
-                    const slotLabel = isBuiltIn ? `Prompt ${idx + 1} (built-in)` : `Prompt ${idx + 1}`;
-                    const desc = isLocked
-                        ? 'Pro unlocks additional custom prompt slots.'
-                        : isBuiltIn
-                            ? 'Built-in prompt (text locked).'
-                            : 'Custom prompt slot.';
+            slots.forEach((slot, idx) => {
+                const isBuiltIn = !!slot.builtIn;
+                const customIndex = idx - builtInCount;
+                const isLocked = !isBuiltIn && customIndex >= maxCustomSlots;
+                const slotLabel = isBuiltIn ? `Prompt ${idx + 1} (built-in)` : `Prompt ${idx + 1}`;
+                const desc = isLocked
+                    ? 'Pro unlocks additional custom prompt slots.'
+                    : isBuiltIn
+                        ? 'Built-in prompt (text locked).'
+                        : 'Custom prompt slot.';
 
-                    const slotSetting = new Settings(block)
-                        .setName(slotLabel)
-                        .setDesc(desc);
+                const slotSetting = new Settings(block)
+                    .setName(slotLabel)
+                    .setDesc(desc);
 
-                    slotSetting.addToggle(toggle => {
-                        toggle.setValue(!!slot.enabled);
-                        toggle.setDisabled(isLocked);
-                        toggle.onChange(async (value) => {
-                            await updateSlot(mode, zone, idx, { enabled: value });
-                        });
+                slotSetting.addToggle(toggle => {
+                    toggle.setValue(!!slot.enabled);
+                    toggle.setDisabled(isLocked);
+                    toggle.onChange(async (value) => {
+                        await updateSlot(zone, idx, { enabled: value });
                     });
+                });
 
-                    slotSetting.addText(text => {
-                        text.setPlaceholder('Label (optional)')
-                            .setValue(slot.label || '')
-                            .setDisabled(isLocked || isBuiltIn);
-                        text.onChange(async (value) => {
-                            await updateSlot(mode, zone, idx, { label: value });
-                        });
+                slotSetting.addText(text => {
+                    text.setPlaceholder('Label (optional)')
+                        .setValue(slot.label || '')
+                        .setDisabled(isLocked || isBuiltIn);
+                    text.onChange(async (value) => {
+                        await updateSlot(zone, idx, { label: value });
                     });
+                });
 
-                    slotSetting.addText(text => {
-                        text.setPlaceholder('Question text')
-                            .setValue(slot.question || '')
-                            .setDisabled(isLocked || isBuiltIn);
-                        text.onChange(async (value) => {
-                            await updateSlot(mode, zone, idx, { question: value });
-                        });
+                slotSetting.addText(text => {
+                    text.setPlaceholder('Question text')
+                        .setValue(slot.question || '')
+                        .setDisabled(isLocked || isBuiltIn);
+                    text.onChange(async (value) => {
+                        await updateSlot(zone, idx, { question: value });
                     });
                 });
             });

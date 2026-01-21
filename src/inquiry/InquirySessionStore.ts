@@ -55,8 +55,8 @@ export class InquirySessionStore {
         }
     }
 
-    buildBaseKey(parts: { questionId: string; scope: string; focusId: string; mode: string }): string {
-        return `${parts.questionId}::${parts.scope}::${parts.focusId}::${parts.mode}`;
+    buildBaseKey(parts: { questionId: string; scope: string; focusId: string }): string {
+        return `${parts.questionId}::${parts.scope}::${parts.focusId}`;
     }
 
     buildKey(baseKey: string, fingerprint: string): string {

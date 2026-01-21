@@ -1,59 +1,49 @@
-import type { InquiryMode, InquiryZone } from './state';
+import type { InquiryZone } from './state';
 import type { InquiryPromptConfig, InquiryPromptSlot } from '../types/settings';
 
 type BuiltInPromptSeed = {
     id: string;
     label: string;
     question: string;
+    enabled?: boolean;
 };
 
-const BUILT_IN_PROMPTS: Record<InquiryMode, Record<InquiryZone, BuiltInPromptSeed>> = {
-    flow: {
-        setup: {
-            id: 'setup-flow',
-            label: 'Setup',
-            question: 'What must already be true for this scene to move smoothly?'
-        },
-        pressure: {
-            id: 'pressure-flow',
-            label: 'Pressure',
-            question: "How does this scene change the story's momentum right now?"
-        },
-        payoff: {
-            id: 'payoff-flow',
-            label: 'Payoff',
-            question: 'Are promises paid off or clearly handed forward at the right time?'
-        }
-    },
-    depth: {
-        setup: {
-            id: 'setup-depth',
-            label: 'Setup',
-            question: 'What assumptions does this scene rely on, and are they structurally sound?'
-        },
-        pressure: {
-            id: 'pressure-depth',
-            label: 'Pressure',
-            question: 'Does the change introduced here meaningfully deepen the story?'
-        },
-        payoff: {
-            id: 'payoff-depth',
-            label: 'Payoff',
-            question: 'What narrative threads are resolved, deferred, dangling, or stillborn here?'
-        }
-    }
+const BUILT_IN_PROMPTS: Record<InquiryZone, BuiltInPromptSeed[]> = {
+    setup: [{
+        id: 'setup-core',
+        label: 'Setup',
+        question: 'What must already be true for this scene to move smoothly?',
+        enabled: true
+    }],
+    pressure: [{
+        id: 'pressure-core',
+        label: 'Pressure',
+        question: "How does this scene change the story's momentum right now?",
+        enabled: true
+    }, {
+        id: 'pressure-alt-clarity',
+        label: 'Pressure',
+        question: 'Where does dialogue or description state meaning explicitly instead of allowing subtext to carry it?',
+        enabled: false
+    }],
+    payoff: [{
+        id: 'payoff-core',
+        label: 'Payoff',
+        question: 'Are promises paid off or clearly handed forward at the right time?',
+        enabled: true
+    }]
 };
 
 const buildBuiltInSlot = (seed: BuiltInPromptSeed): InquiryPromptSlot => ({
     id: seed.id,
     label: seed.label,
     question: seed.question,
-    enabled: true,
+    enabled: seed.enabled ?? true,
     builtIn: true
 });
 
-const buildCustomSlot = (mode: InquiryMode, zone: InquiryZone, index: number): InquiryPromptSlot => ({
-    id: `custom-${mode}-${zone}-${index + 1}`,
+const buildCustomSlot = (zone: InquiryZone, index: number): InquiryPromptSlot => ({
+    id: `custom-${zone}-${index + 1}`,
     label: '',
     question: '',
     enabled: false,
@@ -61,40 +51,37 @@ const buildCustomSlot = (mode: InquiryMode, zone: InquiryZone, index: number): I
 });
 
 export const buildDefaultInquiryPromptConfig = (): InquiryPromptConfig => {
-    const buildForZone = (mode: InquiryMode, zone: InquiryZone): InquiryPromptSlot[] => {
-        const builtIn = buildBuiltInSlot(BUILT_IN_PROMPTS[mode][zone]);
-        const customs = Array.from({ length: 4 }, (_, idx) => buildCustomSlot(mode, zone, idx));
-        return [builtIn, ...customs];
+    const buildForZone = (zone: InquiryZone): InquiryPromptSlot[] => {
+        const builtIns = BUILT_IN_PROMPTS[zone].map(seed => buildBuiltInSlot(seed));
+        const customs = Array.from({ length: 4 }, (_, idx) => buildCustomSlot(zone, idx));
+        return [...builtIns, ...customs];
     };
 
     return {
-        flow: {
-            setup: buildForZone('flow', 'setup'),
-            pressure: buildForZone('flow', 'pressure'),
-            payoff: buildForZone('flow', 'payoff')
-        },
-        depth: {
-            setup: buildForZone('depth', 'setup'),
-            pressure: buildForZone('depth', 'pressure'),
-            payoff: buildForZone('depth', 'payoff')
-        }
+        setup: buildForZone('setup'),
+        pressure: buildForZone('pressure'),
+        payoff: buildForZone('payoff')
     };
 };
 
 export const normalizeInquiryPromptConfig = (raw?: InquiryPromptConfig): InquiryPromptConfig => {
     const defaults = buildDefaultInquiryPromptConfig();
-    const normalizeZone = (mode: InquiryMode, zone: InquiryZone): InquiryPromptSlot[] => {
-        const base = defaults[mode][zone];
-        const incoming = raw?.[mode]?.[zone] ?? [];
-        const normalized = base.map((slot, idx) => {
-            if (idx === 0) {
-                const builtInOverride = incoming[0];
+    const legacy = raw as Record<string, Record<InquiryZone, InquiryPromptSlot[]>> | undefined;
+    const hasLegacy = !!legacy && ('flow' in legacy || 'depth' in legacy);
+
+    const normalizeZone = (zone: InquiryZone): InquiryPromptSlot[] => {
+        const base = defaults[zone];
+        const incoming = hasLegacy
+            ? (legacy?.flow?.[zone] ?? legacy?.depth?.[zone] ?? [])
+            : (raw?.[zone] ?? []);
+        return base.map((slot, idx) => {
+            const existing = incoming[idx];
+            if (slot.builtIn) {
                 return {
                     ...slot,
-                    enabled: builtInOverride?.enabled ?? slot.enabled
+                    enabled: existing?.enabled ?? slot.enabled
                 };
             }
-            const existing = incoming[idx];
             return {
                 ...slot,
                 id: existing?.id ?? slot.id,
@@ -103,22 +90,14 @@ export const normalizeInquiryPromptConfig = (raw?: InquiryPromptConfig): Inquiry
                 enabled: existing?.enabled ?? slot.enabled
             };
         });
-        return normalized;
     };
 
     return {
-        flow: {
-            setup: normalizeZone('flow', 'setup'),
-            pressure: normalizeZone('flow', 'pressure'),
-            payoff: normalizeZone('flow', 'payoff')
-        },
-        depth: {
-            setup: normalizeZone('depth', 'setup'),
-            pressure: normalizeZone('depth', 'pressure'),
-            payoff: normalizeZone('depth', 'payoff')
-        }
+        setup: normalizeZone('setup'),
+        pressure: normalizeZone('pressure'),
+        payoff: normalizeZone('payoff')
     };
 };
 
-export const getBuiltInPromptSeed = (mode: InquiryMode, zone: InquiryZone): BuiltInPromptSeed =>
-    BUILT_IN_PROMPTS[mode][zone];
+export const getBuiltInPromptSeed = (zone: InquiryZone, index = 0): BuiltInPromptSeed | undefined =>
+    BUILT_IN_PROMPTS[zone][index];

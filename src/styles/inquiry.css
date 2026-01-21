@@ -434,6 +434,18 @@
   pointer-events: stroke;
 }
 
+.ert-inquiry-ring {
+  transition: opacity 160ms ease;
+}
+
+.ert-inquiry-svg.is-mode-flow .ert-inquiry-ring--depth {
+  opacity: 0.35;
+}
+
+.ert-inquiry-svg.is-mode-depth .ert-inquiry-ring--flow {
+  opacity: 0.35;
+}
+
 .ert-inquiry-ring.is-confidence-low .ert-inquiry-ring-track {
   stroke-dasharray: none;
   opacity: 0.2;
@@ -459,7 +471,7 @@
   stroke-width: 0;
 }
 
-.ert-inquiry-ring-badge-text {
+.ert-inquiry-svg .ert-inquiry-ring-badge-text {
   fill: var(--ert-inquiry-badge-text-color, var(--text-on-accent, #fff));
   font-family: 'Inter', var(--font-ui), sans-serif;
   font-weight: 700;
@@ -488,6 +500,50 @@
 .ert-inquiry-hover {
   font-size: 12px;
   fill: var(--text-muted);
+}
+
+.ert-inquiry-preview {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.ert-inquiry-preview.is-visible {
+  opacity: 1;
+}
+
+.ert-inquiry-preview-bg {
+  fill: var(--background-secondary);
+  stroke: var(--background-modifier-border);
+  stroke-width: 1;
+}
+
+.ert-inquiry-preview-hero {
+  font-size: 16px;
+  font-weight: 600;
+  font-style: italic;
+  fill: var(--text-normal);
+}
+
+.ert-inquiry-preview-icon {
+  fill: var(--text-muted);
+}
+
+.ert-inquiry-preview-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  fill: var(--text-faint);
+}
+
+.ert-inquiry-preview-value {
+  font-size: 12px;
+  fill: var(--text-normal);
+}
+
+.ert-inquiry-preview-footer {
+  font-size: 11px;
+  fill: var(--text-faint);
 }
 
 .ert-inquiry-findings {

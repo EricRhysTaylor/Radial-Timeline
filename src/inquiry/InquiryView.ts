@@ -47,14 +47,33 @@ const VIEWBOX_MIN = -800;
 const VIEWBOX_MAX = 800;
 const VIEWBOX_SIZE = 1600;
 const INQUIRY_REFERENCE_ONLY_CLASSES = new Set(['character', 'place', 'power']);
+const PREVIEW_PANEL_WIDTH = 620;
+const PREVIEW_PANEL_Y = -320;
+const PREVIEW_PANEL_PADDING_X = 28;
+const PREVIEW_PANEL_PADDING_Y = 18;
+const PREVIEW_HERO_LINE_HEIGHT = 22;
+const PREVIEW_HERO_MAX_LINES = 2;
+const PREVIEW_DETAIL_GAP = 12;
+const PREVIEW_ROW_HEIGHT = 18;
+const PREVIEW_LABEL_X = 12;
+const PREVIEW_VALUE_X = 120;
+const PREVIEW_ICON_RADIUS = 3;
+const PREVIEW_FOOTER_GAP = 12;
+const PREVIEW_FOOTER_HEIGHT = 16;
 
 type InquiryQuestion = {
     id: string;
     label: string;
     question: string;
     zone: InquiryZone;
-    mode: InquiryMode | 'both';
     icon: string;
+};
+
+type InquiryPreviewRow = {
+    group: SVGGElement;
+    icon: SVGCircleElement;
+    label: SVGTextElement;
+    value: SVGTextElement;
 };
 
 export class InquiryView extends ItemView {
@@ -99,6 +118,13 @@ export class InquiryView extends ItemView {
     private artifactPreviewEl?: SVGGElement;
     private artifactPreviewBg?: SVGRectElement;
     private hoverTextEl?: SVGTextElement;
+    private previewGroup?: SVGGElement;
+    private previewBg?: SVGRectElement;
+    private previewHero?: SVGTextElement;
+    private previewFooter?: SVGTextElement;
+    private previewRows: InquiryPreviewRow[] = [];
+    private previewHideTimer?: number;
+    private previewLast?: { zone: InquiryZone; question: string };
     private cacheStatusEl?: SVGTextElement;
     private confidenceEl?: SVGTextElement;
     private navPrevButton?: SVGGElement;
@@ -237,17 +263,11 @@ export class InquiryView extends ItemView {
             this.handleScopeChange(this.state.scope === 'book' ? 'saga' : 'book');
         });
 
-        this.modeToggleButton = this.createIconButton(hudGroup, iconSize + iconGap, 0, iconSize, 'waves', 'Toggle mode');
-        this.modeToggleIcon = this.modeToggleButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
-        this.registerDomEvent(this.modeToggleButton as unknown as HTMLElement, 'click', () => {
-            this.handleModeChange(this.state.mode === 'flow' ? 'depth' : 'flow');
-        });
-
         const artifactX = (VIEWBOX_MAX - hudMargin - iconSize) - hudOffsetX;
         this.artifactButton = this.createIconButton(hudGroup, artifactX, 0, iconSize, 'aperture', 'Save artifact');
         this.registerDomEvent(this.artifactButton as unknown as HTMLElement, 'click', () => { void this.saveArtifact(); });
 
-        const engineBadgeX = (iconSize * 2) + (iconGap * 2);
+        const engineBadgeX = iconSize + iconGap;
         this.engineBadgeGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-engine-badge', engineBadgeX, 12);
         this.engineBadgeGroup.setAttribute('role', 'button');
         this.engineBadgeGroup.setAttribute('tabindex', '0');
@@ -319,8 +339,10 @@ export class InquiryView extends ItemView {
         this.glyphHit = this.glyph.labelHit;
 
         this.registerDomEvent(this.glyphHit as unknown as HTMLElement, 'click', () => this.handleGlyphClick());
-        this.registerDomEvent(this.flowRingHit as unknown as HTMLElement, 'click', () => this.openReportPreview());
-        this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'click', () => this.openReportPreview());
+        this.registerDomEvent(this.flowRingHit as unknown as HTMLElement, 'click', () => this.setActiveLens('flow'));
+        this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'click', () => this.setActiveLens('depth'));
+
+        this.buildPromptPreviewPanel(canvasGroup);
 
         this.registerDomEvent(this.glyphHit as unknown as HTMLElement, 'pointerenter', () => {
             this.setHoverText(this.buildFocusHoverText());
@@ -349,6 +371,55 @@ export class InquiryView extends ItemView {
         const statusGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-status', 180, hudFooterY + 6);
         this.cacheStatusEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'Cache: none', 0, 0);
         this.confidenceEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'Confidence: none', 140, 0);
+    }
+
+    private buildPromptPreviewPanel(parent: SVGGElement): void {
+        const panel = this.createSvgGroup(parent, 'ert-inquiry-preview', 0, PREVIEW_PANEL_Y);
+        this.previewGroup = panel;
+
+        const bg = this.createSvgElement('rect');
+        bg.classList.add('ert-inquiry-preview-bg');
+        bg.setAttribute('x', String(-PREVIEW_PANEL_WIDTH / 2));
+        bg.setAttribute('y', '0');
+        bg.setAttribute('width', String(PREVIEW_PANEL_WIDTH));
+        bg.setAttribute('rx', '16');
+        bg.setAttribute('ry', '16');
+        panel.appendChild(bg);
+        this.previewBg = bg;
+
+        const hero = this.createSvgText(panel, 'ert-inquiry-preview-hero', '', -PREVIEW_PANEL_WIDTH / 2 + PREVIEW_PANEL_PADDING_X, PREVIEW_PANEL_PADDING_Y);
+        hero.setAttribute('text-anchor', 'start');
+        hero.setAttribute('dominant-baseline', 'hanging');
+        this.previewHero = hero;
+
+        const rowLabels = ['Scope', 'Evidence', 'Classes', 'Roots', 'AI Engine', 'Est. Cost'];
+        this.previewRows = rowLabels.map(label => {
+            const group = this.createSvgGroup(panel, 'ert-inquiry-preview-row');
+            const icon = this.createSvgElement('circle');
+            icon.classList.add('ert-inquiry-preview-icon');
+            icon.setAttribute('r', String(PREVIEW_ICON_RADIUS));
+            icon.setAttribute('cx', '0');
+            icon.setAttribute('cy', '0');
+            group.appendChild(icon);
+
+            const labelEl = this.createSvgText(group, 'ert-inquiry-preview-label', label, PREVIEW_LABEL_X, 0);
+            labelEl.setAttribute('dominant-baseline', 'middle');
+            labelEl.setAttribute('text-anchor', 'start');
+
+            const valueEl = this.createSvgText(group, 'ert-inquiry-preview-value', '', PREVIEW_VALUE_X, 0);
+            valueEl.setAttribute('dominant-baseline', 'middle');
+            valueEl.setAttribute('text-anchor', 'start');
+
+            return { group, icon, label: labelEl, value: valueEl };
+        });
+
+        const footer = this.createSvgText(panel, 'ert-inquiry-preview-footer', 'Hover previews what will be sent. Click runs the inquiry.', -PREVIEW_PANEL_WIDTH / 2 + PREVIEW_PANEL_PADDING_X, 0);
+        footer.setAttribute('text-anchor', 'start');
+        footer.setAttribute('dominant-baseline', 'hanging');
+        this.previewFooter = footer;
+
+        this.updatePromptPreview('setup', this.state.mode, 'Hover a question to preview its payload.');
+        this.hidePromptPreview(true);
     }
 
     private createSvgElement<K extends keyof SVGElementTagNameMap>(tag: K): SVGElementTagNameMap[K] {
@@ -559,24 +630,17 @@ export class InquiryView extends ItemView {
         use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${symbolId}`);
     }
 
-    private buildDefaultSelectedPromptIds(): Record<InquiryMode, Record<InquiryZone, string>> {
+    private buildDefaultSelectedPromptIds(): Record<InquiryZone, string> {
         const config = this.getPromptConfig();
-        const pickFirstEnabled = (mode: InquiryMode, zone: InquiryZone): string => {
-            const slots = config[mode]?.[zone] ?? [];
+        const pickFirstEnabled = (zone: InquiryZone): string => {
+            const slots = config[zone] ?? [];
             const firstEnabled = slots.find(slot => slot.enabled && slot.question.trim().length > 0);
-            return firstEnabled?.id ?? slots[0]?.id ?? `${mode}-${zone}`;
+            return firstEnabled?.id ?? slots[0]?.id ?? zone;
         };
         return {
-            flow: {
-                setup: pickFirstEnabled('flow', 'setup'),
-                pressure: pickFirstEnabled('flow', 'pressure'),
-                payoff: pickFirstEnabled('flow', 'payoff')
-            },
-            depth: {
-                setup: pickFirstEnabled('depth', 'setup'),
-                pressure: pickFirstEnabled('depth', 'pressure'),
-                payoff: pickFirstEnabled('depth', 'payoff')
-            }
+            setup: pickFirstEnabled('setup'),
+            pressure: pickFirstEnabled('pressure'),
+            payoff: pickFirstEnabled('payoff')
         };
     }
 
@@ -591,39 +655,37 @@ export class InquiryView extends ItemView {
         return normalizeInquiryPromptConfig(this.plugin.settings.inquiryPromptConfig);
     }
 
-    private getPromptOptions(mode: InquiryMode, zone: InquiryZone): InquiryQuestion[] {
+    private getPromptOptions(zone: InquiryZone): InquiryQuestion[] {
         const config = this.getPromptConfig();
         const icon = zone === 'setup' ? 'help-circle' : zone === 'pressure' ? 'activity' : 'check-circle';
-        return (config[mode]?.[zone] ?? [])
+        return (config[zone] ?? [])
             .filter(slot => slot.enabled && slot.question.trim().length > 0)
             .map(slot => ({
                 id: slot.id,
                 label: slot.label || (zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff'),
                 question: slot.question,
                 zone,
-                mode,
                 icon
             }));
     }
 
-    private getActivePrompt(mode: InquiryMode, zone: InquiryZone): InquiryQuestion | undefined {
-        const options = this.getPromptOptions(mode, zone);
+    private getActivePrompt(zone: InquiryZone): InquiryQuestion | undefined {
+        const options = this.getPromptOptions(zone);
         if (!options.length) return undefined;
-        const activeId = this.state.selectedPromptIds[mode]?.[zone];
+        const activeId = this.state.selectedPromptIds[zone];
         const match = options.find(prompt => prompt.id === activeId);
         if (match) return match;
         const fallback = options[0];
-        this.state.selectedPromptIds[mode][zone] = fallback.id;
+        this.state.selectedPromptIds[zone] = fallback.id;
         return fallback;
     }
 
     private updateZonePrompts(): void {
         this.syncSelectedPromptIds();
-        const mode = this.state.mode;
         const paddingX = 24;
         const pillHeight = 40;
         this.zonePromptElements.forEach((elements, zone) => {
-            const prompt = this.getActivePrompt(mode, zone);
+            const prompt = this.getActivePrompt(zone);
             if (!prompt) {
                 elements.text.textContent = '';
                 elements.bg.setAttribute('width', '0');
@@ -639,7 +701,7 @@ export class InquiryView extends ItemView {
             elements.bg.setAttribute('y', String(-pillHeight / 2));
             elements.bg.setAttribute('rx', String(pillHeight / 2));
             elements.bg.setAttribute('ry', String(pillHeight / 2));
-            elements.group.classList.toggle('is-active', this.state.selectedPromptIds[mode]?.[zone] === prompt.id);
+            elements.group.classList.toggle('is-active', this.state.selectedPromptIds[zone] === prompt.id);
             elements.group.setAttribute('data-prompt-id', prompt.id);
             elements.group.setAttribute('aria-label', prompt.question);
         });
@@ -648,53 +710,52 @@ export class InquiryView extends ItemView {
     private updateGlyphPromptState(): void {
         if (!this.glyph) return;
         this.syncSelectedPromptIds();
-        const mode = this.state.mode;
         const promptsByZone = {
-            setup: this.getPromptOptions(mode, 'setup').map(prompt => ({ id: prompt.id, question: prompt.question })),
-            pressure: this.getPromptOptions(mode, 'pressure').map(prompt => ({ id: prompt.id, question: prompt.question })),
-            payoff: this.getPromptOptions(mode, 'payoff').map(prompt => ({ id: prompt.id, question: prompt.question }))
+            setup: this.getPromptOptions('setup').map(prompt => ({ id: prompt.id, question: prompt.question })),
+            pressure: this.getPromptOptions('pressure').map(prompt => ({ id: prompt.id, question: prompt.question })),
+            payoff: this.getPromptOptions('payoff').map(prompt => ({ id: prompt.id, question: prompt.question }))
         };
         this.glyph.updatePromptState({
-            mode,
             promptsByZone,
-            selectedPromptIds: this.state.selectedPromptIds[mode],
-            onPromptSelect: (zone, promptId) => this.setSelectedPrompt(this.state.mode, zone, promptId)
+            selectedPromptIds: this.state.selectedPromptIds,
+            onPromptSelect: (zone, promptId) => this.setSelectedPrompt(zone, promptId),
+            onPromptHover: (zone, _promptId, promptText) => {
+                this.showPromptPreview(zone, this.state.mode, promptText);
+            },
+            onPromptHoverEnd: () => this.hidePromptPreview()
         });
     }
 
     private syncSelectedPromptIds(): void {
         const config = this.getPromptConfig();
-        (['flow', 'depth'] as InquiryMode[]).forEach(mode => {
-            (['setup', 'pressure', 'payoff'] as InquiryZone[]).forEach(zone => {
-                const slots = config[mode]?.[zone] ?? [];
-                const custom = slots.find(slot => !slot.builtIn && slot.enabled && slot.question.trim().length > 0);
-                const builtIn = slots.find(slot => slot.enabled && slot.question.trim().length > 0);
-                const desired = custom?.id ?? builtIn?.id ?? slots[0]?.id;
-                if (desired && this.state.selectedPromptIds[mode][zone] !== desired) {
-                    this.state.selectedPromptIds[mode][zone] = desired;
-                }
-            });
+        (['setup', 'pressure', 'payoff'] as InquiryZone[]).forEach(zone => {
+            const slots = config[zone] ?? [];
+            const enabled = slots.filter(slot => slot.enabled && slot.question.trim().length > 0);
+            const desired = enabled[0]?.id ?? slots[0]?.id;
+            if (!desired) return;
+            const current = this.state.selectedPromptIds[zone];
+            const currentValid = enabled.some(slot => slot.id === current);
+            if (!currentValid) {
+                this.state.selectedPromptIds[zone] = desired;
+            }
         });
     }
 
-    private setSelectedPrompt(mode: InquiryMode, zone: InquiryZone, promptId: string): void {
-        const selected = this.state.selectedPromptIds[mode];
-        if (!selected) return;
-        if (selected[zone] === promptId) return;
-        selected[zone] = promptId;
+    private setSelectedPrompt(zone: InquiryZone, promptId: string): void {
+        if (this.state.selectedPromptIds[zone] === promptId) return;
+        this.state.selectedPromptIds[zone] = promptId;
         this.updateZonePrompts();
         this.updateGlyphPromptState();
     }
 
     private handlePromptClick(zone: InquiryZone): void {
-        const mode = this.state.mode;
-        const options = this.getPromptOptions(mode, zone);
+        const options = this.getPromptOptions(zone);
         if (!options.length) return;
-        const currentId = this.state.selectedPromptIds[mode]?.[zone];
+        const currentId = this.state.selectedPromptIds[zone];
         const currentIdx = options.findIndex(prompt => prompt.id === currentId);
         const nextIdx = currentIdx >= 0 ? (currentIdx + 1) % options.length : 0;
         const nextPrompt = options[nextIdx] ?? options[0];
-        this.setSelectedPrompt(mode, zone, nextPrompt.id);
+        this.setSelectedPrompt(zone, nextPrompt.id);
         void this.handleQuestionClick(nextPrompt);
     }
 
@@ -1264,11 +1325,13 @@ export class InquiryView extends ItemView {
         this.refreshUI();
     }
 
-    private handleModeChange(mode: InquiryMode): void {
+    private setActiveLens(mode: InquiryMode): void {
         if (!mode || mode === this.state.mode) return;
         this.state.mode = mode;
-        this.state.activeResult = null;
-        this.refreshUI();
+        this.updateModeClass();
+        if (this.previewGroup?.classList.contains('is-visible') && this.previewLast) {
+            this.updatePromptPreview(this.previewLast.zone, mode, this.previewLast.question);
+        }
     }
 
     private handleGlyphClick(): void {
@@ -1291,8 +1354,7 @@ export class InquiryView extends ItemView {
         const baseKey = this.sessionStore.buildBaseKey({
             questionId: question.id,
             scope: this.state.scope,
-            focusId,
-            mode: this.state.mode
+            focusId
         });
         const cacheEnabled = this.plugin.settings.inquiryCacheEnabled ?? true;
         const key = this.sessionStore.buildKey(baseKey, manifest.fingerprint);
@@ -1786,6 +1848,204 @@ export class InquiryView extends ItemView {
         if (this.hoverTextEl) {
             this.hoverTextEl.textContent = 'Hover to preview context.';
         }
+    }
+
+    private showPromptPreview(zone: InquiryZone, mode: InquiryMode, question: string): void {
+        if (!this.previewGroup) return;
+        if (this.previewHideTimer) {
+            window.clearTimeout(this.previewHideTimer);
+            this.previewHideTimer = undefined;
+        }
+        this.previewLast = { zone, question };
+        this.updatePromptPreview(zone, mode, question);
+        this.previewGroup.classList.add('is-visible');
+    }
+
+    private hidePromptPreview(immediate = false): void {
+        if (!this.previewGroup) return;
+        if (this.previewHideTimer) {
+            window.clearTimeout(this.previewHideTimer);
+            this.previewHideTimer = undefined;
+        }
+        const hide = () => {
+            this.previewGroup?.classList.remove('is-visible');
+        };
+        if (immediate) {
+            hide();
+            return;
+        }
+        this.previewHideTimer = window.setTimeout(hide, 140);
+    }
+
+    private updatePromptPreview(zone: InquiryZone, mode: InquiryMode, question: string): void {
+        if (!this.previewGroup || !this.previewHero || !this.previewBg) return;
+
+        const zoneLabel = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
+        const modeLabel = mode === 'flow' ? 'Flow' : 'Depth';
+        const heroText = `${zoneLabel} · ${modeLabel} — ${question}`;
+        const heroLines = this.setWrappedSvgText(this.previewHero, heroText, PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2), PREVIEW_HERO_MAX_LINES, PREVIEW_HERO_LINE_HEIGHT);
+
+        const detailStartY = PREVIEW_PANEL_PADDING_Y + (heroLines * PREVIEW_HERO_LINE_HEIGHT) + PREVIEW_DETAIL_GAP;
+        const panelLeft = -PREVIEW_PANEL_WIDTH / 2;
+        const rows = [
+            this.getPreviewScopeValue(),
+            this.getPreviewEvidenceValue(),
+            this.getPreviewClassesValue(),
+            this.getPreviewRootsValue(),
+            this.getPreviewEngineValue(),
+            this.getPreviewCostValue()
+        ];
+
+        this.previewRows.forEach((row, index) => {
+            const rowY = detailStartY + (index * PREVIEW_ROW_HEIGHT);
+            row.group.setAttribute('transform', `translate(${panelLeft + PREVIEW_PANEL_PADDING_X} ${rowY})`);
+            row.value.textContent = rows[index] ?? '';
+        });
+
+        const footerY = detailStartY + (this.previewRows.length * PREVIEW_ROW_HEIGHT) + PREVIEW_FOOTER_GAP;
+        if (this.previewFooter) {
+            this.previewFooter.setAttribute('y', String(footerY));
+        }
+
+        const panelHeight = footerY + PREVIEW_FOOTER_HEIGHT + PREVIEW_PANEL_PADDING_Y;
+        this.previewBg.setAttribute('height', panelHeight.toFixed(2));
+    }
+
+    private setWrappedSvgText(
+        textEl: SVGTextElement,
+        text: string,
+        maxWidth: number,
+        maxLines: number,
+        lineHeight: number
+    ): number {
+        this.clearSvgChildren(textEl);
+        const words = text.split(/\s+/).filter(Boolean);
+        const x = textEl.getAttribute('x') ?? '0';
+        const appendTspan = (content: string, isFirst: boolean): SVGTSpanElement => {
+            const tspan = this.createSvgElement('tspan');
+            tspan.setAttribute('x', x);
+            tspan.setAttribute('dy', isFirst ? '0' : String(lineHeight));
+            tspan.textContent = content;
+            textEl.appendChild(tspan);
+            return tspan;
+        };
+
+        let line = '';
+        let lineIndex = 0;
+        let tspan = appendTspan('', true);
+        let truncated = false;
+
+        for (const word of words) {
+            const testLine = line ? `${line} ${word}` : word;
+            tspan.textContent = testLine;
+            if (tspan.getComputedTextLength() > maxWidth && line) {
+                tspan.textContent = line;
+                lineIndex += 1;
+                if (lineIndex >= maxLines) {
+                    truncated = true;
+                    break;
+                }
+                line = word;
+                tspan = appendTspan(line, false);
+            } else {
+                line = testLine;
+            }
+        }
+
+        if (!truncated) {
+            tspan.textContent = line;
+            return Math.max(lineIndex + 1, 1);
+        }
+
+        tspan.textContent = line;
+        this.applyEllipsis(tspan, maxWidth);
+        return maxLines;
+    }
+
+    private applyEllipsis(tspan: SVGTSpanElement, maxWidth: number): void {
+        let content = tspan.textContent ?? '';
+        if (!content.length) return;
+        let next = `${content}…`;
+        tspan.textContent = next;
+        while (tspan.getComputedTextLength() > maxWidth && content.length > 1) {
+            content = content.slice(0, -1).trimEnd();
+            next = `${content}…`;
+            tspan.textContent = next;
+        }
+    }
+
+    private getPreviewScopeValue(): string {
+        const scopeLabel = this.state.scope === 'saga' ? 'Saga' : 'Book';
+        const focusLabel = this.getFocusLabel();
+        const focusType = this.state.scope === 'saga' ? 'Book' : 'Scene';
+        return `${scopeLabel} · ${focusType} ${focusLabel}`;
+    }
+
+    private getPreviewEvidenceValue(): string {
+        const synopsisCount = this.corpus?.scenes?.filter(scene => scene.hasSynopsis).length ?? 0;
+        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const outlineCount = sources.classCounts?.outline ?? 0;
+        return `Scene synopsis ×${synopsisCount} · Outline ×${outlineCount}`;
+    }
+
+    private getPreviewClassesValue(): string {
+        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const classScope = this.getClassScopeConfig(sources.classScope);
+        const list = (sources.classes || [])
+            .filter(config => {
+                if (!config.enabled) return false;
+                const inScope = this.state.scope === 'saga' ? config.sagaScope : config.bookScope;
+                if (!inScope) return false;
+                return classScope.allowAll || classScope.allowed.has(config.className);
+            })
+            .map(config => config.className);
+        return list.length ? list.join(' · ') : 'None';
+    }
+
+    private getPreviewRootsValue(): string {
+        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const resolvedRoots = this.corpus?.resolvedRoots ?? sources.resolvedScanRoots ?? [];
+        if (!resolvedRoots.length) {
+            const scanRoots = sources.scanRoots ?? [];
+            const hasVaultRoot = scanRoots.length === 0 || scanRoots.some(root => !root || root === '/');
+            return hasVaultRoot ? '/ (entire vault)' : 'No scan roots';
+        }
+        if (resolvedRoots.length === 1) {
+            const root = resolvedRoots[0];
+            return root ? `/${root} (1 folder)` : '/ (entire vault)';
+        }
+        const root = resolvedRoots[0];
+        const first = root ? `/${root}` : '/';
+        return `${first} … (${resolvedRoots.length} folders)`;
+    }
+
+    private getPreviewEngineValue(): string {
+        const provider = this.getInquiryProviderLabel();
+        const modelLabel = this.getActiveInquiryModelLabel();
+        return `${modelLabel} (${provider})`;
+    }
+
+    private getPreviewCostValue(): string {
+        return this.estimateInquiryCost();
+    }
+
+    private getInquiryProviderLabel(): string {
+        const provider = this.plugin.settings.defaultAiProvider || 'openai';
+        if (provider === 'anthropic') return 'Anthropic';
+        if (provider === 'gemini') return 'Google';
+        if (provider === 'local') return 'Local';
+        return 'OpenAI';
+    }
+
+    private estimateInquiryCost(): string {
+        const modelId = this.getActiveInquiryModelId().toLowerCase();
+        if (modelId.includes('mini') || modelId.includes('lite') || modelId.includes('flash')) {
+            return 'Low';
+        }
+        if (modelId.includes('pro') || modelId.includes('opus') || modelId.includes('ultra') || modelId.includes('gpt-4')) {
+            return 'High';
+        }
+        return 'Medium';
     }
 
     private toggleDetails(): void {

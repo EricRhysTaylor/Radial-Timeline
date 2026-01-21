@@ -1,4 +1,4 @@
-import type { InquiryConfidence, InquiryMode, InquirySeverity, InquiryZone } from '../state';
+import type { InquiryConfidence, InquirySeverity, InquiryZone } from '../state';
 import { ZONE_LAYOUT } from '../zoneLayout';
 
 export interface InquiryGlyphProps {
@@ -15,11 +15,10 @@ export interface InquiryZonePromptItem {
 }
 
 export interface InquiryGlyphPromptState {
-    mode: InquiryMode;
     promptsByZone: Record<InquiryZone, InquiryZonePromptItem[]>;
     selectedPromptIds: Record<InquiryZone, string>;
     onPromptSelect?: (zone: InquiryZone, promptId: string) => void;
-    onPromptHover?: (text: string) => void;
+    onPromptHover?: (zone: InquiryZone, promptId: string, promptText: string) => void;
     onPromptHoverEnd?: () => void;
 }
 
@@ -331,8 +330,8 @@ export class InquiryGlyph {
                     this.promptState?.onPromptSelect?.(marker.zone, marker.promptId);
                 });
                 dotGroup.addEventListener('pointerenter', () => {
-                    if (!marker.promptText) return;
-                    this.promptState?.onPromptHover?.(marker.promptText);
+                    if (!marker.promptId || !marker.promptText) return;
+                    this.promptState?.onPromptHover?.(marker.zone, marker.promptId, marker.promptText);
                 });
                 dotGroup.addEventListener('pointerleave', () => {
                     this.promptState?.onPromptHoverEnd?.();
@@ -377,15 +376,9 @@ export class InquiryGlyph {
                     marker.group.setAttribute('aria-label', prompt.question);
                     marker.group.setAttribute('role', 'button');
                     marker.group.setAttribute('tabindex', '0');
-                    marker.group.classList.add('rt-tooltip-target');
-                    marker.group.setAttribute('data-tooltip', prompt.question);
-                    marker.group.setAttribute('data-tooltip-placement', 'top');
                 } else {
                     marker.group.removeAttribute('role');
                     marker.group.removeAttribute('tabindex');
-                    marker.group.classList.remove('rt-tooltip-target');
-                    marker.group.removeAttribute('data-tooltip');
-                    marker.group.removeAttribute('data-tooltip-placement');
                 }
             });
         });
@@ -535,7 +528,7 @@ export class InquiryGlyph {
         badgeText.textContent = String(Math.round(safeValue * 100));
         const arcColor = InquiryGlyph.mixColors(ARC_BASE_TINT, ARC_MAX_GREEN, safeValue);
         badgeText.style.setProperty('--ert-inquiry-badge-text-color', arcColor);
-        badgeText.setAttribute('fill', arcColor);
+        badgeText.style.setProperty('fill', arcColor);
         const badgeColor = InquiryGlyph.darkenColor(arcColor, DOT_DARKEN);
         badgeCircle.style.setProperty('--ert-inquiry-badge-color', badgeColor);
     }

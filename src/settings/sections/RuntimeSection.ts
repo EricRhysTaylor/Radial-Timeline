@@ -103,10 +103,12 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     // Professional Gate
     // ─────────────────────────────────────────────────────────────────────────
     if (!hasProfessional) {
-        const gateEl = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} rt-professional-gate` });
-        gateEl.createDiv({ 
-            cls: `${ERT_CLASSES.SECTION_DESC} rt-professional-gate-message`, 
-            text: 'Runtime estimation requires a Pro license. Unlock this feature by entering your license key above. Run local or AI-powered estimates for screenplays and novels. Set custom word rates and parenthetical timings. Additional Chronologue duration arcs, sub-mode in blue and scene hover metadata.' 
+        const gateEl = containerEl.createDiv({
+            cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-panel--muted`
+        });
+        gateEl.createDiv({
+            cls: `${ERT_CLASSES.FIELD_NOTE} ert-runtime-gate-note`,
+            text: 'Runtime estimation requires a Pro license. Unlock this feature by entering your license key above. Run local or AI-powered estimates for screenplays and novels. Set custom word rates and parenthetical timings. Additional Chronologue duration arcs, sub-mode in blue and scene hover metadata.'
         });
         return;
     }
@@ -153,8 +155,8 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
     // Flash helper for input validation
     const flash = (input: HTMLInputElement, type: 'success' | 'error') => {
-        const successClass = 'rt-setting-input-success';
-        const errorClass = 'rt-setting-input-error';
+        const successClass = 'ert-input--success';
+        const errorClass = 'ert-input--error';
         input.classList.remove(type === 'success' ? errorClass : successClass);
         input.classList.add(type === 'success' ? successClass : errorClass);
         window.setTimeout(() => input.classList.remove(type === 'success' ? successClass : errorClass), type === 'success' ? 900 : 1200);
@@ -209,17 +211,16 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             const contentType = selectedProfile.contentType || 'novel';
             const ratesHeader = detailsContainer.createDiv({
-                cls: `${ERT_CLASSES.CONTROL} rt-runtime-subheader`
+                cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_INLINE} ert-runtime-subheader`
             });
-            const ratesHeaderEl = ratesHeader.createEl('h4', {
-                cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`,
-                text: 'Rates & timings'
-            });
+            const ratesHeaderLeft = ratesHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
             const ratesIconName = contentType === 'screenplay' ? 'projector' : 'mic-vocal';
-            const ratesIcon = ratesHeaderEl.createSpan({ cls: 'ert-setting-heading-icon' });
+            const ratesIcon = ratesHeaderLeft.createSpan();
             setIcon(ratesIcon, ratesIconName);
-            ratesHeaderEl.prepend(ratesIcon);
-            addWikiLinkToElement(ratesHeaderEl, 'Settings#runtime-estimation');
+            const ratesHeaderMain = ratesHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
+            ratesHeaderMain.createEl('h4', { cls: ERT_CLASSES.SECTION_TITLE, text: 'Rates & timings' });
+            const ratesHeaderRight = ratesHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
+            addWikiLinkToElement(ratesHeaderRight, 'Settings#runtime-estimation');
 
             // Content Type Selection
             addProRow(new Setting(detailsContainer))
@@ -245,7 +246,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                         text.inputEl.type = 'number';
                         text.inputEl.min = '50';
                         text.inputEl.max = '300';
-                        text.inputEl.addClass('rt-input-xs');
+                        text.inputEl.addClass('ert-input--xs');
                         text.setValue(String(selectedProfile.dialogueWpm ?? 160));
                         plugin.registerDomEvent(text.inputEl, 'blur', async () => {
                             const num = parseInt(text.getValue());
@@ -265,7 +266,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                         text.inputEl.type = 'number';
                         text.inputEl.min = '50';
                         text.inputEl.max = '300';
-                        text.inputEl.addClass('rt-input-xs');
+                        text.inputEl.addClass('ert-input--xs');
                         text.setValue(String(selectedProfile.actionWpm ?? 100));
                         plugin.registerDomEvent(text.inputEl, 'blur', async () => {
                             const num = parseInt(text.getValue());
@@ -300,7 +301,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                             text.inputEl.type = 'number';
                             text.inputEl.min = '0';
                             text.inputEl.max = '60';
-                            text.inputEl.addClass('rt-input-xs');
+                            text.inputEl.addClass('ert-input--xs');
                             const currentValue = selectedProfile[p.key] as number | undefined;
                             text.setValue(String(currentValue ?? p.defaultVal));
                             plugin.registerDomEvent(text.inputEl, 'blur', async () => {
@@ -335,7 +336,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                         text.inputEl.type = 'number';
                         text.inputEl.min = '50';
                         text.inputEl.max = '300';
-                        text.inputEl.addClass('rt-input-xs');
+                        text.inputEl.addClass('ert-input--xs');
                         text.setValue(String(selectedProfile.narrationWpm ?? 150));
                         plugin.registerDomEvent(text.inputEl, 'blur', async () => {
                             const num = parseInt(text.getValue());
@@ -351,20 +352,19 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             // Session planning (optional, per profile)
             const sessionHeader = detailsContainer.createDiv({
-                cls: `${ERT_CLASSES.CONTROL} rt-runtime-subheader`
+                cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK} ert-runtime-subheader`
             });
-            const sessionHeaderEl = sessionHeader.createEl('h4', {
-                cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`,
-                text: 'Session planning (optional)'
-            });
-            const sessionIcon = sessionHeaderEl.createSpan({ cls: 'ert-setting-heading-icon' });
+            const sessionHeaderLeft = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
+            const sessionIcon = sessionHeaderLeft.createSpan();
             setIcon(sessionIcon, 'calendar-clock');
-            sessionHeaderEl.prepend(sessionIcon);
-            addWikiLinkToElement(sessionHeaderEl, 'Settings#runtime-estimation');
-            sessionHeader.createDiv({
+            const sessionHeaderMain = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
+            sessionHeaderMain.createEl('h4', { cls: ERT_CLASSES.SECTION_TITLE, text: 'Session planning (optional)' });
+            sessionHeaderMain.createDiv({
                 cls: ERT_CLASSES.SECTION_DESC,
                 text: 'Used in the Outline export: Index cards (JSON) summary to estimate writing hours and total sessions.'
             });
+            const sessionHeaderRight = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
+            addWikiLinkToElement(sessionHeaderRight, 'Settings#runtime-estimation');
             const session = selectedProfile.sessionPlanning || {};
 
             addProRow(new Setting(detailsContainer))
@@ -374,7 +374,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     text.inputEl.type = 'number';
                     text.inputEl.min = '0';
                     text.inputEl.max = '1000';
-                    text.inputEl.addClass('rt-input-xs');
+                    text.inputEl.addClass('ert-input--xs');
                     text.setValue(session.draftingWpm ? String(session.draftingWpm) : '');
                     plugin.registerDomEvent(text.inputEl, 'blur', async () => {
                         const num = parseInt(text.getValue());
@@ -396,7 +396,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     text.inputEl.type = 'number';
                     text.inputEl.min = '0';
                     text.inputEl.max = '1440';
-                    text.inputEl.addClass('rt-input-xs');
+                    text.inputEl.addClass('ert-input--xs');
                     text.setValue(session.dailyMinutes ? String(session.dailyMinutes) : '');
                     plugin.registerDomEvent(text.inputEl, 'blur', async () => {
                         const num = parseInt(text.getValue());
@@ -413,9 +413,12 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             // Explicit Duration Patterns (always shown when enabled)
             const patternsInfo = detailsContainer.createDiv({
-                cls: `setting-item-description ${ERT_CLASSES.SECTION_DESC} ${ERT_CLASSES.ELEMENT_BLOCK} rt-runtime-patterns-info`
+                cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-panel--muted ert-runtime-patterns`
             });
-            patternsInfo.createEl('p', { text: 'Explicit duration patterns are always parsed and added to runtime:' });
+            patternsInfo.createEl('p', {
+                cls: ERT_CLASSES.SECTION_DESC,
+                text: 'Explicit duration patterns are always parsed and added to runtime:'
+            });
             const patternsList = patternsInfo.createEl('ul');
             const patterns = [
                 '(30 seconds) or (30s)',
@@ -483,6 +486,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     const modal = new Modal(plugin.app);
                     const { modalEl, contentEl } = modal;
                     modalEl.classList.add('rt-modal-shell');
+                    modalEl.classList.add(ERT_CLASSES.ROOT, ERT_CLASSES.SKIN_PRO);
                     modalEl.style.width = '400px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
                     modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
                     contentEl.addClass('rt-modal-container');
@@ -494,7 +498,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     const inputEl = inputContainer.createEl('input', {
                         type: 'text',
                         value: selectedProfile.label || '',
-                        cls: 'rt-input-lg'
+                        cls: 'ert-input--lg'
                     });
 
                     window.setTimeout(() => {
