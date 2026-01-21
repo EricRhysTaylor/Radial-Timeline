@@ -100,9 +100,9 @@ export class ManuscriptOptionsModal extends Modal {
             modalEl.style.width = '760px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.classList.add('rt-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-modal-shell');
         }
-        contentEl.classList.add('rt-modal-container', 'rt-manuscript-modal');
+        contentEl.classList.add('ert-modal-container', 'rt-manuscript-modal');
 
         this.renderSkeleton(contentEl);
         await this.loadSubplots();
@@ -129,25 +129,25 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     private renderSkeleton(container: HTMLElement): void {
-        const hero = container.createDiv({ cls: 'rt-modal-header' });
+        const hero = container.createDiv({ cls: 'ert-modal-header' });
         
         // Pro badge with signature icon (only when Pro is active)
         if (this.isPro) {
-            const badge = hero.createSpan({ cls: 'rt-modal-badge rt-modal-badge-pro' });
-            const iconSpan = badge.createSpan({ cls: 'rt-modal-badge-icon' });
+            const badge = hero.createSpan({ cls: 'ert-modal-badge ert-modal-badge-pro' });
+            const iconSpan = badge.createSpan({ cls: 'ert-modal-badge-icon' });
             setIcon(iconSpan, 'signature');
             badge.createSpan({ text: 'Pro' });
         }
         
         hero.createDiv({
-            cls: 'rt-modal-title',
+            cls: 'ert-modal-title',
             text: t('manuscriptModal.title')
         });
         hero.createDiv({
-            cls: 'rt-modal-subtitle',
+            cls: 'ert-modal-subtitle',
             text: t('manuscriptModal.description')
         });
-        this.heroMetaEl = hero.createDiv({ cls: 'rt-modal-meta' });
+        this.heroMetaEl = hero.createDiv({ cls: 'ert-modal-meta' });
         this.renderHeroMeta([t('manuscriptModal.heroLoading')]);
 
         // ═══════════════════════════════════════════════════════════════════
@@ -383,7 +383,7 @@ export class ManuscriptOptionsModal extends Modal {
         // ═══════════════════════════════════════════════════════════════════
         // ACTIONS
         // ═══════════════════════════════════════════════════════════════════
-        const actions = container.createDiv({ cls: 'rt-modal-actions' });
+        const actions = container.createDiv({ cls: 'ert-modal-actions' });
         this.actionButton = new ButtonComponent(actions)
             .setButtonText(t('manuscriptModal.actionCreate'))
             .setCta()
@@ -399,7 +399,7 @@ export class ManuscriptOptionsModal extends Modal {
     private renderHeroMeta(items: string[]): void {
         if (!this.heroMetaEl) return;
         this.heroMetaEl.empty();
-        items.forEach(item => this.heroMetaEl?.createSpan({ cls: 'rt-modal-meta-item', text: item }));
+        items.forEach(item => this.heroMetaEl?.createSpan({ cls: 'ert-modal-meta-item', text: item }));
     }
 
     /**

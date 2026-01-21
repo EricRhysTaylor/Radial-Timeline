@@ -24,19 +24,19 @@ class TextInputModal extends Modal {
         titleEl.setText('');
         
         if (modalEl) {
-            modalEl.classList.add('rt-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-modal-shell');
             modalEl.style.width = '480px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('rt-modal-container');
+        contentEl.addClass('ert-modal-container');
         contentEl.addClass('rt-text-input-modal');
 
         // Header
-        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
-        header.createDiv({ cls: 'rt-modal-title', text: this.title });
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createDiv({ cls: 'ert-modal-title', text: this.title });
 
         // Input field in a container
-        const inputContainer = contentEl.createDiv({ cls: 'rt-search-input-container' });
+        const inputContainer = contentEl.createDiv({ cls: 'ert-search-input-container' });
         this.inputEl = inputContainer.createEl('input', {
             type: 'text',
             value: this.defaultValue,
@@ -66,7 +66,7 @@ class TextInputModal extends Modal {
         (this as any)._keydownHandler = handleKeydown;
 
         // Buttons
-        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
 
         new ButtonComponent(buttonRow)
             .setButtonText('OK')
@@ -130,19 +130,19 @@ export class AiContextModal extends Modal {
         const { contentEl, titleEl, modalEl } = this;
         // Use generic modal base + AI Context specific styling
         if (modalEl) {
-            modalEl.classList.add('rt-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-modal-shell');
             modalEl.style.width = '660px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
         titleEl.setText('');
-        contentEl.addClass('rt-modal-container');
+        contentEl.addClass('ert-modal-container');
         contentEl.addClass('rt-ai-context-modal');
 
-        const hero = contentEl.createDiv({ cls: 'rt-modal-header' });
-        hero.createDiv({ cls: 'rt-modal-title', text: 'AI context templates' });
+        const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
+        hero.createDiv({ cls: 'ert-modal-title', text: 'AI context templates' });
         hero.createDiv({
-            cls: 'rt-modal-subtitle',
+            cls: 'ert-modal-subtitle',
             text: 'Define context prepended to AI prompts and Gossamer scoring.'
         });
 
@@ -226,7 +226,7 @@ export class AiContextModal extends Modal {
         (this as any)._inputHandler = handleInput;
 
         // Action buttons
-        const actionRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const actionRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
         
         // Save button
         this.saveButton = new ButtonComponent(actionRow)

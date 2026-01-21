@@ -205,10 +205,10 @@ export class GossamerScoreModal extends Modal {
       modalEl.style.width = '980px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
       modalEl.style.maxWidth = '98vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
       modalEl.style.maxHeight = '92vh'; // Prevent button clipping at bottom
-      modalEl.classList.add('rt-modal-shell');
+      modalEl.classList.add('ert-ui', 'ert-modal-shell');
     }
 
-    contentEl.addClass('rt-modal-container', 'rt-gossamer-score-modal');
+    contentEl.addClass('ert-modal-container', 'rt-gossamer-score-modal');
 
     // Use settings as source of truth for beat system
     const settingsSystem = this.plugin.settings.beatSystem || 'Save The Cat';
@@ -268,13 +268,13 @@ export class GossamerScoreModal extends Modal {
     // const rangeValidation = validateBeatRanges(filteredBeats, settingsSystem);
 
     // Title with plot system name rendered in hero card
-    const headerEl = contentEl.createDiv({ cls: 'rt-modal-header' });
-    headerEl.createSpan({ text: 'Gossamer momentum', cls: 'rt-modal-badge' });
-    headerEl.createDiv({ text: `${settingsSystem} beat system`, cls: 'rt-modal-title' });
-    const heroSubtitle = headerEl.createDiv({ cls: 'rt-modal-subtitle' });
+    const headerEl = contentEl.createDiv({ cls: 'ert-modal-header' });
+    headerEl.createSpan({ text: 'Gossamer momentum', cls: 'ert-modal-badge' });
+    headerEl.createDiv({ text: `${settingsSystem} beat system`, cls: 'ert-modal-title' });
+    const heroSubtitle = headerEl.createDiv({ cls: 'ert-modal-subtitle' });
     heroSubtitle.setText('Enter momentum scores (0-100) for each beat. Previous scores will be saved as history.');
-    const heroMeta = headerEl.createDiv({ cls: 'rt-modal-meta' });
-    heroMeta.createSpan({ text: `Beats detected: ${actualCount}`, cls: 'rt-modal-meta-item' });
+    const heroMeta = headerEl.createDiv({ cls: 'ert-modal-meta' });
+    heroMeta.createSpan({ text: `Beats detected: ${actualCount}`, cls: 'ert-modal-meta-item' });
 
     // Show warning if no beats match
     if (actualCount === 0) {
@@ -886,13 +886,13 @@ export class GossamerScoreModal extends Modal {
       modal.titleEl.setText('');
       contentEl.empty();
       
-      modalEl.classList.add('rt-modal-shell');
-      contentEl.addClass('rt-modal-container', 'rt-gossamer-score-modal');
+      modalEl.classList.add('ert-ui', 'ert-modal-shell');
+      contentEl.addClass('ert-modal-container', 'rt-gossamer-score-modal');
 
-      const hero = contentEl.createDiv({ cls: 'rt-modal-header' });
-      hero.createSpan({ text: 'Warning', cls: 'rt-modal-badge' });
-      hero.createDiv({ text: 'Delete all Gossamer scores', cls: 'rt-modal-title' });
-      hero.createDiv({ cls: 'rt-modal-subtitle', text: 'This action cannot be undone.' });
+      const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
+      hero.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
+      hero.createDiv({ text: 'Delete all Gossamer scores', cls: 'ert-modal-title' });
+      hero.createDiv({ cls: 'ert-modal-subtitle', text: 'This action cannot be undone.' });
 
       const card = contentEl.createDiv({ cls: 'rt-glass-card' });
 
@@ -1010,14 +1010,14 @@ class NormalizeConfirmationModal extends Modal {
     contentEl.empty();
 
     if (modalEl) {
-      modalEl.classList.add('rt-modal-shell');
+      modalEl.classList.add('ert-ui', 'ert-modal-shell');
     }
-    contentEl.addClass('rt-modal-container', 'rt-gossamer-score-modal');
+    contentEl.addClass('ert-modal-container', 'rt-gossamer-score-modal');
 
-    const hero = contentEl.createDiv({ cls: 'rt-modal-header' });
-    hero.createSpan({ text: 'Warning', cls: 'rt-modal-badge' });
-    hero.createDiv({ text: 'Normalize Gossamer history?', cls: 'rt-modal-title' });
-    hero.createDiv({ cls: 'rt-modal-subtitle', text: 'This action cannot be undone.' });
+    const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
+    hero.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
+    hero.createDiv({ text: 'Normalize Gossamer history?', cls: 'ert-modal-title' });
+    hero.createDiv({ cls: 'ert-modal-subtitle', text: 'This action cannot be undone.' });
 
     const card = contentEl.createDiv({ cls: 'rt-glass-card' });
 

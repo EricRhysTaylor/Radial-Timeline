@@ -34,18 +34,18 @@ export class CreateBeatsTemplatesModal extends Modal {
     titleEl.setText('');
     
     if (modalEl) {
-      modalEl.classList.add('rt-modal-shell');
+      modalEl.classList.add('ert-ui', 'ert-modal-shell');
       modalEl.style.width = '620px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
       modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
     }
-    contentEl.addClass('rt-modal-container');
+    contentEl.addClass('ert-modal-container');
     contentEl.addClass('rt-create-plot-templates-modal');
 
     // Header
-    const header = contentEl.createDiv({ cls: 'rt-modal-header' });
-    header.createSpan({ cls: 'rt-modal-badge', text: 'Setup' });
-    header.createDiv({ cls: 'rt-modal-title', text: 'Create beat template notes' });
-    header.createDiv({ cls: 'rt-modal-subtitle', text: `This will create ${this.beatCount} beat notes for "${this.beatSystem}".` });
+    const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+    header.createSpan({ cls: 'ert-modal-badge', text: 'Setup' });
+    header.createDiv({ cls: 'ert-modal-title', text: 'Create beat template notes' });
+    header.createDiv({ cls: 'ert-modal-subtitle', text: `This will create ${this.beatCount} beat notes for "${this.beatSystem}".` });
 
     // Info card with example
     const card = contentEl.createDiv({ cls: 'rt-glass-card' });
@@ -70,7 +70,7 @@ Gossamer1:
     card.createDiv({ cls: 'rt-sub-card-note', text: locationText });
 
     // Buttons
-    const buttonContainer = contentEl.createDiv({ cls: 'rt-modal-actions' });
+    const buttonContainer = contentEl.createDiv({ cls: 'ert-modal-actions' });
 
     new ButtonComponent(buttonContainer)
       .setButtonText(`Create ${this.beatCount} notes`)

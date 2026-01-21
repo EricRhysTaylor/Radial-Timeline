@@ -477,8 +477,7 @@
    ========================================================================== */
 
 /* Consolidated action row pattern */
-.rt-actions,
-.rt-modal-actions {
+.rt-actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;

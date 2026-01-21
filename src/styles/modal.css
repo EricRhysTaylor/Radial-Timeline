@@ -1,67 +1,9 @@
-.rt-modal-shell.modal {
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}
-
-.rt-modal-container {
-  position: relative;
-  isolation: isolate;
-  padding: 26px 50px 22px;
-  border-radius: 20px;
-  background: var(--ert-modal-bg, color-mix(in srgb, var(--background-primary) 88%, transparent));
-  border: 1px solid var(--ert-modal-border, var(--background-modifier-border));
-  box-shadow: var(--ert-modal-shadow, var(--shadow-l)), var(--ert-modal-glow, none);
-  backdrop-filter: var(--ert-modal-blur, blur(16px));
-  -webkit-backdrop-filter: var(--ert-modal-blur, blur(16px));
-}
-
-.rt-modal-container::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: var(--ert-modal-tint, transparent);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.rt-modal-container > * {
-  position: relative;
-  z-index: 1;
-}
-
-/* Default sizing for modal inputs (override with utilities above when needed) */
-.rt-modal-shell input[type="text"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-xl):not(.rt-input-full),
-.rt-modal-shell input[type="number"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-xl):not(.rt-input-full),
-.rt-modal-shell input[type="password"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-xl):not(.rt-input-full) {
-  width: var(--rt-input-width-md);
-  max-width: 100%;
-}
-
-.rt-modal-shell input.rt-input-full {
-  width: 100%;
-  min-width: var(--rt-input-width-xl);
-}
-
-.rt-modal-shell textarea {
-  width: 100%;
-}
-
-.rt-modal-header {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  margin-bottom: 20px;
-}
-
 /* Template Dialog - Simple modals for save/delete/confirm actions */
 .rt-template-dialog {
   padding: 22px 28px 20px;
 }
 
-.rt-template-dialog .rt-modal-header {
+.rt-template-dialog .ert-modal-header {
   margin-bottom: 16px;
 }
 
@@ -82,12 +24,11 @@
   line-height: 1.5;
 }
 
-.rt-template-dialog .rt-modal-actions {
+.rt-template-dialog .ert-modal-actions {
   margin-top: 16px;
 }
 
 /* Consolidated badge pattern - all badges with identical styling grouped together */
-.rt-modal-badge,
 .rt-scene-analysis-badge,
 .rt-subplot-picker-badge {
   display: inline-block;
@@ -103,32 +44,7 @@
   margin-bottom: 8px;
 }
 
-.rt-modal-title {
-  font-size: 1.8rem;
-  font-weight: 700;
-  background: linear-gradient(to right, #fff, #f0f0f0);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: -0.01em;
-  margin: 0; /* Reset h1/h2 default margins when used on heading elements */
-}
-
-.rt-modal-subtitle {
-  font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.7);
-  line-height: 1.4;
-}
-
-.rt-modal-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
-}
-
 /* Consolidated meta-item base pattern */
-.rt-modal-meta-item,
 .rt-pulse-hero-meta-item {
   display: inline-flex;
   align-items: center;
@@ -156,9 +72,9 @@
   border: 1px solid rgba(255, 165, 0, 0.2);
 }
 
-/* rt-modal-actions base consolidated in base.css */
+/* ert-modal-actions base consolidated in rt-ui.css */
 
-.rt-pulse-modal .rt-modal-actions {
+.rt-pulse-modal .ert-modal-actions {
   margin-top: 10px;
 }
 
@@ -170,8 +86,7 @@
 }
 
 /* Pro badge styling - used in manuscript modal and runtime modal */
-.rt-modal-badge.rt-modal-badge-pro,
-.rt-runtime-modal-shell .rt-modal-badge {
+.rt-runtime-modal-shell .ert-modal-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -180,15 +95,13 @@
   color: var(--rt-pro-color, #d946ef);
 }
 
-.rt-modal-badge-pro .rt-modal-badge-icon,
-.rt-runtime-modal-shell .rt-modal-badge-icon {
+.rt-runtime-modal-shell .ert-modal-badge-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-.rt-modal-badge-pro .rt-modal-badge-icon svg,
-.rt-runtime-modal-shell .rt-modal-badge-icon svg {
+.rt-runtime-modal-shell .ert-modal-badge-icon svg {
   width: 14px;
   height: 14px;
   stroke: var(--rt-pro-color, #d946ef);
@@ -196,54 +109,10 @@
   fill: none;
 }
 
-.rt-modal-shell.modal:has(.rt-search-modal) {
-  width: min(600px, 90vw);
-}
-
 /* Rename Subplot Modal sizing */
 .rt-rename-subplot-modal.modal {
   width: min(640px, 92vw);
   max-height: 92vh;
-}
-
-.rt-search-modal {
-  display: flex;
-  flex-direction: column;
-}
-
-.rt-search-input-container {
-  margin-top: 20px;
-  width: 100%;
-  display: flex;
-}
-
-.rt-search-input-container > * {
-  flex: 1;
-}
-
-.rt-search-input {
-  width: 100%;
-  padding: 12px 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.25);
-  color: var(--text-normal);
-  font-size: 1rem;
-}
-
-.rt-search-input::placeholder {
-  color: var(--text-muted);
-}
-
-.rt-search-input:focus {
-  outline: none;
-  border-color: rgba(255, 255, 255, 0.25);
-  background: rgba(0, 0, 0, 0.35);
-}
-
-.rt-search-input.rt-input-error {
-  border-color: var(--text-error);
-  background: rgba(255, 0, 0, 0.08);
 }
 
 .rt-ai-context-actions {
@@ -331,7 +200,7 @@
   gap: 16px;
 }
 
-/* rt-scene-analysis-badge - consolidated above with rt-modal-badge */
+/* rt-scene-analysis-badge - consolidated above with ert-modal-badge */
 
 .rt-scene-analysis-meta {
   margin-top: 12px;
@@ -414,7 +283,7 @@
   color: var(--text-normal);
 }
 
-.rt-modal-shell.modal:has(.rt-manage-subplots-modal) {
+.ert-modal-shell.modal:has(.rt-manage-subplots-modal) {
   width: min(700px, 90vw);
 }
 
@@ -468,26 +337,13 @@
   gap: 10px;
 }
 
-.rt-modal-shell input[type="date"],
-.rt-modal-shell input[type="time"] {
-  background-color: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: var(--text-normal);
-  font-family: var(--font-interface);
-  font-size: var(--font-ui-medium);
-  line-height: 1.3;
-  padding: 6px 10px;
-  border-radius: 8px;
-  height: auto;
-}
-
 .rt-planetary-modal .setting-item {
   border-top: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   padding: 12px 0;
 }
 
-.rt-planetary-modal .rt-modal-header {
+.rt-planetary-modal .ert-modal-header {
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   margin-bottom: 0;
@@ -718,7 +574,7 @@
   color: var(--text-muted);
 }
 
-/* rt-subplot-picker-badge - consolidated at top with rt-modal-badge */
+/* rt-subplot-picker-badge - consolidated at top with ert-modal-badge */
 
 .rt-release-notes-modal.modal {
   width: min(70vw, 980px);
@@ -1223,7 +1079,7 @@
   line-height: 1.5;
 }
 
-.rt-beat-placement-modal .rt-modal-buttons {
+.rt-beat-placement-modal .ert-modal-buttons {
   margin-top: 20px;
   display: flex;
   gap: 10px;
@@ -1448,7 +1304,7 @@
   margin-top: 8px;
 }
 
-/* rt-pulse-hero-meta-item - consolidated above with rt-modal-meta-item */
+/* rt-pulse-hero-meta-item - consolidated above with ert-modal-meta-item */
 /* rt-pulse-hero-meta-item-warning - warning override consolidated above */
 
 .rt-gossamer-score-cards {
@@ -1599,7 +1455,7 @@
   font-size: 0.9rem;
 }
 
-.rt-gossamer-score-modal .rt-modal-actions {
+.rt-gossamer-score-modal .ert-modal-actions {
   margin-top: 12px;
   flex-shrink: 0;
   display: flex;
@@ -1607,7 +1463,7 @@
   gap: 10px;
 }
 
-.rt-gossamer-score-modal .rt-modal-actions.rt-inline-actions {
+.rt-gossamer-score-modal .ert-modal-actions.rt-inline-actions {
   justify-content: space-between;
   align-items: center;
 }
@@ -1658,7 +1514,7 @@
   gap: 10px;
 }
 
-.rt-purge-confirm-modal .rt-modal-subtitle {
+.rt-purge-confirm-modal .ert-modal-subtitle {
   margin-bottom: 12px;
 }
 
@@ -1813,7 +1669,7 @@
 /* AUTHOR PROGRESS REPORT (APR) MODAL                                          */
 /* -------------------------------------------------------------------------- */
 
-/* APR Modal uses standard rt-modal-shell + rt-modal-container pattern */
+/* APR Modal uses standard ert-modal-shell + ert-modal-container pattern */
 /* Sizing handled via inline styles in the modal class */
 
 /* APR SVG hotspot - clickable timeline area */
@@ -1856,12 +1712,12 @@
   margin-bottom: 8px;
 }
 
-.rt-apr-badge .rt-modal-badge-icon {
+.rt-apr-badge .ert-modal-badge-icon {
   display: inline-flex;
   align-items: center;
 }
 
-.rt-apr-badge .rt-modal-badge-icon svg {
+.rt-apr-badge .ert-modal-badge-icon svg {
   width: 14px;
   height: 14px;
   stroke: var(--rt-social-color, #ffd41d);

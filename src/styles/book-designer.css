@@ -24,13 +24,13 @@
 }
 
 /* Hero meta status pills */
-.rt-book-designer-modal .rt-modal-meta-item.rt-meta-auto {
+.rt-book-designer-modal .ert-modal-meta-item.rt-meta-auto {
     background: rgba(255, 255, 255, 0.06);
     border-color: rgba(255, 255, 255, 0.14);
     color: var(--text-muted);
 }
 
-.rt-book-designer-modal .rt-modal-meta-item.rt-meta-manual {
+.rt-book-designer-modal .ert-modal-meta-item.rt-meta-manual {
     background: rgba(var(--interactive-accent-rgb), 0.12);
     border-color: rgba(var(--interactive-accent-rgb), 0.6);
     color: var(--text-normal);

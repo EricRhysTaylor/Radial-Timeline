@@ -23,7 +23,7 @@ import { buildDefaultInquiryPromptConfig, normalizeInquiryPromptConfig } from '.
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
 import { openOrRevealFile } from '../utils/fileUtils';
 import { InquiryGlyph, FLOW_RADIUS, FLOW_STROKE } from './components/InquiryGlyph';
-import { InquiryRunnerStub } from './runner/InquiryRunnerStub';
+import { InquiryRunnerService } from './runner/InquiryRunnerService';
 import type { CorpusManifest, EvidenceParticipationRules } from './runner/types';
 import { InquirySessionStore } from './InquirySessionStore';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
@@ -48,20 +48,22 @@ const VIEWBOX_MAX = 800;
 const VIEWBOX_SIZE = 1600;
 const INQUIRY_REFERENCE_ONLY_CLASSES = new Set(['character', 'place', 'power']);
 const PREVIEW_PANEL_WIDTH = 640;
-const PREVIEW_PANEL_Y = -490;
+const PREVIEW_PANEL_Y = -540;
 const PREVIEW_PANEL_PADDING_X = 32;
 const PREVIEW_PANEL_PADDING_Y = 20;
 const PREVIEW_PANEL_RADIUS = 18;
-const PREVIEW_HERO_LINE_HEIGHT = 28;
+const PREVIEW_HERO_LINE_HEIGHT = 30;
 const PREVIEW_HERO_MAX_LINES = 2;
-const PREVIEW_DETAIL_GAP = 12;
-const PREVIEW_ROW_HEIGHT = 20;
+const PREVIEW_META_GAP = 6;
+const PREVIEW_META_LINE_HEIGHT = 20;
+const PREVIEW_DETAIL_GAP = 16;
+const PREVIEW_ROW_HEIGHT = 24;
 const PREVIEW_GROUP_GAP = 8;
 const PREVIEW_LABEL_X = 12;
 const PREVIEW_VALUE_X = 140;
 const PREVIEW_ICON_RADIUS = 3;
-const PREVIEW_FOOTER_GAP = 10;
-const PREVIEW_FOOTER_HEIGHT = 18;
+const PREVIEW_FOOTER_GAP = 12;
+const PREVIEW_FOOTER_HEIGHT = 22;
 
 type InquiryQuestion = {
     id: string;
@@ -74,6 +76,7 @@ type InquiryQuestion = {
 type InquiryPreviewRow = {
     group: SVGGElement;
     icon: SVGCircleElement;
+    divider: SVGLineElement;
     label: SVGTextElement;
     value: SVGTextElement;
 };
@@ -123,6 +126,7 @@ export class InquiryView extends ItemView {
     private previewGroup?: SVGGElement;
     private previewBg?: SVGRectElement;
     private previewHero?: SVGTextElement;
+    private previewMeta?: SVGTextElement;
     private previewFooter?: SVGTextElement;
     private previewRows: InquiryPreviewRow[] = [];
     private previewHideTimer?: number;
@@ -138,13 +142,13 @@ export class InquiryView extends ItemView {
     private corpusResolver: InquiryCorpusResolver;
     private corpus?: InquiryCorpusSnapshot;
     private focusPersistTimer?: number;
-    private runner: InquiryRunnerStub;
+    private runner: InquiryRunnerService;
     private sessionStore: InquirySessionStore;
 
     constructor(leaf: WorkspaceLeaf, plugin: RadialTimelinePlugin) {
         super(leaf);
         this.plugin = plugin;
-        this.runner = new InquiryRunnerStub();
+        this.runner = new InquiryRunnerService(this.plugin, this.app.vault, this.app.metadataCache, this.plugin.settings.frontmatterMappings);
         this.ensurePromptConfig();
         this.state.selectedPromptIds = this.buildDefaultSelectedPromptIds();
         this.sessionStore = new InquirySessionStore(plugin);
@@ -287,7 +291,7 @@ export class InquiryView extends ItemView {
         this.engineBadgeGroup.appendChild(this.engineBadgeTitle);
         this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'click', () => this.openAiSettings());
 
-        const minimapGroup = this.createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, -550);
+        const minimapGroup = this.createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, -600);
         const badgeWidth = 160;
         const badgeHeight = 34;
         const badgeGroup = this.createSvgGroup(minimapGroup, 'ert-inquiry-context-badge', -badgeWidth / 2, -badgeHeight - 12);
@@ -387,14 +391,26 @@ export class InquiryView extends ItemView {
         panel.appendChild(bg);
         this.previewBg = bg;
 
-        const hero = this.createSvgText(panel, 'ert-inquiry-preview-hero', '', -PREVIEW_PANEL_WIDTH / 2 + PREVIEW_PANEL_PADDING_X, PREVIEW_PANEL_PADDING_Y);
-        hero.setAttribute('text-anchor', 'start');
+        const hero = this.createSvgText(panel, 'ert-inquiry-preview-hero', '', 0, PREVIEW_PANEL_PADDING_Y);
+        hero.setAttribute('text-anchor', 'middle');
         hero.setAttribute('dominant-baseline', 'hanging');
         this.previewHero = hero;
+
+        const meta = this.createSvgText(panel, 'ert-inquiry-preview-meta', '', 0, PREVIEW_PANEL_PADDING_Y);
+        meta.setAttribute('text-anchor', 'middle');
+        meta.setAttribute('dominant-baseline', 'hanging');
+        this.previewMeta = meta;
 
         const rowLabels = ['Scope', 'Evidence', 'Classes', 'Roots', 'AI Engine', 'Est. Cost'];
         this.previewRows = rowLabels.map(label => {
             const group = this.createSvgGroup(panel, 'ert-inquiry-preview-row');
+            const divider = this.createSvgElement('line');
+            divider.classList.add('ert-inquiry-preview-row-divider');
+            divider.setAttribute('x1', '0');
+            divider.setAttribute('x2', String(PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2)));
+            divider.setAttribute('y1', String(PREVIEW_ROW_HEIGHT / 2));
+            divider.setAttribute('y2', String(PREVIEW_ROW_HEIGHT / 2));
+            group.appendChild(divider);
             const icon = this.createSvgElement('circle');
             icon.classList.add('ert-inquiry-preview-icon');
             icon.setAttribute('r', String(PREVIEW_ICON_RADIUS));
@@ -410,7 +426,7 @@ export class InquiryView extends ItemView {
             valueEl.setAttribute('dominant-baseline', 'middle');
             valueEl.setAttribute('text-anchor', 'start');
 
-            return { group, icon, label: labelEl, value: valueEl };
+            return { group, icon, divider, label: labelEl, value: valueEl };
         });
 
         const footer = this.createSvgText(panel, 'ert-inquiry-preview-footer', 'Hover previews what will be sent. Click runs the inquiry.', -PREVIEW_PANEL_WIDTH / 2 + PREVIEW_PANEL_PADDING_X, 0);
@@ -1388,7 +1404,12 @@ export class InquiryView extends ItemView {
                 questionText: question.question,
                 questionZone: question.zone,
                 corpus: manifest,
-                rules: this.getEvidenceRules()
+                rules: this.getEvidenceRules(),
+                ai: {
+                    provider: this.plugin.settings.defaultAiProvider || 'openai',
+                    modelId: this.getActiveInquiryModelId(),
+                    modelLabel: this.getActiveInquiryModelLabel()
+                }
             });
 
             this.state.activeResult = result;
@@ -1480,14 +1501,6 @@ export class InquiryView extends ItemView {
             (sources.classes || []).map(config => [config.className, config])
         );
         const classScope = this.getClassScopeConfig(sources.classScope);
-        if (!classScope.allowAll && classScope.allowed.size === 0) {
-            const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${this.getActiveInquiryModelId()}|`;
-            return {
-                entries,
-                fingerprint: this.hashString(fingerprintRaw),
-                generatedAt: now
-            };
-        }
         const scanRoots = normalizeScanRootPatterns(sources.scanRoots);
         const resolvedRoots = scanRoots.length
             ? ((sources.resolvedScanRoots && sources.resolvedScanRoots.length)
@@ -1495,6 +1508,23 @@ export class InquiryView extends ItemView {
                 : resolveScanRoots(scanRoots, this.app.vault, MAX_RESOLVED_SCAN_ROOTS).resolvedRoots)
             : [];
         const resolvedVaultRoots = resolvedRoots.map(toVaultRoot);
+        const allowedClasses = (sources.classes || [])
+            .filter(config => config.enabled)
+            .filter(config => classScope.allowAll || classScope.allowed.has(config.className))
+            .map(config => config.className);
+
+        if (!classScope.allowAll && classScope.allowed.size === 0) {
+            const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${this.getActiveInquiryModelId()}|`;
+            return {
+                entries,
+                fingerprint: this.hashString(fingerprintRaw),
+                generatedAt: now,
+                resolvedRoots,
+                allowedClasses,
+                synopsisOnly: true,
+                classCounts: {}
+            };
+        }
         const files = this.app.vault.getMarkdownFiles();
 
         const inRoots = (path: string) => {
@@ -1555,10 +1585,19 @@ export class InquiryView extends ItemView {
         const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${modelId}|${fingerprintSource}`;
         const fingerprint = this.hashString(fingerprintRaw);
 
+        const classCounts = entries.reduce<Record<string, number>>((acc, entry) => {
+            acc[entry.class] = (acc[entry.class] || 0) + 1;
+            return acc;
+        }, {});
+
         return {
             entries,
             fingerprint,
-            generatedAt: now
+            generatedAt: now,
+            resolvedRoots,
+            allowedClasses,
+            synopsisOnly: true,
+            classCounts
         };
     }
 
@@ -1573,7 +1612,11 @@ export class InquiryView extends ItemView {
             return {
                 entries,
                 fingerprint: this.hashString(fingerprintRaw),
-                generatedAt: now
+                generatedAt: now,
+                resolvedRoots: [],
+                allowedClasses: [],
+                synopsisOnly: true,
+                classCounts: {}
             };
         }
         const sources = rawSources as {
@@ -1620,10 +1663,22 @@ export class InquiryView extends ItemView {
         const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${modelId}|${fingerprintSource}`;
         const fingerprint = this.hashString(fingerprintRaw);
 
+        const classCounts = entries.reduce<Record<string, number>>((acc, entry) => {
+            acc[entry.class] = (acc[entry.class] || 0) + 1;
+            return acc;
+        }, {});
+        const allowedClasses = classScope.allowAll
+            ? Array.from(new Set(entries.map(entry => entry.class)))
+            : Array.from(classScope.allowed);
+
         return {
             entries,
             fingerprint,
-            generatedAt: now
+            generatedAt: now,
+            resolvedRoots: [],
+            allowedClasses,
+            synopsisOnly: true,
+            classCounts
         };
     }
 
@@ -1882,10 +1937,24 @@ export class InquiryView extends ItemView {
 
         const zoneLabel = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
         const modeLabel = mode === 'flow' ? 'Flow' : 'Depth';
-        const heroText = `${zoneLabel} · ${modeLabel} — ${question}`;
-        const heroLines = this.setWrappedSvgText(this.previewHero, heroText, PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2), PREVIEW_HERO_MAX_LINES, PREVIEW_HERO_LINE_HEIGHT);
+        const heroLines = this.setWrappedSvgText(
+            this.previewHero,
+            question,
+            PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2),
+            PREVIEW_HERO_MAX_LINES,
+            PREVIEW_HERO_LINE_HEIGHT
+        );
+        if (this.previewMeta) {
+            const metaY = PREVIEW_PANEL_PADDING_Y + (heroLines * PREVIEW_HERO_LINE_HEIGHT) + PREVIEW_META_GAP;
+            this.previewMeta.textContent = `${zoneLabel} · ${modeLabel}`;
+            this.previewMeta.setAttribute('y', String(metaY));
+        }
 
-        const detailStartY = PREVIEW_PANEL_PADDING_Y + (heroLines * PREVIEW_HERO_LINE_HEIGHT) + PREVIEW_DETAIL_GAP;
+        const detailStartY = PREVIEW_PANEL_PADDING_Y
+            + (heroLines * PREVIEW_HERO_LINE_HEIGHT)
+            + PREVIEW_META_GAP
+            + PREVIEW_META_LINE_HEIGHT
+            + PREVIEW_DETAIL_GAP;
         const panelLeft = -PREVIEW_PANEL_WIDTH / 2;
         const rows = [
             this.getPreviewScopeValue(),

@@ -20,11 +20,11 @@ export class DragConfirmModal extends Modal {
         contentEl.empty();
         
         if (modalEl) {
-            modalEl.classList.add('rt-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-modal-shell');
             modalEl.style.width = 'min(660px, 90vw)'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
 
-        contentEl.addClass('rt-modal-container', 'rt-drag-confirm-modal');
+        contentEl.addClass('ert-modal-container', 'rt-drag-confirm-modal');
         
         // Use the passed accent color (subplot color)
         if (this.accent) {
@@ -32,9 +32,9 @@ export class DragConfirmModal extends Modal {
         }
 
         // Header
-        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
-        header.createSpan({ cls: 'rt-modal-badge', text: 'Reorder' });
-        header.createDiv({ cls: 'rt-modal-title', text: 'Confirm reorder' });
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'Reorder' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Confirm reorder' });
 
         const listDiv = contentEl.createDiv({ cls: 'rt-drag-confirm-list' });
 
@@ -58,7 +58,7 @@ export class DragConfirmModal extends Modal {
             row.createDiv({ cls: 'rt-drag-confirm-row-text', text: line });
         });
 
-        const buttons = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const buttons = contentEl.createDiv({ cls: 'ert-modal-actions' });
         const confirmBtn = buttons.createEl('button', { text: 'Apply', cls: 'rt-mod-cta' });
         const cancelBtn = buttons.createEl('button', { text: 'Cancel' });
 

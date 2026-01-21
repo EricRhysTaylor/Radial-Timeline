@@ -71,7 +71,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         if (modalContent instanceof HTMLElement) return modalContent;
         const tabContent = containerEl.closest('.vertical-tab-content');
         if (tabContent instanceof HTMLElement) return tabContent;
-        const tabWrapper = containerEl.closest('.rt-settings-tab-content');
+        const tabWrapper = containerEl.closest('.ert-settings-tab-content');
         if (tabWrapper instanceof HTMLElement) return tabWrapper;
         return null;
     };
@@ -485,16 +485,16 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     if (!selectedProfile) return;
                     const modal = new Modal(plugin.app);
                     const { modalEl, contentEl } = modal;
-                    modalEl.classList.add('rt-modal-shell');
+                    modalEl.classList.add('ert-ui', 'ert-modal-shell');
                     modalEl.classList.add(ERT_CLASSES.ROOT, ERT_CLASSES.SKIN_PRO);
                     modalEl.style.width = '400px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
                     modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-                    contentEl.addClass('rt-modal-container');
+                    contentEl.addClass('ert-modal-container');
 
-                    const header = contentEl.createDiv({ cls: 'rt-modal-header' });
-                    header.createDiv({ cls: 'rt-modal-title', text: 'Rename profile' });
+                    const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+                    header.createDiv({ cls: 'ert-modal-title', text: 'Rename profile' });
 
-                    const inputContainer = contentEl.createDiv({ cls: 'rt-search-input-container' });
+                    const inputContainer = contentEl.createDiv({ cls: 'ert-search-input-container' });
                     const inputEl = inputContainer.createEl('input', {
                         type: 'text',
                         value: selectedProfile.label || '',
@@ -525,7 +525,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                         }
                     });
 
-                    const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
+                    const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
                     new ButtonComponent(buttonRow)
                         .setButtonText('OK')
                         .setCta()

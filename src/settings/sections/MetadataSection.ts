@@ -34,13 +34,13 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
     const renderMappings = () => {
         // Toggle visibility based on setting
         if (!plugin.settings.enableCustomMetadataMapping) {
-            mappingContainer.addClass('rt-settings-hidden');
+            mappingContainer.addClass('ert-settings-hidden');
             mappingListContainer.addClass('rt-mapping-hidden');
             mappingListContainer.empty();
             return;
         }
 
-        mappingContainer.removeClass('rt-settings-hidden');
+        mappingContainer.removeClass('ert-settings-hidden');
         mappingListContainer.removeClass('rt-mapping-hidden');
         mappingListContainer.empty();
         

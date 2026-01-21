@@ -32,17 +32,17 @@ export class PlanetaryTimeModal extends Modal {
 
         // Apply generic modal shell + modal-specific class
         if (modalEl) {
-            modalEl.classList.add('rt-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-modal-shell');
             modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw';
         }
-        contentEl.addClass('rt-modal-container', 'rt-planetary-modal');
+        contentEl.addClass('ert-modal-container', 'rt-planetary-modal');
 
         // Header
-        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
-        header.createSpan({ cls: 'rt-modal-badge', text: t('planetary.heading') });
-        header.createDiv({ cls: 'rt-modal-title', text: t('planetary.modal.title') });
-        header.createDiv({ cls: 'rt-modal-subtitle', text: t('planetary.modal.datetimeDesc') });
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: t('planetary.heading') });
+        header.createDiv({ cls: 'ert-modal-title', text: t('planetary.modal.title') });
+        header.createDiv({ cls: 'ert-modal-subtitle', text: t('planetary.modal.datetimeDesc') });
 
         if (!this.plugin.settings.enablePlanetaryTime) {
             contentEl.createDiv({ text: t('planetary.modal.disabled') });
@@ -107,7 +107,7 @@ export class PlanetaryTimeModal extends Modal {
             });
         });
 
-        const actions = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
         const convertBtn = new ButtonComponent(actions)
             .setButtonText(t('planetary.modal.convert'))
             .setCta()

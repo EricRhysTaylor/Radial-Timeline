@@ -455,7 +455,7 @@ export function renderStoryBeatsSection(params: {
         advancedContainer.empty();
 
         const isEnabled = plugin.settings.enableAdvancedYamlEditor ?? false;
-        advancedContainer.toggleClass('rt-settings-hidden', !isEnabled);
+        advancedContainer.toggleClass('ert-settings-hidden', !isEnabled);
         if (!isEnabled) return;
 
         // Prepare template data
@@ -587,7 +587,7 @@ export function renderStoryBeatsSection(params: {
             const data = next ?? workingEntries;
             workingEntries = data;
             advancedContainer.empty();
-            advancedContainer.toggleClass('rt-settings-hidden', !isEnabled);
+            advancedContainer.toggleClass('ert-settings-hidden', !isEnabled);
             if (!isEnabled) return;
 
             const listEl = advancedContainer.createDiv({ cls: 'rt-template-entries rt-template-indent' });
@@ -852,18 +852,18 @@ export function renderStoryBeatsSection(params: {
                     modal.titleEl.setText('');
                     contentEl.empty();
 
-                    modalEl.classList.add('rt-modal-shell');
-                    contentEl.addClass('rt-modal-container');
+                    modalEl.classList.add('ert-ui', 'ert-modal-shell');
+                    contentEl.addClass('ert-modal-container');
 
-                    const header = contentEl.createDiv({ cls: 'rt-modal-header' });
-                    header.createSpan({ text: 'Warning', cls: 'rt-modal-badge' });
-                    header.createDiv({ text: 'Reset advanced YAML template', cls: 'rt-modal-title' });
-                    header.createDiv({ text: 'Resetting will delete all custom changes and restore the default template.', cls: 'rt-modal-subtitle' });
+                    const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+                    header.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
+                    header.createDiv({ text: 'Reset advanced YAML template', cls: 'ert-modal-title' });
+                    header.createDiv({ text: 'Resetting will delete all custom changes and restore the default template.', cls: 'ert-modal-subtitle' });
 
                     const body = contentEl.createDiv({ cls: 'rt-glass-card' });
                     body.createDiv({ text: 'Are you sure you want to reset? This cannot be undone.', cls: 'rt-purge-warning' });
 
-                    const actionsRow = contentEl.createDiv({ cls: ['rt-modal-actions', 'rt-inline-actions'] });
+                    const actionsRow = contentEl.createDiv({ cls: ['ert-modal-actions', 'rt-inline-actions'] });
 
                     new ButtonComponent(actionsRow)
                         .setButtonText('Reset to default')

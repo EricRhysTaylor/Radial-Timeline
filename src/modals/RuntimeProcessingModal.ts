@@ -105,9 +105,9 @@ export class RuntimeProcessingModal extends Modal {
         titleEl.setText('');
 
         if (modalEl) {
-            modalEl.classList.add('rt-modal-shell', 'rt-runtime-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-modal-shell', 'rt-runtime-modal-shell');
         }
-        contentEl.addClass('rt-modal-container', 'rt-runtime-modal');
+        contentEl.addClass('ert-modal-container', 'rt-runtime-modal');
 
         // Load subplots first
         await this.loadSubplots();
@@ -135,22 +135,22 @@ export class RuntimeProcessingModal extends Modal {
         contentEl.empty();
 
         // Header
-        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
         
         const contentType = this.plugin.settings.runtimeContentType || 'novel';
         const modeLabel = contentType === 'screenplay' ? 'Screenplay' : 'Audiobook';
         const badgeText = `Runtime estimator · ${modeLabel}`;
         
-        const badge = header.createSpan({ cls: 'rt-modal-badge' });
-        const signatureIcon = badge.createSpan({ cls: 'rt-modal-badge-icon' });
+        const badge = header.createSpan({ cls: 'ert-modal-badge' });
+        const signatureIcon = badge.createSpan({ cls: 'ert-modal-badge-icon' });
         setIcon(signatureIcon, 'signature');
         badge.createSpan({ text: 'Runtime estimator · ' });
-        const modeIcon = badge.createSpan({ cls: 'rt-modal-badge-icon' });
+        const modeIcon = badge.createSpan({ cls: 'ert-modal-badge-icon' });
         const modeIconName = contentType === 'screenplay' ? 'film' : 'mic-vocal';
         setIcon(modeIcon, modeIconName);
         badge.createSpan({ text: ` ${modeLabel}` });
-        header.createDiv({ cls: 'rt-modal-title', text: 'Runtime Estimation' });
-        header.createDiv({ cls: 'rt-modal-subtitle', text: 'Algorithmic word-count analysis. Calculates runtime from scene text using configured WPM rates and parenthetical timing.' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Runtime Estimation' });
+        header.createDiv({ cls: 'ert-modal-subtitle', text: 'Algorithmic word-count analysis. Calculates runtime from scene text using configured WPM rates and parenthetical timing.' });
 
         // ===== SCOPE SECTION =====
         const scopeCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
@@ -285,7 +285,7 @@ export class RuntimeProcessingModal extends Modal {
         this.countEl.setText('Calculating...');
 
         // Action buttons
-        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
 
         this.actionButton = new ButtonComponent(buttonRow)
             .setButtonText('Estimate Runtimes')
@@ -544,14 +544,14 @@ export class RuntimeProcessingModal extends Modal {
         contentEl.empty();
 
         // Header
-        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
         
         const contentType = this.plugin.settings.runtimeContentType || 'novel';
         const modeLabel = contentType === 'screenplay' ? 'Screenplay' : 'Audiobook';
         
-        header.createSpan({ cls: 'rt-modal-badge', text: `Runtime estimator · ${modeLabel}` });
-        header.createDiv({ cls: 'rt-modal-title', text: 'Estimating Runtimes...' });
-        this.statusTextEl = header.createDiv({ cls: 'rt-modal-subtitle' });
+        header.createSpan({ cls: 'ert-modal-badge', text: `Runtime estimator · ${modeLabel}` });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Estimating Runtimes...' });
+        this.statusTextEl = header.createDiv({ cls: 'ert-modal-subtitle' });
         this.statusTextEl.setText('Initializing...');
 
         // Progress card
@@ -576,7 +576,7 @@ export class RuntimeProcessingModal extends Modal {
         this.queueContainer = progressCard.createDiv({ cls: 'rt-runtime-queue' });
 
         // Action buttons
-        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
 
         new ButtonComponent(buttonRow)
             .setButtonText('Abort')

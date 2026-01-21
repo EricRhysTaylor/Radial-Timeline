@@ -196,18 +196,18 @@ class PurgeConfirmationModal extends Modal {
         contentEl.empty();
 
         if (modalEl) {
-            modalEl.classList.add('rt-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-modal-shell');
             modalEl.style.width = '760px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw';
             modalEl.style.maxHeight = '92vh';
         }
-        contentEl.addClass('rt-modal-container');
+        contentEl.addClass('ert-modal-container');
         contentEl.addClass('rt-purge-confirm-modal');
 
-        const hero = contentEl.createDiv({ cls: 'rt-modal-header' });
-        hero.createSpan({ text: 'Warning', cls: 'rt-modal-badge' });
-        hero.createDiv({ text: 'Confirm purge beats', cls: 'rt-modal-title' });
-        hero.createDiv({ text: 'This action cannot be undone.', cls: 'rt-modal-subtitle' });
+        const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
+        hero.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
+        hero.createDiv({ text: 'Confirm purge beats', cls: 'ert-modal-title' });
+        hero.createDiv({ text: 'This action cannot be undone.', cls: 'ert-modal-subtitle' });
 
         const card = contentEl.createDiv({ cls: 'rt-glass-card rt-purge-confirm-card' });
 
@@ -235,7 +235,7 @@ class PurgeConfirmationModal extends Modal {
         const warningEl = card.createDiv({ cls: 'rt-purge-warning' });
         warningEl.setText('Are you sure you want to proceed?');
 
-        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(buttonRow)
             .setButtonText('Purge beats')
             .setWarning()

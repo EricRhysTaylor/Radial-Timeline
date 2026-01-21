@@ -83,13 +83,13 @@ export class TimelineRepairModal extends Modal {
         titleEl.setText('');
 
         if (modalEl) {
-            modalEl.classList.add('rt-modal-shell', 'rt-timeline-repair-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-modal-shell', 'rt-timeline-repair-modal-shell');
             modalEl.style.width = '900px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '95vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
 
-        contentEl.addClass('rt-modal-container', 'rt-timeline-repair-modal');
+        contentEl.addClass('ert-modal-container', 'rt-timeline-repair-modal');
 
         // Load scene data
         await this.loadSceneData();
@@ -128,11 +128,11 @@ export class TimelineRepairModal extends Modal {
         this.contentEl.empty();
 
         // Header
-        const header = this.contentEl.createDiv({ cls: 'rt-modal-header' });
-        header.createSpan({ cls: 'rt-modal-badge', text: 'Establish Timeline Order Wizard' });
-        header.createDiv({ cls: 'rt-modal-title', text: 'Establish timeline order' });
+        const header = this.contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'Establish Timeline Order Wizard' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Establish timeline order' });
         header.createDiv({
-            cls: 'rt-modal-subtitle',
+            cls: 'ert-modal-subtitle',
             text: 'Scaffold, infer, and refine When dates from narrative order. Fast, reversible, and human-in-the-loop.'
         });
 
@@ -290,7 +290,7 @@ export class TimelineRepairModal extends Modal {
         }
 
         // Action buttons
-        const buttonRow = this.contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const buttonRow = this.contentEl.createDiv({ cls: 'ert-modal-actions' });
 
         new ButtonComponent(buttonRow)
             .setButtonText('Analyze Timeline')
@@ -362,10 +362,10 @@ export class TimelineRepairModal extends Modal {
         this.abortController = new AbortController();
 
         // Header
-        const header = this.contentEl.createDiv({ cls: 'rt-modal-header' });
-        header.createSpan({ cls: 'rt-modal-badge', text: 'Establish Timeline Order Wizard' });
-        header.createDiv({ cls: 'rt-modal-title', text: 'Analyzing Timeline...' });
-        const statusEl = header.createDiv({ cls: 'rt-modal-subtitle', text: 'Running Level 1: Pattern Sync...' });
+        const header = this.contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'Establish Timeline Order Wizard' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Analyzing Timeline...' });
+        const statusEl = header.createDiv({ cls: 'ert-modal-subtitle', text: 'Running Level 1: Pattern Sync...' });
 
         // Progress card
         const progressCard = this.contentEl.createDiv({ cls: 'rt-glass-card' });
@@ -378,7 +378,7 @@ export class TimelineRepairModal extends Modal {
         progressText.setText('Preparing...');
 
         // Abort button
-        const buttonRow = this.contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const buttonRow = this.contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(buttonRow)
             .setButtonText('Abort')
             .setWarning()
@@ -453,11 +453,11 @@ export class TimelineRepairModal extends Modal {
         }
 
         // Header
-        const header = this.contentEl.createDiv({ cls: 'rt-modal-header' });
-        header.createSpan({ cls: 'rt-modal-badge', text: 'Establish Timeline Order Wizard' });
-        header.createDiv({ cls: 'rt-modal-title', text: 'Review & Edit' });
+        const header = this.contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'Establish Timeline Order Wizard' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Review & Edit' });
         header.createDiv({
-            cls: 'rt-modal-subtitle',
+            cls: 'ert-modal-subtitle',
             text: 'Quick nudge dates with keyboard shortcuts. J/K to navigate, Day+/- to shift.'
         });
 
@@ -504,7 +504,7 @@ export class TimelineRepairModal extends Modal {
         this.renderSceneList();
 
         // Action buttons
-        const buttonRow = this.contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const buttonRow = this.contentEl.createDiv({ cls: 'ert-modal-actions' });
 
         // Undo/Redo buttons
         const undoBtn = new ButtonComponent(buttonRow)
@@ -891,7 +891,7 @@ export class TimelineRepairModal extends Modal {
                 cls: 'rt-timeline-repair-confirm-warning'
             });
 
-            const buttonRow = modal.contentEl.createDiv({ cls: 'rt-modal-actions' });
+            const buttonRow = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
 
             new ButtonComponent(buttonRow)
                 .setButtonText('Apply Changes')

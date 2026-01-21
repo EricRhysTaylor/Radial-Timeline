@@ -35,13 +35,13 @@ class SaveTemplateModal extends Modal {
     onOpen(): void {
         const { contentEl } = this;
         contentEl.empty();
-        contentEl.addClass('rt-modal-container');
+        contentEl.addClass('ert-modal-container');
         contentEl.addClass('rt-template-dialog');
 
-        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
-        header.createSpan({ cls: 'rt-modal-badge', text: 'TEMPLATE' });
-        header.createDiv({ cls: 'rt-modal-title', text: 'Save layout template' });
-        header.createDiv({ cls: 'rt-modal-subtitle', text: 'Name this layout so you can reuse it later.' });
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'TEMPLATE' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Save layout template' });
+        header.createDiv({ cls: 'ert-modal-subtitle', text: 'Name this layout so you can reuse it later.' });
 
         const form = contentEl.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         const nameSetting = new Setting(form)
@@ -63,7 +63,7 @@ class SaveTemplateModal extends Modal {
 
         this.descriptionEl = form.createDiv({ cls: 'rt-sub-card-note', text: 'Templates capture layout, acts, subplots, characters, beats toggle, and the selected YAML type (base/advanced).' });
 
-        const footer = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(footer)
             .setButtonText('Save')
             .setCta()
@@ -102,15 +102,15 @@ class DeleteTemplateModal extends Modal {
     onOpen(): void {
         const { contentEl } = this;
         contentEl.empty();
-        contentEl.addClass('rt-modal-container');
+        contentEl.addClass('ert-modal-container');
         contentEl.addClass('rt-template-dialog');
 
-        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
-        header.createSpan({ cls: 'rt-modal-badge', text: 'TEMPLATE' });
-        header.createDiv({ cls: 'rt-modal-title', text: 'Delete template' });
-        header.createDiv({ cls: 'rt-modal-subtitle', text: `Delete "${this.templateName}"? This cannot be undone.` });
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'TEMPLATE' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Delete template' });
+        header.createDiv({ cls: 'ert-modal-subtitle', text: `Delete "${this.templateName}"? This cannot be undone.` });
 
-        const footer = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(footer)
             .setButtonText('Delete')
             .setCta()
@@ -553,27 +553,27 @@ export class BookDesignerModal extends Modal {
         
         // Use generic modal system + Book Designer specific class
         if (modalEl) {
-            modalEl.classList.add('rt-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-modal-shell');
             modalEl.style.width = '860px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '96vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('rt-modal-container');
+        contentEl.addClass('ert-modal-container');
         contentEl.addClass('rt-book-designer-modal');
         contentEl.addClass('rt-manuscript-surface');
 
            
         const sourcePath = this.plugin.settings.sourcePath || 'vault root';
         // Hero Header using generic modal system
-        const hero = contentEl.createDiv({ cls: 'rt-modal-header' });
-        hero.createSpan({ cls: 'rt-modal-badge', text: 'SETUP' });
-        hero.createDiv({ cls: 'rt-modal-title', text: 'Book designer' });
-        hero.createDiv({ cls: 'rt-modal-subtitle', text: `Configure and generate the scaffold for your new novel. Drag scenes in Preview to different acts and subplots to activate manual mode. Save the template to reuse it later.` });
+        const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
+        hero.createSpan({ cls: 'ert-modal-badge', text: 'SETUP' });
+        hero.createDiv({ cls: 'ert-modal-title', text: 'Book designer' });
+        hero.createDiv({ cls: 'ert-modal-subtitle', text: `Configure and generate the scaffold for your new novel. Drag scenes in Preview to different acts and subplots to activate manual mode. Save the template to reuse it later.` });
     
         
-        const heroMeta = hero.createDiv({ cls: 'rt-modal-meta' });
-        this.heroLocationMeta = heroMeta.createSpan({ cls: 'rt-modal-meta-item', text: `Location: ${sourcePath}` });
-        this.heroModeMeta = heroMeta.createSpan({ cls: 'rt-modal-meta-item rt-meta-auto', text: 'Auto mode' });
+        const heroMeta = hero.createDiv({ cls: 'ert-modal-meta' });
+        this.heroLocationMeta = heroMeta.createSpan({ cls: 'ert-modal-meta-item', text: `Location: ${sourcePath}` });
+        this.heroModeMeta = heroMeta.createSpan({ cls: 'ert-modal-meta-item rt-meta-auto', text: 'Auto mode' });
         this.updateHeroMeta();
         
         const scrollContainer = contentEl.createDiv({ cls: 'rt-container rt-card-stack' });
@@ -883,7 +883,7 @@ export class BookDesignerModal extends Modal {
         this.deleteTemplateBtn.buttonEl.addClass('rt-template-delete');
 
         // Actions Footer
-        const footer = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
 
         new ButtonComponent(footer)
             .setButtonText('Create Book')

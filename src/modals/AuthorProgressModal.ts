@@ -83,25 +83,25 @@ export class AuthorProgressModal extends Modal {
 
         // Apply shell styling and sizing
         if (modalEl) {
-            modalEl.classList.add('rt-modal-shell', 'rt-apr-modal', 'ert-ui', 'ert-modal--social');
+            modalEl.classList.add('ert-modal-shell', 'rt-apr-modal', 'ert-ui', 'ert-modal--social');
             modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw';
         }
 
         // Standard modal container with glassy styling
-        contentEl.addClass('rt-modal-container', 'rt-apr-content');
+        contentEl.addClass('ert-modal-container', 'rt-apr-content');
 
         // Modal Header with Badge (following modal template pattern)
-        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
 
         // Badge with Radio icon for social media theme
-        const badge = header.createSpan({ cls: 'rt-modal-badge rt-apr-badge' });
-        const badgeIcon = badge.createSpan({ cls: 'rt-modal-badge-icon' });
+        const badge = header.createSpan({ cls: 'ert-modal-badge rt-apr-badge' });
+        const badgeIcon = badge.createSpan({ cls: 'ert-modal-badge-icon' });
         setIcon(badgeIcon, 'radio');
         badge.createSpan({ text: 'Share' });
 
-        header.createDiv({ text: 'Author progress report', cls: 'rt-modal-title' });
-        header.createDiv({ text: 'Public, spoiler-safe progress view for fans and backers', cls: 'rt-modal-subtitle' });
+        header.createDiv({ text: 'Author progress report', cls: 'ert-modal-title' });
+        header.createDiv({ text: 'Public, spoiler-safe progress view for fans and backers', cls: 'ert-modal-subtitle' });
 
         // Target selection + dynamic sections
         const campaigns = this.plugin.settings.authorProgress?.campaigns || [];
@@ -192,7 +192,7 @@ export class AuthorProgressModal extends Modal {
         }
 
         // Footer actions
-        const footer = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(footer)
             .setButtonText('Close')
             .onClick(() => this.close());

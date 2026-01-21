@@ -39,16 +39,16 @@ class ConfirmationModal extends Modal {
         titleEl.setText('');
 
         if (modalEl) {
-            modalEl.classList.add('rt-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-modal-shell');
             modalEl.style.width = '520px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('rt-modal-container');
+        contentEl.addClass('ert-modal-container');
 
         // Header
-        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
-        header.createSpan({ cls: 'rt-modal-badge', text: 'Confirm' });
-        header.createDiv({ cls: 'rt-modal-title', text: 'Confirm action' });
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'Confirm' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Confirm action' });
 
         // Message card
         const card = contentEl.createDiv({ cls: 'rt-glass-card' });
@@ -56,7 +56,7 @@ class ConfirmationModal extends Modal {
         messageEl.setText(this.message);
 
         // Actions
-        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
 
         new ButtonComponent(buttonRow)
             .setButtonText('Continue')
@@ -151,12 +151,12 @@ export class SceneAnalysisProcessingModal extends Modal {
         const { contentEl, titleEl, modalEl } = this;
         // Use generic modal base + scene analysis specific styling
         if (modalEl) {
-            modalEl.classList.add('rt-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-modal-shell');
             modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('rt-modal-container');
+        contentEl.addClass('ert-modal-container');
         contentEl.addClass('rt-scene-analysis-modal');
         titleEl.setText('');
 
@@ -188,10 +188,10 @@ export class SceneAnalysisProcessingModal extends Modal {
     }
 
     private ensureModalShell(): void {
-        if (this.modalEl && !this.modalEl.classList.contains('rt-modal-shell')) {
-            this.modalEl.classList.add('rt-modal-shell');
+        if (this.modalEl && !this.modalEl.classList.contains('ert-modal-shell')) {
+            this.modalEl.classList.add('ert-ui', 'ert-modal-shell');
         }
-        this.contentEl.classList.add('rt-modal-container');
+        this.contentEl.classList.add('ert-modal-container');
         this.contentEl.classList.add('rt-scene-analysis-modal');
     }
 
@@ -236,14 +236,14 @@ export class SceneAnalysisProcessingModal extends Modal {
         options?: { trackStatus?: boolean; subtitle?: string; metaItems?: string[] }
     ): HTMLElement {
         // Use flat header style matching Book Designer (no border/background on header)
-        const hero = parent.createDiv({ cls: 'rt-modal-header' });
+        const hero = parent.createDiv({ cls: 'ert-modal-header' });
         const modelLabel = this.getActiveModelDisplayName();
         const badgeLabel = this.taskType === 'synopsis' ? 'AI Synopsis' : 'AI Pulse Run';
         const badgeText = modelLabel ? `${badgeLabel} · ${modelLabel}` : badgeLabel;
         hero.createSpan({ text: badgeText, cls: 'rt-scene-analysis-badge' });
-        hero.createDiv({ text: this.getProcessingTitle(), cls: 'rt-modal-title' });
+        hero.createDiv({ text: this.getProcessingTitle(), cls: 'ert-modal-title' });
         const subtitleText = options?.subtitle ?? this.getProcessingSubtitle();
-        const subtitleEl = hero.createDiv({ cls: 'rt-modal-subtitle' });
+        const subtitleEl = hero.createDiv({ cls: 'ert-modal-subtitle' });
         subtitleEl.setText(subtitleText);
         if (options?.trackStatus) {
             this.heroStatusEl = subtitleEl;
@@ -531,7 +531,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         });
 
         // Action buttons
-        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
 
         new ButtonComponent(buttonRow)
             .setButtonText('Start processing')
@@ -710,7 +710,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         this.errorListEl = bodyEl.createDiv({ cls: 'rt-pulse-error-list rt-glass-card rt-hidden' });
 
-        this.actionButtonContainer = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        this.actionButtonContainer = contentEl.createDiv({ cls: 'ert-modal-actions' });
         this.abortButtonEl = new ButtonComponent(this.actionButtonContainer)
             .setButtonText('Abort processing')
             .setWarning()
@@ -776,7 +776,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         warning.createSpan({ cls: 'rt-warning-icon', text: '⚠️' });
         warning.createSpan({ text: 'This will overwrite existing Synopsis fields in your frontmatter.' });
 
-        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
 
         new ButtonComponent(buttonRow)
             .setButtonText(`Apply ${results.size} Changes`)

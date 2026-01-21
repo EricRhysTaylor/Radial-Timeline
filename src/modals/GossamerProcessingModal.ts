@@ -69,29 +69,29 @@ export class GossamerProcessingModal extends Modal {
         titleEl.setText('');
 
         if (modalEl) {
-            modalEl.classList.add('rt-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-modal-shell');
             modalEl.style.width = '800px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // Align with other tall modals for small screens
         }
 
-        contentEl.addClass('rt-modal-container', 'rt-gossamer-processing-modal');
+        contentEl.addClass('ert-modal-container', 'rt-gossamer-processing-modal');
 
         // Show confirmation view first
         this.showConfirmationView();
     }
 
     private renderProcessingHero(parent: HTMLElement, subtitle: string, modelName?: string): void {
-        const hero = parent.createDiv({ cls: 'rt-modal-header' });
+        const hero = parent.createDiv({ cls: 'ert-modal-header' });
         
         // Build badge text
         const badgeText = modelName 
             ? `AI momentum analysis · ${modelName}`
             : 'AI momentum analysis';
             
-        hero.createSpan({ text: badgeText, cls: 'rt-modal-badge' });
-        hero.createDiv({ text: 'Gossamer momentum analysis', cls: 'rt-modal-title' });
-        hero.createDiv({ text: subtitle, cls: 'rt-modal-subtitle' });
+        hero.createSpan({ text: badgeText, cls: 'ert-modal-badge' });
+        hero.createDiv({ text: 'Gossamer momentum analysis', cls: 'ert-modal-title' });
+        hero.createDiv({ text: subtitle, cls: 'ert-modal-subtitle' });
     }
 
     onClose(): void {
@@ -154,7 +154,7 @@ export class GossamerProcessingModal extends Modal {
         }
 
         // Action buttons
-        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
 
         new ButtonComponent(buttonRow)
             .setButtonText('Begin Analysis')
@@ -218,7 +218,7 @@ export class GossamerProcessingModal extends Modal {
         this.errorListEl = bodyEl.createDiv({ cls: 'rt-pulse-error-list rt-glass-card rt-hidden' });
 
         // Close button (disabled while processing)
-        const buttonContainer = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const buttonContainer = contentEl.createDiv({ cls: 'ert-modal-actions' });
         this.closeButtonEl = new ButtonComponent(buttonContainer)
             .setButtonText('Close')
             .setDisabled(true)

@@ -1552,6 +1552,380 @@
   --ert-modal-glow: 0 18px 40px color-mix(in srgb, var(--ert-accent) 16%, transparent);
 }
 
+/* -------------------------------------------------------------------------- */
+/* ERT settings chrome                                                        */
+/* -------------------------------------------------------------------------- */
+
+.ert-ui .ert-settings-tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 4px;
+  background: var(--background-secondary);
+  border-radius: 10px;
+}
+
+.ert-ui .ert-settings-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+
+.ert-ui .ert-settings-tab:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.ert-ui .ert-settings-tab-active {
+  background: var(--background-primary);
+  color: var(--text-normal);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.ert-ui .ert-settings-tab:first-child.ert-settings-tab-active {
+  background: linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.15), rgba(var(--rt-pro-color-rgb), 0.05));
+  color: var(--rt-pro-color);
+  border: 1px solid rgba(var(--rt-pro-color-rgb), 0.25);
+}
+
+.ert-ui .ert-settings-tab:first-child.ert-settings-tab-active .ert-settings-tab-icon {
+  color: var(--rt-pro-color);
+}
+
+.ert-ui .ert-settings-tab-social.ert-settings-tab-active {
+  background: linear-gradient(135deg, rgba(var(--rt-social-color-rgb), 0.15), rgba(var(--rt-social-color-rgb), 0.05));
+  color: var(--rt-social-color);
+  border: 1px solid rgba(var(--rt-social-color-rgb), 0.25);
+}
+
+.ert-ui .ert-settings-tab-social.ert-settings-tab-active .ert-settings-tab-icon {
+  color: var(--rt-social-color);
+}
+
+.ert-ui .ert-settings-tab-icon {
+  display: flex;
+  align-items: center;
+}
+
+.ert-ui .ert-settings-tab-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ert-ui .ert-settings-tab-label {
+  font-weight: 600;
+}
+
+.ert-ui .ert-settings-tab-content {
+  transition: opacity 0.15s ease;
+}
+
+.ert-ui .ert-settings-visible {
+  display: block;
+}
+
+.ert-ui .ert-settings-hidden {
+  display: none;
+}
+
+.ert-ui .ert-settings-search-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 10px 14px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ert-ui .ert-settings-search-container:focus-within {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.15);
+}
+
+.ert-ui .ert-settings-search-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.ert-ui .ert-settings-search-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.ert-ui .ert-settings-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-normal);
+  font-size: 15px;
+  outline: none;
+  padding: 4px 0;
+}
+
+.ert-ui .ert-settings-search-input::placeholder {
+  color: var(--text-faint);
+}
+
+.ert-ui .ert-settings-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text-muted);
+  background: var(--background-modifier-hover);
+  transition: color 0.1s ease, background 0.1s ease;
+  flex-shrink: 0;
+}
+
+.ert-ui .ert-settings-search-clear:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-border);
+}
+
+.ert-ui .ert-settings-search-clear svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ert-ui .ert-settings-root .ert-search-hidden {
+  display: none;
+}
+
+.ert-ui .ert-settings-root .ert-search-section-hidden {
+  display: none;
+}
+
+.ert-ui .ert-settings-searchable-content [data-rt-section] > .setting-item.setting-item-heading {
+  margin-top: 24px;
+}
+
+.ert-ui .ert-settings-searchable-content [data-rt-section]:first-child > .setting-item.setting-item-heading:first-child {
+  margin-top: 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* ERT modal chrome                                                           */
+/* -------------------------------------------------------------------------- */
+
+.ert-ui.ert-modal-shell.modal,
+.ert-ui .ert-modal-shell.modal {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.ert-ui .ert-modal-container {
+  position: relative;
+  isolation: isolate;
+  padding: 26px 50px 22px;
+  border-radius: 20px;
+  background: var(--ert-modal-bg);
+  border: 1px solid var(--ert-modal-border);
+  box-shadow: var(--ert-modal-shadow), var(--ert-modal-glow, none);
+  backdrop-filter: var(--ert-modal-blur);
+  -webkit-backdrop-filter: var(--ert-modal-blur);
+}
+
+.ert-ui .ert-modal-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--ert-modal-tint, transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ert-ui .ert-modal-container > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ert-ui .ert-modal-shell input[type="text"]:not([class*="rt-input-"]),
+.ert-ui .ert-modal-shell input[type="number"]:not([class*="rt-input-"]),
+.ert-ui .ert-modal-shell input[type="password"]:not([class*="rt-input-"]) {
+  width: var(--ert-input-width-md);
+  max-width: 100%;
+}
+
+.ert-ui .ert-modal-shell input[class*="rt-input-full"] {
+  width: 100%;
+  min-width: var(--ert-input-width-xl);
+}
+
+.ert-ui .ert-modal-shell textarea {
+  width: 100%;
+}
+
+.ert-ui .ert-modal-shell input[type="date"],
+.ert-ui .ert-modal-shell input[type="time"] {
+  background-color: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-normal);
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-medium);
+  line-height: 1.3;
+  padding: 6px 10px;
+  border-radius: 8px;
+  height: auto;
+}
+
+.ert-ui .ert-modal-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+
+.ert-ui .ert-modal-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.ert-ui .ert-modal-badge.ert-modal-badge-pro {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(var(--rt-pro-color-rgb, 217, 70, 239), 0.15);
+  border-color: rgba(var(--rt-pro-color-rgb, 217, 70, 239), 0.3);
+  color: var(--rt-pro-color);
+}
+
+.ert-ui .ert-modal-badge-pro .ert-modal-badge-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ert-ui .ert-modal-badge-pro .ert-modal-badge-icon svg {
+  width: 14px;
+  height: 14px;
+  stroke: var(--rt-pro-color);
+  stroke-width: 2;
+  fill: none;
+}
+
+.ert-ui .ert-modal-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  background: linear-gradient(
+    to right,
+    var(--text-normal),
+    color-mix(in srgb, var(--text-normal) 70%, var(--text-faint) 30%)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.ert-ui .ert-modal-subtitle {
+  font-size: 0.95rem;
+  color: color-mix(in srgb, var(--text-normal) 70%, transparent);
+  line-height: 1.4;
+}
+
+.ert-ui .ert-modal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ert-ui .ert-modal-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.ert-ui .ert-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.ert-ui.ert-modal-shell.modal:has(.ert-search-modal),
+.ert-ui .ert-modal-shell.modal:has(.ert-search-modal) {
+  width: min(600px, 90vw);
+}
+
+.ert-ui .ert-search-modal {
+  display: flex;
+  flex-direction: column;
+}
+
+.ert-ui .ert-search-input-container {
+  margin-top: 20px;
+  width: 100%;
+  display: flex;
+}
+
+.ert-ui .ert-search-input-container > * {
+  flex: 1;
+}
+
+.ert-ui .ert-search-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text-normal);
+  font-size: 1rem;
+}
+
+.ert-ui .ert-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.ert-ui .ert-search-input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.ert-ui .ert-search-input[class*="rt-input-error"] {
+  border-color: var(--text-error);
+  background: rgba(255, 0, 0, 0.08);
+}
+
 .ert-ui.ert-skin--pro .ert-panel--muted,
 .ert-ui .ert-skin--pro .ert-panel--muted {
   background: var(--ert-pro-surface-2);

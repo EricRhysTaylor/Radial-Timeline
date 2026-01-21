@@ -16,21 +16,21 @@ export class SearchService {
         const { modalEl, contentEl } = modal;
         
         // Apply generic modal shell + modal-specific class
-        modalEl.classList.add('rt-modal-shell');
+        modalEl.classList.add('ert-ui', 'ert-modal-shell');
         contentEl.empty();
-        contentEl.addClass('rt-modal-container', 'rt-search-modal');
+        contentEl.addClass('ert-modal-container', 'ert-search-modal');
         
         // Header
-        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
-        header.createSpan({ text: 'Find', cls: 'rt-modal-badge' });
-        header.createDiv({ text: 'Search timeline', cls: 'rt-modal-title' });
-        header.createDiv({ text: 'Search scenes by title, synopsis, characters, dates, and more.', cls: 'rt-modal-subtitle' });
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ text: 'Find', cls: 'ert-modal-badge' });
+        header.createDiv({ text: 'Search timeline', cls: 'ert-modal-title' });
+        header.createDiv({ text: 'Search scenes by title, synopsis, characters, dates, and more.', cls: 'ert-modal-subtitle' });
         
         // Search input container
-        const searchContainer = contentEl.createDiv({ cls: 'rt-search-input-container' });
+        const searchContainer = contentEl.createDiv({ cls: 'ert-search-input-container' });
         const searchInput = new TextComponent(searchContainer);
         searchInput.setPlaceholder('Enter search term (min 3 letters)');
-        searchInput.inputEl.classList.add('rt-search-input');
+        searchInput.inputEl.classList.add('ert-search-input');
         if (this.plugin.searchActive && this.plugin.searchTerm) searchInput.setValue(this.plugin.searchTerm);
         
         // Validation helper - shows red border if input is invalid
@@ -51,7 +51,7 @@ export class SearchService {
         });
         
         // Actions
-        const buttonContainer = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const buttonContainer = contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(buttonContainer)
             .setButtonText('Search')
             .setCta()

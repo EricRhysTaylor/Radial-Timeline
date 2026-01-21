@@ -35,18 +35,18 @@ export class ManageSubplotsModal extends Modal {
         contentEl.empty();
         
         // Apply generic modal shell + modal-specific class
-        modalEl.classList.add('rt-modal-shell');
-        contentEl.addClass('rt-modal-container', 'rt-manage-subplots-modal');
+        modalEl.classList.add('ert-ui', 'ert-modal-shell');
+        contentEl.addClass('ert-modal-container', 'rt-manage-subplots-modal');
 
         // Hero Section (generic header)
-        const hero = contentEl.createDiv({ cls: 'rt-modal-header' });
-        hero.createSpan({ text: 'Configuration', cls: 'rt-modal-badge' });
-        hero.createDiv({ text: 'Manage Subplots', cls: 'rt-modal-title' });
-        hero.createDiv({ text: 'Rename or remove subplots across the timeline. Orphaned scenes will be moved to Main Plot.', cls: 'rt-modal-subtitle' });
+        const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
+        hero.createSpan({ text: 'Configuration', cls: 'ert-modal-badge' });
+        hero.createDiv({ text: 'Manage Subplots', cls: 'ert-modal-title' });
+        hero.createDiv({ text: 'Rename or remove subplots across the timeline. Orphaned scenes will be moved to Main Plot.', cls: 'ert-modal-subtitle' });
 
         // Stats Placeholder
-        this.statsContainer = hero.createDiv({ cls: 'rt-modal-meta' });
-        this.statsContainer.createSpan({ text: 'Loading stats...', cls: 'rt-modal-meta-item' });
+        this.statsContainer = hero.createDiv({ cls: 'ert-modal-meta' });
+        this.statsContainer.createSpan({ text: 'Loading stats...', cls: 'ert-modal-meta-item' });
 
         // Single card container (avoid extra nesting)
         const card = contentEl.createDiv({ cls: 'rt-manage-subplots-card rt-glass-card' });
@@ -74,7 +74,7 @@ export class ManageSubplotsModal extends Modal {
 
         // Update Stats
         this.statsContainer.empty();
-        this.statsContainer.createSpan({ text: `Total Subplots: ${this.subplots.length}`, cls: 'rt-modal-meta-item' });
+        this.statsContainer.createSpan({ text: `Total Subplots: ${this.subplots.length}`, cls: 'ert-modal-meta-item' });
 
         // Clear list
         this.listContainer.empty();
@@ -175,19 +175,19 @@ class SubplotDeletionConfirmModal extends Modal {
         titleEl.setText('');
         
         if (modalEl) {
-            modalEl.classList.add('rt-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-modal-shell');
             modalEl.style.width = '600px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('rt-modal-container');
+        contentEl.addClass('ert-modal-container');
 
         // Header
-        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
-        header.createSpan({ cls: 'rt-modal-badge', text: 'Warning' });
-        header.createDiv({ cls: 'rt-modal-title', text: 'Remove subplot?' });
-        header.createDiv({ cls: 'rt-modal-subtitle', text: 'This action cannot be undone.' });
-        const meta = header.createDiv({ cls: 'rt-modal-meta' });
-        meta.createSpan({ cls: 'rt-modal-meta-item', text: 'Scenes in only this subplot will be moved to Main Plot' });
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'Warning' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Remove subplot?' });
+        header.createDiv({ cls: 'ert-modal-subtitle', text: 'This action cannot be undone.' });
+        const meta = header.createDiv({ cls: 'ert-modal-meta' });
+        meta.createSpan({ cls: 'ert-modal-meta-item', text: 'Scenes in only this subplot will be moved to Main Plot' });
 
         // Warning card
         const card = contentEl.createDiv({ cls: 'rt-glass-card' });
@@ -195,7 +195,7 @@ class SubplotDeletionConfirmModal extends Modal {
         warningEl.setText(`Are you sure you want to remove "${this.subplotName}" from the timeline?`);
 
         // Actions
-        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
 
         new ButtonComponent(buttonRow)
             .setButtonText('Remove subplot')
@@ -233,19 +233,19 @@ class RenameSubplotModal extends Modal {
         contentEl.empty();
         
         // Shell & Container (matching PlanetaryTimeModal)
-        modalEl.classList.add('rt-modal-shell', 'rt-rename-subplot-modal');
-        contentEl.addClass('rt-modal-container');
+        modalEl.classList.add('ert-ui', 'ert-modal-shell', 'rt-rename-subplot-modal');
+        contentEl.addClass('ert-modal-container');
 
         // Header (matching PlanetaryTimeModal)
-        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
-        header.createSpan({ cls: 'rt-modal-badge', text: 'Edit' });
-        header.createDiv({ cls: 'rt-modal-title', text: 'Rename Subplot' });
-        header.createDiv({ cls: 'rt-modal-subtitle', text: `Enter a new name for "${this.oldName}"` });
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'Edit' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Rename Subplot' });
+        header.createDiv({ cls: 'ert-modal-subtitle', text: `Enter a new name for "${this.oldName}"` });
 
         // Input Field (Large template input field style)
         // Container with border
         const inputContainer = contentEl.createDiv({ 
-            cls: 'rt-search-input-container',
+            cls: 'ert-search-input-container',
         });
         
         const inputEl = inputContainer.createEl('input', { 
@@ -258,7 +258,7 @@ class RenameSubplotModal extends Modal {
         window.setTimeout(() => inputEl.focus(), 50);
 
         // Actions
-        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
         
         const save = async () => {
             const val = inputEl.value.trim();

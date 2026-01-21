@@ -749,89 +749,6 @@
 /* PROFESSIONAL SECTION                                                       */
 /* -------------------------------------------------------------------------- */
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   SETTINGS TAB CONTROLLER (Pro | Core)
-   ───────────────────────────────────────────────────────────────────────────── */
-
-.rt-settings-tab-bar {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 16px;
-  padding: 4px;
-  background: var(--background-secondary);
-  border-radius: 10px;
-}
-
-.rt-settings-tab {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  font-size: 14px;
-  color: var(--text-muted);
-  transition: all 0.2s ease;
-}
-
-.rt-settings-tab:hover {
-  color: var(--text-normal);
-  background: var(--background-modifier-hover);
-}
-
-.rt-settings-tab-active {
-  background: var(--background-primary);
-  color: var(--text-normal);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-/* Pro tab special styling when active */
-.rt-settings-tab:first-child.rt-settings-tab-active {
-  background: linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.15), rgba(var(--rt-pro-color-rgb), 0.05));
-  color: var(--rt-pro-color);
-  border: 1px solid rgba(var(--rt-pro-color-rgb), 0.25);
-}
-
-.rt-settings-tab:first-child.rt-settings-tab-active .rt-settings-tab-icon {
-  color: var(--rt-pro-color);
-}
-
-/* Social Media tab special styling when active */
-.rt-settings-tab-social.rt-settings-tab-active {
-  background: linear-gradient(135deg, rgba(var(--rt-social-color-rgb), 0.15), rgba(var(--rt-social-color-rgb), 0.05));
-  color: var(--rt-social-color);
-  border: 1px solid rgba(var(--rt-social-color-rgb), 0.25);
-}
-
-.rt-settings-tab-social.rt-settings-tab-active .rt-settings-tab-icon {
-  color: var(--rt-social-color);
-}
-
-.rt-settings-tab-icon {
-  display: flex;
-  align-items: center;
-}
-
-.rt-settings-tab-icon svg {
-  width: 16px;
-  height: 16px;
-}
-
-.rt-settings-tab-label {
-  font-weight: 600;
-}
-
-.rt-settings-tab-content {
-  transition: opacity 0.15s ease;
-}
-
-.rt-settings-tab-content.rt-hidden {
-  display: none;
-}
-
 .rt-settings-root .rt-professional-header-toggle .setting-item-control {
   padding: 0;
 }
@@ -1040,20 +957,6 @@
 .rt-settings-root .setting-item {
   display: flex;
   align-items: center;
-}
-
-/* Ensure consistent top margin for all section headings within settings.
-   Obsidian's default rule (.setting-item + .setting-item-heading) only applies 
-   when there's a preceding sibling, but our sections are wrapped in container 
-   divs so headings that are first-child don't get the margin. This fix ensures
-   all major section headings get proper 24px top spacing. */
-.rt-settings-root .rt-settings-searchable-content [data-rt-section]>.setting-item.setting-item-heading {
-  margin-top: 24px;
-}
-
-/* Remove top margin from the very first section heading in the settings panel */
-.rt-settings-root .rt-settings-searchable-content [data-rt-section]:first-child>.setting-item.setting-item-heading:first-child {
-  margin-top: 0;
 }
 
 .rt-settings-root .setting-item.setting-item-heading .setting-item-name {
@@ -1470,11 +1373,6 @@
   border-color: var(--interactive-accent);
 }
 
-/* Settings visibility utility classes */
-.rt-settings-visible {
-  display: block;
-}
-
 .rt-settings-release-notes {
   margin-top: 24px;
 }
@@ -1790,7 +1688,6 @@
 
 /* Consolidated Hidden States */
 .rt-planetary-hidden,
-.rt-settings-hidden,
 .rt-mapping-hidden {
   display: none;
 }
@@ -2228,92 +2125,6 @@
   color: var(--text-faint);
   margin-top: 12px;
   font-style: italic;
-}
-
-/* -------------------------------------------------------------------------- */
-/* SETTINGS SEARCH                                                             */
-/* -------------------------------------------------------------------------- */
-
-.rt-settings-search-container {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
-  padding: 10px 14px;
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 10px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.rt-settings-search-container:focus-within {
-  border-color: var(--interactive-accent);
-  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.15);
-}
-
-.rt-settings-search-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.rt-settings-search-icon svg {
-  width: 18px;
-  height: 18px;
-}
-
-.rt-settings-search-input {
-  flex: 1;
-  border: none;
-  background: transparent;
-  color: var(--text-normal);
-  font-size: 15px;
-  outline: none;
-  padding: 4px 0;
-}
-
-.rt-settings-search-input::placeholder {
-  color: var(--text-faint);
-}
-
-.rt-settings-search-clear {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  cursor: pointer;
-  color: var(--text-muted);
-  background: var(--background-modifier-hover);
-  transition: color 0.1s ease, background 0.1s ease;
-  flex-shrink: 0;
-}
-
-.rt-settings-search-clear:hover {
-  color: var(--text-normal);
-  background: var(--background-modifier-border);
-}
-
-.rt-settings-search-clear svg {
-  width: 14px;
-  height: 14px;
-}
-
-.rt-settings-search-clear.rt-hidden {
-  display: none;
-}
-
-/* Search filtering - hide non-matching settings */
-.rt-settings-root .rt-search-hidden {
-  display: none;
-}
-
-/* Section containers that are entirely hidden when no children match */
-.rt-settings-root .rt-search-section-hidden {
-  display: none;
 }
 
 /* -------------------------------------------------------------------------- */

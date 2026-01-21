@@ -27,11 +27,11 @@ export class AprPaletteModal extends Modal {
         titleEl.setText('Color Palette');
         
         if (modalEl) {
-            modalEl.classList.add('rt-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-modal-shell');
             modalEl.style.width = '600px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('rt-modal-container');
+        contentEl.addClass('ert-modal-container');
 
         const applyPalette = async (palette: AprPalette) => {
             if (!this.plugin.settings.authorProgress) return;
@@ -78,7 +78,7 @@ export class AprPaletteModal extends Modal {
         // Preset Palettes Section
         const presetsCard = contentEl.createDiv({ cls: 'rt-glass-card' });
         presetsCard.createEl('h4', { text: 'Preset Palettes', cls: 'rt-section-title' });
-        presetsCard.createDiv({ text: 'Choose from curated color combinations.', cls: 'rt-modal-desc' });
+        presetsCard.createDiv({ text: 'Choose from curated color combinations.', cls: 'ert-modal-desc' });
 
         const presets = getPresetPalettes();
         const presetsGrid = presetsCard.createDiv({ cls: 'rt-apr-palette-grid' });

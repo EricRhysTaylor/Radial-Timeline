@@ -204,12 +204,12 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
     const renderMicroBackdrops = () => {
         const showBackdropRing = plugin.settings.showBackdropRing ?? true;
         if (!showBackdropRing) {
-            listContainer.addClass('rt-settings-hidden');
+            listContainer.addClass('ert-settings-hidden');
             list.empty();
             return;
         }
 
-        listContainer.removeClass('rt-settings-hidden');
+        listContainer.removeClass('ert-settings-hidden');
         list.empty();
 
         const microBackdrops = getMicroBackdrops();

@@ -38,18 +38,18 @@ export class ZeroDraftModal extends Modal {
         titleEl.setText('');
         
         if (modalEl) {
-            modalEl.classList.add('rt-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-modal-shell');
             modalEl.style.width = '680px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('rt-modal-container');
+        contentEl.addClass('ert-modal-container');
         contentEl.addClass('rt-zero-draft-modal');
 
         // Header
-        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
-        header.createSpan({ cls: 'rt-modal-badge', text: 'Zero Draft' });
-        header.createDiv({ cls: 'rt-modal-title', text: this.titleText });
-        header.createDiv({ cls: 'rt-modal-subtitle', text: 'Enter Pending Edits below, or click Override to open the note directly.' });
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'Zero Draft' });
+        header.createDiv({ cls: 'ert-modal-title', text: this.titleText });
+        header.createDiv({ cls: 'ert-modal-subtitle', text: 'Enter Pending Edits below, or click Override to open the note directly.' });
 
         // Info note
         const infoEl = contentEl.createDiv({ cls: 'rt-zero-draft-info' });
@@ -60,7 +60,7 @@ export class ZeroDraftModal extends Modal {
         this.textareaEl.value = this.originalText;
 
         // Buttons container
-        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
 
         // OK button
         new ButtonComponent(buttonRow)

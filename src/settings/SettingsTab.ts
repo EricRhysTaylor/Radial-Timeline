@@ -86,11 +86,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private toggleAiSettingsVisibility(show: boolean) {
         this._aiRelatedElements.forEach(el => {
             if (show) {
-                el.classList.remove('rt-settings-hidden');
-                el.classList.add('rt-settings-visible');
+                el.classList.remove('ert-settings-hidden');
+                el.classList.add('ert-settings-visible');
             } else {
-                el.classList.remove('rt-settings-visible');
-                el.classList.add('rt-settings-hidden');
+                el.classList.remove('ert-settings-visible');
+                el.classList.add('ert-settings-hidden');
             }
         });
     }
@@ -248,32 +248,32 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     }
 
     private renderSearchBox(containerEl: HTMLElement): HTMLInputElement {
-        const searchContainer = containerEl.createDiv({ cls: 'rt-settings-search-container' });
-        const searchIconEl = searchContainer.createSpan({ cls: 'rt-settings-search-icon' });
+        const searchContainer = containerEl.createDiv({ cls: 'ert-settings-search-container' });
+        const searchIconEl = searchContainer.createSpan({ cls: 'ert-settings-search-icon' });
         setIcon(searchIconEl, 'search');
         const searchInput = searchContainer.createEl('input', {
-            cls: 'rt-settings-search-input',
+            cls: 'ert-settings-search-input',
             attr: { type: 'text', placeholder: 'Search settings...', spellcheck: 'false' }
         });
-        const clearBtn = searchContainer.createSpan({ cls: 'rt-settings-search-clear rt-hidden' });
+        const clearBtn = searchContainer.createSpan({ cls: 'ert-settings-search-clear ert-hidden' });
         setIcon(clearBtn, 'x');
         clearBtn.setAttribute('aria-label', 'Clear search');
         this.plugin.registerDomEvent(searchInput, 'input', () => {
             const query = searchInput.value.trim();
-            clearBtn.toggleClass('rt-hidden', query.length === 0);
+            clearBtn.toggleClass('ert-hidden', query.length === 0);
             if (this._searchDebounceTimer) window.clearTimeout(this._searchDebounceTimer);
             this._searchDebounceTimer = window.setTimeout(() => this.filterSettings(query), 150);
         });
         this.plugin.registerDomEvent(clearBtn, 'click', () => {
             searchInput.value = '';
-            clearBtn.addClass('rt-hidden');
+            clearBtn.addClass('ert-hidden');
             this.filterSettings('');
             searchInput.focus();
         });
         this.plugin.registerDomEvent(searchInput, 'keydown', (evt: KeyboardEvent) => {
             if (evt.key === 'Escape') {
                 searchInput.value = '';
-                clearBtn.addClass('rt-hidden');
+                clearBtn.addClass('ert-hidden');
                 this.filterSettings('');
             }
         });
@@ -286,20 +286,20 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const allSettings = this._coreSearchableContent.querySelectorAll('.setting-item');
         const allSectionContainers = this._coreSearchableContent.querySelectorAll('[data-rt-section]');
         if (normalizedQuery === '') {
-            allSettings.forEach(el => (el as HTMLElement).classList.remove('rt-search-hidden'));
-            allSectionContainers.forEach(el => (el as HTMLElement).classList.remove('rt-search-section-hidden'));
+            allSettings.forEach(el => (el as HTMLElement).classList.remove('ert-search-hidden'));
+            allSectionContainers.forEach(el => (el as HTMLElement).classList.remove('ert-search-section-hidden'));
             return;
         }
         allSettings.forEach(settingEl => {
             const el = settingEl as HTMLElement;
             const searchText = el.dataset.rtSearchText || '';
             const matches = searchText.includes(normalizedQuery);
-            el.classList.toggle('rt-search-hidden', !matches);
+            el.classList.toggle('ert-search-hidden', !matches);
         });
         allSectionContainers.forEach(sectionEl => {
             const section = sectionEl as HTMLElement;
-            const visibleSettings = section.querySelectorAll('.setting-item:not(.rt-search-hidden)');
-            section.classList.toggle('rt-search-section-hidden', visibleSettings.length === 0);
+            const visibleSettings = section.querySelectorAll('.setting-item:not(.ert-search-hidden)');
+            section.classList.toggle('ert-search-section-hidden', visibleSettings.length === 0);
         });
     }
 
@@ -364,39 +364,39 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        containerEl.addClass('rt-settings-root');
+        containerEl.addClass('ert-ui', 'rt-settings-root', 'ert-settings-root');
         this._aiRelatedElements = [];
 
-        const tabBar = containerEl.createDiv({ cls: 'rt-settings-tab-bar' });
-        const proTab = tabBar.createDiv({ cls: 'rt-settings-tab' });
-        const proIcon = proTab.createSpan({ cls: 'rt-settings-tab-icon' });
+        const tabBar = containerEl.createDiv({ cls: 'ert-settings-tab-bar' });
+        const proTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
+        const proIcon = proTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(proIcon, 'signature');
-        proTab.createSpan({ text: 'Pro', cls: 'rt-settings-tab-label' });
-        const coreTab = tabBar.createDiv({ cls: 'rt-settings-tab' });
-        const coreIcon = coreTab.createSpan({ cls: 'rt-settings-tab-icon' });
+        proTab.createSpan({ text: 'Pro', cls: 'ert-settings-tab-label' });
+        const coreTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
+        const coreIcon = coreTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(coreIcon, 'settings');
-        coreTab.createSpan({ text: 'Core', cls: 'rt-settings-tab-label' });
+        coreTab.createSpan({ text: 'Core', cls: 'ert-settings-tab-label' });
 
-        const socialTab = tabBar.createDiv({ cls: 'rt-settings-tab rt-settings-tab-social' });
-        const socialIcon = socialTab.createSpan({ cls: 'rt-settings-tab-icon' });
+        const socialTab = tabBar.createDiv({ cls: 'ert-settings-tab ert-settings-tab-social' });
+        const socialIcon = socialTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(socialIcon, 'radio');
-        socialTab.createSpan({ text: 'Social Media', cls: 'rt-settings-tab-label' });
+        socialTab.createSpan({ text: 'Social Media', cls: 'ert-settings-tab-label' });
 
         const proContent = containerEl.createDiv({
-            cls: `rt-settings-tab-content rt-settings-pro-content ${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_PRO}`
+            cls: `ert-settings-tab-content ert-settings-pro-content ${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_PRO}`
         });
-        const coreContent = containerEl.createDiv({ cls: 'rt-settings-tab-content rt-settings-core-content' });
+        const coreContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-core-content' });
         const socialContent = containerEl.createDiv({
-            cls: 'rt-settings-tab-content rt-settings-social-content ert-ui ert-skin--social ert-density--compact'
+            cls: 'ert-settings-tab-content ert-settings-social-content ert-ui ert-skin--social ert-density--compact'
         });
 
         const updateTabState = () => {
-            proTab.toggleClass('rt-settings-tab-active', this._activeTab === 'pro');
-            coreTab.toggleClass('rt-settings-tab-active', this._activeTab === 'core');
-            socialTab.toggleClass('rt-settings-tab-active', this._activeTab === 'social');
-            proContent.toggleClass('rt-hidden', this._activeTab !== 'pro');
-            coreContent.toggleClass('rt-hidden', this._activeTab !== 'core');
-            socialContent.toggleClass('rt-hidden', this._activeTab !== 'social');
+            proTab.toggleClass('ert-settings-tab-active', this._activeTab === 'pro');
+            coreTab.toggleClass('ert-settings-tab-active', this._activeTab === 'core');
+            socialTab.toggleClass('ert-settings-tab-active', this._activeTab === 'social');
+            proContent.toggleClass('ert-hidden', this._activeTab !== 'pro');
+            coreContent.toggleClass('ert-hidden', this._activeTab !== 'core');
+            socialContent.toggleClass('ert-hidden', this._activeTab !== 'social');
         };
 
         this.plugin.registerDomEvent(proTab, 'click', () => { this._activeTab = 'pro'; updateTabState(); });
@@ -419,7 +419,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         this.renderBackupSafetySection(coreContent);
         this.renderSearchBox(coreContent);
 
-        const searchableContent = coreContent.createDiv({ cls: 'rt-settings-searchable-content' });
+        const searchableContent = coreContent.createDiv({ cls: 'ert-settings-searchable-content' });
         this._coreSearchableContent = searchableContent;
         const switchToProTab = () => { this._activeTab = 'pro'; updateTabState(); };
 

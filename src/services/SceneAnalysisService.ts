@@ -221,20 +221,20 @@ class SubplotPickerModal extends Modal {
         contentEl.empty();
         // Use generic modal base + subplot picker specific styling
         if (modalEl) {
-            modalEl.classList.add('rt-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-modal-shell');
             modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('rt-modal-container');
+        contentEl.addClass('ert-modal-container');
         contentEl.addClass('rt-subplot-picker-modal');
 
         const modelName = this.service.getActiveModelName();
-        const hero = contentEl.createDiv({ cls: 'rt-modal-header' });
+        const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
         const badgeText = modelName ? `AI pulse run · ${modelName}` : 'AI pulse run';
         hero.createSpan({ text: badgeText, cls: 'rt-subplot-picker-badge' });
-        hero.createDiv({ text: 'Process subplot scenes', cls: 'rt-modal-title' });
-        hero.createDiv({ cls: 'rt-modal-subtitle', text: 'Choose a subplot and run pulse updates just for that arc.' });
+        hero.createDiv({ text: 'Process subplot scenes', cls: 'ert-modal-title' });
+        hero.createDiv({ cls: 'ert-modal-subtitle', text: 'Choose a subplot and run pulse updates just for that arc.' });
 
         const heroStats = hero.createDiv({ cls: 'rt-subplot-picker-hero-stats' });
         this.heroStats = {
@@ -261,7 +261,7 @@ class SubplotPickerModal extends Modal {
         this.statsEl = formCard.createDiv({ cls: 'rt-subplot-picker-stats' });
         this.updateStats(this.selectedSubplot);
 
-        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(buttonRow)
             .setButtonText('Process flagged scenes')
             .setCta()
