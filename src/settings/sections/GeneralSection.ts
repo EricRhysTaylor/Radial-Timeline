@@ -23,7 +23,7 @@ export function renderGeneralSection(params: {
         text
             .setPlaceholder('Example: Book 1')
             .setValue(plugin.settings.sourcePath);
-        text.inputEl.addClass('rt-input-full');
+        text.inputEl.addClass('ert-input--full');
 
         attachFolderSuggest(text);
 
@@ -124,7 +124,7 @@ export function renderGeneralSection(params: {
 
         text.setPlaceholder(t('settings.advanced.aiOutputFolder.placeholder'))
             .setValue(fallbackFolder);
-        text.inputEl.addClass('rt-input-full');
+        text.inputEl.addClass('ert-input--full');
 
         const inputEl = text.inputEl;
 
@@ -191,7 +191,7 @@ export function renderGeneralSection(params: {
 
         text.setPlaceholder(t('settings.advanced.manuscriptOutputFolder.placeholder'))
             .setValue(fallbackFolder);
-        text.inputEl.addClass('rt-input-full');
+        text.inputEl.addClass('ert-input--full');
 
         const inputEl = text.inputEl;
 
@@ -258,7 +258,7 @@ export function renderGeneralSection(params: {
 
         text.setPlaceholder(t('settings.advanced.outlineOutputFolder.placeholder'))
             .setValue(fallbackFolder);
-        text.inputEl.addClass('rt-input-full');
+        text.inputEl.addClass('ert-input--full');
 
         const inputEl = text.inputEl;
 

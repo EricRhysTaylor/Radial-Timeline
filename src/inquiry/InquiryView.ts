@@ -51,17 +51,15 @@ const PREVIEW_PANEL_WIDTH = 640;
 const PREVIEW_PANEL_Y = -590;
 const PREVIEW_PANEL_PADDING_X = 32;
 const PREVIEW_PANEL_PADDING_Y = 20;
-const PREVIEW_PANEL_RADIUS = 18;
 const PREVIEW_HERO_LINE_HEIGHT = 30;
-const PREVIEW_HERO_MAX_LINES = 2;
 const PREVIEW_META_GAP = 6;
-const PREVIEW_META_LINE_HEIGHT = 20;
+const PREVIEW_META_LINE_HEIGHT = 22;
 const PREVIEW_DETAIL_GAP = 16;
-const PREVIEW_ROW_HEIGHT = 24;
-const PREVIEW_GROUP_GAP = 8;
-const PREVIEW_LABEL_X = 12;
-const PREVIEW_VALUE_X = 140;
-const PREVIEW_ICON_RADIUS = 3;
+const PREVIEW_PILL_HEIGHT = 30;
+const PREVIEW_PILL_PADDING_X = 16;
+const PREVIEW_PILL_GAP_X = 16;
+const PREVIEW_PILL_GAP_Y = 14;
+const PREVIEW_PILL_MIN_GAP_X = 8;
 const PREVIEW_FOOTER_GAP = 12;
 const PREVIEW_FOOTER_HEIGHT = 22;
 
@@ -75,10 +73,9 @@ type InquiryQuestion = {
 
 type InquiryPreviewRow = {
     group: SVGGElement;
-    icon: SVGCircleElement;
-    divider: SVGLineElement;
-    label: SVGTextElement;
-    value: SVGTextElement;
+    bg: SVGRectElement;
+    text: SVGTextElement;
+    label: string;
 };
 
 export class InquiryView extends ItemView {
@@ -107,7 +104,12 @@ export class InquiryView extends ItemView {
     private minimapEmptyText?: SVGTextElement;
     private minimapTicks: SVGRectElement[] = [];
     private minimapLayout?: { startX: number; length: number };
-    private zonePromptElements = new Map<InquiryZone, { group: SVGGElement; bg: SVGRectElement; text: SVGTextElement }>();
+    private zonePromptElements = new Map<InquiryZone, {
+        group: SVGGElement;
+        bg: SVGRectElement;
+        text: SVGTextElement;
+        title: SVGTitleElement;
+    }>();
     private glyphAnchor?: SVGGElement;
     private glyph?: InquiryGlyph;
     private glyphHit?: SVGRectElement;
@@ -124,7 +126,6 @@ export class InquiryView extends ItemView {
     private artifactPreviewBg?: SVGRectElement;
     private hoverTextEl?: SVGTextElement;
     private previewGroup?: SVGGElement;
-    private previewBg?: SVGRectElement;
     private previewHero?: SVGTextElement;
     private previewMeta?: SVGTextElement;
     private previewFooter?: SVGTextElement;
@@ -381,16 +382,6 @@ export class InquiryView extends ItemView {
         const panel = this.createSvgGroup(parent, 'ert-inquiry-preview', 0, PREVIEW_PANEL_Y);
         this.previewGroup = panel;
 
-        const bg = this.createSvgElement('rect');
-        bg.classList.add('ert-inquiry-preview-bg');
-        bg.setAttribute('x', String(-PREVIEW_PANEL_WIDTH / 2));
-        bg.setAttribute('y', '0');
-        bg.setAttribute('width', String(PREVIEW_PANEL_WIDTH));
-        bg.setAttribute('rx', String(PREVIEW_PANEL_RADIUS));
-        bg.setAttribute('ry', String(PREVIEW_PANEL_RADIUS));
-        panel.appendChild(bg);
-        this.previewBg = bg;
-
         const hero = this.createSvgText(panel, 'ert-inquiry-preview-hero', '', 0, PREVIEW_PANEL_PADDING_Y);
         hero.setAttribute('text-anchor', 'middle');
         hero.setAttribute('dominant-baseline', 'hanging');
@@ -401,32 +392,18 @@ export class InquiryView extends ItemView {
         meta.setAttribute('dominant-baseline', 'hanging');
         this.previewMeta = meta;
 
-        const rowLabels = ['Scope', 'Evidence', 'Classes', 'Roots', 'AI Engine', 'Est. Cost'];
+        const rowLabels = ['SCOPE', 'EVIDENCE', 'CLASSES', 'ROOTS', 'AI ENGINE', 'EST. COST'];
         this.previewRows = rowLabels.map(label => {
-            const group = this.createSvgGroup(panel, 'ert-inquiry-preview-row');
-            const divider = this.createSvgElement('line');
-            divider.classList.add('ert-inquiry-preview-row-divider');
-            divider.setAttribute('x1', '0');
-            divider.setAttribute('x2', String(PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2)));
-            divider.setAttribute('y1', String(PREVIEW_ROW_HEIGHT / 2));
-            divider.setAttribute('y2', String(PREVIEW_ROW_HEIGHT / 2));
-            group.appendChild(divider);
-            const icon = this.createSvgElement('circle');
-            icon.classList.add('ert-inquiry-preview-icon');
-            icon.setAttribute('r', String(PREVIEW_ICON_RADIUS));
-            icon.setAttribute('cx', '0');
-            icon.setAttribute('cy', '0');
-            group.appendChild(icon);
+            const group = this.createSvgGroup(panel, 'ert-inquiry-preview-pill');
+            const bg = this.createSvgElement('rect');
+            bg.classList.add('ert-inquiry-preview-pill-bg');
+            group.appendChild(bg);
 
-            const labelEl = this.createSvgText(group, 'ert-inquiry-preview-label', label, PREVIEW_LABEL_X, 0);
-            labelEl.setAttribute('dominant-baseline', 'middle');
-            labelEl.setAttribute('text-anchor', 'start');
+            const textEl = this.createSvgText(group, 'ert-inquiry-preview-pill-text', '', PREVIEW_PILL_PADDING_X, PREVIEW_PILL_HEIGHT / 2);
+            textEl.setAttribute('dominant-baseline', 'middle');
+            textEl.setAttribute('text-anchor', 'start');
 
-            const valueEl = this.createSvgText(group, 'ert-inquiry-preview-value', '', PREVIEW_VALUE_X, 0);
-            valueEl.setAttribute('dominant-baseline', 'middle');
-            valueEl.setAttribute('text-anchor', 'start');
-
-            return { group, icon, divider, label: labelEl, value: valueEl };
+            return { group, bg, text: textEl, label };
         });
 
         const footer = this.createSvgText(panel, 'ert-inquiry-preview-footer', 'Hover previews what will be sent. Click runs the inquiry.', -PREVIEW_PANEL_WIDTH / 2 + PREVIEW_PANEL_PADDING_X, 0);
@@ -826,7 +803,8 @@ export class InquiryView extends ItemView {
             elements.bg.setAttribute('ry', String(pillHeight / 2));
             elements.group.classList.toggle('is-active', this.state.selectedPromptIds[zone] === prompt.id);
             elements.group.setAttribute('data-prompt-id', prompt.id);
-            elements.group.setAttribute('aria-label', prompt.question);
+            elements.title.textContent = prompt.question;
+            elements.group.removeAttribute('aria-label');
         });
     }
 
@@ -913,7 +891,9 @@ export class InquiryView extends ItemView {
             text.setAttribute('dominant-baseline', 'middle');
             text.setAttribute('alignment-baseline', 'middle');
 
-            this.zonePromptElements.set(zone.id, { group: zoneEl, bg, text });
+            const title = this.createSvgElement('title');
+            zoneEl.appendChild(title);
+            this.zonePromptElements.set(zone.id, { group: zoneEl, bg, text, title });
 
             this.registerDomEvent(zoneEl as unknown as HTMLElement, 'click', () => this.handlePromptClick(zone.id));
             this.registerDomEvent(zoneEl as unknown as HTMLElement, 'pointerenter', () => {
@@ -2048,15 +2028,17 @@ export class InquiryView extends ItemView {
     }
 
     private updatePromptPreview(zone: InquiryZone, mode: InquiryMode, question: string): void {
-        if (!this.previewGroup || !this.previewHero || !this.previewBg) return;
-
+        if (!this.previewGroup || !this.previewHero) return;
+        ['setup', 'pressure', 'payoff'].forEach(zoneName => {
+            this.previewGroup?.classList.remove(`is-zone-${zoneName}`);
+        });
+        this.previewGroup.classList.add(`is-zone-${zone}`);
         const zoneLabel = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
         const modeLabel = mode === 'flow' ? 'Flow' : 'Depth';
-        const heroLines = this.setWrappedSvgText(
+        const heroLines = this.setBalancedHeroText(
             this.previewHero,
             question,
             PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2),
-            PREVIEW_HERO_MAX_LINES,
             PREVIEW_HERO_LINE_HEIGHT
         );
         if (this.previewMeta) {
@@ -2070,7 +2052,6 @@ export class InquiryView extends ItemView {
             + PREVIEW_META_GAP
             + PREVIEW_META_LINE_HEIGHT
             + PREVIEW_DETAIL_GAP;
-        const panelLeft = -PREVIEW_PANEL_WIDTH / 2;
         const rows = [
             this.getPreviewScopeValue(),
             this.getPreviewEvidenceValue(),
@@ -2080,22 +2061,156 @@ export class InquiryView extends ItemView {
             this.getPreviewCostValue()
         ];
 
-        this.previewRows.forEach((row, index) => {
-            const groupOffset = index >= 4 ? PREVIEW_GROUP_GAP * 2 : index >= 2 ? PREVIEW_GROUP_GAP : 0;
-            const rowY = detailStartY + (index * PREVIEW_ROW_HEIGHT) + groupOffset;
-            row.group.setAttribute('transform', `translate(${panelLeft + PREVIEW_PANEL_PADDING_X} ${rowY})`);
-            row.value.textContent = rows[index] ?? '';
-        });
-
-        const groupGapCount = Math.max(0, Math.ceil(this.previewRows.length / 2) - 1);
-        const rowsBlockHeight = (this.previewRows.length * PREVIEW_ROW_HEIGHT) + (groupGapCount * PREVIEW_GROUP_GAP);
+        const rowCount = this.layoutPreviewPills(detailStartY, rows);
+        const rowsBlockHeight = rowCount
+            ? (rowCount * PREVIEW_PILL_HEIGHT) + ((rowCount - 1) * PREVIEW_PILL_GAP_Y)
+            : 0;
         const footerY = detailStartY + rowsBlockHeight + PREVIEW_FOOTER_GAP;
         if (this.previewFooter) {
             this.previewFooter.setAttribute('y', String(footerY));
         }
+    }
 
-        const panelHeight = footerY + PREVIEW_FOOTER_HEIGHT + PREVIEW_PANEL_PADDING_Y;
-        this.previewBg.setAttribute('height', panelHeight.toFixed(2));
+    private setBalancedHeroText(
+        textEl: SVGTextElement,
+        text: string,
+        maxWidth: number,
+        lineHeight: number
+    ): number {
+        this.clearSvgChildren(textEl);
+        const words = text.split(/\s+/).filter(Boolean);
+        if (!words.length) return 0;
+        const fullLine = words.join(' ');
+        textEl.textContent = fullLine;
+        const fullWidth = textEl.getComputedTextLength();
+        if (fullWidth <= maxWidth) {
+            return 1;
+        }
+
+        const minWordsPerLine = 3;
+        let bestIndex = -1;
+        let bestScore = Number.POSITIVE_INFINITY;
+        for (let i = minWordsPerLine; i <= words.length - minWordsPerLine; i += 1) {
+            const line1 = words.slice(0, i).join(' ');
+            const line2 = words.slice(i).join(' ');
+            textEl.textContent = line1;
+            const width1 = textEl.getComputedTextLength();
+            textEl.textContent = line2;
+            const width2 = textEl.getComputedTextLength();
+            const overflow = Math.max(0, width1 - maxWidth) + Math.max(0, width2 - maxWidth);
+            const score = Math.abs(width1 - width2) + (overflow * 3);
+            if (score < bestScore) {
+                bestScore = score;
+                bestIndex = i;
+            }
+        }
+
+        if (bestIndex < 0) {
+            return this.setWrappedSvgText(textEl, text, maxWidth, 1, lineHeight);
+        }
+
+        this.clearSvgChildren(textEl);
+        const x = textEl.getAttribute('x') ?? '0';
+        const appendTspan = (content: string, isFirst: boolean): SVGTSpanElement => {
+            const tspan = this.createSvgElement('tspan');
+            tspan.setAttribute('x', x);
+            tspan.setAttribute('dy', isFirst ? '0' : String(lineHeight));
+            tspan.textContent = content;
+            textEl.appendChild(tspan);
+            return tspan;
+        };
+
+        const line1 = words.slice(0, bestIndex).join(' ');
+        const line2 = words.slice(bestIndex).join(' ');
+        appendTspan(line1, true);
+        appendTspan(line2, false);
+        return 2;
+    }
+
+    private layoutPreviewPills(startY: number, values: string[]): number {
+        const items = this.previewRows.map((row, index) => {
+            const value = values[index] ?? '';
+            const text = value ? `${row.label} ${value}` : row.label;
+            row.text.textContent = text;
+            const textWidth = row.text.getComputedTextLength();
+            const width = Math.ceil(textWidth + (PREVIEW_PILL_PADDING_X * 2));
+            row.bg.setAttribute('width', String(width));
+            row.bg.setAttribute('height', String(PREVIEW_PILL_HEIGHT));
+            row.bg.setAttribute('rx', String(PREVIEW_PILL_HEIGHT / 2));
+            row.bg.setAttribute('ry', String(PREVIEW_PILL_HEIGHT / 2));
+            row.bg.setAttribute('x', '0');
+            row.bg.setAttribute('y', '0');
+            return { row, width };
+        });
+
+        if (!items.length) return 0;
+        const maxRowWidth = PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2);
+        const splitIndex = items.length > 3 ? this.pickPillSplit(items.map(item => item.width), maxRowWidth) : items.length;
+        const rows = [
+            items.slice(0, splitIndex),
+            items.slice(splitIndex)
+        ].filter(row => row.length);
+
+        rows.forEach((row, rowIndex) => {
+            const widths = row.map(item => item.width);
+            const totalWidth = widths.reduce((sum, value) => sum + value, 0);
+            const gap = this.computePillGap(totalWidth, row.length, maxRowWidth, rowIndex === 0);
+            const rowWidth = totalWidth + gap * (row.length - 1);
+            let cursor = -rowWidth / 2;
+            const rowY = startY + (rowIndex * (PREVIEW_PILL_HEIGHT + PREVIEW_PILL_GAP_Y));
+            row.forEach((item, idx) => {
+                item.row.group.setAttribute('transform', `translate(${cursor.toFixed(2)} ${rowY.toFixed(2)})`);
+                cursor += widths[idx] + gap;
+            });
+        });
+
+        return rows.length;
+    }
+
+    private pickPillSplit(widths: number[], maxWidth: number): number {
+        const total = widths.length;
+        let bestIndex = Math.ceil((total + 1) / 2);
+        let bestScore = Number.POSITIVE_INFINITY;
+        const computeRowWidth = (slice: number[], stretch: boolean): number => {
+            if (!slice.length) return 0;
+            const rowTotal = slice.reduce((sum, value) => sum + value, 0);
+            const gap = this.computePillGap(rowTotal, slice.length, maxWidth, stretch);
+            return rowTotal + gap * (slice.length - 1);
+        };
+
+        for (let i = 1; i < total; i += 1) {
+            const row1Count = i;
+            const row2Count = total - i;
+            if (row1Count < row2Count) continue;
+
+            const row1Width = computeRowWidth(widths.slice(0, i), true);
+            const row2Width = computeRowWidth(widths.slice(i), false);
+            if (row1Width <= row2Width) continue;
+
+            const overflow = Math.max(0, row1Width - maxWidth) + Math.max(0, row2Width - maxWidth);
+            const countDiff = row1Count - row2Count;
+            const countPenalty = countDiff === 0 ? 300 : (countDiff === 1 ? 0 : 80 * (countDiff - 1));
+            const score = Math.abs(row1Width - row2Width) + (overflow * 3) + countPenalty;
+            if (score < bestScore) {
+                bestScore = score;
+                bestIndex = i;
+            }
+        }
+
+        return bestIndex;
+    }
+
+    private computePillGap(totalWidth: number, count: number, maxWidth: number, stretch: boolean): number {
+        if (count <= 1) return 0;
+        const available = maxWidth - totalWidth;
+        if (available <= 0) {
+            const tightGap = available / (count - 1);
+            return Math.max(PREVIEW_PILL_MIN_GAP_X, Math.min(PREVIEW_PILL_GAP_X, tightGap));
+        }
+        if (stretch) {
+            return Math.max(PREVIEW_PILL_GAP_X, available / (count - 1));
+        }
+        return PREVIEW_PILL_GAP_X;
     }
 
     private setWrappedSvgText(

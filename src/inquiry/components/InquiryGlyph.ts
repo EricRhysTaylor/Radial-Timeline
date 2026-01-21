@@ -86,6 +86,7 @@ export class InquiryGlyph {
         group: SVGGElement;
         circle: SVGCircleElement;
         text: SVGTextElement;
+        title: SVGTitleElement;
         zone: InquiryZone;
         index: number;
         promptId?: string;
@@ -282,6 +283,7 @@ export class InquiryGlyph {
                 group: SVGGElement;
                 circle: SVGCircleElement;
                 text: SVGTextElement;
+                title: SVGTitleElement;
                 zone: InquiryZone;
                 index: number;
                 promptId?: string;
@@ -294,7 +296,6 @@ export class InquiryGlyph {
                 const dotGroup = document.createElementNS(SVG_NS, 'g');
                 dotGroup.classList.add('inq-zone-dot', `inq-zone-dot--${zone.id}`);
                 dotGroup.setAttribute('transform', `translate(${dotX.toFixed(2)} ${dotY.toFixed(2)})`);
-                dotGroup.setAttribute('aria-label', `${zone.id} prompt`);
                 dotGroup.setAttribute('role', 'note');
 
                 const dotCircle = document.createElementNS(SVG_NS, 'circle');
@@ -312,6 +313,8 @@ export class InquiryGlyph {
                 dotText.setAttribute('fill', ZONE_DOT_TEXT);
                 dotText.textContent = String(i + 1);
 
+                const dotTitle = document.createElementNS(SVG_NS, 'title');
+                dotGroup.appendChild(dotTitle);
                 dotGroup.appendChild(dotCircle);
                 dotGroup.appendChild(dotText);
                 zoneGroup.appendChild(dotGroup);
@@ -320,11 +323,12 @@ export class InquiryGlyph {
                     group: SVGGElement;
                     circle: SVGCircleElement;
                     text: SVGTextElement;
+                    title: SVGTitleElement;
                     zone: InquiryZone;
                     index: number;
                     promptId?: string;
                     promptText?: string;
-                } = { group: dotGroup, circle: dotCircle, text: dotText, zone: zone.id, index: i };
+                } = { group: dotGroup, circle: dotCircle, text: dotText, title: dotTitle, zone: zone.id, index: i };
                 dotGroup.addEventListener('click', () => {
                     if (!marker.promptId) return;
                     this.promptState?.onPromptSelect?.(marker.zone, marker.promptId);
@@ -372,8 +376,9 @@ export class InquiryGlyph {
                 marker.text.textContent = prompt ? String(idx + 1) : '';
                 marker.group.setAttribute('display', prompt ? 'inline' : 'none');
                 marker.group.classList.toggle('is-active', !!prompt && selectedId === prompt.id);
+                marker.title.textContent = prompt?.question ?? '';
+                marker.group.removeAttribute('aria-label');
                 if (prompt) {
-                    marker.group.setAttribute('aria-label', prompt.question);
                     marker.group.setAttribute('role', 'button');
                     marker.group.setAttribute('tabindex', '0');
                 } else {

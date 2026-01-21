@@ -215,7 +215,7 @@ export function renderAiSection(params: {
         extraCheck?: (val: string, el: HTMLElement) => boolean
     ) => {
         const configure = (component: TextComponent) => {
-            component.inputEl.addClass('rt-input-full');
+            component.inputEl.addClass('ert-input--full');
             component.setPlaceholder(placeholder).setValue(value);
             
             component.onChange(() => {
@@ -357,7 +357,7 @@ export function renderAiSection(params: {
         .setName('Local LLM Base URL')
         .setDesc('The API endpoint. For Ollama, use "http://localhost:11434/v1". For LM Studio, use "http://localhost:1234/v1".')
         .addText(text => {
-            text.inputEl.addClass('rt-input-full');
+            text.inputEl.addClass('ert-input--full');
             text
                 .setPlaceholder('http://localhost:11434/v1')
                 .setValue(plugin.settings.localBaseUrl || 'http://localhost:11434/v1');
@@ -393,7 +393,7 @@ export function renderAiSection(params: {
         .setName('Model ID')
         .setDesc('The exact model name your server expects (e.g., "llama3", "mistral-7b", "local-model").')
         .addText(text => {
-            text.inputEl.addClass('rt-input-lg');
+            text.inputEl.addClass('ert-input--lg');
             localModelText = text;
             text
                 .setPlaceholder('llama3')

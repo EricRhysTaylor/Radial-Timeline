@@ -105,7 +105,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
         titleColorSetting.addText(text => {
             text.setPlaceholder('Title')
                 .setValue(config.title || '');
-            text.inputEl.classList.add('rt-input-md');
+            text.inputEl.classList.add('ert-input--md');
             text.onChange(async (value) => {
                 await updateMicroBackdrop(index, { title: value });
             });
@@ -165,7 +165,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
         rangeSetting.addText(text => {
             text.setPlaceholder('4/24/2024 - 4/25/2025 1:45pm')
                 .setValue(config.range || '');
-            text.inputEl.classList.add('rt-input-lg');
+            text.inputEl.classList.add('ert-input--lg');
 
             const validateRange = () => {
                 text.inputEl.removeClass('ert-setting-input-error');

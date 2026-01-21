@@ -130,6 +130,16 @@
   min-width: var(--ert-input-width-xs);
 }
 
+.ert-ui input.ert-input--sm {
+  width: var(--ert-input-width-sm);
+  min-width: var(--ert-input-width-sm);
+}
+
+.ert-ui input.ert-input--md {
+  width: var(--ert-input-width-md);
+  min-width: var(--ert-input-width-md);
+}
+
 .ert-ui input.ert-input--lg {
   width: var(--ert-input-width-lg);
   min-width: var(--ert-input-width-lg);
@@ -1705,11 +1715,11 @@
   height: 14px;
 }
 
-.ert-ui .ert-settings-root .ert-search-hidden {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-search-hidden {
   display: none;
 }
 
-.ert-ui .ert-settings-root .ert-search-section-hidden {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-search-section-hidden {
   display: none;
 }
 
@@ -1833,57 +1843,57 @@
 /* Settings helpers (ERT)                                                     */
 /* -------------------------------------------------------------------------- */
 
-.ert-ui .ert-settings-root .ert-setting-input-success {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-input-success {
   border-color: var(--text-success);
   background-color: color-mix(in srgb, var(--text-success) 10%, transparent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-success) 20%, transparent);
 }
 
-.ert-ui .ert-settings-root .ert-setting-input-error {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-input-error {
   border-color: var(--text-error);
   background-color: color-mix(in srgb, var(--text-error) 10%, transparent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error) 20%, transparent);
 }
 
-.ert-ui .ert-settings-root .ert-setting-input-overdue {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-input-overdue {
   border-color: var(--rt-color-due);
   background-color: color-mix(in srgb, var(--rt-color-due) 10%, transparent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--rt-color-due) 20%, transparent);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px 12px;
   margin-top: 8px;
 }
 
-.ert-ui .ert-settings-root .setting-item .setting-item-control select.ert-setting-dropdown {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item .setting-item-control select.ert-setting-dropdown {
   width: var(--rt-settings-select-width);
   min-width: var(--rt-settings-select-width);
   max-width: var(--rt-settings-select-width);
   flex: 0 0 var(--rt-settings-select-width);
 }
 
-.ert-ui .ert-settings-root .ert-setting-full-width-input {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-full-width-input {
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: auto auto;
   gap: 12px;
 }
 
-.ert-ui .ert-settings-root .ert-setting-full-width-input .setting-item-info {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-full-width-input .setting-item-info {
   grid-column: 1 / -1;
   grid-row: 1 / 2;
 }
 
-.ert-ui .ert-settings-root .ert-setting-full-width-input .setting-item-control {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-full-width-input .setting-item-control {
   grid-column: 1 / -1;
   grid-row: 2 / 3;
   width: 100%;
 }
 
-.ert-ui .ert-settings-root .ert-setting-full-width-input .setting-item-control input[type="text"] {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-full-width-input .setting-item-control input[type="text"] {
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -1894,7 +1904,7 @@
   border-radius: 8px;
 }
 
-.ert-ui .ert-settings-root .ert-setting-full-width-input .setting-item-control textarea {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-full-width-input .setting-item-control textarea {
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -1907,18 +1917,18 @@
 }
 
 @media (max-width: 1100px) {
-  .ert-ui .ert-settings-root .ert-color-grid {
+  :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 800px) {
-  .ert-ui .ert-settings-root .ert-color-grid {
+  :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-item {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-item {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1928,7 +1938,7 @@
   border-radius: 8px;
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-label {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-label {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -1939,7 +1949,7 @@
   margin-bottom: 2px;
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1948,7 +1958,7 @@
   position: relative;
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls input[type="color"] {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls input[type="color"] {
   width: 18px;
   height: 18px;
   padding: 0;
@@ -1962,7 +1972,7 @@
   outline: none;
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-hidden-color-input {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-hidden-color-input {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -1972,7 +1982,7 @@
   left: 0;
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger {
   width: 24px;
   height: 24px;
   border: 1px solid var(--background-modifier-border);
@@ -1981,104 +1991,104 @@
   flex-shrink: 0;
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-stage-Zero {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-stage-Zero {
   background: var(--rt-publishStageColors-Zero);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-stage-Author {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-stage-Author {
   background: var(--rt-publishStageColors-Author);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-stage-House {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-stage-House {
   background: var(--rt-publishStageColors-House);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-stage-Press {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-stage-Press {
   background: var(--rt-publishStageColors-Press);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-0 {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-0 {
   background: var(--rt-subplot-colors-0);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-1 {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-1 {
   background: var(--rt-subplot-colors-1);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-2 {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-2 {
   background: var(--rt-subplot-colors-2);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-3 {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-3 {
   background: var(--rt-subplot-colors-3);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-4 {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-4 {
   background: var(--rt-subplot-colors-4);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-5 {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-5 {
   background: var(--rt-subplot-colors-5);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-6 {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-6 {
   background: var(--rt-subplot-colors-6);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-7 {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-7 {
   background: var(--rt-subplot-colors-7);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-8 {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-8 {
   background: var(--rt-subplot-colors-8);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-9 {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-9 {
   background: var(--rt-subplot-colors-9);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-10 {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-10 {
   background: var(--rt-subplot-colors-10);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-11 {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-11 {
   background: var(--rt-subplot-colors-11);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-12 {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-12 {
   background: var(--rt-subplot-colors-12);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-13 {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-13 {
   background: var(--rt-subplot-colors-13);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-14 {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-14 {
   background: var(--rt-subplot-colors-14);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-15 {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-15 {
   background: var(--rt-subplot-colors-15);
 }
 
-.ert-ui .ert-settings-root .ert-color-section-desc {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-section-desc {
   margin: 6px 0 10px 0;
   color: var(--text-muted);
   font-size: 12px;
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls input[type="color"]::-webkit-color-swatch-wrapper {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls input[type="color"]::-webkit-color-swatch-wrapper {
   padding: 0;
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls input[type="color"]::-webkit-color-swatch {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls input[type="color"]::-webkit-color-swatch {
   border: none;
   border-radius: 0;
 }
 
-.ert-ui .ert-settings-root .setting-item .setting-item-control input.ert-hex-input,
-.ert-ui .ert-settings-root input.ert-hex-input,
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-hex-input {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item .setting-item-control input.ert-hex-input,
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) input.ert-hex-input,
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-hex-input {
   width: 10ch;
   flex: 0 0 10ch;
   border: 1px solid var(--background-modifier-border);
@@ -2089,14 +2099,14 @@
   outline: none;
 }
 
-.ert-ui .ert-settings-root .setting-item .setting-item-control input.ert-hex-input:focus,
-.ert-ui .ert-settings-root input.ert-hex-input:focus,
-.ert-ui .ert-settings-root .ert-color-grid-controls .ert-hex-input:focus {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item .setting-item-control input.ert-hex-input:focus,
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) input.ert-hex-input:focus,
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-hex-input:focus {
   border-color: var(--interactive-accent);
   box-shadow: 0 0 0 2px rgba(100, 180, 255, 0.2);
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .setting-item {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .setting-item {
   margin: 0;
   display: block;
   padding: 0;
@@ -2104,11 +2114,11 @@
   flex: 1;
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .setting-item + .setting-item {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .setting-item + .setting-item {
   border-top: none;
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .setting-item-control {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .setting-item-control {
   display: flex;
   align-items: center;
   gap: 0;
@@ -2116,7 +2126,7 @@
   margin: 0;
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .clickable-icon {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .clickable-icon {
   width: 28px;
   height: 28px;
   border: 1px solid var(--background-modifier-border);
@@ -2130,12 +2140,12 @@
   margin-left: auto;
 }
 
-.ert-ui .ert-settings-root .ert-color-grid-controls .clickable-icon:hover {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .clickable-icon:hover {
   background: var(--background-modifier-hover);
   border-color: var(--interactive-accent);
 }
 
-.ert-ui .ert-settings-root .ert-setting-two-row {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-two-row {
   display: grid;
   grid-template-columns: 1fr auto;
   grid-template-rows: auto auto;
@@ -2144,7 +2154,7 @@
   align-items: start;
 }
 
-.ert-ui .ert-settings-root .ert-setting-two-row .setting-item-info {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-two-row .setting-item-info {
   grid-column: 1 / 2;
   grid-row: 1 / 2;
   display: flex;
@@ -2152,25 +2162,25 @@
   gap: 4px;
 }
 
-.ert-ui .ert-settings-root .ert-setting-two-row .setting-item-control {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-two-row .setting-item-control {
   grid-column: 2 / 3;
   grid-row: 1 / 2;
   justify-self: flex-end;
 }
 
-.ert-ui .ert-settings-root .ert-setting-two-row .ert-story-structure-info {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-two-row .ert-story-structure-info {
   grid-column: 1 / 3;
   grid-row: 2 / 3;
   margin: 0;
 }
 
-.ert-ui .ert-settings-root .ert-micro-backdrop-title-row .ert-color-grid-controls {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-micro-backdrop-title-row .ert-color-grid-controls {
   display: inline-flex;
   align-items: center;
   gap: 8px;
 }
 
-.ert-ui .ert-settings-root .ert-micro-backdrop-title-row .ert-color-grid-controls .ert-hex-input {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-micro-backdrop-title-row .ert-color-grid-controls .ert-hex-input {
   width: 120px;
 }
 

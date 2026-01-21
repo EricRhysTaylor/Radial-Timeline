@@ -170,7 +170,7 @@ export function renderPublicationSection(params: {
             .setDesc(stageDescriptions[stage])
         .addText(text => {
             text.inputEl.type = 'date';
-                text.inputEl.addClass('rt-input-md');
+                text.inputEl.addClass('ert-input--md');
                 text.setValue(currentDateStr || '');
                 
                 // Apply overdue styling
@@ -315,7 +315,7 @@ export function renderPublicationSection(params: {
             text.inputEl.type = 'number';
             text.inputEl.min = '14';
             text.inputEl.max = '90';
-            text.inputEl.addClass('rt-input-xs');
+            text.inputEl.addClass('ert-input--xs');
             text.setValue(current);
 
             plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {

@@ -995,7 +995,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     addElementBlock(typographyStack, {
         label: 'RT Badge',
         desc: 'Radial Timeline badge text.',
-        dataTypo: 'rt-badge',
+        dataTypo: 'ert-badgePill',
         color: {
             key: 'aprEngineColor',
             value: currentRtBadgeColor,

@@ -49,7 +49,7 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
             const current = String(plugin.settings.metadataRefreshDebounceMs ?? 10000);
             text.setPlaceholder(t('settings.advanced.debounce.placeholder'));
             text.setValue(current);
-            text.inputEl.addClass('rt-input-sm');
+            text.inputEl.addClass('ert-input--sm');
 
             plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
                 if (evt.key === 'Enter') {

@@ -55,7 +55,7 @@ export function renderStoryBeatsSection(params: {
             text.setValue(String(getActCount()));
             text.inputEl.type = 'number';
             text.inputEl.min = '3';
-            text.inputEl.addClass('rt-input-xs');
+            text.inputEl.addClass('ert-input--xs');
             text.onChange(async (value) => {
                 const parsed = parseInt(value, 10);
                 const next = Number.isFinite(parsed) ? Math.max(3, parsed) : 3;
@@ -160,7 +160,7 @@ export function renderStoryBeatsSection(params: {
                 .setPlaceholder('Custom')
                 .setValue(plugin.settings.customBeatSystemName || 'Custom')
                 .then(t => {
-                    t.inputEl.addClass('rt-input-md');
+                    t.inputEl.addClass('ert-input--md');
                     return t;
                 })
                 .onChange(async (value) => {
@@ -616,7 +616,7 @@ export function renderStoryBeatsSection(params: {
                 setIcon(iconPreview, currentIcon);
                 const iconInput = iconWrapper.createEl('input', { 
                     type: 'text', 
-                    cls: 'rt-template-input rt-input-lg rt-icon-input',
+                    cls: 'rt-template-input ert-input--lg rt-icon-input',
                     attr: { placeholder: 'Icon name...' }
                 });
                 iconInput.value = currentIcon;
@@ -657,7 +657,7 @@ export function renderStoryBeatsSection(params: {
                 };
 
                 // 5. Key input (direct child - no wrapper!)
-                const keyInput = row.createEl('input', { type: 'text', cls: 'rt-template-input rt-input-md' });
+                const keyInput = row.createEl('input', { type: 'text', cls: 'rt-template-input ert-input--md' });
                 keyInput.value = entry.key;
                 keyInput.placeholder = 'Key';
                 keyInput.onchange = () => {
@@ -687,7 +687,7 @@ export function renderStoryBeatsSection(params: {
 
                 // 6. Value input (direct child - no wrapper!)
                 const value = entry.value;
-                const valInput = row.createEl('input', { type: 'text', cls: 'rt-template-input rt-input-md' });
+                const valInput = row.createEl('input', { type: 'text', cls: 'rt-template-input ert-input--md' });
                 if (Array.isArray(value)) {
                     valInput.value = value.join(', ');
                     valInput.placeholder = 'Comma-separated values';
@@ -778,7 +778,7 @@ export function renderStoryBeatsSection(params: {
             setIcon(addIconPreview, DEFAULT_HOVER_ICON);
             const addIconInput = addIconWrapper.createEl('input', { 
                 type: 'text', 
-                cls: 'rt-template-input rt-input-lg rt-icon-input',
+                cls: 'rt-template-input ert-input--lg rt-icon-input',
                 attr: { placeholder: 'Icon name...' }
             });
             addIconInput.value = DEFAULT_HOVER_ICON;
@@ -809,10 +809,10 @@ export function renderStoryBeatsSection(params: {
             setTooltip(addCheckbox, 'Show in hover synopsis');
 
             // 5. Key input (direct child - no wrapper!)
-            const keyInput = addRow.createEl('input', { type: 'text', cls: 'rt-template-input rt-input-md', attr: { placeholder: 'New key' } });
+            const keyInput = addRow.createEl('input', { type: 'text', cls: 'rt-template-input ert-input--md', attr: { placeholder: 'New key' } });
 
             // 6. Value input (direct child - no wrapper!)
-            const valInput = addRow.createEl('input', { type: 'text', cls: 'rt-template-input rt-input-md', attr: { placeholder: 'Value' } }) as HTMLInputElement;
+            const valInput = addRow.createEl('input', { type: 'text', cls: 'rt-template-input ert-input--md', attr: { placeholder: 'Value' } }) as HTMLInputElement;
 
             // 7. Buttons wrapper (holds both + and reset)
             const btnWrap = addRow.createDiv({ cls: 'rt-template-add-buttons' });

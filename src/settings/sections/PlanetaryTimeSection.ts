@@ -226,7 +226,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
             setting.addText((text: TextComponent) => {
                 text.inputEl.type = 'number';
                 text.inputEl.min = '0';
-                text.inputEl.addClass('rt-input-xs');
+                text.inputEl.addClass('ert-input--xs');
                 const current = (profile as any)[key];
                 const originalValue = current !== undefined ? String(current) : '';
                 text.setValue(originalValue);
@@ -245,7 +245,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
             });
         };
 
-        const addTextField = (label: string, key: keyof PlanetaryProfile, placeholder?: string, onSave?: () => void, sizeClass = 'rt-input-lg') => {
+        const addTextField = (label: string, key: keyof PlanetaryProfile, placeholder?: string, onSave?: () => void, sizeClass = 'ert-input--lg') => {
             const setting = new Settings(fieldsContainer).setName(label);
             if (placeholder) setting.setDesc(placeholder);
             setting.addText((text: TextComponent) => {
@@ -279,7 +279,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
             .setName(t('planetary.fields.monthNames'))
             .setDesc('Optional. Determines how the year is divided. Provide names to set the month count (e.g. 4 names = 4 months). Leave blank for 12 numbered months.')
             .addText((text: TextComponent) => {
-                text.inputEl.addClass('rt-input-lg');
+                text.inputEl.addClass('ert-input--lg');
                 const originalValue = (profile.monthNames || []).join(', ');
                 text.setValue(originalValue);
                 // SAFE: addEventListener used in settings section; cleanup occurs when settings container is destroyed
@@ -295,7 +295,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
             .setName(t('planetary.fields.weekdayNames'))
             .setDesc('Optional. Sets weekday labels; leave blank for numbered weekdays.')
             .addText((text: TextComponent) => {
-                text.inputEl.addClass('rt-input-lg');
+                text.inputEl.addClass('ert-input--lg');
                 const originalValue = (profile.weekdayNames || []).join(', ');
                 text.setValue(originalValue);
                 // SAFE: addEventListener used in settings section; cleanup occurs when settings container is destroyed

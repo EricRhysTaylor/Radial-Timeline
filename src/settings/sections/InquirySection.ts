@@ -198,7 +198,7 @@ export function renderInquirySection(params: SectionParams): void {
 
         text.setPlaceholder(defaultPath)
             .setValue(fallbackFolder);
-        text.inputEl.addClass('rt-input-full');
+        text.inputEl.addClass('ert-input--full');
 
         if (attachFolderSuggest) {
             attachFolderSuggest(text);
@@ -281,7 +281,7 @@ export function renderInquirySection(params: SectionParams): void {
             const current = String(plugin.settings.inquiryCacheMaxSessions ?? 30);
             text.setPlaceholder('30');
             text.setValue(current);
-            text.inputEl.addClass('rt-input-sm');
+            text.inputEl.addClass('ert-input--sm');
 
             plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
                 if (evt.key === 'Enter') {
@@ -323,7 +323,7 @@ export function renderInquirySection(params: SectionParams): void {
     classScopeSetting.addTextArea(text => {
         text.setValue(listToText(inquirySources.classScope));
         text.inputEl.rows = 4;
-        text.inputEl.addClass('rt-input-lg');
+        text.inputEl.addClass('ert-input--lg');
         text.setPlaceholder('scene\noutline\n/');
         classScopeInput = text;
 
@@ -340,7 +340,7 @@ export function renderInquirySection(params: SectionParams): void {
     scanRootsSetting.addTextArea(text => {
         text.setValue(listToText(inquirySources.scanRoots));
         text.inputEl.rows = 4;
-        text.inputEl.addClass('rt-input-lg');
+        text.inputEl.addClass('ert-input--lg');
         text.setPlaceholder('/Book */\n/Character/\n/World/');
         scanRootsInput = text;
 
