@@ -70,7 +70,7 @@
 }
 
 /* Legacy settings tokens */
-.rt-settings-root {
+.ert-settings-root {
   --rt-completion-warn: #ff9a00;
   --rt-completion-warn-soft: #ffb347;
   --rt-completion-late: #ff4d4f;
@@ -110,32 +110,12 @@
   color: var(--text-on-accent);
 }
 
-/* Settings input validation styles */
-.rt-setting-input-success {
-  border-color: var(--text-success);
-  background-color: color-mix(in srgb, var(--text-success) 10%, transparent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-success) 20%, transparent);
-}
-
-.rt-setting-input-error {
-  border-color: var(--text-error);
-  background-color: color-mix(in srgb, var(--text-error) 10%, transparent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error) 20%, transparent);
-}
-
-/* Overdue input styling */
-.rt-setting-input-overdue {
-  border-color: var(--rt-color-due);
-  background-color: color-mix(in srgb, var(--rt-color-due) 10%, transparent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--rt-color-due) 20%, transparent);
-}
-
 /* Overdue row styling */
-.rt-settings-root .rt-stage-target-overdue .setting-item-name {
+.ert-settings-root .rt-stage-target-overdue .setting-item-name {
   color: var(--rt-color-due);
 }
 
-.rt-settings-root .rt-stage-target-overdue .setting-item-description {
+.ert-settings-root .rt-stage-target-overdue .setting-item-description {
   color: var(--rt-color-due);
   opacity: 0.85;
 }
@@ -749,71 +729,49 @@
 /* PROFESSIONAL SECTION                                                       */
 /* -------------------------------------------------------------------------- */
 
-.rt-settings-root .rt-professional-header-toggle .setting-item-control {
+.ert-settings-root .rt-professional-header-toggle .setting-item-control {
   padding: 0;
 }
 
-.rt-settings-root .rt-settings-separator {
-  margin: 1em 0 2em 0;
-  border: none;
-  border-top: 1px solid var(--background-modifier-border);
-}
-
-.rt-settings-root .documentation-container {
+.ert-settings-root .documentation-container {
   padding: 0 1em;
 }
 
-.rt-settings-root .documentation-container h1 {
+.ert-settings-root .documentation-container h1 {
   font-size: 2.2em;
   margin-top: 0.5em;
 }
 
-.rt-settings-root .documentation-container h2 {
+.ert-settings-root .documentation-container h2 {
   font-size: 1.5em;
   margin-top: 1.5em;
   padding-bottom: 0.3em;
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.rt-settings-root .documentation-container h3 {
+.ert-settings-root .documentation-container h3 {
   font-size: 1.2em;
   margin-top: 1em;
 }
 
-.rt-settings-root .documentation-container img {
+.ert-settings-root .documentation-container img {
   max-width: 100%;
   border-radius: 5px;
   margin: 1em 0;
 }
 
-.rt-settings-root .documentation-container code {
+.ert-settings-root .documentation-container code {
   background-color: var(--background-primary);
   padding: 0.2em 0.4em;
   border-radius: 3px;
 }
 
-.rt-settings-root .documentation-container pre {
+.ert-settings-root .documentation-container pre {
   background-color: var(--background-primary);
   padding: 1em;
   border-radius: 5px;
   overflow-x: auto;
   margin: 1em 0;
-}
-
-/* Compact grid for color settings (publish stages + subplot palette) */
-.rt-settings-root .rt-color-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px 12px;
-  margin-top: 8px;
-}
-
-/* Settings dropdown width normalization (works within Obsidian's flex layout) */
-.rt-settings-root .setting-item .setting-item-control select.rt-setting-dropdown {
-  width: var(--rt-settings-select-width);
-  min-width: var(--rt-settings-select-width);
-  max-width: var(--rt-settings-select-width);
-  flex: 0 0 var(--rt-settings-select-width);
 }
 
 /* Input sizing utilities (shared across settings) */
@@ -842,69 +800,34 @@
   min-width: var(--rt-input-width-xl);
 }
 
-.rt-settings-root .setting-item .setting-item-control .rt-input-full {
+.ert-settings-root .setting-item .setting-item-control .rt-input-full {
   width: 100%;
   min-width: var(--rt-input-width-xl);
 }
 
-/* Full-width input on its own row (for long URLs, paths, etc.) */
-.rt-setting-full-width-input {
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: auto auto;
-  gap: 12px;
-}
-
-.rt-settings-root .rt-setting-full-width-input .setting-item-info {
-  grid-column: 1 / -1;
-  grid-row: 1 / 2;
-}
-
-.rt-settings-root .rt-setting-full-width-input .setting-item-control {
-  grid-column: 1 / -1;
-  grid-row: 2 / 3;
-  width: 100%;
-}
-
-.rt-settings-root .rt-setting-full-width-input .setting-item-control input[type="text"] {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  flex: 1 1 auto;
-  height: 42px;
-  padding: 10px 14px;
-  font-size: 15px;
-  border-radius: 8px;
-}
-
-.rt-settings-root .rt-setting-full-width-input .setting-item-control textarea {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  flex: 1 1 auto;
-  min-height: 80px;
-  padding: 12px 14px;
-  font-size: 14px;
-  border-radius: 8px;
-  resize: vertical;
-}
-
 /* Default sizing for settings inputs (override with utilities above when needed) */
-.rt-settings-root .setting-item .setting-item-control input[type="text"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full):not(.rt-hex-input),
-.rt-settings-root .setting-item .setting-item-control input[type="number"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full),
-.rt-settings-root .setting-item .setting-item-control input[type="password"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full) {
+.ert-settings-root .setting-item .setting-item-control input[type="text"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full):not(.ert-hex-input),
+.ert-settings-root .setting-item .setting-item-control input[type="number"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full),
+.ert-settings-root .setting-item .setting-item-control input[type="password"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full) {
   width: var(--rt-input-width-md);
   max-width: 100%;
 }
 
-.rt-settings-root .setting-item .setting-item-control textarea {
+.ert-settings-root .setting-item .setting-item-control textarea {
   width: 100%;
 }
 
-.rt-settings-root .setting-item .setting-item-control textarea.rt-input-lg {
+.ert-settings-root .setting-item .setting-item-control textarea.rt-input-lg {
   width: var(--rt-input-width-lg);
   min-width: var(--rt-input-width-lg);
   max-width: 100%;
+}
+
+/* Promoted section headings in settings (with bottom border and spacing) */
+.rt-section-heading {
+  margin-top: 18px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--background-modifier-border);
 }
 
 /* Dim non-selected provider sections in settings */
@@ -954,18 +877,18 @@
 }
 
 /* Fix alignment of extra buttons (like gear icon) with setting item text */
-.rt-settings-root .setting-item {
+.ert-settings-root .setting-item {
   display: flex;
   align-items: center;
 }
 
-.rt-settings-root .setting-item.setting-item-heading .setting-item-name {
+.ert-settings-root .setting-item.setting-item-heading .setting-item-name {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.rt-settings-root .setting-item.setting-item-heading .ert-setting-heading-icon {
+.ert-settings-root .setting-item.setting-item-heading .ert-setting-heading-icon {
   display: inline-flex;
   width: 14px;
   height: 14px;
@@ -975,95 +898,14 @@
   align-self: center;
 }
 
-.rt-settings-root .setting-item-control {
+.ert-settings-root .setting-item-control {
   display: flex;
   align-items: center;
 }
 
-.rt-settings-root .clickable-icon.extra-setting-button {
+.ert-settings-root .clickable-icon.extra-setting-button {
   align-self: center;
   margin-top: 0;
-}
-
-@media (max-width: 1100px) {
-  .rt-color-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 800px) {
-  .rt-color-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.rt-color-grid-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px 10px;
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
-}
-
-.rt-color-grid-label {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  border-bottom: 1px solid var(--background-modifier-border);
-  padding-bottom: 2px;
-  margin-bottom: 2px;
-}
-
-.rt-color-grid-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  margin-top: 0;
-  position: relative;
-}
-
-.rt-color-grid-controls input[type="color"] {
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 0;
-  /* crisp square */
-  background: transparent;
-  -webkit-appearance: none;
-  appearance: none;
-  overflow: hidden;
-  box-shadow: none;
-  outline: none;
-}
-
-.rt-color-grid-controls .rt-hidden-color-input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-  top: 20px;
-  left: 0;
-}
-
-.rt-color-grid-controls .rt-swatch-trigger {
-  width: 24px;
-  height: 24px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 3px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-/* Stage swatch backgrounds map to CSS variables that the plugin updates */
-.rt-color-grid-controls .rt-swatch-trigger.rt-stage-Zero {
-  background: var(--rt-publishStageColors-Zero);
 }
 
 /* YAML key/value rows - simple class like beats */
@@ -1112,7 +954,7 @@
   /* Match beats accent color */
 }
 
-.rt-settings-root .rt-template-grid .setting-item-info {
+.ert-settings-root .rt-template-grid .setting-item-info {
   justify-self: end;
 }
 
@@ -1209,273 +1051,6 @@
   margin-left: auto;
 }
 
-.rt-color-grid-controls .rt-swatch-trigger.rt-stage-Author {
-  background: var(--rt-publishStageColors-Author);
-}
-
-.rt-color-grid-controls .rt-swatch-trigger.rt-stage-House {
-  background: var(--rt-publishStageColors-House);
-}
-
-.rt-color-grid-controls .rt-swatch-trigger.rt-stage-Press {
-  background: var(--rt-publishStageColors-Press);
-}
-
-/* Subplot swatches map to subplot color CSS variables */
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-0 {
-  background: var(--rt-subplot-colors-0);
-}
-
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-1 {
-  background: var(--rt-subplot-colors-1);
-}
-
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-2 {
-  background: var(--rt-subplot-colors-2);
-}
-
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-3 {
-  background: var(--rt-subplot-colors-3);
-}
-
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-4 {
-  background: var(--rt-subplot-colors-4);
-}
-
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-5 {
-  background: var(--rt-subplot-colors-5);
-}
-
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-6 {
-  background: var(--rt-subplot-colors-6);
-}
-
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-7 {
-  background: var(--rt-subplot-colors-7);
-}
-
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-8 {
-  background: var(--rt-subplot-colors-8);
-}
-
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-9 {
-  background: var(--rt-subplot-colors-9);
-}
-
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-10 {
-  background: var(--rt-subplot-colors-10);
-}
-
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-11 {
-  background: var(--rt-subplot-colors-11);
-}
-
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-12 {
-  background: var(--rt-subplot-colors-12);
-}
-
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-13 {
-  background: var(--rt-subplot-colors-13);
-}
-
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-14 {
-  background: var(--rt-subplot-colors-14);
-}
-
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-15 {
-  background: var(--rt-subplot-colors-15);
-}
-
-/* Description under color section headers */
-.rt-color-section-desc {
-  margin: 6px 0 10px 0;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.rt-color-grid-controls input[type="color"]::-webkit-color-swatch-wrapper {
-  padding: 0;
-}
-
-.rt-color-grid-controls input[type="color"]::-webkit-color-swatch {
-  border: none;
-  border-radius: 0;
-  /* ensure square inside */
-}
-
-/* Hex input - constrained width for color codes (high specificity to override defaults) */
-.rt-settings-root .setting-item .setting-item-control input.rt-hex-input,
-.rt-settings-root input.rt-hex-input,
-.rt-color-grid-controls .rt-hex-input {
-  width: 10ch;
-  flex: 0 0 10ch;
-  border: 1px solid var(--background-modifier-border);
-  background: var(--background-primary);
-  border-radius: 6px;
-  padding: 6px 8px;
-  box-shadow: none;
-  outline: none;
-}
-
-/* Focus state for hex input */
-.rt-settings-root .setting-item .setting-item-control input.rt-hex-input:focus,
-.rt-settings-root input.rt-hex-input:focus,
-.rt-color-grid-controls .rt-hex-input:focus {
-  border-color: var(--interactive-accent);
-  box-shadow: 0 0 0 2px rgba(100, 180, 255, 0.2);
-}
-
-/* Promoted section headings in settings (with bottom border and spacing) */
-.rt-section-heading {
-  margin-top: 18px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--background-modifier-border);
-}
-
-.rt-settings-root .rt-color-grid-controls .setting-item {
-  margin: 0;
-  display: block;
-  padding: 0;
-  border: none;
-  flex: 1;
-}
-
-/* Also neutralize the Obsidian adjacency rule for setting items (scoped under rt-settings-root) */
-.rt-settings-root .rt-color-grid-controls .setting-item+.setting-item {
-  border-top: none;
-}
-
-.rt-settings-root .rt-color-grid-controls .setting-item-control {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  padding: 0;
-  margin: 0;
-}
-
-/* Reset button styling - make it look like a clear button, push to right edge */
-.rt-settings-root .rt-color-grid-controls .clickable-icon {
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  background: var(--background-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
-.rt-settings-root .rt-color-grid-controls .clickable-icon:hover {
-  background: var(--background-modifier-hover);
-  border-color: var(--interactive-accent);
-}
-
-.rt-settings-release-notes {
-  margin-top: 24px;
-}
-
-.rt-settings-release-notes-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.rt-settings-release-notes-header span {
-  color: var(--text-muted);
-  font-size: 0.9em;
-}
-
-.rt-settings-release-notes-preview {
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
-  padding: 12px;
-  max-height: 260px;
-  overflow-y: auto;
-  margin-top: 8px;
-}
-
-.rt-settings-release-notes-details {
-  margin-top: 16px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 12px;
-  background-color: var(--background-secondary);
-}
-
-.rt-settings-release-notes-details summary {
-  cursor: pointer;
-  font-weight: 600;
-  padding: 12px 16px;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.rt-settings-release-notes-details summary::after {
-  content: '';
-  border-style: solid;
-  border-width: 4px 0 4px 6px;
-  border-color: transparent transparent transparent var(--text-faint);
-  margin-left: auto;
-  transition: transform 0.16s ease;
-}
-
-.rt-settings-release-notes-details summary::marker,
-.rt-settings-release-notes-details summary::-webkit-details-marker {
-  display: none;
-}
-
-.rt-settings-release-notes-details[open] summary {
-  border-bottom: 1px solid var(--background-modifier-border);
-  margin-bottom: 4px;
-}
-
-.rt-settings-release-notes-details[open] summary::after {
-  transform: rotate(90deg);
-  border-color: transparent transparent transparent var(--text-muted);
-}
-
-.rt-settings-release-notes-details-summary-divider {
-  color: var(--text-faint);
-}
-
-.rt-settings-release-notes-details-summary-date {
-  font-weight: 500;
-  font-size: 0.9em;
-  color: var(--text-muted);
-}
-
-.rt-settings-release-notes-details-summary-badge {
-  font-size: 0.7em;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--background-modifier-border-hover, var(--background-modifier-border));
-  color: var(--text-muted);
-  background: var(--background-primary);
-}
-
-.rt-settings-release-notes-details-major {
-  border-color: var(--interactive-accent);
-}
-
-.rt-settings-release-notes-details-body.markdown-preview-view {
-  padding: 8px 16px 16px;
-  background: none;
-}
-
-.rt-settings-release-notes-details-body .rt-settings-release-notes-preview {
-  margin-top: 12px;
-  padding: 16px;
-}
-
-
 /* Styling for the embedded README container in settings */
 .rt-manuscript-readme-container {
   padding: 0;
@@ -1503,10 +1078,10 @@
 }
 
 /* Stage-specific target setting rows */
-.rt-settings-root .rt-stage-target-zero .setting-item-name,
-.rt-settings-root .rt-stage-target-author .setting-item-name,
-.rt-settings-root .rt-stage-target-house .setting-item-name,
-.rt-settings-root .rt-stage-target-press .setting-item-name {
+.ert-settings-root .rt-stage-target-zero .setting-item-name,
+.ert-settings-root .rt-stage-target-author .setting-item-name,
+.ert-settings-root .rt-stage-target-house .setting-item-name,
+.ert-settings-root .rt-stage-target-press .setting-item-name {
   display: flex;
   align-items: center;
 }
@@ -1605,9 +1180,9 @@
 }
 
 /* Ensure all settings buttons/toggles use pointer cursor */
-.rt-settings-root .setting-item-control button,
-.rt-settings-root .setting-item-control .clickable-icon,
-.rt-settings-root .setting-item-control input[type="checkbox"] {
+.ert-settings-root .setting-item-control button,
+.ert-settings-root .setting-item-control .clickable-icon,
+.ert-settings-root .setting-item-control input[type="checkbox"] {
   cursor: pointer;
 }
 
@@ -1620,35 +1195,6 @@
 .rt-story-structure-selected b {
   color: var(--text-success);
   font-weight: 500;
-}
-
-.rt-setting-two-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-rows: auto auto;
-  column-gap: 24px;
-  row-gap: 8px;
-  align-items: start;
-}
-
-.rt-settings-root .rt-setting-two-row .setting-item-info {
-  grid-column: 1 / 2;
-  grid-row: 1 / 2;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.rt-settings-root .rt-setting-two-row .setting-item-control {
-  grid-column: 2 / 3;
-  grid-row: 1 / 2;
-  justify-self: flex-end;
-}
-
-.rt-setting-two-row .rt-story-structure-info {
-  grid-column: 1 / 3;
-  grid-row: 2 / 3;
-  margin: 0;
 }
 
 /* Backdrop micro-backdrop list */
@@ -1674,16 +1220,6 @@
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-}
-
-.rt-micro-backdrop-title-row .rt-color-grid-controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.rt-micro-backdrop-title-row .rt-color-grid-controls .rt-hex-input {
-  width: 120px;
 }
 
 /* Consolidated Hidden States */
@@ -2182,14 +1718,14 @@
   transform: translateX(2px);
 }
 
-.rt-settings-root .ert-inquiry-scan-root-actions {
+.ert-settings-root .ert-inquiry-scan-root-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin: 4px 0 12px;
 }
 
-.rt-settings-root .ert-inquiry-scan-root-btn {
+.ert-settings-root .ert-inquiry-scan-root-btn {
   border-radius: 999px;
   padding: 6px 12px;
   border: 1px solid var(--background-modifier-border);
@@ -2199,7 +1735,7 @@
   font-size: 12px;
 }
 
-.rt-settings-root .ert-inquiry-resolved-roots {
+.ert-settings-root .ert-inquiry-resolved-roots {
   margin: 6px 0 14px;
   border-radius: 12px;
   border: 1px solid var(--background-modifier-border);
@@ -2207,13 +1743,13 @@
   padding: 8px 12px;
 }
 
-.rt-settings-root .ert-inquiry-resolved-roots summary {
+.ert-settings-root .ert-inquiry-resolved-roots summary {
   cursor: pointer;
   font-weight: 600;
   color: var(--text-normal);
 }
 
-.rt-settings-root .ert-inquiry-resolved-roots-list {
+.ert-settings-root .ert-inquiry-resolved-roots-list {
   display: grid;
   gap: 4px;
   margin-top: 8px;
@@ -2224,29 +1760,29 @@
   padding-right: 6px;
 }
 
-.rt-settings-root .ert-inquiry-resolved-item {
+.ert-settings-root .ert-inquiry-resolved-item {
   font-family: var(--font-monospace);
 }
 
-.rt-settings-root .ert-inquiry-resolved-more,
-.rt-settings-root .ert-inquiry-resolved-empty {
+.ert-settings-root .ert-inquiry-resolved-more,
+.ert-settings-root .ert-inquiry-resolved-empty {
   color: var(--text-faint);
 }
 
-.rt-settings-root .ert-inquiry-class-scope-hint {
+.ert-settings-root .ert-inquiry-class-scope-hint {
   margin-top: 6px;
   font-size: 12px;
   color: var(--text-faint);
 }
 
 
-.rt-settings-root .ert-inquiry-class-table {
+.ert-settings-root .ert-inquiry-class-table {
   margin-top: 12px;
   display: grid;
   gap: 6px;
 }
 
-.rt-settings-root .ert-inquiry-class-row {
+.ert-settings-root .ert-inquiry-class-row {
   display: grid;
   grid-template-columns: 90px 1.1fr 140px 140px 110px;
   gap: 8px;
@@ -2257,19 +1793,19 @@
   background: var(--background-secondary);
 }
 
-.rt-settings-root .ert-inquiry-class-row.is-disabled .ert-inquiry-class-cell {
+.ert-settings-root .ert-inquiry-class-row.is-disabled .ert-inquiry-class-cell {
   opacity: 0.45;
 }
 
-.rt-settings-root .ert-inquiry-class-row.is-disabled .ert-inquiry-class-cell:first-child {
+.ert-settings-root .ert-inquiry-class-row.is-disabled .ert-inquiry-class-cell:first-child {
   opacity: 1;
 }
 
-.rt-settings-root .ert-inquiry-class-row.is-disabled input[type="checkbox"]:disabled {
+.ert-settings-root .ert-inquiry-class-row.is-disabled input[type="checkbox"]:disabled {
   cursor: not-allowed;
 }
 
-.rt-settings-root .ert-inquiry-class-header {
+.ert-settings-root .ert-inquiry-class-header {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -2277,7 +1813,7 @@
   background: var(--background-primary);
 }
 
-.rt-settings-root .ert-inquiry-class-cell {
+.ert-settings-root .ert-inquiry-class-cell {
   display: flex;
   gap: 6px;
   align-items: center;
@@ -2285,38 +1821,38 @@
   color: var(--text-normal);
 }
 
-.rt-settings-root .ert-inquiry-class-name {
+.ert-settings-root .ert-inquiry-class-name {
   font-weight: 600;
   text-transform: lowercase;
 }
 
-.rt-settings-root .ert-inquiry-class-role {
+.ert-settings-root .ert-inquiry-class-role {
   font-size: 12px;
   color: var(--text-muted);
 }
 
-.rt-settings-root .ert-inquiry-class-sub-label {
+.ert-settings-root .ert-inquiry-class-sub-label {
   font-size: 11px;
   color: var(--text-muted);
 }
 
-.rt-settings-root .ert-inquiry-class-count {
+.ert-settings-root .ert-inquiry-class-count {
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
 
-.rt-settings-root .ert-inquiry-class-count-empty {
+.ert-settings-root .ert-inquiry-class-count-empty {
   color: var(--text-faint);
 }
 
 /* Inquiry prompt settings */
-.rt-settings-root .ert-inquiry-prompts-helper {
+.ert-settings-root .ert-inquiry-prompts-helper {
   margin: 6px 0 16px;
   font-size: 12px;
   color: var(--text-faint);
 }
 
-.rt-settings-root .ert-inquiry-prompt-card {
+.ert-settings-root .ert-inquiry-prompt-card {
   border-radius: 12px;
   border: 1px solid var(--background-modifier-border);
   background: var(--background-secondary);
@@ -2326,42 +1862,42 @@
   margin: 12px 0;
 }
 
-.rt-settings-root .ert-inquiry-prompt-title {
+.ert-settings-root .ert-inquiry-prompt-title {
   font-weight: 600;
   color: var(--text-normal);
 }
 
-.rt-settings-root .ert-inquiry-prompt-row {
+.ert-settings-root .ert-inquiry-prompt-row {
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr);
   gap: 10px;
   align-items: center;
 }
 
-.rt-settings-root .ert-inquiry-prompt-label {
+.ert-settings-root .ert-inquiry-prompt-label {
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
 
-.rt-settings-root .ert-inquiry-prompt-input {
+.ert-settings-root .ert-inquiry-prompt-input {
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
 }
 
-.rt-settings-root .ert-inquiry-prompt-input-el {
+.ert-settings-root .ert-inquiry-prompt-input-el {
   flex: 1;
   min-width: 0;
 }
 
-.rt-settings-root .ert-inquiry-prompt-input-el.is-readonly {
+.ert-settings-root .ert-inquiry-prompt-input-el.is-readonly {
   color: var(--text-muted);
 }
 
-.rt-settings-root .ert-inquiry-prompt-toggle {
+.ert-settings-root .ert-inquiry-prompt-toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -2370,16 +1906,16 @@
   white-space: nowrap;
 }
 
-.rt-settings-root .ert-inquiry-prompts-advanced {
+.ert-settings-root .ert-inquiry-prompts-advanced {
   margin-top: 18px;
 }
 
-.rt-settings-root .ert-inquiry-prompts-advanced summary {
+.ert-settings-root .ert-inquiry-prompts-advanced summary {
   font-size: 12px;
   color: var(--text-faint);
 }
 
-.rt-settings-root .ert-inquiry-prompts-advanced-hint {
+.ert-settings-root .ert-inquiry-prompts-advanced-hint {
   margin: 6px 0 10px;
   font-size: 11px;
   color: var(--text-faint);

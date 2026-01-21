@@ -64,8 +64,8 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
                 // Handle rename on blur with validation feedback
                 const handleBlur = async () => {
                     const newValue = text.getValue().trim();
-                    text.inputEl.removeClass('rt-setting-input-success');
-                    text.inputEl.removeClass('rt-setting-input-error');
+                    text.inputEl.removeClass('ert-setting-input-success');
+                    text.inputEl.removeClass('ert-setting-input-error');
                     
                     if (newValue && newValue !== userKey) {
                         if (!plugin.settings.frontmatterMappings) plugin.settings.frontmatterMappings = {};
@@ -76,16 +76,16 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
                         plugin.settings.frontmatterMappings[newValue] = systemKey;
                         
                         await plugin.saveSettings();
-                        text.inputEl.addClass('rt-setting-input-success');
+                        text.inputEl.addClass('ert-setting-input-success');
                         window.setTimeout(() => {
-                            text.inputEl.removeClass('rt-setting-input-success');
+                            text.inputEl.removeClass('ert-setting-input-success');
                             renderMappings();
                         }, 600);
                     } else if (!newValue) {
                         // Revert if empty - show error briefly
-                        text.inputEl.addClass('rt-setting-input-error');
+                        text.inputEl.addClass('ert-setting-input-error');
                         window.setTimeout(() => {
-                            text.inputEl.removeClass('rt-setting-input-error');
+                            text.inputEl.removeClass('ert-setting-input-error');
                             text.setValue(userKey);
                         }, 800);
                     }
@@ -154,14 +154,14 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
                 
                 const handleBlur = async () => {
                     const newValue = text.getValue().trim();
-                    text.inputEl.removeClass('rt-setting-input-success');
-                    text.inputEl.removeClass('rt-setting-input-error');
+                    text.inputEl.removeClass('ert-setting-input-success');
+                    text.inputEl.removeClass('ert-setting-input-error');
                     
                     if (!newValue) {
                         // Show brief error hint - key is required
-                        text.inputEl.addClass('rt-setting-input-error');
+                        text.inputEl.addClass('ert-setting-input-error');
                         window.setTimeout(() => {
-                            text.inputEl.removeClass('rt-setting-input-error');
+                            text.inputEl.removeClass('ert-setting-input-error');
                         }, 800);
                         return; // Keep as draft and do not persist
                     }
@@ -175,9 +175,9 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
                     if (idx >= 0) pendingMappings.splice(idx, 1);
 
                     await plugin.saveSettings();
-                    text.inputEl.addClass('rt-setting-input-success');
+                    text.inputEl.addClass('ert-setting-input-success');
                     window.setTimeout(() => {
-                        text.inputEl.removeClass('rt-setting-input-success');
+                        text.inputEl.removeClass('ert-setting-input-success');
                         renderMappings();
                     }, 600);
                 };

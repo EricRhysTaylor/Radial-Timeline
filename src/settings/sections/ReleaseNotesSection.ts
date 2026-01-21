@@ -15,7 +15,7 @@ interface ReleaseNotesSectionArgs {
 
 export async function renderReleaseNotesSection({ plugin, containerEl }: ReleaseNotesSectionArgs): Promise<void> {
     const entries = plugin.getReleaseNotesEntries();
-    const section = containerEl.createDiv({ cls: 'rt-settings-release-notes' });
+    const section = containerEl.createDiv({ cls: 'ert-settings-release-notes' });
     section.createEl('h2', { text: "What's New" });
 
     if (!entries || entries.length === 0) {
@@ -27,5 +27,5 @@ export async function renderReleaseNotesSection({ plugin, containerEl }: Release
     }
 
     const featuredEntry = entries[0] ?? entries[entries.length - 1]!;
-    await renderReleaseNotesList(section, entries, featuredEntry, plugin, 'rt-settings-release-notes');
+    await renderReleaseNotesList(section, entries, featuredEntry, plugin, 'ert-settings-release-notes');
 }

@@ -88,7 +88,7 @@ export function renderAiSection(params: {
     const guidanceEl = controlRow.createDiv({ cls: 'rt-model-guidance' });
     const dropdownContainer = controlRow.createDiv({ cls: 'rt-model-picker-select' });
     const dropdownComponent = new DropdownComponent(dropdownContainer);
-    dropdownComponent.selectEl.classList.add('rt-setting-dropdown', 'rt-provider-dropdown');
+    dropdownComponent.selectEl.classList.add('ert-setting-dropdown', 'rt-provider-dropdown');
 
     {
         type ModelChoice = {
@@ -219,8 +219,8 @@ export function renderAiSection(params: {
             component.setPlaceholder(placeholder).setValue(value);
             
             component.onChange(() => {
-                component.inputEl.removeClass('rt-setting-input-success');
-                component.inputEl.removeClass('rt-setting-input-error');
+                component.inputEl.removeClass('ert-setting-input-success');
+                component.inputEl.removeClass('ert-setting-input-error');
             });
             
             plugin.registerDomEvent(component.inputEl, 'keydown', (evt: KeyboardEvent) => {
@@ -255,7 +255,7 @@ export function renderAiSection(params: {
         } else {
             setting.addText(text => configure(text));
         }
-        setting.settingEl.addClass('rt-setting-full-width-input');
+        setting.settingEl.addClass('ert-setting-full-width-input');
     };
 
     // Anthropic API Key
@@ -335,11 +335,11 @@ export function renderAiSection(params: {
         () => params.scheduleKeyValidation('openai'),
         (el) => params.setKeyInputRef('openai', el),
         (val, el) => {
-            el.removeClass('rt-setting-input-success');
-            el.removeClass('rt-setting-input-error');
+            el.removeClass('ert-setting-input-success');
+            el.removeClass('ert-setting-input-error');
             // Only validate sk- prefix if NOT using SecretStorage (or strict legacy mode)
             if (!(app as any).SecretComponent && val && !val.startsWith('sk-')) {
-                el.addClass('rt-setting-input-error');
+                el.addClass('ert-setting-input-error');
                 new Notice('This does not look like an OpenAI secret key. Keys start with "sk-".');
                 return false;
             }
@@ -362,8 +362,8 @@ export function renderAiSection(params: {
                 .setPlaceholder('http://localhost:11434/v1')
                 .setValue(plugin.settings.localBaseUrl || 'http://localhost:11434/v1');
             text.onChange(() => {
-                text.inputEl.removeClass('rt-setting-input-success');
-                text.inputEl.removeClass('rt-setting-input-error');
+                text.inputEl.removeClass('ert-setting-input-success');
+                text.inputEl.removeClass('ert-setting-input-error');
             });
             plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
                 if (evt.key === 'Enter') {
@@ -379,7 +379,7 @@ export function renderAiSection(params: {
             plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
             params.setLocalConnectionInputs({ baseInput: text.inputEl });
         });
-    localBaseUrlSetting.settingEl.addClass('rt-setting-full-width-input');
+    localBaseUrlSetting.settingEl.addClass('ert-setting-full-width-input');
 
     // Advisory note as separate section
     const localWarningSection = localSection.createDiv({ cls: 'rt-local-llm-advisory' });
@@ -399,8 +399,8 @@ export function renderAiSection(params: {
                 .setPlaceholder('llama3')
                 .setValue(plugin.settings.localModelId || 'llama3');
             text.onChange(() => {
-                text.inputEl.removeClass('rt-setting-input-success');
-                text.inputEl.removeClass('rt-setting-input-error');
+                text.inputEl.removeClass('ert-setting-input-success');
+                text.inputEl.removeClass('ert-setting-input-error');
             });
             plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
                 if (evt.key === 'Enter') {
@@ -476,7 +476,7 @@ export function renderAiSection(params: {
                 });
             text.inputEl.rows = 4;
         });
-    customInstructionsSetting.settingEl.addClass('rt-setting-full-width-input');
+    customInstructionsSetting.settingEl.addClass('ert-setting-full-width-input');
 
     new Settings(localSection)
         .setName('Bypass scene hover metadata yaml writes')

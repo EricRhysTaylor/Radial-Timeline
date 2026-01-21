@@ -181,8 +181,8 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
     visibilityTargets.push(selectorSetting.settingEl, fieldsContainer, previewContainer);
 
     const flash = (input: HTMLInputElement, type: 'success' | 'error') => {
-        const successClass = 'rt-setting-input-success';
-        const errorClass = 'rt-setting-input-error';
+        const successClass = 'ert-setting-input-success';
+        const errorClass = 'ert-setting-input-error';
         input.classList.remove(type === 'success' ? errorClass : successClass);
         input.classList.add(type === 'success' ? successClass : errorClass);
         window.setTimeout(() => input.classList.remove(type === 'success' ? successClass : errorClass), type === 'success' ? 900 : 1200);

@@ -38,7 +38,7 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
                 clearFontMetricsCaches(); // Clear cached measurements for new scale
                 plugin.refreshTimelineIfNeeded(null);
             });
-            drop.selectEl.addClass('rt-setting-dropdown');
+            drop.selectEl.addClass('ert-setting-dropdown');
         });
 
     // 2. Metadata refresh debounce

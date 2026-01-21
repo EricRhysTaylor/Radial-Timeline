@@ -303,8 +303,10 @@
 
 .ert-inquiry-zone-pill {
   fill: var(--background-secondary);
-  stroke: color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
+  stroke: color-mix(in srgb, var(--background-modifier-border) 60%, transparent);
   stroke-width: 1;
+  filter: url(#ert-inquiry-zone-pill-out);
+  transition: filter 180ms ease, stroke 180ms ease, fill 180ms ease;
 }
 
 .ert-inquiry-zone-pod {
@@ -314,7 +316,8 @@
 
 .ert-inquiry-zone-pod.is-active .ert-inquiry-zone-pill,
 .ert-inquiry-zone-pod:hover .ert-inquiry-zone-pill {
-  stroke: var(--interactive-accent);
+  filter: url(#ert-inquiry-zone-pill-in);
+  stroke: color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
 }
 
 .ert-inquiry-zone-pill-text {
@@ -430,7 +433,7 @@
   stroke: transparent;
   fill: none;
   cursor: pointer;
-  vector-effect: non-scaling-stroke;
+  vector-effect: none;
   pointer-events: stroke;
 }
 
@@ -485,6 +488,7 @@
   font-weight: 900;
   letter-spacing: -0.06em;
   font-variant-numeric: tabular-nums;
+  pointer-events: none;
 }
 
 .ert-inquiry-glyph-hit {

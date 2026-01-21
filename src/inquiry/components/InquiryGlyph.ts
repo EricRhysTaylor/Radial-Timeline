@@ -131,6 +131,7 @@ export class InquiryGlyph {
         this.labelText.setAttribute('text-anchor', 'middle');
         this.labelText.setAttribute('dominant-baseline', 'middle');
         this.labelText.setAttribute('dy', '0.12em');
+        this.labelText.setAttribute('aria-hidden', 'true');
 
         labelGroup.appendChild(this.labelHit);
         labelGroup.appendChild(this.labelText);
@@ -171,7 +172,6 @@ export class InquiryGlyph {
 
     private applyProps(props: InquiryGlyphProps): void {
         this.labelText.textContent = props.focusLabel;
-        this.labelText.setAttribute('aria-label', `Focus target ${props.focusLabel}`);
         this.labelHit.setAttribute('aria-label', `Focus target ${props.focusLabel}`);
         this.updateLabelFontSize();
 
@@ -535,6 +535,9 @@ export class InquiryGlyph {
         badgeText.style.setProperty('fill', arcColor);
         const badgeColor = InquiryGlyph.darkenColor(arcColor, DOT_DARKEN);
         badgeCircle.style.setProperty('--ert-inquiry-badge-color', badgeColor);
+        const badgeStroke = 1 * this.badgeScaleFactor;
+        badgeCircle.style.setProperty('stroke', badgeColor);
+        badgeCircle.style.setProperty('stroke-width', badgeStroke.toFixed(2));
     }
 
     private updateLabelFontSize(): void {
@@ -544,17 +547,20 @@ export class InquiryGlyph {
             this.labelText.setAttribute('font-size', baseSize.toFixed(2));
             return;
         }
-        const length = Math.min(Math.max(label.length, 2), 4);
+        const length = Math.max(label.length, 1);
         const lengthScale = Math.min(1, 2.8 / length);
         let fontSize = baseSize * lengthScale;
         this.labelText.setAttribute('font-size', fontSize.toFixed(2));
 
-        const innerRadius = DEPTH_RADIUS - (DEPTH_STROKE * 0.6);
-        const maxWidth = innerRadius * 2;
+        const innerPadding = 8 * this.badgeScaleFactor;
+        const innerRadius = Math.max(0, (DEPTH_RADIUS - (DEPTH_STROKE / 2)) - innerPadding);
         try {
-            const measured = this.labelText.getComputedTextLength();
-            if (Number.isFinite(measured) && measured > maxWidth && measured > 0) {
-                const fitScale = maxWidth / measured;
+            const bounds = this.labelText.getBBox();
+            const halfWidth = bounds.width / 2;
+            const halfHeight = bounds.height / 2;
+            const radiusNeeded = Math.hypot(halfWidth, halfHeight);
+            if (Number.isFinite(radiusNeeded) && radiusNeeded > 0 && innerRadius > 0 && radiusNeeded > innerRadius) {
+                const fitScale = innerRadius / radiusNeeded;
                 fontSize *= fitScale;
                 this.labelText.setAttribute('font-size', fontSize.toFixed(2));
             }

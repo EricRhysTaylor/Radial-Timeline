@@ -112,8 +112,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             this._keyValidateTimers[provider] = window.setTimeout(async () => {
                 delete this._keyValidateTimers[provider];
                 [baseInput, modelInput].forEach(el => {
-                    el.removeClass('rt-setting-input-success');
-                    el.removeClass('rt-setting-input-error');
+                    el.removeClass('ert-setting-input-success');
+                    el.removeClass('ert-setting-input-error');
                 });
                 const result = await validateLocalModelAvailability(
                     baseUrl,
@@ -122,13 +122,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 );
                 if (result.reachable && result.hasModel) {
                     [baseInput, modelInput].forEach(el => {
-                        el.addClass('rt-setting-input-success');
-                        window.setTimeout(() => el.removeClass('rt-setting-input-success'), 1200);
+                        el.addClass('ert-setting-input-success');
+                        window.setTimeout(() => el.removeClass('ert-setting-input-success'), 1200);
                     });
                 } else {
                     [baseInput, modelInput].forEach(el => {
-                        el.addClass('rt-setting-input-error');
-                        window.setTimeout(() => el.removeClass('rt-setting-input-error'), 1400);
+                        el.addClass('ert-setting-input-error');
+                        window.setTimeout(() => el.removeClass('ert-setting-input-error'), 1400);
                     });
                 }
             }, 800);
@@ -145,20 +145,20 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         this._keyValidateTimers[provider] = window.setTimeout(async () => {
             delete this._keyValidateTimers[provider];
-            inputEl.removeClass('rt-setting-input-success');
-            inputEl.removeClass('rt-setting-input-error');
+            inputEl.removeClass('ert-setting-input-success');
+            inputEl.removeClass('ert-setting-input-error');
 
             try {
                 if (provider === 'anthropic') await fetchAnthropicModels(key);
                 else if (provider === 'gemini') await fetchGeminiModels(key);
                 else await fetchOpenAiModels(key);
-                inputEl.addClass('rt-setting-input-success');
-                window.setTimeout(() => inputEl.removeClass('rt-setting-input-success'), 1200);
+                inputEl.addClass('ert-setting-input-success');
+                window.setTimeout(() => inputEl.removeClass('ert-setting-input-success'), 1200);
             } catch (e) {
                 const msg = e instanceof Error ? e.message : String(e);
                 if (/401|unauthorized|invalid/i.test(msg)) {
-                    inputEl.addClass('rt-setting-input-error');
-                    window.setTimeout(() => inputEl.removeClass('rt-setting-input-error'), 1400);
+                    inputEl.addClass('ert-setting-input-error');
+                    window.setTimeout(() => inputEl.removeClass('ert-setting-input-error'), 1400);
                 }
             }
         }, 800);
@@ -186,14 +186,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     this.plugin.settings.sourcePath = normalizedPath;
                     await this.plugin.saveSettings();
                     container.classList.add('hidden');
-                    textInput.inputEl.removeClass('rt-setting-input-error');
-                    textInput.inputEl.addClass('rt-setting-input-success');
+                    textInput.inputEl.removeClass('ert-setting-input-error');
+                    textInput.inputEl.addClass('ert-setting-input-success');
                     window.setTimeout(() => {
-                        textInput.inputEl.removeClass('rt-setting-input-success');
+                        textInput.inputEl.removeClass('ert-setting-input-success');
                     }, 1000);
                 } else {
-                    textInput.inputEl.addClass('rt-setting-input-error');
-                    window.setTimeout(() => textInput.inputEl.removeClass('rt-setting-input-error'), 2000);
+                    textInput.inputEl.addClass('ert-setting-input-error');
+                    window.setTimeout(() => textInput.inputEl.removeClass('ert-setting-input-error'), 2000);
                 }
                 try { textInput.inputEl.focus(); } catch { }
             });
@@ -364,7 +364,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        containerEl.addClass('ert-ui', 'rt-settings-root', 'ert-settings-root');
+        containerEl.addClass('ert-ui', 'ert-settings-root');
         this._aiRelatedElements = [];
 
         const tabBar = containerEl.createDiv({ cls: 'ert-settings-tab-bar' });

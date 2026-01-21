@@ -41,17 +41,17 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
     addHeadingIcon(pubHeading, 'paintbrush-vertical');
     addWikiLink(pubHeading, 'Settings#publishing-stage-colors');
     pubHeading.settingEl.classList.add('rt-section-heading');
-    containerEl.createEl('p', { cls: 'rt-color-section-desc', text: 'Used for completed scenes, stage matrix, act labels and more.' });
-    const stageGrid = containerEl.createDiv({ cls: 'rt-color-grid' });
+    containerEl.createEl('p', { cls: 'ert-color-section-desc', text: 'Used for completed scenes, stage matrix, act labels and more.' });
+    const stageGrid = containerEl.createDiv({ cls: 'ert-color-grid' });
     const stages = Object.entries(plugin.settings.publishStageColors);
     stages.forEach(([stage, color]) => {
-        const cell = stageGrid.createDiv({ cls: 'rt-color-grid-item' });
-        const label = cell.createDiv({ cls: 'rt-color-grid-label' });
+        const cell = stageGrid.createDiv({ cls: 'ert-color-grid-item' });
+        const label = cell.createDiv({ cls: 'ert-color-grid-label' });
         label.setText(stage);
 
         let textInputRef: TextComponent | undefined;
         let colorPickerRef: ColorComponent | undefined;
-        const control = cell.createDiv({ cls: 'rt-color-grid-controls' });
+        const control = cell.createDiv({ cls: 'ert-color-grid-controls' });
         colorPickerRef = new ColorComponent(control)
             .setValue(color)
             .onChange(async (value) => {
@@ -63,13 +63,13 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
                 }
             });
         const colorInput = control.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
-        if (colorInput) colorInput.classList.add('rt-hidden-color-input');
-        const swatchEl = control.createDiv({ cls: `rt-swatch-trigger rt-stage-${stage}` });
+        if (colorInput) colorInput.classList.add('ert-hidden-color-input');
+        const swatchEl = control.createDiv({ cls: `ert-swatch-trigger ert-stage-${stage}` });
         plugin.registerDomEvent(swatchEl, 'click', () => { colorInput?.click(); });
         new Settings(control)
             .addText(textInput => {
                 textInputRef = textInput;
-                textInput.inputEl.classList.add('rt-hex-input');
+                textInput.inputEl.classList.add('ert-hex-input');
                 textInput.setValue(color)
                     .onChange(async (value) => {
                         if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value)) {
@@ -101,20 +101,20 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
     addHeadingIcon(subplotHeading, 'paintbrush-vertical');
     addWikiLink(subplotHeading, 'Settings#subplot-ring-colors');
     subplotHeading.settingEl.classList.add('rt-section-heading');
-    containerEl.createEl('p', { cls: 'rt-color-section-desc', text: 'Subplot ring colors used for rings 1 through 16 moving inward.' });
-    const subplotGrid = containerEl.createDiv({ cls: 'rt-color-grid' });
+    containerEl.createEl('p', { cls: 'ert-color-section-desc', text: 'Subplot ring colors used for rings 1 through 16 moving inward.' });
+    const subplotGrid = containerEl.createDiv({ cls: 'ert-color-grid' });
     const ensureArray = (arr: unknown): string[] => Array.isArray(arr) ? arr as string[] : [];
     const subplotColors = ensureArray(plugin.settings.subplotColors);
     const subplotLabels: HTMLDivElement[] = [];
     for (let i = 0; i < 16; i++) {
         const labelText = i === 0 ? 'MAIN PLOT' : `Ring ${i + 1}`;
         const current = subplotColors[i] || DEFAULT_SETTINGS.subplotColors[i];
-        const cell = subplotGrid.createDiv({ cls: 'rt-color-grid-item' });
-        const label = cell.createDiv({ cls: 'rt-color-grid-label' });
+        const cell = subplotGrid.createDiv({ cls: 'ert-color-grid-item' });
+        const label = cell.createDiv({ cls: 'ert-color-grid-label' });
         label.setText(labelText);
         subplotLabels.push(label);
 
-        const control = cell.createDiv({ cls: 'rt-color-grid-controls' });
+        const control = cell.createDiv({ cls: 'ert-color-grid-controls' });
         let inputRef: TextComponent | undefined;
         let colorPickerRef: ColorComponent | undefined;
         colorPickerRef = new ColorComponent(control)
@@ -130,13 +130,13 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
                 }
             });
         const colorInput2 = control.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
-        if (colorInput2) colorInput2.classList.add('rt-hidden-color-input');
-        const swatchEl2 = control.createDiv({ cls: `rt-swatch-trigger rt-subplot-${i}` });
+        if (colorInput2) colorInput2.classList.add('ert-hidden-color-input');
+        const swatchEl2 = control.createDiv({ cls: `ert-swatch-trigger ert-subplot-${i}` });
         plugin.registerDomEvent(swatchEl2, 'click', () => { colorInput2?.click(); });
         new Settings(control)
             .addText(text => {
                 inputRef = text;
-                text.inputEl.classList.add('rt-hex-input');
+                text.inputEl.classList.add('ert-hex-input');
                 text.setValue(current)
                     .onChange(async (value) => {
                         if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value)) {

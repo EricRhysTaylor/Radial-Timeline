@@ -28,8 +28,8 @@ export function renderGeneralSection(params: {
         attachFolderSuggest(text);
 
         text.onChange(() => {
-            text.inputEl.removeClass('rt-setting-input-success');
-            text.inputEl.removeClass('rt-setting-input-error');
+            text.inputEl.removeClass('ert-setting-input-success');
+            text.inputEl.removeClass('ert-setting-input-error');
         });
 
         // Treat Enter like blur so validation runs once when user confirms
@@ -50,14 +50,14 @@ export function renderGeneralSection(params: {
                 if (isValid) {
                     plugin.settings.sourcePath = normalizedValue;
                     await plugin.saveSettings();
-                    text.inputEl.addClass('rt-setting-input-success');
+                    text.inputEl.addClass('ert-setting-input-success');
                     window.setTimeout(() => {
-                        text.inputEl.removeClass('rt-setting-input-success');
+                        text.inputEl.removeClass('ert-setting-input-success');
                     }, 1000);
                 } else {
-                    text.inputEl.addClass('rt-setting-input-error');
+                    text.inputEl.addClass('ert-setting-input-error');
                     window.setTimeout(() => {
-                        text.inputEl.removeClass('rt-setting-input-error');
+                        text.inputEl.removeClass('ert-setting-input-error');
                     }, 2000);
                 }
             } else {
@@ -71,9 +71,9 @@ export function renderGeneralSection(params: {
                     ?.querySelector('.source-path-suggestions');
                 suggestions?.classList.add('hidden');
 
-                text.inputEl.addClass('rt-setting-input-success');
+                text.inputEl.addClass('ert-setting-input-success');
                 window.setTimeout(() => {
-                    text.inputEl.removeClass('rt-setting-input-success');
+                    text.inputEl.removeClass('ert-setting-input-success');
                 }, 1000);
             }
         };
@@ -130,18 +130,18 @@ export function renderGeneralSection(params: {
 
         const flashClass = (cls: string) => {
             inputEl.addClass(cls);
-            window.setTimeout(() => inputEl.removeClass(cls), cls === 'rt-setting-input-success' ? 1000 : 2000);
+            window.setTimeout(() => inputEl.removeClass(cls), cls === 'ert-setting-input-success' ? 1000 : 2000);
         };
 
         const validatePath = async () => {
-            inputEl.removeClass('rt-setting-input-success');
-            inputEl.removeClass('rt-setting-input-error');
+            inputEl.removeClass('ert-setting-input-success');
+            inputEl.removeClass('ert-setting-input-error');
 
             const rawValue = text.getValue();
             const trimmed = rawValue.trim() || fallbackFolder;
 
             if (illegalChars.test(trimmed)) {
-                flashClass('rt-setting-input-error');
+                flashClass('ert-setting-input-error');
                 new Notice('Folder path cannot contain the characters < > : " | ? *');
                 return;
             }
@@ -152,18 +152,18 @@ export function renderGeneralSection(params: {
 
             const isValid = await plugin.validateAndRememberPath(normalized);
             if (!isValid) {
-                flashClass('rt-setting-input-error');
+                flashClass('ert-setting-input-error');
                 return;
             }
 
             plugin.settings.aiOutputFolder = normalized;
             await plugin.saveSettings();
-            flashClass('rt-setting-input-success');
+            flashClass('ert-setting-input-success');
         };
 
         text.onChange(() => {
-            inputEl.removeClass('rt-setting-input-success');
-            inputEl.removeClass('rt-setting-input-error');
+            inputEl.removeClass('ert-setting-input-success');
+            inputEl.removeClass('ert-setting-input-error');
         });
 
         plugin.registerDomEvent(text.inputEl, 'blur', () => { void validatePath(); });
@@ -175,7 +175,7 @@ export function renderGeneralSection(params: {
                 text.setValue(defaultPath);
                 plugin.settings.aiOutputFolder = normalizePath(defaultPath);
                 await plugin.saveSettings();
-                flashClass('rt-setting-input-success');
+                flashClass('ert-setting-input-success');
             });
         });
     });
@@ -197,18 +197,18 @@ export function renderGeneralSection(params: {
 
         const flashClass = (cls: string) => {
             inputEl.addClass(cls);
-            window.setTimeout(() => inputEl.removeClass(cls), cls === 'rt-setting-input-success' ? 1000 : 2000);
+            window.setTimeout(() => inputEl.removeClass(cls), cls === 'ert-setting-input-success' ? 1000 : 2000);
         };
 
         const validatePath = async () => {
-            inputEl.removeClass('rt-setting-input-success');
-            inputEl.removeClass('rt-setting-input-error');
+            inputEl.removeClass('ert-setting-input-success');
+            inputEl.removeClass('ert-setting-input-error');
 
             const rawValue = text.getValue();
             const trimmed = rawValue.trim() || fallbackFolder;
 
             if (illegalChars.test(trimmed)) {
-                flashClass('rt-setting-input-error');
+                flashClass('ert-setting-input-error');
                 new Notice('Folder path cannot contain the characters < > : " | ? *');
                 return;
             }
@@ -219,18 +219,18 @@ export function renderGeneralSection(params: {
 
             const isValid = await plugin.validateAndRememberPath(normalized);
             if (!isValid) {
-                flashClass('rt-setting-input-error');
+                flashClass('ert-setting-input-error');
                 return;
             }
 
             plugin.settings.manuscriptOutputFolder = normalized;
             await plugin.saveSettings();
-            flashClass('rt-setting-input-success');
+            flashClass('ert-setting-input-success');
         };
 
         text.onChange(() => {
-            inputEl.removeClass('rt-setting-input-success');
-            inputEl.removeClass('rt-setting-input-error');
+            inputEl.removeClass('ert-setting-input-success');
+            inputEl.removeClass('ert-setting-input-error');
         });
 
         plugin.registerDomEvent(text.inputEl, 'blur', () => { void validatePath(); });
@@ -242,7 +242,7 @@ export function renderGeneralSection(params: {
                 text.setValue(defaultPath);
                 plugin.settings.manuscriptOutputFolder = normalizePath(defaultPath);
                 await plugin.saveSettings();
-                flashClass('rt-setting-input-success');
+                flashClass('ert-setting-input-success');
             });
         });
     });
@@ -264,18 +264,18 @@ export function renderGeneralSection(params: {
 
         const flashClass = (cls: string) => {
             inputEl.addClass(cls);
-            window.setTimeout(() => inputEl.removeClass(cls), cls === 'rt-setting-input-success' ? 1000 : 2000);
+            window.setTimeout(() => inputEl.removeClass(cls), cls === 'ert-setting-input-success' ? 1000 : 2000);
         };
 
         const validatePath = async () => {
-            inputEl.removeClass('rt-setting-input-success');
-            inputEl.removeClass('rt-setting-input-error');
+            inputEl.removeClass('ert-setting-input-success');
+            inputEl.removeClass('ert-setting-input-error');
 
             const rawValue = text.getValue();
             const trimmed = rawValue.trim() || fallbackFolder;
 
             if (illegalChars.test(trimmed)) {
-                flashClass('rt-setting-input-error');
+                flashClass('ert-setting-input-error');
                 new Notice('Folder path cannot contain the characters < > : " | ? *');
                 return;
             }
@@ -286,18 +286,18 @@ export function renderGeneralSection(params: {
 
             const isValid = await plugin.validateAndRememberPath(normalized);
             if (!isValid) {
-                flashClass('rt-setting-input-error');
+                flashClass('ert-setting-input-error');
                 return;
             }
 
             plugin.settings.outlineOutputFolder = normalized;
             await plugin.saveSettings();
-            flashClass('rt-setting-input-success');
+            flashClass('ert-setting-input-success');
         };
 
         text.onChange(() => {
-            inputEl.removeClass('rt-setting-input-success');
-            inputEl.removeClass('rt-setting-input-error');
+            inputEl.removeClass('ert-setting-input-success');
+            inputEl.removeClass('ert-setting-input-error');
         });
 
         plugin.registerDomEvent(text.inputEl, 'blur', () => { void validatePath(); });
@@ -309,7 +309,7 @@ export function renderGeneralSection(params: {
                 text.setValue(defaultPath);
                 plugin.settings.outlineOutputFolder = normalizePath(defaultPath);
                 await plugin.saveSettings();
-                flashClass('rt-setting-input-success');
+                flashClass('ert-setting-input-success');
             });
         });
     });

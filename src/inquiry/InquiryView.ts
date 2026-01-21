@@ -48,7 +48,7 @@ const VIEWBOX_MAX = 800;
 const VIEWBOX_SIZE = 1600;
 const INQUIRY_REFERENCE_ONLY_CLASSES = new Set(['character', 'place', 'power']);
 const PREVIEW_PANEL_WIDTH = 640;
-const PREVIEW_PANEL_Y = -540;
+const PREVIEW_PANEL_Y = -590;
 const PREVIEW_PANEL_PADDING_X = 32;
 const PREVIEW_PANEL_PADDING_Y = 20;
 const PREVIEW_PANEL_RADIUS = 18;
@@ -564,6 +564,113 @@ export class InquiryView extends ItemView {
                 ]
             ));
         });
+
+        // Neumorphic filters for zone pill states.
+        const pillOutFilter = this.createSvgElement('filter');
+        pillOutFilter.setAttribute('id', 'ert-inquiry-zone-pill-out');
+        pillOutFilter.setAttribute('x', '-50%');
+        pillOutFilter.setAttribute('y', '-50%');
+        pillOutFilter.setAttribute('width', '200%');
+        pillOutFilter.setAttribute('height', '200%');
+        pillOutFilter.setAttribute('color-interpolation-filters', 'sRGB');
+        const pillOutLight = this.createSvgElement('feDropShadow');
+        pillOutLight.setAttribute('dx', '-2');
+        pillOutLight.setAttribute('dy', '-2');
+        pillOutLight.setAttribute('stdDeviation', '1.6');
+        pillOutLight.setAttribute('flood-color', '#ffffff');
+        pillOutLight.setAttribute('flood-opacity', '0.28');
+        const pillOutDark = this.createSvgElement('feDropShadow');
+        pillOutDark.setAttribute('dx', '2');
+        pillOutDark.setAttribute('dy', '2');
+        pillOutDark.setAttribute('stdDeviation', '1.8');
+        pillOutDark.setAttribute('flood-color', '#000000');
+        pillOutDark.setAttribute('flood-opacity', '0.35');
+        pillOutFilter.appendChild(pillOutLight);
+        pillOutFilter.appendChild(pillOutDark);
+        defs.appendChild(pillOutFilter);
+
+        const pillInFilter = this.createSvgElement('filter');
+        pillInFilter.setAttribute('id', 'ert-inquiry-zone-pill-in');
+        pillInFilter.setAttribute('x', '-50%');
+        pillInFilter.setAttribute('y', '-50%');
+        pillInFilter.setAttribute('width', '200%');
+        pillInFilter.setAttribute('height', '200%');
+        pillInFilter.setAttribute('color-interpolation-filters', 'sRGB');
+        const pillInOffsetDark = this.createSvgElement('feOffset');
+        pillInOffsetDark.setAttribute('in', 'SourceAlpha');
+        pillInOffsetDark.setAttribute('dx', '1.6');
+        pillInOffsetDark.setAttribute('dy', '1.6');
+        pillInOffsetDark.setAttribute('result', 'pill-in-offset-dark');
+        const pillInBlurDark = this.createSvgElement('feGaussianBlur');
+        pillInBlurDark.setAttribute('in', 'pill-in-offset-dark');
+        pillInBlurDark.setAttribute('stdDeviation', '1.2');
+        pillInBlurDark.setAttribute('result', 'pill-in-blur-dark');
+        const pillInCompositeDark = this.createSvgElement('feComposite');
+        pillInCompositeDark.setAttribute('in', 'pill-in-blur-dark');
+        pillInCompositeDark.setAttribute('in2', 'SourceAlpha');
+        pillInCompositeDark.setAttribute('operator', 'arithmetic');
+        pillInCompositeDark.setAttribute('k2', '-1');
+        pillInCompositeDark.setAttribute('k3', '1');
+        pillInCompositeDark.setAttribute('result', 'pill-in-inner-dark');
+        const pillInFloodDark = this.createSvgElement('feFlood');
+        pillInFloodDark.setAttribute('flood-color', '#000000');
+        pillInFloodDark.setAttribute('flood-opacity', '0.35');
+        pillInFloodDark.setAttribute('result', 'pill-in-flood-dark');
+        const pillInShadowDark = this.createSvgElement('feComposite');
+        pillInShadowDark.setAttribute('in', 'pill-in-flood-dark');
+        pillInShadowDark.setAttribute('in2', 'pill-in-inner-dark');
+        pillInShadowDark.setAttribute('operator', 'in');
+        pillInShadowDark.setAttribute('result', 'pill-in-shadow-dark');
+
+        const pillInOffsetLight = this.createSvgElement('feOffset');
+        pillInOffsetLight.setAttribute('in', 'SourceAlpha');
+        pillInOffsetLight.setAttribute('dx', '-1.6');
+        pillInOffsetLight.setAttribute('dy', '-1.6');
+        pillInOffsetLight.setAttribute('result', 'pill-in-offset-light');
+        const pillInBlurLight = this.createSvgElement('feGaussianBlur');
+        pillInBlurLight.setAttribute('in', 'pill-in-offset-light');
+        pillInBlurLight.setAttribute('stdDeviation', '1.2');
+        pillInBlurLight.setAttribute('result', 'pill-in-blur-light');
+        const pillInCompositeLight = this.createSvgElement('feComposite');
+        pillInCompositeLight.setAttribute('in', 'pill-in-blur-light');
+        pillInCompositeLight.setAttribute('in2', 'SourceAlpha');
+        pillInCompositeLight.setAttribute('operator', 'arithmetic');
+        pillInCompositeLight.setAttribute('k2', '-1');
+        pillInCompositeLight.setAttribute('k3', '1');
+        pillInCompositeLight.setAttribute('result', 'pill-in-inner-light');
+        const pillInFloodLight = this.createSvgElement('feFlood');
+        pillInFloodLight.setAttribute('flood-color', '#ffffff');
+        pillInFloodLight.setAttribute('flood-opacity', '0.22');
+        pillInFloodLight.setAttribute('result', 'pill-in-flood-light');
+        const pillInShadowLight = this.createSvgElement('feComposite');
+        pillInShadowLight.setAttribute('in', 'pill-in-flood-light');
+        pillInShadowLight.setAttribute('in2', 'pill-in-inner-light');
+        pillInShadowLight.setAttribute('operator', 'in');
+        pillInShadowLight.setAttribute('result', 'pill-in-shadow-light');
+
+        const pillInMerge = this.createSvgElement('feMerge');
+        const pillInMergeGraphic = this.createSvgElement('feMergeNode');
+        pillInMergeGraphic.setAttribute('in', 'SourceGraphic');
+        const pillInMergeDark = this.createSvgElement('feMergeNode');
+        pillInMergeDark.setAttribute('in', 'pill-in-shadow-dark');
+        const pillInMergeLight = this.createSvgElement('feMergeNode');
+        pillInMergeLight.setAttribute('in', 'pill-in-shadow-light');
+        pillInMerge.appendChild(pillInMergeGraphic);
+        pillInMerge.appendChild(pillInMergeDark);
+        pillInMerge.appendChild(pillInMergeLight);
+
+        pillInFilter.appendChild(pillInOffsetDark);
+        pillInFilter.appendChild(pillInBlurDark);
+        pillInFilter.appendChild(pillInCompositeDark);
+        pillInFilter.appendChild(pillInFloodDark);
+        pillInFilter.appendChild(pillInShadowDark);
+        pillInFilter.appendChild(pillInOffsetLight);
+        pillInFilter.appendChild(pillInBlurLight);
+        pillInFilter.appendChild(pillInCompositeLight);
+        pillInFilter.appendChild(pillInFloodLight);
+        pillInFilter.appendChild(pillInShadowLight);
+        pillInFilter.appendChild(pillInMerge);
+        defs.appendChild(pillInFilter);
     }
 
     private createIconSymbol(defs: SVGDefsElement, iconName: string): string | null {
@@ -734,7 +841,14 @@ export class InquiryView extends ItemView {
         this.glyph.updatePromptState({
             promptsByZone,
             selectedPromptIds: this.state.selectedPromptIds,
-            onPromptSelect: (zone, promptId) => this.setSelectedPrompt(zone, promptId),
+            onPromptSelect: (zone, promptId) => {
+                this.setSelectedPrompt(zone, promptId);
+                const prompt = this.getPromptOptions(zone)
+                    .find(item => item.id === promptId);
+                if (prompt) {
+                    void this.handleQuestionClick(prompt);
+                }
+            },
             onPromptHover: (zone, _promptId, promptText) => {
                 this.showPromptPreview(zone, this.state.mode, promptText);
             },
@@ -876,7 +990,7 @@ export class InquiryView extends ItemView {
         const waveWidth = 993;
         const targetWidth = VIEWBOX_SIZE * 0.5;
         const scale = targetWidth / waveWidth;
-        const y = VIEWBOX_MIN + 100;
+        const y = VIEWBOX_MIN + 50;
         const group = this.createSvgGroup(parent, 'ert-inquiry-wave-header');
         group.setAttribute('transform', `translate(0 ${y}) scale(${scale.toFixed(4)}) translate(${-waveWidth / 2} 0)`);
         group.setAttribute('pointer-events', 'none');
@@ -1162,10 +1276,10 @@ export class InquiryView extends ItemView {
         const length = this.minimapLayout.length;
         const tickSize = 20;
         const tickGap = 4;
-        const baselineGap = 2;
-        const capWidth = Math.max(6, Math.round(tickSize * 0.4));
+        const capWidth = 2;
         const capHeight = Math.max(30, tickSize + 12);
-        const tickInset = capWidth + (tickSize / 2) + 4;
+        const edgeScenePadding = tickSize;
+        const tickInset = capWidth + (tickSize / 2) + 4 + edgeScenePadding;
         const availableLength = Math.max(0, length - (tickInset * 2));
         const maxRowWidth = VIEWBOX_SIZE * 0.75;
         const minStep = tickSize + tickGap;
@@ -1180,6 +1294,7 @@ export class InquiryView extends ItemView {
         const extraSpace = Math.max(0, availableLength - usedLength);
         const startOffset = Math.floor(extraSpace / 2);
         const horizontalGap = Math.max(0, columnStep - tickSize);
+        const baselineGap = horizontalGap;
         const rowTopY = -(baselineGap + tickSize + (rowCount === 2 ? (tickSize + horizontalGap) : 0));
         const rowBottomY = -(baselineGap + tickSize);
 

@@ -100,7 +100,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
         const titleColorSetting = new Settings(details)
             .setName('Title + color')
             .setDesc('Name the microring and set its color.');
-        titleColorSetting.controlEl.classList.add('rt-micro-backdrop-title-row');
+        titleColorSetting.controlEl.classList.add('ert-micro-backdrop-title-row');
 
         titleColorSetting.addText(text => {
             text.setPlaceholder('Title')
@@ -124,7 +124,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
             });
         });
 
-        const colorControls = titleColorSetting.controlEl.createDiv({ cls: 'rt-color-grid-controls rt-micro-backdrop-color-controls' });
+        const colorControls = titleColorSetting.controlEl.createDiv({ cls: 'ert-color-grid-controls rt-micro-backdrop-color-controls' });
         let colorTextInput: TextComponent | undefined;
         let colorPickerRef: ColorComponent | undefined;
         let swatchEl: HTMLDivElement | null = null;
@@ -141,15 +141,15 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
             });
 
         const colorInput = colorControls.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
-        if (colorInput) colorInput.classList.add('rt-hidden-color-input');
+        if (colorInput) colorInput.classList.add('ert-hidden-color-input');
 
-        swatchEl = colorControls.createDiv({ cls: 'rt-swatch-trigger' });
+        swatchEl = colorControls.createDiv({ cls: 'ert-swatch-trigger' });
         swatchEl.style.background = colorValue;
         plugin.registerDomEvent(swatchEl, 'click', () => { colorInput?.click(); });
 
         const hexInput = new TextComponent(colorControls);
         colorTextInput = hexInput;
-        hexInput.inputEl.classList.add('rt-hex-input');
+        hexInput.inputEl.classList.add('ert-hex-input');
         hexInput.setValue(colorValue)
             .onChange(async (value) => {
                 if (!isValidHexColor(value)) return;
@@ -168,12 +168,12 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
             text.inputEl.classList.add('rt-input-lg');
 
             const validateRange = () => {
-                text.inputEl.removeClass('rt-setting-input-error');
+                text.inputEl.removeClass('ert-setting-input-error');
                 const trimmed = text.getValue().trim();
                 if (!trimmed) return;
                 const parsed = parseDateRangeInput(trimmed);
                 if (!parsed?.start || !parsed?.end) {
-                    text.inputEl.addClass('rt-setting-input-error');
+                    text.inputEl.addClass('ert-setting-input-error');
                 }
             };
 

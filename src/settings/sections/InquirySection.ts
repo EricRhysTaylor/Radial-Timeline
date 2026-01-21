@@ -207,18 +207,18 @@ export function renderInquirySection(params: SectionParams): void {
         const inputEl = text.inputEl;
         const flashClass = (cls: string) => {
             inputEl.addClass(cls);
-            window.setTimeout(() => inputEl.removeClass(cls), cls === 'rt-setting-input-success' ? 1000 : 2000);
+            window.setTimeout(() => inputEl.removeClass(cls), cls === 'ert-setting-input-success' ? 1000 : 2000);
         };
 
         const validatePath = async () => {
-            inputEl.removeClass('rt-setting-input-success');
-            inputEl.removeClass('rt-setting-input-error');
+            inputEl.removeClass('ert-setting-input-success');
+            inputEl.removeClass('ert-setting-input-error');
 
             const rawValue = text.getValue();
             const trimmed = rawValue.trim() || fallbackFolder;
 
             if (illegalChars.test(trimmed)) {
-                flashClass('rt-setting-input-error');
+                flashClass('ert-setting-input-error');
                 new Notice('Folder path cannot contain the characters < > : " | ? *');
                 return;
             }
@@ -228,12 +228,12 @@ export function renderInquirySection(params: SectionParams): void {
 
             plugin.settings.inquiryArtifactFolder = normalized;
             await plugin.saveSettings();
-            flashClass('rt-setting-input-success');
+            flashClass('ert-setting-input-success');
         };
 
         text.onChange(() => {
-            inputEl.removeClass('rt-setting-input-success');
-            inputEl.removeClass('rt-setting-input-error');
+            inputEl.removeClass('ert-setting-input-success');
+            inputEl.removeClass('ert-setting-input-error');
         });
 
         plugin.registerDomEvent(text.inputEl, 'blur', () => { void validatePath(); });
@@ -245,7 +245,7 @@ export function renderInquirySection(params: SectionParams): void {
                 text.setValue(defaultPath);
                 plugin.settings.inquiryArtifactFolder = normalizePath(defaultPath);
                 await plugin.saveSettings();
-                flashClass('rt-setting-input-success');
+                flashClass('ert-setting-input-success');
             });
         });
     });
@@ -720,7 +720,7 @@ export function renderInquirySection(params: SectionParams): void {
             renderSimpleRow(zone);
         });
 
-        const advancedDetails = containerEl.createEl('details', { cls: 'rt-setting-block ert-inquiry-prompts-advanced' });
+        const advancedDetails = containerEl.createEl('details', { cls: 'ert-setting-block ert-inquiry-prompts-advanced' });
         advancedDetails.createEl('summary', { text: 'Advanced prompt slots' });
         advancedDetails.createEl('div', {
             cls: 'ert-inquiry-prompts-advanced-hint',
@@ -734,7 +734,7 @@ export function renderInquirySection(params: SectionParams): void {
         }
 
         (['setup', 'pressure', 'payoff'] as const).forEach(zone => {
-            const block = advancedDetails.createDiv({ cls: 'rt-setting-block' });
+            const block = advancedDetails.createDiv({ cls: 'ert-setting-block' });
             block.createEl('div', { cls: 'setting-item-name', text: zoneLabels[zone] });
             const slots = promptConfig[zone];
             const builtInCount = slots.filter(slot => slot.builtIn).length;

@@ -175,12 +175,12 @@ export function renderPublicationSection(params: {
                 
                 // Apply overdue styling
                 if (overdue) {
-                    text.inputEl.addClass('rt-setting-input-overdue');
+                    text.inputEl.addClass('ert-setting-input-overdue');
                 }
 
             text.onChange(() => {
-                text.inputEl.removeClass('rt-setting-input-error');
-                    text.inputEl.removeClass('rt-setting-input-overdue');
+                text.inputEl.removeClass('ert-setting-input-error');
+                    text.inputEl.removeClass('ert-setting-input-overdue');
             });
 
             plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
@@ -200,8 +200,8 @@ export function renderPublicationSection(params: {
 
                 if (!value) {
                         plugin.settings.stageTargetDates[stage] = undefined;
-                    text.inputEl.removeClass('rt-setting-input-error');
-                        text.inputEl.removeClass('rt-setting-input-overdue');
+                    text.inputEl.removeClass('ert-setting-input-error');
+                        text.inputEl.removeClass('ert-setting-input-overdue');
                     await plugin.saveSettings();
                     plugin.refreshTimelineIfNeeded(null);
                         // Update icon color
@@ -218,20 +218,20 @@ export function renderPublicationSection(params: {
                     const validationError = validateStageOrder(plugin, stage, value);
                     if (validationError) {
                         new Notice(validationError);
-                        text.inputEl.addClass('rt-setting-input-error');
+                        text.inputEl.addClass('ert-setting-input-error');
                         text.setValue(plugin.settings.stageTargetDates[stage] || '');
                     return;
                 }
 
                     plugin.settings.stageTargetDates[stage] = value;
-                    text.inputEl.removeClass('rt-setting-input-error');
+                    text.inputEl.removeClass('ert-setting-input-error');
                     
                     // Check if now overdue and update styling
                     const nowOverdue = isOverdue(value);
                     if (nowOverdue) {
-                        text.inputEl.addClass('rt-setting-input-overdue');
+                        text.inputEl.addClass('ert-setting-input-overdue');
                 } else {
-                        text.inputEl.removeClass('rt-setting-input-overdue');
+                        text.inputEl.removeClass('ert-setting-input-overdue');
                     }
                     
                     // Update icon color

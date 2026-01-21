@@ -9,7 +9,7 @@ export function renderReadmeSection(params: {
 }): void {
     const { app, containerEl, setComponentRef } = params;
 
-    containerEl.createEl('hr', { cls: 'rt-settings-separator' });
+    containerEl.createEl('hr', { cls: 'ert-settings-separator' });
     const readmeContainer = containerEl.createDiv({ cls: 'rt-manuscript-readme-container' });
     const readmeMarkdown = typeof EMBEDDED_README_CONTENT !== 'undefined'
         ? EMBEDDED_README_CONTENT
@@ -31,5 +31,4 @@ export function renderReadmeSection(params: {
         component
     );
 }
-
 

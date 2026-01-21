@@ -207,8 +207,8 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
             const trimmed = text.getValue().trim();
             
             // Clear validation state
-            text.inputEl.removeClass('rt-setting-input-success');
-            text.inputEl.removeClass('rt-setting-input-error');
+            text.inputEl.removeClass('ert-setting-input-success');
+            text.inputEl.removeClass('ert-setting-input-error');
 
             if (!trimmed) {
                 // Empty = use auto calculation
@@ -221,20 +221,20 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
             // Validate the input by trying to parse it
             const parsed = parseDurationDetail(trimmed);
             if (!parsed) {
-                text.inputEl.addClass('rt-setting-input-error');
+                text.inputEl.addClass('ert-setting-input-error');
                 new Notice('Invalid gap threshold format. Examples: "4 days", "1 week", "2 months"');
                 return;
             }
 
             // Valid input
             plugin.settings.discontinuityThreshold = trimmed;
-            text.inputEl.addClass('rt-setting-input-success');
+            text.inputEl.addClass('ert-setting-input-success');
             await plugin.saveSettings();
             plugin.refreshTimelineIfNeeded(null);
             
             // Clear success state after a moment
             window.setTimeout(() => {
-                text.inputEl.removeClass('rt-setting-input-success');
+                text.inputEl.removeClass('ert-setting-input-success');
             }, 1000);
         };
 
@@ -253,8 +253,8 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
             plugin.refreshTimelineIfNeeded(null);
             if (discontinuityText) {
                 discontinuityText.setValue('');
-                discontinuityText.inputEl.removeClass('rt-setting-input-error');
-                discontinuityText.inputEl.removeClass('rt-setting-input-success');
+                discontinuityText.inputEl.removeClass('ert-setting-input-error');
+                discontinuityText.inputEl.removeClass('ert-setting-input-success');
             }
             new Notice('Discontinuity threshold reset to auto-calculated value');
         }));

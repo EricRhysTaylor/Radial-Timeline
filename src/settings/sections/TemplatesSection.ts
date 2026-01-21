@@ -77,7 +77,7 @@ export function renderStoryBeatsSection(params: {
                 updateActPreview();
             });
         });
-    actLabelsSetting.settingEl.addClass('rt-setting-full-width-input');
+    actLabelsSetting.settingEl.addClass('ert-setting-full-width-input');
 
     new Settings(containerEl)
         .setName('Show act labels')
@@ -124,7 +124,7 @@ export function renderStoryBeatsSection(params: {
             dropdown.selectEl.style.minWidth = '200px';
         });
 
-    beatSystemSetting.settingEl.classList.add('rt-setting-two-row');
+    beatSystemSetting.settingEl.classList.add('ert-setting-two-row');
     
     // Explicitly enforce grid layout via inline styles to override any stubborn Flexbox
     beatSystemSetting.settingEl.style.setProperty('display', 'grid', 'important');
@@ -137,7 +137,7 @@ export function renderStoryBeatsSection(params: {
 
     // Story structure explanation
     const storyStructureInfo = beatSystemSetting.settingEl.createDiv({
-        cls: 'rt-story-structure-info setting-item-description'
+        cls: 'ert-story-structure-info setting-item-description'
     });
     // Ensure styles are set if CSS class doesn't fully cover it (redundancy)
     storyStructureInfo.style.gridColumn = '1 / 3';
