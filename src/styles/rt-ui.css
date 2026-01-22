@@ -426,6 +426,13 @@
   box-shadow: var(--ert-panel-shadow-elev);
 }
 
+.ert-ui .ert-panel--glass {
+  --ert-panel-bg: color-mix(in srgb, var(--background-primary) 90%, transparent);
+  --ert-panel-border: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  --ert-panel-shadow: var(--shadow-l);
+  --ert-panel-backdrop: var(--ert-modal-blur);
+}
+
 .ert-ui .ert-panel__header {
   display: flex;
   align-items: center;
@@ -2925,6 +2932,54 @@
 .ert-settings-root .ert-stage-target-overdue .setting-item-description {
   color: var(--rt-color-due);
   opacity: 0.85;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Templates settings (ERT)                                                   */
+/* -------------------------------------------------------------------------- */
+
+.ert-ui .ert-scene-template-editor {
+  --ert-group-gap: 0;
+}
+
+.ert-ui .ert-grid-spacer {
+  display: block;
+}
+
+.ert-ui .ert-inline-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui .ert-mod-cta {
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.ert-ui .ert-mod-cta:hover {
+  filter: brightness(1.05);
+}
+
+.ert-ui .ert-mod-cta svg,
+.ert-ui .ert-mod-cta svg * {
+  stroke: currentColor;
+}
+
+.ert-ui .ert-purge-warning {
+  color: var(--text-normal);
+  font-weight: 700;
+}
+
+.ert-ui .ert-story-structure-selected {
+  color: var(--text-success);
+  font-weight: 500;
+}
+
+.ert-ui .ert-story-structure-selected b {
+  color: var(--text-success);
+  font-weight: 500;
 }
 
 /* -------------------------------------------------------------------------- */

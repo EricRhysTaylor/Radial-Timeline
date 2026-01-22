@@ -256,9 +256,12 @@
   cursor: pointer;
 }
 
+.ert-inquiry-svg.is-running .inq-zone-control,
 .ert-inquiry-svg.is-running .inq-zone-dot,
 .ert-inquiry-svg.is-running .ert-inquiry-zone-pod,
-.ert-inquiry-svg.is-running .ert-inquiry-ring-hit {
+.ert-inquiry-svg.is-running .ert-inquiry-ring-hit,
+.ert-inquiry-svg.is-running .ert-inquiry-minimap-tick,
+.ert-inquiry-svg.is-running .ert-inquiry-cc-cell {
   pointer-events: none;
   cursor: default;
 }
@@ -357,6 +360,14 @@
   fill: none;
   stroke: color-mix(in srgb, var(--text-muted) 45%, transparent);
   stroke-width: 1;
+}
+
+.ert-inquiry-cc-cell-fold {
+  fill: none;
+  stroke: color-mix(in srgb, var(--text-muted) 55%, transparent);
+  stroke-width: 1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .ert-inquiry-cc-cell-icon {

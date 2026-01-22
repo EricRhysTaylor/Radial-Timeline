@@ -299,11 +299,6 @@
 
 /* rt-template-input consolidated in base.css */
 
-/* rt-template-icon-btn uses rt-icon-btn from base.css - add hover effect */
-.rt-template-icon-btn.rt-mod-cta:hover {
-  filter: brightness(1.05);
-}
-
 /* YAML add row */
 .rt-yaml-add-row {
   background: var(--background-primary);
@@ -350,11 +345,6 @@
   justify-self: start;
 }
 
-/* Grid spacer - occupies 1fr column to push content right */
-.rt-grid-spacer {
-  display: block;
-}
-
 /* Grid row index (used in beats & YAML) */
 .rt-row-index {
   font-weight: 600;
@@ -372,11 +362,6 @@
 
 .rt-drag-placeholder {
   opacity: 0.35;
-}
-
-/* Keep the Add beat CTA aligned to the right on the header row */
-.rt-custom-beat-header .rt-mod-cta {
-  margin-left: auto;
 }
 
 /* Styling for the embedded README container in settings */
@@ -490,17 +475,6 @@
 .ert-settings-root .setting-item-control .clickable-icon,
 .ert-settings-root .setting-item-control input[type="checkbox"] {
   cursor: pointer;
-}
-
-/* Story structure description styling in settings */
-.rt-story-structure-selected {
-  color: var(--text-success);
-  font-weight: 500;
-}
-
-.rt-story-structure-selected b {
-  color: var(--text-success);
-  font-weight: 500;
 }
 
 /* Planetary & Acts Preview Styling */

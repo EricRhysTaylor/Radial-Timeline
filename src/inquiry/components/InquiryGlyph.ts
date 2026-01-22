@@ -55,6 +55,7 @@ const ZONE_SEGMENT_FILL = '#7b6448';
 const ZONE_SEGMENT_STROKE = '#d6c3ad';
 const ZONE_BASE_ANGLE = Math.PI;
 const ZONE_SEGMENT_AXIS_ROTATION_DEG = 90;
+const ZONE_CONTROL_SCALE = 1.05;
 const DEBUG_INQUIRY_ZONES = false;
 
 export const GLYPH_OUTER_DIAMETER = (FLOW_RADIUS * 2) + FLOW_STROKE;
@@ -84,6 +85,7 @@ export class InquiryGlyph {
     private zoneDots: Array<{ circle: SVGCircleElement; text: SVGTextElement }> = [];
     private zoneControlGroups = new Map<InquiryZone, SVGGElement>();
     private zoneControlStates = new Map<InquiryZone, { hovered: boolean; locked: boolean }>();
+    private zoneInteractionsEnabled = true;
     private promptState?: InquiryGlyphPromptState;
     private zoneNumberMarkers = new Map<InquiryZone, Array<{
         group: SVGGElement;
@@ -157,6 +159,19 @@ export class InquiryGlyph {
     updatePromptState(state: InquiryGlyphPromptState): void {
         this.promptState = state;
         this.syncZoneNumberMarkers();
+    }
+
+    setZoneInteractionsEnabled(enabled: boolean): void {
+        if (this.zoneInteractionsEnabled === enabled) return;
+        this.zoneInteractionsEnabled = enabled;
+        if (enabled) return;
+        this.zoneControlGroups.forEach((group, zone) => {
+            const state = this.ensureZoneControlState(zone);
+            if (!state.hovered && !state.locked) return;
+            state.hovered = false;
+            state.locked = false;
+            this.updateZoneControlScale(state, group);
+        });
     }
 
     setZoneScaleLocked(zone: InquiryZone, locked: boolean): void {
@@ -287,18 +302,17 @@ export class InquiryGlyph {
             );
             zoneGroup.setAttribute('transform', 'scale(1)');
             this.zoneControlGroups.set(zone.id, zoneGroup);
-            if (zone.id === 'pressure') {
-                this.bindZoneControlInteractions(zoneGroup, zone.id);
-            }
 
             const translateGroup = document.createElementNS(SVG_NS, 'g');
             translateGroup.setAttribute('transform', `translate(${zoneX.toFixed(2)} ${zoneY.toFixed(2)})`);
             const axisGroup = document.createElementNS(SVG_NS, 'g');
             axisGroup.setAttribute('transform', `rotate(${axisRotationDeg})`);
             const zoneNode = zoneTemplate.cloneNode(true) as SVGGElement;
+            const zonePath = zoneNode.querySelector('.inq-zone-segment-path') as SVGPathElement | null;
             axisGroup.appendChild(zoneNode);
             translateGroup.appendChild(axisGroup);
             zoneGroup.appendChild(translateGroup);
+            this.bindZoneControlInteractions(zoneGroup, zone.id, zonePath ?? undefined);
             group.appendChild(zoneGroup);
 
             const numberRadius = layout?.numberRadius ?? zoneRadius;
@@ -350,14 +364,17 @@ export class InquiryGlyph {
                     promptText?: string;
                 } = { group: dotGroup, circle: dotCircle, text: dotText, zone: zone.id, index: i };
                 dotGroup.addEventListener('click', () => {
+                    if (!this.zoneInteractionsEnabled) return;
                     if (!marker.promptId) return;
                     this.promptState?.onPromptSelect?.(marker.zone, marker.promptId);
                 });
                 dotGroup.addEventListener('pointerenter', () => {
+                    if (!this.zoneInteractionsEnabled) return;
                     if (!marker.promptId || !marker.promptText) return;
                     this.promptState?.onPromptHover?.(marker.zone, marker.promptId, marker.promptText);
                 });
                 dotGroup.addEventListener('pointerleave', () => {
+                    if (!this.zoneInteractionsEnabled) return;
                     this.promptState?.onPromptHoverEnd?.();
                 });
                 markers.push(marker);
@@ -399,24 +416,30 @@ export class InquiryGlyph {
         const shouldScale = state.hovered || state.locked;
         group.classList.toggle('is-scaled', shouldScale);
         group.classList.toggle('is-locked', state.locked);
-        group.setAttribute('transform', `scale(${shouldScale ? '1.2' : '1'})`);
+        group.setAttribute('transform', `scale(${shouldScale ? String(ZONE_CONTROL_SCALE) : '1'})`);
     }
 
-    private bindZoneControlInteractions(group: SVGGElement, zone: InquiryZone): void {
+    private bindZoneControlInteractions(
+        group: SVGGElement,
+        zone: InquiryZone,
+        hoverTarget?: SVGElement
+    ): void {
         const state = this.ensureZoneControlState(zone);
-        group.addEventListener('pointerover', event => {
-            const related = event.relatedTarget;
-            if (related instanceof Node && group.contains(related)) return;
+        const entryTarget = hoverTarget ?? group;
+        entryTarget.addEventListener('pointerenter', () => {
+            if (!this.zoneInteractionsEnabled) return;
             state.hovered = true;
             this.updateZoneControlScale(state, group);
         });
         group.addEventListener('pointerout', event => {
+            if (!this.zoneInteractionsEnabled) return;
             const related = event.relatedTarget;
             if (related instanceof Node && group.contains(related)) return;
             state.hovered = false;
             this.updateZoneControlScale(state, group);
         });
         group.addEventListener('click', () => {
+            if (!this.zoneInteractionsEnabled) return;
             if (state.locked) return;
             state.locked = true;
             this.updateZoneControlScale(state, group);
@@ -468,7 +491,7 @@ export class InquiryGlyph {
         path.setAttribute('fill', ZONE_SEGMENT_FILL);
         path.setAttribute('stroke', ZONE_SEGMENT_STROKE);
         path.setAttribute('stroke-width', String(ZONE_SEGMENT_STROKE_WIDTH));
-        path.setAttribute('pointer-events', 'none');
+        path.setAttribute('pointer-events', 'auto');
         scaleGroup.appendChild(path);
         group.appendChild(scaleGroup);
 

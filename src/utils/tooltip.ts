@@ -229,10 +229,13 @@ function showCustomTooltip(target: Element, text: string, placement: TooltipPlac
 
     // Update content
     customTooltipEl.setText(text);
-    updateTooltipWidth();
     
-    // Reset classes
+    // Reset classes and position before measuring to avoid shrink-to-fit from the previous location.
     customTooltipEl.className = 'rt-tooltip'; // reset placement classes
+    customTooltipEl.style.left = '0px';
+    customTooltipEl.style.top = '0px';
+    updateTooltipWidth();
+
     customTooltipEl.classList.add(`rt-placement-${placement}`);
     
     // Calculate Position

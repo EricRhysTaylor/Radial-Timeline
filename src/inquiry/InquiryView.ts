@@ -72,9 +72,11 @@ const SWEEP_DURATION_MS = STAGE_DURATION_MS * STAGE_LABELS.length;
 const MIN_PROCESSING_MS = 5000;
 const SIMULATION_DURATION_MS = 20000;
 const CC_CELL_SIZE = 20;
-const CC_CELL_GAP = 8;
+const CC_CELL_GAP = CC_CELL_SIZE;
+const CC_PAGE_WIDTH = CC_CELL_SIZE;
+const CC_PAGE_HEIGHT = Math.round(CC_CELL_SIZE * 1.45);
 const CC_RIGHT_MARGIN = 50;
-const CC_ANCHOR_X = VIEWBOX_MAX - CC_RIGHT_MARGIN - CC_CELL_SIZE;
+const CC_ANCHOR_X = VIEWBOX_MAX - CC_RIGHT_MARGIN - CC_PAGE_WIDTH;
 const CC_ANCHOR_Y = 320;
 
 type InquiryQuestion = {
@@ -96,6 +98,7 @@ type CorpusCcEntry = {
     id: string;
     label: string;
     filePath: string;
+    className: string;
 };
 
 type CorpusCcSlot = {
@@ -104,6 +107,7 @@ type CorpusCcSlot = {
     fill: SVGRectElement;
     border: SVGRectElement;
     icon: SVGTextElement;
+    fold: SVGPathElement;
 };
 
 export class InquiryView extends ItemView {
@@ -122,7 +126,6 @@ export class InquiryView extends ItemView {
     private engineBadgeGroup?: SVGGElement;
     private engineBadgeBg?: SVGRectElement;
     private engineBadgeText?: SVGTextElement;
-    private engineBadgeTitle?: SVGTitleElement;
     private contextBadgeIcon?: SVGUseElement;
     private contextBadgeSigmaText?: SVGTextElement;
     private contextBadgeLabel?: SVGTextElement;
@@ -368,9 +371,7 @@ export class InquiryView extends ItemView {
         this.engineBadgeText = this.createSvgText(this.engineBadgeGroup, 'ert-inquiry-engine-badge-text', 'AI', 14, 14);
         this.engineBadgeText.setAttribute('text-anchor', 'start');
         this.engineBadgeText.setAttribute('dominant-baseline', 'middle');
-        this.engineBadgeTitle = this.createSvgElement('title');
-        this.engineBadgeTitle.textContent = 'Inquiry engine (change in Settings → AI)';
-        this.engineBadgeGroup.appendChild(this.engineBadgeTitle);
+        addTooltipData(this.engineBadgeGroup, 'Inquiry engine (change in Settings → AI)', 'bottom');
         this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'click', () => this.openAiSettings());
 
         const minimapGroup = this.createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, -600);
@@ -778,6 +779,7 @@ export class InquiryView extends ItemView {
         symbol.setAttribute('id', symbolId);
         symbol.setAttribute('viewBox', source.getAttribute('viewBox') || '0 0 24 24');
         Array.from(source.children).forEach(child => {
+            if (child.tagName.toLowerCase() === 'title') return;
             symbol.appendChild(child.cloneNode(true));
         });
         defs.appendChild(symbol);
@@ -808,9 +810,6 @@ export class InquiryView extends ItemView {
         const icon = this.createIconUse(iconName, (size - iconSize) / 2, (size - iconSize) / 2, iconSize);
         icon.classList.add('ert-inquiry-icon');
         group.appendChild(icon);
-        const title = this.createSvgElement('title');
-        title.textContent = label;
-        group.appendChild(title);
         return group;
     }
 
@@ -1280,9 +1279,6 @@ export class InquiryView extends ItemView {
         if (!this.engineBadgeGroup || !this.engineBadgeBg || !this.engineBadgeText) return;
         const modelLabel = this.getActiveInquiryModelLabel();
         this.engineBadgeText.textContent = modelLabel;
-        if (this.engineBadgeTitle) {
-            this.engineBadgeTitle.textContent = 'Inquiry engine (change in Settings → AI)';
-        }
         requestAnimationFrame(() => {
             if (!this.engineBadgeBg || !this.engineBadgeText) return;
             const textLength = this.engineBadgeText.getComputedTextLength();
@@ -1468,8 +1464,12 @@ export class InquiryView extends ItemView {
             tick.setAttribute('data-tooltip', `Focus ${label}`);
             tick.setAttribute('data-tooltip-placement', 'bottom');
             tick.setAttribute('data-tooltip-offset-y', '6');
-            this.registerDomEvent(tick as unknown as HTMLElement, 'click', () => this.setFocusByIndex(i + 1));
+            this.registerDomEvent(tick as unknown as HTMLElement, 'click', () => {
+                if (this.state.isRunning) return;
+                this.setFocusByIndex(i + 1);
+            });
             this.registerDomEvent(tick as unknown as HTMLElement, 'pointerenter', () => {
+                if (this.state.isRunning) return;
                 this.setHoverText(this.buildMinimapHoverText(label));
             });
             this.registerDomEvent(tick as unknown as HTMLElement, 'pointerleave', () => this.clearHoverText());
@@ -1585,9 +1585,19 @@ export class InquiryView extends ItemView {
     private renderCorpusCcStrip(): void {
         if (!this.rootSvg) return;
         const entries = this.getCorpusCcEntries();
-        this.ccEntries = entries;
+        const entriesByClass = new Map<string, CorpusCcEntry[]>();
+        entries.forEach(entry => {
+            const list = entriesByClass.get(entry.className) ?? [];
+            list.push(entry);
+            entriesByClass.set(entry.className, list);
+        });
+        const columns = Array.from(entriesByClass.entries())
+            .map(([className, items]) => ({ className, items }))
+            .sort((a, b) => (a.items.length - b.items.length) || a.className.localeCompare(b.className));
+        const orderedEntries = columns.flatMap(column => column.items);
+        this.ccEntries = orderedEntries;
 
-        if (!entries.length) {
+        if (!orderedEntries.length) {
             if (this.ccGroup) {
                 this.ccGroup.classList.add('ert-hidden');
             }
@@ -1599,19 +1609,25 @@ export class InquiryView extends ItemView {
         } else {
             this.ccGroup.classList.remove('ert-hidden');
         }
-        const count = entries.length;
-        const stackHeight = (count * CC_CELL_SIZE) + (Math.max(0, count - 1) * CC_CELL_GAP);
-        const maxBottom = VIEWBOX_MAX - CC_CELL_SIZE;
+        const count = orderedEntries.length;
+        const columnCount = Math.max(1, columns.length);
+        const maxRows = Math.max(1, ...columns.map(column => column.items.length));
+        const columnStep = CC_PAGE_WIDTH + CC_CELL_GAP;
+        const rowStep = CC_PAGE_HEIGHT + CC_CELL_GAP;
+        const stackHeight = (maxRows * CC_PAGE_HEIGHT) + (Math.max(0, maxRows - 1) * CC_CELL_GAP);
+        const stackWidth = (columnCount * CC_PAGE_WIDTH) + (Math.max(0, columnCount - 1) * CC_CELL_GAP);
+        const maxBottom = VIEWBOX_MAX - CC_PAGE_HEIGHT;
         const maxTop = maxBottom - stackHeight;
         const topY = Math.min(CC_ANCHOR_Y, maxTop);
-        this.ccGroup.setAttribute('transform', `translate(${CC_ANCHOR_X} ${topY})`);
+        const leftX = CC_ANCHOR_X - (stackWidth - CC_PAGE_WIDTH);
+        this.ccGroup.setAttribute('transform', `translate(${leftX} ${topY})`);
 
         if (!this.ccLabel) {
             this.ccLabel = this.createSvgText(this.ccGroup, 'ert-inquiry-cc-label', 'Corpus (CC)', 0, 0);
             this.ccLabel.setAttribute('text-anchor', 'middle');
             this.ccLabel.setAttribute('dominant-baseline', 'middle');
         }
-        this.ccLabel.setAttribute('x', String(CC_CELL_SIZE / 2));
+        this.ccLabel.setAttribute('x', String(stackWidth / 2));
         this.ccLabel.setAttribute('y', '-16');
 
         if (!this.ccEmptyText) {
@@ -1620,10 +1636,10 @@ export class InquiryView extends ItemView {
             this.ccEmptyText.setAttribute('dominant-baseline', 'middle');
         }
         this.ccEmptyText.setAttribute('x', '0');
-        this.ccEmptyText.setAttribute('y', String(CC_CELL_SIZE / 2));
+        this.ccEmptyText.setAttribute('y', String(CC_PAGE_HEIGHT / 2));
 
-        const corner = Math.max(2, Math.round(CC_CELL_SIZE * 0.125));
-        const step = CC_CELL_SIZE + CC_CELL_GAP;
+        const corner = Math.max(2, Math.round(CC_PAGE_WIDTH * 0.125));
+        const foldSize = Math.max(4, Math.round(CC_PAGE_WIDTH * 0.35));
 
         while (this.ccSlots.length < count) {
             const group = this.createSvgGroup(this.ccGroup, 'ert-inquiry-cc-cell');
@@ -1636,11 +1652,15 @@ export class InquiryView extends ItemView {
             const icon = this.createSvgText(group, 'ert-inquiry-cc-cell-icon', '', 0, 0);
             icon.setAttribute('text-anchor', 'middle');
             icon.setAttribute('dominant-baseline', 'middle');
+            const fold = this.createSvgElement('path');
+            fold.classList.add('ert-inquiry-cc-cell-fold');
             group.appendChild(base);
             group.appendChild(fill);
             group.appendChild(border);
+            group.appendChild(fold);
             group.appendChild(icon);
             this.registerDomEvent(group as unknown as HTMLElement, 'click', () => {
+                if (this.state.isRunning) return;
                 const filePath = group.getAttribute('data-file-path');
                 if (!filePath) return;
                 const file = this.app.vault.getAbstractFileByPath(filePath);
@@ -1648,48 +1668,58 @@ export class InquiryView extends ItemView {
                     void openOrRevealFile(this.app, file);
                 }
             });
-            this.ccSlots.push({ group, base, fill, border, icon });
+            this.ccSlots.push({ group, base, fill, border, icon, fold });
         }
 
+        let slotIndex = 0;
+        columns.forEach((column, columnIndex) => {
+            column.items.forEach((entry, rowIndex) => {
+                const slot = this.ccSlots[slotIndex];
+                if (!slot) return;
+                slot.group.classList.remove('ert-hidden');
+                slot.group.setAttribute('data-class', entry.className);
+                const x = columnStep * columnIndex;
+                const y = rowStep * rowIndex;
+                slot.group.setAttribute('transform', `translate(${x.toFixed(2)} ${y.toFixed(2)})`);
+                slot.base.setAttribute('width', String(CC_PAGE_WIDTH));
+                slot.base.setAttribute('height', String(CC_PAGE_HEIGHT));
+                slot.base.setAttribute('x', '0');
+                slot.base.setAttribute('y', '0');
+                slot.fill.setAttribute('width', String(CC_PAGE_WIDTH));
+                slot.fill.setAttribute('height', '0');
+                slot.fill.setAttribute('x', '0');
+                slot.fill.setAttribute('y', String(CC_PAGE_HEIGHT));
+                slot.border.setAttribute('width', String(CC_PAGE_WIDTH));
+                slot.border.setAttribute('height', String(CC_PAGE_HEIGHT));
+                slot.border.setAttribute('x', '0');
+                slot.border.setAttribute('y', '0');
+                slot.border.setAttribute('rx', String(corner));
+                slot.border.setAttribute('ry', String(corner));
+                slot.fold.setAttribute('d', `M ${CC_PAGE_WIDTH - foldSize} 0 L ${CC_PAGE_WIDTH} 0 L ${CC_PAGE_WIDTH} ${foldSize}`);
+                slot.icon.setAttribute('x', String(CC_PAGE_WIDTH / 2));
+                slot.icon.setAttribute('y', String(CC_PAGE_HEIGHT / 2));
+                slotIndex += 1;
+            });
+        });
         this.ccSlots.forEach((slot, idx) => {
-            if (idx >= count) {
-                slot.group.classList.add('ert-hidden');
-                return;
-            }
-            slot.group.classList.remove('ert-hidden');
-            const y = step * idx;
-            slot.group.setAttribute('transform', `translate(0 ${y.toFixed(2)})`);
-            slot.base.setAttribute('width', String(CC_CELL_SIZE));
-            slot.base.setAttribute('height', String(CC_CELL_SIZE));
-            slot.base.setAttribute('x', '0');
-            slot.base.setAttribute('y', '0');
-            slot.fill.setAttribute('width', String(CC_CELL_SIZE));
-            slot.fill.setAttribute('height', '0');
-            slot.fill.setAttribute('x', '0');
-            slot.fill.setAttribute('y', String(CC_CELL_SIZE));
-            slot.border.setAttribute('width', String(CC_CELL_SIZE));
-            slot.border.setAttribute('height', String(CC_CELL_SIZE));
-            slot.border.setAttribute('x', '0');
-            slot.border.setAttribute('y', '0');
-            slot.border.setAttribute('rx', String(corner));
-            slot.border.setAttribute('ry', String(corner));
-            slot.icon.setAttribute('x', String(CC_CELL_SIZE / 2));
-            slot.icon.setAttribute('y', String(CC_CELL_SIZE / 2));
+            if (idx < count) return;
+            slot.group.classList.add('ert-hidden');
         });
 
-        void this.updateCorpusCcData(entries);
+        void this.updateCorpusCcData(orderedEntries);
     }
 
     private getCorpusCcEntries(): CorpusCcEntry[] {
-        if (!this.corpus) return [];
-        if (this.state.scope === 'book') {
-            return this.corpus.scenes.map(scene => ({
-                id: scene.id,
-                label: scene.displayLabel,
-                filePath: scene.filePath
-            }));
-        }
-        return this.buildSagaCcEntries(this.corpus);
+        const manifest = this.buildCorpusManifest(this.state.activeQuestionId ?? 'cc-preview');
+        return manifest.entries.map(entry => {
+            const label = entry.path.split('/').pop() || entry.path;
+            return {
+                id: `${entry.class}:${entry.path}`,
+                label,
+                filePath: entry.path,
+                className: entry.class
+            };
+        });
     }
 
     private buildSagaCcEntries(corpus: InquiryCorpusSnapshot): CorpusCcEntry[] {
@@ -1710,7 +1740,8 @@ export class InquiryView extends ItemView {
             return {
                 id: outline?.path || book.id,
                 label: book.displayLabel,
-                filePath: outline?.path || ''
+                filePath: outline?.path || '',
+                className: 'outline'
             };
         });
 
@@ -1718,7 +1749,8 @@ export class InquiryView extends ItemView {
         entries.push({
             id: sagaOutline?.path || 'saga-outline',
             label: 'Saga',
-            filePath: sagaOutline?.path || ''
+            filePath: sagaOutline?.path || '',
+            className: 'outline'
         });
 
         return entries;
@@ -1780,9 +1812,9 @@ export class InquiryView extends ItemView {
         const tier = this.getCorpusTier(stats.words, thresholds);
         const ratioBase = thresholds.substantiveMin > 0 ? (stats.words / thresholds.substantiveMin) : 0;
         const ratio = Math.min(Math.max(ratioBase, 0), 1);
-        const fillHeight = Math.round(CC_CELL_SIZE * ratio);
+        const fillHeight = Math.round(CC_PAGE_HEIGHT * ratio);
         slot.fill.setAttribute('height', String(fillHeight));
-        slot.fill.setAttribute('y', String(CC_CELL_SIZE - fillHeight));
+        slot.fill.setAttribute('y', String(CC_PAGE_HEIGHT - fillHeight));
 
         slot.group.classList.remove(
             'is-tier-empty',
@@ -2044,11 +2076,14 @@ export class InquiryView extends ItemView {
         const wasRunning = this.wasRunning;
         this.wasRunning = isRunning;
         this.rootSvg.classList.toggle('is-running', isRunning);
+        this.glyph?.setZoneInteractionsEnabled(!isRunning);
         const isError = this.rootSvg.classList.contains('is-error');
         const hasResult = !!this.state.activeResult && !isError;
         this.rootSvg.classList.toggle('is-results', !isRunning && hasResult);
         if (wasRunning && !isRunning) {
-            this.glyph?.setZoneScaleLocked('pressure', false);
+            (['setup', 'pressure', 'payoff'] as InquiryZone[]).forEach(zone => {
+                this.glyph?.setZoneScaleLocked(zone, false);
+            });
         }
         if (isRunning) {
             this.startRunningAnimations();

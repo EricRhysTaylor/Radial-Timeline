@@ -232,7 +232,7 @@ export function renderStoryBeatsSection(params: {
                 setTooltip(handle, 'Drag to reorder beat');
 
                 // Spacer (pushes rest to the right, matches YAML row structure)
-                row.createDiv({ cls: 'rt-grid-spacer' });
+                row.createDiv({ cls: 'ert-grid-spacer' });
 
                 // Index
                 const idxEl = row.createDiv({ text: `${index + 1}.`, cls: 'rt-beat-index' });
@@ -309,7 +309,7 @@ export function renderStoryBeatsSection(params: {
             const addRow = listContainer.createDiv({ cls: 'rt-custom-beat-row rt-custom-beat-add-row' });
 
             addRow.createDiv({ cls: 'rt-drag-handle rt-drag-placeholder' });
-            addRow.createDiv({ cls: 'rt-grid-spacer' });
+            addRow.createDiv({ cls: 'ert-grid-spacer' });
             addRow.createDiv({ cls: 'rt-beat-index rt-beat-add-index', text: '' });
 
             const addNameInput = addRow.createEl('input', { type: 'text', cls: 'rt-beat-name-input rt-template-input', placeholder: 'New beat' });
@@ -398,9 +398,9 @@ export function renderStoryBeatsSection(params: {
             });
         });
 
-    const templateSection = containerEl.createDiv({ cls: 'rt-scene-template-editor' });
+    const templateSection = containerEl.createDiv({ cls: ['ert-scene-template-editor', 'ert-stack'] });
 
-    const advancedContainer = templateSection.createDiv({ cls: 'rt-advanced-template-card' });
+    const advancedContainer = templateSection.createDiv({ cls: ['ert-panel', 'ert-advanced-template-card'] });
 
     // Helper functions for hover metadata management
     const getHoverMetadata = (key: string): HoverMetadataField | undefined => {
@@ -608,7 +608,7 @@ export function renderStoryBeatsSection(params: {
                 setTooltip(dragHandle, 'Drag to reorder key');
 
                 // 2. Spacer (pushes rest to the right)
-                row.createDiv({ cls: 'rt-grid-spacer' });
+                row.createDiv({ cls: 'ert-grid-spacer' });
 
                 // 3. Icon input with preview (for hover synopsis)
                 const iconWrapper = row.createDiv({ cls: 'rt-hover-icon-wrapper' });
@@ -616,7 +616,7 @@ export function renderStoryBeatsSection(params: {
                 setIcon(iconPreview, currentIcon);
                 const iconInput = iconWrapper.createEl('input', { 
                     type: 'text', 
-                    cls: 'rt-template-input ert-input--lg rt-icon-input',
+                    cls: 'rt-template-input ert-input--lg ert-icon-input',
                     attr: { placeholder: 'Icon name...' }
                 });
                 iconInput.value = currentIcon;
@@ -770,7 +770,7 @@ export function renderStoryBeatsSection(params: {
             addRow.createDiv({ cls: 'rt-drag-handle rt-drag-placeholder' });
 
             // 2. Spacer (direct child)
-            addRow.createDiv({ cls: 'rt-grid-spacer' });
+            addRow.createDiv({ cls: 'ert-grid-spacer' });
 
             // 3. Icon input with preview for new entry
             const addIconWrapper = addRow.createDiv({ cls: 'rt-hover-icon-wrapper' });
@@ -778,7 +778,7 @@ export function renderStoryBeatsSection(params: {
             setIcon(addIconPreview, DEFAULT_HOVER_ICON);
             const addIconInput = addIconWrapper.createEl('input', { 
                 type: 'text', 
-                cls: 'rt-template-input ert-input--lg rt-icon-input',
+                cls: 'rt-template-input ert-input--lg ert-icon-input',
                 attr: { placeholder: 'Icon name...' }
             });
             addIconInput.value = DEFAULT_HOVER_ICON;
@@ -817,7 +817,7 @@ export function renderStoryBeatsSection(params: {
             // 7. Buttons wrapper (holds both + and reset)
             const btnWrap = addRow.createDiv({ cls: 'rt-template-add-buttons' });
 
-            const addBtn = btnWrap.createEl('button', { cls: 'rt-template-icon-btn rt-mod-cta' });
+            const addBtn = btnWrap.createEl('button', { cls: 'rt-template-icon-btn ert-mod-cta' });
             setIcon(addBtn, 'plus');
             setTooltip(addBtn, 'Add key');
             addBtn.onclick = () => {
@@ -860,10 +860,10 @@ export function renderStoryBeatsSection(params: {
                     header.createDiv({ text: 'Reset advanced YAML template', cls: 'ert-modal-title' });
                     header.createDiv({ text: 'Resetting will delete all custom changes and restore the default template.', cls: 'ert-modal-subtitle' });
 
-                    const body = contentEl.createDiv({ cls: 'rt-glass-card' });
-                    body.createDiv({ text: 'Are you sure you want to reset? This cannot be undone.', cls: 'rt-purge-warning' });
+                    const body = contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                    body.createDiv({ text: 'Are you sure you want to reset? This cannot be undone.', cls: 'ert-purge-warning' });
 
-                    const actionsRow = contentEl.createDiv({ cls: ['ert-modal-actions', 'rt-inline-actions'] });
+                    const actionsRow = contentEl.createDiv({ cls: ['ert-modal-actions', 'ert-inline-actions'] });
 
                     new ButtonComponent(actionsRow)
                         .setButtonText('Reset to default')
@@ -961,7 +961,7 @@ export function renderStoryBeatsSection(params: {
             const isSelected = system === selectedSystem;
             const lineDiv = container.createDiv();
             if (isSelected) {
-                lineDiv.classList.add('rt-story-structure-selected');
+                lineDiv.classList.add('ert-story-structure-selected');
             }
             const boldSpan = lineDiv.createEl('b');
             boldSpan.textContent = system;
