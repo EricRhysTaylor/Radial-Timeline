@@ -53,8 +53,6 @@ const ZONE_SEGMENT_STROKE_WIDTH = 2;
 const ZONE_SEGMENT_PATH = 'M154.984 7.67055C154.316 3.30311 150.229 0.286294 145.895 1.14796C120.714 6.15504 96.8629 16.4983 75.9632 31.5162C52.8952 48.0921 34.0777 69.8922 21.0492 95.1341C8.02081 120.376 1.15135 148.343 1.00251 176.748C0.867659 202.484 6.25287 227.917 16.7583 251.344C18.5662 255.375 23.3927 256.959 27.3399 254.974L42.9203 247.138C57.7222 239.693 63.2828 221.65 59.5838 205.5C57.4532 196.197 56.3914 186.649 56.4417 177.039C56.5447 157.382 61.2984 138.029 70.3141 120.562C79.3298 103.094 92.3515 88.0087 108.315 76.5382C116.118 70.9305 124.517 66.2647 133.334 62.6127C148.641 56.2724 160.128 41.2878 157.622 24.9099L154.984 7.67055Z';
 const ZONE_SEGMENT_FILL = '#7b6448';
 const ZONE_SEGMENT_STROKE = '#d6c3ad';
-const ZONE_DOT_STROKE = '#f4eadb';
-const ZONE_DOT_TEXT = '#2a2118';
 const ZONE_BASE_ANGLE = Math.PI;
 const ZONE_SEGMENT_AXIS_ROTATION_DEG = 90;
 const DEBUG_INQUIRY_ZONES = false;
@@ -309,16 +307,12 @@ export class InquiryGlyph {
                 const dotCircle = document.createElementNS(SVG_NS, 'circle');
                 dotCircle.classList.add('inq-zone-dot-circle');
                 dotCircle.setAttribute('r', String(ZONE_DOT_RADIUS_PX));
-                dotCircle.setAttribute('fill', 'none');
-                dotCircle.setAttribute('stroke', ZONE_DOT_STROKE);
-                dotCircle.setAttribute('stroke-width', '2');
 
                 const dotText = document.createElementNS(SVG_NS, 'text');
                 dotText.classList.add('inq-zone-dot-text');
                 dotText.setAttribute('text-anchor', 'middle');
                 dotText.setAttribute('dominant-baseline', 'middle');
                 dotText.setAttribute('font-size', String(ZONE_DOT_TEXT_PX));
-                dotText.setAttribute('fill', ZONE_DOT_TEXT);
                 dotText.textContent = String(i + 1);
 
                 dotGroup.appendChild(dotCircle);

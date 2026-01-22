@@ -248,6 +248,13 @@ export interface InquiryFocusCache {
     lastFocusSceneByBookId?: Record<string, string>;
 }
 
+export interface InquiryCorpusThresholds {
+    emptyMax: number;
+    sketchyMin: number;
+    mediumMin: number;
+    substantiveMin: number;
+}
+
 export interface InquirySessionCacheRecord {
     sessions: {
         key: string;
@@ -275,6 +282,9 @@ export interface RadialTimelineSettings {
     inquiryPromptConfig?: InquiryPromptConfig;
     inquirySessionCache?: InquirySessionCacheRecord;
     inquiryFocusCache?: InquiryFocusCache;
+    inquiryLastMode?: 'flow' | 'depth';
+    inquiryCorpusThresholds?: InquiryCorpusThresholds;
+    inquiryCorpusHighlightLowSubstanceComplete?: boolean;
     actCount?: number;
     actLabelsRaw?: string;
     showActLabels?: boolean;

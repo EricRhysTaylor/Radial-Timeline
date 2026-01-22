@@ -45,3 +45,35 @@
 .ert-wiki-link:hover {
   opacity: 1;
 }
+
+.ert-inquiry-cc-table {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 16px;
+}
+
+.ert-inquiry-cc-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) 160px;
+  align-items: center;
+  gap: 12px;
+}
+
+.ert-inquiry-cc-header {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ert-inquiry-cc-cell {
+  font-size: 13px;
+  color: var(--text-normal);
+}
+
+.ert-inquiry-cc-input-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+}

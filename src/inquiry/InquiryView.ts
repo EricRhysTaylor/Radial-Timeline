@@ -5,6 +5,7 @@ import {
     Notice,
     setIcon,
     TAbstractFile,
+    TFile,
     normalizePath
 } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
@@ -28,6 +29,7 @@ import type { CorpusManifest, EvidenceParticipationRules } from './runner/types'
 import { InquirySessionStore } from './InquirySessionStore';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import type { InquirySourcesSettings } from '../types/settings';
+import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { InquiryCorpusResolver, InquiryCorpusSnapshot, InquiryCorpusItem } from './services/InquiryCorpusResolver';
 import { getModelDisplayName } from '../utils/modelResolver';
 import { addTooltipData, setupTooltipsFromDataAttributes } from '../utils/tooltip';
@@ -66,6 +68,8 @@ const PREVIEW_SHIMMER_WIDTH = 42;
 const STAGE_LABELS = ['ASSEMBLE', 'SEND', 'THINK', 'APPLY'] as const;
 const STAGE_DURATION_MS = 700;
 const SWEEP_DURATION_MS = STAGE_DURATION_MS * STAGE_LABELS.length;
+const CC_STRIP_Y = 64;
+const CC_CELL_SIZE = 16;
 
 type InquiryQuestion = {
     id: string;
@@ -80,6 +84,20 @@ type InquiryPreviewRow = {
     bg: SVGRectElement;
     text: SVGTextElement;
     label: string;
+};
+
+type CorpusCcEntry = {
+    id: string;
+    label: string;
+    filePath: string;
+};
+
+type CorpusCcSlot = {
+    group: SVGGElement;
+    base: SVGRectElement;
+    fill: SVGRectElement;
+    border: SVGRectElement;
+    icon: SVGTextElement;
 };
 
 export class InquiryView extends ItemView {
@@ -151,6 +169,13 @@ export class InquiryView extends ItemView {
     private previewPanelHeight = 0;
     private cacheStatusEl?: SVGTextElement;
     private confidenceEl?: SVGTextElement;
+    private ccGroup?: SVGGElement;
+    private ccLabel?: SVGTextElement;
+    private ccEmptyText?: SVGTextElement;
+    private ccEntries: CorpusCcEntry[] = [];
+    private ccSlots: CorpusCcSlot[] = [];
+    private ccUpdateId = 0;
+    private ccWordCache = new Map<string, { mtime: number; words: number; status?: 'todo' | 'working' | 'complete' }>();
     private navPrevButton?: SVGGElement;
     private navNextButton?: SVGGElement;
     private navPrevIcon?: SVGUseElement;
@@ -170,6 +195,10 @@ export class InquiryView extends ItemView {
         super(leaf);
         this.plugin = plugin;
         this.runner = new InquiryRunnerService(this.plugin, this.app.vault, this.app.metadataCache, this.plugin.settings.frontmatterMappings);
+        const lastMode = this.plugin.settings.inquiryLastMode;
+        if (lastMode === 'flow' || lastMode === 'depth') {
+            this.state.mode = lastMode;
+        }
         this.ensurePromptConfig();
         this.state.selectedPromptIds = this.buildDefaultSelectedPromptIds();
         this.sessionStore = new InquirySessionStore(plugin);
@@ -404,7 +433,7 @@ export class InquiryView extends ItemView {
 
         const statusGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-status', 180, hudFooterY + 6);
         this.cacheStatusEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'Cache: none', 0, 0);
-        this.confidenceEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'Confidence: none', 140, 0);
+        this.confidenceEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'Assessment confidence: none', 140, 0);
 
         this.applyHelpTips();
     }
@@ -1379,6 +1408,7 @@ export class InquiryView extends ItemView {
             this.minimapEmptyText.textContent = emptyLabel;
             this.minimapEmptyText.classList.remove('ert-hidden');
             this.minimapStageGroup?.setAttribute('display', 'none');
+            this.renderCorpusCcStrip(baselineStart, length);
             this.updateMinimapFocus();
             return;
         }
@@ -1424,6 +1454,7 @@ export class InquiryView extends ItemView {
         }
 
         this.buildMinimapSweepLayer(tickLayouts, tickSize, length);
+        this.renderCorpusCcStrip(baselineStart, length);
         this.updateMinimapFocus();
     }
 
@@ -1526,6 +1557,314 @@ export class InquiryView extends ItemView {
         };
     }
 
+    private renderCorpusCcStrip(baselineStart: number, length: number): void {
+        if (!this.minimapGroup) return;
+        const entries = this.getCorpusCcEntries();
+        this.ccEntries = entries;
+
+        if (!entries.length) {
+            if (this.ccGroup) {
+                this.ccGroup.classList.add('ert-hidden');
+            }
+            return;
+        }
+
+        if (!this.ccGroup) {
+            this.ccGroup = this.createSvgGroup(this.minimapGroup, 'ert-inquiry-cc');
+            this.ccGroup.setAttribute('transform', `translate(0 ${CC_STRIP_Y})`);
+        } else {
+            this.ccGroup.classList.remove('ert-hidden');
+            this.ccGroup.setAttribute('transform', `translate(0 ${CC_STRIP_Y})`);
+        }
+
+        if (!this.ccLabel) {
+            this.ccLabel = this.createSvgText(this.ccGroup, 'ert-inquiry-cc-label', 'Corpus (CC)', 0, 0);
+            this.ccLabel.setAttribute('text-anchor', 'end');
+            this.ccLabel.setAttribute('dominant-baseline', 'middle');
+        }
+        this.ccLabel.setAttribute('x', String(baselineStart - 14));
+        this.ccLabel.setAttribute('y', String(CC_CELL_SIZE / 2));
+
+        if (!this.ccEmptyText) {
+            this.ccEmptyText = this.createSvgText(this.ccGroup, 'ert-inquiry-cc-empty ert-hidden', 'No corpus data', 0, 0);
+            this.ccEmptyText.setAttribute('text-anchor', 'start');
+            this.ccEmptyText.setAttribute('dominant-baseline', 'middle');
+        }
+        this.ccEmptyText.setAttribute('x', String(baselineStart));
+        this.ccEmptyText.setAttribute('y', String(CC_CELL_SIZE / 2));
+
+        const count = entries.length;
+        const inset = Math.max(CC_CELL_SIZE, 16);
+        const availableLength = Math.max(0, length - (inset * 2));
+        const step = count > 1 ? (availableLength / (count - 1)) : 0;
+
+        while (this.ccSlots.length < count) {
+            const group = this.createSvgGroup(this.ccGroup, 'ert-inquiry-cc-cell');
+            const base = this.createSvgElement('rect');
+            base.classList.add('ert-inquiry-cc-cell-base');
+            const fill = this.createSvgElement('rect');
+            fill.classList.add('ert-inquiry-cc-cell-fill');
+            const border = this.createSvgElement('rect');
+            border.classList.add('ert-inquiry-cc-cell-border');
+            const icon = this.createSvgText(group, 'ert-inquiry-cc-cell-icon', '', 0, 0);
+            icon.setAttribute('text-anchor', 'middle');
+            icon.setAttribute('dominant-baseline', 'middle');
+            group.appendChild(base);
+            group.appendChild(fill);
+            group.appendChild(border);
+            group.appendChild(icon);
+            this.ccSlots.push({ group, base, fill, border, icon });
+        }
+
+        this.ccSlots.forEach((slot, idx) => {
+            if (idx >= count) {
+                slot.group.classList.add('ert-hidden');
+                return;
+            }
+            slot.group.classList.remove('ert-hidden');
+            const x = baselineStart + inset + (step * idx) - (CC_CELL_SIZE / 2);
+            slot.group.setAttribute('transform', `translate(${x.toFixed(2)} 0)`);
+            slot.base.setAttribute('width', String(CC_CELL_SIZE));
+            slot.base.setAttribute('height', String(CC_CELL_SIZE));
+            slot.base.setAttribute('x', '0');
+            slot.base.setAttribute('y', '0');
+            slot.fill.setAttribute('width', String(CC_CELL_SIZE));
+            slot.fill.setAttribute('height', '0');
+            slot.fill.setAttribute('x', '0');
+            slot.fill.setAttribute('y', String(CC_CELL_SIZE));
+            slot.border.setAttribute('width', String(CC_CELL_SIZE));
+            slot.border.setAttribute('height', String(CC_CELL_SIZE));
+            slot.border.setAttribute('x', '0');
+            slot.border.setAttribute('y', '0');
+            slot.border.setAttribute('rx', '2');
+            slot.border.setAttribute('ry', '2');
+            slot.icon.setAttribute('x', String(CC_CELL_SIZE / 2));
+            slot.icon.setAttribute('y', String(CC_CELL_SIZE / 2));
+        });
+
+        void this.updateCorpusCcData(entries);
+    }
+
+    private getCorpusCcEntries(): CorpusCcEntry[] {
+        if (!this.corpus) return [];
+        if (this.state.scope === 'book') {
+            return this.corpus.scenes.map(scene => ({
+                id: scene.id,
+                label: scene.displayLabel,
+                filePath: scene.filePath
+            }));
+        }
+        return this.buildSagaCcEntries(this.corpus);
+    }
+
+    private buildSagaCcEntries(corpus: InquiryCorpusSnapshot): CorpusCcEntry[] {
+        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const classScope = this.getClassScopeConfig(sources.classScope);
+        const outlineConfig = (sources.classes || []).find(cfg => cfg.className === 'outline');
+        const outlineAllowed = outlineConfig?.enabled && (outlineConfig.bookScope || outlineConfig.sagaScope);
+        if (!outlineAllowed || (!classScope.allowAll && !classScope.allowed.has('outline'))) {
+            return [];
+        }
+
+        const outlineFiles = this.getOutlineFiles();
+        const bookOutlines = outlineFiles.filter(file => (this.getOutlineScope(file) ?? 'book') === 'book');
+        const sagaOutlines = outlineFiles.filter(file => this.getOutlineScope(file) === 'saga');
+
+        const entries: CorpusCcEntry[] = corpus.books.map(book => {
+            const outline = bookOutlines.find(file => file.path === book.rootPath || file.path.startsWith(`${book.rootPath}/`));
+            return {
+                id: outline?.path || book.id,
+                label: book.displayLabel,
+                filePath: outline?.path || ''
+            };
+        });
+
+        const sagaOutline = sagaOutlines[0];
+        entries.push({
+            id: sagaOutline?.path || 'saga-outline',
+            label: 'Saga',
+            filePath: sagaOutline?.path || ''
+        });
+
+        return entries;
+    }
+
+    private getOutlineFiles(): TFile[] {
+        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const classScope = this.getClassScopeConfig(sources.classScope);
+        const outlineConfig = (sources.classes || []).find(cfg => cfg.className === 'outline');
+        if (!outlineConfig?.enabled) return [];
+        if (!classScope.allowAll && !classScope.allowed.has('outline')) return [];
+
+        const scanRoots = normalizeScanRootPatterns(sources.scanRoots);
+        const resolvedRoots = scanRoots.length
+            ? (sources.resolvedScanRoots && sources.resolvedScanRoots.length
+                ? sources.resolvedScanRoots
+                : resolveScanRoots(scanRoots, this.app.vault, MAX_RESOLVED_SCAN_ROOTS).resolvedRoots)
+            : [];
+        const resolvedVaultRoots = resolvedRoots.map(toVaultRoot);
+
+        const inRoots = (path: string) => {
+            return resolvedVaultRoots.some(root => !root || path === root || path.startsWith(`${root}/`));
+        };
+
+        const files = this.app.vault.getMarkdownFiles();
+        return files.filter(file => {
+            if (!inRoots(file.path)) return false;
+            const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
+            if (!frontmatter) return false;
+            const normalized = normalizeFrontmatterKeys(frontmatter, this.plugin.settings.frontmatterMappings);
+            const classValues = this.extractClassValues(normalized);
+            return classValues.includes('outline');
+        });
+    }
+
+    private getOutlineScope(file: TFile): InquiryScope | undefined {
+        const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
+        if (!frontmatter) return undefined;
+        return this.getFrontmatterScope(frontmatter);
+    }
+
+    private async updateCorpusCcData(entries: CorpusCcEntry[]): Promise<void> {
+        const updateId = ++this.ccUpdateId;
+        const stats = await Promise.all(entries.map(entry => this.loadCorpusCcStats(entry.filePath)));
+        if (updateId !== this.ccUpdateId) return;
+        stats.forEach((entryStats, idx) => {
+            this.applyCorpusCcSlot(idx, entries[idx], entryStats);
+        });
+    }
+
+    private applyCorpusCcSlot(
+        index: number,
+        entry: CorpusCcEntry,
+        stats: { words: number; status?: 'todo' | 'working' | 'complete' }
+    ): void {
+        const slot = this.ccSlots[index];
+        if (!slot) return;
+        const thresholds = this.getCorpusThresholds();
+        const tier = this.getCorpusTier(stats.words, thresholds);
+        const ratioBase = thresholds.substantiveMin > 0 ? (stats.words / thresholds.substantiveMin) : 0;
+        const ratio = Math.min(Math.max(ratioBase, 0), 1);
+        const fillHeight = Math.round(CC_CELL_SIZE * ratio);
+        slot.fill.setAttribute('height', String(fillHeight));
+        slot.fill.setAttribute('y', String(CC_CELL_SIZE - fillHeight));
+
+        slot.group.classList.remove(
+            'is-tier-empty',
+            'is-tier-bare',
+            'is-tier-sketchy',
+            'is-tier-medium',
+            'is-tier-substantive',
+            'is-status-todo',
+            'is-status-working',
+            'is-status-complete',
+            'is-mismatch'
+        );
+        slot.group.classList.add(`is-tier-${tier}`);
+
+        if (stats.status) {
+            slot.group.classList.add(`is-status-${stats.status}`);
+        }
+
+        const icon = stats.status === 'todo'
+            ? '☐'
+            : stats.status === 'working'
+                ? '◐'
+                : stats.status === 'complete'
+                    ? '✓'
+                    : '';
+        slot.icon.textContent = icon;
+        slot.icon.setAttribute('opacity', icon ? '1' : '0');
+
+        const highlightMismatch = this.plugin.settings.inquiryCorpusHighlightLowSubstanceComplete ?? true;
+        const lowSubstance = stats.words < thresholds.sketchyMin;
+        if (highlightMismatch && stats.status === 'complete' && lowSubstance) {
+            slot.group.classList.add('is-mismatch');
+        }
+
+        const statusLabel = stats.status ? `status ${stats.status}` : 'status unset';
+        const tierLabel = tier === 'bare' ? 'sketchy' : tier;
+        slot.group.classList.add('rt-tooltip-target');
+        slot.group.setAttribute('data-tooltip', `${entry.label}: ${stats.words} words (${tierLabel}, ${statusLabel})`);
+        slot.group.setAttribute('data-tooltip-placement', 'bottom');
+        slot.group.setAttribute('data-tooltip-offset-y', '6');
+    }
+
+    private getCorpusThresholds(): { emptyMax: number; sketchyMin: number; mediumMin: number; substantiveMin: number } {
+        const defaults = DEFAULT_SETTINGS.inquiryCorpusThresholds || {
+            emptyMax: 10,
+            sketchyMin: 100,
+            mediumMin: 300,
+            substantiveMin: 1000
+        };
+        const raw = this.plugin.settings.inquiryCorpusThresholds || defaults;
+        return {
+            emptyMax: Number.isFinite(raw.emptyMax) ? raw.emptyMax : defaults.emptyMax,
+            sketchyMin: Number.isFinite(raw.sketchyMin) ? raw.sketchyMin : defaults.sketchyMin,
+            mediumMin: Number.isFinite(raw.mediumMin) ? raw.mediumMin : defaults.mediumMin,
+            substantiveMin: Number.isFinite(raw.substantiveMin) ? raw.substantiveMin : defaults.substantiveMin
+        };
+    }
+
+    private getCorpusTier(
+        wordCount: number,
+        thresholds: { emptyMax: number; sketchyMin: number; mediumMin: number; substantiveMin: number }
+    ): 'empty' | 'bare' | 'sketchy' | 'medium' | 'substantive' {
+        if (wordCount < thresholds.emptyMax) return 'empty';
+        if (wordCount < thresholds.sketchyMin) return 'bare';
+        if (wordCount < thresholds.mediumMin) return 'sketchy';
+        if (wordCount < thresholds.substantiveMin) return 'medium';
+        return 'substantive';
+    }
+
+    private async loadCorpusCcStats(filePath: string): Promise<{ words: number; status?: 'todo' | 'working' | 'complete' }> {
+        if (!filePath) return { words: 0 };
+        const file = this.app.vault.getAbstractFileByPath(filePath);
+        if (!file || !this.isTFile(file)) return { words: 0 };
+        const mtime = file.stat.mtime ?? 0;
+        const status = this.getDocumentStatus(file);
+        const cached = this.ccWordCache.get(filePath);
+        if (cached && cached.mtime === mtime && cached.status === status) {
+            return { words: cached.words, status: cached.status };
+        }
+        const content = await this.app.vault.cachedRead(file);
+        const body = this.stripFrontmatter(content);
+        const words = this.countWords(body);
+        this.ccWordCache.set(filePath, { mtime, words, status });
+        return { words, status };
+    }
+
+    private getDocumentStatus(file: TFile): 'todo' | 'working' | 'complete' | undefined {
+        const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
+        if (!frontmatter) return undefined;
+        const normalized = normalizeFrontmatterKeys(frontmatter, this.plugin.settings.frontmatterMappings);
+        const raw = normalized['Status'];
+        if (typeof raw !== 'string') return undefined;
+        const value = raw.trim().toLowerCase();
+        if (value === 'todo' || value === 'working' || value === 'complete') {
+            return value;
+        }
+        return undefined;
+    }
+
+    private stripFrontmatter(content: string): string {
+        if (!content.startsWith('---')) return content;
+        const match = content.match(/^---\s*\n[\s\S]*?\n---\s*\n?/);
+        if (!match) return content;
+        return content.slice(match[0].length);
+    }
+
+    private countWords(content: string): number {
+        const trimmed = content.trim();
+        if (!trimmed) return 0;
+        const matches = trimmed.match(/[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*/g);
+        return matches ? matches.length : 0;
+    }
+
+    private isTFile(file: TAbstractFile | null): file is TFile {
+        return !!file && file instanceof TFile;
+    }
+
     private updateMinimapFocus(): void {
         const focusId = this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusSceneId;
         this.minimapTicks.forEach((tick, idx) => {
@@ -1626,7 +1965,7 @@ export class InquiryView extends ItemView {
         }
         if (this.confidenceEl) {
             const confidence = this.state.activeResult?.verdict.confidence || 'none';
-            this.confidenceEl.textContent = `Confidence: ${confidence}`;
+            this.confidenceEl.textContent = `Assessment confidence: ${confidence}`;
         }
     }
 
@@ -1733,6 +2072,8 @@ export class InquiryView extends ItemView {
         if (!mode || mode === this.state.mode) return;
         // Lens is UI emphasis only; inquiry computation must always include flow + depth.
         this.state.mode = mode;
+        this.plugin.settings.inquiryLastMode = mode;
+        void this.plugin.saveSettings();
         this.updateModeClass();
         this.updateRings();
         if (!this.previewLocked && this.previewGroup?.classList.contains('is-visible') && this.previewLast) {
@@ -1763,6 +2104,7 @@ export class InquiryView extends ItemView {
         if (this.state.isRunning) return;
         this.state.activeQuestionId = question.id;
         this.state.activeZone = question.zone;
+        this.lockPromptPreview(question);
 
         const manifest = this.buildCorpusManifest(question.id);
         const focusLabel = this.getFocusLabel();
@@ -1792,9 +2134,9 @@ export class InquiryView extends ItemView {
             this.state.cacheStatus = 'missing';
         }
 
-        this.lockPromptPreview(question);
         this.state.isRunning = true;
         this.refreshUI();
+        new Notice('Inquiry: contacting AI provider.');
 
         try {
             // Lens selection is UI-only; do not vary question, evidence, or verdict structure by lens.
@@ -2202,7 +2544,7 @@ export class InquiryView extends ItemView {
         }
         const verdict = this.state.activeResult.verdict;
         const score = ring === 'flow' ? verdict.flow : verdict.depth;
-        return `${ring === 'flow' ? 'Flow' : 'Depth'} score ${this.formatMetricDisplay(score)}. Severity ${verdict.severity}. Confidence ${verdict.confidence}.`;
+        return `${ring === 'flow' ? 'Flow' : 'Depth'} score ${this.formatMetricDisplay(score)}. Impact ${verdict.severity}. Assessment confidence ${verdict.confidence}.`;
     }
 
     private buildZoneHoverText(zone: InquiryZone): string {
@@ -2866,10 +3208,10 @@ export class InquiryView extends ItemView {
             return;
         }
 
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const baseName = `Inquiry-${timestamp}`;
+        const briefTitle = this.formatInquiryBriefTitle(result);
+        const baseName = briefTitle;
         const filePath = this.getAvailableArtifactPath(folder.path, baseName);
-        const content = this.buildArtifactContent(result, this.plugin.settings.inquiryEmbedJson ?? true);
+        const content = this.buildArtifactContent(result, this.plugin.settings.inquiryEmbedJson ?? true, briefTitle);
 
         try {
             const file = await this.app.vault.create(filePath, content);
@@ -2881,7 +3223,7 @@ export class InquiryView extends ItemView {
         }
     }
 
-    private buildArtifactContent(result: InquiryResult, embedJson: boolean): string {
+    private buildArtifactContent(result: InquiryResult, embedJson: boolean, briefTitle?: string): string {
         const generatedAt = new Date().toISOString();
         const artifactId = `artifact-${Date.now()}`;
         const questionIds = result.questionId ? `\n  - ${result.questionId}` : '';
@@ -2911,6 +3253,9 @@ export class InquiryView extends ItemView {
             ''
         ].join('\n');
 
+        const title = briefTitle ?? this.formatInquiryBriefTitle(result);
+        const heading = `# ${title}\n\n`;
+
         const findingsLines = result.findings.map(finding => {
             const bullets = finding.bullets.map(bullet => `  - ${bullet}`).join('\n');
             return `- ${finding.headline} (${finding.kind}, ${finding.severity}, ${finding.confidence})\n${bullets}`;
@@ -2924,8 +3269,8 @@ export class InquiryView extends ItemView {
             '## Verdict',
             `Flow: ${this.formatMetricDisplay(result.verdict.flow)}`,
             `Depth: ${this.formatMetricDisplay(result.verdict.depth)}`,
-            `Severity: ${result.verdict.severity}`,
-            `Confidence: ${result.verdict.confidence}`,
+            `Impact: ${result.verdict.severity}`,
+            `Assessment confidence: ${result.verdict.confidence}`,
             '',
             '## Findings',
             findingsLines || '- No findings',
@@ -2942,7 +3287,72 @@ export class InquiryView extends ItemView {
             ].join('\n')
             : '';
 
-        return `${frontmatter}${summarySection}${payload}`;
+        return `${frontmatter}${heading}${summarySection}${payload}`;
+    }
+
+    private formatInquiryBriefTitle(result: InquiryResult): string {
+        const date = new Date();
+        const timestamp = this.formatInquiryBriefTimestamp(date);
+        const zoneLabel = this.resolveInquiryBriefZoneLabel(result);
+        const lensLabel = this.resolveInquiryBriefLensLabel(result, zoneLabel);
+        const parts: string[] = [];
+        if (result.scope === 'saga') {
+            parts.push('Saga');
+        }
+        parts.push(zoneLabel, lensLabel);
+        return `Inquiry Brief — ${parts.join(' · ')} ${timestamp}`;
+    }
+
+    private resolveInquiryBriefZoneLabel(result: InquiryResult): string {
+        const zone = this.findPromptZoneById(result.questionId) ?? this.state.activeZone ?? 'setup';
+        return zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
+    }
+
+    private resolveInquiryBriefLensLabel(result: InquiryResult, zoneLabel: string): string {
+        const promptLabel = this.findPromptLabelById(result.questionId);
+        if (promptLabel && promptLabel.toLowerCase() !== zoneLabel.toLowerCase()) {
+            return promptLabel;
+        }
+        return result.mode === 'depth' ? 'Depth' : 'Flow';
+    }
+
+    private findPromptLabelById(questionId: string): string | null {
+        if (!questionId) return null;
+        const config = this.getPromptConfig();
+        const zones: InquiryZone[] = ['setup', 'pressure', 'payoff'];
+        for (const zone of zones) {
+            const slot = (config[zone] || []).find(entry => entry.id === questionId);
+            if (slot?.label?.trim()) {
+                return slot.label.trim();
+            }
+        }
+        return null;
+    }
+
+    private findPromptZoneById(questionId: string): InquiryZone | null {
+        if (!questionId) return null;
+        const config = this.getPromptConfig();
+        const zones: InquiryZone[] = ['setup', 'pressure', 'payoff'];
+        for (const zone of zones) {
+            if ((config[zone] || []).some(entry => entry.id === questionId)) {
+                return zone;
+            }
+        }
+        return null;
+    }
+
+    private formatInquiryBriefTimestamp(date: Date): string {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = months[date.getMonth()];
+        const day = date.getDate();
+        const year = date.getFullYear();
+        let hours = date.getHours();
+        const minutes = date.getMinutes();
+        const am = hours < 12;
+        hours = hours % 12;
+        if (hours === 0) hours = 12;
+        const minuteText = String(minutes).padStart(2, '0');
+        return `${month} ${day} ${year} @ ${hours}.${minuteText}${am ? 'am' : 'pm'}`;
     }
 
     private getAvailableArtifactPath(folderPath: string, baseName: string): string {

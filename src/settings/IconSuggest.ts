@@ -32,14 +32,14 @@ export class IconSuggest extends AbstractInputSuggest<string> {
     }
 
     renderSuggestion(iconId: string, el: HTMLElement): void {
-        el.addClass('rt-icon-suggestion');
+        el.addClass('ert-ui', 'ert-icon-suggestion');
         
         // Create icon preview
-        const iconPreview = el.createSpan({ cls: 'rt-icon-suggestion-preview' });
+        const iconPreview = el.createSpan({ cls: 'ert-icon-suggestion-preview' });
         setIcon(iconPreview, iconId);
         
         // Create text label
-        el.createSpan({ text: iconId, cls: 'rt-icon-suggestion-text' });
+        el.createSpan({ text: iconId, cls: 'ert-icon-suggestion-text' });
     }
 
     selectSuggestion(iconId: string, _evt: MouseEvent | KeyboardEvent): void {
@@ -47,4 +47,3 @@ export class IconSuggest extends AbstractInputSuggest<string> {
         this.close();
     }
 }
-

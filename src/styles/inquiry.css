@@ -322,6 +322,53 @@
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-active-zone-color) 70%, transparent));
 }
 
+.ert-inquiry-cc {
+  pointer-events: none;
+}
+
+.ert-inquiry-cc-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  fill: var(--text-muted);
+}
+
+.ert-inquiry-cc-cell-base {
+  fill: color-mix(in srgb, var(--text-muted) 30%, transparent);
+  opacity: 0.45;
+}
+
+.ert-inquiry-cc-cell-fill {
+  fill: color-mix(in srgb, var(--text-normal) 35%, transparent);
+  opacity: 0.8;
+}
+
+.ert-inquiry-cc-cell-border {
+  fill: none;
+  stroke: color-mix(in srgb, var(--text-muted) 45%, transparent);
+  stroke-width: 1;
+}
+
+.ert-inquiry-cc-cell-icon {
+  font-size: 10px;
+  font-weight: 700;
+  fill: var(--text-muted);
+}
+
+.ert-inquiry-cc-cell.is-status-todo .ert-inquiry-cc-cell-border {
+  stroke-dasharray: 3 2;
+}
+
+.ert-inquiry-cc-cell.is-status-working .ert-inquiry-cc-cell-border,
+.ert-inquiry-cc-cell.is-status-complete .ert-inquiry-cc-cell-border {
+  stroke-dasharray: none;
+}
+
+.ert-inquiry-cc-cell.is-mismatch .ert-inquiry-cc-cell-border {
+  stroke: #f59e0b;
+}
+
 .ert-inquiry-wave-header {
   color: var(--text-normal);
 }
@@ -495,8 +542,10 @@
 
 .inq-zone-dot-circle {
   fill: var(--ert-inquiry-zone-fill);
-  stroke: var(--ert-inquiry-zone-stroke);
-  transition: fill 160ms ease, stroke 160ms ease, filter 160ms ease;
+  fill-opacity: 1;
+  stroke: none;
+  stroke-width: 0;
+  transition: fill 160ms ease, filter 160ms ease;
 }
 
 .ert-inquiry-svg.is-running .inq-zone-dot-circle {
@@ -507,20 +556,23 @@
 .inq-zone-dot.is-active .inq-zone-dot-circle,
 .inq-zone-dot:active .inq-zone-dot-circle {
   fill: var(--ert-inquiry-zone-fill-pressed);
-  stroke: color-mix(in srgb, var(--ert-inquiry-zone-color) 55%, #000000);
-  filter: none;
+  filter: url(#ert-inquiry-zone-pill-in);
 }
 
 .inq-zone-dot:hover .inq-zone-dot-circle {
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-zone-color) 70%, transparent));
+  filter: url(#ert-inquiry-zone-pill-in);
+}
+
+.inq-zone-dot-text {
+  fill: var(--ert-inquiry-zone-stroke, var(--text-normal));
 }
 
 .inq-zone-dot.is-active .inq-zone-dot-text {
-  fill: #1f160e;
+  fill: var(--ert-inquiry-zone-stroke, var(--text-normal));
 }
 
 .inq-zone-dot:hover .inq-zone-dot-text {
-  fill: #1f160e;
+  fill: var(--ert-inquiry-zone-stroke, var(--text-normal));
 }
 
 .ert-inquiry-zone-icon .ert-inquiry-icon-btn-bg {

@@ -36,12 +36,12 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _localBaseUrlInput?: HTMLInputElement;
     private _localModelIdInput?: HTMLInputElement;
     private _aiRelatedElements: HTMLElement[] = [];
-    private _activeTab: 'pro' | 'core' | 'social' = 'core';
+    private _activeTab: 'pro' | 'inquiry' | 'core' | 'social' = 'core';
     private _searchDebounceTimer?: number;
     private _coreSearchableContent?: HTMLElement;
 
     /** Public method to set active tab before/after opening settings */
-    public setActiveTab(tab: 'pro' | 'core' | 'social'): void {
+    public setActiveTab(tab: 'pro' | 'inquiry' | 'core' | 'social'): void {
         this._activeTab = tab;
     }
 
@@ -372,6 +372,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const proIcon = proTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(proIcon, 'signature');
         proTab.createSpan({ text: 'Pro', cls: 'ert-settings-tab-label' });
+        const inquiryTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
+        const inquiryIcon = inquiryTab.createSpan({ cls: 'ert-settings-tab-icon' });
+        setIcon(inquiryIcon, 'waves');
+        inquiryTab.createSpan({ text: 'Inquiry', cls: 'ert-settings-tab-label' });
+
         const coreTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
         const coreIcon = coreTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(coreIcon, 'settings');
@@ -385,6 +390,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const proContent = containerEl.createDiv({
             cls: `ert-settings-tab-content ert-settings-pro-content ${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_PRO}`
         });
+        const inquiryContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-inquiry-content' });
         const coreContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-core-content' });
         const socialContent = containerEl.createDiv({
             cls: 'ert-settings-tab-content ert-settings-social-content ert-ui ert-skin--social ert-density--compact'
@@ -392,14 +398,17 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         const updateTabState = () => {
             proTab.toggleClass('ert-settings-tab-active', this._activeTab === 'pro');
+            inquiryTab.toggleClass('ert-settings-tab-active', this._activeTab === 'inquiry');
             coreTab.toggleClass('ert-settings-tab-active', this._activeTab === 'core');
             socialTab.toggleClass('ert-settings-tab-active', this._activeTab === 'social');
             proContent.toggleClass('ert-hidden', this._activeTab !== 'pro');
+            inquiryContent.toggleClass('ert-hidden', this._activeTab !== 'inquiry');
             coreContent.toggleClass('ert-hidden', this._activeTab !== 'core');
             socialContent.toggleClass('ert-hidden', this._activeTab !== 'social');
         };
 
         this.plugin.registerDomEvent(proTab, 'click', () => { this._activeTab = 'pro'; updateTabState(); });
+        this.plugin.registerDomEvent(inquiryTab, 'click', () => { this._activeTab = 'inquiry'; updateTabState(); });
         this.plugin.registerDomEvent(coreTab, 'click', () => { this._activeTab = 'core'; updateTabState(); });
         this.plugin.registerDomEvent(socialTab, 'click', () => { this._activeTab = 'social'; updateTabState(); });
         updateTabState();
@@ -416,6 +425,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Social Media Tab Content - APR Section
         renderAuthorProgressSection({ app: this.app, plugin: this.plugin, containerEl: socialContent });
 
+        const inquiryBody = inquiryContent.createDiv({ cls: 'ert-settings-searchable-content' });
+
         this.renderBackupSafetySection(coreContent);
         this.renderSearchBox(coreContent);
 
@@ -428,7 +439,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         renderGeneralSection({ app: this.app, plugin: this.plugin, attachFolderSuggest: (t) => this.attachFolderSuggest(t), containerEl: generalSection });
         this.renderProCallout(generalSection, 'Manuscript exports via Pandoc', switchToProTab);
 
-        const inquirySection = searchableContent.createDiv({ attr: { 'data-rt-section': 'inquiry' } });
+        const inquirySection = inquiryBody.createDiv({ attr: { 'data-rt-section': 'inquiry' } });
         renderInquirySection({
             app: this.app,
             plugin: this.plugin,

@@ -332,6 +332,11 @@
   gap: var(--ert-group-gap);
 }
 
+.ert-ui .ert-mapping-body,
+.ert-ui .ert-mapping-list {
+  --ert-group-gap: 0;
+}
+
 .ert-ui ul.ert-stack {
   list-style: none;
   margin: 0;
@@ -2188,6 +2193,83 @@
 
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-micro-backdrop-title-row .ert-color-grid-controls .ert-hex-input {
   width: 120px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* AI settings (ERT)                                                          */
+/* -------------------------------------------------------------------------- */
+
+.ert-ui .ert-provider-section {
+  transition: opacity 120ms ease;
+}
+
+.ert-ui .ert-provider-section.dimmed {
+  opacity: 0.55;
+}
+
+.ert-ui .ert-local-llm-advisory {
+  margin: 16px 0 20px 0;
+  padding: 14px 18px;
+  background: rgba(255, 165, 0, 0.08);
+  border: 1px solid rgba(255, 165, 0, 0.25);
+  border-left: 4px solid rgba(255, 165, 0, 0.6);
+  border-radius: 8px;
+  color: var(--text-normal);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ert-ui .ert-local-llm-advisory-title {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.ert-ui .ert-model-picker-row {
+  align-items: center;
+  width: 100%;
+}
+
+.ert-ui .ert-model-picker-select {
+  flex: 0 0 var(--rt-settings-select-width);
+}
+
+.ert-ui .ert-model-guidance {
+  margin-top: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  flex: 1;
+  font-style: italic;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Icon suggestions (ERT)                                                     */
+/* -------------------------------------------------------------------------- */
+
+:is(.ert-ui.ert-icon-suggestion, .ert-ui .ert-icon-suggestion) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+}
+
+:is(.ert-ui.ert-icon-suggestion, .ert-ui .ert-icon-suggestion) .ert-icon-suggestion-preview {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-normal);
+}
+
+:is(.ert-ui.ert-icon-suggestion, .ert-ui .ert-icon-suggestion) .ert-icon-suggestion-preview svg {
+  width: 16px;
+  height: 16px;
+}
+
+:is(.ert-ui.ert-icon-suggestion, .ert-ui .ert-icon-suggestion) .ert-icon-suggestion-text {
+  color: var(--text-normal);
+  font-size: 13px;
 }
 
 /* -------------------------------------------------------------------------- */

@@ -27,21 +27,21 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
                 });
         });
 
-    const mappingContainer = containerEl.createDiv({ cls: 'rt-mapping-body' });
+    const mappingContainer = containerEl.createDiv({ cls: 'ert-mapping-body ert-stack' });
 
-    const mappingListContainer = mappingContainer.createDiv({ cls: 'rt-mapping-list' });
+    const mappingListContainer = mappingContainer.createDiv({ cls: 'ert-mapping-list ert-stack' });
 
     const renderMappings = () => {
         // Toggle visibility based on setting
         if (!plugin.settings.enableCustomMetadataMapping) {
             mappingContainer.addClass('ert-settings-hidden');
-            mappingListContainer.addClass('rt-mapping-hidden');
+            mappingListContainer.addClass('ert-settings-hidden');
             mappingListContainer.empty();
             return;
         }
 
         mappingContainer.removeClass('ert-settings-hidden');
-        mappingListContainer.removeClass('rt-mapping-hidden');
+        mappingListContainer.removeClass('ert-settings-hidden');
         mappingListContainer.empty();
         
         const mappings = plugin.settings.frontmatterMappings || {};

@@ -1,7 +1,13 @@
 import { App, Setting as Settings, TextComponent, TextAreaComponent, ToggleComponent, normalizePath, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { DEFAULT_SETTINGS } from '../defaults';
-import type { InquiryClassConfig, InquiryPromptConfig, InquiryPromptSlot, InquirySourcesSettings } from '../../types/settings';
+import type {
+    InquiryClassConfig,
+    InquiryCorpusThresholds,
+    InquiryPromptConfig,
+    InquiryPromptSlot,
+    InquirySourcesSettings
+} from '../../types/settings';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { addHeadingIcon, addWikiLink } from '../wikiLink';
 import { isProfessionalActive } from './ProfessionalSection';
@@ -176,6 +182,33 @@ const normalizeInquirySources = (raw?: InquirySourcesSettings | LegacyInquirySou
         resolvedScanRoots: raw.resolvedScanRoots ? normalizeScanRootPatterns(raw.resolvedScanRoots) : [],
         lastScanAt: raw.lastScanAt
     };
+};
+
+const normalizeCorpusThresholds = (raw?: InquiryCorpusThresholds): InquiryCorpusThresholds => {
+    const fallback = DEFAULT_SETTINGS.inquiryCorpusThresholds || {
+        emptyMax: 10,
+        sketchyMin: 100,
+        mediumMin: 300,
+        substantiveMin: 1000
+    };
+    return {
+        emptyMax: Number.isFinite(raw?.emptyMax ?? fallback.emptyMax) ? Number(raw?.emptyMax ?? fallback.emptyMax) : fallback.emptyMax,
+        sketchyMin: Number.isFinite(raw?.sketchyMin ?? fallback.sketchyMin) ? Number(raw?.sketchyMin ?? fallback.sketchyMin) : fallback.sketchyMin,
+        mediumMin: Number.isFinite(raw?.mediumMin ?? fallback.mediumMin) ? Number(raw?.mediumMin ?? fallback.mediumMin) : fallback.mediumMin,
+        substantiveMin: Number.isFinite(raw?.substantiveMin ?? fallback.substantiveMin)
+            ? Number(raw?.substantiveMin ?? fallback.substantiveMin)
+            : fallback.substantiveMin
+    };
+};
+
+const validateCorpusThresholds = (next: InquiryCorpusThresholds): string | null => {
+    if (!Number.isFinite(next.emptyMax) || next.emptyMax < 0) return 'Empty max must be a non-negative number.';
+    if (!Number.isFinite(next.sketchyMin) || next.sketchyMin <= next.emptyMax) return 'Sketchy min must be greater than Empty max.';
+    if (!Number.isFinite(next.mediumMin) || next.mediumMin <= next.sketchyMin) return 'Medium min must be greater than Sketchy min.';
+    if (!Number.isFinite(next.substantiveMin) || next.substantiveMin <= next.mediumMin) {
+        return 'Substantive min must be greater than Medium min.';
+    }
+    return null;
 };
 
 export function renderInquirySection(params: SectionParams): void {
@@ -783,6 +816,103 @@ export function renderInquirySection(params: SectionParams): void {
         });
     };
 
+    const renderCorpusCcSettings = () => {
+        const ccHeading = new Settings(containerEl)
+            .setName('Corpus (CC)')
+            .setHeading();
+        addHeadingIcon(ccHeading, 'layout-grid');
+
+        const thresholdDefaults = normalizeCorpusThresholds(plugin.settings.inquiryCorpusThresholds);
+        plugin.settings.inquiryCorpusThresholds = thresholdDefaults;
+
+        containerEl.createDiv({
+            cls: 'ert-inquiry-cc-hint setting-item-description',
+            text: 'Thresholds are based on content-only word counts (frontmatter excluded).'
+        });
+
+        const table = containerEl.createDiv({ cls: 'ert-inquiry-cc-table' });
+        const header = table.createDiv({ cls: 'ert-inquiry-cc-row ert-inquiry-cc-header' });
+        header.createDiv({ cls: 'ert-inquiry-cc-cell', text: 'Tier' });
+        header.createDiv({ cls: 'ert-inquiry-cc-cell', text: 'Word minimum' });
+
+        const inputs: Record<keyof InquiryCorpusThresholds, HTMLInputElement> = {
+            emptyMax: document.createElement('input'),
+            sketchyMin: document.createElement('input'),
+            mediumMin: document.createElement('input'),
+            substantiveMin: document.createElement('input')
+        };
+
+        const renderRow = (label: string, key: keyof InquiryCorpusThresholds, prefix = '>=') => {
+            const row = table.createDiv({ cls: 'ert-inquiry-cc-row' });
+            row.createDiv({ cls: 'ert-inquiry-cc-cell', text: label });
+            const cell = row.createDiv({ cls: 'ert-inquiry-cc-cell ert-inquiry-cc-input-cell' });
+            const input = inputs[key];
+            input.type = 'number';
+            input.min = '0';
+            input.step = '1';
+            input.value = String(thresholdDefaults[key]);
+            input.classList.add('ert-input--sm');
+            const prefixEl = cell.createSpan({ text: `${prefix} ` });
+            cell.appendChild(prefixEl);
+            cell.appendChild(input);
+        };
+
+        renderRow('Empty', 'emptyMax', '<');
+        renderRow('Sketchy', 'sketchyMin');
+        renderRow('Medium', 'mediumMin');
+        renderRow('Substantive', 'substantiveMin');
+
+        const syncInputs = (values: InquiryCorpusThresholds) => {
+            (Object.keys(inputs) as Array<keyof InquiryCorpusThresholds>).forEach(key => {
+                inputs[key].value = String(values[key]);
+            });
+        };
+
+        const commitThresholds = async (next: InquiryCorpusThresholds) => {
+            const error = validateCorpusThresholds(next);
+            if (error) {
+                new Notice(error);
+                syncInputs(thresholdDefaults);
+                return;
+            }
+            Object.assign(thresholdDefaults, next);
+            plugin.settings.inquiryCorpusThresholds = { ...next };
+            await plugin.saveSettings();
+            syncInputs(next);
+        };
+
+        (Object.keys(inputs) as Array<keyof InquiryCorpusThresholds>).forEach(key => {
+            const input = inputs[key];
+            plugin.registerDomEvent(input, 'blur', () => {
+                const next = {
+                    ...thresholdDefaults,
+                    [key]: Number(input.value)
+                };
+                void commitThresholds(next);
+            });
+        });
+
+        new Settings(containerEl)
+            .setName('Highlight completed docs with low substance')
+            .setDesc('Flags completed notes that fall in Empty or Sketchy tiers.')
+            .addToggle(toggle => {
+                toggle.setValue(plugin.settings.inquiryCorpusHighlightLowSubstanceComplete ?? true);
+                toggle.onChange(async (value) => {
+                    plugin.settings.inquiryCorpusHighlightLowSubstanceComplete = value;
+                    await plugin.saveSettings();
+                });
+            })
+            .addExtraButton(button => {
+                button.setIcon('rotate-ccw');
+                button.setTooltip('Reset CC thresholds');
+                button.onClick(async () => {
+                    const reset = normalizeCorpusThresholds(DEFAULT_SETTINGS.inquiryCorpusThresholds);
+                    await commitThresholds(reset);
+                });
+            });
+    };
+
     renderPromptConfiguration();
+    renderCorpusCcSettings();
     void refreshClassScan();
 }

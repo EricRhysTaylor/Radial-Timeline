@@ -31,6 +31,14 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         lastFocusBookId: undefined,
         lastFocusSceneByBookId: {}
     },
+    inquiryLastMode: 'flow',
+    inquiryCorpusThresholds: {
+        emptyMax: 10,
+        sketchyMin: 100,
+        mediumMin: 300,
+        substantiveMin: 1000
+    },
+    inquiryCorpusHighlightLowSubstanceComplete: true,
     actCount: 3,
     actLabelsRaw: 'Act 1, Act 2, Act 3',
     showActLabels: true,

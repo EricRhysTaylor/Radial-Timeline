@@ -9,6 +9,7 @@ import { CURATED_MODELS, CuratedModel, AiProvider } from '../../data/aiModels';
 import { AiContextModal } from '../AiContextModal';
 import { resolveAiOutputFolder, countAiLogFiles } from '../../utils/aiOutput';
 import { addHeadingIcon, addWikiLink } from '../wikiLink';
+import { ERT_CLASSES } from '../../ui/classes';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
 
@@ -84,11 +85,11 @@ export function renderAiSection(params: {
         .setName('Model')
         .setDesc('Pick preferred model for advanced writing analysis. Models marked "Latest" auto-update to the newest version.');
 
-    const controlRow = modelPickerSetting.controlEl.createDiv({ cls: 'rt-model-picker-row' });
-    const guidanceEl = controlRow.createDiv({ cls: 'rt-model-guidance' });
-    const dropdownContainer = controlRow.createDiv({ cls: 'rt-model-picker-select' });
+    const controlRow = modelPickerSetting.controlEl.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-model-picker-row` });
+    const guidanceEl = controlRow.createDiv({ cls: 'ert-model-guidance' });
+    const dropdownContainer = controlRow.createDiv({ cls: 'ert-model-picker-select' });
     const dropdownComponent = new DropdownComponent(dropdownContainer);
-    dropdownComponent.selectEl.classList.add('ert-setting-dropdown', 'rt-provider-dropdown');
+    dropdownComponent.selectEl.classList.add('ert-setting-dropdown', 'ert-provider-dropdown');
 
     {
         type ModelChoice = {
@@ -196,9 +197,9 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(modelPickerSetting.settingEl);
 
     // Provider sections
-    const anthropicSection = containerEl.createDiv({ cls: 'rt-provider-section rt-provider-anthropic' });
-    const geminiSection = containerEl.createDiv({ cls: 'rt-provider-section rt-provider-gemini' });
-    const openaiSection = containerEl.createDiv({ cls: 'rt-provider-section rt-provider-openai' });
+    const anthropicSection = containerEl.createDiv({ cls: 'ert-provider-section ert-provider-anthropic' });
+    const geminiSection = containerEl.createDiv({ cls: 'ert-provider-section ert-provider-gemini' });
+    const openaiSection = containerEl.createDiv({ cls: 'ert-provider-section ert-provider-openai' });
     params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection });
     params.addAiRelatedElement(anthropicSection);
     params.addAiRelatedElement(geminiSection);
@@ -347,7 +348,7 @@ export function renderAiSection(params: {
         }
     );
 
-    const localSection = containerEl.createDiv({ cls: 'rt-provider-section rt-provider-local' });
+    const localSection = containerEl.createDiv({ cls: 'ert-provider-section ert-provider-local' });
     params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection, local: localSection } as any);
     params.addAiRelatedElement(localSection);
 
@@ -382,8 +383,8 @@ export function renderAiSection(params: {
     localBaseUrlSetting.settingEl.addClass('ert-setting-full-width-input');
 
     // Advisory note as separate section
-    const localWarningSection = localSection.createDiv({ cls: 'rt-local-llm-advisory' });
-    localWarningSection.createEl('strong', { text: 'Advisory Note', cls: 'rt-local-llm-advisory-title' });
+    const localWarningSection = localSection.createDiv({ cls: 'ert-local-llm-advisory' });
+    localWarningSection.createEl('strong', { text: 'Advisory Note', cls: 'ert-local-llm-advisory-title' });
     const aiOutputFolder = resolveAiOutputFolder(plugin);
     localWarningSection.createSpan({
         text: `By default, no LLM pulses are written to the scene when local transformer is used. Rather it is stored in a RAW AI file in the local logs output folder (${aiOutputFolder}), as the response does not follow directions and breaks the scene hover formatting. You may still write scene hover metadata with local LLM by toggling off the setting "Bypass scene hover metadata yaml writes" below.`
