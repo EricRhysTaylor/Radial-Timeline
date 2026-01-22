@@ -1677,6 +1677,12 @@ export class InquiryView extends ItemView {
                 }
             });
 
+            const rightBlockLeft = rightColumnsUsed > 0
+                ? anchorRightX - ((rightColumnsUsed - 1) * columnStep)
+                : anchorRightX;
+            const rightBlockRight = rightColumnsUsed > 0
+                ? anchorRightX + pageWidth
+                : anchorRightX + pageWidth;
             const rightmostLeftEdge = leftColumnsUsed > 0
                 ? anchorLeftX + ((leftColumnsUsed - 1) * columnStep) + pageWidth
                 : anchorLeftX;
@@ -1696,6 +1702,8 @@ export class InquiryView extends ItemView {
                 placements,
                 layoutEntries,
                 classLayouts,
+                rightBlockLeft,
+                rightBlockRight,
                 overlapSetup
             };
         };
@@ -1711,12 +1719,12 @@ export class InquiryView extends ItemView {
         this.ccGroup.setAttribute('transform', `translate(0 ${topLimit})`);
 
         if (!this.ccLabel) {
-            this.ccLabel = this.createSvgText(this.ccGroup, 'ert-inquiry-cc-label', 'CC', 0, 0);
-            this.ccLabel.setAttribute('text-anchor', 'end');
+            this.ccLabel = this.createSvgText(this.ccGroup, 'ert-inquiry-cc-label', 'Corpus', 0, 0);
+            this.ccLabel.setAttribute('text-anchor', 'middle');
             this.ccLabel.setAttribute('dominant-baseline', 'middle');
         }
-        this.ccLabel.textContent = 'CC';
-        this.ccLabel.setAttribute('x', String(Math.round(layout.anchorRightX + layout.pageWidth)));
+        this.ccLabel.textContent = 'Corpus';
+        this.ccLabel.setAttribute('x', String(Math.round((layout.rightBlockLeft + layout.rightBlockRight) / 2)));
         this.ccLabel.setAttribute('y', '0');
 
         if (!this.ccEmptyText) {
@@ -1804,17 +1812,13 @@ export class InquiryView extends ItemView {
         }
         layout.classLayouts.forEach((group, idx) => {
             const labelEl = titleTexts[idx];
-            const fullLabel = this.formatCorpusClassLabel(group.className);
-            const shortLabel = this.formatCorpusClassAbbrev(group.className);
-            const letterLabel = fullLabel.charAt(0).toUpperCase();
             const availableWidth = Math.max(4, group.width - layout.gap);
             labelEl.classList.remove('ert-hidden');
-            labelEl.textContent = fullLabel;
-            if (labelEl.getComputedTextLength() > availableWidth) {
-                labelEl.textContent = shortLabel;
-            }
-            if (labelEl.getComputedTextLength() > availableWidth) {
-                labelEl.textContent = letterLabel;
+            const variants = this.getCorpusClassLabelVariants(group.className);
+            labelEl.textContent = variants[0] ?? '';
+            for (let i = 0; i < variants.length; i += 1) {
+                labelEl.textContent = variants[i];
+                if (labelEl.getComputedTextLength() <= availableWidth) break;
             }
             labelEl.setAttribute('x', String(group.centerX));
             labelEl.setAttribute('y', String(layout.titleY));
@@ -1828,21 +1832,24 @@ export class InquiryView extends ItemView {
         void this.updateCorpusCcData(layout.layoutEntries);
     }
 
-    private formatCorpusClassLabel(className: string): string {
-        const normalized = className.trim().toLowerCase();
-        if (normalized === 'scene') return 'Scene';
-        if (normalized === 'outline') return 'Outline';
-        if (!normalized) return 'Class';
-        return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-    }
-
-    private formatCorpusClassAbbrev(className: string): string {
-        const normalized = className.trim().toLowerCase();
-        if (normalized === 'scene') return 'Scn';
-        if (normalized === 'outline') return 'Out';
-        const full = this.formatCorpusClassLabel(className);
-        if (full.length <= 3) return full;
-        return full.slice(0, 3);
+    private getCorpusClassLabelVariants(className: string): string[] {
+        const normalized = className.trim();
+        if (!normalized) return ['Class', 'Cls', 'C'];
+        const words = normalized
+            .replace(/([a-z])([A-Z])/g, '$1 $2')
+            .replace(/[^a-zA-Z0-9]+/g, ' ')
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean);
+        const title = words.length
+            ? words.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')
+            : normalized.charAt(0).toUpperCase() + normalized.slice(1);
+        const acronym = words.length > 1
+            ? words.map(word => word.charAt(0).toUpperCase()).join('').slice(0, 3)
+            : title.slice(0, 3).toUpperCase();
+        const letter = title.charAt(0).toUpperCase();
+        const variants = [title, acronym, letter];
+        return Array.from(new Set(variants.filter(Boolean)));
     }
 
     private getCorpusCcEntries(): CorpusCcEntry[] {
