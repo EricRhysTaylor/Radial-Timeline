@@ -31,6 +31,7 @@ export interface InquiryResult {
     focusId: string;
     mode: InquiryMode;
     questionId: string;
+    questionZone?: InquiryZone;
     summary: string;
     verdict: InquiryVerdict;
     findings: InquiryFinding[];

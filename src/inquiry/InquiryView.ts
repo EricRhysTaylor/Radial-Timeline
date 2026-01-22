@@ -43,7 +43,8 @@ import {
     toVaultRoot
 } from './utils/scanRoots';
 
-const GLYPH_TARGET_PX = 190;
+const GLYPH_TARGET_UNITS = 300; // viewBox units; keeps glyph size fixed within the SVG layout.
+const GLYPH_FIXED_SCALE = GLYPH_TARGET_UNITS / ((FLOW_RADIUS + FLOW_STROKE) * 2);
 const GLYPH_PLACEHOLDER_FLOW = 0.75;
 const GLYPH_PLACEHOLDER_DEPTH = 0.30;
 const DEBUG_SVG_OVERLAY = true;
@@ -78,6 +79,11 @@ const BRIEFING_HIDE_DELAY_MS = 220;
 const CC_CELL_SIZE = 20;
 const CC_PAGE_BASE_SIZE = Math.round(CC_CELL_SIZE * 0.8);
 const CC_PAGE_MIN_SIZE = Math.max(6, Math.round(CC_CELL_SIZE * 0.33));
+const INQUIRY_NOTES_MAX = 5;
+const INQUIRY_NOTES_SENTINEL = 'INQUIRY NOTES (auto)';
+const INQUIRY_NOTES_SENTINEL_OVERFLOW = 'INQUIRY NOTES (auto) — showing last 5 (older notes omitted)';
+const INQUIRY_NOTES_DIVIDER = '/* INQUIRY NOTES (auto) */';
+const INQUIRY_NOTES_DIVIDER_OVERFLOW = '/* INQUIRY NOTES (auto) — showing last 5 (older notes omitted) */';
 const CC_RIGHT_MARGIN = 50;
 const CC_BOTTOM_MARGIN = 50;
 
@@ -438,8 +444,6 @@ export class InquiryView extends ItemView {
         });
         this.logInquirySvgDebug();
         this.updateGlyphScale();
-        requestAnimationFrame(() => this.updateGlyphScale());
-        this.registerDomEvent(window, 'resize', () => this.updateGlyphScale());
 
         this.flowRingHit = this.glyph.flowRingHit;
         this.depthRingHit = this.glyph.depthRingHit;
@@ -1328,15 +1332,9 @@ export class InquiryView extends ItemView {
     }
 
     private updateGlyphScale(): void {
-        if (!this.rootSvg || !this.glyph) return;
-        const width = this.rootSvg.clientWidth || this.rootSvg.getBoundingClientRect().width;
-        if (!Number.isFinite(width) || width <= 0) return;
-        const unitsPerPx = VIEWBOX_SIZE / width;
-        const targetUnits = GLYPH_TARGET_PX * unitsPerPx;
-        const scale = targetUnits / ((FLOW_RADIUS + FLOW_STROKE) * 2);
-        if (!Number.isFinite(scale) || scale <= 0) return;
-        this.glyph.root.setAttribute('transform', `scale(${scale.toFixed(4)})`);
-        this.glyph.setDisplayScale(scale, unitsPerPx);
+        if (!this.glyph) return;
+        this.glyph.root.setAttribute('transform', `scale(${GLYPH_FIXED_SCALE.toFixed(4)})`);
+        this.glyph.setDisplayScale(1, 1);
     }
 
     private buildFindingsPanel(findingsGroup: SVGGElement, width: number, height: number): void {
@@ -2732,6 +2730,7 @@ export class InquiryView extends ItemView {
         } else {
             this.setApiStatus('success');
         }
+        void this.writeInquiryActionNotes(session, result);
     }
 
     private applySession(
@@ -2787,7 +2786,7 @@ export class InquiryView extends ItemView {
                 evidenceType: legacy.evidenceType
             };
         });
-        return {
+        const normalized: InquiryResult = {
             ...result,
             verdict: {
                 flow: verdict.flow,
@@ -2797,6 +2796,167 @@ export class InquiryView extends ItemView {
             },
             findings
         };
+        const inquiryId = this.formatInquiryIdFromResult(normalized);
+        if (inquiryId && (!normalized.runId || normalized.runId.startsWith('run-'))) {
+            normalized.runId = inquiryId;
+        }
+        return normalized;
+    }
+
+    private async writeInquiryActionNotes(session: InquirySession, result: InquiryResult): Promise<void> {
+        const enabled = this.plugin.settings.inquiryActionNotesEnabled ?? false;
+        if (!enabled) return;
+        if (session.status === 'simulated' || result.aiReason === 'simulated') return;
+        if (this.isErrorResult(result)) return;
+        if (result.scope !== 'book') return;
+        if (!this.corpus?.scenes?.length) return;
+
+        const inquiryId = this.formatInquiryIdFromResult(result);
+        if (!inquiryId) return;
+
+        const zoneLabel = this.resolveInquiryBriefZoneLabel(result);
+        const lensLabel = this.resolveInquiryBriefLensLabel(result, zoneLabel);
+        const briefTitle = this.formatInquiryBriefTitle(result);
+        const notesByScene = this.buildInquiryActionNotes(result, inquiryId, zoneLabel, lensLabel, briefTitle);
+        if (!notesByScene.size) return;
+
+        const targetField = (this.plugin.settings.inquiryActionNotesTargetField ?? 'Revision').trim() || 'Revision';
+        for (const [path, notes] of notesByScene.entries()) {
+            const file = this.app.vault.getAbstractFileByPath(path);
+            if (!file || !(file instanceof TFile)) continue;
+            try {
+                await this.appendInquiryNotesToFrontmatter(file, targetField, inquiryId, notes);
+            } catch (error) {
+                console.warn('[Inquiry] Unable to write action notes.', { path, error });
+            }
+        }
+    }
+
+    private buildInquiryActionNotes(
+        result: InquiryResult,
+        inquiryId: string,
+        zoneLabel: string,
+        lensLabel: string,
+        briefTitle: string
+    ): Map<string, string[]> {
+        const notesByScene = new Map<string, string[]>();
+        if (!this.corpus?.scenes?.length) return notesByScene;
+        const sceneByLabel = new Map<string, string>();
+        const sceneById = new Map<string, string>();
+        this.corpus.scenes.forEach(scene => {
+            sceneByLabel.set(scene.displayLabel, scene.filePath);
+            sceneById.set(scene.id, scene.filePath);
+        });
+        const minimumRank = this.getImpactRank('medium');
+
+        result.findings.forEach(finding => {
+            if (!this.isFindingHit(finding)) return;
+            if (this.getImpactRank(finding.impact) < minimumRank) return;
+            const filePath = sceneByLabel.get(finding.refId) ?? sceneById.get(finding.refId);
+            if (!filePath) return;
+            const note = this.formatInquiryActionNote(inquiryId, zoneLabel, lensLabel, finding, briefTitle);
+            const list = notesByScene.get(filePath) ?? [];
+            if (!list.includes(note)) {
+                list.push(note);
+                notesByScene.set(filePath, list);
+            }
+        });
+
+        return notesByScene;
+    }
+
+    private async appendInquiryNotesToFrontmatter(
+        file: TFile,
+        fieldKey: string,
+        inquiryId: string,
+        notes: string[]
+    ): Promise<void> {
+        if (!notes.length) return;
+        const inquiryToken = `INQUIRY ${inquiryId}`;
+
+        await this.app.fileManager.processFrontMatter(file, (fm) => {
+            const frontmatter = fm as Record<string, unknown>;
+            const rawValue = frontmatter[fieldKey];
+
+            if (Array.isArray(rawValue)) {
+                const entries = rawValue.slice();
+                const sentinelIndex = entries.findIndex(entry =>
+                    typeof entry === 'string' && entry.includes('INQUIRY NOTES (auto)')
+                );
+                const humanEntries = sentinelIndex >= 0 ? entries.slice(0, sentinelIndex) : entries.slice();
+                const inquiryEntriesRaw = sentinelIndex >= 0 ? entries.slice(sentinelIndex + 1) : [];
+                const inquiryEntries = inquiryEntriesRaw
+                    .map(entry => (typeof entry === 'string' ? entry : String(entry)))
+                    .map(line => line.trim())
+                    .filter(Boolean);
+                if (inquiryEntries.some(line => line.startsWith(inquiryToken))) {
+                    return;
+                }
+
+                const combined = [...inquiryEntries, ...notes];
+                let dropped = 0;
+                let trimmed = combined;
+                if (combined.length > INQUIRY_NOTES_MAX) {
+                    dropped = combined.length - INQUIRY_NOTES_MAX;
+                    trimmed = combined.slice(combined.length - INQUIRY_NOTES_MAX);
+                }
+                const sentinel = dropped > 0 ? INQUIRY_NOTES_SENTINEL_OVERFLOW : INQUIRY_NOTES_SENTINEL;
+                frontmatter[fieldKey] = [...humanEntries, sentinel, ...trimmed];
+                return;
+            }
+
+            if (rawValue === undefined || rawValue === null) {
+                const combined = [...notes];
+                let dropped = 0;
+                let trimmed = combined;
+                if (combined.length > INQUIRY_NOTES_MAX) {
+                    dropped = combined.length - INQUIRY_NOTES_MAX;
+                    trimmed = combined.slice(combined.length - INQUIRY_NOTES_MAX);
+                }
+                const sentinel = dropped > 0 ? INQUIRY_NOTES_SENTINEL_OVERFLOW : INQUIRY_NOTES_SENTINEL;
+                frontmatter[fieldKey] = [sentinel, ...trimmed];
+                return;
+            }
+
+            const rawText = String(rawValue);
+            const newline = rawText.includes('\r\n') ? '\r\n' : '\n';
+            const dividerMatch = rawText.match(/^[ \t]*\/\* INQUIRY NOTES \(auto\).*$/m);
+            let humanText = rawText;
+            let inquiryLines: string[] = [];
+            if (dividerMatch && dividerMatch.index !== undefined) {
+                const dividerStart = dividerMatch.index;
+                const afterDivider = rawText.slice(dividerStart);
+                const afterLines = afterDivider.split(/\r?\n/);
+                humanText = rawText.slice(0, dividerStart);
+                inquiryLines = afterLines.slice(1)
+                    .map(line => line.trim())
+                    .filter(Boolean);
+            }
+            if (inquiryLines.some(line => line.startsWith(inquiryToken))) {
+                return;
+            }
+
+            const combined = [...inquiryLines, ...notes];
+            let dropped = 0;
+            let trimmed = combined;
+            if (combined.length > INQUIRY_NOTES_MAX) {
+                dropped = combined.length - INQUIRY_NOTES_MAX;
+                trimmed = combined.slice(combined.length - INQUIRY_NOTES_MAX);
+            }
+            const divider = dropped > 0 ? INQUIRY_NOTES_DIVIDER_OVERFLOW : INQUIRY_NOTES_DIVIDER;
+
+            let nextText = humanText;
+            if (nextText) {
+                if (!nextText.endsWith('\n') && !nextText.endsWith('\r')) {
+                    nextText += newline;
+                }
+            }
+            nextText += divider;
+            if (trimmed.length) {
+                nextText += `${newline}${trimmed.join(newline)}`;
+            }
+            frontmatter[fieldKey] = nextText;
+        });
     }
 
     private formatApiErrorReason(result: InquiryResult): string {
@@ -2842,10 +3002,11 @@ export class InquiryView extends ItemView {
         this.apiSimulationTimer = window.setTimeout(() => {
             this.apiSimulationTimer = undefined;
             const completedAt = new Date();
-            const result = this.buildSimulationResult(selectedPrompt, focusLabel, manifest.fingerprint);
+            let result = this.buildSimulationResult(selectedPrompt, focusLabel, manifest.fingerprint);
             result.submittedAt = submittedAt.toISOString();
             result.completedAt = completedAt.toISOString();
             result.roundTripMs = completedAt.getTime() - submittedAt.getTime();
+            result = this.normalizeLegacyResult(result);
 
             const session: InquirySession = {
                 key,
@@ -2893,6 +3054,7 @@ export class InquiryView extends ItemView {
             focusId: focusLabel,
             mode: this.state.mode,
             questionId: question.id,
+            questionZone: question.zone,
             summary: 'Inquiry failed; fallback result returned.',
             verdict: {
                 flow: 0,
@@ -2924,6 +3086,7 @@ export class InquiryView extends ItemView {
             focusId: focusLabel,
             mode: this.state.mode,
             questionId: question.id,
+            questionZone: question.zone,
             summary: 'Simulated inquiry session.',
             verdict: {
                 flow: GLYPH_PLACEHOLDER_FLOW,
@@ -4078,8 +4241,8 @@ export class InquiryView extends ItemView {
     }
 
     private formatInquiryBriefTitle(result: InquiryResult): string {
-        const date = new Date();
-        const timestamp = this.formatInquiryBriefTimestamp(date);
+        const timestampSource = this.getInquiryTimestamp(result, true) ?? new Date();
+        const timestamp = this.formatInquiryBriefTimestamp(timestampSource);
         const zoneLabel = this.resolveInquiryBriefZoneLabel(result);
         const lensLabel = this.resolveInquiryBriefLensLabel(result, zoneLabel);
         const parts: string[] = [];
@@ -4091,7 +4254,7 @@ export class InquiryView extends ItemView {
     }
 
     private resolveInquiryBriefZoneLabel(result: InquiryResult): string {
-        const zone = this.findPromptZoneById(result.questionId) ?? this.state.activeZone ?? 'setup';
+        const zone = result.questionZone ?? this.findPromptZoneById(result.questionId) ?? 'setup';
         return zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
     }
 
@@ -4146,6 +4309,58 @@ export class InquiryView extends ItemView {
         const includeSeconds = options?.includeSeconds ?? false;
         const secondText = includeSeconds ? `.${String(seconds).padStart(2, '0')}` : '';
         return `${month} ${day} ${year} @ ${hours}.${minuteText}${secondText}${am ? 'am' : 'pm'}`;
+    }
+
+    private getInquiryTimestamp(result: InquiryResult, fallbackToNow = false): Date | null {
+        const completedAt = result.completedAt ? new Date(result.completedAt) : null;
+        if (completedAt && Number.isFinite(completedAt.getTime())) {
+            return completedAt;
+        }
+        const submittedAt = result.submittedAt ? new Date(result.submittedAt) : null;
+        if (submittedAt && Number.isFinite(submittedAt.getTime())) {
+            return submittedAt;
+        }
+        if (fallbackToNow) return new Date();
+        return null;
+    }
+
+    private formatInquiryId(date: Date): string {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}.${minutes}.${seconds}`;
+    }
+
+    private formatInquiryIdFromResult(result: InquiryResult): string | null {
+        const timestamp = this.getInquiryTimestamp(result);
+        if (!timestamp) return null;
+        return this.formatInquiryId(timestamp);
+    }
+
+    private formatInquirySeverityCode(value: InquirySeverity | InquiryConfidence): string {
+        if (value === 'high') return 'H';
+        if (value === 'medium') return 'M';
+        return 'L';
+    }
+
+    private normalizeInquiryHeadline(headline: string): string {
+        return (headline || 'Finding').replace(/\s+/g, ' ').trim();
+    }
+
+    private formatInquiryActionNote(
+        inquiryId: string,
+        zoneLabel: string,
+        lensLabel: string,
+        finding: InquiryFinding,
+        briefTitle: string
+    ): string {
+        const headline = this.normalizeInquiryHeadline(finding.headline);
+        const impactCode = this.formatInquirySeverityCode(finding.impact);
+        const confidenceCode = this.formatInquirySeverityCode(finding.assessmentConfidence);
+        return `INQUIRY ${inquiryId} • ${zoneLabel} • ${lensLabel} • ${impactCode}/${confidenceCode} • ${headline} → [[${briefTitle}]]`;
     }
 
     private formatRoundTripDuration(ms: number): string {

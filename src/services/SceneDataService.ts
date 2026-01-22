@@ -185,7 +185,16 @@ export class SceneDataService {
                             status: metadata.Status as string | string[] | undefined,
                             "Publish Stage": metadata["Publish Stage"] as string | undefined,
                             due: metadata.Due as string | undefined,
-                            pendingEdits: metadata["Pending Edits"] as string | undefined,
+                            pendingEdits: (() => {
+                                const raw = metadata["Revision"] ?? metadata["Pending Edits"];
+                                if (Array.isArray(raw)) {
+                                    return raw.map(entry => String(entry)).join('\n');
+                                }
+                                if (raw !== undefined && raw !== null) {
+                                    return String(raw);
+                                }
+                                return undefined;
+                            })(),
                             Duration: duration,
                             Runtime: metadata.Runtime !== undefined && metadata.Runtime !== null
                                 ? String(metadata.Runtime)

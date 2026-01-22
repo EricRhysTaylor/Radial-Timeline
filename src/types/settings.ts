@@ -294,6 +294,8 @@ export interface RadialTimelineSettings {
     inquiryLastMode?: 'flow' | 'depth';
     inquiryCorpusThresholds?: InquiryCorpusThresholds;
     inquiryCorpusHighlightLowSubstanceComplete?: boolean;
+    inquiryActionNotesEnabled?: boolean;
+    inquiryActionNotesTargetField?: string;
     actCount?: number;
     actLabelsRaw?: string;
     showActLabels?: boolean;

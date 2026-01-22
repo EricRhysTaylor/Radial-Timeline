@@ -14,6 +14,7 @@ export class InquiryRunnerStub implements InquiryRunner {
             focusId: input.focusLabel,
             mode: input.mode,
             questionId: input.questionId,
+            questionZone: input.questionZone,
             summary: verdict.summary,
             verdict: verdict.metrics,
             findings,

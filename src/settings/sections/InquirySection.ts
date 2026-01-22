@@ -306,6 +306,33 @@ export function renderInquirySection(params: SectionParams): void {
             });
         });
 
+    new Settings(containerEl)
+        .setName('Write Inquiry action notes to scenes')
+        .setDesc('Append Inquiry action notes to the Revision field for hit scenes.')
+        .addToggle(toggle => {
+            toggle.setValue(plugin.settings.inquiryActionNotesEnabled ?? false);
+            toggle.onChange(async (value) => {
+                plugin.settings.inquiryActionNotesEnabled = value;
+                await plugin.saveSettings();
+            });
+        });
+
+    new Settings(containerEl)
+        .setName('Action notes target YAML field')
+        .setDesc('Frontmatter field to receive Inquiry action notes.')
+        .addText(text => {
+            const defaultField = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Revision';
+            const current = plugin.settings.inquiryActionNotesTargetField?.trim() || defaultField;
+            text.setPlaceholder(defaultField);
+            text.setValue(current);
+            text.inputEl.addClass('ert-input--sm');
+            text.onChange(async (value) => {
+                const next = value.trim() || defaultField;
+                plugin.settings.inquiryActionNotesTargetField = next;
+                await plugin.saveSettings();
+            });
+        });
+
     const cacheDesc = () => `Cache up to ${plugin.settings.inquiryCacheMaxSessions ?? 30} Inquiry sessions.`;
 
     const cacheToggleSetting = new Settings(containerEl)

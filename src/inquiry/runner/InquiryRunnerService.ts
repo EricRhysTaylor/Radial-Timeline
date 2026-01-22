@@ -359,6 +359,7 @@ export class InquiryRunnerService implements InquiryRunner {
             focusId: input.focusLabel,
             mode: input.mode,
             questionId: input.questionId,
+            questionZone: input.questionZone,
             summary: parsed.summary ? String(parsed.summary) : 'No summary provided.',
             verdict: {
                 flow,
@@ -406,6 +407,7 @@ export class InquiryRunnerService implements InquiryRunner {
             focusId: input.focusLabel,
             mode: input.mode,
             questionId: input.questionId,
+            questionZone: input.questionZone,
             summary,
             verdict: {
                 flow: 0.6,
