@@ -92,9 +92,9 @@ export function renderStoryBeatsSection(params: {
         });
 
     // Preview (planet-style)
-    const actsPreview = containerEl.createDiv({ cls: 'rt-planetary-preview rt-acts-preview' });
-    const actsPreviewHeading = actsPreview.createDiv({ cls: 'rt-planetary-preview-heading', text: 'Preview' });
-    const actsPreviewBody = actsPreview.createDiv({ cls: 'rt-planetary-preview-body rt-acts-preview-body' });
+    const actsPreview = containerEl.createDiv({ cls: ['ert-previewFrame', 'ert-planetary-preview'] });
+    const actsPreviewHeading = actsPreview.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Preview' });
+    const actsPreviewBody = actsPreview.createDiv({ cls: 'ert-planetary-preview-body' });
 
     updateActPreview();
 
@@ -148,7 +148,7 @@ export function renderStoryBeatsSection(params: {
     updateStoryStructureDescription(storyStructureInfo, plugin.settings.beatSystem || 'Custom');
 
     // --- Custom System Configuration (Dynamic Visibility) ---
-    const customConfigContainer = containerEl.createDiv({ cls: 'rt-custom-beat-config' });
+    const customConfigContainer = containerEl.createDiv({ cls: 'ert-custom-beat-config' });
 
     const renderCustomConfig = () => {
         customConfigContainer.empty();
@@ -170,9 +170,9 @@ export function renderStoryBeatsSection(params: {
                 }));
 
         // Beat List Editor (draggable rows with Name + Act)
-        const beatWrapper = customConfigContainer.createDiv({ cls: 'rt-custom-beat-wrapper' });
+        const beatWrapper = customConfigContainer.createDiv({ cls: 'ert-custom-beat-wrapper' });
 
-        const listContainer = beatWrapper.createDiv({ cls: 'rt-custom-beat-list' });
+        const listContainer = beatWrapper.createDiv({ cls: 'ert-custom-beat-list' });
 
         type BeatRow = { name: string; act: number };
 
@@ -223,11 +223,11 @@ export function renderStoryBeatsSection(params: {
                 .map(b => ({ ...b, act: clampAct(b.act, maxActs) }));
 
             beats.forEach((beatLine, index) => {
-                const row = listContainer.createDiv({ cls: 'rt-custom-beat-row' });
+                const row = listContainer.createDiv({ cls: 'ert-custom-beat-row' });
                 row.draggable = true;
 
                 // Drag handle
-                const handle = row.createDiv({ cls: 'rt-drag-handle' });
+                const handle = row.createDiv({ cls: ['rt-drag-handle', 'ert-drag-handle'] });
                 setIcon(handle, 'grip-vertical');
                 setTooltip(handle, 'Drag to reorder beat');
 
@@ -235,7 +235,7 @@ export function renderStoryBeatsSection(params: {
                 row.createDiv({ cls: 'ert-grid-spacer' });
 
                 // Index
-                const idxEl = row.createDiv({ text: `${index + 1}.`, cls: 'rt-beat-index' });
+                const idxEl = row.createDiv({ text: `${index + 1}.`, cls: 'ert-beat-index' });
                 idxEl.style.minWidth = '24px'; // SAFE: inline width for index
 
                 // Parse "Name [Act]"
@@ -243,7 +243,7 @@ export function renderStoryBeatsSection(params: {
                 let act = clampAct(beatLine.act, maxActs).toString();
 
                 // Name input
-                const nameInput = row.createEl('input', { type: 'text', cls: 'rt-beat-name-input rt-template-input' });
+                const nameInput = row.createEl('input', { type: 'text', cls: 'ert-beat-name-input ert-input' });
                 nameInput.value = name;
                 nameInput.placeholder = 'Beat name';
                 plugin.registerDomEvent(nameInput, 'change', () => {
@@ -256,7 +256,7 @@ export function renderStoryBeatsSection(params: {
                 });
 
                 // Act select
-                const actSelect = row.createEl('select', { cls: 'rt-beat-act-select rt-template-input' });
+                const actSelect = row.createEl('select', { cls: 'ert-beat-act-select ert-input' });
                 Array.from({ length: maxActs }, (_, i) => i + 1).forEach(n => {
                     const opt = actSelect.createEl('option', { value: n.toString(), text: actLabels[n - 1] });
                     if (act === n.toString()) opt.selected = true;
@@ -272,7 +272,7 @@ export function renderStoryBeatsSection(params: {
                 });
 
                 // Delete button
-                const delBtn = row.createEl('button', { cls: 'rt-template-icon-btn' });
+                const delBtn = row.createEl('button', { cls: 'ert-iconBtn' });
                 setIcon(delBtn, 'trash');
                 delBtn.onclick = () => {
                     const updated = [...beats];
@@ -306,20 +306,20 @@ export function renderStoryBeatsSection(params: {
 
             // Add row at bottom (single line, matches advanced YAML add row)
             const defaultAct = beats.length > 0 ? clampAct(beats[beats.length - 1].act, maxActs) : 1;
-            const addRow = listContainer.createDiv({ cls: 'rt-custom-beat-row rt-custom-beat-add-row' });
+            const addRow = listContainer.createDiv({ cls: 'ert-custom-beat-row ert-custom-beat-add-row' });
 
-            addRow.createDiv({ cls: 'rt-drag-handle rt-drag-placeholder' });
+            addRow.createDiv({ cls: ['rt-drag-handle', 'rt-drag-placeholder', 'ert-drag-handle'] });
             addRow.createDiv({ cls: 'ert-grid-spacer' });
-            addRow.createDiv({ cls: 'rt-beat-index rt-beat-add-index', text: '' });
+            addRow.createDiv({ cls: 'ert-beat-index ert-beat-add-index', text: '' });
 
-            const addNameInput = addRow.createEl('input', { type: 'text', cls: 'rt-beat-name-input rt-template-input', placeholder: 'New beat' });
-            const addActSelect = addRow.createEl('select', { cls: 'rt-beat-act-select rt-template-input' });
+            const addNameInput = addRow.createEl('input', { type: 'text', cls: 'ert-beat-name-input ert-input', placeholder: 'New beat' });
+            const addActSelect = addRow.createEl('select', { cls: 'ert-beat-act-select ert-input' });
             Array.from({ length: maxActs }, (_, i) => i + 1).forEach(n => {
                 const opt = addActSelect.createEl('option', { value: n.toString(), text: actLabels[n - 1] });
                 if (defaultAct === n) opt.selected = true;
             });
 
-            const addBtn = addRow.createEl('button', { cls: 'rt-beat-add-btn', attr: { 'aria-label': 'Add beat' } });
+            const addBtn = addRow.createEl('button', { cls: ['ert-iconBtn', 'ert-beat-add-btn'], attr: { 'aria-label': 'Add beat' } });
             setIcon(addBtn, 'plus');
 
             const commitAdd = () => {
@@ -551,15 +551,15 @@ export function renderStoryBeatsSection(params: {
             const applyHint = () => {
                 const hint = guessYamlHint(inputEl.value);
                 if (hint) {
-                    hintEl.removeClass('rt-template-hint-hidden');
+                    hintEl.removeClass('ert-hidden');
                     hintEl.setText(hint);
                     inputEl.setAttribute('title', hint);
-                    rowEl?.addClass('rt-template-hint-row');
+                    rowEl?.addClass('ert-template-hint-row');
                 } else {
-                    hintEl.addClass('rt-template-hint-hidden');
+                    hintEl.addClass('ert-hidden');
                     hintEl.setText('');
                     inputEl.removeAttribute('title');
-                    rowEl?.removeClass('rt-template-hint-row');
+                    rowEl?.removeClass('ert-template-hint-row');
                 }
             };
             plugin.registerDomEvent(inputEl, 'input', applyHint);
@@ -590,7 +590,7 @@ export function renderStoryBeatsSection(params: {
             advancedContainer.toggleClass('ert-settings-hidden', !isEnabled);
             if (!isEnabled) return;
 
-            const listEl = advancedContainer.createDiv({ cls: 'rt-template-entries rt-template-indent' });
+            const listEl = advancedContainer.createDiv({ cls: ['ert-template-entries', 'ert-template-indent'] });
 
             const renderEntryRow = (entry: TemplateEntry, idx: number, list: TemplateEntry[]) => {
                 // Match beats row structure: all inputs are direct grid children
@@ -616,7 +616,7 @@ export function renderStoryBeatsSection(params: {
                 setIcon(iconPreview, currentIcon);
                 const iconInput = iconWrapper.createEl('input', { 
                     type: 'text', 
-                    cls: 'rt-template-input ert-input--lg ert-icon-input',
+                    cls: 'ert-input ert-input--lg ert-icon-input',
                     attr: { placeholder: 'Icon name...' }
                 });
                 iconInput.value = currentIcon;
@@ -657,7 +657,7 @@ export function renderStoryBeatsSection(params: {
                 };
 
                 // 5. Key input (direct child - no wrapper!)
-                const keyInput = row.createEl('input', { type: 'text', cls: 'rt-template-input ert-input--md' });
+                const keyInput = row.createEl('input', { type: 'text', cls: 'ert-input ert-input--md' });
                 keyInput.value = entry.key;
                 keyInput.placeholder = 'Key';
                 keyInput.onchange = () => {
@@ -687,7 +687,7 @@ export function renderStoryBeatsSection(params: {
 
                 // 6. Value input (direct child - no wrapper!)
                 const value = entry.value;
-                const valInput = row.createEl('input', { type: 'text', cls: 'rt-template-input ert-input--md' });
+                const valInput = row.createEl('input', { type: 'text', cls: 'ert-input ert-input--md' });
                 if (Array.isArray(value)) {
                     valInput.value = value.join(', ');
                     valInput.placeholder = 'Comma-separated values';
@@ -709,7 +709,7 @@ export function renderStoryBeatsSection(params: {
                 }
 
                 // 7. Delete button (direct child - no wrapper!)
-                const delBtn = row.createEl('button', { cls: 'rt-template-icon-btn' });
+                const delBtn = row.createEl('button', { cls: 'ert-iconBtn' });
                 setIcon(delBtn, 'trash');
                 delBtn.onclick = () => {
                     removeHoverMetadata(entry.key);
@@ -721,29 +721,29 @@ export function renderStoryBeatsSection(params: {
 
                 plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
                     dragIndex = idx;
-                    row.classList.add('rt-template-dragging');
+                    row.classList.add('ert-template-dragging');
                     e.dataTransfer?.setData('text/plain', idx.toString());
                     if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
                 });
 
                 plugin.registerDomEvent(dragHandle, 'dragend', () => {
-                    row.classList.remove('rt-template-dragging');
-                    row.classList.remove('rt-template-dragover');
+                    row.classList.remove('ert-template-dragging');
+                    row.classList.remove('ert-template-dragover');
                     dragIndex = null;
                 });
 
                 plugin.registerDomEvent(row, 'dragover', (e) => {
                     e.preventDefault();
-                    row.classList.add('rt-template-dragover');
+                    row.classList.add('ert-template-dragover');
                 });
 
                 plugin.registerDomEvent(row, 'dragleave', () => {
-                    row.classList.remove('rt-template-dragover');
+                    row.classList.remove('ert-template-dragover');
                 });
 
                 plugin.registerDomEvent(row, 'drop', (e) => {
                     e.preventDefault();
-                    row.classList.remove('rt-template-dragover');
+                    row.classList.remove('ert-template-dragover');
                     const from = dragIndex ?? parseInt(e.dataTransfer?.getData('text/plain') || '-1', 10);
                     if (Number.isNaN(from) || from < 0 || from >= list.length || from === idx) {
                         dragIndex = null;
@@ -778,7 +778,7 @@ export function renderStoryBeatsSection(params: {
             setIcon(addIconPreview, DEFAULT_HOVER_ICON);
             const addIconInput = addIconWrapper.createEl('input', { 
                 type: 'text', 
-                cls: 'rt-template-input ert-input--lg ert-icon-input',
+                cls: 'ert-input ert-input--lg ert-icon-input',
                 attr: { placeholder: 'Icon name...' }
             });
             addIconInput.value = DEFAULT_HOVER_ICON;
@@ -809,15 +809,15 @@ export function renderStoryBeatsSection(params: {
             setTooltip(addCheckbox, 'Show in hover synopsis');
 
             // 5. Key input (direct child - no wrapper!)
-            const keyInput = addRow.createEl('input', { type: 'text', cls: 'rt-template-input ert-input--md', attr: { placeholder: 'New key' } });
+            const keyInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--md', attr: { placeholder: 'New key' } });
 
             // 6. Value input (direct child - no wrapper!)
-            const valInput = addRow.createEl('input', { type: 'text', cls: 'rt-template-input ert-input--md', attr: { placeholder: 'Value' } }) as HTMLInputElement;
+            const valInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--md', attr: { placeholder: 'Value' } }) as HTMLInputElement;
 
             // 7. Buttons wrapper (holds both + and reset)
-            const btnWrap = addRow.createDiv({ cls: 'rt-template-add-buttons' });
+            const btnWrap = addRow.createDiv({ cls: ['ert-iconBtnGroup', 'ert-template-actions'] });
 
-            const addBtn = btnWrap.createEl('button', { cls: 'rt-template-icon-btn ert-mod-cta' });
+            const addBtn = btnWrap.createEl('button', { cls: ['ert-iconBtn', 'ert-mod-cta'] });
             setIcon(addBtn, 'plus');
             setTooltip(addBtn, 'Add key');
             addBtn.onclick = () => {
@@ -842,7 +842,7 @@ export function renderStoryBeatsSection(params: {
                 updateHoverPreview?.();
             };
 
-            const revertBtn = btnWrap.createEl('button', { cls: 'rt-template-icon-btn rt-template-reset-btn' });
+            const revertBtn = btnWrap.createEl('button', { cls: ['ert-iconBtn', 'ert-template-reset-btn'] });
             setIcon(revertBtn, 'rotate-ccw');
             setTooltip(revertBtn, 'Revert to original template');
             revertBtn.onclick = async () => {
@@ -904,9 +904,9 @@ export function renderStoryBeatsSection(params: {
     renderAdvancedTemplateEditor();
 
     // Hover Metadata Preview Panel
-    const hoverPreviewContainer = templateSection.createDiv({ cls: 'rt-planetary-preview rt-hover-metadata-preview' });
-    const hoverPreviewHeading = hoverPreviewContainer.createDiv({ cls: 'rt-planetary-preview-heading', text: 'Hover Metadata Preview' });
-    const hoverPreviewBody = hoverPreviewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-hover-preview-body' });
+    const hoverPreviewContainer = templateSection.createDiv({ cls: ['ert-previewFrame', 'ert-planetary-preview', 'rt-hover-metadata-preview'] });
+    const hoverPreviewHeading = hoverPreviewContainer.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Hover Metadata Preview' });
+    const hoverPreviewBody = hoverPreviewContainer.createDiv({ cls: ['ert-planetary-preview-body', 'rt-hover-preview-body'] });
 
     const renderHoverPreview = () => {
         hoverPreviewBody.empty();

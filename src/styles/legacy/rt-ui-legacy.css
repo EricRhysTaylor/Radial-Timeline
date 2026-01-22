@@ -77,18 +77,6 @@
   --rt-social-color-rgb: 255, 212, 29;
 }
 
-/* Template actions */
-.rt-template-reset-btn {
-  background: var(--background-modifier-error);
-  border-color: var(--background-modifier-error-hover);
-  color: var(--text-on-accent);
-}
-
-.rt-template-reset-btn:hover {
-  background: var(--background-modifier-error-hover);
-  color: var(--text-on-accent);
-}
-
 /* Legacy settings input validation styles (modals) */
 .rt-setting-input-success {
   border-color: var(--text-success);
@@ -251,110 +239,15 @@
   border-radius: 10px;
 }
 
-/* YAML entries container - gap between rows like beats */
-.rt-template-entries {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.rt-template-entry-line.rt-template-dragging {
-  opacity: 0.72;
-}
-
-.rt-template-entry-line.rt-template-dragover {
-  outline: 1px dashed var(--interactive-accent);
-  outline-offset: 2px;
-}
-
-.rt-template-hint-hidden {
-  display: none;
-}
-
 .rt-template-actions {
   justify-content: flex-end;
   text-align: right;
-}
-
-.rt-template-indent {
-  padding-left: 18px;
-  border-left: 2px solid var(--interactive-accent);
-  /* Match beats accent color */
-}
-
-.ert-settings-root .rt-template-grid .setting-item-info {
-  justify-self: end;
-}
-
-.rt-template-hint-row {
-  padding-bottom: 14px;
-}
-
-.rt-template-grid .rt-template-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: flex-end;
 }
 
 /* rt-template-input consolidated in base.css */
 
 /* YAML add row */
 .rt-yaml-add-row {
-  background: var(--background-primary);
-  border-style: dashed;
-  opacity: 0.95;
-}
-
-/* Button wrapper for add row (+ and reset side by side) */
-.rt-template-add-buttons {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.rt-custom-beat-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-}
-
-.rt-custom-beat-wrapper {
-  padding-left: 18px;
-  border-left: 2px solid var(--interactive-accent);
-  margin-bottom: 18px;
-}
-
-.rt-custom-beat-row {
-  display: grid;
-  box-sizing: border-box;
-  /* Handle | Spacer | Index | Name | Act | Trash */
-  grid-template-columns: auto 1fr auto auto auto auto;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 10px 10px 12px;
-  /* Minimal right padding - trash close to edge */
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 10px;
-}
-
-/* rt-drag-handle defined in base.css */
-.rt-custom-beat-row .rt-drag-handle {
-  justify-self: start;
-}
-
-/* Grid row index (used in beats & YAML) */
-.rt-row-index {
-  font-weight: 600;
-  color: var(--text-muted);
-  text-align: right;
-  min-width: 28px;
-}
-
-/* Add row styling */
-.rt-custom-beat-add-row {
   background: var(--background-primary);
   border-style: dashed;
   opacity: 0.95;
@@ -475,46 +368,6 @@
 .ert-settings-root .setting-item-control .clickable-icon,
 .ert-settings-root .setting-item-control input[type="checkbox"] {
   cursor: pointer;
-}
-
-/* Planetary & Acts Preview Styling */
-.rt-planetary-preview {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 24px;
-  margin-top: 16px;
-  margin-bottom: 16px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px dashed rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  gap: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.rt-planetary-preview-heading {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  font-weight: 600;
-  opacity: 0.8;
-}
-
-.rt-planetary-preview-body {
-  font-size: 1.4em;
-  font-weight: 700;
-  color: var(--text-normal);
-  line-height: 1.3;
-}
-
-.rt-acts-preview-body {
-  font-size: 1.4em;
-  font-weight: 700;
-  color: var(--text-normal);
-  line-height: 1.3;
 }
 
 /* Hover Metadata UI in Advanced YAML Editor */
@@ -1046,7 +899,7 @@
 
 .ert-settings-root .ert-inquiry-prompt-row {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-columns: 90px minmax(0, 1fr);
   gap: 10px;
   align-items: center;
 }
@@ -1074,15 +927,6 @@
   color: var(--text-muted);
 }
 
-.ert-settings-root .ert-inquiry-prompt-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--text-faint);
-  white-space: nowrap;
-}
-
 .ert-settings-root .ert-inquiry-prompts-advanced {
   margin-top: 18px;
 }
@@ -1096,4 +940,59 @@
   margin: 6px 0 10px;
   font-size: 11px;
   color: var(--text-faint);
+}
+
+.ert-settings-root .ert-inquiry-custom-header {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ert-settings-root .ert-inquiry-custom-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ert-settings-root .ert-inquiry-custom-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 120px) minmax(0, 1fr) 28px;
+  gap: 8px;
+  align-items: center;
+  padding: 2px 0;
+}
+
+.ert-settings-root .ert-inquiry-custom-row .rt-drag-handle {
+  height: 26px;
+  width: 22px;
+}
+
+.ert-settings-root .ert-inquiry-custom-row .ert-input {
+  min-width: 0;
+}
+
+.ert-settings-root .ert-inquiry-custom-row.ert-inquiry-custom-dragover {
+  outline: 1px dashed var(--background-modifier-border);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.ert-settings-root .ert-inquiry-custom-row.ert-inquiry-custom-row--placeholder {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ert-settings-root .ert-inquiry-custom-placeholder {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: var(--text-faint);
+  padding: 6px 0;
+}
+
+.ert-settings-root .ert-inquiry-custom-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
 }

@@ -25,6 +25,7 @@ import { buildDefaultInquiryPromptConfig, normalizeInquiryPromptConfig } from '.
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
 import { openOrRevealFile } from '../utils/fileUtils';
 import { InquiryGlyph, FLOW_RADIUS, FLOW_STROKE } from './components/InquiryGlyph';
+import { ZONE_LAYOUT } from './zoneLayout';
 import { InquiryRunnerService } from './runner/InquiryRunnerService';
 import type { CorpusManifest, EvidenceParticipationRules } from './runner/types';
 import { InquirySessionStore } from './InquirySessionStore';
@@ -51,7 +52,7 @@ const VIEWBOX_MAX = 800;
 const VIEWBOX_SIZE = 1600;
 const INQUIRY_REFERENCE_ONLY_CLASSES = new Set(['character', 'place', 'power']);
 const PREVIEW_PANEL_WIDTH = 640;
-const PREVIEW_PANEL_Y = -590;
+const PREVIEW_PANEL_Y = -490;
 const PREVIEW_PANEL_PADDING_X = 32;
 const PREVIEW_PANEL_PADDING_Y = 20;
 const PREVIEW_HERO_LINE_HEIGHT = 30;
@@ -72,12 +73,10 @@ const SWEEP_DURATION_MS = STAGE_DURATION_MS * STAGE_LABELS.length;
 const MIN_PROCESSING_MS = 5000;
 const SIMULATION_DURATION_MS = 20000;
 const CC_CELL_SIZE = 20;
-const CC_CELL_GAP = CC_CELL_SIZE;
-const CC_PAGE_WIDTH = CC_CELL_SIZE;
-const CC_PAGE_HEIGHT = Math.round(CC_CELL_SIZE * 1.45);
+const CC_PAGE_BASE_SIZE = Math.round(CC_CELL_SIZE * 0.8);
+const CC_PAGE_MIN_SIZE = Math.max(6, Math.round(CC_CELL_SIZE * 0.33));
 const CC_RIGHT_MARGIN = 50;
-const CC_ANCHOR_X = VIEWBOX_MAX - CC_RIGHT_MARGIN - CC_PAGE_WIDTH;
-const CC_ANCHOR_Y = 320;
+const CC_BOTTOM_MARGIN = 50;
 
 type InquiryQuestion = {
     id: string;
@@ -185,9 +184,11 @@ export class InquiryView extends ItemView {
     private ccGroup?: SVGGElement;
     private ccLabel?: SVGTextElement;
     private ccEmptyText?: SVGTextElement;
+    private ccClassLabels: SVGTextElement[] = [];
     private ccEntries: CorpusCcEntry[] = [];
     private ccSlots: CorpusCcSlot[] = [];
     private ccUpdateId = 0;
+    private ccLayout?: { pageWidth: number; pageHeight: number; gap: number };
     private ccWordCache = new Map<string, { mtime: number; words: number; status?: 'todo' | 'working' | 'complete'; title?: string }>();
     private apiSimulationTimer?: number;
     private navPrevButton?: SVGGElement;
@@ -832,15 +833,15 @@ export class InquiryView extends ItemView {
 
     private buildDefaultSelectedPromptIds(): Record<InquiryZone, string> {
         const config = this.getPromptConfig();
-        const pickFirstEnabled = (zone: InquiryZone): string => {
+        const pickFirstAvailable = (zone: InquiryZone): string => {
             const slots = config[zone] ?? [];
-            const firstEnabled = slots.find(slot => slot.enabled && slot.question.trim().length > 0);
-            return firstEnabled?.id ?? slots[0]?.id ?? zone;
+            const firstAvailable = slots.find(slot => slot.question.trim().length > 0);
+            return firstAvailable?.id ?? slots[0]?.id ?? zone;
         };
         return {
-            setup: pickFirstEnabled('setup'),
-            pressure: pickFirstEnabled('pressure'),
-            payoff: pickFirstEnabled('payoff')
+            setup: pickFirstAvailable('setup'),
+            pressure: pickFirstAvailable('pressure'),
+            payoff: pickFirstAvailable('payoff')
         };
     }
 
@@ -859,7 +860,7 @@ export class InquiryView extends ItemView {
         const config = this.getPromptConfig();
         const icon = zone === 'setup' ? 'help-circle' : zone === 'pressure' ? 'activity' : 'check-circle';
         return (config[zone] ?? [])
-            .filter(slot => slot.enabled && slot.question.trim().length > 0)
+            .filter(slot => slot.question.trim().length > 0)
             .map(slot => ({
                 id: slot.id,
                 label: slot.label || (zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff'),
@@ -937,11 +938,11 @@ export class InquiryView extends ItemView {
         const config = this.getPromptConfig();
         (['setup', 'pressure', 'payoff'] as InquiryZone[]).forEach(zone => {
             const slots = config[zone] ?? [];
-            const enabled = slots.filter(slot => slot.enabled && slot.question.trim().length > 0);
-            const desired = enabled[0]?.id ?? slots[0]?.id;
+            const available = slots.filter(slot => slot.question.trim().length > 0);
+            const desired = available[0]?.id ?? slots[0]?.id;
             if (!desired) return;
             const current = this.state.selectedPromptIds[zone];
-            const currentValid = enabled.some(slot => slot.id === current);
+            const currentValid = available.some(slot => slot.id === current);
             if (!currentValid) {
                 this.state.selectedPromptIds[zone] = desired;
             }
@@ -1591,13 +1592,11 @@ export class InquiryView extends ItemView {
             list.push(entry);
             entriesByClass.set(entry.className, list);
         });
-        const columns = Array.from(entriesByClass.entries())
+        const classes = Array.from(entriesByClass.entries())
             .map(([className, items]) => ({ className, items }))
-            .sort((a, b) => (a.items.length - b.items.length) || a.className.localeCompare(b.className));
-        const orderedEntries = columns.flatMap(column => column.items);
-        this.ccEntries = orderedEntries;
+            .sort((a, b) => (b.items.length - a.items.length) || a.className.localeCompare(b.className));
 
-        if (!orderedEntries.length) {
+        if (!entries.length) {
             if (this.ccGroup) {
                 this.ccGroup.classList.add('ert-hidden');
             }
@@ -1609,39 +1608,136 @@ export class InquiryView extends ItemView {
         } else {
             this.ccGroup.classList.remove('ert-hidden');
         }
-        const count = orderedEntries.length;
-        const columnCount = Math.max(1, columns.length);
-        const maxRows = Math.max(1, ...columns.map(column => column.items.length));
-        const columnStep = CC_PAGE_WIDTH + CC_CELL_GAP;
-        const rowStep = CC_PAGE_HEIGHT + CC_CELL_GAP;
-        const stackHeight = (maxRows * CC_PAGE_HEIGHT) + (Math.max(0, maxRows - 1) * CC_CELL_GAP);
-        const stackWidth = (columnCount * CC_PAGE_WIDTH) + (Math.max(0, columnCount - 1) * CC_CELL_GAP);
-        const maxBottom = VIEWBOX_MAX - CC_PAGE_HEIGHT;
-        const maxTop = maxBottom - stackHeight;
-        const topY = Math.min(CC_ANCHOR_Y, maxTop);
-        const leftX = CC_ANCHOR_X - (stackWidth - CC_PAGE_WIDTH);
-        this.ccGroup.setAttribute('transform', `translate(${leftX} ${topY})`);
+
+        const bottomLimit = VIEWBOX_MAX - CC_BOTTOM_MARGIN;
+        const maxHeight = Math.round(VIEWBOX_SIZE * (2 / 3));
+        const topLimit = bottomLimit - maxHeight;
+        const zoneLeft = ZONE_LAYOUT.setup.x;
+        const zoneRight = ZONE_LAYOUT.pressure.x;
+        const zoneBuffer = 50;
+
+        const buildLayout = (pageWidth: number) => {
+            const pageHeight = Math.round(pageWidth * 1.45);
+            const gap = pageWidth;
+            const titleY = gap;
+            const docStartY = titleY + gap;
+            const rowStep = pageHeight + gap;
+            const usableHeight = Math.max(0, (bottomLimit - topLimit) - docStartY);
+            const rowsPerColumn = Math.max(1, Math.floor((usableHeight + gap) / rowStep));
+            const columnStep = pageWidth + gap;
+            const anchorRightX = VIEWBOX_MAX - CC_RIGHT_MARGIN - pageWidth;
+            const anchorLeftX = VIEWBOX_MIN + CC_RIGHT_MARGIN;
+            let placeLeft = false;
+            let rightColumnsUsed = 0;
+            let leftColumnsUsed = 0;
+            const placements: Array<{ entry: CorpusCcEntry; x: number; y: number }> = [];
+            const layoutEntries: CorpusCcEntry[] = [];
+            const classLayouts: Array<{ className: string; centerX: number; width: number }> = [];
+
+            classes.forEach(group => {
+                const columnsNeeded = Math.max(1, Math.ceil(group.items.length / rowsPerColumn));
+                const side = placeLeft ? 'left' : 'right';
+                const startIndex = side === 'right' ? rightColumnsUsed : leftColumnsUsed;
+                const classLeftEdge = side === 'right'
+                    ? anchorRightX - ((startIndex + columnsNeeded - 1) * columnStep)
+                    : anchorLeftX + (startIndex * columnStep);
+                const classRightEdge = side === 'right'
+                    ? anchorRightX - (startIndex * columnStep) + pageWidth
+                    : anchorLeftX + ((startIndex + columnsNeeded - 1) * columnStep) + pageWidth;
+                const classWidth = classRightEdge - classLeftEdge;
+                classLayouts.push({
+                    className: group.className,
+                    centerX: Math.round(classLeftEdge + (classWidth / 2)),
+                    width: Math.round(classWidth)
+                });
+
+                let entryIndex = 0;
+                for (let colOffset = 0; colOffset < columnsNeeded; colOffset += 1) {
+                    for (let rowIndex = 0; rowIndex < rowsPerColumn; rowIndex += 1) {
+                        if (entryIndex >= group.items.length) break;
+                        const entry = group.items[entryIndex];
+                        const x = side === 'right'
+                            ? anchorRightX - ((startIndex + colOffset) * columnStep)
+                            : anchorLeftX + ((startIndex + colOffset) * columnStep);
+                        const y = docStartY + (rowIndex * rowStep);
+                        placements.push({ entry, x: Math.round(x), y: Math.round(y) });
+                        layoutEntries.push(entry);
+                        entryIndex += 1;
+                    }
+                }
+
+                if (side === 'right') {
+                    rightColumnsUsed += columnsNeeded;
+                    const leftmostEdge = anchorRightX - ((rightColumnsUsed - 1) * columnStep);
+                    if (!placeLeft && leftmostEdge <= (zoneRight + zoneBuffer)) {
+                        placeLeft = true;
+                    }
+                } else {
+                    leftColumnsUsed += columnsNeeded;
+                }
+            });
+
+            const rightmostLeftEdge = leftColumnsUsed > 0
+                ? anchorLeftX + ((leftColumnsUsed - 1) * columnStep) + pageWidth
+                : anchorLeftX;
+            const leftmostRightEdge = rightColumnsUsed > 0
+                ? anchorRightX - ((rightColumnsUsed - 1) * columnStep)
+                : anchorRightX;
+            const overlapSetup = rightmostLeftEdge >= zoneLeft || leftmostRightEdge <= zoneLeft;
+
+            return {
+                pageWidth,
+                pageHeight,
+                gap,
+                titleY,
+                docStartY,
+                rowsPerColumn,
+                anchorRightX,
+                placements,
+                layoutEntries,
+                classLayouts,
+                overlapSetup
+            };
+        };
+
+        let layout = buildLayout(CC_PAGE_BASE_SIZE);
+        while (layout.overlapSetup && layout.pageWidth > CC_PAGE_MIN_SIZE) {
+            const nextSize = Math.max(CC_PAGE_MIN_SIZE, layout.pageWidth - 1);
+            if (nextSize === layout.pageWidth) break;
+            layout = buildLayout(nextSize);
+        }
+        const showWarning = layout.overlapSetup && layout.pageWidth <= CC_PAGE_MIN_SIZE;
+        this.ccLayout = { pageWidth: layout.pageWidth, pageHeight: layout.pageHeight, gap: layout.gap };
+        this.ccGroup.setAttribute('transform', `translate(0 ${topLimit})`);
 
         if (!this.ccLabel) {
-            this.ccLabel = this.createSvgText(this.ccGroup, 'ert-inquiry-cc-label', 'Corpus (CC)', 0, 0);
-            this.ccLabel.setAttribute('text-anchor', 'middle');
+            this.ccLabel = this.createSvgText(this.ccGroup, 'ert-inquiry-cc-label', 'CC', 0, 0);
+            this.ccLabel.setAttribute('text-anchor', 'end');
             this.ccLabel.setAttribute('dominant-baseline', 'middle');
         }
-        this.ccLabel.setAttribute('x', String(stackWidth / 2));
-        this.ccLabel.setAttribute('y', '-16');
+        this.ccLabel.textContent = 'CC';
+        this.ccLabel.setAttribute('x', String(Math.round(layout.anchorRightX + layout.pageWidth)));
+        this.ccLabel.setAttribute('y', '0');
 
         if (!this.ccEmptyText) {
             this.ccEmptyText = this.createSvgText(this.ccGroup, 'ert-inquiry-cc-empty ert-hidden', 'No corpus data', 0, 0);
             this.ccEmptyText.setAttribute('text-anchor', 'start');
             this.ccEmptyText.setAttribute('dominant-baseline', 'middle');
         }
-        this.ccEmptyText.setAttribute('x', '0');
-        this.ccEmptyText.setAttribute('y', String(CC_PAGE_HEIGHT / 2));
+        this.ccEmptyText.setAttribute('x', String(Math.round(layout.anchorRightX)));
+        this.ccEmptyText.setAttribute('y', String(Math.round(layout.docStartY + (layout.pageHeight / 2))));
+        if (showWarning) {
+            this.ccEmptyText.textContent = 'Corpus too large';
+            this.ccEmptyText.classList.remove('ert-hidden');
+        } else {
+            this.ccEmptyText.classList.add('ert-hidden');
+        }
 
-        const corner = Math.max(2, Math.round(CC_PAGE_WIDTH * 0.125));
-        const foldSize = Math.max(4, Math.round(CC_PAGE_WIDTH * 0.35));
+        const corner = Math.max(2, Math.round(layout.pageWidth * 0.125));
+        const foldSize = Math.max(4, Math.round(layout.pageWidth * 0.35));
 
-        while (this.ccSlots.length < count) {
+        const totalEntries = entries.length;
+        while (this.ccSlots.length < totalEntries) {
             const group = this.createSvgGroup(this.ccGroup, 'ert-inquiry-cc-cell');
             const base = this.createSvgElement('rect');
             base.classList.add('ert-inquiry-cc-cell-base');
@@ -1671,42 +1767,82 @@ export class InquiryView extends ItemView {
             this.ccSlots.push({ group, base, fill, border, icon, fold });
         }
 
-        let slotIndex = 0;
-        columns.forEach((column, columnIndex) => {
-            column.items.forEach((entry, rowIndex) => {
-                const slot = this.ccSlots[slotIndex];
-                if (!slot) return;
-                slot.group.classList.remove('ert-hidden');
-                slot.group.setAttribute('data-class', entry.className);
-                const x = columnStep * columnIndex;
-                const y = rowStep * rowIndex;
-                slot.group.setAttribute('transform', `translate(${x.toFixed(2)} ${y.toFixed(2)})`);
-                slot.base.setAttribute('width', String(CC_PAGE_WIDTH));
-                slot.base.setAttribute('height', String(CC_PAGE_HEIGHT));
-                slot.base.setAttribute('x', '0');
-                slot.base.setAttribute('y', '0');
-                slot.fill.setAttribute('width', String(CC_PAGE_WIDTH));
-                slot.fill.setAttribute('height', '0');
-                slot.fill.setAttribute('x', '0');
-                slot.fill.setAttribute('y', String(CC_PAGE_HEIGHT));
-                slot.border.setAttribute('width', String(CC_PAGE_WIDTH));
-                slot.border.setAttribute('height', String(CC_PAGE_HEIGHT));
-                slot.border.setAttribute('x', '0');
-                slot.border.setAttribute('y', '0');
-                slot.border.setAttribute('rx', String(corner));
-                slot.border.setAttribute('ry', String(corner));
-                slot.fold.setAttribute('d', `M ${CC_PAGE_WIDTH - foldSize} 0 L ${CC_PAGE_WIDTH} 0 L ${CC_PAGE_WIDTH} ${foldSize}`);
-                slot.icon.setAttribute('x', String(CC_PAGE_WIDTH / 2));
-                slot.icon.setAttribute('y', String(CC_PAGE_HEIGHT / 2));
-                slotIndex += 1;
-            });
-        });
         this.ccSlots.forEach((slot, idx) => {
-            if (idx < count) return;
-            slot.group.classList.add('ert-hidden');
+            if (idx >= totalEntries) {
+                slot.group.classList.add('ert-hidden');
+                return;
+            }
+            const placement = layout.placements[idx];
+            slot.group.classList.remove('ert-hidden');
+            slot.group.setAttribute('data-class', placement.entry.className);
+            slot.group.setAttribute('transform', `translate(${placement.x} ${placement.y})`);
+            slot.base.setAttribute('width', String(layout.pageWidth));
+            slot.base.setAttribute('height', String(layout.pageHeight));
+            slot.base.setAttribute('x', '0');
+            slot.base.setAttribute('y', '0');
+            slot.fill.setAttribute('width', String(layout.pageWidth));
+            slot.fill.setAttribute('height', '0');
+            slot.fill.setAttribute('x', '0');
+            slot.fill.setAttribute('y', String(layout.pageHeight));
+            slot.border.setAttribute('width', String(layout.pageWidth));
+            slot.border.setAttribute('height', String(layout.pageHeight));
+            slot.border.setAttribute('x', '0');
+            slot.border.setAttribute('y', '0');
+            slot.border.setAttribute('rx', String(corner));
+            slot.border.setAttribute('ry', String(corner));
+            slot.fold.setAttribute('d', `M ${layout.pageWidth - foldSize} 0 L ${layout.pageWidth} 0 L ${layout.pageWidth} ${foldSize}`);
+            slot.icon.setAttribute('x', String(Math.round(layout.pageWidth / 2)));
+            slot.icon.setAttribute('y', String(Math.round(layout.pageHeight / 2)));
         });
 
-        void this.updateCorpusCcData(orderedEntries);
+        const titleTexts = this.ccClassLabels;
+        while (titleTexts.length < layout.classLayouts.length) {
+            const label = this.createSvgText(this.ccGroup, 'ert-inquiry-cc-class-label', '', 0, 0);
+            label.setAttribute('text-anchor', 'middle');
+            label.setAttribute('dominant-baseline', 'middle');
+            titleTexts.push(label);
+        }
+        layout.classLayouts.forEach((group, idx) => {
+            const labelEl = titleTexts[idx];
+            const fullLabel = this.formatCorpusClassLabel(group.className);
+            const shortLabel = this.formatCorpusClassAbbrev(group.className);
+            const letterLabel = fullLabel.charAt(0).toUpperCase();
+            const availableWidth = Math.max(4, group.width - layout.gap);
+            labelEl.classList.remove('ert-hidden');
+            labelEl.textContent = fullLabel;
+            if (labelEl.getComputedTextLength() > availableWidth) {
+                labelEl.textContent = shortLabel;
+            }
+            if (labelEl.getComputedTextLength() > availableWidth) {
+                labelEl.textContent = letterLabel;
+            }
+            labelEl.setAttribute('x', String(group.centerX));
+            labelEl.setAttribute('y', String(layout.titleY));
+        });
+        titleTexts.forEach((label, idx) => {
+            if (idx < layout.classLayouts.length) return;
+            label.classList.add('ert-hidden');
+        });
+
+        this.ccEntries = layout.layoutEntries;
+        void this.updateCorpusCcData(layout.layoutEntries);
+    }
+
+    private formatCorpusClassLabel(className: string): string {
+        const normalized = className.trim().toLowerCase();
+        if (normalized === 'scene') return 'Scene';
+        if (normalized === 'outline') return 'Outline';
+        if (!normalized) return 'Class';
+        return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+    }
+
+    private formatCorpusClassAbbrev(className: string): string {
+        const normalized = className.trim().toLowerCase();
+        if (normalized === 'scene') return 'Scn';
+        if (normalized === 'outline') return 'Out';
+        const full = this.formatCorpusClassLabel(className);
+        if (full.length <= 3) return full;
+        return full.slice(0, 3);
     }
 
     private getCorpusCcEntries(): CorpusCcEntry[] {
@@ -1812,9 +1948,10 @@ export class InquiryView extends ItemView {
         const tier = this.getCorpusTier(stats.words, thresholds);
         const ratioBase = thresholds.substantiveMin > 0 ? (stats.words / thresholds.substantiveMin) : 0;
         const ratio = Math.min(Math.max(ratioBase, 0), 1);
-        const fillHeight = Math.round(CC_PAGE_HEIGHT * ratio);
+        const pageHeight = this.ccLayout?.pageHeight ?? Math.round(CC_PAGE_BASE_SIZE * 1.45);
+        const fillHeight = Math.round(pageHeight * ratio);
         slot.fill.setAttribute('height', String(fillHeight));
-        slot.fill.setAttribute('y', String(CC_PAGE_HEIGHT - fillHeight));
+        slot.fill.setAttribute('y', String(pageHeight - fillHeight));
 
         slot.group.classList.remove(
             'is-tier-empty',
@@ -1850,8 +1987,9 @@ export class InquiryView extends ItemView {
         }
 
         const tooltipTitle = stats.title || entry.label;
+        const classInitial = entry.className?.trim().charAt(0).toLowerCase() || '?';
         slot.group.classList.add('rt-tooltip-target');
-        slot.group.setAttribute('data-tooltip', tooltipTitle);
+        slot.group.setAttribute('data-tooltip', `${tooltipTitle} [${classInitial}]`);
         slot.group.setAttribute('data-tooltip-placement', 'left');
         slot.group.setAttribute('data-tooltip-offset-x', '10');
         if (entry.filePath) {

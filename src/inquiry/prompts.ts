@@ -20,11 +20,6 @@ const BUILT_IN_PROMPTS: Record<InquiryZone, BuiltInPromptSeed[]> = {
         label: 'Pressure',
         question: "How does this scene change the story's momentum right now?",
         enabled: true
-    }, {
-        id: 'pressure-alt-clarity',
-        label: 'Pressure',
-        question: 'Where does dialogue or description state meaning explicitly instead of allowing subtext to carry it?',
-        enabled: false
     }],
     payoff: [{
         id: 'payoff-core',
@@ -38,23 +33,14 @@ const buildBuiltInSlot = (seed: BuiltInPromptSeed): InquiryPromptSlot => ({
     id: seed.id,
     label: seed.label,
     question: seed.question,
-    enabled: seed.enabled ?? true,
+    enabled: true,
     builtIn: true
-});
-
-const buildCustomSlot = (zone: InquiryZone, index: number): InquiryPromptSlot => ({
-    id: `custom-${zone}-${index + 1}`,
-    label: '',
-    question: '',
-    enabled: false,
-    builtIn: false
 });
 
 export const buildDefaultInquiryPromptConfig = (): InquiryPromptConfig => {
     const buildForZone = (zone: InquiryZone): InquiryPromptSlot[] => {
         const builtIns = BUILT_IN_PROMPTS[zone].map(seed => buildBuiltInSlot(seed));
-        const customs = Array.from({ length: 4 }, (_, idx) => buildCustomSlot(zone, idx));
-        return [...builtIns, ...customs];
+        return [...builtIns];
     };
 
     return {
@@ -71,25 +57,50 @@ export const normalizeInquiryPromptConfig = (raw?: InquiryPromptConfig): Inquiry
 
     const normalizeZone = (zone: InquiryZone): InquiryPromptSlot[] => {
         const base = defaults[zone];
+        const canonicalSlot = base[0];
         const incoming = hasLegacy
             ? (legacy?.flow?.[zone] ?? legacy?.depth?.[zone] ?? [])
             : (raw?.[zone] ?? []);
-        return base.map((slot, idx) => {
-            const existing = incoming[idx];
-            if (slot.builtIn) {
-                return {
-                    ...slot,
-                    enabled: existing?.enabled ?? slot.enabled
-                };
+        const usedIds = new Set<string>([canonicalSlot?.id ?? '']);
+        const customSlots: InquiryPromptSlot[] = [];
+
+        incoming.forEach((slot, index) => {
+            if (!slot) return;
+            if (slot.id === canonicalSlot?.id) return;
+            if (slot.builtIn && !slot.enabled) return;
+
+            const label = slot.label ?? '';
+            const question = slot.question ?? '';
+            const hasContent = label.trim().length > 0 || question.trim().length > 0;
+            const rawEnabled = slot.enabled ?? false;
+            if (!hasContent && !rawEnabled) return;
+
+            let id = slot.id;
+            if (!id || usedIds.has(id)) {
+                const baseId = `custom-${zone}-${index + 1}`;
+                let candidate = baseId;
+                let suffix = 1;
+                while (usedIds.has(candidate)) {
+                    candidate = `${baseId}-${suffix++}`;
+                }
+                id = candidate;
             }
-            return {
-                ...slot,
-                id: existing?.id ?? slot.id,
-                label: existing?.label ?? slot.label,
-                question: existing?.question ?? slot.question,
-                enabled: existing?.enabled ?? slot.enabled
-            };
+
+            usedIds.add(id);
+            customSlots.push({
+                id,
+                label,
+                question,
+                enabled: rawEnabled || question.trim().length > 0,
+                builtIn: false
+            });
         });
+
+        if (canonicalSlot) {
+            return [canonicalSlot, ...customSlots];
+        }
+
+        return customSlots;
     };
 
     return {

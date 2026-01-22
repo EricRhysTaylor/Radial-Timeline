@@ -1,4 +1,4 @@
-import { App, Setting as Settings, TextComponent, TextAreaComponent, ToggleComponent, normalizePath, Notice } from 'obsidian';
+import { App, Setting as Settings, TextComponent, TextAreaComponent, ButtonComponent, normalizePath, Notice, setIcon, setTooltip } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { DEFAULT_SETTINGS } from '../defaults';
 import type {
@@ -666,18 +666,11 @@ export function renderInquirySection(params: SectionParams): void {
     };
 
     const renderPromptConfiguration = () => {
-        const promptHeading = new Settings(containerEl)
-            .setName('Inquiry prompts')
-            .setHeading();
-        addHeadingIcon(promptHeading, 'list');
-
-        containerEl.createDiv({
-            cls: 'ert-inquiry-prompts-helper setting-item-description',
-            text: 'Inquiry ships with editorial defaults. Enable Customize to override any question.'
-        });
-
+        const promptContainer = containerEl.createDiv({ cls: 'ert-inquiry-prompts' });
+        const freeCustomLimit = 2;
+        const proCustomLimit = 7;
         const isPro = isProfessionalActive(plugin);
-        const maxCustomSlots = isPro ? 4 : 1;
+
         let promptConfig: InquiryPromptConfig = normalizeInquiryPromptConfig(plugin.settings.inquiryPromptConfig);
         if (!plugin.settings.inquiryPromptConfig) {
             plugin.settings.inquiryPromptConfig = buildDefaultInquiryPromptConfig();
@@ -687,141 +680,256 @@ export function renderInquirySection(params: SectionParams): void {
 
         const zoneLabels: Record<string, string> = { setup: 'Setup', pressure: 'Pressure', payoff: 'Payoff' };
 
-        const updateSlot = async (
+        const createCustomSlot = (zone: 'setup' | 'pressure' | 'payoff'): InquiryPromptSlot => ({
+            id: `custom-${zone}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            label: '',
+            question: '',
+            enabled: true,
+            builtIn: false
+        });
+
+        const getZoneSlots = (zone: 'setup' | 'pressure' | 'payoff'): InquiryPromptSlot[] =>
+            promptConfig[zone] ?? [];
+
+        const getCanonicalSlot = (zone: 'setup' | 'pressure' | 'payoff'): InquiryPromptSlot => {
+            const slots = getZoneSlots(zone);
+            return slots[0] ?? buildDefaultInquiryPromptConfig()[zone][0];
+        };
+
+        const getCustomSlots = (zone: 'setup' | 'pressure' | 'payoff'): InquiryPromptSlot[] =>
+            getZoneSlots(zone).slice(1);
+
+        const savePromptConfig = async (next: InquiryPromptConfig) => {
+            plugin.settings.inquiryPromptConfig = next;
+            await plugin.saveSettings();
+            promptConfig = normalizeInquiryPromptConfig(next);
+        };
+
+        const updateCustomSlot = async (
             zone: 'setup' | 'pressure' | 'payoff',
-            index: number,
+            customIndex: number,
             patch: Partial<InquiryPromptSlot>
         ) => {
-            promptConfig = normalizeInquiryPromptConfig(plugin.settings.inquiryPromptConfig);
-            const slots = promptConfig[zone].slice();
-            slots[index] = { ...slots[index], ...patch };
-            promptConfig[zone] = slots;
-            plugin.settings.inquiryPromptConfig = promptConfig;
-            await plugin.saveSettings();
+            const customSlots = getCustomSlots(zone);
+            const current = customSlots[customIndex];
+            if (!current) return;
+            const nextSlot = { ...current, ...patch, builtIn: false };
+            const nextQuestion = nextSlot.question ?? '';
+            nextSlot.label = nextSlot.label ?? '';
+            nextSlot.question = nextQuestion;
+            nextSlot.enabled = !!nextSlot.enabled || nextQuestion.trim().length > 0;
+            customSlots[customIndex] = nextSlot;
+            const canonical = getCanonicalSlot(zone);
+            await savePromptConfig({ ...promptConfig, [zone]: [canonical, ...customSlots] });
         };
 
-        const getSlotInfo = (zone: 'setup' | 'pressure' | 'payoff') => {
-            const slots = promptConfig[zone] ?? [];
-            const builtInIndex = slots.findIndex(slot => slot.builtIn);
-            const builtInSlot = slots[builtInIndex >= 0 ? builtInIndex : 0];
-            const customIndex = slots.findIndex(slot => !slot.builtIn);
-            const customSlot = customIndex >= 0 ? slots[customIndex] : undefined;
-            return { slots, builtInIndex, builtInSlot, customIndex, customSlot };
+        const addCustomSlot = async (zone: 'setup' | 'pressure' | 'payoff', limit: number) => {
+            const customSlots = getCustomSlots(zone);
+            if (customSlots.length >= limit) return;
+            const canonical = getCanonicalSlot(zone);
+            const nextSlots = [...customSlots, createCustomSlot(zone)];
+            await savePromptConfig({ ...promptConfig, [zone]: [canonical, ...nextSlots] });
+            render();
         };
 
-        const renderSimpleRow = (zone: 'setup' | 'pressure' | 'payoff') => {
-            const card = containerEl.createDiv({ cls: 'ert-inquiry-prompt-card' });
+        const removeCustomSlot = async (zone: 'setup' | 'pressure' | 'payoff', customIndex: number) => {
+            const customSlots = getCustomSlots(zone);
+            if (!customSlots[customIndex]) return;
+            const canonical = getCanonicalSlot(zone);
+            const nextSlots = customSlots.filter((_, idx) => idx !== customIndex);
+            await savePromptConfig({ ...promptConfig, [zone]: [canonical, ...nextSlots] });
+            render();
+        };
+
+        const reorderCustomSlots = async (
+            zone: 'setup' | 'pressure' | 'payoff',
+            fromIndex: number,
+            toIndex: number
+        ) => {
+            if (fromIndex === toIndex) return;
+            const customSlots = getCustomSlots(zone);
+            if (fromIndex < 0 || fromIndex >= customSlots.length || toIndex < 0 || toIndex >= customSlots.length) return;
+            const nextSlots = [...customSlots];
+            const [moved] = nextSlots.splice(fromIndex, 1);
+            nextSlots.splice(toIndex, 0, moved);
+            const canonical = getCanonicalSlot(zone);
+            await savePromptConfig({ ...promptConfig, [zone]: [canonical, ...nextSlots] });
+            render();
+        };
+
+        const renderCustomRows = (
+            listEl: HTMLElement,
+            zone: 'setup' | 'pressure' | 'payoff',
+            customSlots: InquiryPromptSlot[],
+            startIndex: number,
+            endIndex: number,
+            dragState: { index: number | null }
+        ) => {
+            if (startIndex >= endIndex) return;
+            customSlots.slice(startIndex, endIndex).forEach((slot, offset) => {
+                const customIndex = startIndex + offset;
+                const row = listEl.createDiv({ cls: 'ert-inquiry-custom-row' });
+
+                const dragHandle = row.createDiv({ cls: 'rt-drag-handle' });
+                dragHandle.draggable = true;
+                setIcon(dragHandle, 'grip-vertical');
+                setTooltip(dragHandle, 'Drag to reorder');
+
+                const labelInput = new TextComponent(row);
+                labelInput.setPlaceholder('Label (optional)')
+                    .setValue(slot.label ?? '');
+                labelInput.inputEl.addClass('ert-input', 'ert-input--sm');
+                labelInput.onChange(async (value) => {
+                    await updateCustomSlot(zone, customIndex, { label: value });
+                });
+
+                const questionInput = new TextComponent(row);
+                questionInput.setPlaceholder('Question text')
+                    .setValue(slot.question ?? '');
+                questionInput.inputEl.addClass('ert-input', 'ert-input--full');
+                questionInput.onChange(async (value) => {
+                    await updateCustomSlot(zone, customIndex, { question: value });
+                });
+
+                const deleteBtn = row.createEl('button', { cls: 'ert-iconBtn' });
+                setIcon(deleteBtn, 'trash');
+                setTooltip(deleteBtn, 'Delete question');
+                deleteBtn.onclick = () => {
+                    void removeCustomSlot(zone, customIndex);
+                };
+
+                plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
+                    dragState.index = customIndex;
+                    row.classList.add('ert-inquiry-custom-dragging');
+                    e.dataTransfer?.setData('text/plain', customIndex.toString());
+                    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+                });
+
+                plugin.registerDomEvent(dragHandle, 'dragend', () => {
+                    row.classList.remove('ert-inquiry-custom-dragging');
+                    row.classList.remove('ert-inquiry-custom-dragover');
+                    dragState.index = null;
+                });
+
+                plugin.registerDomEvent(row, 'dragover', (e) => {
+                    e.preventDefault();
+                    row.classList.add('ert-inquiry-custom-dragover');
+                });
+
+                plugin.registerDomEvent(row, 'dragleave', () => {
+                    row.classList.remove('ert-inquiry-custom-dragover');
+                });
+
+                plugin.registerDomEvent(row, 'drop', (e) => {
+                    e.preventDefault();
+                    row.classList.remove('ert-inquiry-custom-dragover');
+                    const from = dragState.index ?? parseInt(e.dataTransfer?.getData('text/plain') || '-1', 10);
+                    if (Number.isNaN(from) || from < 0 || from === customIndex) {
+                        dragState.index = null;
+                        return;
+                    }
+                    dragState.index = null;
+                    void reorderCustomSlots(zone, from, customIndex);
+                });
+            });
+        };
+
+        const renderZoneCard = (
+            zone: 'setup' | 'pressure' | 'payoff',
+            dragState: { index: number | null }
+        ) => {
+            const card = promptContainer.createDiv({ cls: 'ert-inquiry-prompt-card' });
             card.createEl('div', { cls: 'ert-inquiry-prompt-title', text: zoneLabels[zone] });
 
-            const { builtInSlot, customIndex, customSlot } = getSlotInfo(zone);
-            const builtInQuestion = builtInSlot?.question ?? '';
-            let customQuestion = customSlot?.question ?? '';
-            let isCustomEnabled = !!customSlot?.enabled;
+            const canonicalSlot = getCanonicalSlot(zone);
+            const canonicalRow = card.createDiv({ cls: 'ert-inquiry-prompt-row ert-inquiry-prompt-row--canonical' });
+            canonicalRow.createDiv({ cls: 'ert-inquiry-prompt-label', text: 'Canonical' });
+            const canonicalInputWrap = canonicalRow.createDiv({ cls: 'ert-inquiry-prompt-input' });
+            const canonicalInput = new TextComponent(canonicalInputWrap);
+            canonicalInput.setPlaceholder('Canonical question')
+                .setValue(canonicalSlot?.question ?? '');
+            canonicalInput.inputEl.addClass('ert-inquiry-prompt-input-el', 'is-readonly');
+            canonicalInput.inputEl.readOnly = true;
 
-            const row = card.createDiv({ cls: 'ert-inquiry-prompt-row' });
-            row.createDiv({ cls: 'ert-inquiry-prompt-label', text: 'Question' });
+            card.createDiv({ cls: 'ert-inquiry-custom-header', text: 'Custom questions' });
+            const listEl = card.createDiv({ cls: 'ert-inquiry-custom-list' });
+            const customSlots = getCustomSlots(zone);
+            const primaryCount = Math.min(customSlots.length, freeCustomLimit);
+            renderCustomRows(listEl, zone, customSlots, 0, primaryCount, dragState);
 
-            const inputWrap = row.createDiv({ cls: 'ert-inquiry-prompt-input' });
-            const text = new TextComponent(inputWrap);
-            const activeQuestion = isCustomEnabled && customQuestion.trim().length ? customQuestion : builtInQuestion;
-            text.setPlaceholder('Question')
-                .setValue(activeQuestion);
-            text.inputEl.addClass('ert-inquiry-prompt-input-el');
-            text.inputEl.readOnly = !isCustomEnabled;
-            text.inputEl.toggleClass('is-readonly', !isCustomEnabled);
+            if (customSlots.length < freeCustomLimit) {
+                const addRow = card.createDiv({ cls: 'ert-inquiry-custom-actions' });
+                new ButtonComponent(addRow)
+                    .setButtonText('Add custom question')
+                    .setCta()
+                    .onClick(() => {
+                        void addCustomSlot(zone, freeCustomLimit);
+                    });
+            }
+        };
 
-            text.onChange(async (value) => {
-                if (!isCustomEnabled || customIndex < 0) return;
-                customQuestion = value;
-                await updateSlot(zone, customIndex, { question: value, enabled: true });
+        const renderAdvancedSection = (dragStates: Record<'setup' | 'pressure' | 'payoff', { index: number | null }>) => {
+            const advancedDetails = promptContainer.createEl('details', { cls: 'ert-setting-block ert-inquiry-prompts-advanced' });
+            advancedDetails.createEl('summary', { text: 'Advanced custom slots' });
+            advancedDetails.createEl('div', {
+                cls: 'ert-inquiry-prompts-advanced-hint',
+                text: isPro
+                    ? 'Add up to 5 more custom questions per zone.'
+                    : 'Pro unlocks five additional custom questions per zone.'
             });
 
-            const toggleWrap = inputWrap.createDiv({ cls: 'ert-inquiry-prompt-toggle' });
-            toggleWrap.createSpan({ text: 'Customize' });
-            const toggle = new ToggleComponent(toggleWrap);
-            toggle.setValue(isCustomEnabled);
-            toggle.setDisabled(customIndex < 0);
+            (['setup', 'pressure', 'payoff'] as const).forEach(zone => {
+                const block = advancedDetails.createDiv({ cls: 'ert-setting-block' });
+                block.createEl('div', { cls: 'setting-item-name', text: zoneLabels[zone] });
 
-            toggle.onChange(async (value) => {
-                if (customIndex < 0) return;
-                isCustomEnabled = value;
-                if (value) {
-                    if (!customQuestion.trim().length) customQuestion = builtInQuestion;
-                    text.setValue(customQuestion);
-                } else {
-                    text.setValue(builtInQuestion);
+                const listEl = block.createDiv({ cls: 'ert-inquiry-custom-list ert-inquiry-custom-list--advanced' });
+                const customSlots = getCustomSlots(zone);
+                renderCustomRows(listEl, zone, customSlots, freeCustomLimit, customSlots.length, dragStates[zone]);
+
+                if (!isPro && customSlots.length >= freeCustomLimit) {
+                    const placeholder = listEl.createDiv({ cls: 'ert-inquiry-custom-row ert-inquiry-custom-row--placeholder' });
+                    placeholder.createDiv({ cls: 'ert-inquiry-custom-placeholder', text: 'Add up to 5 more with Pro' });
                 }
-                text.inputEl.readOnly = !value;
-                text.inputEl.toggleClass('is-readonly', !value);
-                await updateSlot(zone, customIndex, { enabled: value, question: customQuestion });
+
+                if (isPro && customSlots.length >= freeCustomLimit && customSlots.length < proCustomLimit) {
+                    const addRow = block.createDiv({ cls: 'ert-inquiry-custom-actions' });
+                    new ButtonComponent(addRow)
+                        .setButtonText('Add pro question')
+                        .setCta()
+                        .onClick(() => {
+                            void addCustomSlot(zone, proCustomLimit);
+                        });
+                }
             });
         };
 
-        (['setup', 'pressure', 'payoff'] as const).forEach(zone => {
-            renderSimpleRow(zone);
-        });
+        const render = () => {
+            promptContainer.empty();
 
-        const advancedDetails = containerEl.createEl('details', { cls: 'ert-setting-block ert-inquiry-prompts-advanced' });
-        advancedDetails.createEl('summary', { text: 'Advanced prompt slots' });
-        advancedDetails.createEl('div', {
-            cls: 'ert-inquiry-prompts-advanced-hint',
-            text: 'Pro / advanced use only.'
-        });
-        if (!isPro) {
-            advancedDetails.createEl('div', {
-                cls: 'setting-item-description',
-                text: 'Pro unlocks additional prompt slots and advanced editing.'
+            const promptHeading = new Settings(promptContainer)
+                .setName('Inquiry prompts')
+                .setHeading();
+            addHeadingIcon(promptHeading, 'list');
+
+            promptContainer.createDiv({
+                cls: 'ert-inquiry-prompts-helper setting-item-description',
+                text: 'Inquiry ships with editorial defaults. Add custom questions per zone.'
             });
-        }
 
-        (['setup', 'pressure', 'payoff'] as const).forEach(zone => {
-            const block = advancedDetails.createDiv({ cls: 'ert-setting-block' });
-            block.createEl('div', { cls: 'setting-item-name', text: zoneLabels[zone] });
-            const slots = promptConfig[zone];
-            const builtInCount = slots.filter(slot => slot.builtIn).length;
+            const dragStates: Record<'setup' | 'pressure' | 'payoff', { index: number | null }> = {
+                setup: { index: null as number | null },
+                pressure: { index: null as number | null },
+                payoff: { index: null as number | null }
+            };
 
-            slots.forEach((slot, idx) => {
-                const isBuiltIn = !!slot.builtIn;
-                const customIndex = idx - builtInCount;
-                const isLocked = !isBuiltIn && customIndex >= maxCustomSlots;
-                const slotLabel = isBuiltIn ? `Prompt ${idx + 1} (built-in)` : `Prompt ${idx + 1}`;
-                const desc = isLocked
-                    ? 'Pro unlocks additional custom prompt slots.'
-                    : isBuiltIn
-                        ? 'Built-in prompt (text locked).'
-                        : 'Custom prompt slot.';
-
-                const slotSetting = new Settings(block)
-                    .setName(slotLabel)
-                    .setDesc(desc);
-
-                slotSetting.addToggle(toggle => {
-                    toggle.setValue(!!slot.enabled);
-                    toggle.setDisabled(isLocked);
-                    toggle.onChange(async (value) => {
-                        await updateSlot(zone, idx, { enabled: value });
-                    });
-                });
-
-                slotSetting.addText(text => {
-                    text.setPlaceholder('Label (optional)')
-                        .setValue(slot.label || '')
-                        .setDisabled(isLocked || isBuiltIn);
-                    text.onChange(async (value) => {
-                        await updateSlot(zone, idx, { label: value });
-                    });
-                });
-
-                slotSetting.addText(text => {
-                    text.setPlaceholder('Question text')
-                        .setValue(slot.question || '')
-                        .setDisabled(isLocked || isBuiltIn);
-                    text.onChange(async (value) => {
-                        await updateSlot(zone, idx, { question: value });
-                    });
-                });
+            (['setup', 'pressure', 'payoff'] as const).forEach(zone => {
+                renderZoneCard(zone, dragStates[zone]);
             });
-        });
+
+            renderAdvancedSection(dragStates);
+        };
+
+        render();
     };
 
     const renderCorpusCcSettings = () => {
