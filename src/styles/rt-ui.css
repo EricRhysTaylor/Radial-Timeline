@@ -3058,6 +3058,20 @@
   border-radius: calc(var(--ert-control-radius) + (var(--ert-gap-xs) / 2));
 }
 
+.ert-ui .ert-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  width: calc(var(--ert-gap-md) + var(--ert-gap-sm));
+  height: calc(var(--ert-gap-md) + var(--ert-gap-sm));
+  color: var(--text-muted);
+}
+
+.ert-ui .ert-drag-placeholder {
+  opacity: 0.35;
+}
+
 .ert-ui .ert-custom-beat-row .ert-drag-handle {
   justify-self: start;
 }
@@ -3066,6 +3080,82 @@
   background: var(--background-primary);
   border-style: dashed;
   opacity: 0.95;
+}
+
+.ert-ui .ert-hover-icon-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui .ert-hover-icon-preview {
+  width: calc(var(--ert-gap-md) + var(--ert-gap-sm));
+  height: calc(var(--ert-gap-md) + var(--ert-gap-sm));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.ert-ui .ert-hover-icon-preview svg {
+  width: calc(var(--ert-gap-md) + var(--ert-gap-xs));
+  height: calc(var(--ert-gap-md) + var(--ert-gap-xs));
+}
+
+.ert-ui .ert-hover-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ert-ui .ert-hover-checkbox {
+  width: calc(var(--ert-gap-md) + var(--ert-gap-xs));
+  height: calc(var(--ert-gap-md) + var(--ert-gap-xs));
+  cursor: pointer;
+  accent-color: var(--interactive-accent);
+}
+
+.ert-ui .ert-hover-metadata-preview {
+  margin-top: var(--ert-gap-md);
+}
+
+.ert-ui .ert-hover-preview-body {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.ert-ui .ert-hover-preview-line {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  font-size: 1em;
+  font-weight: 500;
+}
+
+.ert-ui .ert-hover-preview-icon {
+  width: calc(var(--ert-gap-md) + var(--ert-gap-xs));
+  height: calc(var(--ert-gap-md) + var(--ert-gap-xs));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.ert-ui .ert-hover-preview-icon svg {
+  width: calc(var(--ert-gap-sm) + var(--ert-gap-xs) + (var(--ert-gap-xs) / 2));
+  height: calc(var(--ert-gap-sm) + var(--ert-gap-xs) + (var(--ert-gap-xs) / 2));
+}
+
+.ert-ui .ert-hover-preview-text {
+  color: var(--text-normal);
+}
+
+.ert-ui .ert-hover-preview-empty {
+  font-size: 0.9em;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 /* -------------------------------------------------------------------------- */

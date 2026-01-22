@@ -227,7 +227,7 @@ export function renderStoryBeatsSection(params: {
                 row.draggable = true;
 
                 // Drag handle
-                const handle = row.createDiv({ cls: ['rt-drag-handle', 'ert-drag-handle'] });
+                const handle = row.createDiv({ cls: 'ert-drag-handle' });
                 setIcon(handle, 'grip-vertical');
                 setTooltip(handle, 'Drag to reorder beat');
 
@@ -284,10 +284,10 @@ export function renderStoryBeatsSection(params: {
                 // Drag and drop reorder
                 plugin.registerDomEvent(row, 'dragstart', (e) => {
                     e.dataTransfer?.setData('text/plain', index.toString());
-                    row.classList.add('rt-dragging');
+                    row.classList.add('is-dragging');
                 });
                 plugin.registerDomEvent(row, 'dragend', () => {
-                    row.classList.remove('rt-dragging');
+                    row.classList.remove('is-dragging');
                 });
                 plugin.registerDomEvent(row, 'dragover', (e) => {
                     e.preventDefault();
@@ -308,7 +308,7 @@ export function renderStoryBeatsSection(params: {
             const defaultAct = beats.length > 0 ? clampAct(beats[beats.length - 1].act, maxActs) : 1;
             const addRow = listContainer.createDiv({ cls: 'ert-custom-beat-row ert-custom-beat-add-row' });
 
-            addRow.createDiv({ cls: ['rt-drag-handle', 'rt-drag-placeholder', 'ert-drag-handle'] });
+            addRow.createDiv({ cls: ['ert-drag-handle', 'ert-drag-placeholder'] });
             addRow.createDiv({ cls: 'ert-grid-spacer' });
             addRow.createDiv({ cls: 'ert-beat-index ert-beat-add-index', text: '' });
 
@@ -602,7 +602,7 @@ export function renderStoryBeatsSection(params: {
                 const currentEnabled = hoverMeta?.enabled ?? false;
 
                 // 1. Drag handle (direct child)
-                const dragHandle = row.createDiv({ cls: 'rt-drag-handle' });
+                const dragHandle = row.createDiv({ cls: 'ert-drag-handle' });
                 dragHandle.draggable = true;
                 setIcon(dragHandle, 'grip-vertical');
                 setTooltip(dragHandle, 'Drag to reorder key');
@@ -611,8 +611,8 @@ export function renderStoryBeatsSection(params: {
                 row.createDiv({ cls: 'ert-grid-spacer' });
 
                 // 3. Icon input with preview (for hover synopsis)
-                const iconWrapper = row.createDiv({ cls: 'rt-hover-icon-wrapper' });
-                const iconPreview = iconWrapper.createDiv({ cls: 'rt-hover-icon-preview' });
+                const iconWrapper = row.createDiv({ cls: 'ert-hover-icon-wrapper' });
+                const iconPreview = iconWrapper.createDiv({ cls: 'ert-hover-icon-preview' });
                 setIcon(iconPreview, currentIcon);
                 const iconInput = iconWrapper.createEl('input', { 
                     type: 'text', 
@@ -623,10 +623,10 @@ export function renderStoryBeatsSection(params: {
                 setTooltip(iconInput, 'Lucide icon name for hover synopsis');
 
                 // 4. Checkbox to enable in hover synopsis (defined before icon handlers so they can reference it)
-                const checkboxWrapper = row.createDiv({ cls: 'rt-hover-checkbox-wrapper' });
+                const checkboxWrapper = row.createDiv({ cls: 'ert-hover-checkbox-wrapper' });
                 const checkbox = checkboxWrapper.createEl('input', { 
                     type: 'checkbox', 
-                    cls: 'rt-hover-checkbox'
+                    cls: 'ert-hover-checkbox'
                 });
                 checkbox.checked = currentEnabled;
                 setTooltip(checkbox, 'Show in hover synopsis');
@@ -721,13 +721,13 @@ export function renderStoryBeatsSection(params: {
 
                 plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
                     dragIndex = idx;
-                    row.classList.add('ert-template-dragging');
+                    row.classList.add('is-dragging');
                     e.dataTransfer?.setData('text/plain', idx.toString());
                     if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
                 });
 
                 plugin.registerDomEvent(dragHandle, 'dragend', () => {
-                    row.classList.remove('ert-template-dragging');
+                    row.classList.remove('is-dragging');
                     row.classList.remove('ert-template-dragover');
                     dragIndex = null;
                 });
@@ -767,14 +767,14 @@ export function renderStoryBeatsSection(params: {
             const addRow = listEl.createDiv({ cls: 'rt-yaml-row rt-yaml-add-row rt-yaml-row-hover-meta' });
 
             // 1. Handle placeholder (direct child)
-            addRow.createDiv({ cls: 'rt-drag-handle rt-drag-placeholder' });
+            addRow.createDiv({ cls: ['ert-drag-handle', 'ert-drag-placeholder'] });
 
             // 2. Spacer (direct child)
             addRow.createDiv({ cls: 'ert-grid-spacer' });
 
             // 3. Icon input with preview for new entry
-            const addIconWrapper = addRow.createDiv({ cls: 'rt-hover-icon-wrapper' });
-            const addIconPreview = addIconWrapper.createDiv({ cls: 'rt-hover-icon-preview' });
+            const addIconWrapper = addRow.createDiv({ cls: 'ert-hover-icon-wrapper' });
+            const addIconPreview = addIconWrapper.createDiv({ cls: 'ert-hover-icon-preview' });
             setIcon(addIconPreview, DEFAULT_HOVER_ICON);
             const addIconInput = addIconWrapper.createEl('input', { 
                 type: 'text', 
@@ -800,10 +800,10 @@ export function renderStoryBeatsSection(params: {
             };
 
             // 4. Checkbox for new entry (default unchecked)
-            const addCheckboxWrapper = addRow.createDiv({ cls: 'rt-hover-checkbox-wrapper' });
+            const addCheckboxWrapper = addRow.createDiv({ cls: 'ert-hover-checkbox-wrapper' });
             const addCheckbox = addCheckboxWrapper.createEl('input', { 
                 type: 'checkbox', 
-                cls: 'rt-hover-checkbox'
+                cls: 'ert-hover-checkbox'
             });
             addCheckbox.checked = false;
             setTooltip(addCheckbox, 'Show in hover synopsis');
@@ -904,9 +904,9 @@ export function renderStoryBeatsSection(params: {
     renderAdvancedTemplateEditor();
 
     // Hover Metadata Preview Panel
-    const hoverPreviewContainer = templateSection.createDiv({ cls: ['ert-previewFrame', 'ert-planetary-preview', 'rt-hover-metadata-preview'] });
+    const hoverPreviewContainer = templateSection.createDiv({ cls: ['ert-previewFrame', 'ert-hover-metadata-preview'] });
     const hoverPreviewHeading = hoverPreviewContainer.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Hover Metadata Preview' });
-    const hoverPreviewBody = hoverPreviewContainer.createDiv({ cls: ['ert-planetary-preview-body', 'rt-hover-preview-body'] });
+    const hoverPreviewBody = hoverPreviewContainer.createDiv({ cls: ['ert-hover-preview-body', 'ert-stack'] });
 
     const renderHoverPreview = () => {
         hoverPreviewBody.empty();
@@ -916,24 +916,24 @@ export function renderStoryBeatsSection(params: {
 
         if (enabledFields.length === 0) {
             hoverPreviewHeading.setText('Hover Metadata Preview (none enabled)');
-            hoverPreviewBody.createDiv({ text: 'Enable fields using the checkboxes above to show them in hover synopsis.', cls: 'rt-hover-preview-empty' });
+            hoverPreviewBody.createDiv({ text: 'Enable fields using the checkboxes above to show them in hover synopsis.', cls: 'ert-hover-preview-empty' });
             return;
         }
 
         hoverPreviewHeading.setText(`Hover Metadata Preview (${enabledFields.length} field${enabledFields.length > 1 ? 's' : ''})`);
 
         enabledFields.forEach(field => {
-            const lineEl = hoverPreviewBody.createDiv({ cls: 'rt-hover-preview-line' });
+            const lineEl = hoverPreviewBody.createDiv({ cls: 'ert-hover-preview-line' });
             
             // Icon bullet
-            const iconEl = lineEl.createSpan({ cls: 'rt-hover-preview-icon' });
+            const iconEl = lineEl.createSpan({ cls: 'ert-hover-preview-icon' });
             setIcon(iconEl, field.icon || DEFAULT_HOVER_ICON);
             
             // Key: Value text (show just key if no template value)
             const value = templateObj[field.key];
             const valueStr = Array.isArray(value) ? value.join(', ') : (value ?? '');
             const displayText = valueStr ? `${field.key}: ${valueStr}` : field.key;
-            lineEl.createSpan({ text: displayText, cls: 'rt-hover-preview-text' });
+            lineEl.createSpan({ text: displayText, cls: 'ert-hover-preview-text' });
         });
     };
 
