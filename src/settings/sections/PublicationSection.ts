@@ -20,7 +20,7 @@ function createTargetTickIcon(color: string, size = 16): SVGElement {
     svg.setAttribute('width', String(size));
     svg.setAttribute('height', String(size));
     svg.setAttribute('viewBox', '0 0 16 16');
-    svg.classList.add('rt-target-tick-icon');
+    svg.classList.add('ert-target-tick-icon');
     
     // Vertical line (pointing up like the timeline tick)
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -58,7 +58,7 @@ function createEstimateTickIcon(color: string, size = 16): SVGElement {
     svg.setAttribute('width', String(size));
     svg.setAttribute('height', String(size));
     svg.setAttribute('viewBox', '0 0 16 16');
-    svg.classList.add('rt-estimate-tick-icon');
+    svg.classList.add('ert-estimate-tick-icon');
     
     // Vertical line (pointing up)
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -205,7 +205,7 @@ export function renderPublicationSection(params: {
                     await plugin.saveSettings();
                     plugin.refreshTimelineIfNeeded(null);
                         // Update icon color
-                        const icon = setting.nameEl.querySelector('.rt-target-tick-icon');
+                        const icon = setting.nameEl.querySelector('.ert-target-tick-icon');
                         if (icon) {
                             icon.remove();
                             const newIcon = createTargetTickIcon(stageColor);
@@ -235,7 +235,7 @@ export function renderPublicationSection(params: {
                     }
                     
                     // Update icon color
-                    const icon = setting.nameEl.querySelector('.rt-target-tick-icon');
+                    const icon = setting.nameEl.querySelector('.ert-target-tick-icon');
                     if (icon) {
                         icon.remove();
                         const newColor = nowOverdue ? '#d05e5e' : stageColor;
@@ -257,9 +257,9 @@ export function renderPublicationSection(params: {
         setting.nameEl.appendText(` ${stage} target date`);
         
         // Add stage color indicator class
-        setting.settingEl.addClass(`rt-stage-target-${stage.toLowerCase()}`);
+        setting.settingEl.addClass(`ert-stage-target-${stage.toLowerCase()}`);
         if (overdue) {
-            setting.settingEl.addClass('rt-stage-target-overdue');
+            setting.settingEl.addClass('ert-stage-target-overdue');
         }
     }
 
@@ -345,7 +345,7 @@ export function renderPublicationSection(params: {
         });
 
     // --- Completion Estimate Preview ---
-    const previewContainer = containerEl.createDiv({ cls: 'rt-planetary-preview rt-completion-preview' });
+    const previewContainer = containerEl.createDiv({ cls: 'ert-previewFrame ert-planetary-preview ert-completion-preview' });
     
     // Quotes for different states
     const startingQuotes = [
@@ -376,18 +376,18 @@ export function renderPublicationSection(params: {
         try {
             const scenes = await getAllScenes(app, plugin);
             if (scenes.length === 0) {
-                previewContainer.addClass('rt-completion-preview-empty');
-                const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
+                previewContainer.addClass('ert-completion-preview-empty');
+                const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
                 heading.setText('Completion Estimate');
-                const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
+                const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
                 
                 // Inspiring quote for empty state
                 const quote = getRandomQuote(startingQuotes);
                 
-                const quoteEl = body.createDiv({ cls: 'rt-completion-empty-quote' });
-                quoteEl.createDiv({ cls: 'rt-completion-quote-text', text: `"${quote.text}"` });
-                quoteEl.createDiv({ cls: 'rt-completion-quote-author', text: `— ${quote.author}` });
-                body.createDiv({ cls: 'rt-completion-empty-hint', text: 'Create scenes to see progress calculations.' });
+                const quoteEl = body.createDiv({ cls: 'ert-completion-empty-quote' });
+                quoteEl.createDiv({ cls: 'ert-completion-quote-text', text: `"${quote.text}"` });
+                quoteEl.createDiv({ cls: 'ert-completion-quote-author', text: `— ${quote.author}` });
+                body.createDiv({ cls: 'ert-completion-empty-hint', text: 'Create scenes to see progress calculations.' });
                 return;
             }
 
@@ -395,7 +395,7 @@ export function renderPublicationSection(params: {
             const estimate: CompletionEstimate | null = plugin.calculateCompletionEstimate(scenes);
             
             if (!estimate) {
-                previewContainer.removeClass('rt-completion-preview-warn', 'rt-completion-preview-late', 'rt-completion-preview-stalled');
+                previewContainer.removeClass('ert-completion-preview-warn', 'ert-completion-preview-late', 'ert-completion-preview-stalled');
                 
                 // Use shared MilestonesService - single source of truth
                 // This ensures the hero cards match the timeline indicator exactly
@@ -404,22 +404,22 @@ export function renderPublicationSection(params: {
                 
                 if (!milestone || !milestone.type.includes('complete')) {
                     // Not actually complete - show a simple "no estimate available" message
-                    const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
+                    const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
                     heading.setText('Completion Estimate');
-                    const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
-                    body.createDiv({ cls: 'rt-completion-no-data', text: 'Complete some scenes to see progress calculations.' });
+                    const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
+                    body.createDiv({ cls: 'ert-completion-no-data', text: 'Complete some scenes to see progress calculations.' });
                     return;
                 }
                 
                 // Show hero card based on milestone type (single source of truth)
                 if (milestone.type === 'book-complete') {
                     // ULTIMATE celebration - the book is DONE!
-                    previewContainer.addClass('rt-completion-preview-book-complete');
+                    previewContainer.addClass('ert-completion-preview-book-complete');
                     
-                    const bgIcon = previewContainer.createDiv({ cls: 'rt-completion-complete-bg-icon' });
+                    const bgIcon = previewContainer.createDiv({ cls: 'ert-completion-complete-bg-icon' });
                     setIcon(bgIcon, 'shell');
                     
-                    const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
+                    const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
                     heading.setText('Book Complete');
                     
                     const bookCelebrations = [
@@ -434,18 +434,18 @@ export function renderPublicationSection(params: {
                     ];
                     const celebration = bookCelebrations[Math.floor(Math.random() * bookCelebrations.length)];
                     
-                    const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
-                    const completeContent = body.createDiv({ cls: 'rt-completion-complete' });
-                    completeContent.createDiv({ cls: 'rt-completion-complete-title', text: celebration.title });
-                    completeContent.createDiv({ cls: 'rt-completion-complete-subtitle', text: celebration.subtitle });
+                    const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
+                    const completeContent = body.createDiv({ cls: 'ert-completion-complete' });
+                    completeContent.createDiv({ cls: 'ert-completion-complete-title', text: celebration.title });
+                    completeContent.createDiv({ cls: 'ert-completion-complete-subtitle', text: celebration.subtitle });
                 } else if (milestone.type === 'stage-zero-complete') {
                     // Zero draft complete - first major milestone! Sprout icon
-                    previewContainer.addClass('rt-completion-preview-zero-complete');
+                    previewContainer.addClass('ert-completion-preview-zero-complete');
                     
-                    const bgIcon = previewContainer.createDiv({ cls: 'rt-completion-complete-bg-icon' });
+                    const bgIcon = previewContainer.createDiv({ cls: 'ert-completion-complete-bg-icon' });
                     setIcon(bgIcon, 'sprout');
                     
-                    const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
+                    const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
                     heading.setText('Zero Draft Complete');
                     
                     const zeroCelebrations = [
@@ -460,18 +460,18 @@ export function renderPublicationSection(params: {
                     ];
                     const celebration = zeroCelebrations[Math.floor(Math.random() * zeroCelebrations.length)];
                     
-                    const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
-                    const completeContent = body.createDiv({ cls: 'rt-completion-complete' });
-                    completeContent.createDiv({ cls: 'rt-completion-complete-title', text: celebration.title });
-                    completeContent.createDiv({ cls: 'rt-completion-complete-subtitle', text: celebration.subtitle });
+                    const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
+                    const completeContent = body.createDiv({ cls: 'ert-completion-complete' });
+                    completeContent.createDiv({ cls: 'ert-completion-complete-title', text: celebration.title });
+                    completeContent.createDiv({ cls: 'ert-completion-complete-subtitle', text: celebration.subtitle });
                 } else if (milestone.type === 'stage-author-complete') {
                     // Author stage complete - the sapling grows! Tree-pine icon
-                    previewContainer.addClass('rt-completion-preview-author-complete');
+                    previewContainer.addClass('ert-completion-preview-author-complete');
                     
-                    const bgIcon = previewContainer.createDiv({ cls: 'rt-completion-complete-bg-icon' });
+                    const bgIcon = previewContainer.createDiv({ cls: 'ert-completion-complete-bg-icon' });
                     setIcon(bgIcon, 'tree-pine');
                     
-                    const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
+                    const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
                     heading.setText('Author Stage Complete');
                     
                     const authorCelebrations = [
@@ -486,18 +486,18 @@ export function renderPublicationSection(params: {
                     ];
                     const celebration = authorCelebrations[Math.floor(Math.random() * authorCelebrations.length)];
                     
-                    const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
-                    const completeContent = body.createDiv({ cls: 'rt-completion-complete' });
-                    completeContent.createDiv({ cls: 'rt-completion-complete-title', text: celebration.title });
-                    completeContent.createDiv({ cls: 'rt-completion-complete-subtitle', text: celebration.subtitle });
+                    const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
+                    const completeContent = body.createDiv({ cls: 'ert-completion-complete' });
+                    completeContent.createDiv({ cls: 'ert-completion-complete-title', text: celebration.title });
+                    completeContent.createDiv({ cls: 'ert-completion-complete-subtitle', text: celebration.subtitle });
                 } else if (milestone.type === 'stage-house-complete') {
                     // House stage complete - the forest grows! Trees icon
-                    previewContainer.addClass('rt-completion-preview-house-complete');
+                    previewContainer.addClass('ert-completion-preview-house-complete');
                     
-                    const bgIcon = previewContainer.createDiv({ cls: 'rt-completion-complete-bg-icon' });
+                    const bgIcon = previewContainer.createDiv({ cls: 'ert-completion-complete-bg-icon' });
                     setIcon(bgIcon, 'trees');
                     
-                    const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
+                    const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
                     heading.setText('House Stage Complete');
                     
                     const houseCelebrations = [
@@ -512,66 +512,66 @@ export function renderPublicationSection(params: {
                     ];
                     const celebration = houseCelebrations[Math.floor(Math.random() * houseCelebrations.length)];
                     
-                    const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
-                    const completeContent = body.createDiv({ cls: 'rt-completion-complete' });
-                    completeContent.createDiv({ cls: 'rt-completion-complete-title', text: celebration.title });
-                    completeContent.createDiv({ cls: 'rt-completion-complete-subtitle', text: celebration.subtitle });
+                    const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
+                    const completeContent = body.createDiv({ cls: 'ert-completion-complete' });
+                    completeContent.createDiv({ cls: 'ert-completion-complete-title', text: celebration.title });
+                    completeContent.createDiv({ cls: 'ert-completion-complete-subtitle', text: celebration.subtitle });
                 }
                 return;
             }
 
             // Apply stage color and staleness styling
             previewContainer.removeClass(
-                'rt-completion-preview-warn', 'rt-completion-preview-late', 'rt-completion-preview-stalled', 'rt-completion-preview-fresh',
-                'rt-completion-stage-Zero', 'rt-completion-stage-Author', 'rt-completion-stage-House', 'rt-completion-stage-Press'
+                'ert-completion-preview-warn', 'ert-completion-preview-late', 'ert-completion-preview-stalled', 'ert-completion-preview-fresh',
+                'ert-completion-stage-Zero', 'ert-completion-stage-Author', 'ert-completion-stage-House', 'ert-completion-stage-Press'
             );
-            previewContainer.addClass(`rt-completion-stage-${estimate.stage}`);
+            previewContainer.addClass(`ert-completion-stage-${estimate.stage}`);
             if (estimate.staleness !== 'fresh') {
-                previewContainer.addClass(`rt-completion-preview-${estimate.staleness}`);
+                previewContainer.addClass(`ert-completion-preview-${estimate.staleness}`);
             }
 
-            const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
+            const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
             heading.setText(`Completion Estimate • ${estimate.stage} Stage`);
 
-            const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
+            const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
 
             // Encouragement quote when progress is slowing
             if (estimate.staleness !== 'fresh') {
                 const quote = getRandomQuote(perseveranceQuotes);
-                const encouragementEl = body.createDiv({ cls: 'rt-completion-encouragement' });
-                encouragementEl.createSpan({ cls: 'rt-completion-encouragement-text', text: `"${quote.text}"` });
-                encouragementEl.createSpan({ cls: 'rt-completion-encouragement-author', text: ` — ${quote.author}` });
+                const encouragementEl = body.createDiv({ cls: 'ert-completion-encouragement' });
+                encouragementEl.createSpan({ cls: 'ert-completion-encouragement-text', text: `"${quote.text}"` });
+                encouragementEl.createSpan({ cls: 'ert-completion-encouragement-author', text: ` — ${quote.author}` });
             }
 
             // Key metrics row
-            const metricsRow = body.createDiv({ cls: 'rt-completion-metrics-row' });
+            const metricsRow = body.createDiv({ cls: 'ert-completion-metrics-row' });
             
             // Completed / Total
-            const completedMetric = metricsRow.createDiv({ cls: 'rt-completion-metric' });
-            completedMetric.createDiv({ cls: 'rt-completion-metric-value', text: `${estimate.total - estimate.remaining}/${estimate.total}` });
-            completedMetric.createDiv({ cls: 'rt-completion-metric-label', text: 'Scenes Complete' });
+            const completedMetric = metricsRow.createDiv({ cls: 'ert-completion-metric' });
+            completedMetric.createDiv({ cls: 'ert-completion-metric-value', text: `${estimate.total - estimate.remaining}/${estimate.total}` });
+            completedMetric.createDiv({ cls: 'ert-completion-metric-label', text: 'Scenes Complete' });
 
             // Remaining
-            const remainingMetric = metricsRow.createDiv({ cls: 'rt-completion-metric' });
-            remainingMetric.createDiv({ cls: 'rt-completion-metric-value', text: String(estimate.remaining) });
-            remainingMetric.createDiv({ cls: 'rt-completion-metric-label', text: 'Remaining' });
+            const remainingMetric = metricsRow.createDiv({ cls: 'ert-completion-metric' });
+            remainingMetric.createDiv({ cls: 'ert-completion-metric-value', text: String(estimate.remaining) });
+            remainingMetric.createDiv({ cls: 'ert-completion-metric-label', text: 'Remaining' });
 
             // Rate
-            const rateMetric = metricsRow.createDiv({ cls: 'rt-completion-metric' });
+            const rateMetric = metricsRow.createDiv({ cls: 'ert-completion-metric' });
             const rateValue = estimate.rate > 0 ? estimate.rate.toFixed(1) : '—';
-            rateMetric.createDiv({ cls: 'rt-completion-metric-value', text: rateValue });
-            rateMetric.createDiv({ cls: 'rt-completion-metric-label', text: 'Per Week' });
+            rateMetric.createDiv({ cls: 'ert-completion-metric-value', text: rateValue });
+            rateMetric.createDiv({ cls: 'ert-completion-metric-label', text: 'Per Week' });
 
             // Staleness indicator
             if (estimate.staleness !== 'fresh') {
-                const stalenessRow = body.createDiv({ cls: 'rt-completion-staleness-row' });
+                const stalenessRow = body.createDiv({ cls: 'ert-completion-staleness-row' });
                 const stalenessText = getStalenessMessage(estimate);
-                stalenessRow.createSpan({ cls: 'rt-completion-staleness-icon', text: getStalenessIcon(estimate.staleness) });
-                stalenessRow.createSpan({ cls: 'rt-completion-staleness-text', text: stalenessText });
+                stalenessRow.createSpan({ cls: 'ert-completion-staleness-icon', text: getStalenessIcon(estimate.staleness) });
+                stalenessRow.createSpan({ cls: 'ert-completion-staleness-text', text: stalenessText });
             }
 
             // Estimated completion date
-            const dateRow = body.createDiv({ cls: 'rt-completion-date-row' });
+            const dateRow = body.createDiv({ cls: 'ert-completion-date-row' });
             if (estimate.date && estimate.labelText !== '?') {
                 const dateFormatter = new Intl.DateTimeFormat('en-US', { 
                     weekday: 'long', 
@@ -579,37 +579,37 @@ export function renderPublicationSection(params: {
                     month: 'long', 
                     day: 'numeric' 
                 });
-                dateRow.createDiv({ cls: 'rt-completion-date-label', text: 'Estimated Completion:' });
-                dateRow.createDiv({ cls: 'rt-completion-date-value', text: dateFormatter.format(estimate.date) });
+                dateRow.createDiv({ cls: 'ert-completion-date-label', text: 'Estimated Completion:' });
+                dateRow.createDiv({ cls: 'ert-completion-date-value', text: dateFormatter.format(estimate.date) });
                 
                 // Days until completion
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 const daysUntil = Math.ceil((estimate.date.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
                 if (daysUntil > 0) {
-                    dateRow.createDiv({ cls: 'rt-completion-days-until', text: `(${daysUntil} days from now)` });
+                    dateRow.createDiv({ cls: 'ert-completion-days-until', text: `(${daysUntil} days from now)` });
                 }
             } else {
-                dateRow.createDiv({ cls: 'rt-completion-date-label', text: 'Estimated Completion:' });
-                dateRow.createDiv({ cls: 'rt-completion-date-value rt-completion-date-unknown', text: '?' });
-                dateRow.createDiv({ cls: 'rt-completion-days-until', text: 'Insufficient data to calculate' });
+                dateRow.createDiv({ cls: 'ert-completion-date-label', text: 'Estimated Completion:' });
+                dateRow.createDiv({ cls: 'ert-completion-date-value ert-completion-date-unknown', text: '?' });
+                dateRow.createDiv({ cls: 'ert-completion-days-until', text: 'Insufficient data to calculate' });
             }
 
             // Monthly projection breakdown
             if (estimate.date && estimate.rate > 0) {
-                const projectionSection = body.createDiv({ cls: 'rt-completion-projection' });
+                const projectionSection = body.createDiv({ cls: 'ert-completion-projection' });
                 const projectionHeading = estimate.labelText === '?' 
                     ? 'Monthly Progress Projection (based on last known pace)'
                     : 'Monthly Progress Projection';
-                projectionSection.createDiv({ cls: 'rt-completion-projection-heading', text: projectionHeading });
+                projectionSection.createDiv({ cls: 'ert-completion-projection-heading', text: projectionHeading });
                 
-                const projectionGrid = projectionSection.createDiv({ cls: 'rt-completion-projection-grid' });
+                const projectionGrid = projectionSection.createDiv({ cls: 'ert-completion-projection-grid' });
                 renderMonthlyProjection(projectionGrid, estimate);
             }
 
             // Last progress info
             if (estimate.lastProgressDate) {
-                const lastProgressRow = body.createDiv({ cls: 'rt-completion-last-progress' });
+                const lastProgressRow = body.createDiv({ cls: 'ert-completion-last-progress' });
                 const daysSince = Math.floor((Date.now() - estimate.lastProgressDate.getTime()) / (24 * 60 * 60 * 1000));
                 const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
                 lastProgressRow.setText(`Last progress: ${dateFormatter.format(estimate.lastProgressDate)} (${daysSince} day${daysSince !== 1 ? 's' : ''} ago) • ${estimate.windowDays}-day rolling window`);
@@ -617,10 +617,10 @@ export function renderPublicationSection(params: {
 
         } catch (e) {
             previewContainer.empty();
-            const heading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
+            const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
             heading.setText('Completion Estimate');
-            const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-completion-preview-body' });
-            body.createDiv({ cls: 'rt-completion-error', text: 'Error calculating estimate.' });
+            const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
+            body.createDiv({ cls: 'ert-completion-error', text: 'Error calculating estimate.' });
             console.error('Completion estimate preview error:', e);
         }
     }
@@ -726,7 +726,7 @@ export function renderPublicationSection(params: {
         // Render the projection table
         if (months.length === 0) return;
 
-        const headerRow = container.createDiv({ cls: 'rt-completion-projection-header' });
+        const headerRow = container.createDiv({ cls: 'ert-completion-projection-header' });
         headerRow.createSpan({ text: 'Month' });
         headerRow.createSpan({ text: '+Scenes' });
         headerRow.createSpan({ text: 'Total' });
@@ -739,25 +739,25 @@ export function renderPublicationSection(params: {
             const isFuture = idx > 0; // First month is current, rest are future projections
             const hasTargets = m.stageTargets.length > 0;
             const rowClasses = [
-                'rt-completion-projection-row',
-                m.isLast ? 'rt-completion-projection-final' : '',
-                isFuture && estimate.staleness !== 'fresh' ? `rt-completion-projection-${estimate.staleness}` : '',
-                hasTargets ? 'rt-completion-projection-has-target' : ''
+                'ert-completion-projection-row',
+                m.isLast ? 'ert-completion-projection-final' : '',
+                isFuture && estimate.staleness !== 'fresh' ? `ert-completion-projection-${estimate.staleness}` : '',
+                hasTargets ? 'ert-completion-projection-has-target' : ''
             ].filter(Boolean).join(' ');
             
             const row = container.createDiv({ cls: rowClasses });
             
             // Month cell with target markers
-            const monthCell = row.createSpan({ cls: 'rt-completion-projection-month' });
+            const monthCell = row.createSpan({ cls: 'ert-completion-projection-month' });
             monthCell.createSpan({ text: m.month });
             
             // Add target markers for this month
             if (hasTargets) {
-                const markersContainer = monthCell.createSpan({ cls: 'rt-completion-target-markers' });
+                const markersContainer = monthCell.createSpan({ cls: 'ert-completion-target-markers' });
                 for (const target of m.stageTargets) {
                     const stageColor = getStageColor(plugin, target.stage);
                     const displayColor = target.isOverdue ? '#d05e5e' : stageColor;
-                    const marker = markersContainer.createSpan({ cls: 'rt-completion-target-marker' });
+                    const marker = markersContainer.createSpan({ cls: 'ert-completion-target-marker' });
                     marker.setCssStyles({ backgroundColor: displayColor });
                     
                     // Tooltip with stage and date (Obsidian's styled tooltip)
@@ -768,18 +768,18 @@ export function renderPublicationSection(params: {
                 }
             }
             
-            row.createSpan({ cls: 'rt-completion-projection-added', text: `+${m.added}` });
-            row.createSpan({ cls: 'rt-completion-projection-cumulative', text: String(m.cumulative) });
+            row.createSpan({ cls: 'ert-completion-projection-added', text: `+${m.added}` });
+            row.createSpan({ cls: 'ert-completion-projection-cumulative', text: String(m.cumulative) });
             
             const percent = Math.round((m.cumulative / estimate.total) * 100);
-            const progressContainer = row.createSpan({ cls: 'rt-completion-projection-progress' });
+            const progressContainer = row.createSpan({ cls: 'ert-completion-projection-progress' });
             const barClasses = [
-                'rt-completion-projection-bar',
-                isFuture && estimate.staleness !== 'fresh' ? `rt-completion-bar-${estimate.staleness}` : ''
+                'ert-completion-projection-bar',
+                isFuture && estimate.staleness !== 'fresh' ? `ert-completion-bar-${estimate.staleness}` : ''
             ].filter(Boolean).join(' ');
             const progressBar = progressContainer.createDiv({ cls: barClasses });
             progressBar.setCssStyles({ width: `${percent}%` });
-            progressContainer.createSpan({ cls: 'rt-completion-projection-percent', text: `${percent}%` });
+            progressContainer.createSpan({ cls: 'ert-completion-projection-percent', text: `${percent}%` });
         }
     }
 

@@ -82,6 +82,8 @@ export class InquiryGlyph {
     private depthGroup: SVGGElement;
     private badgeScaleFactor = 1;
     private zoneDots: Array<{ circle: SVGCircleElement; text: SVGTextElement }> = [];
+    private zoneControlGroups = new Map<InquiryZone, SVGGElement>();
+    private zoneControlStates = new Map<InquiryZone, { hovered: boolean; locked: boolean }>();
     private promptState?: InquiryGlyphPromptState;
     private zoneNumberMarkers = new Map<InquiryZone, Array<{
         group: SVGGElement;
@@ -155,6 +157,15 @@ export class InquiryGlyph {
     updatePromptState(state: InquiryGlyphPromptState): void {
         this.promptState = state;
         this.syncZoneNumberMarkers();
+    }
+
+    setZoneScaleLocked(zone: InquiryZone, locked: boolean): void {
+        const group = this.zoneControlGroups.get(zone);
+        if (!group) return;
+        const state = this.ensureZoneControlState(zone);
+        if (state.locked === locked) return;
+        state.locked = locked;
+        this.updateZoneControlScale(state, group);
     }
 
     setDisplayScale(scale: number, unitsPerPx: number): void {
@@ -268,7 +279,17 @@ export class InquiryGlyph {
             const zoneRadius = Math.hypot(zoneX, zoneY);
             const zoneAngle = Math.atan2(zoneY, zoneX);
             const zoneGroup = document.createElementNS(SVG_NS, 'g');
-            zoneGroup.classList.add('inq-zone-segment-wrap', `inq-zone-segment-wrap--${zone.id}`);
+            zoneGroup.classList.add(
+                'inq-zone-segment-wrap',
+                `inq-zone-segment-wrap--${zone.id}`,
+                'inq-zone-control',
+                `inq-zone-control--${zone.id}`
+            );
+            zoneGroup.setAttribute('transform', 'scale(1)');
+            this.zoneControlGroups.set(zone.id, zoneGroup);
+            if (zone.id === 'pressure') {
+                this.bindZoneControlInteractions(zoneGroup, zone.id);
+            }
 
             const translateGroup = document.createElementNS(SVG_NS, 'g');
             translateGroup.setAttribute('transform', `translate(${zoneX.toFixed(2)} ${zoneY.toFixed(2)})`);
@@ -360,6 +381,46 @@ export class InquiryGlyph {
         }
 
         return group;
+    }
+
+    private ensureZoneControlState(zone: InquiryZone): { hovered: boolean; locked: boolean } {
+        let state = this.zoneControlStates.get(zone);
+        if (!state) {
+            state = { hovered: false, locked: false };
+            this.zoneControlStates.set(zone, state);
+        }
+        return state;
+    }
+
+    private updateZoneControlScale(
+        state: { hovered: boolean; locked: boolean },
+        group: SVGGElement
+    ): void {
+        const shouldScale = state.hovered || state.locked;
+        group.classList.toggle('is-scaled', shouldScale);
+        group.classList.toggle('is-locked', state.locked);
+        group.setAttribute('transform', `scale(${shouldScale ? '1.2' : '1'})`);
+    }
+
+    private bindZoneControlInteractions(group: SVGGElement, zone: InquiryZone): void {
+        const state = this.ensureZoneControlState(zone);
+        group.addEventListener('pointerover', event => {
+            const related = event.relatedTarget;
+            if (related instanceof Node && group.contains(related)) return;
+            state.hovered = true;
+            this.updateZoneControlScale(state, group);
+        });
+        group.addEventListener('pointerout', event => {
+            const related = event.relatedTarget;
+            if (related instanceof Node && group.contains(related)) return;
+            state.hovered = false;
+            this.updateZoneControlScale(state, group);
+        });
+        group.addEventListener('click', () => {
+            if (state.locked) return;
+            state.locked = true;
+            this.updateZoneControlScale(state, group);
+        });
     }
 
     private syncZoneNumberMarkers(): void {

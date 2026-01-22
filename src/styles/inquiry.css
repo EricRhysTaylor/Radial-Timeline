@@ -10,6 +10,7 @@
   --ert-inquiry-high: var(--rt-color-due);
   --ert-inquiry-active-zone-color: var(--ert-inquiry-zone-setup);
   --ert-inquiry-hit-color: var(--ert-inquiry-zone-setup);
+  --ert-inquiry-zone-inactive-fill: var(--interactive-normal);
   --ert-inquiry-zone-setup: #2fbf6a;
   --ert-inquiry-zone-setup-stroke: color-mix(in srgb, var(--ert-inquiry-zone-setup) 35%, #ffffff);
   --ert-inquiry-zone-pressure: #3b7ddd;
@@ -423,16 +424,22 @@
   pointer-events: auto;
 }
 
+.inq-zone-control {
+  transform-box: view-box;
+  transform-origin: 0 0;
+  transition: transform 220ms ease;
+}
+
 .inq-zone-segment-wrap--setup .inq-zone-segment-path {
-  fill: var(--ert-inquiry-zone-setup);
+  fill: var(--ert-inquiry-zone-inactive-fill);
 }
 
 .inq-zone-segment-wrap--pressure .inq-zone-segment-path {
-  fill: var(--ert-inquiry-zone-pressure);
+  fill: var(--ert-inquiry-zone-inactive-fill);
 }
 
 .inq-zone-segment-wrap--payoff .inq-zone-segment-path {
-  fill: var(--ert-inquiry-zone-payoff);
+  fill: var(--ert-inquiry-zone-inactive-fill);
 }
 
 .inq-zone-segment-path {
@@ -461,7 +468,7 @@
 }
 
 .ert-inquiry-zone-pill {
-  fill: var(--background-secondary);
+  fill: var(--ert-inquiry-zone-color, var(--background-secondary));
   fill-opacity: 1;
   stroke: none;
   stroke-width: 0;

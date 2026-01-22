@@ -71,9 +71,10 @@ const STAGE_DURATION_MS = 700;
 const SWEEP_DURATION_MS = STAGE_DURATION_MS * STAGE_LABELS.length;
 const MIN_PROCESSING_MS = 5000;
 const SIMULATION_DURATION_MS = 20000;
-const CC_CELL_SIZE = 32;
-const CC_CELL_GAP = 4;
-const CC_ANCHOR_X = VIEWBOX_MAX - 260;
+const CC_CELL_SIZE = 20;
+const CC_CELL_GAP = 8;
+const CC_RIGHT_MARGIN = 50;
+const CC_ANCHOR_X = VIEWBOX_MAX - CC_RIGHT_MARGIN - CC_CELL_SIZE;
 const CC_ANCHOR_Y = 320;
 
 type InquiryQuestion = {
@@ -143,6 +144,7 @@ export class InquiryView extends ItemView {
     private runningAnimationFrame?: number;
     private runningAnimationStart?: number;
     private runningStageIndex = 0;
+    private wasRunning = false;
     private minimapLayout?: { startX: number; length: number };
     private zonePromptElements = new Map<InquiryZone, { group: SVGGElement; bg: SVGRectElement; text: SVGTextElement }>();
     private glyphAnchor?: SVGGElement;
@@ -329,6 +331,8 @@ export class InquiryView extends ItemView {
 
         this.scopeToggleButton = this.createIconButton(hudGroup, 0, 0, iconSize, 'columns-2', 'Toggle scope');
         this.scopeToggleIcon = this.scopeToggleButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
+        this.scopeToggleButton.querySelector('title')?.remove();
+        addTooltipData(this.scopeToggleButton, 'Toggle scope', 'left');
         this.registerDomEvent(this.scopeToggleButton as unknown as HTMLElement, 'click', () => {
             this.handleScopeChange(this.state.scope === 'book' ? 'saga' : 'book');
         });
@@ -347,6 +351,8 @@ export class InquiryView extends ItemView {
         this.registerDomEvent(this.helpToggleButton as unknown as HTMLElement, 'click', () => this.toggleHelpTips());
 
         this.artifactButton = this.createIconButton(hudGroup, artifactX, 0, iconSize, 'aperture', 'Save artifact');
+        this.artifactButton.querySelector('title')?.remove();
+        addTooltipData(this.artifactButton, 'Save artifact', 'left');
         this.registerDomEvent(this.artifactButton as unknown as HTMLElement, 'click', () => { void this.saveArtifact(); });
 
         const engineBadgeX = iconSize + iconGap;
@@ -1593,14 +1599,19 @@ export class InquiryView extends ItemView {
         } else {
             this.ccGroup.classList.remove('ert-hidden');
         }
-        this.ccGroup.setAttribute('transform', `translate(${CC_ANCHOR_X} ${CC_ANCHOR_Y})`);
+        const count = entries.length;
+        const stackHeight = (count * CC_CELL_SIZE) + (Math.max(0, count - 1) * CC_CELL_GAP);
+        const maxBottom = VIEWBOX_MAX - CC_CELL_SIZE;
+        const maxTop = maxBottom - stackHeight;
+        const topY = Math.min(CC_ANCHOR_Y, maxTop);
+        this.ccGroup.setAttribute('transform', `translate(${CC_ANCHOR_X} ${topY})`);
 
         if (!this.ccLabel) {
             this.ccLabel = this.createSvgText(this.ccGroup, 'ert-inquiry-cc-label', 'Corpus (CC)', 0, 0);
-            this.ccLabel.setAttribute('text-anchor', 'start');
+            this.ccLabel.setAttribute('text-anchor', 'middle');
             this.ccLabel.setAttribute('dominant-baseline', 'middle');
         }
-        this.ccLabel.setAttribute('x', '0');
+        this.ccLabel.setAttribute('x', String(CC_CELL_SIZE / 2));
         this.ccLabel.setAttribute('y', '-16');
 
         if (!this.ccEmptyText) {
@@ -1611,7 +1622,6 @@ export class InquiryView extends ItemView {
         this.ccEmptyText.setAttribute('x', '0');
         this.ccEmptyText.setAttribute('y', String(CC_CELL_SIZE / 2));
 
-        const count = entries.length;
         const corner = Math.max(2, Math.round(CC_CELL_SIZE * 0.125));
         const step = CC_CELL_SIZE + CC_CELL_GAP;
 
@@ -2031,10 +2041,15 @@ export class InquiryView extends ItemView {
     private updateRunningState(): void {
         if (!this.rootSvg) return;
         const isRunning = this.state.isRunning;
+        const wasRunning = this.wasRunning;
+        this.wasRunning = isRunning;
         this.rootSvg.classList.toggle('is-running', isRunning);
         const isError = this.rootSvg.classList.contains('is-error');
         const hasResult = !!this.state.activeResult && !isError;
         this.rootSvg.classList.toggle('is-results', !isRunning && hasResult);
+        if (wasRunning && !isRunning) {
+            this.glyph?.setZoneScaleLocked('pressure', false);
+        }
         if (isRunning) {
             this.startRunningAnimations();
         } else {
@@ -2136,11 +2151,6 @@ export class InquiryView extends ItemView {
     private handleRingClick(mode: InquiryMode): void {
         if (this.state.isRunning) return;
         this.setActiveLens(mode);
-        const zone = this.state.activeZone;
-        if (!zone) return;
-        const prompt = this.getActivePrompt(zone);
-        if (!prompt) return;
-        void this.handleQuestionClick(prompt);
     }
 
     private handleGlyphClick(): void {
@@ -2173,7 +2183,7 @@ export class InquiryView extends ItemView {
         if (cacheEnabled) {
             const cached = this.sessionStore.getSession(key);
             if (cached) {
-                cachedResult = this.normalizeLegacyResult(cached.result);
+                cachedResult = this.normalizeLegacyResult({ ...cached.result, mode: this.state.mode });
                 cacheStatus = 'fresh';
             } else {
                 const prior = this.sessionStore.getLatestByBaseKey(baseKey);
@@ -2275,15 +2285,22 @@ export class InquiryView extends ItemView {
         const findings = result.findings.map(finding => {
             const legacy = finding as InquiryFinding & { severity?: InquirySeverity; confidence?: InquiryConfidence };
             return {
-                ...finding,
+                refId: legacy.refId,
+                kind: legacy.kind,
+                status: legacy.status,
                 impact: legacy.impact ?? legacy.severity ?? 'low',
-                assessmentConfidence: legacy.assessmentConfidence ?? legacy.confidence ?? 'low'
+                assessmentConfidence: legacy.assessmentConfidence ?? legacy.confidence ?? 'low',
+                headline: legacy.headline,
+                bullets: legacy.bullets,
+                related: legacy.related,
+                evidenceType: legacy.evidenceType
             };
         });
         return {
             ...result,
             verdict: {
-                ...verdict,
+                flow: verdict.flow,
+                depth: verdict.depth,
                 impact,
                 assessmentConfidence
             },
@@ -3360,7 +3377,17 @@ export class InquiryView extends ItemView {
     }
 
     private buildArtifactContent(result: InquiryResult, embedJson: boolean, briefTitle?: string): string {
-        const generatedAt = new Date().toISOString();
+        const submittedAt = result.submittedAt ? new Date(result.submittedAt) : null;
+        const completedAt = result.completedAt ? new Date(result.completedAt) : null;
+        const submittedAtLocal = submittedAt && Number.isFinite(submittedAt.getTime())
+            ? this.formatInquiryBriefTimestamp(submittedAt, { includeSeconds: true })
+            : 'unknown';
+        const completedAtLocal = completedAt && Number.isFinite(completedAt.getTime())
+            ? this.formatInquiryBriefTimestamp(completedAt, { includeSeconds: true })
+            : 'unknown';
+        const durationLocal = typeof result.roundTripMs === 'number' && Number.isFinite(result.roundTripMs)
+            ? this.formatRoundTripDuration(result.roundTripMs)
+            : 'unknown';
         const artifactId = `artifact-${Date.now()}`;
         const questionIds = result.questionId ? `\n  - ${result.questionId}` : '';
         const fingerprint = result.corpusFingerprint || 'not available';
@@ -3373,7 +3400,6 @@ export class InquiryView extends ItemView {
         const frontmatter = [
             '---',
             `artifactId: ${artifactId}`,
-            `generatedAt: ${generatedAt}`,
             `scope: ${result.scope}`,
             `targetId: ${result.focusId}`,
             `mode: ${result.mode}`,
@@ -3385,6 +3411,9 @@ export class InquiryView extends ItemView {
             `aiModelResolved: ${aiModelResolved}`,
             `aiStatus: ${aiStatus}`,
             `aiReason: ${aiReason}`,
+            `submittedAt: ${submittedAtLocal}`,
+            `returnedAt: ${completedAtLocal}`,
+            `duration: ${durationLocal}`,
             '---',
             ''
         ].join('\n');
@@ -3397,8 +3426,6 @@ export class InquiryView extends ItemView {
             return `- ${finding.headline} (${finding.kind}, ${finding.impact}, ${finding.assessmentConfidence})\n${bullets}`;
         }).join('\n');
 
-        const submittedAt = result.submittedAt ? new Date(result.submittedAt) : null;
-        const completedAt = result.completedAt ? new Date(result.completedAt) : null;
         const timingLines: string[] = [];
         if (submittedAt && Number.isFinite(submittedAt.getTime())) {
             timingLines.push(`Submitted: ${this.formatInquiryBriefTimestamp(submittedAt, { includeSeconds: true })}`);
@@ -3431,7 +3458,7 @@ export class InquiryView extends ItemView {
             ? [
                 '## RT Artifact Data (Do Not Edit)',
                 '```json',
-                JSON.stringify(result, null, 2),
+                JSON.stringify(this.normalizeLegacyResult(result), null, 2),
                 '```',
                 ''
             ].join('\n')

@@ -29,6 +29,27 @@
   --ert-chip-bg: color-mix(in srgb, var(--background-secondary) 88%, var(--interactive-accent) 4%);
   --ert-previewFrame-bg: color-mix(in srgb, var(--background-secondary) 90%, var(--interactive-accent) 2%);
   --ert-previewFrame-border: color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
+  --rt-completion-warn: #ff9a00;
+  --rt-completion-warn-soft: #ffb347;
+  --rt-completion-late: #ff4d4f;
+  --rt-completion-late-soft: #ff7875;
+  --rt-completion-stalled: #c1121f;
+  --rt-completion-stalled-soft: #e63946;
+  --rt-completion-gold: var(--rt-color-search);
+  --rt-completion-green: var(--rt-color-press);
+  --rt-completion-zero-soft: #d4b8e8;
+  --rt-completion-author-soft: #a8c4e8;
+  --rt-completion-house-soft: #e8c4a8;
+  --rt-completion-progress-grad: linear-gradient(90deg, var(--rt-color-author), var(--rt-color-press));
+  --rt-completion-bar-warn: linear-gradient(90deg, var(--rt-completion-warn), var(--rt-completion-warn-soft));
+  --rt-completion-bar-late: linear-gradient(90deg, var(--rt-completion-late), var(--rt-completion-late-soft));
+  --rt-completion-bar-stalled: linear-gradient(90deg, var(--rt-completion-stalled), var(--rt-completion-stalled-soft));
+  --rt-completion-complete-grad: linear-gradient(135deg, #2d5a2d 0%, #3d7a3d 25%, #4a9a4a 50%, #3d7a3d 75%, #2d5a2d 100%);
+  --rt-completion-zero-grad: linear-gradient(135deg, #3d2d5a 0%, #5a3d7a 25%, #7a4d9a 50%, #5a3d7a 75%, #3d2d5a 100%);
+  --rt-completion-author-grad: linear-gradient(135deg, #2d3d5a 0%, #3d5a7a 25%, #4d7a9a 50%, #3d5a7a 75%, #2d3d5a 100%);
+  --rt-completion-house-grad: linear-gradient(135deg, #5a3d2d 0%, #7a4d3d 25%, #9a5d47 50%, #7a4d3d 75%, #5a3d2d 100%);
+  --rt-completion-book-grad: linear-gradient(135deg, #5a4a0a 0%, #8b7a1a 20%, #c9a227 45%, #e6c340 55%, #c9a227 70%, #8b7a1a 90%, #5a4a0a 100%);
+  --rt-completion-title-grad: linear-gradient(180deg, var(--rt-color-empty) 0%, var(--rt-completion-gold) 100%);
   --ert-panel-bg: var(--background-primary);
   --ert-panel-border: var(--background-modifier-border);
   --ert-panel-radius: 12px;
@@ -2312,6 +2333,598 @@
 
 .ert-ui .ert-planetary-validation-icon.is-invalid {
   color: var(--text-error);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Publication completion preview (ERT)                                       */
+/* -------------------------------------------------------------------------- */
+
+.ert-ui .ert-completion-preview {
+  text-align: left;
+  align-items: stretch;
+}
+
+.ert-ui .ert-completion-preview-body {
+  font-size: 1rem;
+  font-weight: 400;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-group-gap);
+}
+
+.ert-ui .ert-completion-stage-Zero {
+  border-color: color-mix(in srgb, var(--rt-color-zero) 40%, transparent);
+  background: color-mix(in srgb, var(--rt-color-zero) 8%, transparent);
+}
+
+.ert-ui .ert-completion-stage-Zero .ert-planetary-preview-heading {
+  color: var(--rt-color-zero);
+}
+
+.ert-ui .ert-completion-stage-Author {
+  border-color: color-mix(in srgb, var(--rt-color-author) 40%, transparent);
+  background: color-mix(in srgb, var(--rt-color-author) 8%, transparent);
+}
+
+.ert-ui .ert-completion-stage-Author .ert-planetary-preview-heading {
+  color: var(--rt-color-author);
+}
+
+.ert-ui .ert-completion-stage-House {
+  border-color: color-mix(in srgb, var(--rt-color-house) 40%, transparent);
+  background: color-mix(in srgb, var(--rt-color-house) 8%, transparent);
+}
+
+.ert-ui .ert-completion-stage-House .ert-planetary-preview-heading {
+  color: var(--rt-color-house);
+}
+
+.ert-ui .ert-completion-stage-Press {
+  border-color: color-mix(in srgb, var(--rt-color-press) 40%, transparent);
+  background: color-mix(in srgb, var(--rt-color-press) 8%, transparent);
+}
+
+.ert-ui .ert-completion-stage-Press .ert-planetary-preview-heading {
+  color: var(--rt-color-press);
+}
+
+.ert-ui .ert-completion-preview-warn {
+  border-color: color-mix(in srgb, var(--rt-completion-warn) 50%, transparent);
+  box-shadow: inset 0 0 1.25rem color-mix(in srgb, var(--rt-completion-warn) 8%, transparent);
+}
+
+.ert-ui .ert-completion-preview-late {
+  border-color: color-mix(in srgb, var(--rt-completion-late) 50%, transparent);
+  box-shadow: inset 0 0 1.25rem color-mix(in srgb, var(--rt-completion-late) 8%, transparent);
+}
+
+.ert-ui .ert-completion-preview-stalled {
+  border-color: color-mix(in srgb, var(--rt-completion-stalled) 60%, transparent);
+  box-shadow: inset 0 0 1.25rem color-mix(in srgb, var(--rt-completion-stalled) 10%, transparent);
+}
+
+.ert-ui .ert-completion-metrics-row {
+  display: flex;
+  justify-content: space-around;
+  gap: var(--ert-group-gap);
+  padding: var(--ert-pad-sm) 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+}
+
+.ert-ui .ert-completion-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui .ert-completion-metric-value {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: var(--text-normal);
+  line-height: 1;
+}
+
+.ert-ui .ert-completion-metric-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ert-ui .ert-completion-staleness-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  padding: 0.625rem 0.875rem;
+  background: color-mix(in srgb, var(--background-secondary) 85%, transparent);
+  border-radius: var(--ert-gap-sm);
+}
+
+.ert-ui .ert-completion-staleness-icon {
+  font-size: 1.1rem;
+}
+
+.ert-ui .ert-completion-staleness-text {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.ert-ui .ert-completion-preview-warn .ert-completion-staleness-text {
+  color: var(--rt-completion-warn);
+}
+
+.ert-ui .ert-completion-preview-late .ert-completion-staleness-text {
+  color: var(--rt-completion-late);
+}
+
+.ert-ui .ert-completion-preview-stalled .ert-completion-staleness-text {
+  color: var(--rt-completion-stalled);
+}
+
+.ert-ui .ert-completion-date-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ert-gap-sm);
+  padding: var(--ert-pad-sm) 0;
+}
+
+.ert-ui .ert-completion-date-label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.ert-ui .ert-completion-date-value {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.ert-ui .ert-completion-date-value.ert-completion-date-unknown {
+  font-size: 1.5rem;
+  color: var(--text-faint);
+}
+
+.ert-ui .ert-completion-days-until {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.ert-ui .ert-completion-projection {
+  margin-top: var(--ert-gap-sm);
+  padding-top: var(--ert-pad-sm);
+  border-top: 1px solid color-mix(in srgb, var(--background-modifier-border) 60%, transparent);
+}
+
+.ert-ui .ert-completion-projection-heading {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: var(--ert-pad-sm);
+}
+
+.ert-ui .ert-completion-projection-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.ert-ui .ert-completion-projection-header {
+  display: grid;
+  grid-template-columns: 4.375rem 4.0625rem 3.4375rem 1fr;
+  gap: var(--ert-gap-sm);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  padding-bottom: 0.375rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+}
+
+.ert-ui .ert-completion-projection-row {
+  display: grid;
+  grid-template-columns: 4.375rem 4.0625rem 3.4375rem 1fr;
+  gap: var(--ert-gap-sm);
+  font-size: 0.9rem;
+  padding: 0.375rem 0;
+  align-items: center;
+}
+
+.ert-ui .ert-completion-projection-row.ert-completion-projection-final {
+  background: color-mix(in srgb, var(--text-success) 8%, transparent);
+  border-radius: 0.375rem;
+  padding: var(--ert-gap-sm);
+  margin: 0 calc(-1 * var(--ert-gap-sm));
+}
+
+.ert-ui .ert-completion-projection-month {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  font-weight: 500;
+  color: var(--text-normal);
+}
+
+.ert-ui .ert-completion-projection-added {
+  color: var(--rt-color-press);
+  font-weight: 500;
+}
+
+.ert-ui .ert-completion-projection-cumulative {
+  color: var(--text-muted);
+}
+
+.ert-ui .ert-completion-projection-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  height: var(--ert-gap-md);
+}
+
+.ert-ui .ert-completion-projection-bar {
+  height: var(--ert-gap-sm);
+  background: var(--rt-completion-progress-grad);
+  border-radius: calc(var(--ert-gap-sm) / 2);
+  min-width: var(--ert-gap-xs);
+  max-width: calc(100% - 2.5rem);
+}
+
+.ert-ui .ert-completion-bar-warn {
+  background: var(--rt-completion-bar-warn);
+}
+
+.ert-ui .ert-completion-bar-late {
+  background: var(--rt-completion-bar-late);
+}
+
+.ert-ui .ert-completion-bar-stalled {
+  background: var(--rt-completion-bar-stalled);
+}
+
+.ert-ui .ert-completion-projection-warn .ert-completion-projection-added {
+  color: var(--rt-completion-warn);
+}
+
+.ert-ui .ert-completion-projection-late .ert-completion-projection-added {
+  color: var(--rt-completion-late);
+}
+
+.ert-ui .ert-completion-projection-stalled .ert-completion-projection-added {
+  color: var(--rt-completion-stalled);
+}
+
+.ert-ui .ert-completion-projection-stalled .ert-completion-projection-added::after {
+  content: ' ?';
+  opacity: 0.7;
+}
+
+.ert-ui .ert-completion-projection-percent {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  min-width: 2rem;
+}
+
+.ert-ui .ert-completion-target-markers {
+  display: flex;
+  gap: 0.1875rem;
+  align-items: center;
+}
+
+.ert-ui .ert-completion-target-marker {
+  width: var(--ert-gap-sm);
+  height: var(--ert-gap-sm);
+  border-radius: 0.125rem;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.ert-ui .ert-completion-target-marker:hover {
+  transform: scale(1.3);
+}
+
+.ert-ui .ert-completion-projection-has-target {
+  background: color-mix(in srgb, var(--background-secondary) 92%, transparent);
+  border-radius: 0.25rem;
+  margin: 0 calc(-1 * var(--ert-gap-xs));
+  padding-left: var(--ert-gap-xs);
+  padding-right: var(--ert-gap-xs);
+}
+
+.ert-ui .ert-completion-last-progress {
+  font-size: 0.8rem;
+  color: var(--text-faint);
+  padding-top: var(--ert-gap-sm);
+  border-top: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  text-align: center;
+}
+
+.ert-ui .ert-completion-no-data {
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: var(--ert-pad-md);
+}
+
+.ert-ui .ert-completion-error {
+  color: var(--text-error);
+  font-style: italic;
+  text-align: center;
+  padding: var(--ert-pad-md);
+}
+
+.ert-ui .ert-completion-complete {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  text-align: center;
+  padding: calc(var(--ert-pad-md) + var(--ert-gap-sm)) calc(var(--ert-pad-md) + var(--ert-gap-xs));
+  position: relative;
+  z-index: 1;
+}
+
+.ert-ui .ert-completion-complete-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--rt-color-empty);
+  text-shadow: 0 0.125rem 0.5rem color-mix(in srgb, var(--text-normal) 30%, transparent);
+}
+
+.ert-ui .ert-completion-complete-subtitle {
+  font-size: 1rem;
+  color: color-mix(in srgb, var(--text-on-accent) 85%, transparent);
+  font-weight: 500;
+}
+
+.ert-ui :is(.ert-completion-preview-book-complete,
+  .ert-completion-preview-zero-complete,
+  .ert-completion-preview-author-complete,
+  .ert-completion-preview-house-complete) {
+  position: relative;
+  overflow: hidden;
+}
+
+.ert-ui .ert-completion-preview-book-complete {
+  background: var(--rt-completion-book-grad);
+  border: 0.125rem solid var(--rt-completion-gold);
+  box-shadow:
+    0 0 2.5rem color-mix(in srgb, var(--rt-completion-gold) 40%, transparent),
+    0 0 5rem color-mix(in srgb, var(--rt-completion-gold) 20%, transparent),
+    inset 0 0 3.75rem color-mix(in srgb, var(--rt-completion-gold) 15%, transparent);
+  animation: ert-book-complete-glow 3s ease-in-out infinite;
+}
+
+@keyframes ert-book-complete-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 2.5rem color-mix(in srgb, var(--rt-completion-gold) 40%, transparent),
+      0 0 5rem color-mix(in srgb, var(--rt-completion-gold) 20%, transparent),
+      inset 0 0 3.75rem color-mix(in srgb, var(--rt-completion-gold) 15%, transparent);
+  }
+
+  50% {
+    box-shadow: 0 0 3.125rem color-mix(in srgb, var(--rt-completion-gold) 50%, transparent),
+      0 0 6.25rem color-mix(in srgb, var(--rt-completion-gold) 30%, transparent),
+      inset 0 0 5rem color-mix(in srgb, var(--rt-completion-gold) 20%, transparent);
+  }
+}
+
+.ert-ui .ert-completion-preview-book-complete .ert-planetary-preview-heading {
+  color: color-mix(in srgb, var(--text-on-accent) 95%, transparent);
+  text-shadow: 0 0.0625rem 0.25rem color-mix(in srgb, var(--text-normal) 30%, transparent);
+  position: relative;
+  z-index: 1;
+}
+
+.ert-ui .ert-completion-preview-book-complete .ert-completion-complete-title {
+  font-size: 1.8rem;
+  background: var(--rt-completion-title-grad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0.125rem 0.25rem color-mix(in srgb, var(--text-normal) 40%, transparent));
+}
+
+.ert-ui .ert-completion-preview-book-complete .ert-completion-complete-subtitle {
+  color: color-mix(in srgb, var(--text-on-accent) 90%, transparent);
+}
+
+.ert-ui .ert-completion-preview-book-complete .ert-completion-complete-bg-icon {
+  opacity: 0.18;
+}
+
+.ert-ui .ert-completion-preview-book-complete .ert-completion-complete-bg-icon svg {
+  width: 12.5rem;
+  height: 12.5rem;
+  color: var(--rt-completion-gold);
+}
+
+.ert-ui .ert-completion-preview-zero-complete {
+  background: var(--rt-completion-zero-grad);
+  border: 0.125rem solid var(--rt-color-zero);
+  box-shadow:
+    0 0 1.875rem color-mix(in srgb, var(--rt-color-zero) 35%, transparent),
+    inset 0 0 3.75rem color-mix(in srgb, var(--rt-color-zero) 12%, transparent);
+}
+
+.ert-ui .ert-completion-preview-zero-complete .ert-planetary-preview-heading {
+  color: color-mix(in srgb, var(--text-on-accent) 90%, transparent);
+  position: relative;
+  z-index: 1;
+}
+
+.ert-ui .ert-completion-preview-zero-complete .ert-completion-complete-title {
+  color: var(--rt-color-empty);
+}
+
+.ert-ui .ert-completion-preview-zero-complete .ert-completion-complete-bg-icon {
+  opacity: 0.15;
+}
+
+.ert-ui .ert-completion-preview-zero-complete .ert-completion-complete-bg-icon svg {
+  color: var(--rt-completion-zero-soft);
+}
+
+.ert-ui .ert-completion-preview-author-complete {
+  background: var(--rt-completion-author-grad);
+  border: 0.125rem solid var(--rt-color-author);
+  box-shadow:
+    0 0 1.875rem color-mix(in srgb, var(--rt-color-author) 35%, transparent),
+    inset 0 0 3.75rem color-mix(in srgb, var(--rt-color-author) 12%, transparent);
+}
+
+.ert-ui .ert-completion-preview-author-complete .ert-planetary-preview-heading {
+  color: color-mix(in srgb, var(--text-on-accent) 90%, transparent);
+  position: relative;
+  z-index: 1;
+}
+
+.ert-ui .ert-completion-preview-author-complete .ert-completion-complete-title {
+  color: var(--rt-color-empty);
+}
+
+.ert-ui .ert-completion-preview-author-complete .ert-completion-complete-bg-icon {
+  opacity: 0.15;
+}
+
+.ert-ui .ert-completion-preview-author-complete .ert-completion-complete-bg-icon svg {
+  color: var(--rt-completion-author-soft);
+}
+
+.ert-ui .ert-completion-preview-house-complete {
+  background: var(--rt-completion-house-grad);
+  border: 0.125rem solid var(--rt-color-house);
+  box-shadow:
+    0 0 1.875rem color-mix(in srgb, var(--rt-color-house) 35%, transparent),
+    inset 0 0 3.75rem color-mix(in srgb, var(--rt-color-house) 12%, transparent);
+}
+
+.ert-ui .ert-completion-preview-house-complete .ert-planetary-preview-heading {
+  color: color-mix(in srgb, var(--text-on-accent) 90%, transparent);
+  position: relative;
+  z-index: 1;
+}
+
+.ert-ui .ert-completion-preview-house-complete .ert-completion-complete-title {
+  color: var(--rt-color-empty);
+}
+
+.ert-ui .ert-completion-preview-house-complete .ert-completion-complete-bg-icon {
+  opacity: 0.15;
+}
+
+.ert-ui .ert-completion-preview-house-complete .ert-completion-complete-bg-icon svg {
+  color: var(--rt-completion-house-soft);
+}
+
+.ert-ui .ert-completion-complete-bg-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ert-ui .ert-completion-complete-bg-icon svg {
+  width: 11.25rem;
+  height: 11.25rem;
+  color: var(--rt-color-empty);
+}
+
+.ert-ui .ert-completion-empty-quote {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  padding: calc(var(--ert-pad-md) + var(--ert-gap-sm)) var(--ert-pad-md);
+}
+
+.ert-ui .ert-completion-quote-text {
+  font-size: 1.15rem;
+  font-style: italic;
+  color: var(--text-normal);
+  text-align: center;
+  line-height: 1.5;
+  max-width: 25rem;
+}
+
+.ert-ui .ert-completion-quote-author {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.ert-ui .ert-completion-empty-hint {
+  font-size: 0.85rem;
+  color: var(--text-faint);
+  margin-top: var(--ert-gap-sm);
+  padding-top: var(--ert-gap-sm);
+  border-top: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+}
+
+.ert-ui .ert-completion-encouragement {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 0.625rem var(--ert-pad-md);
+  margin-bottom: var(--ert-gap-xs);
+  background: color-mix(in srgb, var(--background-secondary) 90%, transparent);
+  border-radius: var(--ert-gap-sm);
+  line-height: 1.5;
+}
+
+.ert-ui .ert-completion-encouragement-text {
+  color: var(--text-muted);
+}
+
+.ert-ui .ert-completion-encouragement-author {
+  color: var(--text-faint);
+  font-size: 0.8rem;
+}
+
+.ert-ui .ert-completion-preview-warn .ert-completion-encouragement {
+  background: color-mix(in srgb, var(--rt-completion-warn) 6%, transparent);
+}
+
+.ert-ui .ert-completion-preview-late .ert-completion-encouragement {
+  background: color-mix(in srgb, var(--rt-completion-late) 6%, transparent);
+}
+
+.ert-ui .ert-completion-preview-stalled .ert-completion-encouragement {
+  background: color-mix(in srgb, var(--rt-completion-stalled) 8%, transparent);
+}
+
+/* Stage target tick icons and overdue rows */
+.ert-ui .ert-target-tick-icon,
+.ert-ui .ert-estimate-tick-icon {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: var(--ert-gap-xs);
+  flex-shrink: 0;
+}
+
+.ert-settings-root .ert-stage-target-zero .setting-item-name,
+.ert-settings-root .ert-stage-target-author .setting-item-name,
+.ert-settings-root .ert-stage-target-house .setting-item-name,
+.ert-settings-root .ert-stage-target-press .setting-item-name {
+  display: flex;
+  align-items: center;
+}
+
+.ert-settings-root .ert-stage-target-overdue .setting-item-name {
+  color: var(--rt-color-due);
+}
+
+.ert-settings-root .ert-stage-target-overdue .setting-item-description {
+  color: var(--rt-color-due);
+  opacity: 0.85;
 }
 
 /* -------------------------------------------------------------------------- */
