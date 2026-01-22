@@ -647,24 +647,6 @@
   opacity: 0;
 }
 
-/* Settings Validation Icon */
-.rt-planetary-validation-icon {
-  display: inline-flex;
-  vertical-align: middle;
-  margin-left: 10px;
-  margin-right: 8px;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.rt-planetary-validation-icon.rt-valid {
-  color: var(--text-success);
-}
-
-.rt-planetary-validation-icon.rt-invalid {
-  color: var(--text-error);
-}
-
 /* Planetary Time (Alien Calendar) Synopsis Line */
 .rt-planetary-time-text {
   fill: var(--text-muted, currentColor);

@@ -24,8 +24,6 @@ export type TooltipPlacement = 'top' | 'bottom' | 'left' | 'right';
 let customTooltipEl: HTMLElement | null = null;
 let currentTarget: Element | null = null;
 let hideTimeout: number | null = null;
-let tooltipMeasureCanvas: HTMLCanvasElement | null = null;
-let tooltipMeasureContext: CanvasRenderingContext2D | null = null;
 
 /**
  * Apply a tooltip to an element.
@@ -210,47 +208,12 @@ function ensureCustomTooltip() {
     document.body.appendChild(customTooltipEl);
 }
 
-function ensureMeasureContext(): CanvasRenderingContext2D | null {
-    if (tooltipMeasureContext) return tooltipMeasureContext;
-    if (!tooltipMeasureCanvas) {
-        tooltipMeasureCanvas = document.createElement('canvas');
-    }
-    tooltipMeasureContext = tooltipMeasureCanvas.getContext('2d');
-    return tooltipMeasureContext;
-}
-
-function updateTooltipWidth(text: string): void {
+function updateTooltipWidth(): void {
     if (!customTooltipEl) return;
-    const lines = text.split(/\r?\n/);
-    const context = ensureMeasureContext();
-    if (!context) {
-        customTooltipEl.style.removeProperty('--rt-tooltip-width');
-        return;
-    }
-
-    const styles = window.getComputedStyle(customTooltipEl);
-    const font = styles.font || `${styles.fontWeight} ${styles.fontSize} ${styles.fontFamily}`;
-    context.font = font;
-
-    let maxLineWidth = 0;
-    lines.forEach(line => {
-        const width = context.measureText(line).width;
-        if (width > maxLineWidth) maxLineWidth = width;
-    });
-
-    const paddingLeft = parseFloat(styles.paddingLeft) || 0;
-    const paddingRight = parseFloat(styles.paddingRight) || 0;
-    const maxWidthValue = parseFloat(styles.maxWidth);
-    const maxContentWidth = Number.isFinite(maxWidthValue)
-        ? Math.max(0, maxWidthValue - paddingLeft - paddingRight)
-        : maxLineWidth;
-    const contentWidth = Math.min(maxLineWidth, maxContentWidth);
-    const targetWidth = contentWidth + paddingLeft + paddingRight;
-
-    if (targetWidth > 0) {
-        customTooltipEl.style.setProperty('--rt-tooltip-width', `${Math.ceil(targetWidth)}px`);
-    } else {
-        customTooltipEl.style.removeProperty('--rt-tooltip-width');
+    customTooltipEl.style.removeProperty('--rt-tooltip-width');
+    const rect = customTooltipEl.getBoundingClientRect();
+    if (rect.width > 0) {
+        customTooltipEl.style.setProperty('--rt-tooltip-width', `${Math.ceil(rect.width)}px`);
     }
 }
 
@@ -266,7 +229,7 @@ function showCustomTooltip(target: Element, text: string, placement: TooltipPlac
 
     // Update content
     customTooltipEl.setText(text);
-    updateTooltipWidth(text);
+    updateTooltipWidth();
     
     // Reset classes
     customTooltipEl.className = 'rt-tooltip'; // reset placement classes

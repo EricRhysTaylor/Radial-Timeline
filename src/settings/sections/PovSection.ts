@@ -61,9 +61,9 @@ export function renderPovSection(params: {
         .setDesc(t('settings.pov.yamlOverrides.desc'));
 
     // Preview section
-    const previewContainer = containerEl.createDiv({ cls: 'rt-planetary-preview rt-pov-preview' });
-    const previewHeading = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading', text: t('settings.pov.preview.heading') });
-    const previewBody = previewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-pov-preview-body' });
+    const previewContainer = containerEl.createDiv({ cls: 'ert-previewFrame ert-planetary-preview ert-pov-preview' });
+    const previewHeading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading', text: t('settings.pov.preview.heading') });
+    const previewBody = previewContainer.createDiv({ cls: 'ert-pov-preview-body' });
 
     const buildPreviewEntries = (
         characters: string[],
@@ -116,9 +116,9 @@ export function renderPovSection(params: {
             povValue: string,
             globalMode?: GlobalPovMode
         ) => {
-            const example = previewBody.createDiv({ cls: 'rt-pov-example' });
-            example.createDiv({ cls: 'rt-pov-example-label', text: label });
-            const content = example.createDiv({ cls: 'rt-pov-example-content' });
+            const example = previewBody.createDiv({ cls: 'ert-pov-example' });
+            example.createDiv({ cls: 'ert-pov-example-label', text: label });
+            const content = example.createDiv({ cls: 'ert-pov-example-content' });
             renderNamesWithSup(content, buildPreviewEntries(characters, povValue, globalMode));
         };
 

@@ -36,8 +36,8 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
                 renderMicroBackdrops();
             }));
 
-    const listContainer = containerEl.createDiv({ cls: 'rt-micro-backdrop-body' });
-    const list = listContainer.createDiv({ cls: 'rt-micro-backdrop-list' });
+    const listContainer = containerEl.createDiv({ cls: 'ert-micro-backdrop-body' });
+    const list = listContainer.createDiv({ cls: 'ert-micro-backdrop-list ert-stack' });
     let expandedIndex: number | null = null;
 
     const getMicroBackdrops = (): MicroBackdropConfig[] =>
@@ -60,7 +60,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
     };
 
     const renderMicroBackdropRow = (config: MicroBackdropConfig, index: number) => {
-        const wrapper = list.createDiv({ cls: 'rt-micro-backdrop-wrapper' });
+        const wrapper = list.createDiv({ cls: 'ert-micro-backdrop-wrapper ert-stack' });
         const rawTitle = config.title?.trim();
         const title = rawTitle ? `${rawTitle} microring` : `Micro backdrop ${index + 1}`;
         const rangeValue = config.range?.trim() ?? '';
@@ -70,7 +70,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
         const row = new Settings(wrapper)
             .setName(title)
             .setDesc(rangeSummary);
-        row.settingEl.classList.add('rt-micro-backdrop-row');
+        row.settingEl.classList.add('ert-micro-backdrop-row');
 
         const isExpanded = expandedIndex === index;
         row.addButton(button => {
@@ -98,7 +98,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
 
         if (!isExpanded) return;
 
-        const details = wrapper.createDiv({ cls: 'rt-micro-backdrop-details' });
+        const details = wrapper.createDiv({ cls: 'ert-micro-backdrop-details ert-stack' });
 
         const titleColorSetting = new Settings(details)
             .setName('Title + color')
@@ -127,7 +127,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
             });
         });
 
-        const colorControls = titleColorSetting.controlEl.createDiv({ cls: 'ert-color-grid-controls rt-micro-backdrop-color-controls' });
+        const colorControls = titleColorSetting.controlEl.createDiv({ cls: 'ert-color-grid-controls' });
         let colorTextInput: TextComponent | undefined;
         let colorPickerRef: ColorComponent | undefined;
         let swatchEl: HTMLDivElement | null = null;

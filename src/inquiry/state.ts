@@ -9,16 +9,16 @@ export type InquiryAiStatus = 'success' | 'rejected' | 'unavailable' | 'timeout'
 export interface InquiryVerdict {
     flow: number;
     depth: number;
-    severity: InquirySeverity; // Impact rating (always present).
-    confidence: InquiryConfidence; // Assessment confidence (always present).
+    impact: InquirySeverity; // Impact rating (always present).
+    assessmentConfidence: InquiryConfidence; // Assessment confidence (always present).
 }
 
 export interface InquiryFinding {
     refId: string;
     kind: 'none' | 'loose_end' | 'continuity' | 'escalation' | 'conflict' | 'unclear' | 'error';
     status: 'introduced' | 'escalated' | 'resolved' | 'dropped' | 'unclear';
-    severity: InquirySeverity;
-    confidence: InquiryConfidence;
+    impact: InquirySeverity;
+    assessmentConfidence: InquiryConfidence;
     headline: string;
     bullets: string[];
     related: string[];
@@ -40,6 +40,9 @@ export interface InquiryResult {
     aiModelResolved?: string;
     aiStatus?: InquiryAiStatus;
     aiReason?: string;
+    submittedAt?: string;
+    completedAt?: string;
+    roundTripMs?: number;
 }
 
 export interface InquiryState {

@@ -5,8 +5,8 @@ export interface InquiryGlyphProps {
     focusLabel: string;
     flowValue: number;  // 0..1 normalized
     depthValue: number; // 0..1 normalized
-    severity: InquirySeverity;
-    confidence: InquiryConfidence;
+    impact: InquirySeverity;
+    assessmentConfidence: InquiryConfidence;
     errorRing?: 'flow' | 'depth' | null;
 }
 
@@ -189,8 +189,8 @@ export class InquiryGlyph {
             props.flowValue,
             FLOW_RADIUS,
             FLOW_STROKE,
-            props.severity,
-            props.confidence,
+            props.impact,
+            props.assessmentConfidence,
             'flow',
             errorRing
         );
@@ -204,8 +204,8 @@ export class InquiryGlyph {
             props.depthValue,
             DEPTH_RADIUS,
             DEPTH_STROKE,
-            props.severity,
-            props.confidence,
+            props.impact,
+            props.assessmentConfidence,
             'depth',
             errorRing
         );
@@ -472,15 +472,15 @@ export class InquiryGlyph {
         value: number,
         radius: number,
         strokeWidth: number,
-        severity: InquirySeverity,
-        confidence: InquiryConfidence,
+        impact: InquirySeverity,
+        assessmentConfidence: InquiryConfidence,
         kind: 'flow' | 'depth',
         errorRing: InquiryGlyphProps['errorRing']
     ): void {
         ring.classList.remove('is-severity-low', 'is-severity-medium', 'is-severity-high');
         ring.classList.remove('is-confidence-low', 'is-confidence-medium', 'is-confidence-high');
-        ring.classList.add(`is-severity-${severity}`);
-        ring.classList.add(`is-confidence-${confidence}`);
+        ring.classList.add(`is-severity-${impact}`);
+        ring.classList.add(`is-confidence-${assessmentConfidence}`);
         const showError = errorRing === kind;
         const errorColor = showError ? '#ff4d4d' : undefined;
         this.updateRingArc(progress, arc, value, radius, strokeWidth, errorColor);

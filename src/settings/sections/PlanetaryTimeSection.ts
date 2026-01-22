@@ -68,7 +68,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         });
 
     // Wrap all dependent controls so we can hide them together
-    const bodyEl = containerEl.createDiv({ cls: 'rt-planetary-body' });
+    const bodyEl = containerEl.createDiv({ cls: 'ert-planetary-body' });
     visibilityTargets.push(bodyEl);
 
     // Active profile selector + buttons
@@ -81,18 +81,19 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
     let selector: DropdownComponent | undefined;
 
     // Add active calendar icon (shows when a profile is selected)
-    const activeIcon = bodyEl.createDiv({ cls: 'rt-planetary-validation-icon' });
+    const activeIcon = bodyEl.createDiv({ cls: 'ert-planetary-validation-icon' });
     setIcon(activeIcon, 'orbit');
 
     const updateActiveIcon = () => {
         const profile = profiles.find(p => p.id === activeProfileId);
         // Hide icon when no profile is selected
         if (!profile || !activeProfileId) {
-            activeIcon.classList.add('rt-planetary-hidden');
+            activeIcon.classList.add('ert-settings-hidden');
+            activeIcon.classList.remove('is-valid');
             return;
         }
-        activeIcon.classList.remove('rt-planetary-hidden');
-        activeIcon.classList.add('rt-valid'); // Always show as active/valid
+        activeIcon.classList.remove('ert-settings-hidden');
+        activeIcon.classList.add('is-valid'); // Always show as active/valid
         
         setTooltip(activeIcon, `${profile.label} Calendar Active`, { placement: 'bottom' });
     };
@@ -176,8 +177,8 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
     renderSelector();
 
     // Profile fields
-    const fieldsContainer = bodyEl.createDiv({ cls: 'rt-planetary-fields' });
-    const previewContainer = bodyEl.createDiv({ cls: 'rt-planetary-preview' });
+    const fieldsContainer = bodyEl.createDiv({ cls: 'ert-planetary-fields' });
+    const previewContainer = bodyEl.createDiv({ cls: 'ert-previewFrame ert-planetary-preview' });
     visibilityTargets.push(selectorSetting.settingEl, fieldsContainer, previewContainer);
 
     const flash = (input: HTMLInputElement, type: 'success' | 'error') => {
@@ -216,8 +217,8 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         fieldsContainer.empty();
         const profile = getActiveProfile();
         const hasProfile = !!profile;
-        fieldsContainer.classList.toggle('rt-planetary-hidden', !hasProfile);
-        previewContainer.classList.toggle('rt-planetary-hidden', !hasProfile);
+        fieldsContainer.classList.toggle('ert-settings-hidden', !hasProfile);
+        previewContainer.classList.toggle('ert-settings-hidden', !hasProfile);
         if (!hasProfile) return;
 
         const addNumberField = (label: string, key: keyof PlanetaryProfile, hint?: string) => {
@@ -312,13 +313,13 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         previewContainer.empty();
         const profile = getActiveProfile();
         const hasProfile = !!profile;
-        previewContainer.classList.toggle('rt-planetary-hidden', !hasProfile);
-        fieldsContainer.classList.toggle('rt-planetary-hidden', !hasProfile);
+        previewContainer.classList.toggle('ert-settings-hidden', !hasProfile);
+        fieldsContainer.classList.toggle('ert-settings-hidden', !hasProfile);
         if (!hasProfile) return;
         const result = convertFromEarth(new Date(), profile);
-        const header = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
+        const header = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
         header.setText(`Quick preview (Earth → ${profile.label || 'local'})`);
-        const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body' });
+        const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body' });
         if (!result) {
             body.setText(t('planetary.preview.invalid'));
             return;
@@ -329,7 +330,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
     const applyVisibility = (enabled: boolean) => {
         visibilityTargets.forEach(el => {
             if (!el) return;
-            el.classList.toggle('rt-planetary-hidden', !enabled);
+            el.classList.toggle('ert-settings-hidden', !enabled);
         });
     };
 

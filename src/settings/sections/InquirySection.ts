@@ -10,6 +10,7 @@ import type {
 } from '../../types/settings';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { addHeadingIcon, addWikiLink } from '../wikiLink';
+import { ERT_CLASSES } from '../../ui/classes';
 import { isProfessionalActive } from './ProfessionalSection';
 import { buildDefaultInquiryPromptConfig, normalizeInquiryPromptConfig } from '../../inquiry/prompts';
 import {
@@ -341,10 +342,17 @@ export function renderInquirySection(params: SectionParams): void {
     let inquirySources = normalizeInquirySources(plugin.settings.inquirySources);
     plugin.settings.inquirySources = inquirySources;
 
-    const sourcesHeading = new Settings(containerEl)
-        .setName('Inquiry sources')
-        .setDesc('Inquiry reads notes based on YAML class values inside the scan folders.');
-    sourcesHeading.settingEl.addClass('rt-inquiry-settings-heading');
+    const sourcesHeader = containerEl.createDiv({
+        cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK}`
+    });
+    sourcesHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
+    const sourcesHeaderMain = sourcesHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
+    sourcesHeaderMain.createEl('h4', { text: 'Inquiry sources', cls: ERT_CLASSES.SECTION_TITLE });
+    sourcesHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
+    containerEl.createEl('p', {
+        cls: ERT_CLASSES.SECTION_DESC,
+        text: 'Inquiry reads notes based on YAML class values inside the scan folders.'
+    });
 
     let scanRootsInput: TextAreaComponent | null = null;
     let classScopeInput: TextAreaComponent | null = null;

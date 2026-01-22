@@ -27,6 +27,8 @@ type RawInquiryFinding = {
     kind?: string;
     headline?: string;
     bullets?: string[];
+    impact?: string;
+    assessmentConfidence?: string;
     severity?: string;
     confidence?: string;
 };
@@ -37,6 +39,8 @@ type RawInquiryResponse = {
     verdict?: {
         flow?: number;
         depth?: number;
+        impact?: string;
+        assessmentConfidence?: string;
         severity?: string;
         confidence?: string;
     };
@@ -216,8 +220,8 @@ export class InquiryRunnerService implements InquiryRunner {
             '  "verdict": {',
             '    "flow": 0.0,',
             '    "depth": 0.0,',
-            '    "severity": "low|medium|high",',
-            '    "confidence": "low|medium|high"',
+            '    "impact": "low|medium|high",',
+            '    "assessmentConfidence": "low|medium|high"',
             '  },',
             '  "findings": [',
             '    {',
@@ -225,8 +229,8 @@ export class InquiryRunnerService implements InquiryRunner {
             '      "kind": "string",',
             '      "headline": "short line",',
             '      "bullets": ["optional", "points"],',
-            '      "severity": "low|medium|high",',
-            '      "confidence": "low|medium|high"',
+            '      "impact": "low|medium|high",',
+            '      "assessmentConfidence": "low|medium|high"',
             '    }',
             '  ]',
             '}'
@@ -262,10 +266,12 @@ export class InquiryRunnerService implements InquiryRunner {
                     properties: {
                         flow: { type: 'number' },
                         depth: { type: 'number' },
+                        impact: { type: 'string' },
+                        assessmentConfidence: { type: 'string' },
                         severity: { type: 'string' },
                         confidence: { type: 'string' }
                     },
-                    required: ['flow', 'depth', 'severity', 'confidence']
+                    required: ['flow', 'depth', 'impact', 'assessmentConfidence']
                 },
                 findings: {
                     type: 'array',
@@ -276,10 +282,12 @@ export class InquiryRunnerService implements InquiryRunner {
                             kind: { type: 'string' },
                             headline: { type: 'string' },
                             bullets: { type: 'array', items: { type: 'string' } },
+                            impact: { type: 'string' },
+                            assessmentConfidence: { type: 'string' },
                             severity: { type: 'string' },
                             confidence: { type: 'string' }
                         },
-                        required: ['ref_id', 'kind', 'headline', 'severity', 'confidence']
+                        required: ['ref_id', 'kind', 'headline', 'impact', 'assessmentConfidence']
                     }
                 }
             },
@@ -339,8 +347,8 @@ export class InquiryRunnerService implements InquiryRunner {
         const verdict = parsed.verdict || {};
         const flow = this.normalizeScore(verdict.flow);
         const depth = this.normalizeScore(verdict.depth);
-        const severity = this.normalizeSeverity(verdict.severity);
-        const confidence = this.normalizeConfidence(verdict.confidence);
+        const impact = this.normalizeImpact(verdict.impact ?? verdict.severity);
+        const assessmentConfidence = this.normalizeAssessmentConfidence(verdict.assessmentConfidence ?? verdict.confidence);
 
         const findings = Array.isArray(parsed.findings) ? parsed.findings : [];
         const mappedFindings = findings.map(finding => this.mapFinding(finding, input.focusLabel));
@@ -355,8 +363,8 @@ export class InquiryRunnerService implements InquiryRunner {
             verdict: {
                 flow,
                 depth,
-                severity,
-                confidence
+                impact,
+                assessmentConfidence
             },
             findings: mappedFindings,
             corpusFingerprint: input.corpus.fingerprint,
@@ -374,8 +382,8 @@ export class InquiryRunnerService implements InquiryRunner {
             refId,
             kind,
             status: kind === 'none' ? 'resolved' : 'unclear',
-            severity: this.normalizeSeverity(raw.severity),
-            confidence: this.normalizeConfidence(raw.confidence),
+            impact: this.normalizeImpact(raw.impact ?? raw.severity),
+            assessmentConfidence: this.normalizeAssessmentConfidence(raw.assessmentConfidence ?? raw.confidence),
             headline: raw.headline ? String(raw.headline) : 'Finding',
             bullets,
             related: [],
@@ -402,15 +410,15 @@ export class InquiryRunnerService implements InquiryRunner {
             verdict: {
                 flow: 0.6,
                 depth: 0.55,
-                severity: 'low',
-                confidence: 'low'
+                impact: 'low',
+                assessmentConfidence: 'low'
             },
             findings: [{
                 refId: input.focusLabel,
                 kind: 'unclear',
                 status: 'unclear',
-                severity: 'low',
-                confidence: 'low',
+                impact: 'low',
+                assessmentConfidence: 'low',
                 headline: 'Inquiry stub result.',
                 bullets,
                 related: [],
@@ -487,7 +495,7 @@ export class InquiryRunnerService implements InquiryRunner {
         return 0;
     }
 
-    private normalizeSeverity(value: unknown): InquirySeverity {
+    private normalizeImpact(value: unknown): InquirySeverity {
         const normalized = typeof value === 'string' ? value.toLowerCase().trim() : '';
         if (normalized === 'high' || normalized === 'medium' || normalized === 'low') {
             return normalized as InquirySeverity;
@@ -495,7 +503,7 @@ export class InquiryRunnerService implements InquiryRunner {
         return 'low';
     }
 
-    private normalizeConfidence(value: unknown): InquiryConfidence {
+    private normalizeAssessmentConfidence(value: unknown): InquiryConfidence {
         const normalized = typeof value === 'string' ? value.toLowerCase().trim() : '';
         if (normalized === 'high' || normalized === 'medium' || normalized === 'low') {
             return normalized as InquiryConfidence;

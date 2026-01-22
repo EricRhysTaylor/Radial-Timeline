@@ -323,7 +323,15 @@
 }
 
 .ert-inquiry-cc {
-  pointer-events: none;
+  pointer-events: auto;
+}
+
+.ert-inquiry-cc-cell {
+  pointer-events: auto;
+}
+
+.ert-inquiry-cc-cell.is-openable {
+  cursor: pointer;
 }
 
 .ert-inquiry-cc-label {

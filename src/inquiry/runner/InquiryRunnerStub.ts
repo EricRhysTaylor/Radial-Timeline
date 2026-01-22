@@ -39,8 +39,8 @@ export class InquiryRunnerStub implements InquiryRunner {
                 refId: focus,
                 kind: 'none',
                 status: 'resolved',
-                severity: 'low',
-                confidence: 'high',
+                impact: 'low',
+                assessmentConfidence: 'high',
                 headline: 'No issues detected for the current focus.',
                 bullets: ['Evidence appears consistent within the defined scope.'],
                 related: [],
@@ -52,8 +52,8 @@ export class InquiryRunnerStub implements InquiryRunner {
                 refId: focus,
                 kind: 'unclear',
                 status: 'unclear',
-                severity: 'low',
-                confidence: 'low',
+                impact: 'low',
+                assessmentConfidence: 'low',
                 headline: 'Evidence is insufficient for a clear verdict.',
                 bullets: ['Authoritative sources are missing or incomplete.'],
                 related: [],
@@ -65,8 +65,8 @@ export class InquiryRunnerStub implements InquiryRunner {
                 refId: focus,
                 kind: 'error',
                 status: 'unclear',
-                severity: 'high',
-                confidence: 'low',
+                impact: 'high',
+                assessmentConfidence: 'low',
                 headline: 'Inquiry failed to complete the analysis.',
                 bullets: ['Runner error fallback result returned.'],
                 related: [],
@@ -77,8 +77,8 @@ export class InquiryRunnerStub implements InquiryRunner {
             refId: focus,
             kind: 'continuity',
             status: 'unclear',
-            severity: 'medium',
-            confidence: 'low',
+            impact: 'medium',
+            assessmentConfidence: 'low',
             headline: 'Potential continuity gap detected.',
             bullets: ['Focus relies on prior setup not yet confirmed.'],
             related: [],
@@ -96,8 +96,8 @@ export class InquiryRunnerStub implements InquiryRunner {
                 metrics: {
                     flow: 0.88,
                     depth: 0.82,
-                    severity: 'low',
-                    confidence: 'high'
+                    impact: 'low',
+                    assessmentConfidence: 'high'
                 }
             };
         }
@@ -107,8 +107,8 @@ export class InquiryRunnerStub implements InquiryRunner {
                 metrics: {
                     flow: 0.5,
                     depth: 0.5,
-                    severity: 'low',
-                    confidence: 'low'
+                    impact: 'low',
+                    assessmentConfidence: 'low'
                 }
             };
         }
@@ -118,8 +118,8 @@ export class InquiryRunnerStub implements InquiryRunner {
                 metrics: {
                     flow: 0.1,
                     depth: 0.1,
-                    severity: 'high',
-                    confidence: 'low'
+                    impact: 'high',
+                    assessmentConfidence: 'low'
                 }
             };
         }
@@ -128,8 +128,8 @@ export class InquiryRunnerStub implements InquiryRunner {
             metrics: {
                 flow: 0.62,
                 depth: 0.48,
-                severity: 'medium',
-                confidence: 'low'
+                impact: 'medium',
+                assessmentConfidence: 'low'
             }
         };
     }

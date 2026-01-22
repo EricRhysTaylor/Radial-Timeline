@@ -12,6 +12,7 @@ import type RadialTimelinePlugin from '../main';
 import { INQUIRY_SCHEMA_VERSION, INQUIRY_VIEW_DISPLAY_TEXT, INQUIRY_VIEW_TYPE } from './constants';
 import {
     createDefaultInquiryState,
+    InquiryConfidence,
     InquiryFinding,
     InquiryMode,
     InquiryResult,
@@ -68,8 +69,12 @@ const PREVIEW_SHIMMER_WIDTH = 42;
 const STAGE_LABELS = ['ASSEMBLE', 'SEND', 'THINK', 'APPLY'] as const;
 const STAGE_DURATION_MS = 700;
 const SWEEP_DURATION_MS = STAGE_DURATION_MS * STAGE_LABELS.length;
-const CC_STRIP_Y = 64;
-const CC_CELL_SIZE = 16;
+const MIN_PROCESSING_MS = 5000;
+const SIMULATION_DURATION_MS = 20000;
+const CC_CELL_SIZE = 32;
+const CC_CELL_GAP = 4;
+const CC_ANCHOR_X = VIEWBOX_MAX - 260;
+const CC_ANCHOR_Y = 320;
 
 type InquiryQuestion = {
     id: string;
@@ -112,6 +117,7 @@ export class InquiryView extends ItemView {
     private modeToggleButton?: SVGGElement;
     private modeToggleIcon?: SVGUseElement;
     private artifactButton?: SVGGElement;
+    private apiSimulationButton?: SVGGElement;
     private engineBadgeGroup?: SVGGElement;
     private engineBadgeBg?: SVGRectElement;
     private engineBadgeText?: SVGTextElement;
@@ -169,13 +175,16 @@ export class InquiryView extends ItemView {
     private previewPanelHeight = 0;
     private cacheStatusEl?: SVGTextElement;
     private confidenceEl?: SVGTextElement;
+    private apiStatusEl?: SVGTextElement;
+    private apiStatusState: { state: 'idle' | 'running' | 'success' | 'error'; reason?: string } = { state: 'idle' };
     private ccGroup?: SVGGElement;
     private ccLabel?: SVGTextElement;
     private ccEmptyText?: SVGTextElement;
     private ccEntries: CorpusCcEntry[] = [];
     private ccSlots: CorpusCcSlot[] = [];
     private ccUpdateId = 0;
-    private ccWordCache = new Map<string, { mtime: number; words: number; status?: 'todo' | 'working' | 'complete' }>();
+    private ccWordCache = new Map<string, { mtime: number; words: number; status?: 'todo' | 'working' | 'complete'; title?: string }>();
+    private apiSimulationTimer?: number;
     private navPrevButton?: SVGGElement;
     private navNextButton?: SVGGElement;
     private navPrevIcon?: SVGUseElement;
@@ -232,6 +241,10 @@ export class InquiryView extends ItemView {
         if (this.focusPersistTimer) {
             window.clearTimeout(this.focusPersistTimer);
             this.focusPersistTimer = undefined;
+        }
+        if (this.apiSimulationTimer) {
+            window.clearTimeout(this.apiSimulationTimer);
+            this.apiSimulationTimer = undefined;
         }
         this.contentEl.empty();
     }
@@ -322,6 +335,11 @@ export class InquiryView extends ItemView {
 
         const artifactX = (VIEWBOX_MAX - hudMargin - iconSize) - hudOffsetX;
         const helpX = artifactX - (iconSize + iconGap);
+        const simulateX = helpX - (iconSize + iconGap);
+        this.apiSimulationButton = this.createIconButton(hudGroup, simulateX, 0, iconSize, 'activity', 'Simulate API run');
+        addTooltipData(this.apiSimulationButton, 'Simulate API run', 'left');
+        this.registerDomEvent(this.apiSimulationButton as unknown as HTMLElement, 'click', () => this.startApiSimulation());
+
         this.helpToggleButton = this.createIconButton(hudGroup, helpX, 0, iconSize, 'help-circle', 'Help tips');
         this.helpToggleButton.setAttribute('aria-pressed', 'false');
         this.helpToggleButton.querySelector('title')?.remove();
@@ -389,8 +407,8 @@ export class InquiryView extends ItemView {
             focusLabel: this.getFocusLabel(),
             flowValue: GLYPH_PLACEHOLDER_FLOW,
             depthValue: GLYPH_PLACEHOLDER_DEPTH,
-            severity: 'low',
-            confidence: 'low'
+            impact: 'low',
+            assessmentConfidence: 'low'
         });
         this.logInquirySvgDebug();
         this.updateGlyphScale();
@@ -434,6 +452,7 @@ export class InquiryView extends ItemView {
         const statusGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-status', 180, hudFooterY + 6);
         this.cacheStatusEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'Cache: none', 0, 0);
         this.confidenceEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'Assessment confidence: none', 140, 0);
+        this.apiStatusEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'API: idle', 0, 18);
 
         this.applyHelpTips();
     }
@@ -1408,7 +1427,7 @@ export class InquiryView extends ItemView {
             this.minimapEmptyText.textContent = emptyLabel;
             this.minimapEmptyText.classList.remove('ert-hidden');
             this.minimapStageGroup?.setAttribute('display', 'none');
-            this.renderCorpusCcStrip(baselineStart, length);
+            this.renderCorpusCcStrip();
             this.updateMinimapFocus();
             return;
         }
@@ -1454,7 +1473,7 @@ export class InquiryView extends ItemView {
         }
 
         this.buildMinimapSweepLayer(tickLayouts, tickSize, length);
-        this.renderCorpusCcStrip(baselineStart, length);
+        this.renderCorpusCcStrip();
         this.updateMinimapFocus();
     }
 
@@ -1557,8 +1576,8 @@ export class InquiryView extends ItemView {
         };
     }
 
-    private renderCorpusCcStrip(baselineStart: number, length: number): void {
-        if (!this.minimapGroup) return;
+    private renderCorpusCcStrip(): void {
+        if (!this.rootSvg) return;
         const entries = this.getCorpusCcEntries();
         this.ccEntries = entries;
 
@@ -1570,33 +1589,31 @@ export class InquiryView extends ItemView {
         }
 
         if (!this.ccGroup) {
-            this.ccGroup = this.createSvgGroup(this.minimapGroup, 'ert-inquiry-cc');
-            this.ccGroup.setAttribute('transform', `translate(0 ${CC_STRIP_Y})`);
+            this.ccGroup = this.createSvgGroup(this.rootSvg, 'ert-inquiry-cc');
         } else {
             this.ccGroup.classList.remove('ert-hidden');
-            this.ccGroup.setAttribute('transform', `translate(0 ${CC_STRIP_Y})`);
         }
+        this.ccGroup.setAttribute('transform', `translate(${CC_ANCHOR_X} ${CC_ANCHOR_Y})`);
 
         if (!this.ccLabel) {
             this.ccLabel = this.createSvgText(this.ccGroup, 'ert-inquiry-cc-label', 'Corpus (CC)', 0, 0);
-            this.ccLabel.setAttribute('text-anchor', 'end');
+            this.ccLabel.setAttribute('text-anchor', 'start');
             this.ccLabel.setAttribute('dominant-baseline', 'middle');
         }
-        this.ccLabel.setAttribute('x', String(baselineStart - 14));
-        this.ccLabel.setAttribute('y', String(CC_CELL_SIZE / 2));
+        this.ccLabel.setAttribute('x', '0');
+        this.ccLabel.setAttribute('y', '-16');
 
         if (!this.ccEmptyText) {
             this.ccEmptyText = this.createSvgText(this.ccGroup, 'ert-inquiry-cc-empty ert-hidden', 'No corpus data', 0, 0);
             this.ccEmptyText.setAttribute('text-anchor', 'start');
             this.ccEmptyText.setAttribute('dominant-baseline', 'middle');
         }
-        this.ccEmptyText.setAttribute('x', String(baselineStart));
+        this.ccEmptyText.setAttribute('x', '0');
         this.ccEmptyText.setAttribute('y', String(CC_CELL_SIZE / 2));
 
         const count = entries.length;
-        const inset = Math.max(CC_CELL_SIZE, 16);
-        const availableLength = Math.max(0, length - (inset * 2));
-        const step = count > 1 ? (availableLength / (count - 1)) : 0;
+        const corner = Math.max(2, Math.round(CC_CELL_SIZE * 0.125));
+        const step = CC_CELL_SIZE + CC_CELL_GAP;
 
         while (this.ccSlots.length < count) {
             const group = this.createSvgGroup(this.ccGroup, 'ert-inquiry-cc-cell');
@@ -1613,6 +1630,14 @@ export class InquiryView extends ItemView {
             group.appendChild(fill);
             group.appendChild(border);
             group.appendChild(icon);
+            this.registerDomEvent(group as unknown as HTMLElement, 'click', () => {
+                const filePath = group.getAttribute('data-file-path');
+                if (!filePath) return;
+                const file = this.app.vault.getAbstractFileByPath(filePath);
+                if (file && this.isTFile(file)) {
+                    void openOrRevealFile(this.app, file);
+                }
+            });
             this.ccSlots.push({ group, base, fill, border, icon });
         }
 
@@ -1622,8 +1647,8 @@ export class InquiryView extends ItemView {
                 return;
             }
             slot.group.classList.remove('ert-hidden');
-            const x = baselineStart + inset + (step * idx) - (CC_CELL_SIZE / 2);
-            slot.group.setAttribute('transform', `translate(${x.toFixed(2)} 0)`);
+            const y = step * idx;
+            slot.group.setAttribute('transform', `translate(0 ${y.toFixed(2)})`);
             slot.base.setAttribute('width', String(CC_CELL_SIZE));
             slot.base.setAttribute('height', String(CC_CELL_SIZE));
             slot.base.setAttribute('x', '0');
@@ -1636,8 +1661,8 @@ export class InquiryView extends ItemView {
             slot.border.setAttribute('height', String(CC_CELL_SIZE));
             slot.border.setAttribute('x', '0');
             slot.border.setAttribute('y', '0');
-            slot.border.setAttribute('rx', '2');
-            slot.border.setAttribute('ry', '2');
+            slot.border.setAttribute('rx', String(corner));
+            slot.border.setAttribute('ry', String(corner));
             slot.icon.setAttribute('x', String(CC_CELL_SIZE / 2));
             slot.icon.setAttribute('y', String(CC_CELL_SIZE / 2));
         });
@@ -1737,7 +1762,7 @@ export class InquiryView extends ItemView {
     private applyCorpusCcSlot(
         index: number,
         entry: CorpusCcEntry,
-        stats: { words: number; status?: 'todo' | 'working' | 'complete' }
+        stats: { words: number; status?: 'todo' | 'working' | 'complete'; title?: string }
     ): void {
         const slot = this.ccSlots[index];
         if (!slot) return;
@@ -1782,12 +1807,18 @@ export class InquiryView extends ItemView {
             slot.group.classList.add('is-mismatch');
         }
 
-        const statusLabel = stats.status ? `status ${stats.status}` : 'status unset';
-        const tierLabel = tier === 'bare' ? 'sketchy' : tier;
+        const tooltipTitle = stats.title || entry.label;
         slot.group.classList.add('rt-tooltip-target');
-        slot.group.setAttribute('data-tooltip', `${entry.label}: ${stats.words} words (${tierLabel}, ${statusLabel})`);
-        slot.group.setAttribute('data-tooltip-placement', 'bottom');
-        slot.group.setAttribute('data-tooltip-offset-y', '6');
+        slot.group.setAttribute('data-tooltip', tooltipTitle);
+        slot.group.setAttribute('data-tooltip-placement', 'left');
+        slot.group.setAttribute('data-tooltip-offset-x', '10');
+        if (entry.filePath) {
+            slot.group.classList.add('is-openable');
+            slot.group.setAttribute('data-file-path', entry.filePath);
+        } else {
+            slot.group.classList.remove('is-openable');
+            slot.group.removeAttribute('data-file-path');
+        }
     }
 
     private getCorpusThresholds(): { emptyMax: number; sketchyMin: number; mediumMin: number; substantiveMin: number } {
@@ -1817,21 +1848,24 @@ export class InquiryView extends ItemView {
         return 'substantive';
     }
 
-    private async loadCorpusCcStats(filePath: string): Promise<{ words: number; status?: 'todo' | 'working' | 'complete' }> {
+    private async loadCorpusCcStats(
+        filePath: string
+    ): Promise<{ words: number; status?: 'todo' | 'working' | 'complete'; title?: string }> {
         if (!filePath) return { words: 0 };
         const file = this.app.vault.getAbstractFileByPath(filePath);
         if (!file || !this.isTFile(file)) return { words: 0 };
         const mtime = file.stat.mtime ?? 0;
         const status = this.getDocumentStatus(file);
+        const title = this.getDocumentTitle(file);
         const cached = this.ccWordCache.get(filePath);
-        if (cached && cached.mtime === mtime && cached.status === status) {
-            return { words: cached.words, status: cached.status };
+        if (cached && cached.mtime === mtime && cached.status === status && cached.title === title) {
+            return { words: cached.words, status: cached.status, title: cached.title };
         }
         const content = await this.app.vault.cachedRead(file);
         const body = this.stripFrontmatter(content);
         const words = this.countWords(body);
-        this.ccWordCache.set(filePath, { mtime, words, status });
-        return { words, status };
+        this.ccWordCache.set(filePath, { mtime, words, status, title });
+        return { words, status, title };
     }
 
     private getDocumentStatus(file: TFile): 'todo' | 'working' | 'complete' | undefined {
@@ -1845,6 +1879,18 @@ export class InquiryView extends ItemView {
             return value;
         }
         return undefined;
+    }
+
+    private getDocumentTitle(file: TFile): string {
+        const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
+        if (frontmatter) {
+            const normalized = normalizeFrontmatterKeys(frontmatter, this.plugin.settings.frontmatterMappings);
+            const rawTitle = normalized['Title'] ?? normalized['title'];
+            if (typeof rawTitle === 'string' && rawTitle.trim()) {
+                return rawTitle.trim();
+            }
+        }
+        return file.basename;
     }
 
     private stripFrontmatter(content: string): string {
@@ -1882,17 +1928,17 @@ export class InquiryView extends ItemView {
         const result = this.state.activeResult;
         const flowValue = result ? this.normalizeMetricValue(result.verdict.flow) : GLYPH_PLACEHOLDER_FLOW;
         const depthValue = result ? this.normalizeMetricValue(result.verdict.depth) : GLYPH_PLACEHOLDER_DEPTH;
-        const severity = result ? result.verdict.severity : 'low';
-        const confidence = result ? result.verdict.confidence : 'low';
-        const hasError = !!result?.findings.some(finding => finding.kind === 'error');
+        const impact = result ? result.verdict.impact : 'low';
+        const assessmentConfidence = result ? result.verdict.assessmentConfidence : 'low';
+        const hasError = this.isErrorResult(result);
         const errorRing = hasError ? this.state.mode : null;
 
         this.glyph?.update({
             focusLabel: this.getFocusLabel(),
             flowValue,
             depthValue,
-            severity,
-            confidence,
+            impact,
+            assessmentConfidence,
             errorRing
         });
     }
@@ -1903,28 +1949,22 @@ export class InquiryView extends ItemView {
             if (this.state.isRunning) {
                 this.rootSvg.classList.remove('is-error');
             } else {
-                const hasError = !!result?.findings.some(finding => finding.kind === 'error');
-                this.rootSvg.classList.toggle('is-error', hasError);
+                this.rootSvg.classList.toggle('is-error', this.isErrorResult(result));
             }
         }
         this.updateMinimapHitStates(result);
     }
 
+    private isErrorResult(result: InquiryResult | null | undefined): boolean {
+        if (!result) return false;
+        if (result.aiStatus && result.aiStatus !== 'success') return true;
+        return result.findings.some(finding => finding.kind === 'error');
+    }
+
     private updateMinimapHitStates(result: InquiryResult | null | undefined): void {
         if (!this.minimapTicks.length) return;
         const severityClasses = ['is-severity-low', 'is-severity-medium', 'is-severity-high'];
-        if (this.state.isRunning) {
-            this.minimapTicks.forEach(tick => {
-                tick.classList.remove('is-hit');
-                severityClasses.forEach(cls => tick.classList.remove(cls));
-                const label = tick.getAttribute('data-label') || '';
-                if (label) {
-                    tick.setAttribute('data-tooltip', `Focus ${label}`);
-                }
-            });
-            return;
-        }
-        if (this.rootSvg?.classList.contains('is-error')) {
+        if (this.state.isRunning || this.isErrorResult(result)) {
             this.minimapTicks.forEach(tick => {
                 tick.classList.remove('is-hit');
                 severityClasses.forEach(cls => tick.classList.remove(cls));
@@ -1953,20 +1993,32 @@ export class InquiryView extends ItemView {
 
     private updateFooterStatus(): void {
         if (this.cacheStatusEl) {
-            if (this.rootSvg?.classList.contains('is-error') && this.state.activeResult) {
-                const status = this.state.activeResult.aiStatus || 'unknown';
-                const reason = this.state.activeResult.aiReason || 'unknown';
-                this.cacheStatusEl.textContent = `Status: ${status} (${reason})`;
-            } else {
-                const cacheEnabled = this.plugin.settings.inquiryCacheEnabled ?? true;
-                const cacheText = cacheEnabled ? (this.state.cacheStatus || 'none') : 'off';
-                this.cacheStatusEl.textContent = `Cache: ${cacheText}`;
-            }
+            const cacheEnabled = this.plugin.settings.inquiryCacheEnabled ?? true;
+            const cacheText = cacheEnabled ? (this.state.cacheStatus || 'none') : 'off';
+            this.cacheStatusEl.textContent = `Cache: ${cacheText}`;
         }
         if (this.confidenceEl) {
-            const confidence = this.state.activeResult?.verdict.confidence || 'none';
+            const confidence = this.state.activeResult?.verdict.assessmentConfidence || 'none';
             this.confidenceEl.textContent = `Assessment confidence: ${confidence}`;
         }
+        if (this.apiStatusEl) {
+            const status = this.apiStatusState.state;
+            const reason = this.apiStatusState.reason;
+            let text = 'API: idle';
+            if (status === 'running') {
+                text = 'API: running...';
+            } else if (status === 'success') {
+                text = 'API: success';
+            } else if (status === 'error') {
+                text = `API: error — ${reason || 'unknown'}`;
+            }
+            this.apiStatusEl.textContent = text;
+        }
+    }
+
+    private setApiStatus(state: 'idle' | 'running' | 'success' | 'error', reason?: string): void {
+        this.apiStatusState = { state, reason };
+        this.updateFooterStatus();
     }
 
     private updateNavigationIcons(): void {
@@ -2116,54 +2168,67 @@ export class InquiryView extends ItemView {
         });
         const cacheEnabled = this.plugin.settings.inquiryCacheEnabled ?? true;
         const key = this.sessionStore.buildKey(baseKey, manifest.fingerprint);
-
+        let cacheStatus: 'fresh' | 'stale' | 'missing' = 'missing';
+        let cachedResult: InquiryResult | null = null;
         if (cacheEnabled) {
             const cached = this.sessionStore.getSession(key);
             if (cached) {
-                this.applySession(cached, 'fresh');
-                return;
-            }
-            const prior = this.sessionStore.getLatestByBaseKey(baseKey);
-            if (prior && prior.result.corpusFingerprint !== manifest.fingerprint) {
-                this.state.cacheStatus = 'stale';
-                this.sessionStore.markStaleByBaseKey(baseKey);
+                cachedResult = this.normalizeLegacyResult(cached.result);
+                cacheStatus = 'fresh';
             } else {
-                this.state.cacheStatus = 'missing';
-            }
-        } else {
-            this.state.cacheStatus = 'missing';
-        }
-
-        this.state.isRunning = true;
-        this.refreshUI();
-        new Notice('Inquiry: contacting AI provider.');
-
-        try {
-            // Lens selection is UI-only; do not vary question, evidence, or verdict structure by lens.
-            // Each inquiry produces two compressed answers (flow + depth). Keep this dual-answer model intact.
-            const result = await this.runner.run({
-                scope: this.state.scope,
-                focusLabel,
-                focusSceneId: this.state.scope === 'book' ? this.state.focusSceneId : undefined,
-                focusBookId: this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusBookId,
-                mode: this.state.mode,
-                questionId: question.id,
-                questionText: question.question,
-                questionZone: question.zone,
-                corpus: manifest,
-                rules: this.getEvidenceRules(),
-                ai: {
-                    provider: this.plugin.settings.defaultAiProvider || 'openai',
-                    modelId: this.getActiveInquiryModelId(),
-                    modelLabel: this.getActiveInquiryModelLabel()
+                const prior = this.sessionStore.getLatestByBaseKey(baseKey);
+                if (prior && prior.result.corpusFingerprint !== manifest.fingerprint) {
+                    cacheStatus = 'stale';
+                    this.sessionStore.markStaleByBaseKey(baseKey);
                 }
-            });
+            }
+        }
+        this.state.cacheStatus = cacheStatus;
 
-            this.state.activeResult = result;
-            this.state.corpusFingerprint = result.corpusFingerprint;
-            this.state.cacheStatus = 'fresh';
+        const startTime = Date.now();
+        this.state.isRunning = true;
+        this.setApiStatus('running');
+        this.refreshUI();
+        let result: InquiryResult;
+        if (cachedResult) {
+            result = cachedResult;
+        } else {
+            new Notice('Inquiry: contacting AI provider.');
+            console.info('[Inquiry] API HIT');
+            const submittedAt = new Date();
+            try {
+                // Lens selection is UI-only; do not vary question, evidence, or verdict structure by lens.
+                // Each inquiry produces two compressed answers (flow + depth). Keep this dual-answer model intact.
+                result = await this.runner.run({
+                    scope: this.state.scope,
+                    focusLabel,
+                    focusSceneId: this.state.scope === 'book' ? this.state.focusSceneId : undefined,
+                    focusBookId: this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusBookId,
+                    mode: this.state.mode,
+                    questionId: question.id,
+                    questionText: question.question,
+                    questionZone: question.zone,
+                    corpus: manifest,
+                    rules: this.getEvidenceRules(),
+                    ai: {
+                        provider: this.plugin.settings.defaultAiProvider || 'openai',
+                        modelId: this.getActiveInquiryModelId(),
+                        modelLabel: this.getActiveInquiryModelLabel()
+                    }
+                });
+                console.info('[Inquiry] API OK');
+            } catch (error) {
+                console.info('[Inquiry] API FAIL');
+                result = this.buildErrorFallback(question, focusLabel, manifest.fingerprint, error);
+            }
+            const completedAt = new Date();
+            result.submittedAt = submittedAt.toISOString();
+            result.completedAt = completedAt.toISOString();
+            result.roundTripMs = completedAt.getTime() - submittedAt.getTime();
+            result = this.normalizeLegacyResult(result);
 
-            if (cacheEnabled) {
+            if (cacheEnabled && !this.isErrorResult(result)) {
+                cacheStatus = 'fresh';
                 this.sessionStore.setSession({
                     key,
                     baseKey,
@@ -2171,27 +2236,98 @@ export class InquiryView extends ItemView {
                     createdAt: Date.now(),
                     lastAccessed: Date.now()
                 });
+            } else if (!cacheEnabled) {
+                cacheStatus = 'missing';
             }
-        } catch (error) {
-            const fallback = this.buildErrorFallback(question, focusLabel, manifest.fingerprint, error);
-            this.state.activeResult = fallback;
-            this.state.cacheStatus = 'missing';
-        } finally {
-            this.state.isRunning = false;
-            this.unlockPromptPreview();
-            this.updateMinimapFocus();
-            this.refreshUI();
+        }
+
+        const elapsed = Date.now() - startTime;
+        if (elapsed < MIN_PROCESSING_MS) {
+            await new Promise(resolve => window.setTimeout(resolve, MIN_PROCESSING_MS - elapsed));
+        }
+
+        this.applySession({ result }, cacheStatus);
+        if (this.isErrorResult(result)) {
+            this.setApiStatus('error', this.formatApiErrorReason(result));
+        } else {
+            this.setApiStatus('success');
         }
     }
 
     private applySession(session: { result: InquiryResult }, cacheStatus: 'fresh' | 'stale' | 'missing'): void {
-        this.state.activeResult = session.result;
-        this.state.corpusFingerprint = session.result.corpusFingerprint;
+        const normalized = this.normalizeLegacyResult(session.result);
+        this.state.activeResult = normalized;
+        this.state.corpusFingerprint = normalized.corpusFingerprint;
         this.state.cacheStatus = cacheStatus;
         this.state.isRunning = false;
         this.unlockPromptPreview();
         this.updateMinimapFocus();
         this.refreshUI();
+    }
+
+    private normalizeLegacyResult(result: InquiryResult): InquiryResult {
+        const verdict = result.verdict as InquiryResult['verdict'] & {
+            severity?: InquirySeverity;
+            confidence?: InquiryConfidence;
+        };
+        const impact = verdict.impact ?? verdict.severity ?? 'low';
+        const assessmentConfidence = verdict.assessmentConfidence ?? verdict.confidence ?? 'low';
+        const findings = result.findings.map(finding => {
+            const legacy = finding as InquiryFinding & { severity?: InquirySeverity; confidence?: InquiryConfidence };
+            return {
+                ...finding,
+                impact: legacy.impact ?? legacy.severity ?? 'low',
+                assessmentConfidence: legacy.assessmentConfidence ?? legacy.confidence ?? 'low'
+            };
+        });
+        return {
+            ...result,
+            verdict: {
+                ...verdict,
+                impact,
+                assessmentConfidence
+            },
+            findings
+        };
+    }
+
+    private formatApiErrorReason(result: InquiryResult): string {
+        const status = result.aiStatus || 'unknown';
+        const reason = result.aiReason;
+        return reason ? `${status} (${reason})` : status;
+    }
+
+    private startApiSimulation(): void {
+        if (this.state.isRunning) return;
+        if (this.apiSimulationTimer) {
+            window.clearTimeout(this.apiSimulationTimer);
+            this.apiSimulationTimer = undefined;
+        }
+        const prompt = this.pickSimulationPrompt();
+        if (prompt) {
+            this.state.activeQuestionId = prompt.id;
+            this.state.activeZone = prompt.zone;
+            this.lockPromptPreview(prompt);
+        }
+        this.state.isRunning = true;
+        this.setApiStatus('running');
+        this.refreshUI();
+        this.apiSimulationTimer = window.setTimeout(() => {
+            this.apiSimulationTimer = undefined;
+            this.state.isRunning = false;
+            this.unlockPromptPreview();
+            this.updateMinimapFocus();
+            this.refreshUI();
+            this.setApiStatus('success');
+        }, SIMULATION_DURATION_MS);
+    }
+
+    private pickSimulationPrompt(): InquiryQuestion | undefined {
+        const preferredZone = this.state.activeZone ?? 'setup';
+        return this.getActivePrompt(preferredZone)
+            ?? this.getActivePrompt('setup')
+            ?? this.getActivePrompt('pressure')
+            ?? this.getActivePrompt('payoff');
     }
 
     private buildErrorFallback(
@@ -2211,8 +2347,8 @@ export class InquiryView extends ItemView {
             verdict: {
                 flow: 0,
                 depth: 0,
-                severity: 'high',
-                confidence: 'low'
+                impact: 'high',
+                assessmentConfidence: 'low'
             },
             aiStatus: 'unavailable',
             aiReason: 'exception',
@@ -2220,8 +2356,8 @@ export class InquiryView extends ItemView {
                 refId: focusLabel,
                 kind: 'error',
                 status: 'unclear',
-                severity: 'high',
-                confidence: 'low',
+                impact: 'high',
+                assessmentConfidence: 'low',
                 headline: 'Inquiry runner error.',
                 bullets: [message],
                 related: [],
@@ -2544,7 +2680,7 @@ export class InquiryView extends ItemView {
         }
         const verdict = this.state.activeResult.verdict;
         const score = ring === 'flow' ? verdict.flow : verdict.depth;
-        return `${ring === 'flow' ? 'Flow' : 'Depth'} score ${this.formatMetricDisplay(score)}. Impact ${verdict.severity}. Assessment confidence ${verdict.confidence}.`;
+        return `${ring === 'flow' ? 'Flow' : 'Depth'} score ${this.formatMetricDisplay(score)}. Impact ${verdict.impact}. Assessment confidence ${verdict.assessmentConfidence}.`;
     }
 
     private buildZoneHoverText(zone: InquiryZone): string {
@@ -2581,7 +2717,7 @@ export class InquiryView extends ItemView {
         result.findings.forEach(finding => {
             if (!this.isFindingHit(finding)) return;
             const existing = map.get(finding.refId);
-            if (!existing || this.getSeverityRank(finding.severity) > this.getSeverityRank(existing.severity)) {
+            if (!existing || this.getImpactRank(finding.impact) > this.getImpactRank(existing.impact)) {
                 map.set(finding.refId, finding);
             }
         });
@@ -2599,8 +2735,8 @@ export class InquiryView extends ItemView {
                 refId: item.displayLabel,
                 kind: 'continuity',
                 status: 'unclear',
-                severity: 'medium',
-                confidence: 'low',
+                impact: 'medium',
+                assessmentConfidence: 'low',
                 headline: 'Stub hit detected.',
                 bullets: ['Deterministic placeholder until AI runner is wired.'],
                 related: [],
@@ -2623,9 +2759,9 @@ export class InquiryView extends ItemView {
         return finding.kind !== 'none';
     }
 
-    private getSeverityRank(severity: InquirySeverity): number {
-        if (severity === 'high') return 3;
-        if (severity === 'medium') return 2;
+    private getImpactRank(impact: InquirySeverity): number {
+        if (impact === 'high') return 3;
+        if (impact === 'medium') return 2;
         return 1;
     }
 
@@ -3258,24 +3394,38 @@ export class InquiryView extends ItemView {
 
         const findingsLines = result.findings.map(finding => {
             const bullets = finding.bullets.map(bullet => `  - ${bullet}`).join('\n');
-            return `- ${finding.headline} (${finding.kind}, ${finding.severity}, ${finding.confidence})\n${bullets}`;
+            return `- ${finding.headline} (${finding.kind}, ${finding.impact}, ${finding.assessmentConfidence})\n${bullets}`;
         }).join('\n');
 
+        const submittedAt = result.submittedAt ? new Date(result.submittedAt) : null;
+        const completedAt = result.completedAt ? new Date(result.completedAt) : null;
+        const timingLines: string[] = [];
+        if (submittedAt && Number.isFinite(submittedAt.getTime())) {
+            timingLines.push(`Submitted: ${this.formatInquiryBriefTimestamp(submittedAt, { includeSeconds: true })}`);
+        }
+        if (completedAt && Number.isFinite(completedAt.getTime())) {
+            timingLines.push(`Returned: ${this.formatInquiryBriefTimestamp(completedAt, { includeSeconds: true })}`);
+        }
+        if (typeof result.roundTripMs === 'number' && Number.isFinite(result.roundTripMs)) {
+            timingLines.push(`Round trip: ${this.formatRoundTripDuration(result.roundTripMs)}`);
+        }
+
         // Briefs always include both flow + depth; never omit based on active lens.
-        const summarySection = [
+        const summaryLines = [
             '## Executive summary',
             result.summary,
             '',
             '## Verdict',
             `Flow: ${this.formatMetricDisplay(result.verdict.flow)}`,
             `Depth: ${this.formatMetricDisplay(result.verdict.depth)}`,
-            `Impact: ${result.verdict.severity}`,
-            `Assessment confidence: ${result.verdict.confidence}`,
-            '',
-            '## Findings',
-            findingsLines || '- No findings',
-            ''
-        ].join('\n');
+            `Impact: ${result.verdict.impact}`,
+            `Assessment confidence: ${result.verdict.assessmentConfidence}`
+        ];
+        if (timingLines.length) {
+            summaryLines.push('', '## Timing', ...timingLines);
+        }
+        summaryLines.push('', '## Findings', findingsLines || '- No findings', '');
+        const summarySection = summaryLines.join('\n');
 
         const payload = embedJson
             ? [
@@ -3341,18 +3491,32 @@ export class InquiryView extends ItemView {
         return null;
     }
 
-    private formatInquiryBriefTimestamp(date: Date): string {
+    private formatInquiryBriefTimestamp(date: Date, options?: { includeSeconds?: boolean }): string {
+        if (!Number.isFinite(date.getTime())) {
+            return 'Unknown date';
+        }
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const month = months[date.getMonth()];
         const day = date.getDate();
         const year = date.getFullYear();
         let hours = date.getHours();
         const minutes = date.getMinutes();
+        const seconds = date.getSeconds();
         const am = hours < 12;
         hours = hours % 12;
         if (hours === 0) hours = 12;
         const minuteText = String(minutes).padStart(2, '0');
-        return `${month} ${day} ${year} @ ${hours}.${minuteText}${am ? 'am' : 'pm'}`;
+        const includeSeconds = options?.includeSeconds ?? false;
+        const secondText = includeSeconds ? `.${String(seconds).padStart(2, '0')}` : '';
+        return `${month} ${day} ${year} @ ${hours}.${minuteText}${secondText}${am ? 'am' : 'pm'}`;
+    }
+
+    private formatRoundTripDuration(ms: number): string {
+        if (!Number.isFinite(ms) || ms <= 0) return '0s';
+        const seconds = ms / 1000;
+        if (seconds < 1) return `${Math.round(ms)}ms`;
+        const rounded = seconds >= 10 ? seconds.toFixed(1) : seconds.toFixed(2);
+        return `${rounded.replace(/\.0+$/, '')}s`;
     }
 
     private getAvailableArtifactPath(folderPath: string, baseName: string): string {
