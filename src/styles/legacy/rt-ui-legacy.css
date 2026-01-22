@@ -224,34 +224,12 @@
   margin-top: 0;
 }
 
-/* YAML key/value rows - simple class like beats */
-.rt-yaml-row {
-  display: grid;
-  box-sizing: border-box;
-  /* Handle | Spacer | Key | Value | Trash */
-  grid-template-columns: auto 1fr auto auto auto;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 10px 10px 12px;
-  /* No right padding - trash flush to edge */
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 10px;
-}
-
 .rt-template-actions {
   justify-content: flex-end;
   text-align: right;
 }
 
 /* rt-template-input consolidated in base.css */
-
-/* YAML add row */
-.rt-yaml-add-row {
-  background: var(--background-primary);
-  border-style: dashed;
-  opacity: 0.95;
-}
 
 /* Styling for the embedded README container in settings */
 .rt-manuscript-readme-container {
@@ -364,11 +342,6 @@
 .ert-settings-root .setting-item-control .clickable-icon,
 .ert-settings-root .setting-item-control input[type="checkbox"] {
   cursor: pointer;
-}
-
-.rt-yaml-row-hover-meta {
-  /* Extended grid: Handle | Spacer | Icon | Checkbox | Key | Value | Trash */
-  grid-template-columns: auto 1fr auto auto auto auto auto;
 }
 
 .rt-runtime-count {

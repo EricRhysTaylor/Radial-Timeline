@@ -17,6 +17,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     outlineOutputFolder: 'Radial Timeline/Outline',
     inquiryArtifactFolder: 'Radial Timeline/Inquiry/Artifacts',
     inquiryEmbedJson: true,
+    inquiryAutoSave: true,
     inquiryCacheEnabled: true,
     inquiryCacheMaxSessions: 30,
     inquirySources: {

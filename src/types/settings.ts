@@ -1,3 +1,5 @@
+import type { InquiryScope } from '../inquiry/state';
+
 export interface AiContextTemplate {
     id: string;
     name: string;
@@ -263,6 +265,12 @@ export interface InquirySessionCacheRecord {
         createdAt: number;
         lastAccessed: number;
         stale?: boolean;
+        status?: 'saved' | 'unsaved' | 'error' | 'simulated';
+        briefPath?: string;
+        focusSceneId?: string;
+        focusBookId?: string;
+        scope?: InquiryScope;
+        questionZone?: InquiryPromptZone;
     }[];
     max: number;
 }
@@ -276,6 +284,7 @@ export interface RadialTimelineSettings {
     outlineOutputFolder?: string;
     inquiryArtifactFolder?: string;
     inquiryEmbedJson?: boolean;
+    inquiryAutoSave?: boolean;
     inquiryCacheEnabled?: boolean;
     inquiryCacheMaxSessions?: number;
     inquirySources?: InquirySourcesSettings;

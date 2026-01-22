@@ -223,7 +223,7 @@ export function renderInquirySection(params: SectionParams): void {
 
     const artifactSetting = new Settings(containerEl)
         .setName('Artifact folder')
-        .setDesc('Artifacts are saved only when you explicitly click the Artifact icon.');
+        .setDesc('Inquiry briefs are saved here when auto-save is enabled.');
 
     artifactSetting.addText(text => {
         const defaultPath = DEFAULT_SETTINGS.inquiryArtifactFolder || 'Radial Timeline/Inquiry/Artifacts';
@@ -291,6 +291,17 @@ export function renderInquirySection(params: SectionParams): void {
             toggle.setValue(plugin.settings.inquiryEmbedJson ?? true);
             toggle.onChange(async (value) => {
                 plugin.settings.inquiryEmbedJson = value;
+                await plugin.saveSettings();
+            });
+        });
+
+    new Settings(containerEl)
+        .setName('Auto-save Inquiry briefs')
+        .setDesc('Save a brief automatically after each successful Inquiry run.')
+        .addToggle(toggle => {
+            toggle.setValue(plugin.settings.inquiryAutoSave ?? true);
+            toggle.onChange(async (value) => {
+                plugin.settings.inquiryAutoSave = value;
                 await plugin.saveSettings();
             });
         });

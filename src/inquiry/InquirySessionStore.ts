@@ -24,11 +24,21 @@ export class InquirySessionStore {
         return session;
     }
 
+    peekSession(key: string): InquirySession | undefined {
+        return this.cache.sessions.find(s => s.key === key);
+    }
+
     getLatestByBaseKey(baseKey: string): InquirySession | undefined {
         const matches = this.cache.sessions.filter(s => s.baseKey === baseKey);
         if (!matches.length) return undefined;
         matches.sort((a, b) => b.lastAccessed - a.lastAccessed);
         return matches[0];
+    }
+
+    getRecentSessions(limit = 10): InquirySession[] {
+        const sessions = [...this.cache.sessions];
+        sessions.sort((a, b) => (b.createdAt || b.lastAccessed) - (a.createdAt || a.lastAccessed));
+        return sessions.slice(0, Math.max(0, limit));
     }
 
     setSession(session: InquirySession): void {
@@ -39,6 +49,14 @@ export class InquirySessionStore {
             this.cache.sessions.push(session);
         }
         this.prune();
+        this.persist();
+    }
+
+    updateSession(key: string, patch: Partial<InquirySession>): void {
+        const session = this.cache.sessions.find(s => s.key === key);
+        if (!session) return;
+        Object.assign(session, patch);
+        session.lastAccessed = Date.now();
         this.persist();
     }
 

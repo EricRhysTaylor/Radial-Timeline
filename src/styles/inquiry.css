@@ -166,6 +166,23 @@
   stroke: color-mix(in srgb, var(--interactive-accent) 70%, var(--background-modifier-border));
 }
 
+.ert-inquiry-icon-btn.is-briefing-saved {
+  color: var(--text-normal);
+}
+
+.ert-inquiry-icon-btn.is-briefing-saved .ert-inquiry-icon-btn-bg {
+  fill: color-mix(in srgb, var(--ert-inquiry-zone-setup) 18%, var(--background-secondary));
+  stroke: color-mix(in srgb, var(--ert-inquiry-zone-setup) 65%, var(--background-modifier-border));
+}
+
+.ert-inquiry-icon-btn.is-briefing-error .ert-inquiry-icon-btn-bg {
+  stroke: color-mix(in srgb, var(--ert-inquiry-high) 70%, var(--background-modifier-border));
+}
+
+.ert-inquiry-icon-btn.is-briefing-pulse .ert-inquiry-icon-btn-bg {
+  animation: ert-inquiry-briefing-pulse 2.4s ease-in-out infinite;
+}
+
 .ert-inquiry-context-badge-bg {
   fill: var(--background-secondary);
   stroke: var(--background-modifier-border);
@@ -747,59 +764,76 @@
 }
 
 .ert-inquiry-preview-hero {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 750;
   font-style: italic;
   fill: var(--text-normal);
 }
 
-.ert-inquiry-preview.is-zone-setup .ert-inquiry-preview-hero {
-  fill: var(--ert-inquiry-zone-setup);
-}
-
-.ert-inquiry-preview.is-zone-pressure .ert-inquiry-preview-hero {
-  fill: var(--ert-inquiry-zone-pressure);
-}
-
-.ert-inquiry-preview.is-zone-payoff .ert-inquiry-preview-hero {
-  fill: var(--ert-inquiry-zone-payoff);
-}
-
 .ert-inquiry-preview-meta {
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  fill: var(--text-muted);
-  opacity: 0.85;
+  fill: var(--text-faint);
+  opacity: 0.9;
 }
 
 .ert-inquiry-preview-pill {
   pointer-events: none;
+  --ert-inquiry-pill-fill: calc(var(--ert-inquiry-texture-opacity) + 0.04);
+  --ert-inquiry-pill-stroke: calc(var(--ert-inquiry-texture-opacity) + 0.12);
+  --ert-inquiry-pill-stroke-width: 1;
+  --ert-inquiry-pill-text-opacity: 0.9;
 }
 
 .ert-inquiry-preview-pill-bg {
-  fill: rgb(255 255 255 / var(--ert-inquiry-texture-opacity));
-  stroke: rgb(255 255 255 / calc(var(--ert-inquiry-texture-opacity) + 0.06));
-  stroke-width: 1;
+  fill: rgb(255 255 255 / var(--ert-inquiry-pill-fill));
+  stroke: rgb(255 255 255 / var(--ert-inquiry-pill-stroke));
+  stroke-width: var(--ert-inquiry-pill-stroke-width);
 }
 
 .ert-inquiry-preview-pill-text {
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.02em;
-  fill: var(--text-muted);
+  fill: var(--text-normal);
+  opacity: var(--ert-inquiry-pill-text-opacity);
 }
 
 .ert-inquiry-preview-pill-label {
   font-weight: 600;
   letter-spacing: 0.08em;
-  fill: var(--text-muted);
+  fill: inherit;
 }
 
 .ert-inquiry-preview-pill-value {
   font-weight: 600;
-  fill: #ffffff;
+  fill: inherit;
+}
+
+.ert-inquiry-preview-pill:nth-of-type(1),
+.ert-inquiry-preview-pill:nth-of-type(2) {
+  --ert-inquiry-pill-fill: calc(var(--ert-inquiry-texture-opacity) + 0.08);
+  --ert-inquiry-pill-stroke: calc(var(--ert-inquiry-texture-opacity) + 0.18);
+  --ert-inquiry-pill-stroke-width: 1.1;
+  --ert-inquiry-pill-text-opacity: 0.95;
+}
+
+.ert-inquiry-preview-pill:nth-of-type(3),
+.ert-inquiry-preview-pill:nth-of-type(4) {
+  --ert-inquiry-pill-fill: calc(var(--ert-inquiry-texture-opacity) + 0.04);
+  --ert-inquiry-pill-stroke: calc(var(--ert-inquiry-texture-opacity) + 0.12);
+  --ert-inquiry-pill-stroke-width: 0.95;
+  --ert-inquiry-pill-text-opacity: 0.82;
+}
+
+.ert-inquiry-preview-pill:nth-of-type(5),
+.ert-inquiry-preview-pill:nth-of-type(6) {
+  --ert-inquiry-pill-fill: calc(var(--ert-inquiry-texture-opacity) + 0.02);
+  --ert-inquiry-pill-stroke: calc(var(--ert-inquiry-texture-opacity) + 0.08);
+  --ert-inquiry-pill-stroke-width: 0.85;
+  --ert-inquiry-pill-text-opacity: 0.68;
 }
 
 .ert-inquiry-preview-footer {
@@ -1017,6 +1051,169 @@
   padding: 8px 12px;
 }
 
+.ert-inquiry-root {
+  position: relative;
+}
+
+.ert-inquiry-briefing-panel {
+  position: absolute;
+  top: 18px;
+  right: 24px;
+  width: 260px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+  z-index: 3;
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.ert-inquiry-briefing-panel.ert-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px);
+}
+
+.ert-inquiry-briefing-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ert-inquiry-briefing-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.ert-inquiry-briefing-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ert-inquiry-briefing-empty {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 10px;
+}
+
+.ert-inquiry-briefing-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--background-secondary) 82%, var(--background-primary));
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.ert-inquiry-briefing-item:hover {
+  border-color: color-mix(in srgb, var(--interactive-accent) 70%, transparent);
+  transform: translateY(-1px);
+}
+
+.ert-inquiry-briefing-item.is-active {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 50%, transparent);
+}
+
+.ert-inquiry-briefing-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ert-inquiry-briefing-title-row {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.ert-inquiry-briefing-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.ert-inquiry-briefing-status {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+}
+
+.ert-inquiry-briefing-status--saved {
+  background: color-mix(in srgb, var(--ert-inquiry-zone-setup) 18%, var(--background-secondary));
+  color: var(--text-normal);
+}
+
+.ert-inquiry-briefing-status--unsaved {
+  background: color-mix(in srgb, var(--text-muted) 14%, var(--background-secondary));
+  color: var(--text-normal);
+}
+
+.ert-inquiry-briefing-status--error {
+  background: color-mix(in srgb, var(--ert-inquiry-high) 18%, var(--background-secondary));
+  color: var(--text-normal);
+}
+
+.ert-inquiry-briefing-status--simulated {
+  background: color-mix(in srgb, var(--ert-inquiry-zone-pressure) 14%, var(--background-secondary));
+  color: var(--text-normal);
+}
+
+.ert-inquiry-briefing-open {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+}
+
+.ert-inquiry-briefing-open:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.ert-inquiry-briefing-footer {
+  margin-top: 12px;
+}
+
+.ert-inquiry-briefing-footer.ert-hidden {
+  display: none;
+}
+
+.ert-inquiry-briefing-save {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+  cursor: pointer;
+  transition: filter 120ms ease, transform 120ms ease;
+}
+
+.ert-inquiry-briefing-save:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
 
 .ert-inquiry-svg.is-error .ert-inquiry-glyph {
   animation: ert-inquiry-pulse 1.6s ease-in-out infinite;
@@ -1026,6 +1223,12 @@
   0% { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--ert-inquiry-high) 60%, transparent)); }
   50% { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ert-inquiry-high) 35%, transparent)); }
   100% { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--ert-inquiry-high) 60%, transparent)); }
+}
+
+@keyframes ert-inquiry-briefing-pulse {
+  0% { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--interactive-accent) 35%, transparent)); }
+  50% { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--interactive-accent) 25%, transparent)); }
+  100% { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--interactive-accent) 35%, transparent)); }
 }
 
 @media (max-width: 980px) {

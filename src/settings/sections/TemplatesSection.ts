@@ -594,7 +594,7 @@ export function renderStoryBeatsSection(params: {
 
             const renderEntryRow = (entry: TemplateEntry, idx: number, list: TemplateEntry[]) => {
                 // Match beats row structure: all inputs are direct grid children
-                const row = listEl.createDiv({ cls: 'rt-yaml-row rt-yaml-row-hover-meta' });
+                const row = listEl.createDiv({ cls: ['ert-yaml-row', 'ert-yaml-row--hover-meta'] });
 
                 // Get existing hover metadata for this key
                 const hoverMeta = getHoverMetadata(entry.key);
@@ -764,7 +764,7 @@ export function renderStoryBeatsSection(params: {
             data.forEach((entry, idx, arr) => renderEntryRow(entry, idx, arr));
 
             // Add new key/value - inside listEl so it gets the indent border
-            const addRow = listEl.createDiv({ cls: 'rt-yaml-row rt-yaml-add-row rt-yaml-row-hover-meta' });
+            const addRow = listEl.createDiv({ cls: ['ert-yaml-row', 'ert-yaml-row--add', 'ert-yaml-row--hover-meta'] });
 
             // 1. Handle placeholder (direct child)
             addRow.createDiv({ cls: ['ert-drag-handle', 'ert-drag-placeholder'] });

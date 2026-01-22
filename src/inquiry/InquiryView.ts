@@ -29,6 +29,7 @@ import { ZONE_LAYOUT } from './zoneLayout';
 import { InquiryRunnerService } from './runner/InquiryRunnerService';
 import type { CorpusManifest, EvidenceParticipationRules } from './runner/types';
 import { InquirySessionStore } from './InquirySessionStore';
+import type { InquirySession, InquirySessionStatus } from './sessionTypes';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import type { InquirySourcesSettings } from '../types/settings';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
@@ -59,7 +60,7 @@ const PREVIEW_HERO_LINE_HEIGHT = 30;
 const PREVIEW_META_GAP = 6;
 const PREVIEW_META_LINE_HEIGHT = 22;
 const PREVIEW_DETAIL_GAP = 16;
-const PREVIEW_PILL_HEIGHT = 30;
+const PREVIEW_PILL_HEIGHT = 26;
 const PREVIEW_PILL_PADDING_X = 16;
 const PREVIEW_PILL_GAP_X = 16;
 const PREVIEW_PILL_GAP_Y = 14;
@@ -72,6 +73,8 @@ const STAGE_DURATION_MS = 700;
 const SWEEP_DURATION_MS = STAGE_DURATION_MS * STAGE_LABELS.length;
 const MIN_PROCESSING_MS = 5000;
 const SIMULATION_DURATION_MS = 20000;
+const BRIEFING_SESSION_LIMIT = 10;
+const BRIEFING_HIDE_DELAY_MS = 220;
 const CC_CELL_SIZE = 20;
 const CC_PAGE_BASE_SIZE = Math.round(CC_CELL_SIZE * 0.8);
 const CC_PAGE_MIN_SIZE = Math.max(6, Math.round(CC_CELL_SIZE * 0.33));
@@ -122,6 +125,13 @@ export class InquiryView extends ItemView {
     private modeToggleIcon?: SVGUseElement;
     private artifactButton?: SVGGElement;
     private apiSimulationButton?: SVGGElement;
+    private briefingPanelEl?: HTMLDivElement;
+    private briefingListEl?: HTMLDivElement;
+    private briefingFooterEl?: HTMLDivElement;
+    private briefingSaveButton?: HTMLButtonElement;
+    private briefingEmptyEl?: HTMLDivElement;
+    private briefingPinned = false;
+    private briefingHideTimer?: number;
     private engineBadgeGroup?: SVGGElement;
     private engineBadgeBg?: SVGRectElement;
     private engineBadgeText?: SVGTextElement;
@@ -205,6 +215,7 @@ export class InquiryView extends ItemView {
     private focusPersistTimer?: number;
     private runner: InquiryRunnerService;
     private sessionStore: InquirySessionStore;
+    private minimapResultPreviewActive = false;
 
     constructor(leaf: WorkspaceLeaf, plugin: RadialTimelinePlugin) {
         super(leaf);
@@ -252,6 +263,10 @@ export class InquiryView extends ItemView {
             window.clearTimeout(this.apiSimulationTimer);
             this.apiSimulationTimer = undefined;
         }
+        if (this.briefingHideTimer) {
+            window.clearTimeout(this.briefingHideTimer);
+            this.briefingHideTimer = undefined;
+        }
         this.contentEl.empty();
     }
 
@@ -260,18 +275,19 @@ export class InquiryView extends ItemView {
         wrapper.createDiv({ cls: 'ert-inquiry-mobile-title', text: 'Desktop required' });
         wrapper.createDiv({
             cls: 'ert-inquiry-mobile-subtitle',
-            text: 'Inquiry is available on desktop only. Artifacts remain readable on mobile.'
+            text: 'Inquiry is available on desktop only. Briefs remain readable on mobile.'
         });
 
         const actions = wrapper.createDiv({ cls: 'ert-inquiry-mobile-actions' });
-        const openFolderBtn = actions.createEl('button', { cls: 'ert-inquiry-mobile-btn', text: 'Open Artifacts folder' });
-        const openLatestBtn = actions.createEl('button', { cls: 'ert-inquiry-mobile-btn', text: 'View most recent Artifact' });
+        const openFolderBtn = actions.createEl('button', { cls: 'ert-inquiry-mobile-btn', text: 'Open Briefs folder' });
+        const openLatestBtn = actions.createEl('button', { cls: 'ert-inquiry-mobile-btn', text: 'View most recent Brief' });
 
         this.registerDomEvent(openFolderBtn, 'click', () => { void this.openArtifactsFolder(); });
         this.registerDomEvent(openLatestBtn, 'click', () => { void this.openMostRecentArtifact(); });
     }
 
     private renderDesktopLayout(): void {
+        this.contentEl.addClass('ert-inquiry-root');
         const svg = this.createSvgElement('svg');
         svg.classList.add('ert-ui', 'ert-inquiry-svg');
         svg.setAttribute('viewBox', `${VIEWBOX_MIN} ${VIEWBOX_MIN} ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`);
@@ -354,10 +370,12 @@ export class InquiryView extends ItemView {
         addTooltipData(this.helpToggleButton, 'Hover previews what will be sent. Click runs the inquiry.', 'left');
         this.registerDomEvent(this.helpToggleButton as unknown as HTMLElement, 'click', () => this.toggleHelpTips());
 
-        this.artifactButton = this.createIconButton(hudGroup, artifactX, 0, iconSize, 'aperture', 'Save artifact');
+        this.artifactButton = this.createIconButton(hudGroup, artifactX, 0, iconSize, 'aperture', 'Briefing');
         this.artifactButton.querySelector('title')?.remove();
-        addTooltipData(this.artifactButton, 'Save artifact', 'left');
-        this.registerDomEvent(this.artifactButton as unknown as HTMLElement, 'click', () => { void this.saveArtifact(); });
+        addTooltipData(this.artifactButton, 'Briefing · Recent inquiries', 'left');
+        this.registerDomEvent(this.artifactButton as unknown as HTMLElement, 'pointerenter', () => this.showBriefingPanel());
+        this.registerDomEvent(this.artifactButton as unknown as HTMLElement, 'pointerleave', () => this.scheduleBriefingHide());
+        this.registerDomEvent(this.artifactButton as unknown as HTMLElement, 'click', () => this.toggleBriefingPanel());
 
         const engineBadgeX = iconSize + iconGap;
         this.engineBadgeGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-engine-badge', engineBadgeX, 12);
@@ -463,6 +481,7 @@ export class InquiryView extends ItemView {
         this.apiStatusEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'API: idle', 0, 18);
 
         this.applyHelpTips();
+        this.buildBriefingPanel();
     }
 
     private buildPromptPreviewPanel(parent: SVGGElement): void {
@@ -515,6 +534,225 @@ export class InquiryView extends ItemView {
 
         this.updatePromptPreview('setup', this.state.mode, 'Hover a question to preview its payload.');
         this.hidePromptPreview(true);
+    }
+
+    private buildBriefingPanel(): void {
+        if (this.briefingPanelEl) return;
+        const panel = this.contentEl.createDiv({ cls: 'ert-inquiry-briefing-panel ert-hidden ert-ui' });
+        this.briefingPanelEl = panel;
+        const header = panel.createDiv({ cls: 'ert-inquiry-briefing-header' });
+        header.createDiv({ cls: 'ert-inquiry-briefing-title', text: 'Recent Inquiries' });
+        this.briefingListEl = panel.createDiv({ cls: 'ert-inquiry-briefing-list' });
+        this.briefingEmptyEl = panel.createDiv({ cls: 'ert-inquiry-briefing-empty', text: 'No inquiries yet.' });
+        this.briefingFooterEl = panel.createDiv({ cls: 'ert-inquiry-briefing-footer' });
+        this.briefingSaveButton = this.briefingFooterEl.createEl('button', {
+            cls: 'ert-inquiry-briefing-save',
+            text: 'Save current brief'
+        });
+        this.registerDomEvent(this.briefingSaveButton, 'click', (event: MouseEvent) => {
+            event.stopPropagation();
+            void this.handleBriefingSaveClick();
+        });
+        this.registerDomEvent(panel, 'pointerenter', () => this.cancelBriefingHide());
+        this.registerDomEvent(panel, 'pointerleave', () => this.scheduleBriefingHide());
+        this.refreshBriefingPanel();
+    }
+
+    private showBriefingPanel(): void {
+        if (!this.briefingPanelEl) return;
+        this.cancelBriefingHide();
+        this.refreshBriefingPanel();
+        this.briefingPanelEl.classList.remove('ert-hidden');
+    }
+
+    private hideBriefingPanel(force = false): void {
+        if (!this.briefingPanelEl) return;
+        if (this.briefingPinned && !force) return;
+        this.cancelBriefingHide();
+        this.briefingPanelEl.classList.add('ert-hidden');
+    }
+
+    private toggleBriefingPanel(): void {
+        if (!this.briefingPanelEl) return;
+        if (this.briefingPinned) {
+            this.briefingPinned = false;
+            this.hideBriefingPanel(true);
+            return;
+        }
+        this.briefingPinned = true;
+        this.showBriefingPanel();
+    }
+
+    private scheduleBriefingHide(): void {
+        if (this.briefingPinned) return;
+        this.cancelBriefingHide();
+        this.briefingHideTimer = window.setTimeout(() => {
+            this.hideBriefingPanel(true);
+        }, BRIEFING_HIDE_DELAY_MS);
+    }
+
+    private cancelBriefingHide(): void {
+        if (this.briefingHideTimer) {
+            window.clearTimeout(this.briefingHideTimer);
+            this.briefingHideTimer = undefined;
+        }
+    }
+
+    private refreshBriefingPanel(): void {
+        if (!this.briefingListEl || !this.briefingEmptyEl || !this.briefingFooterEl) return;
+        this.briefingListEl.empty();
+        const sessions = this.sessionStore.getRecentSessions(BRIEFING_SESSION_LIMIT);
+        if (!sessions.length) {
+            this.briefingEmptyEl.classList.remove('ert-hidden');
+            this.briefingFooterEl.classList.add('ert-hidden');
+            return;
+        }
+        this.briefingEmptyEl.classList.add('ert-hidden');
+        sessions.forEach(session => {
+            const item = this.briefingListEl?.createDiv({ cls: 'ert-inquiry-briefing-item' });
+            if (!item) return;
+            if (session.key === this.state.activeSessionId) {
+                item.classList.add('is-active');
+            }
+            const main = item.createDiv({ cls: 'ert-inquiry-briefing-main' });
+            const zoneLabel = this.resolveSessionZoneLabel(session);
+            const lensLabel = this.resolveSessionLensLabel(session, zoneLabel);
+            const header = `${zoneLabel} · ${lensLabel}`;
+            main.createDiv({ cls: 'ert-inquiry-briefing-title-row', text: header });
+            const metaText = `${this.formatSessionTime(session)} · ${this.formatSessionScope(session)}`;
+            main.createDiv({ cls: 'ert-inquiry-briefing-meta', text: metaText });
+
+            const status = this.resolveSessionStatus(session);
+            const statusEl = item.createDiv({
+                cls: `ert-inquiry-briefing-status ert-inquiry-briefing-status--${status}`,
+                text: status
+            });
+            statusEl.setAttribute('aria-label', `Session status: ${status}`);
+
+            if (session.briefPath) {
+                const openBtn = item.createEl('button', {
+                    cls: 'ert-inquiry-briefing-open',
+                    attr: { 'aria-label': 'Open saved brief' }
+                });
+                setIcon(openBtn, 'file-text');
+                this.registerDomEvent(openBtn, 'click', (event: MouseEvent) => {
+                    event.stopPropagation();
+                    void this.openBriefFromSession(session);
+                });
+            }
+
+            this.registerDomEvent(item, 'click', () => {
+                this.activateSession(session);
+                this.briefingPinned = false;
+                this.hideBriefingPanel(true);
+            });
+        });
+
+        const activeSession = this.state.activeSessionId
+            ? this.sessionStore.peekSession(this.state.activeSessionId)
+            : undefined;
+        const activeStatus = activeSession ? this.resolveSessionStatus(activeSession) : null;
+        const canSave = !!activeSession && activeStatus === 'unsaved';
+        this.briefingFooterEl.classList.toggle('ert-hidden', !canSave);
+    }
+
+    private resolveSessionStatus(session: InquirySession, options?: { simulated?: boolean }): InquirySessionStatus {
+        if (options?.simulated) return 'simulated';
+        if (session.status) return session.status;
+        if (this.isErrorResult(session.result)) return 'error';
+        if (session.briefPath) return 'saved';
+        return 'unsaved';
+    }
+
+    private resolveSessionStatusFromResult(result: InquiryResult, options?: { simulated?: boolean }): InquirySessionStatus {
+        if (options?.simulated) return 'simulated';
+        if (this.isErrorResult(result)) return 'error';
+        return 'unsaved';
+    }
+
+    private resolveSessionZoneLabel(session: InquirySession): string {
+        const zone = session.questionZone ?? this.findPromptZoneById(session.result.questionId) ?? 'setup';
+        return zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
+    }
+
+    private resolveSessionLensLabel(session: InquirySession, zoneLabel: string): string {
+        const promptLabel = this.findPromptLabelById(session.result.questionId);
+        if (promptLabel && promptLabel.toLowerCase() !== zoneLabel.toLowerCase()) {
+            return promptLabel;
+        }
+        return session.result.mode === 'depth' ? 'Depth' : 'Flow';
+    }
+
+    private formatSessionTime(session: InquirySession): string {
+        const timestamp = session.createdAt || session.lastAccessed;
+        const date = new Date(timestamp);
+        const raw = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        return raw.replace(/\s+/g, '').toLowerCase();
+    }
+
+    private formatSessionScope(session: InquirySession): string {
+        const scopeLabel = session.result.scope === 'saga' ? 'Saga' : 'Book';
+        const focus = session.result.focusId || '';
+        return `${scopeLabel} ${focus}`.trim();
+    }
+
+    private updateBriefingButtonState(): void {
+        if (!this.artifactButton) return;
+        const activeSession = this.state.activeSessionId
+            ? this.sessionStore.peekSession(this.state.activeSessionId)
+            : undefined;
+        const status = activeSession ? this.resolveSessionStatus(activeSession) : null;
+        this.artifactButton.classList.toggle('is-briefing-pulse', status === 'unsaved');
+        this.artifactButton.classList.toggle('is-briefing-saved', status === 'saved');
+        this.artifactButton.classList.toggle('is-briefing-error', status === 'error');
+        const tooltip = status === 'unsaved'
+            ? 'Briefing · Save latest brief'
+            : 'Briefing · Recent inquiries';
+        this.artifactButton.setAttribute('data-tooltip', tooltip);
+    }
+
+    private async handleBriefingSaveClick(): Promise<void> {
+        const result = this.state.activeResult;
+        if (!result) {
+            new Notice('Run an inquiry before saving a brief.');
+            return;
+        }
+        await this.saveBrief(result, {
+            openFile: true,
+            silent: false,
+            sessionKey: this.state.activeSessionId
+        });
+    }
+
+    private activateSession(session: InquirySession): void {
+        if (this.state.isRunning) return;
+        this.state.scope = session.scope ?? session.result.scope;
+        this.state.focusBookId = session.focusBookId ?? this.state.focusBookId;
+        this.state.focusSceneId = session.focusSceneId ?? this.state.focusSceneId;
+        this.applySession({
+            result: session.result,
+            key: session.key,
+            focusBookId: session.focusBookId,
+            focusSceneId: session.focusSceneId,
+            scope: session.scope,
+            questionZone: session.questionZone
+        }, 'fresh');
+        if (this.isErrorResult(session.result)) {
+            this.setApiStatus('error', this.formatApiErrorReason(session.result));
+        } else {
+            this.setApiStatus('success');
+        }
+        this.sessionStore.updateSession(session.key, { lastAccessed: Date.now() });
+    }
+
+    private async openBriefFromSession(session: InquirySession): Promise<void> {
+        if (!session.briefPath) return;
+        const file = this.app.vault.getAbstractFileByPath(session.briefPath);
+        if (file && file instanceof TFile) {
+            await openOrRevealFile(this.app, file);
+            return;
+        }
+        new Notice('Brief not found. It may have been moved or deleted.');
     }
 
     private createSvgElement<K extends keyof SVGElementTagNameMap>(tag: K): SVGElementTagNameMap[K] {
@@ -1154,6 +1392,8 @@ export class InquiryView extends ItemView {
         this.updateFooterStatus();
         this.updateNavigationIcons();
         this.updateRunningState();
+        this.updateBriefingButtonState();
+        this.refreshBriefingPanel();
     }
 
     private refreshCorpus(): void {
@@ -1471,9 +1711,12 @@ export class InquiryView extends ItemView {
             });
             this.registerDomEvent(tick as unknown as HTMLElement, 'pointerenter', () => {
                 if (this.state.isRunning) return;
-                this.setHoverText(this.buildMinimapHoverText(label));
+                this.handleMinimapHover(label);
             });
-            this.registerDomEvent(tick as unknown as HTMLElement, 'pointerleave', () => this.clearHoverText());
+            this.registerDomEvent(tick as unknown as HTMLElement, 'pointerleave', () => {
+                this.clearHoverText();
+                this.clearResultPreview();
+            });
             this.minimapTicksEl.appendChild(tick);
             this.minimapTicks.push(tick);
             tickLayouts.push({ x, y, size: tickSize });
@@ -2351,6 +2594,8 @@ export class InquiryView extends ItemView {
         const manifest = this.buildCorpusManifest(question.id);
         const focusLabel = this.getFocusLabel();
         const focusId = this.getFocusId();
+        const focusSceneId = this.state.scope === 'book' ? this.state.focusSceneId : undefined;
+        const focusBookId = this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusBookId;
         const baseKey = this.sessionStore.buildBaseKey({
             questionId: question.id,
             scope: this.state.scope,
@@ -2360,9 +2605,11 @@ export class InquiryView extends ItemView {
         const key = this.sessionStore.buildKey(baseKey, manifest.fingerprint);
         let cacheStatus: 'fresh' | 'stale' | 'missing' = 'missing';
         let cachedResult: InquiryResult | null = null;
+        let cachedSession: InquirySession | undefined;
         if (cacheEnabled) {
             const cached = this.sessionStore.getSession(key);
             if (cached) {
+                cachedSession = cached;
                 cachedResult = this.normalizeLegacyResult({ ...cached.result, mode: this.state.mode });
                 cacheStatus = 'fresh';
             } else {
@@ -2419,16 +2666,52 @@ export class InquiryView extends ItemView {
 
             if (cacheEnabled && !this.isErrorResult(result)) {
                 cacheStatus = 'fresh';
-                this.sessionStore.setSession({
-                    key,
-                    baseKey,
-                    result,
-                    createdAt: Date.now(),
-                    lastAccessed: Date.now()
-                });
             } else if (!cacheEnabled) {
                 cacheStatus = 'missing';
             }
+        }
+
+        let session: InquirySession;
+        if (cachedSession) {
+            session = {
+                ...cachedSession,
+                result,
+                lastAccessed: Date.now(),
+                focusBookId,
+                focusSceneId,
+                scope: this.state.scope,
+                questionZone: question.zone
+            };
+            this.sessionStore.setSession(session);
+        } else {
+            session = {
+                key,
+                baseKey,
+                result,
+                createdAt: Date.now(),
+                lastAccessed: Date.now(),
+                status: this.resolveSessionStatusFromResult(result),
+                focusBookId,
+                focusSceneId,
+                scope: this.state.scope,
+                questionZone: question.zone
+            };
+            this.sessionStore.setSession(session);
+        }
+
+        const autoSaveEnabled = this.plugin.settings.inquiryAutoSave ?? true;
+        const shouldAutoSave = autoSaveEnabled
+            && !this.isErrorResult(result)
+            && session.status !== 'simulated'
+            && session.status !== 'saved'
+            && !session.briefPath;
+        if (shouldAutoSave) {
+            await this.saveBrief(result, {
+                openFile: false,
+                silent: true,
+                sessionKey: session.key
+            });
+            session = this.sessionStore.peekSession(session.key) ?? session;
         }
 
         const elapsed = Date.now() - startTime;
@@ -2436,7 +2719,14 @@ export class InquiryView extends ItemView {
             await new Promise(resolve => window.setTimeout(resolve, MIN_PROCESSING_MS - elapsed));
         }
 
-        this.applySession({ result }, cacheStatus);
+        this.applySession({
+            result,
+            key: session.key,
+            focusBookId: session.focusBookId,
+            focusSceneId: session.focusSceneId,
+            scope: session.scope,
+            questionZone: session.questionZone
+        }, cacheStatus);
         if (this.isErrorResult(result)) {
             this.setApiStatus('error', this.formatApiErrorReason(result));
         } else {
@@ -2444,8 +2734,29 @@ export class InquiryView extends ItemView {
         }
     }
 
-    private applySession(session: { result: InquiryResult }, cacheStatus: 'fresh' | 'stale' | 'missing'): void {
+    private applySession(
+        session: {
+            result: InquiryResult;
+            key?: string;
+            focusBookId?: string;
+            focusSceneId?: string;
+            scope?: InquiryScope;
+            questionZone?: InquiryZone;
+        },
+        cacheStatus: 'fresh' | 'stale' | 'missing'
+    ): void {
         const normalized = this.normalizeLegacyResult(session.result);
+        this.state.scope = session.scope ?? normalized.scope;
+        this.state.mode = normalized.mode;
+        this.state.activeQuestionId = normalized.questionId;
+        this.state.activeZone = session.questionZone ?? this.findPromptZoneById(normalized.questionId) ?? this.state.activeZone;
+        if (session.focusBookId !== undefined) {
+            this.state.focusBookId = session.focusBookId;
+        }
+        if (session.focusSceneId !== undefined) {
+            this.state.focusSceneId = session.focusSceneId;
+        }
+        this.state.activeSessionId = session.key;
         this.state.activeResult = normalized;
         this.state.corpusFingerprint = normalized.corpusFingerprint;
         this.state.cacheStatus = cacheStatus;
@@ -2501,20 +2812,62 @@ export class InquiryView extends ItemView {
             this.apiSimulationTimer = undefined;
         }
         const prompt = this.pickSimulationPrompt();
-        if (prompt) {
-            this.state.activeQuestionId = prompt.id;
-            this.state.activeZone = prompt.zone;
-            this.lockPromptPreview(prompt);
-        }
+        const fallbackPrompt: InquiryQuestion = {
+            id: 'simulation',
+            label: 'Simulation',
+            question: 'Simulated inquiry run.',
+            zone: this.state.activeZone ?? 'setup',
+            icon: 'activity'
+        };
+        const selectedPrompt = prompt ?? fallbackPrompt;
+        this.state.activeQuestionId = selectedPrompt.id;
+        this.state.activeZone = selectedPrompt.zone;
+        this.lockPromptPreview(selectedPrompt);
+
+        const manifest = this.buildCorpusManifest(selectedPrompt.id);
+        const focusLabel = this.getFocusLabel();
+        const focusId = this.getFocusId();
+        const baseKey = this.sessionStore.buildBaseKey({
+            questionId: selectedPrompt.id,
+            scope: this.state.scope,
+            focusId
+        });
+        const key = this.sessionStore.buildKey(baseKey, manifest.fingerprint);
+        const focusSceneId = this.state.scope === 'book' ? this.state.focusSceneId : undefined;
+        const focusBookId = this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusBookId;
+        const submittedAt = new Date();
         this.state.isRunning = true;
         this.setApiStatus('running');
         this.refreshUI();
         this.apiSimulationTimer = window.setTimeout(() => {
             this.apiSimulationTimer = undefined;
-            this.state.isRunning = false;
-            this.unlockPromptPreview();
-            this.updateMinimapFocus();
-            this.refreshUI();
+            const completedAt = new Date();
+            const result = this.buildSimulationResult(selectedPrompt, focusLabel, manifest.fingerprint);
+            result.submittedAt = submittedAt.toISOString();
+            result.completedAt = completedAt.toISOString();
+            result.roundTripMs = completedAt.getTime() - submittedAt.getTime();
+
+            const session: InquirySession = {
+                key,
+                baseKey,
+                result,
+                createdAt: Date.now(),
+                lastAccessed: Date.now(),
+                status: 'simulated',
+                focusBookId,
+                focusSceneId,
+                scope: this.state.scope,
+                questionZone: selectedPrompt.zone
+            };
+            this.sessionStore.setSession(session);
+            this.applySession({
+                result,
+                key: session.key,
+                focusBookId: session.focusBookId,
+                focusSceneId: session.focusSceneId,
+                scope: session.scope,
+                questionZone: session.questionZone
+            }, 'missing');
             this.setApiStatus('success');
         }, SIMULATION_DURATION_MS);
     }
@@ -2560,6 +2913,27 @@ export class InquiryView extends ItemView {
                 related: [],
                 evidenceType: 'mixed'
             }],
+            corpusFingerprint: fingerprint
+        };
+    }
+
+    private buildSimulationResult(question: InquiryQuestion, focusLabel: string, fingerprint: string): InquiryResult {
+        return {
+            runId: `run-${Date.now()}`,
+            scope: this.state.scope,
+            focusId: focusLabel,
+            mode: this.state.mode,
+            questionId: question.id,
+            summary: 'Simulated inquiry session.',
+            verdict: {
+                flow: GLYPH_PLACEHOLDER_FLOW,
+                depth: GLYPH_PLACEHOLDER_DEPTH,
+                impact: 'low',
+                assessmentConfidence: 'low'
+            },
+            aiStatus: 'success',
+            aiReason: 'simulated',
+            findings: [],
             corpusFingerprint: fingerprint
         };
     }
@@ -2904,13 +3278,65 @@ export class InquiryView extends ItemView {
         return bullet ? `${label} hit: ${finding.headline} ${bullet}` : `${label} hit: ${finding.headline}`;
     }
 
+    private handleMinimapHover(label: string): void {
+        const result = this.state.activeResult;
+        if (!result || this.isErrorResult(result)) {
+            this.setHoverText(this.buildMinimapHoverText(label));
+            return;
+        }
+        const finding = this.buildHitFindingMap(result).get(label);
+        if (!finding) {
+            this.setHoverText(this.buildMinimapHoverText(label));
+            return;
+        }
+        this.showResultPreview(label, finding, result);
+    }
+
+    private showResultPreview(label: string, finding: InquiryFinding, result: InquiryResult): void {
+        if (!this.previewGroup || this.previewLocked) return;
+        const zone = this.state.activeZone ?? this.findPromptZoneById(result.questionId) ?? 'setup';
+        const hero = finding.bullets?.[0]
+            ? `${finding.headline} — ${finding.bullets[0]}`
+            : finding.headline;
+        const meta = `${label} · ${this.formatFindingKindLabel(finding.kind)}`;
+        const rows = this.buildResultPreviewRows(finding, result, label);
+        this.minimapResultPreviewActive = true;
+        this.setHoverText(`${label}: ${finding.headline}`);
+        this.previewGroup.classList.add('is-visible');
+        this.updatePromptPreview(zone, result.mode, hero, rows, meta);
+    }
+
+    private clearResultPreview(): void {
+        if (!this.minimapResultPreviewActive) return;
+        this.minimapResultPreviewActive = false;
+        if (this.previewLocked) return;
+        this.hidePromptPreview(true);
+    }
+
+    private buildResultPreviewRows(
+        finding: InquiryFinding,
+        result: InquiryResult,
+        label: string
+    ): string[] {
+        const scopeLabel = result.scope === 'saga' ? 'Saga' : 'Book';
+        return [
+            `${label} hit`,
+            `Impact ${finding.impact}`,
+            `Confidence ${finding.assessmentConfidence}`,
+            `Flow ${this.formatMetricDisplay(result.verdict.flow)}`,
+            `Depth ${this.formatMetricDisplay(result.verdict.depth)}`,
+            `${scopeLabel} ${result.focusId}`
+        ];
+    }
+
+    private formatFindingKindLabel(kind: InquiryFinding['kind']): string {
+        if (!kind) return 'Finding';
+        return kind.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+
     private buildHitFindingMap(result: InquiryResult | null | undefined): Map<string, InquiryFinding> {
         const map = new Map<string, InquiryFinding>();
         if (!result) return map;
-        const stubHits = this.buildStubHitFindings(this.getCurrentItems());
-        stubHits.forEach(finding => {
-            map.set(finding.refId, finding);
-        });
         result.findings.forEach(finding => {
             if (!this.isFindingHit(finding)) return;
             const existing = map.get(finding.refId);
@@ -2919,37 +3345,6 @@ export class InquiryView extends ItemView {
             }
         });
         return map;
-    }
-
-    private buildStubHitFindings(items: InquiryCorpusItem[]): InquiryFinding[] {
-        if (!items.length) return [];
-        const findings: InquiryFinding[] = [];
-        items.forEach(item => {
-            const seed = item.filePaths?.[0] || item.id;
-            const hash = this.hashStringToNumber(seed);
-            if (hash % 5 !== 0) return;
-            findings.push({
-                refId: item.displayLabel,
-                kind: 'continuity',
-                status: 'unclear',
-                impact: 'medium',
-                assessmentConfidence: 'low',
-                headline: 'Stub hit detected.',
-                bullets: ['Deterministic placeholder until AI runner is wired.'],
-                related: [],
-                evidenceType: this.state.scope === 'book' ? 'scene' : 'mixed'
-            });
-        });
-        return findings;
-    }
-
-    private hashStringToNumber(value: string): number {
-        let hash = 0;
-        for (let i = 0; i < value.length; i += 1) {
-            hash = ((hash << 5) - hash) + value.charCodeAt(i);
-            hash |= 0;
-        }
-        return Math.abs(hash);
     }
 
     private isFindingHit(finding: InquiryFinding): boolean {
@@ -3018,7 +3413,13 @@ export class InquiryView extends ItemView {
         this.previewHideTimer = window.setTimeout(hide, 140);
     }
 
-    private updatePromptPreview(zone: InquiryZone, mode: InquiryMode, question: string, rowsOverride?: string[]): void {
+    private updatePromptPreview(
+        zone: InquiryZone,
+        mode: InquiryMode,
+        question: string,
+        rowsOverride?: string[],
+        metaOverride?: string
+    ): void {
         if (!this.previewGroup || !this.previewHero) return;
         ['setup', 'pressure', 'payoff'].forEach(zoneName => {
             this.previewGroup?.classList.remove(`is-zone-${zoneName}`);
@@ -3034,7 +3435,8 @@ export class InquiryView extends ItemView {
         );
         if (this.previewMeta) {
             const metaY = PREVIEW_PANEL_PADDING_Y + (heroLines * PREVIEW_HERO_LINE_HEIGHT) + PREVIEW_META_GAP;
-            this.previewMeta.textContent = `${zoneLabel} · ${modeLabel}`.toUpperCase();
+            const metaText = metaOverride ?? `${zoneLabel} + ${modeLabel}`.toUpperCase();
+            this.previewMeta.textContent = metaText;
             this.previewMeta.setAttribute('y', String(metaY));
         }
 
@@ -3488,7 +3890,7 @@ export class InquiryView extends ItemView {
             },
             {
                 element: this.artifactButton,
-                text: 'Save the latest inquiry as an artifact.',
+                text: 'Open recent Inquiry sessions and save briefs.',
                 placement: 'bottom'
             },
             {
@@ -3531,14 +3933,26 @@ export class InquiryView extends ItemView {
     private async saveArtifact(): Promise<void> {
         const result = this.state.activeResult;
         if (!result) {
-            new Notice('Run an inquiry before saving an artifact.');
+            new Notice('Run an inquiry before saving a brief.');
             return;
         }
+        await this.saveBrief(result, {
+            openFile: true,
+            silent: false,
+            sessionKey: this.state.activeSessionId
+        });
+    }
 
+    private async saveBrief(
+        result: InquiryResult,
+        options: { openFile: boolean; silent: boolean; sessionKey?: string }
+    ): Promise<string | null> {
         const folder = await ensureInquiryArtifactFolder(this.app, this.plugin.settings);
         if (!folder) {
-            new Notice('Unable to create artifact folder.');
-            return;
+            if (!options.silent) {
+                new Notice('Unable to create brief folder.');
+            }
+            return null;
         }
 
         const briefTitle = this.formatInquiryBriefTitle(result);
@@ -3548,11 +3962,27 @@ export class InquiryView extends ItemView {
 
         try {
             const file = await this.app.vault.create(filePath, content);
-            await openOrRevealFile(this.app, file);
-            new Notice('Inquiry artifact saved.');
+            if (options.openFile) {
+                await openOrRevealFile(this.app, file);
+            }
+            if (!options.silent) {
+                new Notice('Inquiry brief saved.');
+            }
+            if (options.sessionKey) {
+                this.sessionStore.updateSession(options.sessionKey, {
+                    status: 'saved',
+                    briefPath: file.path
+                });
+            }
+            this.updateBriefingButtonState();
+            this.refreshBriefingPanel();
+            return file.path;
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            new Notice(`Unable to save artifact: ${message}`);
+            if (!options.silent) {
+                new Notice(`Unable to save brief: ${message}`);
+            }
+            return null;
         }
     }
 
@@ -3753,7 +4183,7 @@ export class InquiryView extends ItemView {
     private async openMostRecentArtifact(): Promise<void> {
         const file = getMostRecentArtifactFile(this.app, this.plugin.settings);
         if (!file) {
-            new Notice('No artifacts found.');
+            new Notice('No briefs found.');
             return;
         }
         await openOrRevealFile(this.app, file);
