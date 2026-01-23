@@ -72,7 +72,8 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
             });
         const colorInput = control.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
         if (colorInput) colorInput.classList.add('ert-hidden-color-input');
-        const swatchEl = control.createDiv({ cls: `ert-swatch-trigger ert-stage-${stage}` });
+        const swatchEl = control.createEl('button', { cls: `${ERT_CLASSES.SWATCH} ert-stage-${stage}` });
+        swatchEl.type = 'button';
         plugin.registerDomEvent(swatchEl, 'click', () => { colorInput?.click(); });
         new Settings(control)
             .addText(textInput => {
@@ -146,7 +147,8 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
             });
         const colorInput2 = control.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
         if (colorInput2) colorInput2.classList.add('ert-hidden-color-input');
-        const swatchEl2 = control.createDiv({ cls: `ert-swatch-trigger ert-subplot-${i}` });
+        const swatchEl2 = control.createEl('button', { cls: `${ERT_CLASSES.SWATCH} ert-subplot-${i}` });
+        swatchEl2.type = 'button';
         plugin.registerDomEvent(swatchEl2, 'click', () => { colorInput2?.click(); });
         new Settings(control)
             .addText(text => {

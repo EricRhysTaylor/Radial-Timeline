@@ -27,16 +27,18 @@ export interface InquiryGlyphPromptState {
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 export const FLOW_RADIUS = 130;
-export const DEPTH_RADIUS = 90;
-export const FLOW_STROKE = 20;
-export const DEPTH_STROKE = 30;
+export const DEPTH_RADIUS = 88;
+export const FLOW_STROKE = 30;
+export const DEPTH_STROKE = 46;
 const FLOW_HIT_STROKE = 38;
 const DEPTH_HIT_STROKE = 48;
 const FLOW_BADGE_RADIUS_PX = FLOW_STROKE / 2;
 const DEPTH_BADGE_RADIUS_PX = DEPTH_STROKE / 2;
-const FLOW_BADGE_TEXT_PX = Math.round(16 / 2);
-const DEPTH_BADGE_TEXT_PX = Math.round(20 * (2 / 3));
-const LABEL_TEXT_PX = 200; //
+const FLOW_BADGE_TEXT_SCALE = 1.1;
+const DEPTH_BADGE_TEXT_SCALE = 1.1;
+const FLOW_BADGE_TEXT_PX = Math.round(FLOW_BADGE_RADIUS_PX * FLOW_BADGE_TEXT_SCALE);
+const DEPTH_BADGE_TEXT_PX = Math.round(DEPTH_BADGE_RADIUS_PX * DEPTH_BADGE_TEXT_SCALE);
+const LABEL_TEXT_RADIUS_SCALE = 1.2;
 const ARC_BASE_TINT = '#dff5e7';
 const ARC_MAX_GREEN = '#00FF00';
 const DOT_DARKEN = 0.35;
@@ -684,9 +686,9 @@ export class InquiryGlyph {
 
     private updateLabelFontSize(): void {
         const label = this.labelText.textContent?.trim() ?? '';
-        const baseSize = LABEL_TEXT_PX * this.badgeScaleFactor;
         const innerPadding = 8 * this.badgeScaleFactor;
         const innerRadius = Math.max(0, (DEPTH_RADIUS - (DEPTH_STROKE / 2)) - innerPadding);
+        const baseSize = innerRadius * this.badgeScaleFactor;
         if (!label || innerRadius <= 0) {
             this.labelText.setAttribute('font-size', baseSize.toFixed(2));
             return;
@@ -713,7 +715,8 @@ export class InquiryGlyph {
         }
 
         if (!Number.isFinite(radiusNeeded) || radiusNeeded <= 0) return;
-        const fitScale = innerRadius / radiusNeeded;
+        const targetRadius = innerRadius * LABEL_TEXT_RADIUS_SCALE;
+        const fitScale = targetRadius / radiusNeeded;
         if (!Number.isFinite(fitScale) || fitScale <= 0) return;
         fontSize *= fitScale;
         this.labelText.setAttribute('font-size', fontSize.toFixed(2));

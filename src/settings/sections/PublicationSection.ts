@@ -345,7 +345,10 @@ export function renderPublicationSection(params: {
         });
 
     // --- Completion Estimate Preview ---
-    const previewContainer = containerEl.createDiv({ cls: 'ert-previewFrame ert-planetary-preview ert-completion-preview' });
+    const previewContainer = containerEl.createDiv({
+        cls: 'ert-previewFrame ert-previewFrame--left',
+        attr: { 'data-preview': 'completion' }
+    });
     
     // Quotes for different states
     const startingQuotes = [

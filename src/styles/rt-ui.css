@@ -745,6 +745,33 @@
   overflow: hidden;
 }
 
+.ert-ui .ert-previewFrame--center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--ert-gap-sm);
+  margin: var(--ert-pad-md) 0;
+  border-style: dashed;
+}
+
+.ert-ui .ert-previewFrame--left {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  text-align: left;
+  margin: var(--ert-gap-md) 0 0;
+}
+
+.ert-ui .ert-previewFrame--center.ert-previewFrame--left {
+  align-items: stretch;
+  justify-content: flex-start;
+  text-align: left;
+  margin: var(--ert-pad-md) 0;
+}
+
 .ert-ui .ert-previewFrame__inner {
   display: flex;
   align-items: center;
@@ -2056,93 +2083,84 @@
   left: 0;
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger {
-  width: 24px;
-  height: 24px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 3px;
-  cursor: pointer;
-  flex-shrink: 0;
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-stage-Zero {
+  --ert-swatch-color: var(--rt-publishStageColors-Zero);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-stage-Zero {
-  background: var(--rt-publishStageColors-Zero);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-stage-Author {
+  --ert-swatch-color: var(--rt-publishStageColors-Author);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-stage-Author {
-  background: var(--rt-publishStageColors-Author);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-stage-House {
+  --ert-swatch-color: var(--rt-publishStageColors-House);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-stage-House {
-  background: var(--rt-publishStageColors-House);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-stage-Press {
+  --ert-swatch-color: var(--rt-publishStageColors-Press);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-stage-Press {
-  background: var(--rt-publishStageColors-Press);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-subplot-0 {
+  --ert-swatch-color: var(--rt-subplot-colors-0);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-0 {
-  background: var(--rt-subplot-colors-0);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-subplot-1 {
+  --ert-swatch-color: var(--rt-subplot-colors-1);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-1 {
-  background: var(--rt-subplot-colors-1);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-subplot-2 {
+  --ert-swatch-color: var(--rt-subplot-colors-2);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-2 {
-  background: var(--rt-subplot-colors-2);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-subplot-3 {
+  --ert-swatch-color: var(--rt-subplot-colors-3);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-3 {
-  background: var(--rt-subplot-colors-3);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-subplot-4 {
+  --ert-swatch-color: var(--rt-subplot-colors-4);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-4 {
-  background: var(--rt-subplot-colors-4);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-subplot-5 {
+  --ert-swatch-color: var(--rt-subplot-colors-5);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-5 {
-  background: var(--rt-subplot-colors-5);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-subplot-6 {
+  --ert-swatch-color: var(--rt-subplot-colors-6);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-6 {
-  background: var(--rt-subplot-colors-6);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-subplot-7 {
+  --ert-swatch-color: var(--rt-subplot-colors-7);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-7 {
-  background: var(--rt-subplot-colors-7);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-subplot-8 {
+  --ert-swatch-color: var(--rt-subplot-colors-8);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-8 {
-  background: var(--rt-subplot-colors-8);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-subplot-9 {
+  --ert-swatch-color: var(--rt-subplot-colors-9);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-9 {
-  background: var(--rt-subplot-colors-9);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-subplot-10 {
+  --ert-swatch-color: var(--rt-subplot-colors-10);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-10 {
-  background: var(--rt-subplot-colors-10);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-subplot-11 {
+  --ert-swatch-color: var(--rt-subplot-colors-11);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-11 {
-  background: var(--rt-subplot-colors-11);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-subplot-12 {
+  --ert-swatch-color: var(--rt-subplot-colors-12);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-12 {
-  background: var(--rt-subplot-colors-12);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-subplot-13 {
+  --ert-swatch-color: var(--rt-subplot-colors-13);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-13 {
-  background: var(--rt-subplot-colors-13);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-subplot-14 {
+  --ert-swatch-color: var(--rt-subplot-colors-14);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-14 {
-  background: var(--rt-subplot-colors-14);
-}
-
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch-trigger.ert-subplot-15 {
-  background: var(--rt-subplot-colors-15);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .ert-swatch.ert-subplot-15 {
+  --ert-swatch-color: var(--rt-subplot-colors-15);
 }
 
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-section-desc {
@@ -2288,17 +2306,6 @@
 /* Planetary + POV previews (ERT)                                             */
 /* -------------------------------------------------------------------------- */
 
-.ert-ui .ert-planetary-preview {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: var(--ert-gap-sm);
-  margin: var(--ert-pad-md) 0;
-  border-style: dashed;
-}
-
 .ert-ui .ert-planetary-preview-heading {
   font-size: 0.8rem;
   text-transform: uppercase;
@@ -2380,11 +2387,6 @@
 /* -------------------------------------------------------------------------- */
 /* Publication completion preview (ERT)                                       */
 /* -------------------------------------------------------------------------- */
-
-.ert-ui .ert-completion-preview {
-  text-align: left;
-  align-items: stretch;
-}
 
 .ert-ui .ert-completion-preview-body {
   font-size: 1rem;
@@ -3160,10 +3162,6 @@
   height: calc(var(--ert-gap-md) + var(--ert-gap-xs));
   cursor: pointer;
   accent-color: var(--interactive-accent);
-}
-
-.ert-ui .ert-hover-metadata-preview {
-  margin-top: var(--ert-gap-md);
 }
 
 .ert-ui .ert-hover-preview-body {

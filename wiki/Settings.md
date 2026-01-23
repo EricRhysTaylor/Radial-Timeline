@@ -6,18 +6,117 @@ This page serves as a comprehensive reference for all plugin settings.
 
 ## Settings Tabs
 
-The settings interface is organized into three tabs:
+The settings interface is organized into four tabs:
 
-*   **Core** — Essential settings for timeline configuration, metadata, and workflow
 *   **Pro** — Professional features including runtime estimation and manuscript exports
+*   **Inquiry** — Corpus scanning, prompt libraries, and Inquiry automation
+*   **Core** — Essential settings for timeline configuration, metadata, and workflow
 *   **Social Media** — Author Progress Report (APR) for sharing your writing journey
 
 Use the tab bar at the top of the settings panel to switch between sections.
 
+## Pro Tab
+
+<a name="professional"></a>
+### Professional · Signature ✦
+Professional tools for serious writers.
+
+The Signature tier unlocks advanced capabilities for professional workflows. During the Open Beta, all Pro features are available free to early adopters.
+
+**Pro features include:**
+*   **Runtime Estimation** — Screen time, audiobook duration, and manuscript length analysis with custom profiles
+*   **Pro Exports** — Manuscript generation via Pandoc for screenplay, podcast, and novel formats
+*   **Chronologue Runtime Mode** — Blue wireframe sub-mode showing scene runtime duration arcs
+*   **Campaign Manager** — Manage multiple Author Progress Report campaigns with independent refresh schedules and Teaser Reveal settings
+*   **Teaser Reveal** — Progressive reveal system that automatically shows more timeline detail as your book progresses (Pro feature within Campaign Manager)
+
+**License & access:**
+*   **Open Beta**: Pro is active by default during the beta period.
+*   **License key**: When paid licensing launches, enter your key here to unlock Pro features.
+
+**Export & Pandoc settings:**
+*   **Pandoc binary path**: Optional custom path to your pandoc executable. If blank, system PATH is used.
+*   **Enable fallback Pandoc**: Attempt a secondary bundled/portable pandoc if the primary is missing.
+*   **Fallback Pandoc path**: Path to a portable/bundled pandoc binary.
+*   **Pandoc templates**: Custom LaTeX templates for Screenplay, Podcast Script, and Novel Manuscript formats.
+
+> [!NOTE]
+> Campaign Manager, Teaser Reveal, and Pandoc Manuscript Export (including templates) are undergoing final testing and will be available soon. During the Open Beta, all Pro features are free to early adopters.
+
+> [!NOTE]
+> See [[Signature]] for full Pro feature documentation.
+
+<a name="runtime-estimation"></a>
+### Runtime estimation ✦ Pro
+Calculate screen time, audiobook duration, and manuscript length estimates.
+
+*   **Enable runtime estimation**: Activates runtime calculations for scenes and the Chronologue Runtime Mode.
+*   **Default runtime profile**: The profile used when no per-scene override is set.
+*   **Edit profile**: Manage multiple profiles with different settings for various project types.
+*   **Profile label**: Display name shown in pickers and the runtime modal.
+*   **Content type**: Choose between Novel/Audiobook (unified narration pace) or Screenplay (separate dialogue/action pacing).
+
+**Screenplay mode settings:**
+*   **Dialogue words per minute**: Reading speed for quoted dialogue (default 160).
+*   **Action words per minute**: Reading speed for scene descriptions (default 100).
+*   **Parenthetical timings**: Seconds added for screenplay directives—(beat), (pause), (long pause), (a moment), (silence).
+
+**Novel/Audiobook mode settings:**
+*   **Narration words per minute**: Reading pace for all content (default 150).
+
+**Session planning (optional):**
+*   **Drafting words per minute**: Your writing speed for completion projections.
+*   **Daily minutes available**: For "45 min/day" style time estimates.
+
+*   **Runtime arc cap default**: Controls Chronologue Runtime Mode arc scaling. Lower values emphasize shorter scenes.
+
+> [!NOTE]
+> See [[Signature]] for full Pro feature documentation and [[Chronologue-Mode#runtime-mode-pro]] for the Runtime Mode visualization.
+
+## Inquiry Tab
+
+<a name="inquiry"></a>
+### Inquiry
+Configure how Inquiry scans, stores, and annotates briefs.
+
+**Artifacts & auto-save:**
+*   **Artifact folder**: Where Inquiry briefs are stored when auto-save is enabled (default `Radial Timeline/Inquiry/Artifacts`).
+*   **Embed JSON payload in Artifacts**: Includes the validated Inquiry JSON payload in the Artifact file.
+*   **Auto-save Inquiry briefs**: Save a brief automatically after each successful Inquiry run.
+
+**Action notes:**
+*   **Write Inquiry action notes to scenes**: Append Inquiry action notes to the target YAML field on hit scenes.
+*   **Action notes target YAML field**: Frontmatter field to receive Inquiry action notes (default `Revision`).
+
+**Session cache:**
+*   **Enable session cache**: Stores recent Inquiry runs for fast reloads.
+*   **Max cached sessions**: Cap for stored Inquiry sessions (1–100).
+
+<a name="inquiry-sources"></a>
+#### Inquiry sources
+*   **Inquiry class scope**: Limit which YAML classes Inquiry can scan (use `/` to allow all classes).
+*   **Inquiry scan folders**: Limit scans to specific vault paths; supports wildcards and `/` for vault root.
+*   **Class enablement & scope**: Toggle which classes are scanned and whether they apply to Book and/or Saga scopes.
+
+<a name="inquiry-prompts"></a>
+#### Inquiry prompts
+*   **Default prompts**: Built-in prompt slots for Setup, Pressure, and Payoff zones.
+*   **Custom questions**: Add and reorder custom prompts per zone; Pro unlocks extra slots.
+
+<a name="inquiry-corpus"></a>
+#### Corpus (CC)
+*   **Thresholds**: Tune word-count tiers (Empty, Sketchy, Medium, Substantive) used in Corpus cards.
+*   **Highlight completed docs with low substance**: Flags completed notes that remain in Empty or Sketchy tiers.
+
+## Core Tab
+
 <a name="general"></a>
-### Source path
+### General
 *   **Source path**: The root folder in your vault containing your manuscript scene files (e.g., `Book 1`). Leave blank to scan the entire vault.
 *   **Show source path as title**: When enabled, the timeline uses the source folder name as the central title. When disabled, it displays "Work in Progress".
+*   **AI output folder**: Storage location for AI logs and analysis files (default `Radial Timeline/AI Logs`).
+*   **Manuscript output folder**: Destination for manuscript exports (default `Radial Timeline/Manuscript`).
+*   **Outline output folder**: Destination for outline exports (default `Radial Timeline/Outline`).
 
 <a name="publication"></a>
 ### Publication and progress
@@ -31,6 +130,7 @@ Manage your project's milestones and status tracking.
 
 Target dates are validated to ensure proper stage ordering. Overdue dates are highlighted in red. Each stage has its own color-coded marker on the timeline.
 
+<a name="zero-draft-mode"></a>
 *   **Zero draft mode**: A focused mode for reviewing. Intercepts clicks on scenes with `Publish Stage: Zero` and `Status: Complete` to open a "Pending Edits" modal instead of the full note.
 *   **Show completion estimate**: Toggles the predicted completion tick mark on the timeline.
 *   **Completion estimate window (days)**: Rolling window (default 30, min 14, max 90) used to measure pace. Pace = completions in the active publish stage within the last N days ÷ N (scenes/day).
@@ -63,33 +163,6 @@ Configure the time-based visualization of your story.
 > [!NOTE]
 > Read more about [[Chronologue-Mode]].
 
-<a name="runtime-estimation"></a>
-### Runtime estimation ✦ Pro
-Calculate screen time, audiobook duration, and manuscript length estimates.
-
-*   **Enable runtime estimation**: Activates runtime calculations for scenes and the Chronologue Runtime Mode.
-*   **Default runtime profile**: The profile used when no per-scene override is set.
-*   **Edit profile**: Manage multiple profiles with different settings for various project types.
-*   **Profile label**: Display name shown in pickers and the runtime modal.
-*   **Content type**: Choose between Novel/Audiobook (unified narration pace) or Screenplay (separate dialogue/action pacing).
-
-**Screenplay mode settings:**
-*   **Dialogue words per minute**: Reading speed for quoted dialogue (default 160).
-*   **Action words per minute**: Reading speed for scene descriptions (default 100).
-*   **Parenthetical timings**: Seconds added for screenplay directives—(beat), (pause), (long pause), (a moment), (silence).
-
-**Novel/Audiobook mode settings:**
-*   **Narration words per minute**: Reading pace for all content (default 150).
-
-**Session planning (optional):**
-*   **Drafting words per minute**: Your writing speed for completion projections.
-*   **Daily minutes available**: For "45 min/day" style time estimates.
-
-*   **Runtime arc cap default**: Controls Chronologue Runtime Mode arc scaling. Lower values emphasize shorter scenes.
-
-> [!NOTE]
-> See [[Signature]] for full Pro feature documentation and [[Chronologue-Mode#runtime-mode-pro]] for the Runtime Mode visualization.
-
 <a name="acts"></a>
 ### Acts
 Configure the high-level structure of your narrative ring.
@@ -105,7 +178,7 @@ Configure the high-level structure of your narrative ring.
 Configure the structural pacing guide for your story.
 *   **Story beats system**: Select a preset structure (**Save The Cat**, **Hero's Journey**, **Story Grid**) or choose **Custom**.
 *   **Custom story beat system editor**: (Visible when "Custom" is selected) Define your own beat names and assign them to acts. Drag to reorder.
-*   **Create story beat template notes**: A utility button to generate empty beat notes in your source folder based on the selected system.
+*   **Create story beat template notes**: Generate empty beat notes in your source folder based on the selected system.
 
 > [!NOTE]
 > Learn more about using beats in [[Gossamer-Mode]].
@@ -114,18 +187,24 @@ Configure the structural pacing guide for your story.
 ### Scene YAML templates & remapping
 Manage how Radial Timeline reads and writes metadata.
 *   **Custom Metadata Mapping**: Map existing frontmatter keys in your vault (e.g., `story_date`) to the system keys (e.g., `When`) without changing your files.
-*   **Advanced YAML editor**: Enable this to customize the "Advanced" scene template. You can add, remove, or reorder optional fields while keeping the required system keys intact.
+*   **Advanced YAML editor**: Enable this to customize the advanced scene template, add optional fields, and control hover metadata icons/order.
 
 > [!NOTE]
 > *   For template customization: [[Advanced-YAML]]
 > *   For a full list of keys: [[YAML-Frontmatter]]
 
+<a name="backdrop"></a>
+### Backdrop
+Configure the Chronologue backdrop ring and microrings.
+*   **Show backdrop ring**: Display the backdrop ring in Chronologue mode. When disabled, the ring space is reclaimed for subplot rings.
+*   **Micro backdrops**: Create microrings with titles, colors, and date ranges to highlight context or epochs.
+
 <a name="planetary-time"></a>
 ### Planetary Time
 Configure custom calendars for sci-fi and fantasy worlds.
 *   **Enable planetary time**: Activates the planetary time conversion features.
-*   **Active profile**: Selects which custom calendar profile is currently active.
-*   **Profiles**: Create and edit profiles. define day length, year length, epoch offsets, and custom month/day names.
+*   **Active profile**: Selects which custom calendar profile is currently active (includes a Mars template).
+*   **Profiles**: Create and edit profiles. Define day length, year length, epoch offsets, and custom month/day names.
 
 > [!NOTE]
 > See [[Chronologue-Mode#planetary-time]] for usage details.
@@ -136,17 +215,17 @@ Configure the AI assistant for narrative analysis.
 *   **Enable AI LLM features**: Toggles AI commands and visual indicators.
 *   **AI prompt role & context template**: Customize the system prompt and context sent to the AI.
 *   **Show previous and next scene analysis**: When enabled, scene hover metadata includes the AI pulse for neighboring scenes. Disable for a more compact view.
-*   **Model**: Select your preferred LLM (Anthropic Claude, Google Gemini, OpenAI GPT, or Local/Ollama). Models marked "Latest" auto-update to the newest version.
+*   **Model**: Select your preferred LLM (Anthropic Claude, Google Gemini, OpenAI GPT, or Local/OpenAI-compatible).
 *   **API keys**: Enter your API key for the selected provider (Anthropic, Gemini, or OpenAI).
 
-**Local LLM settings** (visible when Local/Ollama is selected):
+**Local LLM settings** (visible when Local/OpenAI-compatible is selected):
 *   **Local LLM Base URL**: The API endpoint. For Ollama, use `http://localhost:11434/v1`. For LM Studio, use `http://localhost:1234/v1`.
 *   **Model ID**: The exact model name your server expects (e.g., "llama3", "mistral-7b").
 *   **Custom Instructions**: Additional instructions added to the start of the prompt for fine-tuning local model behavior.
-*   **Bypass scene hover metadata yaml writes**: When enabled, local LLM analysis skips writing to the scene note and saves results in the RAW AI log instead. Recommended for local models.
+*   **Bypass scene hover metadata yaml writes**: When enabled, local LLM analysis skips writing to the scene note and saves results in the RAW AI log instead.
 *   **API Key (Optional)**: Required by some servers; usually ignored for local tools like Ollama.
 
-*   **Log AI interactions to file**: When enabled, saves detailed JSON logs of every AI request and response to the AI output folder.
+*   **Log AI interactions to file**: When enabled, saves detailed JSON logs for each AI request in the AI output folder.
 
 > [!NOTE]
 > Learn how to interpret the analysis in [[AI-Analysis]].
@@ -154,45 +233,20 @@ Configure the AI assistant for narrative analysis.
 <a name="advanced"></a>
 ### Advanced
 Technical configuration and file handling.
-*   **AI output folder**: The folder where AI logs, manuscripts, and analysis files are saved. Default is `AI`.
 *   **Auto-expand clipped scene titles**: Automatically expands truncated text in the radial view on hover.
 *   **Timeline readability scale**: Adjusts the global font size of the timeline (Normal or Large).
-*   **Show backdrop ring**: Display the backdrop ring in Chronologue mode. When disabled, the ring space is reclaimed for subplot rings.
-*   **Metadata refresh debounce**: Technical setting to adjust how often the timeline refreshes while typing (default 1000ms).
+*   **Metadata refresh debounce**: Adjust how often the timeline refreshes while typing (default 10000ms).
 *   **Reset subplot color precedence**: Clears manually assigned dominant subplot colors.
 
-<a name="colors"></a>
-### Visual customization
+<a name="publishing-stage-colors"></a>
+### Publishing stage colors
 *   **Publishing stage colors**: Customize the colors used for the publishing stages (Zero Draft, Author's Draft, House Edit, Press Ready).
-*   **Subplot ring colors**: Customize the 16-color palette used for subplots.
 
-<a name="professional"></a>
-### Pro · Signature ✦
-Professional tools for serious writers.
+<a name="subplot-ring-colors"></a>
+### Subplot ring colors
+*   **Subplot ring colors**: Customize the 16-color palette used for subplot rings.
 
-The Signature tier unlocks advanced capabilities for professional workflows. During the Open Beta, all Pro features are available free to early adopters.
-
-**Pro features include:**
-*   **Runtime Estimation** — Screen time, audiobook duration, and manuscript length analysis with custom profiles
-*   **Pro Exports** — Manuscript generation via Pandoc for screenplay, podcast, and novel formats
-*   **Chronologue Runtime Mode** — Blue wireframe sub-mode showing scene runtime duration arcs
-*   **Campaign Manager** — Manage multiple Author Progress Report campaigns with independent refresh schedules and Teaser Reveal settings
-*   **Teaser Reveal** — Progressive reveal system that automatically shows more timeline detail as your book progresses (Pro feature within Campaign Manager)
-
-> [!NOTE]
-> Campaign Manager, Teaser Reveal, and Pandoc Manuscript Export (including templates) are undergoing final testing and will be available soon. During the Open Beta, all Pro features are free to early adopters.
-
-**Export & Pandoc settings:**
-*   **Pandoc binary path**: Optional custom path to your pandoc executable. If blank, system PATH is used.
-*   **Enable fallback Pandoc**: Attempt a secondary bundled/portable pandoc if the primary is missing.
-*   **Fallback Pandoc path**: Path to a portable/bundled pandoc binary.
-*   **Pandoc templates**: Custom LaTeX templates for Screenplay, Podcast Script, and Novel Manuscript formats.
-
-> [!NOTE]
-> Pandoc Manuscript Export and templates are undergoing final testing and will be available soon.
-
-> [!NOTE]
-> See [[Signature]] for full Pro feature documentation.
+## Social Media Tab
 
 <a name="social-media"></a>
 ### Social Media · Author Progress Report
@@ -205,19 +259,22 @@ Generate shareable, spoiler-safe progress graphics for social media, crowdfundin
 *   **Preview Size**: Choose Small (150×150px), Medium (300×300px), or Large (450×450px). The preview updates in real-time as you adjust settings.
 *   **Export Size**: Controls the final SVG dimensions. Small is ideal for widgets, Medium for social media and newsletters, Large for website embeds.
 
-**Styling:**
+<a name="social-media-styling"></a>
+#### Styling
 *   **Transparent Mode (Recommended)**: No background fill—adapts to any page or app. Ideal for websites, blogs, and platforms that preserve SVG transparency.
 *   **Background Color**: Bakes in a solid background. Use when transparency isn't reliable: email newsletters, Kickstarter, PDF exports, or platforms that rasterize SVGs.
 *   **Theme Contrast**: Choose Light Strokes, Dark Strokes, or No Strokes to match your background.
-*   **Book + Author Color**: Color for the perimeter text ring (title and author name).
-*   **Radial Timeline Engine Color**: Color for the "RT" badge link in the bottom right corner.
-
-**Identity & Links:**
-*   **Book Title**: Appears on your public report graphic.
-*   **Author Name**: Appears alongside the title (e.g., "Title • Author").
 *   **Link URL**: Where the graphic should link to (e.g., your website, Kickstarter, or shop).
 
-**Publishing & Automation** (Core features):
+<a name="social-media-theme"></a>
+#### Theme
+*   **Theme palette**: Applies curated colors across Title, Author, % Symbol, % Number, and RT Badge based on the Title color.
+*   **Book Title**: Appears on your public report graphic.
+*   **Author Name**: Appears alongside the title (e.g., "Title · Author").
+*   **Typography & color overrides**: Fine-tune fonts, weights, and colors for title, author, percent number/symbol, and RT badge.
+
+<a name="social-media-publishing"></a>
+#### Publishing & Automation
 *   **Update Frequency**: How often to auto-update the live embed file. Options: Manual Only, Daily, Weekly, or Monthly. "Manual" requires clicking the update button in the Author Progress Report modal.
 *   **Refresh Alert Threshold**: Days before showing a refresh reminder in the timeline view (1-90 days, default 30). Only shown when Update Frequency is set to Manual.
 *   **Embed File Path**: Location for the "Live Embed" SVG file. Must end with `.svg`. Default: `Radial Timeline/Social/progress.svg`.
@@ -258,14 +315,3 @@ Create multiple APR configurations for different platforms (Kickstarter, Patreon
 
 > [!NOTE]
 > Campaign Manager and Teaser Reveal are undergoing final testing and will be available soon. During the Open Beta, all Pro features are free to early adopters.
-
----
-
-## Hardware Recommendations
-
-The radial timeline is designed for high pixel density displays (around 200 ppi or higher) for optimal visual quality.
-*   All Apple Retina displays — 2x pixel density.
-*   Recommend Windows systems with 4k displays or higher. (Tested down to 1440p 2560x1440)
-*   Tablets.
-
-If you're experiencing visual quality issues on Windows, please check your display scaling settings.

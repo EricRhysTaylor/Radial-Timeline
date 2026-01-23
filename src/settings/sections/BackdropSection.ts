@@ -1,8 +1,9 @@
-import { App, Setting as Settings, ColorComponent, TextComponent, setIcon } from 'obsidian';
+import { App, Setting as Settings, ColorComponent, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { parseDateRangeInput } from '../../utils/date';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { ERT_CLASSES } from '../../ui/classes';
+import { addHeadingIcon, addWikiLink } from '../wikiLink';
 
 type MicroBackdropConfig = {
     title: string;
@@ -15,14 +16,11 @@ const isValidHexColor = (value: string) => /^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/
 export function renderBackdropSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { plugin, containerEl } = params;
 
-    const backdropHeader = containerEl.createDiv({
-        cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_INLINE} ${ERT_CLASSES.HEADER_SECTION}`
-    });
-    const backdropHeaderLeft = backdropHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
-    const backdropHeaderIcon = backdropHeaderLeft.createSpan();
-    setIcon(backdropHeaderIcon, 'layers-3');
-    const backdropHeaderMain = backdropHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
-    backdropHeaderMain.createEl('h4', { text: 'Backdrop', cls: ERT_CLASSES.SECTION_TITLE });
+    const backdropHeading = new Settings(containerEl)
+        .setName('Backdrop')
+        .setHeading();
+    addHeadingIcon(backdropHeading, 'layers-3');
+    addWikiLink(backdropHeading, 'Settings#backdrop');
 
     new Settings(containerEl)
         .setName('Show backdrop ring')
@@ -130,7 +128,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
         const colorControls = titleColorSetting.controlEl.createDiv({ cls: 'ert-color-grid-controls' });
         let colorTextInput: TextComponent | undefined;
         let colorPickerRef: ColorComponent | undefined;
-        let swatchEl: HTMLDivElement | null = null;
+        let swatchEl: HTMLButtonElement | null = null;
         const colorValue = config.color || '#ffffff';
 
         colorPickerRef = new ColorComponent(colorControls)
@@ -140,14 +138,15 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
                 const normalized = value.startsWith('#') ? value : `#${value}`;
                 await updateMicroBackdrop(index, { color: normalized });
                 colorTextInput?.setValue(normalized);
-                if (swatchEl) swatchEl.style.background = normalized;
+                if (swatchEl) swatchEl.style.setProperty('--ert-swatch-color', normalized);
             });
 
         const colorInput = colorControls.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
         if (colorInput) colorInput.classList.add('ert-hidden-color-input');
 
-        swatchEl = colorControls.createDiv({ cls: 'ert-swatch-trigger' });
-        swatchEl.style.background = colorValue;
+        swatchEl = colorControls.createEl('button', { cls: ERT_CLASSES.SWATCH });
+        swatchEl.type = 'button';
+        swatchEl.style.setProperty('--ert-swatch-color', colorValue);
         plugin.registerDomEvent(swatchEl, 'click', () => { colorInput?.click(); });
 
         const hexInput = new TextComponent(colorControls);
@@ -159,7 +158,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
                 const normalized = value.startsWith('#') ? value : `#${value}`;
                 await updateMicroBackdrop(index, { color: normalized });
                 colorPickerRef?.setValue(normalized);
-                if (swatchEl) swatchEl.style.background = normalized;
+                if (swatchEl) swatchEl.style.setProperty('--ert-swatch-color', normalized);
             });
 
         const rangeSetting = new Settings(details)

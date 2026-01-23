@@ -92,7 +92,10 @@ export function renderStoryBeatsSection(params: {
         });
 
     // Preview (planet-style)
-    const actsPreview = containerEl.createDiv({ cls: ['ert-previewFrame', 'ert-planetary-preview'] });
+    const actsPreview = containerEl.createDiv({
+        cls: ['ert-previewFrame', 'ert-previewFrame--center'],
+        attr: { 'data-preview': 'acts' }
+    });
     const actsPreviewHeading = actsPreview.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Preview' });
     const actsPreviewBody = actsPreview.createDiv({ cls: 'ert-planetary-preview-body' });
 
@@ -904,7 +907,10 @@ export function renderStoryBeatsSection(params: {
     renderAdvancedTemplateEditor();
 
     // Hover Metadata Preview Panel
-    const hoverPreviewContainer = templateSection.createDiv({ cls: ['ert-previewFrame', 'ert-hover-metadata-preview'] });
+    const hoverPreviewContainer = templateSection.createDiv({
+        cls: ['ert-previewFrame', 'ert-previewFrame--center'],
+        attr: { 'data-preview': 'metadata' }
+    });
     const hoverPreviewHeading = hoverPreviewContainer.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Hover Metadata Preview' });
     const hoverPreviewBody = hoverPreviewContainer.createDiv({ cls: ['ert-hover-preview-body', 'ert-stack'] });
 

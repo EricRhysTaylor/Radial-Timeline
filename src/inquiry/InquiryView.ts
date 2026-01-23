@@ -74,7 +74,8 @@ const PREVIEW_PILL_MIN_GAP_X = 8;
 const PREVIEW_FOOTER_GAP = 12;
 const PREVIEW_FOOTER_HEIGHT = 22;
 const PREVIEW_SHIMMER_WIDTH = 42;
-const RESULTS_ROW_LABELS = ['HIT 1', 'HIT 2', 'HIT 3', 'HIT 4', 'HIT 5', 'HIT 6'];
+const RESULTS_EMPTY_TEXT = 'No notable findings.';
+const RESULTS_MAX_CHIPS = 6;
 const FLOW_FINDING_ORDER: InquiryFinding['kind'][] = ['escalation', 'conflict', 'continuity', 'loose_end', 'unclear', 'error', 'none'];
 const DEPTH_FINDING_ORDER: InquiryFinding['kind'][] = ['continuity', 'loose_end', 'conflict', 'escalation', 'unclear', 'error', 'none'];
 const MODE_ICON_VIEWBOX = 2048;
@@ -2393,7 +2394,7 @@ export class InquiryView extends ItemView {
         }
 
         const corner = Math.max(2, Math.round(layout.pageWidth * 0.125));
-        const foldSize = Math.max(4, Math.round(layout.pageWidth * 0.4));
+        const foldSize = Math.max(4, Math.round(layout.pageWidth * 0.6));
 
         const totalEntries = entries.length;
         while (this.ccSlots.length < totalEntries) {
@@ -4159,7 +4160,8 @@ export class InquiryView extends ItemView {
         mode: InquiryMode,
         question: string,
         rowsOverride?: string[],
-        metaOverride?: string
+        metaOverride?: string,
+        layoutOptions?: { hideEmpty?: boolean }
     ): void {
         if (!this.previewGroup || !this.previewHero) return;
         ['setup', 'pressure', 'payoff'].forEach(zoneName => {
@@ -4195,7 +4197,7 @@ export class InquiryView extends ItemView {
             this.getPreviewCostValue()
         ];
 
-        const rowCount = this.layoutPreviewPills(detailStartY, rows);
+        const rowCount = this.layoutPreviewPills(detailStartY, rows, layoutOptions);
         const rowsBlockHeight = rowCount
             ? (rowCount * PREVIEW_PILL_HEIGHT) + ((rowCount - 1) * PREVIEW_PILL_GAP_Y)
             : 0;
@@ -4220,44 +4222,122 @@ export class InquiryView extends ItemView {
         this.previewLocked = true;
         this.previewGroup.classList.add('is-visible', 'is-results');
         this.previewGroup.classList.remove('is-locked');
-        this.setPreviewRowLabels(RESULTS_ROW_LABELS);
-        const hero = this.buildResultsHeroText(result, mode);
+        const hero = this.buildResultsHeroText(result);
         const meta = this.buildResultsMetaText(result, mode, zone);
-        const rows = this.buildResultsRows(result, mode);
-        this.updatePromptPreview(zone, mode, hero, rows, meta);
+        const chips = this.buildResultsChips(result, mode);
+        this.setPreviewRowLabels(chips.labels);
+        this.updatePromptPreview(zone, mode, hero, chips.values, meta, { hideEmpty: true });
         const scopeLabel = result.scope === 'saga' ? 'Saga' : 'Book';
         const focusLabel = result.focusId || this.getFocusLabel();
         this.setPreviewFooterText(`Focus ${scopeLabel} ${focusLabel} · Click to dismiss.`);
     }
 
-    private buildResultsHeroText(result: InquiryResult, mode: InquiryMode): string {
-        const flowText = `Flow ${this.formatMetricDisplay(result.verdict.flow)}`;
-        const depthText = `Depth ${this.formatMetricDisplay(result.verdict.depth)}`;
-        const lead = mode === 'flow' ? flowText : depthText;
-        const tail = mode === 'flow' ? depthText : flowText;
-        const summary = result.summary?.trim() || 'Inquiry summary ready.';
-        return `${lead} · ${tail} - ${summary}`;
+    private buildResultsHeroText(result: InquiryResult): string {
+        return this.sanitizeInquirySummary(result.summary);
     }
 
     private buildResultsMetaText(result: InquiryResult, mode: InquiryMode, zone: InquiryZone): string {
         const zoneLabel = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
-        const modeLabel = mode === 'flow' ? 'Flow' : 'Depth';
-        return `${zoneLabel} · ${modeLabel} Results`.toUpperCase();
+        const flowText = `Flow ${this.formatMetricDisplay(result.verdict.flow)}`;
+        const depthText = `Depth ${this.formatMetricDisplay(result.verdict.depth)}`;
+        const ordered = mode === 'flow' ? [flowText, depthText] : [depthText, flowText];
+        return `${zoneLabel} · ${ordered.join(' · ')}`.toUpperCase();
     }
 
-    private buildResultsRows(result: InquiryResult, mode: InquiryMode): string[] {
+    private buildResultsChips(result: InquiryResult, mode: InquiryMode): { labels: string[]; values: string[] } {
+        const maxSlots = Math.min(RESULTS_MAX_CHIPS, this.previewRows.length || RESULTS_MAX_CHIPS);
+        const items = this.getResultItems(result);
         const ordered = this.getOrderedFindings(result, mode);
-        if (!ordered.length) {
-            return ['No hits', '', '', '', '', ''];
+        const labels: string[] = [];
+        const values: string[] = [];
+        const seen = new Set<string>();
+
+        for (const finding of ordered) {
+            if (labels.length >= maxSlots) break;
+            const label = this.resolveFindingChipLabel(finding, result, items);
+            if (!label || seen.has(label)) continue;
+            seen.add(label);
+            labels.push(label);
+            values.push(this.truncatePreviewValue(this.normalizeInquiryHeadline(finding.headline), 46));
         }
-        const rows = ordered.slice(0, RESULTS_ROW_LABELS.length).map(finding => {
-            const headline = this.normalizeInquiryHeadline(finding.headline);
-            return this.truncatePreviewValue(headline, 46);
+
+        if (!labels.length) {
+            labels.push('');
+            values.push(RESULTS_EMPTY_TEXT);
+        }
+
+        const targetLength = this.previewRows.length || labels.length;
+        const paddedLabels = Array(targetLength).fill('');
+        const paddedValues = Array(targetLength).fill('');
+        labels.forEach((label, index) => {
+            paddedLabels[index] = label;
+            paddedValues[index] = values[index] ?? '';
         });
-        while (rows.length < RESULTS_ROW_LABELS.length) {
-            rows.push('');
+        return { labels: paddedLabels, values: paddedValues };
+    }
+
+    private getResultItems(result: InquiryResult): InquiryCorpusItem[] {
+        if (!this.corpus) return [];
+        return result.scope === 'saga' ? this.corpus.books : this.corpus.scenes;
+    }
+
+    private resolveFindingChipLabel(
+        finding: InquiryFinding,
+        result: InquiryResult,
+        items: InquiryCorpusItem[]
+    ): string | null {
+        const refId = finding.refId?.trim();
+        if (!refId) return null;
+        const refLower = refId.toLowerCase();
+
+        const displayMatch = items.find(item => item.displayLabel.toLowerCase() === refLower);
+        if (displayMatch) return displayMatch.displayLabel;
+
+        const idMatch = items.find(item => item.id === refId || item.id.toLowerCase() === refLower);
+        if (idMatch) return idMatch.displayLabel;
+
+        const pathMatch = items.find(item => item.filePaths?.some(path => path === refId));
+        if (pathMatch) return pathMatch.displayLabel;
+
+        const scopePrefix = result.scope === 'saga' ? 'B' : 'S';
+        const pattern = new RegExp(`^${scopePrefix}\\d+$`, 'i');
+        if (pattern.test(refId)) {
+            return refId.toUpperCase();
         }
-        return rows;
+
+        return null;
+    }
+
+    private sanitizeInquirySummary(rawSummary?: string | null): string {
+        const fallback = 'Summary unavailable.';
+        if (!rawSummary) return fallback;
+        let text = String(rawSummary).replace(/\s+/g, ' ').trim();
+        if (!text) return fallback;
+        const prefixes: RegExp[] = [
+            /^(summary(?: of)?|executive summary)\s*/i,
+            /^(here(?:'s| is) (?:a )?(?:summary|overview)(?: of)?)\s*/i,
+            /^(a (?:summary|overview) of)\s*/i,
+            /^(in summary|overall|in conclusion|to summarize|to sum up|in short|in brief|in essence|in overview)\s*/i,
+            /^(this (?:inquiry|analysis|assessment|report|result)s?)(?:\s+(?:suggests|shows|indicates|points|implies|reveals|finds|highlights|notes))?(?:\s+that)?\s*/i,
+            /^(the (?:inquiry|analysis|assessment|results?) (?:suggests|shows|indicates|points|implies|reveals|finds|highlights|notes))(?:\s+that)?\s*/i,
+            /^(based on (?:the|this) (?:inquiry|analysis|assessment|results?))\s*/i,
+            /^(it (?:appears|seems|looks))(?:\s+that)?\s*/i
+        ];
+
+        let changed = true;
+        while (changed) {
+            changed = false;
+            for (const prefix of prefixes) {
+                const next = text.replace(prefix, '').trim();
+                if (next !== text) {
+                    text = next.replace(/^[^\w\s]+/, '').trim();
+                    changed = true;
+                    break;
+                }
+            }
+        }
+
+        return text || fallback;
     }
 
     private getOrderedFindings(result: InquiryResult, mode: InquiryMode): InquiryFinding[] {
@@ -4437,9 +4517,17 @@ export class InquiryView extends ItemView {
         this.setPreviewFooterText('');
     }
 
-    private layoutPreviewPills(startY: number, values: string[]): number {
-        const items = this.previewRows.map((row, index) => {
+    private layoutPreviewPills(startY: number, values: string[], options?: { hideEmpty?: boolean }): number {
+        const items: Array<{ row: InquiryPreviewRow; width: number }> = [];
+        this.previewRows.forEach((row, index) => {
             const value = values[index] ?? '';
+            const isEmpty = !value.trim();
+            if (options?.hideEmpty && isEmpty) {
+                row.group.classList.add('ert-hidden');
+                this.clearSvgChildren(row.text);
+                return;
+            }
+            row.group.classList.remove('ert-hidden');
             this.setPreviewPillText(row, value);
             const textWidth = row.text.getComputedTextLength();
             const width = Math.ceil(textWidth + (PREVIEW_PILL_PADDING_X * 2));
@@ -4449,7 +4537,7 @@ export class InquiryView extends ItemView {
             row.bg.setAttribute('ry', String(PREVIEW_PILL_HEIGHT / 2));
             row.bg.setAttribute('x', '0');
             row.bg.setAttribute('y', '0');
-            return { row, width };
+            items.push({ row, width });
         });
 
         if (!items.length) return 0;
@@ -4478,10 +4566,13 @@ export class InquiryView extends ItemView {
 
     private setPreviewPillText(row: InquiryPreviewRow, value: string): void {
         this.clearSvgChildren(row.text);
-        const label = this.createSvgElement('tspan');
-        label.classList.add('ert-inquiry-preview-pill-label');
-        label.textContent = value ? `${row.label} ` : row.label;
-        row.text.appendChild(label);
+        const labelText = row.label?.trim() ?? '';
+        if (labelText) {
+            const label = this.createSvgElement('tspan');
+            label.classList.add('ert-inquiry-preview-pill-label');
+            label.textContent = value ? `${labelText} ` : labelText;
+            row.text.appendChild(label);
+        }
         if (!value) return;
         const detail = this.createSvgElement('tspan');
         detail.classList.add('ert-inquiry-preview-pill-value');

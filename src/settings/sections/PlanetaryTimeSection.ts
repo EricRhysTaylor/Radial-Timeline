@@ -178,7 +178,10 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
 
     // Profile fields
     const fieldsContainer = bodyEl.createDiv({ cls: 'ert-planetary-fields' });
-    const previewContainer = bodyEl.createDiv({ cls: 'ert-previewFrame ert-planetary-preview' });
+    const previewContainer = bodyEl.createDiv({
+        cls: 'ert-previewFrame ert-previewFrame--center',
+        attr: { 'data-preview': 'planetary' }
+    });
     visibilityTargets.push(selectorSetting.settingEl, fieldsContainer, previewContainer);
 
     const flash = (input: HTMLInputElement, type: 'success' | 'error') => {
