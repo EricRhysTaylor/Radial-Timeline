@@ -4,7 +4,7 @@
 <p align="center" style="font-family: sans-serif; font-weight: 100; font-size: 14px; margin-top: 12px; margin-bottom: 0; letter-spacing: 8px;">
   Radial Timeline™
 </p>
-<p align="center" style="font-family: sans-serif; font-size: 14px; margin: 4px;">
+<p align="center" style="font-family: sans-serif; font-size: 14px; margin: 10px;">
   by Eric Rhys Taylor
 </p>
 
