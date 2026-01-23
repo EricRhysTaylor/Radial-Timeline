@@ -29,7 +29,8 @@ import {
     FLOW_RADIUS,
     FLOW_STROKE,
     ZONE_RING_THICKNESS,
-    ZONE_SEGMENT_RADIUS
+    ZONE_SEGMENT_RADIUS,
+    ZONE_SEGMENT_HALF_HEIGHT
 } from './components/InquiryGlyph';
 import { ZONE_LAYOUT } from './zoneLayout';
 import { InquiryRunnerService } from './runner/InquiryRunnerService';
@@ -111,6 +112,9 @@ const DEPTH_ICON_PATHS = [
     'M1464.99,1229.01l-38.18,7.3c-72.97,11.22-134.53,47.2-200.84,74.16-98.8,40.16-244.57,42.87-347.39,16.45-36.36-9.34-69.09-24.27-104.06-36.94-31.43-11.39-63.54-21.36-94.77-33.23-27.19-10.33-53.12-24.79-82.76-27.25,0-1.28,23.18,1.27,25.5,1.51,51.08,5.23,105.07,12.63,154.03,27.97,26.92,8.44,52.68,20.15,79.71,28.29,98.26,29.58,239.21,30.92,337.76,2.23,39.72-11.56,75.86-32.19,115.79-43.21,50.47-13.94,103.1-15.27,155.21-17.27h0Z'
 ];
 const SWEEP_DURATION_MS = 2800;
+const BACKBONE_SWEEP_WIDTH_RATIO = 0.2;
+const BACKBONE_SWEEP_MIN_WIDTH = 80;
+const BACKBONE_SWEEP_MAX_WIDTH = 200;
 const MIN_PROCESSING_MS = 5000;
 const SIMULATION_DURATION_MS = 20000;
 const BRIEFING_SESSION_LIMIT = 10;
@@ -213,7 +217,7 @@ export class InquiryView extends ItemView {
     private minimapBackboneShineStops: SVGStopElement[] = [];
     private backboneStartColors?: { gradient: RgbColor[]; shine: RgbColor[] };
     private backboneTargetColors?: { gradient: RgbColor[]; shine: RgbColor[] };
-    private minimapSweepTicks: Array<{ rect: SVGRectElement; centerX: number }> = [];
+    private minimapSweepTicks: Array<{ rect: SVGRectElement; centerX: number; rowIndex: number }> = [];
     private minimapSweepLayout?: { startX: number; endX: number; bandWidth: number };
     private runningAnimationFrame?: number;
     private runningAnimationStart?: number;
@@ -2097,7 +2101,7 @@ export class InquiryView extends ItemView {
 
         this.minimapEmptyText.classList.add('ert-hidden');
         this.minimapBackboneGroup?.removeAttribute('display');
-        const tickLayouts: Array<{ x: number; y: number; size: number }> = [];
+        const tickLayouts: Array<{ x: number; y: number; size: number; rowIndex: number }> = [];
 
         for (let i = 0; i < count; i += 1) {
             const item = items[i];
@@ -2140,7 +2144,7 @@ export class InquiryView extends ItemView {
             });
             this.minimapTicksEl.appendChild(tick);
             this.minimapTicks.push(tick);
-            tickLayouts.push({ x, y, size: tickSize });
+            tickLayouts.push({ x, y, size: tickSize, rowIndex });
         }
 
         this.buildMinimapSweepLayer(tickLayouts, tickSize, length);
@@ -2211,7 +2215,7 @@ export class InquiryView extends ItemView {
     }
 
     private buildMinimapSweepLayer(
-        tickLayouts: Array<{ x: number; y: number; size: number }>,
+        tickLayouts: Array<{ x: number; y: number; size: number; rowIndex: number }>,
         tickSize: number,
         length: number
     ): void {
@@ -2231,7 +2235,7 @@ export class InquiryView extends ItemView {
             inner.setAttribute('ry', '2');
             inner.setAttribute('opacity', '0');
             sweepGroup.appendChild(inner);
-            this.minimapSweepTicks.push({ rect: inner, centerX: layout.x + (tickSize / 2) });
+            this.minimapSweepTicks.push({ rect: inner, centerX: layout.x + (tickSize / 2), rowIndex: layout.rowIndex });
         });
         this.minimapSweepLayout = {
             startX: -Math.max(tickSize * 1.6, 36),
@@ -2268,7 +2272,8 @@ export class InquiryView extends ItemView {
 
         const bottomLimit = VIEWBOX_MAX - CC_BOTTOM_MARGIN;
         const maxHeight = Math.round(VIEWBOX_SIZE * (2 / 3));
-        const topLimit = bottomLimit - maxHeight;
+        const zoneTop = Math.min(ZONE_LAYOUT.setup.y, ZONE_LAYOUT.pressure.y) - ZONE_SEGMENT_HALF_HEIGHT;
+        const topLimit = Math.max(bottomLimit - maxHeight, Math.round(zoneTop));
         const zoneLeft = ZONE_LAYOUT.setup.x;
         const zoneRight = ZONE_LAYOUT.pressure.x;
         const zoneBuffer = 50;
@@ -2399,7 +2404,7 @@ export class InquiryView extends ItemView {
         }
 
         const corner = Math.max(2, Math.round(layout.pageWidth * 0.125));
-        const foldSize = Math.max(4, Math.round(layout.pageWidth * 0.6));
+        const foldSize = Math.max(4, Math.round(layout.pageWidth * 0.5));
 
         const totalEntries = entries.length;
         while (this.ccSlots.length < totalEntries) {
@@ -2455,7 +2460,7 @@ export class InquiryView extends ItemView {
             slot.border.setAttribute('y', '0');
             slot.border.setAttribute('rx', String(corner));
             slot.border.setAttribute('ry', String(corner));
-            slot.fold.setAttribute('d', `M ${layout.pageWidth - foldSize} 0 L ${layout.pageWidth} ${foldSize}`);
+            slot.fold.setAttribute('d', `M ${layout.pageWidth - foldSize} 0 L ${layout.pageWidth} 0 L ${layout.pageWidth} ${foldSize} Z`);
             slot.icon.setAttribute('x', String(Math.round(layout.pageWidth / 2)));
             slot.icon.setAttribute('y', String(Math.round(layout.pageHeight / 2)));
         });
@@ -2852,26 +2857,35 @@ export class InquiryView extends ItemView {
         });
     }
 
-    private setBackboneFillProgress(progress: number): void {
+    private setBackboneSweepProgress(progress: number): void {
         if (!this.minimapBackboneLayout || !this.minimapBackboneGlow || !this.minimapBackboneShine) return;
         const clamped = Math.min(Math.max(progress, 0), 1);
-        const width = this.minimapBackboneLayout.length * clamped;
-        const glowRadius = Math.min(this.minimapBackboneLayout.glowHeight / 2, Math.max(0, width / 2));
-        const shineRadius = Math.min(this.minimapBackboneLayout.shineHeight / 2, Math.max(0, width / 2));
-        this.minimapBackboneGlow.setAttribute('x', this.minimapBackboneLayout.startX.toFixed(2));
-        this.minimapBackboneGlow.setAttribute('width', width.toFixed(2));
+        const length = this.minimapBackboneLayout.length;
+        const sweepWidth = Math.min(
+            length,
+            BACKBONE_SWEEP_MAX_WIDTH,
+            Math.max(length * BACKBONE_SWEEP_WIDTH_RATIO, BACKBONE_SWEEP_MIN_WIDTH)
+        );
+        const travel = Math.max(0, length - sweepWidth);
+        const offset = travel * clamped;
+        const x = this.minimapBackboneLayout.startX + offset;
+        const glowRadius = Math.min(this.minimapBackboneLayout.glowHeight / 2, Math.max(0, sweepWidth / 2));
+        const shineRadius = Math.min(this.minimapBackboneLayout.shineHeight / 2, Math.max(0, sweepWidth / 2));
+        this.minimapBackboneGlow.setAttribute('x', x.toFixed(2));
+        this.minimapBackboneGlow.setAttribute('width', sweepWidth.toFixed(2));
         this.minimapBackboneGlow.setAttribute('rx', String(Math.round(glowRadius)));
         this.minimapBackboneGlow.setAttribute('ry', String(Math.round(glowRadius)));
-        this.minimapBackboneShine.setAttribute('x', this.minimapBackboneLayout.startX.toFixed(2));
-        this.minimapBackboneShine.setAttribute('width', width.toFixed(2));
+        this.minimapBackboneShine.setAttribute('x', x.toFixed(2));
+        this.minimapBackboneShine.setAttribute('width', sweepWidth.toFixed(2));
         this.minimapBackboneShine.setAttribute('rx', String(Math.round(shineRadius)));
         this.minimapBackboneShine.setAttribute('ry', String(Math.round(shineRadius)));
     }
 
     private updateBackbonePulse(elapsed: number): void {
-        const progress = Math.min(Math.max(elapsed / MIN_PROCESSING_MS, 0), 1);
-        this.setBackboneFillProgress(progress);
-        this.applyBackboneColors(progress);
+        const colorProgress = Math.min(Math.max(elapsed / MIN_PROCESSING_MS, 0), 1);
+        const sweepProgress = (elapsed % SWEEP_DURATION_MS) / SWEEP_DURATION_MS;
+        this.setBackboneSweepProgress(sweepProgress);
+        this.applyBackboneColors(colorProgress);
     }
 
     private isTFile(file: TAbstractFile | null): file is TFile {
@@ -3037,7 +3051,7 @@ export class InquiryView extends ItemView {
         const isPro = isProfessionalActive(this.plugin);
         this.backboneStartColors = this.getBackboneStartColors();
         this.backboneTargetColors = this.getBackboneTargetColors(isPro);
-        this.setBackboneFillProgress(0);
+        this.setBackboneSweepProgress(0);
         this.applyBackboneColors(0);
         const animate = (now: number) => {
             if (!this.state.isRunning) {
@@ -3065,11 +3079,21 @@ export class InquiryView extends ItemView {
 
     private updateSweep(elapsed: number): void {
         if (!this.minimapSweepLayout || !this.minimapSweepTicks.length) return;
-        const progress = (elapsed % SWEEP_DURATION_MS) / SWEEP_DURATION_MS;
+        const rowCount = this.minimapSweepTicks.reduce((max, tick) => Math.max(max, tick.rowIndex + 1), 1);
+        const rowDuration = SWEEP_DURATION_MS;
+        const totalDuration = rowDuration * rowCount;
+        const cycleElapsed = elapsed % totalDuration;
+        const activeRow = rowCount === 1 ? 0 : Math.min(rowCount - 1, Math.floor(cycleElapsed / rowDuration));
+        const rowElapsed = rowCount === 1 ? (elapsed % rowDuration) : (cycleElapsed - (activeRow * rowDuration));
+        const progress = rowElapsed / rowDuration;
         const { startX, endX, bandWidth } = this.minimapSweepLayout;
         const bandCenter = startX + ((endX - startX) * progress);
         const bandHalf = bandWidth / 2;
         this.minimapSweepTicks.forEach(tick => {
+            if (rowCount > 1 && tick.rowIndex !== activeRow) {
+                tick.rect.setAttribute('opacity', '0');
+                return;
+            }
             const distance = Math.abs(tick.centerX - bandCenter);
             if (distance > bandHalf) {
                 tick.rect.setAttribute('opacity', '0');

@@ -172,7 +172,7 @@
 
 .ert-ui input.ert-input--full {
   width: 100%;
-  min-width: var(--ert-input-width-xl);
+  min-width: min(100%, var(--ert-input-width-xl));
 }
 
 .ert-ui :is(input, select).ert-input {
@@ -500,7 +500,7 @@
   border-left: 1px solid color-mix(in srgb, var(--ert-accent) 18%, var(--background-modifier-border));
 }
 
-.ert-ui .ert-panel.ert-stack > .ert-section-title {
+.ert-ui .ert-panel.ert-stack>.ert-section-title {
   margin-bottom: 0;
 }
 
@@ -839,7 +839,7 @@
   color: var(--ert-accent);
 }
 
-.ert-ui .ert-toggle-input {
+.ert-ui input[type="checkbox"].ert-toggle-input {
   appearance: none;
   -webkit-appearance: none;
   width: 36px;
@@ -856,7 +856,7 @@
   box-shadow: none;
 }
 
-.ert-ui .ert-toggle-input::before {
+.ert-ui input[type="checkbox"].ert-toggle-input::before {
   content: '';
   position: absolute;
   width: 16px;
@@ -869,23 +869,19 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.ert-ui .ert-toggle-input::after {
+.ert-ui input[type="checkbox"].ert-toggle-input::after {
   content: none;
   display: none;
   width: 0;
   height: 0;
-  background: none;
-  border: 0;
-  box-shadow: none;
-  mask: none;
-  -webkit-mask: none;
+  opacity: 0;
 }
 
-.ert-ui .ert-toggle-input:checked {
+.ert-ui input[type="checkbox"].ert-toggle-input:checked {
   background: var(--ert-accent);
 }
 
-.ert-ui .ert-toggle-input:checked::before {
+.ert-ui input[type="checkbox"].ert-toggle-input:checked::before {
   transform: translateX(16px);
 }
 
@@ -1015,14 +1011,8 @@
 /* -------------------------------------------------------------------------- */
 
 .ert-ui .ert-apr-section {
-  margin-top: var(--ert-gap-sm);
+  margin-top: 0;
   margin-bottom: calc(var(--ert-pad-md) + var(--ert-pad-md) / 2);
-}
-
-.ert-ui .ert-apr-badge-row {
-  align-items: center;
-  gap: var(--ert-gap-sm);
-  margin-bottom: var(--ert-gap-sm);
 }
 
 .ert-ui .ert-badgePill--alert {
@@ -1038,8 +1028,15 @@
 }
 
 @keyframes ert-apr-badge-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .ert-ui .ert-apr-refresh-alert {
@@ -1300,6 +1297,13 @@
   line-height: 1.2;
 }
 
+.ert-ui select.dropdown {
+  background-repeat: no-repeat;
+  background-position: right var(--ert-control-pad-x) center;
+  background-size: 14px 14px;
+  padding-right: calc(var(--ert-control-pad-x) * 2 + 14px);
+}
+
 .ert-ui textarea {
   padding: var(--ert-control-pad-y) var(--ert-control-pad-x);
   font-size: var(--ert-control-font-size);
@@ -1435,7 +1439,7 @@
 
 .ert-ui .ert-elementBlock.setting-item {
   display: grid;
-  grid-template-columns: minmax(220px, 0.9fr) 1.1fr;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.1fr);
   grid-template-rows: auto auto;
   align-items: center;
   column-gap: 12px;
@@ -1471,11 +1475,18 @@
 
 .ert-ui .ert-elementBlock.setting-item .setting-item-control {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ert-gap-sm);
   min-width: 0;
   grid-row: 1 / -1;
+}
+
+.ert-ui .ert-elementBlock.setting-item .setting-item-control > :is(input, select, textarea) {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .ert-ui .ert-elementBlock__row {
@@ -1749,11 +1760,11 @@
   display: none;
 }
 
-.ert-ui .ert-settings-searchable-content [data-ert-section] > .setting-item.setting-item-heading {
+.ert-ui .ert-settings-searchable-content [data-ert-section]>.setting-item.setting-item-heading {
   margin-top: 24px;
 }
 
-.ert-ui .ert-settings-searchable-content [data-ert-section]:first-child > .setting-item.setting-item-heading:first-child {
+.ert-ui .ert-settings-searchable-content [data-ert-section]:first-child>.setting-item.setting-item-heading:first-child {
   margin-top: 0;
 }
 
@@ -2131,7 +2142,7 @@
   flex: 1;
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .setting-item + .setting-item {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .setting-item+.setting-item {
   border-top: none;
 }
 
@@ -2997,10 +3008,7 @@
   grid-template-columns: auto 1fr auto auto auto auto;
   align-items: center;
   gap: var(--ert-gap-md);
-  padding: calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2))
-    calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2))
-    calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2))
-    var(--ert-gap-md);
+  padding: calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2)) calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2)) calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2)) var(--ert-gap-md);
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: calc(var(--ert-control-radius) + (var(--ert-gap-xs) / 2));
@@ -3036,10 +3044,7 @@
   grid-template-columns: auto 1fr auto auto auto;
   align-items: center;
   gap: var(--ert-gap-md);
-  padding: calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2))
-    calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2))
-    calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2))
-    var(--ert-gap-md);
+  padding: calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2)) calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2)) calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2)) var(--ert-gap-md);
   background: var(--background-secondary);
   border: calc(var(--ert-gap-xs) / 4) solid var(--background-modifier-border);
   border-radius: calc(var(--ert-control-radius) + (var(--ert-gap-xs) / 2));
@@ -3444,7 +3449,7 @@
   z-index: 0;
 }
 
-.ert-ui .ert-modal-container > * {
+.ert-ui .ert-modal-container>* {
   position: relative;
   z-index: 1;
 }
@@ -3461,7 +3466,7 @@
 .ert-ui .ert-modal-shell input[type="password"].ert-input--full,
 .ert-ui .ert-modal-shell input[class*="rt-input-full"] {
   width: 100%;
-  min-width: var(--ert-input-width-xl);
+  min-width: min(100%, var(--ert-input-width-xl));
 }
 
 .ert-ui .ert-modal-shell textarea {
@@ -3529,11 +3534,9 @@
 .ert-ui .ert-modal-title {
   font-size: 1.8rem;
   font-weight: 700;
-  background: linear-gradient(
-    to right,
-    var(--text-normal),
-    color-mix(in srgb, var(--text-normal) 70%, var(--text-faint) 30%)
-  );
+  background: linear-gradient(to right,
+      var(--text-normal),
+      color-mix(in srgb, var(--text-normal) 70%, var(--text-faint) 30%));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -3625,7 +3628,7 @@
   display: flex;
 }
 
-.ert-ui .ert-search-input-container > * {
+.ert-ui .ert-search-input-container>* {
   flex: 1;
 }
 

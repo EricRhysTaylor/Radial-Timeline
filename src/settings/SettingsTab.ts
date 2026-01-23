@@ -332,11 +332,21 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
         const badgeRow = hero.createDiv({ cls: ERT_CLASSES.INLINE });
         const badge = badgeRow.createSpan({
-            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
+            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}`
         });
         const badgeIcon = badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
         setIcon(badgeIcon, 'signature');
         badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro · Signature' });
+        const wikiLink = badge.createEl('a', {
+            href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#professional',
+            cls: 'ert-badgePill__rightIcon',
+            attr: {
+                'aria-label': 'Read more in the Wiki',
+                'target': '_blank',
+                'rel': 'noopener'
+            }
+        });
+        setIcon(wikiLink, 'external-link');
 
         hero.createEl('h3', {
             cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title`,

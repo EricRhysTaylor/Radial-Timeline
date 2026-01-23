@@ -189,8 +189,9 @@
   stroke: color-mix(in srgb, var(--interactive-accent) 70%, var(--background-modifier-border));
 }
 
-.ert-inquiry-icon-btn.is-briefing-saved {
-  color: var(--text-normal);
+.ert-inquiry-icon-btn.is-briefing-saved,
+.ert-inquiry-icon-btn.is-briefing-pulse {
+  color: var(--ert-inquiry-active-zone-color);
 }
 
 .ert-inquiry-icon-btn.is-briefing-saved .ert-inquiry-icon-btn-bg {
@@ -441,7 +442,7 @@
 }
 
 .ert-inquiry-cc-cell-fold {
-  fill: none;
+  fill: color-mix(in srgb, var(--text-muted) 55%, transparent);
   stroke: color-mix(in srgb, var(--text-muted) 55%, transparent);
   stroke-width: 0.5;
   stroke-linecap: round;

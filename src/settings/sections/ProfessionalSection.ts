@@ -71,6 +71,9 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
     // ─────────────────────────────────────────────────────────────────────────
     // HERO / HEADER
     // ─────────────────────────────────────────────────────────────────────────
+    // Render external hero hook (if any)
+    renderHero?.(section);
+
     // ─────────────────────────────────────────────────────────────────────────
     // HERO / HEADER (Legacy Layout Restored)
     // ─────────────────────────────────────────────────────────────────────────
@@ -129,9 +132,6 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
         containerEl.empty();
         renderProfessionalSection({ app: plugin.app, plugin, containerEl, renderHero });
     };
-
-    // Render external hero hook (if any)
-    renderHero?.(section);
 
     // ─────────────────────────────────────────────────────────────────────────
     // CONTENT STACK
