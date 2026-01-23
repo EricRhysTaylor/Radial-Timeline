@@ -52,6 +52,24 @@
   opacity: var(--ert-inquiry-texture-opacity);
 }
 
+.ert-inquiry-mode-icons {
+  pointer-events: none;
+}
+
+.ert-inquiry-mode-icon {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms ease;
+}
+
+.ert-inquiry-svg.is-mode-flow .ert-inquiry-mode-icon--flow {
+  opacity: 0.3;
+}
+
+.ert-inquiry-svg.is-mode-depth .ert-inquiry-mode-icon--depth {
+  opacity: 0.3;
+}
+
 .ert-inquiry-svg-frame {
   fill: none;
   stroke: var(--interactive-accent);
@@ -481,9 +499,40 @@
   transition: fill 200ms ease, fill-opacity 200ms ease;
 }
 
+.inq-zone-segment-glass {
+  fill: url(#ert-inquiry-zone-glass);
+  opacity: 0.82;
+  pointer-events: none;
+  transform-origin: center;
+  transform-box: fill-box;
+  transition: opacity 160ms ease;
+}
+
+.inq-zone-control.is-glass-hovered .inq-zone-segment-glass {
+  opacity: 1;
+  animation: inq-zone-glass-shift 780ms ease-in-out infinite;
+}
+
 .ert-inquiry-svg.is-running .inq-zone-segment-path {
   fill: #8a8a8a;
   fill-opacity: 0.4;
+}
+
+.ert-inquiry-svg.is-running .inq-zone-segment-glass {
+  opacity: 0;
+  animation: none;
+}
+
+@keyframes inq-zone-glass-shift {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(8px, -6px) scale(1.01);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
 }
 
 .ert-inquiry-zone--setup {
@@ -594,10 +643,11 @@
 }
 
 .inq-zone-dot-circle {
-  fill: var(--ert-inquiry-zone-fill);
+  fill: var(--ert-inquiry-zone-color);
   fill-opacity: 1;
   stroke: none;
   stroke-width: 0;
+  filter: url(#ert-inquiry-zone-dot-up);
   transition: fill 160ms ease, filter 160ms ease;
 }
 

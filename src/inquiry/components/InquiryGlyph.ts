@@ -24,8 +24,8 @@ export interface InquiryGlyphPromptState {
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-export const FLOW_RADIUS = 100;
-export const DEPTH_RADIUS = 50;
+export const FLOW_RADIUS = 130;
+export const DEPTH_RADIUS = 105;
 export const FLOW_STROKE = 14;
 export const DEPTH_STROKE = 24;
 const FLOW_HIT_STROKE = 38;
@@ -34,7 +34,7 @@ const FLOW_BADGE_RADIUS_PX = FLOW_STROKE / 2;
 const DEPTH_BADGE_RADIUS_PX = DEPTH_STROKE / 2;
 const FLOW_BADGE_TEXT_PX = Math.round(16 / 2);
 const DEPTH_BADGE_TEXT_PX = Math.round(20 * (2 / 3));
-const LABEL_TEXT_PX = 70;
+const LABEL_TEXT_PX = 100; //
 const ARC_BASE_TINT = '#dff5e7';
 const ARC_MAX_GREEN = '#22c55e';
 const DOT_DARKEN = 0.35;
@@ -415,6 +415,7 @@ export class InquiryGlyph {
     ): void {
         const shouldScale = state.hovered || state.locked;
         group.classList.toggle('is-scaled', shouldScale);
+        group.classList.toggle('is-glass-hovered', state.hovered);
         group.classList.toggle('is-locked', state.locked);
         group.setAttribute('transform', `scale(${shouldScale ? String(ZONE_CONTROL_SCALE) : '1'})`);
     }
@@ -493,6 +494,14 @@ export class InquiryGlyph {
         path.setAttribute('stroke-width', String(ZONE_SEGMENT_STROKE_WIDTH));
         path.setAttribute('pointer-events', 'auto');
         scaleGroup.appendChild(path);
+
+        const glass = document.createElementNS(SVG_NS, 'path');
+        glass.classList.add('inq-zone-segment-glass');
+        glass.setAttribute('d', ZONE_SEGMENT_PATH);
+        glass.setAttribute('fill', 'url(#ert-inquiry-zone-glass)');
+        glass.setAttribute('stroke', 'none');
+        glass.setAttribute('pointer-events', 'none');
+        scaleGroup.appendChild(glass);
         group.appendChild(scaleGroup);
 
         return group;

@@ -322,12 +322,7 @@ export class InquiryView extends ItemView {
         bgImage.setAttribute('height', String(VIEWBOX_SIZE));
         bgImage.setAttribute('preserveAspectRatio', 'xMidYMid slice');
         bgImage.setAttribute('pointer-events', 'none');
-        const configDir = (this.app.vault as unknown as { configDir?: string }).configDir ?? '.obsidian';
-        const pluginId = this.plugin.manifest.id;
-        const texturePath = normalizePath(`${configDir}/plugins/${pluginId}/inquiry/assets/radial_texture.png`);
-        const adapter = this.app.vault.adapter as unknown as { getResourcePath?: (path: string) => string };
-        const textureHref = adapter.getResourcePath ? adapter.getResourcePath(texturePath) : texturePath;
-        bgImage.setAttribute('href', textureHref);
+        bgImage.setAttribute('href', this.getInquiryAssetHref('radial_texture.png'));
         svg.appendChild(bgImage);
 
         const frame = this.createSvgElement('rect');
@@ -340,7 +335,6 @@ export class InquiryView extends ItemView {
 
         svg.classList.toggle('is-debug', DEBUG_SVG_OVERLAY);
         this.buildDebugOverlay(svg);
-        this.renderWaveHeader(svg);
 
         const hudOffsetX = -760;
         const hudOffsetY = -740;
@@ -431,6 +425,7 @@ export class InquiryView extends ItemView {
         this.minimapTicksEl = this.createSvgGroup(minimapGroup, 'ert-inquiry-minimap-ticks', baselineStartX, 0);
         this.minimapEmptyText = this.createSvgText(minimapGroup, 'ert-inquiry-minimap-empty ert-hidden', '', 0, 22);
         this.minimapEmptyText.setAttribute('text-anchor', 'middle');
+        this.renderModeIcons(minimapGroup);
 
         this.glyphAnchor = this.createSvgGroup(canvasGroup, 'ert-inquiry-focus-area');
         this.glyph = new InquiryGlyph(this.glyphAnchor, {
@@ -760,6 +755,14 @@ export class InquiryView extends ItemView {
         return document.createElementNS(SVG_NS, tag);
     }
 
+    private getInquiryAssetHref(fileName: string): string {
+        const configDir = (this.app.vault as unknown as { configDir?: string }).configDir ?? '.obsidian';
+        const pluginId = this.plugin.manifest.id;
+        const assetPath = normalizePath(`${configDir}/plugins/${pluginId}/inquiry/assets/${fileName}`);
+        const adapter = this.app.vault.adapter as unknown as { getResourcePath?: (path: string) => string };
+        return adapter.getResourcePath ? adapter.getResourcePath(assetPath) : assetPath;
+    }
+
     private createSvgGroup(parent: SVGElement, cls: string, x?: number, y?: number): SVGGElement {
         const group = this.createSvgElement('g');
         group.classList.add(...cls.split(' ').filter(Boolean));
@@ -844,10 +847,13 @@ export class InquiryView extends ItemView {
 
     private buildZoneGradients(defs: SVGDefsElement): void {
         const zones: InquiryZone[] = ['setup', 'pressure', 'payoff'];
-        const createStop = (offset: string, color: string): SVGStopElement => {
+        const createStop = (offset: string, color: string, opacity?: string): SVGStopElement => {
             const stop = this.createSvgElement('stop');
             stop.setAttribute('offset', offset);
             stop.setAttribute('stop-color', color);
+            if (opacity) {
+                stop.setAttribute('stop-opacity', opacity);
+            }
             return stop;
         };
         const createGradient = (id: string, stops: Array<[string, string]>): SVGRadialGradientElement => {
@@ -863,6 +869,27 @@ export class InquiryView extends ItemView {
             });
             return gradient;
         };
+
+        const glassGradient = this.createSvgElement('radialGradient');
+        glassGradient.setAttribute('id', 'ert-inquiry-zone-glass');
+        glassGradient.setAttribute('gradientUnits', 'userSpaceOnUse');
+        glassGradient.setAttribute('cx', '0');
+        glassGradient.setAttribute('cy', '0');
+        glassGradient.setAttribute('fx', '0');
+        glassGradient.setAttribute('fy', '0');
+        glassGradient.setAttribute('r', String(VIEWBOX_MAX));
+        [
+            ['0%', '#ffffff', '0.04'],
+            ['28%', '#ffffff', '0.06'],
+            ['31%', '#ffffff', '0.14'],
+            ['34%', '#ffffff', '0.22'],
+            ['37%', '#ffffff', '0.14'],
+            ['40%', '#ffffff', '0.06'],
+            ['100%', '#ffffff', '0.04']
+        ].forEach(([offset, color, opacity]) => {
+            glassGradient.appendChild(createStop(offset, color, opacity));
+        });
+        defs.appendChild(glassGradient);
 
         zones.forEach(zone => {
             const zoneVar = `var(--ert-inquiry-zone-${zone})`;
@@ -990,6 +1017,139 @@ export class InquiryView extends ItemView {
         pillInFilter.appendChild(pillInShadowLight);
         pillInFilter.appendChild(pillInMerge);
         defs.appendChild(pillInFilter);
+
+        // Neumorphic "up" filter for zone dot buttons.
+        const dotUpFilter = this.createSvgElement('filter');
+        dotUpFilter.setAttribute('id', 'ert-inquiry-zone-dot-up');
+        dotUpFilter.setAttribute('x', '-50%');
+        dotUpFilter.setAttribute('y', '-50%');
+        dotUpFilter.setAttribute('width', '200%');
+        dotUpFilter.setAttribute('height', '200%');
+        dotUpFilter.setAttribute('color-interpolation-filters', 'sRGB');
+
+        const dotUpFlood = this.createSvgElement('feFlood');
+        dotUpFlood.setAttribute('flood-opacity', '0');
+        dotUpFlood.setAttribute('result', 'BackgroundImageFix');
+        const dotUpAlphaDark = this.createSvgElement('feColorMatrix');
+        dotUpAlphaDark.setAttribute('in', 'SourceAlpha');
+        dotUpAlphaDark.setAttribute('type', 'matrix');
+        dotUpAlphaDark.setAttribute('values', '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0');
+        dotUpAlphaDark.setAttribute('result', 'hardAlpha');
+        const dotUpOffsetDark = this.createSvgElement('feOffset');
+        dotUpOffsetDark.setAttribute('dx', '1');
+        dotUpOffsetDark.setAttribute('dy', '1');
+        const dotUpBlurDark = this.createSvgElement('feGaussianBlur');
+        dotUpBlurDark.setAttribute('stdDeviation', '1');
+        const dotUpCompositeDark = this.createSvgElement('feComposite');
+        dotUpCompositeDark.setAttribute('in2', 'hardAlpha');
+        dotUpCompositeDark.setAttribute('operator', 'out');
+        const dotUpColorDark = this.createSvgElement('feColorMatrix');
+        dotUpColorDark.setAttribute('type', 'matrix');
+        dotUpColorDark.setAttribute('values', '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.3 0');
+        const dotUpBlendDark = this.createSvgElement('feBlend');
+        dotUpBlendDark.setAttribute('mode', 'normal');
+        dotUpBlendDark.setAttribute('in2', 'BackgroundImageFix');
+        dotUpBlendDark.setAttribute('result', 'effect1_dropShadow');
+
+        const dotUpAlphaLight = this.createSvgElement('feColorMatrix');
+        dotUpAlphaLight.setAttribute('in', 'SourceAlpha');
+        dotUpAlphaLight.setAttribute('type', 'matrix');
+        dotUpAlphaLight.setAttribute('values', '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0');
+        dotUpAlphaLight.setAttribute('result', 'hardAlpha');
+        const dotUpOffsetLight = this.createSvgElement('feOffset');
+        dotUpOffsetLight.setAttribute('dx', '-1');
+        dotUpOffsetLight.setAttribute('dy', '-1');
+        const dotUpBlurLight = this.createSvgElement('feGaussianBlur');
+        dotUpBlurLight.setAttribute('stdDeviation', '1.5');
+        const dotUpCompositeLight = this.createSvgElement('feComposite');
+        dotUpCompositeLight.setAttribute('in2', 'hardAlpha');
+        dotUpCompositeLight.setAttribute('operator', 'out');
+        const dotUpColorLight = this.createSvgElement('feColorMatrix');
+        dotUpColorLight.setAttribute('type', 'matrix');
+        dotUpColorLight.setAttribute('values', '0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.11 0');
+        const dotUpBlendLight = this.createSvgElement('feBlend');
+        dotUpBlendLight.setAttribute('mode', 'normal');
+        dotUpBlendLight.setAttribute('in2', 'effect1_dropShadow');
+        dotUpBlendLight.setAttribute('result', 'effect2_dropShadow');
+        const dotUpBlendShape = this.createSvgElement('feBlend');
+        dotUpBlendShape.setAttribute('mode', 'normal');
+        dotUpBlendShape.setAttribute('in', 'SourceGraphic');
+        dotUpBlendShape.setAttribute('in2', 'effect2_dropShadow');
+        dotUpBlendShape.setAttribute('result', 'shape');
+
+        const dotUpAlphaInnerDark = this.createSvgElement('feColorMatrix');
+        dotUpAlphaInnerDark.setAttribute('in', 'SourceAlpha');
+        dotUpAlphaInnerDark.setAttribute('type', 'matrix');
+        dotUpAlphaInnerDark.setAttribute('values', '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0');
+        dotUpAlphaInnerDark.setAttribute('result', 'hardAlpha');
+        const dotUpOffsetInnerDark = this.createSvgElement('feOffset');
+        dotUpOffsetInnerDark.setAttribute('dx', '-1');
+        dotUpOffsetInnerDark.setAttribute('dy', '-1');
+        const dotUpBlurInnerDark = this.createSvgElement('feGaussianBlur');
+        dotUpBlurInnerDark.setAttribute('stdDeviation', '0.5');
+        const dotUpCompositeInnerDark = this.createSvgElement('feComposite');
+        dotUpCompositeInnerDark.setAttribute('in2', 'hardAlpha');
+        dotUpCompositeInnerDark.setAttribute('operator', 'arithmetic');
+        dotUpCompositeInnerDark.setAttribute('k2', '-1');
+        dotUpCompositeInnerDark.setAttribute('k3', '1');
+        const dotUpColorInnerDark = this.createSvgElement('feColorMatrix');
+        dotUpColorInnerDark.setAttribute('type', 'matrix');
+        dotUpColorInnerDark.setAttribute('values', '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.17 0');
+        const dotUpBlendInnerDark = this.createSvgElement('feBlend');
+        dotUpBlendInnerDark.setAttribute('mode', 'normal');
+        dotUpBlendInnerDark.setAttribute('in2', 'shape');
+        dotUpBlendInnerDark.setAttribute('result', 'effect3_innerShadow');
+
+        const dotUpAlphaInnerLight = this.createSvgElement('feColorMatrix');
+        dotUpAlphaInnerLight.setAttribute('in', 'SourceAlpha');
+        dotUpAlphaInnerLight.setAttribute('type', 'matrix');
+        dotUpAlphaInnerLight.setAttribute('values', '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0');
+        dotUpAlphaInnerLight.setAttribute('result', 'hardAlpha');
+        const dotUpOffsetInnerLight = this.createSvgElement('feOffset');
+        dotUpOffsetInnerLight.setAttribute('dx', '1');
+        dotUpOffsetInnerLight.setAttribute('dy', '1');
+        const dotUpBlurInnerLight = this.createSvgElement('feGaussianBlur');
+        dotUpBlurInnerLight.setAttribute('stdDeviation', '0.5');
+        const dotUpCompositeInnerLight = this.createSvgElement('feComposite');
+        dotUpCompositeInnerLight.setAttribute('in2', 'hardAlpha');
+        dotUpCompositeInnerLight.setAttribute('operator', 'arithmetic');
+        dotUpCompositeInnerLight.setAttribute('k2', '-1');
+        dotUpCompositeInnerLight.setAttribute('k3', '1');
+        const dotUpColorInnerLight = this.createSvgElement('feColorMatrix');
+        dotUpColorInnerLight.setAttribute('type', 'matrix');
+        dotUpColorInnerLight.setAttribute('values', '0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.17 0');
+        const dotUpBlendInnerLight = this.createSvgElement('feBlend');
+        dotUpBlendInnerLight.setAttribute('mode', 'color-dodge');
+        dotUpBlendInnerLight.setAttribute('in2', 'effect3_innerShadow');
+        dotUpBlendInnerLight.setAttribute('result', 'effect4_innerShadow');
+
+        dotUpFilter.appendChild(dotUpFlood);
+        dotUpFilter.appendChild(dotUpAlphaDark);
+        dotUpFilter.appendChild(dotUpOffsetDark);
+        dotUpFilter.appendChild(dotUpBlurDark);
+        dotUpFilter.appendChild(dotUpCompositeDark);
+        dotUpFilter.appendChild(dotUpColorDark);
+        dotUpFilter.appendChild(dotUpBlendDark);
+        dotUpFilter.appendChild(dotUpAlphaLight);
+        dotUpFilter.appendChild(dotUpOffsetLight);
+        dotUpFilter.appendChild(dotUpBlurLight);
+        dotUpFilter.appendChild(dotUpCompositeLight);
+        dotUpFilter.appendChild(dotUpColorLight);
+        dotUpFilter.appendChild(dotUpBlendLight);
+        dotUpFilter.appendChild(dotUpBlendShape);
+        dotUpFilter.appendChild(dotUpAlphaInnerDark);
+        dotUpFilter.appendChild(dotUpOffsetInnerDark);
+        dotUpFilter.appendChild(dotUpBlurInnerDark);
+        dotUpFilter.appendChild(dotUpCompositeInnerDark);
+        dotUpFilter.appendChild(dotUpColorInnerDark);
+        dotUpFilter.appendChild(dotUpBlendInnerDark);
+        dotUpFilter.appendChild(dotUpAlphaInnerLight);
+        dotUpFilter.appendChild(dotUpOffsetInnerLight);
+        dotUpFilter.appendChild(dotUpBlurInnerLight);
+        dotUpFilter.appendChild(dotUpCompositeInnerLight);
+        dotUpFilter.appendChild(dotUpColorInnerLight);
+        dotUpFilter.appendChild(dotUpBlendInnerLight);
+        defs.appendChild(dotUpFilter);
     }
 
     private createIconSymbol(defs: SVGDefsElement, iconName: string): string | null {
@@ -1303,6 +1463,30 @@ export class InquiryView extends ItemView {
         const label = this.createSvgText(debugGroup, 'ert-inquiry-debug-label', 'ORIGIN', 0, 0);
         label.setAttribute('text-anchor', 'middle');
         label.setAttribute('dominant-baseline', 'middle');
+    }
+
+    private renderModeIcons(parent: SVGGElement): void {
+        const iconOffsetY = 100;
+        const iconSize = Math.round(VIEWBOX_SIZE * 0.25);
+        const iconX = Math.round(-iconSize / 2);
+        const iconGroup = this.createSvgGroup(parent, 'ert-inquiry-mode-icons', 0, iconOffsetY);
+        iconGroup.setAttribute('pointer-events', 'none');
+
+        const createIcon = (cls: string, assetFile: string): void => {
+            const icon = this.createSvgElement('image');
+            icon.classList.add('ert-inquiry-mode-icon', cls);
+            icon.setAttribute('x', String(iconX));
+            icon.setAttribute('y', '0');
+            icon.setAttribute('width', String(iconSize));
+            icon.setAttribute('height', String(iconSize));
+            icon.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+            icon.setAttribute('pointer-events', 'none');
+            icon.setAttribute('href', this.getInquiryAssetHref(assetFile));
+            iconGroup.appendChild(icon);
+        };
+
+        createIcon('ert-inquiry-mode-icon--flow', 'river.svg');
+        createIcon('ert-inquiry-mode-icon--depth', 'deep.svg');
     }
 
     private renderWaveHeader(parent: SVGElement): void {
