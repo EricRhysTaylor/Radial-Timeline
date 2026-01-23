@@ -94,6 +94,8 @@
   --ert-control-pad-x: 10px;
   --ert-control-pad-y: 6px;
   --ert-control-font-size: var(--font-ui-small, 13px);
+  --ert-sup-font-size: 0.9em;
+  --ert-sup-gap: 0.12em;
   --ert-control-radius: 8px;
   --ert-control-bg: var(--background-modifier-form-field);
   --ert-control-border: var(--background-modifier-border);
@@ -2358,11 +2360,11 @@
 }
 
 .ert-ui .ert-pov-example-content sup {
-  font-size: 0.7em;
+  font-size: var(--ert-sup-font-size);
   vertical-align: super;
   font-weight: 500;
   color: var(--text-muted);
-  margin-left: var(--ert-gap-xs);
+  margin-left: var(--ert-sup-gap);
 }
 
 .ert-ui .ert-planetary-validation-icon {
@@ -3210,6 +3212,14 @@
   padding: 0;
   margin-top: 0.9375rem;
   margin-bottom: 1.25rem;
+}
+
+.ert-ui .ert-readme h1,
+.ert-ui .ert-readme h2,
+.ert-ui .ert-readme h3,
+.ert-ui .ert-readme h4 {
+  padding-left: 0;
+  margin-left: 0;
 }
 
 .ert-ui .ert-manuscript-readme-container img {

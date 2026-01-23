@@ -118,33 +118,6 @@ Configure how Inquiry scans, stores, and annotates briefs.
 *   **Manuscript output folder**: Destination for manuscript exports (default `Radial Timeline/Manuscript`).
 *   **Outline output folder**: Destination for outline exports (default `Radial Timeline/Outline`).
 
-<a name="publication"></a>
-### Publication and progress
-Manage your project's milestones and status tracking.
-
-**Stage Target Dates:**
-*   **Zero target date**: Target completion date for the Zero Draft stage (YYYY-MM-DD). A marker appears on the timeline when set.
-*   **Author target date**: Target completion date for the Author's Draft stage. Must be after the Zero target date.
-*   **House target date**: Target completion date for the House Edit stage. Must be after the Author target date.
-*   **Press target date**: Target completion date for the Press Ready stage. Must be after the House target date.
-
-Target dates are validated to ensure proper stage ordering. Overdue dates are highlighted in red. Each stage has its own color-coded marker on the timeline.
-
-<a name="zero-draft-mode"></a>
-*   **Zero draft mode**: A focused mode for reviewing. Intercepts clicks on scenes with `Publish Stage: Zero` and `Status: Complete` to open a "Pending Edits" modal instead of the full note.
-*   **Show completion estimate**: Toggles the predicted completion tick mark on the timeline.
-*   **Completion estimate window (days)**: Rolling window (default 30, min 14, max 90) used to measure pace. Pace = completions in the active publish stage within the last N days ÷ N (scenes/day).
-
-**How the completion estimate works**
-* Scope: Only the active publish stage (highest stage with any incomplete scenes). Other stages do not affect pace or remaining.
-* Total scenes for the active stage: `max(unique stage scenes, highest scene number seen anywhere)`. This lets an early high-numbered scene (e.g., “Scene 70”) set a floor even if few notes exist.
-* Remaining: Total − Completed (stage-scoped, deduped by path, clamped to ≥0).
-* Date: Requires at least 2 completed scenes in the window for a confident pace. With fewer, the geometry stays but the label shows “?”.
-* Staleness colors: fresh (≤7d, normal), warn (8–10d, orange), late (11–20d, red), stalled (>20d or no pace/insufficient samples, red “?”). Geometry is frozen until new completions update the pace.
-
-> [!NOTE]
-> Learn more about workflows in [[Core-Workflows]].
-
 <a name="pov"></a>
 ### Point of view
 Control how narrative perspective is visualized.
@@ -153,15 +126,6 @@ Control how narrative perspective is visualized.
 
 > [!NOTE]
 > See [[Advanced-YAML#point-of-view]] for configuration details and supported keywords.
-
-<a name="chronologue"></a>
-### Chronologue mode settings
-Configure the time-based visualization of your story.
-*   **Chronologue duration arc cap**: Determines the maximum duration used for scaling the "duration arcs" (outer ring segments). Can be set to "Auto" or specific timeframes.
-*   **Discontinuity gap threshold**: Controls the sensitivity of the Shift Mode (Time gaps). When the gap between scenes exceeds this threshold, an ∞ symbol appears. Default is auto-calculated (3× median gap).
-
-> [!NOTE]
-> Read more about [[Chronologue-Mode]].
 
 <a name="acts"></a>
 ### Acts
@@ -192,6 +156,42 @@ Manage how Radial Timeline reads and writes metadata.
 > [!NOTE]
 > *   For template customization: [[Advanced-YAML]]
 > *   For a full list of keys: [[YAML-Frontmatter]]
+
+<a name="publication"></a>
+### Publication and progress
+Manage your project's milestones and status tracking.
+
+**Stage Target Dates:**
+*   **Zero target date**: Target completion date for the Zero Draft stage (YYYY-MM-DD). A marker appears on the timeline when set.
+*   **Author target date**: Target completion date for the Author's Draft stage. Must be after the Zero target date.
+*   **House target date**: Target completion date for the House Edit stage. Must be after the Author target date.
+*   **Press target date**: Target completion date for the Press Ready stage. Must be after the House target date.
+
+Target dates are validated to ensure proper stage ordering. Overdue dates are highlighted in red. Each stage has its own color-coded marker on the timeline.
+
+<a name="zero-draft-mode"></a>
+*   **Zero draft mode**: A focused mode for reviewing. Intercepts clicks on scenes with `Publish Stage: Zero` and `Status: Complete` to open a "Pending Edits" modal instead of the full note.
+*   **Show completion estimate**: Toggles the predicted completion tick mark on the timeline.
+*   **Completion estimate window (days)**: Rolling window (default 30, min 14, max 90) used to measure pace. Pace = completions in the active publish stage within the last N days ÷ N (scenes/day).
+
+**How the completion estimate works**
+* Scope: Only the active publish stage (highest stage with any incomplete scenes). Other stages do not affect pace or remaining.
+* Total scenes for the active stage: `max(unique stage scenes, highest scene number seen anywhere)`. This lets an early high-numbered scene (e.g., “Scene 70”) set a floor even if few notes exist.
+* Remaining: Total − Completed (stage-scoped, deduped by path, clamped to ≥0).
+* Date: Requires at least 2 completed scenes in the window for a confident pace. With fewer, the geometry stays but the label shows “?”.
+* Staleness colors: fresh (≤7d, normal), warn (8–10d, orange), late (11–20d, red), stalled (>20d or no pace/insufficient samples, red “?”). Geometry is frozen until new completions update the pace.
+
+> [!NOTE]
+> Learn more about workflows in [[Core-Workflows]].
+
+<a name="chronologue"></a>
+### Chronologue mode settings
+Configure the time-based visualization of your story.
+*   **Chronologue duration arc cap**: Determines the maximum duration used for scaling the "duration arcs" (outer ring segments). Can be set to "Auto" or specific timeframes.
+*   **Discontinuity gap threshold**: Controls the sensitivity of the Shift Mode (Time gaps). When the gap between scenes exceeds this threshold, an ∞ symbol appears. Default is auto-calculated (3× median gap).
+
+> [!NOTE]
+> Read more about [[Chronologue-Mode]].
 
 <a name="backdrop"></a>
 ### Backdrop
@@ -256,8 +256,7 @@ Generate shareable, spoiler-safe progress graphics for social media, crowdfundin
 > For detailed information about how APR works, see [[Author-Progress-Report]].
 
 **Preview & Size:**
-*   **Preview Size**: Choose Small (150×150px), Medium (300×300px), or Large (450×450px). The preview updates in real-time as you adjust settings.
-*   **Export Size**: Controls the final SVG dimensions. Small is ideal for widgets, Medium for social media and newsletters, Large for website embeds.
+*   **Preview Size**: Choose Thumbnail (100×100px), Small (150×150px), Medium (300×300px), or Large (450×450px). This also sets the default export size and updates the preview in real time.
 
 <a name="social-media-styling"></a>
 #### Styling
@@ -292,7 +291,7 @@ Create multiple APR configurations for different platforms (Kickstarter, Patreon
     *   **Update Frequency**: Manual, Daily, Weekly, or Monthly auto-updates
     *   **Refresh Alert Threshold**: Days before showing refresh reminder (1-90 days)
     *   **Embed File Path**: Custom SVG path for each campaign
-    *   **Export Size**: Small, Medium, or Large
+    *   **Export Size**: Thumbnail, Small, Medium, or Large
     *   **Manual Reveal Options**: Show/hide Subplots, Acts, Status, and Progress Percent (only when Teaser Reveal is disabled)
 
 *   **Teaser Reveal** ✦ Pro:

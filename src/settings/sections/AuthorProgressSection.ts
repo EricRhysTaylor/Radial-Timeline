@@ -82,7 +82,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     });
 
     // Size selector and 1:1 preview
-    const previewSection = hero.createDiv({ cls: `ert-apr-preview ${ERT_CLASSES.STACK}` });
+    const previewSection = hero.createDiv({ cls: 'ert-apr-preview' });
 
     // Size selector row
     const sizeSelectorRow = previewSection.createDiv({ cls: `ert-apr-size-row ${ERT_CLASSES.INLINE}` });
