@@ -227,14 +227,14 @@
 }
 
 .ert-ui .ert-hero-title {
-  margin: 0;
+  margin: 0 0 var(--ert-gap-xs) 0;
   font-size: 18px;
   font-weight: 700;
   color: var(--text-normal);
 }
 
 .ert-ui .ert-hero-subtitle {
-  margin: 0;
+  margin: var(--ert-gap-xs) 0 calc(var(--ert-gap-sm) + var(--ert-gap-xs) / 2) 0;
   color: var(--text-muted);
   line-height: 1.5;
 }
@@ -1051,14 +1051,6 @@
 
 .ert-ui .ert-apr-refresh-alert .setting-item-name {
   color: var(--text-error);
-}
-
-.ert-ui .ert-apr-hero-title {
-  margin: 0 0 var(--ert-gap-xs) 0;
-}
-
-.ert-ui .ert-apr-hero-subtitle {
-  margin: var(--ert-gap-xs) 0 calc(var(--ert-gap-sm) + var(--ert-gap-xs) / 2) 0;
 }
 
 .ert-ui .ert-apr-meta {
