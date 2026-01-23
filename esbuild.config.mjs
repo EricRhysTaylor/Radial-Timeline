@@ -86,8 +86,6 @@ destDirs.forEach(dest => verifyWritableDir(dest.path));
 // Files to copy from src/ (in addition to the built JS)
 const filesToCopy = [
 	"manifest.json",
-	"inquiry/assets/deep.svg",
-	"inquiry/assets/river.svg",
 	"inquiry/assets/radial_texture.png",
 	// "screenshot.jpeg" // Removed as it should be referenced via absolute URL in README
 ];

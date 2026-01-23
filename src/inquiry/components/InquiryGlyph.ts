@@ -25,16 +25,16 @@ export interface InquiryGlyphPromptState {
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 export const FLOW_RADIUS = 130;
-export const DEPTH_RADIUS = 105;
-export const FLOW_STROKE = 14;
-export const DEPTH_STROKE = 24;
+export const DEPTH_RADIUS = 90;
+export const FLOW_STROKE = 20;
+export const DEPTH_STROKE = 30;
 const FLOW_HIT_STROKE = 38;
 const DEPTH_HIT_STROKE = 48;
 const FLOW_BADGE_RADIUS_PX = FLOW_STROKE / 2;
 const DEPTH_BADGE_RADIUS_PX = DEPTH_STROKE / 2;
 const FLOW_BADGE_TEXT_PX = Math.round(16 / 2);
 const DEPTH_BADGE_TEXT_PX = Math.round(20 * (2 / 3));
-const LABEL_TEXT_PX = 100; //
+const LABEL_TEXT_PX = 120; //
 const ARC_BASE_TINT = '#dff5e7';
 const ARC_MAX_GREEN = '#22c55e';
 const DOT_DARKEN = 0.35;
@@ -42,8 +42,8 @@ const ZONE_SEGMENT_COUNT = 3;
 const ZONE_SEGMENT_RADIUS = 273.5;
 const ZONE_RING_THICKNESS = 70;
 const ZONE_RING_GAP_PX = 10;
-const ZONE_DOT_RADIUS_PX = 10;
-const ZONE_DOT_TEXT_PX = 12;
+const ZONE_DOT_RADIUS_PX = 20;
+const ZONE_DOT_TEXT_PX = 24;
 const ZONE_NUMBER_COUNT = 5;
 const ZONE_NUMBER_SPACING_DEG = 10;
 const ZONE_SEGMENT_VIEWBOX_WIDTH = 159;
@@ -124,12 +124,16 @@ export class InquiryGlyph {
         labelGroup.classList.add('ert-inquiry-glyph-label-group');
         this.labelHit = document.createElementNS(SVG_NS, 'rect');
         this.labelHit.classList.add('ert-inquiry-glyph-hit');
-        this.labelHit.setAttribute('x', '-180');
-        this.labelHit.setAttribute('y', '-110');
-        this.labelHit.setAttribute('width', '360');
-        this.labelHit.setAttribute('height', '220');
-        this.labelHit.setAttribute('rx', '60');
-        this.labelHit.setAttribute('ry', '60');
+        const labelInnerRadius = Math.max(0, DEPTH_RADIUS - (DEPTH_STROKE / 2) - 3);
+        const labelWidth = labelInnerRadius * 2;
+        const labelHeight = labelWidth * (220 / 360);
+        const labelRadius = labelWidth / 6;
+        this.labelHit.setAttribute('x', (-labelWidth / 2).toFixed(2));
+        this.labelHit.setAttribute('y', (-labelHeight / 2).toFixed(2));
+        this.labelHit.setAttribute('width', labelWidth.toFixed(2));
+        this.labelHit.setAttribute('height', labelHeight.toFixed(2));
+        this.labelHit.setAttribute('rx', labelRadius.toFixed(2));
+        this.labelHit.setAttribute('ry', labelRadius.toFixed(2));
 
         this.labelText = document.createElementNS(SVG_NS, 'text');
         this.labelText.classList.add('ert-inquiry-glyph-label');
@@ -194,8 +198,8 @@ export class InquiryGlyph {
         this.flowBadgeCircle.setAttribute('r', ((FLOW_STROKE / 2) * scaleFactor).toFixed(2));
         this.depthBadgeCircle.setAttribute('r', ((DEPTH_STROKE / 2) * scaleFactor).toFixed(2));
         this.zoneDots.forEach(dot => {
-            dot.circle.setAttribute('r', (ZONE_DOT_RADIUS_PX * scaleFactor).toFixed(2));
-            dot.text.setAttribute('font-size', (ZONE_DOT_TEXT_PX * scaleFactor).toFixed(2));
+            dot.circle.setAttribute('r', String(ZONE_DOT_RADIUS_PX));
+            dot.text.setAttribute('font-size', String(ZONE_DOT_TEXT_PX));
         });
     }
 
@@ -413,7 +417,7 @@ export class InquiryGlyph {
         state: { hovered: boolean; locked: boolean },
         group: SVGGElement
     ): void {
-        const shouldScale = state.hovered || state.locked;
+        const shouldScale = state.hovered;
         group.classList.toggle('is-scaled', shouldScale);
         group.classList.toggle('is-glass-hovered', state.hovered);
         group.classList.toggle('is-locked', state.locked);
