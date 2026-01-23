@@ -3217,9 +3217,12 @@
 .ert-ui .ert-readme h1,
 .ert-ui .ert-readme h2,
 .ert-ui .ert-readme h3,
-.ert-ui .ert-readme h4 {
+.ert-ui .ert-readme h4,
+.ert-ui .ert-readme h5,
+.ert-ui .ert-readme h6 {
   padding-left: 0;
   margin-left: 0;
+  margin-bottom: 0.75em;
 }
 
 .ert-ui .ert-manuscript-readme-container img {

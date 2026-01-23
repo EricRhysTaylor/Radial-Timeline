@@ -49,7 +49,7 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
 
 ---
 
-## Docs (How-to & setup)<br>
+## Docs (How-to & setup)<br><br>
 
 If you want the “how-to” details (setup, templates, YAML, reordering, advanced options), they live in the wiki:
 
@@ -103,6 +103,8 @@ The radial timeline is designed for high pixel density displays (around 200 ppi 
 *   Tablets.
 
 If you're experiencing visual quality issues on Windows, please check your display scaling settings.
+
+---
 
 ## Acknowledgments
 
