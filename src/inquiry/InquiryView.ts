@@ -43,8 +43,6 @@ import {
     toVaultRoot
 } from './utils/scanRoots';
 
-const GLYPH_TARGET_UNITS = 300; // viewBox units; keeps glyph size fixed within the SVG layout.
-const GLYPH_FIXED_SCALE = GLYPH_TARGET_UNITS / ((FLOW_RADIUS + FLOW_STROKE) * 2);
 const GLYPH_PLACEHOLDER_FLOW = 0.75;
 const GLYPH_PLACEHOLDER_DEPTH = 0.30;
 const DEBUG_SVG_OVERLAY = true;
@@ -443,7 +441,6 @@ export class InquiryView extends ItemView {
             assessmentConfidence: 'low'
         });
         this.logInquirySvgDebug();
-        this.updateGlyphScale();
 
         this.flowRingHit = this.glyph.flowRingHit;
         this.depthRingHit = this.glyph.depthRingHit;
@@ -1331,11 +1328,6 @@ export class InquiryView extends ItemView {
         });
     }
 
-    private updateGlyphScale(): void {
-        if (!this.glyph) return;
-        this.glyph.root.setAttribute('transform', `scale(${GLYPH_FIXED_SCALE.toFixed(4)})`);
-        this.glyph.setDisplayScale(1, 1);
-    }
 
     private buildFindingsPanel(findingsGroup: SVGGElement, width: number, height: number): void {
         const bg = this.createSvgElement('rect');

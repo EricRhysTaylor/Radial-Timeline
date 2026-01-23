@@ -808,7 +808,7 @@ export function renderInquirySection(params: SectionParams): void {
                 const customIndex = startIndex + offset;
                 const row = listEl.createDiv({ cls: 'ert-inquiry-custom-row' });
 
-                const dragHandle = row.createDiv({ cls: 'rt-drag-handle' });
+                const dragHandle = row.createDiv({ cls: 'ert-drag-handle' });
                 dragHandle.draggable = true;
                 setIcon(dragHandle, 'grip-vertical');
                 setTooltip(dragHandle, 'Drag to reorder');

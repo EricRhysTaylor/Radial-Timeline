@@ -22,7 +22,7 @@ import { renderRuntimeSection } from './sections/RuntimeSection';
 import { renderProfessionalSection, isProfessionalActive } from './sections/ProfessionalSection';
 import { validateLocalModelAvailability } from '../api/localAiApi';
 import { FolderSuggest } from './FolderSuggest';
-import { ERT_CLASSES } from '../ui/classes';
+import { ERT_CLASSES, ERT_DATA } from '../ui/classes';
 
 export class RadialTimelineSettingsTab extends PluginSettingTab {
     plugin: RadialTimelinePlugin;
@@ -176,7 +176,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         }
         container.classList.remove('hidden');
         filteredPaths.forEach(path => {
-            const suggestionEl = container.createDiv({ cls: 'rt-source-path-suggestion-item' });
+            const suggestionEl = container.createDiv({ cls: 'ert-source-path-suggestion-item' });
             suggestionEl.textContent = path;
             this.plugin.registerDomEvent(suggestionEl, 'click', async () => {
                 textInput.setValue(path);
@@ -201,17 +201,17 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     }
 
     private renderBackupSafetySection(containerEl: HTMLElement): void {
-        const container = containerEl.createDiv({ cls: 'rt-backup-safety' });
-        const bgLogo = container.createDiv({ cls: 'rt-backup-bg-logo' });
+        const container = containerEl.createDiv({ cls: [ERT_CLASSES.PANEL, 'ert-backup-card'] });
+        const bgLogo = container.createDiv({ cls: 'ert-backup-bg-logo' });
         const bgSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         bgSvg.setAttribute('viewBox', '0 0 1080 1080');
-        bgSvg.classList.add('rt-backup-bg-svg');
+        bgSvg.classList.add('ert-backup-bg-svg');
         const bgPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         bgPath.setAttribute('d', 'M1033.05,324.45c-0.19-137.9-107.59-250.92-233.6-291.7c-156.48-50.64-362.86-43.3-512.28,27.2 C106.07,145.41,49.18,332.61,47.06,519.31c-1.74,153.5,13.58,557.79,241.62,560.67c169.44,2.15,194.67-216.18,273.07-321.33 c55.78-74.81,127.6-95.94,216.01-117.82C929.71,603.22,1033.27,483.3,1033.05,324.45z');
         bgSvg.appendChild(bgPath);
         bgLogo.appendChild(bgSvg);
-        const contentContainer = container.createDiv({ cls: 'rt-backup-content' });
-        const titleRow = contentContainer.createDiv({ cls: 'rt-backup-title-row' });
+        const contentContainer = container.createDiv({ cls: 'ert-backup-content' });
+        const titleRow = contentContainer.createDiv({ cls: 'ert-backup-title-row' });
         const iconSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         iconSvg.setAttribute('width', '24');
         iconSvg.setAttribute('height', '24');
@@ -221,17 +221,17 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         iconSvg.setAttribute('stroke-width', '2');
         iconSvg.setAttribute('stroke-linecap', 'round');
         iconSvg.setAttribute('stroke-linejoin', 'round');
-        iconSvg.classList.add('lucide', 'lucide-archive-restore', 'rt-backup-title-icon');
+        iconSvg.classList.add('lucide', 'lucide-archive-restore', 'ert-backup-title-icon');
         iconSvg.innerHTML = `<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h2"/><path d="M20 8v11a2 2 0 0 1-2 2h-2"/><path d="m9 15 3-3 3 3"/><path d="M12 12v9"/>`; // SAFE: innerHTML used for static SVG icon path construction
         titleRow.appendChild(iconSvg);
-        const title = titleRow.createEl('h3', { cls: 'rt-backup-title' });
+        const title = titleRow.createEl('h3', { cls: 'ert-backup-title' });
         title.createSpan({ text: 'Backup your Work' });
-        const description = contentContainer.createEl('p', { cls: 'rt-backup-description' });
+        const description = contentContainer.createEl('p', { cls: 'ert-backup-description' });
         const backupPara = description.createDiv();
         backupPara.createSpan({ text: 'It is strongly recommended that you regularly ' });
         backupPara.createEl('a', { text: 'back up your Obsidian vault', href: 'https://help.obsidian.md/backup' });
         backupPara.createSpan({ text: ' to protect against data loss.' });
-        const syncPara = description.createDiv({ cls: 'rt-backup-sync-para' });
+        const syncPara = description.createDiv({ cls: 'ert-backup-sync-para' });
         syncPara.createEl('strong', { text: 'Syncing vs. Backing Up: ' });
         syncPara.createSpan({ text: 'Sync services like ' });
         syncPara.createEl('a', { text: 'Obsidian Sync', href: 'https://obsidian.md/sync' });
@@ -240,7 +240,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         syncPara.createSpan({ text: ' can protect your work from system crashes and device theft, but they do not protect from user deletions or situations where you need to roll back or recover a misplaced file. ' });
         syncPara.createEl('a', { text: 'Read the Obsidian Sync Guide', href: 'https://help.obsidian.md/sync/switch' });
         syncPara.createSpan({ text: ' to understand the differences.' });
-        const conflictPara = description.createDiv({ cls: 'rt-backup-sync-para' });
+        const conflictPara = description.createDiv({ cls: 'ert-backup-sync-para' });
         conflictPara.createEl('strong', { text: 'Sync Conflicts: ' });
         conflictPara.createSpan({ text: 'Avoid mixing sync services. If using iCloud on macOS alongside another sync tool, append ' });
         conflictPara.createEl('code', { text: '.nosync' });
@@ -284,7 +284,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         if (!this._coreSearchableContent) return;
         const normalizedQuery = query.toLowerCase().trim();
         const allSettings = this._coreSearchableContent.querySelectorAll('.setting-item');
-        const allSectionContainers = this._coreSearchableContent.querySelectorAll('[data-rt-section]');
+        const allSectionContainers = this._coreSearchableContent.querySelectorAll('[data-ert-section]');
         if (normalizedQuery === '') {
             allSettings.forEach(el => (el as HTMLElement).classList.remove('ert-search-hidden'));
             allSectionContainers.forEach(el => (el as HTMLElement).classList.remove('ert-search-section-hidden'));
@@ -304,12 +304,12 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     }
 
     private renderProCallout(containerEl: HTMLElement, text: string, switchToProTab: () => void): void {
-        const callout = containerEl.createDiv({ cls: 'rt-pro-callout' });
-        const badge = callout.createSpan({ cls: 'rt-pro-callout-badge' });
+        const callout = containerEl.createDiv({ cls: 'ert-pro-callout' });
+        const badge = callout.createSpan({ cls: 'ert-pro-callout-badge' });
         setIcon(badge, 'signature');
         badge.createSpan({ text: 'Pro' });
-        callout.createSpan({ cls: 'rt-pro-callout-text', text });
-        callout.createSpan({ cls: 'rt-pro-callout-arrow', text: '→' });
+        callout.createSpan({ cls: 'ert-pro-callout-text', text });
+        callout.createSpan({ cls: 'ert-pro-callout-arrow', text: '→' });
         this.plugin.registerDomEvent(callout, 'click', () => { switchToProTab(); });
     }
 
@@ -435,11 +435,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const switchToProTab = () => { this._activeTab = 'pro'; updateTabState(); };
 
         // Setup Section - Source path settings
-        const generalSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'general' } });
+        const generalSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'general' } });
         renderGeneralSection({ app: this.app, plugin: this.plugin, attachFolderSuggest: (t) => this.attachFolderSuggest(t), containerEl: generalSection });
         this.renderProCallout(generalSection, 'Manuscript exports via Pandoc', switchToProTab);
 
-        const inquirySection = inquiryBody.createDiv({ attr: { 'data-rt-section': 'inquiry' } });
+        const inquirySection = inquiryBody.createDiv({ attr: { [ERT_DATA.SECTION]: 'inquiry' } });
         renderInquirySection({
             app: this.app,
             plugin: this.plugin,
@@ -449,26 +449,26 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
 
 
-        const povSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'pov' } });
+        const povSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'pov' } });
         renderPovSection({ plugin: this.plugin, containerEl: povSection });
 
-        const beatsSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'beats' } });
+        const beatsSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'beats' } });
         renderTemplatesSection({ app: this.app, plugin: this.plugin, containerEl: beatsSection });
 
-        const publicationSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'publication' } });
+        const publicationSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'publication' } });
         renderPublicationSection({ app: this.app, plugin: this.plugin, containerEl: publicationSection });
         this.renderProCallout(publicationSection, 'Runtime estimation for screenplay & audiobook', switchToProTab);
 
-        const chronologueSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'chronologue' } });
+        const chronologueSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'chronologue' } });
         renderChronologueSection({ app: this.app, plugin: this.plugin, containerEl: chronologueSection });
 
-        const backdropSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'backdrop' } });
+        const backdropSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'backdrop' } });
         renderBackdropSection({ app: this.app, plugin: this.plugin, containerEl: backdropSection });
 
-        const planetarySection = searchableContent.createDiv({ attr: { 'data-rt-section': 'planetary' } });
+        const planetarySection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'planetary' } });
         renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl: planetarySection });
 
-        const aiSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'ai' } });
+        const aiSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'ai' } });
         renderAiSection({
             app: this.app,
             plugin: this.plugin,
@@ -490,16 +490,16 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             },
         });
 
-        const advancedSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'advanced' } });
+        const advancedSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'advanced' } });
         renderAdvancedSection({ app: this.app, plugin: this.plugin, containerEl: advancedSection });
 
-        const colorsSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'colors' } });
+        const colorsSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'colors' } });
         renderColorsSection(colorsSection, this.plugin);
 
-        const releaseNotesSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'release-notes' } });
+        const releaseNotesSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'release-notes' } });
         void renderReleaseNotesSection({ plugin: this.plugin, containerEl: releaseNotesSection });
 
-        const readmeSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'readme' } });
+        const readmeSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'readme' } });
         renderReadmeSection({ app: this.app, containerEl: readmeSection, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
 
         this.addSearchMetadataToSettings(searchableContent);

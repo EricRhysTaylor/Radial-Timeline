@@ -835,9 +835,6 @@ const element = createSvgElement('circle', {
 const text = createSvgText(content, x, y, ['label-class']);
 ```
 
-### SVG Zoom Behavior
-Avoid pixel-locking subtrees unless you explicitly want them to ignore Obsidian zoom. The Inquiry glyph originally used a "pixel-locked" scale so it stayed ~190px wide: compute `unitsPerPx` from `rootSvg.clientWidth` and `VIEWBOX_SIZE`, scale the glyph `<g>` with `transform: scale(...)`, then call `InquiryGlyph.setDisplayScale(scale, unitsPerPx)` to counter-scale labels/badges. This makes only that group respond to zoom, while other viewBox-based elements (minimap/corpus) stay proportional. Non-scaling strokes (`vector-effect: non-scaling-stroke`) further preserve ring stroke widths.
-
 ### Scene Data Processing
 ✅ **Filter Plot notes when appropriate:**
 ```typescript

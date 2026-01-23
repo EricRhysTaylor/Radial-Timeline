@@ -231,112 +231,6 @@
 
 /* rt-template-input consolidated in base.css */
 
-/* Styling for the embedded README container in settings */
-.rt-manuscript-readme-container {
-  padding: 0;
-  margin-top: 15px;
-  margin-bottom: 20px;
-}
-
-.rt-manuscript-readme-container img {
-  image-rendering: auto;
-  image-rendering: high-quality;
-  height: auto;
-}
-
-.rt-source-path-suggestion-item {
-  padding: 8px 12px;
-  cursor: pointer;
-  border-bottom: 1px solid var(--background-modifier-border);
-  /* Settings UI can animate hover for better affordance (timeline has no animations) */
-  transition: background-color 0.1s ease;
-}
-
-.rt-source-path-suggestion-item:last-child {
-  border-bottom: none;
-}
-
-.rt-source-path-suggestion-item:hover,
-.rt-source-path-suggestion-item.selected {
-  background-color: var(--background-modifier-hover);
-}
-
-/* ============================================
-   BACKUP SAFETY SECTION
-   ============================================ */
-
-.rt-backup-safety {
-  margin: 0 0 24px 0;
-  padding: 20px;
-  background: var(--code-background);
-  border: 2px solid var(--interactive-accent-alpha-30);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  position: relative;
-  overflow: hidden;
-  min-height: 180px;
-}
-
-.rt-backup-bg-logo {
-  position: absolute;
-  left: 20;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 60%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.rt-backup-bg-logo svg {
-  width: 100%;
-  height: 140%;
-}
-
-.rt-backup-bg-svg {
-  fill: var(--alternating-color-1, var(--interactive-accent));
-  opacity: 0.12;
-}
-
-.rt-backup-content {
-  position: relative;
-  z-index: 1;
-}
-
-.rt-backup-title-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.rt-backup-title-icon {
-  margin-right: 8px;
-  color: var(--text-accent);
-}
-
-.rt-backup-title {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-normal);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.rt-backup-sync-para {
-  margin-top: 8px;
-}
-
-.rt-backup-description {
-  margin: 0 0 16px 0;
-  font-size: 14px;
-  line-height: 1.4;
-  color: var(--text-muted);
-}
-
 /* Ensure all settings buttons/toggles use pointer cursor */
 .ert-settings-root .setting-item-control button,
 .ert-settings-root .setting-item-control .clickable-icon,
@@ -581,61 +475,6 @@
   font-style: italic;
 }
 
-/* -------------------------------------------------------------------------- */
-/* PRO CALLOUTS (upsell hints in Core sections)                               */
-/* -------------------------------------------------------------------------- */
-
-.rt-pro-callout {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--text-faint);
-  cursor: pointer;
-  margin-top: 8px;
-  margin-bottom: 16px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  transition: color 0.15s ease, background 0.15s ease;
-}
-
-.rt-pro-callout:hover {
-  color: var(--text-muted);
-  background: rgba(var(--rt-pro-color-rgb), 0.06);
-}
-
-.rt-pro-callout-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--rt-pro-color);
-  opacity: 0.75;
-}
-
-.rt-pro-callout-badge svg {
-  width: 12px;
-  height: 12px;
-}
-
-.rt-pro-callout-text {
-  color: inherit;
-}
-
-.rt-pro-callout-arrow {
-  opacity: 0.5;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-.rt-pro-callout:hover .rt-pro-callout-arrow {
-  opacity: 0.8;
-  transform: translateX(2px);
-}
-
 .ert-settings-root .ert-inquiry-scan-root-actions {
   display: flex;
   flex-wrap: wrap;
@@ -849,11 +688,6 @@
   gap: 8px;
   align-items: center;
   padding: 2px 0;
-}
-
-.ert-settings-root .ert-inquiry-custom-row .rt-drag-handle {
-  height: 26px;
-  width: 22px;
 }
 
 .ert-settings-root .ert-inquiry-custom-row .ert-input {
