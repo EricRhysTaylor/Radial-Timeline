@@ -346,7 +346,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
             text: 'Premium exports, runtime intelligence, and Pandoc templates. Make your publishing pipeline radial and your story ever revolving.'
         });
-        const featuresSection = hero.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ${ERT_CLASSES.STACK}` });
+        const featuresSection = hero.createDiv({
+            cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
+        });
         featuresSection.createEl('h5', { text: 'Included in Early Access:', cls: 'ert-kicker' });
         const featuresList = featuresSection.createEl('ul', { cls: ERT_CLASSES.STACK });
         [

@@ -30,7 +30,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     // APR HERO SECTION
     // ─────────────────────────────────────────────────────────────────────────
-    const hero = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_APR}` });
+    const hero = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_HERO} ${ERT_CLASSES.STACK}` });
 
     // Badge row with pill - turns red when refresh needed
     const badgeRow = hero.createDiv({ cls: `ert-apr-badge-row ${ERT_CLASSES.INLINE}` });
@@ -56,7 +56,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Big headline
     hero.createEl('h3', {
-        cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title ert-apr-hero-title`,
+        cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title`,
         text: 'Promote your latest work across social media.'
     });
 
@@ -67,7 +67,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     });
 
     // Features section
-    const featuresSection = hero.createDiv({ cls: `ert-apr-hero-features ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+    const featuresSection = hero.createDiv({
+        cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
+    });
     featuresSection.createEl('h5', { text: 'Key Benefits:', cls: 'ert-kicker' });
     const featuresList = featuresSection.createEl('ul', { cls: ERT_CLASSES.STACK });
     [
@@ -81,11 +83,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         li.createSpan({ text: feature.text });
     });
 
-    // Size selector and 1:1 preview
-    const previewSection = hero.createDiv({ cls: 'ert-apr-preview' });
-
     // Size selector row
-    const sizeSelectorRow = previewSection.createDiv({ cls: `ert-apr-size-row ${ERT_CLASSES.INLINE}` });
+    const sizeSelectorRow = hero.createDiv({ cls: `ert-apr-size-row ${ERT_CLASSES.INLINE}` });
     sizeSelectorRow.createSpan({ text: 'Preview Size:', cls: 'ert-apr-size-label' });
 
     const sizeButtons = [
@@ -137,10 +136,13 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Dimension info
     const currentDim = sizeButtons.find(s => s.size === currentSize)?.dimension || '300';
-    dimLabel = previewSection.createDiv({
+    dimLabel = hero.createDiv({
         cls: 'ert-apr-preview-dimension'
     });
-    setSizeLabel(dimLabel, currentDim, 'Actual size preview)');
+    setSizeLabel(dimLabel, currentDim, 'Actual size preview');
+
+    // 1:1 preview
+    const previewSection = hero.createDiv({ cls: 'ert-apr-preview' });
 
     // SVG Preview container - shows at 1:1 actual size
     const previewContainer = previewSection.createDiv({ cls: `ert-apr-preview-frame ert-apr-preview--actual ${ERT_CLASSES.PREVIEW_FRAME}` });

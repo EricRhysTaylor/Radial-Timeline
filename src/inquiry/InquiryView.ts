@@ -63,6 +63,7 @@ const PREVIEW_PANEL_Y = -490;
 const PREVIEW_PANEL_PADDING_X = 32;
 const PREVIEW_PANEL_PADDING_Y = 20;
 const PREVIEW_HERO_LINE_HEIGHT = 30;
+const PREVIEW_HERO_MAX_LINES = 4;
 const PREVIEW_META_GAP = 6;
 const PREVIEW_META_LINE_HEIGHT = 22;
 const PREVIEW_DETAIL_GAP = 16;
@@ -1545,6 +1546,9 @@ export class InquiryView extends ItemView {
             processedStatus: processed.status,
             onPromptSelect: (zone, promptId) => {
                 if (this.dismissErrorIfActive()) return;
+                if (this.state.isRunning) return;
+                const currentId = this.state.selectedPromptIds[zone];
+                if (currentId === promptId) return;
                 this.setSelectedPrompt(zone, promptId);
                 const prompt = this.getPromptOptions(zone)
                     .find(item => item.id === promptId);
@@ -1591,6 +1595,7 @@ export class InquiryView extends ItemView {
         const currentIdx = options.findIndex(prompt => prompt.id === currentId);
         const nextIdx = currentIdx >= 0 ? (currentIdx + 1) % options.length : 0;
         const nextPrompt = options[nextIdx] ?? options[0];
+        if (!nextPrompt || nextPrompt.id === currentId) return;
         this.setSelectedPrompt(zone, nextPrompt.id);
         void this.handleQuestionClick(nextPrompt);
     }
@@ -3274,10 +3279,17 @@ export class InquiryView extends ItemView {
         cacheStatus: 'fresh' | 'stale' | 'missing'
     ): void {
         const normalized = this.normalizeLegacyResult(session.result);
+        const resolvedZone = session.questionZone ?? this.findPromptZoneById(normalized.questionId);
         this.state.scope = session.scope ?? normalized.scope;
         this.state.mode = normalized.mode;
         this.state.activeQuestionId = normalized.questionId;
-        this.state.activeZone = session.questionZone ?? this.findPromptZoneById(normalized.questionId) ?? this.state.activeZone;
+        this.state.activeZone = resolvedZone ?? this.state.activeZone;
+        if (resolvedZone && normalized.questionId) {
+            const options = this.getPromptOptions(resolvedZone);
+            if (options.some(option => option.id === normalized.questionId)) {
+                this.state.selectedPromptIds[resolvedZone] = normalized.questionId;
+            }
+        }
         if (session.focusBookId !== undefined) {
             this.state.focusBookId = session.focusBookId;
         }
@@ -4174,7 +4186,8 @@ export class InquiryView extends ItemView {
             this.previewHero,
             question,
             PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2),
-            PREVIEW_HERO_LINE_HEIGHT
+            PREVIEW_HERO_LINE_HEIGHT,
+            PREVIEW_HERO_MAX_LINES
         );
         if (this.previewMeta) {
             const metaY = PREVIEW_PANEL_PADDING_Y + (heroLines * PREVIEW_HERO_LINE_HEIGHT) + PREVIEW_META_GAP;
@@ -4374,7 +4387,8 @@ export class InquiryView extends ItemView {
         textEl: SVGTextElement,
         text: string,
         maxWidth: number,
-        lineHeight: number
+        lineHeight: number,
+        maxLines = 2
     ): number {
         this.clearSvgChildren(textEl);
         const words = text.split(/\s+/).filter(Boolean);
@@ -4385,10 +4399,14 @@ export class InquiryView extends ItemView {
         if (fullWidth <= maxWidth) {
             return 1;
         }
+        if (maxLines <= 1) {
+            return this.setWrappedSvgText(textEl, text, maxWidth, 1, lineHeight);
+        }
 
         const minWordsPerLine = 3;
         let bestIndex = -1;
         let bestScore = Number.POSITIVE_INFINITY;
+        let bestWidths: { width1: number; width2: number } | null = null;
         for (let i = minWordsPerLine; i <= words.length - minWordsPerLine; i += 1) {
             const line1 = words.slice(0, i).join(' ');
             const line2 = words.slice(i).join(' ');
@@ -4401,11 +4419,16 @@ export class InquiryView extends ItemView {
             if (score < bestScore) {
                 bestScore = score;
                 bestIndex = i;
+                bestWidths = { width1, width2 };
             }
         }
 
-        if (bestIndex < 0) {
-            return this.setWrappedSvgText(textEl, text, maxWidth, 1, lineHeight);
+        if (bestIndex < 0 || !bestWidths) {
+            return this.setWrappedSvgText(textEl, text, maxWidth, maxLines, lineHeight);
+        }
+
+        if (bestWidths.width1 > maxWidth || bestWidths.width2 > maxWidth) {
+            return this.setWrappedSvgText(textEl, text, maxWidth, maxLines, lineHeight);
         }
 
         this.clearSvgChildren(textEl);

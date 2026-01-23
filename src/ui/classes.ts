@@ -52,6 +52,7 @@ export const ERT_CLASSES = {
   PILL: 'ert-pill',
   PREVIEW_FRAME: 'ert-previewFrame',
   PREVIEW_INNER: 'ert-previewFrame__inner',
+  HERO_FEATURES: 'ert-hero-features',
   HERO_LAYOUT: 'ert-heroLayout',
   HERO_LEFT: 'ert-heroLayout__left',
   HERO_RIGHT: 'ert-heroLayout__right',

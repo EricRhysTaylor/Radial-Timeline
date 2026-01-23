@@ -515,12 +515,27 @@
   transition: transform 220ms ease;
 }
 
+.inq-zone-segment-wrap--setup {
+  --ert-inquiry-zone-color: var(--ert-inquiry-zone-setup);
+  --ert-inquiry-zone-stroke: var(--ert-inquiry-zone-setup-stroke);
+}
+
 .inq-zone-segment-wrap--setup .inq-zone-segment-path {
   fill: var(--ert-inquiry-zone-inactive-fill);
 }
 
+.inq-zone-segment-wrap--pressure {
+  --ert-inquiry-zone-color: var(--ert-inquiry-zone-pressure);
+  --ert-inquiry-zone-stroke: var(--ert-inquiry-zone-pressure-stroke);
+}
+
 .inq-zone-segment-wrap--pressure .inq-zone-segment-path {
   fill: var(--ert-inquiry-zone-inactive-fill);
+}
+
+.inq-zone-segment-wrap--payoff {
+  --ert-inquiry-zone-color: var(--ert-inquiry-zone-payoff);
+  --ert-inquiry-zone-stroke: var(--ert-inquiry-zone-payoff-stroke);
 }
 
 .inq-zone-segment-wrap--payoff .inq-zone-segment-path {
@@ -529,7 +544,8 @@
 
 .inq-zone-segment-path {
   fill-opacity: 0.8;
-  transition: fill 200ms ease, fill-opacity 200ms ease;
+  stroke: var(--ert-inquiry-zone-stroke, #d6c3ad);
+  transition: fill 200ms ease, fill-opacity 200ms ease, stroke 200ms ease;
 }
 
 .inq-zone-segment-glass {
@@ -543,6 +559,10 @@
 
 .inq-zone-control.is-glass-hovered .inq-zone-segment-glass {
   opacity: 0.68;
+}
+
+.inq-zone-control.is-glass-hovered .inq-zone-segment-path {
+  stroke: var(--ert-inquiry-zone-color);
 }
 
 .ert-inquiry-svg.is-running .inq-zone-segment-path {
@@ -587,6 +607,21 @@
 .ert-inquiry-zone-pod.is-active .ert-inquiry-zone-pill,
 .ert-inquiry-zone-pod:hover .ert-inquiry-zone-pill {
   filter: url(#ert-inquiry-zone-pill-in);
+}
+
+.ert-inquiry-svg:not(.is-running) .ert-inquiry-zone-pod.is-processed .ert-inquiry-zone-pill {
+  filter: url(#ert-inquiry-zone-pill-in);
+  stroke: color-mix(in srgb, var(--ert-inquiry-zone-color) 65%, #ffffff);
+  stroke-width: 1.2;
+}
+
+.ert-inquiry-svg:not(.is-running) .ert-inquiry-zone-pod.is-processed .ert-inquiry-zone-pill-text {
+  fill: var(--ert-inquiry-zone-color);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-zone-color) 70%, transparent));
+}
+
+.ert-inquiry-svg:not(.is-running) .ert-inquiry-zone-pod.is-processed-error .ert-inquiry-zone-pill {
+  stroke: color-mix(in srgb, var(--ert-inquiry-high) 70%, #ffffff);
 }
 
 .ert-inquiry-svg.is-running .ert-inquiry-zone-pill {
@@ -673,7 +708,7 @@
   stroke: var(--ert-inquiry-zone-stroke, var(--text-normal));
   stroke-width: 1;
   filter: none;
-  transition: none;
+  transition: stroke 160ms ease, filter 160ms ease;
 }
 
 .ert-inquiry-svg.is-running .inq-zone-dot-circle {
@@ -686,21 +721,33 @@
   filter: none;
 }
 
-.inq-zone-dot:hover .inq-zone-dot-circle {
-  filter: none;
+.ert-inquiry-svg:not(.is-running) .inq-zone-dot.is-processed .inq-zone-dot-circle {
+  stroke: var(--ert-inquiry-zone-color);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-zone-color) 70%, transparent));
+}
+
+.inq-zone-dot:hover:not(:active) .inq-zone-dot-circle {
+  stroke: var(--ert-inquiry-zone-color);
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-zone-color) 85%, transparent));
 }
 
 .inq-zone-dot-text {
   fill: var(--ert-inquiry-zone-stroke, var(--text-normal));
   pointer-events: none;
+  transition: fill 160ms ease, filter 160ms ease;
 }
 
 .inq-zone-dot.is-active .inq-zone-dot-text {
   fill: var(--ert-inquiry-zone-stroke, var(--text-normal));
 }
 
-.inq-zone-dot:hover .inq-zone-dot-text {
-  fill: var(--ert-inquiry-zone-stroke, var(--text-normal));
+.ert-inquiry-svg:not(.is-running) .inq-zone-dot.is-processed .inq-zone-dot-text {
+  fill: var(--ert-inquiry-zone-color);
+}
+
+.inq-zone-dot:hover:not(:active) .inq-zone-dot-text {
+  fill: var(--ert-inquiry-zone-color);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-zone-color) 85%, transparent));
 }
 
 .ert-inquiry-zone-icon .ert-inquiry-icon-btn-bg {
