@@ -91,7 +91,6 @@ If you want the “how-to” details (setup, templates, YAML, reordering, advanc
 *   **Plugin Conflicts**: If you experience visual glitches or strange behavior (such as the timeline overlapping with other UI elements), it may be due to a conflict with another plugin. Try disabling other plugins to isolate the issue. Please see [known plugin conflicts](https://github.com/EricRhysTaylor/Radial-Timeline/issues?q=label%3A%22Plugin+Conflict%22).
 
 
-
 ---
 
 ## Technical Notes
@@ -120,12 +119,7 @@ If you're experiencing visual quality issues on Windows, please check your displ
 
 ## Feedback and support
 
-Check out the Discussions group at <a href="https://github.com/EricRhysTaylor/Radial-Timeline/discussions" target="_blank" rel="noopener">Discussions</a>. If you encounter issues or have feature requests, please file an issue on the <a href="https://github.com/EricRhysTaylor/radial-timeline/issues" target="_blank" rel="noopener">Github Repository Issues page</a>. If you find the radial timeline plugin useful and would like to encourage continued development, please consider buying me a coffee:
-
-<a href="https://www.buymeacoffee.com/ericrhysTaylor" target="_blank" rel="noopener">
-  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="buy me a coffee" style="width: 150px;"></a>
-&nbsp;&nbsp;&nbsp;&nbsp;
-<a href='https://ko-fi.com/Z8Z21NMQRN' target='_blank'><img style='border:0px;width:150px;' src='https://storage.ko-fi.com/cdn/kofi4.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+Check out the Discussions group at <a href="https://github.com/EricRhysTaylor/Radial-Timeline/discussions" target="_blank" rel="noopener">Discussions</a>. If you encounter issues or have feature requests, please file an issue on the <a href="https://github.com/EricRhysTaylor/radial-timeline/issues" target="_blank" rel="noopener">Github Repository Issues page</a>.
 
 ---
 
