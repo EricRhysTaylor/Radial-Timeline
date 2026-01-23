@@ -4182,10 +4182,11 @@ export class InquiryView extends ItemView {
         this.previewGroup.classList.add(`is-zone-${zone}`);
         const zoneLabel = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
         const modeLabel = mode === 'flow' ? 'Flow' : 'Depth';
+        const heroMaxWidth = this.minimapLayout?.length ?? (PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2));
         const heroLines = this.setBalancedHeroText(
             this.previewHero,
             question,
-            PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2),
+            heroMaxWidth,
             PREVIEW_HERO_LINE_HEIGHT,
             PREVIEW_HERO_MAX_LINES
         );

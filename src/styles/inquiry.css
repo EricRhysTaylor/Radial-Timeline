@@ -194,8 +194,8 @@
 }
 
 .ert-inquiry-icon-btn.is-briefing-saved .ert-inquiry-icon-btn-bg {
-  fill: color-mix(in srgb, var(--ert-inquiry-zone-setup) 18%, var(--background-secondary));
-  stroke: color-mix(in srgb, var(--ert-inquiry-zone-setup) 65%, var(--background-modifier-border));
+  fill: color-mix(in srgb, var(--ert-inquiry-active-zone-color) 18%, var(--background-secondary));
+  stroke: color-mix(in srgb, var(--ert-inquiry-active-zone-color) 65%, var(--background-modifier-border));
 }
 
 .ert-inquiry-icon-btn.is-briefing-error .ert-inquiry-icon-btn-bg {
@@ -203,6 +203,8 @@
 }
 
 .ert-inquiry-icon-btn.is-briefing-pulse .ert-inquiry-icon-btn-bg {
+  fill: color-mix(in srgb, var(--ert-inquiry-active-zone-color) 18%, var(--background-secondary));
+  stroke: color-mix(in srgb, var(--ert-inquiry-active-zone-color) 65%, var(--background-modifier-border));
   animation: ert-inquiry-briefing-pulse 2.4s ease-in-out infinite;
 }
 
@@ -484,25 +486,16 @@
   opacity: 0.95;
 }
 
-.ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-hit:not(.is-active) {
-  stroke: var(--ert-inquiry-hit-color);
-  fill: color-mix(in srgb, var(--ert-inquiry-hit-color) 30%, var(--background-secondary));
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-hit-color) 55%, transparent));
+.ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-hit {
+  stroke: #ffffff;
+  fill: color-mix(in srgb, #ffffff 12%, var(--background-secondary));
+  filter: drop-shadow(0 0 6px color-mix(in srgb, #ffffff 45%, transparent));
 }
 
-.ert-inquiry-minimap-tick.is-hit.is-severity-low {
-  stroke: var(--ert-inquiry-low);
-  fill: color-mix(in srgb, var(--ert-inquiry-low) 25%, var(--background-secondary));
-}
-
-.ert-inquiry-minimap-tick.is-hit.is-severity-medium {
-  stroke: var(--ert-inquiry-medium);
-  fill: color-mix(in srgb, var(--ert-inquiry-medium) 25%, var(--background-secondary));
-}
-
-.ert-inquiry-minimap-tick.is-hit.is-severity-high {
-  stroke: var(--ert-inquiry-high);
-  fill: color-mix(in srgb, var(--ert-inquiry-high) 25%, var(--background-secondary));
+.ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-active {
+  stroke: var(--ert-inquiry-active-zone-color);
+  fill: color-mix(in srgb, var(--ert-inquiry-active-zone-color) 18%, var(--background-secondary));
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-active-zone-color) 65%, transparent));
 }
 
 .ert-inquiry-zones {
@@ -1344,9 +1337,9 @@
 }
 
 @keyframes ert-inquiry-briefing-pulse {
-  0% { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--interactive-accent) 35%, transparent)); }
-  50% { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--interactive-accent) 25%, transparent)); }
-  100% { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--interactive-accent) 35%, transparent)); }
+  0% { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--ert-inquiry-active-zone-color) 35%, transparent)); }
+  50% { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ert-inquiry-active-zone-color) 25%, transparent)); }
+  100% { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--ert-inquiry-active-zone-color) 35%, transparent)); }
 }
 
 @media (max-width: 980px) {
