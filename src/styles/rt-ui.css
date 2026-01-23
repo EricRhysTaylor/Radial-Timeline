@@ -311,8 +311,14 @@
   gap: var(--ert-gap-xs);
 }
 
+.ert-ui .ert-header--block .ert-header__left,
+.ert-ui .ert-header--block .ert-header__right {
+  align-self: start;
+}
+
 .ert-ui .ert-header .ert-wiki-link {
-  top: 0;
+  position: static;
+  top: auto;
 }
 
 .ert-ui .ert-section-desc {

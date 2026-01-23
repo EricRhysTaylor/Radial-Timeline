@@ -18,6 +18,8 @@ export interface InquiryZonePromptItem {
 export interface InquiryGlyphPromptState {
     promptsByZone: Record<InquiryZone, InquiryZonePromptItem[]>;
     selectedPromptIds: Record<InquiryZone, string>;
+    processedPromptId?: string | null;
+    processedStatus?: 'success' | 'error' | null;
     onPromptSelect?: (zone: InquiryZone, promptId: string) => void;
     onPromptHover?: (zone: InquiryZone, promptId: string, promptText: string) => void;
     onPromptHoverEnd?: () => void;
@@ -34,9 +36,9 @@ const FLOW_BADGE_RADIUS_PX = FLOW_STROKE / 2;
 const DEPTH_BADGE_RADIUS_PX = DEPTH_STROKE / 2;
 const FLOW_BADGE_TEXT_PX = Math.round(16 / 2);
 const DEPTH_BADGE_TEXT_PX = Math.round(20 * (2 / 3));
-const LABEL_TEXT_PX = 120; //
+const LABEL_TEXT_PX = 200; //
 const ARC_BASE_TINT = '#dff5e7';
-const ARC_MAX_GREEN = '#22c55e';
+const ARC_MAX_GREEN = '#00FF00';
 const DOT_DARKEN = 0.35;
 const ZONE_SEGMENT_COUNT = 3;
 export const ZONE_SEGMENT_RADIUS = 273.5;
@@ -460,7 +462,12 @@ export class InquiryGlyph {
 
     private syncZoneNumberMarkers(): void {
         if (!this.promptState) return;
-        const { promptsByZone, selectedPromptIds } = this.promptState;
+        const {
+            promptsByZone,
+            selectedPromptIds,
+            processedPromptId,
+            processedStatus
+        } = this.promptState;
         this.zoneNumberMarkers.forEach((markers, zone) => {
             const prompts = promptsByZone[zone] ?? [];
             const selectedId = selectedPromptIds[zone];
@@ -471,6 +478,10 @@ export class InquiryGlyph {
                 marker.text.textContent = prompt ? String(idx + 1) : '';
                 marker.group.setAttribute('display', prompt ? 'inline' : 'none');
                 marker.group.classList.toggle('is-active', !!prompt && selectedId === prompt.id);
+                const isProcessed = !!prompt && processedPromptId === prompt.id;
+                marker.group.classList.toggle('is-processed', isProcessed);
+                marker.group.classList.toggle('is-processed-success', isProcessed && processedStatus === 'success');
+                marker.group.classList.toggle('is-processed-error', isProcessed && processedStatus === 'error');
                 marker.group.removeAttribute('aria-label');
                 if (prompt) {
                     marker.group.setAttribute('role', 'button');
@@ -674,30 +685,38 @@ export class InquiryGlyph {
     private updateLabelFontSize(): void {
         const label = this.labelText.textContent?.trim() ?? '';
         const baseSize = LABEL_TEXT_PX * this.badgeScaleFactor;
-        if (!label) {
+        const innerPadding = 8 * this.badgeScaleFactor;
+        const innerRadius = Math.max(0, (DEPTH_RADIUS - (DEPTH_STROKE / 2)) - innerPadding);
+        if (!label || innerRadius <= 0) {
             this.labelText.setAttribute('font-size', baseSize.toFixed(2));
             return;
         }
-        const length = Math.max(label.length, 1);
-        const lengthScale = Math.min(1, 2.8 / length);
-        let fontSize = baseSize * lengthScale;
+
+        let fontSize = baseSize;
         this.labelText.setAttribute('font-size', fontSize.toFixed(2));
 
-        const innerPadding = 8 * this.badgeScaleFactor;
-        const innerRadius = Math.max(0, (DEPTH_RADIUS - (DEPTH_STROKE / 2)) - innerPadding);
+        let radiusNeeded = 0;
         try {
             const bounds = this.labelText.getBBox();
             const halfWidth = bounds.width / 2;
             const halfHeight = bounds.height / 2;
-            const radiusNeeded = Math.hypot(halfWidth, halfHeight);
-            if (Number.isFinite(radiusNeeded) && radiusNeeded > 0 && innerRadius > 0 && radiusNeeded > innerRadius) {
-                const fitScale = innerRadius / radiusNeeded;
-                fontSize *= fitScale;
-                this.labelText.setAttribute('font-size', fontSize.toFixed(2));
-            }
+            radiusNeeded = Math.hypot(halfWidth, halfHeight);
         } catch {
-            // Skip fit scaling if text metrics are unavailable.
+            // Fallback to estimated bounds when text metrics are unavailable.
         }
+
+        if (!Number.isFinite(radiusNeeded) || radiusNeeded <= 0) {
+            const length = Math.max(label.length, 1);
+            const estWidth = length * fontSize * 0.62;
+            const estHeight = fontSize;
+            radiusNeeded = Math.hypot(estWidth / 2, estHeight / 2);
+        }
+
+        if (!Number.isFinite(radiusNeeded) || radiusNeeded <= 0) return;
+        const fitScale = innerRadius / radiusNeeded;
+        if (!Number.isFinite(fitScale) || fitScale <= 0) return;
+        fontSize *= fitScale;
+        this.labelText.setAttribute('font-size', fontSize.toFixed(2));
     }
 
     private static mixColors(start: string, end: string, t: number): string {

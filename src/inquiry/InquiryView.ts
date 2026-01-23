@@ -39,6 +39,7 @@ import type { InquirySession, InquirySessionStatus } from './sessionTypes';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import type { InquirySourcesSettings } from '../types/settings';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
+import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { InquiryCorpusResolver, InquiryCorpusSnapshot, InquiryCorpusItem } from './services/InquiryCorpusResolver';
 import { getModelDisplayName } from '../utils/modelResolver';
 import { addTooltipData, setupTooltipsFromDataAttributes } from '../utils/tooltip';
@@ -73,6 +74,9 @@ const PREVIEW_PILL_MIN_GAP_X = 8;
 const PREVIEW_FOOTER_GAP = 12;
 const PREVIEW_FOOTER_HEIGHT = 22;
 const PREVIEW_SHIMMER_WIDTH = 42;
+const RESULTS_ROW_LABELS = ['HIT 1', 'HIT 2', 'HIT 3', 'HIT 4', 'HIT 5', 'HIT 6'];
+const FLOW_FINDING_ORDER: InquiryFinding['kind'][] = ['escalation', 'conflict', 'continuity', 'loose_end', 'unclear', 'error', 'none'];
+const DEPTH_FINDING_ORDER: InquiryFinding['kind'][] = ['continuity', 'loose_end', 'conflict', 'escalation', 'unclear', 'error', 'none'];
 const MODE_ICON_VIEWBOX = 2048;
 const FLOW_ICON_PATHS = [
     'M1873.99,900.01c.23,1.74-2.27.94-3.48.99-14.3.59-28.74-.35-43.05-.04-2.37.05-4.55,1.03-6.92,1.08-124.15,2.86-248.6,8.35-373,4.92-91.61-2.53-181.2-15.53-273.08-17.92-101.98-2.65-204.05,7.25-305.95.95-83.2-5.14-164.18-24.05-247.02-31.98-121.64-11.65-245.9-13.5-368.04-15.96-2.37-.05-4.55-1.04-6.92-1.08-17.31-.34-34.77.75-52.05.04-1.22-.05-3.72.75-3.48-.99,26.49-.25,53.03.28,79.54.03,144.74-1.38,289.81-5.3,433.95,8.97,18.67,1.85,37.34,5.16,56.01,6.99,165.31,16.18,330.85-3.46,495.99,14.01,118.64,12.56,236.15,30.42,355.97,28.03,87.15,0,174.3,2.45,261.54,1.97h-.01Z',
@@ -135,6 +139,12 @@ type InquiryPreviewRow = {
     label: string;
 };
 
+type RgbColor = {
+    r: number;
+    g: number;
+    b: number;
+};
+
 type CorpusCcEntry = {
     id: string;
     label: string;
@@ -148,8 +158,7 @@ type CorpusCcSlot = {
     fill: SVGRectElement;
     border: SVGRectElement;
     icon: SVGTextElement;
-    foldFill: SVGPathElement;
-    foldLine: SVGPathElement;
+    fold: SVGPathElement;
 };
 
 export class InquiryView extends ItemView {
@@ -190,6 +199,18 @@ export class InquiryView extends ItemView {
     private minimapBackboneShine?: SVGRectElement;
     private minimapBackboneClip?: SVGClipPathElement;
     private minimapBackboneClipRect?: SVGRectElement;
+    private minimapBackboneLayout?: {
+        startX: number;
+        length: number;
+        glowHeight: number;
+        glowY: number;
+        shineHeight: number;
+        shineY: number;
+    };
+    private minimapBackboneGradientStops: SVGStopElement[] = [];
+    private minimapBackboneShineStops: SVGStopElement[] = [];
+    private backboneStartColors?: { gradient: RgbColor[]; shine: RgbColor[] };
+    private backboneTargetColors?: { gradient: RgbColor[]; shine: RgbColor[] };
     private minimapSweepTicks: Array<{ rect: SVGRectElement; centerX: number }> = [];
     private minimapSweepLayout?: { startX: number; endX: number; bandWidth: number };
     private runningAnimationFrame?: number;
@@ -217,6 +238,7 @@ export class InquiryView extends ItemView {
     private previewMeta?: SVGTextElement;
     private previewFooter?: SVGTextElement;
     private previewRows: InquiryPreviewRow[] = [];
+    private previewRowDefaultLabels: string[] = [];
     private previewHideTimer?: number;
     private previewLast?: { zone: InquiryZone; question: string };
     private previewLocked = false;
@@ -326,6 +348,12 @@ export class InquiryView extends ItemView {
 
     private renderDesktopLayout(): void {
         this.contentEl.addClass('ert-inquiry-root');
+        this.registerDomEvent(this.contentEl, 'click', (event: MouseEvent) => {
+            if (!this.isErrorState()) return;
+            event.preventDefault();
+            event.stopPropagation();
+            this.dismissError();
+        }, { capture: true });
         const svg = this.createSvgElement('svg');
         svg.classList.add('ert-ui', 'ert-inquiry-svg');
         svg.setAttribute('viewBox', `${VIEWBOX_MIN} ${VIEWBOX_MIN} ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`);
@@ -517,6 +545,11 @@ export class InquiryView extends ItemView {
     private buildPromptPreviewPanel(parent: SVGGElement): void {
         const panel = this.createSvgGroup(parent, 'ert-inquiry-preview', 0, PREVIEW_PANEL_Y);
         this.previewGroup = panel;
+        this.registerDomEvent(panel as unknown as HTMLElement, 'click', (event: MouseEvent) => {
+            if (!this.isResultsState()) return;
+            event.stopPropagation();
+            this.dismissResults();
+        });
 
         const hero = this.createSvgText(panel, 'ert-inquiry-preview-hero', '', 0, PREVIEW_PANEL_PADDING_Y);
         hero.setAttribute('text-anchor', 'middle');
@@ -529,6 +562,7 @@ export class InquiryView extends ItemView {
         this.previewMeta = meta;
 
         const rowLabels = ['SCOPE', 'EVIDENCE', 'CLASSES', 'ROOTS', 'AI ENGINE', 'EST. COST'];
+        this.previewRowDefaultLabels = rowLabels.slice();
         this.previewRows = rowLabels.map(label => {
             const group = this.createSvgGroup(panel, 'ert-inquiry-preview-pill');
             const bg = this.createSvgElement('rect');
@@ -755,6 +789,7 @@ export class InquiryView extends ItemView {
     }
 
     private activateSession(session: InquirySession): void {
+        if (this.dismissErrorIfActive()) return;
         if (this.state.isRunning) return;
         this.state.scope = session.scope ?? session.result.scope;
         this.state.focusBookId = session.focusBookId ?? this.state.focusBookId;
@@ -1285,9 +1320,13 @@ export class InquiryView extends ItemView {
         backboneGradient.setAttribute('y1', '0%');
         backboneGradient.setAttribute('x2', '100%');
         backboneGradient.setAttribute('y2', '0%');
-        backboneGradient.appendChild(createStop('0%', '#ff9900'));
-        backboneGradient.appendChild(createStop('50%', '#ffd36a'));
-        backboneGradient.appendChild(createStop('100%', '#ff5e00'));
+        const backboneGradientStops = [
+            createStop('0%', '#ff9900'),
+            createStop('50%', '#ffd36a'),
+            createStop('100%', '#ff5e00')
+        ];
+        backboneGradientStops.forEach(stop => backboneGradient.appendChild(stop));
+        this.minimapBackboneGradientStops = backboneGradientStops;
         defs.appendChild(backboneGradient);
 
         const backboneShine = this.createSvgElement('linearGradient');
@@ -1296,10 +1335,14 @@ export class InquiryView extends ItemView {
         backboneShine.setAttribute('y1', '0%');
         backboneShine.setAttribute('x2', '100%');
         backboneShine.setAttribute('y2', '0%');
-        backboneShine.appendChild(createStop('0%', '#fff2cf', '0'));
-        backboneShine.appendChild(createStop('40%', '#fff7ea', '1'));
-        backboneShine.appendChild(createStop('60%', '#ffb34d', '0.9'));
-        backboneShine.appendChild(createStop('100%', '#fff2cf', '0'));
+        const backboneShineStops = [
+            createStop('0%', '#fff2cf', '0'),
+            createStop('40%', '#fff7ea', '1'),
+            createStop('60%', '#ffb34d', '0.9'),
+            createStop('100%', '#fff2cf', '0')
+        ];
+        backboneShineStops.forEach(stop => backboneShine.appendChild(stop));
+        this.minimapBackboneShineStops = backboneShineStops;
         defs.appendChild(backboneShine);
 
         if (!this.minimapBackboneClip) {
@@ -1442,16 +1485,28 @@ export class InquiryView extends ItemView {
         return fallback;
     }
 
+    private getProcessedPromptState(): { id: string | null; status: 'success' | 'error' | null } {
+        const result = this.state.activeResult;
+        if (!result || this.state.isRunning) return { id: null, status: null };
+        if (result.scope !== this.state.scope) return { id: null, status: null };
+        const focusLabel = this.getFocusLabel();
+        if (result.focusId && result.focusId !== focusLabel) return { id: null, status: null };
+        const status = this.isErrorResult(result) ? 'error' : 'success';
+        return { id: result.questionId, status };
+    }
+
     private updateZonePrompts(): void {
         this.syncSelectedPromptIds();
         const paddingX = 24;
         const pillHeight = 40;
+        const processed = this.getProcessedPromptState();
         this.zonePromptElements.forEach((elements, zone) => {
             const prompt = this.getActivePrompt(zone);
             if (!prompt) {
                 elements.text.textContent = '';
                 elements.bg.setAttribute('width', '0');
                 elements.bg.setAttribute('height', '0');
+                elements.group.classList.remove('is-active', 'is-processed', 'is-processed-success', 'is-processed-error');
                 return;
             }
             elements.text.textContent = prompt.question;
@@ -1464,6 +1519,10 @@ export class InquiryView extends ItemView {
             elements.bg.setAttribute('rx', String(pillHeight / 2));
             elements.bg.setAttribute('ry', String(pillHeight / 2));
             elements.group.classList.toggle('is-active', this.state.selectedPromptIds[zone] === prompt.id);
+            const isProcessed = processed.id === prompt.id;
+            elements.group.classList.toggle('is-processed', isProcessed);
+            elements.group.classList.toggle('is-processed-success', isProcessed && processed.status === 'success');
+            elements.group.classList.toggle('is-processed-error', isProcessed && processed.status === 'error');
             elements.group.setAttribute('data-prompt-id', prompt.id);
             elements.group.removeAttribute('aria-label');
         });
@@ -1472,6 +1531,7 @@ export class InquiryView extends ItemView {
     private updateGlyphPromptState(): void {
         if (!this.glyph) return;
         this.syncSelectedPromptIds();
+        const processed = this.getProcessedPromptState();
         const promptsByZone = {
             setup: this.getPromptOptions('setup').map(prompt => ({ id: prompt.id, question: prompt.question })),
             pressure: this.getPromptOptions('pressure').map(prompt => ({ id: prompt.id, question: prompt.question })),
@@ -1480,7 +1540,10 @@ export class InquiryView extends ItemView {
         this.glyph.updatePromptState({
             promptsByZone,
             selectedPromptIds: this.state.selectedPromptIds,
+            processedPromptId: processed.id,
+            processedStatus: processed.status,
             onPromptSelect: (zone, promptId) => {
+                if (this.dismissErrorIfActive()) return;
                 this.setSelectedPrompt(zone, promptId);
                 const prompt = this.getPromptOptions(zone)
                     .find(item => item.id === promptId);
@@ -1519,6 +1582,7 @@ export class InquiryView extends ItemView {
     }
 
     private handlePromptClick(zone: InquiryZone): void {
+        if (this.dismissErrorIfActive()) return;
         if (this.state.isRunning) return;
         const options = this.getPromptOptions(zone);
         if (!options.length) return;
@@ -2056,6 +2120,7 @@ export class InquiryView extends ItemView {
             tick.setAttribute('data-tooltip-placement', 'bottom');
             tick.setAttribute('data-tooltip-offset-y', '6');
             this.registerDomEvent(tick as unknown as HTMLElement, 'click', () => {
+                if (this.dismissErrorIfActive()) return;
                 if (this.state.isRunning) return;
                 this.setFocusByIndex(i + 1);
             });
@@ -2094,6 +2159,7 @@ export class InquiryView extends ItemView {
         const glowY = barY - 1;
         const shineHeight = barHeight + 6;
         const shineY = barY - 3;
+        this.minimapBackboneLayout = { startX: baselineStart, length, glowHeight, glowY, shineHeight, shineY };
 
         if (this.minimapBackboneClipRect) {
             this.minimapBackboneClipRect.setAttribute('x', baselineStart.toFixed(2));
@@ -2162,8 +2228,8 @@ export class InquiryView extends ItemView {
             this.minimapSweepTicks.push({ rect: inner, centerX: layout.x + (tickSize / 2) });
         });
         this.minimapSweepLayout = {
-            startX: 0,
-            endX: length,
+            startX: -Math.max(tickSize * 1.6, 36),
+            endX: length + Math.max(tickSize * 1.6, 36),
             bandWidth: Math.max(tickSize * 1.6, 36)
         };
     }
@@ -2327,7 +2393,7 @@ export class InquiryView extends ItemView {
         }
 
         const corner = Math.max(2, Math.round(layout.pageWidth * 0.125));
-        const foldSize = Math.max(4, Math.round(layout.pageWidth * 0.35));
+        const foldSize = Math.max(4, Math.round(layout.pageWidth * 0.4));
 
         const totalEntries = entries.length;
         while (this.ccSlots.length < totalEntries) {
@@ -2341,15 +2407,12 @@ export class InquiryView extends ItemView {
             const icon = this.createSvgText(group, 'ert-inquiry-cc-cell-icon', '', 0, 0);
             icon.setAttribute('text-anchor', 'middle');
             icon.setAttribute('dominant-baseline', 'middle');
-            const foldFill = this.createSvgElement('path');
-            foldFill.classList.add('ert-inquiry-cc-cell-fold');
-            const foldLine = this.createSvgElement('path');
-            foldLine.classList.add('ert-inquiry-cc-cell-fold-line');
+            const fold = this.createSvgElement('path');
+            fold.classList.add('ert-inquiry-cc-cell-fold');
             group.appendChild(base);
             group.appendChild(fill);
-            group.appendChild(foldFill);
             group.appendChild(border);
-            group.appendChild(foldLine);
+            group.appendChild(fold);
             group.appendChild(icon);
             this.registerDomEvent(group as unknown as HTMLElement, 'click', () => {
                 if (this.state.isRunning) return;
@@ -2360,7 +2423,7 @@ export class InquiryView extends ItemView {
                     void openOrRevealFile(this.app, file);
                 }
             });
-            this.ccSlots.push({ group, base, fill, border, icon, foldFill, foldLine });
+            this.ccSlots.push({ group, base, fill, border, icon, fold });
         }
 
         this.ccSlots.forEach((slot, idx) => {
@@ -2386,8 +2449,7 @@ export class InquiryView extends ItemView {
             slot.border.setAttribute('y', '0');
             slot.border.setAttribute('rx', String(corner));
             slot.border.setAttribute('ry', String(corner));
-            slot.foldFill.setAttribute('d', `M ${layout.pageWidth - foldSize} 0 L ${layout.pageWidth} 0 L ${layout.pageWidth} ${foldSize} Z`);
-            slot.foldLine.setAttribute('d', `M ${layout.pageWidth - foldSize} 0 L ${layout.pageWidth} ${foldSize}`);
+            slot.fold.setAttribute('d', `M ${layout.pageWidth - foldSize} 0 L ${layout.pageWidth} ${foldSize}`);
             slot.icon.setAttribute('x', String(Math.round(layout.pageWidth / 2)));
             slot.icon.setAttribute('y', String(Math.round(layout.pageHeight / 2)));
         });
@@ -2683,6 +2745,129 @@ export class InquiryView extends ItemView {
         return matches ? matches.length : 0;
     }
 
+    private parseRgbColor(value: string): RgbColor | null {
+        const raw = value.trim();
+        if (!raw) return null;
+        if (raw.startsWith('#')) {
+            const hex = raw.slice(1);
+            if (hex.length === 3) {
+                const r = Number.parseInt(hex[0] + hex[0], 16);
+                const g = Number.parseInt(hex[1] + hex[1], 16);
+                const b = Number.parseInt(hex[2] + hex[2], 16);
+                return { r, g, b };
+            }
+            if (hex.length === 6) {
+                const r = Number.parseInt(hex.slice(0, 2), 16);
+                const g = Number.parseInt(hex.slice(2, 4), 16);
+                const b = Number.parseInt(hex.slice(4, 6), 16);
+                return { r, g, b };
+            }
+            return null;
+        }
+        const rgbMatch = raw.match(/rgb\(([^)]+)\)/i);
+        const csv = (rgbMatch ? rgbMatch[1] : raw).split(',').map(part => part.trim());
+        if (csv.length < 3) return null;
+        const [r, g, b] = csv.map(part => Number.parseFloat(part));
+        if ([r, g, b].some(v => Number.isNaN(v))) return null;
+        return { r: Math.round(r), g: Math.round(g), b: Math.round(b) };
+    }
+
+    private mixRgbColor(a: RgbColor, b: RgbColor, t: number): RgbColor {
+        const clamped = Math.min(Math.max(t, 0), 1);
+        return {
+            r: Math.round(a.r + (b.r - a.r) * clamped),
+            g: Math.round(a.g + (b.g - a.g) * clamped),
+            b: Math.round(a.b + (b.b - a.b) * clamped)
+        };
+    }
+
+    private toRgbString(color: RgbColor): string {
+        return `rgb(${color.r}, ${color.g}, ${color.b})`;
+    }
+
+    private getProAccentColor(): RgbColor {
+        const root = document.documentElement;
+        const styles = getComputedStyle(root);
+        const rgbVar = styles.getPropertyValue('--rt-pro-color-rgb');
+        const rgbFromVar = this.parseRgbColor(rgbVar);
+        if (rgbFromVar) return rgbFromVar;
+        const hexVar = styles.getPropertyValue('--rt-pro-color') || styles.getPropertyValue('--ert-pro-accent-color');
+        return this.parseRgbColor(hexVar) ?? { r: 217, g: 70, b: 239 };
+    }
+
+    private getBackboneStartColors(): { gradient: RgbColor[]; shine: RgbColor[] } {
+        return {
+            gradient: [
+                { r: 255, g: 153, b: 0 },
+                { r: 255, g: 211, b: 106 },
+                { r: 255, g: 94, b: 0 }
+            ],
+            shine: [
+                { r: 255, g: 242, b: 207 },
+                { r: 255, g: 247, b: 234 },
+                { r: 255, g: 179, b: 77 },
+                { r: 255, g: 242, b: 207 }
+            ]
+        };
+    }
+
+    private getBackboneTargetColors(isPro: boolean): { gradient: RgbColor[]; shine: RgbColor[] } {
+        const base = isPro ? this.getProAccentColor() : { r: 34, g: 255, b: 120 };
+        const bright = this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, isPro ? 0.55 : 0.65);
+        const deep = this.mixRgbColor(base, { r: 0, g: 0, b: 0 }, isPro ? 0.12 : 0.08);
+        return {
+            gradient: [base, bright, deep],
+            shine: [
+                this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, 0.85),
+                this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, 0.95),
+                this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, 0.45),
+                this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, 0.85)
+            ]
+        };
+    }
+
+    private applyBackboneColors(progress: number): void {
+        if (!this.backboneStartColors || !this.backboneTargetColors) return;
+        const gradientColors = this.backboneStartColors.gradient.map((color, idx) => {
+            const target = this.backboneTargetColors?.gradient[idx] ?? color;
+            return this.mixRgbColor(color, target, progress);
+        });
+        const shineColors = this.backboneStartColors.shine.map((color, idx) => {
+            const target = this.backboneTargetColors?.shine[idx] ?? color;
+            return this.mixRgbColor(color, target, progress);
+        });
+        gradientColors.forEach((color, idx) => {
+            const stop = this.minimapBackboneGradientStops[idx];
+            if (stop) stop.setAttribute('stop-color', this.toRgbString(color));
+        });
+        shineColors.forEach((color, idx) => {
+            const stop = this.minimapBackboneShineStops[idx];
+            if (stop) stop.setAttribute('stop-color', this.toRgbString(color));
+        });
+    }
+
+    private setBackboneFillProgress(progress: number): void {
+        if (!this.minimapBackboneLayout || !this.minimapBackboneGlow || !this.minimapBackboneShine) return;
+        const clamped = Math.min(Math.max(progress, 0), 1);
+        const width = this.minimapBackboneLayout.length * clamped;
+        const glowRadius = Math.min(this.minimapBackboneLayout.glowHeight / 2, Math.max(0, width / 2));
+        const shineRadius = Math.min(this.minimapBackboneLayout.shineHeight / 2, Math.max(0, width / 2));
+        this.minimapBackboneGlow.setAttribute('x', this.minimapBackboneLayout.startX.toFixed(2));
+        this.minimapBackboneGlow.setAttribute('width', width.toFixed(2));
+        this.minimapBackboneGlow.setAttribute('rx', String(Math.round(glowRadius)));
+        this.minimapBackboneGlow.setAttribute('ry', String(Math.round(glowRadius)));
+        this.minimapBackboneShine.setAttribute('x', this.minimapBackboneLayout.startX.toFixed(2));
+        this.minimapBackboneShine.setAttribute('width', width.toFixed(2));
+        this.minimapBackboneShine.setAttribute('rx', String(Math.round(shineRadius)));
+        this.minimapBackboneShine.setAttribute('ry', String(Math.round(shineRadius)));
+    }
+
+    private updateBackbonePulse(elapsed: number): void {
+        const progress = Math.min(Math.max(elapsed / MIN_PROCESSING_MS, 0), 1);
+        this.setBackboneFillProgress(progress);
+        this.applyBackboneColors(progress);
+    }
+
     private isTFile(file: TAbstractFile | null): file is TFile {
         return !!file && file instanceof TFile;
     }
@@ -2735,6 +2920,20 @@ export class InquiryView extends ItemView {
         if (!result) return false;
         if (result.aiStatus && result.aiStatus !== 'success') return true;
         return result.findings.some(finding => finding.kind === 'error');
+    }
+
+    private isErrorState(): boolean {
+        return !this.state.isRunning && this.isErrorResult(this.state.activeResult);
+    }
+
+    private isResultsState(): boolean {
+        return !this.state.isRunning && !!this.state.activeResult && !this.isErrorResult(this.state.activeResult);
+    }
+
+    private dismissErrorIfActive(): boolean {
+        if (!this.isErrorState()) return false;
+        this.dismissError();
+        return true;
     }
 
     private updateMinimapHitStates(result: InquiryResult | null | undefined): void {
@@ -2829,12 +3028,18 @@ export class InquiryView extends ItemView {
     private startRunningAnimations(): void {
         if (this.runningAnimationFrame) return;
         this.runningAnimationStart = performance.now();
+        const isPro = isProfessionalActive(this.plugin);
+        this.backboneStartColors = this.getBackboneStartColors();
+        this.backboneTargetColors = this.getBackboneTargetColors(isPro);
+        this.setBackboneFillProgress(0);
+        this.applyBackboneColors(0);
         const animate = (now: number) => {
             if (!this.state.isRunning) {
                 this.stopRunningAnimations();
                 return;
             }
             const elapsed = now - (this.runningAnimationStart ?? now);
+            this.updateBackbonePulse(elapsed);
             this.updateSweep(elapsed);
             this.runningAnimationFrame = window.requestAnimationFrame(animate);
         };
@@ -2848,6 +3053,8 @@ export class InquiryView extends ItemView {
         }
         this.runningAnimationStart = undefined;
         this.minimapSweepTicks.forEach(tick => tick.rect.setAttribute('opacity', '0'));
+        this.backboneStartColors = undefined;
+        this.backboneTargetColors = undefined;
     }
 
     private updateSweep(elapsed: number): void {
@@ -2868,9 +3075,14 @@ export class InquiryView extends ItemView {
     }
 
     private handleScopeChange(scope: InquiryScope): void {
+        if (this.dismissErrorIfActive()) return;
         if (!scope || scope === this.state.scope) return;
         this.state.scope = scope;
-        this.state.activeResult = null;
+        if (this.state.activeResult) {
+            this.clearActiveResultState();
+            this.unlockPromptPreview();
+            this.setApiStatus('idle');
+        }
         this.refreshUI();
     }
 
@@ -2882,17 +3094,22 @@ export class InquiryView extends ItemView {
         void this.plugin.saveSettings();
         this.updateModeClass();
         this.updateRings();
+        if (this.isResultsState() && this.state.activeResult) {
+            this.showResultsPreview(this.state.activeResult);
+        }
         if (!this.previewLocked && this.previewGroup?.classList.contains('is-visible') && this.previewLast) {
             this.updatePromptPreview(this.previewLast.zone, mode, this.previewLast.question);
         }
     }
 
     private handleRingClick(mode: InquiryMode): void {
+        if (this.dismissErrorIfActive()) return;
         if (this.state.isRunning) return;
         this.setActiveLens(mode);
     }
 
     private handleGlyphClick(): void {
+        if (this.dismissErrorIfActive()) return;
         if (this.state.scope === 'saga') {
             this.state.scope = 'book';
             this.refreshUI();
@@ -2903,9 +3120,7 @@ export class InquiryView extends ItemView {
 
     private async handleQuestionClick(question: InquiryQuestion): Promise<void> {
         if (this.state.isRunning) return;
-        this.state.activeQuestionId = question.id;
-        this.state.activeZone = question.zone;
-        this.lockPromptPreview(question);
+        if (this.dismissErrorIfActive()) return;
 
         const manifest = this.buildCorpusManifest(question.id);
         const focusLabel = this.getFocusLabel();
@@ -2919,14 +3134,17 @@ export class InquiryView extends ItemView {
         });
         const cacheEnabled = this.plugin.settings.inquiryCacheEnabled ?? true;
         const key = this.sessionStore.buildKey(baseKey, manifest.fingerprint);
+        if (this.state.activeSessionId === key && this.state.activeResult && !this.isErrorResult(this.state.activeResult)) {
+            new Notice('Session already processed.');
+            this.showResultsPreview(this.state.activeResult);
+            return;
+        }
         let cacheStatus: 'fresh' | 'stale' | 'missing' = 'missing';
-        let cachedResult: InquiryResult | null = null;
         let cachedSession: InquirySession | undefined;
         if (cacheEnabled) {
             const cached = this.sessionStore.getSession(key);
             if (cached) {
                 cachedSession = cached;
-                cachedResult = this.normalizeLegacyResult({ ...cached.result, mode: this.state.mode });
                 cacheStatus = 'fresh';
             } else {
                 const prior = this.sessionStore.getLatestByBaseKey(baseKey);
@@ -2936,6 +3154,16 @@ export class InquiryView extends ItemView {
                 }
             }
         }
+        if (cachedSession) {
+            this.state.cacheStatus = cacheStatus;
+            this.activateSession(cachedSession);
+            return;
+        }
+
+        this.clearActiveResultState();
+        this.state.activeQuestionId = question.id;
+        this.state.activeZone = question.zone;
+        this.lockPromptPreview(question);
         this.state.cacheStatus = cacheStatus;
 
         const startTime = Date.now();
@@ -2943,77 +3171,59 @@ export class InquiryView extends ItemView {
         this.setApiStatus('running');
         this.refreshUI();
         let result: InquiryResult;
-        if (cachedResult) {
-            result = cachedResult;
-        } else {
-            new Notice('Inquiry: contacting AI provider.');
-            console.info('[Inquiry] API HIT');
-            const submittedAt = new Date();
-            try {
-                // Lens selection is UI-only; do not vary question, evidence, or verdict structure by lens.
-                // Each inquiry produces two compressed answers (flow + depth). Keep this dual-answer model intact.
-                result = await this.runner.run({
-                    scope: this.state.scope,
-                    focusLabel,
-                    focusSceneId: this.state.scope === 'book' ? this.state.focusSceneId : undefined,
-                    focusBookId: this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusBookId,
-                    mode: this.state.mode,
-                    questionId: question.id,
-                    questionText: question.question,
-                    questionZone: question.zone,
-                    corpus: manifest,
-                    rules: this.getEvidenceRules(),
-                    ai: {
-                        provider: this.plugin.settings.defaultAiProvider || 'openai',
-                        modelId: this.getActiveInquiryModelId(),
-                        modelLabel: this.getActiveInquiryModelLabel()
-                    }
-                });
-                console.info('[Inquiry] API OK');
-            } catch (error) {
-                console.info('[Inquiry] API FAIL');
-                result = this.buildErrorFallback(question, focusLabel, manifest.fingerprint, error);
-            }
-            const completedAt = new Date();
-            result.submittedAt = submittedAt.toISOString();
-            result.completedAt = completedAt.toISOString();
-            result.roundTripMs = completedAt.getTime() - submittedAt.getTime();
-            result = this.normalizeLegacyResult(result);
+        new Notice('Inquiry: contacting AI provider.');
+        console.info('[Inquiry] API HIT');
+        const submittedAt = new Date();
+        try {
+            // Lens selection is UI-only; do not vary question, evidence, or verdict structure by lens.
+            // Each inquiry produces two compressed answers (flow + depth). Keep this dual-answer model intact.
+            result = await this.runner.run({
+                scope: this.state.scope,
+                focusLabel,
+                focusSceneId: this.state.scope === 'book' ? this.state.focusSceneId : undefined,
+                focusBookId: this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusBookId,
+                mode: this.state.mode,
+                questionId: question.id,
+                questionText: question.question,
+                questionZone: question.zone,
+                corpus: manifest,
+                rules: this.getEvidenceRules(),
+                ai: {
+                    provider: this.plugin.settings.defaultAiProvider || 'openai',
+                    modelId: this.getActiveInquiryModelId(),
+                    modelLabel: this.getActiveInquiryModelLabel()
+                }
+            });
+            console.info('[Inquiry] API OK');
+        } catch (error) {
+            console.info('[Inquiry] API FAIL');
+            result = this.buildErrorFallback(question, focusLabel, manifest.fingerprint, error);
+        }
+        const completedAt = new Date();
+        result.submittedAt = submittedAt.toISOString();
+        result.completedAt = completedAt.toISOString();
+        result.roundTripMs = completedAt.getTime() - submittedAt.getTime();
+        result = this.normalizeLegacyResult(result);
 
-            if (cacheEnabled && !this.isErrorResult(result)) {
-                cacheStatus = 'fresh';
-            } else if (!cacheEnabled) {
-                cacheStatus = 'missing';
-            }
+        if (cacheEnabled && !this.isErrorResult(result)) {
+            cacheStatus = 'fresh';
+        } else if (!cacheEnabled) {
+            cacheStatus = 'missing';
         }
 
-        let session: InquirySession;
-        if (cachedSession) {
-            session = {
-                ...cachedSession,
-                result,
-                lastAccessed: Date.now(),
-                focusBookId,
-                focusSceneId,
-                scope: this.state.scope,
-                questionZone: question.zone
-            };
-            this.sessionStore.setSession(session);
-        } else {
-            session = {
-                key,
-                baseKey,
-                result,
-                createdAt: Date.now(),
-                lastAccessed: Date.now(),
-                status: this.resolveSessionStatusFromResult(result),
-                focusBookId,
-                focusSceneId,
-                scope: this.state.scope,
-                questionZone: question.zone
-            };
-            this.sessionStore.setSession(session);
-        }
+        let session: InquirySession = {
+            key,
+            baseKey,
+            result,
+            createdAt: Date.now(),
+            lastAccessed: Date.now(),
+            status: this.resolveSessionStatusFromResult(result),
+            focusBookId,
+            focusSceneId,
+            scope: this.state.scope,
+            questionZone: question.zone
+        };
+        this.sessionStore.setSession(session);
 
         const autoSaveEnabled = this.plugin.settings.inquiryAutoSave ?? true;
         const shouldAutoSave = autoSaveEnabled
@@ -3078,8 +3288,35 @@ export class InquiryView extends ItemView {
         this.state.corpusFingerprint = normalized.corpusFingerprint;
         this.state.cacheStatus = cacheStatus;
         this.state.isRunning = false;
-        this.unlockPromptPreview();
+        if (this.isErrorResult(normalized)) {
+            this.unlockPromptPreview();
+        } else {
+            this.showResultsPreview(normalized);
+        }
         this.updateMinimapFocus();
+        this.refreshUI();
+    }
+
+    private clearActiveResultState(): void {
+        this.state.activeResult = null;
+        this.state.activeSessionId = undefined;
+        this.state.corpusFingerprint = undefined;
+        this.state.cacheStatus = undefined;
+    }
+
+    private dismissResults(): void {
+        if (!this.isResultsState()) return;
+        this.clearActiveResultState();
+        this.unlockPromptPreview();
+        this.setApiStatus('idle');
+        this.refreshUI();
+    }
+
+    private dismissError(): void {
+        if (!this.isErrorState()) return;
+        this.clearActiveResultState();
+        this.unlockPromptPreview();
+        this.setApiStatus('idle');
         this.refreshUI();
     }
 
@@ -3285,6 +3522,7 @@ export class InquiryView extends ItemView {
 
     private startApiSimulation(): void {
         if (this.state.isRunning) return;
+        if (this.dismissErrorIfActive()) return;
         if (this.apiSimulationTimer) {
             window.clearTimeout(this.apiSimulationTimer);
             this.apiSimulationTimer = undefined;
@@ -3298,6 +3536,7 @@ export class InquiryView extends ItemView {
             icon: 'activity'
         };
         const selectedPrompt = prompt ?? fallbackPrompt;
+        this.clearActiveResultState();
         this.state.activeQuestionId = selectedPrompt.id;
         this.state.activeZone = selectedPrompt.zone;
         this.lockPromptPreview(selectedPrompt);
@@ -3694,6 +3933,7 @@ export class InquiryView extends ItemView {
     }
 
     private shiftFocus(delta: number): void {
+        if (this.dismissErrorIfActive()) return;
         const count = this.getCurrentItems().length;
         if (!count) return;
         const current = this.getFocusIndex();
@@ -3894,6 +4134,26 @@ export class InquiryView extends ItemView {
         this.previewHideTimer = window.setTimeout(hide, 140);
     }
 
+    private setPreviewRowLabels(labels: string[]): void {
+        if (!this.previewRows.length) return;
+        this.previewRows.forEach((row, idx) => {
+            row.label = labels[idx] ?? row.label;
+        });
+    }
+
+    private resetPreviewRowLabels(): void {
+        if (!this.previewRowDefaultLabels.length) return;
+        this.previewRows.forEach((row, idx) => {
+            row.label = this.previewRowDefaultLabels[idx] ?? row.label;
+        });
+    }
+
+    private setPreviewFooterText(text: string): void {
+        if (this.previewFooter) {
+            this.previewFooter.textContent = text;
+        }
+    }
+
     private updatePromptPreview(
         zone: InquiryZone,
         mode: InquiryMode,
@@ -3946,6 +4206,88 @@ export class InquiryView extends ItemView {
         this.previewPanelHeight = footerY + PREVIEW_FOOTER_HEIGHT;
         this.updatePreviewShimmerLayout();
         this.updatePreviewShimmerMask();
+    }
+
+    private showResultsPreview(result: InquiryResult): void {
+        if (!this.previewGroup || !this.previewHero) return;
+        if (this.isErrorResult(result)) return;
+        if (this.previewHideTimer) {
+            window.clearTimeout(this.previewHideTimer);
+            this.previewHideTimer = undefined;
+        }
+        const zone = result.questionZone ?? this.findPromptZoneById(result.questionId) ?? 'setup';
+        const mode = this.state.mode;
+        this.previewLocked = true;
+        this.previewGroup.classList.add('is-visible', 'is-results');
+        this.previewGroup.classList.remove('is-locked');
+        this.setPreviewRowLabels(RESULTS_ROW_LABELS);
+        const hero = this.buildResultsHeroText(result, mode);
+        const meta = this.buildResultsMetaText(result, mode, zone);
+        const rows = this.buildResultsRows(result, mode);
+        this.updatePromptPreview(zone, mode, hero, rows, meta);
+        const scopeLabel = result.scope === 'saga' ? 'Saga' : 'Book';
+        const focusLabel = result.focusId || this.getFocusLabel();
+        this.setPreviewFooterText(`Focus ${scopeLabel} ${focusLabel} · Click to dismiss.`);
+    }
+
+    private buildResultsHeroText(result: InquiryResult, mode: InquiryMode): string {
+        const flowText = `Flow ${this.formatMetricDisplay(result.verdict.flow)}`;
+        const depthText = `Depth ${this.formatMetricDisplay(result.verdict.depth)}`;
+        const lead = mode === 'flow' ? flowText : depthText;
+        const tail = mode === 'flow' ? depthText : flowText;
+        const summary = result.summary?.trim() || 'Inquiry summary ready.';
+        return `${lead} · ${tail} - ${summary}`;
+    }
+
+    private buildResultsMetaText(result: InquiryResult, mode: InquiryMode, zone: InquiryZone): string {
+        const zoneLabel = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
+        const modeLabel = mode === 'flow' ? 'Flow' : 'Depth';
+        return `${zoneLabel} · ${modeLabel} Results`.toUpperCase();
+    }
+
+    private buildResultsRows(result: InquiryResult, mode: InquiryMode): string[] {
+        const ordered = this.getOrderedFindings(result, mode);
+        if (!ordered.length) {
+            return ['No hits', '', '', '', '', ''];
+        }
+        const rows = ordered.slice(0, RESULTS_ROW_LABELS.length).map(finding => {
+            const headline = this.normalizeInquiryHeadline(finding.headline);
+            return this.truncatePreviewValue(headline, 46);
+        });
+        while (rows.length < RESULTS_ROW_LABELS.length) {
+            rows.push('');
+        }
+        return rows;
+    }
+
+    private getOrderedFindings(result: InquiryResult, mode: InquiryMode): InquiryFinding[] {
+        const findings = result.findings.filter(finding => this.isFindingHit(finding));
+        const order = mode === 'flow' ? FLOW_FINDING_ORDER : DEPTH_FINDING_ORDER;
+        const rankForKind = (kind: InquiryFinding['kind']): number => {
+            const idx = order.indexOf(kind);
+            return idx >= 0 ? idx : order.length + 1;
+        };
+        return findings.slice().sort((a, b) => {
+            const kindDelta = rankForKind(a.kind) - rankForKind(b.kind);
+            if (kindDelta !== 0) return kindDelta;
+            const impactDelta = this.getImpactRank(b.impact) - this.getImpactRank(a.impact);
+            if (impactDelta !== 0) return impactDelta;
+            const confidenceDelta = this.getConfidenceRank(b.assessmentConfidence) - this.getConfidenceRank(a.assessmentConfidence);
+            if (confidenceDelta !== 0) return confidenceDelta;
+            return this.normalizeInquiryHeadline(a.headline).localeCompare(this.normalizeInquiryHeadline(b.headline));
+        });
+    }
+
+    private getConfidenceRank(confidence: InquiryConfidence): number {
+        if (confidence === 'high') return 3;
+        if (confidence === 'medium') return 2;
+        return 1;
+    }
+
+    private truncatePreviewValue(value: string, maxChars: number): string {
+        const trimmed = value.trim();
+        if (trimmed.length <= maxChars) return trimmed;
+        return `${trimmed.slice(0, Math.max(0, maxChars - 3)).trim()}...`;
     }
 
     private setBalancedHeroText(
@@ -4076,14 +4418,23 @@ export class InquiryView extends ItemView {
         ];
         this.previewLocked = true;
         this.previewGroup.classList.add('is-visible', 'is-locked');
+        this.previewGroup.classList.remove('is-results');
+        this.resetPreviewRowLabels();
+        this.setPreviewFooterText('');
         this.updatePromptPreview(question.zone, this.state.mode, question.question, rows);
     }
 
     private unlockPromptPreview(): void {
         this.previewLocked = false;
-        if (this.previewGroup) {
-            this.previewGroup.classList.remove('is-locked', 'is-visible');
+        if (this.previewHideTimer) {
+            window.clearTimeout(this.previewHideTimer);
+            this.previewHideTimer = undefined;
         }
+        if (this.previewGroup) {
+            this.previewGroup.classList.remove('is-locked', 'is-visible', 'is-results');
+        }
+        this.resetPreviewRowLabels();
+        this.setPreviewFooterText('');
     }
 
     private layoutPreviewPills(startY: number, values: string[]): number {

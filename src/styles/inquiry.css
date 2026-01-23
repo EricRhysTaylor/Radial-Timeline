@@ -299,14 +299,6 @@
   fill: url(#ert-inquiry-minimap-backbone-shine);
   opacity: 0.95;
   filter: none;
-  animation: ert-inquiry-backbone-shine 2.2s ease-in-out infinite;
-  animation-play-state: paused;
-  transform-box: fill-box;
-  transform-origin: left center;
-}
-
-.ert-inquiry-svg.is-running .ert-inquiry-minimap-backbone-shine {
-  animation-play-state: running;
 }
 
 .ert-inquiry-minimap-endcap {
@@ -447,14 +439,9 @@
 }
 
 .ert-inquiry-cc-cell-fold {
-  fill: color-mix(in srgb, var(--text-muted) 45%, transparent);
-  opacity: 0.55;
-}
-
-.ert-inquiry-cc-cell-fold-line {
   fill: none;
   stroke: color-mix(in srgb, var(--text-muted) 55%, transparent);
-  stroke-width: 1;
+  stroke-width: 0.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -727,7 +714,6 @@
 .ert-inquiry-ring-track {
   stroke: var(--ert-inquiry-neutral);
   opacity: 0.35;
-  vector-effect: non-scaling-stroke;
   pointer-events: none;
 }
 
@@ -736,7 +722,6 @@
 }
 
 .ert-inquiry-ring-arc {
-  vector-effect: non-scaling-stroke;
 }
 
 .ert-inquiry-ring-hit {
@@ -1315,24 +1300,6 @@
   0% { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--interactive-accent) 35%, transparent)); }
   50% { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--interactive-accent) 25%, transparent)); }
   100% { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--interactive-accent) 35%, transparent)); }
-}
-
-@keyframes ert-inquiry-backbone-shine {
-  0% {
-    transform: scaleX(0);
-    opacity: 0;
-  }
-  20% {
-    opacity: 1;
-  }
-  70% {
-    transform: scaleX(1);
-    opacity: 0.9;
-  }
-  100% {
-    transform: scaleX(1);
-    opacity: 0;
-  }
 }
 
 @media (max-width: 980px) {
