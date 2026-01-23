@@ -39,11 +39,11 @@ const ARC_BASE_TINT = '#dff5e7';
 const ARC_MAX_GREEN = '#22c55e';
 const DOT_DARKEN = 0.35;
 const ZONE_SEGMENT_COUNT = 3;
-const ZONE_SEGMENT_RADIUS = 273.5;
-const ZONE_RING_THICKNESS = 70;
+export const ZONE_SEGMENT_RADIUS = 273.5;
+export const ZONE_RING_THICKNESS = 70;
 const ZONE_RING_GAP_PX = 10;
-const ZONE_DOT_RADIUS_PX = 20;
-const ZONE_DOT_TEXT_PX = 24;
+const ZONE_DOT_RADIUS_PX = 14;
+const ZONE_DOT_TEXT_PX = 16;
 const ZONE_NUMBER_COUNT = 5;
 const ZONE_NUMBER_SPACING_DEG = 10;
 const ZONE_SEGMENT_VIEWBOX_WIDTH = 159;
@@ -82,7 +82,7 @@ export class InquiryGlyph {
     private flowGroup: SVGGElement;
     private depthGroup: SVGGElement;
     private badgeScaleFactor = 1;
-    private zoneDots: Array<{ circle: SVGCircleElement; text: SVGTextElement }> = [];
+    private zoneDots: Array<{ circle: SVGCircleElement; text: SVGTextElement; hit: SVGCircleElement }> = [];
     private zoneControlGroups = new Map<InquiryZone, SVGGElement>();
     private zoneControlStates = new Map<InquiryZone, { hovered: boolean; locked: boolean }>();
     private zoneInteractionsEnabled = true;
@@ -200,6 +200,7 @@ export class InquiryGlyph {
         this.zoneDots.forEach(dot => {
             dot.circle.setAttribute('r', String(ZONE_DOT_RADIUS_PX));
             dot.text.setAttribute('font-size', String(ZONE_DOT_TEXT_PX));
+            dot.hit.setAttribute('r', String(ZONE_DOT_RADIUS_PX));
         });
     }
 
@@ -343,6 +344,10 @@ export class InquiryGlyph {
                 dotGroup.setAttribute('transform', `translate(${dotX.toFixed(2)} ${dotY.toFixed(2)})`);
                 dotGroup.setAttribute('role', 'note');
 
+                const dotHit = document.createElementNS(SVG_NS, 'circle');
+                dotHit.classList.add('inq-zone-dot-hit');
+                dotHit.setAttribute('r', String(ZONE_DOT_RADIUS_PX));
+
                 const dotCircle = document.createElementNS(SVG_NS, 'circle');
                 dotCircle.classList.add('inq-zone-dot-circle');
                 dotCircle.setAttribute('r', String(ZONE_DOT_RADIUS_PX));
@@ -350,14 +355,16 @@ export class InquiryGlyph {
                 const dotText = document.createElementNS(SVG_NS, 'text');
                 dotText.classList.add('inq-zone-dot-text');
                 dotText.setAttribute('text-anchor', 'middle');
-                dotText.setAttribute('dominant-baseline', 'middle');
+                dotText.setAttribute('dominant-baseline', 'central');
+                dotText.setAttribute('alignment-baseline', 'central');
                 dotText.setAttribute('font-size', String(ZONE_DOT_TEXT_PX));
                 dotText.textContent = String(i + 1);
 
+                dotGroup.appendChild(dotHit);
                 dotGroup.appendChild(dotCircle);
                 dotGroup.appendChild(dotText);
                 zoneGroup.appendChild(dotGroup);
-                this.zoneDots.push({ circle: dotCircle, text: dotText });
+                this.zoneDots.push({ circle: dotCircle, text: dotText, hit: dotHit });
                 const marker: {
                     group: SVGGElement;
                     circle: SVGCircleElement;

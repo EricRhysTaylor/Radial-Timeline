@@ -24,7 +24,13 @@ import type { InquiryPromptConfig } from '../types/settings';
 import { buildDefaultInquiryPromptConfig, normalizeInquiryPromptConfig } from './prompts';
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
 import { openOrRevealFile } from '../utils/fileUtils';
-import { InquiryGlyph, FLOW_RADIUS, FLOW_STROKE } from './components/InquiryGlyph';
+import {
+    InquiryGlyph,
+    FLOW_RADIUS,
+    FLOW_STROKE,
+    ZONE_RING_THICKNESS,
+    ZONE_SEGMENT_RADIUS
+} from './components/InquiryGlyph';
 import { ZONE_LAYOUT } from './zoneLayout';
 import { InquiryRunnerService } from './runner/InquiryRunnerService';
 import type { CorpusManifest, EvidenceParticipationRules } from './runner/types';
@@ -98,9 +104,7 @@ const DEPTH_ICON_PATHS = [
     'M1551.99,1114.01c.23,1.74-2.27.94-3.49.99-28.7,1.17-57.41,3.38-86.01,6.01-50.64,4.65-102.69,10.42-152.69,19.31-45.89,8.16-90.99,20.29-137.44,25.56-70.68,8.02-151.77,8.26-222.92,5.17-53.24-2.32-94.82-10.23-146.27-20.73-38.54-7.87-77.78-13.26-116.83-18.17-54.21-6.82-108.69-12.32-163.37-13.64,0-.98,17.41-.43,19.5-.51,1.91-.07,3.84-.94,5.97-1.03,56.79-2.41,114.18-4.01,171.05-1.97,79.85,2.87,154.28,20.33,235.03,22.97,81.86,2.68,167.54,3.23,248.82-7.1,25.84-3.29,51.37-8.72,77.27-11.73,90.03-10.49,180.85-4.28,271.37-5.11v-.02Z',
     'M1464.99,1229.01l-38.18,7.3c-72.97,11.22-134.53,47.2-200.84,74.16-98.8,40.16-244.57,42.87-347.39,16.45-36.36-9.34-69.09-24.27-104.06-36.94-31.43-11.39-63.54-21.36-94.77-33.23-27.19-10.33-53.12-24.79-82.76-27.25,0-1.28,23.18,1.27,25.5,1.51,51.08,5.23,105.07,12.63,154.03,27.97,26.92,8.44,52.68,20.15,79.71,28.29,98.26,29.58,239.21,30.92,337.76,2.23,39.72-11.56,75.86-32.19,115.79-43.21,50.47-13.94,103.1-15.27,155.21-17.27h0Z'
 ];
-const STAGE_LABELS = ['ASSEMBLE', 'SEND', 'THINK', 'APPLY'] as const;
-const STAGE_DURATION_MS = 700;
-const SWEEP_DURATION_MS = STAGE_DURATION_MS * STAGE_LABELS.length;
+const SWEEP_DURATION_MS = 2800;
 const MIN_PROCESSING_MS = 5000;
 const SIMULATION_DURATION_MS = 20000;
 const BRIEFING_SESSION_LIMIT = 10;
@@ -144,7 +148,8 @@ type CorpusCcSlot = {
     fill: SVGRectElement;
     border: SVGRectElement;
     icon: SVGTextElement;
-    fold: SVGPathElement;
+    foldFill: SVGPathElement;
+    foldLine: SVGPathElement;
 };
 
 export class InquiryView extends ItemView {
@@ -180,17 +185,15 @@ export class InquiryView extends ItemView {
     private minimapEmptyText?: SVGTextElement;
     private minimapTicks: SVGRectElement[] = [];
     private minimapGroup?: SVGGElement;
-    private minimapStageGroup?: SVGGElement;
-    private minimapStageSegments: SVGRectElement[] = [];
-    private minimapStageLabels: SVGTextElement[] = [];
-    private minimapStageTicks: SVGLineElement[] = [];
-    private minimapStagePulse?: SVGRectElement;
-    private minimapStageLayout?: { startX: number; segmentWidth: number; barY: number; barHeight: number; pulseWidth: number };
+    private minimapBackboneGroup?: SVGGElement;
+    private minimapBackboneGlow?: SVGRectElement;
+    private minimapBackboneShine?: SVGRectElement;
+    private minimapBackboneClip?: SVGClipPathElement;
+    private minimapBackboneClipRect?: SVGRectElement;
     private minimapSweepTicks: Array<{ rect: SVGRectElement; centerX: number }> = [];
     private minimapSweepLayout?: { startX: number; endX: number; bandWidth: number };
     private runningAnimationFrame?: number;
     private runningAnimationStart?: number;
-    private runningStageIndex = 0;
     private wasRunning = false;
     private minimapLayout?: { startX: number; length: number };
     private zonePromptElements = new Map<InquiryZone, { group: SVGGElement; bg: SVGRectElement; text: SVGTextElement }>();
@@ -422,7 +425,7 @@ export class InquiryView extends ItemView {
         addTooltipData(this.engineBadgeGroup, 'Inquiry engine (change in Settings → AI)', 'bottom');
         this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'click', () => this.openAiSettings());
 
-        const minimapGroup = this.createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, -600);
+        const minimapGroup = this.createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, -520);
         this.minimapGroup = minimapGroup;
         const badgeWidth = 160;
         const badgeHeight = 34;
@@ -909,14 +912,23 @@ export class InquiryView extends ItemView {
         glassGradient.setAttribute('fx', '0');
         glassGradient.setAttribute('fy', '0');
         glassGradient.setAttribute('r', String(VIEWBOX_MAX));
+        const toPercent = (radius: number): string => {
+            const clamped = Math.min(Math.max(radius / VIEWBOX_MAX, 0), 1);
+            return `${(clamped * 100).toFixed(2)}%`;
+        };
+        const zoneInner = ZONE_SEGMENT_RADIUS - (ZONE_RING_THICKNESS / 2);
+        const zoneOuter = ZONE_SEGMENT_RADIUS + (ZONE_RING_THICKNESS / 2);
+        const bandInset = ZONE_RING_THICKNESS * 0.18;
+        const innerFade = Math.max(0, zoneInner - (ZONE_RING_THICKNESS * 0.22));
+        const outerFade = zoneOuter + (ZONE_RING_THICKNESS * 0.22);
         [
-            ['0%', '#ffffff', '0.015'],
-            ['29%', '#ffffff', '0.03'],
-            ['31%', '#ffffff', '0.14'],
-            ['34%', '#ffffff', '0.24'],
-            ['37%', '#ffffff', '0.14'],
-            ['39%', '#ffffff', '0.03'],
-            ['100%', '#ffffff', '0.015']
+            [toPercent(innerFade), '#ffffff', '0.015'],
+            [toPercent(zoneInner), '#ffffff', '0.03'],
+            [toPercent(zoneInner + bandInset), '#ffffff', '0.12'],
+            [toPercent(zoneInner + (ZONE_RING_THICKNESS * 0.5)), '#ffffff', '0.26'],
+            [toPercent(zoneOuter - bandInset), '#ffffff', '0.12'],
+            [toPercent(zoneOuter), '#ffffff', '0.03'],
+            [toPercent(outerFade), '#ffffff', '0.015']
         ].forEach(([offset, color, opacity]) => {
             glassGradient.appendChild(createStop(offset, color, opacity));
         });
@@ -1266,6 +1278,40 @@ export class InquiryView extends ItemView {
         dotDownFilter.appendChild(dotDownShadowLight);
         dotDownFilter.appendChild(dotDownMerge);
         defs.appendChild(dotDownFilter);
+
+        const backboneGradient = this.createSvgElement('linearGradient');
+        backboneGradient.setAttribute('id', 'ert-inquiry-minimap-backbone-grad');
+        backboneGradient.setAttribute('x1', '0%');
+        backboneGradient.setAttribute('y1', '0%');
+        backboneGradient.setAttribute('x2', '100%');
+        backboneGradient.setAttribute('y2', '0%');
+        backboneGradient.appendChild(createStop('0%', '#ff9900'));
+        backboneGradient.appendChild(createStop('50%', '#ffd36a'));
+        backboneGradient.appendChild(createStop('100%', '#ff5e00'));
+        defs.appendChild(backboneGradient);
+
+        const backboneShine = this.createSvgElement('linearGradient');
+        backboneShine.setAttribute('id', 'ert-inquiry-minimap-backbone-shine');
+        backboneShine.setAttribute('x1', '0%');
+        backboneShine.setAttribute('y1', '0%');
+        backboneShine.setAttribute('x2', '100%');
+        backboneShine.setAttribute('y2', '0%');
+        backboneShine.appendChild(createStop('0%', '#fff2cf', '0'));
+        backboneShine.appendChild(createStop('40%', '#fff7ea', '1'));
+        backboneShine.appendChild(createStop('60%', '#ffb34d', '0.9'));
+        backboneShine.appendChild(createStop('100%', '#fff2cf', '0'));
+        defs.appendChild(backboneShine);
+
+        if (!this.minimapBackboneClip) {
+            const backboneClip = this.createSvgElement('clipPath');
+            backboneClip.setAttribute('id', 'ert-inquiry-minimap-backbone-clip');
+            backboneClip.setAttribute('clipPathUnits', 'userSpaceOnUse');
+            const clipRect = this.createSvgElement('rect');
+            backboneClip.appendChild(clipRect);
+            defs.appendChild(backboneClip);
+            this.minimapBackboneClip = backboneClip;
+            this.minimapBackboneClipRect = clipRect;
+        }
     }
 
     private createIconSymbol(defs: SVGDefsElement, iconName: string): string | null {
@@ -1582,41 +1628,54 @@ export class InquiryView extends ItemView {
     }
 
     private renderModeIcons(parent: SVGGElement): void {
-        const iconOffsetY = 20;
-        const iconSize = Math.round(VIEWBOX_SIZE * 0.25);
+        const iconOffsetY = -300;
+        const iconSize = Math.round(VIEWBOX_SIZE * 0.25 * 0.7);
         const iconX = Math.round(-iconSize / 2);
-        const scale = iconSize / MODE_ICON_VIEWBOX;
+        const viewBoxHalf = MODE_ICON_VIEWBOX / 2;
         const iconGroup = this.createSvgGroup(parent, 'ert-inquiry-mode-icons', 0, iconOffsetY);
         iconGroup.setAttribute('pointer-events', 'none');
 
-        const createIcon = (cls: string, paths: string[]): void => {
-            const group = this.createSvgElement('g');
+        const createIcon = (cls: string, paths: string[], rotateDeg = 0): void => {
+            const group = this.createSvgElement('svg');
             group.classList.add('ert-inquiry-mode-icon', cls);
-            group.setAttribute('transform', `translate(${iconX} 0) scale(${scale.toFixed(6)})`);
+            group.setAttribute('x', String(iconX));
+            group.setAttribute('y', '0');
+            group.setAttribute('width', String(iconSize));
+            group.setAttribute('height', String(iconSize));
+            group.setAttribute('viewBox', `${-viewBoxHalf} ${-viewBoxHalf} ${MODE_ICON_VIEWBOX} ${MODE_ICON_VIEWBOX}`);
+            group.setAttribute('preserveAspectRatio', 'xMidYMid meet');
             group.setAttribute('pointer-events', 'none');
+            const transformGroup = this.createSvgElement('g');
+            if (rotateDeg) {
+                transformGroup.setAttribute('transform', `rotate(${rotateDeg})`);
+            }
+            const pathGroup = this.createSvgElement('g');
+            pathGroup.setAttribute('transform', `translate(${-viewBoxHalf} ${-viewBoxHalf})`);
             paths.forEach(d => {
                 const path = this.createSvgElement('path');
                 path.setAttribute('d', d);
-                group.appendChild(path);
+                pathGroup.appendChild(path);
             });
+            transformGroup.appendChild(pathGroup);
+            group.appendChild(transformGroup);
             iconGroup.appendChild(group);
         };
 
         createIcon('ert-inquiry-mode-icon--flow', FLOW_ICON_PATHS);
-        createIcon('ert-inquiry-mode-icon--depth', DEPTH_ICON_PATHS);
+        createIcon('ert-inquiry-mode-icon--depth', DEPTH_ICON_PATHS, 90);
     }
 
     private renderWaveHeader(parent: SVGElement): void {
-        const riverWidth = 2048;
-        const riverOffsetY = 740;
+        const flowWidth = 2048;
+        const flowOffsetY = 740;
         const targetWidth = VIEWBOX_SIZE * 0.5;
-        const scale = targetWidth / riverWidth;
+        const scale = targetWidth / flowWidth;
         const y = VIEWBOX_MIN + 50;
         const group = this.createSvgGroup(parent, 'ert-inquiry-wave-header');
-        group.setAttribute('transform', `translate(0 ${y}) scale(${scale.toFixed(4)}) translate(${-riverWidth / 2} ${-riverOffsetY})`);
+        group.setAttribute('transform', `translate(0 ${y}) scale(${scale.toFixed(4)}) translate(${-flowWidth / 2} ${-flowOffsetY})`);
         group.setAttribute('pointer-events', 'none');
 
-        // Path data sourced from inquiry/assets/river.svg.
+        // Path data is internal to the inquiry renderer.
         const paths = [
             'M1873.99,900.01c.23,1.74-2.27.94-3.48.99-14.3.59-28.74-.35-43.05-.04-2.37.05-4.55,1.03-6.92,1.08-124.15,2.86-248.6,8.35-373,4.92-91.61-2.53-181.2-15.53-273.08-17.92-101.98-2.65-204.05,7.25-305.95.95-83.2-5.14-164.18-24.05-247.02-31.98-121.64-11.65-245.9-13.5-368.04-15.96-2.37-.05-4.55-1.04-6.92-1.08-17.31-.34-34.77.75-52.05.04-1.22-.05-3.72.75-3.48-.99,26.49-.25,53.03.28,79.54.03,144.74-1.38,289.81-5.3,433.95,8.97,18.67,1.85,37.34,5.16,56.01,6.99,165.31,16.18,330.85-3.46,495.99,14.01,118.64,12.56,236.15,30.42,355.97,28.03,87.15,0,174.3,2.45,261.54,1.97Z',
             'M1858.99,840.01c.23,1.74-2.27.94-3.48.99-15.63.64-31.41-.36-47.05-.04-2.37.05-4.55,1.03-6.92,1.08-127.12,2.74-254.28,9.03-381.05,2.97-86.31-4.13-170.32-17.4-256.98-20.02-110.96-3.36-222.13,6.92-333-1-62.18-4.44-123.32-15.98-185.14-22.86-130.81-14.57-267.28-16.86-398.92-19.08-2.36-.04-4.55-1.04-6.92-1.08-20.56-.33-41.57.88-62.05.04-1.22-.05-3.72.75-3.48-.99,27.83-.25,55.7.28,83.54.03,110.53-1,221.67-2.9,331.92,2,82.52,3.67,164.67,14.08,247,17,120.4,4.27,240.84-7.91,361.03,1.97,68.04,5.59,135.16,18.98,203.02,25.98,102.05,10.53,205.5,10.76,307.95,12.05,50.17.63,100.37.51,150.54.97Z',
@@ -1753,15 +1812,6 @@ export class InquiryView extends ItemView {
         if (zone === 'pressure') return 'var(--ert-inquiry-zone-pressure)';
         if (zone === 'payoff') return 'var(--ert-inquiry-zone-payoff)';
         return 'var(--ert-inquiry-zone-setup)';
-    }
-
-    private getStageColors(): string[] {
-        return [
-            'var(--ert-inquiry-zone-setup)',
-            'var(--ert-inquiry-zone-pressure)',
-            'var(--ert-inquiry-zone-payoff)',
-            'var(--ert-inquiry-zone-setup)'
-        ];
     }
 
     private updateActiveZoneStyling(): void {
@@ -1963,20 +2013,20 @@ export class InquiryView extends ItemView {
         this.minimapEmptyText.setAttribute('x', '0');
         this.minimapEmptyText.setAttribute('y', '20');
         this.minimapEmptyText.setAttribute('text-anchor', 'middle');
-        this.renderMinimapStages(baselineStart, length);
+        this.renderMinimapBackbone(baselineStart, length);
 
         if (!count) {
             const emptyLabel = this.state.scope === 'saga' ? 'No books found.' : 'No scenes found.';
             this.minimapEmptyText.textContent = emptyLabel;
             this.minimapEmptyText.classList.remove('ert-hidden');
-            this.minimapStageGroup?.setAttribute('display', 'none');
+            this.minimapBackboneGroup?.setAttribute('display', 'none');
             this.renderCorpusCcStrip();
             this.updateMinimapFocus();
             return;
         }
 
         this.minimapEmptyText.classList.add('ert-hidden');
-        this.minimapStageGroup?.removeAttribute('display');
+        this.minimapBackboneGroup?.removeAttribute('display');
         const tickLayouts: Array<{ x: number; y: number; size: number }> = [];
 
         for (let i = 0; i < count; i += 1) {
@@ -2027,73 +2077,65 @@ export class InquiryView extends ItemView {
         this.updateMinimapFocus();
     }
 
-    private renderMinimapStages(baselineStart: number, length: number): void {
+    private renderMinimapBackbone(baselineStart: number, length: number): void {
         if (!this.minimapGroup) return;
-        const stageGroup = this.minimapStageGroup ?? this.createSvgGroup(this.minimapGroup, 'ert-inquiry-minimap-stages');
-        this.minimapStageGroup = stageGroup;
-        const segmentWidth = length / STAGE_LABELS.length;
-        const barHeight = 6;
-        const barY = -3;
-        const pulseWidth = Math.max(24, Math.min(42, segmentWidth * 0.35));
-        this.minimapStageLayout = { startX: baselineStart, segmentWidth, barY, barHeight, pulseWidth };
-
-        const stageColors = this.getStageColors();
-        STAGE_LABELS.forEach((label, index) => {
-            let segment = this.minimapStageSegments[index];
-            if (!segment) {
-                segment = this.createSvgElement('rect');
-                segment.classList.add('ert-inquiry-minimap-stage-segment');
-                stageGroup.appendChild(segment);
-                this.minimapStageSegments[index] = segment;
+        let backboneGroup = this.minimapBackboneGroup;
+        if (!backboneGroup) {
+            backboneGroup = this.createSvgGroup(this.minimapGroup, 'ert-inquiry-minimap-backbone');
+            this.minimapBackboneGroup = backboneGroup;
+            if (this.minimapTicksEl) {
+                this.minimapGroup.insertBefore(backboneGroup, this.minimapTicksEl);
             }
-            const segX = baselineStart + (segmentWidth * index);
-            segment.setAttribute('x', segX.toFixed(2));
-            segment.setAttribute('y', String(barY));
-            segment.setAttribute('width', segmentWidth.toFixed(2));
-            segment.setAttribute('height', String(barHeight));
-            segment.setAttribute('rx', String(Math.round(barHeight / 2)));
-            segment.setAttribute('ry', String(Math.round(barHeight / 2)));
-            segment.style.setProperty('--ert-inquiry-stage-color', stageColors[index] ?? 'var(--text-muted)');
-
-            let text = this.minimapStageLabels[index];
-            if (!text) {
-                text = this.createSvgText(stageGroup, 'ert-inquiry-minimap-stage-label', label, 0, 0);
-                text.setAttribute('text-anchor', 'middle');
-                text.setAttribute('dominant-baseline', 'hanging');
-                this.minimapStageLabels[index] = text;
-            }
-            const labelX = baselineStart + (segmentWidth * (index + 0.5));
-            const labelY = 24;
-            text.textContent = label;
-            text.setAttribute('x', labelX.toFixed(2));
-            text.setAttribute('y', String(labelY));
-            text.style.setProperty('--ert-inquiry-stage-color', stageColors[index] ?? 'var(--text-muted)');
-        });
-
-        const tickCount = STAGE_LABELS.length + 1;
-        for (let i = 0; i < tickCount; i += 1) {
-            let tick = this.minimapStageTicks[i];
-            if (!tick) {
-                tick = this.createSvgElement('line');
-                tick.classList.add('ert-inquiry-minimap-stage-tick');
-                stageGroup.appendChild(tick);
-                this.minimapStageTicks[i] = tick;
-            }
-            const x = baselineStart + (segmentWidth * i);
-            tick.setAttribute('x1', x.toFixed(2));
-            tick.setAttribute('x2', x.toFixed(2));
-            tick.setAttribute('y1', String(barY - 6));
-            tick.setAttribute('y2', String(barY + barHeight + 6));
         }
 
-        if (!this.minimapStagePulse) {
-            this.minimapStagePulse = this.createSvgElement('rect');
-            this.minimapStagePulse.classList.add('ert-inquiry-minimap-stage-pulse');
-            stageGroup.appendChild(this.minimapStagePulse);
+        const barHeight = 8;
+        const barY = -4;
+        const glowHeight = barHeight + 2;
+        const glowY = barY - 1;
+        const shineHeight = barHeight + 6;
+        const shineY = barY - 3;
+
+        if (this.minimapBackboneClipRect) {
+            this.minimapBackboneClipRect.setAttribute('x', baselineStart.toFixed(2));
+            this.minimapBackboneClipRect.setAttribute('y', String(shineY));
+            this.minimapBackboneClipRect.setAttribute('width', length.toFixed(2));
+            this.minimapBackboneClipRect.setAttribute('height', String(shineHeight));
+            this.minimapBackboneClipRect.setAttribute('rx', String(Math.round(shineHeight / 2)));
+            this.minimapBackboneClipRect.setAttribute('ry', String(Math.round(shineHeight / 2)));
         }
-        this.minimapStagePulse.setAttribute('width', pulseWidth.toFixed(2));
-        this.minimapStagePulse.setAttribute('height', String(barHeight + 6));
-        this.minimapStagePulse.setAttribute('y', String(barY - 3));
+        if (!backboneGroup.getAttribute('clip-path')) {
+            backboneGroup.setAttribute('clip-path', 'url(#ert-inquiry-minimap-backbone-clip)');
+        }
+
+        let glow = this.minimapBackboneGlow;
+        if (!glow) {
+            glow = this.createSvgElement('rect');
+            glow.classList.add('ert-inquiry-minimap-backbone-glow');
+            backboneGroup.appendChild(glow);
+            this.minimapBackboneGlow = glow;
+        }
+
+        let shine = this.minimapBackboneShine;
+        if (!shine) {
+            shine = this.createSvgElement('rect');
+            shine.classList.add('ert-inquiry-minimap-backbone-shine');
+            backboneGroup.appendChild(shine);
+            this.minimapBackboneShine = shine;
+        }
+
+        glow.setAttribute('x', baselineStart.toFixed(2));
+        glow.setAttribute('y', String(glowY));
+        glow.setAttribute('width', length.toFixed(2));
+        glow.setAttribute('height', String(glowHeight));
+        glow.setAttribute('rx', String(Math.round(glowHeight / 2)));
+        glow.setAttribute('ry', String(Math.round(glowHeight / 2)));
+
+        shine.setAttribute('x', baselineStart.toFixed(2));
+        shine.setAttribute('y', String(shineY));
+        shine.setAttribute('width', length.toFixed(2));
+        shine.setAttribute('height', String(shineHeight));
+        shine.setAttribute('rx', String(Math.round(shineHeight / 2)));
+        shine.setAttribute('ry', String(Math.round(shineHeight / 2)));
     }
 
     private buildMinimapSweepLayer(
@@ -2299,12 +2341,15 @@ export class InquiryView extends ItemView {
             const icon = this.createSvgText(group, 'ert-inquiry-cc-cell-icon', '', 0, 0);
             icon.setAttribute('text-anchor', 'middle');
             icon.setAttribute('dominant-baseline', 'middle');
-            const fold = this.createSvgElement('path');
-            fold.classList.add('ert-inquiry-cc-cell-fold');
+            const foldFill = this.createSvgElement('path');
+            foldFill.classList.add('ert-inquiry-cc-cell-fold');
+            const foldLine = this.createSvgElement('path');
+            foldLine.classList.add('ert-inquiry-cc-cell-fold-line');
             group.appendChild(base);
             group.appendChild(fill);
+            group.appendChild(foldFill);
             group.appendChild(border);
-            group.appendChild(fold);
+            group.appendChild(foldLine);
             group.appendChild(icon);
             this.registerDomEvent(group as unknown as HTMLElement, 'click', () => {
                 if (this.state.isRunning) return;
@@ -2315,7 +2360,7 @@ export class InquiryView extends ItemView {
                     void openOrRevealFile(this.app, file);
                 }
             });
-            this.ccSlots.push({ group, base, fill, border, icon, fold });
+            this.ccSlots.push({ group, base, fill, border, icon, foldFill, foldLine });
         }
 
         this.ccSlots.forEach((slot, idx) => {
@@ -2341,7 +2386,8 @@ export class InquiryView extends ItemView {
             slot.border.setAttribute('y', '0');
             slot.border.setAttribute('rx', String(corner));
             slot.border.setAttribute('ry', String(corner));
-            slot.fold.setAttribute('d', `M ${layout.pageWidth - foldSize} 0 L ${layout.pageWidth} 0 L ${layout.pageWidth} ${foldSize}`);
+            slot.foldFill.setAttribute('d', `M ${layout.pageWidth - foldSize} 0 L ${layout.pageWidth} 0 L ${layout.pageWidth} ${foldSize} Z`);
+            slot.foldLine.setAttribute('d', `M ${layout.pageWidth - foldSize} 0 L ${layout.pageWidth} ${foldSize}`);
             slot.icon.setAttribute('x', String(Math.round(layout.pageWidth / 2)));
             slot.icon.setAttribute('y', String(Math.round(layout.pageHeight / 2)));
         });
@@ -2783,16 +2829,12 @@ export class InquiryView extends ItemView {
     private startRunningAnimations(): void {
         if (this.runningAnimationFrame) return;
         this.runningAnimationStart = performance.now();
-        this.runningStageIndex = -1;
         const animate = (now: number) => {
             if (!this.state.isRunning) {
                 this.stopRunningAnimations();
                 return;
             }
             const elapsed = now - (this.runningAnimationStart ?? now);
-            const stageIndex = Math.floor(elapsed / STAGE_DURATION_MS) % STAGE_LABELS.length;
-            const stageProgress = (elapsed % STAGE_DURATION_MS) / STAGE_DURATION_MS;
-            this.updateStagePulse(stageIndex, stageProgress);
             this.updateSweep(elapsed);
             this.runningAnimationFrame = window.requestAnimationFrame(animate);
         };
@@ -2805,33 +2847,7 @@ export class InquiryView extends ItemView {
             this.runningAnimationFrame = undefined;
         }
         this.runningAnimationStart = undefined;
-        this.runningStageIndex = 0;
-        this.minimapStageSegments.forEach(segment => segment.classList.remove('is-active'));
-        this.minimapStageLabels.forEach(label => label.classList.remove('is-active'));
         this.minimapSweepTicks.forEach(tick => tick.rect.setAttribute('opacity', '0'));
-    }
-
-    private updateStagePulse(stageIndex: number, stageProgress: number): void {
-        if (!this.minimapStagePulse || !this.minimapStageLayout) return;
-        if (stageIndex !== this.runningStageIndex) {
-            this.runningStageIndex = stageIndex;
-            this.minimapStageSegments.forEach((segment, idx) => {
-                segment.classList.toggle('is-active', idx === stageIndex);
-            });
-            this.minimapStageLabels.forEach((label, idx) => {
-                label.classList.toggle('is-active', idx === stageIndex);
-            });
-            const stageColors = this.getStageColors();
-            this.minimapStagePulse.style.setProperty('--ert-inquiry-stage-color', stageColors[stageIndex] ?? 'var(--text-muted)');
-        }
-        const { startX, segmentWidth, barY, barHeight, pulseWidth } = this.minimapStageLayout;
-        const segStart = startX + (segmentWidth * stageIndex);
-        const travel = Math.max(0, segmentWidth - pulseWidth);
-        const x = segStart + (travel * stageProgress);
-        this.minimapStagePulse.setAttribute('x', x.toFixed(2));
-        this.minimapStagePulse.setAttribute('y', String(barY - 3));
-        this.minimapStagePulse.setAttribute('height', String(barHeight + 6));
-        this.minimapStagePulse.setAttribute('width', pulseWidth.toFixed(2));
     }
 
     private updateSweep(elapsed: number): void {
