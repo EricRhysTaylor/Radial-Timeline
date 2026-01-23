@@ -51,6 +51,7 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
 
 ## Docs (How-to & setup)
 
+
 If you want the “how-to” details (setup, templates, YAML, reordering, advanced options), they live in the wiki:
 
 - [Wiki Home](https://github.com/EricRhysTaylor/Radial-Timeline/wiki)
