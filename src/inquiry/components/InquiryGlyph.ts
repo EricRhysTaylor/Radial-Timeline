@@ -24,8 +24,8 @@ export interface InquiryGlyphPromptState {
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-export const FLOW_RADIUS = 260;
-export const DEPTH_RADIUS = 195;
+export const FLOW_RADIUS = 100;
+export const DEPTH_RADIUS = 50;
 export const FLOW_STROKE = 14;
 export const DEPTH_STROKE = 24;
 const FLOW_HIT_STROKE = 38;

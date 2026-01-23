@@ -419,10 +419,8 @@
 }
 
 .ert-inquiry-wave-path {
-  stroke: currentColor;
-  stroke-width: 3;
-  fill: none;
-  vector-effect: non-scaling-stroke;
+  fill: currentColor;
+  stroke: none;
 }
 
 .ert-inquiry-minimap-tick.is-active {

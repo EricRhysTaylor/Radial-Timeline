@@ -16,7 +16,16 @@ const exists = (p) => fs.existsSync(p);
 const read = (p) => fs.readFileSync(p, "utf8");
 
 const args = new Set(process.argv.slice(2));
-const MIGRATION_MODE = args.has("--migration") || process.env.CSS_DRIFT_MODE === "migration";
+const MODE = args.has("--strict")
+  ? "strict"
+  : args.has("--maintenance")
+    ? "maintenance"
+    : args.has("--migration")
+      ? "migration"
+      : (process.env.CSS_DRIFT_MODE || "maintenance");
+const MIGRATION_MODE = MODE === "migration";
+const MAINTENANCE_MODE = MODE === "maintenance";
+const LOOSE_MODE = MODE !== "strict";
 const WRITE_BASELINE = args.has("--write-baseline") || args.has("--update-baseline");
 const BASELINE_PATH = path.join(ROOT, "scripts/css-drift-baseline.json");
 
@@ -56,7 +65,7 @@ for (const file of FILES.filter(exists)) {
     addFail(file, "Global element selector (likely bleed). Scope under .ert-ui.", m[2] + " {", "global-element");
   }
 
-  // 3) Raw hex colors outside token lines (fail in strict, warn in migration)
+  // 3) Raw hex colors outside token lines (fail in strict, warn in migration/maintenance)
   //    (skip lines that define css variables)
   const lines = css.split("\n");
   lines.forEach((line, idx) => {
@@ -65,7 +74,7 @@ for (const file of FILES.filter(exists)) {
     const isVarLine = /--[a-zA-Z0-9-_]+\s*:/.test(line);
     if (!isVarLine) {
       const rule = "raw-hex";
-      if (MIGRATION_MODE) {
+      if (LOOSE_MODE) {
         addWarn(file, `Raw hex color outside token/var line at L${idx + 1}.`, line.trim(), rule);
       } else {
         addFail(file, `Raw hex color outside token/var line at L${idx + 1}.`, line.trim(), rule);
@@ -95,11 +104,11 @@ for (const file of FILES.filter(exists)) {
     }
   }
 
-  // 6) Legacy rt-* selectors outside rt-ui.css (warn in migration)
+  // 6) Legacy rt-* selectors outside rt-ui.css (warn in migration/maintenance)
   if (!file.endsWith("rt-ui.css")) {
     const rtSelectorRe = /(^|\n)\s*[^@{]*\brt-[a-zA-Z0-9_-]+[^,{]*\{/g;
     for (const m of findAll(rtSelectorRe, css)) {
-      addWarn(file, "Legacy .rt-* selector (migration warning).", m[0].trim(), "rt-legacy");
+      addWarn(file, "Legacy .rt-* selector (legacy warning).", m[0].trim(), "rt-legacy");
     }
   }
 
@@ -145,19 +154,21 @@ if (WRITE_BASELINE) {
     warningsByRule: warnSummary.byRule,
     updatedAt: new Date().toISOString(),
     migrationMode: MIGRATION_MODE,
+    mode: MODE,
   };
   fs.writeFileSync(BASELINE_PATH, JSON.stringify(payload, null, 2));
   console.log(`\n🧭 Wrote CSS drift baseline to ${BASELINE_PATH}`);
 }
 
-if (MIGRATION_MODE && !WRITE_BASELINE) {
+if (LOOSE_MODE && !WRITE_BASELINE) {
   const baseline = exists(BASELINE_PATH) ? JSON.parse(read(BASELINE_PATH)) : null;
   if (baseline) {
     const baselineTotal = baseline.totalWarnings ?? 0;
     const currentTotal = warnSummary.total;
     const delta = currentTotal - baselineTotal;
     const keys = ["raw-hex", "spacing-px", "shadow-rgba", "rt-legacy"];
-    console.log("\nMigration WARN summary:");
+    const summaryLabel = MAINTENANCE_MODE ? "Maintenance WARN summary:" : "Migration WARN summary:";
+    console.log(`\n${summaryLabel}`);
     console.log(`- current WARN total: ${currentTotal}`);
     console.log(`- baseline WARN total: ${baselineTotal}`);
     console.log(`- delta: ${delta >= 0 ? "+" : ""}${delta}`);
