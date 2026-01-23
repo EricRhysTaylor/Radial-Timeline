@@ -49,8 +49,7 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
 
 ---
 
-## Docs (How-to & setup)
-
+## Docs (How-to & setup)<br>
 
 If you want the “how-to” details (setup, templates, YAML, reordering, advanced options), they live in the wiki:
 
