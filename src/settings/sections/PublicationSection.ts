@@ -178,11 +178,31 @@ export function renderCompletionEstimatePreview(params: {
         return quotes[Math.floor(Math.random() * quotes.length)];
     }
 
-    async function renderCompletionPreview(): Promise<void> {
+    const getCachedScenes = () => {
+        if (!Array.isArray(plugin.lastSceneData)) return null;
+        return plugin.lastSceneData.filter(scene => scene.itemType === 'Scene' || !scene.itemType);
+    };
+
+    async function renderCompletionPreview(allowFetch: boolean): Promise<void> {
         previewContainer.empty();
+        previewContainer.removeClass('ert-completion-preview-empty');
         
         try {
-            const scenes = await getAllScenes(app, plugin);
+            const cachedScenes = getCachedScenes();
+            const scenes = cachedScenes ?? (allowFetch ? await getAllScenes(app, plugin) : null);
+            if (!scenes) {
+                previewContainer.addClass('ert-completion-preview-empty');
+                const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
+                heading.setText('Completion Estimate');
+                const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
+                body.createDiv({
+                    cls: 'ert-completion-no-data',
+                    text: 'Open the timeline to load scene data, or load the preview now.'
+                });
+                const loadBtn = body.createEl('button', { text: 'Load preview', cls: 'ert-mod-cta' });
+                plugin.registerDomEvent(loadBtn, 'click', () => { void renderCompletionPreview(true); });
+                return;
+            }
             if (scenes.length === 0) {
                 previewContainer.addClass('ert-completion-preview-empty');
                 const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
@@ -592,10 +612,10 @@ export function renderCompletionEstimatePreview(params: {
     }
 
     // Initial render
-    void renderCompletionPreview();
+    void renderCompletionPreview(false);
 
     return () => {
-        void renderCompletionPreview();
+        void renderCompletionPreview(true);
     };
 }
 

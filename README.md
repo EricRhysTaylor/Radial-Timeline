@@ -27,7 +27,7 @@
 
 ## What It Does
 
-<p>Radial Timeline™ arranges your scenes by act, subplot, narrative or chronological order in a striking radial layout—revealing the structure, rhythm, and scope of your story. Each ring represents a subplot; hover interactions surface important details like scene synopsis and AI story pulses. Scenes highlight across subplots to show interrelationships. Multiple view modes dissect your novel like an X-ray.</p>
+<p>Radial Timeline™ arranges your scenes by act, subplot, narrative or chronological order in a striking radial layout—revealing the structure, rhythm, and scope of your story. Each ring represents a subplot; hover interactions surface important details like scene synopsis and AI story pulses. Scenes highlight across subplots to show interrelationships. Multiple view modes present your novel like an X-ray.</p>
 
 <p>**Before**: Scrolling through line after line of spreadsheet tables and files, losing sight of how your B-plot interweaves with the main storyline.</p>
 
@@ -40,7 +40,7 @@
 3. **Author time**: your scene writing progress with target completion dates from Todo to Complete.
 4. **Publishing time**: manuscript revision stages from Zero draft through Press-ready.
 
-Narrative and Chronologue modes keep subplot colors front-and-center so you can compare structure without workflow noise. When you need to see Todo/Working/Overdue progress or publish stage colors, jump into Publication Mode (formerly Subplot Mode) where all scenes is replaced by Main Plot and scenes inherit the author-status and publish-stage palette.
+<p>Narrative and Chronologue modes keep subplot colors front-and-center so you can compare structure without workflow noise. When you need to see Todo/Working/Overdue progress or publish stage colors, jump into Publication Mode (formerly Subplot Mode), where the All Scenes outer ring is replaced by Main Plot and scenes inherit the author-status and publish-stage palette.</p>
 
 ---
 

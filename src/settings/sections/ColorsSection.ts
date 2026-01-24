@@ -1,6 +1,5 @@
 import { Setting as Settings, ColorComponent, TextComponent, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import type { TimelineItem } from '../../types';
 import type { PluginRendererFacade } from '../../utils/sceneHelpers';
 import { computeCacheableValues } from '../../renderer/utils/Precompute';
 import { DEFAULT_SETTINGS } from '../defaults';
@@ -16,15 +15,8 @@ function truncateSubplotLabel(value: string, maxLength = SUBPLOT_LABEL_MAX_LENGT
 }
 
 async function getTimelineSubplotOrder(plugin: RadialTimelinePlugin): Promise<string[]> {
-    let scenes: TimelineItem[] | undefined = plugin.lastSceneData;
-    if (!Array.isArray(scenes) || scenes.length === 0) {
-        try {
-            scenes = await plugin.getSceneData();
-        } catch {
-            return [];
-        }
-    }
-    if (!Array.isArray(scenes) || scenes.length === 0) return [];
+    const scenes = Array.isArray(plugin.lastSceneData) ? plugin.lastSceneData : null;
+    if (!scenes || scenes.length === 0) return [];
     const { masterSubplotOrder } = computeCacheableValues(plugin as unknown as PluginRendererFacade, scenes);
     return masterSubplotOrder.filter(subplot =>
         subplot &&

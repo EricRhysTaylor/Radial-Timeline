@@ -12,14 +12,21 @@ interface DurationCapOption {
     ms: number;
 }
 
-async function collectDurationCapOptions(plugin: RadialTimelinePlugin): Promise<DurationCapOption[]> {
-    let scenes: TimelineItem[] | undefined = plugin.lastSceneData;
-    if (!Array.isArray(scenes) || scenes.length === 0) {
+async function collectDurationCapOptions(
+    plugin: RadialTimelinePlugin,
+    allowFetch: boolean
+): Promise<DurationCapOption[] | null> {
+    let scenes: TimelineItem[] | undefined;
+    if (Array.isArray(plugin.lastSceneData)) {
+        scenes = plugin.lastSceneData;
+    } else if (allowFetch) {
         try {
             scenes = await plugin.getSceneData();
         } catch {
             return [];
         }
+    } else {
+        return null;
     }
 
     const dedupeKeys = new Set<string>();
@@ -72,6 +79,39 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
 
     const savedCapSelection = plugin.settings.chronologueDurationCapSelection ?? 'auto';
     let durationDropdown: DropdownComponent | undefined;
+    let durationOptionsLoaded = false;
+
+    const loadDurationOptions = async (allowFetch: boolean) => {
+        if (durationOptionsLoaded) return;
+        const options = await collectDurationCapOptions(plugin, allowFetch);
+        const dropdown = durationDropdown;
+        if (!dropdown) return;
+        if (options === null) {
+            if (!durationOptionsLoaded) {
+                durationSetting.setDesc(`${baseDurationDesc} Open the timeline to load duration data.`);
+            }
+            return;
+        }
+        durationOptionsLoaded = true;
+        if (options.length === 0) {
+            durationSetting.setDesc(`${baseDurationDesc} No scene durations detected yet.`);
+        } else {
+            options.forEach(opt => {
+                if (!dropdown.selectEl.querySelector(`option[value="${opt.key}"]`)) {
+                    dropdown.addOption(opt.key, `${opt.label} (${opt.count})`);
+                }
+            });
+        }
+
+        if (savedCapSelection !== 'auto' && dropdown.selectEl.querySelector(`option[value="${savedCapSelection}"]`) === null) {
+            const fallbackLabel = formatDurationSelectionLabel(savedCapSelection);
+            if (fallbackLabel) {
+                dropdown.addOption(savedCapSelection, `${fallbackLabel} (0)`);
+            }
+        }
+
+        dropdown.setValue(savedCapSelection);
+    };
 
     durationSetting.addDropdown(dropdown => {
         durationDropdown = dropdown;
@@ -86,47 +126,23 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
         dropdown.selectEl.style.setProperty('width', '250px', 'important');
         dropdown.selectEl.style.setProperty('min-width', '250px', 'important');
         dropdown.selectEl.style.setProperty('max-width', '250px', 'important');
+        plugin.registerDomEvent(dropdown.selectEl, 'focus', () => { void loadDurationOptions(true); });
     });
 
-    collectDurationCapOptions(plugin)
-        .then(options => {
-            const dropdown = durationDropdown;
-            if (!dropdown) return;
-            if (options.length === 0) {
-                durationSetting.setDesc(`${baseDurationDesc} No scene durations detected yet.`);
-            } else {
-                options.forEach(opt => {
-                    if (!dropdown.selectEl.querySelector(`option[value="${opt.key}"]`)) {
-                        dropdown.addOption(opt.key, `${opt.label} (${opt.count})`);
-                    }
-                });
-            }
-
-            if (savedCapSelection !== 'auto' && dropdown.selectEl.querySelector(`option[value="${savedCapSelection}"]`) === null) {
-                const fallbackLabel = formatDurationSelectionLabel(savedCapSelection);
-                if (fallbackLabel) {
-                    dropdown.addOption(savedCapSelection, `${fallbackLabel} (0)`);
-                }
-            }
-
-            dropdown.setValue(savedCapSelection);
-        })
-        .catch(() => {
-            if (!durationDropdown) return;
-            durationSetting.setDesc(`${baseDurationDesc} Unable to load duration data.`);
-        });
+    void loadDurationOptions(false);
 
     // 2. Discontinuity threshold customization
     
     // Calculate the actual auto threshold based on current scenes
     // Uses single source of truth helper to ensure this matches the renderer's calculation
-    const getScenesForThreshold = async (): Promise<TimelineItem[]> => {
-        if (Array.isArray(plugin.lastSceneData) && plugin.lastSceneData.length > 0) {
+    const getScenesForThreshold = async (allowFetch: boolean): Promise<TimelineItem[] | null> => {
+        if (Array.isArray(plugin.lastSceneData)) {
             return plugin.lastSceneData;
         }
+        if (!allowFetch) return null;
         try {
             const fetched = await plugin.getSceneData();
-            if (Array.isArray(fetched) && fetched.length > 0) {
+            if (Array.isArray(fetched)) {
                 plugin.lastSceneData = fetched;
                 return fetched;
             }
@@ -137,15 +153,18 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
         }
     };
 
-    const calculateAutoThreshold = async (): Promise<{ display: string; days: number | null }> => {
+    const calculateAutoThreshold = async (allowFetch: boolean): Promise<{ display: string; days: number | null; loaded: boolean }> => {
         try {
-            const scenes = await getScenesForThreshold();
+            const scenes = await getScenesForThreshold(allowFetch);
+            if (!scenes) {
+                return { display: 'Open timeline to calculate', days: null, loaded: false };
+            }
             
             // Use single source of truth helper
             const thresholdMs = calculateAutoDiscontinuityThreshold(scenes);
             
             if (thresholdMs === null) {
-                return { display: 'not yet calculated', days: null };
+                return { display: 'not yet calculated', days: null, loaded: true };
             }
             
             // Convert to appropriate time unit for display
@@ -162,10 +181,10 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
                 display = `${Math.round(minutes)} ${Math.round(minutes) === 1 ? 'minute' : 'minutes'}`;
             }
             
-            return { display, days: Math.round(days * 100) / 100 };
+            return { display, days: Math.round(days * 100) / 100, loaded: true };
         } catch (err) {
             console.error('[Settings] Error calculating threshold:', err);
-            return { display: 'not yet calculated', days: null };
+            return { display: 'not yet calculated', days: null, loaded: false };
         }
     };
 
@@ -177,8 +196,10 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
     let discontinuityText: any; // SAFE: any type used for Obsidian TextComponent reference (library limitation)
 
     // Calculate threshold dynamically when settings are displayed
-    const updateDescriptionAndPlaceholder = async () => {
-        const autoThreshold = await calculateAutoThreshold();
+    let autoThresholdLoaded = false;
+    const updateDescriptionAndPlaceholder = async (allowFetch: boolean) => {
+        const autoThreshold = await calculateAutoThreshold(allowFetch);
+        if (autoThreshold.loaded) autoThresholdLoaded = true;
         discontinuitySetting.setDesc(`In shift mode, the ∞ symbol marks large time gaps between scenes. By default, this is auto-calculated as 3× the median gap between scenes. Current auto value: ${autoThreshold.display}. You can override this with a custom gap threshold (e.g., "4 days", "1 week", "30 minutes").`);
         if (discontinuityText) {
             const currentValue = plugin.settings.discontinuityThreshold || '';
@@ -190,7 +211,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
     };
 
     // Calculate immediately
-    void updateDescriptionAndPlaceholder();
+    void updateDescriptionAndPlaceholder(false);
 
     discontinuitySetting.addText(text => {
         discontinuityText = text;
@@ -198,7 +219,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
         text.setPlaceholder('Calculating…')
             .setValue(currentValue);
         
-        void calculateAutoThreshold().then(autoThreshold => {
+        void calculateAutoThreshold(false).then(autoThreshold => {
             text.setPlaceholder(`${autoThreshold.display} (auto)`);
             if (!currentValue) {
                 text.setValue('');
@@ -242,6 +263,11 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
 
         plugin.registerDomEvent(text.inputEl, 'blur', () => {
             void handleBlur();
+        });
+        plugin.registerDomEvent(text.inputEl, 'focus', () => {
+            if (!autoThresholdLoaded) {
+                void updateDescriptionAndPlaceholder(true);
+            }
         });
     });
 
