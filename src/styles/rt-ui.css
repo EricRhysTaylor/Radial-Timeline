@@ -113,6 +113,7 @@
   --ert-input-width-md: var(--rt-input-width-md, 16ch);
   --ert-input-width-lg: var(--rt-input-width-lg, 24ch);
   --ert-input-width-xl: var(--rt-input-width-xl, 48ch);
+  --ert-settings-select-width-wide: 250px;
 
   /* Layout */
   display: flex;
@@ -1981,6 +1982,13 @@
   flex: 0 0 var(--rt-settings-select-width);
 }
 
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item .setting-item-control select.ert-setting-dropdown--wide {
+  width: var(--ert-settings-select-width-wide);
+  min-width: var(--ert-settings-select-width-wide);
+  max-width: var(--ert-settings-select-width-wide);
+  flex: 0 0 var(--ert-settings-select-width-wide);
+}
+
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-full-width-input {
   display: grid;
   grid-template-columns: 1fr;
@@ -2746,6 +2754,10 @@
   animation: ert-book-complete-glow 3s ease-in-out infinite;
 }
 
+.ert-settings-root .ert-completion-preview-book-complete {
+  animation: none;
+}
+
 @keyframes ert-book-complete-glow {
 
   0%,
@@ -3364,22 +3376,16 @@
   margin-bottom: 8px;
 }
 
-.ert-ui .ert-model-picker-row {
-  align-items: center;
-  width: 100%;
-}
-
 .ert-ui .ert-model-picker-select {
   flex: 0 0 var(--rt-settings-select-width);
 }
 
 .ert-ui .ert-model-guidance {
-  margin-top: 0;
+  margin-top: 6px;
   font-size: 13px;
   color: var(--text-muted);
-  flex: 1;
   font-style: italic;
-  min-width: 0;
+  line-height: 1.5;
 }
 
 /* -------------------------------------------------------------------------- */

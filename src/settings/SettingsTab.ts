@@ -256,20 +256,65 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const allSettings = this._coreSearchableContent.querySelectorAll('.setting-item');
         const allSectionContainers = this._coreSearchableContent.querySelectorAll('[data-ert-section]');
         if (queryTerms.length === 0) {
-            allSettings.forEach(el => (el as HTMLElement).classList.remove('ert-search-hidden'));
+            allSettings.forEach(el => this.toggleSearchHidden(el as HTMLElement, false));
             allSectionContainers.forEach(el => (el as HTMLElement).classList.remove('ert-search-section-hidden'));
+            this.updateNonSettingBlocks(false);
             return;
         }
         allSettings.forEach(settingEl => {
             const el = settingEl as HTMLElement;
             const searchText = ` ${el.dataset.rtSearchText || ''} `;
             const matches = queryTerms.every(term => this.matchesSearchTerm(searchText, term));
-            el.classList.toggle('ert-search-hidden', !matches);
+            this.toggleSearchHidden(el, !matches);
         });
         allSectionContainers.forEach(sectionEl => {
             const section = sectionEl as HTMLElement;
             const visibleSettings = section.querySelectorAll('.setting-item:not(.ert-search-hidden)');
             section.classList.toggle('ert-search-section-hidden', visibleSettings.length === 0);
+        });
+        this.updateNonSettingBlocks(true);
+    }
+
+    private toggleSearchHidden(el: HTMLElement, hide: boolean): void {
+        el.classList.toggle('ert-search-hidden', hide);
+        if (hide) {
+            if (el.dataset.rtSearchDisplay === undefined) {
+                el.dataset.rtSearchDisplay = el.style.getPropertyValue('display');
+                el.dataset.rtSearchDisplayPriority = el.style.getPropertyPriority('display');
+            }
+            el.style.setProperty('display', 'none', 'important');
+            return;
+        }
+        if (el.dataset.rtSearchDisplay !== undefined) {
+            const display = el.dataset.rtSearchDisplay;
+            const priority = el.dataset.rtSearchDisplayPriority || '';
+            if (display) {
+                el.style.setProperty('display', display, priority);
+            } else {
+                el.style.removeProperty('display');
+            }
+            delete el.dataset.rtSearchDisplay;
+            delete el.dataset.rtSearchDisplayPriority;
+        } else if (el.style.getPropertyValue('display') === 'none') {
+            el.style.removeProperty('display');
+        }
+    }
+
+    private updateNonSettingBlocks(active: boolean): void {
+        if (!this._coreSearchableContent) return;
+        const elements = this._coreSearchableContent.querySelectorAll<HTMLElement>('*');
+        elements.forEach(el => {
+            if (el === this._coreSearchableContent) return;
+            if (el.closest('.setting-item')) return;
+            const isPreview = el.matches('.ert-previewFrame, [data-preview]');
+            const section = el.closest('[data-ert-section]');
+            if (active && isPreview && section?.querySelector('.setting-item:not(.ert-search-hidden)')) {
+                this.toggleSearchHidden(el, false);
+                return;
+            }
+            const hasVisibleSettings = !!el.querySelector('.setting-item:not(.ert-search-hidden)');
+            const shouldHide = active && !hasVisibleSettings;
+            this.toggleSearchHidden(el, shouldHide);
         });
     }
 

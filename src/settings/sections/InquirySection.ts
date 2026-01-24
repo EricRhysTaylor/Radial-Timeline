@@ -9,7 +9,7 @@ import type {
     InquirySourcesSettings
 } from '../../types/settings';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
-import { addWikiLinkToElement } from '../wikiLink';
+import { addHeadingIcon, addWikiLink } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 import { badgePill } from '../../ui/ui';
 import { isProfessionalActive } from './ProfessionalSection';
@@ -156,7 +156,7 @@ const migrateLegacySources = (legacy: LegacyInquirySourcesSettings): InquirySour
 
     return {
         scanRoots: roots.size ? normalizeScanRootPatterns(Array.from(roots)) : [],
-        classScope: ['/'],
+        classScope: [],
         classes,
         classCounts: {},
         resolvedScanRoots: [],
@@ -217,22 +217,14 @@ export function renderInquirySection(params: SectionParams): void {
     const { plugin, containerEl, attachFolderSuggest } = params;
 
     const createSection = (parent: HTMLElement, options: { title: string; desc?: string; icon: string; wiki?: string }) => {
-        const header = parent.createDiv({
-            cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK} ${ERT_CLASSES.HEADER_SECTION}`
-        });
-        const headerLeft = header.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
-        const headerIcon = headerLeft.createSpan();
-        setIcon(headerIcon, options.icon);
-
-        const headerMain = header.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
-        headerMain.createEl('h4', { text: options.title, cls: ERT_CLASSES.SECTION_TITLE });
+        const header = new Settings(parent).setName(options.title);
         if (options.desc) {
-            headerMain.createDiv({ cls: ERT_CLASSES.SECTION_DESC, text: options.desc });
+            header.setDesc(options.desc);
         }
-
-        const headerRight = header.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
+        header.setHeading();
+        addHeadingIcon(header, options.icon);
         if (options.wiki) {
-            addWikiLinkToElement(headerRight, options.wiki);
+            addWikiLink(header, options.wiki);
         }
 
         return parent.createDiv({ cls: ERT_CLASSES.SECTION_BODY });
@@ -243,7 +235,6 @@ export function renderInquirySection(params: SectionParams): void {
 
     const sourcesBody = createSection(containerEl, {
         title: 'Inquiry sources',
-        desc: 'Inquiry reads notes based on YAML class values inside the scan folders.',
         icon: 'search',
         wiki: 'Settings#inquiry-sources'
     });
@@ -309,7 +300,7 @@ export function renderInquirySection(params: SectionParams): void {
         text.setValue(listToText(inquirySources.classScope));
         text.inputEl.rows = 4;
         text.inputEl.addClass('ert-input--lg');
-        text.setPlaceholder('scene\noutline\n/');
+        text.setPlaceholder('scene\noutline');
         classScopeInput = text;
 
         plugin.registerDomEvent(text.inputEl, 'blur', () => {
@@ -925,7 +916,6 @@ export function renderInquirySection(params: SectionParams): void {
 
     const promptsBody = createSection(containerEl, {
         title: 'Inquiry prompts',
-        desc: 'Inquiry ships with editorial defaults. Add custom questions per zone.',
         icon: 'list',
         wiki: 'Settings#inquiry-prompts'
     });

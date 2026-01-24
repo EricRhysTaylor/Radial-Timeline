@@ -347,6 +347,7 @@ export default class RadialTimelinePlugin extends Plugin {
 
         this.settingsService.normalizeModelIds();
         const templatesMigrated = await this.settingsService.migrateAiContextTemplates();
+        const actionNotesTargetMigrated = this.settingsService.migrateInquiryActionNotesTargetField();
 
         const after = JSON.stringify({
             anthropicModelId: this.settings.anthropicModelId,
@@ -354,7 +355,7 @@ export default class RadialTimelinePlugin extends Plugin {
             geminiModelId: this.settings.geminiModelId,
         });
 
-        if (before !== after || templatesMigrated) {
+        if (before !== after || templatesMigrated || actionNotesTargetMigrated) {
             await this.saveSettings();
         }
     }

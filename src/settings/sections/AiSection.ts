@@ -84,13 +84,14 @@ export function renderAiSection(params: {
     const modelPickerSetting = new Settings(containerEl)
         .setName('Model')
         .setDesc('Pick preferred model for advanced writing analysis. Models marked "Latest" auto-update to the newest version.');
-    modelPickerSetting.settingEl.addClass(ERT_CLASSES.ROW_WIDE_CONTROL);
+    modelPickerSetting.settingEl.addClass(ERT_CLASSES.ELEMENT_BLOCK);
 
-    const controlRow = modelPickerSetting.controlEl.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-model-picker-row` });
-    const guidanceEl = controlRow.createDiv({ cls: 'ert-model-guidance' });
-    const dropdownContainer = controlRow.createDiv({ cls: 'ert-model-picker-select' });
+    const infoEl = modelPickerSetting.settingEl.querySelector('.setting-item-info');
+    const guidanceEl = infoEl?.createDiv({ cls: 'ert-model-guidance' }) ??
+        modelPickerSetting.settingEl.createDiv({ cls: 'ert-model-guidance' });
+    const dropdownContainer = modelPickerSetting.controlEl.createDiv({ cls: 'ert-model-picker-select' });
     const dropdownComponent = new DropdownComponent(dropdownContainer);
-    dropdownComponent.selectEl.classList.add('ert-setting-dropdown', 'ert-provider-dropdown');
+    dropdownComponent.selectEl.classList.add('ert-setting-dropdown', 'ert-setting-dropdown--wide');
 
     {
         type ModelChoice = {
@@ -507,20 +508,23 @@ export function renderAiSection(params: {
     params.refreshProviderDimming();
 
     // API Logging toggle with dynamic file count
-    const getLoggingDesc = (): string => {
-        const outputFolder = resolveAiOutputFolder(plugin);
-        const fileCount = countAiLogFiles(plugin);
-        const countText = fileCount === 0 
-            ? 'No log files yet' 
-            : fileCount === 1 
-                ? '1 log file' 
+    const outputFolder = resolveAiOutputFolder(plugin);
+    const formatLogCount = (fileCount: number | null): string => {
+        if (fileCount === null) return 'Counting log files...';
+        return fileCount === 0
+            ? 'No log files yet'
+            : fileCount === 1
+                ? '1 log file'
                 : `${fileCount} log files`;
+    };
+    const getLoggingDesc = (fileCount: number | null): string => {
+        const countText = formatLogCount(fileCount);
         return `If enabled, create a new note in "${outputFolder}" for each AI API request/response. (${countText})`;
     };
 
     const apiLoggingSetting = new Settings(containerEl)
         .setName('Log AI interactions to file including sent and received payloads')
-        .setDesc(getLoggingDesc())
+        .setDesc(getLoggingDesc(null))
         .addToggle(toggle => toggle
             .setValue(plugin.settings.logApiInteractions)
             .onChange(async (value) => {
@@ -528,6 +532,22 @@ export function renderAiSection(params: {
                 await plugin.saveSettings();
             }));
     params.addAiRelatedElement(apiLoggingSetting.settingEl);
+
+    const scheduleLogCount = () => {
+        const runCount = () => {
+            const fileCount = countAiLogFiles(plugin);
+            apiLoggingSetting.setDesc(getLoggingDesc(fileCount));
+        };
+        const requestIdleCallback = (window as Window & {
+            requestIdleCallback?: (cb: () => void) => void;
+        }).requestIdleCallback;
+        if (requestIdleCallback) {
+            requestIdleCallback(runCount);
+        } else {
+            window.setTimeout(runCount, 0);
+        }
+    };
+    scheduleLogCount();
 
     // Set initial visibility state
     params.toggleAiSettingsVisibility(plugin.settings.enableAiSceneAnalysis ?? true);

@@ -67,7 +67,7 @@ export function renderStoryBeatsSection(params: {
         .addText(text => {
             text.setPlaceholder('Act 1, Act 2, Act 3');
             text.setValue(plugin.settings.actLabelsRaw ?? '');
-            text.inputEl.addClass('ert-input--full');
+            text.inputEl.addClass('ert-input--lg');
             text.onChange(async (value) => {
                 plugin.settings.actLabelsRaw = value;
                 await plugin.saveSettings();

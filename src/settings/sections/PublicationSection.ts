@@ -183,6 +183,24 @@ export function renderCompletionEstimatePreview(params: {
         return plugin.lastSceneData.filter(scene => scene.itemType === 'Scene' || !scene.itemType);
     };
 
+    let pendingPreviewFetch = false;
+    const schedulePreviewFetch = () => {
+        if (pendingPreviewFetch) return;
+        pendingPreviewFetch = true;
+        const run = () => {
+            pendingPreviewFetch = false;
+            void renderCompletionPreview(true);
+        };
+        const requestIdleCallback = (window as Window & {
+            requestIdleCallback?: (cb: () => void) => void;
+        }).requestIdleCallback;
+        if (requestIdleCallback) {
+            requestIdleCallback(run);
+        } else {
+            window.setTimeout(run, 0);
+        }
+    };
+
     async function renderCompletionPreview(allowFetch: boolean): Promise<void> {
         previewContainer.empty();
         previewContainer.removeClass('ert-completion-preview-empty');
@@ -195,12 +213,8 @@ export function renderCompletionEstimatePreview(params: {
                 const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
                 heading.setText('Completion Estimate');
                 const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
-                body.createDiv({
-                    cls: 'ert-completion-no-data',
-                    text: 'Open the timeline to load scene data, or load the preview now.'
-                });
-                const loadBtn = body.createEl('button', { text: 'Load preview', cls: 'ert-mod-cta' });
-                plugin.registerDomEvent(loadBtn, 'click', () => { void renderCompletionPreview(true); });
+                body.createDiv({ cls: 'ert-completion-no-data', text: 'Loading preview...' });
+                schedulePreviewFetch();
                 return;
             }
             if (scenes.length === 0) {

@@ -99,4 +99,13 @@ export class SettingsService {
 
         return migrated;
     }
+
+    migrateInquiryActionNotesTargetField(): boolean {
+        const current = this.plugin.settings.inquiryActionNotesTargetField;
+        if (!current) return false;
+        const normalized = current.trim().toLowerCase();
+        if (normalized !== 'revision' && normalized !== 'revisions') return false;
+        this.plugin.settings.inquiryActionNotesTargetField = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
+        return true;
+    }
 }
