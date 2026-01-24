@@ -6,10 +6,10 @@
  * Runtime Estimation Settings Section
  */
 
-import { App, Setting, TextComponent, DropdownComponent, setIcon, Modal, ButtonComponent } from 'obsidian';
+import { App, Setting, TextComponent, DropdownComponent, ToggleComponent, setIcon, Modal, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { RuntimeContentType, RuntimeRateProfile } from '../../types';
-import { addWikiLink, addWikiLinkToElement } from '../wikiLink';
+import { addHeadingIcon, addWikiLink, addWikiLinkToElement } from '../wikiLink';
 import { isProfessionalActive } from './ProfessionalSection';
 import { ERT_CLASSES } from '../../ui/classes';
 
@@ -116,33 +116,35 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     // Pro container wrapping all runtime controls
     const proContainer = containerEl.createDiv({ cls: ERT_CLASSES.PANEL });
 
-    // Heading row with Pro badge and toggle (double duty)
-    const panelHeader = proContainer.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
-    const heading = new Setting(panelHeader)
-        .setName('Runtime estimation')
-        .setDesc('Activate film and book runtime estimates to the scene hover metadata, Chronologue Mode, and the Command Palette Runtime Estimator.')
-        .addToggle(toggle => {
-            toggle
-                .setValue(plugin.settings.enableRuntimeEstimation ?? false)
-                .onChange(async (value) => {
-                    plugin.settings.enableRuntimeEstimation = value;
-                    await plugin.saveSettings();
-                    renderConditionalContent();
-                });
-        });
-    heading.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
-
-    // Add Pro badge BEFORE the heading text
-    const nameEl = heading.nameEl;
-    const badgeEl = createEl('span', {
+    // Header row with Pro badge, description, and toggle
+    const panelHeader = proContainer.createDiv({
+        cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK} ${ERT_CLASSES.HEADER_NO_LEFT} ${ERT_CLASSES.ROW_RECOMMENDED}`
+    });
+    const headerMain = panelHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
+    const headerTitle = headerMain.createEl('h4', {
+        cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`
+    });
+    const badgeEl = headerTitle.createSpan({
         cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
     });
     const badgeIcon = badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
     setIcon(badgeIcon, 'signature');
     badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro' });
-    nameEl.insertBefore(badgeEl, nameEl.firstChild);
-    
-    addWikiLink(heading, 'Settings#runtime-estimation');
+    headerTitle.createSpan({ text: 'Runtime estimation' });
+    addWikiLinkToElement(headerTitle, 'Settings#runtime-estimation');
+    headerMain.createDiv({
+        cls: ERT_CLASSES.SECTION_DESC,
+        text: 'Activate film and book runtime estimates to the scene hover metadata, Chronologue Mode, and the Command Palette Runtime Estimator.'
+    });
+
+    const headerRight = panelHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
+    new ToggleComponent(headerRight)
+        .setValue(plugin.settings.enableRuntimeEstimation ?? false)
+        .onChange(async (value) => {
+            plugin.settings.enableRuntimeEstimation = value;
+            await plugin.saveSettings();
+            renderConditionalContent();
+        });
 
     // Container for conditional settings (shown when enabled)
     const conditionalContainer = proContainer.createDiv({
@@ -210,17 +212,12 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             }
 
             const contentType = selectedProfile.contentType || 'novel';
-            const ratesHeader = detailsContainer.createDiv({
-                cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_INLINE} ert-runtime-subheader`
-            });
-            const ratesHeaderLeft = ratesHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
+            const ratesHeading = new Setting(detailsContainer)
+                .setName('Rates & timings')
+                .setHeading();
             const ratesIconName = contentType === 'screenplay' ? 'projector' : 'mic-vocal';
-            const ratesIcon = ratesHeaderLeft.createSpan();
-            setIcon(ratesIcon, ratesIconName);
-            const ratesHeaderMain = ratesHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
-            ratesHeaderMain.createEl('h4', { cls: ERT_CLASSES.SECTION_TITLE, text: 'Rates & timings' });
-            const ratesHeaderRight = ratesHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
-            addWikiLinkToElement(ratesHeaderRight, 'Settings#runtime-estimation');
+            addHeadingIcon(ratesHeading, ratesIconName);
+            addWikiLink(ratesHeading, 'Settings#runtime-estimation');
 
             // Content Type Selection
             addProRow(new Setting(detailsContainer))
@@ -352,7 +349,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             // Session planning (optional, per profile)
             const sessionHeader = detailsContainer.createDiv({
-                cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK} ert-runtime-subheader`
+                cls: `${ERT_CLASSES.CONTROL} ert-runtime-subheader`
             });
             const sessionHeaderLeft = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
             const sessionIcon = sessionHeaderLeft.createSpan();

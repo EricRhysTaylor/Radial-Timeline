@@ -961,10 +961,13 @@ export function renderInquirySection(params: SectionParams): void {
         const render = () => {
             promptContainer.empty();
 
-            const promptHeading = new Settings(promptContainer)
-                .setName('Inquiry prompts')
-                .setHeading();
-            addHeadingIcon(promptHeading, 'list');
+            const promptHeading = promptContainer.createEl('h4', {
+                cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`,
+                text: 'Inquiry prompts'
+            });
+            const promptIcon = promptHeading.createSpan({ cls: 'ert-setting-heading-icon' });
+            setIcon(promptIcon, 'list');
+            promptHeading.prepend(promptIcon);
 
             promptContainer.createDiv({
                 cls: 'ert-inquiry-prompts-helper setting-item-description',
@@ -988,10 +991,13 @@ export function renderInquirySection(params: SectionParams): void {
     };
 
     const renderCorpusCcSettings = () => {
-        const ccHeading = new Settings(containerEl)
-            .setName('Corpus (CC)')
-            .setHeading();
-        addHeadingIcon(ccHeading, 'layout-grid');
+        const ccHeading = containerEl.createEl('h4', {
+            cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`,
+            text: 'Corpus (CC)'
+        });
+        const ccIcon = ccHeading.createSpan({ cls: 'ert-setting-heading-icon' });
+        setIcon(ccIcon, 'layout-grid');
+        ccHeading.prepend(ccIcon);
 
         const thresholdDefaults = normalizeCorpusThresholds(plugin.settings.inquiryCorpusThresholds);
         plugin.settings.inquiryCorpusThresholds = thresholdDefaults;

@@ -61,6 +61,7 @@ export const ERT_CLASSES = {
   HEADER_INLINE: 'ert-header--inline',
   HEADER_BLOCK: 'ert-header--block',
   HEADER_SECTION: 'ert-header--section',
+  HEADER_NO_LEFT: 'ert-header--no-left',
   HEADER_LEFT: 'ert-header__left',
   HEADER_MAIN: 'ert-header__main',
   HEADER_RIGHT: 'ert-header__right',

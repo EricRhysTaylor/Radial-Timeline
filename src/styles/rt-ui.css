@@ -279,6 +279,10 @@
   padding: 0;
 }
 
+.ert-ui .ert-header--no-left {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
 .ert-ui .ert-header--block {
   align-items: start;
 }
@@ -420,7 +424,7 @@
 }
 
 .ert-ui .ert-section-title.ert-inline {
-  align-items: baseline;
+  align-items: center;
   gap: var(--ert-gap-xs);
 }
 
@@ -431,7 +435,7 @@
   align-items: center;
   justify-content: center;
   line-height: 1;
-  align-self: baseline;
+  align-self: center;
 }
 
 .ert-ui .ert-section-title.ert-inline .ert-setting-heading-icon svg {
@@ -1409,6 +1413,11 @@
   color: var(--ert-social-accent);
 }
 
+.ert-ui.ert-skin--social .ert-row--recommended .ert-section-title,
+.ert-ui .ert-skin--social .ert-row--recommended .ert-section-title {
+  color: var(--ert-social-accent);
+}
+
 .ert-ui .ert-swatch {
   width: 24px;
   height: 24px;
@@ -1487,6 +1496,14 @@
   flex: 1 1 auto;
   min-width: 0;
   max-width: 100%;
+}
+
+.ert-ui .ert-elementBlock.setting-item .setting-item-control > :is(input, select).ert-input--xs,
+.ert-ui .ert-elementBlock.setting-item .setting-item-control > :is(input, select).ert-input--sm,
+.ert-ui .ert-elementBlock.setting-item .setting-item-control > :is(input, select).ert-input--md,
+.ert-ui .ert-elementBlock.setting-item .setting-item-control > :is(input, select).ert-input--lg,
+.ert-ui .ert-elementBlock.setting-item .setting-item-control > :is(input, select).ert-input--hex {
+  flex: 0 0 auto;
 }
 
 .ert-ui .ert-elementBlock__row {
@@ -3768,6 +3785,11 @@
 
 .ert-ui.ert-skin--pro .ert-row--recommended .setting-item-name,
 .ert-ui .ert-skin--pro .ert-row--recommended .setting-item-name {
+  color: var(--ert-pro-accent);
+}
+
+.ert-ui.ert-skin--pro .ert-row--recommended .ert-section-title,
+.ert-ui .ert-skin--pro .ert-row--recommended .ert-section-title {
   color: var(--ert-pro-accent);
 }
 

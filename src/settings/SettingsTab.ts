@@ -326,19 +326,32 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
     }
 
-    private renderProHero(containerEl: HTMLElement): void {
+    private renderSettingsHero(
+        containerEl: HTMLElement,
+        options: {
+            badgeLabel: string;
+            badgeIcon: string;
+            badgeVariant?: string;
+            wikiHref: string;
+            title: string;
+            subtitle: string;
+            kicker: string;
+            features: { icon: string; text: string }[];
+        }
+    ): void {
         const hero = containerEl.createDiv({
             cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_HERO} ${ERT_CLASSES.STACK}`
         });
         const badgeRow = hero.createDiv({ cls: ERT_CLASSES.INLINE });
-        const badge = badgeRow.createSpan({
-            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}`
-        });
+        const badgeClasses = options.badgeVariant ?
+            `${ERT_CLASSES.BADGE_PILL} ${options.badgeVariant}` :
+            ERT_CLASSES.BADGE_PILL;
+        const badge = badgeRow.createSpan({ cls: badgeClasses });
         const badgeIcon = badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
-        setIcon(badgeIcon, 'signature');
-        badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro · Signature' });
+        setIcon(badgeIcon, options.badgeIcon);
+        badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: options.badgeLabel });
         const wikiLink = badge.createEl('a', {
-            href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#professional',
+            href: options.wikiHref,
             cls: 'ert-badgePill__rightIcon',
             attr: {
                 'aria-label': 'Read more in the Wiki',
@@ -350,26 +363,73 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         hero.createEl('h3', {
             cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title`,
-            text: 'Signature tools for professional workflows.'
+            text: options.title
         });
         hero.createEl('p', {
             cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
-            text: 'Premium exports, runtime intelligence, and Pandoc templates. Make your publishing pipeline radial and your story ever revolving.'
+            text: options.subtitle
         });
         const featuresSection = hero.createDiv({
             cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
         });
-        featuresSection.createEl('h5', { text: 'Included in Early Access:', cls: 'ert-kicker' });
+        featuresSection.createEl('h5', { text: options.kicker, cls: 'ert-kicker' });
         const featuresList = featuresSection.createEl('ul', { cls: ERT_CLASSES.STACK });
-        [
-            { icon: 'film', text: 'Runtime Estimation — Screenplay and audiobook duration analysis' },
-            { icon: 'file-output', text: 'Pro Exports — Screenplay, podcast, and novel manuscript formats via Pandoc' },
-            { icon: 'radio', text: 'Teaser Campaign — Progressive reveal for Author Progress Reports (APR)' },
-        ].forEach(feature => {
+        options.features.forEach(feature => {
             const li = featuresList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
             const iconSpan = li.createSpan({ cls: 'ert-feature-icon' });
             setIcon(iconSpan, feature.icon);
             li.createSpan({ text: feature.text });
+        });
+    }
+
+    private renderProHero(containerEl: HTMLElement): void {
+        this.renderSettingsHero(containerEl, {
+            badgeLabel: 'Pro · Signature',
+            badgeIcon: 'signature',
+            badgeVariant: ERT_CLASSES.BADGE_PILL_PRO,
+            wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#professional',
+            title: 'Signature tools for professional workflows.',
+            subtitle: 'Premium exports, runtime intelligence, and Pandoc templates. Make your publishing pipeline radial and your story ever revolving.',
+            kicker: 'Included in Early Access:',
+            features: [
+                { icon: 'film', text: 'Runtime Estimation — Screenplay and audiobook duration analysis' },
+                { icon: 'file-output', text: 'Pro Exports — Screenplay, podcast, and novel manuscript formats via Pandoc' },
+                { icon: 'radio', text: 'Teaser Campaign — Progressive reveal for Author Progress Reports (APR)' },
+            ]
+        });
+    }
+
+    private renderInquiryHero(containerEl: HTMLElement): void {
+        this.renderSettingsHero(containerEl, {
+            badgeLabel: 'Inquiry · Signals',
+            badgeIcon: 'waves',
+            badgeVariant: ERT_CLASSES.BADGE_PILL_NEUTRAL,
+            wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#inquiry',
+            title: 'Shape the inquiry signals that guide your manuscript.',
+            subtitle: 'Define scan roots, prompt slots, and corpus thresholds so the inquiry engine can surface the right context at the right time.',
+            kicker: 'Inquiry Focus Areas:',
+            features: [
+                { icon: 'search', text: 'Source Scans — Choose scan roots, class scopes, and source types to watch' },
+                { icon: 'list', text: 'Prompt Slots — Draft reusable inquiry prompts and quick questions' },
+                { icon: 'layout-grid', text: 'Corpus Tiers — Calibrate thresholds for sketchy → substantive depth' },
+            ]
+        });
+    }
+
+    private renderCoreHero(containerEl: HTMLElement): void {
+        this.renderSettingsHero(containerEl, {
+            badgeLabel: 'Core · Foundation',
+            badgeIcon: 'settings',
+            badgeVariant: ERT_CLASSES.BADGE_PILL_NEUTRAL,
+            wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#core',
+            title: 'Build the core of your radial timeline workflow.',
+            subtitle: 'Tune story structure, chronologue timing, and publishing defaults that shape every manuscript.',
+            kicker: 'Core Highlights:',
+            features: [
+                { icon: 'layout-grid', text: 'Story Structure — Manage beats, templates, and outline scaffolds' },
+                { icon: 'orbit', text: 'Chronologue & Time — Align chronologue, backdrop, and planetary clocks' },
+                { icon: 'book-open-text', text: 'Publishing Setup — Configure manuscript formats, metadata, and release prep' },
+            ]
         });
     }
 
@@ -437,12 +497,17 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Social Media Tab Content - APR Section
         renderAuthorProgressSection({ app: this.app, plugin: this.plugin, containerEl: socialContent });
 
-        const inquiryBody = inquiryContent.createDiv({ cls: 'ert-settings-searchable-content' });
+        const inquiryStack = inquiryContent.createDiv({ cls: ERT_CLASSES.STACK });
+        this.renderInquiryHero(inquiryStack);
+        const inquiryBody = inquiryStack.createDiv({ cls: 'ert-settings-searchable-content' });
 
-        this.renderBackupSafetySection(coreContent);
-        this.renderSearchBox(coreContent);
+        const coreStack = coreContent.createDiv({ cls: ERT_CLASSES.STACK });
+        this.renderCoreHero(coreStack);
+        const coreBody = coreStack.createDiv();
+        this.renderBackupSafetySection(coreBody);
+        this.renderSearchBox(coreBody);
 
-        const searchableContent = coreContent.createDiv({ cls: 'ert-settings-searchable-content' });
+        const searchableContent = coreBody.createDiv({ cls: 'ert-settings-searchable-content' });
         this._coreSearchableContent = searchableContent;
         const switchToProTab = () => { this._activeTab = 'pro'; updateTabState(); };
 

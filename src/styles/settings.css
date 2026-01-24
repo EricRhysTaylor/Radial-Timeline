@@ -54,9 +54,10 @@
 
 .ert-inquiry-cc-row {
   display: grid;
-  grid-template-columns: minmax(140px, 1fr) 160px;
+  grid-template-columns: minmax(140px, max-content) max-content;
   align-items: center;
   gap: 12px;
+  justify-content: start;
 }
 
 .ert-inquiry-cc-header {
