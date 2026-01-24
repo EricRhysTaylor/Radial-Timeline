@@ -8,6 +8,7 @@
   --ert-inquiry-low: var(--rt-color-press);
   --ert-inquiry-medium: var(--rt-color-house);
   --ert-inquiry-high: var(--rt-color-due);
+  --ert-inquiry-alert: var(--ert-inquiry-high);
   --ert-inquiry-active-zone-color: var(--ert-inquiry-zone-setup);
   --ert-inquiry-hit-color: var(--ert-inquiry-zone-setup);
   --ert-inquiry-zone-inactive-fill: var(--interactive-normal);
@@ -21,6 +22,33 @@
 
 .theme-light .ert-inquiry-svg {
   --ert-inquiry-texture-opacity: 0.08;
+}
+
+.ert-inquiry-svg.is-inquiry-blocked {
+  --ert-inquiry-zone-setup: var(--ert-inquiry-alert);
+  --ert-inquiry-zone-pressure: var(--ert-inquiry-alert);
+  --ert-inquiry-zone-payoff: var(--ert-inquiry-alert);
+  --ert-inquiry-zone-setup-stroke: color-mix(in srgb, var(--ert-inquiry-alert) 45%, #ffffff);
+  --ert-inquiry-zone-pressure-stroke: color-mix(in srgb, var(--ert-inquiry-alert) 45%, #ffffff);
+  --ert-inquiry-zone-payoff-stroke: color-mix(in srgb, var(--ert-inquiry-alert) 45%, #ffffff);
+}
+
+.ert-inquiry-svg.is-inquiry-blocked .ert-inquiry-ring-track {
+  stroke: color-mix(in srgb, var(--ert-inquiry-alert) 60%, transparent);
+  opacity: 0.6;
+}
+
+.ert-inquiry-svg.is-run-locked .ert-inquiry-zone-pod,
+.ert-inquiry-svg.is-run-locked .inq-zone-dot {
+  pointer-events: none;
+  cursor: default;
+  opacity: 0.55;
+}
+
+.ert-inquiry-icon-btn.is-disabled {
+  pointer-events: none;
+  cursor: default;
+  opacity: 0.45;
 }
 
 .ert-inquiry-svg text {
@@ -896,6 +924,24 @@
   fill: var(--text-muted);
 }
 
+.ert-inquiry-hover.is-guidance {
+  font-size: 14px;
+  font-weight: 500;
+  fill: var(--text-normal);
+  text-anchor: middle;
+}
+
+.ert-inquiry-hover.is-guidance-alert {
+  font-size: 20px;
+  font-weight: 700;
+  fill: var(--ert-inquiry-alert);
+  letter-spacing: 0.01em;
+}
+
+.ert-inquiry-hover.is-guidance-results {
+  font-size: 13px;
+}
+
 .ert-inquiry-preview {
   opacity: 0;
   pointer-events: none;
@@ -1225,6 +1271,14 @@
 
 .ert-inquiry-root {
   position: relative;
+}
+
+.ert-inquiry-root.is-inquiry-blocked .ert-inquiry-briefing-item,
+.ert-inquiry-root.is-inquiry-blocked .ert-inquiry-briefing-save,
+.ert-inquiry-root.is-inquiry-blocked .ert-inquiry-briefing-update,
+.ert-inquiry-root.is-inquiry-blocked .ert-inquiry-briefing-open {
+  pointer-events: none;
+  opacity: 0.5;
 }
 
 .ert-inquiry-briefing-panel {

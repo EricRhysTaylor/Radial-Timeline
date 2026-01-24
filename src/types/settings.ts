@@ -299,7 +299,6 @@ export interface RadialTimelineSettings {
     inquiryActionNotesTargetField?: string;
     actCount?: number;
     actLabelsRaw?: string;
-    showActLabels?: boolean;
     publishStageColors: {
         Zero: string;
         Author: string;

@@ -257,7 +257,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         .setName('Pandoc binary path')
         .setDesc('Optional: set a custom pandoc executable path. If blank, system PATH is used.')
         .addText(text => {
-            text.inputEl.addClass('ert-input--full');
+            text.inputEl.addClass('ert-input--xl');
             text.setPlaceholder('/usr/local/bin/pandoc');
             text.setValue(plugin.settings.pandocPath || '');
             plugin.registerDomEvent(text.inputEl, 'blur', async () => {
@@ -282,7 +282,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         .setName('Fallback Pandoc path')
         .setDesc('Optional path to a portable/bundled pandoc binary.')
         .addText(text => {
-            text.inputEl.addClass('ert-input--full');
+            text.inputEl.addClass('ert-input--xl');
             text.setPlaceholder('/path/to/pandoc');
             text.setValue(plugin.settings.pandocFallbackPath || '');
             plugin.registerDomEvent(text.inputEl, 'blur', async () => {
@@ -304,7 +304,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         addProRow(new Setting(templateSubSection))
             .setName(name)
             .addText(text => {
-                text.inputEl.addClass('ert-input--full');
+                text.inputEl.addClass('ert-input--xl');
                 text.setPlaceholder(placeholder);
                 text.setValue(templates[key] || '');
                 plugin.registerDomEvent(text.inputEl, 'blur', async () => {

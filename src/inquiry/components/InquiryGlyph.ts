@@ -8,6 +8,7 @@ export interface InquiryGlyphProps {
     impact: InquirySeverity;
     assessmentConfidence: InquiryConfidence;
     errorRing?: 'flow' | 'depth' | null;
+    ringOverrideColor?: string;
 }
 
 export interface InquiryZonePromptItem {
@@ -237,7 +238,8 @@ export class InquiryGlyph {
             props.impact,
             props.assessmentConfidence,
             'flow',
-            errorRing
+            errorRing,
+            props.ringOverrideColor
         );
         this.applyRingState(
             this.depthGroup,
@@ -252,7 +254,8 @@ export class InquiryGlyph {
             props.impact,
             props.assessmentConfidence,
             'depth',
-            errorRing
+            errorRing,
+            props.ringOverrideColor
         );
     }
 
@@ -603,7 +606,8 @@ export class InquiryGlyph {
         impact: InquirySeverity,
         assessmentConfidence: InquiryConfidence,
         kind: 'flow' | 'depth',
-        errorRing: InquiryGlyphProps['errorRing']
+        errorRing: InquiryGlyphProps['errorRing'],
+        overrideColor?: string
     ): void {
         ring.classList.remove('is-severity-low', 'is-severity-medium', 'is-severity-high');
         ring.classList.remove('is-confidence-low', 'is-confidence-medium', 'is-confidence-high');
@@ -611,8 +615,9 @@ export class InquiryGlyph {
         ring.classList.add(`is-confidence-${assessmentConfidence}`);
         const showError = errorRing === kind;
         const errorColor = showError ? '#ff4d4d' : undefined;
-        this.updateRingArc(progress, arc, value, radius, strokeWidth, errorColor);
-        this.updateBadge(badgeCircle, badgeText, badgeIcon, value, radius, strokeWidth, showError, errorColor);
+        const ringColor = overrideColor ?? errorColor;
+        this.updateRingArc(progress, arc, value, radius, strokeWidth, ringColor);
+        this.updateBadge(badgeCircle, badgeText, badgeIcon, value, radius, strokeWidth, showError, ringColor);
     }
 
     private updateRingArc(

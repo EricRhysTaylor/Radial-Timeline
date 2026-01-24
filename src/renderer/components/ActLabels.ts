@@ -1,14 +1,14 @@
+import { resolveActLabel } from '../../utils/acts';
 import { formatNumber } from '../../utils/svg';
 
 export function renderActLabels(params: {
   numActs: number;
   actLabels: string[];
-  showActLabels: boolean;
   outerMostOuterRadius: number;
   actLabelOffset: number;
   maxStageColor: string;
 }): string {
-  const { numActs, actLabels, showActLabels, outerMostOuterRadius, actLabelOffset, maxStageColor } = params;
+  const { numActs, actLabels, outerMostOuterRadius, actLabelOffset, maxStageColor } = params;
   let svg = '';
   const actLabelRadius = outerMostOuterRadius + actLabelOffset;
   for (let act = 0; act < numActs; act++) {
@@ -20,9 +20,7 @@ export function renderActLabels(params: {
     const startAngleAct = endAngleAct - (Math.PI / 3); // Long enough arc for long titles
     
     const actPathId = `actPath-${act}`;
-    const labelText = showActLabels
-      ? (actLabels[act] && actLabels[act].length > 0 ? actLabels[act] : `Act ${act + 1}`)
-      : `${act + 1}`;
+    const labelText = resolveActLabel(act, actLabels);
     svg += `
       <path id="${actPathId}" d="
         M ${formatNumber(actLabelRadius * Math.cos(startAngleAct))} ${formatNumber(actLabelRadius * Math.sin(startAngleAct))}
@@ -35,5 +33,4 @@ export function renderActLabels(params: {
   }
   return svg;
 }
-
 

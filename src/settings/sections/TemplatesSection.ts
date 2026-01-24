@@ -8,6 +8,7 @@ import { renderMetadataSection } from './MetadataSection';
 import { addHeadingIcon, addWikiLink } from '../wikiLink';
 import type { HoverMetadataField } from '../../types/settings';
 import { IconSuggest } from '../IconSuggest';
+import { parseActLabels, resolveActLabel } from '../../utils/acts';
 
 type TemplateEntryValue = string | string[];
 type TemplateEntry = { key: string; value: TemplateEntryValue; required: boolean };
@@ -32,13 +33,8 @@ export function renderStoryBeatsSection(params: {
 
     const getActPreviewLabels = () => {
         const count = getActCount();
-        const raw = plugin.settings.actLabelsRaw ?? '';
-        const labels = raw.split(',').map(l => l.trim()).filter(Boolean).slice(0, count);
-        const showLabels = plugin.settings.showActLabels ?? true;
-        return Array.from({ length: count }, (_, idx) => {
-            if (!showLabels) return `${idx + 1}`;
-            return labels[idx] && labels[idx].length > 0 ? labels[idx] : `Act ${idx + 1}`;
-        });
+        const labels = parseActLabels(plugin.settings, count);
+        return Array.from({ length: count }, (_, idx) => resolveActLabel(idx, labels));
     };
 
     const updateActPreview = () => {
@@ -67,29 +63,18 @@ export function renderStoryBeatsSection(params: {
 
     const actLabelsSetting = new Settings(containerEl)
         .setName('Act labels (optional)')
-        .setDesc('Comma-separated labels. Extra labels are ignored; empty slots fall back to numbers.')
-        .addTextArea(text => {
-            text.setValue(plugin.settings.actLabelsRaw ?? 'Act 1, Act 2, Act 3');
-            text.inputEl.rows = 3;
+        .setDesc('Comma-separated labels. Leave blank for Act 1, Act 2, Act 3. Examples: "1, 2, 3, 4" or "Spring, Summer, Fall, Winter".')
+        .addText(text => {
+            text.setPlaceholder('Act 1, Act 2, Act 3');
+            text.setValue(plugin.settings.actLabelsRaw ?? '');
+            text.inputEl.addClass('ert-input--full');
             text.onChange(async (value) => {
                 plugin.settings.actLabelsRaw = value;
                 await plugin.saveSettings();
                 updateActPreview();
             });
         });
-    actLabelsSetting.settingEl.addClass('ert-setting-full-width-input');
-
-    new Settings(containerEl)
-        .setName('Show act labels')
-        .setDesc('When off, acts show numbers only.')
-        .addToggle(toggle => {
-            toggle.setValue(plugin.settings.showActLabels ?? true);
-            toggle.onChange(async (value) => {
-                plugin.settings.showActLabels = value;
-                await plugin.saveSettings();
-                updateActPreview();
-            });
-        });
+    actLabelsSetting.settingEl.classList.add('ert-elementBlock', 'ert-row--inlineControl');
 
     // Preview (planet-style)
     const actsPreview = containerEl.createDiv({
@@ -203,13 +188,8 @@ export function renderStoryBeatsSection(params: {
         };
 
         const buildActLabels = (count: number): string[] => {
-            const raw = plugin.settings.actLabelsRaw ?? '';
-            const showLabels = plugin.settings.showActLabels ?? true;
-            const labels = raw.split(',').map(l => l.trim()).filter(Boolean);
-            return Array.from({ length: count }, (_, idx) => {
-                if (!showLabels) return `Act ${idx + 1}`;
-                return labels[idx] && labels[idx].length > 0 ? labels[idx] : `Act ${idx + 1}`;
-            });
+            const labels = parseActLabels(plugin.settings, count);
+            return Array.from({ length: count }, (_, idx) => resolveActLabel(idx, labels));
         };
 
         const clampAct = (val: number, maxActs: number) => {
@@ -371,7 +351,7 @@ export function renderStoryBeatsSection(params: {
 
     // Scene YAML Templates Section
     const yamlHeading = new Settings(containerEl)
-        .setName('Scene YAML templates & remapping')
+        .setName('Remapping & scene YAML templates')
         .setHeading();
     addHeadingIcon(yamlHeading, 'form');
     addWikiLink(yamlHeading, 'Settings#yaml-templates');
@@ -384,7 +364,7 @@ export function renderStoryBeatsSection(params: {
 
     new Settings(containerEl)
         .setName('Advanced YAML editor')
-        .setDesc('Enable editing of custom YAML keys for the advanced scene template. Search for the perfect lucide icon. Enable fields using checkbox.')
+        .setDesc('Setup custom YAML keys for the advanced scene template. Enable fields to reveal in scene hover synopsis. Assign a perfect lucide icon. Reorder fields to match your preferred order.')
         .addExtraButton(button => {
             const refreshButton = () => {
                 const expanded = plugin.settings.enableAdvancedYamlEditor ?? false;

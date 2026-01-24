@@ -132,6 +132,11 @@ const INQUIRY_NOTES_DIVIDER = '/* INQUIRY NOTES (auto) */';
 const INQUIRY_NOTES_DIVIDER_OVERFLOW = '/* INQUIRY NOTES (auto) — showing last 5 (older notes omitted) */';
 const CC_RIGHT_MARGIN = 50;
 const CC_BOTTOM_MARGIN = 50;
+const INQUIRY_GUIDANCE_DOC_URL = 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Inquiry';
+const INQUIRY_GUIDANCE_RESULTS_URL = `${INQUIRY_GUIDANCE_DOC_URL}#results--sessions`;
+const GUIDANCE_TEXT_Y = 360;
+const GUIDANCE_LINE_HEIGHT = 18;
+const GUIDANCE_ALERT_LINE_HEIGHT = 26;
 
 type InquiryQuestion = {
     id: string;
@@ -171,6 +176,7 @@ type CorpusCcSlot = {
 };
 
 type InquiryWritebackOutcome = 'written' | 'duplicate' | 'skipped';
+type InquiryGuidanceState = 'not-configured' | 'no-scenes' | 'ready' | 'running' | 'results';
 
 export class InquiryView extends ItemView {
     static readonly viewType = INQUIRY_VIEW_TYPE;
@@ -292,6 +298,7 @@ export class InquiryView extends ItemView {
     private runner: InquiryRunnerService;
     private sessionStore: InquirySessionStore;
     private minimapResultPreviewActive = false;
+    private guidanceState: InquiryGuidanceState = 'ready';
 
     constructor(leaf: WorkspaceLeaf, plugin: RadialTimelinePlugin) {
         super(leaf);
@@ -438,11 +445,9 @@ export class InquiryView extends ItemView {
         addTooltipData(this.apiSimulationButton, 'Simulate API run', 'left');
         this.registerDomEvent(this.apiSimulationButton as unknown as HTMLElement, 'click', () => this.startApiSimulation());
 
-        this.helpToggleButton = this.createIconButton(hudGroup, helpX, 0, iconSize, 'help-circle', 'Help tips');
-        this.helpToggleButton.setAttribute('aria-pressed', 'false');
+        this.helpToggleButton = this.createIconButton(hudGroup, helpX, 0, iconSize, 'help-circle', 'Inquiry help');
         this.helpToggleButton.querySelector('title')?.remove();
-        addTooltipData(this.helpToggleButton, 'Hover previews what will be sent. Click runs the inquiry.', 'left');
-        this.registerDomEvent(this.helpToggleButton as unknown as HTMLElement, 'click', () => this.toggleHelpTips());
+        this.registerDomEvent(this.helpToggleButton as unknown as HTMLElement, 'click', () => this.handleGuidanceHelpClick());
 
         this.artifactButton = this.createIconButton(hudGroup, artifactX, 0, iconSize, 'aperture', 'Briefing');
         this.artifactButton.querySelector('title')?.remove();
@@ -536,7 +541,7 @@ export class InquiryView extends ItemView {
         });
         this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'pointerleave', () => this.clearHoverText());
 
-        this.hoverTextEl = this.createSvgText(canvasGroup, 'ert-inquiry-hover', 'Hover to preview context.', -200, 360);
+        this.hoverTextEl = this.createSvgText(canvasGroup, 'ert-inquiry-hover', '', 0, GUIDANCE_TEXT_Y);
 
         const hudFooterY = 1360;
         const navGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-nav', 0, hudFooterY);
@@ -552,7 +557,6 @@ export class InquiryView extends ItemView {
         this.confidenceEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'Assessment confidence: none', 140, 0);
         this.apiStatusEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'API: idle', 0, 18);
 
-        this.applyHelpTips();
         this.buildBriefingPanel();
     }
 
@@ -692,6 +696,7 @@ export class InquiryView extends ItemView {
         if (!this.briefingListEl || !this.briefingEmptyEl || !this.briefingFooterEl) return;
         this.briefingListEl.empty();
         const sessions = this.sessionStore.getRecentSessions(BRIEFING_SESSION_LIMIT);
+        const blocked = this.isInquiryBlocked();
         if (!sessions.length) {
             this.briefingEmptyEl.classList.remove('ert-hidden');
             this.briefingFooterEl.classList.add('ert-hidden');
@@ -732,6 +737,7 @@ export class InquiryView extends ItemView {
                 }
             });
             setIcon(updateBtn, pendingEditsApplied ? 'check' : 'plus');
+            updateBtn.disabled = blocked;
             this.registerDomEvent(updateBtn, 'click', (event: MouseEvent) => {
                 event.stopPropagation();
                 if (pendingEditsApplied) return;
@@ -747,6 +753,7 @@ export class InquiryView extends ItemView {
                     attr: { 'aria-label': 'Open saved brief' }
                 });
                 setIcon(openBtn, 'file-text');
+                openBtn.disabled = blocked;
                 this.registerDomEvent(openBtn, 'click', (event: MouseEvent) => {
                     event.stopPropagation();
                     void this.openBriefFromSession(session);
@@ -825,6 +832,7 @@ export class InquiryView extends ItemView {
     }
 
     private async handleBriefingSaveClick(): Promise<void> {
+        if (this.isInquiryBlocked()) return;
         const result = this.state.activeResult;
         if (!result) {
             new Notice('Run an inquiry before saving a brief.');
@@ -838,6 +846,7 @@ export class InquiryView extends ItemView {
     }
 
     private async handleBriefingPendingEditsClick(session: InquirySession): Promise<void> {
+        if (this.isInquiryBlocked()) return;
         if (this.state.isRunning) {
             this.notifyInteraction('Inquiry running. Please wait.');
             return;
@@ -870,6 +879,7 @@ export class InquiryView extends ItemView {
     }
 
     private activateSession(session: InquirySession): void {
+        if (this.isInquiryBlocked()) return;
         this.clearErrorStateForAction();
         if (this.state.isRunning) return;
         this.state.scope = session.scope ?? session.result.scope;
@@ -892,6 +902,7 @@ export class InquiryView extends ItemView {
     }
 
     private async openBriefFromSession(session: InquirySession): Promise<void> {
+        if (this.isInquiryBlocked()) return;
         if (!session.briefPath) return;
         const file = this.app.vault.getAbstractFileByPath(session.briefPath);
         if (file && file instanceof TFile) {
@@ -1624,6 +1635,7 @@ export class InquiryView extends ItemView {
             processedPromptId: processed.id,
             processedStatus: processed.status,
             onPromptSelect: (zone, promptId) => {
+                if (this.isInquiryRunDisabled()) return;
                 this.clearErrorStateForAction();
                 if (this.state.isRunning) {
                     this.notifyInteraction('Inquiry running. Please wait.');
@@ -1639,9 +1651,13 @@ export class InquiryView extends ItemView {
                 }
             },
             onPromptHover: (zone, _promptId, promptText) => {
+                if (this.isInquiryRunDisabled()) return;
                 this.showPromptPreview(zone, this.state.mode, promptText);
             },
-            onPromptHoverEnd: () => this.hidePromptPreview()
+            onPromptHoverEnd: () => {
+                if (this.isInquiryRunDisabled()) return;
+                this.hidePromptPreview();
+            }
         });
     }
 
@@ -1669,6 +1685,7 @@ export class InquiryView extends ItemView {
     }
 
     private handlePromptClick(zone: InquiryZone): void {
+        if (this.isInquiryRunDisabled()) return;
         this.clearErrorStateForAction();
         if (this.state.isRunning) {
             this.notifyInteraction('Inquiry running. Please wait.');
@@ -1723,6 +1740,7 @@ export class InquiryView extends ItemView {
 
             this.registerDomEvent(zoneEl as unknown as HTMLElement, 'click', () => this.handlePromptClick(zone.id));
             this.registerDomEvent(zoneEl as unknown as HTMLElement, 'pointerenter', () => {
+                if (this.isInquiryRunDisabled()) return;
                 const prompt = this.getActivePrompt(zone.id);
                 if (prompt) {
                     this.showPromptPreview(zone.id, this.state.mode, prompt.question);
@@ -1730,6 +1748,7 @@ export class InquiryView extends ItemView {
                 this.setHoverText(this.buildZoneHoverText(zone.id));
             });
             this.registerDomEvent(zoneEl as unknown as HTMLElement, 'pointerleave', () => {
+                if (this.isInquiryRunDisabled()) return;
                 this.clearHoverText();
                 this.hidePromptPreview();
             });
@@ -1908,6 +1927,7 @@ export class InquiryView extends ItemView {
 
     private refreshUI(): void {
         this.refreshCorpus();
+        this.guidanceState = this.resolveGuidanceState();
         this.updateScopeToggle();
         this.updateModeToggle();
         this.updateModeClass();
@@ -1925,6 +1945,7 @@ export class InquiryView extends ItemView {
         this.updateRunningState();
         this.updateBriefingButtonState();
         this.refreshBriefingPanel();
+        this.updateGuidance();
     }
 
     private refreshCorpus(): void {
@@ -3015,6 +3036,7 @@ export class InquiryView extends ItemView {
         const assessmentConfidence = result ? result.verdict.assessmentConfidence : 'low';
         const hasError = this.isErrorResult(result);
         const errorRing = hasError ? this.state.mode : null;
+        const ringOverrideColor = this.isInquiryRunDisabled() ? this.getInquiryAlertColor() : undefined;
 
         this.glyph?.update({
             focusLabel: this.getFocusLabel(),
@@ -3022,7 +3044,8 @@ export class InquiryView extends ItemView {
             depthValue,
             impact,
             assessmentConfidence,
-            errorRing
+            errorRing,
+            ringOverrideColor
         });
     }
 
@@ -3205,10 +3228,11 @@ export class InquiryView extends ItemView {
         if (!this.rootSvg) return;
         const isRunning = this.state.isRunning;
         const wasRunning = this.wasRunning;
+        const runDisabled = this.isInquiryRunDisabled();
         this.wasRunning = isRunning;
         this.rootSvg.classList.toggle('is-running', isRunning);
         this.previewGroup?.classList.toggle('is-running', isRunning);
-        this.glyph?.setZoneInteractionsEnabled(!isRunning);
+        this.glyph?.setZoneInteractionsEnabled(!isRunning && !runDisabled);
         const isError = this.rootSvg.classList.contains('is-error');
         const hasResult = !!this.state.activeResult && !isError;
         this.rootSvg.classList.toggle('is-results', !isRunning && hasResult);
@@ -3222,6 +3246,190 @@ export class InquiryView extends ItemView {
         } else {
             this.stopRunningAnimations();
         }
+    }
+
+    private resolveGuidanceState(): InquiryGuidanceState {
+        if (this.state.isRunning) return 'running';
+        if (!this.isInquiryConfigured()) return 'not-configured';
+        if (this.getInquirySceneCount() === 0) return 'no-scenes';
+        if (this.isResultsState()) return 'results';
+        return 'ready';
+    }
+
+    private isInquiryConfigured(): boolean {
+        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        return (sources.scanRoots?.length ?? 0) > 0 && (sources.classScope?.length ?? 0) > 0;
+    }
+
+    private getInquirySceneCount(): number {
+        if (!this.isInquiryConfigured()) return 0;
+        if (this.state.scope === 'book') return this.corpus?.scenes?.length ?? 0;
+        const focusBookId = this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
+        if (!focusBookId) return 0;
+        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        return this.corpusResolver.resolve({ scope: 'book', focusBookId, sources }).scenes.length;
+    }
+
+    private isInquiryRunDisabled(): boolean {
+        return this.guidanceState === 'not-configured' || this.guidanceState === 'no-scenes';
+    }
+
+    private isInquiryBlocked(): boolean {
+        return this.guidanceState === 'not-configured';
+    }
+
+    private getInquiryAlertColor(): string {
+        if (!this.rootSvg) return '#ff4d4d';
+        const color = getComputedStyle(this.rootSvg).getPropertyValue('--ert-inquiry-alert').trim();
+        return color || '#ff4d4d';
+    }
+
+    private updateGuidance(): void {
+        const state = this.guidanceState;
+        const runDisabled = this.isInquiryRunDisabled();
+        const blocked = this.isInquiryBlocked();
+
+        if (this.rootSvg) {
+            this.rootSvg.classList.toggle('is-inquiry-blocked', runDisabled);
+            this.rootSvg.classList.toggle('is-run-locked', runDisabled);
+        }
+        this.contentEl.classList.toggle('is-inquiry-blocked', blocked);
+
+        this.zonePromptElements.forEach(({ group }) => {
+            group.setAttribute('aria-disabled', runDisabled ? 'true' : 'false');
+            group.setAttribute('tabindex', runDisabled ? '-1' : '0');
+        });
+
+        if (this.apiSimulationButton) {
+            this.apiSimulationButton.classList.toggle('is-disabled', runDisabled);
+            this.apiSimulationButton.setAttribute('aria-disabled', runDisabled ? 'true' : 'false');
+            this.apiSimulationButton.setAttribute('tabindex', runDisabled ? '-1' : '0');
+        }
+
+        if (this.briefingSaveButton) {
+            this.briefingSaveButton.disabled = blocked;
+        }
+
+        this.updateGuidanceText(state);
+        this.updateGuidanceHelpTooltip(state);
+    }
+
+    private updateGuidanceText(state: InquiryGuidanceState): void {
+        if (!this.hoverTextEl) return;
+        if (state === 'running') {
+            this.hoverTextEl.classList.add('ert-hidden');
+            this.hoverTextEl.classList.remove('is-guidance', 'is-guidance-alert', 'is-guidance-results');
+            this.clearSvgChildren(this.hoverTextEl);
+            return;
+        }
+
+        const guidanceLines = state === 'not-configured'
+            ? ['Inquiry is not configured.', 'Set scan roots and class scope in Settings → Radial Timeline → Inquiry.']
+            : state === 'no-scenes'
+                ? ['No scenes found.', 'Check scan roots and class scope in Settings → Radial Timeline → Inquiry.']
+                : state === 'results'
+                    ? [
+                        'Survey the affected scenes or books for insight.',
+                        'View the Briefing report, or run a different question.',
+                        'Switch between Flow and Depth to reframe the analysis.'
+                    ]
+                    : ['Select a question to run an Inquiry.', 'Choose Flow or Depth to frame the analysis.'];
+
+        const lineHeight = state === 'not-configured' ? GUIDANCE_ALERT_LINE_HEIGHT : GUIDANCE_LINE_HEIGHT;
+
+        this.hoverTextEl.classList.remove('ert-hidden');
+        this.hoverTextEl.classList.toggle('is-guidance', true);
+        this.hoverTextEl.classList.toggle('is-guidance-alert', state === 'not-configured');
+        this.hoverTextEl.classList.toggle('is-guidance-results', state === 'results');
+        this.hoverTextEl.setAttribute('x', '0');
+        this.hoverTextEl.setAttribute('y', String(GUIDANCE_TEXT_Y));
+        this.hoverTextEl.setAttribute('text-anchor', 'middle');
+        this.setGuidanceTextLines(guidanceLines, lineHeight);
+    }
+
+    private setGuidanceTextLines(lines: string[], lineHeight: number): void {
+        const hoverTextEl = this.hoverTextEl;
+        if (!hoverTextEl) return;
+        this.clearSvgChildren(hoverTextEl);
+        const x = hoverTextEl.getAttribute('x') ?? '0';
+        lines.forEach((line, index) => {
+            const tspan = this.createSvgElement('tspan');
+            tspan.setAttribute('x', x);
+            tspan.setAttribute('dy', index === 0 ? '0' : String(lineHeight));
+            tspan.textContent = line;
+            hoverTextEl.appendChild(tspan);
+        });
+    }
+
+    private updateGuidanceHelpTooltip(state: InquiryGuidanceState): void {
+        if (!this.helpToggleButton) return;
+        const tooltip = state === 'not-configured'
+            ? 'Configure Inquiry sources'
+            : state === 'no-scenes'
+                ? 'No scenes detected'
+                : state === 'results'
+                    ? 'Next steps'
+                    : state === 'ready'
+                        ? 'How Inquiry works'
+                        : '';
+
+        this.helpToggleButton.removeAttribute('aria-pressed');
+        if (tooltip) {
+            addTooltipData(this.helpToggleButton, tooltip, 'left');
+            this.helpToggleButton.setAttribute('aria-label', tooltip);
+            return;
+        }
+
+        this.helpToggleButton.removeAttribute('data-tooltip');
+        this.helpToggleButton.removeAttribute('data-tooltip-placement');
+        this.helpToggleButton.classList.remove('rt-tooltip-target');
+        this.helpToggleButton.setAttribute('aria-label', 'Inquiry help');
+    }
+
+    private handleGuidanceHelpClick(): void {
+        const state = this.resolveGuidanceState();
+        this.guidanceState = state;
+        if (state === 'not-configured') {
+            this.openInquirySettings('sources');
+            return;
+        }
+        if (state === 'no-scenes') {
+            this.openInquirySettings('class-scope');
+            return;
+        }
+        if (state === 'ready') {
+            window.open(INQUIRY_GUIDANCE_DOC_URL, '_blank');
+            return;
+        }
+        if (state === 'results') {
+            window.open(INQUIRY_GUIDANCE_RESULTS_URL, '_blank');
+        }
+    }
+
+    private openInquirySettings(focus: 'sources' | 'class-scope' | 'scan-roots'): void {
+        if (this.plugin.settingsTab) {
+            this.plugin.settingsTab.setActiveTab('inquiry');
+        }
+        // SAFE: any type used for accessing Obsidian's internal settings API
+        const setting = (this.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting;
+        if (setting) {
+            setting.open();
+            setting.openTabById('radial-timeline');
+        }
+        window.setTimeout(() => {
+            if (focus === 'sources') {
+                this.scrollInquirySetting('class-scope');
+                window.setTimeout(() => this.scrollInquirySetting('scan-roots'), 80);
+                return;
+            }
+            this.scrollInquirySetting(focus);
+        }, 160);
+    }
+
+    private scrollInquirySetting(target: 'class-scope' | 'scan-roots'): void {
+        const el = document.querySelector(`[data-ert-inquiry-setting="${target}"]`);
+        if (!(el instanceof HTMLElement)) return;
+        el.scrollIntoView({ block: 'center' });
     }
 
     private startRunningAnimations(): void {
@@ -3338,6 +3546,7 @@ export class InquiryView extends ItemView {
     }
 
     private async handleQuestionClick(question: InquiryQuestion): Promise<void> {
+        if (this.isInquiryRunDisabled()) return;
         if (this.state.isRunning) {
             this.notifyInteraction('Inquiry running. Please wait.');
             return;
@@ -3801,6 +4010,7 @@ export class InquiryView extends ItemView {
     }
 
     private startApiSimulation(): void {
+        if (this.isInquiryRunDisabled()) return;
         if (this.state.isRunning) {
             this.notifyInteraction('Inquiry running. Please wait.');
             return;
@@ -4277,6 +4487,8 @@ export class InquiryView extends ItemView {
     }
 
     private getFocusLabel(): string {
+        if (this.guidanceState === 'not-configured') return '?';
+        if (this.guidanceState === 'no-scenes') return 'X';
         if (this.state.scope === 'saga') {
             return String.fromCharCode(931);
         }
@@ -4418,14 +4630,16 @@ export class InquiryView extends ItemView {
     }
 
     private setHoverText(text: string): void {
+        if (this.guidanceState !== 'running') return;
         if (this.hoverTextEl) {
             this.hoverTextEl.textContent = text;
         }
     }
 
     private clearHoverText(): void {
+        if (this.guidanceState !== 'running') return;
         if (this.hoverTextEl) {
-            this.hoverTextEl.textContent = 'Hover to preview context.';
+            this.hoverTextEl.textContent = '';
         }
     }
 

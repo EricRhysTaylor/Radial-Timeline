@@ -150,34 +150,34 @@
   margin: 0;
 }
 
-.ert-ui :is(input, select).ert-input--xs {
+.ert-ui input.ert-input--xs {
   width: var(--ert-input-width-xs);
   min-width: var(--ert-input-width-xs);
-  flex: 0 0 auto;
 }
 
-.ert-ui :is(input, select).ert-input--sm {
+.ert-ui input.ert-input--sm {
   width: var(--ert-input-width-sm);
   min-width: var(--ert-input-width-sm);
-  flex: 0 0 auto;
 }
 
-.ert-ui :is(input, select).ert-input--md {
+.ert-ui input.ert-input--md {
   width: var(--ert-input-width-md);
   min-width: var(--ert-input-width-md);
-  flex: 0 0 auto;
 }
 
-.ert-ui :is(input, select).ert-input--lg {
+.ert-ui input.ert-input--lg {
   width: var(--ert-input-width-lg);
   min-width: var(--ert-input-width-lg);
-  flex: 0 0 auto;
 }
 
-.ert-ui :is(input, select).ert-input--full {
+.ert-ui input.ert-input--xl {
+  width: var(--ert-input-width-xl);
+  min-width: var(--ert-input-width-xl);
+}
+
+.ert-ui input.ert-input--full {
   width: 100%;
-  min-width: 0;
-  flex: 1 1 auto;
+  min-width: min(100%, var(--ert-input-width-xl));
 }
 
 .ert-ui :is(input, select).ert-input {
@@ -1371,6 +1371,23 @@
   resize: vertical;
 }
 
+.ert-ui .ert-row--inlineControl {
+  align-items: stretch;
+}
+
+.ert-ui .ert-row--inlineControl .setting-item-info {
+  align-self: flex-start;
+}
+
+.ert-ui .ert-row--inlineControl .setting-item-control {
+  align-self: center;
+  flex-wrap: nowrap;
+}
+
+.ert-ui .ert-row--inlineControl .setting-item-control > .setting-editor-extra-setting-button {
+  flex: 0 0 auto;
+}
+
 .ert-ui input.ert-input--hex {
   width: 10ch;
   min-width: 10ch;
@@ -1456,13 +1473,10 @@
 }
 
 .ert-ui .ert-elementBlock.setting-item {
-  display: grid;
-  grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.1fr);
-  grid-template-rows: auto auto;
+  display: flex;
   align-items: center;
-  column-gap: 12px;
+  gap: 12px;
   width: 100%;
-  grid-column: 1 / -1;
   padding: var(--ert-row-pad);
   border-radius: 8px;
   overflow: visible;
@@ -1475,7 +1489,8 @@
 }
 
 .ert-ui .ert-elementBlock.setting-item .setting-item-info {
-  grid-row: 1 / -1;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .ert-ui .ert-typography-stack {
@@ -1498,7 +1513,15 @@
   align-items: center;
   gap: var(--ert-gap-sm);
   min-width: 0;
-  grid-row: 1 / -1;
+  flex: 0 0 auto;
+}
+
+.ert-ui .ert-elementBlock.setting-item.ert-row--inlineControl .setting-item-control {
+  flex-wrap: nowrap;
+}
+
+.ert-ui .ert-elementBlock.setting-item.ert-row--inlineControl .setting-item-control > .setting-editor-extra-setting-button {
+  flex: 0 0 auto;
 }
 
 .ert-ui .ert-elementBlock.setting-item .setting-item-control > :is(input, select, textarea) {
@@ -1511,6 +1534,7 @@
 .ert-ui .ert-elementBlock.setting-item .setting-item-control > :is(input, select).ert-input--sm,
 .ert-ui .ert-elementBlock.setting-item .setting-item-control > :is(input, select).ert-input--md,
 .ert-ui .ert-elementBlock.setting-item .setting-item-control > :is(input, select).ert-input--lg,
+.ert-ui .ert-elementBlock.setting-item .setting-item-control > :is(input, select).ert-input--xl,
 .ert-ui .ert-elementBlock.setting-item .setting-item-control > :is(input, select).ert-input--hex {
   flex: 0 0 auto;
 }
@@ -3419,8 +3443,7 @@
 .ert-ui .ert-modal-shell input[type="password"].ert-input--full,
 .ert-ui .ert-modal-shell input[class*="rt-input-full"] {
   width: 100%;
-  min-width: 0;
-  flex: 1 1 auto;
+  min-width: min(100%, var(--ert-input-width-xl));
 }
 
 .ert-ui .ert-modal-shell textarea {
@@ -3584,6 +3607,328 @@
 
 .ert-ui .ert-search-input-container>* {
   flex: 1;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Release Notes modal                                                        */
+/* -------------------------------------------------------------------------- */
+
+.ert-ui.ert-modal--release-notes.modal,
+.ert-ui .ert-modal--release-notes.modal {
+  width: min(70vw, 980px);
+  max-height: 92vh;
+}
+
+.ert-ui.ert-modal--release-notes,
+.ert-ui .ert-modal--release-notes {
+  --ert-modal-tint: radial-gradient(
+      circle at 12% 0%,
+      color-mix(in srgb, var(--background-primary) 20%, transparent) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      circle at 82% 20%,
+      color-mix(in srgb, var(--ert-accent) 24%, transparent) 0%,
+      transparent 60%
+    );
+}
+
+.ert-ui .ert-release-notes {
+  --ert-group-gap: calc(var(--ert-gap-md) + var(--ert-gap-sm));
+}
+
+.ert-ui .ert-release-notes-hero {
+  --ert-group-gap: var(--ert-gap-sm);
+  position: relative;
+  overflow: hidden;
+  border-radius: calc(var(--ert-panel-radius) + var(--ert-gap-xs));
+  padding: calc(var(--ert-pad-md) + var(--ert-gap-xs)) calc(var(--ert-pad-md) + var(--ert-gap-sm));
+}
+
+.ert-ui .ert-release-notes-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+      circle at 18% 10%,
+      color-mix(in srgb, var(--background-primary) 30%, transparent) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 90% 0%,
+      color-mix(in srgb, var(--ert-accent) 24%, transparent) 0%,
+      transparent 45%
+    );
+  pointer-events: none;
+}
+
+.ert-ui .ert-release-notes-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ert-ui .ert-release-notes-hero-badge {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ert-ui .ert-release-notes-hero-title {
+  font-size: clamp(1.35rem, 1rem + 1vw, 1.75rem);
+  line-height: 1.3;
+}
+
+.ert-ui .ert-release-notes-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  font-size: 0.95em;
+  color: var(--text-muted);
+}
+
+.ert-ui .ert-release-notes-hero-actions {
+  align-items: baseline;
+}
+
+.ert-ui .ert-release-notes-hero-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+  padding: var(--ert-pill-pad-y) calc(var(--ert-pill-pad-x) + var(--ert-gap-xs));
+  border-radius: 999px;
+  border: 1px solid var(--ert-accent);
+  color: var(--ert-accent);
+  text-decoration: none;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--background-secondary) 85%, var(--ert-accent) 10%);
+  transition: color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.ert-ui .ert-release-notes-hero-link:hover {
+  background-color: var(--ert-accent);
+  color: var(--text-on-accent, var(--ert-color-white));
+  box-shadow: var(--shadow-l);
+}
+
+.ert-ui .ert-release-notes-hero-hint {
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.ert-ui .ert-release-notes-body {
+  --ert-group-gap: var(--ert-gap-sm);
+  max-height: min(560px, 55vh);
+  overflow-y: auto;
+  padding-right: var(--ert-gap-sm);
+}
+
+.ert-ui .ert-release-notes-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ert-ui .ert-release-notes-body::-webkit-scrollbar-thumb {
+  background-color: var(--background-modifier-border);
+  border-radius: 999px;
+}
+
+.ert-ui .ert-release-notes-details {
+  --ert-panel-bg: color-mix(in srgb, var(--background-secondary) 88%, var(--background-primary) 12%);
+  --ert-panel-border: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  --ert-panel-shadow: var(--shadow-l);
+  --ert-panel-radius: calc(var(--ert-panel-radius) + var(--ert-gap-xs));
+  --ert-panel-pad: calc(var(--ert-pad-md) + var(--ert-gap-xs));
+  position: relative;
+  transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.ert-ui .ert-release-notes-details::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid color-mix(in srgb, var(--text-normal) 6%, transparent);
+  pointer-events: none;
+}
+
+.ert-ui .ert-release-notes-details::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--ert-gap-sm) + var(--ert-gap-xs)) calc(var(--ert-gap-sm) + var(--ert-gap-xs)) auto auto;
+  width: calc(100% - (var(--ert-gap-sm) + var(--ert-gap-xs)) * 2);
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--text-normal) 10%, transparent),
+    transparent
+  );
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.ert-ui .ert-release-notes-details:hover {
+  --ert-panel-border: var(--ert-accent);
+  transform: translateY(calc(-1 * var(--ert-gap-xs) / 2));
+}
+
+.ert-ui .ert-release-notes-details:hover::after {
+  opacity: 1;
+}
+
+.ert-ui .ert-release-notes-details-major {
+  --ert-panel-border: var(--ert-accent);
+  --ert-panel-shadow: var(--shadow-l);
+}
+
+.ert-ui .ert-release-notes-details-major::before {
+  border-color: color-mix(in srgb, var(--text-normal) 16%, transparent);
+}
+
+.ert-ui .ert-release-notes-details-major::after {
+  opacity: 1;
+}
+
+.ert-ui .ert-release-notes-details summary {
+  cursor: pointer;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ert-gap-sm);
+  font-weight: 600;
+  padding-right: calc(var(--ert-gap-md) + var(--ert-gap-xs));
+}
+
+.ert-ui .ert-release-notes-details summary::marker,
+.ert-ui .ert-release-notes-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.ert-ui .ert-release-notes-details summary::after {
+  content: '';
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
+  width: 8px;
+  height: 8px;
+  transform: rotate(-45deg);
+  margin-left: auto;
+  transition: transform 0.2s ease;
+}
+
+.ert-ui .ert-release-notes-details[open] summary::after {
+  transform: rotate(45deg);
+}
+
+.ert-ui .ert-release-notes-details-summary-label {
+  font-size: 1.05em;
+  letter-spacing: 0.01em;
+}
+
+.ert-ui .ert-release-notes-details-summary-divider {
+  color: var(--text-faint);
+}
+
+.ert-ui .ert-release-notes-details-summary-date {
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+
+.ert-ui .ert-release-notes-details-summary-badge {
+  font-size: 0.7em;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: calc(var(--ert-gap-xs) / 2) var(--ert-gap-sm);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--background-secondary) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-normal) 14%, transparent);
+  color: var(--text-normal);
+}
+
+.ert-ui .ert-release-notes-details-body.markdown-preview-view {
+  padding: var(--ert-gap-sm) 0 var(--ert-gap-xs);
+  margin-top: var(--ert-gap-sm);
+  border-top: 1px solid var(--background-modifier-border);
+  background: none;
+}
+
+.ert-ui .ert-release-notes-details-body.markdown-preview-view p {
+  line-height: 1.6;
+}
+
+.ert-ui .ert-release-notes-actions {
+  padding-top: var(--ert-gap-sm);
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.ert-ui .ert-release-notes-actions button {
+  padding: var(--ert-pill-pad-y) calc(var(--ert-pill-pad-x) + var(--ert-gap-xs));
+  border-radius: 999px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* APR Palette modal                                                          */
+/* -------------------------------------------------------------------------- */
+
+.ert-ui .ert-apr-palette-modal {
+  --ert-group-gap: calc(var(--ert-gap-md) + var(--ert-gap-sm));
+}
+
+.ert-ui .ert-apr-palette-generate .setting-item {
+  border-top: 1px solid var(--background-modifier-border);
+  padding-top: var(--ert-gap-sm);
+}
+
+.ert-ui .ert-apr-palette-generate .setting-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.ert-ui .ert-apr-palette-grid {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--ert-gap-md);
+}
+
+.ert-ui .ert-apr-palette-card {
+  --ert-panel-pad: var(--ert-pad-sm);
+  --ert-panel-radius: calc(var(--ert-panel-radius) - var(--ert-gap-xs));
+  --ert-panel-bg: var(--background-secondary);
+  --ert-panel-border: var(--background-modifier-border);
+  --ert-panel-shadow: none;
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui .ert-apr-palette-name {
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: var(--text-normal);
+}
+
+.ert-ui .ert-apr-palette-swatches {
+  display: flex;
+  gap: var(--ert-gap-xs);
+  margin: calc(var(--ert-gap-xs) / 2) 0;
+}
+
+.ert-ui .ert-apr-palette-swatch {
+  flex: 1;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--text-normal) 12%, transparent);
+}
+
+.ert-ui .ert-apr-palette-card .setting-item-control {
+  margin-top: var(--ert-gap-xs);
+}
+
+.ert-ui .ert-apr-palette-generate .ert-apr-palette-swatches {
+  margin-right: var(--ert-gap-sm);
+}
+
+.ert-ui .ert-apr-palette-swatches--generate .ert-apr-palette-swatch--generate {
+  flex: 0 0 10px;
+  width: 10px;
+  min-width: 10px;
 }
 
 .ert-ui .ert-search-input {

@@ -24,14 +24,18 @@ export class AprPaletteModal extends Modal {
     onOpen(): void {
         const { contentEl, modalEl, titleEl } = this;
         contentEl.empty();
-        titleEl.setText('Color Palette');
+        titleEl.setText('');
         
         if (modalEl) {
             modalEl.classList.add('ert-ui', 'ert-modal-shell');
             modalEl.style.width = '600px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('ert-modal-container');
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-apr-palette-modal');
+
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'Palette' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Color Palette' });
 
         const applyPalette = async (palette: AprPalette) => {
             if (!this.plugin.settings.authorProgress) return;
@@ -45,8 +49,8 @@ export class AprPaletteModal extends Modal {
         };
 
         // Generate from Color Section (moved to top)
-        const generateCard = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-palette-generate-card' });
-        generateCard.createEl('h4', { text: 'Generate from Book Title Color', cls: 'rt-section-title' });
+        const generateCard = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-apr-palette-generate' });
+        generateCard.createEl('h4', { text: 'Generate from Book Title Color', cls: 'ert-section-title' });
 
         const currentBookColor = this.settings?.aprBookAuthorColor || '#6FB971';
         const schemes: Array<{ value: 'analogous' | 'complementary' | 'triadic' | 'monochromatic'; label: string }> = [
@@ -62,9 +66,13 @@ export class AprPaletteModal extends Modal {
                 .setDesc('');
             
             const generated = generatePaletteFromColor(currentBookColor, value);
-            const swatches = schemeSetting.controlEl.createDiv({ cls: 'rt-apr-palette-swatches rt-apr-palette-swatches-generate' });
+            const swatches = schemeSetting.controlEl.createDiv({
+                cls: 'ert-apr-palette-swatches ert-apr-palette-swatches--generate'
+            });
             [generated.bookTitle, generated.authorName, generated.percentNumber, generated.percentSymbol].forEach(color => {
-                const swatch = swatches.createDiv({ cls: 'rt-apr-palette-swatch rt-apr-palette-swatch-generate' });
+                const swatch = swatches.createDiv({
+                    cls: 'ert-apr-palette-swatch ert-apr-palette-swatch--generate'
+                });
                 swatch.style.backgroundColor = color; // SAFE: inline style used for dynamic color preview swatch
             });
             
@@ -76,20 +84,20 @@ export class AprPaletteModal extends Modal {
         });
 
         // Preset Palettes Section
-        const presetsCard = contentEl.createDiv({ cls: 'rt-glass-card' });
-        presetsCard.createEl('h4', { text: 'Preset Palettes', cls: 'rt-section-title' });
-        presetsCard.createDiv({ text: 'Choose from curated color combinations.', cls: 'ert-modal-desc' });
+        const presetsCard = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-apr-palette-presets' });
+        presetsCard.createEl('h4', { text: 'Preset Palettes', cls: 'ert-section-title' });
+        presetsCard.createDiv({ text: 'Choose from curated color combinations.', cls: 'ert-section-desc' });
 
         const presets = getPresetPalettes();
-        const presetsGrid = presetsCard.createDiv({ cls: 'rt-apr-palette-grid' });
+        const presetsGrid = presetsCard.createDiv({ cls: 'ert-gridForm ert-apr-palette-grid' });
         
         presets.forEach(palette => {
-            const paletteCard = presetsGrid.createDiv({ cls: 'rt-apr-palette-card' });
-            paletteCard.createEl('div', { text: palette.name, cls: 'rt-apr-palette-name' });
+            const paletteCard = presetsGrid.createDiv({ cls: 'ert-panel ert-apr-palette-card' });
+            paletteCard.createEl('div', { text: palette.name, cls: 'ert-apr-palette-name' });
             
-            const swatches = paletteCard.createDiv({ cls: 'rt-apr-palette-swatches' });
+            const swatches = paletteCard.createDiv({ cls: 'ert-apr-palette-swatches' });
             [palette.bookTitle, palette.authorName, palette.percentNumber, palette.percentSymbol].forEach(color => {
-                const swatch = swatches.createDiv({ cls: 'rt-apr-palette-swatch' });
+                const swatch = swatches.createDiv({ cls: 'ert-apr-palette-swatch' });
                 swatch.style.backgroundColor = color; // SAFE: inline style used for dynamic color preview swatch
             });
             

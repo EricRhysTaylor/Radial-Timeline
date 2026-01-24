@@ -99,7 +99,7 @@ import type { CompletionEstimate } from './utils/Estimation';
 import { renderProgressRingBaseLayer } from './utils/ProgressRing';
 import { getReadabilityMultiplier, getReadabilityScale } from '../utils/readability';
 import { getVersionCheckService } from '../services/VersionCheckService';
-import { getConfiguredActCount, parseActLabels, shouldShowActLabels } from '../utils/acts';
+import { getConfiguredActCount, parseActLabels } from '../utils/acts';
 
 
 // STATUS_COLORS and SceneNumberInfo now imported from constants
@@ -250,7 +250,6 @@ export function createTimelineSVG(
     // Determine sorting method (needed for later logic; pulled out for readability)
     const numActs = getConfiguredActCount(plugin.settings as any);
     const actLabels = parseActLabels(plugin.settings as any, numActs);
-    const showActLabels = shouldShowActLabels(plugin.settings as any);
     const isChronologueMode = currentMode === 'chronologue';
     const isPublicationMode = currentMode === 'publication';
     const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
@@ -488,7 +487,6 @@ export function createTimelineSVG(
         svg += renderActLabels({
             numActs,
             actLabels,
-            showActLabels,
             outerMostOuterRadius: ACT_LABEL_RADIUS,
             actLabelOffset: 0,
             maxStageColor

@@ -233,7 +233,7 @@ export function renderInquirySection(params: SectionParams): void {
 
         text.setPlaceholder(defaultPath)
             .setValue(fallbackFolder);
-        text.inputEl.addClass('ert-input--full');
+        text.inputEl.addClass('ert-input--xl');
 
         if (attachFolderSuggest) {
             attachFolderSuggest(text);
@@ -399,6 +399,7 @@ export function renderInquirySection(params: SectionParams): void {
     const classScopeSetting = new Settings(containerEl)
         .setName('Inquiry class scope')
         .setDesc('One YAML class per line. Use / to allow all classes. Empty = no classes allowed.');
+    classScopeSetting.settingEl.setAttribute('data-ert-inquiry-setting', 'class-scope');
 
     classScopeSetting.addTextArea(text => {
         text.setValue(listToText(inquirySources.classScope));
@@ -416,6 +417,7 @@ export function renderInquirySection(params: SectionParams): void {
     const scanRootsSetting = new Settings(containerEl)
         .setName('Inquiry scan folders')
         .setDesc('Inquiry only scans within these folders. One path per line. Wildcards like /Book */ or /Book 1-7 */ are allowed. Use / for the vault root. Empty = no scan.');
+    scanRootsSetting.settingEl.setAttribute('data-ert-inquiry-setting', 'scan-roots');
 
     scanRootsSetting.addTextArea(text => {
         text.setValue(listToText(inquirySources.scanRoots));

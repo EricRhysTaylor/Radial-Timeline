@@ -9,6 +9,7 @@ export const ERT_CLASSES = {
   ROW_DESC: 'ert-row-desc',
   ROW_WIDE_CONTROL: 'ert-row--wideControl',
   ROW_RECOMMENDED: 'ert-row--recommended',
+  ROW_INLINE_CONTROL: 'ert-row--inlineControl',
   SWATCH: 'ert-swatch',
   COLOR_INPUT_HIDDEN: 'ert-colorInput--hidden',
   ELEMENT_BLOCK: 'ert-elementBlock',

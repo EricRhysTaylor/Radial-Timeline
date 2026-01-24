@@ -4,7 +4,7 @@ import { TimelineItem } from '../types/timeline';
 import { createAprSVG } from '../renderer/apr/AprRenderer';
 import { getAllScenes } from '../utils/manuscript';
 import type { AprCampaign, AuthorProgressSettings } from '../types/settings';
-import { getTeaserThresholds, getTeaserRevealLevel, teaserLevelToRevealOptions, calculateAprProgress } from '../renderer/apr/AprConstants';
+import { getTeaserThresholds, getTeaserRevealLevel, teaserLevelToRevealOptions } from '../renderer/apr/AprConstants';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 
 export class AuthorProgressService {

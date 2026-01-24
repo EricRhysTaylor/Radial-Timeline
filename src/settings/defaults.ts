@@ -43,8 +43,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     inquiryActionNotesEnabled: false,
     inquiryActionNotesTargetField: 'Pending Edits',
     actCount: 3,
-    actLabelsRaw: 'Act 1, Act 2, Act 3',
-    showActLabels: true,
+    actLabelsRaw: '',
     publishStageColors: {
         Zero: '#9E70CF',   // Purple (Stage Zero)
         Author: '#5E85CF', // Blue   (Author)

@@ -295,18 +295,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
     }
 
-    private applyFullWidthInputLayout(containerEl: HTMLElement): void {
-        const settingItems = containerEl.querySelectorAll('.setting-item');
+    private applyElementBlockLayout(containerEl: HTMLElement): void {
+        const settingItems = containerEl.querySelectorAll('.ert-settings-searchable-content .setting-item');
         settingItems.forEach(settingEl => {
             const el = settingEl as HTMLElement;
-            if (el.classList.contains('ert-setting-full-width-input')) return;
-            if (el.classList.contains(ERT_CLASSES.ELEMENT_BLOCK) || el.classList.contains(ERT_CLASSES.ROW_WIDE_CONTROL)) return;
-            if (el.classList.contains('ert-setting-two-row')) return;
-            const controlEl = el.querySelector('.setting-item-control');
-            if (!controlEl) return;
-            const fullInput = controlEl.querySelector(':is(input, select, textarea).ert-input--full');
-            if (!fullInput) return;
-            el.classList.add('ert-setting-full-width-input');
+            if (el.classList.contains('setting-item-heading')) return;
+            if (el.closest('.ert-color-grid-controls')) return;
+            el.classList.add(ERT_CLASSES.ELEMENT_BLOCK);
         });
     }
 
@@ -580,7 +575,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const readmeSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'readme' } });
         renderReadmeSection({ app: this.app, containerEl: readmeSection, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
 
-        this.applyFullWidthInputLayout(containerEl);
+        this.applyElementBlockLayout(containerEl);
         this.addSearchMetadataToSettings(searchableContent);
     }
 

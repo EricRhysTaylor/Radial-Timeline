@@ -57,50 +57,63 @@ export class ReleaseNotesModal extends Modal {
 
     async onOpen(): Promise<void> {
         const { contentEl, titleEl, modalEl } = this;
-        this.modalEl.addClass('rt-release-notes-modal');
         contentEl.empty();
-        if (modalEl) modalEl.classList.add('rt-pulse-modal-shell');
-        contentEl.addClass('rt-pulse-modal');
-        contentEl.addClass('rt-manuscript-surface');
+        titleEl.setText('');
+        if (modalEl) {
+            modalEl.classList.add('ert-ui', 'ert-modal-shell', 'ert-modal--release-notes');
+        }
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-release-notes');
 
-        titleEl.setText("What's New");
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'Release notes' });
+        header.createDiv({ cls: 'ert-modal-title', text: "What's New" });
 
         const versionLabel = parseReleaseVersion(this.featuredEntry.version)?.fullLabel ?? this.featuredEntry.version;
         const releaseDate = formatPublishedDate(this.featuredEntry.publishedAt);
 
-        const heroEl = contentEl.createDiv({ cls: 'rt-release-notes-hero' });
-        heroEl.createSpan({ text: 'Latest release', cls: 'rt-release-notes-hero-badge' });
-        heroEl.createEl('h3', { text: this.featuredEntry.title || versionLabel, cls: 'rt-release-notes-hero-title' });
+        const heroEl = contentEl.createDiv({ cls: 'ert-card ert-card--hero ert-stack ert-release-notes-hero' });
+        heroEl.createSpan({ text: 'Latest release', cls: 'ert-badgePill ert-badgePill--sm ert-release-notes-hero-badge' });
+        heroEl.createEl('h3', {
+            text: this.featuredEntry.title || versionLabel,
+            cls: 'ert-hero-title ert-release-notes-hero-title'
+        });
 
-        const heroMetaEl = heroEl.createDiv({ cls: 'rt-release-notes-hero-meta' });
-        heroMetaEl.createSpan({ text: versionLabel, cls: 'rt-release-notes-hero-version' });
+        const heroMetaEl = heroEl.createDiv({ cls: 'ert-inline ert-release-notes-hero-meta' });
+        heroMetaEl.createSpan({ text: versionLabel, cls: 'ert-release-notes-hero-version' });
         if (releaseDate) {
-            heroMetaEl.createSpan({ text: releaseDate, cls: 'rt-release-notes-hero-date' });
+            heroMetaEl.createSpan({ text: releaseDate, cls: 'ert-release-notes-hero-date' });
         }
 
         const heroPreview = buildHeroPreview(this.featuredEntry.body);
         if (heroPreview) {
-            heroEl.createEl('p', { text: heroPreview, cls: 'rt-release-notes-hero-description' });
+            heroEl.createEl('p', { text: heroPreview, cls: 'ert-section-desc ert-release-notes-hero-description' });
         }
 
         const releaseUrl = this.featuredEntry.url ?? DEFAULT_RELEASES_URL;
-        const heroActions = heroEl.createDiv({ cls: 'rt-release-notes-hero-actions' });
+        const heroActions = heroEl.createDiv({ cls: 'ert-inline ert-release-notes-hero-actions' });
         const changelogLink = heroActions.createEl('a', {
             text: 'View full changelog',
-            cls: 'rt-release-notes-hero-link',
+            cls: 'ert-release-notes-hero-link',
             href: releaseUrl
         });
         changelogLink.setAttr('target', '_blank');
         changelogLink.setAttr('rel', 'noopener');
         heroActions.createSpan({
             text: 'Scroll to explore the rest of the updates',
-            cls: 'rt-release-notes-hero-hint'
+            cls: 'ert-release-notes-hero-hint'
         });
 
-        const bodyHost = contentEl.createDiv({ cls: 'rt-release-notes-modal-body' });
-        await renderReleaseNotesList(bodyHost, this.entries, this.featuredEntry, this.plugin, 'rt-release-notes-modal');
+        const bodyHost = contentEl.createDiv({ cls: 'ert-release-notes-body ert-stack' });
+        await renderReleaseNotesList(
+            bodyHost,
+            this.entries,
+            this.featuredEntry,
+            this.plugin,
+            'ert-release-notes',
+            'ert-panel ert-panel--glass'
+        );
 
-        const footerEl = contentEl.createDiv({ cls: 'rt-release-notes-modal-footer' });
+        const footerEl = contentEl.createDiv({ cls: 'ert-modal-actions ert-release-notes-actions' });
         const closeButton = footerEl.createEl('button', { text: 'Close' });
         closeButton.addEventListener('click', () => this.close());
     }
