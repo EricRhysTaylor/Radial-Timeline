@@ -192,8 +192,7 @@
 /* Scoped divider between duo grid columns */
 .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-manuscript-group-setting {
     border-top: none;
-    padding-top: 0;
-    padding-bottom: 16px;
+    padding: 0 0 16px 0;
 }
 
 .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-manuscript-group-setting:first-child {
@@ -203,6 +202,11 @@
 
 .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-manuscript-group-setting:nth-child(2) {
     padding-left: 24px;
+}
+
+.rt-book-designer-modal .rt-manuscript-duo-grid > .rt-manuscript-group-setting + .rt-manuscript-group-setting {
+    border-top: none;
+    padding-top: 0;
 }
 
 /* Standard Row Grid (e.g. Acts checkboxes) */

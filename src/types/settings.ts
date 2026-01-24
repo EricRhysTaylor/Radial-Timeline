@@ -271,6 +271,7 @@ export interface InquirySessionCacheRecord {
         focusBookId?: string;
         scope?: InquiryScope;
         questionZone?: InquiryPromptZone;
+        pendingEditsApplied?: boolean;
     }[];
     max: number;
 }

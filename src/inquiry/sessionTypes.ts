@@ -15,6 +15,7 @@ export interface InquirySession {
     focusBookId?: string;
     scope?: InquiryScope;
     questionZone?: InquiryZone;
+    pendingEditsApplied?: boolean;
 }
 
 export interface InquirySessionCache {

@@ -201,50 +201,19 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     }
 
     private renderBackupSafetySection(containerEl: HTMLElement): void {
-        const container = containerEl.createDiv({ cls: [ERT_CLASSES.PANEL, 'ert-backup-card'] });
-        const bgLogo = container.createDiv({ cls: 'ert-backup-bg-logo' });
-        const bgSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        bgSvg.setAttribute('viewBox', '0 0 1080 1080');
-        bgSvg.classList.add('ert-backup-bg-svg');
-        const bgPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        bgPath.setAttribute('d', 'M1033.05,324.45c-0.19-137.9-107.59-250.92-233.6-291.7c-156.48-50.64-362.86-43.3-512.28,27.2 C106.07,145.41,49.18,332.61,47.06,519.31c-1.74,153.5,13.58,557.79,241.62,560.67c169.44,2.15,194.67-216.18,273.07-321.33 c55.78-74.81,127.6-95.94,216.01-117.82C929.71,603.22,1033.27,483.3,1033.05,324.45z');
-        bgSvg.appendChild(bgPath);
-        bgLogo.appendChild(bgSvg);
-        const contentContainer = container.createDiv({ cls: 'ert-backup-content' });
-        const titleRow = contentContainer.createDiv({ cls: 'ert-backup-title-row' });
-        const iconSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        iconSvg.setAttribute('width', '24');
-        iconSvg.setAttribute('height', '24');
-        iconSvg.setAttribute('viewBox', '0 0 24 24');
-        iconSvg.setAttribute('fill', 'none');
-        iconSvg.setAttribute('stroke', 'currentColor');
-        iconSvg.setAttribute('stroke-width', '2');
-        iconSvg.setAttribute('stroke-linecap', 'round');
-        iconSvg.setAttribute('stroke-linejoin', 'round');
-        iconSvg.classList.add('lucide', 'lucide-archive-restore', 'ert-backup-title-icon');
-        iconSvg.innerHTML = `<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h2"/><path d="M20 8v11a2 2 0 0 1-2 2h-2"/><path d="m9 15 3-3 3 3"/><path d="M12 12v9"/>`; // SAFE: innerHTML used for static SVG icon path construction
-        titleRow.appendChild(iconSvg);
-        const title = titleRow.createEl('h3', { cls: 'ert-backup-title' });
-        title.createSpan({ text: 'Backup your Work' });
-        const description = contentContainer.createEl('p', { cls: 'ert-backup-description' });
-        const backupPara = description.createDiv();
-        backupPara.createSpan({ text: 'It is strongly recommended that you regularly ' });
-        backupPara.createEl('a', { text: 'back up your Obsidian vault', href: 'https://help.obsidian.md/backup' });
-        backupPara.createSpan({ text: ' to protect against data loss.' });
-        const syncPara = description.createDiv({ cls: 'ert-backup-sync-para' });
-        syncPara.createEl('strong', { text: 'Syncing vs. Backing Up: ' });
-        syncPara.createSpan({ text: 'Sync services like ' });
-        syncPara.createEl('a', { text: 'Obsidian Sync', href: 'https://obsidian.md/sync' });
-        syncPara.createSpan({ text: ' and ' });
-        syncPara.createEl('a', { text: 'Obsidian Git', href: 'https://obsidian.md/plugins?id=obsidian-git' });
-        syncPara.createSpan({ text: ' can protect your work from system crashes and device theft, but they do not protect from user deletions or situations where you need to roll back or recover a misplaced file. ' });
-        syncPara.createEl('a', { text: 'Read the Obsidian Sync Guide', href: 'https://help.obsidian.md/sync/switch' });
-        syncPara.createSpan({ text: ' to understand the differences.' });
-        const conflictPara = description.createDiv({ cls: 'ert-backup-sync-para' });
-        conflictPara.createEl('strong', { text: 'Sync Conflicts: ' });
-        conflictPara.createSpan({ text: 'Avoid mixing sync services. If using iCloud on macOS alongside another sync tool, append ' });
-        conflictPara.createEl('code', { text: '.nosync' });
-        conflictPara.createSpan({ text: ' to the folder name to stop iCloud from syncing the vault.' });
+        const panel = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
+        const titleRow = panel.createEl('h3', { cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}` });
+        const icon = titleRow.createSpan({ cls: 'ert-setting-heading-icon' });
+        setIcon(icon, 'archive-restore');
+        titleRow.createSpan({ text: 'Backup & Sync' });
+
+        const description = panel.createEl('p', { cls: ERT_CLASSES.SECTION_DESC });
+        description.createSpan({ text: 'Back up your Obsidian vault regularly to protect against data loss. Learn more at ' });
+        description.createEl('a', { text: 'Obsidian Backup Guide', href: 'https://help.obsidian.md/backup' });
+        description.createSpan({ text: '. Sync does not protect against all forms of data loss. Sync options include ' });
+        description.createEl('a', { text: 'Obsidian Sync', href: 'https://obsidian.md/sync' });
+        description.createSpan({ text: ' or ' });
+        description.createEl('a', { text: 'Obsidian Git', href: 'https://obsidian.md/plugins?id=obsidian-git' });
     }
 
     private renderSearchBox(containerEl: HTMLElement): HTMLInputElement {
@@ -323,6 +292,21 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             const name = nameEl?.textContent || '';
             const desc = descEl?.textContent || '';
             el.dataset.rtSearchText = `${name} ${desc}`.toLowerCase();
+        });
+    }
+
+    private applyFullWidthInputLayout(containerEl: HTMLElement): void {
+        const settingItems = containerEl.querySelectorAll('.setting-item');
+        settingItems.forEach(settingEl => {
+            const el = settingEl as HTMLElement;
+            if (el.classList.contains('ert-setting-full-width-input')) return;
+            if (el.classList.contains(ERT_CLASSES.ELEMENT_BLOCK) || el.classList.contains(ERT_CLASSES.ROW_WIDE_CONTROL)) return;
+            if (el.classList.contains('ert-setting-two-row')) return;
+            const controlEl = el.querySelector('.setting-item-control');
+            if (!controlEl) return;
+            const fullInput = controlEl.querySelector(':is(input, select, textarea).ert-input--full');
+            if (!fullInput) return;
+            el.classList.add('ert-setting-full-width-input');
         });
     }
 
@@ -486,14 +470,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         updateTabState();
 
         const isProActive = isProfessionalActive(this.plugin);
-        renderProfessionalSection({
+        const proStack = renderProfessionalSection({
             app: this.app,
             plugin: this.plugin,
             containerEl: proContent,
             renderHero: isProActive ? (target) => this.renderProHero(target) : undefined,
             onProToggle: () => this.display()
         });
-        renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: proContent });
+        renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: proStack });
 
         // Social Media Tab Content - APR Section
         renderAuthorProgressSection({ app: this.app, plugin: this.plugin, containerEl: socialContent });
@@ -504,15 +488,22 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         const coreStack = coreContent.createDiv({ cls: ERT_CLASSES.STACK });
         this.renderCoreHero(coreStack);
-        const coreBody = coreStack.createDiv();
-        this.renderBackupSafetySection(coreBody);
+
+        const backupRow = coreStack.createDiv();
+        this.renderBackupSafetySection(backupRow);
+
+        const completionRow = coreStack.createDiv();
         const completionPreviewRefresh = renderCompletionEstimatePreview({
             app: this.app,
             plugin: this.plugin,
-            containerEl: coreBody
+            containerEl: completionRow,
+            frameClass: 'ert-previewFrame--flush'
         });
-        this.renderSearchBox(coreBody);
 
+        const searchRow = coreStack.createDiv();
+        this.renderSearchBox(searchRow);
+
+        const coreBody = coreStack.createDiv();
         const searchableContent = coreBody.createDiv({ cls: 'ert-settings-searchable-content' });
         this._coreSearchableContent = searchableContent;
         const switchToProTab = () => { this._activeTab = 'pro'; updateTabState(); };
@@ -589,6 +580,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const readmeSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'readme' } });
         renderReadmeSection({ app: this.app, containerEl: readmeSection, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
 
+        this.applyFullWidthInputLayout(containerEl);
         this.addSearchMetadataToSettings(searchableContent);
     }
 

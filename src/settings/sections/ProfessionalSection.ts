@@ -60,7 +60,7 @@ export function isOpenBeta(): boolean {
     return OPEN_BETA_ACTIVE;
 }
 
-export function renderProfessionalSection({ plugin, containerEl, renderHero, onProToggle }: SectionParams): void {
+export function renderProfessionalSection({ plugin, containerEl, renderHero, onProToggle }: SectionParams): HTMLElement {
     const hasValidKey = isProfessionalLicenseValid(plugin.settings.professionalLicenseKey);
     const isActive = isProfessionalActive(plugin);
 
@@ -145,18 +145,20 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     // ─────────────────────────────────────────────────────────────────────────
     // CONTENT STACK
     // ─────────────────────────────────────────────────────────────────────────
-    const contentStack = section.createDiv({ cls: ERT_CLASSES.STACK });
-    if (!isActive) {
-        contentStack.addClass('ert-pro-locked');
-    }
     const addProRow = (setting: Setting) => {
         setting.settingEl.addClass(ERT_CLASSES.ELEMENT_BLOCK);
         return setting;
     };
+    const lockPanel = (panel: HTMLElement) => {
+        if (!isActive) {
+            panel.addClass('ert-pro-locked');
+        }
+        return panel;
+    };
 
     // Open Beta Banner
     if (OPEN_BETA_ACTIVE) {
-        const betaPanel = contentStack.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
+        const betaPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
 
         const bannerHeader = betaPanel.createDiv({ cls: ERT_CLASSES.INLINE });
         const bannerIcon = bannerHeader.createSpan({ cls: 'ert-setting-heading-icon' });
@@ -183,7 +185,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
 
     // License Key (Post-Beta)
     if (!OPEN_BETA_ACTIVE) {
-        const licensePanel = contentStack.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
+        const licensePanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
         const licenseSetting = addProRow(new Setting(licensePanel))
             .setName('License Key')
             .setDesc('Enter your Pro license key to unlock advanced features.')
@@ -232,7 +234,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     // ─────────────────────────────────────────────────────────────────────────
     // PANDOC & EXPORT SETTINGS
     // ─────────────────────────────────────────────────────────────────────────
-    const pandocPanel = contentStack.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
+    const pandocPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
 
     // Header
     const pandocHeader = pandocPanel.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
@@ -318,4 +320,6 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     addTemplateSetting('Screenplay', 'screenplay', 'vault/path/to/screenplay_template.tex');
     addTemplateSetting('Podcast Script', 'podcast', 'vault/path/to/podcast_template.tex');
     addTemplateSetting('Novel Manuscript', 'novel', 'vault/path/to/novel_template.tex');
+
+    return section;
 }

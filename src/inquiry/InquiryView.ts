@@ -170,6 +170,8 @@ type CorpusCcSlot = {
     fold: SVGPathElement;
 };
 
+type InquiryWritebackOutcome = 'written' | 'duplicate' | 'skipped';
+
 export class InquiryView extends ItemView {
     static readonly viewType = INQUIRY_VIEW_TYPE;
 
@@ -722,6 +724,23 @@ export class InquiryView extends ItemView {
             });
             statusEl.setAttribute('aria-label', `Session status: ${status}`);
 
+            const pendingEditsApplied = !!session.pendingEditsApplied;
+            const updateBtn = item.createEl('button', {
+                cls: 'ert-inquiry-briefing-update',
+                attr: {
+                    'aria-label': pendingEditsApplied ? 'Pending Edits updated' : 'Update Pending Edits'
+                }
+            });
+            setIcon(updateBtn, pendingEditsApplied ? 'check' : 'plus');
+            this.registerDomEvent(updateBtn, 'click', (event: MouseEvent) => {
+                event.stopPropagation();
+                if (pendingEditsApplied) return;
+                void this.handleBriefingPendingEditsClick(session);
+            });
+            if (pendingEditsApplied) {
+                updateBtn.classList.add('is-applied');
+            }
+
             if (session.briefPath) {
                 const openBtn = item.createEl('button', {
                     cls: 'ert-inquiry-briefing-open',
@@ -816,6 +835,15 @@ export class InquiryView extends ItemView {
             silent: false,
             sessionKey: this.state.activeSessionId
         });
+    }
+
+    private async handleBriefingPendingEditsClick(session: InquirySession): Promise<void> {
+        if (this.state.isRunning) {
+            this.notifyInteraction('Inquiry running. Please wait.');
+            return;
+        }
+        if (session.pendingEditsApplied) return;
+        await this.writeInquiryPendingEdits(session, session.result, { notify: true });
     }
 
     private handleBriefingClearClick(): void {
@@ -3457,7 +3485,7 @@ export class InquiryView extends ItemView {
         } else {
             this.setApiStatus('success');
         }
-        void this.writeInquiryActionNotes(session, result);
+        void this.writeInquiryPendingEdits(session, result);
     }
 
     private applySession(
@@ -3567,33 +3595,64 @@ export class InquiryView extends ItemView {
         return normalized;
     }
 
-    private async writeInquiryActionNotes(session: InquirySession, result: InquiryResult): Promise<void> {
+    private async writeInquiryPendingEdits(
+        session: InquirySession,
+        result: InquiryResult,
+        options?: { notify?: boolean }
+    ): Promise<boolean> {
+        if (session.pendingEditsApplied) return true;
         const enabled = this.plugin.settings.inquiryActionNotesEnabled ?? false;
-        if (!enabled) return;
-        if (session.status === 'simulated' || result.aiReason === 'simulated') return;
-        if (this.isErrorResult(result)) return;
-        if (result.scope !== 'book') return;
-        if (!this.corpus?.scenes?.length) return;
+        if (!enabled) {
+            if (options?.notify) {
+                this.notifyInteraction('Enable "Write Inquiry notes to Pending Edits" in Inquiry settings.');
+            }
+            return false;
+        }
+        if (session.status === 'simulated' || result.aiReason === 'simulated') {
+            if (options?.notify) {
+                this.notifyInteraction('Pending Edits writeback is disabled for simulated runs.');
+            }
+            return false;
+        }
 
-        const inquiryId = this.formatInquiryIdFromResult(result);
-        if (!inquiryId) return;
+        const normalized = this.normalizeLegacyResult(result);
+        if (this.isErrorResult(normalized)) return false;
+        if (normalized.scope !== 'book') return false;
+        if (!this.corpus?.scenes?.length) return false;
 
-        const zoneLabel = this.resolveInquiryBriefZoneLabel(result);
-        const lensLabel = this.resolveInquiryBriefLensLabel(result, zoneLabel);
-        const briefTitle = this.formatInquiryBriefTitle(result);
-        const notesByScene = this.buildInquiryActionNotes(result, inquiryId, zoneLabel, lensLabel, briefTitle);
-        if (!notesByScene.size) return;
+        const inquiryId = this.formatInquiryIdFromResult(normalized);
+        if (!inquiryId) return false;
 
-        const targetField = (this.plugin.settings.inquiryActionNotesTargetField ?? 'Revision').trim() || 'Revision';
+        const zoneLabel = this.resolveInquiryBriefZoneLabel(normalized);
+        const lensLabel = this.resolveInquiryBriefLensLabel(normalized, zoneLabel);
+        const briefTitle = this.formatInquiryBriefTitle(normalized);
+        const notesByScene = this.buildInquiryActionNotes(normalized, inquiryId, zoneLabel, lensLabel, briefTitle);
+        if (!notesByScene.size) return false;
+
+        const defaultField = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
+        const targetField = (this.plugin.settings.inquiryActionNotesTargetField ?? defaultField).trim() || 'Pending Edits';
+        let wroteAny = false;
+        let duplicateAny = false;
+
         for (const [path, notes] of notesByScene.entries()) {
             const file = this.app.vault.getAbstractFileByPath(path);
             if (!file || !(file instanceof TFile)) continue;
             try {
-                await this.appendInquiryNotesToFrontmatter(file, targetField, inquiryId, notes);
+                const outcome = await this.appendInquiryNotesToFrontmatter(file, targetField, inquiryId, notes);
+                if (outcome === 'written') wroteAny = true;
+                if (outcome === 'duplicate') duplicateAny = true;
             } catch (error) {
-                console.warn('[Inquiry] Unable to write action notes.', { path, error });
+                console.warn('[Inquiry] Unable to write Pending Edits.', { path, error });
             }
         }
+
+        const applied = wroteAny || duplicateAny;
+        if (applied && session.key) {
+            session.pendingEditsApplied = true;
+            this.sessionStore.updateSession(session.key, { pendingEditsApplied: true });
+            this.refreshBriefingPanel();
+        }
+        return applied;
     }
 
     private buildInquiryActionNotes(
@@ -3634,69 +3693,79 @@ export class InquiryView extends ItemView {
         fieldKey: string,
         inquiryId: string,
         notes: string[]
-    ): Promise<void> {
-        if (!notes.length) return;
+    ): Promise<InquiryWritebackOutcome> {
+        if (!notes.length) return 'skipped';
         const inquiryToken = `INQUIRY ${inquiryId}`;
+        let outcome: InquiryWritebackOutcome = 'skipped';
+
+        const isInquiryDividerLine = (line: string): boolean => {
+            const trimmed = line.trim();
+            if (!trimmed) return false;
+            if (trimmed.startsWith('/*') && trimmed.includes(INQUIRY_NOTES_SENTINEL)) return true;
+            return trimmed === INQUIRY_NOTES_SENTINEL || trimmed === INQUIRY_NOTES_SENTINEL_OVERFLOW;
+        };
+
+        const findDividerMatch = (text: string): RegExpMatchArray | null => {
+            const patterns = [
+                /^[ \t]*\/\* INQUIRY NOTES \(auto\).*$/m,
+                /^[ \t]*INQUIRY NOTES \(auto\).*$/m
+            ];
+            let match: RegExpMatchArray | null = null;
+            patterns.forEach(pattern => {
+                const candidate = text.match(pattern);
+                if (!candidate || candidate.index === undefined) return;
+                if (!match || match.index === undefined || candidate.index < match.index) {
+                    match = candidate;
+                }
+            });
+            return match;
+        };
 
         await this.app.fileManager.processFrontMatter(file, (fm) => {
             const frontmatter = fm as Record<string, unknown>;
             const rawValue = frontmatter[fieldKey];
-
-            if (Array.isArray(rawValue)) {
-                const entries = rawValue.slice();
-                const sentinelIndex = entries.findIndex(entry =>
-                    typeof entry === 'string' && entry.includes('INQUIRY NOTES (auto)')
-                );
-                const humanEntries = sentinelIndex >= 0 ? entries.slice(0, sentinelIndex) : entries.slice();
-                const inquiryEntriesRaw = sentinelIndex >= 0 ? entries.slice(sentinelIndex + 1) : [];
-                const inquiryEntries = inquiryEntriesRaw
-                    .map(entry => (typeof entry === 'string' ? entry : String(entry)))
-                    .map(line => line.trim())
-                    .filter(Boolean);
-                if (inquiryEntries.some(line => line.startsWith(inquiryToken))) {
-                    return;
-                }
-
-                const combined = [...inquiryEntries, ...notes];
-                let dropped = 0;
-                let trimmed = combined;
-                if (combined.length > INQUIRY_NOTES_MAX) {
-                    dropped = combined.length - INQUIRY_NOTES_MAX;
-                    trimmed = combined.slice(combined.length - INQUIRY_NOTES_MAX);
-                }
-                const sentinel = dropped > 0 ? INQUIRY_NOTES_SENTINEL_OVERFLOW : INQUIRY_NOTES_SENTINEL;
-                frontmatter[fieldKey] = [...humanEntries, sentinel, ...trimmed];
-                return;
-            }
-
-            if (rawValue === undefined || rawValue === null) {
-                const combined = [...notes];
-                let dropped = 0;
-                let trimmed = combined;
-                if (combined.length > INQUIRY_NOTES_MAX) {
-                    dropped = combined.length - INQUIRY_NOTES_MAX;
-                    trimmed = combined.slice(combined.length - INQUIRY_NOTES_MAX);
-                }
-                const sentinel = dropped > 0 ? INQUIRY_NOTES_SENTINEL_OVERFLOW : INQUIRY_NOTES_SENTINEL;
-                frontmatter[fieldKey] = [sentinel, ...trimmed];
-                return;
-            }
-
-            const rawText = String(rawValue);
-            const newline = rawText.includes('\r\n') ? '\r\n' : '\n';
-            const dividerMatch = rawText.match(/^[ \t]*\/\* INQUIRY NOTES \(auto\).*$/m);
-            let humanText = rawText;
+            let newline = '\n';
+            let humanText = '';
+            let humanLines: string[] = [];
             let inquiryLines: string[] = [];
-            if (dividerMatch && dividerMatch.index !== undefined) {
-                const dividerStart = dividerMatch.index;
-                const afterDivider = rawText.slice(dividerStart);
-                const afterLines = afterDivider.split(/\r?\n/);
-                humanText = rawText.slice(0, dividerStart);
-                inquiryLines = afterLines.slice(1)
+
+            if (typeof rawValue === 'string') {
+                const rawText = rawValue;
+                newline = rawText.includes('\r\n') ? '\r\n' : '\n';
+                const dividerMatch = findDividerMatch(rawText);
+                if (dividerMatch && dividerMatch.index !== undefined) {
+                    const dividerStart = dividerMatch.index;
+                    const afterDivider = rawText.slice(dividerStart);
+                    const afterLines = afterDivider.split(/\r?\n/);
+                    humanText = rawText.slice(0, dividerStart);
+                    humanLines = humanText.split(/\r?\n/);
+                    inquiryLines = afterLines.slice(1)
+                        .map(line => line.trim())
+                        .filter(Boolean);
+                } else {
+                    humanText = rawText;
+                    humanLines = rawText.split(/\r?\n/);
+                }
+            } else if (Array.isArray(rawValue)) {
+                const entries = rawValue.map(entry => (typeof entry === 'string' ? entry : String(entry)));
+                const dividerIndex = entries.findIndex(entry => isInquiryDividerLine(entry));
+                humanLines = dividerIndex >= 0 ? entries.slice(0, dividerIndex) : entries.slice();
+                inquiryLines = (dividerIndex >= 0 ? entries.slice(dividerIndex + 1) : [])
                     .map(line => line.trim())
                     .filter(Boolean);
+                humanText = humanLines.join('\n');
+            } else if (rawValue !== undefined && rawValue !== null) {
+                const rawText = String(rawValue);
+                newline = rawText.includes('\r\n') ? '\r\n' : '\n';
+                humanText = rawText;
+                humanLines = rawText.split(/\r?\n/);
             }
-            if (inquiryLines.some(line => line.startsWith(inquiryToken))) {
+
+            const existingLines = [...humanLines, ...inquiryLines]
+                .map(line => line.trim())
+                .filter(Boolean);
+            if (existingLines.some(line => line.startsWith(inquiryToken))) {
+                outcome = 'duplicate';
                 return;
             }
 
@@ -3720,7 +3789,9 @@ export class InquiryView extends ItemView {
                 nextText += `${newline}${trimmed.join(newline)}`;
             }
             frontmatter[fieldKey] = nextText;
+            outcome = 'written';
         });
+        return outcome;
     }
 
     private formatApiErrorReason(result: InquiryResult): string {

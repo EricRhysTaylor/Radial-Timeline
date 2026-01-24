@@ -143,12 +143,15 @@ export function renderCompletionEstimatePreview(params: {
     app: App;
     plugin: RadialTimelinePlugin;
     containerEl: HTMLElement;
+    frameClass?: string;
 }): () => void {
-    const { app, plugin, containerEl } = params;
+    const { app, plugin, containerEl, frameClass } = params;
 
     // --- Completion Estimate Preview ---
+    const previewClasses = ['ert-previewFrame', 'ert-previewFrame--left'];
+    if (frameClass) previewClasses.push(frameClass);
     const previewContainer = containerEl.createDiv({
-        cls: 'ert-previewFrame ert-previewFrame--left',
+        cls: previewClasses,
         attr: { 'data-preview': 'completion' }
     });
     
