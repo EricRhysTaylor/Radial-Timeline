@@ -11,6 +11,7 @@ import type {
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { addHeadingIcon, addWikiLink } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
+import { badgePill } from '../../ui/ui';
 import { isProfessionalActive } from './ProfessionalSection';
 import { buildDefaultInquiryPromptConfig, normalizeInquiryPromptConfig } from '../../inquiry/prompts';
 import {
@@ -907,18 +908,34 @@ export function renderInquirySection(params: SectionParams): void {
         };
 
         const renderAdvancedSection = (dragStates: Record<'setup' | 'pressure' | 'payoff', { index: number | null }>) => {
-            const advancedDetails = promptContainer.createEl('details', { cls: 'ert-setting-block ert-inquiry-prompts-advanced' });
-            advancedDetails.createEl('summary', { text: 'Advanced custom slots' });
-            advancedDetails.createEl('div', {
-                cls: 'ert-inquiry-prompts-advanced-hint',
+            const advancedPanel = promptContainer.createDiv({
+                cls: [ERT_CLASSES.PANEL, ERT_CLASSES.SKIN_PRO, 'ert-inquiry-prompts-advanced']
+            });
+
+            const panelHeader = advancedPanel.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
+            const headerMain = panelHeader.createDiv({ cls: ERT_CLASSES.CONTROL });
+            headerMain.createEl('div', { cls: ERT_CLASSES.SECTION_TITLE, text: 'Advanced custom slots' });
+            headerMain.createEl('div', {
+                cls: ERT_CLASSES.SECTION_DESC,
                 text: isPro
                     ? 'Add up to 5 more custom questions per zone.'
                     : 'Pro unlocks five additional custom questions per zone.'
             });
 
+            const headerActions = panelHeader.createDiv({ cls: ERT_CLASSES.SECTION_ACTIONS });
+            badgePill(headerActions, {
+                icon: 'sparkles',
+                label: 'Pro',
+                variant: ERT_CLASSES.BADGE_PILL_PRO,
+                size: ERT_CLASSES.BADGE_PILL_SM
+            });
+
+            const panelBody = advancedPanel.createDiv({ cls: ERT_CLASSES.PANEL_BODY });
+            const advancedStack = panelBody.createDiv({ cls: ['ert-template-indent', ERT_CLASSES.STACK] });
+
             (['setup', 'pressure', 'payoff'] as const).forEach(zone => {
-                const block = advancedDetails.createDiv({ cls: 'ert-setting-block' });
-                block.createEl('div', { cls: 'setting-item-name', text: zoneLabels[zone] });
+                const block = advancedStack.createDiv({ cls: ERT_CLASSES.STACK });
+                block.createEl('div', { cls: ERT_CLASSES.LABEL, text: zoneLabels[zone] });
 
                 const listEl = block.createDiv({ cls: 'ert-inquiry-custom-list ert-inquiry-custom-list--advanced' });
                 const customSlots = getCustomSlots(zone);
@@ -931,12 +948,12 @@ export function renderInquirySection(params: SectionParams): void {
 
                 if (isPro && customSlots.length >= freeCustomLimit && customSlots.length < proCustomLimit) {
                     const addRow = block.createDiv({ cls: 'ert-inquiry-custom-actions' });
-                    new ButtonComponent(addRow)
+                    const addButton = new ButtonComponent(addRow)
                         .setButtonText('Add pro question')
-                        .setCta()
                         .onClick(() => {
                             void addCustomSlot(zone, proCustomLimit);
                         });
+                    addButton.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro');
                 }
             });
         };

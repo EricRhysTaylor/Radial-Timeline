@@ -2165,10 +2165,10 @@ export class InquiryView extends ItemView {
 
         const barHeight = 8;
         const barY = -4;
-        const glowHeight = barHeight + 2;
-        const glowY = barY - 1;
-        const shineHeight = barHeight + 6;
-        const shineY = barY - 3;
+        const glowHeight = barHeight;
+        const glowY = barY;
+        const shineHeight = barHeight;
+        const shineY = barY;
         this.minimapBackboneLayout = { startX: baselineStart, length, glowHeight, glowY, shineHeight, shineY };
 
         if (this.minimapBackboneClipRect) {
@@ -2857,25 +2857,28 @@ export class InquiryView extends ItemView {
         });
     }
 
-    private setBackboneSweepProgress(progress: number): void {
+    private setBackboneFillProgress(progress: number, sweepProgress: number): void {
         if (!this.minimapBackboneLayout || !this.minimapBackboneGlow || !this.minimapBackboneShine) return;
         const clamped = Math.min(Math.max(progress, 0), 1);
         const length = this.minimapBackboneLayout.length;
-        const sweepWidth = Math.min(
+        const filledWidth = length * clamped;
+        const glowRadius = Math.min(this.minimapBackboneLayout.glowHeight / 2, Math.max(0, filledWidth / 2));
+        this.minimapBackboneGlow.setAttribute('x', this.minimapBackboneLayout.startX.toFixed(2));
+        this.minimapBackboneGlow.setAttribute('width', filledWidth.toFixed(2));
+        this.minimapBackboneGlow.setAttribute('rx', String(Math.round(glowRadius)));
+        this.minimapBackboneGlow.setAttribute('ry', String(Math.round(glowRadius)));
+
+        const sweepWidthBase = Math.min(
             length,
             BACKBONE_SWEEP_MAX_WIDTH,
             Math.max(length * BACKBONE_SWEEP_WIDTH_RATIO, BACKBONE_SWEEP_MIN_WIDTH)
         );
-        const travel = Math.max(0, length - sweepWidth);
-        const offset = travel * clamped;
-        const x = this.minimapBackboneLayout.startX + offset;
-        const glowRadius = Math.min(this.minimapBackboneLayout.glowHeight / 2, Math.max(0, sweepWidth / 2));
+        const sweepWidth = Math.min(filledWidth, sweepWidthBase);
+        const sweepTravel = filledWidth + sweepWidth;
+        const sweepOffset = (sweepTravel * Math.min(Math.max(sweepProgress, 0), 1)) - sweepWidth;
+        const sweepX = this.minimapBackboneLayout.startX + sweepOffset;
         const shineRadius = Math.min(this.minimapBackboneLayout.shineHeight / 2, Math.max(0, sweepWidth / 2));
-        this.minimapBackboneGlow.setAttribute('x', x.toFixed(2));
-        this.minimapBackboneGlow.setAttribute('width', sweepWidth.toFixed(2));
-        this.minimapBackboneGlow.setAttribute('rx', String(Math.round(glowRadius)));
-        this.minimapBackboneGlow.setAttribute('ry', String(Math.round(glowRadius)));
-        this.minimapBackboneShine.setAttribute('x', x.toFixed(2));
+        this.minimapBackboneShine.setAttribute('x', sweepX.toFixed(2));
         this.minimapBackboneShine.setAttribute('width', sweepWidth.toFixed(2));
         this.minimapBackboneShine.setAttribute('rx', String(Math.round(shineRadius)));
         this.minimapBackboneShine.setAttribute('ry', String(Math.round(shineRadius)));
@@ -2884,7 +2887,7 @@ export class InquiryView extends ItemView {
     private updateBackbonePulse(elapsed: number): void {
         const colorProgress = Math.min(Math.max(elapsed / MIN_PROCESSING_MS, 0), 1);
         const sweepProgress = (elapsed % SWEEP_DURATION_MS) / SWEEP_DURATION_MS;
-        this.setBackboneSweepProgress(sweepProgress);
+        this.setBackboneFillProgress(colorProgress, sweepProgress);
         this.applyBackboneColors(colorProgress);
     }
 
@@ -3051,7 +3054,7 @@ export class InquiryView extends ItemView {
         const isPro = isProfessionalActive(this.plugin);
         this.backboneStartColors = this.getBackboneStartColors();
         this.backboneTargetColors = this.getBackboneTargetColors(isPro);
-        this.setBackboneSweepProgress(0);
+        this.setBackboneFillProgress(0, 0);
         this.applyBackboneColors(0);
         const animate = (now: number) => {
             if (!this.state.isRunning) {

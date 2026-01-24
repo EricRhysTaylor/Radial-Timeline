@@ -2965,7 +2965,7 @@
 
 .ert-ui .ert-template-indent {
   padding-left: calc(var(--ert-gap-md) + var(--ert-gap-xs) + (var(--ert-gap-xs) / 2));
-  border-left: calc(var(--ert-gap-xs) / 2) solid var(--interactive-accent);
+  border-left: calc(var(--ert-gap-xs) / 2) solid var(--ert-accent);
 }
 
 .ert-ui .ert-template-hint-row {
