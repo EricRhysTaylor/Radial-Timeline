@@ -9,7 +9,7 @@ import type {
     InquirySourcesSettings
 } from '../../types/settings';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
-import { addHeadingIcon, addWikiLink } from '../wikiLink';
+import { addWikiLinkToElement } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 import { badgePill } from '../../ui/ui';
 import { isProfessionalActive } from './ProfessionalSection';
@@ -216,205 +216,42 @@ const validateCorpusThresholds = (next: InquiryCorpusThresholds): string | null 
 export function renderInquirySection(params: SectionParams): void {
     const { plugin, containerEl, attachFolderSuggest } = params;
 
-    const heading = new Settings(containerEl)
-        .setName('Inquiry')
-        .setHeading();
-    addHeadingIcon(heading, 'waves');
-    addWikiLink(heading, 'Settings#inquiry');
+    const createSection = (parent: HTMLElement, options: { title: string; desc?: string; icon: string; wiki?: string }) => {
+        const header = parent.createDiv({
+            cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK} ${ERT_CLASSES.HEADER_SECTION}`
+        });
+        const headerLeft = header.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
+        const headerIcon = headerLeft.createSpan();
+        setIcon(headerIcon, options.icon);
 
-    const artifactSetting = new Settings(containerEl)
-        .setName('Artifact folder')
-        .setDesc('Inquiry briefs are saved here when auto-save is enabled.');
-
-    artifactSetting.addText(text => {
-        const defaultPath = DEFAULT_SETTINGS.inquiryArtifactFolder || 'Radial Timeline/Inquiry/Artifacts';
-        const fallbackFolder = plugin.settings.inquiryArtifactFolder?.trim() || defaultPath;
-        const illegalChars = /[<>:"|?*]/;
-
-        text.setPlaceholder(defaultPath)
-            .setValue(fallbackFolder);
-        text.inputEl.addClass('ert-input--xl');
-
-        if (attachFolderSuggest) {
-            attachFolderSuggest(text);
+        const headerMain = header.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
+        headerMain.createEl('h4', { text: options.title, cls: ERT_CLASSES.SECTION_TITLE });
+        if (options.desc) {
+            headerMain.createDiv({ cls: ERT_CLASSES.SECTION_DESC, text: options.desc });
         }
 
-        const inputEl = text.inputEl;
-        const flashClass = (cls: string) => {
-            inputEl.addClass(cls);
-            window.setTimeout(() => inputEl.removeClass(cls), cls === 'ert-setting-input-success' ? 1000 : 2000);
-        };
+        const headerRight = header.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
+        if (options.wiki) {
+            addWikiLinkToElement(headerRight, options.wiki);
+        }
 
-        const validatePath = async () => {
-            inputEl.removeClass('ert-setting-input-success');
-            inputEl.removeClass('ert-setting-input-error');
-
-            const rawValue = text.getValue();
-            const trimmed = rawValue.trim() || fallbackFolder;
-
-            if (illegalChars.test(trimmed)) {
-                flashClass('ert-setting-input-error');
-                new Notice('Folder path cannot contain the characters < > : " | ? *');
-                return;
-            }
-
-            const normalized = normalizePath(trimmed);
-            try { await plugin.app.vault.createFolder(normalized); } catch { /* folder may already exist */ }
-
-            plugin.settings.inquiryArtifactFolder = normalized;
-            await plugin.saveSettings();
-            flashClass('ert-setting-input-success');
-        };
-
-        text.onChange(() => {
-            inputEl.removeClass('ert-setting-input-success');
-            inputEl.removeClass('ert-setting-input-error');
-        });
-
-        plugin.registerDomEvent(text.inputEl, 'blur', () => { void validatePath(); });
-
-        artifactSetting.addExtraButton(button => {
-            button.setIcon('rotate-ccw');
-            button.setTooltip(`Reset to ${defaultPath}`);
-            button.onClick(async () => {
-                text.setValue(defaultPath);
-                plugin.settings.inquiryArtifactFolder = normalizePath(defaultPath);
-                await plugin.saveSettings();
-                flashClass('ert-setting-input-success');
-            });
-        });
-    });
-
-    new Settings(containerEl)
-        .setName('Embed JSON payload in Artifacts')
-        .setDesc('Includes the validated Inquiry JSON payload in the Artifact file.')
-        .addToggle(toggle => {
-            toggle.setValue(plugin.settings.inquiryEmbedJson ?? true);
-            toggle.onChange(async (value) => {
-                plugin.settings.inquiryEmbedJson = value;
-                await plugin.saveSettings();
-            });
-        });
-
-    new Settings(containerEl)
-        .setName('Auto-save Inquiry briefs')
-        .setDesc('Save a brief automatically after each successful Inquiry run.')
-        .addToggle(toggle => {
-            toggle.setValue(plugin.settings.inquiryAutoSave ?? true);
-            toggle.onChange(async (value) => {
-                plugin.settings.inquiryAutoSave = value;
-                await plugin.saveSettings();
-            });
-        });
-
-    new Settings(containerEl)
-        .setName('Write Inquiry notes to Pending Edits')
-        .setDesc('Append Inquiry action notes to the Pending Edits field for hit scenes.')
-        .addToggle(toggle => {
-            toggle.setValue(plugin.settings.inquiryActionNotesEnabled ?? false);
-            toggle.onChange(async (value) => {
-                plugin.settings.inquiryActionNotesEnabled = value;
-                await plugin.saveSettings();
-            });
-        });
-
-    new Settings(containerEl)
-        .setName('Action notes target YAML field')
-        .setDesc('Frontmatter field to receive Inquiry Pending Edits notes.')
-        .addText(text => {
-            const defaultField = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
-            const current = plugin.settings.inquiryActionNotesTargetField?.trim() || defaultField;
-            text.setPlaceholder(defaultField);
-            text.setValue(current);
-            text.inputEl.addClass('ert-input--sm');
-            text.onChange(async (value) => {
-                const next = value.trim() || defaultField;
-                plugin.settings.inquiryActionNotesTargetField = next;
-                await plugin.saveSettings();
-            });
-        });
-
-    const cacheDesc = () => `Cache up to ${plugin.settings.inquiryCacheMaxSessions ?? 30} Inquiry sessions.`;
-
-    const cacheToggleSetting = new Settings(containerEl)
-        .setName('Enable session cache')
-        .setDesc(cacheDesc())
-        .addToggle(toggle => {
-            toggle.setValue(plugin.settings.inquiryCacheEnabled ?? true);
-            toggle.onChange(async (value) => {
-                plugin.settings.inquiryCacheEnabled = value;
-                await plugin.saveSettings();
-            });
-        });
-
-    new Settings(containerEl)
-        .setName('Max cached sessions')
-        .setDesc('Sets the cap for the Inquiry session cache.')
-        .addText(text => {
-            const current = String(plugin.settings.inquiryCacheMaxSessions ?? 30);
-            text.setPlaceholder('30');
-            text.setValue(current);
-            text.inputEl.addClass('ert-input--sm');
-
-            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-                if (evt.key === 'Enter') {
-                    evt.preventDefault();
-                    text.inputEl.blur();
-                }
-            });
-
-            const handleBlur = async () => {
-                const n = Number(text.getValue().trim());
-                if (!Number.isFinite(n) || n < 1 || n > 100) {
-                    new Notice('Enter a number between 1 and 100.');
-                    text.setValue(String(plugin.settings.inquiryCacheMaxSessions ?? 30));
-                    return;
-                }
-                plugin.settings.inquiryCacheMaxSessions = n;
-                await plugin.saveSettings();
-                cacheToggleSetting.setDesc(cacheDesc());
-            };
-
-            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
-        });
+        return parent.createDiv({ cls: ERT_CLASSES.SECTION_BODY });
+    };
 
     let inquirySources = normalizeInquirySources(plugin.settings.inquirySources);
     plugin.settings.inquirySources = inquirySources;
 
-    const sourcesHeader = containerEl.createDiv({
-        cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK}`
-    });
-    sourcesHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
-    const sourcesHeaderMain = sourcesHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
-    sourcesHeaderMain.createEl('h4', { text: 'Inquiry sources', cls: ERT_CLASSES.SECTION_TITLE });
-    sourcesHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
-    containerEl.createEl('p', {
-        cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Inquiry reads notes based on YAML class values inside the scan folders.'
+    const sourcesBody = createSection(containerEl, {
+        title: 'Inquiry sources',
+        desc: 'Inquiry reads notes based on YAML class values inside the scan folders.',
+        icon: 'search',
+        wiki: 'Settings#inquiry-sources'
     });
 
     let scanRootsInput: TextAreaComponent | null = null;
     let classScopeInput: TextAreaComponent | null = null;
 
-    const classScopeSetting = new Settings(containerEl)
-        .setName('Inquiry class scope')
-        .setDesc('One YAML class per line. Use / to allow all classes. Empty = no classes allowed.');
-    classScopeSetting.settingEl.setAttribute('data-ert-inquiry-setting', 'class-scope');
-
-    classScopeSetting.addTextArea(text => {
-        text.setValue(listToText(inquirySources.classScope));
-        text.inputEl.rows = 4;
-        text.inputEl.addClass('ert-input--lg');
-        text.setPlaceholder('scene\noutline\n/');
-        classScopeInput = text;
-
-        plugin.registerDomEvent(text.inputEl, 'blur', () => {
-            const nextScope = parseClassScopeInput(text.getValue());
-            applyClassScope(nextScope);
-        });
-    });
-
-    const scanRootsSetting = new Settings(containerEl)
+    const scanRootsSetting = new Settings(sourcesBody)
         .setName('Inquiry scan folders')
         .setDesc('Inquiry only scans within these folders. One path per line. Wildcards like /Book */ or /Book 1-7 */ are allowed. Use / for the vault root. Empty = no scan.');
     scanRootsSetting.settingEl.setAttribute('data-ert-inquiry-setting', 'scan-roots');
@@ -441,7 +278,7 @@ export function renderInquirySection(params: SectionParams): void {
         });
     });
 
-    const scanRootActions = containerEl.createDiv({ cls: 'ert-inquiry-scan-root-actions' });
+    const scanRootActions = sourcesBody.createDiv({ cls: 'ert-inquiry-scan-root-actions' });
     const addActionButton = (label: string, onClick: () => void) => {
         const btn = scanRootActions.createEl('button', { text: label, cls: 'ert-inquiry-scan-root-btn' });
         plugin.registerDomEvent(btn, 'click', (evt) => {
@@ -459,13 +296,31 @@ export function renderInquirySection(params: SectionParams): void {
         applyScanRoots(nextRoots);
     });
 
-    const resolvedPreview = containerEl.createEl('details', { cls: 'ert-inquiry-resolved-roots' });
+    const resolvedPreview = sourcesBody.createEl('details', { cls: 'ert-inquiry-resolved-roots' });
     const resolvedSummary = resolvedPreview.createEl('summary', { text: 'Resolved folders (0)' });
     const resolvedList = resolvedPreview.createDiv({ cls: 'ert-inquiry-resolved-roots-list' });
 
+    const classScopeSetting = new Settings(sourcesBody)
+        .setName('Inquiry class scope')
+        .setDesc('One YAML class per line. Use / to allow all classes. Empty = no classes allowed.');
+    classScopeSetting.settingEl.setAttribute('data-ert-inquiry-setting', 'class-scope');
+
+    classScopeSetting.addTextArea(text => {
+        text.setValue(listToText(inquirySources.classScope));
+        text.inputEl.rows = 4;
+        text.inputEl.addClass('ert-input--lg');
+        text.setPlaceholder('scene\noutline\n/');
+        classScopeInput = text;
+
+        plugin.registerDomEvent(text.inputEl, 'blur', () => {
+            const nextScope = parseClassScopeInput(text.getValue());
+            applyClassScope(nextScope);
+        });
+    });
+
     let resolvedRootCache: { signature: string; resolvedRoots: string[]; total: number } | null = null;
 
-    const classTableWrap = containerEl.createDiv({ cls: 'ert-inquiry-class-table' });
+    const classTableWrap = sourcesBody.createDiv({ cls: 'ert-inquiry-class-table' });
 
     const scanInquiryClasses = async (roots: string[]): Promise<{
         discoveredCounts: Record<string, number>;
@@ -706,8 +561,8 @@ export function renderInquirySection(params: SectionParams): void {
 
     };
 
-    const renderPromptConfiguration = () => {
-        const promptContainer = containerEl.createDiv({ cls: 'ert-inquiry-prompts' });
+    const renderPromptConfiguration = (targetEl: HTMLElement) => {
+        const promptContainer = targetEl.createDiv({ cls: 'ert-inquiry-prompts' });
         const freeCustomLimit = 2;
         const proCustomLimit = 7;
         const isPro = isProfessionalActive(plugin);
@@ -966,19 +821,6 @@ export function renderInquirySection(params: SectionParams): void {
         const render = () => {
             promptContainer.empty();
 
-            const promptHeading = promptContainer.createEl('h4', {
-                cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`,
-                text: 'Inquiry prompts'
-            });
-            const promptIcon = promptHeading.createSpan({ cls: 'ert-setting-heading-icon' });
-            setIcon(promptIcon, 'list');
-            promptHeading.prepend(promptIcon);
-
-            promptContainer.createDiv({
-                cls: 'ert-inquiry-prompts-helper setting-item-description',
-                text: 'Inquiry ships with editorial defaults. Add custom questions per zone.'
-            });
-
             const dragStates: Record<'setup' | 'pressure' | 'payoff', { index: number | null }> = {
                 setup: { index: null as number | null },
                 pressure: { index: null as number | null },
@@ -995,24 +837,11 @@ export function renderInquirySection(params: SectionParams): void {
         render();
     };
 
-    const renderCorpusCcSettings = () => {
-        const ccHeading = containerEl.createEl('h4', {
-            cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`,
-            text: 'Corpus (CC)'
-        });
-        const ccIcon = ccHeading.createSpan({ cls: 'ert-setting-heading-icon' });
-        setIcon(ccIcon, 'layout-grid');
-        ccHeading.prepend(ccIcon);
-
+    const renderCorpusCcSettings = (targetEl: HTMLElement) => {
         const thresholdDefaults = normalizeCorpusThresholds(plugin.settings.inquiryCorpusThresholds);
         plugin.settings.inquiryCorpusThresholds = thresholdDefaults;
 
-        containerEl.createDiv({
-            cls: 'ert-inquiry-cc-hint setting-item-description',
-            text: 'Thresholds are based on content-only word counts (frontmatter excluded).'
-        });
-
-        const table = containerEl.createDiv({ cls: 'ert-inquiry-cc-table' });
+        const table = targetEl.createDiv({ cls: 'ert-inquiry-cc-table' });
         const header = table.createDiv({ cls: 'ert-inquiry-cc-row ert-inquiry-cc-header' });
         header.createDiv({ cls: 'ert-inquiry-cc-cell', text: 'Tier' });
         header.createDiv({ cls: 'ert-inquiry-cc-cell', text: 'Word minimum' });
@@ -1074,7 +903,7 @@ export function renderInquirySection(params: SectionParams): void {
             });
         });
 
-        new Settings(containerEl)
+        new Settings(targetEl)
             .setName('Highlight completed docs with low substance')
             .setDesc('Flags completed notes that fall in Empty or Sketchy tiers.')
             .addToggle(toggle => {
@@ -1094,7 +923,184 @@ export function renderInquirySection(params: SectionParams): void {
             });
     };
 
-    renderPromptConfiguration();
-    renderCorpusCcSettings();
+    const promptsBody = createSection(containerEl, {
+        title: 'Inquiry prompts',
+        desc: 'Inquiry ships with editorial defaults. Add custom questions per zone.',
+        icon: 'list',
+        wiki: 'Settings#inquiry-prompts'
+    });
+    renderPromptConfiguration(promptsBody);
+
+    const corpusBody = createSection(containerEl, {
+        title: 'Corpus (CC)',
+        desc: 'Thresholds are based on content-only word counts (frontmatter excluded).',
+        icon: 'layout-grid',
+        wiki: 'Settings#inquiry-corpus'
+    });
+    renderCorpusCcSettings(corpusBody);
+
+    const configBody = createSection(containerEl, {
+        title: 'Configuration',
+        desc: 'Artifacts, action notes, and session cache defaults for Inquiry briefs.',
+        icon: 'settings',
+        wiki: 'Settings#inquiry'
+    });
+
+    const artifactSetting = new Settings(configBody)
+        .setName('Artifact folder')
+        .setDesc('Inquiry briefs are saved here when auto-save is enabled.');
+
+    artifactSetting.addText(text => {
+        const defaultPath = DEFAULT_SETTINGS.inquiryArtifactFolder || 'Radial Timeline/Inquiry/Artifacts';
+        const fallbackFolder = plugin.settings.inquiryArtifactFolder?.trim() || defaultPath;
+        const illegalChars = /[<>:"|?*]/;
+
+        text.setPlaceholder(defaultPath)
+            .setValue(fallbackFolder);
+        text.inputEl.addClass('ert-input--xl');
+
+        if (attachFolderSuggest) {
+            attachFolderSuggest(text);
+        }
+
+        const inputEl = text.inputEl;
+        const flashClass = (cls: string) => {
+            inputEl.addClass(cls);
+            window.setTimeout(() => inputEl.removeClass(cls), cls === 'ert-setting-input-success' ? 1000 : 2000);
+        };
+
+        const validatePath = async () => {
+            inputEl.removeClass('ert-setting-input-success');
+            inputEl.removeClass('ert-setting-input-error');
+
+            const rawValue = text.getValue();
+            const trimmed = rawValue.trim() || fallbackFolder;
+
+            if (illegalChars.test(trimmed)) {
+                flashClass('ert-setting-input-error');
+                new Notice('Folder path cannot contain the characters < > : " | ? *');
+                return;
+            }
+
+            const normalized = normalizePath(trimmed);
+            try { await plugin.app.vault.createFolder(normalized); } catch { /* folder may already exist */ }
+
+            plugin.settings.inquiryArtifactFolder = normalized;
+            await plugin.saveSettings();
+            flashClass('ert-setting-input-success');
+        };
+
+        text.onChange(() => {
+            inputEl.removeClass('ert-setting-input-success');
+            inputEl.removeClass('ert-setting-input-error');
+        });
+
+        plugin.registerDomEvent(text.inputEl, 'blur', () => { void validatePath(); });
+
+        artifactSetting.addExtraButton(button => {
+            button.setIcon('rotate-ccw');
+            button.setTooltip(`Reset to ${defaultPath}`);
+            button.onClick(async () => {
+                text.setValue(defaultPath);
+                plugin.settings.inquiryArtifactFolder = normalizePath(defaultPath);
+                await plugin.saveSettings();
+                flashClass('ert-setting-input-success');
+            });
+        });
+    });
+
+    new Settings(configBody)
+        .setName('Embed JSON payload in Artifacts')
+        .setDesc('Includes the validated Inquiry JSON payload in the Artifact file.')
+        .addToggle(toggle => {
+            toggle.setValue(plugin.settings.inquiryEmbedJson ?? true);
+            toggle.onChange(async (value) => {
+                plugin.settings.inquiryEmbedJson = value;
+                await plugin.saveSettings();
+            });
+        });
+
+    new Settings(configBody)
+        .setName('Auto-save Inquiry briefs')
+        .setDesc('Save a brief automatically after each successful Inquiry run.')
+        .addToggle(toggle => {
+            toggle.setValue(plugin.settings.inquiryAutoSave ?? true);
+            toggle.onChange(async (value) => {
+                plugin.settings.inquiryAutoSave = value;
+                await plugin.saveSettings();
+            });
+        });
+
+    new Settings(configBody)
+        .setName('Write Inquiry notes to Pending Edits')
+        .setDesc('Append Inquiry action notes to the Pending Edits field for hit scenes.')
+        .addToggle(toggle => {
+            toggle.setValue(plugin.settings.inquiryActionNotesEnabled ?? false);
+            toggle.onChange(async (value) => {
+                plugin.settings.inquiryActionNotesEnabled = value;
+                await plugin.saveSettings();
+            });
+        });
+
+    new Settings(configBody)
+        .setName('Action notes target YAML field')
+        .setDesc('Frontmatter field to receive Inquiry Pending Edits notes.')
+        .addText(text => {
+            const defaultField = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
+            const current = plugin.settings.inquiryActionNotesTargetField?.trim() || defaultField;
+            text.setPlaceholder(defaultField);
+            text.setValue(current);
+            text.inputEl.addClass('ert-input--sm');
+            text.onChange(async (value) => {
+                const next = value.trim() || defaultField;
+                plugin.settings.inquiryActionNotesTargetField = next;
+                await plugin.saveSettings();
+            });
+        });
+
+    const cacheDesc = () => `Cache up to ${plugin.settings.inquiryCacheMaxSessions ?? 30} Inquiry sessions.`;
+
+    const cacheToggleSetting = new Settings(configBody)
+        .setName('Enable session cache')
+        .setDesc(cacheDesc())
+        .addToggle(toggle => {
+            toggle.setValue(plugin.settings.inquiryCacheEnabled ?? true);
+            toggle.onChange(async (value) => {
+                plugin.settings.inquiryCacheEnabled = value;
+                await plugin.saveSettings();
+            });
+        });
+
+    new Settings(configBody)
+        .setName('Max cached sessions')
+        .setDesc('Sets the cap for the Inquiry session cache.')
+        .addText(text => {
+            const current = String(plugin.settings.inquiryCacheMaxSessions ?? 30);
+            text.setPlaceholder('30');
+            text.setValue(current);
+            text.inputEl.addClass('ert-input--sm');
+
+            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+
+            const handleBlur = async () => {
+                const n = Number(text.getValue().trim());
+                if (!Number.isFinite(n) || n < 1 || n > 100) {
+                    new Notice('Enter a number between 1 and 100.');
+                    text.setValue(String(plugin.settings.inquiryCacheMaxSessions ?? 30));
+                    return;
+                }
+                plugin.settings.inquiryCacheMaxSessions = n;
+                await plugin.saveSettings();
+                cacheToggleSetting.setDesc(cacheDesc());
+            };
+
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
+        });
+
     void refreshClassScan();
 }

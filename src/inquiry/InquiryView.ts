@@ -1008,6 +1008,12 @@ export class InquiryView extends ItemView {
 
     private buildZoneGradients(defs: SVGDefsElement): void {
         const zones: InquiryZone[] = ['setup', 'pressure', 'payoff'];
+        const zoneAnchors: Record<InquiryZone, { cx: string; cy: string; r: string }> = {
+            setup: { cx: '1', cy: '0', r: '1.42' },
+            pressure: { cx: '0', cy: '0', r: '1.42' },
+            payoff: { cx: '0.5', cy: '0', r: '1' }
+        };
+        const zoneStopOpacity = '0.3';
         const createStop = (offset: string, color: string, opacity?: string): SVGStopElement => {
             const stop = this.createSvgElement('stop');
             stop.setAttribute('offset', offset);
@@ -1017,16 +1023,21 @@ export class InquiryView extends ItemView {
             }
             return stop;
         };
-        const createGradient = (id: string, stops: Array<[string, string]>): SVGRadialGradientElement => {
+        const createGradient = (
+            id: string,
+            stops: Array<[string, string]>,
+            anchor: { cx: string; cy: string; r: string },
+            stopOpacity?: string
+        ): SVGRadialGradientElement => {
             const gradient = this.createSvgElement('radialGradient');
             gradient.setAttribute('id', id);
-            gradient.setAttribute('cx', '0.5');
-            gradient.setAttribute('cy', '0.5');
-            gradient.setAttribute('fx', '0.5');
-            gradient.setAttribute('fy', '0.5');
-            gradient.setAttribute('r', '0.5');
+            gradient.setAttribute('cx', anchor.cx);
+            gradient.setAttribute('cy', anchor.cy);
+            gradient.setAttribute('fx', anchor.cx);
+            gradient.setAttribute('fy', anchor.cy);
+            gradient.setAttribute('r', anchor.r);
             stops.forEach(([offset, color]) => {
-                gradient.appendChild(createStop(offset, color));
+                gradient.appendChild(createStop(offset, color, stopOpacity));
             });
             return gradient;
         };
@@ -1063,13 +1074,16 @@ export class InquiryView extends ItemView {
 
         zones.forEach(zone => {
             const zoneVar = `var(--ert-inquiry-zone-${zone})`;
+            const anchor = zoneAnchors[zone];
             defs.appendChild(createGradient(
                 `ert-inquiry-zone-${zone}-raised`,
                 [
                     ['0%', `color-mix(in srgb, ${zoneVar} 70%, #ffffff)`],
                     ['55%', zoneVar],
                     ['100%', `color-mix(in srgb, ${zoneVar} 70%, #000000)`]
-                ]
+                ],
+                anchor,
+                zoneStopOpacity
             ));
             defs.appendChild(createGradient(
                 `ert-inquiry-zone-${zone}-pressed`,
@@ -1077,7 +1091,9 @@ export class InquiryView extends ItemView {
                     ['0%', `color-mix(in srgb, ${zoneVar} 68%, #000000)`],
                     ['65%', zoneVar],
                     ['100%', `color-mix(in srgb, ${zoneVar} 68%, #ffffff)`]
-                ]
+                ],
+                anchor,
+                zoneStopOpacity
             ));
         });
 

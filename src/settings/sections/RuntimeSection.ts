@@ -338,19 +338,21 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             }
 
             // Session planning (optional, per profile)
-            const sessionHeader = detailsContainer.createDiv({ cls: ERT_CLASSES.CONTROL });
-            const sessionTitle = sessionHeader.createEl('h4', {
-                cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`,
+            const sessionHeader = detailsContainer.createDiv({ cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK}` });
+            const sessionHeaderLeft = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
+            const sessionIcon = sessionHeaderLeft.createSpan();
+            setIcon(sessionIcon, 'calendar-clock');
+            const sessionHeaderMain = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
+            sessionHeaderMain.createEl('h4', {
+                cls: ERT_CLASSES.SECTION_TITLE,
                 text: 'Session planning (optional)'
             });
-            const sessionIcon = sessionTitle.createSpan({ cls: 'ert-setting-heading-icon' });
-            setIcon(sessionIcon, 'calendar-clock');
-            sessionTitle.prepend(sessionIcon);
-            addWikiLinkToElement(sessionTitle, 'Settings#runtime-estimation');
-            sessionHeader.createDiv({
+            sessionHeaderMain.createDiv({
                 cls: ERT_CLASSES.SECTION_DESC,
                 text: 'Used in the Outline export: Index cards (JSON) summary to estimate writing hours and total sessions.'
             });
+            const sessionHeaderRight = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
+            addWikiLinkToElement(sessionHeaderRight, 'Settings#runtime-estimation');
             const session = selectedProfile.sessionPlanning || {};
 
             addProRow(new Setting(detailsContainer))
