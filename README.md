@@ -25,20 +25,15 @@
 
 ---
 
-
-<p>The manuscript visualization plugin for Obsidian.</p>
-
-<p>**Stop losing track of subplot threads across dozens of scenes.** Radial Timeline™ transforms your manuscript into a live visual map where you can see your entire story structure at a glance.</P>
-
 ## What It Does
 
-Radial Timeline™ arranges your scenes by act, subplot, narrative or chronological order in a striking radial layout—revealing the structure, rhythm, and scope of your story. Each ring represents a subplot; hover interactions surface important details like scene synopsis and AI story pulses. Scenes highlight across subplots to show interrelationships. Multiple view modes dissect your novel like an X-ray.
+<p>Radial Timeline™ arranges your scenes by act, subplot, narrative or chronological order in a striking radial layout—revealing the structure, rhythm, and scope of your story. Each ring represents a subplot; hover interactions surface important details like scene synopsis and AI story pulses. Scenes highlight across subplots to show interrelationships. Multiple view modes dissect your novel like an X-ray.</p>
 
 <p>**Before**: Scrolling through line after line of spreadsheet tables and files, losing sight of how your B-plot interweaves with the main storyline.</p>
 
 <p>**After**: One visual map showing every scene, every subplot, every beat color coded and connected to the big picture.</p>
 
-Radial Timeline™ captures and visualizes all 4 critical timelines, revealing the big picture as your manuscript evolves from the nucleus of an idea to the final polished novel.
+<p>Radial Timeline™ captures and visualizes all 4 critical timelines, revealing the big picture as your manuscript evolves from the nucleus of an idea to the final polished novel.</p>
 
 1. **Narrative time**: the sequence you reveal events to readers.
 2. **Chronological time**: when events happen in your story's world. (Includes Planetary Time calculator for sci-fi/fantasy calendars).
@@ -112,8 +107,7 @@ If you're experiencing visual quality issues on Windows, please check your displ
 *   [The Story Grid](https://storygrid.com), Shawn Coyne — a rigorous methodology for analyzing scenes and beat flow.
 *   [Obsidian](https://obsidian.md) — for a thriving plugin ecosystem and thoughtful feature development.
 *   [W3C SVG specification](https://www.w3.org/Graphics/SVG/) — for making vector graphics on the web dependable.
-*   **04 Font** by Yuji Oshimoto — a beautiful Japanese freeware font. © 1998–2003 Yuji Oshimoto. [04.jp.org](http://www.04.jp.org/)
-    <br>このフォントはフリーウェアです。非営利目的での配布、譲渡、転載は自由ですが、作者の許可なく販売したり、営利目的の製品に添付する事は固く禁じさせて頂きます。なお、このフォントを使用していかなる損害についても作者は責任を負わないものとします。御意見、御感想などよろしければメールください。
+*   **04 Font** by Yuji Oshimoto — a beautiful Japanese freeware font. © 1998–2003 Yuji Oshimoto. [04.jp.org](http://www.04.jp.org/) このフォントはフリーウェアです。非営利目的での配布、譲渡、転載は自由ですが、作者の許可なく販売したり、営利目的の製品に添付する事は固く禁じさせて頂きます。なお、このフォントを使用していかなる損害についても作者は責任を負わないものとします。御意見、御感想などよろしければメールください。
 
 ---
 
