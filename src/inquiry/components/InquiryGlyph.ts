@@ -170,6 +170,15 @@ export class InquiryGlyph {
         this.syncZoneNumberMarkers();
     }
 
+    setPromptPulse(promptId: string, active: boolean): void {
+        this.zoneNumberMarkers.forEach(markers => {
+            markers.forEach(marker => {
+                if (marker.promptId !== promptId) return;
+                marker.group.classList.toggle('is-duplicate-pulse', active);
+            });
+        });
+    }
+
     setZoneInteractionsEnabled(enabled: boolean): void {
         if (this.zoneInteractionsEnabled === enabled) return;
         this.zoneInteractionsEnabled = enabled;
@@ -478,13 +487,14 @@ export class InquiryGlyph {
                 const prompt = prompts[idx];
                 marker.promptId = prompt?.id;
                 marker.promptText = prompt?.question;
-                marker.text.textContent = prompt ? String(idx + 1) : '';
+                const isProcessed = !!prompt && processedPromptId === prompt.id;
+                const isError = isProcessed && processedStatus === 'error';
+                marker.text.textContent = prompt ? (isError ? 'X' : String(idx + 1)) : '';
                 marker.group.setAttribute('display', prompt ? 'inline' : 'none');
                 marker.group.classList.toggle('is-active', !!prompt && selectedId === prompt.id);
-                const isProcessed = !!prompt && processedPromptId === prompt.id;
                 marker.group.classList.toggle('is-processed', isProcessed);
                 marker.group.classList.toggle('is-processed-success', isProcessed && processedStatus === 'success');
-                marker.group.classList.toggle('is-processed-error', isProcessed && processedStatus === 'error');
+                marker.group.classList.toggle('is-processed-error', isError);
                 marker.group.removeAttribute('aria-label');
                 if (prompt) {
                     marker.group.setAttribute('role', 'button');

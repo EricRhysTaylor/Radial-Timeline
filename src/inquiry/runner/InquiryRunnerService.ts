@@ -8,8 +8,6 @@ import type { InquiryAiStatus, InquiryConfidence, InquiryFinding, InquiryResult,
 import type { CorpusManifestEntry, InquiryRunner, InquiryRunnerInput } from './types';
 
 const BOOK_FOLDER_REGEX = /^Book\s+(\d+)/i;
-const SCENE_NEIGHBOR_RANGE = 2;
-
 type EvidenceBlock = {
     label: string;
     content: string;
@@ -25,6 +23,7 @@ type SceneSnapshot = {
 type RawInquiryFinding = {
     ref_id?: string;
     kind?: string;
+    lens?: string;
     headline?: string;
     bullets?: string[];
     impact?: string;
@@ -36,6 +35,8 @@ type RawInquiryFinding = {
 type RawInquiryResponse = {
     schema_version?: number;
     summary?: string;
+    summaryFlow?: string;
+    summaryDepth?: string;
     verdict?: {
         flow?: number;
         depth?: number;
@@ -84,18 +85,14 @@ export class InquiryRunnerService implements InquiryRunner {
         const outlineEntries = input.corpus.entries.filter(entry => entry.class === 'outline');
 
         if (input.scope === 'book') {
-            const scenes = await this.buildSceneSnapshots(sceneEntries);
-            const focusPath = input.focusSceneId || scenes[0]?.path;
-            if (focusPath) {
-                const focusIndex = scenes.findIndex(scene => scene.path === focusPath);
-                const indices = this.buildNeighborIndices(focusIndex, scenes.length, SCENE_NEIGHBOR_RANGE);
-                indices.forEach(index => {
-                    const scene = scenes[index];
-                    if (!scene) return;
-                    const content = scene.synopsis || 'Synopsis unavailable.';
-                    blocks.push({ label: `Scene ${scene.label} synopsis`, content });
-                });
-            }
+            const scopedSceneEntries = input.focusBookId
+                ? sceneEntries.filter(entry => entry.path === input.focusBookId || entry.path.startsWith(`${input.focusBookId}/`))
+                : sceneEntries;
+            const scenes = await this.buildSceneSnapshots(scopedSceneEntries);
+            scenes.forEach(scene => {
+                if (!scene.synopsis) return;
+                blocks.push({ label: `Scene ${scene.label} synopsis`, content: scene.synopsis });
+            });
 
             const bookOutline = await this.pickBookOutline(outlineEntries, input.focusBookId);
             if (bookOutline) {
@@ -155,16 +152,6 @@ export class InquiryRunnerService implements InquiryRunner {
         return scenes;
     }
 
-    private buildNeighborIndices(center: number, total: number, range: number): number[] {
-        if (center < 0) return [];
-        const indices = new Set<number>();
-        for (let offset = -range; offset <= range; offset += 1) {
-            const idx = center + offset;
-            if (idx >= 0 && idx < total) indices.add(idx);
-        }
-        return Array.from(indices).sort((a, b) => a - b);
-    }
-
     private async pickBookOutline(entries: CorpusManifestEntry[], focusBookId?: string): Promise<EvidenceBlock | null> {
         if (!entries.length) return null;
         const candidates = focusBookId
@@ -216,7 +203,9 @@ export class InquiryRunnerService implements InquiryRunner {
         const schema = [
             '{',
             `  "schema_version": ${INQUIRY_SCHEMA_VERSION},`,
-            '  "summary": "1-2 sentence editorial summary",',
+            '  "summary": "1-2 sentence executive summary (neutral)",',
+            '  "summaryFlow": "1-2 sentence flow summary (pacing, momentum, compression, timing, pressure phrasing).",',
+            '  "summaryDepth": "1-2 sentence depth summary (coherence, subtext, logic, alignment, implication phrasing).",',
             '  "verdict": {',
             '    "flow": 0.0,',
             '    "depth": 0.0,',
@@ -227,6 +216,7 @@ export class InquiryRunnerService implements InquiryRunner {
             '    {',
             '      "ref_id": "S12",',
             '      "kind": "string",',
+            '      "lens": "flow|depth|both (optional)",',
             '      "headline": "short line",',
             '      "bullets": ["optional", "points"],',
             '      "impact": "low|medium|high",',
@@ -244,6 +234,11 @@ export class InquiryRunnerService implements InquiryRunner {
             `Question: ${input.questionText}`,
             '',
             'Answer both flow (momentum) and depth (structure/integrity).',
+            'Use the same evidence for both lenses; interpretation changes, not evidence.',
+            'Use flow summary phrasing that emphasizes compression, timing, and pressure.',
+            'Use depth summary phrasing that emphasizes alignment, implication, and consistency.',
+            'If conclusions align, still phrase summaries to match the active lens emphasis.',
+            'Optionally tag findings with lens: flow|depth|both to indicate relevance.',
             'Return JSON only using the exact schema below.',
             '',
             schema,
@@ -261,6 +256,8 @@ export class InquiryRunnerService implements InquiryRunner {
             properties: {
                 schema_version: { type: 'number', const: INQUIRY_SCHEMA_VERSION },
                 summary: { type: 'string' },
+                summaryFlow: { type: 'string' },
+                summaryDepth: { type: 'string' },
                 verdict: {
                     type: 'object',
                     properties: {
@@ -280,6 +277,7 @@ export class InquiryRunnerService implements InquiryRunner {
                         properties: {
                             ref_id: { type: 'string' },
                             kind: { type: 'string' },
+                            lens: { type: 'string' },
                             headline: { type: 'string' },
                             bullets: { type: 'array', items: { type: 'string' } },
                             impact: { type: 'string' },
@@ -291,7 +289,7 @@ export class InquiryRunnerService implements InquiryRunner {
                     }
                 }
             },
-            required: ['schema_version', 'summary', 'verdict', 'findings']
+            required: ['schema_version', 'summary', 'summaryFlow', 'summaryDepth', 'verdict', 'findings']
         };
     }
 
@@ -353,6 +351,10 @@ export class InquiryRunnerService implements InquiryRunner {
         const findings = Array.isArray(parsed.findings) ? parsed.findings : [];
         const mappedFindings = findings.map(finding => this.mapFinding(finding, input.focusLabel));
 
+        const summary = parsed.summary ? String(parsed.summary) : 'No summary provided.';
+        const summaryFlow = parsed.summaryFlow ? String(parsed.summaryFlow) : summary;
+        const summaryDepth = parsed.summaryDepth ? String(parsed.summaryDepth) : summary;
+
         return {
             runId: `run-${Date.now()}`,
             scope: input.scope,
@@ -360,7 +362,9 @@ export class InquiryRunnerService implements InquiryRunner {
             mode: input.mode,
             questionId: input.questionId,
             questionZone: input.questionZone,
-            summary: parsed.summary ? String(parsed.summary) : 'No summary provided.',
+            summary,
+            summaryFlow,
+            summaryDepth,
             verdict: {
                 flow,
                 depth,
@@ -376,6 +380,7 @@ export class InquiryRunnerService implements InquiryRunner {
     private mapFinding(raw: RawInquiryFinding, fallbackRef: string): InquiryFinding {
         const kind = this.normalizeFindingKind(raw.kind);
         const refId = raw.ref_id ? String(raw.ref_id) : fallbackRef;
+        const lens = this.normalizeFindingLens(raw.lens);
         const bullets = Array.isArray(raw.bullets)
             ? raw.bullets.map(value => String(value)).filter(Boolean)
             : [];
@@ -388,7 +393,8 @@ export class InquiryRunnerService implements InquiryRunner {
             headline: raw.headline ? String(raw.headline) : 'Finding',
             bullets,
             related: [],
-            evidenceType: 'mixed'
+            evidenceType: 'mixed',
+            lens
         };
     }
 
@@ -409,6 +415,8 @@ export class InquiryRunnerService implements InquiryRunner {
             questionId: input.questionId,
             questionZone: input.questionZone,
             summary,
+            summaryFlow: summary,
+            summaryDepth: summary,
             verdict: {
                 flow: 0.6,
                 depth: 0.55,
@@ -424,7 +432,8 @@ export class InquiryRunnerService implements InquiryRunner {
                 headline: 'Inquiry stub result.',
                 bullets,
                 related: [],
-                evidenceType: 'mixed'
+                evidenceType: 'mixed',
+                lens: 'both'
             }],
             corpusFingerprint: input.corpus.fingerprint,
             ...aiMeta
@@ -528,6 +537,14 @@ export class InquiryRunnerService implements InquiryRunner {
             return normalized as InquiryFinding['kind'];
         }
         return 'unclear';
+    }
+
+    private normalizeFindingLens(value?: string): InquiryFinding['lens'] | undefined {
+        const normalized = value ? value.toLowerCase().trim() : '';
+        if (normalized === 'flow' || normalized === 'depth' || normalized === 'both') {
+            return normalized as InquiryFinding['lens'];
+        }
+        return undefined;
     }
 
     private getFrontmatter(file: TFile): Record<string, unknown> {

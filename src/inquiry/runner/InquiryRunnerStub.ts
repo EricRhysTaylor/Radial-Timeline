@@ -16,6 +16,8 @@ export class InquiryRunnerStub implements InquiryRunner {
             questionId: input.questionId,
             questionZone: input.questionZone,
             summary: verdict.summary,
+            summaryFlow: verdict.summary,
+            summaryDepth: verdict.summary,
             verdict: verdict.metrics,
             findings,
             corpusFingerprint: input.corpus.fingerprint,
@@ -45,7 +47,8 @@ export class InquiryRunnerStub implements InquiryRunner {
                 headline: 'No issues detected for the current focus.',
                 bullets: ['Evidence appears consistent within the defined scope.'],
                 related: [],
-                evidenceType: 'scene'
+                evidenceType: 'scene',
+                lens: 'both'
             }];
         }
         if (variant === 'unclear') {
@@ -58,7 +61,8 @@ export class InquiryRunnerStub implements InquiryRunner {
                 headline: 'Evidence is insufficient for a clear verdict.',
                 bullets: ['Authoritative sources are missing or incomplete.'],
                 related: [],
-                evidenceType: 'mixed'
+                evidenceType: 'mixed',
+                lens: 'both'
             }];
         }
         if (variant === 'error') {
@@ -71,7 +75,8 @@ export class InquiryRunnerStub implements InquiryRunner {
                 headline: 'Inquiry failed to complete the analysis.',
                 bullets: ['Runner error fallback result returned.'],
                 related: [],
-                evidenceType: 'mixed'
+                evidenceType: 'mixed',
+                lens: 'both'
             }];
         }
         return [{
@@ -83,7 +88,8 @@ export class InquiryRunnerStub implements InquiryRunner {
             headline: 'Potential continuity gap detected.',
             bullets: ['Focus relies on prior setup not yet confirmed.'],
             related: [],
-            evidenceType: 'scene'
+            evidenceType: 'scene',
+            lens: 'both'
         }];
     }
 

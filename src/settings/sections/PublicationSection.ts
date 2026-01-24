@@ -138,211 +138,13 @@ function validateStageOrder(plugin: RadialTimelinePlugin, stage: Stage, newDate:
     return null;
 }
 
-export function renderPublicationSection(params: {
+
+export function renderCompletionEstimatePreview(params: {
     app: App;
     plugin: RadialTimelinePlugin;
     containerEl: HTMLElement;
-}): void {
+}): () => void {
     const { app, plugin, containerEl } = params;
-
-    const pubHeading = new ObsidianSetting(containerEl)
-        .setName('Publication and progress')
-        .setHeading();
-    addHeadingIcon(pubHeading, 'printer');
-    addWikiLink(pubHeading, 'Settings#publication');
-
-    // --- Stage Target Dates ---
-    // Create target date settings for each publish stage (Zero, Author, House, Press)
-    const stageDescriptions: Record<Stage, string> = {
-        Zero: 'All scenes written, continuity intact, no prose polishing beyond clarity. Consider using Zero draft mode to discourage never-ending revision loops.',
-        Author: 'Let sit two weeks or more. Self-edited for structure, character intent, and pacing. Alpha readers engaged, story questions resolved, ready for professional feedback.',
-        House: 'Professional Editor feedback incorporated; structural and tonal notes addressed, ready for press.',
-        Press: 'Line edited, copy edited, proofread. No open queries. No tracked changes. Publication-ready manuscript.'
-    };
-    
-    for (const stage of STAGE_ORDER) {
-        const stageColor = getStageColor(plugin, stage);
-        const currentDateStr = plugin.settings.stageTargetDates?.[stage];
-        const overdue = isOverdue(currentDateStr);
-        const displayColor = overdue ? '#d05e5e' : stageColor;
-        
-        const setting = new ObsidianSetting(containerEl)
-            .setDesc(stageDescriptions[stage])
-        .addText(text => {
-            text.inputEl.type = 'date';
-                text.inputEl.addClass('ert-input--md');
-                text.setValue(currentDateStr || '');
-                
-                // Apply overdue styling
-                if (overdue) {
-                    text.inputEl.addClass('ert-setting-input-overdue');
-                }
-
-            text.onChange(() => {
-                text.inputEl.removeClass('ert-setting-input-error');
-                    text.inputEl.removeClass('ert-setting-input-overdue');
-            });
-
-            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-                if (evt.key === 'Enter') {
-                    evt.preventDefault();
-                    text.inputEl.blur();
-                }
-            });
-
-            const handleBlur = async () => {
-                const value = text.getValue();
-
-                    // Initialize stageTargetDates if needed
-                    if (!plugin.settings.stageTargetDates) {
-                        plugin.settings.stageTargetDates = {};
-                    }
-
-                if (!value) {
-                        plugin.settings.stageTargetDates[stage] = undefined;
-                    text.inputEl.removeClass('ert-setting-input-error');
-                        text.inputEl.removeClass('ert-setting-input-overdue');
-                    await plugin.saveSettings();
-                    plugin.refreshTimelineIfNeeded(null);
-                        // Update icon color
-                        const icon = setting.nameEl.querySelector('.ert-target-tick-icon');
-                        if (icon) {
-                            icon.remove();
-                            const newIcon = createTargetTickIcon(stageColor);
-                            setting.nameEl.insertBefore(newIcon, setting.nameEl.firstChild);
-                        }
-                        return;
-                    }
-
-                    // Validate stage ordering
-                    const validationError = validateStageOrder(plugin, stage, value);
-                    if (validationError) {
-                        new Notice(validationError);
-                        text.inputEl.addClass('ert-setting-input-error');
-                        text.setValue(plugin.settings.stageTargetDates[stage] || '');
-                    return;
-                }
-
-                    plugin.settings.stageTargetDates[stage] = value;
-                    text.inputEl.removeClass('ert-setting-input-error');
-                    
-                    // Check if now overdue and update styling
-                    const nowOverdue = isOverdue(value);
-                    if (nowOverdue) {
-                        text.inputEl.addClass('ert-setting-input-overdue');
-                } else {
-                        text.inputEl.removeClass('ert-setting-input-overdue');
-                    }
-                    
-                    // Update icon color
-                    const icon = setting.nameEl.querySelector('.ert-target-tick-icon');
-                    if (icon) {
-                        icon.remove();
-                        const newColor = nowOverdue ? '#d05e5e' : stageColor;
-                        const newIcon = createTargetTickIcon(newColor);
-                        setting.nameEl.insertBefore(newIcon, setting.nameEl.firstChild);
-                }
-                    
-                await plugin.saveSettings();
-                plugin.refreshTimelineIfNeeded(null);
-            };
-
-            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
-        });
-        
-        // Create custom name with icon
-        setting.nameEl.empty();
-        const icon = createTargetTickIcon(displayColor);
-        setting.nameEl.appendChild(icon);
-        setting.nameEl.appendText(` ${stage} target date`);
-        
-        // Add stage color indicator class
-        setting.settingEl.addClass(`ert-stage-target-${stage.toLowerCase()}`);
-        if (overdue) {
-            setting.settingEl.addClass('ert-stage-target-overdue');
-        }
-    }
-
-    // --- Zero draft mode toggle ---
-    const zeroStageColor = getStageColor(plugin, 'Zero');
-    const zeroDraftSetting = new ObsidianSetting(containerEl)
-        .setName('Zero draft mode')
-        .setDesc('Intercept clicks on scenes with Publish Stage = Zero and Status = Complete to capture Pending Edits without opening the scene.')
-        .addToggle(toggle => toggle
-            .setValue(plugin.settings.enableZeroDraftMode ?? false)
-            .onChange(async (value) => {
-                plugin.settings.enableZeroDraftMode = value;
-                await plugin.saveSettings();
-                zeroDraftSetting.settingEl.setCssStyles({
-                    backgroundColor: value ? `${zeroStageColor}20` : 'transparent'
-                });
-            }));
-    
-    // Apply initial styles including background tint if enabled
-    const isEnabled = plugin.settings.enableZeroDraftMode ?? false;
-    zeroDraftSetting.settingEl.setCssStyles({
-        border: `2px dashed ${zeroStageColor}`,
-        borderRadius: '8px',
-        padding: '12px',
-        marginTop: '8px',
-        backgroundColor: isEnabled ? `${zeroStageColor}20` : 'transparent'
-    });
-
-    // --- Show completion estimate ---
-    // Estimated completion uses a dot instead of square, different from target ticks
-    const estimateToggle = new ObsidianSetting(containerEl)
-        .setDesc(t('settings.advanced.showEstimate.desc'))
-        .addToggle(toggle => toggle
-            .setValue(plugin.settings.showCompletionEstimate ?? true)
-            .onChange(async (value) => {
-                plugin.settings.showCompletionEstimate = value;
-                await plugin.saveSettings();
-                plugin.refreshTimelineIfNeeded(null);
-            }));
-    
-    // Add estimate icon (line with dot at end, like the estimated completion tick)
-    estimateToggle.nameEl.empty();
-    const estimateIcon = createEstimateTickIcon('#6FB971'); // Default to Press color
-    estimateToggle.nameEl.appendChild(estimateIcon);
-    estimateToggle.nameEl.appendText(` ${t('settings.advanced.showEstimate.name')}`);
-
-    // --- Completion estimate window (days) ---
-    new ObsidianSetting(containerEl)
-        .setName('Completion estimate window (days)')
-        .setDesc('Active Publish Stage only. Pace = completed scenes in the last N days ÷ N. Estimate date = remaining scenes ÷ pace. Inactivity colors the date (7/14/21 days) and shows “?” after 21 days of no progress.')
-        .addText(text => {
-            const current = String(plugin.settings.completionEstimateWindowDays ?? 30);
-            text.inputEl.type = 'number';
-            text.inputEl.min = '14';
-            text.inputEl.max = '90';
-            text.inputEl.addClass('ert-input--xs');
-            text.setValue(current);
-
-            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-                if (evt.key === 'Enter') {
-                    evt.preventDefault();
-                    text.inputEl.blur();
-                }
-            });
-
-            const handleBlur = async () => {
-                const raw = Number(text.getValue().trim());
-                if (!Number.isFinite(raw)) {
-                    text.setValue(String(plugin.settings.completionEstimateWindowDays ?? 30));
-                    return;
-                }
-                const clamped = Math.min(90, Math.max(14, Math.round(raw)));
-                plugin.settings.completionEstimateWindowDays = clamped;
-                text.setValue(String(clamped));
-                await plugin.saveSettings();
-                plugin.refreshTimelineIfNeeded(null);
-            };
-
-            plugin.registerDomEvent(text.inputEl, 'blur', () => { 
-                void handleBlur(); 
-                void renderCompletionPreview();
-            });
-        });
 
     // --- Completion Estimate Preview ---
     const previewContainer = containerEl.createDiv({
@@ -788,4 +590,216 @@ export function renderPublicationSection(params: {
 
     // Initial render
     void renderCompletionPreview();
+
+    return () => {
+        void renderCompletionPreview();
+    };
+}
+
+export function renderPublicationSection(params: {
+    plugin: RadialTimelinePlugin;
+    containerEl: HTMLElement;
+    onCompletionPreviewRefresh?: () => void;
+}): void {
+    const { plugin, containerEl, onCompletionPreviewRefresh } = params;
+
+    const pubHeading = new ObsidianSetting(containerEl)
+        .setName('Publication and progress')
+        .setHeading();
+    addHeadingIcon(pubHeading, 'printer');
+    addWikiLink(pubHeading, 'Settings#publication');
+
+    // --- Stage Target Dates ---
+    // Create target date settings for each publish stage (Zero, Author, House, Press)
+    const stageDescriptions: Record<Stage, string> = {
+        Zero: 'All scenes written, continuity intact, no prose polishing beyond clarity. Consider using Zero draft mode to discourage never-ending revision loops.',
+        Author: 'Let sit two weeks or more. Self-edited for structure, character intent, and pacing. Alpha readers engaged, story questions resolved, ready for professional feedback.',
+        House: 'Professional Editor feedback incorporated; structural and tonal notes addressed, ready for press.',
+        Press: 'Line edited, copy edited, proofread. No open queries. No tracked changes. Publication-ready manuscript.'
+    };
+    
+    for (const stage of STAGE_ORDER) {
+        const stageColor = getStageColor(plugin, stage);
+        const currentDateStr = plugin.settings.stageTargetDates?.[stage];
+        const overdue = isOverdue(currentDateStr);
+        const displayColor = overdue ? '#d05e5e' : stageColor;
+        
+        const setting = new ObsidianSetting(containerEl)
+            .setDesc(stageDescriptions[stage])
+        .addText(text => {
+            text.inputEl.type = 'date';
+                text.inputEl.addClass('ert-input--md');
+                text.setValue(currentDateStr || '');
+                
+                // Apply overdue styling
+                if (overdue) {
+                    text.inputEl.addClass('ert-setting-input-overdue');
+                }
+
+            text.onChange(() => {
+                text.inputEl.removeClass('ert-setting-input-error');
+                    text.inputEl.removeClass('ert-setting-input-overdue');
+            });
+
+            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+
+            const handleBlur = async () => {
+                const value = text.getValue();
+
+                    // Initialize stageTargetDates if needed
+                    if (!plugin.settings.stageTargetDates) {
+                        plugin.settings.stageTargetDates = {};
+                    }
+
+                if (!value) {
+                        plugin.settings.stageTargetDates[stage] = undefined;
+                    text.inputEl.removeClass('ert-setting-input-error');
+                        text.inputEl.removeClass('ert-setting-input-overdue');
+                    await plugin.saveSettings();
+                    plugin.refreshTimelineIfNeeded(null);
+                        // Update icon color
+                        const icon = setting.nameEl.querySelector('.ert-target-tick-icon');
+                        if (icon) {
+                            icon.remove();
+                            const newIcon = createTargetTickIcon(stageColor);
+                            setting.nameEl.insertBefore(newIcon, setting.nameEl.firstChild);
+                        }
+                        return;
+                    }
+
+                    // Validate stage ordering
+                    const validationError = validateStageOrder(plugin, stage, value);
+                    if (validationError) {
+                        new Notice(validationError);
+                        text.inputEl.addClass('ert-setting-input-error');
+                        text.setValue(plugin.settings.stageTargetDates[stage] || '');
+                    return;
+                }
+
+                    plugin.settings.stageTargetDates[stage] = value;
+                    text.inputEl.removeClass('ert-setting-input-error');
+                    
+                    // Check if now overdue and update styling
+                    const nowOverdue = isOverdue(value);
+                    if (nowOverdue) {
+                        text.inputEl.addClass('ert-setting-input-overdue');
+                } else {
+                        text.inputEl.removeClass('ert-setting-input-overdue');
+                    }
+                    
+                    // Update icon color
+                    const icon = setting.nameEl.querySelector('.ert-target-tick-icon');
+                    if (icon) {
+                        icon.remove();
+                        const newColor = nowOverdue ? '#d05e5e' : stageColor;
+                        const newIcon = createTargetTickIcon(newColor);
+                        setting.nameEl.insertBefore(newIcon, setting.nameEl.firstChild);
+                }
+                    
+                await plugin.saveSettings();
+                plugin.refreshTimelineIfNeeded(null);
+            };
+
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
+        });
+        
+        // Create custom name with icon
+        setting.nameEl.empty();
+        const icon = createTargetTickIcon(displayColor);
+        setting.nameEl.appendChild(icon);
+        setting.nameEl.appendText(` ${stage} target date`);
+        
+        // Add stage color indicator class
+        setting.settingEl.addClass(`ert-stage-target-${stage.toLowerCase()}`);
+        if (overdue) {
+            setting.settingEl.addClass('ert-stage-target-overdue');
+        }
+    }
+
+    // --- Zero draft mode toggle ---
+    const zeroStageColor = getStageColor(plugin, 'Zero');
+    const zeroDraftSetting = new ObsidianSetting(containerEl)
+        .setName('Zero draft mode')
+        .setDesc('Intercept clicks on scenes with Publish Stage = Zero and Status = Complete to capture Pending Edits without opening the scene.')
+        .addToggle(toggle => toggle
+            .setValue(plugin.settings.enableZeroDraftMode ?? false)
+            .onChange(async (value) => {
+                plugin.settings.enableZeroDraftMode = value;
+                await plugin.saveSettings();
+                zeroDraftSetting.settingEl.setCssStyles({
+                    backgroundColor: value ? `${zeroStageColor}20` : 'transparent'
+                });
+            }));
+    
+    // Apply initial styles including background tint if enabled
+    const isEnabled = plugin.settings.enableZeroDraftMode ?? false;
+    zeroDraftSetting.settingEl.setCssStyles({
+        border: `2px dashed ${zeroStageColor}`,
+        borderRadius: '8px',
+        padding: '12px',
+        marginTop: '8px',
+        backgroundColor: isEnabled ? `${zeroStageColor}20` : 'transparent'
+    });
+
+    // --- Show completion estimate ---
+    // Estimated completion uses a dot instead of square, different from target ticks
+    const estimateToggle = new ObsidianSetting(containerEl)
+        .setDesc(t('settings.advanced.showEstimate.desc'))
+        .addToggle(toggle => toggle
+            .setValue(plugin.settings.showCompletionEstimate ?? true)
+            .onChange(async (value) => {
+                plugin.settings.showCompletionEstimate = value;
+                await plugin.saveSettings();
+                plugin.refreshTimelineIfNeeded(null);
+            }));
+    
+    // Add estimate icon (line with dot at end, like the estimated completion tick)
+    estimateToggle.nameEl.empty();
+    const estimateIcon = createEstimateTickIcon('#6FB971'); // Default to Press color
+    estimateToggle.nameEl.appendChild(estimateIcon);
+    estimateToggle.nameEl.appendText(` ${t('settings.advanced.showEstimate.name')}`);
+
+    // --- Completion estimate window (days) ---
+    new ObsidianSetting(containerEl)
+        .setName('Completion estimate window (days)')
+        .setDesc('Active Publish Stage only. Pace = completed scenes in the last N days ÷ N. Estimate date = remaining scenes ÷ pace. Inactivity colors the date (7/14/21 days) and shows “?” after 21 days of no progress.')
+        .addText(text => {
+            const current = String(plugin.settings.completionEstimateWindowDays ?? 30);
+            text.inputEl.type = 'number';
+            text.inputEl.min = '14';
+            text.inputEl.max = '90';
+            text.inputEl.addClass('ert-input--xs');
+            text.setValue(current);
+
+            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+
+            const handleBlur = async () => {
+                const raw = Number(text.getValue().trim());
+                if (!Number.isFinite(raw)) {
+                    text.setValue(String(plugin.settings.completionEstimateWindowDays ?? 30));
+                    return;
+                }
+                const clamped = Math.min(90, Math.max(14, Math.round(raw)));
+                plugin.settings.completionEstimateWindowDays = clamped;
+                text.setValue(String(clamped));
+                await plugin.saveSettings();
+                plugin.refreshTimelineIfNeeded(null);
+            };
+
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { 
+                void handleBlur(); 
+                onCompletionPreviewRefresh?.();
+            });
+        });
+
 }

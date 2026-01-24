@@ -23,6 +23,7 @@ export interface InquiryFinding {
     bullets: string[];
     related: string[];
     evidenceType: 'scene' | 'outline' | 'mixed';
+    lens?: 'flow' | 'depth' | 'both';
 }
 
 export interface InquiryResult {
@@ -33,6 +34,8 @@ export interface InquiryResult {
     questionId: string;
     questionZone?: InquiryZone;
     summary: string;
+    summaryFlow?: string;
+    summaryDepth?: string;
     verdict: InquiryVerdict;
     findings: InquiryFinding[];
     corpusFingerprint?: string;

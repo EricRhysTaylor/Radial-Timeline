@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Component, Setting as Settings, setIcon, TextComponent, normalizePath } from 'obsidian';
 import { renderGeneralSection } from './sections/GeneralSection';
-import { renderPublicationSection } from './sections/PublicationSection';
+import { renderCompletionEstimatePreview, renderPublicationSection } from './sections/PublicationSection';
 import { renderChronologueSection } from './sections/ChronologueSection';
 import { renderBackdropSection } from './sections/BackdropSection';
 import { renderTemplatesSection } from './sections/TemplatesSection';
@@ -506,6 +506,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         this.renderCoreHero(coreStack);
         const coreBody = coreStack.createDiv();
         this.renderBackupSafetySection(coreBody);
+        const completionPreviewRefresh = renderCompletionEstimatePreview({
+            app: this.app,
+            plugin: this.plugin,
+            containerEl: coreBody
+        });
         this.renderSearchBox(coreBody);
 
         const searchableContent = coreBody.createDiv({ cls: 'ert-settings-searchable-content' });
@@ -534,7 +539,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         renderTemplatesSection({ app: this.app, plugin: this.plugin, containerEl: beatsSection });
 
         const publicationSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'publication' } });
-        renderPublicationSection({ app: this.app, plugin: this.plugin, containerEl: publicationSection });
+        renderPublicationSection({
+            plugin: this.plugin,
+            containerEl: publicationSection,
+            onCompletionPreviewRefresh: completionPreviewRefresh
+        });
         this.renderProCallout(publicationSection, 'Runtime estimation for screenplay & audiobook', switchToProTab);
 
         const chronologueSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'chronologue' } });

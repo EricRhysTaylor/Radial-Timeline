@@ -118,6 +118,9 @@ const BACKBONE_SWEEP_MAX_WIDTH = 200;
 const MIN_PROCESSING_MS = 5000;
 const SIMULATION_DURATION_MS = 20000;
 const BRIEFING_SESSION_LIMIT = 10;
+const DUPLICATE_PULSE_MS = 1200;
+const REHYDRATE_PULSE_MS = 1400;
+const REHYDRATE_HIGHLIGHT_MS = 3500;
 const BRIEFING_HIDE_DELAY_MS = 220;
 const CC_CELL_SIZE = 20;
 const CC_PAGE_BASE_SIZE = Math.round(CC_CELL_SIZE * 0.8);
@@ -253,6 +256,10 @@ export class InquiryView extends ItemView {
     private previewShimmerMaskText?: SVGGElement;
     private previewShimmerMaskBackdrop?: SVGRectElement;
     private previewPanelHeight = 0;
+    private duplicatePulseTimer?: number;
+    private rehydratePulseTimer?: number;
+    private rehydrateHighlightTimer?: number;
+    private rehydrateTargetKey?: string;
     private cacheStatusEl?: SVGTextElement;
     private confidenceEl?: SVGTextElement;
     private apiStatusEl?: SVGTextElement;
@@ -354,10 +361,8 @@ export class InquiryView extends ItemView {
 
     private renderDesktopLayout(): void {
         this.contentEl.addClass('ert-inquiry-root');
-        this.registerDomEvent(this.contentEl, 'click', (event: MouseEvent) => {
+        this.registerDomEvent(this.contentEl, 'click', () => {
             if (!this.isErrorState()) return;
-            event.preventDefault();
-            event.stopPropagation();
             this.dismissError();
         }, { capture: true });
         const svg = this.createSvgElement('svg');
@@ -681,6 +686,11 @@ export class InquiryView extends ItemView {
         sessions.forEach(session => {
             const item = this.briefingListEl?.createDiv({ cls: 'ert-inquiry-briefing-item' });
             if (!item) return;
+            const zoneId = session.questionZone ?? this.findPromptZoneById(session.result.questionId) ?? 'setup';
+            item.classList.add(`is-zone-${zoneId}`);
+            if (session.key === this.rehydrateTargetKey) {
+                item.classList.add('is-rehydrate-target');
+            }
             if (session.key === this.state.activeSessionId) {
                 item.classList.add('is-active');
             }
@@ -795,7 +805,7 @@ export class InquiryView extends ItemView {
     }
 
     private activateSession(session: InquirySession): void {
-        if (this.dismissErrorIfActive()) return;
+        this.clearErrorStateForAction();
         if (this.state.isRunning) return;
         this.state.scope = session.scope ?? session.result.scope;
         this.state.focusBookId = session.focusBookId ?? this.state.focusBookId;
@@ -1549,15 +1559,18 @@ export class InquiryView extends ItemView {
             processedPromptId: processed.id,
             processedStatus: processed.status,
             onPromptSelect: (zone, promptId) => {
-                if (this.dismissErrorIfActive()) return;
-                if (this.state.isRunning) return;
-                const currentId = this.state.selectedPromptIds[zone];
-                if (currentId === promptId) return;
+                this.clearErrorStateForAction();
+                if (this.state.isRunning) {
+                    this.notifyInteraction('Inquiry running. Please wait.');
+                    return;
+                }
                 this.setSelectedPrompt(zone, promptId);
                 const prompt = this.getPromptOptions(zone)
                     .find(item => item.id === promptId);
                 if (prompt) {
                     void this.handleQuestionClick(prompt);
+                } else {
+                    this.notifyInteraction('No question configured for this slot.');
                 }
             },
             onPromptHover: (zone, _promptId, promptText) => {
@@ -1591,16 +1604,29 @@ export class InquiryView extends ItemView {
     }
 
     private handlePromptClick(zone: InquiryZone): void {
-        if (this.dismissErrorIfActive()) return;
-        if (this.state.isRunning) return;
+        this.clearErrorStateForAction();
+        if (this.state.isRunning) {
+            this.notifyInteraction('Inquiry running. Please wait.');
+            return;
+        }
         const options = this.getPromptOptions(zone);
-        if (!options.length) return;
+        if (!options.length) {
+            this.notifyInteraction('No questions configured for this zone.');
+            return;
+        }
         const currentId = this.state.selectedPromptIds[zone];
         const currentIdx = options.findIndex(prompt => prompt.id === currentId);
-        const nextIdx = currentIdx >= 0 ? (currentIdx + 1) % options.length : 0;
+        const nextIdx = options.length > 1
+            ? (currentIdx >= 0 ? (currentIdx + 1) % options.length : 0)
+            : (currentIdx >= 0 ? currentIdx : 0);
         const nextPrompt = options[nextIdx] ?? options[0];
-        if (!nextPrompt || nextPrompt.id === currentId) return;
-        this.setSelectedPrompt(zone, nextPrompt.id);
+        if (!nextPrompt) {
+            this.notifyInteraction('No questions configured for this zone.');
+            return;
+        }
+        if (nextPrompt.id !== currentId) {
+            this.setSelectedPrompt(zone, nextPrompt.id);
+        }
         void this.handleQuestionClick(nextPrompt);
     }
 
@@ -1632,9 +1658,16 @@ export class InquiryView extends ItemView {
 
             this.registerDomEvent(zoneEl as unknown as HTMLElement, 'click', () => this.handlePromptClick(zone.id));
             this.registerDomEvent(zoneEl as unknown as HTMLElement, 'pointerenter', () => {
+                const prompt = this.getActivePrompt(zone.id);
+                if (prompt) {
+                    this.showPromptPreview(zone.id, this.state.mode, prompt.question);
+                }
                 this.setHoverText(this.buildZoneHoverText(zone.id));
             });
-            this.registerDomEvent(zoneEl as unknown as HTMLElement, 'pointerleave', () => this.clearHoverText());
+            this.registerDomEvent(zoneEl as unknown as HTMLElement, 'pointerleave', () => {
+                this.clearHoverText();
+                this.hidePromptPreview();
+            });
         });
     }
 
@@ -2120,8 +2153,11 @@ export class InquiryView extends ItemView {
             tick.setAttribute('data-tooltip-placement', 'bottom');
             tick.setAttribute('data-tooltip-offset-y', '6');
             this.registerDomEvent(tick as unknown as HTMLElement, 'click', (event: MouseEvent) => {
-                if (this.dismissErrorIfActive()) return;
-                if (this.state.isRunning) return;
+                this.clearErrorStateForAction();
+                if (this.state.isRunning) {
+                    this.notifyInteraction('Inquiry running. Please wait.');
+                    return;
+                }
                 if (this.state.scope === 'book') {
                     if (event.shiftKey) {
                         void this.openActiveBrief();
@@ -2951,10 +2987,86 @@ export class InquiryView extends ItemView {
         return !this.state.isRunning && !!this.state.activeResult && !this.isErrorResult(this.state.activeResult);
     }
 
-    private dismissErrorIfActive(): boolean {
-        if (!this.isErrorState()) return false;
+    private clearErrorStateForAction(): void {
+        if (!this.isErrorState()) return;
         this.dismissError();
-        return true;
+    }
+
+    private notifyInteraction(message: string): void {
+        new Notice(message);
+    }
+
+    private pulseZonePrompt(zone: InquiryZone, promptId: string): void {
+        const elements = this.zonePromptElements.get(zone);
+        if (elements) {
+            elements.group.classList.add('is-duplicate-pulse');
+        }
+        if (this.glyph) {
+            this.glyph.setPromptPulse(promptId, true);
+        }
+        if (this.duplicatePulseTimer) {
+            window.clearTimeout(this.duplicatePulseTimer);
+        }
+        this.duplicatePulseTimer = window.setTimeout(() => {
+            elements?.group.classList.remove('is-duplicate-pulse');
+            this.glyph?.setPromptPulse(promptId, false);
+            this.duplicatePulseTimer = undefined;
+        }, DUPLICATE_PULSE_MS);
+    }
+
+    private pulseRehydrateButton(zone: InquiryZone): void {
+        if (!this.artifactButton) return;
+        this.state.activeZone = zone;
+        this.updateActiveZoneStyling();
+        this.artifactButton.classList.add('is-rehydrate-pulse');
+        if (this.rehydratePulseTimer) {
+            window.clearTimeout(this.rehydratePulseTimer);
+        }
+        this.rehydratePulseTimer = window.setTimeout(() => {
+            this.artifactButton?.classList.remove('is-rehydrate-pulse');
+            this.rehydratePulseTimer = undefined;
+        }, REHYDRATE_PULSE_MS);
+    }
+
+    private highlightRehydrateSession(sessionKey?: string): void {
+        if (!sessionKey) return;
+        this.rehydrateTargetKey = sessionKey;
+        this.refreshBriefingPanel();
+        if (this.rehydrateHighlightTimer) {
+            window.clearTimeout(this.rehydrateHighlightTimer);
+        }
+        this.rehydrateHighlightTimer = window.setTimeout(() => {
+            this.rehydrateTargetKey = undefined;
+            this.refreshBriefingPanel();
+            this.rehydrateHighlightTimer = undefined;
+        }, REHYDRATE_HIGHLIGHT_MS);
+    }
+
+    private handleDuplicateRunFeedback(question: InquiryQuestion, sessionKey?: string): void {
+        this.state.activeZone = question.zone;
+        this.updateActiveZoneStyling();
+        this.pulseZonePrompt(question.zone, question.id);
+        this.pulseRehydrateButton(question.zone);
+        this.highlightRehydrateSession(sessionKey);
+        this.notifyInteraction('Inquiry already processed. Open Briefing to rehydrate.');
+    }
+
+    private showErrorPreview(result: InquiryResult): void {
+        if (!this.previewGroup || !this.previewHero) return;
+        if (this.previewHideTimer) {
+            window.clearTimeout(this.previewHideTimer);
+            this.previewHideTimer = undefined;
+        }
+        const zone = result.questionZone ?? this.findPromptZoneById(result.questionId) ?? 'setup';
+        const reason = this.formatApiErrorReason(result);
+        const meta = reason ? `Error: ${reason}` : 'Error';
+        const emptyRows = Array(this.previewRows.length || 6).fill('');
+        this.previewLocked = true;
+        this.previewGroup.classList.add('is-visible', 'is-error');
+        this.previewGroup.classList.remove('is-locked', 'is-results');
+        this.resetPreviewRowLabels();
+        this.setPreviewFooterText('Click a question to try again.');
+        this.updatePromptPreview(zone, this.state.mode, 'Inquiry paused.', emptyRows, meta, { hideEmpty: true });
     }
 
     private updateMinimapHitStates(result: InquiryResult | null | undefined): void {
@@ -3030,6 +3142,7 @@ export class InquiryView extends ItemView {
         const wasRunning = this.wasRunning;
         this.wasRunning = isRunning;
         this.rootSvg.classList.toggle('is-running', isRunning);
+        this.previewGroup?.classList.toggle('is-running', isRunning);
         this.glyph?.setZoneInteractionsEnabled(!isRunning);
         const isError = this.rootSvg.classList.contains('is-error');
         const hasResult = !!this.state.activeResult && !isError;
@@ -3106,7 +3219,7 @@ export class InquiryView extends ItemView {
     }
 
     private handleScopeChange(scope: InquiryScope): void {
-        if (this.dismissErrorIfActive()) return;
+        this.clearErrorStateForAction();
         if (!scope || scope === this.state.scope) return;
         this.state.scope = scope;
         if (this.state.activeResult) {
@@ -3134,13 +3247,23 @@ export class InquiryView extends ItemView {
     }
 
     private handleRingClick(mode: InquiryMode): void {
-        if (this.dismissErrorIfActive()) return;
-        if (this.state.isRunning) return;
+        this.clearErrorStateForAction();
+        if (this.state.isRunning) {
+            this.notifyInteraction('Inquiry running. Please wait.');
+            return;
+        }
+        if (mode === this.state.mode) {
+            if (this.isResultsState() && this.state.activeResult) {
+                this.showResultsPreview(this.state.activeResult);
+            }
+            this.notifyInteraction(`${mode === 'flow' ? 'Flow' : 'Depth'} lens already active.`);
+            return;
+        }
         this.setActiveLens(mode);
     }
 
     private handleGlyphClick(): void {
-        if (this.dismissErrorIfActive()) return;
+        this.clearErrorStateForAction();
         if (this.state.scope === 'saga') {
             this.state.scope = 'book';
             this.refreshUI();
@@ -3150,8 +3273,13 @@ export class InquiryView extends ItemView {
     }
 
     private async handleQuestionClick(question: InquiryQuestion): Promise<void> {
-        if (this.state.isRunning) return;
-        if (this.dismissErrorIfActive()) return;
+        if (this.state.isRunning) {
+            this.notifyInteraction('Inquiry running. Please wait.');
+            return;
+        }
+        this.clearErrorStateForAction();
+        this.state.activeZone = question.zone;
+        this.updateActiveZoneStyling();
 
         const manifest = this.buildCorpusManifest(question.id);
         const focusLabel = this.getFocusLabel();
@@ -3166,27 +3294,31 @@ export class InquiryView extends ItemView {
         const cacheEnabled = this.plugin.settings.inquiryCacheEnabled ?? true;
         const key = this.sessionStore.buildKey(baseKey, manifest.fingerprint);
         if (this.state.activeSessionId === key && this.state.activeResult && !this.isErrorResult(this.state.activeResult)) {
-            new Notice('Session already processed.');
+            this.handleDuplicateRunFeedback(question, key);
             this.showResultsPreview(this.state.activeResult);
             return;
         }
         let cacheStatus: 'fresh' | 'stale' | 'missing' = 'missing';
         let cachedSession: InquirySession | undefined;
-        if (cacheEnabled) {
-            const cached = this.sessionStore.getSession(key);
-            if (cached) {
-                cachedSession = cached;
-                cacheStatus = 'fresh';
-            } else {
-                const prior = this.sessionStore.getLatestByBaseKey(baseKey);
-                if (prior && prior.result.corpusFingerprint !== manifest.fingerprint) {
-                    cacheStatus = 'stale';
-                    this.sessionStore.markStaleByBaseKey(baseKey);
-                }
+        const cached = this.sessionStore.getSession(key);
+        if (cached) {
+            cachedSession = cached;
+            cacheStatus = 'fresh';
+        }
+        if (!cachedSession && cacheEnabled) {
+            const prior = this.sessionStore.getLatestByBaseKey(baseKey);
+            if (prior && prior.result.corpusFingerprint !== manifest.fingerprint) {
+                cacheStatus = 'stale';
+                this.sessionStore.markStaleByBaseKey(baseKey);
             }
+        }
+        if (cachedSession && this.isErrorResult(cachedSession.result)) {
+            cachedSession = undefined;
+            cacheStatus = 'missing';
         }
         if (cachedSession) {
             this.state.cacheStatus = cacheStatus;
+            this.handleDuplicateRunFeedback(question, cachedSession.key);
             this.activateSession(cachedSession);
             return;
         }
@@ -3211,7 +3343,6 @@ export class InquiryView extends ItemView {
             result = await this.runner.run({
                 scope: this.state.scope,
                 focusLabel,
-                focusSceneId: this.state.scope === 'book' ? this.state.focusSceneId : undefined,
                 focusBookId: this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusBookId,
                 mode: this.state.mode,
                 questionId: question.id,
@@ -3327,7 +3458,7 @@ export class InquiryView extends ItemView {
         this.state.cacheStatus = cacheStatus;
         this.state.isRunning = false;
         if (this.isErrorResult(normalized)) {
-            this.unlockPromptPreview();
+            this.showErrorPreview(normalized);
         } else {
             this.showResultsPreview(normalized);
         }
@@ -3376,11 +3507,14 @@ export class InquiryView extends ItemView {
                 headline: legacy.headline,
                 bullets: legacy.bullets,
                 related: legacy.related,
-                evidenceType: legacy.evidenceType
+                evidenceType: legacy.evidenceType,
+                lens: legacy.lens
             };
         });
         const normalized: InquiryResult = {
             ...result,
+            summaryFlow: result.summaryFlow ?? result.summary,
+            summaryDepth: result.summaryDepth ?? result.summary,
             verdict: {
                 flow: verdict.flow,
                 depth: verdict.depth,
@@ -3559,8 +3693,11 @@ export class InquiryView extends ItemView {
     }
 
     private startApiSimulation(): void {
-        if (this.state.isRunning) return;
-        if (this.dismissErrorIfActive()) return;
+        if (this.state.isRunning) {
+            this.notifyInteraction('Inquiry running. Please wait.');
+            return;
+        }
+        this.clearErrorStateForAction();
         if (this.apiSimulationTimer) {
             window.clearTimeout(this.apiSimulationTimer);
             this.apiSimulationTimer = undefined;
@@ -3651,6 +3788,8 @@ export class InquiryView extends ItemView {
             questionId: question.id,
             questionZone: question.zone,
             summary: 'Inquiry failed; fallback result returned.',
+            summaryFlow: 'Inquiry failed; fallback result returned.',
+            summaryDepth: 'Inquiry failed; fallback result returned.',
             verdict: {
                 flow: 0,
                 depth: 0,
@@ -3668,7 +3807,8 @@ export class InquiryView extends ItemView {
                 headline: 'Inquiry runner error.',
                 bullets: [message],
                 related: [],
-                evidenceType: 'mixed'
+                evidenceType: 'mixed',
+                lens: 'both'
             }],
             corpusFingerprint: fingerprint
         };
@@ -3683,6 +3823,8 @@ export class InquiryView extends ItemView {
             questionId: question.id,
             questionZone: question.zone,
             summary: 'Simulated inquiry session.',
+            summaryFlow: 'Simulated inquiry session.',
+            summaryDepth: 'Simulated inquiry session.',
             verdict: {
                 flow: GLYPH_PLACEHOLDER_FLOW,
                 depth: GLYPH_PLACEHOLDER_DEPTH,
@@ -4001,7 +4143,7 @@ export class InquiryView extends ItemView {
     }
 
     private shiftFocus(delta: number): void {
-        if (this.dismissErrorIfActive()) return;
+        this.clearErrorStateForAction();
         const count = this.getCurrentItems().length;
         if (!count) return;
         const current = this.getFocusIndex();
@@ -4062,7 +4204,7 @@ export class InquiryView extends ItemView {
         if (this.state.activeZone !== zone) {
             return `${label} verdict unavailable for the current inquiry.`;
         }
-        return `${label}: ${this.state.activeResult.summary}`;
+        return `${label}: ${this.getResultSummaryForMode(this.state.activeResult, this.state.mode)}`;
     }
 
     private buildMinimapHoverText(label: string): string {
@@ -4080,6 +4222,10 @@ export class InquiryView extends ItemView {
             this.setHoverText(this.buildMinimapHoverText(label));
             return;
         }
+        if (this.previewLocked || !this.previewGroup) {
+            this.setHoverText(`${label}: ${finding.headline}`);
+            return;
+        }
         this.showResultPreview(label, finding, result);
     }
 
@@ -4094,7 +4240,7 @@ export class InquiryView extends ItemView {
         this.minimapResultPreviewActive = true;
         this.setHoverText(`${label}: ${finding.headline}`);
         this.previewGroup.classList.add('is-visible');
-        this.updatePromptPreview(zone, result.mode, hero, rows, meta);
+        this.updatePromptPreview(zone, this.state.mode, hero, rows, meta);
     }
 
     private clearResultPreview(): void {
@@ -4182,6 +4328,7 @@ export class InquiryView extends ItemView {
             window.clearTimeout(this.previewHideTimer);
             this.previewHideTimer = undefined;
         }
+        this.previewGroup.classList.remove('is-error');
         this.previewLast = { zone, question };
         this.updatePromptPreview(zone, mode, question);
         this.previewGroup.classList.add('is-visible');
@@ -4292,8 +4439,8 @@ export class InquiryView extends ItemView {
         const mode = this.state.mode;
         this.previewLocked = true;
         this.previewGroup.classList.add('is-visible', 'is-results');
-        this.previewGroup.classList.remove('is-locked');
-        const hero = this.buildResultsHeroText(result);
+        this.previewGroup.classList.remove('is-locked', 'is-error');
+        const hero = this.buildResultsHeroText(result, mode);
         const meta = this.buildResultsMetaText(result, mode, zone);
         const chips = this.buildResultsChips(result, mode);
         this.setPreviewRowLabels(chips.labels);
@@ -4303,8 +4450,8 @@ export class InquiryView extends ItemView {
         this.setPreviewFooterText(`Focus ${scopeLabel} ${focusLabel} · Click to dismiss.`);
     }
 
-    private buildResultsHeroText(result: InquiryResult): string {
-        return this.sanitizeInquirySummary(result.summary);
+    private buildResultsHeroText(result: InquiryResult, mode: InquiryMode): string {
+        return this.getResultSummaryForMode(result, mode);
     }
 
     private buildResultsMetaText(result: InquiryResult, mode: InquiryMode, zone: InquiryZone): string {
@@ -4411,14 +4558,28 @@ export class InquiryView extends ItemView {
         return text || fallback;
     }
 
+    private getResultSummaryForMode(result: InquiryResult, mode: InquiryMode): string {
+        const raw = mode === 'flow'
+            ? (result.summaryFlow || result.summary)
+            : (result.summaryDepth || result.summary);
+        return this.sanitizeInquirySummary(raw);
+    }
+
     private getOrderedFindings(result: InquiryResult, mode: InquiryMode): InquiryFinding[] {
         const findings = result.findings.filter(finding => this.isFindingHit(finding));
         const order = mode === 'flow' ? FLOW_FINDING_ORDER : DEPTH_FINDING_ORDER;
+        const rankForLens = (lens: InquiryFinding['lens'] | undefined): number => {
+            if (!lens) return 2;
+            if (lens === 'both') return 1;
+            return lens === mode ? 0 : 3;
+        };
         const rankForKind = (kind: InquiryFinding['kind']): number => {
             const idx = order.indexOf(kind);
             return idx >= 0 ? idx : order.length + 1;
         };
         return findings.slice().sort((a, b) => {
+            const lensDelta = rankForLens(a.lens) - rankForLens(b.lens);
+            if (lensDelta !== 0) return lensDelta;
             const kindDelta = rankForKind(a.kind) - rankForKind(b.kind);
             if (kindDelta !== 0) return kindDelta;
             const impactDelta = this.getImpactRank(b.impact) - this.getImpactRank(a.impact);
@@ -4580,6 +4741,7 @@ export class InquiryView extends ItemView {
         this.previewLocked = true;
         this.previewGroup.classList.add('is-visible', 'is-locked');
         this.previewGroup.classList.remove('is-results');
+        this.previewGroup.classList.remove('is-error');
         this.resetPreviewRowLabels();
         this.setPreviewFooterText('');
         this.updatePromptPreview(question.zone, this.state.mode, question.question, rows);
@@ -4593,6 +4755,7 @@ export class InquiryView extends ItemView {
         }
         if (this.previewGroup) {
             this.previewGroup.classList.remove('is-locked', 'is-visible', 'is-results');
+            this.previewGroup.classList.remove('is-error');
         }
         this.resetPreviewRowLabels();
         this.setPreviewFooterText('');
@@ -5051,9 +5214,14 @@ export class InquiryView extends ItemView {
         }
 
         // Briefs always include both flow + depth; never omit based on active lens.
+        const flowSummary = this.getResultSummaryForMode(result, 'flow');
+        const depthSummary = this.getResultSummaryForMode(result, 'depth');
         const summaryLines = [
-            '## Executive summary',
-            result.summary,
+            '## Flow summary',
+            flowSummary,
+            '',
+            '## Depth summary',
+            depthSummary,
             '',
             '## Verdict',
             `Flow: ${this.formatMetricDisplay(result.verdict.flow)}`,

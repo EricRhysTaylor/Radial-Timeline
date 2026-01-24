@@ -209,6 +209,16 @@
   animation: ert-inquiry-briefing-pulse 2.4s ease-in-out infinite;
 }
 
+.ert-inquiry-icon-btn.is-rehydrate-pulse {
+  color: var(--ert-inquiry-active-zone-color);
+}
+
+.ert-inquiry-icon-btn.is-rehydrate-pulse .ert-inquiry-icon-btn-bg {
+  fill: color-mix(in srgb, var(--ert-inquiry-active-zone-color) 18%, var(--background-secondary));
+  stroke: color-mix(in srgb, var(--ert-inquiry-active-zone-color) 75%, var(--background-modifier-border));
+  animation: ert-inquiry-rehydrate-pulse 1.2s ease-in-out;
+}
+
 .ert-inquiry-context-badge-bg {
   fill: var(--background-secondary);
   stroke: var(--background-modifier-border);
@@ -618,6 +628,21 @@
   stroke: color-mix(in srgb, var(--ert-inquiry-high) 70%, #ffffff);
 }
 
+.ert-inquiry-svg:not(.is-running) .ert-inquiry-zone-pod.is-processed-error .ert-inquiry-zone-pill-text {
+  fill: var(--ert-inquiry-high);
+}
+
+.ert-inquiry-zone-pod.is-duplicate-pulse .ert-inquiry-zone-pill {
+  stroke: color-mix(in srgb, var(--ert-inquiry-zone-color) 80%, #ffffff);
+  filter: url(#ert-inquiry-zone-pill-in);
+  animation: ert-inquiry-zone-pulse 1.1s ease;
+}
+
+.ert-inquiry-zone-pod.is-duplicate-pulse .ert-inquiry-zone-pill-text {
+  fill: var(--ert-inquiry-zone-color);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-zone-color) 70%, transparent));
+}
+
 .ert-inquiry-svg.is-running .ert-inquiry-zone-pill {
   fill: #8a8a8a;
   fill-opacity: 0.4;
@@ -736,6 +761,25 @@
 }
 
 .ert-inquiry-svg:not(.is-running) .inq-zone-dot.is-processed .inq-zone-dot-text {
+  fill: var(--ert-inquiry-zone-color);
+}
+
+.ert-inquiry-svg:not(.is-running) .inq-zone-dot.is-processed-error .inq-zone-dot-circle {
+  stroke: var(--ert-inquiry-high);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-high) 60%, transparent));
+}
+
+.ert-inquiry-svg:not(.is-running) .inq-zone-dot.is-processed-error .inq-zone-dot-text {
+  fill: var(--ert-inquiry-high);
+}
+
+.inq-zone-dot.is-duplicate-pulse .inq-zone-dot-circle {
+  stroke: var(--ert-inquiry-zone-color);
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-zone-color) 80%, transparent));
+  animation: ert-inquiry-zone-pulse 1.1s ease;
+}
+
+.inq-zone-dot.is-duplicate-pulse .inq-zone-dot-text {
   fill: var(--ert-inquiry-zone-color);
 }
 
@@ -967,6 +1011,22 @@
 .ert-inquiry-preview.is-locked .ert-inquiry-preview-shimmer {
   opacity: 0.5;
   animation-play-state: running;
+}
+
+.ert-inquiry-preview.is-running .ert-inquiry-preview-shimmer {
+  opacity: 0.6;
+}
+
+.ert-inquiry-preview.is-error .ert-inquiry-preview-hero {
+  fill: var(--text-normal);
+}
+
+.ert-inquiry-preview.is-error .ert-inquiry-preview-meta {
+  fill: color-mix(in srgb, var(--ert-inquiry-high) 55%, var(--text-muted));
+}
+
+.ert-inquiry-preview.is-error .ert-inquiry-preview-footer {
+  fill: var(--text-muted);
 }
 
 @keyframes ert-inquiry-preview-shimmer {
@@ -1237,6 +1297,23 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 50%, transparent);
 }
 
+.ert-inquiry-briefing-item.is-zone-setup {
+  --ert-inquiry-briefing-accent: var(--ert-inquiry-zone-setup);
+}
+
+.ert-inquiry-briefing-item.is-zone-pressure {
+  --ert-inquiry-briefing-accent: var(--ert-inquiry-zone-pressure);
+}
+
+.ert-inquiry-briefing-item.is-zone-payoff {
+  --ert-inquiry-briefing-accent: var(--ert-inquiry-zone-payoff);
+}
+
+.ert-inquiry-briefing-item.is-rehydrate-target {
+  border-color: color-mix(in srgb, var(--ert-inquiry-briefing-accent) 70%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ert-inquiry-briefing-accent) 45%, transparent);
+}
+
 .ert-inquiry-briefing-main {
   flex: 1;
   display: flex;
@@ -1341,6 +1418,18 @@
   0% { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--ert-inquiry-active-zone-color) 35%, transparent)); }
   50% { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ert-inquiry-active-zone-color) 25%, transparent)); }
   100% { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--ert-inquiry-active-zone-color) 35%, transparent)); }
+}
+
+@keyframes ert-inquiry-rehydrate-pulse {
+  0% { filter: drop-shadow(0 0 0 color-mix(in srgb, var(--ert-inquiry-active-zone-color) 40%, transparent)); }
+  45% { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ert-inquiry-active-zone-color) 45%, transparent)); }
+  100% { filter: drop-shadow(0 0 0 color-mix(in srgb, var(--ert-inquiry-active-zone-color) 40%, transparent)); }
+}
+
+@keyframes ert-inquiry-zone-pulse {
+  0% { filter: drop-shadow(0 0 0 color-mix(in srgb, var(--ert-inquiry-zone-color) 40%, transparent)); }
+  50% { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ert-inquiry-zone-color) 45%, transparent)); }
+  100% { filter: drop-shadow(0 0 0 color-mix(in srgb, var(--ert-inquiry-zone-color) 40%, transparent)); }
 }
 
 @media (max-width: 980px) {

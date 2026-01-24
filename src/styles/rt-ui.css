@@ -4390,11 +4390,11 @@
   isolation: isolate;
   pointer-events: none;
   user-select: none;
+  filter: grayscale(1) saturate(0.05);
 }
 
 .ert-ui .ert-pro-locked > * {
-  opacity: 0.45;
-  filter: grayscale(0.55) saturate(0.6);
+  opacity: 0.85;
 }
 
 .ert-ui .ert-pro-locked::after {
@@ -4402,10 +4402,10 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(135deg, rgba(8, 8, 10, 0.68), rgba(8, 8, 10, 0.45));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
-  backdrop-filter: var(--ert-modal-blur);
-  -webkit-backdrop-filter: var(--ert-modal-blur);
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.06), rgba(255, 255, 255, 0.04));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--background-modifier-border) 40%, transparent);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   z-index: 2;
 }
 
