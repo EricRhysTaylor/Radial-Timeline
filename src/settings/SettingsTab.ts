@@ -39,6 +39,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _activeTab: 'pro' | 'inquiry' | 'core' | 'social' = 'core';
     private _searchDebounceTimer?: number;
     private _coreSearchableContent?: HTMLElement;
+    private readonly _searchShortAllowList = new Set(['ai', 'ui']);
 
     /** Public method to set active tab before/after opening settings */
     public setActiveTab(tab: 'pro' | 'inquiry' | 'core' | 'social'): void {
@@ -251,18 +252,18 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
     private filterSettings(query: string): void {
         if (!this._coreSearchableContent) return;
-        const normalizedQuery = query.toLowerCase().trim();
+        const queryTerms = this.getSearchTerms(query, 3, this._searchShortAllowList);
         const allSettings = this._coreSearchableContent.querySelectorAll('.setting-item');
         const allSectionContainers = this._coreSearchableContent.querySelectorAll('[data-ert-section]');
-        if (normalizedQuery === '') {
+        if (queryTerms.length === 0) {
             allSettings.forEach(el => (el as HTMLElement).classList.remove('ert-search-hidden'));
             allSectionContainers.forEach(el => (el as HTMLElement).classList.remove('ert-search-section-hidden'));
             return;
         }
         allSettings.forEach(settingEl => {
             const el = settingEl as HTMLElement;
-            const searchText = el.dataset.rtSearchText || '';
-            const matches = searchText.includes(normalizedQuery);
+            const searchText = ` ${el.dataset.rtSearchText || ''} `;
+            const matches = queryTerms.every(term => this.matchesSearchTerm(searchText, term));
             el.classList.toggle('ert-search-hidden', !matches);
         });
         allSectionContainers.forEach(sectionEl => {
@@ -270,6 +271,21 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             const visibleSettings = section.querySelectorAll('.setting-item:not(.ert-search-hidden)');
             section.classList.toggle('ert-search-section-hidden', visibleSettings.length === 0);
         });
+    }
+
+    private getSearchTerms(text: string, minLength = 1, allowList: Set<string> = new Set()): string[] {
+        const matches = text.toLowerCase().match(/[a-z0-9]+/g);
+        if (!matches) return [];
+        const filtered = matches.filter(term => term.length >= minLength || allowList.has(term));
+        return Array.from(new Set(filtered));
+    }
+
+    private matchesSearchTerm(searchText: string, term: string): boolean {
+        const variants = [term];
+        if (term.length >= 3) {
+            variants.push(term.endsWith('s') ? term.slice(0, -1) : `${term}s`);
+        }
+        return variants.some(variant => searchText.includes(` ${variant} `));
     }
 
     private renderProCallout(containerEl: HTMLElement, text: string, switchToProTab: () => void): void {
@@ -291,7 +307,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             const descEl = el.querySelector('.setting-item-description');
             const name = nameEl?.textContent || '';
             const desc = descEl?.textContent || '';
-            el.dataset.rtSearchText = `${name} ${desc}`.toLowerCase();
+            const searchTerms = this.getSearchTerms(`${name} ${desc}`, 1);
+            el.dataset.rtSearchText = searchTerms.join(' ');
         });
     }
 
@@ -402,7 +419,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             badgeVariant: ERT_CLASSES.BADGE_PILL_NEUTRAL,
             wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#core',
             title: 'Build the core of your radial timeline workflow.',
-            subtitle: 'Tune story structure, chronologue timing, and publishing defaults that shape every manuscript.',
+            subtitle: 'Using core settings, configure the Radial Timeline to work with your manuscript architecture. Search will bring up any matching section. Make RT work for you and not the other way around.',
             kicker: 'Core Highlights:',
             features: [
                 { icon: 'layout-grid', text: 'Story Structure — Manage beats, templates, and outline scaffolds' },

@@ -8,15 +8,15 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
     const { app, plugin, containerEl } = params;
 
     const advancedHeading = new Settings(containerEl)
-        .setName(t('settings.advanced.heading'))
+        .setName(t('settings.configuration.heading'))
         .setHeading();
     addHeadingIcon(advancedHeading, 'pyramid');
     addWikiLink(advancedHeading, 'Settings#advanced');
 
     // 1. Auto-expand clipped scene titles
     new Settings(containerEl)
-        .setName(t('settings.advanced.autoExpand.name'))
-        .setDesc(t('settings.advanced.autoExpand.desc'))
+        .setName(t('settings.configuration.autoExpand.name'))
+        .setDesc(t('settings.configuration.autoExpand.desc'))
         .addToggle(toggle => toggle
             .setValue(plugin.settings.enableSceneTitleAutoExpand ?? true)
             .onChange(async (value) => {
@@ -26,11 +26,11 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
 
     // 1b. Timeline readability scale
     new Settings(containerEl)
-        .setName(t('settings.advanced.readability.name'))
-        .setDesc(t('settings.advanced.readability.desc'))
+        .setName(t('settings.configuration.readability.name'))
+        .setDesc(t('settings.configuration.readability.desc'))
         .addDropdown(drop => {
-            drop.addOption('normal', t('settings.advanced.readability.normal'));
-            drop.addOption('large', t('settings.advanced.readability.large'));
+            drop.addOption('normal', t('settings.configuration.readability.normal'));
+            drop.addOption('large', t('settings.configuration.readability.large'));
             drop.setValue(plugin.settings.readabilityScale ?? 'normal');
             drop.onChange(async (value) => {
                 plugin.settings.readabilityScale = value as any;
@@ -43,11 +43,11 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
 
     // 2. Metadata refresh debounce
     new Settings(containerEl)
-        .setName(t('settings.advanced.debounce.name'))
-        .setDesc(t('settings.advanced.debounce.desc'))
+        .setName(t('settings.configuration.debounce.name'))
+        .setDesc(t('settings.configuration.debounce.desc'))
         .addText(text => {
             const current = String(plugin.settings.metadataRefreshDebounceMs ?? 10000);
-            text.setPlaceholder(t('settings.advanced.debounce.placeholder'));
+            text.setPlaceholder(t('settings.configuration.debounce.placeholder'));
             text.setValue(current);
             text.inputEl.addClass('ert-input--sm');
 
@@ -61,7 +61,7 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
             const handleBlur = async () => {
                 const n = Number(text.getValue().trim());
                 if (!Number.isFinite(n) || n < 0) {
-                    new Notice(t('settings.advanced.debounce.error'));
+                    new Notice(t('settings.configuration.debounce.error'));
                     text.setValue(String(plugin.settings.metadataRefreshDebounceMs ?? 10000));
                     return;
                 }
@@ -74,10 +74,10 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
 
     // 3. Reset subplot color precedence
     new Settings(containerEl)
-        .setName(t('settings.advanced.resetSubplotColors.name'))
-        .setDesc(t('settings.advanced.resetSubplotColors.desc'))
+        .setName(t('settings.configuration.resetSubplotColors.name'))
+        .setDesc(t('settings.configuration.resetSubplotColors.desc'))
         .addButton(button => button
-            .setButtonText(t('settings.advanced.resetSubplotColors.button'))
+            .setButtonText(t('settings.configuration.resetSubplotColors.button'))
             .setWarning()
             .onClick(async () => {
                 const count = Object.keys(plugin.settings.dominantSubplots || {}).length;
@@ -88,9 +88,9 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
                 plugin.refreshTimelineIfNeeded(null);
                 
                 if (count > 0) {
-                    new Notice(t('settings.advanced.resetSubplotColors.clearedNotice', { count: String(count) }));
+                    new Notice(t('settings.configuration.resetSubplotColors.clearedNotice', { count: String(count) }));
                 } else {
-                    new Notice(t('settings.advanced.resetSubplotColors.nothingToReset'));
+                    new Notice(t('settings.configuration.resetSubplotColors.nothingToReset'));
                 }
             }));
 

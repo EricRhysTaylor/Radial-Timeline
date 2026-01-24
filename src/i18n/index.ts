@@ -126,7 +126,7 @@ function getTranslations(): TranslationKeys {
  * 
  * @example
  * t('settings.general.heading') // "General"
- * t('settings.advanced.resetNotice', { count: '5' }) // "Cleared saved colors for 5 scenes."
+ * t('settings.configuration.resetSubplotColors.clearedNotice', { count: '5' }) // "Cleared saved colors for 5 scenes."
  */
 export function t(key: string, vars?: Record<string, string | number>): string {
     const translations = getTranslations();

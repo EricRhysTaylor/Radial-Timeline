@@ -70,7 +70,7 @@ export const ja: DeepPartial<TranslationKeys> = {
                 },
             },
         },
-        advanced: {
+        configuration: {
             heading: '詳細設定',
             aiOutputFolder: {
                 name: 'AI出力フォルダ',

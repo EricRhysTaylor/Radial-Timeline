@@ -1516,6 +1516,25 @@
   flex: 0 0 auto;
 }
 
+.ert-ui .ert-elementBlock.setting-item.ert-row--wideControl {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto;
+  gap: var(--ert-row-gap);
+  align-items: stretch;
+}
+
+.ert-ui .ert-elementBlock.setting-item.ert-row--wideControl .setting-item-info {
+  grid-column: 1 / -1;
+  grid-row: 1 / 2;
+}
+
+.ert-ui .ert-elementBlock.setting-item.ert-row--wideControl .setting-item-control {
+  grid-column: 1 / -1;
+  grid-row: 2 / 3;
+  width: 100%;
+}
+
 .ert-ui .ert-elementBlock.setting-item.ert-row--inlineControl .setting-item-control {
   flex-wrap: nowrap;
 }
@@ -3360,6 +3379,7 @@
   color: var(--text-muted);
   flex: 1;
   font-style: italic;
+  min-width: 0;
 }
 
 /* -------------------------------------------------------------------------- */

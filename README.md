@@ -26,17 +26,17 @@
 ---
 
 
-The manuscript visualization plugin for Obsidian.
+<p>The manuscript visualization plugin for Obsidian.</p>
 
-**Stop losing track of subplot threads across dozens of scenes.** Radial Timeline™ transforms your manuscript into a live visual map where you can see your entire story structure at a glance.
+<p>**Stop losing track of subplot threads across dozens of scenes.** Radial Timeline™ transforms your manuscript into a live visual map where you can see your entire story structure at a glance.</P>
 
 ## What It Does
 
 Radial Timeline™ arranges your scenes by act, subplot, narrative or chronological order in a striking radial layout—revealing the structure, rhythm, and scope of your story. Each ring represents a subplot; hover interactions surface important details like scene synopsis and AI story pulses. Scenes highlight across subplots to show interrelationships. Multiple view modes dissect your novel like an X-ray.
 
-**Before**: Scrolling through line after line of spreadsheet tables and files, losing sight of how your B-plot interweaves with the main storyline.  
+<p>**Before**: Scrolling through line after line of spreadsheet tables and files, losing sight of how your B-plot interweaves with the main storyline.</p>
 
-**After**: One visual map showing every scene, every subplot, every beat color coded and connected to the big picture.
+<p>**After**: One visual map showing every scene, every subplot, every beat color coded and connected to the big picture.</p>
 
 Radial Timeline™ captures and visualizes all 4 critical timelines, revealing the big picture as your manuscript evolves from the nucleus of an idea to the final polished novel.
 
@@ -49,7 +49,7 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
 
 ---
 
-## Docs (How-to & setup)<br><br>
+## Docs (How-to & setup)
 
 If you want the “how-to” details (setup, templates, YAML, reordering, advanced options), they live in the wiki:
 
@@ -129,6 +129,8 @@ Created by Eric Rhys Taylor
 
 Reviewed and approved for the Obsidian Community Plugins directory. Developed with best practices in mind.
 
+---
+
 ## License & Intellectual Property
 
 Radial Timeline™ © 2025 Eric Rhys Taylor  
@@ -139,6 +141,8 @@ Released under a **Source-Available, Non-Commercial License**.
 - The "Radial Timeline" name is a trademark of Eric Rhys Taylor.  
 
 See the [License](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/License) and [Notice](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Notice) pages for full details.
+
+---
 
 ## Disclaimer & Limitation of Liability
 

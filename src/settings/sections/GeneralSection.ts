@@ -116,15 +116,15 @@ export function renderGeneralSection(params: {
 
     // --- AI Output Folder ---
     const aiSetting = new ObsidianSetting(containerEl)
-        .setName(t('settings.advanced.aiOutputFolder.name'))
-        .setDesc(t('settings.advanced.aiOutputFolder.desc'));
+        .setName(t('settings.configuration.aiOutputFolder.name'))
+        .setDesc(t('settings.configuration.aiOutputFolder.desc'));
     aiSetting.settingEl.addClass(ERT_CLASSES.ROW_INLINE_CONTROL);
     aiSetting.addText(text => {
         const defaultPath = DEFAULT_SETTINGS.aiOutputFolder || 'Radial Timeline/AI Logs';
         const fallbackFolder = plugin.settings.aiOutputFolder?.trim() || defaultPath;
         const illegalChars = /[<>:"|?*]/;
 
-        text.setPlaceholder(t('settings.advanced.aiOutputFolder.placeholder'))
+        text.setPlaceholder(t('settings.configuration.aiOutputFolder.placeholder'))
             .setValue(fallbackFolder);
         text.inputEl.addClass('ert-input--xl');
 
@@ -184,15 +184,15 @@ export function renderGeneralSection(params: {
 
     // --- Manuscript Export Folder ---
     const manuscriptSetting = new ObsidianSetting(containerEl)
-        .setName(t('settings.advanced.manuscriptOutputFolder.name'))
-        .setDesc(t('settings.advanced.manuscriptOutputFolder.desc'));
+        .setName(t('settings.configuration.manuscriptOutputFolder.name'))
+        .setDesc(t('settings.configuration.manuscriptOutputFolder.desc'));
     manuscriptSetting.settingEl.addClass(ERT_CLASSES.ROW_INLINE_CONTROL);
     manuscriptSetting.addText(text => {
         const defaultPath = DEFAULT_SETTINGS.manuscriptOutputFolder || 'Radial Timeline/Manuscript';
         const fallbackFolder = plugin.settings.manuscriptOutputFolder?.trim() || defaultPath;
         const illegalChars = /[<>:"|?*]/;
 
-        text.setPlaceholder(t('settings.advanced.manuscriptOutputFolder.placeholder'))
+        text.setPlaceholder(t('settings.configuration.manuscriptOutputFolder.placeholder'))
             .setValue(fallbackFolder);
         text.inputEl.addClass('ert-input--xl');
 
@@ -252,15 +252,15 @@ export function renderGeneralSection(params: {
 
     // --- Outline Export Folder ---
     const outlineSetting = new ObsidianSetting(containerEl)
-        .setName(t('settings.advanced.outlineOutputFolder.name'))
-        .setDesc(t('settings.advanced.outlineOutputFolder.desc'));
+        .setName(t('settings.configuration.outlineOutputFolder.name'))
+        .setDesc(t('settings.configuration.outlineOutputFolder.desc'));
     outlineSetting.settingEl.addClass(ERT_CLASSES.ROW_INLINE_CONTROL);
     outlineSetting.addText(text => {
         const defaultPath = DEFAULT_SETTINGS.outlineOutputFolder || 'Radial Timeline/Outline';
         const fallbackFolder = plugin.settings.outlineOutputFolder?.trim() || defaultPath;
         const illegalChars = /[<>:"|?*]/;
 
-        text.setPlaceholder(t('settings.advanced.outlineOutputFolder.placeholder'))
+        text.setPlaceholder(t('settings.configuration.outlineOutputFolder.placeholder'))
             .setValue(fallbackFolder);
         text.inputEl.addClass('ert-input--xl');
 

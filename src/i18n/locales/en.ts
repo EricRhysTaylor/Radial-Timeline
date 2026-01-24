@@ -65,7 +65,7 @@ export interface TranslationKeys {
                 };
             };
         };
-        advanced: {
+        configuration: {
             heading: string;
             aiOutputFolder: {
                 name: string;
@@ -309,8 +309,8 @@ export const en: TranslationKeys = {
                 },
             },
         },
-        advanced: {
-            heading: 'Advanced',
+        configuration: {
+            heading: 'Configuration',
             aiOutputFolder: {
                 name: 'Logs & generated files output folder',
                 desc: 'Folder where AI logs and local LLM reports are saved. Default: Radial Timeline/AI Logs.',
@@ -332,7 +332,7 @@ export const en: TranslationKeys = {
             },
             readability: {
                 name: 'Readability size',
-                desc: 'Choose a curated font sizing profile for timeline text. Large is tuned for low-res or low-vision viewing; Normal works for standard and high-dpi layouts.',
+                desc: 'Choose a curated font sizing profile for select timeline text. Large may be helpful for low-res screens; Normal is recommended for standard and high-dpi displays.',
                 normal: 'Normal',
                 large: 'Large',
             },

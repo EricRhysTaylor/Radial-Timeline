@@ -752,7 +752,7 @@ export function renderPublicationSection(params: {
     // --- Show completion estimate ---
     // Estimated completion uses a dot instead of square, different from target ticks
     const estimateToggle = new ObsidianSetting(containerEl)
-        .setDesc(t('settings.advanced.showEstimate.desc'))
+        .setDesc(t('settings.configuration.showEstimate.desc'))
         .addToggle(toggle => toggle
             .setValue(plugin.settings.showCompletionEstimate ?? true)
             .onChange(async (value) => {
@@ -765,7 +765,7 @@ export function renderPublicationSection(params: {
     estimateToggle.nameEl.empty();
     const estimateIcon = createEstimateTickIcon('#6FB971'); // Default to Press color
     estimateToggle.nameEl.appendChild(estimateIcon);
-    estimateToggle.nameEl.appendText(` ${t('settings.advanced.showEstimate.name')}`);
+    estimateToggle.nameEl.appendText(` ${t('settings.configuration.showEstimate.name')}`);
 
     // --- Completion estimate window (days) ---
     new ObsidianSetting(containerEl)
