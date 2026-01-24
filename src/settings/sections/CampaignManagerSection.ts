@@ -81,6 +81,9 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     // CAMPAIGN MANAGER CARD
     // ─────────────────────────────────────────────────────────────────────────
     const card = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ${ERT_CLASSES.SKIN_PRO} ert-campaign-card` });
+    if (!isProActive) {
+        card.addClass('ert-pro-locked');
+    }
 
     // Header with Pro badge
     const headerRow = card.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
@@ -98,16 +101,6 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
         text: 'Create multiple embed destinations with independent refresh schedules. Perfect for managing Kickstarter, Patreon, newsletter, and website embeds separately.',
         cls: `${ERT_CLASSES.SECTION_DESC} ert-campaign-desc`
     });
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // PRO GATE - Coming Soon Overlay
-    // ─────────────────────────────────────────────────────────────────────────
-    if (!isProActive) {
-        const overlay = card.createDiv({ cls: 'ert-campaign-overlay' });
-        overlay.createEl('div', { cls: 'ert-campaign-coming-soon', text: 'Coming Soon with Pro' });
-        card.addClass('ert-campaign-locked');
-        return; // Don't render the rest if Pro is not active
-    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // CAMPAIGN LIST

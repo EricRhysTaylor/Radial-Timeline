@@ -911,6 +911,9 @@ export function renderInquirySection(params: SectionParams): void {
             const advancedPanel = promptContainer.createDiv({
                 cls: [ERT_CLASSES.PANEL, ERT_CLASSES.SKIN_PRO, 'ert-inquiry-prompts-advanced']
             });
+            if (!isPro) {
+                advancedPanel.addClass('ert-pro-locked');
+            }
 
             const panelHeader = advancedPanel.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
             const headerMain = panelHeader.createDiv({ cls: ERT_CLASSES.CONTROL });

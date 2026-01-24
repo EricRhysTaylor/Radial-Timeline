@@ -22,6 +22,7 @@ interface SectionParams {
     plugin: RadialTimelinePlugin;
     containerEl: HTMLElement;
     renderHero?: (containerEl: HTMLElement) => void;
+    onProToggle?: () => void;
 }
 
 /**
@@ -59,7 +60,7 @@ export function isOpenBeta(): boolean {
     return OPEN_BETA_ACTIVE;
 }
 
-export function renderProfessionalSection({ plugin, containerEl, renderHero }: SectionParams): void {
+export function renderProfessionalSection({ plugin, containerEl, renderHero, onProToggle }: SectionParams): void {
     const hasValidKey = isProfessionalLicenseValid(plugin.settings.professionalLicenseKey);
     const isActive = isProfessionalActive(plugin);
 
@@ -126,17 +127,28 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
         cls: 'ert-toggle-input'
     });
     checkbox.checked = plugin.settings.devProActive !== false;
+    const rerender = () => {
+        if (onProToggle) {
+            onProToggle();
+            return;
+        }
+        containerEl.empty();
+        renderProfessionalSection({ app: plugin.app, plugin, containerEl, renderHero, onProToggle });
+    };
+
     checkbox.onchange = async () => {
         plugin.settings.devProActive = checkbox.checked;
         await plugin.saveSettings();
-        containerEl.empty();
-        renderProfessionalSection({ app: plugin.app, plugin, containerEl, renderHero });
+        rerender();
     };
 
     // ─────────────────────────────────────────────────────────────────────────
     // CONTENT STACK
     // ─────────────────────────────────────────────────────────────────────────
     const contentStack = section.createDiv({ cls: ERT_CLASSES.STACK });
+    if (!isActive) {
+        contentStack.addClass('ert-pro-locked');
+    }
     const addProRow = (setting: Setting) => {
         setting.settingEl.addClass(ERT_CLASSES.ELEMENT_BLOCK);
         return setting;
@@ -204,8 +216,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero }: S
                     const value = text.getValue().trim();
                     plugin.settings.professionalLicenseKey = value || undefined;
                     await plugin.saveSettings();
-                    containerEl.empty();
-                    renderProfessionalSection({ app: plugin.app, plugin, containerEl, renderHero });
+                    rerender();
                 });
             });
 

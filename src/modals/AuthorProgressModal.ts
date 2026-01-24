@@ -159,9 +159,12 @@ export class AuthorProgressModal extends Modal {
             this.renderPublishActions();
         };
 
-        // Target Selector at bottom of Publish container (Pro only)
-        if (isProActive && campaigns.length > 0) {
+        // Target Selector at bottom of Publish container (Pro feature)
+        if (campaigns.length > 0) {
             const targetContainer = actionsSection.createDiv({ cls: 'rt-apr-target-container' });
+            if (!isProActive) {
+                targetContainer.addClass('ert-pro-locked');
+            }
             // Add spacing/divider
             targetContainer.style.marginTop = '16px';
             targetContainer.style.paddingTop = '16px';

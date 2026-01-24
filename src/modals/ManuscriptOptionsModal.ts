@@ -276,6 +276,9 @@ export class ManuscriptOptionsModal extends Modal {
         // OUTLINE PRESETS (Pro feature - entire card)
         // ═══════════════════════════════════════════════════════════════════
         this.outlineOptionsCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        if (!this.isPro) {
+            this.outlineOptionsCard.addClass('ert-pro-locked');
+        }
         this.createSectionHeading(this.outlineOptionsCard, t('manuscriptModal.outlinePresetHeading'), 'layout-list');
         const outlinePresetRow = this.outlineOptionsCard.createDiv({ cls: 'rt-manuscript-input-container' });
         this.outlinePresetDropdown = new DropdownComponent(outlinePresetRow)
@@ -462,6 +465,9 @@ export class ManuscriptOptionsModal extends Modal {
         pill.createSpan({ text: label });
         if (this.exportType === type) pill.classList.add('rt-is-active');
         if (disabled) pill.classList.add('rt-is-disabled');
+        if (disabled && isPro && !this.isPro && !pill.closest('.ert-pro-locked')) {
+            pill.classList.add('ert-pro-locked');
+        }
         this.exportTypePills.push({ el: pill, type });
 
         pill.onClickEvent(() => {
@@ -499,6 +505,9 @@ export class ManuscriptOptionsModal extends Modal {
         const isActive = this.outputFormat === format;
         if (isActive) pill.classList.add('rt-is-active');
         if (disabled) pill.classList.add('rt-is-disabled');
+        if (disabled && isPro && !this.isPro && !pill.closest('.ert-pro-locked')) {
+            pill.classList.add('ert-pro-locked');
+        }
         this.outputFormatPills.push({ el: pill, format });
 
         pill.onClickEvent(() => {
@@ -547,7 +556,8 @@ export class ManuscriptOptionsModal extends Modal {
     private syncExportUi(): void {
         this.tocCard?.toggleClass('rt-hidden', this.exportType !== 'manuscript');
         this.manuscriptOptionsCard?.toggleClass('rt-hidden', this.exportType !== 'manuscript');
-        this.outlineOptionsCard?.toggleClass('rt-hidden', this.exportType !== 'outline');
+        const showOutlineCard = this.exportType === 'outline' || !this.isPro;
+        this.outlineOptionsCard?.toggleClass('rt-hidden', !showOutlineCard);
         this.syncOutputFormatPills();
         this.updateTemplateWarning();
     }

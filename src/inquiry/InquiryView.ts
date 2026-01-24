@@ -2000,16 +2000,6 @@ export class InquiryView extends ItemView {
         return this.state.scope === 'saga' ? this.corpus.books : this.corpus.scenes;
     }
 
-    private getFocusItem(): InquiryCorpusItem | undefined {
-        const items = this.getCurrentItems();
-        const focusId = this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusSceneId;
-        if (focusId) {
-            const match = items.find(item => item.id === focusId);
-            if (match) return match;
-        }
-        return items[0];
-    }
-
     private pickFocusScene(bookId: string | undefined, scenes: InquiryCorpusItem[]): string | undefined {
         if (!bookId || !scenes.length) return undefined;
         const prior = this.lastFocusSceneByBookId.get(bookId);
@@ -2126,13 +2116,21 @@ export class InquiryView extends ItemView {
             tick.setAttribute('data-index', String(i + 1));
             tick.setAttribute('data-id', item.id);
             tick.setAttribute('data-label', label);
-            tick.setAttribute('data-tooltip', `Focus ${label}`);
+            tick.setAttribute('data-tooltip', label);
             tick.setAttribute('data-tooltip-placement', 'bottom');
             tick.setAttribute('data-tooltip-offset-y', '6');
-            this.registerDomEvent(tick as unknown as HTMLElement, 'click', () => {
+            this.registerDomEvent(tick as unknown as HTMLElement, 'click', (event: MouseEvent) => {
                 if (this.dismissErrorIfActive()) return;
                 if (this.state.isRunning) return;
-                this.setFocusByIndex(i + 1);
+                if (this.state.scope === 'book') {
+                    if (event.shiftKey) {
+                        void this.openActiveBrief();
+                        return;
+                    }
+                    void this.openSceneFromMinimap(item.id);
+                    return;
+                }
+                this.drillIntoBook(item.id);
             });
             this.registerDomEvent(tick as unknown as HTMLElement, 'pointerenter', () => {
                 if (this.state.isRunning) return;
@@ -2968,7 +2966,7 @@ export class InquiryView extends ItemView {
                 severityClasses.forEach(cls => tick.classList.remove(cls));
                 const label = tick.getAttribute('data-label') || '';
                 if (label) {
-                    tick.setAttribute('data-tooltip', `Focus ${label}`);
+                    tick.setAttribute('data-tooltip', label);
                 }
             });
             return;
@@ -2980,7 +2978,7 @@ export class InquiryView extends ItemView {
             const finding = hitMap.get(label);
             tick.classList.toggle('is-hit', !!finding);
             severityClasses.forEach(cls => tick.classList.remove(cls));
-            const tooltip = finding ? `${label} hit: ${finding.headline}` : `Focus ${label}`;
+            const tooltip = finding ? `${label} hit: ${finding.headline}` : label;
             tick.setAttribute('data-tooltip', tooltip);
         });
     }
@@ -3972,6 +3970,36 @@ export class InquiryView extends ItemView {
         this.updateFocusGlyph();
     }
 
+    private async openActiveBrief(): Promise<void> {
+        const sessionId = this.state.activeSessionId;
+        if (!sessionId) {
+            new Notice('No active inquiry brief.');
+            return;
+        }
+        const session = this.sessionStore.peekSession(sessionId);
+        if (!session?.briefPath) {
+            new Notice('No brief saved for the active inquiry.');
+            return;
+        }
+        await this.openBriefFromSession(session);
+    }
+
+    private async openSceneFromMinimap(sceneId: string): Promise<void> {
+        const file = this.app.vault.getAbstractFileByPath(sceneId);
+        if (file && this.isTFile(file)) {
+            await openOrRevealFile(this.app, file);
+            return;
+        }
+        new Notice('Scene file not found.');
+    }
+
+    private drillIntoBook(bookId: string): void {
+        if (!bookId) return;
+        this.state.focusBookId = bookId;
+        this.scheduleFocusPersist();
+        this.handleScopeChange('book');
+    }
+
     private shiftFocus(delta: number): void {
         if (this.dismissErrorIfActive()) return;
         const count = this.getCurrentItems().length;
@@ -3989,20 +4017,31 @@ export class InquiryView extends ItemView {
         return index >= 0 ? index + 1 : 1;
     }
 
+    private getFocusBookLabel(): string {
+        const books = this.corpus?.books ?? [];
+        if (this.state.focusBookId) {
+            const match = books.find(book => book.id === this.state.focusBookId);
+            if (match) return match.displayLabel;
+        }
+        return books[0]?.displayLabel ?? 'B0';
+    }
+
     private getFocusLabel(): string {
-        const item = this.getFocusItem();
-        if (item) return item.displayLabel;
-        return this.state.scope === 'saga' ? 'B0' : 'S0';
+        if (this.state.scope === 'saga') {
+            return String.fromCharCode(931);
+        }
+        return this.getFocusBookLabel();
     }
 
     private getFocusId(): string {
-        const item = this.getFocusItem();
-        return item?.id || this.getFocusLabel();
+        if (this.state.scope === 'saga') return 'saga';
+        if (this.state.focusBookId) return this.state.focusBookId;
+        return this.corpus?.books?.[0]?.id ?? 'book';
     }
 
     private buildFocusHoverText(): string {
         const label = this.getFocusLabel();
-        const scopeLabel = this.state.scope === 'saga' ? 'Book focus' : 'Scene focus';
+        const scopeLabel = this.state.scope === 'saga' ? 'Saga focus' : 'Book focus';
         return `${scopeLabel}: ${label}. No inquiry run yet.`;
     }
 
@@ -4027,16 +4066,7 @@ export class InquiryView extends ItemView {
     }
 
     private buildMinimapHoverText(label: string): string {
-        const result = this.state.activeResult;
-        if (!result) {
-            return `Focus ${label}. Run an inquiry.`;
-        }
-        const finding = this.buildHitFindingMap(result).get(label);
-        if (!finding) {
-            return `Focus ${label}. No hits in current inquiry.`;
-        }
-        const bullet = finding.bullets?.[0];
-        return bullet ? `${label} hit: ${finding.headline} ${bullet}` : `${label} hit: ${finding.headline}`;
+        return label;
     }
 
     private handleMinimapHover(label: string): void {
@@ -4743,8 +4773,7 @@ export class InquiryView extends ItemView {
     private getPreviewScopeValue(): string {
         const scopeLabel = this.state.scope === 'saga' ? 'Saga' : 'Book';
         const focusLabel = this.getFocusLabel();
-        const focusType = this.state.scope === 'saga' ? 'Book' : 'Scene';
-        return `${scopeLabel} · ${focusType.toUpperCase()} ${focusLabel}`;
+        return `${scopeLabel} · ${focusLabel}`;
     }
 
     private getPreviewEvidenceValue(): string {

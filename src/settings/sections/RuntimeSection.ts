@@ -99,22 +99,11 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     // ─────────────────────────────────────────────────────────────────────────
     // Section Header
     // ─────────────────────────────────────────────────────────────────────────
-    // ─────────────────────────────────────────────────────────────────────────
-    // Professional Gate
-    // ─────────────────────────────────────────────────────────────────────────
-    if (!hasProfessional) {
-        const gateEl = containerEl.createDiv({
-            cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-panel--muted`
-        });
-        gateEl.createDiv({
-            cls: `${ERT_CLASSES.FIELD_NOTE} ert-runtime-gate-note`,
-            text: 'Runtime estimation requires a Pro license. Unlock this feature by entering your license key above. Run local or AI-powered estimates for screenplays and novels. Set custom word rates and parenthetical timings. Additional Chronologue duration arcs, sub-mode in blue and scene hover metadata.'
-        });
-        return;
-    }
-
     // Pro container wrapping all runtime controls
     const proContainer = containerEl.createDiv({ cls: ERT_CLASSES.PANEL });
+    if (!hasProfessional) {
+        proContainer.addClass('ert-pro-locked');
+    }
 
     // Header row with Pro badge, description, and toggle
     const panelHeader = proContainer.createDiv({
@@ -141,6 +130,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     new ToggleComponent(headerRight)
         .setValue(plugin.settings.enableRuntimeEstimation ?? false)
         .onChange(async (value) => {
+            if (!hasProfessional) return;
             plugin.settings.enableRuntimeEstimation = value;
             await plugin.saveSettings();
             renderConditionalContent();
@@ -348,20 +338,19 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             }
 
             // Session planning (optional, per profile)
-            const sessionHeader = detailsContainer.createDiv({
-                cls: `${ERT_CLASSES.CONTROL} ert-runtime-subheader`
+            const sessionHeader = detailsContainer.createDiv({ cls: ERT_CLASSES.CONTROL });
+            const sessionTitle = sessionHeader.createEl('h4', {
+                cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`,
+                text: 'Session planning (optional)'
             });
-            const sessionHeaderLeft = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
-            const sessionIcon = sessionHeaderLeft.createSpan();
+            const sessionIcon = sessionTitle.createSpan({ cls: 'ert-setting-heading-icon' });
             setIcon(sessionIcon, 'calendar-clock');
-            const sessionHeaderMain = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
-            sessionHeaderMain.createEl('h4', { cls: ERT_CLASSES.SECTION_TITLE, text: 'Session planning (optional)' });
-            sessionHeaderMain.createDiv({
+            sessionTitle.prepend(sessionIcon);
+            addWikiLinkToElement(sessionTitle, 'Settings#runtime-estimation');
+            sessionHeader.createDiv({
                 cls: ERT_CLASSES.SECTION_DESC,
                 text: 'Used in the Outline export: Index cards (JSON) summary to estimate writing hours and total sessions.'
             });
-            const sessionHeaderRight = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
-            addWikiLinkToElement(sessionHeaderRight, 'Settings#runtime-estimation');
             const session = selectedProfile.sessionPlanning || {};
 
             addProRow(new Setting(detailsContainer))

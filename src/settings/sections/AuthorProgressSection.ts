@@ -21,7 +21,9 @@ export interface AuthorProgressSectionProps {
 
 export function renderAuthorProgressSection({ app, plugin, containerEl }: AuthorProgressSectionProps): void {
     // Social is ERT-only; avoid legacy classes.
-    const section = containerEl.createDiv({ cls: `ert-apr-section ${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_SOCIAL}` });
+    const section = containerEl.createDiv({
+        cls: `ert-apr-section ${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_SOCIAL} ${ERT_CLASSES.STACK}`
+    });
 
     // Check if APR needs refresh
     const aprService = new AuthorProgressService(plugin, app);
@@ -83,8 +85,13 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         li.createSpan({ text: feature.text });
     });
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // APR PREVIEW MODULE
+    // ─────────────────────────────────────────────────────────────────────────
+    const previewCard = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.STACK}` });
+
     // Size selector row
-    const sizeSelectorRow = hero.createDiv({ cls: `ert-apr-size-row ${ERT_CLASSES.INLINE}` });
+    const sizeSelectorRow = previewCard.createDiv({ cls: `ert-apr-size-row ${ERT_CLASSES.INLINE}` });
     sizeSelectorRow.createSpan({ text: 'Preview Size:', cls: 'ert-apr-size-label' });
 
     const sizeButtons = [
@@ -136,13 +143,13 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Dimension info
     const currentDim = sizeButtons.find(s => s.size === currentSize)?.dimension || '300';
-    dimLabel = hero.createDiv({
+    dimLabel = previewCard.createDiv({
         cls: 'ert-apr-preview-dimension'
     });
     setSizeLabel(dimLabel, currentDim, 'Actual size preview');
 
     // 1:1 preview
-    const previewSection = hero.createDiv({ cls: 'ert-apr-preview' });
+    const previewSection = previewCard.createDiv({ cls: 'ert-apr-preview' });
 
     // SVG Preview container - shows at 1:1 actual size
     const previewContainer = previewSection.createDiv({ cls: `ert-apr-preview-frame ert-apr-preview--actual ${ERT_CLASSES.PREVIEW_FRAME}` });
@@ -161,7 +168,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         ? new Date(settings.lastPublishedDate).toLocaleDateString()
         : 'Never';
 
-    const meta = hero.createDiv({ cls: `ert-apr-meta ${ERT_CLASSES.INLINE}` });
+    const meta = previewCard.createDiv({ cls: `ert-apr-meta ${ERT_CLASSES.INLINE}` });
     meta.createSpan({ text: `Last update: ${lastDate}`, cls: ERT_CLASSES.FIELD_NOTE });
     meta.createSpan({ text: 'Kickstarter ready', cls: ERT_CLASSES.CHIP });
     meta.createSpan({ text: 'Patreon friendly', cls: ERT_CLASSES.CHIP });
@@ -1199,21 +1206,19 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // ─────────────────────────────────────────────────────────────────────────
     // CAMPAIGN MANAGER (PRO FEATURE)
-    // Only shown to Pro users - replaces basic Publishing & Automation
+    // Always visible; locked styling handled inside section when Pro is inactive
     // ─────────────────────────────────────────────────────────────────────────
-    if (isProActive) {
-        const proContainer = contentWrapper.createDiv({ cls: ERT_CLASSES.SKIN_PRO });
-        renderCampaignManagerSection({
-            app,
-            plugin,
-            containerEl: proContainer,
-            onCampaignChange: () => {
-                // Refresh the hero preview when campaigns change
-                const size = plugin.settings.authorProgress?.aprSize || 'medium';
-                void renderHeroPreview(app, plugin, previewContainer, size);
-            }
-        });
-    }
+    const proContainer = contentWrapper.createDiv({ cls: ERT_CLASSES.SKIN_PRO });
+    renderCampaignManagerSection({
+        app,
+        plugin,
+        containerEl: proContainer,
+        onCampaignChange: () => {
+            // Refresh the hero preview when campaigns change
+            const size = plugin.settings.authorProgress?.aprSize || 'medium';
+            void renderHeroPreview(app, plugin, previewContainer, size);
+        }
+    });
 }
 
 /**
