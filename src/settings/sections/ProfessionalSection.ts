@@ -170,9 +170,8 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
 
         const rewardBox = betaPanel.createDiv({ cls: ERT_CLASSES.PREVIEW_FRAME });
         const p = rewardBox.createEl('p', { attr: { style: 'margin: 0; line-height: 1.5;' } });
-        p.createSpan({ text: '🎁 ' });
         p.createEl('strong', { text: 'Early Adopter Reward: ' });
-        p.createSpan({ text: 'Submit helpful feedback or bug reports and receive six months of Pro free when we launch paid licensing!' });
+        p.createSpan({ text: 'During the first year of Pro, for every unique bug report, you will recieve one month of Pro free.' });
 
         const feedbackLink = betaPanel.createEl('a', {
             text: 'Share feedback & claim your reward →',

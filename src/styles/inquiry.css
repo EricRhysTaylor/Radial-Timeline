@@ -1379,6 +1379,9 @@
 
 .ert-inquiry-briefing-footer {
   margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .ert-inquiry-briefing-footer.ert-hidden {
@@ -1401,6 +1404,32 @@
 .ert-inquiry-briefing-save:hover {
   filter: brightness(1.08);
   transform: translateY(-1px);
+}
+
+.ert-inquiry-briefing-clear {
+  width: 100%;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+  cursor: pointer;
+  transition: border-color 120ms ease, transform 120ms ease, filter 120ms ease;
+}
+
+.ert-inquiry-briefing-clear:hover {
+  border-color: color-mix(in srgb, var(--interactive-accent) 40%, var(--background-modifier-border));
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.ert-inquiry-briefing-note {
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  text-align: center;
 }
 
 

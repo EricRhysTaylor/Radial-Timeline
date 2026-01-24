@@ -2,6 +2,7 @@ import { MetadataCache, TFile, TFolder, Vault, normalizePath } from 'obsidian';
 import type { InquiryScope } from '../state';
 import type { InquiryClassConfig, InquirySourcesSettings } from '../../types/settings';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
+import { getScenePrefixNumber } from '../../utils/text';
 import { MAX_RESOLVED_SCAN_ROOTS, normalizeScanRootPatterns, resolveScanRoots, toVaultRoot } from '../utils/scanRoots';
 
 const BOOK_FOLDER_REGEX = /^Book\s+(\d+)/i;
@@ -154,7 +155,7 @@ export class InquiryCorpusResolver {
             if (!frontmatter) return;
             const classValues = this.extractClassValues(frontmatter);
             if (!classValues.includes('scene')) return;
-            const sceneNumber = this.getSceneNumber(frontmatter, file.basename);
+            const sceneNumber = this.getSceneNumber(file.basename);
             const hasSynopsis = this.hasSynopsis(frontmatter);
             scenes.push({
                 id: file.path,
@@ -222,24 +223,10 @@ export class InquiryCorpusResolver {
             .map(value => value.toLowerCase());
     }
 
-    private getSceneNumber(frontmatter: Record<string, unknown>, title?: string): number | undefined {
-        const fromFrontmatter = this.parseSceneNumberValue(frontmatter['Scene Number']);
-        if (fromFrontmatter !== undefined) return fromFrontmatter;
-        if (!title) return undefined;
-        return this.parseSceneNumberFromTitle(title);
-    }
-
-    private parseSceneNumberValue(value: unknown): number | undefined {
-        if (value === undefined || value === null) return undefined;
-        const parsed = Number(typeof value === 'string' ? value.trim() : value);
-        if (!Number.isFinite(parsed)) return undefined;
-        return Math.max(1, Math.floor(parsed));
-    }
-
-    private parseSceneNumberFromTitle(title: string): number | undefined {
-        const match = title.trim().match(/^(\d+(?:\.\d+)?)(?:\s+|$)/);
-        if (!match) return undefined;
-        const parsed = Number(match[1]);
+    private getSceneNumber(title?: string): number | undefined {
+        const prefix = getScenePrefixNumber(title ?? '', undefined);
+        if (!prefix) return undefined;
+        const parsed = Number(prefix);
         if (!Number.isFinite(parsed)) return undefined;
         return Math.max(1, Math.floor(parsed));
     }

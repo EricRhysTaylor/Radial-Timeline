@@ -190,14 +190,19 @@
 }
 
 /* Scoped divider between duo grid columns */
-.rt-book-designer-modal .rt-manuscript-duo-grid > .rt-scenes-generate-setting {
-    padding: 0 24px 0 0;
+.rt-book-designer-modal .rt-manuscript-duo-grid > .rt-manuscript-group-setting {
+    border-top: none;
+    padding-top: 0;
+    padding-bottom: 16px;
+}
+
+.rt-book-designer-modal .rt-manuscript-duo-grid > .rt-manuscript-group-setting:first-child {
+    padding-right: 24px;
     border-right: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.rt-book-designer-modal .rt-manuscript-duo-grid > .rt-book-length-setting {
-    padding: 0 16px 0 24px;
-    align-self: flex-start; /* Align to top like scenes to generate */
+.rt-book-designer-modal .rt-manuscript-duo-grid > .rt-manuscript-group-setting:nth-child(2) {
+    padding-left: 24px;
 }
 
 /* Standard Row Grid (e.g. Acts checkboxes) */

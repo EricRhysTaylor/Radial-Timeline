@@ -187,6 +187,7 @@ export class InquiryView extends ItemView {
     private briefingListEl?: HTMLDivElement;
     private briefingFooterEl?: HTMLDivElement;
     private briefingSaveButton?: HTMLButtonElement;
+    private briefingClearButton?: HTMLButtonElement;
     private briefingEmptyEl?: HTMLDivElement;
     private briefingPinned = false;
     private briefingHideTimer?: number;
@@ -628,6 +629,18 @@ export class InquiryView extends ItemView {
             event.stopPropagation();
             void this.handleBriefingSaveClick();
         });
+        this.briefingClearButton = this.briefingFooterEl.createEl('button', {
+            cls: 'ert-inquiry-briefing-clear',
+            text: 'Clear sessions'
+        });
+        this.briefingFooterEl.createDiv({
+            cls: 'ert-inquiry-briefing-note',
+            text: 'Does not delete briefs.'
+        });
+        this.registerDomEvent(this.briefingClearButton, 'click', (event: MouseEvent) => {
+            event.stopPropagation();
+            this.handleBriefingClearClick();
+        });
         this.registerDomEvent(panel, 'pointerenter', () => this.cancelBriefingHide());
         this.registerDomEvent(panel, 'pointerleave', () => this.scheduleBriefingHide());
         this.refreshBriefingPanel();
@@ -733,7 +746,8 @@ export class InquiryView extends ItemView {
             : undefined;
         const activeStatus = activeSession ? this.resolveSessionStatus(activeSession) : null;
         const canSave = !!activeSession && activeStatus === 'unsaved';
-        this.briefingFooterEl.classList.toggle('ert-hidden', !canSave);
+        this.briefingSaveButton?.classList.toggle('ert-hidden', !canSave);
+        this.briefingFooterEl.classList.remove('ert-hidden');
     }
 
     private resolveSessionStatus(session: InquirySession, options?: { simulated?: boolean }): InquirySessionStatus {
@@ -802,6 +816,29 @@ export class InquiryView extends ItemView {
             silent: false,
             sessionKey: this.state.activeSessionId
         });
+    }
+
+    private handleBriefingClearClick(): void {
+        if (this.state.isRunning) {
+            this.notifyInteraction('Inquiry running. Please wait to clear sessions.');
+            return;
+        }
+        this.sessionStore.clearSessions();
+        this.rehydrateTargetKey = undefined;
+        if (this.rehydrateHighlightTimer) {
+            window.clearTimeout(this.rehydrateHighlightTimer);
+            this.rehydrateHighlightTimer = undefined;
+        }
+        if (this.rehydratePulseTimer) {
+            window.clearTimeout(this.rehydratePulseTimer);
+            this.rehydratePulseTimer = undefined;
+        }
+        this.artifactButton?.classList.remove('is-rehydrate-pulse');
+        this.clearActiveResultState();
+        this.clearResultPreview();
+        this.unlockPromptPreview();
+        this.setApiStatus('idle');
+        this.refreshUI();
     }
 
     private activateSession(session: InquirySession): void {

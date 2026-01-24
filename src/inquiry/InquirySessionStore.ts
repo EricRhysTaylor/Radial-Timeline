@@ -60,6 +60,11 @@ export class InquirySessionStore {
         this.persist();
     }
 
+    clearSessions(): void {
+        this.cache.sessions = [];
+        this.persist();
+    }
+
     markStaleByBaseKey(baseKey: string): void {
         let updated = false;
         this.cache.sessions.forEach(session => {
