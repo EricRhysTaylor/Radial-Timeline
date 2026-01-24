@@ -1,12 +1,25 @@
 {
-  "totalWarnings": 2064,
-  "warningsByRule": {
-    "spacing-px": 539,
-    "shadow-rgba": 59,
-    "raw-hex": 169,
-    "rt-legacy": 1297
+  "maintenance": {
+    "totalWarnings": 2401,
+    "warningsByRule": {
+      "spacing-px": 645,
+      "shadow-rgba": 59,
+      "raw-hex": 189,
+      "rt-legacy": 1508
+    },
+    "updatedAt": "2026-01-24T18:19:54.895Z",
+    "migrationMode": false,
+    "mode": "maintenance"
   },
-  "updatedAt": "2026-01-23T01:23:00.134Z",
-  "migrationMode": false,
-  "mode": "maintenance"
+  "migration": {
+    "totalWarnings": 2401,
+    "warningsByRule": {
+      "spacing-px": 645,
+      "shadow-rgba": 59,
+      "raw-hex": 189,
+      "rt-legacy": 1508
+    },
+    "updatedAt": "2026-01-24T18:40:55.246Z",
+    "mode": "migration"
+  }
 }

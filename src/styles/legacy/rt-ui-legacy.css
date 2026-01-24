@@ -175,9 +175,9 @@
 }
 
 /* Default sizing for settings inputs (override with utilities above when needed) */
-.ert-settings-root .setting-item .setting-item-control input[type="text"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full):not(.ert-input--xs):not(.ert-input--sm):not(.ert-input--md):not(.ert-input--lg):not(.ert-input--full):not(.ert-hex-input),
-.ert-settings-root .setting-item .setting-item-control input[type="number"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full):not(.ert-input--xs):not(.ert-input--sm):not(.ert-input--md):not(.ert-input--lg):not(.ert-input--full),
-.ert-settings-root .setting-item .setting-item-control input[type="password"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full):not(.ert-input--xs):not(.ert-input--sm):not(.ert-input--md):not(.ert-input--lg):not(.ert-input--full) {
+.ert-settings-root .setting-item .setting-item-control input[type="text"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full):not(.ert-input--xs):not(.ert-input--sm):not(.ert-input--md):not(.ert-input--lg):not(.ert-input--xl):not(.ert-input--full):not(.ert-hex-input),
+.ert-settings-root .setting-item .setting-item-control input[type="number"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full):not(.ert-input--xs):not(.ert-input--sm):not(.ert-input--md):not(.ert-input--lg):not(.ert-input--xl):not(.ert-input--full),
+.ert-settings-root .setting-item .setting-item-control input[type="password"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full):not(.ert-input--xs):not(.ert-input--sm):not(.ert-input--md):not(.ert-input--lg):not(.ert-input--xl):not(.ert-input--full) {
   width: var(--rt-input-width-md);
   max-width: 100%;
 }

@@ -29,6 +29,7 @@ const MAINTENANCE_MODE = MODE === "maintenance";
 const LOOSE_MODE = MODE !== "strict";
 const WRITE_BASELINE = args.has("--write-baseline") || args.has("--update-baseline");
 const BASELINE_PATH = path.join(ROOT, "scripts/css-drift-baseline.json");
+const BASELINE_KEY = MAINTENANCE_MODE ? "maintenance" : MIGRATION_MODE ? "migration" : null;
 
 const FAIL = [];
 const WARN = [];
@@ -47,6 +48,86 @@ function findAll(re, text) {
   return hits;
 }
 
+const SKIN_SELECTOR_RE = /\.ert-skin--[a-zA-Z0-9_-]+/;
+const SKIN_FORBIDDEN_PROPS = new Set([
+  "font-size",
+  "font-weight",
+  "line-height",
+  "display",
+  "position",
+  "top",
+  "right",
+  "bottom",
+  "left",
+]);
+const SKIN_FORBIDDEN_PREFIXES = [
+  "margin",
+  "padding",
+  "gap",
+  "grid",
+  "flex",
+];
+const SKIN_ALLOWED_PROPS = new Set([
+  "background",
+  "background-color",
+  "background-image",
+  "border",
+  "box-shadow",
+  "color",
+  "filter",
+  "fill",
+  "opacity",
+  "outline-color",
+  "stroke",
+]);
+
+function isSkinForbiddenProp(prop) {
+  if (SKIN_FORBIDDEN_PROPS.has(prop)) return true;
+  return SKIN_FORBIDDEN_PREFIXES.some((prefix) => prop === prefix || prop.startsWith(prefix + "-"));
+}
+
+function isSkinAllowedProp(prop) {
+  if (prop.startsWith("--")) return true;
+  if (SKIN_ALLOWED_PROPS.has(prop)) return true;
+  if (prop.endsWith("-color")) return true;
+  return false;
+}
+
+function loadBaselineStore() {
+  if (!exists(BASELINE_PATH)) return null;
+  try {
+    const data = JSON.parse(read(BASELINE_PATH));
+    return data && typeof data === "object" ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveBaseline(store) {
+  if (!store) return { baseline: null, source: "missing" };
+  if (BASELINE_KEY && store[BASELINE_KEY]) {
+    return { baseline: store[BASELINE_KEY], source: "key" };
+  }
+  const hasLegacy = store.totalWarnings || store.warningsByRule;
+  if (hasLegacy) {
+    const matchesMode =
+      store.mode === MODE ||
+      (store.migrationMode === true && MIGRATION_MODE) ||
+      (store.migrationMode === false && MAINTENANCE_MODE);
+    if (matchesMode || !store.mode) {
+      return { baseline: store, source: "legacy" };
+    }
+  }
+  return { baseline: null, source: "missing" };
+}
+
+function describeBaseline(pathLabel, key, source) {
+  const parts = [pathLabel];
+  if (key) parts.push(`key: ${key}`);
+  if (source && source !== "key") parts.push(source);
+  return parts.join(" · ");
+}
+
 /**
  * Heuristics:
  * - We allow raw colors ONLY in token blocks (lines containing --ert- or --rt- CSS vars)
@@ -54,6 +135,40 @@ function findAll(re, text) {
  */
 for (const file of FILES.filter(exists)) {
   const css = read(file);
+
+  // 0) Skin overreach (fail) — .ert-skin--* selectors must remain visual-only
+  const ruleRe = /([^{}]+)\{([^{}]*)\}/g;
+  for (const m of findAll(ruleRe, css)) {
+    const selectorText = m[1].trim();
+    if (!SKIN_SELECTOR_RE.test(selectorText)) continue;
+    const selectors = selectorText.split(",").map((s) => s.trim()).filter(Boolean);
+    const skinSelectors = selectors.filter((s) => SKIN_SELECTOR_RE.test(s));
+    if (!skinSelectors.length) continue;
+    const selectorLabel = skinSelectors.join(", ");
+    const decls = m[2].split(";");
+    for (const decl of decls) {
+      const idx = decl.indexOf(":");
+      if (idx === -1) continue;
+      const prop = decl.slice(0, idx).trim().toLowerCase();
+      const value = decl.slice(idx + 1).trim();
+      if (!prop) continue;
+      if (isSkinForbiddenProp(prop)) {
+        addFail(
+          file,
+          `Skin selector sets forbidden property "${prop}".`,
+          `${selectorLabel} { ${prop}: ${value}; }`,
+          "skin-overreach"
+        );
+      } else if (!isSkinAllowedProp(prop)) {
+        addFail(
+          file,
+          `Skin selector sets non-allowed property "${prop}".`,
+          `${selectorLabel} { ${prop}: ${value}; }`,
+          "skin-overreach"
+        );
+      }
+    }
+  }
 
   // 1) !important (fail)
   for (const m of findAll(/!important\b/g, css)) {
@@ -149,20 +264,37 @@ const warnSummary = WARN.reduce(
   { total: 0, byRule: {} }
 );
 
+const baselineStore = loadBaselineStore();
+const baselineInfo = BASELINE_KEY ? resolveBaseline(baselineStore) : { baseline: null, source: "unused" };
+console.log(`\nBaseline: ${describeBaseline(BASELINE_PATH, BASELINE_KEY, baselineInfo.source)}`);
+
 if (WRITE_BASELINE) {
+  if (!BASELINE_KEY) {
+    console.error("\nBaseline writes are only supported in maintenance or migration modes.");
+    process.exit(1);
+  }
   const payload = {
     totalWarnings: warnSummary.total,
     warningsByRule: warnSummary.byRule,
     updatedAt: new Date().toISOString(),
-    migrationMode: MIGRATION_MODE,
     mode: MODE,
   };
-  fs.writeFileSync(BASELINE_PATH, JSON.stringify(payload, null, 2));
-  console.log(`\n🧭 Wrote CSS drift baseline to ${BASELINE_PATH}`);
+  const store = baselineStore && typeof baselineStore === "object" ? baselineStore : {};
+  const output = store.maintenance || store.migration ? { ...store } : {};
+  if (!output.maintenance && !output.migration && (store.totalWarnings || store.warningsByRule)) {
+    const legacyKey =
+      store.mode === "migration" || store.migrationMode === true
+        ? "migration"
+        : "maintenance";
+    output[legacyKey] = store;
+  }
+  output[BASELINE_KEY] = payload;
+  fs.writeFileSync(BASELINE_PATH, JSON.stringify(output, null, 2));
+  console.log(`\n🧭 Wrote CSS drift baseline to ${BASELINE_PATH} (key: ${BASELINE_KEY})`);
 }
 
 if (LOOSE_MODE && !WRITE_BASELINE) {
-  const baseline = exists(BASELINE_PATH) ? JSON.parse(read(BASELINE_PATH)) : null;
+  const baseline = baselineInfo.baseline;
   if (baseline) {
     const baselineTotal = baseline.totalWarnings ?? 0;
     const currentTotal = warnSummary.total;
@@ -185,7 +317,7 @@ if (LOOSE_MODE && !WRITE_BASELINE) {
   if (!baseline) {
     addFail(
       BASELINE_PATH,
-      "Missing drift baseline. Run with --write-baseline to capture the current WARN budget.",
+      `Missing drift baseline for ${BASELINE_KEY || "strict"} mode. Run with --write-baseline to capture the current WARN budget.`,
       "baseline missing",
       "warn-budget"
     );
