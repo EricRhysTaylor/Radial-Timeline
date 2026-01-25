@@ -104,11 +104,11 @@
   --ert-control-bg: var(--background-modifier-form-field);
   --ert-control-border: var(--background-modifier-border);
   --ert-control-color: var(--text-normal);
-  --ert-modal-bg: color-mix(in srgb, var(--background-primary) 88%, transparent);
-  --ert-modal-border: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  --ert-modal-bg: color-mix(in srgb, var(--background-primary) 92%, transparent);
+  --ert-modal-border: color-mix(in srgb, var(--background-modifier-border) 82%, transparent);
   --ert-modal-shadow: var(--shadow-l);
   --ert-modal-blur: blur(16px);
-  --ert-modal-tint: linear-gradient(180deg, color-mix(in srgb, var(--background-primary) 12%, transparent) 0%, transparent 70%);
+  --ert-modal-tint: linear-gradient(180deg, color-mix(in srgb, var(--background-primary) 18%, transparent) 0%, transparent 70%);
   --ert-modal-glow: none;
   --ert-input-width-xs: var(--rt-input-width-xs, 6ch);
   --ert-input-width-sm: var(--rt-input-width-sm, 10ch);
@@ -3709,28 +3709,9 @@
   margin-top: 20px;
 }
 
-.ert-ui .ert-ai-context-info {
-  margin: var(--ert-gap-xs) 0 var(--ert-gap-md);
-}
-
-.ert-ui .ert-ai-context-section {
-  margin-bottom: var(--ert-gap-md);
-}
-
-.ert-ui .ert-ai-context-editor-section {
-  margin-bottom: var(--ert-gap-md);
-}
-
-.ert-ui .ert-ai-context-label {
-  font-weight: 600;
-  margin-bottom: var(--ert-gap-xs);
-  color: var(--text-normal);
-}
-
 .ert-ui .ert-ai-context-selector-row {
   display: flex;
   gap: var(--ert-gap-sm);
-  margin-bottom: var(--ert-gap-xs);
 }
 
 .ert-ui .ert-ai-context-selector-row .dropdown {

@@ -136,8 +136,7 @@ export class AiContextModal extends Modal {
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
         titleEl.setText('');
-        contentEl.addClass('ert-modal-container');
-        contentEl.addClass('ert-modal--aiContext');
+        contentEl.addClass('ert-modal-container', 'ert-modal--aiContext', 'ert-stack');
 
         const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
         hero.createDiv({ cls: 'ert-modal-title', text: 'AI context templates' });
@@ -150,16 +149,15 @@ export class AiContextModal extends Modal {
         const infoEl = contentEl.createDiv({ cls: 'ert-field-note ert-ai-context-info' });
         infoEl.setText('Define context for AI LLM analysis and Gossamer score generation. This text prepends all prompts sent to LLM to establish role and context and is used for the copy template button to generate Gossamer scores.');
 
-        // Template selector section
-        const selectorSection = contentEl.createDiv({ cls: 'ert-ai-context-section' });
-        
-        const selectorLabel = selectorSection.createDiv({ cls: 'ert-ai-context-label' });
-        selectorLabel.setText('Template:');
-        
-        const selectorRow = selectorSection.createDiv({ cls: 'ert-ai-context-selector-row' });
+        // Template selector row
+        const selectorRow = contentEl.createDiv({ cls: 'ert-row' });
+        selectorRow.createDiv({ cls: 'ert-label', text: 'Template' });
+        const selectorControl = selectorRow.createDiv({ cls: 'ert-control' });
+        const selectorInputRow = selectorControl.createDiv({ cls: 'ert-ai-context-selector-row' });
         
         // Dropdown for template selection
-        this.dropdownComponent = new DropdownComponent(selectorRow);
+        this.dropdownComponent = new DropdownComponent(selectorInputRow);
+        this.dropdownComponent.selectEl.addClass('ert-input');
         this.updateDropdownOptions();
         this.dropdownComponent.setValue(this.currentTemplateId);
         this.dropdownComponent.onChange((value) => {
@@ -177,7 +175,7 @@ export class AiContextModal extends Modal {
         });
         
         // Template management buttons row
-        const buttonRow = selectorSection.createDiv({ cls: 'ert-ai-context-button-row' });
+        const buttonRow = selectorControl.createDiv({ cls: 'ert-ai-context-button-row' });
         
         // New Template button
         new ButtonComponent(buttonRow)
@@ -200,14 +198,13 @@ export class AiContextModal extends Modal {
             .setWarning()
             .onClick(() => this.deleteTemplate());
 
-        // Editor section
-        const editorSection = contentEl.createDiv({ cls: 'ert-ai-context-editor-section' });
-        
-        const editorLabel = editorSection.createDiv({ cls: 'ert-ai-context-label' });
-        editorLabel.setText('Prompt:');
-        
+        // Editor row
+        const editorRow = contentEl.createDiv({ cls: 'ert-row' });
+        editorRow.createDiv({ cls: 'ert-label', text: 'Prompt' });
+        const editorControl = editorRow.createDiv({ cls: 'ert-control' });
+
         // Textarea for editing prompt
-        this.textareaEl = editorSection.createEl('textarea', { cls: 'ert-textarea ert-ai-context-textarea' });
+        this.textareaEl = editorControl.createEl('textarea', { cls: 'ert-textarea ert-ai-context-textarea' });
         this.textareaEl.placeholder = 'Enter your AI context prompt here...';
         
         // Track changes
