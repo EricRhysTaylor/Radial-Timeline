@@ -225,7 +225,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
 
         const addSetting = new Settings(list)
             .setName('Add micro-backdrop')
-            .setDesc(`Creates a new ring configuration. Micro-backdrops are thin custom bands tucked under the backdrop ring (Chronologue mode only).${emptyHint}`);
+            .setDesc(`Creates a new ring configuration. Micro-backdrops are slender custom bands tucked under the backdrop ring (Chronologue mode only). Micro-backdrops will coexist on one ring unless there is a date range overlap, in which case they will be placed on separate rings. ${emptyHint}`);
         addSetting.addButton(button => button
             .setButtonText('Add')
             .onClick(async () => {
