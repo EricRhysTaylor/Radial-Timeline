@@ -364,6 +364,12 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             if (el.classList.contains('setting-item-heading')) return;
             if (el.closest('.ert-color-grid-controls')) return;
             el.classList.add(ERT_CLASSES.ELEMENT_BLOCK);
+            const hasTextarea = !!el.querySelector('.setting-item-control textarea');
+            const isWideControl = el.classList.contains(ERT_CLASSES.ROW_WIDE_CONTROL);
+            const isFullWidth = el.classList.contains('ert-setting-full-width-input');
+            if (hasTextarea && !isWideControl && !isFullWidth) {
+                el.classList.add(ERT_CLASSES.ROW_TOP_ALIGN);
+            }
         });
     }
 

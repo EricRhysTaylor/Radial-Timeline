@@ -324,6 +324,11 @@
   opacity: 1;
 }
 
+.ert-inquiry-minimap-backbone.is-fading-out {
+  opacity: 0;
+  transition: opacity 800ms ease;
+}
+
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-baseline {
   stroke: color-mix(in srgb, var(--text-normal) 35%, transparent);
   opacity: 0.45;
@@ -526,9 +531,9 @@
 }
 
 .ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-hit {
-  stroke: #ffffff;
-  fill: color-mix(in srgb, #ffffff 12%, var(--background-secondary));
-  filter: drop-shadow(0 0 6px color-mix(in srgb, #ffffff 45%, transparent));
+  stroke: var(--ert-inquiry-hit-color);
+  fill: color-mix(in srgb, var(--ert-inquiry-hit-color) 18%, var(--background-secondary));
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-hit-color) 65%, transparent));
 }
 
 .ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-active {

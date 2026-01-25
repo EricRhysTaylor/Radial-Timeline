@@ -53,7 +53,7 @@ import {
 
 const GLYPH_PLACEHOLDER_FLOW = 0.75;
 const GLYPH_PLACEHOLDER_DEPTH = 0.30;
-const DEBUG_SVG_OVERLAY = true;
+const DEBUG_SVG_OVERLAY = false;
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const VIEWBOX_MIN = -800;
 const VIEWBOX_MAX = 800;
@@ -116,6 +116,9 @@ const BACKBONE_SWEEP_WIDTH_RATIO = 0.2;
 const BACKBONE_SWEEP_MIN_WIDTH = 80;
 const BACKBONE_SWEEP_MAX_WIDTH = 200;
 const MIN_PROCESSING_MS = 5000;
+const BACKBONE_SHINE_DURATION_MS = 7200;
+const BACKBONE_OSCILLATION_MS = 8000;
+const BACKBONE_FADE_OUT_MS = 800;
 const SIMULATION_DURATION_MS = 20000;
 const BRIEFING_SESSION_LIMIT = 10;
 const DUPLICATE_PULSE_MS = 1200;
@@ -132,8 +135,8 @@ const INQUIRY_NOTES_DIVIDER = '/* INQUIRY NOTES (auto) */';
 const INQUIRY_NOTES_DIVIDER_OVERFLOW = '/* INQUIRY NOTES (auto) — showing last 5 (older notes omitted) */';
 const CC_RIGHT_MARGIN = 50;
 const CC_BOTTOM_MARGIN = 50;
-const INQUIRY_GUIDANCE_DOC_URL = 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Inquiry';
-const INQUIRY_GUIDANCE_RESULTS_URL = `${INQUIRY_GUIDANCE_DOC_URL}#results--sessions`;
+const INQUIRY_GUIDANCE_DOC_URL = 'https://github.com/EricRhysTaylor/Radial-Timeline/wiki';
+const INQUIRY_GUIDANCE_RESULTS_URL = INQUIRY_GUIDANCE_DOC_URL;
 const GUIDANCE_TEXT_Y = 360;
 const GUIDANCE_LINE_HEIGHT = 18;
 const GUIDANCE_ALERT_LINE_HEIGHT = 26;
@@ -157,6 +160,11 @@ type RgbColor = {
     r: number;
     g: number;
     b: number;
+};
+
+type BackboneColors = {
+    gradient: RgbColor[];
+    shine: RgbColor[];
 };
 
 type CorpusCcEntry = {
@@ -227,8 +235,11 @@ export class InquiryView extends ItemView {
     };
     private minimapBackboneGradientStops: SVGStopElement[] = [];
     private minimapBackboneShineStops: SVGStopElement[] = [];
-    private backboneStartColors?: { gradient: RgbColor[]; shine: RgbColor[] };
-    private backboneTargetColors?: { gradient: RgbColor[]; shine: RgbColor[] };
+    private backboneStartColors?: BackboneColors;
+    private backboneTargetColors?: BackboneColors;
+    private backboneOscillationColors?: { base: BackboneColors; target: BackboneColors };
+    private backboneOscillationPhaseOffset = 0;
+    private backboneFadeTimer?: number;
     private minimapSweepTicks: Array<{ rect: SVGRectElement; centerX: number; rowIndex: number }> = [];
     private minimapSweepLayout?: { startX: number; endX: number; bandWidth: number };
     private runningAnimationFrame?: number;
@@ -417,7 +428,9 @@ export class InquiryView extends ItemView {
         svg.appendChild(frame);
 
         svg.classList.toggle('is-debug', DEBUG_SVG_OVERLAY);
-        this.buildDebugOverlay(svg);
+        if (DEBUG_SVG_OVERLAY) {
+            this.buildDebugOverlay(svg);
+        }
 
         const hudOffsetX = -760;
         const hudOffsetY = -740;
@@ -445,7 +458,15 @@ export class InquiryView extends ItemView {
         addTooltipData(this.apiSimulationButton, 'Simulate API run', 'left');
         this.registerDomEvent(this.apiSimulationButton as unknown as HTMLElement, 'click', () => this.startApiSimulation());
 
-        this.helpToggleButton = this.createIconButton(hudGroup, helpX, 0, iconSize, 'help-circle', 'Inquiry help');
+        this.helpToggleButton = this.createIconButton(
+            hudGroup,
+            helpX,
+            0,
+            iconSize,
+            'help-circle',
+            'Inquiry help',
+            'ert-inquiry-help-btn'
+        );
         this.helpToggleButton.querySelector('title')?.remove();
         this.registerDomEvent(this.helpToggleButton as unknown as HTMLElement, 'click', () => this.handleGuidanceHelpClick());
 
@@ -2942,7 +2963,7 @@ export class InquiryView extends ItemView {
         return this.parseRgbColor(hexVar) ?? { r: 217, g: 70, b: 239 };
     }
 
-    private getBackboneStartColors(): { gradient: RgbColor[]; shine: RgbColor[] } {
+    private getBackboneStartColors(): BackboneColors {
         return {
             gradient: [
                 { r: 255, g: 153, b: 0 },
@@ -2958,7 +2979,7 @@ export class InquiryView extends ItemView {
         };
     }
 
-    private getBackboneTargetColors(isPro: boolean): { gradient: RgbColor[]; shine: RgbColor[] } {
+    private getBackboneTargetColors(isPro: boolean): BackboneColors {
         const base = isPro ? this.getProAccentColor() : { r: 34, g: 255, b: 120 };
         const bright = this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, isPro ? 0.55 : 0.65);
         const deep = this.mixRgbColor(base, { r: 0, g: 0, b: 0 }, isPro ? 0.12 : 0.08);
@@ -2973,6 +2994,17 @@ export class InquiryView extends ItemView {
         };
     }
 
+    private applyBackboneStopColors(gradientColors: RgbColor[], shineColors: RgbColor[]): void {
+        gradientColors.forEach((color, idx) => {
+            const stop = this.minimapBackboneGradientStops[idx];
+            if (stop) stop.setAttribute('stop-color', this.toRgbString(color));
+        });
+        shineColors.forEach((color, idx) => {
+            const stop = this.minimapBackboneShineStops[idx];
+            if (stop) stop.setAttribute('stop-color', this.toRgbString(color));
+        });
+    }
+
     private applyBackboneColors(progress: number): void {
         if (!this.backboneStartColors || !this.backboneTargetColors) return;
         const gradientColors = this.backboneStartColors.gradient.map((color, idx) => {
@@ -2983,14 +3015,21 @@ export class InquiryView extends ItemView {
             const target = this.backboneTargetColors?.shine[idx] ?? color;
             return this.mixRgbColor(color, target, progress);
         });
-        gradientColors.forEach((color, idx) => {
-            const stop = this.minimapBackboneGradientStops[idx];
-            if (stop) stop.setAttribute('stop-color', this.toRgbString(color));
+        this.applyBackboneStopColors(gradientColors, shineColors);
+    }
+
+    private applyBackboneOscillationColors(progress: number): void {
+        if (!this.backboneOscillationColors) return;
+        const { base, target } = this.backboneOscillationColors;
+        const gradientColors = base.gradient.map((color, idx) => {
+            const next = target.gradient[idx] ?? color;
+            return this.mixRgbColor(color, next, progress);
         });
-        shineColors.forEach((color, idx) => {
-            const stop = this.minimapBackboneShineStops[idx];
-            if (stop) stop.setAttribute('stop-color', this.toRgbString(color));
+        const shineColors = base.shine.map((color, idx) => {
+            const next = target.shine[idx] ?? color;
+            return this.mixRgbColor(color, next, progress);
         });
+        this.applyBackboneStopColors(gradientColors, shineColors);
     }
 
     private setBackboneFillProgress(progress: number, sweepProgress: number): void {
@@ -3021,10 +3060,16 @@ export class InquiryView extends ItemView {
     }
 
     private updateBackbonePulse(elapsed: number): void {
-        const colorProgress = Math.min(Math.max(elapsed / MIN_PROCESSING_MS, 0), 1);
-        const sweepProgress = (elapsed % SWEEP_DURATION_MS) / SWEEP_DURATION_MS;
-        this.setBackboneFillProgress(colorProgress, sweepProgress);
-        this.applyBackboneColors(colorProgress);
+        const fillProgress = Math.min(Math.max(elapsed / MIN_PROCESSING_MS, 0), 1);
+        const sweepProgress = (elapsed % BACKBONE_SHINE_DURATION_MS) / BACKBONE_SHINE_DURATION_MS;
+        this.setBackboneFillProgress(fillProgress, sweepProgress);
+        if (elapsed < MIN_PROCESSING_MS || !this.backboneOscillationColors) {
+            this.applyBackboneColors(fillProgress);
+            return;
+        }
+        const phase = ((elapsed - MIN_PROCESSING_MS) / BACKBONE_OSCILLATION_MS) * Math.PI * 2 + this.backboneOscillationPhaseOffset;
+        const oscillation = (Math.sin(phase) + 1) / 2;
+        this.applyBackboneOscillationColors(oscillation);
     }
 
     private isTFile(file: TAbstractFile | null): file is TFile {
@@ -3032,11 +3077,8 @@ export class InquiryView extends ItemView {
     }
 
     private updateMinimapFocus(): void {
-        const focusId = this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusSceneId;
-        this.minimapTicks.forEach((tick, idx) => {
-            const tickId = tick.getAttribute('data-id') || '';
-            const isActive = !!focusId && tickId === focusId;
-            tick.classList.toggle('is-active', isActive);
+        this.minimapTicks.forEach(tick => {
+            tick.classList.remove('is-active');
         });
     }
 
@@ -3261,6 +3303,9 @@ export class InquiryView extends ItemView {
             this.startRunningAnimations();
         } else {
             this.stopRunningAnimations();
+            if (wasRunning) {
+                this.startBackboneFadeOut();
+            }
         }
     }
 
@@ -3308,6 +3353,7 @@ export class InquiryView extends ItemView {
         if (this.rootSvg) {
             this.rootSvg.classList.toggle('is-inquiry-blocked', runDisabled);
             this.rootSvg.classList.toggle('is-run-locked', runDisabled);
+            this.rootSvg.classList.toggle('is-no-scenes', state === 'no-scenes');
         }
         this.contentEl.classList.toggle('is-inquiry-blocked', blocked);
 
@@ -3339,39 +3385,63 @@ export class InquiryView extends ItemView {
             return;
         }
 
+        const isNoScenes = state === 'no-scenes';
+        const isAlert = state === 'not-configured' || isNoScenes;
+        if (!isAlert) {
+            this.hoverTextEl.classList.add('ert-hidden');
+            this.hoverTextEl.classList.remove('is-guidance', 'is-guidance-alert', 'is-guidance-results');
+            this.clearSvgChildren(this.hoverTextEl);
+            return;
+        }
+
         const guidanceLines = state === 'not-configured'
             ? ['Inquiry is not configured.', 'Set scan roots and class scope in Settings → Radial Timeline → Inquiry.']
-            : state === 'no-scenes'
-                ? ['No scenes found.', 'Check scan roots and class scope in Settings → Radial Timeline → Inquiry.']
-                : state === 'results'
-                    ? [
-                        'Survey the affected scenes or books for insight.',
-                        'View the Briefing report, or run a different question.',
-                        'Switch between Flow and Depth to reframe the analysis.'
-                    ]
-                    : ['Select a question to run an Inquiry.', 'Choose Flow or Depth to frame the analysis.'];
-
-        const lineHeight = state === 'not-configured' ? GUIDANCE_ALERT_LINE_HEIGHT : GUIDANCE_LINE_HEIGHT;
+            : ['No Scenes Found', 'Check scan roots and class scope in Settings → Radial Timeline → Inquiry.'];
+        const lineHeight = isAlert
+            ? (isNoScenes ? GUIDANCE_ALERT_LINE_HEIGHT + 14 : GUIDANCE_ALERT_LINE_HEIGHT)
+            : GUIDANCE_LINE_HEIGHT;
 
         this.hoverTextEl.classList.remove('ert-hidden');
         this.hoverTextEl.classList.toggle('is-guidance', true);
-        this.hoverTextEl.classList.toggle('is-guidance-alert', state === 'not-configured');
-        this.hoverTextEl.classList.toggle('is-guidance-results', state === 'results');
+        this.hoverTextEl.classList.toggle('is-guidance-alert', isAlert);
+        this.hoverTextEl.classList.toggle('is-guidance-results', false);
         this.hoverTextEl.setAttribute('x', '0');
         this.hoverTextEl.setAttribute('y', String(GUIDANCE_TEXT_Y));
         this.hoverTextEl.setAttribute('text-anchor', 'middle');
-        this.setGuidanceTextLines(guidanceLines, lineHeight);
+        this.setGuidanceTextLines(
+            guidanceLines,
+            lineHeight,
+            isNoScenes
+                ? { primaryClass: 'ert-inquiry-guidance-primary', primarySize: 40, primaryWeight: 800 }
+                : undefined
+        );
     }
 
-    private setGuidanceTextLines(lines: string[], lineHeight: number): void {
+    private setGuidanceTextLines(
+        lines: string[],
+        lineHeight: number,
+        options?: { primaryClass?: string; primarySize?: number; primaryWeight?: number }
+    ): void {
         const hoverTextEl = this.hoverTextEl;
         if (!hoverTextEl) return;
         this.clearSvgChildren(hoverTextEl);
         const x = hoverTextEl.getAttribute('x') ?? '0';
+        const primaryClass = options?.primaryClass;
+        const primarySize = options?.primarySize;
+        const primaryWeight = options?.primaryWeight;
         lines.forEach((line, index) => {
             const tspan = this.createSvgElement('tspan');
             tspan.setAttribute('x', x);
             tspan.setAttribute('dy', index === 0 ? '0' : String(lineHeight));
+            if (index === 0 && primaryClass) {
+                tspan.classList.add(primaryClass);
+                if (primarySize) {
+                    tspan.setAttribute('font-size', String(primarySize));
+                }
+                if (primaryWeight) {
+                    tspan.setAttribute('font-weight', String(primaryWeight));
+                }
+            }
             tspan.textContent = line;
             hoverTextEl.appendChild(tspan);
         });
@@ -3379,17 +3449,24 @@ export class InquiryView extends ItemView {
 
     private updateGuidanceHelpTooltip(state: InquiryGuidanceState): void {
         if (!this.helpToggleButton) return;
+        const resultsTooltip = [
+            'Survey the affected scenes or books for insight.',
+            'View the Briefing report, or run a different question.',
+            'Switch between Flow and Depth to reframe the analysis.'
+        ].join('\n');
         const tooltip = state === 'not-configured'
             ? 'Configure Inquiry sources'
             : state === 'no-scenes'
                 ? 'No scenes detected'
                 : state === 'results'
-                    ? 'Next steps'
+                    ? resultsTooltip
                     : state === 'ready'
                         ? 'How Inquiry works'
                         : '';
 
         this.helpToggleButton.removeAttribute('aria-pressed');
+        const isAlert = state === 'not-configured' || state === 'no-scenes';
+        this.helpToggleButton.classList.toggle('is-guidance-alert', isAlert);
         if (tooltip) {
             addTooltipData(this.helpToggleButton, tooltip, 'left');
             this.helpToggleButton.setAttribute('aria-label', tooltip);
@@ -3443,7 +3520,7 @@ export class InquiryView extends ItemView {
     }
 
     private scrollInquirySetting(target: 'class-scope' | 'scan-roots'): void {
-        const el = document.querySelector(`[data-ert-inquiry-setting="${target}"]`);
+        const el = document.querySelector(`[data-ert-role="inquiry-setting:${target}"]`);
         if (!(el instanceof HTMLElement)) return;
         el.scrollIntoView({ block: 'center' });
     }
@@ -3452,8 +3529,18 @@ export class InquiryView extends ItemView {
         if (this.runningAnimationFrame) return;
         this.runningAnimationStart = performance.now();
         const isPro = isProfessionalActive(this.plugin);
+        this.cancelBackboneFadeOut();
         this.backboneStartColors = this.getBackboneStartColors();
         this.backboneTargetColors = this.getBackboneTargetColors(isPro);
+        if (this.backboneStartColors && this.backboneTargetColors) {
+            this.backboneOscillationColors = {
+                base: this.backboneStartColors,
+                target: this.backboneTargetColors
+            };
+        } else {
+            this.backboneOscillationColors = undefined;
+        }
+        this.backboneOscillationPhaseOffset = Math.PI / 2;
         this.setBackboneFillProgress(0, 0);
         this.applyBackboneColors(0);
         const animate = (now: number) => {
@@ -3478,6 +3565,26 @@ export class InquiryView extends ItemView {
         this.minimapSweepTicks.forEach(tick => tick.rect.setAttribute('opacity', '0'));
         this.backboneStartColors = undefined;
         this.backboneTargetColors = undefined;
+        this.backboneOscillationColors = undefined;
+        this.backboneOscillationPhaseOffset = 0;
+    }
+
+    private startBackboneFadeOut(): void {
+        this.cancelBackboneFadeOut();
+        if (!this.minimapBackboneGroup) return;
+        this.minimapBackboneGroup.classList.add('is-fading-out');
+        this.backboneFadeTimer = window.setTimeout(() => {
+            this.minimapBackboneGroup?.classList.remove('is-fading-out');
+            this.backboneFadeTimer = undefined;
+        }, BACKBONE_FADE_OUT_MS);
+    }
+
+    private cancelBackboneFadeOut(): void {
+        if (this.backboneFadeTimer) {
+            window.clearTimeout(this.backboneFadeTimer);
+            this.backboneFadeTimer = undefined;
+        }
+        this.minimapBackboneGroup?.classList.remove('is-fading-out');
     }
 
     private updateSweep(elapsed: number): void {

@@ -91,8 +91,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const previewCard = section.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.STACK}` });
 
     // Size selector row
-    const sizeSelectorRow = previewCard.createDiv({ cls: `ert-apr-size-row ${ERT_CLASSES.INLINE}` });
-    sizeSelectorRow.createSpan({ text: 'Preview Size:', cls: 'ert-apr-size-label' });
+    const sizeSelectorRow = previewCard.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
+    sizeSelectorRow.createSpan({ text: 'Preview Size:', cls: ERT_CLASSES.LABEL });
+    const sizeSelectorControls = sizeSelectorRow.createDiv({ cls: ERT_CLASSES.INLINE });
 
     const sizeButtons = [
         { size: 'thumb', dimension: '100' },
@@ -113,7 +114,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     let dimLabel: HTMLElement | null = null;
 
     sizeButtons.forEach(({ size, dimension }) => {
-        const btn = sizeSelectorRow.createEl('button', {
+        const btn = sizeSelectorControls.createEl('button', {
             cls: `ert-apr-size-btn ${size === currentSize ? `ert-apr-size-btn--active ${ERT_CLASSES.IS_ACTIVE}` : ''} ${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_STANDARD}`
         });
         setSizeLabel(btn, dimension);
@@ -143,9 +144,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Dimension info
     const currentDim = sizeButtons.find(s => s.size === currentSize)?.dimension || '300';
-    dimLabel = previewCard.createDiv({
-        cls: 'ert-apr-preview-dimension'
-    });
+    dimLabel = sizeSelectorRow.createEl('em', { cls: ERT_CLASSES.ROW_DESC });
     setSizeLabel(dimLabel, currentDim, 'Actual size preview');
 
     // 1:1 preview
@@ -168,8 +167,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         ? new Date(settings.lastPublishedDate).toLocaleDateString()
         : 'Never';
 
-    const meta = previewCard.createDiv({ cls: `ert-apr-meta ${ERT_CLASSES.INLINE}` });
-    meta.createSpan({ text: `Last update: ${lastDate}`, cls: ERT_CLASSES.FIELD_NOTE });
+    const meta = previewCard.createDiv({ cls: ERT_CLASSES.INLINE });
+    meta.createSpan({ text: `Last update: ${lastDate}`, cls: `${ERT_CLASSES.CHIP} ${ERT_CLASSES.FIELD_NOTE}` });
     meta.createSpan({ text: 'Kickstarter ready', cls: ERT_CLASSES.CHIP });
     meta.createSpan({ text: 'Patreon friendly', cls: ERT_CLASSES.CHIP });
 

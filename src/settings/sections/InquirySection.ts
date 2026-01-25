@@ -216,12 +216,18 @@ const validateCorpusThresholds = (next: InquiryCorpusThresholds): string | null 
 export function renderInquirySection(params: SectionParams): void {
     const { plugin, containerEl, attachFolderSuggest } = params;
 
-    const createSection = (parent: HTMLElement, options: { title: string; desc?: string; icon: string; wiki?: string }) => {
+    const createSection = (
+        parent: HTMLElement,
+        options: { title: string; desc?: string; icon: string; wiki?: string; headingClass?: string }
+    ) => {
         const header = new Settings(parent).setName(options.title);
         if (options.desc) {
             header.setDesc(options.desc);
         }
         header.setHeading();
+        if (options.headingClass) {
+            header.settingEl.addClass(options.headingClass);
+        }
         addHeadingIcon(header, options.icon);
         if (options.wiki) {
             addWikiLink(header, options.wiki);
@@ -236,7 +242,8 @@ export function renderInquirySection(params: SectionParams): void {
     const sourcesBody = createSection(containerEl, {
         title: 'Inquiry sources',
         icon: 'search',
-        wiki: 'Settings#inquiry-sources'
+        wiki: 'Settings#inquiry-sources',
+        headingClass: 'ert-setting-heading--top'
     });
 
     let scanRootsInput: TextAreaComponent | null = null;
@@ -245,7 +252,8 @@ export function renderInquirySection(params: SectionParams): void {
     const scanRootsSetting = new Settings(sourcesBody)
         .setName('Inquiry scan folders')
         .setDesc('Inquiry only scans within these folders. One path per line. Wildcards like /Book */ or /Book 1-7 */ are allowed. Use / for the vault root. Empty = no scan.');
-    scanRootsSetting.settingEl.setAttribute('data-ert-inquiry-setting', 'scan-roots');
+    scanRootsSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:scan-roots');
+    scanRootsSetting.settingEl.addClass(ERT_CLASSES.ROW_WIDE_CONTROL);
 
     scanRootsSetting.addTextArea(text => {
         text.setValue(listToText(inquirySources.scanRoots));
@@ -269,9 +277,12 @@ export function renderInquirySection(params: SectionParams): void {
         });
     });
 
-    const scanRootActions = sourcesBody.createDiv({ cls: 'ert-inquiry-scan-root-actions' });
+    const scanRootActions = scanRootsSetting.controlEl.createDiv({
+        cls: [ERT_CLASSES.ELEMENT_BLOCK_ROW, ERT_CLASSES.INLINE]
+    });
     const addActionButton = (label: string, onClick: () => void) => {
-        const btn = scanRootActions.createEl('button', { text: label, cls: 'ert-inquiry-scan-root-btn' });
+        const btn = scanRootActions.createEl('button', { cls: ERT_CLASSES.PILL_BTN });
+        btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: label });
         plugin.registerDomEvent(btn, 'click', (evt) => {
             evt.preventDefault();
             onClick();
@@ -287,14 +298,19 @@ export function renderInquirySection(params: SectionParams): void {
         applyScanRoots(nextRoots);
     });
 
-    const resolvedPreview = sourcesBody.createEl('details', { cls: 'ert-inquiry-resolved-roots' });
-    const resolvedSummary = resolvedPreview.createEl('summary', { text: 'Resolved folders (0)' });
-    const resolvedList = resolvedPreview.createDiv({ cls: 'ert-inquiry-resolved-roots-list' });
+    const resolvedPreview = sourcesBody.createDiv({
+        cls: [ERT_CLASSES.PREVIEW_FRAME, 'ert-previewFrame--center', 'ert-previewFrame--left'],
+        attr: { 'data-preview': 'inquiry-resolved' }
+    });
+    const resolvedHeading = resolvedPreview.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Resolved Folders (0)' });
+    const resolvedList = resolvedPreview.createDiv({ cls: 'ert-controlGroup ert-controlGroup--scroll' });
+    resolvedList.style.setProperty('--ert-controlGroup-columns', '1fr');
+    resolvedList.style.setProperty('--ert-controlGroup-max-height', '220px');
 
     const classScopeSetting = new Settings(sourcesBody)
         .setName('Inquiry class scope')
         .setDesc('One YAML class per line. Use / to allow all classes. Empty = no classes allowed.');
-    classScopeSetting.settingEl.setAttribute('data-ert-inquiry-setting', 'class-scope');
+    classScopeSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:class-scope');
 
     classScopeSetting.addTextArea(text => {
         text.setValue(listToText(inquirySources.classScope));
@@ -311,7 +327,8 @@ export function renderInquirySection(params: SectionParams): void {
 
     let resolvedRootCache: { signature: string; resolvedRoots: string[]; total: number } | null = null;
 
-    const classTableWrap = sourcesBody.createDiv({ cls: 'ert-inquiry-class-table' });
+    const classTableWrap = sourcesBody.createDiv({ cls: 'ert-controlGroup' });
+    classTableWrap.style.setProperty('--ert-controlGroup-columns', '90px minmax(0, 1.1fr) 140px 140px 110px');
 
     const scanInquiryClasses = async (roots: string[]): Promise<{
         discoveredCounts: Record<string, number>;
@@ -369,18 +386,22 @@ export function renderInquirySection(params: SectionParams): void {
     const renderClassTable = (configs: InquiryClassConfig[], counts: Record<string, number>) => {
         classTableWrap.empty();
 
-        const header = classTableWrap.createDiv({ cls: 'ert-inquiry-class-row ert-inquiry-class-header' });
-        header.createDiv({ cls: 'ert-inquiry-class-cell', text: 'Enabled' });
-        header.createDiv({ cls: 'ert-inquiry-class-cell', text: 'Class' });
-        header.createDiv({ cls: 'ert-inquiry-class-cell', text: 'Book scope' });
-        header.createDiv({ cls: 'ert-inquiry-class-cell', text: 'Saga scope' });
-        header.createDiv({ cls: 'ert-inquiry-class-cell', text: 'Matches' });
+        const buildRow = (extraClasses: string[] = []) => {
+            return classTableWrap.createDiv({ cls: ['ert-controlGroup__row', ...extraClasses] });
+        };
+
+        const header = buildRow(['ert-controlGroup__row--header']);
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Enabled' });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Class' });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Book scope' });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Saga scope' });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Matches' });
 
         configs.forEach(config => {
-            const row = classTableWrap.createDiv({ cls: 'ert-inquiry-class-row' });
+            const row = buildRow(['ert-controlGroup__row--card']);
             const rowDisabled = !config.enabled;
             row.toggleClass('is-disabled', rowDisabled);
-            const enabledCell = row.createDiv({ cls: 'ert-inquiry-class-cell' });
+            const enabledCell = row.createDiv({ cls: 'ert-controlGroup__cell' });
             const enabledToggle = enabledCell.createEl('input', { type: 'checkbox' });
             enabledToggle.checked = config.enabled;
             plugin.registerDomEvent(enabledToggle, 'change', () => {
@@ -393,14 +414,15 @@ export function renderInquirySection(params: SectionParams): void {
                 void refreshClassScan();
             });
 
-            const nameCell = row.createDiv({ cls: 'ert-inquiry-class-cell ert-inquiry-class-name', text: config.className });
+            const nameCell = row.createDiv({ cls: 'ert-controlGroup__cell' });
+            nameCell.createEl('strong', { text: config.className });
 
             const isOutline = config.className === 'outline';
             const isReference = REFERENCE_ONLY_CLASSES.has(config.className);
 
-            const bookCell = row.createDiv({ cls: 'ert-inquiry-class-cell' });
+            const bookCell = row.createDiv({ cls: 'ert-controlGroup__cell' });
             if (isReference) {
-                bookCell.createSpan({ cls: 'ert-inquiry-class-role', text: 'Reference' });
+                bookCell.createSpan({ cls: 'ert-controlGroup__cell--meta', text: 'Reference' });
             } else {
                 const bookToggle = bookCell.createEl('input', { type: 'checkbox' });
                 bookToggle.checked = config.bookScope;
@@ -415,13 +437,13 @@ export function renderInquirySection(params: SectionParams): void {
                     void refreshClassScan();
                 });
                 if (isOutline) {
-                    bookCell.createSpan({ cls: 'ert-inquiry-class-sub-label', text: 'Book outline' });
+                    bookCell.createSpan({ cls: 'ert-controlGroup__cell--meta', text: 'Book outline' });
                 }
             }
 
-            const sagaCell = row.createDiv({ cls: 'ert-inquiry-class-cell' });
+            const sagaCell = row.createDiv({ cls: 'ert-controlGroup__cell' });
             if (isReference) {
-                sagaCell.createSpan({ cls: 'ert-inquiry-class-role', text: 'Reference' });
+                sagaCell.createSpan({ cls: 'ert-controlGroup__cell--meta', text: 'Reference' });
             } else {
                 const sagaToggle = sagaCell.createEl('input', { type: 'checkbox' });
                 sagaToggle.checked = config.sagaScope;
@@ -436,16 +458,17 @@ export function renderInquirySection(params: SectionParams): void {
                     void refreshClassScan();
                 });
                 if (isOutline) {
-                    sagaCell.createSpan({ cls: 'ert-inquiry-class-sub-label', text: 'Saga outline' });
+                    sagaCell.createSpan({ cls: 'ert-controlGroup__cell--meta', text: 'Saga outline' });
                 }
             }
 
-            const countCell = row.createDiv({ cls: 'ert-inquiry-class-cell ert-inquiry-class-count' });
+            const countCell = row.createDiv({
+                cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--meta', 'ert-controlGroup__cell--mono']
+            });
             const count = counts[config.className] ?? 0;
             countCell.setText(`${count} matches`);
-
             if (!count) {
-                countCell.addClass('ert-inquiry-class-count-empty');
+                countCell.addClass('ert-controlGroup__cell--faint');
             }
 
             nameCell.setAttribute('title', config.className);
@@ -458,12 +481,13 @@ export function renderInquirySection(params: SectionParams): void {
         rootClassCounts: Record<string, Record<string, number>>,
         participatingClasses: Set<string>
     ) => {
-        resolvedSummary.setText(`Resolved folders (${total})`);
+        resolvedHeading.setText(`Resolved Folders (${total})`);
         resolvedList.empty();
 
         if (!roots.length) {
-            resolvedList.createDiv({
-                cls: 'ert-inquiry-resolved-empty',
+            const emptyRow = resolvedList.createDiv({ cls: 'ert-controlGroup__row' });
+            emptyRow.createDiv({
+                cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--faint'],
                 text: 'No scan folders set. Add /Book */ or / to begin.'
             });
             return;
@@ -478,7 +502,11 @@ export function renderInquirySection(params: SectionParams): void {
                 parts.push(`${count}${getClassAbbreviation(className)}`);
             });
             const suffix = parts.length ? `[${parts.join(', ')}]` : '[0]';
-            resolvedList.createDiv({ cls: 'ert-inquiry-resolved-item', text: `${root} ${suffix}` });
+            const row = resolvedList.createDiv({ cls: 'ert-controlGroup__row' });
+            row.createDiv({
+                cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--mono', 'ert-controlGroup__cell--meta'],
+                text: `${root} ${suffix}`
+            });
         });
     };
 
@@ -553,7 +581,7 @@ export function renderInquirySection(params: SectionParams): void {
     };
 
     const renderPromptConfiguration = (targetEl: HTMLElement) => {
-        const promptContainer = targetEl.createDiv({ cls: 'ert-inquiry-prompts' });
+        const promptContainer = targetEl.createDiv({ cls: ERT_CLASSES.STACK });
         const freeCustomLimit = 2;
         const proCustomLimit = 7;
         const isPro = isProfessionalActive(plugin);
@@ -655,7 +683,14 @@ export function renderInquirySection(params: SectionParams): void {
             if (startIndex >= endIndex) return;
             customSlots.slice(startIndex, endIndex).forEach((slot, offset) => {
                 const customIndex = startIndex + offset;
-                const row = listEl.createDiv({ cls: 'ert-inquiry-custom-row' });
+                const row = listEl.createDiv({ cls: 'ert-reorder-row' });
+                const isProRow = customIndex >= freeCustomLimit;
+                if (isProRow) {
+                    row.addClass('ert-reorder-row--pro');
+                    if (!isPro) {
+                        row.addClass('ert-reorder-row--locked');
+                    }
+                }
 
                 const dragHandle = row.createDiv({ cls: 'ert-drag-handle' });
                 dragHandle.draggable = true;
@@ -678,7 +713,7 @@ export function renderInquirySection(params: SectionParams): void {
                     await updateCustomSlot(zone, customIndex, { question: value });
                 });
 
-                const deleteBtn = row.createEl('button', { cls: 'ert-iconBtn' });
+                const deleteBtn = row.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
                 setIcon(deleteBtn, 'trash');
                 setTooltip(deleteBtn, 'Delete question');
                 deleteBtn.onclick = () => {
@@ -687,29 +722,29 @@ export function renderInquirySection(params: SectionParams): void {
 
                 plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
                     dragState.index = customIndex;
-                    row.classList.add('ert-inquiry-custom-dragging');
+                    row.classList.add('is-dragging');
                     e.dataTransfer?.setData('text/plain', customIndex.toString());
                     if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
                 });
 
                 plugin.registerDomEvent(dragHandle, 'dragend', () => {
-                    row.classList.remove('ert-inquiry-custom-dragging');
-                    row.classList.remove('ert-inquiry-custom-dragover');
+                    row.classList.remove('is-dragging');
+                    row.classList.remove('is-dragover');
                     dragState.index = null;
                 });
 
                 plugin.registerDomEvent(row, 'dragover', (e) => {
                     e.preventDefault();
-                    row.classList.add('ert-inquiry-custom-dragover');
+                    row.classList.add('is-dragover');
                 });
 
                 plugin.registerDomEvent(row, 'dragleave', () => {
-                    row.classList.remove('ert-inquiry-custom-dragover');
+                    row.classList.remove('is-dragover');
                 });
 
                 plugin.registerDomEvent(row, 'drop', (e) => {
                     e.preventDefault();
-                    row.classList.remove('ert-inquiry-custom-dragover');
+                    row.classList.remove('is-dragover');
                     const from = dragState.index ?? parseInt(e.dataTransfer?.getData('text/plain') || '-1', 10);
                     if (Number.isNaN(from) || from < 0 || from === customIndex) {
                         dragState.index = null;
@@ -725,88 +760,64 @@ export function renderInquirySection(params: SectionParams): void {
             zone: 'setup' | 'pressure' | 'payoff',
             dragState: { index: number | null }
         ) => {
-            const card = promptContainer.createDiv({ cls: 'ert-inquiry-prompt-card' });
-            card.createEl('div', { cls: 'ert-inquiry-prompt-title', text: zoneLabels[zone] });
+            const card = promptContainer.createDiv({ cls: ERT_CLASSES.PANEL });
+            const header = card.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
+            const headerMain = header.createDiv({ cls: ERT_CLASSES.CONTROL });
+            headerMain.createEl('h4', { cls: ERT_CLASSES.SECTION_TITLE, text: zoneLabels[zone] });
+            const body = card.createDiv({ cls: ERT_CLASSES.PANEL_BODY });
 
             const canonicalSlot = getCanonicalSlot(zone);
-            const canonicalRow = card.createDiv({ cls: 'ert-inquiry-prompt-row ert-inquiry-prompt-row--canonical' });
-            canonicalRow.createDiv({ cls: 'ert-inquiry-prompt-label', text: 'Canonical' });
-            const canonicalInputWrap = canonicalRow.createDiv({ cls: 'ert-inquiry-prompt-input' });
+            const canonicalRow = body.createDiv({ cls: ERT_CLASSES.ROW });
+            canonicalRow.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Canonical' });
+            const canonicalInputWrap = canonicalRow.createDiv({ cls: ERT_CLASSES.CONTROL });
             const canonicalInput = new TextComponent(canonicalInputWrap);
             canonicalInput.setPlaceholder('Canonical question')
                 .setValue(canonicalSlot?.question ?? '');
-            canonicalInput.inputEl.addClass('ert-inquiry-prompt-input-el', 'is-readonly');
+            canonicalInput.inputEl.addClass('ert-input', 'ert-input--full', 'is-readonly');
             canonicalInput.inputEl.readOnly = true;
 
-            card.createDiv({ cls: 'ert-inquiry-custom-header', text: 'Custom questions' });
-            const listEl = card.createDiv({ cls: 'ert-inquiry-custom-list' });
+            body.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Custom questions' });
+            const listEl = body.createDiv({ cls: ['ert-template-entries', 'ert-template-indent'] });
             const customSlots = getCustomSlots(zone);
-            const primaryCount = Math.min(customSlots.length, freeCustomLimit);
-            renderCustomRows(listEl, zone, customSlots, 0, primaryCount, dragState);
+            renderCustomRows(listEl, zone, customSlots, 0, customSlots.length, dragState);
+
+            const showProGhost = !isPro
+                && customSlots.length >= freeCustomLimit
+                && customSlots.length < proCustomLimit;
+            if (showProGhost) {
+                const ghostRow = listEl.createDiv({
+                    cls: 'ert-reorder-row ert-reorder-row--pro ert-reorder-row--ghost'
+                });
+                const ghostText = ghostRow.createDiv({
+                    cls: 'ert-reorder-placeholder ert-reorder-placeholder--pro'
+                });
+                ghostText.createSpan({ text: 'Unlock more custom questions with Pro' });
+                const ghostBadge = ghostText.createDiv({ cls: ERT_CLASSES.ICON_BTN_GROUP });
+                badgePill(ghostBadge, {
+                    icon: 'sparkles',
+                    label: 'Pro',
+                    variant: ERT_CLASSES.BADGE_PILL_PRO,
+                    size: ERT_CLASSES.BADGE_PILL_SM
+                });
+            }
 
             if (customSlots.length < freeCustomLimit) {
-                const addRow = card.createDiv({ cls: 'ert-inquiry-custom-actions' });
+                const addRow = body.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-inline--end` });
                 new ButtonComponent(addRow)
                     .setButtonText('Add custom question')
                     .setCta()
                     .onClick(() => {
                         void addCustomSlot(zone, freeCustomLimit);
                     });
+            } else if (isPro && customSlots.length < proCustomLimit) {
+                const addRow = body.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-inline--end` });
+                const addButton = new ButtonComponent(addRow)
+                    .setButtonText('Add pro question')
+                    .onClick(() => {
+                        void addCustomSlot(zone, proCustomLimit);
+                    });
+                addButton.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro');
             }
-        };
-
-        const renderAdvancedSection = (dragStates: Record<'setup' | 'pressure' | 'payoff', { index: number | null }>) => {
-            const advancedPanel = promptContainer.createDiv({
-                cls: [ERT_CLASSES.PANEL, ERT_CLASSES.SKIN_PRO, 'ert-inquiry-prompts-advanced']
-            });
-            if (!isPro) {
-                advancedPanel.addClass('ert-pro-locked');
-            }
-
-            const panelHeader = advancedPanel.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
-            const headerMain = panelHeader.createDiv({ cls: ERT_CLASSES.CONTROL });
-            headerMain.createEl('div', { cls: ERT_CLASSES.SECTION_TITLE, text: 'Advanced custom slots' });
-            headerMain.createEl('div', {
-                cls: ERT_CLASSES.SECTION_DESC,
-                text: isPro
-                    ? 'Add up to 5 more custom questions per zone.'
-                    : 'Pro unlocks five additional custom questions per zone.'
-            });
-
-            const headerActions = panelHeader.createDiv({ cls: ERT_CLASSES.SECTION_ACTIONS });
-            badgePill(headerActions, {
-                icon: 'sparkles',
-                label: 'Pro',
-                variant: ERT_CLASSES.BADGE_PILL_PRO,
-                size: ERT_CLASSES.BADGE_PILL_SM
-            });
-
-            const panelBody = advancedPanel.createDiv({ cls: ERT_CLASSES.PANEL_BODY });
-            const advancedStack = panelBody.createDiv({ cls: ['ert-template-indent', ERT_CLASSES.STACK] });
-
-            (['setup', 'pressure', 'payoff'] as const).forEach(zone => {
-                const block = advancedStack.createDiv({ cls: ERT_CLASSES.STACK });
-                block.createEl('div', { cls: ERT_CLASSES.LABEL, text: zoneLabels[zone] });
-
-                const listEl = block.createDiv({ cls: 'ert-inquiry-custom-list ert-inquiry-custom-list--advanced' });
-                const customSlots = getCustomSlots(zone);
-                renderCustomRows(listEl, zone, customSlots, freeCustomLimit, customSlots.length, dragStates[zone]);
-
-                if (!isPro && customSlots.length >= freeCustomLimit) {
-                    const placeholder = listEl.createDiv({ cls: 'ert-inquiry-custom-row ert-inquiry-custom-row--placeholder' });
-                    placeholder.createDiv({ cls: 'ert-inquiry-custom-placeholder', text: 'Add up to 5 more with Pro' });
-                }
-
-                if (isPro && customSlots.length >= freeCustomLimit && customSlots.length < proCustomLimit) {
-                    const addRow = block.createDiv({ cls: 'ert-inquiry-custom-actions' });
-                    const addButton = new ButtonComponent(addRow)
-                        .setButtonText('Add pro question')
-                        .onClick(() => {
-                            void addCustomSlot(zone, proCustomLimit);
-                        });
-                    addButton.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro');
-                }
-            });
         };
 
         const render = () => {
@@ -821,8 +832,6 @@ export function renderInquirySection(params: SectionParams): void {
             (['setup', 'pressure', 'payoff'] as const).forEach(zone => {
                 renderZoneCard(zone, dragStates[zone]);
             });
-
-            renderAdvancedSection(dragStates);
         };
 
         render();
@@ -832,10 +841,12 @@ export function renderInquirySection(params: SectionParams): void {
         const thresholdDefaults = normalizeCorpusThresholds(plugin.settings.inquiryCorpusThresholds);
         plugin.settings.inquiryCorpusThresholds = thresholdDefaults;
 
-        const table = targetEl.createDiv({ cls: 'ert-inquiry-cc-table' });
-        const header = table.createDiv({ cls: 'ert-inquiry-cc-row ert-inquiry-cc-header' });
-        header.createDiv({ cls: 'ert-inquiry-cc-cell', text: 'Tier' });
-        header.createDiv({ cls: 'ert-inquiry-cc-cell', text: 'Word minimum' });
+        const table = targetEl.createDiv({ cls: 'ert-controlGroup ert-controlGroup--spaced' });
+        table.style.setProperty('--ert-controlGroup-columns', 'minmax(140px, max-content) auto');
+
+        const header = table.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--header'] });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Tier' });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Word minimum' });
 
         const inputs: Record<keyof InquiryCorpusThresholds, HTMLInputElement> = {
             emptyMax: document.createElement('input'),
@@ -845,9 +856,9 @@ export function renderInquirySection(params: SectionParams): void {
         };
 
         const renderRow = (label: string, key: keyof InquiryCorpusThresholds, prefix = '>=') => {
-            const row = table.createDiv({ cls: 'ert-inquiry-cc-row' });
-            row.createDiv({ cls: 'ert-inquiry-cc-cell', text: label });
-            const cell = row.createDiv({ cls: 'ert-inquiry-cc-cell ert-inquiry-cc-input-cell' });
+            const row = table.createDiv({ cls: 'ert-controlGroup__row' });
+            row.createDiv({ cls: 'ert-controlGroup__cell', text: label });
+            const cell = row.createDiv({ cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--meta'] });
             const input = inputs[key];
             input.type = 'number';
             input.min = '0';
