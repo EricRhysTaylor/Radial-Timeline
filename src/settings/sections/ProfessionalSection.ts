@@ -170,7 +170,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             text: 'Pro features are free during the Open Beta. Your feedback helps shape the future of Radial Timeline.'
         });
 
-        const rewardBox = betaPanel.createDiv({ cls: ERT_CLASSES.PREVIEW_FRAME });
+        const rewardBox = betaPanel.createDiv({ cls: [ERT_CLASSES.PREVIEW_FRAME, 'ert-previewFrame--flush'] });
         const p = rewardBox.createEl('p', { attr: { style: 'margin: 0; line-height: 1.5;' } });
         p.createEl('strong', { text: 'Early Adopter Reward: ' });
         p.createSpan({ text: 'During the first year of Pro, for every unique bug report, you will recieve one month of Pro free.' });

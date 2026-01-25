@@ -151,7 +151,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const previewSection = previewCard.createDiv({ cls: 'ert-apr-preview' });
 
     // SVG Preview container - shows at 1:1 actual size
-    const previewContainer = previewSection.createDiv({ cls: `ert-apr-preview-frame ert-apr-preview--actual ${ERT_CLASSES.PREVIEW_FRAME}` });
+    const previewContainer = previewSection.createDiv({ cls: `ert-apr-preview-frame ert-apr-preview--actual ${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--flush` });
     previewContainer.createDiv({ cls: `ert-apr-preview-loading ${ERT_CLASSES.PREVIEW_INNER}`, text: 'Loading preview...' });
 
     // Load and render preview asynchronously at actual size

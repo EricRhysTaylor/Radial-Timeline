@@ -4,6 +4,7 @@ import type { PlanetaryProfile } from '../../types';
 import { convertFromEarth, parseCommaNames, validatePlanetaryProfile } from '../../utils/planetaryTime';
 import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink } from '../wikiLink';
+import { ERT_CLASSES } from '../../ui/classes';
 
 interface SectionParams {
     app: App;
@@ -40,6 +41,7 @@ const MARS_PROFILE = (): PlanetaryProfile => ({
 });
 
 export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParams): void {
+    containerEl.classList.add(ERT_CLASSES.STACK);
     const profiles = plugin.settings.planetaryProfiles || [];
     if (!plugin.settings.planetaryProfiles) {
         plugin.settings.planetaryProfiles = profiles;
@@ -68,7 +70,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         });
 
     // Wrap all dependent controls so we can hide them together
-    const bodyEl = containerEl.createDiv({ cls: 'ert-planetary-body' });
+    const bodyEl = containerEl.createDiv({ cls: ['ert-planetary-body', ERT_CLASSES.STACK] });
     visibilityTargets.push(bodyEl);
 
     // Active profile selector + buttons
@@ -179,7 +181,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
     // Profile fields
     const fieldsContainer = bodyEl.createDiv({ cls: 'ert-planetary-fields' });
     const previewContainer = bodyEl.createDiv({
-        cls: 'ert-previewFrame ert-previewFrame--center',
+        cls: 'ert-previewFrame ert-previewFrame--center ert-previewFrame--flush',
         attr: { 'data-preview': 'planetary' }
     });
     visibilityTargets.push(selectorSetting.settingEl, fieldsContainer, previewContainer);

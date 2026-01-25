@@ -104,12 +104,15 @@
   --ert-control-bg: var(--background-modifier-form-field);
   --ert-control-border: var(--background-modifier-border);
   --ert-control-color: var(--text-normal);
-  --ert-modal-bg: color-mix(in srgb, var(--background-primary) 92%, transparent);
-  --ert-modal-border: color-mix(in srgb, var(--background-modifier-border) 82%, transparent);
+  --ert-modal-bg: color-mix(in srgb, var(--background-primary) 86%, transparent);
+  --ert-modal-border: color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
   --ert-modal-shadow: var(--shadow-l);
-  --ert-modal-blur: blur(16px);
-  --ert-modal-tint: linear-gradient(180deg, color-mix(in srgb, var(--background-primary) 18%, transparent) 0%, transparent 70%);
-  --ert-modal-glow: none;
+  --ert-modal-blur: blur(22px);
+  --ert-modal-tint: linear-gradient(180deg,
+      color-mix(in srgb, var(--ert-accent) 18%, transparent) 0%,
+      color-mix(in srgb, var(--background-primary) 8%, transparent) 55%,
+      transparent 80%);
+  --ert-modal-glow: 0 14px 40px color-mix(in srgb, var(--ert-accent) 18%, transparent);
   --ert-input-width-xs: var(--rt-input-width-xs, 6ch);
   --ert-input-width-sm: var(--rt-input-width-sm, 10ch);
   --ert-input-width-md: var(--rt-input-width-md, 16ch);
@@ -213,6 +216,12 @@
 
 .ert-ui textarea.ert-textarea--compact {
   width: min(100%, var(--ert-input-width-xl));
+  resize: vertical;
+}
+
+.ert-ui textarea.ert-textarea--wide {
+  width: var(--ert-input-width-xl);
+  max-width: 100%;
   resize: vertical;
 }
 
@@ -1448,7 +1457,7 @@
   flex-wrap: nowrap;
 }
 
-.ert-ui .ert-row--inlineControl .setting-item-control > .setting-editor-extra-setting-button {
+.ert-ui .ert-row--inlineControl .setting-item-control>.setting-editor-extra-setting-button {
   flex: 0 0 auto;
 }
 
@@ -1562,7 +1571,7 @@
 
 .ert-ui .ert-elementBlock.setting-item .setting-item-info {
   flex: 1 1 auto;
-  min-width: 0;
+  min-width: 140px;
 }
 
 .ert-ui .ert-typography-stack {
@@ -1611,22 +1620,22 @@
   flex-wrap: nowrap;
 }
 
-.ert-ui .ert-elementBlock.setting-item.ert-row--inlineControl .setting-item-control > .setting-editor-extra-setting-button {
+.ert-ui .ert-elementBlock.setting-item.ert-row--inlineControl .setting-item-control>.setting-editor-extra-setting-button {
   flex: 0 0 auto;
 }
 
-.ert-ui .ert-elementBlock.setting-item .setting-item-control > :is(input, select, textarea) {
+.ert-ui .ert-elementBlock.setting-item .setting-item-control> :is(input, select, textarea) {
   flex: 1 1 auto;
   min-width: 0;
   max-width: 100%;
 }
 
-.ert-ui .ert-elementBlock.setting-item .setting-item-control > :is(input, select).ert-input--xs,
-.ert-ui .ert-elementBlock.setting-item .setting-item-control > :is(input, select).ert-input--sm,
-.ert-ui .ert-elementBlock.setting-item .setting-item-control > :is(input, select).ert-input--md,
-.ert-ui .ert-elementBlock.setting-item .setting-item-control > :is(input, select).ert-input--lg,
-.ert-ui .ert-elementBlock.setting-item .setting-item-control > :is(input, select).ert-input--xl,
-.ert-ui .ert-elementBlock.setting-item .setting-item-control > :is(input, select).ert-input--hex {
+.ert-ui .ert-elementBlock.setting-item .setting-item-control> :is(input, select).ert-input--xs,
+.ert-ui .ert-elementBlock.setting-item .setting-item-control> :is(input, select).ert-input--sm,
+.ert-ui .ert-elementBlock.setting-item .setting-item-control> :is(input, select).ert-input--md,
+.ert-ui .ert-elementBlock.setting-item .setting-item-control> :is(input, select).ert-input--lg,
+.ert-ui .ert-elementBlock.setting-item .setting-item-control> :is(input, select).ert-input--xl,
+.ert-ui .ert-elementBlock.setting-item .setting-item-control> :is(input, select).ert-input--hex {
   flex: 0 0 auto;
 }
 
@@ -1658,7 +1667,7 @@
 .ert-ui select.ert-typography-select {
   min-width: 0;
   max-width: 100%;
-  flex: 1 1 160px;
+  flex: 0 1 auto;
 }
 
 .ert-ui .ert-typography-size-group {
@@ -2348,6 +2357,13 @@
   grid-column: 1 / 3;
   grid-row: 2 / 3;
   margin: 0;
+}
+
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-two-row__actions {
+  grid-column: 2 / 3;
+  grid-row: 2 / 3;
+  align-self: start;
+  justify-self: start;
 }
 
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-micro-backdrop-body {
@@ -3764,16 +3780,12 @@
 
 .ert-ui.ert-modal--release-notes,
 .ert-ui .ert-modal--release-notes {
-  --ert-modal-tint: radial-gradient(
-      circle at 12% 0%,
+  --ert-modal-tint: radial-gradient(circle at 12% 0%,
       color-mix(in srgb, var(--background-primary) 20%, transparent) 0%,
-      transparent 60%
-    ),
-    radial-gradient(
-      circle at 82% 20%,
+      transparent 60%),
+    radial-gradient(circle at 82% 20%,
       color-mix(in srgb, var(--ert-accent) 24%, transparent) 0%,
-      transparent 60%
-    );
+      transparent 60%);
 }
 
 .ert-ui .ert-release-notes {
@@ -3793,20 +3805,16 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(
-      circle at 18% 10%,
+  background: radial-gradient(circle at 18% 10%,
       color-mix(in srgb, var(--background-primary) 30%, transparent) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      circle at 90% 0%,
+      transparent 50%),
+    radial-gradient(circle at 90% 0%,
       color-mix(in srgb, var(--ert-accent) 24%, transparent) 0%,
-      transparent 45%
-    );
+      transparent 45%);
   pointer-events: none;
 }
 
-.ert-ui .ert-release-notes-hero > * {
+.ert-ui .ert-release-notes-hero>* {
   position: relative;
   z-index: 1;
 }
@@ -3900,12 +3908,10 @@
   inset: calc(var(--ert-gap-sm) + var(--ert-gap-xs)) calc(var(--ert-gap-sm) + var(--ert-gap-xs)) auto auto;
   width: calc(100% - (var(--ert-gap-sm) + var(--ert-gap-xs)) * 2);
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in srgb, var(--text-normal) 10%, transparent),
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      color-mix(in srgb, var(--text-normal) 10%, transparent),
+      transparent);
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -4231,7 +4237,7 @@
 
 .ert-ui .ert-campaign-card {
   position: relative;
-  margin-top: calc(var(--ert-gap-md) * 2);
+  margin-top: 0;
 }
 
 .ert-ui .ert-campaign-title {
@@ -4240,7 +4246,7 @@
 }
 
 .ert-ui .ert-campaign-desc {
-  margin-bottom: var(--ert-gap-md);
+  margin: 0;
 }
 
 .ert-ui .ert-campaign-locked {
@@ -4378,7 +4384,7 @@
 }
 
 .ert-ui .ert-campaign-add-section {
-  margin-top: var(--ert-gap-md);
+  margin-top: 0;
 }
 
 .ert-ui .ert-campaign-add-row .setting-item {
@@ -4399,7 +4405,7 @@
 }
 
 .ert-ui .ert-campaign-templates {
-  padding-top: var(--ert-gap-md);
+  padding-top: 0;
 }
 
 .ert-ui .ert-campaign-teaser-section {
@@ -4818,7 +4824,7 @@
   filter: grayscale(1) saturate(0.05);
 }
 
-.ert-ui .ert-pro-locked > * {
+.ert-ui .ert-pro-locked>* {
   opacity: 0.85;
 }
 

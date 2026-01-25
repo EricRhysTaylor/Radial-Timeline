@@ -9,6 +9,7 @@ import { addHeadingIcon, addWikiLink } from '../wikiLink';
 import type { HoverMetadataField } from '../../types/settings';
 import { IconSuggest } from '../IconSuggest';
 import { parseActLabels, resolveActLabel } from '../../utils/acts';
+import { ERT_CLASSES } from '../../ui/classes';
 
 type TemplateEntryValue = string | string[];
 type TemplateEntry = { key: string; value: TemplateEntryValue; required: boolean };
@@ -21,6 +22,7 @@ export function renderStoryBeatsSection(params: {
     containerEl: HTMLElement;
 }): void {
     const { app, plugin, containerEl } = params;
+    containerEl.classList.add(ERT_CLASSES.STACK);
 
     // Acts Section (above beats)
     const actsHeading = new Settings(containerEl)
@@ -78,7 +80,7 @@ export function renderStoryBeatsSection(params: {
 
     // Preview (planet-style)
     const actsPreview = containerEl.createDiv({
-        cls: ['ert-previewFrame', 'ert-previewFrame--center'],
+        cls: ['ert-previewFrame', 'ert-previewFrame--center', 'ert-previewFrame--flush'],
         attr: { 'data-preview': 'acts' }
     });
     const actsPreviewHeading = actsPreview.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Preview' });
@@ -888,7 +890,7 @@ export function renderStoryBeatsSection(params: {
 
     // Hover Metadata Preview Panel
     const hoverPreviewContainer = templateSection.createDiv({
-        cls: ['ert-previewFrame', 'ert-previewFrame--center'],
+        cls: ['ert-previewFrame', 'ert-previewFrame--center', 'ert-previewFrame--flush'],
         attr: { 'data-preview': 'metadata' }
     });
     const hoverPreviewHeading = hoverPreviewContainer.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Hover Metadata Preview' });

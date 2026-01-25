@@ -4,6 +4,7 @@ import type { GlobalPovMode } from '../../types/settings';
 import { resolveScenePov } from '../../utils/pov';
 import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink } from '../wikiLink';
+import { ERT_CLASSES } from '../../ui/classes';
 
 const POV_LABELS: Record<string, string> = {
     '0': '°',
@@ -17,6 +18,7 @@ export function renderPovSection(params: {
     containerEl: HTMLElement;
 }): void {
     const { plugin, containerEl } = params;
+    containerEl.classList.add(ERT_CLASSES.STACK);
 
     const povHeading = new ObsidianSetting(containerEl)
         .setName(t('settings.pov.heading'))
@@ -62,7 +64,7 @@ export function renderPovSection(params: {
 
     // Preview section
     const previewContainer = containerEl.createDiv({
-        cls: 'ert-previewFrame ert-previewFrame--center',
+        cls: 'ert-previewFrame ert-previewFrame--center ert-previewFrame--flush',
         attr: { 'data-preview': 'pov' }
     });
     const previewHeading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading', text: t('settings.pov.preview.heading') });

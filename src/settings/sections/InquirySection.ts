@@ -1,4 +1,4 @@
-import { App, Setting as Settings, TextComponent, TextAreaComponent, ButtonComponent, normalizePath, Notice, setIcon, setTooltip } from 'obsidian';
+import { App, Setting as Settings, TextComponent, TextAreaComponent, normalizePath, Notice, setIcon, setTooltip } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { DEFAULT_SETTINGS } from '../defaults';
 import type {
@@ -233,7 +233,7 @@ export function renderInquirySection(params: SectionParams): void {
             addWikiLink(header, options.wiki);
         }
 
-        return parent.createDiv({ cls: ERT_CLASSES.SECTION_BODY });
+        return parent.createDiv({ cls: [ERT_CLASSES.SECTION_BODY, ERT_CLASSES.STACK] });
     };
 
     let inquirySources = normalizeInquirySources(plugin.settings.inquirySources);
@@ -253,16 +253,13 @@ export function renderInquirySection(params: SectionParams): void {
         .setName('Inquiry scan folders')
         .setDesc('Inquiry only scans within these folders. One path per line. Wildcards like /Book */ or /Book 1-7 */ are allowed. Use / for the vault root. Empty = no scan.');
     scanRootsSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:scan-roots');
+    scanRootsSetting.settingEl.classList.add('ert-setting-two-row');
 
-    const scanRootControls = scanRootsSetting.controlEl.createDiv({
-        cls: [ERT_CLASSES.STACK, ERT_CLASSES.STACK_TIGHT]
-    });
-
-    const scanRootsText = new TextAreaComponent(scanRootControls);
+    const scanRootsText = new TextAreaComponent(scanRootsSetting.controlEl);
     scanRootsText.setValue(listToText(inquirySources.scanRoots));
     scanRootsText.setPlaceholder('/Book */\n/Character/\n/World/');
     scanRootsText.inputEl.rows = 3;
-    scanRootsText.inputEl.addClass('ert-textarea--compact');
+    scanRootsText.inputEl.addClass('ert-textarea--wide');
     scanRootsInput = scanRootsText;
 
     plugin.registerDomEvent(scanRootsText.inputEl, 'blur', () => {
@@ -270,8 +267,8 @@ export function renderInquirySection(params: SectionParams): void {
         applyScanRoots(nextRoots);
     });
 
-    const scanRootActions = scanRootControls.createDiv({
-        cls: [ERT_CLASSES.INLINE]
+    const scanRootActions = scanRootsSetting.settingEl.createDiv({
+        cls: ['ert-setting-two-row__actions', ERT_CLASSES.INLINE]
     });
     const addActionButton = (label: string, onClick: () => void) => {
         const btn = scanRootActions.createEl('button', { cls: ERT_CLASSES.PILL_BTN });
@@ -292,7 +289,7 @@ export function renderInquirySection(params: SectionParams): void {
     });
 
     const resolvedPreview = sourcesBody.createDiv({
-        cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--left'],
+        cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--left', 'ert-previewFrame--flush'],
         attr: { 'data-preview': 'inquiry-resolved' }
     });
     const resolvedHeading = resolvedPreview.createDiv({
@@ -637,11 +634,22 @@ export function renderInquirySection(params: SectionParams): void {
             await savePromptConfig({ ...promptConfig, [zone]: [canonical, ...customSlots] });
         };
 
-        const addCustomSlot = async (zone: 'setup' | 'pressure' | 'payoff', limit: number) => {
+        const addCustomSlot = async (
+            zone: 'setup' | 'pressure' | 'payoff',
+            limit: number,
+            initial?: Partial<InquiryPromptSlot>
+        ) => {
             const customSlots = getCustomSlots(zone);
             if (customSlots.length >= limit) return;
             const canonical = getCanonicalSlot(zone);
-            const nextSlots = [...customSlots, createCustomSlot(zone)];
+            const seed = createCustomSlot(zone);
+            const nextSlot = { ...seed, ...initial, builtIn: false };
+            nextSlot.label = nextSlot.label ?? '';
+            nextSlot.question = nextSlot.question ?? '';
+            if (nextSlot.question.trim().length > 0) {
+                nextSlot.enabled = true;
+            }
+            const nextSlots = [...customSlots, nextSlot];
             await savePromptConfig({ ...promptConfig, [zone]: [canonical, ...nextSlots] });
             render();
         };
@@ -759,11 +767,12 @@ export function renderInquirySection(params: SectionParams): void {
             zone: 'setup' | 'pressure' | 'payoff',
             dragState: { index: number | null }
         ) => {
-            const card = promptContainer.createDiv({ cls: ERT_CLASSES.PANEL });
-            const header = card.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
+            const zoneStack = promptContainer.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+            const headerCard = zoneStack.createDiv({ cls: ERT_CLASSES.PANEL });
+            const header = headerCard.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
             const headerMain = header.createDiv({ cls: ERT_CLASSES.CONTROL });
             headerMain.createEl('h4', { cls: ERT_CLASSES.SECTION_TITLE, text: zoneLabels[zone] });
-            const body = card.createDiv({ cls: ERT_CLASSES.PANEL_BODY });
+            const body = headerCard.createDiv({ cls: ERT_CLASSES.PANEL_BODY });
 
             const canonicalRow = body.createDiv({ cls: ERT_CLASSES.ROW });
             canonicalRow.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Canonical' });
@@ -776,9 +785,11 @@ export function renderInquirySection(params: SectionParams): void {
             sagaRow.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Saga' });
             sagaRow.createDiv({ cls: 'ert-prompt-question', text: getCanonicalPromptText(zone, 'saga') });
 
-            body.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Custom questions' });
-            const listEl = body.createDiv({ cls: ['ert-template-entries', 'ert-template-indent'] });
             const customSlots = getCustomSlots(zone);
+
+            const listCard = zoneStack.createDiv({ cls: ERT_CLASSES.PANEL });
+            const listBody = listCard.createDiv({ cls: ERT_CLASSES.PANEL_BODY });
+            const listEl = listBody.createDiv({ cls: ['ert-template-entries', 'ert-template-indent'] });
             renderCustomRows(listEl, zone, customSlots, 0, customSlots.length, dragState);
 
             const showProGhost = !isPro
@@ -801,22 +812,40 @@ export function renderInquirySection(params: SectionParams): void {
                 });
             }
 
-            if (customSlots.length < freeCustomLimit) {
-                const addRow = body.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-inline--end` });
-                new ButtonComponent(addRow)
-                    .setButtonText('Add custom question')
-                    .setCta()
-                    .onClick(() => {
-                        void addCustomSlot(zone, freeCustomLimit);
+            const addLimit = isPro ? proCustomLimit : freeCustomLimit;
+            if (customSlots.length < addLimit) {
+                const addRow = listEl.createDiv({ cls: 'ert-reorder-row' });
+                if (isPro && customSlots.length >= freeCustomLimit) {
+                    addRow.addClass('ert-reorder-row--pro');
+                }
+                addRow.createDiv({ cls: 'ert-drag-handle ert-drag-placeholder' });
+
+                const labelInput = new TextComponent(addRow);
+                labelInput.setPlaceholder('Label (optional)').setValue('');
+                labelInput.inputEl.addClass('ert-input', 'ert-input--sm');
+
+                const questionInput = new TextComponent(addRow);
+                questionInput.setPlaceholder('Question text').setValue('');
+                questionInput.inputEl.addClass('ert-input', 'ert-input--full');
+
+                const addBtn = addRow.createEl('button', { cls: [ERT_CLASSES.ICON_BTN, 'ert-mod-cta'] });
+                setIcon(addBtn, 'plus');
+                setTooltip(addBtn, 'Add question');
+
+                const commitAdd = () => {
+                    void addCustomSlot(zone, addLimit, {
+                        label: labelInput.getValue(),
+                        question: questionInput.getValue()
                     });
-            } else if (isPro && customSlots.length < proCustomLimit) {
-                const addRow = body.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-inline--end` });
-                const addButton = new ButtonComponent(addRow)
-                    .setButtonText('Add pro question')
-                    .onClick(() => {
-                        void addCustomSlot(zone, proCustomLimit);
-                    });
-                addButton.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro');
+                };
+
+                addBtn.onclick = commitAdd;
+                plugin.registerDomEvent(questionInput.inputEl, 'keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        commitAdd();
+                    }
+                });
             }
         };
 
