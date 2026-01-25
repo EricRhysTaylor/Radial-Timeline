@@ -241,6 +241,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         removeElapsedTimeArc(svg);
         removeSceneHighlights(svg);
         removeShiftModeFromAllScenes(svg);
+        svg.classList.remove('rt-shift-scene-hover');
         svg.classList.remove('rt-global-fade');
         updateDateLabelsForRuntimeMode(false);
         
@@ -266,6 +267,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         removeElapsedTimeArc(svg);
         removeSceneHighlights(svg);
         removeShiftModeFromAllScenes(svg);
+        svg.classList.remove('rt-shift-scene-hover');
         svg.classList.remove('rt-global-fade');
         
         // Clear data attribute if no other mode is active
@@ -360,6 +362,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             removeShiftModeFromAllScenes(svg);
             // Remove shift mode marker (also hides discontinuity markers via CSS)
             svg.removeAttribute('data-shift-mode');
+            svg.classList.remove('rt-shift-scene-hover');
             svg.classList.remove('rt-global-fade');
 
             // Clear all regular Chronologue hover states (from normal mode)
@@ -861,6 +864,8 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             e.stopImmediatePropagation();
             e.preventDefault();
 
+            svg.classList.add('rt-shift-scene-hover');
+
             const scenePathEncoded = g.getAttribute('data-path');
             if (!scenePathEncoded) return;
 
@@ -889,6 +894,8 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             // Stop ALL event handlers
             e.stopImmediatePropagation();
             e.preventDefault();
+
+            svg.classList.remove('rt-shift-scene-hover');
 
             const scenePathEncoded = g.getAttribute('data-path');
             if (!scenePathEncoded) return;

@@ -262,13 +262,13 @@
 }
 
 /* Shift/ALT/Runtime: match hover-mute of backdrop ring background for micro rings */
-.radial-timeline-svg[data-shift-mode]:has(.rt-scene-group[data-item-type="Scene"]:hover) .rt-backdrop-ring-background {
+.radial-timeline-svg[data-shift-mode].rt-shift-scene-hover .rt-backdrop-ring-background {
   stroke: var(--rt-color-empty-selected);
   stroke-opacity: 1;
 }
 
-.radial-timeline-svg[data-shift-mode]:has(.rt-scene-group[data-item-type="Scene"]:hover) .rt-backdrop-micro-ring,
-.radial-timeline-svg[data-shift-mode]:has(.rt-scene-group[data-item-type="Scene"]:hover) .rt-backdrop-micro-tick {
+.radial-timeline-svg[data-shift-mode].rt-shift-scene-hover .rt-backdrop-micro-ring,
+.radial-timeline-svg[data-shift-mode].rt-shift-scene-hover .rt-backdrop-micro-tick {
   stroke: var(--rt-color-empty-selected);
   opacity: 1;
 }

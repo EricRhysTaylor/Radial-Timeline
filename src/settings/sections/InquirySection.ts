@@ -772,10 +772,10 @@ export function renderInquirySection(params: SectionParams): void {
             canonicalInputWrap.style.setProperty('--ert-label-w', '56px');
             const bookRow = canonicalInputWrap.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
             bookRow.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Book' });
-            bookRow.createDiv({ text: getCanonicalPromptText(zone, 'book') });
+            bookRow.createDiv({ cls: 'ert-prompt-question', text: getCanonicalPromptText(zone, 'book') });
             const sagaRow = canonicalInputWrap.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
             sagaRow.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Saga' });
-            sagaRow.createDiv({ text: getCanonicalPromptText(zone, 'saga') });
+            sagaRow.createDiv({ cls: 'ert-prompt-question', text: getCanonicalPromptText(zone, 'saga') });
 
             body.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Custom questions' });
             const listEl = body.createDiv({ cls: ['ert-template-entries', 'ert-template-indent'] });
@@ -845,11 +845,15 @@ export function renderInquirySection(params: SectionParams): void {
         const corpusPanel = targetEl.createDiv({ cls: [ERT_CLASSES.PANEL, ERT_CLASSES.STACK] });
 
         const table = corpusPanel.createDiv({ cls: 'ert-controlGroup' });
-        table.style.setProperty('--ert-controlGroup-columns', 'minmax(140px, max-content) auto');
+        table.style.setProperty(
+            '--ert-controlGroup-columns',
+            'minmax(140px, max-content) 56px minmax(var(--ert-input-width-sm), max-content)'
+        );
 
         const header = table.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--header'] });
         header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Tier' });
-        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Word minimum' });
+        const thresholdHeader = header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Threshold' });
+        thresholdHeader.style.gridColumn = '2 / 4';
 
         const inputs: Record<keyof InquiryCorpusThresholds, HTMLInputElement> = {
             emptyMax: document.createElement('input'),
@@ -858,18 +862,20 @@ export function renderInquirySection(params: SectionParams): void {
             substantiveMin: document.createElement('input')
         };
 
-        const renderRow = (label: string, key: keyof InquiryCorpusThresholds, prefix = '>=') => {
-            const row = table.createDiv({ cls: 'ert-controlGroup__row' });
+        const renderRow = (label: string, key: keyof InquiryCorpusThresholds, operator = '>=') => {
+            const row = table.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
             row.createDiv({ cls: 'ert-controlGroup__cell', text: label });
-            const cell = row.createDiv({ cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--meta'] });
+            row.createDiv({
+                cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--meta', 'ert-controlGroup__cell--mono'],
+                text: operator
+            });
+            const cell = row.createDiv({ cls: 'ert-controlGroup__cell' });
             const input = inputs[key];
             input.type = 'number';
             input.min = '0';
             input.step = '1';
             input.value = String(thresholdDefaults[key]);
             input.classList.add('ert-input--sm');
-            const prefixEl = cell.createSpan({ text: `${prefix} ` });
-            cell.appendChild(prefixEl);
             cell.appendChild(input);
         };
 

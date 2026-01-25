@@ -402,6 +402,11 @@
   line-height: 1.5;
 }
 
+.ert-ui .ert-prompt-question {
+  font-size: 0.95em;
+  font-style: italic;
+}
+
 .ert-ui .ert-control {
   display: flex;
   flex-direction: column;

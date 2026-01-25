@@ -59,8 +59,10 @@ const VIEWBOX_MIN = -800;
 const VIEWBOX_MAX = 800;
 const VIEWBOX_SIZE = 1600;
 const INQUIRY_REFERENCE_ONLY_CLASSES = new Set(['character', 'place', 'power']);
+const MINIMAP_GROUP_Y = -520;
 const PREVIEW_PANEL_WIDTH = 640;
-const PREVIEW_PANEL_Y = -490;
+const PREVIEW_PANEL_Y = -390;
+const PREVIEW_PANEL_MINIMAP_GAP = 60;
 const PREVIEW_PANEL_PADDING_X = 32;
 const PREVIEW_PANEL_PADDING_Y = 20;
 const PREVIEW_HERO_LINE_HEIGHT = 30;
@@ -132,7 +134,6 @@ const INQUIRY_NOTES_MAX = 5;
 const INQUIRY_NOTES_SENTINEL = 'INQUIRY NOTES (auto)';
 const INQUIRY_NOTES_SENTINEL_OVERFLOW = 'INQUIRY NOTES (auto) — showing last 5 (older notes omitted)';
 const INQUIRY_NOTES_DIVIDER = '/* INQUIRY NOTES (auto) */';
-const INQUIRY_NOTES_DIVIDER_OVERFLOW = '/* INQUIRY NOTES (auto) — showing last 5 (older notes omitted) */';
 const CC_RIGHT_MARGIN = 50;
 const CC_BOTTOM_MARGIN = 50;
 const INQUIRY_GUIDANCE_DOC_URL = 'https://github.com/EricRhysTaylor/Radial-Timeline/wiki';
@@ -202,6 +203,7 @@ type CorpusCcSlot = {
 
 type InquiryWritebackOutcome = 'written' | 'duplicate' | 'skipped';
 type InquiryGuidanceState = 'not-configured' | 'no-scenes' | 'ready' | 'running' | 'results';
+type EngineProvider = 'anthropic' | 'gemini' | 'openai' | 'local';
 
 export class InquiryView extends ItemView {
     static readonly viewType = INQUIRY_VIEW_TYPE;
@@ -225,16 +227,14 @@ export class InquiryView extends ItemView {
     private briefingPinned = false;
     private briefingHideTimer?: number;
     private engineBadgeGroup?: SVGGElement;
-    private engineBadgeBg?: SVGRectElement;
-    private engineBadgeText?: SVGTextElement;
-    private contextBadgeIcon?: SVGUseElement;
-    private contextBadgeSigmaText?: SVGTextElement;
-    private contextBadgeLabel?: SVGTextElement;
+    private enginePanelEl?: HTMLDivElement;
+    private enginePanelListEl?: HTMLDivElement;
+    private enginePanelMetaEl?: HTMLDivElement;
+    private enginePanelHideTimer?: number;
     private minimapTicksEl?: SVGGElement;
     private minimapBaseline?: SVGLineElement;
     private minimapEndCapStart?: SVGRectElement;
     private minimapEndCapEnd?: SVGRectElement;
-    private minimapEmptyText?: SVGTextElement;
     private minimapTicks: SVGGElement[] = [];
     private minimapGroup?: SVGGElement;
     private minimapBackboneGroup?: SVGGElement;
@@ -259,6 +259,7 @@ export class InquiryView extends ItemView {
     private backboneFadeTimer?: number;
     private minimapSweepTicks: Array<{ rect: SVGRectElement; centerX: number; rowIndex: number }> = [];
     private minimapSweepLayout?: { startX: number; endX: number; bandWidth: number };
+    private minimapBottomOffset = 0;
     private runningAnimationFrame?: number;
     private runningAnimationStart?: number;
     private wasRunning = false;
@@ -384,6 +385,10 @@ export class InquiryView extends ItemView {
             window.clearTimeout(this.briefingHideTimer);
             this.briefingHideTimer = undefined;
         }
+        if (this.enginePanelHideTimer) {
+            window.clearTimeout(this.enginePanelHideTimer);
+            this.enginePanelHideTimer = undefined;
+        }
         this.contentEl.empty();
     }
 
@@ -442,14 +447,6 @@ export class InquiryView extends ItemView {
         bgImage.setAttribute('href', this.getInquiryAssetHref('radial_texture.png'));
         svg.appendChild(bgImage);
 
-        const frame = this.createSvgElement('rect');
-        frame.classList.add('ert-inquiry-svg-frame');
-        frame.setAttribute('x', String(VIEWBOX_MIN));
-        frame.setAttribute('y', String(VIEWBOX_MIN));
-        frame.setAttribute('width', String(VIEWBOX_SIZE));
-        frame.setAttribute('height', String(VIEWBOX_SIZE));
-        svg.appendChild(frame);
-
         svg.classList.toggle('is-debug', DEBUG_SVG_OVERLAY);
         if (DEBUG_SVG_OVERLAY) {
             this.buildDebugOverlay(svg);
@@ -501,38 +498,14 @@ export class InquiryView extends ItemView {
         this.registerDomEvent(this.artifactButton as unknown as HTMLElement, 'click', () => this.toggleBriefingPanel());
 
         const engineBadgeX = iconSize + iconGap;
-        this.engineBadgeGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-engine-badge', engineBadgeX, 12);
-        this.engineBadgeGroup.setAttribute('role', 'button');
-        this.engineBadgeGroup.setAttribute('tabindex', '0');
-        this.engineBadgeGroup.setAttribute('aria-label', 'Inquiry engine (change in Settings → AI)');
-        this.engineBadgeBg = this.createSvgElement('rect');
-        this.engineBadgeBg.classList.add('ert-inquiry-engine-badge-bg');
-        this.engineBadgeBg.setAttribute('rx', '14');
-        this.engineBadgeBg.setAttribute('ry', '14');
-        this.engineBadgeGroup.appendChild(this.engineBadgeBg);
-        this.engineBadgeText = this.createSvgText(this.engineBadgeGroup, 'ert-inquiry-engine-badge-text', 'AI', 14, 14);
-        this.engineBadgeText.setAttribute('text-anchor', 'start');
-        this.engineBadgeText.setAttribute('dominant-baseline', 'middle');
-        addTooltipData(this.engineBadgeGroup, 'Inquiry engine (change in Settings → AI)', 'bottom');
+        this.engineBadgeGroup = this.createIconButton(hudGroup, engineBadgeX, 0, iconSize, 'cpu', 'AI engine', 'ert-inquiry-engine-btn');
+        this.engineBadgeGroup.querySelector('title')?.remove();
+        this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'pointerenter', () => this.showEnginePanel());
+        this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'pointerleave', () => this.scheduleEnginePanelHide());
         this.registerDomEvent(this.engineBadgeGroup as unknown as HTMLElement, 'click', () => this.openAiSettings());
 
-        const minimapGroup = this.createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, -520);
+        const minimapGroup = this.createSvgGroup(canvasGroup, 'ert-inquiry-minimap', 0, MINIMAP_GROUP_Y);
         this.minimapGroup = minimapGroup;
-        const badgeWidth = 160;
-        const badgeHeight = 34;
-        const badgeGroup = this.createSvgGroup(minimapGroup, 'ert-inquiry-context-badge', -badgeWidth / 2, -badgeHeight - 12);
-        const badgeRect = this.createSvgElement('rect');
-        badgeRect.classList.add('ert-inquiry-context-badge-bg');
-        badgeRect.setAttribute('width', String(badgeWidth));
-        badgeRect.setAttribute('height', String(badgeHeight));
-        badgeRect.setAttribute('rx', '18');
-        badgeRect.setAttribute('ry', '18');
-        badgeGroup.appendChild(badgeRect);
-        this.contextBadgeIcon = this.createIconUse('columns-2', 12, 8, 18);
-        this.contextBadgeIcon.classList.add('ert-inquiry-context-badge-icon');
-        badgeGroup.appendChild(this.contextBadgeIcon);
-        this.contextBadgeSigmaText = this.createSvgText(badgeGroup, 'ert-inquiry-context-badge-sigma ert-hidden', String.fromCharCode(931), 20, 18);
-        this.contextBadgeLabel = this.createSvgText(badgeGroup, 'ert-inquiry-context-badge-label', 'Book context', 38, 21);
 
         const baselineLength = VIEWBOX_SIZE / 2;
         const baselineStartX = -(baselineLength / 2);
@@ -548,8 +521,6 @@ export class InquiryView extends ItemView {
         minimapGroup.appendChild(this.minimapEndCapEnd);
 
         this.minimapTicksEl = this.createSvgGroup(minimapGroup, 'ert-inquiry-minimap-ticks', baselineStartX, 0);
-        this.minimapEmptyText = this.createSvgText(minimapGroup, 'ert-inquiry-minimap-empty ert-hidden', '', 0, 22);
-        this.minimapEmptyText.setAttribute('text-anchor', 'middle');
         this.renderModeIcons(minimapGroup);
 
         this.glyphAnchor = this.createSvgGroup(canvasGroup, 'ert-inquiry-focus-area');
@@ -585,8 +556,6 @@ export class InquiryView extends ItemView {
         });
         this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'pointerleave', () => this.clearHoverText());
 
-        this.hoverTextEl = this.createSvgText(canvasGroup, 'ert-inquiry-hover', '', 0, GUIDANCE_TEXT_Y);
-
         const hudFooterY = 1360;
         const navGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-nav', 0, hudFooterY);
         this.navPrevButton = this.createIconButton(navGroup, 0, -18, 44, 'chevron-left', 'Previous focus', 'ert-inquiry-nav-btn');
@@ -602,6 +571,7 @@ export class InquiryView extends ItemView {
         this.apiStatusEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'API: idle', 0, 18);
 
         this.buildBriefingPanel();
+        this.buildEnginePanel();
     }
 
     private buildPromptPreviewPanel(parent: SVGGElement): void {
@@ -694,6 +664,145 @@ export class InquiryView extends ItemView {
         this.registerDomEvent(panel, 'pointerenter', () => this.cancelBriefingHide());
         this.registerDomEvent(panel, 'pointerleave', () => this.scheduleBriefingHide());
         this.refreshBriefingPanel();
+    }
+
+    private buildEnginePanel(): void {
+        if (this.enginePanelEl) return;
+        const panel = this.contentEl.createDiv({ cls: 'ert-inquiry-engine-panel ert-hidden ert-ui' });
+        this.enginePanelEl = panel;
+        const header = panel.createDiv({ cls: 'ert-inquiry-engine-header' });
+        header.createDiv({ cls: 'ert-inquiry-engine-title', text: 'AI Engine' });
+        this.enginePanelMetaEl = header.createDiv({ cls: 'ert-inquiry-engine-meta', text: '' });
+        this.enginePanelListEl = panel.createDiv({ cls: 'ert-inquiry-engine-list' });
+        panel.createDiv({ cls: 'ert-inquiry-engine-note', text: 'Updates Settings > AI.' });
+        this.registerDomEvent(panel, 'pointerenter', () => this.cancelEnginePanelHide());
+        this.registerDomEvent(panel, 'pointerleave', () => this.scheduleEnginePanelHide());
+        this.refreshEnginePanel();
+    }
+
+    private showEnginePanel(): void {
+        if (!this.enginePanelEl) return;
+        this.cancelEnginePanelHide();
+        this.refreshEnginePanel();
+        this.enginePanelEl.classList.remove('ert-hidden');
+    }
+
+    private hideEnginePanel(): void {
+        if (!this.enginePanelEl) return;
+        this.cancelEnginePanelHide();
+        this.enginePanelEl.classList.add('ert-hidden');
+    }
+
+    private scheduleEnginePanelHide(): void {
+        this.cancelEnginePanelHide();
+        this.enginePanelHideTimer = window.setTimeout(() => {
+            this.hideEnginePanel();
+        }, BRIEFING_HIDE_DELAY_MS);
+    }
+
+    private cancelEnginePanelHide(): void {
+        if (this.enginePanelHideTimer) {
+            window.clearTimeout(this.enginePanelHideTimer);
+            this.enginePanelHideTimer = undefined;
+        }
+    }
+
+    private refreshEnginePanel(): void {
+        if (!this.enginePanelListEl) return;
+        this.enginePanelListEl.empty();
+
+        type EngineChoice = {
+            provider: EngineProvider;
+            providerLabel: string;
+            modelId: string;
+            modelLabel: string;
+            isActive: boolean;
+            enabled: boolean;
+            disabledReason?: string;
+        };
+
+        const providerLabels: Record<EngineProvider, string> = {
+            anthropic: 'Anthropic',
+            gemini: 'Gemini',
+            openai: 'OpenAI',
+            local: 'Local'
+        };
+
+        const clean = (value: string) => value.replace(/^models\//, '').trim();
+        const getProviderModelId = (provider: EngineProvider): string => {
+            if (provider === 'anthropic') return clean(this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929');
+            if (provider === 'gemini') return clean(this.plugin.settings.geminiModelId || 'gemini-pro-latest');
+            if (provider === 'local') return clean(this.plugin.settings.localModelId || 'local-model');
+            return clean(this.plugin.settings.openaiModelId || 'gpt-5.2-chat-latest');
+        };
+
+        const getProviderAvailability = (provider: EngineProvider): { enabled: boolean; reason?: string } => {
+            if (provider === 'local') {
+                const baseUrl = this.plugin.settings.localBaseUrl?.trim();
+                return baseUrl ? { enabled: true } : { enabled: false, reason: 'Local URL missing' };
+            }
+            const key = provider === 'anthropic'
+                ? this.plugin.settings.anthropicApiKey
+                : provider === 'gemini'
+                    ? this.plugin.settings.geminiApiKey
+                    : this.plugin.settings.openaiApiKey;
+            return key?.trim() ? { enabled: true } : { enabled: false, reason: 'API key missing' };
+        };
+
+        const activeProvider = (this.plugin.settings.defaultAiProvider || 'openai') as EngineProvider;
+        const providers: EngineProvider[] = ['anthropic', 'gemini', 'openai', 'local'];
+        const choices: EngineChoice[] = providers.map(provider => {
+            const modelId = getProviderModelId(provider);
+            const availability = getProviderAvailability(provider);
+            return {
+                provider,
+                providerLabel: providerLabels[provider],
+                modelId,
+                modelLabel: getModelDisplayName(modelId),
+                isActive: provider === activeProvider,
+                enabled: availability.enabled,
+                disabledReason: availability.reason
+            };
+        });
+
+        if (this.enginePanelMetaEl) {
+            const activeLabel = `${this.getActiveInquiryProviderLabel()} · ${this.getActiveInquiryModelLabel()}`;
+            this.enginePanelMetaEl.setText(`Active: ${activeLabel}`);
+        }
+
+        if (!choices.length) {
+            this.enginePanelListEl.createDiv({ cls: 'ert-inquiry-engine-empty', text: 'No models configured yet.' });
+            return;
+        }
+
+        choices.forEach(choice => {
+            const item = this.enginePanelListEl?.createEl('button', { cls: 'ert-inquiry-engine-item', attr: { type: 'button' } });
+            if (!item) return;
+            if (choice.isActive) item.classList.add('is-active');
+            if (!choice.enabled) item.classList.add('is-disabled');
+            const main = item.createDiv({ cls: 'ert-inquiry-engine-item-main' });
+            main.createDiv({ cls: 'ert-inquiry-engine-item-title', text: `${choice.providerLabel} · ${choice.modelLabel}` });
+            main.createDiv({ cls: 'ert-inquiry-engine-item-meta', text: choice.modelId });
+            const statusText = !choice.enabled ? choice.disabledReason : (choice.isActive ? 'Active' : undefined);
+            if (statusText) {
+                item.createDiv({ cls: 'ert-inquiry-engine-item-status', text: statusText });
+            }
+            this.registerDomEvent(item, 'click', (event: MouseEvent) => {
+                event.stopPropagation();
+                if (!choice.enabled) return;
+                void this.applyEngineChoice(choice);
+            });
+        });
+    }
+
+    private async applyEngineChoice(choice: { provider: EngineProvider; modelId: string }): Promise<void> {
+        this.plugin.settings.defaultAiProvider = choice.provider;
+        if (choice.provider === 'anthropic') this.plugin.settings.anthropicModelId = choice.modelId;
+        if (choice.provider === 'gemini') this.plugin.settings.geminiModelId = choice.modelId;
+        if (choice.provider === 'openai') this.plugin.settings.openaiModelId = choice.modelId;
+        if (choice.provider === 'local') this.plugin.settings.localModelId = choice.modelId;
+        await this.plugin.saveSettings();
+        this.updateEngineBadge();
     }
 
     private showBriefingPanel(): void {
@@ -1032,6 +1141,7 @@ export class InquiryView extends ItemView {
             'waves',
             'waves-arrow-down',
             'columns-2',
+            'cpu',
             'aperture',
             'chevron-left',
             'chevron-right',
@@ -2012,7 +2122,6 @@ export class InquiryView extends ItemView {
         this.updateModeToggle();
         this.updateModeClass();
         this.updateActiveZoneStyling();
-        this.updateContextBadge();
         this.updateEngineBadge();
         this.updateZonePrompts();
         this.updateGlyphPromptState();
@@ -2123,38 +2232,17 @@ export class InquiryView extends ItemView {
         button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     }
 
-    private updateContextBadge(): void {
-        if (!this.contextBadgeIcon || !this.contextBadgeLabel) return;
-        const isSaga = this.state.scope === 'saga';
-        if (isSaga && this.iconSymbols.has('ert-icon-sigma')) {
-            this.contextBadgeIcon.classList.remove('ert-hidden');
-            this.contextBadgeSigmaText?.classList.add('ert-hidden');
-            this.setIconUse(this.contextBadgeIcon, 'sigma');
-        } else if (isSaga && this.contextBadgeSigmaText) {
-            this.contextBadgeIcon.classList.add('ert-hidden');
-            this.contextBadgeSigmaText.classList.remove('ert-hidden');
-        } else {
-            this.contextBadgeSigmaText?.classList.add('ert-hidden');
-            this.contextBadgeIcon.classList.remove('ert-hidden');
-            this.setIconUse(this.contextBadgeIcon, 'columns-2');
-        }
-        this.contextBadgeLabel.textContent = isSaga ? 'Saga context' : 'Book context';
-    }
-
     private updateEngineBadge(): void {
-        if (!this.engineBadgeGroup || !this.engineBadgeBg || !this.engineBadgeText) return;
+        if (!this.engineBadgeGroup) return;
         const modelLabel = this.getActiveInquiryModelLabel();
-        this.engineBadgeText.textContent = modelLabel;
-        requestAnimationFrame(() => {
-            if (!this.engineBadgeBg || !this.engineBadgeText) return;
-            const textLength = this.engineBadgeText.getComputedTextLength();
-            const padding = 28;
-            const minWidth = 120;
-            const maxWidth = 280;
-            const width = Math.min(maxWidth, Math.max(minWidth, textLength + padding));
-            this.engineBadgeBg.setAttribute('width', width.toFixed(2));
-            this.engineBadgeBg.setAttribute('height', '28');
-        });
+        const providerLabel = this.getActiveInquiryProviderLabel();
+        const tooltip = `AI Engine · ${providerLabel} · ${modelLabel}`;
+        this.engineBadgeGroup.setAttribute('aria-label', tooltip);
+        addTooltipData(this.engineBadgeGroup, tooltip, 'bottom');
+        if (this.enginePanelMetaEl) {
+            this.enginePanelMetaEl.setText(`Active: ${providerLabel} · ${modelLabel}`);
+        }
+        this.refreshEnginePanel();
     }
 
     private getActiveInquiryModelId(): string {
@@ -2170,6 +2258,17 @@ export class InquiryView extends ItemView {
             return clean(this.plugin.settings.localModelId || 'local-model');
         }
         return clean(this.plugin.settings.openaiModelId || 'gpt-5.2-chat-latest');
+    }
+
+    private getActiveInquiryProviderLabel(): string {
+        const provider = this.plugin.settings.defaultAiProvider || 'openai';
+        const labels: Record<EngineProvider, string> = {
+            anthropic: 'Anthropic',
+            gemini: 'Gemini',
+            openai: 'OpenAI',
+            local: 'Local'
+        };
+        return labels[provider as EngineProvider] || 'OpenAI';
     }
 
     private getActiveInquiryModelLabel(): string {
@@ -2245,7 +2344,7 @@ export class InquiryView extends ItemView {
     }
 
     private renderMinimapTicks(): void {
-        if (!this.minimapTicksEl || !this.minimapLayout || !this.minimapBaseline || !this.minimapEmptyText) return;
+        if (!this.minimapTicksEl || !this.minimapLayout || !this.minimapBaseline) return;
         this.clearSvgChildren(this.minimapTicksEl);
         this.minimapTicks = [];
         this.minimapSweepTicks = [];
@@ -2259,6 +2358,8 @@ export class InquiryView extends ItemView {
         const tickGap = 4;
         const capWidth = 2;
         const capHeight = Math.max(30, tickHeight + 12);
+        const capHalfWidth = Math.round(capWidth / 2);
+        const capHalfHeight = Math.round(capHeight / 2);
         const edgeScenePadding = tickWidth;
         const tickInset = capWidth + (tickWidth / 2) + 4 + edgeScenePadding;
         const availableLength = Math.max(0, length - (tickInset * 2));
@@ -2287,8 +2388,6 @@ export class InquiryView extends ItemView {
         this.minimapBaseline.setAttribute('x2', String(baselineEnd));
         this.minimapBaseline.setAttribute('y2', '0');
         if (this.minimapEndCapStart && this.minimapEndCapEnd) {
-            const capHalfWidth = Math.round(capWidth / 2);
-            const capHalfHeight = Math.round(capHeight / 2);
             this.minimapEndCapStart.setAttribute('x', String(baselineStart - capHalfWidth));
             this.minimapEndCapStart.setAttribute('y', String(-capHalfHeight));
             this.minimapEndCapStart.setAttribute('width', String(Math.round(capWidth)));
@@ -2298,23 +2397,18 @@ export class InquiryView extends ItemView {
             this.minimapEndCapEnd.setAttribute('width', String(Math.round(capWidth)));
             this.minimapEndCapEnd.setAttribute('height', String(Math.round(capHeight)));
         }
+        this.minimapBottomOffset = capHalfHeight;
         this.minimapTicksEl.setAttribute('transform', `translate(${baselineStart} 0)`);
-        this.minimapEmptyText.setAttribute('x', '0');
-        this.minimapEmptyText.setAttribute('y', '20');
-        this.minimapEmptyText.setAttribute('text-anchor', 'middle');
         this.renderMinimapBackbone(baselineStart, length);
 
         if (!count) {
-            const emptyLabel = this.state.scope === 'saga' ? 'No books found.' : 'No scenes found.';
-            this.minimapEmptyText.textContent = emptyLabel;
-            this.minimapEmptyText.classList.remove('ert-hidden');
             this.minimapBackboneGroup?.setAttribute('display', 'none');
             this.renderCorpusCcStrip();
             this.updateMinimapFocus();
+            this.updatePreviewPanelPosition();
             return;
         }
 
-        this.minimapEmptyText.classList.add('ert-hidden');
         this.minimapBackboneGroup?.removeAttribute('display');
         const tickCorner = Math.max(2, Math.round(tickWidth * 0.18));
         const foldSize = Math.max(3, Math.round(tickWidth * 0.5));
@@ -2389,10 +2483,21 @@ export class InquiryView extends ItemView {
             this.minimapTicks.push(tick);
             tickLayouts.push({ x, y, width: tickWidth, height: tickHeight, rowIndex });
         }
+        this.updatePreviewPanelPosition();
 
         this.buildMinimapSweepLayer(tickLayouts, tickWidth, length);
         this.renderCorpusCcStrip();
         this.updateMinimapFocus();
+    }
+
+    private updatePreviewPanelPosition(): void {
+        if (!this.previewGroup || !this.minimapGroup) return;
+        const targetY = MINIMAP_GROUP_Y
+            + this.minimapBottomOffset
+            + PREVIEW_PANEL_MINIMAP_GAP
+            - PREVIEW_PANEL_PADDING_Y;
+        if (!Number.isFinite(targetY)) return;
+        this.previewGroup.setAttribute('transform', `translate(0 ${targetY})`);
     }
 
     private renderMinimapBackbone(baselineStart: number, length: number): void {
@@ -2984,13 +3089,13 @@ export class InquiryView extends ItemView {
         const classInitial = entry.className?.trim().charAt(0).toLowerCase() || '?';
         const conditions: string[] = [];
 
-        const statusLabel = stats.status
-            ? `${stats.status.charAt(0).toUpperCase()}${stats.status.slice(1)}`
-            : 'None';
-        const statusIcon = this.getCorpusCcStatusIcon(stats.status);
-        const statusBorderNote = stats.status === 'todo' ? ' (dashed border)' : '';
-        const statusIconText = statusIcon ? ` ${statusIcon}` : '';
-        conditions.push(`Status: ${statusLabel}${statusIconText}${statusBorderNote}`);
+        if (stats.status) {
+            const statusLabel = `${stats.status.charAt(0).toUpperCase()}${stats.status.slice(1)}`;
+            const statusIcon = this.getCorpusCcStatusIcon(stats.status);
+            const statusBorderNote = stats.status === 'todo' ? ' (dashed border)' : '';
+            const statusIconText = statusIcon ? ` ${statusIcon}` : '';
+            conditions.push(`Status: ${statusLabel}${statusIconText}${statusBorderNote}`);
+        }
 
         if (thresholds.substantiveMin > 0) {
             const fillPercent = Math.round((stats.words / thresholds.substantiveMin) * 100);
@@ -3575,15 +3680,14 @@ export class InquiryView extends ItemView {
             'View the Briefing report, or run a different question.',
             'Switch between Flow and Depth to reframe the analysis.'
         ].join('\n');
-        const tooltip = state === 'not-configured'
-            ? 'Configure Inquiry sources'
-            : state === 'no-scenes'
-                ? 'No scenes detected'
-                : state === 'results'
-                    ? resultsTooltip
-                    : state === 'ready'
-                        ? 'How Inquiry works'
-                        : '';
+        const guidanceTooltip = 'Click to set your sources and document classes.';
+        const tooltip = state === 'not-configured' || state === 'no-scenes'
+            ? guidanceTooltip
+            : state === 'results'
+                ? resultsTooltip
+                : state === 'ready'
+                    ? 'How Inquiry works'
+                    : '';
 
         this.helpToggleButton.removeAttribute('aria-pressed');
         const isAlert = state === 'not-configured' || state === 'no-scenes';
@@ -4073,13 +4177,8 @@ export class InquiryView extends ItemView {
         if (normalized.scope !== 'book') return false;
         if (!this.corpus?.scenes?.length) return false;
 
-        const inquiryId = this.formatInquiryIdFromResult(normalized);
-        if (!inquiryId) return false;
-
-        const zoneLabel = this.resolveInquiryBriefZoneLabel(normalized);
-        const lensLabel = this.resolveInquiryBriefLensLabel(normalized, zoneLabel);
         const briefTitle = this.formatInquiryBriefTitle(normalized);
-        const notesByScene = this.buildInquiryActionNotes(normalized, inquiryId, zoneLabel, lensLabel, briefTitle);
+        const notesByScene = this.buildInquiryActionNotes(normalized, briefTitle);
         if (!notesByScene.size) return false;
 
         const defaultField = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
@@ -4091,7 +4190,7 @@ export class InquiryView extends ItemView {
             const file = this.app.vault.getAbstractFileByPath(path);
             if (!file || !(file instanceof TFile)) continue;
             try {
-                const outcome = await this.appendInquiryNotesToFrontmatter(file, targetField, inquiryId, notes);
+                const outcome = await this.appendInquiryNotesToFrontmatter(file, targetField, briefTitle, notes);
                 if (outcome === 'written') wroteAny = true;
                 if (outcome === 'duplicate') duplicateAny = true;
             } catch (error) {
@@ -4110,9 +4209,6 @@ export class InquiryView extends ItemView {
 
     private buildInquiryActionNotes(
         result: InquiryResult,
-        inquiryId: string,
-        zoneLabel: string,
-        lensLabel: string,
         briefTitle: string
     ): Map<string, string[]> {
         const notesByScene = new Map<string, string[]>();
@@ -4130,12 +4226,9 @@ export class InquiryView extends ItemView {
             if (this.getImpactRank(finding.impact) < minimumRank) return;
             const filePath = sceneByLabel.get(finding.refId) ?? sceneById.get(finding.refId);
             if (!filePath) return;
-            const note = this.formatInquiryActionNote(inquiryId, zoneLabel, lensLabel, finding, briefTitle);
-            const list = notesByScene.get(filePath) ?? [];
-            if (!list.includes(note)) {
-                list.push(note);
-                notesByScene.set(filePath, list);
-            }
+            if (notesByScene.has(filePath)) return;
+            const note = this.formatInquiryActionNote(finding, briefTitle);
+            notesByScene.set(filePath, [note]);
         });
 
         return notesByScene;
@@ -4144,11 +4237,11 @@ export class InquiryView extends ItemView {
     private async appendInquiryNotesToFrontmatter(
         file: TFile,
         fieldKey: string,
-        inquiryId: string,
+        briefTitle: string,
         notes: string[]
     ): Promise<InquiryWritebackOutcome> {
         if (!notes.length) return 'skipped';
-        const inquiryToken = `INQUIRY ${inquiryId}`;
+        const briefLink = `[[${briefTitle}]]`;
         let outcome: InquiryWritebackOutcome = 'skipped';
 
         const isInquiryDividerLine = (line: string): boolean => {
@@ -4217,19 +4310,17 @@ export class InquiryView extends ItemView {
             const existingLines = [...humanLines, ...inquiryLines]
                 .map(line => line.trim())
                 .filter(Boolean);
-            if (existingLines.some(line => line.startsWith(inquiryToken))) {
+            if (existingLines.some(line => line.includes(briefLink))) {
                 outcome = 'duplicate';
                 return;
             }
 
             const combined = [...inquiryLines, ...notes];
-            let dropped = 0;
             let trimmed = combined;
             if (combined.length > INQUIRY_NOTES_MAX) {
-                dropped = combined.length - INQUIRY_NOTES_MAX;
                 trimmed = combined.slice(combined.length - INQUIRY_NOTES_MAX);
             }
-            const divider = dropped > 0 ? INQUIRY_NOTES_DIVIDER_OVERFLOW : INQUIRY_NOTES_DIVIDER;
+            const divider = INQUIRY_NOTES_DIVIDER;
 
             let nextText = humanText;
             if (nextText) {
@@ -5763,7 +5854,7 @@ export class InquiryView extends ItemView {
             },
             {
                 element: this.engineBadgeGroup,
-                text: 'Open Inquiry engine settings.',
+                text: 'Select the active AI model.',
                 placement: 'bottom'
             },
             {
@@ -6060,27 +6151,64 @@ export class InquiryView extends ItemView {
         return this.formatInquiryId(timestamp);
     }
 
-    private formatInquirySeverityCode(value: InquirySeverity | InquiryConfidence): string {
-        if (value === 'high') return 'H';
-        if (value === 'medium') return 'M';
-        return 'L';
-    }
-
     private normalizeInquiryHeadline(headline: string): string {
         return (headline || 'Finding').replace(/\s+/g, ' ').trim();
     }
 
     private formatInquiryActionNote(
-        inquiryId: string,
-        zoneLabel: string,
-        lensLabel: string,
         finding: InquiryFinding,
         briefTitle: string
     ): string {
-        const headline = this.normalizeInquiryHeadline(finding.headline);
-        const impactCode = this.formatInquirySeverityCode(finding.impact);
-        const confidenceCode = this.formatInquirySeverityCode(finding.assessmentConfidence);
-        return `INQUIRY ${inquiryId} • ${zoneLabel} • ${lensLabel} • ${impactCode}/${confidenceCode} • ${headline} → [[${briefTitle}]]`;
+        const suggestion = this.buildInquiryActionSuggestion(finding);
+        return `IB — ${suggestion} → [[${briefTitle}]]`;
+    }
+
+    private buildInquiryActionSuggestion(finding: InquiryFinding): string {
+        const source = (finding.bullets?.find(entry => entry?.trim()) || finding.headline || '').replace(/\s+/g, ' ').trim();
+        if (!source) return 'Revisit this scene';
+        const cleaned = source.replace(/[.?!]+$/, '').trim();
+        const lowered = cleaned.toLowerCase();
+        const imperativeStarts = [
+            'add', 'adjust', 'align', 'anchor', 'balance', 'clarify', 'condense', 'confirm', 'connect',
+            'deepen', 'define', 'emphasize', 'ensure', 'establish', 'expand', 'foreshadow', 'highlight',
+            'introduce', 'move', 'reframe', 'reorder', 'revisit', 'revise', 'seed', 'sharpen', 'show',
+            'simplify', 'streamline', 'strengthen', 'tighten', 'trim', 'resolve', 'rework', 'shift'
+        ];
+        if (imperativeStarts.some(prefix => lowered.startsWith(`${prefix} `))) {
+            return cleaned;
+        }
+        if (lowered.startsWith('it is unclear ')) {
+            return `Clarify ${cleaned.slice('it is unclear '.length)}`;
+        }
+        if (lowered.startsWith('unclear whether ')) {
+            return `Clarify whether ${cleaned.slice('unclear whether '.length)}`;
+        }
+        if (lowered.startsWith('unclear if ')) {
+            return `Clarify if ${cleaned.slice('unclear if '.length)}`;
+        }
+        if (lowered.startsWith('unclear ')) {
+            return `Clarify ${cleaned.slice('unclear '.length)}`;
+        }
+        if (lowered.startsWith('lacks ')) {
+            return `Add ${cleaned.slice('lacks '.length)}`;
+        }
+        if (lowered.startsWith('missing ')) {
+            return `Add ${cleaned.slice('missing '.length)}`;
+        }
+        if (lowered.startsWith('needs ')) {
+            return `Strengthen ${cleaned.slice('needs '.length)}`;
+        }
+        const verbMatch = cleaned.match(/\b(is|are|was|were|feels|seems|appears|looks|drags|lags|sags|rushes|stalls|slows|reads)\b/i);
+        if (verbMatch?.index !== undefined && verbMatch.index > 0) {
+            const subject = cleaned.slice(0, verbMatch.index).replace(/^(the|this|that|these|those|a|an)\s+/i, '').trim();
+            const remainder = cleaned.slice(verbMatch.index + verbMatch[0].length).trim();
+            const locationMatch = remainder.match(/\b(in|during|at|by|within|around)\s+.+$/i);
+            if (subject) {
+                const location = locationMatch ? ` ${locationMatch[0].trim()}` : '';
+                return `Revise ${subject}${location}`;
+            }
+        }
+        return `Consider revising ${cleaned}`;
     }
 
     private formatRoundTripDuration(ms: number): string {
