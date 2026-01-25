@@ -16,8 +16,27 @@ function truncateSubplotLabel(value: string, maxLength = SUBPLOT_LABEL_MAX_LENGT
 
 async function getTimelineSubplotOrder(plugin: RadialTimelinePlugin): Promise<string[]> {
     const scenes = Array.isArray(plugin.lastSceneData) ? plugin.lastSceneData : null;
-    if (!scenes || scenes.length === 0) return [];
-    const { masterSubplotOrder } = computeCacheableValues(plugin as unknown as PluginRendererFacade, scenes);
+    if (scenes && scenes.length > 0) {
+        const { masterSubplotOrder } = computeCacheableValues(plugin as unknown as PluginRendererFacade, scenes);
+        return masterSubplotOrder.filter(subplot =>
+            subplot &&
+            subplot.trim().length > 0 &&
+            subplot !== 'Backdrop' &&
+            subplot !== 'MicroBackdrop'
+        );
+    }
+
+    await new Promise<void>(resolve => window.setTimeout(resolve, 150));
+    let fetched: unknown;
+    try {
+        fetched = await plugin.getSceneData();
+    } catch {
+        return [];
+    }
+    const hydrated = Array.isArray(fetched) ? fetched : null;
+    if (!hydrated || hydrated.length === 0) return [];
+
+    const { masterSubplotOrder } = computeCacheableValues(plugin as unknown as PluginRendererFacade, hydrated);
     return masterSubplotOrder.filter(subplot =>
         subplot &&
         subplot.trim().length > 0 &&

@@ -50,6 +50,7 @@ export function addWikiLinkToElement(el: HTMLElement, wikiPage: string): void {
 function addHeadingIconToElement(el: HTMLElement, icon: string): void {
     if (!el) return;
 
+    el.querySelectorAll('.ert-setting-heading-icon').forEach(existing => existing.remove());
     const iconEl = el.createSpan({ cls: 'ert-setting-heading-icon' });
     setIcon(iconEl, icon);
     el.insertBefore(iconEl, el.firstChild);

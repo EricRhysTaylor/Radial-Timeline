@@ -2881,26 +2881,20 @@ export class InquiryView extends ItemView {
             slot.group.classList.add(`is-status-${stats.status}`);
         }
 
-        const icon = stats.status === 'todo'
-            ? '☐'
-            : stats.status === 'working'
-                ? '◐'
-                : stats.status === 'complete'
-                    ? '✓'
-                    : '';
-        slot.icon.textContent = icon;
-        slot.icon.setAttribute('opacity', icon ? '1' : '0');
+        const statusIcon = this.getCorpusCcStatusIcon(stats.status);
+        slot.icon.textContent = statusIcon;
+        slot.icon.setAttribute('opacity', statusIcon ? '1' : '0');
 
         const highlightMismatch = this.plugin.settings.inquiryCorpusHighlightLowSubstanceComplete ?? true;
         const lowSubstance = stats.words < thresholds.sketchyMin;
-        if (highlightMismatch && stats.status === 'complete' && lowSubstance) {
+        const isMismatch = highlightMismatch && stats.status === 'complete' && lowSubstance;
+        if (isMismatch) {
             slot.group.classList.add('is-mismatch');
         }
 
-        const tooltipTitle = stats.title || entry.label;
-        const classInitial = entry.className?.trim().charAt(0).toLowerCase() || '?';
+        const tooltip = this.buildCorpusCcTooltip(entry, stats, thresholds, tier, isMismatch);
         slot.group.classList.add('rt-tooltip-target');
-        slot.group.setAttribute('data-tooltip', `${tooltipTitle} [${classInitial}]`);
+        slot.group.setAttribute('data-tooltip', tooltip);
         slot.group.setAttribute('data-tooltip-placement', 'left');
         slot.group.setAttribute('data-tooltip-offset-x', '10');
         if (entry.filePath) {
@@ -2970,6 +2964,49 @@ export class InquiryView extends ItemView {
             return value;
         }
         return undefined;
+    }
+
+    private getCorpusCcStatusIcon(status?: 'todo' | 'working' | 'complete'): string {
+        if (status === 'todo') return '☐';
+        if (status === 'working') return '◐';
+        if (status === 'complete') return '✓';
+        return '';
+    }
+
+    private buildCorpusCcTooltip(
+        entry: CorpusCcEntry,
+        stats: { words: number; status?: 'todo' | 'working' | 'complete'; title?: string },
+        thresholds: { emptyMax: number; sketchyMin: number; mediumMin: number; substantiveMin: number },
+        tier: 'empty' | 'bare' | 'sketchy' | 'medium' | 'substantive',
+        isMismatch: boolean
+    ): string {
+        const tooltipTitle = stats.title || entry.label;
+        const classInitial = entry.className?.trim().charAt(0).toLowerCase() || '?';
+        const conditions: string[] = [];
+
+        const statusLabel = stats.status
+            ? `${stats.status.charAt(0).toUpperCase()}${stats.status.slice(1)}`
+            : 'None';
+        const statusIcon = this.getCorpusCcStatusIcon(stats.status);
+        const statusBorderNote = stats.status === 'todo' ? ' (dashed border)' : '';
+        const statusIconText = statusIcon ? ` ${statusIcon}` : '';
+        conditions.push(`Status: ${statusLabel}${statusIconText}${statusBorderNote}`);
+
+        if (thresholds.substantiveMin > 0) {
+            const fillPercent = Math.round((stats.words / thresholds.substantiveMin) * 100);
+            conditions.push(`Fill: ${fillPercent}% of substantive (${stats.words} words)`);
+        } else {
+            conditions.push(`Fill: ${stats.words} words`);
+        }
+
+        const tierLabel = `${tier.charAt(0).toUpperCase()}${tier.slice(1)}`;
+        conditions.push(`Tier: ${tierLabel}`);
+
+        if (isMismatch) {
+            conditions.push(`Alert: complete under ${thresholds.sketchyMin} words`);
+        }
+
+        return `${tooltipTitle} [${classInitial}]\n${conditions.map(item => `• ${item}`).join('\n')}`;
     }
 
     private getDocumentTitle(file: TFile): string {
@@ -3323,7 +3360,7 @@ export class InquiryView extends ItemView {
             tick.classList.toggle('is-hit', !!finding);
             severityClasses.forEach(cls => tick.classList.remove(cls));
             const fullLabel = tick.getAttribute('data-full-label') || label;
-            const tooltip = finding ? `${fullLabel} hit: ${finding.headline}` : fullLabel;
+            const tooltip = finding ? `${fullLabel} • ${finding.headline}` : fullLabel;
             tick.setAttribute('data-tooltip', tooltip);
         });
     }

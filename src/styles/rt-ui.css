@@ -211,6 +211,11 @@
   padding: var(--ert-control-pad-y) var(--ert-control-pad-x);
 }
 
+.ert-ui textarea.ert-textarea--compact {
+  width: min(100%, var(--ert-input-width-xl));
+  resize: vertical;
+}
+
 .ert-ui textarea.ert-textarea:disabled {
   opacity: 0.6;
   cursor: not-allowed;

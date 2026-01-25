@@ -33,9 +33,6 @@ interface SectionParams {
 const listToText = (values?: string[]): string =>
     (values || []).join('\n');
 
-const listToInlineText = (values?: string[]): string =>
-    (values || []).join(', ');
-
 const parseClassScopeInput = (raw: string): string[] => {
     const lines = raw
         .split(/[\n,]/)
@@ -249,12 +246,12 @@ export function renderInquirySection(params: SectionParams): void {
         headingClass: 'ert-setting-heading--top'
     });
 
-    let scanRootsInput: TextComponent | null = null;
+    let scanRootsInput: TextAreaComponent | null = null;
     let classScopeInput: TextAreaComponent | null = null;
 
     const scanRootsSetting = new Settings(sourcesBody)
         .setName('Inquiry scan folders')
-        .setDesc('Inquiry only scans within these folders. Separate paths with commas. Wildcards like /Book */ or /Book 1-7 */ are allowed. Use / for the vault root. Empty = no scan.');
+        .setDesc('Inquiry only scans within these folders. One path per line. Wildcards like /Book */ or /Book 1-7 */ are allowed. Use / for the vault root. Empty = no scan.');
     scanRootsSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:scan-roots');
     scanRootsSetting.settingEl.addClass(ERT_CLASSES.ROW_TOP_ALIGN);
 
@@ -262,10 +259,11 @@ export function renderInquirySection(params: SectionParams): void {
         cls: [ERT_CLASSES.STACK, ERT_CLASSES.STACK_TIGHT]
     });
 
-    const scanRootsText = new TextComponent(scanRootControls);
-    scanRootsText.setValue(listToInlineText(inquirySources.scanRoots));
-    scanRootsText.setPlaceholder('/Book */, /Character/, /World/');
-    scanRootsText.inputEl.addClass('ert-input--sm');
+    const scanRootsText = new TextAreaComponent(scanRootControls);
+    scanRootsText.setValue(listToText(inquirySources.scanRoots));
+    scanRootsText.setPlaceholder('/Book */\n/Character/\n/World/');
+    scanRootsText.inputEl.rows = 3;
+    scanRootsText.inputEl.addClass('ert-textarea--compact');
     scanRootsInput = scanRootsText;
 
     plugin.registerDomEvent(scanRootsText.inputEl, 'blur', () => {
@@ -306,7 +304,10 @@ export function renderInquirySection(params: SectionParams): void {
     resolvedList.style.setProperty('--ert-controlGroup-columns', '1fr');
     resolvedList.style.setProperty('--ert-controlGroup-max-height', '220px');
 
-    const classScopeSetting = new Settings(sourcesBody)
+    const classScopePanel = sourcesBody.createDiv({ cls: ERT_CLASSES.PANEL });
+    const classScopeBody = classScopePanel.createDiv({ cls: ERT_CLASSES.PANEL_BODY });
+
+    const classScopeSetting = new Settings(classScopeBody)
         .setName('Inquiry class scope')
         .setDesc('One YAML class per line. Use / to allow all classes. Empty = no classes allowed.');
     classScopeSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:class-scope');
@@ -326,7 +327,7 @@ export function renderInquirySection(params: SectionParams): void {
 
     let resolvedRootCache: { signature: string; resolvedRoots: string[]; total: number } | null = null;
 
-    const classTableWrap = sourcesBody.createDiv({ cls: 'ert-controlGroup' });
+    const classTableWrap = classScopeBody.createDiv({ cls: 'ert-controlGroup' });
     classTableWrap.style.setProperty('--ert-controlGroup-columns', '90px minmax(0, 1.1fr) 140px 140px 110px');
 
     const scanInquiryClasses = async (roots: string[]): Promise<{
@@ -512,7 +513,7 @@ export function renderInquirySection(params: SectionParams): void {
     const applyScanRoots = (nextRoots: string[]) => {
         const normalized = nextRoots.length ? normalizeScanRootPatterns(nextRoots) : [];
         inquirySources = { ...inquirySources, scanRoots: normalized };
-        scanRootsInput?.setValue(listToInlineText(normalized));
+        scanRootsInput?.setValue(listToText(normalized));
         resolvedRootCache = null;
         void refreshClassScan();
     };
@@ -841,7 +842,9 @@ export function renderInquirySection(params: SectionParams): void {
         const thresholdDefaults = normalizeCorpusThresholds(plugin.settings.inquiryCorpusThresholds);
         plugin.settings.inquiryCorpusThresholds = thresholdDefaults;
 
-        const table = targetEl.createDiv({ cls: 'ert-controlGroup ert-controlGroup--spaced' });
+        const corpusPanel = targetEl.createDiv({ cls: [ERT_CLASSES.PANEL, ERT_CLASSES.STACK] });
+
+        const table = corpusPanel.createDiv({ cls: 'ert-controlGroup' });
         table.style.setProperty('--ert-controlGroup-columns', 'minmax(140px, max-content) auto');
 
         const header = table.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--header'] });
@@ -905,7 +908,7 @@ export function renderInquirySection(params: SectionParams): void {
             });
         });
 
-        new Settings(targetEl)
+        new Settings(corpusPanel)
             .setName('Highlight completed docs with low substance')
             .setDesc('Flags completed notes that fall in Empty or Sketchy tiers.')
             .addToggle(toggle => {
@@ -1051,7 +1054,7 @@ export function renderInquirySection(params: SectionParams): void {
             const current = plugin.settings.inquiryActionNotesTargetField?.trim() || defaultField;
             text.setPlaceholder(defaultField);
             text.setValue(current);
-            text.inputEl.addClass('ert-input--sm');
+            text.inputEl.addClass('ert-input--lg');
             text.onChange(async (value) => {
                 const next = value.trim() || defaultField;
                 plugin.settings.inquiryActionNotesTargetField = next;
@@ -1059,49 +1062,47 @@ export function renderInquirySection(params: SectionParams): void {
             });
         });
 
-    const cacheDesc = () => `Cache up to ${plugin.settings.inquiryCacheMaxSessions ?? 30} Inquiry sessions.`;
+    const cacheDesc = () => `Cache up to ${plugin.settings.inquiryCacheMaxSessions ?? 30} Inquiry sessions. Set the cap here.`;
 
-    const cacheToggleSetting = new Settings(configBody)
+    const cacheSetting = new Settings(configBody)
         .setName('Enable session cache')
-        .setDesc(cacheDesc())
-        .addToggle(toggle => {
-            toggle.setValue(plugin.settings.inquiryCacheEnabled ?? true);
-            toggle.onChange(async (value) => {
-                plugin.settings.inquiryCacheEnabled = value;
-                await plugin.saveSettings();
-            });
+        .setDesc(cacheDesc());
+
+    cacheSetting.addText(text => {
+        const current = String(plugin.settings.inquiryCacheMaxSessions ?? 30);
+        text.setPlaceholder('30');
+        text.setValue(current);
+        text.inputEl.addClass('ert-input--sm');
+
+        plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+            if (evt.key === 'Enter') {
+                evt.preventDefault();
+                text.inputEl.blur();
+            }
         });
 
-    new Settings(configBody)
-        .setName('Max cached sessions')
-        .setDesc('Sets the cap for the Inquiry session cache.')
-        .addText(text => {
-            const current = String(plugin.settings.inquiryCacheMaxSessions ?? 30);
-            text.setPlaceholder('30');
-            text.setValue(current);
-            text.inputEl.addClass('ert-input--sm');
+        const handleBlur = async () => {
+            const n = Number(text.getValue().trim());
+            if (!Number.isFinite(n) || n < 1 || n > 100) {
+                new Notice('Enter a number between 1 and 100.');
+                text.setValue(String(plugin.settings.inquiryCacheMaxSessions ?? 30));
+                return;
+            }
+            plugin.settings.inquiryCacheMaxSessions = n;
+            await plugin.saveSettings();
+            cacheSetting.setDesc(cacheDesc());
+        };
 
-            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-                if (evt.key === 'Enter') {
-                    evt.preventDefault();
-                    text.inputEl.blur();
-                }
-            });
+        plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
+    });
 
-            const handleBlur = async () => {
-                const n = Number(text.getValue().trim());
-                if (!Number.isFinite(n) || n < 1 || n > 100) {
-                    new Notice('Enter a number between 1 and 100.');
-                    text.setValue(String(plugin.settings.inquiryCacheMaxSessions ?? 30));
-                    return;
-                }
-                plugin.settings.inquiryCacheMaxSessions = n;
-                await plugin.saveSettings();
-                cacheToggleSetting.setDesc(cacheDesc());
-            };
-
-            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
+    cacheSetting.addToggle(toggle => {
+        toggle.setValue(plugin.settings.inquiryCacheEnabled ?? true);
+        toggle.onChange(async (value) => {
+            plugin.settings.inquiryCacheEnabled = value;
+            await plugin.saveSettings();
         });
+    });
 
     void refreshClassScan();
 }
