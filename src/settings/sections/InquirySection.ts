@@ -253,7 +253,6 @@ export function renderInquirySection(params: SectionParams): void {
         .setName('Inquiry scan folders')
         .setDesc('Inquiry only scans within these folders. One path per line. Wildcards like /Book */ or /Book 1-7 */ are allowed. Use / for the vault root. Empty = no scan.');
     scanRootsSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:scan-roots');
-    scanRootsSetting.settingEl.addClass(ERT_CLASSES.ROW_TOP_ALIGN);
 
     const scanRootControls = scanRootsSetting.controlEl.createDiv({
         cls: [ERT_CLASSES.STACK, ERT_CLASSES.STACK_TIGHT]

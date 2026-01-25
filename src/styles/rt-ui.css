@@ -389,6 +389,10 @@
   margin-top: calc(-1 * var(--ert-gap-xs));
 }
 
+.ert-ui .ert-row--middleAlign {
+  align-items: center;
+}
+
 .ert-ui .ert-label {
   font-weight: 600;
   color: var(--text-muted);
@@ -1538,7 +1542,7 @@
 
 .ert-ui .ert-elementBlock.setting-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--ert-gap-md);
   width: 100%;
   padding: var(--ert-row-pad);
@@ -1546,8 +1550,8 @@
   overflow: visible;
 }
 
-.ert-ui .ert-elementBlock.setting-item.ert-row--topAlign {
-  align-items: flex-start;
+.ert-ui .ert-elementBlock.setting-item.ert-row--middleAlign {
+  align-items: center;
 }
 
 .ert-ui.ert-skin--social .ert-elementBlock.setting-item,

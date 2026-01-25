@@ -8,7 +8,7 @@ export const ERT_CLASSES = {
   ROW: 'ert-row',
   ROW_DESC: 'ert-row-desc',
   ROW_WIDE_CONTROL: 'ert-row--wideControl',
-  ROW_TOP_ALIGN: 'ert-row--topAlign',
+  ROW_MIDDLE_ALIGN: 'ert-row--middleAlign',
   ROW_RECOMMENDED: 'ert-row--recommended',
   ROW_INLINE_CONTROL: 'ert-row--inlineControl',
   SWATCH: 'ert-swatch',
