@@ -45,6 +45,31 @@
   opacity: 0.55;
 }
 
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-icon-btn:not(.ert-inquiry-help-btn) {
+  pointer-events: none;
+  cursor: default;
+  opacity: 0.35;
+}
+
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-icon-btn:not(.ert-inquiry-help-btn) .ert-inquiry-icon-btn-bg,
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-icon-btn:not(.ert-inquiry-help-btn) .ert-inquiry-icon {
+  animation: none;
+}
+
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-ring-hit,
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-glyph-hit {
+  pointer-events: none;
+  cursor: default;
+}
+
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-baseline,
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-endcap,
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-backbone,
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-backbone-glow,
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-backbone-shine {
+  display: none;
+}
+
 .ert-inquiry-icon-btn.is-disabled {
   pointer-events: none;
   cursor: default;
@@ -1376,6 +1401,11 @@
   opacity: 0.5;
 }
 
+.ert-inquiry-root.is-guidance-lockout .ert-inquiry-briefing-panel,
+.ert-inquiry-root.is-guidance-lockout .ert-inquiry-engine-panel {
+  display: none;
+}
+
 .ert-inquiry-briefing-panel {
   position: absolute;
   top: 18px;
@@ -1403,11 +1433,11 @@
   position: absolute;
   top: 18px;
   left: 88px;
-  width: 280px;
+  width: 320px;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 16px;
-  padding: 12px;
+  padding: 16px;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
   z-index: 3;
   pointer-events: auto;
@@ -1443,8 +1473,8 @@
 .ert-inquiry-engine-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 10px;
+  margin-top: 12px;
 }
 
 .ert-inquiry-engine-empty {
@@ -1459,7 +1489,7 @@
   justify-content: space-between;
   gap: 10px;
   width: 100%;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-radius: 12px;
   background: color-mix(in srgb, var(--background-secondary) 82%, var(--background-primary));
   border: 1px solid transparent;
@@ -1521,7 +1551,7 @@
 .ert-inquiry-engine-note {
   font-size: 10px;
   color: var(--text-muted);
-  margin-top: 8px;
+  margin-top: 12px;
 }
 
 .ert-inquiry-briefing-header {

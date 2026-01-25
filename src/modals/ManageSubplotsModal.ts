@@ -179,7 +179,7 @@ class SubplotDeletionConfirmModal extends Modal {
             modalEl.style.width = '600px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('ert-modal-container');
+        contentEl.addClass('ert-modal-container', 'ert-stack');
 
         // Header
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
@@ -190,7 +190,7 @@ class SubplotDeletionConfirmModal extends Modal {
         meta.createSpan({ cls: 'ert-modal-meta-item', text: 'Scenes in only this subplot will be moved to Main Plot' });
 
         // Warning card
-        const card = contentEl.createDiv({ cls: 'rt-glass-card' });
+        const card = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass' });
         const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
         warningEl.setText(`Are you sure you want to remove "${this.subplotName}" from the timeline?`);
 

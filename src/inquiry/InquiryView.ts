@@ -537,24 +537,45 @@ export class InquiryView extends ItemView {
         this.depthRingHit = this.glyph.depthRingHit;
         this.glyphHit = this.glyph.labelHit;
 
-        this.registerDomEvent(this.glyphHit as unknown as HTMLElement, 'click', () => this.handleGlyphClick());
-        this.registerDomEvent(this.flowRingHit as unknown as HTMLElement, 'click', () => this.handleRingClick('flow'));
-        this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'click', () => this.handleRingClick('depth'));
+        this.registerDomEvent(this.glyphHit as unknown as HTMLElement, 'click', () => {
+            if (this.isInquiryGuidanceLockout()) return;
+            this.handleGlyphClick();
+        });
+        this.registerDomEvent(this.flowRingHit as unknown as HTMLElement, 'click', () => {
+            if (this.isInquiryGuidanceLockout()) return;
+            this.handleRingClick('flow');
+        });
+        this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'click', () => {
+            if (this.isInquiryGuidanceLockout()) return;
+            this.handleRingClick('depth');
+        });
 
         this.buildPromptPreviewPanel(canvasGroup);
 
         this.registerDomEvent(this.glyphHit as unknown as HTMLElement, 'pointerenter', () => {
+            if (this.isInquiryGuidanceLockout()) return;
             this.setHoverText(this.buildFocusHoverText());
         });
-        this.registerDomEvent(this.glyphHit as unknown as HTMLElement, 'pointerleave', () => this.clearHoverText());
+        this.registerDomEvent(this.glyphHit as unknown as HTMLElement, 'pointerleave', () => {
+            if (this.isInquiryGuidanceLockout()) return;
+            this.clearHoverText();
+        });
         this.registerDomEvent(this.flowRingHit as unknown as HTMLElement, 'pointerenter', () => {
+            if (this.isInquiryGuidanceLockout()) return;
             this.setHoverText(this.buildRingHoverText('flow'));
         });
-        this.registerDomEvent(this.flowRingHit as unknown as HTMLElement, 'pointerleave', () => this.clearHoverText());
+        this.registerDomEvent(this.flowRingHit as unknown as HTMLElement, 'pointerleave', () => {
+            if (this.isInquiryGuidanceLockout()) return;
+            this.clearHoverText();
+        });
         this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'pointerenter', () => {
+            if (this.isInquiryGuidanceLockout()) return;
             this.setHoverText(this.buildRingHoverText('depth'));
         });
-        this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'pointerleave', () => this.clearHoverText());
+        this.registerDomEvent(this.depthRingHit as unknown as HTMLElement, 'pointerleave', () => {
+            if (this.isInquiryGuidanceLockout()) return;
+            this.clearHoverText();
+        });
 
         const hudFooterY = 1360;
         const navGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-nav', 0, hudFooterY);
@@ -2232,6 +2253,13 @@ export class InquiryView extends ItemView {
         button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     }
 
+    private setIconButtonDisabled(button: SVGGElement | undefined, disabled: boolean): void {
+        if (!button) return;
+        button.classList.toggle('is-disabled', disabled);
+        button.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+        button.setAttribute('tabindex', disabled ? '-1' : '0');
+    }
+
     private updateEngineBadge(): void {
         if (!this.engineBadgeGroup) return;
         const modelLabel = this.getActiveInquiryModelLabel();
@@ -3561,6 +3589,10 @@ export class InquiryView extends ItemView {
         return this.guidanceState === 'not-configured' || this.guidanceState === 'no-scenes';
     }
 
+    private isInquiryGuidanceLockout(): boolean {
+        return this.guidanceState === 'no-scenes';
+    }
+
     private isInquiryBlocked(): boolean {
         return this.guidanceState === 'not-configured';
     }
@@ -3575,27 +3607,39 @@ export class InquiryView extends ItemView {
         const state = this.guidanceState;
         const runDisabled = this.isInquiryRunDisabled();
         const blocked = this.isInquiryBlocked();
+        const lockout = this.isInquiryGuidanceLockout();
 
         if (this.rootSvg) {
             this.rootSvg.classList.toggle('is-inquiry-blocked', runDisabled);
             this.rootSvg.classList.toggle('is-run-locked', runDisabled);
             this.rootSvg.classList.toggle('is-no-scenes', state === 'no-scenes');
+            this.rootSvg.classList.toggle('is-guidance-lockout', lockout);
         }
         this.contentEl.classList.toggle('is-inquiry-blocked', blocked);
+        this.contentEl.classList.toggle('is-guidance-lockout', lockout);
 
         this.zonePromptElements.forEach(({ group }) => {
             group.setAttribute('aria-disabled', runDisabled ? 'true' : 'false');
             group.setAttribute('tabindex', runDisabled ? '-1' : '0');
         });
 
-        if (this.apiSimulationButton) {
-            this.apiSimulationButton.classList.toggle('is-disabled', runDisabled);
-            this.apiSimulationButton.setAttribute('aria-disabled', runDisabled ? 'true' : 'false');
-            this.apiSimulationButton.setAttribute('tabindex', runDisabled ? '-1' : '0');
-        }
+        this.setIconButtonDisabled(this.apiSimulationButton, runDisabled);
+        this.setIconButtonDisabled(this.scopeToggleButton, lockout);
+        this.setIconButtonDisabled(this.engineBadgeGroup, lockout);
+        this.setIconButtonDisabled(this.artifactButton, lockout);
+        this.setIconButtonDisabled(this.navPrevButton, lockout);
+        this.setIconButtonDisabled(this.navNextButton, lockout);
+        this.setIconButtonDisabled(this.detailsToggle, lockout);
 
         if (this.briefingSaveButton) {
-            this.briefingSaveButton.disabled = blocked;
+            this.briefingSaveButton.disabled = blocked || lockout;
+        }
+        if (this.briefingClearButton) {
+            this.briefingClearButton.disabled = lockout;
+        }
+        if (lockout) {
+            this.hideBriefingPanel(true);
+            this.hideEnginePanel();
         }
 
         this.updateGuidanceText(state);
@@ -3868,6 +3912,7 @@ export class InquiryView extends ItemView {
     }
 
     private handleRingClick(mode: InquiryMode): void {
+        if (this.isInquiryGuidanceLockout()) return;
         this.clearErrorStateForAction();
         if (this.state.isRunning) {
             this.notifyInteraction('Inquiry running. Please wait.');
@@ -3884,6 +3929,7 @@ export class InquiryView extends ItemView {
     }
 
     private handleGlyphClick(): void {
+        if (this.isInquiryGuidanceLockout()) return;
         this.clearErrorStateForAction();
         if (this.state.scope === 'saga') {
             this.state.scope = 'book';
@@ -4823,7 +4869,7 @@ export class InquiryView extends ItemView {
 
     private getFocusLabel(): string {
         if (this.guidanceState === 'not-configured') return '?';
-        if (this.guidanceState === 'no-scenes') return 'X';
+        if (this.guidanceState === 'no-scenes') return '?';
         if (this.state.scope === 'saga') {
             return String.fromCharCode(931);
         }

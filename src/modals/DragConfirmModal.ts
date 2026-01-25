@@ -24,7 +24,7 @@ export class DragConfirmModal extends Modal {
             modalEl.style.width = 'min(660px, 90vw)'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
 
-        contentEl.addClass('ert-modal-container', 'rt-drag-confirm-modal');
+        contentEl.addClass('ert-modal-container', 'rt-drag-confirm-modal', 'ert-stack');
         
         // Use the passed accent color (subplot color)
         if (this.accent) {

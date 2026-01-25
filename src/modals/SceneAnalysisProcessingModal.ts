@@ -43,7 +43,7 @@ class ConfirmationModal extends Modal {
             modalEl.style.width = '520px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('ert-modal-container');
+        contentEl.addClass('ert-modal-container', 'ert-stack');
 
         // Header
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
@@ -51,9 +51,8 @@ class ConfirmationModal extends Modal {
         header.createDiv({ cls: 'ert-modal-title', text: 'Confirm action' });
 
         // Message card
-        const card = contentEl.createDiv({ cls: 'rt-glass-card' });
-        const messageEl = card.createDiv({ cls: 'rt-confirmation-message' });
-        messageEl.setText(this.message);
+        const card = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass' });
+        card.createDiv({ text: this.message });
 
         // Actions
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });

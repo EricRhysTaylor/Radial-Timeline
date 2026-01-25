@@ -42,8 +42,7 @@ export class ZeroDraftModal extends Modal {
             modalEl.style.width = '680px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('ert-modal-container');
-        contentEl.addClass('rt-zero-draft-modal');
+        contentEl.addClass('ert-modal-container', 'ert-stack');
 
         // Header
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
@@ -52,12 +51,16 @@ export class ZeroDraftModal extends Modal {
         header.createDiv({ cls: 'ert-modal-subtitle', text: 'Enter Pending Edits below, or click Override to open the note directly.' });
 
         // Info note
-        const infoEl = contentEl.createDiv({ cls: 'rt-zero-draft-info' });
+        const infoEl = contentEl.createDiv({ cls: 'ert-field-note' });
         infoEl.setText('Zero draft mode is enabled. This scene has Publish Stage = Zero and Status = Complete. You can turn this off in Settings → Zero draft mode.');
 
         // Textarea
-        this.textareaEl = contentEl.createEl('textarea', { cls: 'rt-zero-draft-textarea' });
+        const textareaRow = contentEl.createDiv({ cls: 'ert-row' });
+        textareaRow.createDiv({ cls: 'ert-label', text: 'Pending edits' });
+        const textareaControl = textareaRow.createDiv({ cls: 'ert-control' });
+        this.textareaEl = textareaControl.createEl('textarea', { cls: 'ert-textarea' });
         this.textareaEl.value = this.originalText;
+        this.textareaEl.style.minHeight = '200px';
 
         // Buttons container
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
@@ -110,5 +113,4 @@ export class ZeroDraftModal extends Modal {
 }
 
 export default ZeroDraftModal;
-
 

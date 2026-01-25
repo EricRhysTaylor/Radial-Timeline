@@ -175,7 +175,10 @@ export class AiContextModal extends Modal {
         });
         
         // Template management buttons row
-        const buttonRow = selectorControl.createDiv({ cls: 'ert-ai-context-button-row' });
+        const templateActionsRow = contentEl.createDiv({ cls: 'ert-row' });
+        templateActionsRow.createDiv({ cls: 'ert-label', attr: { 'aria-hidden': 'true' } });
+        const templateActionsControl = templateActionsRow.createDiv({ cls: 'ert-control' });
+        const buttonRow = templateActionsControl.createDiv({ cls: 'ert-ai-context-button-row' });
         
         // New Template button
         new ButtonComponent(buttonRow)

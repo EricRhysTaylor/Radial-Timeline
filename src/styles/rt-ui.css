@@ -3716,11 +3716,14 @@
 .ert-ui .ert-ai-context-selector-row {
   display: flex;
   gap: var(--ert-gap-sm);
+  width: 100%;
 }
 
 .ert-ui .ert-ai-context-selector-row .dropdown {
-  flex: 1;
-  min-width: 12.5rem;
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .ert-ui .ert-ai-context-button-row {

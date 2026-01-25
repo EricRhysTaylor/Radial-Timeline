@@ -384,8 +384,8 @@
 .rt-drag-confirm-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin: 20px 0;
+  gap: var(--ert-gap-sm);
+  margin: 0;
 }
 
 .rt-drag-confirm-row {
@@ -418,39 +418,6 @@
 
 .rt-drag-confirm-modal .rt-mod-cta {
   background-color: var(--rt-confirm-accent, var(--interactive-accent));
-}
-
-.rt-zero-draft-textarea {
-  width: 100%;
-  min-height: 200px;
-  resize: vertical;
-}
-
-.rt-zero-draft-info {
-  margin: 6px 0 10px 0;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.rt-zero-draft-buttons {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 12px;
-}
-
-.rt-zero-draft-override {
-  background-color: var(--rt-color-due);
-  color: var(--rt-color-empty);
-  border-color: var(--rt-color-due);
-}
-
-.rt-zero-draft-override:hover {
-  filter: brightness(0.9);
-}
-
-.rt-zero-draft-override:focus {
-  box-shadow: 0 0 0 2px rgba(208, 94, 94, 0.3);
 }
 
 .rt-text-input-modal-field {
