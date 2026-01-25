@@ -1,4 +1,4 @@
-import type { InquiryZone } from './state';
+import type { InquiryScope, InquiryZone } from './state';
 import type { InquiryPromptConfig, InquiryPromptSlot } from '../types/settings';
 
 type BuiltInPromptSeed = {
@@ -8,32 +8,63 @@ type BuiltInPromptSeed = {
     enabled?: boolean;
 };
 
+const CANONICAL_PROMPTS: Record<InquiryZone, { book: string; saga: string }> = {
+    setup: {
+        book: 'What must already be true in these scenes for this book to move smoothly?',
+        saga: 'What must already be true across these books for the saga to move smoothly?'
+    },
+    pressure: {
+        book: 'Where do these scenes shift momentum most in this book right now?',
+        saga: 'Where do these books shift momentum most across the saga right now?'
+    },
+    payoff: {
+        book: 'Across these scenes, where are promises paid off, deferred, dangling, or abandoned in this book?',
+        saga: 'Across these books, where are promises paid off, deferred, dangling, or abandoned across the saga?'
+    }
+};
+
 const BUILT_IN_PROMPTS: Record<InquiryZone, BuiltInPromptSeed[]> = {
     setup: [{
         id: 'setup-core',
         label: 'Setup',
-        question: 'What must already be true for this scene to move smoothly?',
+        question: CANONICAL_PROMPTS.setup.book,
         enabled: true
     }],
-    pressure: [{
-        id: 'pressure-core',
-        label: 'Pressure',
-        question: "How does this scene change the story's momentum right now?",
-        enabled: true
-    }],
-    payoff: [{
-        id: 'payoff-core',
-        label: 'Payoff',
-        question: 'Are promises paid off or clearly handed forward at the right time?',
-        enabled: true
-    }]
+    pressure: [
+        {
+            id: 'pressure-core',
+            label: 'Pressure',
+            question: CANONICAL_PROMPTS.pressure.book,
+            enabled: true
+        },
+        {
+            id: 'pressure-subtext',
+            label: 'Subtext',
+            question: 'Where does dialogue or description state meaning explicitly instead of letting subtext carry it?',
+            enabled: false
+        }
+    ],
+    payoff: [
+        {
+            id: 'payoff-core',
+            label: 'Payoff',
+            question: CANONICAL_PROMPTS.payoff.book,
+            enabled: true
+        },
+        {
+            id: 'payoff-loose-ends',
+            label: 'Loose Ends Audit',
+            question: 'What narrative threads are resolved, deferred, dangling, or abandoned?',
+            enabled: false
+        }
+    ]
 };
 
 const buildBuiltInSlot = (seed: BuiltInPromptSeed): InquiryPromptSlot => ({
     id: seed.id,
     label: seed.label,
     question: seed.question,
-    enabled: true,
+    enabled: seed.enabled ?? true,
     builtIn: true
 });
 
@@ -112,3 +143,8 @@ export const normalizeInquiryPromptConfig = (raw?: InquiryPromptConfig): Inquiry
 
 export const getBuiltInPromptSeed = (zone: InquiryZone, index = 0): BuiltInPromptSeed | undefined =>
     BUILT_IN_PROMPTS[zone][index];
+
+export const getCanonicalPromptText = (zone: InquiryZone, scope: InquiryScope): string => {
+    const entry = CANONICAL_PROMPTS[zone];
+    return scope === 'saga' ? entry.saga : entry.book;
+};

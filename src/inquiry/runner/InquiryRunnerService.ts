@@ -3,7 +3,7 @@ import type { MetadataCache, Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { callProvider, type ProviderResult } from '../../api/providerRouter';
-import { INQUIRY_SCHEMA_VERSION } from '../constants';
+import { INQUIRY_MAX_OUTPUT_TOKENS, INQUIRY_SCHEMA_VERSION } from '../constants';
 import type { InquiryAiStatus, InquiryConfidence, InquiryFinding, InquiryResult, InquirySeverity } from '../state';
 import type { CorpusManifestEntry, InquiryRunner, InquiryRunnerInput } from './types';
 
@@ -61,7 +61,7 @@ export class InquiryRunnerService implements InquiryRunner {
         const { systemPrompt, userPrompt } = this.buildPrompt(input, evidenceBlocks);
         const jsonSchema = this.getJsonSchema();
         const temperature = 0.2;
-        const maxTokens = 1200;
+        const maxTokens = INQUIRY_MAX_OUTPUT_TOKENS;
         let response: ProviderResult | null = null;
 
         try {
@@ -83,6 +83,7 @@ export class InquiryRunnerService implements InquiryRunner {
         const blocks: EvidenceBlock[] = [];
         const sceneEntries = input.corpus.entries.filter(entry => entry.class === 'scene');
         const outlineEntries = input.corpus.entries.filter(entry => entry.class === 'outline');
+        const referenceEntries = input.corpus.entries.filter(entry => entry.class !== 'scene' && entry.class !== 'outline');
 
         if (input.scope === 'book') {
             const scopedSceneEntries = input.focusBookId
@@ -94,15 +95,16 @@ export class InquiryRunnerService implements InquiryRunner {
                 blocks.push({ label: `Scene ${scene.label} synopsis`, content: scene.synopsis });
             });
 
-            const bookOutline = await this.pickBookOutline(outlineEntries, input.focusBookId);
-            if (bookOutline) {
-                blocks.push(bookOutline);
-            }
+            const bookOutlines = outlineEntries
+                .filter(entry => entry.scope !== 'saga')
+                .filter(entry => !input.focusBookId || entry.path === input.focusBookId || entry.path.startsWith(`${input.focusBookId}/`));
+            const outlineBlocks = await this.collectOutlines(bookOutlines, 'Book outline');
+            blocks.push(...outlineBlocks);
         } else {
             const sagaOutlines = await this.collectOutlines(outlineEntries.filter(entry => entry.scope === 'saga'), 'Saga outline');
             blocks.push(...sagaOutlines);
 
-            const bookOutlines = await this.collectOutlines(outlineEntries.filter(entry => entry.scope === 'book'), 'Book outline');
+            const bookOutlines = await this.collectOutlines(outlineEntries.filter(entry => entry.scope !== 'saga'), 'Book outline');
             blocks.push(...bookOutlines);
 
             const scenes = await this.buildSceneSnapshots(sceneEntries);
@@ -111,6 +113,9 @@ export class InquiryRunnerService implements InquiryRunner {
                 blocks.push({ label: `Scene ${scene.label} synopsis`, content: scene.synopsis });
             });
         }
+
+        const references = await this.collectReferenceDocs(referenceEntries);
+        blocks.push(...references);
 
         if (!blocks.length) {
             blocks.push({ label: 'Evidence', content: 'No evidence available for the selected scope.' });
@@ -152,19 +157,6 @@ export class InquiryRunnerService implements InquiryRunner {
         return scenes;
     }
 
-    private async pickBookOutline(entries: CorpusManifestEntry[], focusBookId?: string): Promise<EvidenceBlock | null> {
-        if (!entries.length) return null;
-        const candidates = focusBookId
-            ? entries.filter(entry => entry.path === focusBookId || entry.path.startsWith(`${focusBookId}/`))
-            : entries;
-        const entry = candidates[0] ?? entries[0];
-        if (!entry) return null;
-        const content = await this.readFileContent(entry.path);
-        if (!content) return null;
-        const label = this.buildBookOutlineLabel(entry.path, 'Book outline');
-        return { label, content };
-    }
-
     private async collectOutlines(entries: CorpusManifestEntry[], fallbackLabel: string): Promise<EvidenceBlock[]> {
         const blocks: EvidenceBlock[] = [];
         for (const entry of entries) {
@@ -176,6 +168,39 @@ export class InquiryRunnerService implements InquiryRunner {
             blocks.push({ label, content });
         }
         return blocks;
+    }
+
+    private async collectReferenceDocs(entries: CorpusManifestEntry[]): Promise<EvidenceBlock[]> {
+        const blocks: EvidenceBlock[] = [];
+        for (const entry of entries) {
+            const content = await this.readFileContent(entry.path);
+            if (!content) continue;
+            const label = this.buildReferenceLabel(entry);
+            blocks.push({ label, content });
+        }
+        return blocks;
+    }
+
+    private buildReferenceLabel(entry: CorpusManifestEntry): string {
+        const classLabel = this.formatClassLabel(entry.class);
+        const file = this.vault.getAbstractFileByPath(entry.path);
+        if (file && this.isTFile(file)) {
+            const title = this.getReferenceTitle(file);
+            if (title) {
+                return `${classLabel}: ${title}`;
+            }
+        }
+        return classLabel;
+    }
+
+    private formatClassLabel(value: string): string {
+        if (!value) return 'Reference';
+        return value
+            .replace(/[_-]+/g, ' ')
+            .trim()
+            .split(/\s+/)
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
     }
 
     private buildBookOutlineLabel(path: string, fallback: string): string {
@@ -198,17 +223,16 @@ export class InquiryRunnerService implements InquiryRunner {
     }
 
     private buildPrompt(input: InquiryRunnerInput, evidence: EvidenceBlock[]): { systemPrompt: string; userPrompt: string } {
-        const systemPrompt = 'You are an editorial analysis engine. Return JSON only. No prose outside JSON.';
+        const systemPrompt = 'You are an editorial analysis engine. Scores are corpus-level diagnostics, not answer quality. Return JSON only. No prose outside JSON.';
         // Lens choice is UI-only; always request both flow + depth in the same response.
         const schema = [
             '{',
             `  "schema_version": ${INQUIRY_SCHEMA_VERSION},`,
-            '  "summary": "1-2 sentence executive summary (neutral)",',
             '  "summaryFlow": "1-2 sentence flow summary (pacing, momentum, compression, timing, pressure phrasing).",',
             '  "summaryDepth": "1-2 sentence depth summary (coherence, subtext, logic, alignment, implication phrasing).",',
             '  "verdict": {',
-            '    "flow": 0.0,',
-            '    "depth": 0.0,',
+            '    "flow": 0,',
+            '    "depth": 0,',
             '    "impact": "low|medium|high",',
             '    "assessmentConfidence": "low|medium|high"',
             '  },',
@@ -233,12 +257,17 @@ export class InquiryRunnerService implements InquiryRunner {
         const userPrompt = [
             `Question: ${input.questionText}`,
             '',
-            'Answer both flow (momentum) and depth (structure/integrity).',
+            'Answer the editorial question using the evidence.',
+            'Independently assign corpus-level diagnostics (0-100):',
+            '- Flow: momentum/causality/pressure progression across the evaluated corpus.',
+            '- Depth: coherence/implication/structural integrity across the evaluated corpus.',
+            'Scores reflect the corpus, not the quality of your answer.',
             'Use the same evidence for both lenses; interpretation changes, not evidence.',
             'Use flow summary phrasing that emphasizes compression, timing, and pressure.',
             'Use depth summary phrasing that emphasizes alignment, implication, and consistency.',
             'If conclusions align, still phrase summaries to match the active lens emphasis.',
             'Optionally tag findings with lens: flow|depth|both to indicate relevance.',
+            'Return JSON only with summaryFlow, summaryDepth, verdict.flow, verdict.depth, impact, assessmentConfidence, and findings.',
             'Return JSON only using the exact schema below.',
             '',
             schema,
@@ -255,7 +284,6 @@ export class InquiryRunnerService implements InquiryRunner {
             type: 'object',
             properties: {
                 schema_version: { type: 'number', const: INQUIRY_SCHEMA_VERSION },
-                summary: { type: 'string' },
                 summaryFlow: { type: 'string' },
                 summaryDepth: { type: 'string' },
                 verdict: {
@@ -289,7 +317,7 @@ export class InquiryRunnerService implements InquiryRunner {
                     }
                 }
             },
-            required: ['schema_version', 'summary', 'summaryFlow', 'summaryDepth', 'verdict', 'findings']
+            required: ['schema_version', 'summaryFlow', 'summaryDepth', 'verdict', 'findings']
         };
     }
 
@@ -351,9 +379,15 @@ export class InquiryRunnerService implements InquiryRunner {
         const findings = Array.isArray(parsed.findings) ? parsed.findings : [];
         const mappedFindings = findings.map(finding => this.mapFinding(finding, input.focusLabel));
 
-        const summary = parsed.summary ? String(parsed.summary) : 'No summary provided.';
-        const summaryFlow = parsed.summaryFlow ? String(parsed.summaryFlow) : summary;
-        const summaryDepth = parsed.summaryDepth ? String(parsed.summaryDepth) : summary;
+        const summaryFlow = parsed.summaryFlow
+            ? String(parsed.summaryFlow)
+            : (parsed.summary ? String(parsed.summary) : 'No summary provided.');
+        const summaryDepth = parsed.summaryDepth
+            ? String(parsed.summaryDepth)
+            : (parsed.summary ? String(parsed.summary) : summaryFlow);
+        const summary = parsed.summary
+            ? String(parsed.summary)
+            : (summaryFlow || summaryDepth || 'No summary provided.');
 
         return {
             runId: `run-${Date.now()}`,
@@ -570,6 +604,15 @@ export class InquiryRunnerService implements InquiryRunner {
         const parsed = Number(typeof value === 'string' ? value.trim() : value);
         if (!Number.isFinite(parsed)) return undefined;
         return Math.max(1, Math.floor(parsed));
+    }
+
+    private getReferenceTitle(file: TFile): string {
+        const frontmatter = this.getFrontmatter(file);
+        const rawTitle = frontmatter['Title'] ?? frontmatter['title'];
+        if (typeof rawTitle === 'string' && rawTitle.trim()) {
+            return rawTitle.trim();
+        }
+        return file.basename;
     }
 
     private clampLabelNumber(value: number): number {

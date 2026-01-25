@@ -13,7 +13,7 @@ import { addHeadingIcon, addWikiLink } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 import { badgePill } from '../../ui/ui';
 import { isProfessionalActive } from './ProfessionalSection';
-import { buildDefaultInquiryPromptConfig, normalizeInquiryPromptConfig } from '../../inquiry/prompts';
+import { buildDefaultInquiryPromptConfig, getCanonicalPromptText, normalizeInquiryPromptConfig } from '../../inquiry/prompts';
 import {
     MAX_RESOLVED_SCAN_ROOTS,
     normalizeScanRootPatterns,
@@ -32,6 +32,9 @@ interface SectionParams {
 
 const listToText = (values?: string[]): string =>
     (values || []).join('\n');
+
+const listToInlineText = (values?: string[]): string =>
+    (values || []).join(', ');
 
 const parseClassScopeInput = (raw: string): string[] => {
     const lines = raw
@@ -246,39 +249,32 @@ export function renderInquirySection(params: SectionParams): void {
         headingClass: 'ert-setting-heading--top'
     });
 
-    let scanRootsInput: TextAreaComponent | null = null;
+    let scanRootsInput: TextComponent | null = null;
     let classScopeInput: TextAreaComponent | null = null;
 
     const scanRootsSetting = new Settings(sourcesBody)
         .setName('Inquiry scan folders')
-        .setDesc('Inquiry only scans within these folders. One path per line. Wildcards like /Book */ or /Book 1-7 */ are allowed. Use / for the vault root. Empty = no scan.');
+        .setDesc('Inquiry only scans within these folders. Separate paths with commas. Wildcards like /Book */ or /Book 1-7 */ are allowed. Use / for the vault root. Empty = no scan.');
     scanRootsSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:scan-roots');
-    scanRootsSetting.settingEl.addClass(ERT_CLASSES.ROW_WIDE_CONTROL);
+    scanRootsSetting.settingEl.addClass(ERT_CLASSES.ROW_TOP_ALIGN);
 
-    scanRootsSetting.addTextArea(text => {
-        text.setValue(listToText(inquirySources.scanRoots));
-        text.inputEl.rows = 4;
-        text.inputEl.addClass('ert-input--lg');
-        text.setPlaceholder('/Book */\n/Character/\n/World/');
-        scanRootsInput = text;
-
-        plugin.registerDomEvent(text.inputEl, 'blur', () => {
-            const nextRoots = parseScanRootInput(text.getValue());
-            applyScanRoots(nextRoots);
-        });
+    const scanRootControls = scanRootsSetting.controlEl.createDiv({
+        cls: [ERT_CLASSES.STACK, ERT_CLASSES.STACK_TIGHT]
     });
 
-    scanRootsSetting.addExtraButton(button => {
-        button.setIcon('rotate-ccw');
-        button.setTooltip('Refresh scan folders');
-        button.onClick(() => {
-            const nextRoots = parseScanRootInput(scanRootsInput?.getValue() ?? '');
-            applyScanRoots(nextRoots);
-        });
+    const scanRootsText = new TextComponent(scanRootControls);
+    scanRootsText.setValue(listToInlineText(inquirySources.scanRoots));
+    scanRootsText.setPlaceholder('/Book */, /Character/, /World/');
+    scanRootsText.inputEl.addClass('ert-input--sm');
+    scanRootsInput = scanRootsText;
+
+    plugin.registerDomEvent(scanRootsText.inputEl, 'blur', () => {
+        const nextRoots = parseScanRootInput(scanRootsText.getValue());
+        applyScanRoots(nextRoots);
     });
 
-    const scanRootActions = scanRootsSetting.controlEl.createDiv({
-        cls: [ERT_CLASSES.ELEMENT_BLOCK_ROW, ERT_CLASSES.INLINE]
+    const scanRootActions = scanRootControls.createDiv({
+        cls: [ERT_CLASSES.INLINE]
     });
     const addActionButton = (label: string, onClick: () => void) => {
         const btn = scanRootActions.createEl('button', { cls: ERT_CLASSES.PILL_BTN });
@@ -299,10 +295,13 @@ export function renderInquirySection(params: SectionParams): void {
     });
 
     const resolvedPreview = sourcesBody.createDiv({
-        cls: [ERT_CLASSES.PREVIEW_FRAME, 'ert-previewFrame--center', 'ert-previewFrame--left'],
+        cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--left'],
         attr: { 'data-preview': 'inquiry-resolved' }
     });
-    const resolvedHeading = resolvedPreview.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Resolved Folders (0)' });
+    const resolvedHeading = resolvedPreview.createDiv({
+        cls: ['ert-planetary-preview-heading', 'ert-previewFrame__title'],
+        text: 'Resolved Folders (0)'
+    });
     const resolvedList = resolvedPreview.createDiv({ cls: 'ert-controlGroup ert-controlGroup--scroll' });
     resolvedList.style.setProperty('--ert-controlGroup-columns', '1fr');
     resolvedList.style.setProperty('--ert-controlGroup-max-height', '220px');
@@ -485,7 +484,7 @@ export function renderInquirySection(params: SectionParams): void {
         resolvedList.empty();
 
         if (!roots.length) {
-            const emptyRow = resolvedList.createDiv({ cls: 'ert-controlGroup__row' });
+            const emptyRow = resolvedList.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
             emptyRow.createDiv({
                 cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--faint'],
                 text: 'No scan folders set. Add /Book */ or / to begin.'
@@ -502,7 +501,7 @@ export function renderInquirySection(params: SectionParams): void {
                 parts.push(`${count}${getClassAbbreviation(className)}`);
             });
             const suffix = parts.length ? `[${parts.join(', ')}]` : '[0]';
-            const row = resolvedList.createDiv({ cls: 'ert-controlGroup__row' });
+            const row = resolvedList.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
             row.createDiv({
                 cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--mono', 'ert-controlGroup__cell--meta'],
                 text: `${root} ${suffix}`
@@ -513,7 +512,7 @@ export function renderInquirySection(params: SectionParams): void {
     const applyScanRoots = (nextRoots: string[]) => {
         const normalized = nextRoots.length ? normalizeScanRootPatterns(nextRoots) : [];
         inquirySources = { ...inquirySources, scanRoots: normalized };
-        scanRootsInput?.setValue(listToText(normalized));
+        scanRootsInput?.setValue(listToInlineText(normalized));
         resolvedRootCache = null;
         void refreshClassScan();
     };
@@ -766,15 +765,16 @@ export function renderInquirySection(params: SectionParams): void {
             headerMain.createEl('h4', { cls: ERT_CLASSES.SECTION_TITLE, text: zoneLabels[zone] });
             const body = card.createDiv({ cls: ERT_CLASSES.PANEL_BODY });
 
-            const canonicalSlot = getCanonicalSlot(zone);
             const canonicalRow = body.createDiv({ cls: ERT_CLASSES.ROW });
             canonicalRow.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Canonical' });
             const canonicalInputWrap = canonicalRow.createDiv({ cls: ERT_CLASSES.CONTROL });
-            const canonicalInput = new TextComponent(canonicalInputWrap);
-            canonicalInput.setPlaceholder('Canonical question')
-                .setValue(canonicalSlot?.question ?? '');
-            canonicalInput.inputEl.addClass('ert-input', 'ert-input--full', 'is-readonly');
-            canonicalInput.inputEl.readOnly = true;
+            canonicalInputWrap.style.setProperty('--ert-label-w', '56px');
+            const bookRow = canonicalInputWrap.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
+            bookRow.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Book' });
+            bookRow.createDiv({ text: getCanonicalPromptText(zone, 'book') });
+            const sagaRow = canonicalInputWrap.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
+            sagaRow.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Saga' });
+            sagaRow.createDiv({ text: getCanonicalPromptText(zone, 'saga') });
 
             body.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Custom questions' });
             const listEl = body.createDiv({ cls: ['ert-template-entries', 'ert-template-indent'] });

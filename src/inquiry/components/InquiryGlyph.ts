@@ -21,6 +21,7 @@ export interface InquiryGlyphPromptState {
     selectedPromptIds: Record<InquiryZone, string>;
     processedPromptId?: string | null;
     processedStatus?: 'success' | 'error' | null;
+    lockedPromptId?: string | null;
     onPromptSelect?: (zone: InquiryZone, promptId: string) => void;
     onPromptHover?: (zone: InquiryZone, promptId: string, promptText: string) => void;
     onPromptHoverEnd?: () => void;
@@ -481,7 +482,8 @@ export class InquiryGlyph {
             promptsByZone,
             selectedPromptIds,
             processedPromptId,
-            processedStatus
+            processedStatus,
+            lockedPromptId
         } = this.promptState;
         this.zoneNumberMarkers.forEach((markers, zone) => {
             const prompts = promptsByZone[zone] ?? [];
@@ -492,12 +494,14 @@ export class InquiryGlyph {
                 marker.promptText = prompt?.question;
                 const isProcessed = !!prompt && processedPromptId === prompt.id;
                 const isError = isProcessed && processedStatus === 'error';
+                const isLocked = !!prompt && lockedPromptId === prompt.id;
                 marker.text.textContent = prompt ? (isError ? 'X' : String(idx + 1)) : '';
                 marker.group.setAttribute('display', prompt ? 'inline' : 'none');
                 marker.group.classList.toggle('is-active', !!prompt && selectedId === prompt.id);
                 marker.group.classList.toggle('is-processed', isProcessed);
                 marker.group.classList.toggle('is-processed-success', isProcessed && processedStatus === 'success');
                 marker.group.classList.toggle('is-processed-error', isError);
+                marker.group.classList.toggle('is-locked', isLocked);
                 marker.group.removeAttribute('aria-label');
                 if (prompt) {
                     marker.group.setAttribute('role', 'button');

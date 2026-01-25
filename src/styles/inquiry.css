@@ -363,15 +363,33 @@
 }
 
 .ert-inquiry-minimap-tick {
-  fill: var(--icon-color, var(--text-normal));
-  stroke: var(--icon-color, var(--text-normal));
-  stroke-width: 1;
+  --ert-inquiry-minimap-tick-color: var(--icon-color, var(--text-normal));
+  --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-minimap-tick-color) 18%, var(--background-secondary));
   opacity: 0.6;
   cursor: pointer;
 }
 
+.ert-inquiry-minimap-tick-base {
+  fill: var(--ert-inquiry-minimap-tick-fill);
+}
+
+.ert-inquiry-minimap-tick-border {
+  fill: none;
+  stroke: var(--ert-inquiry-minimap-tick-color);
+  stroke-width: 1;
+}
+
+.ert-inquiry-minimap-tick-fold {
+  fill: color-mix(in srgb, var(--ert-inquiry-minimap-tick-color) 45%, transparent);
+  stroke: color-mix(in srgb, var(--ert-inquiry-minimap-tick-color) 45%, transparent);
+  stroke-width: 0.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .ert-inquiry-svg.is-running .inq-zone-control,
 .ert-inquiry-svg.is-running .inq-zone-dot,
+.ert-inquiry-svg.is-running .inq-zone-dot-hit,
 .ert-inquiry-svg.is-running .ert-inquiry-zone-pod,
 .ert-inquiry-svg.is-running .ert-inquiry-ring-hit,
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-tick,
@@ -522,8 +540,8 @@
 
 .ert-inquiry-minimap-tick.is-active {
   opacity: 1;
-  stroke: var(--interactive-accent);
-  fill: color-mix(in srgb, var(--interactive-accent) 20%, var(--background-secondary));
+  --ert-inquiry-minimap-tick-color: var(--interactive-accent);
+  --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--interactive-accent) 20%, var(--background-secondary));
 }
 
 .ert-inquiry-minimap-tick.is-hit {
@@ -531,14 +549,14 @@
 }
 
 .ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-hit {
-  stroke: var(--ert-inquiry-hit-color);
-  fill: color-mix(in srgb, var(--ert-inquiry-hit-color) 18%, var(--background-secondary));
+  --ert-inquiry-minimap-tick-color: var(--ert-inquiry-hit-color);
+  --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-hit-color) 18%, var(--background-secondary));
   filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-hit-color) 65%, transparent));
 }
 
 .ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-active {
-  stroke: var(--ert-inquiry-active-zone-color);
-  fill: color-mix(in srgb, var(--ert-inquiry-active-zone-color) 18%, var(--background-secondary));
+  --ert-inquiry-minimap-tick-color: var(--ert-inquiry-active-zone-color);
+  --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-active-zone-color) 18%, var(--background-secondary));
   filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-active-zone-color) 65%, transparent));
 }
 
@@ -555,32 +573,39 @@
 .inq-zone-segment-wrap--setup {
   --ert-inquiry-zone-color: var(--ert-inquiry-zone-setup);
   --ert-inquiry-zone-stroke: var(--ert-inquiry-zone-setup-stroke);
+  --ert-inquiry-zone-fill: url(#ert-inquiry-zone-setup-raised);
+  --ert-inquiry-zone-fill-pressed: url(#ert-inquiry-zone-setup-pressed);
 }
 
 .inq-zone-segment-wrap--setup .inq-zone-segment-path {
-  fill: var(--ert-inquiry-zone-inactive-fill);
+  fill: var(--ert-inquiry-zone-fill, var(--ert-inquiry-zone-inactive-fill));
 }
 
 .inq-zone-segment-wrap--pressure {
   --ert-inquiry-zone-color: var(--ert-inquiry-zone-pressure);
   --ert-inquiry-zone-stroke: var(--ert-inquiry-zone-pressure-stroke);
+  --ert-inquiry-zone-fill: url(#ert-inquiry-zone-pressure-raised);
+  --ert-inquiry-zone-fill-pressed: url(#ert-inquiry-zone-pressure-pressed);
 }
 
 .inq-zone-segment-wrap--pressure .inq-zone-segment-path {
-  fill: var(--ert-inquiry-zone-inactive-fill);
+  fill: var(--ert-inquiry-zone-fill, var(--ert-inquiry-zone-inactive-fill));
 }
 
 .inq-zone-segment-wrap--payoff {
   --ert-inquiry-zone-color: var(--ert-inquiry-zone-payoff);
   --ert-inquiry-zone-stroke: var(--ert-inquiry-zone-payoff-stroke);
+  --ert-inquiry-zone-fill: url(#ert-inquiry-zone-payoff-raised);
+  --ert-inquiry-zone-fill-pressed: url(#ert-inquiry-zone-payoff-pressed);
 }
 
 .inq-zone-segment-wrap--payoff .inq-zone-segment-path {
-  fill: var(--ert-inquiry-zone-inactive-fill);
+  fill: var(--ert-inquiry-zone-fill, var(--ert-inquiry-zone-inactive-fill));
 }
 
 .inq-zone-segment-path {
-  fill-opacity: 0.8;
+  fill: var(--ert-inquiry-zone-fill, var(--ert-inquiry-zone-inactive-fill));
+  fill-opacity: 1;
   stroke: var(--ert-inquiry-zone-stroke, #d6c3ad);
   transition: fill 200ms ease, fill-opacity 200ms ease, stroke 200ms ease;
 }
@@ -633,7 +658,17 @@
   stroke: none;
   stroke-width: 0;
   filter: url(#ert-inquiry-zone-pill-out);
-  transition: filter 180ms ease, fill 180ms ease, fill-opacity 180ms ease;
+  transition: fill 180ms ease, fill-opacity 180ms ease;
+}
+
+.ert-inquiry-zone-pill-glow {
+  fill: var(--ert-inquiry-zone-color, var(--background-secondary));
+  fill-opacity: 1;
+  stroke: none;
+  stroke-width: 0;
+  filter: url(#ert-inquiry-zone-pill-in);
+  opacity: 0;
+  transition: opacity 260ms ease-in-out;
 }
 
 .ert-inquiry-zone-pod {
@@ -641,15 +676,18 @@
   cursor: pointer;
 }
 
-.ert-inquiry-zone-pod.is-active .ert-inquiry-zone-pill,
-.ert-inquiry-zone-pod:hover .ert-inquiry-zone-pill {
-  filter: url(#ert-inquiry-zone-pill-in);
+.ert-inquiry-zone-pod.is-active .ert-inquiry-zone-pill-glow,
+.ert-inquiry-zone-pod:hover .ert-inquiry-zone-pill-glow {
+  opacity: 1;
 }
 
 .ert-inquiry-svg:not(.is-running) .ert-inquiry-zone-pod.is-processed .ert-inquiry-zone-pill {
-  filter: url(#ert-inquiry-zone-pill-in);
   stroke: color-mix(in srgb, var(--ert-inquiry-zone-color) 65%, #ffffff);
   stroke-width: 1.2;
+}
+
+.ert-inquiry-svg:not(.is-running) .ert-inquiry-zone-pod.is-processed .ert-inquiry-zone-pill-glow {
+  opacity: 1;
 }
 
 .ert-inquiry-svg:not(.is-running) .ert-inquiry-zone-pod.is-processed .ert-inquiry-zone-pill-text {
@@ -667,8 +705,11 @@
 
 .ert-inquiry-zone-pod.is-duplicate-pulse .ert-inquiry-zone-pill {
   stroke: color-mix(in srgb, var(--ert-inquiry-zone-color) 80%, #ffffff);
-  filter: url(#ert-inquiry-zone-pill-in);
   animation: ert-inquiry-zone-pulse 1.1s ease;
+}
+
+.ert-inquiry-zone-pod.is-duplicate-pulse .ert-inquiry-zone-pill-glow {
+  opacity: 1;
 }
 
 .ert-inquiry-zone-pod.is-duplicate-pulse .ert-inquiry-zone-pill-text {
@@ -681,8 +722,28 @@
   fill-opacity: 0.4;
 }
 
+.ert-inquiry-svg.is-running .ert-inquiry-zone-pill-glow {
+  opacity: 0;
+}
+
 .ert-inquiry-svg.is-running .ert-inquiry-zone-pill-text {
   fill: var(--text-muted);
+}
+
+.ert-inquiry-svg.is-running .ert-inquiry-zone-pod.is-locked .ert-inquiry-zone-pill {
+  fill: color-mix(in srgb, var(--ert-inquiry-zone-color) 28%, var(--background-secondary));
+  fill-opacity: 0.9;
+  stroke: color-mix(in srgb, var(--ert-inquiry-zone-color) 65%, #ffffff);
+  stroke-width: 1.2;
+}
+
+.ert-inquiry-svg.is-running .ert-inquiry-zone-pod.is-locked .ert-inquiry-zone-pill-glow {
+  opacity: 1;
+}
+
+.ert-inquiry-svg.is-running .ert-inquiry-zone-pod.is-locked .ert-inquiry-zone-pill-text {
+  fill: var(--ert-inquiry-zone-color);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-zone-color) 70%, transparent));
 }
 
 .ert-inquiry-zone-pill-text {
@@ -783,6 +844,11 @@
   filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-zone-color) 85%, transparent));
 }
 
+.ert-inquiry-svg.is-running .inq-zone-dot.is-locked .inq-zone-dot-circle {
+  stroke: var(--ert-inquiry-zone-color);
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-zone-color) 85%, transparent));
+}
+
 .inq-zone-dot-text {
   fill: var(--ert-inquiry-zone-stroke, var(--text-normal));
   pointer-events: none;
@@ -817,6 +883,11 @@
 }
 
 .inq-zone-dot:hover:not(:active) .inq-zone-dot-text {
+  fill: var(--ert-inquiry-zone-color);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-zone-color) 85%, transparent));
+}
+
+.ert-inquiry-svg.is-running .inq-zone-dot.is-locked .inq-zone-dot-text {
   fill: var(--ert-inquiry-zone-color);
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ert-inquiry-zone-color) 85%, transparent));
 }

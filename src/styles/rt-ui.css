@@ -31,6 +31,8 @@
   --ert-chip-bg: color-mix(in srgb, var(--background-secondary) 88%, var(--interactive-accent) 4%);
   --ert-previewFrame-bg: color-mix(in srgb, var(--background-secondary) 90%, var(--interactive-accent) 2%);
   --ert-previewFrame-border: color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
+  --ert-previewFrame-title-size: 1rem;
+  --ert-previewFrame-title-color: var(--text-muted);
   --rt-completion-warn: #ff9a00;
   --rt-completion-warn-soft: #ffb347;
   --rt-completion-late: #ff4d4f;
@@ -914,6 +916,13 @@
   height: auto;
 }
 
+.ert-ui .ert-planetary-preview-heading.ert-previewFrame__title {
+  font-size: var(--ert-previewFrame-title-size);
+  color: var(--ert-previewFrame-title-color);
+  text-align: center;
+  width: 100%;
+}
+
 .ert-ui .ert-toggle-item {
   display: flex;
   align-items: center;
@@ -1427,6 +1436,10 @@
 
 .ert-ui .ert-row--inlineControl .setting-item-control > .setting-editor-extra-setting-button {
   flex: 0 0 auto;
+}
+
+.ert-ui [data-ert-role="inquiry-setting:scan-roots"] {
+  --rt-input-width-sm: 12ch;
 }
 
 .ert-ui input.ert-input--hex {
