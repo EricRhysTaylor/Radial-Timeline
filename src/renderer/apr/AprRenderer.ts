@@ -145,6 +145,8 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const stageBadgeColor = stageColorLookup[stageInfo.key] ?? stageColorMap.Press ?? '#6FB971';
     const revealCountdownDays = resolveRevealCountdownDays(revealCampaignEnabled, nextRevealAt);
     const showRtAttributionFinal = (showRtAttribution ?? true) && !isThumb;
+    const structuralBorderColor = isThumb ? stageBadgeColor : structural.border;
+    const structuralBorderOpacity = isThumb ? 1 : undefined;
 
     // Filter scenes (exclude beat notes always)
     const filteredScenes = scenes.filter(s => !isBeatNote(s));
@@ -224,7 +226,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const svgStyle = [
         `--apr-bg: ${bgFill}`,
         `--apr-center-fill: ${holeFill}`,
-        `--apr-struct-border: ${structural.border}`,
+        `--apr-struct-border: ${structuralBorderColor}`,
         `--apr-struct-act-spoke: ${structural.actSpoke}`,
         `--apr-scene-void: ${APR_COLORS.void}`,
         `--apr-scene-neutral: ${APR_COLORS.sceneNeutral}`,
@@ -240,9 +242,14 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         `--apr-progress-ghost-color: ${progressGhostColor}`,
         `--apr-progress-ghost-opacity: ${progressGhostOpacity}`,
         `--apr-center-mark-color: ${progressColor}`
-    ].join('; ');
+    ];
+    if (structuralBorderOpacity !== undefined) {
+        svgStyle.push(`--apr-struct-border-opacity: ${structuralBorderOpacity}`);
+    }
 
-    let svg = `<svg width="${svgSize}" height="${svgSize}" viewBox="-${half} -${half} ${svgSize} ${svgSize}" xmlns="http://www.w3.org/2000/svg" class="apr-svg apr-${size}" style="${svgStyle}">`; // SAFE: inline style used for CSS variable surface in SVG
+    const svgStyleString = svgStyle.join('; ');
+
+    let svg = `<svg width="${svgSize}" height="${svgSize}" viewBox="-${half} -${half} ${svgSize} ${svgSize}" xmlns="http://www.w3.org/2000/svg" class="apr-svg apr-${size}" style="${svgStyleString}">`; // SAFE: inline style used for CSS variable surface in SVG
     svg += `<rect x="-${half}" y="-${half}" width="${svgSize}" height="${svgSize}" fill="${cssVar('--apr-bg', bgFill)}" />`;
 
     // Publication-mode defs (plaid patterns etc.) + percent shadow filter

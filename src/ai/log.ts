@@ -2,7 +2,8 @@
  * Unified AI exchange logging
  */
 import type RadialTimelinePlugin from '../main';
-import { normalizePath, Notice, type Vault, TFolder } from 'obsidian';
+import { normalizePath, Notice, type Vault, TFile, TFolder } from 'obsidian';
+import { resolveInquiryLogFolder } from '../inquiry/utils/logs';
 
 export type AiLogFeature = 'Inquiry' | 'Pulse' | 'Gossamer';
 export type AiLogStatus = 'success' | 'error' | 'simulated';
@@ -232,6 +233,10 @@ export function formatAiLogContent(envelope: AiLogEnvelope): string {
     return lines.join('\n');
 }
 
+export function resolveAiLogFolder(): string {
+    return resolveInquiryLogFolder();
+}
+
 export function resolveAvailableLogPath(vault: Vault, folderPath: string, baseName: string): string {
     const sanitizedFolder = normalizePath(folderPath);
     const cleanBase = baseName.replace(/\.md$/i, '');
@@ -247,13 +252,34 @@ export function resolveAvailableLogPath(vault: Vault, folderPath: string, baseNa
     return `${sanitizedFolder}/${cleanBase}-${Date.now()}.md`;
 }
 
+export function countAiLogFiles(plugin: RadialTimelinePlugin): number {
+    const folderPath = resolveAiLogFolder();
+    const abstractFile = plugin.app.vault.getAbstractFileByPath(folderPath);
+    if (!abstractFile || !(abstractFile instanceof TFolder)) {
+        return 0;
+    }
+
+    let count = 0;
+    const countRecursive = (folder: TFolder) => {
+        for (const child of folder.children) {
+            if (child instanceof TFile && child.extension === 'md') {
+                count += 1;
+            } else if (child instanceof TFolder) {
+                countRecursive(child);
+            }
+        }
+    };
+    countRecursive(abstractFile);
+    return count;
+}
+
 export async function writeAiLog(
     plugin: RadialTimelinePlugin,
     vault: Vault,
-    options: { folderPath: string; baseName: string; content: string }
+    options: { baseName: string; content: string }
 ): Promise<void> {
     if (!plugin.settings.logApiInteractions) return;
-    const folderPath = normalizePath(options.folderPath);
+    const folderPath = normalizePath(resolveAiLogFolder());
     try {
         const existing = vault.getAbstractFileByPath(folderPath);
         if (existing && !(existing instanceof TFolder)) {

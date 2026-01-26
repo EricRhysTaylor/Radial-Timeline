@@ -8,6 +8,115 @@ import type { CompletionEstimate } from '../../services/TimelineMetricsService';
 import { STAGE_ORDER } from '../../utils/constants';
 
 type Stage = typeof STAGE_ORDER[number];
+type Quote = { text: string; author: string };
+
+type FontMetrics = {
+    font: string;
+    letterSpacing: number;
+};
+
+type QuoteMetrics = {
+    quote: FontMetrics;
+    author: FontMetrics;
+};
+
+const DEFAULT_FONT_METRICS: FontMetrics = {
+    font: '16px sans-serif',
+    letterSpacing: 0
+};
+
+function getFontMetrics(sampleEl: HTMLElement): FontMetrics {
+    sampleEl.classList.add('ert-metrics-sample');
+    const style = window.getComputedStyle(sampleEl);
+    const font = style.font || `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    const letterSpacing = Number.parseFloat(style.letterSpacing || '0');
+    return {
+        font: font || DEFAULT_FONT_METRICS.font,
+        letterSpacing: Number.isFinite(letterSpacing) ? letterSpacing : 0
+    };
+}
+
+function measureTextWidth(
+    ctx: CanvasRenderingContext2D | null,
+    text: string,
+    metrics: FontMetrics
+): number {
+    if (!text) return 0;
+    if (!ctx) return text.length;
+    ctx.font = metrics.font || DEFAULT_FONT_METRICS.font;
+    const width = ctx.measureText(text).width;
+    if (!metrics.letterSpacing) return width;
+    return width + metrics.letterSpacing * Math.max(0, text.length - 1);
+}
+
+function getQuoteMetrics(parent: HTMLElement, quoteClass: string, authorClass: string): QuoteMetrics {
+    const quoteSample = parent.createSpan({ cls: quoteClass, text: 'Hg' });
+    const authorSample = parent.createSpan({ cls: authorClass, text: 'Hg' });
+    const quoteMetrics = getFontMetrics(quoteSample);
+    const authorMetrics = getFontMetrics(authorSample);
+    quoteSample.remove();
+    authorSample.remove();
+    return { quote: quoteMetrics, author: authorMetrics };
+}
+
+function splitQuoteForBalance(
+    quote: Quote,
+    metrics: QuoteMetrics,
+    ctx: CanvasRenderingContext2D | null
+): { line1: string; line2: string } {
+    const words = quote.text.trim().split(/\s+/).filter(Boolean);
+    if (words.length < 4) {
+        return { line1: quote.text.trim(), line2: '' };
+    }
+
+    const authorSuffix = ` — ${quote.author}`;
+    const totalWidth = measureTextWidth(ctx, `"${quote.text}"`, metrics.quote)
+        + measureTextWidth(ctx, authorSuffix, metrics.author);
+    const targetLine1 = totalWidth * 0.6;
+    const targetLine2 = totalWidth * 0.3;
+    const minWordsPerLine = 2;
+
+    let bestIndex = minWordsPerLine - 1;
+    let bestScore = Number.POSITIVE_INFINITY;
+
+    for (let i = minWordsPerLine - 1; i <= words.length - minWordsPerLine - 1; i++) {
+        const line1Text = `"${words.slice(0, i + 1).join(' ')}`;
+        const line2Text = `${words.slice(i + 1).join(' ')}"`;
+        const line1Width = measureTextWidth(ctx, line1Text, metrics.quote);
+        const line2Width = measureTextWidth(ctx, line2Text, metrics.quote)
+            + measureTextWidth(ctx, authorSuffix, metrics.author);
+        const score = Math.abs(line1Width - targetLine1) + Math.abs(line2Width - targetLine2);
+        if (score < bestScore) {
+            bestScore = score;
+            bestIndex = i;
+        }
+    }
+
+    return {
+        line1: words.slice(0, bestIndex + 1).join(' '),
+        line2: words.slice(bestIndex + 1).join(' ')
+    };
+}
+
+function renderSplitQuote(
+    container: HTMLElement,
+    quote: Quote,
+    split: { line1: string; line2: string },
+    authorClass: string,
+    lineClass?: string
+): void {
+    const line1Text = split.line2 ? `"${split.line1}` : `"${split.line1}"`;
+    const line2QuoteText = split.line2 ? `${split.line2}"` : '';
+    const line1Config = lineClass ? { cls: lineClass, text: line1Text } : { text: line1Text };
+    const line2Config = lineClass ? { cls: lineClass } : {};
+    container.createDiv(line1Config);
+    const line2El = container.createDiv(line2Config);
+    if (line2QuoteText) {
+        line2El.createSpan({ text: line2QuoteText });
+    }
+    const authorPrefix = line2QuoteText ? ' — ' : '— ';
+    line2El.createSpan({ cls: authorClass, text: `${authorPrefix}${quote.author}` });
+}
 
 /**
  * Creates an inline SVG target tick icon for settings rows.
@@ -146,6 +255,9 @@ export function renderCompletionEstimatePreview(params: {
     frameClass?: string;
 }): () => void {
     const { app, plugin, containerEl, frameClass } = params;
+    const measureContext = typeof document !== 'undefined'
+        ? document.createElement('canvas').getContext('2d')
+        : null;
 
     // --- Completion Estimate Preview ---
     const previewClasses = ['ert-previewFrame', 'ert-previewFrame--left'];
@@ -156,7 +268,7 @@ export function renderCompletionEstimatePreview(params: {
     });
     
     // Quotes for different states
-    const startingQuotes = [
+    const startingQuotes: Quote[] = [
         { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
         { text: "Start writing, no matter what. The water does not flow until the faucet is turned on.", author: "Louis L'Amour" },
         { text: "You don't start out writing good stuff. You start out writing crap and thinking it's good stuff, and then gradually you get better at it.", author: "Octavia E. Butler" },
@@ -164,7 +276,7 @@ export function renderCompletionEstimatePreview(params: {
         { text: "Begin at the beginning and go on till you come to the end; then stop.", author: "Lewis Carroll" },
     ];
     
-    const perseveranceQuotes = [
+    const perseveranceQuotes: Quote[] = [
         { text: "You can always edit a bad page. You can't edit a blank page.", author: "Jodi Picoult" },
         { text: "I write only when inspiration strikes. Fortunately it strikes every morning at nine o'clock sharp.", author: "W. Somerset Maugham" },
         { text: "The hard part about writing a novel is finishing it.", author: "Ernest Hemingway" },
@@ -174,7 +286,7 @@ export function renderCompletionEstimatePreview(params: {
         { text: "Writing a book is a horrible, exhausting struggle. One would never undertake such a thing if one were not driven.", author: "George Orwell" },
     ];
     
-    function getRandomQuote(quotes: { text: string; author: string }[]): { text: string; author: string } {
+    function getRandomQuote(quotes: Quote[]): Quote {
         return quotes[Math.floor(Math.random() * quotes.length)];
     }
 
@@ -227,8 +339,10 @@ export function renderCompletionEstimatePreview(params: {
                 const quote = getRandomQuote(startingQuotes);
                 
                 const quoteEl = body.createDiv({ cls: 'ert-completion-empty-quote' });
-                quoteEl.createDiv({ cls: 'ert-completion-quote-text', text: `"${quote.text}"` });
-                quoteEl.createDiv({ cls: 'ert-completion-quote-author', text: `— ${quote.author}` });
+                const quoteMetrics = getQuoteMetrics(previewContainer, 'ert-completion-quote-text', 'ert-completion-quote-author');
+                const split = splitQuoteForBalance(quote, quoteMetrics, measureContext);
+                const quoteText = quoteEl.createDiv({ cls: 'ert-completion-quote-text' });
+                renderSplitQuote(quoteText, quote, split, 'ert-completion-quote-author');
                 body.createDiv({ cls: 'ert-completion-empty-hint', text: 'Create scenes to see progress calculations.' });
                 return;
             }
@@ -381,8 +495,19 @@ export function renderCompletionEstimatePreview(params: {
             if (estimate.staleness !== 'fresh') {
                 const quote = getRandomQuote(perseveranceQuotes);
                 const encouragementEl = body.createDiv({ cls: 'ert-completion-encouragement' });
-                encouragementEl.createSpan({ cls: 'ert-completion-encouragement-text', text: `"${quote.text}"` });
-                encouragementEl.createSpan({ cls: 'ert-completion-encouragement-author', text: ` — ${quote.author}` });
+                const quoteMetrics = getQuoteMetrics(
+                    previewContainer,
+                    'ert-completion-encouragement ert-completion-encouragement-text',
+                    'ert-completion-encouragement ert-completion-encouragement-author'
+                );
+                const split = splitQuoteForBalance(quote, quoteMetrics, measureContext);
+                renderSplitQuote(
+                    encouragementEl,
+                    quote,
+                    split,
+                    'ert-completion-encouragement-author',
+                    'ert-completion-encouragement-text'
+                );
             }
 
             // Key metrics row

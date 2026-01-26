@@ -7,7 +7,7 @@ import { fetchGeminiModels } from '../../api/geminiApi';
 import { fetchLocalModels } from '../../api/localAiApi';
 import { CURATED_MODELS, CuratedModel, AiProvider } from '../../data/aiModels';
 import { AiContextModal } from '../AiContextModal';
-import { resolveAiOutputFolder, countAiLogFiles } from '../../utils/aiOutput';
+import { resolveAiLogFolder, countAiLogFiles } from '../../ai/log';
 import { addHeadingIcon, addWikiLink } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 
@@ -387,9 +387,9 @@ export function renderAiSection(params: {
     // Advisory note as separate section
     const localWarningSection = localSection.createDiv({ cls: 'ert-local-llm-advisory' });
     localWarningSection.createEl('strong', { text: 'Advisory Note', cls: 'ert-local-llm-advisory-title' });
-    const aiOutputFolder = resolveAiOutputFolder(plugin);
+    const aiLogFolder = resolveAiLogFolder();
     localWarningSection.createSpan({
-        text: `By default, no LLM pulses are written to the scene when local transformer is used. Rather it is stored in an AI log file in the local logs output folder (${aiOutputFolder}), as the response does not follow directions and breaks the scene hover formatting. You may still write scene hover metadata with local LLM by toggling off the setting "Bypass scene hover metadata yaml writes" below.`
+        text: `By default, no LLM pulses are written to the scene when local transformer is used. Rather it is stored in an AI log file in the local logs output folder (${aiLogFolder}), as the response does not follow directions and breaks the scene hover formatting. You may still write scene hover metadata with local LLM by toggling off the setting "Bypass scene hover metadata yaml writes" below.`
     });
 
     const localModelSetting = new Settings(localSection)
@@ -508,7 +508,7 @@ export function renderAiSection(params: {
     params.refreshProviderDimming();
 
     // API Logging toggle with dynamic file count
-    const outputFolder = resolveAiOutputFolder(plugin);
+    const outputFolder = resolveAiLogFolder();
     const formatLogCount = (fileCount: number | null): string => {
         if (fileCount === null) return 'Counting log files...';
         return fileCount === 0
@@ -519,7 +519,7 @@ export function renderAiSection(params: {
     };
     const getLoggingDesc = (fileCount: number | null): string => {
         const countText = formatLogCount(fileCount);
-        return `When enabled, writes logs for Inquiry, Pulse, and Gossamer runs. Pulse/Gossamer logs go to "${outputFolder}" (${countText}). Inquiry logs go to "Radial Timeline/Logs".`;
+        return `When enabled, writes logs for Inquiry, Pulse, and Gossamer runs. Logs are stored in "${outputFolder}" (${countText}).`;
     };
 
     const apiLoggingSetting = new Settings(containerEl)

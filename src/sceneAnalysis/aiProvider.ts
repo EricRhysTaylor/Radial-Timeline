@@ -16,7 +16,6 @@ import type { AiProviderResponse, ParsedSceneAnalysis } from './types';
 import { parseGptResult } from './responseParsing';
 import { cacheResolvedModel, isLatestAlias } from '../utils/modelResolver';
 import { buildProviderRequestPayload } from '../api/requestPayload';
-import { resolveAiOutputFolder } from '../utils/aiOutput';
 import { extractTokenUsage, formatAiLogContent, formatLogTimestamp, sanitizeLogPayload, writeAiLog, type AiLogStatus } from '../ai/log';
 
 type PulseLogPayload = {
@@ -139,7 +138,6 @@ async function writePulseLog(
     });
 
     await writeAiLog(plugin, vault, {
-        folderPath: resolveAiOutputFolder(plugin),
         baseName,
         content
     });

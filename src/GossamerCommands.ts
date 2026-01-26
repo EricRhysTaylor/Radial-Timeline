@@ -11,9 +11,8 @@ import { TimelineMode } from './modes/ModeDefinition';
 import { assembleManuscript } from './utils/manuscript';
 import { buildUnifiedBeatAnalysisPrompt, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
 import { callGeminiApi } from './api/geminiApi';
-import { ensureAiOutputFolder, resolveAiOutputFolder } from './utils/aiOutput';
 import { buildProviderRequestPayload } from './api/requestPayload';
-import { extractTokenUsage, formatAiLogContent, formatLogTimestamp, resolveAvailableLogPath, sanitizeLogPayload } from './ai/log';
+import { extractTokenUsage, formatAiLogContent, formatLogTimestamp, resolveAiLogFolder, resolveAvailableLogPath, sanitizeLogPayload } from './ai/log';
 const resolveGeminiModelId = (plugin?: RadialTimelinePlugin): string =>
   plugin?.settings?.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
 
@@ -106,7 +105,12 @@ async function writeGossamerLog(
     derivedSummary: payload.derivedSummary
   });
 
-  const folderPath = await ensureAiOutputFolder(plugin);
+  const folderPath = resolveAiLogFolder();
+  try {
+    await plugin.app.vault.createFolder(folderPath);
+  } catch {
+    // Folder may already exist.
+  }
   const filePath = resolveAvailableLogPath(plugin.app.vault, folderPath, baseName);
   return await plugin.app.vault.create(filePath, content);
 }
@@ -945,7 +949,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
 
     const successMessage = `✓ Updated ${updateCount} beats with momentum scores`;
     
-    const aiFolderPath = resolveAiOutputFolder(plugin);
+    const aiFolderPath = resolveAiLogFolder();
     const logMessage = plugin.settings.logApiInteractions
       ? `${successMessage}. Log saved to ${aiFolderPath} (includes full manuscript).`
       : `${successMessage}. (Logging disabled - no report saved)`;

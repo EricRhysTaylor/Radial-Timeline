@@ -135,6 +135,13 @@
   display: none;
 }
 
+.ert-ui .ert-metrics-sample {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 /* Density variants */
 .ert-ui.ert-density--compact,
 .ert-ui .ert-density--compact {
@@ -1694,10 +1701,6 @@
   font-size: var(--ert-control-font-size);
 }
 
-.ert-ui input.ert-typography-text-input {
-  width: 100%;
-}
-
 .ert-typography-modal {
   width: min(420px, 92vw);
 }
@@ -1918,7 +1921,7 @@
 }
 
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.setting-item-heading {
-  margin: var(--ert-gap-md) 0 var(--ert-gap-sm);
+  margin: var(--ert-pad-md) 0 var(--ert-gap-sm);
 }
 
 .ert-ui .ert-settings-searchable-content [data-ert-section]:first-child>.setting-item.setting-item-heading:first-child:not(.ert-setting-heading--top) {
@@ -3013,6 +3016,7 @@
   font-size: 0.9rem;
   color: var(--text-muted);
   font-weight: 500;
+  font-style: normal;
 }
 
 .ert-ui .ert-completion-empty-hint {

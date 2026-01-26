@@ -780,6 +780,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             textInput.setPlaceholder(textConfig.placeholder);
             textInput.setValue(textConfig.value);
             textInput.inputEl.addClass('ert-typography-text-input');
+            textInput.inputEl.addClass('ert-input--lg');
             textInput.onChange(async (val) => {
                 if (isSyncing) return;
                 await textConfig.onChange(val);

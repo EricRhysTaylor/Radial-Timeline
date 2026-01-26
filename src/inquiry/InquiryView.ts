@@ -362,6 +362,7 @@ export class InquiryView extends ItemView {
     private minimapSweepTicks: Array<{ rect: SVGRectElement; centerX: number; rowIndex: number }> = [];
     private minimapSweepLayout?: { startX: number; endX: number; bandWidth: number };
     private minimapBottomOffset = 0;
+    private minimapEmptyUpdateId = 0;
     private runningAnimationFrame?: number;
     private runningAnimationStart?: number;
     private wasRunning = false;
@@ -2461,6 +2462,69 @@ export class InquiryView extends ItemView {
         return scenes[0]?.id;
     }
 
+    private isSceneFile(file: TFile): boolean {
+        const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
+        if (!frontmatter) return false;
+        const normalized = normalizeFrontmatterKeys(frontmatter, this.plugin.settings.frontmatterMappings);
+        const classValues = this.extractClassValues(normalized);
+        return classValues.includes('scene');
+    }
+
+    private async refreshMinimapEmptyStates(items: InquiryCorpusItem[]): Promise<void> {
+        const updateId = ++this.minimapEmptyUpdateId;
+        if (!items.length) return;
+        const thresholds = this.getCorpusThresholds();
+        const emptyMax = thresholds.emptyMax;
+        const markdownFiles = this.app.vault.getMarkdownFiles();
+        const sceneFiles = markdownFiles.filter(file => this.isSceneFile(file));
+        const scenePathsByRoot = new Map<string, string[]>();
+
+        const getScenePathsForBook = (rootPath: string): string[] => {
+            const cached = scenePathsByRoot.get(rootPath);
+            if (cached) return cached;
+            const prefix = `${rootPath}/`;
+            const paths = sceneFiles
+                .filter(file => file.path === rootPath || file.path.startsWith(prefix))
+                .map(file => file.path);
+            scenePathsByRoot.set(rootPath, paths);
+            return paths;
+        };
+
+        const wordCounts = await Promise.all(items.map(async item => {
+            const scenePath = (item as { filePath?: string }).filePath;
+            if (scenePath) {
+                const stats = await this.loadCorpusCcStats(scenePath);
+                return stats.words;
+            }
+
+            const rootPath = (item as { rootPath?: string }).rootPath;
+            if (rootPath) {
+                const rootFile = this.app.vault.getAbstractFileByPath(rootPath);
+                if (rootFile && this.isTFile(rootFile)) {
+                    const stats = await this.loadCorpusCcStats(rootPath);
+                    return stats.words;
+                }
+                const scenePaths = getScenePathsForBook(rootPath);
+                if (!scenePaths.length) return 0;
+                const stats = await Promise.all(scenePaths.map(path => this.loadCorpusCcStats(path)));
+                return stats.reduce((sum, stat) => sum + stat.words, 0);
+            }
+
+            const fallbackPaths = item.filePaths ?? [];
+            if (!fallbackPaths.length) return 0;
+            const stats = await Promise.all(fallbackPaths.map(path => this.loadCorpusCcStats(path)));
+            return stats.reduce((sum, stat) => sum + stat.words, 0);
+        }));
+
+        if (updateId !== this.minimapEmptyUpdateId) return;
+
+        wordCounts.forEach((wordCount, idx) => {
+            const tick = this.minimapTicks[idx];
+            if (!tick) return;
+            tick.classList.toggle('is-empty', wordCount < emptyMax);
+        });
+    }
+
     private logInquirySvgDebug(): void {
         const svg = this.rootSvg;
         const viewBox = svg?.getAttribute('viewBox');
@@ -2617,6 +2681,7 @@ export class InquiryView extends ItemView {
         this.updatePreviewPanelPosition();
 
         this.buildMinimapSweepLayer(tickLayouts, tickWidth, length);
+        void this.refreshMinimapEmptyStates(items);
         this.renderCorpusCcStrip();
         this.updateMinimapFocus();
     }

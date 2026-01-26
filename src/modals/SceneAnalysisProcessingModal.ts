@@ -9,7 +9,7 @@
 import { App, Modal, ButtonComponent, Notice, setIcon, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
-import { resolveAiOutputFolder } from '../utils/aiOutput';
+import { resolveAiLogFolder } from '../ai/log';
 import { getModelDisplayName } from '../utils/modelResolver';
 import type { LlmTimingStats } from '../types/settings';
 
@@ -1119,7 +1119,7 @@ export class SceneAnalysisProcessingModal extends Modal {
                 ? 'Triplet pulse updates bypassed scene yaml and were saved to the AI report.'
                 : 'Triplet pulse updates were written to scene yaml.';
             if (this.logAttempts > 0) {
-                const aiFolder = resolveAiOutputFolder(this.plugin);
+                const aiFolder = resolveAiLogFolder();
                 logNoteEl.appendText(`Detailed AI interaction logs were saved to ${aiFolder}. ${pulseRouting}`);
             } else {
                 logNoteEl.appendText(`Logging is enabled, but no AI request reached the server. ${pulseRouting}`);

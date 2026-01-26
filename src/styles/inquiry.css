@@ -9,6 +9,7 @@
   --ert-inquiry-medium: var(--rt-color-house);
   --ert-inquiry-high: var(--rt-color-due);
   --ert-inquiry-alert: var(--ert-inquiry-high);
+  --ert-inquiry-empty: color-mix(in srgb, var(--ert-inquiry-high) 60%, var(--text-muted));
   --ert-inquiry-active-zone-color: var(--ert-inquiry-zone-setup);
   --ert-inquiry-hit-color: var(--ert-inquiry-zone-setup);
   --ert-inquiry-zone-inactive-fill: var(--interactive-normal);
@@ -437,6 +438,11 @@
   cursor: pointer;
 }
 
+.ert-inquiry-minimap-tick.is-empty {
+  --ert-inquiry-minimap-tick-color: var(--ert-inquiry-empty);
+  --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-empty) 18%, var(--background-secondary));
+}
+
 .ert-inquiry-minimap-tick-base {
   fill: var(--ert-inquiry-minimap-tick-fill);
 }
@@ -532,6 +538,13 @@
 
 .ert-inquiry-cc-cell {
   pointer-events: auto;
+  --ert-inquiry-cc-cell-color: var(--text-muted);
+  --ert-inquiry-cc-cell-fill-color: var(--text-normal);
+}
+
+.ert-inquiry-cc-cell.is-tier-empty {
+  --ert-inquiry-cc-cell-color: var(--ert-inquiry-empty);
+  --ert-inquiry-cc-cell-fill-color: var(--ert-inquiry-empty);
 }
 
 .ert-inquiry-cc-cell.is-openable {
@@ -555,24 +568,24 @@
 }
 
 .ert-inquiry-cc-cell-base {
-  fill: color-mix(in srgb, var(--text-muted) 30%, transparent);
+  fill: color-mix(in srgb, var(--ert-inquiry-cc-cell-color) 30%, transparent);
   opacity: 0.45;
 }
 
 .ert-inquiry-cc-cell-fill {
-  fill: color-mix(in srgb, var(--text-normal) 35%, transparent);
+  fill: color-mix(in srgb, var(--ert-inquiry-cc-cell-fill-color) 35%, transparent);
   opacity: 0.8;
 }
 
 .ert-inquiry-cc-cell-border {
   fill: none;
-  stroke: color-mix(in srgb, var(--text-muted) 45%, transparent);
+  stroke: color-mix(in srgb, var(--ert-inquiry-cc-cell-color) 45%, transparent);
   stroke-width: 1;
 }
 
 .ert-inquiry-cc-cell-fold {
-  fill: color-mix(in srgb, var(--text-muted) 55%, transparent);
-  stroke: color-mix(in srgb, var(--text-muted) 55%, transparent);
+  fill: color-mix(in srgb, var(--ert-inquiry-cc-cell-color) 55%, transparent);
+  stroke: color-mix(in srgb, var(--ert-inquiry-cc-cell-color) 55%, transparent);
   stroke-width: 0.5;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -581,7 +594,7 @@
 .ert-inquiry-cc-cell-icon {
   font-size: 15px;
   font-weight: 700;
-  fill: var(--text-muted);
+  fill: var(--ert-inquiry-cc-cell-color);
 }
 
 .ert-inquiry-cc-cell.is-status-todo .ert-inquiry-cc-cell-border {
@@ -627,6 +640,19 @@
   --ert-inquiry-minimap-tick-color: var(--ert-inquiry-active-zone-color);
   --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-active-zone-color) 18%, var(--background-secondary));
   filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-active-zone-color) 65%, transparent));
+}
+
+.ert-inquiry-minimap-tick.is-empty.is-active,
+.ert-inquiry-minimap-tick.is-empty.is-hit {
+  --ert-inquiry-minimap-tick-color: var(--ert-inquiry-empty);
+  --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-empty) 18%, var(--background-secondary));
+}
+
+.ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-empty.is-hit,
+.ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-empty.is-active {
+  --ert-inquiry-minimap-tick-color: var(--ert-inquiry-empty);
+  --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-empty) 18%, var(--background-secondary));
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ert-inquiry-empty) 65%, transparent));
 }
 
 .ert-inquiry-zones {

@@ -153,6 +153,7 @@ export function renderAprBadges(options: AprBadgeOptions): string {
     } = options;
 
     if (!showStageBadge && !showRtAttribution) return '';
+    if (size === 'thumb') return '';
 
     const preset = getPreset(size);
     const half = preset.svgSize / 2;
@@ -160,7 +161,8 @@ export function renderAprBadges(options: AprBadgeOptions): string {
     const badgeSize = rtBadgeFontSize ?? preset.rtBrandingFontSize;
     const stageText = (stageLabel || 'Zero').trim().toUpperCase() || 'ZERO';
 
-    const stageX = half - corner;
+    const stageEdgeInset = Math.max(1, Math.round(preset.borderWidth));
+    const stageX = half - stageEdgeInset;
     const stageY = half - corner;
 
     const approxCharWidth = badgeSize * 0.6;
