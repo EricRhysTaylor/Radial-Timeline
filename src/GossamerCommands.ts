@@ -8,12 +8,108 @@ import { Notice, TFile, App } from 'obsidian';
 import { GossamerScoreModal } from './modals/GossamerScoreModal';
 import { GossamerProcessingModal, type ManuscriptInfo, type AnalysisOptions } from './modals/GossamerProcessingModal';
 import { TimelineMode } from './modes/ModeDefinition';
-import { assembleManuscript, type AssembledManuscript, type SceneContent } from './utils/manuscript';
+import { assembleManuscript } from './utils/manuscript';
 import { buildUnifiedBeatAnalysisPrompt, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
 import { callGeminiApi } from './api/geminiApi';
 import { ensureAiOutputFolder, resolveAiOutputFolder } from './utils/aiOutput';
+import { buildProviderRequestPayload } from './api/requestPayload';
+import { extractTokenUsage, formatAiLogContent, formatLogTimestamp, resolveAvailableLogPath, sanitizeLogPayload } from './ai/log';
 const resolveGeminiModelId = (plugin?: RadialTimelinePlugin): string =>
   plugin?.settings?.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
+
+const sanitizeSegment = (value: string | null | undefined) => {
+  if (!value) return '';
+  return value
+    .replace(/[<>:"/\\|?*]+/g, '-')
+    .replace(/\s+/g, ' ')
+    .replace(/-+/g, '-')
+    .trim()
+    .replace(/^-+|-+$/g, '');
+};
+
+const resolveGeminiModelFromResponse = (responseData: unknown): string | undefined => {
+  if (!responseData || typeof responseData !== 'object') return undefined;
+  const data = responseData as Record<string, unknown>;
+  if (typeof data.modelVersion === 'string') return data.modelVersion;
+  if (typeof data.model === 'string') return data.model;
+  return undefined;
+};
+
+type GossamerLogPayload = {
+  status: 'success' | 'error';
+  beatSystemLabel: string;
+  modelRequested: string;
+  modelResolved?: string;
+  prompt: string;
+  manuscriptText: string;
+  requestPayload: unknown;
+  responseData?: unknown;
+  assistantContent?: string | null;
+  parsedOutput?: unknown;
+  submittedAt?: Date | null;
+  returnedAt?: Date | null;
+  derivedSummary?: string;
+  schemaWarnings?: string[];
+};
+
+async function writeGossamerLog(
+  plugin: RadialTimelinePlugin,
+  payload: GossamerLogPayload
+): Promise<TFile | null> {
+  if (!plugin.settings.logApiInteractions) return null;
+
+  const timestampSource = payload.returnedAt ?? payload.submittedAt ?? new Date();
+  const readableTimestamp = formatLogTimestamp(timestampSource);
+  const safeBeatSystem = sanitizeSegment(payload.beatSystemLabel) || 'Gossamer';
+  const title = `Gossamer Log — ${payload.beatSystemLabel} ${readableTimestamp}`;
+  const baseName = `Gossamer Log — ${safeBeatSystem} ${readableTimestamp}`;
+
+  const { sanitized: sanitizedPayload, redactedKeys } = sanitizeLogPayload(payload.requestPayload ?? null);
+  const sanitizationNotes = redactedKeys.length
+    ? [`Redacted request keys: ${redactedKeys.join(', ')}.`]
+    : [];
+  const tokenUsage = extractTokenUsage('gemini', payload.responseData);
+  const schemaWarnings = payload.schemaWarnings ?? [];
+
+  const content = formatAiLogContent({
+    title,
+    metadata: {
+      feature: 'Gossamer',
+      scopeTarget: `Manuscript · ${payload.beatSystemLabel}`,
+      provider: 'gemini',
+      modelRequested: payload.modelRequested,
+      modelResolved: payload.modelResolved ?? payload.modelRequested,
+      submittedAt: payload.submittedAt ?? null,
+      returnedAt: payload.returnedAt ?? null,
+      durationMs: payload.submittedAt && payload.returnedAt
+        ? payload.returnedAt.getTime() - payload.submittedAt.getTime()
+        : null,
+      status: payload.status,
+      tokenUsage
+    },
+    request: {
+      systemPrompt: '',
+      userPrompt: payload.prompt,
+      evidenceText: payload.manuscriptText,
+      requestPayload: sanitizedPayload
+    },
+    response: {
+      rawResponse: payload.responseData ?? null,
+      assistantContent: payload.assistantContent ?? '',
+      parsedOutput: payload.parsedOutput ?? null
+    },
+    notes: {
+      sanitizationSteps: sanitizationNotes,
+      retryAttempts: 0,
+      schemaWarnings
+    },
+    derivedSummary: payload.derivedSummary
+  });
+
+  const folderPath = await ensureAiOutputFolder(plugin);
+  const filePath = resolveAvailableLogPath(plugin.app.vault, folderPath, baseName);
+  return await plugin.app.vault.create(filePath, content);
+}
 
 // Helper to find Beat note by beat title (prefers Beat over Plot)
 function findBeatNoteByTitle(files: TFile[], beatTitle: string, app: App): TFile | null {
@@ -627,7 +723,15 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     modal.apiCallStarted();
 
     const geminiModelId = resolveGeminiModelId(plugin);
+    const requestPayload = buildProviderRequestPayload('gemini', geminiModelId, {
+      userPrompt: prompt,
+      systemPrompt: null,
+      maxTokens: 9000,
+      temperature: 0.7,
+      jsonSchema: schema
+    });
 
+    const submittedAt = new Date();
     const result = await callGeminiApi(
       plugin.settings.geminiApiKey,
       geminiModelId,
@@ -637,6 +741,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       0.7, // Temperature
       schema
     );
+    const returnedAt = new Date();
 
     if (!result.success || !result.content) {
       modal.apiCallError(result.error || 'Failed to get response from Gemini');
@@ -647,17 +752,21 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         modal.showRateLimitWarning();
       }
       
-      // Create diagnostic report even on failure if logging is enabled
-      if (plugin.settings.logApiInteractions) {
-        await createFailureDiagnosticReport(
-          plugin,
-          manuscript,
-          beats,
-          beatSystem,
-          prompt,
-          result.error || 'Unknown error'
-        );
-      }
+      await writeGossamerLog(plugin, {
+        status: 'error',
+        beatSystemLabel: beatSystemDisplayName,
+        modelRequested: geminiModelId,
+        modelResolved: resolveGeminiModelFromResponse(result.responseData) ?? geminiModelId,
+        prompt,
+        manuscriptText: manuscript.text,
+        requestPayload,
+        responseData: result.responseData,
+        assistantContent: result.content,
+        parsedOutput: null,
+        submittedAt,
+        returnedAt,
+        schemaWarnings: result.error ? [`Error: ${result.error}`] : undefined
+      });
       
       throw new Error(result.error || 'Failed to get response from Gemini');
     }
@@ -787,111 +896,58 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       modal.addError(`Could not match ${unmatchedBeats.length} beat(s): ${unmatchedBeats.join(', ')}`);
     }
 
-    // Create analysis report (structured like Scene Analysis - summary then raw data)
-    modal.setStatus('Generating analysis report...');
-    
-    const reportTimestamp = new Date();
-    const timestamp = reportTimestamp.toLocaleString();
-    
-    const reportLines: string[] = [
-      `# Gossamer Momentum Analysis Report`,
-      ``,
-      `**Date:** ${timestamp}`,
-      `**Beat System:** ${beatSystem}`,
-      `**Model:** ${resolveGeminiModelId(plugin)}`,
-      `**Manuscript:** ${manuscript.totalScenes} scenes, ${manuscript.totalWords.toLocaleString()} words`,
-      `**Beats Updated:** ${updateCount} of ${analysis.beats.length}`,
-      ``,
-      `---`,
-      ``,
-      `## Summary`,
-      ``,
-      analysis.overallAssessment.summary,
-      ``,
-      `**Strengths:**`,
-      ...analysis.overallAssessment.strengths.map(s => `- ${s}`),
-      ``,
-      `**Improvements:**`,
-      ...analysis.overallAssessment.improvements.map(i => `- ${i}`),
-      ``,
-    ];
-    
-    // Add unmatched beats warning if any
+    // Create analysis log (unified AI log envelope)
+    modal.setStatus('Generating analysis log...');
+
+    const derivedLines: string[] = [];
+    derivedLines.push(`Beats updated: ${updateCount}`);
+    derivedLines.push(`Beats analyzed: ${analysis.beats.length}`);
+    if (analysis.overallAssessment?.summary) {
+      derivedLines.push(`Overall summary: ${analysis.overallAssessment.summary}`);
+    }
+    if (analysis.overallAssessment?.strengths?.length) {
+      derivedLines.push(`Strengths: ${analysis.overallAssessment.strengths.join('; ')}`);
+    }
+    if (analysis.overallAssessment?.improvements?.length) {
+      derivedLines.push(`Improvements: ${analysis.overallAssessment.improvements.join('; ')}`);
+    }
     if (unmatchedBeats.length > 0) {
-      reportLines.push(`**⚠️ Unmatched Beats:** ${unmatchedBeats.length} beat(s) could not be matched to notes: ${unmatchedBeats.join(', ')}`);
-      reportLines.push(``);
+      derivedLines.push(`Unmatched beats: ${unmatchedBeats.join(', ')}`);
     }
-    
-    // Add beat scores table
-    reportLines.push(`**Beat Scores:**`);
-    reportLines.push(``);
-    reportLines.push(`| Beat | Score | Range | Status |`);
-    reportLines.push(`|------|-------|-------|--------|`);
+    derivedLines.push('');
+    derivedLines.push(`| Beat | Score | Ideal Range | Status |`);
+    derivedLines.push(`|------|-------|-------------|--------|`);
     for (const beat of analysis.beats) {
-      const status = beat.isWithinRange ? '✓' : '⚠️';
-      reportLines.push(`| ${beat.beatName} | ${beat.momentumScore} | ${beat.idealRange} | ${status} |`);
+      const status = beat.isWithinRange ? 'In range' : 'Out of range';
+      derivedLines.push(`| ${beat.beatName} | ${beat.momentumScore} | ${beat.idealRange} | ${status} |`);
     }
-    reportLines.push(``);
-    
-    // Add technical details section with actual JSON sent and received (for debugging)
-    reportLines.push(`---`);
-    reportLines.push(``);
-    reportLines.push(`## Debug Information`);
-    reportLines.push(``);
-    reportLines.push(`### Manuscript Scenes Sent`);
-    reportLines.push(``);
-    reportLines.push(`The following ${manuscript.totalScenes} scenes were assembled and sent to Gemini (with table of contents):`);
-    reportLines.push(``);
-    manuscript.scenes.forEach((scene, idx) => {
-      const wordCount = scene.wordCount || 0;
-      reportLines.push(`${idx + 1}. ${scene.title || 'Untitled Scene'} (${wordCount.toLocaleString()} words)`);
+
+    const reportFile = await writeGossamerLog(plugin, {
+      status: 'success',
+      beatSystemLabel: beatSystemDisplayName,
+      modelRequested: geminiModelId,
+      modelResolved: resolveGeminiModelFromResponse(result.responseData) ?? geminiModelId,
+      prompt,
+      manuscriptText: manuscript.text,
+      requestPayload,
+      responseData: result.responseData,
+      assistantContent: result.content,
+      parsedOutput: analysis,
+      submittedAt,
+      returnedAt,
+      derivedSummary: derivedLines.join('\n')
     });
-    reportLines.push(``);
-    reportLines.push(`**Total Words:** ${manuscript.totalWords.toLocaleString()}`);
-    reportLines.push(``);
-    reportLines.push(`### Prompt Sent to Gemini`);
-    reportLines.push(``);
-    reportLines.push(`\`\`\`markdown`);
-    reportLines.push(prompt);
-    reportLines.push(`\`\`\``);
-    reportLines.push(``);
-    reportLines.push(`### JSON Response Received from Gemini`);
-    reportLines.push(``);
-    reportLines.push(`\`\`\`json`);
-    reportLines.push(result.content || ''); // Raw JSON string from API
-    reportLines.push(`\`\`\``);
-    reportLines.push(``);
 
-    // Save report to AI output folder (only if logging is enabled)
-    let reportFile: TFile | undefined;
-    let aiFolderPath = resolveAiOutputFolder(plugin);
-    if (plugin.settings.logApiInteractions) {
-      aiFolderPath = await ensureAiOutputFolder(plugin);
-      const reportDate = new Date();
-      const dateStr = reportDate.toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-      const timeStr = reportDate.toLocaleTimeString(undefined, {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      }).replace(/:/g, '.');
-
-      const reportPath = `${aiFolderPath}/Gossamer Analysis ${dateStr} ${timeStr}.md`;
-
-      reportFile = await plugin.app.vault.create(reportPath, reportLines.join('\n'));
-      
-      // Open the report
+    if (reportFile) {
       const leaf = plugin.app.workspace.getLeaf('tab');
       await leaf.openFile(reportFile);
     }
 
     const successMessage = `✓ Updated ${updateCount} beats with momentum scores`;
     
+    const aiFolderPath = resolveAiOutputFolder(plugin);
     const logMessage = plugin.settings.logApiInteractions
-      ? `${successMessage}. Report saved to ${aiFolderPath} (includes full manuscript).`
+      ? `${successMessage}. Log saved to ${aiFolderPath} (includes full manuscript).`
       : `${successMessage}. (Logging disabled - no report saved)`;
 
     modal.completeProcessing(true, successMessage);
@@ -953,199 +1009,4 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     new Notice(`Failed to prepare Gossamer analysis: ${errorMsg}`);
     console.error('[Gossamer AI Pre-check]', e);
   }
-}
-
-/**
- * Create diagnostic report when API call fails
- */
-async function createFailureDiagnosticReport(
-  plugin: RadialTimelinePlugin,
-  manuscript: AssembledManuscript,
-  beats: UnifiedBeatInfo[],
-  beatSystem: string,
-  prompt: string,
-  errorMessage: string
-): Promise<void> {
-  const reportTimestamp = new Date();
-  const timestamp = reportTimestamp.toLocaleString();
-  
-  const reportLines: string[] = [
-    `# Gossamer AI Analysis - FAILED`,
-    ``,
-    `**Date:** ${timestamp}`,
-    `**Beat System:** ${beatSystem}`,
-    `**Model:** ${resolveGeminiModelId(plugin)}`,
-    `**Error:** ${errorMessage}`,
-    ``,
-    `---`,
-    ``,
-    `## Error Details`,
-    ``,
-    errorMessage,
-    ``,
-    `## Manuscript Sent`,
-    ``,
-    `**Scenes:** ${manuscript.totalScenes}`,
-    `**Words:** ${manuscript.totalWords.toLocaleString()}`,
-    `**Estimated Input Tokens:** ~${Math.ceil(manuscript.text.length / 4).toLocaleString()}`,
-    `**Story Beats:** ${beats.length}`,
-    ``,
-    `### Scene List`,
-    ``,
-  ];
-  
-  manuscript.scenes.forEach((scene: SceneContent, idx: number) => {
-    const wordCount = scene.wordCount || 0;
-    reportLines.push(`${idx + 1}. ${scene.title || 'Untitled Scene'} (${wordCount.toLocaleString()} words)`);
-  });
-  
-  reportLines.push(``);
-  reportLines.push(`### Prompt Sent to Gemini`);
-  reportLines.push(``);
-  reportLines.push(`\`\`\`markdown`);
-  reportLines.push(prompt);
-  reportLines.push(`\`\`\``);
-  reportLines.push(``);
-  
-  // Save failure report
-  const reportDate = new Date();
-  const dateStr = reportDate.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
-  const timeStr = reportDate.toLocaleTimeString(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  }).replace(/:/g, '.');
-
-  const aiFolderPath = await ensureAiOutputFolder(plugin);
-  const reportPath = `${aiFolderPath}/Gossamer Analysis FAILED ${dateStr} ${timeStr}.md`;
-
-  const reportFile = await plugin.app.vault.create(reportPath, reportLines.join('\n'));
-  
-  // Open the failure report
-  const leaf = plugin.app.workspace.getLeaf('tab');
-  await leaf.openFile(reportFile);
-  
-  new Notice(`⚠️ Analysis failed. Diagnostic report saved to ${aiFolderPath}.`);
-}
-
-/**
- * Create detailed processing log similar to scene analysis logs
- */
-async function createGossamerProcessingLog(
-  plugin: RadialTimelinePlugin,
-  manuscriptInfo: ManuscriptInfo,
-  beatSystem: string,
-  analysis: any, // SAFE: any type used for parsed Gemini JSON response with dynamic beat analysis structure
-  updateCount: number,
-  apiResult: any, // SAFE: any type used for Gemini API result with optional rate limit metadata
-  prompt: string,
-  beats: UnifiedBeatInfo[],
-  unmatchedBeats: string[]
-): Promise<void> {
-  const now = new Date();
-  const timestamp = now.toLocaleString();
-  
-  const logLines: string[] = [
-    `# Gossamer AI Processing Log`,
-    ``,
-    `**Timestamp:** ${timestamp}`,
-    `**Beat System:** ${beatSystem}`,
-    ``,
-    `## Manuscript Details`,
-    ``,
-    `- **Total Scenes:** ${manuscriptInfo.totalScenes}`,
-    `- **Total Words:** ${manuscriptInfo.totalWords.toLocaleString()}`,
-    `- **Estimated Tokens:** ~${manuscriptInfo.estimatedTokens.toLocaleString()}`,
-    `- **Story Beats:** ${manuscriptInfo.beatCount}`,
-    ``,
-    `## API Details`,
-    ``,
-    `- **Provider:** Gemini (Google)`,
-    `- **Model:** ${resolveGeminiModelId(plugin)}`,
-    `- **Temperature:** 0.7`,
-    `- **Max Output Tokens:** 8000`,
-    ``,
-    `## Processing Results`,
-    ``,
-    `- **Status:** ${apiResult.success ? '✓ Success' : '✗ Failed'}`,
-    `- **Beats Updated:** ${updateCount}`,
-    `- **Beats Analyzed:** ${analysis.beats?.length || 0}`,
-    ``
-  ];
-  
-  // Add unmatched beats if any
-  if (unmatchedBeats.length > 0) {
-    logLines.push(`- **Unmatched Beats:** ${unmatchedBeats.length} (${unmatchedBeats.join(', ')})`);
-    logLines.push(``);
-  }
-
-  // Add rate limit info if available
-  if (apiResult.rateLimitInfo) {
-    logLines.push(`## Rate Limit Information`, ``);
-    if (apiResult.rateLimitInfo.requestsRemaining !== undefined) {
-      logLines.push(`- **Requests Remaining:** ${apiResult.rateLimitInfo.requestsRemaining}`);
-    }
-    if (apiResult.rateLimitInfo.tokensRemaining !== undefined) {
-      logLines.push(`- **Tokens Remaining:** ${apiResult.rateLimitInfo.tokensRemaining}`);
-    }
-    logLines.push(``);
-  }
-
-  // Add beat-by-beat scores
-  if (analysis.beats && analysis.beats.length > 0) {
-    logLines.push(`## Beat Scores`, ``);
-    logLines.push(`| Beat | Score | Ideal Range | Status |`);
-    logLines.push(`|------|-------|-------------|--------|`);
-    
-    for (const beat of analysis.beats) {
-      const status = beat.isWithinRange ? '✓ In range' : '⚠️ Out of range';
-      logLines.push(`| ${beat.beatName} | ${beat.momentumScore} | ${beat.idealRange} | ${status} |`);
-    }
-    logLines.push(``);
-  }
-  
-  // Add technical details with prompt and response (beat table removed - redundant with JSON)
-  logLines.push(`## Technical Details`, ``);
-  
-  logLines.push(`### Full Prompt Sent to Gemini`, ``);
-  logLines.push(`\`\`\`markdown`);
-  logLines.push(prompt);
-  logLines.push(`\`\`\``);
-  logLines.push(``);
-  
-  logLines.push(`### JSON Response from Gemini`, ``);
-  logLines.push(`\`\`\`json`);
-  logLines.push(JSON.stringify(analysis, null, 2));
-  logLines.push(`\`\`\``);
-  logLines.push(``);
-
-  // Add error details if any
-  if (!apiResult.success && apiResult.error) {
-    logLines.push(`## Errors`, ``);
-    logLines.push('```');
-    logLines.push(apiResult.error);
-    logLines.push('```');
-    logLines.push(``);
-  }
-
-  // Save log to AI output folder
-  const dateStr = now.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
-  const timeStr = now.toLocaleTimeString(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  }).replace(/:/g, '.');
-
-  const aiFolderPath = await ensureAiOutputFolder(plugin);
-  const logPath = `${aiFolderPath}/Gossamer Processing Log ${dateStr} ${timeStr}.md`;
-
-  await plugin.app.vault.create(logPath, logLines.join('\n'));
 }

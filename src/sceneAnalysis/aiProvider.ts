@@ -12,293 +12,149 @@ import { callAnthropicApi } from '../api/anthropicApi';
 import { callOpenAiApi } from '../api/openaiApi';
 import { callGeminiApi } from '../api/geminiApi';
 import { getSceneAnalysisJsonSchema, getSceneAnalysisSystemPrompt } from '../ai/prompts/sceneAnalysis';
-import type { AiProviderResponse, ApiRequestData, ParsedSceneAnalysis } from './types';
+import type { AiProviderResponse, ParsedSceneAnalysis } from './types';
 import { parseGptResult } from './responseParsing';
 import { cacheResolvedModel, isLatestAlias } from '../utils/modelResolver';
+import { buildProviderRequestPayload } from '../api/requestPayload';
+import { resolveAiOutputFolder } from '../utils/aiOutput';
+import { extractTokenUsage, formatAiLogContent, formatLogTimestamp, sanitizeLogPayload, writeAiLog, type AiLogStatus } from '../ai/log';
 
+type PulseLogPayload = {
+    provider: 'openai' | 'anthropic' | 'gemini' | 'local';
+    modelRequested?: string;
+    modelResolved?: string;
+    requestPayload?: unknown;
+    responseData?: unknown;
+    parsed?: ParsedSceneAnalysis | null;
+    status: AiLogStatus;
+    systemPrompt?: string | null;
+    userPrompt?: string | null;
+    rawTextResult?: string | null;
+    sceneName?: string;
+    subplotName?: string | null;
+    commandContext: string;
+    tripletInfo?: { prev: string; current: string; next: string };
+    submittedAt?: Date | null;
+    returnedAt?: Date | null;
+    retryCount?: number;
+    normalizationWarnings?: string[];
+};
 
-async function logApiInteractionToFile(
+const sanitizeSegment = (value: string | null | undefined) => {
+    if (!value) return '';
+    return value
+        .replace(/[<>:"/\\|?*]+/g, '-')
+        .replace(/\s+/g, ' ')
+        .replace(/-+/g, '-')
+        .trim()
+        .replace(/^-+|-+$/g, '');
+};
+
+const extractEvidenceText = (prompt: string): string => {
+    const match = prompt.match(/(^|\n)Scene [^\n]+:\n/);
+    if (!match || match.index === undefined) return '';
+    const offset = match[1] ? match[1].length : 0;
+    return prompt.slice(match.index + offset);
+};
+
+const resolveModelIdFromResponse = (
+    provider: PulseLogPayload['provider'],
+    responseData: unknown
+): string | undefined => {
+    if (!responseData || typeof responseData !== 'object') return undefined;
+    const data = responseData as Record<string, unknown>;
+    if ((provider === 'openai' || provider === 'local') && typeof data.model === 'string') {
+        return data.model;
+    }
+    if (provider === 'gemini') {
+        if (typeof data.modelVersion === 'string') return data.modelVersion;
+        if (typeof data.model === 'string') return data.model;
+    }
+    if (provider === 'anthropic' && typeof data.model === 'string') {
+        return data.model;
+    }
+    return undefined;
+};
+
+async function writePulseLog(
     plugin: RadialTimelinePlugin,
     vault: Vault,
-    provider: 'openai' | 'anthropic' | 'gemini' | 'local',
-    modelId: string,
-    requestData: unknown,
-    responseData: unknown,
-    subplotName: string | null,
-    commandContext: string,
-    sceneName?: string,
-    tripletInfo?: { prev: string; current: string; next: string },
-    analysis?: ParsedSceneAnalysis | null,
-    options?: {
-        force?: boolean;
-        supplementalLocalInstructions?: string | null;
-        rawTextResult?: string | null;
-        systemPrompt?: string | null;
-    }
+    payload: PulseLogPayload
 ): Promise<void> {
-    const forceLog = options?.force === true;
-    if (!plugin.settings.logApiInteractions && !forceLog) {
-        return;
+    if (!plugin.settings.logApiInteractions) return;
+
+    const timestampSource = payload.returnedAt ?? payload.submittedAt ?? new Date();
+    const readableTimestamp = formatLogTimestamp(timestampSource);
+    const sceneLabel = payload.sceneName?.trim() || 'Scene';
+    const safeSceneLabel = sanitizeSegment(sceneLabel) || 'Scene';
+    const title = `Pulse Log — ${sceneLabel} ${readableTimestamp}`;
+    const baseName = `Pulse Log — ${safeSceneLabel} ${readableTimestamp}`;
+
+    const scopeBits = [`Scene ${sceneLabel}`];
+    if (payload.subplotName) scopeBits.push(`Subplot ${payload.subplotName}`);
+    if (payload.tripletInfo) {
+        scopeBits.push(`Triplet ${payload.tripletInfo.prev}/${payload.tripletInfo.current}/${payload.tripletInfo.next}`);
     }
+    if (payload.commandContext) scopeBits.push(`Command ${payload.commandContext}`);
 
-    const logFolder = 'AI';
-    const timestamp = new Date().toLocaleString(undefined, {
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', second: '2-digit',
-        hour12: true, timeZoneName: 'short'
-    } as Intl.DateTimeFormatOptions)
-        .replace(/\//g, '-')
-        .replace(/(\d{1,2}):(\d{2}):(\d{2})\s*(AM|PM)\s*([A-Z]{3,})/g, 'at $1.$2.$3 $4 $5')
-        .replace(/[\s,]+/g, ' ')
-        .trim();
+    const { sanitized: sanitizedPayload, redactedKeys } = sanitizeLogPayload(payload.requestPayload ?? null);
+    const tokenUsage = extractTokenUsage(payload.provider, payload.responseData);
+    const sanitizedNotes = redactedKeys.length
+        ? [`Redacted request keys: ${redactedKeys.join(', ')}.`]
+        : [];
+    const evidenceText = payload.userPrompt ? extractEvidenceText(payload.userPrompt) : '';
 
-    const friendlyModelForFilename = (() => {
-        const mid = (modelId || '').toLowerCase();
-        if (provider === 'anthropic') {
-            if (mid.includes('sonnet-4-5') || mid.includes('sonnet-4.5')) return 'Claude Sonnet 4.5';
-            if (mid.includes('opus-4-1') || mid.includes('opus-4.1')) return 'Claude Opus 4.1';
-            if (mid.includes('sonnet-4')) return 'Claude Sonnet 4';
-            if (mid.includes('opus-4')) return 'Claude Opus 4';
-        } else if (provider === 'gemini') {
-            if (mid.includes('3-pro')) return 'Gemini 3 Pro';
-            if (mid.includes('2.5-pro') || mid.includes('2-5-pro')) return 'Gemini Legacy';
-        } else if (provider === 'openai') {
-            if (mid.includes('gpt-4.1') || mid.includes('gpt-4-1')) return 'GPT-4.1';
+    const content = formatAiLogContent({
+        title,
+        metadata: {
+            feature: 'Pulse',
+            scopeTarget: scopeBits.join(' · '),
+            provider: payload.provider,
+            modelRequested: payload.modelRequested ?? 'unknown',
+            modelResolved: payload.modelResolved ?? 'unknown',
+            submittedAt: payload.submittedAt ?? null,
+            returnedAt: payload.returnedAt ?? null,
+            durationMs: payload.submittedAt && payload.returnedAt
+                ? payload.returnedAt.getTime() - payload.submittedAt.getTime()
+                : null,
+            status: payload.status,
+            tokenUsage
+        },
+        request: {
+            systemPrompt: payload.systemPrompt ?? '',
+            userPrompt: payload.userPrompt ?? '',
+            evidenceText,
+            requestPayload: sanitizedPayload
+        },
+        response: {
+            rawResponse: payload.responseData ?? null,
+            assistantContent: payload.rawTextResult ?? '',
+            parsedOutput: payload.parsed ?? null
+        },
+        notes: {
+            sanitizationSteps: sanitizedNotes,
+            retryAttempts: payload.retryCount,
+            schemaWarnings: payload.normalizationWarnings
         }
-        return modelId;
-    })();
+    });
 
-    const sanitizeSegment = (value: string | null | undefined) => {
-        if (!value) return '';
-        return value
-            .replace(/[<>:"/\\|?*]+/g, '-')
-            .replace(/\s+/g, ' ')
-            .replace(/-+/g, '-')
-            .trim()
-            .replace(/^-+|-+$/g, '');
-    };
-
-    const safeModelSegment = sanitizeSegment(friendlyModelForFilename) || 'local-model';
-    const safeTimestamp = sanitizeSegment(timestamp) || new Date().getTime().toString();
-    let fileName: string;
-    if (sceneName) {
-        const cleanSceneName = sanitizeSegment(sceneName) || 'Scene';
-        fileName = `${cleanSceneName} — ${safeModelSegment} — ${safeTimestamp}.md`;
-    } else {
-        fileName = `${provider}-log-${safeTimestamp}.md`;
-    }
-
-    const filePath = `${logFolder}/${fileName}`;
-    const isObject = (data: unknown): data is Record<string, unknown> => {
-        return typeof data === 'object' && data !== null;
-    };
-
-    const safeRequestData = isObject(requestData) ? requestData as ApiRequestData : null;
-    const requestJson = JSON.stringify(requestData, null, 2);
-    const responseJson = JSON.stringify(responseData, null, 2);
-
-    let usageString = '**Usage:** N/A';
-    try {
-        if (responseData && typeof responseData === 'object') {
-            const rd = responseData as Record<string, unknown>;
-            if (provider === 'openai' && 'usage' in rd) {
-                const u = (rd as { usage?: { prompt_tokens?: number; completion_tokens?: number } }).usage;
-                if (u && (typeof u.prompt_tokens === 'number' || typeof u.completion_tokens === 'number')) {
-                    usageString = `**Usage (OpenAI):** prompt=${u.prompt_tokens ?? 'n/a'}, output=${u.completion_tokens ?? 'n/a'}`;
-                }
-            } else if (provider === 'anthropic' && 'usage' in rd) {
-                const u = (rd as { usage?: { input_tokens?: number; output_tokens?: number } }).usage;
-                if (u && (typeof u.input_tokens === 'number' || typeof u.output_tokens === 'number')) {
-                    usageString = `**Usage (Anthropic):** input=${u.input_tokens ?? 'n/a'}, output=${u.output_tokens ?? 'n/a'}`;
-                }
-            } else if (provider === 'gemini' && 'usageMetadata' in rd) {
-                const u = (rd as { usageMetadata?: { totalTokenCount?: number; promptTokenCount?: number; candidatesTokenCount?: number } }).usageMetadata;
-                usageString = `**Usage (Gemini):** total=${u?.totalTokenCount ?? 'n/a'}, prompt=${u?.promptTokenCount ?? 'n/a'}, output=${u?.candidatesTokenCount ?? 'n/a'}`;
-            } else if (provider === 'local' && 'usage' in rd) {
-                const u = (rd as { usage?: { prompt_tokens?: number; completion_tokens?: number } }).usage;
-                if (u && (typeof u.prompt_tokens === 'number' || typeof u.completion_tokens === 'number')) {
-                    usageString = `**Usage (Local):** prompt=${u.prompt_tokens ?? 'n/a'}, output=${u.completion_tokens ?? 'n/a'}`;
-                }
-            }
-        }
-    } catch { }
-
-    let outcomeSection = '### Outcome\n\n';
-    if (responseData && typeof responseData === 'object') {
-        const responseAsRecord = responseData as Record<string, unknown>;
-        if (responseAsRecord.error) {
-            outcomeSection += `**Status:** Failed\n`;
-            const errObj = responseAsRecord.error as Record<string, unknown>;
-            outcomeSection += `**Error Type:** ${String(errObj?.type ?? 'Unknown')}\n`;
-            outcomeSection += `**Message:** ${String(errObj?.message ?? 'No message provided')}\n`;
-            if (typeof errObj?.status !== 'undefined') {
-                outcomeSection += `**Status Code:** ${String(errObj.status)}\n`;
-            }
-            outcomeSection += '\n';
-        } else {
-            let success = false;
-            let contentForCheck: string | undefined | null = null;
-            if (provider === 'openai') {
-                const choices = responseAsRecord.choices as unknown;
-                if (Array.isArray(choices) && choices[0] && typeof choices[0] === 'object') {
-                    const msg = (choices[0] as Record<string, unknown>).message as Record<string, unknown> | undefined;
-                    const content = msg?.content as string | undefined;
-                    contentForCheck = content;
-                }
-                success = !!contentForCheck;
-            } else if (provider === 'local') {
-                const choices = responseAsRecord.choices as unknown;
-                if (Array.isArray(choices) && choices[0] && typeof choices[0] === 'object') {
-                    const msg = (choices[0] as Record<string, unknown>).message as Record<string, unknown> | undefined;
-                    const content = msg?.content as string | undefined;
-                    contentForCheck = content;
-                }
-                success = !!contentForCheck;
-            } else if (provider === 'anthropic') {
-                const contentArr = responseAsRecord.content as unknown;
-                if (Array.isArray(contentArr) && contentArr[0] && typeof contentArr[0] === 'object') {
-                    const text = (contentArr[0] as Record<string, unknown>).text as string | undefined;
-                    contentForCheck = text ?? (responseData as { content?: string }).content;
-                }
-                success = !!contentForCheck;
-            } else if (provider === 'gemini') {
-                const candidates = responseAsRecord.candidates as unknown;
-                if (Array.isArray(candidates) && candidates[0] && typeof candidates[0] === 'object') {
-                    const content = (candidates[0] as Record<string, unknown>).content as Record<string, unknown> | undefined;
-                    const parts = content?.parts as Array<{ text?: string }>;
-                    contentForCheck = parts?.map(p => p.text).filter(Boolean).join('\n');
-                }
-                success = !!contentForCheck;
-            }
-
-            outcomeSection += `**Status:** ${success ? 'Success' : 'Failure'}\n`;
-            if (success) {
-                outcomeSection += `**Tokens returned:** ${contentForCheck?.length ?? 0}\n\n`;
-            } else {
-                outcomeSection += `**Details:** Model returned no content.\n\n`;
-            }
-        }
-    }
-
-    let subplotSection = '';
-    if (subplotName) {
-        subplotSection = `\n**Subplot:** ${subplotName}\n`;
-    }
-
-    const tripletSection = tripletInfo
-        ? `\n**Context Triplet:**\n- Prev: ${tripletInfo.prev}\n- Current: ${tripletInfo.current}\n- Next: ${tripletInfo.next}\n`
-        : '';
-
-    let promptContent = '';
-    if (safeRequestData) {
-        if (typeof (safeRequestData as any).userPrompt === 'string') {
-            promptContent = (safeRequestData as any).userPrompt;
-        } else if (Array.isArray(safeRequestData.messages) && safeRequestData.messages[0] && typeof safeRequestData.messages[safeRequestData.messages.length - 1].content === 'string') {
-            // Get the last message (usually user)
-            promptContent = safeRequestData.messages[safeRequestData.messages.length - 1].content;
-        }
-    }
-
-    const formatAnalysisSection = (header: string, content: string | undefined): string => {
-        if (!content || !content.trim()) return `${header}:\n  - Not available`;
-        const lines = content
-            .split('\n')
-            .map(line => line.trim())
-            .filter(Boolean)
-            .map(line => (line.startsWith('-') ? line : `- ${line}`));
-        return `${header}:\n${lines.map(line => `  ${line}`).join('\n')}`;
-    };
-
-    const systemPromptForLog = options?.systemPrompt?.trim();
-    const supplementalLocalPrompt = options?.supplementalLocalInstructions?.trim();
-
-    const promptSectionParts: string[] = [];
-    promptSectionParts.push('## Prompt\n\n');
-    if (systemPromptForLog) {
-        promptSectionParts.push(`**System prompt:**\n\`\`\`\n${systemPromptForLog}\n\`\`\`\n\n`);
-    }
-    promptSectionParts.push(`**User prompt:**\n\`\`\`\n${promptContent || 'N/A'}\n\`\`\`\n`);
-    if (supplementalLocalPrompt) {
-        promptSectionParts.push(`\n**Supplemental local instructions:**\n\`\`\`\n${supplementalLocalPrompt}\n\`\`\`\n`);
-    }
-    const promptSection = promptSectionParts.join('');
-
-    const sentPackageSection = `## Sent package\n\`\`\`json\n${requestJson}\n\`\`\`\n`;
-    const returnedPackageSection = `## Returned package\n\`\`\`\n${options?.rawTextResult ?? '[no text content returned]'}\n\`\`\`\n`;
-    const returnJsonSection = `## Return JSON\n\`\`\`json\n${responseJson}\n\`\`\`\n`;
-
-    const structuredAnalysisSection = analysis
-        ? `## Scene analysis\n\n` +
-        `${formatAnalysisSection('previousSceneAnalysis', analysis.previousSceneAnalysis)}\n\n` +
-        `${formatAnalysisSection('currentSceneAnalysis', analysis.currentSceneAnalysis)}\n\n` +
-        `${formatAnalysisSection('nextSceneAnalysis', analysis.nextSceneAnalysis)}\n\n`
-        : '';
-
-    const metadataSection = `## Metadata\n\n` +
-        `**Provider:** ${provider}\n` +
-        `**Model:** ${modelId}\n` +
-        `**Scene:** ${sceneName ?? 'N/A'}\n` +
-        `**Command:** ${commandContext}\n` +
-        `${subplotSection}` +
-        `${tripletSection}` +
-        `\n${usageString}\n` +
-        `\n${outcomeSection}`;
-
-    const fileContent = `# AI Report — ${new Date().toLocaleString()}\n\n` +
-        promptSection +
-        sentPackageSection +
-        returnedPackageSection +
-        returnJsonSection +
-        structuredAnalysisSection +
-        metadataSection;
-
-    const shouldEmitRawOnly = provider === 'local' && (plugin.settings.localSendPulseToAiReport ?? true) && !!options?.rawTextResult;
-    const rawFileContent = shouldEmitRawOnly
-        ? `# AI Raw Response — ${new Date().toLocaleString()}\n\n` +
-        `**Provider:** ${provider}\n` +
-        `**Model:** ${modelId}\n` +
-        `**Scene:** ${sceneName ?? 'N/A'}\n` +
-        `**Command:** ${commandContext}\n` +
-        (subplotSection ? `${subplotSection}\n` : '') +
-        (tripletSection ? `${tripletSection}\n` : '') +
-        `\n## Raw JSON\n\`\`\`json\n${options.rawTextResult}\n\`\`\`\n`
-        : '';
-
-    try {
-        const folderExists = vault.getAbstractFileByPath(logFolder);
-        if (!folderExists) {
-            await vault.createFolder(logFolder);
-        }
-        const existing = vault.getAbstractFileByPath(filePath);
-        if (existing) {
-            await vault.modify(existing as any, fileContent.trim());
-        } else {
-            await vault.create(filePath, fileContent.trim());
-        }
-
-        if (shouldEmitRawOnly) {
-            const rawFilePath = `${logFolder}/RAW — ${fileName}`;
-            const rawExisting = vault.getAbstractFileByPath(rawFilePath);
-            if (rawExisting) {
-                await vault.modify(rawExisting as any, rawFileContent.trim());
-            } else {
-                await vault.create(rawFilePath, rawFileContent.trim());
-            }
-        }
-    } catch (error) {
-        console.error(`[BeatsCommands] Error logging API interaction to file ${filePath}:`, error);
-        new Notice(`Failed to write AI log to ${filePath}. Check console.`);
-    }
+    await writeAiLog(plugin, vault, {
+        folderPath: resolveAiOutputFolder(plugin),
+        baseName,
+        content
+    });
 }
 
 async function retryWithBackoff<T>(
     fn: () => Promise<T>,
     maxRetries: number = 3,
     baseDelayMs: number = 5000
-): Promise<T> {
+): Promise<{ result: T; retryCount: number }> {
+    let retryCount = 0;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
-            return await fn();
+            const result = await fn();
+            return { result, retryCount };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             const isRateLimitError = errorMessage.toLowerCase().includes('rate limit') ||
@@ -306,6 +162,7 @@ async function retryWithBackoff<T>(
                 errorMessage.toLowerCase().includes('too many requests');
 
             if (isRateLimitError && attempt < maxRetries) {
+                retryCount += 1;
                 const delayMs = baseDelayMs * Math.pow(2, attempt);
                 new Notice(`Rate limit reached. Waiting ${delayMs / 1000}s before retry (${attempt + 1}/${maxRetries})...`, 3000);
                 await new Promise(resolve => window.setTimeout(resolve, delayMs));
@@ -315,7 +172,9 @@ async function retryWithBackoff<T>(
             throw error;
         }
     }
-    throw new Error('Retry logic exhausted without success');
+    const exhaustedError = new Error('Retry logic exhausted without success');
+    (exhaustedError as Error & { retryCount?: number }).retryCount = retryCount;
+    throw exhaustedError;
 }
 
 export async function callAiProvider(
@@ -328,15 +187,18 @@ export async function callAiProvider(
     tripletInfo?: { prev: string; current: string; next: string }
 ): Promise<AiProviderResponse> {
     const provider = plugin.settings.defaultAiProvider || 'openai';
-    const forceLocalReport = provider === 'local' && (plugin.settings.localSendPulseToAiReport ?? true);
-    const supplementalLocalInstructions = provider === 'local' ? plugin.settings.localLlmInstructions : undefined;
     let apiKey: string | undefined;
+    let modelRequested: string | undefined;
     let modelId: string | undefined;
-    let requestBodyForLog: object | null = null;
+    let modelResolved: string | undefined;
+    let requestPayload: unknown;
     let responseDataForLog: unknown;
     let result: string | null = null;
     let apiErrorMsg: string | undefined;
     let systemPrompt: string | null = null;
+    let retryCount = 0;
+    let submittedAt: Date | null = null;
+    let returnedAt: Date | null = null;
 
     try {
         const normalizeModelId = (prov: string, id: string | undefined): string | undefined => {
@@ -387,7 +249,10 @@ export async function callAiProvider(
         if (provider === 'anthropic') {
             const maxTokens = getSceneAnalysisTokenLimit('anthropic');
             apiKey = plugin.settings.anthropicApiKey;
-            modelId = normalizeModelId('anthropic', plugin.settings.anthropicModelId) || DEFAULT_ANTHROPIC_MODEL_ID;
+            modelRequested = plugin.settings.anthropicModelId || DEFAULT_ANTHROPIC_MODEL_ID;
+            modelId = normalizeModelId('anthropic', modelRequested) || DEFAULT_ANTHROPIC_MODEL_ID;
+            const callArgs = { userPrompt, systemPrompt, maxTokens };
+            requestPayload = buildProviderRequestPayload('anthropic', modelId, callArgs);
 
             if (!apiKey || !modelId) {
                 apiErrorMsg = 'Anthropic API key or Model ID not configured in settings.';
@@ -395,18 +260,15 @@ export async function callAiProvider(
                 throw new Error(apiErrorMsg);
             }
 
-            requestBodyForLog = {
-                model: modelId,
-                system: systemPrompt || undefined,
-                userPrompt,
-                max_tokens: maxTokens
-            };
-
-            const apiResponse = await retryWithBackoff(() =>
+            submittedAt = new Date();
+            const { result: apiResponse, retryCount: callRetryCount } = await retryWithBackoff(() =>
                 callAnthropicApi(apiKey!, modelId!, systemPrompt, userPrompt, maxTokens)
             );
+            returnedAt = new Date();
+            retryCount = callRetryCount;
 
             responseDataForLog = apiResponse.responseData;
+            modelResolved = resolveModelIdFromResponse(provider, responseDataForLog) ?? modelId;
             if (!apiResponse.success || !apiResponse.content) {
                 apiErrorMsg = apiResponse.error ?? 'Anthropic API returned no content.';
                 throw new Error(apiErrorMsg);
@@ -415,7 +277,11 @@ export async function callAiProvider(
         } else if (provider === 'openai') {
             const maxTokens = getSceneAnalysisTokenLimit('openai');
             apiKey = plugin.settings.openaiApiKey;
-            modelId = normalizeModelId('openai', plugin.settings.openaiModelId) || DEFAULT_OPENAI_MODEL_ID;
+            modelRequested = plugin.settings.openaiModelId || DEFAULT_OPENAI_MODEL_ID;
+            modelId = normalizeModelId('openai', modelRequested) || DEFAULT_OPENAI_MODEL_ID;
+            const responseFormat = { type: 'json_schema' as const, json_schema: { name: 'scene_analysis', schema: jsonSchema } };
+            const callArgs = { userPrompt, systemPrompt, maxTokens, responseFormat };
+            requestPayload = buildProviderRequestPayload('openai', modelId, callArgs);
 
             if (!apiKey || !modelId) {
                 apiErrorMsg = 'OpenAI API key or Model ID not configured in settings.';
@@ -423,20 +289,8 @@ export async function callAiProvider(
                 throw new Error(apiErrorMsg);
             }
 
-            requestBodyForLog = {
-                model: modelId,
-                messages: [{ role: 'user', content: systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt }],
-                max_completion_tokens: maxTokens,
-                response_format: {
-                    type: 'json_schema' as const,
-                    json_schema: {
-                        name: 'scene_analysis',
-                        schema: jsonSchema
-                    }
-                }
-            };
-
-            const apiResponse = await retryWithBackoff(() =>
+            submittedAt = new Date();
+            const { result: apiResponse, retryCount: callRetryCount } = await retryWithBackoff(() =>
                 callOpenAiApi(
                     apiKey!,
                     modelId!,
@@ -444,13 +298,16 @@ export async function callAiProvider(
                     userPrompt,
                     maxTokens,
                     undefined,
-                    { type: 'json_schema', json_schema: { name: 'scene_analysis', schema: jsonSchema } },
+                    responseFormat,
                     undefined,
                     undefined
                 )
             );
+            returnedAt = new Date();
+            retryCount = callRetryCount;
 
             responseDataForLog = apiResponse.responseData;
+            modelResolved = resolveModelIdFromResponse(provider, responseDataForLog) ?? modelId;
             if (!apiResponse.success || !apiResponse.content) {
                 apiErrorMsg = apiResponse.error ?? 'OpenAI API returned no content.';
                 throw new Error(apiErrorMsg);
@@ -468,7 +325,10 @@ export async function callAiProvider(
         } else if (provider === 'gemini') {
             const maxTokens = getSceneAnalysisTokenLimit('gemini');
             apiKey = plugin.settings.geminiApiKey;
-            modelId = normalizeModelId('gemini', plugin.settings.geminiModelId) || DEFAULT_GEMINI_MODEL_ID;
+            modelRequested = plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
+            modelId = normalizeModelId('gemini', modelRequested) || DEFAULT_GEMINI_MODEL_ID;
+            const callArgs = { userPrompt, systemPrompt, maxTokens, temperature: 0.2, jsonSchema };
+            requestPayload = buildProviderRequestPayload('gemini', modelId, callArgs);
 
             if (!apiKey || !modelId) {
                 apiErrorMsg = 'Gemini API key or Model ID not configured in settings.';
@@ -476,19 +336,15 @@ export async function callAiProvider(
                 throw new Error(apiErrorMsg);
             }
 
-            requestBodyForLog = {
-                system_instruction: systemPrompt || undefined,
-                userPrompt,
-                temperature: 0.2,
-                maxOutputTokens: maxTokens,
-                response_schema: jsonSchema
-            };
-
-            const apiResponse = await retryWithBackoff(() =>
+            submittedAt = new Date();
+            const { result: apiResponse, retryCount: callRetryCount } = await retryWithBackoff(() =>
                 callGeminiApi(apiKey!, modelId!, systemPrompt, userPrompt, maxTokens, 0.2, jsonSchema, true)
             );
+            returnedAt = new Date();
+            retryCount = callRetryCount;
 
             responseDataForLog = apiResponse.responseData;
+            modelResolved = resolveModelIdFromResponse(provider, responseDataForLog) ?? modelId;
             if (!apiResponse.success || !apiResponse.content) {
                 apiErrorMsg = apiResponse.error ?? 'Gemini API returned no content.';
                 throw new Error(apiErrorMsg);
@@ -506,8 +362,12 @@ export async function callAiProvider(
         } else if (provider === 'local') {
             const maxTokens = getSceneAnalysisTokenLimit('local');
             const localBaseUrl = plugin.settings.localBaseUrl || 'http://localhost:11434/v1';
-            modelId = plugin.settings.localModelId || 'llama3';
+            modelRequested = plugin.settings.localModelId || 'llama3';
+            modelId = modelRequested;
             apiKey = plugin.settings.localApiKey || ''; // Optional for local
+            const responseFormat = { type: 'json_schema' as const, json_schema: { name: 'scene_analysis', schema: jsonSchema } };
+            const callArgs = { userPrompt, systemPrompt, maxTokens, responseFormat, temperature: 0.1 };
+            requestPayload = buildProviderRequestPayload('local', modelId, callArgs);
 
             if (!localBaseUrl || !modelId) {
                 apiErrorMsg = 'Local Base URL or Model ID not configured in settings.';
@@ -515,21 +375,8 @@ export async function callAiProvider(
                 throw new Error(apiErrorMsg);
             }
 
-            requestBodyForLog = {
-                model: modelId,
-                temperature: 0.1,
-                messages: [{ role: 'user', content: systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt }],
-                max_completion_tokens: maxTokens,
-                response_format: {
-                    type: 'json_schema' as const,
-                    json_schema: {
-                        name: 'scene_analysis',
-                        schema: jsonSchema
-                    }
-                }
-            };
-
-            const apiResponse = await retryWithBackoff(() =>
+            submittedAt = new Date();
+            const { result: apiResponse, retryCount: callRetryCount } = await retryWithBackoff(() =>
                 callOpenAiApi(
                     apiKey!,
                     modelId!,
@@ -537,13 +384,16 @@ export async function callAiProvider(
                     userPrompt,
                     maxTokens,
                     localBaseUrl,
-                    { type: 'json_schema', json_schema: { name: 'scene_analysis', schema: jsonSchema } },
+                    responseFormat,
                     0.1,
                     undefined
                 )
             );
+            returnedAt = new Date();
+            retryCount = callRetryCount;
 
             responseDataForLog = apiResponse.responseData;
+            modelResolved = resolveModelIdFromResponse(provider, responseDataForLog) ?? modelId;
             if (!apiResponse.success || !apiResponse.content) {
                 apiErrorMsg = apiResponse.error ?? 'Local API returned no content.';
                 throw new Error(apiErrorMsg);
@@ -554,26 +404,25 @@ export async function callAiProvider(
         }
 
         const parsedForLog = result ? parseGptResult(result, plugin) : null;
-
-        await logApiInteractionToFile(
-            plugin,
-            vault,
+        await writePulseLog(plugin, vault, {
             provider,
-            modelId,
-            requestBodyForLog,
-            responseDataForLog,
+            modelRequested,
+            modelResolved: modelResolved ?? modelId,
+            requestPayload,
+            responseData: responseDataForLog,
+            parsed: parsedForLog,
+            status: 'success',
+            systemPrompt,
+            userPrompt,
+            rawTextResult: result,
+            sceneName,
             subplotName,
             commandContext,
-            sceneName,
             tripletInfo,
-            parsedForLog,
-            {
-                force: forceLocalReport,
-                supplementalLocalInstructions,
-                rawTextResult: result,
-                systemPrompt
-            }
-        );
+            submittedAt,
+            returnedAt,
+            retryCount
+        });
 
         return { result, modelIdUsed: modelId };
     } catch (error) {
@@ -585,25 +434,34 @@ export async function callAiProvider(
             new Notice(`Error calling ${provider} API:\n${detailedMessage}`, 8000);
         }
 
-        await logApiInteractionToFile(
-            plugin,
-            vault,
+        const retryHint = (error as Error & { retryCount?: number }).retryCount;
+        if (typeof retryHint === 'number') {
+            retryCount = retryHint;
+        }
+        if (!submittedAt) submittedAt = new Date();
+        if (!returnedAt) returnedAt = new Date();
+        if (!modelResolved) {
+            modelResolved = resolveModelIdFromResponse(provider, responseDataForLog) ?? modelId;
+        }
+        await writePulseLog(plugin, vault, {
             provider,
-            modelId || 'unknown',
-            requestBodyForLog,
-            responseDataForLog,
+            modelRequested,
+            modelResolved: modelResolved ?? modelId,
+            requestPayload,
+            responseData: responseDataForLog,
+            parsed: null,
+            status: 'error',
+            systemPrompt,
+            userPrompt,
+            rawTextResult: result,
+            sceneName,
             subplotName,
             commandContext,
-            sceneName,
             tripletInfo,
-            null,
-            {
-                force: forceLocalReport,
-                supplementalLocalInstructions,
-                rawTextResult: result,
-                systemPrompt
-            }
-        );
+            submittedAt,
+            returnedAt,
+            retryCount
+        });
 
         throw error instanceof Error ? error : new Error(String(error));
     }

@@ -1,4 +1,4 @@
-import { App } from 'obsidian';
+import { App, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { INQUIRY_VIEW_TYPE } from './constants';
 import { InquiryView } from './InquiryView';
@@ -26,5 +26,15 @@ export class InquiryService {
             active: true
         });
         this.app.workspace.revealLeaf(leaf);
+    }
+
+    async runOmnibusPass(): Promise<void> {
+        await this.activateView();
+        const view = this.getInquiryViews()[0];
+        if (!view) {
+            new Notice('Unable to open Inquiry view for omnibus pass.');
+            return;
+        }
+        await view.runOmnibusPass();
     }
 }

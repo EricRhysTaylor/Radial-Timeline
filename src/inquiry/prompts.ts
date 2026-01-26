@@ -1,4 +1,4 @@
-import type { InquiryScope, InquiryZone } from './state';
+import type { InquiryZone } from './state';
 import type { InquiryPromptConfig, InquiryPromptSlot } from '../types/settings';
 
 type BuiltInPromptSeed = {
@@ -8,33 +8,24 @@ type BuiltInPromptSeed = {
     enabled?: boolean;
 };
 
-const CANONICAL_PROMPTS: Record<InquiryZone, { book: string; saga: string }> = {
-    setup: {
-        book: 'What must already be true in these scenes for this book to move smoothly?',
-        saga: 'What must already be true across these books for the saga to move smoothly?'
-    },
-    pressure: {
-        book: 'Where do these scenes shift momentum most in this book right now?',
-        saga: 'Where do these books shift momentum most across the saga right now?'
-    },
-    payoff: {
-        book: 'Across these scenes, where are promises paid off, deferred, dangling, or abandoned in this book?',
-        saga: 'Across these books, where are promises paid off, deferred, dangling, or abandoned across the saga?'
-    }
+const CANONICAL_PROMPTS: Record<InquiryZone, string> = {
+    setup: 'What must already be true in the material for the story to move smoothly?',
+    pressure: 'Where does the material shift momentum most right now?',
+    payoff: 'Across the material, where are promises paid off, deferred, dangling, or abandoned?'
 };
 
 const BUILT_IN_PROMPTS: Record<InquiryZone, BuiltInPromptSeed[]> = {
     setup: [{
         id: 'setup-core',
         label: 'Setup',
-        question: CANONICAL_PROMPTS.setup.book,
+        question: CANONICAL_PROMPTS.setup,
         enabled: true
     }],
     pressure: [
         {
             id: 'pressure-core',
             label: 'Pressure',
-            question: CANONICAL_PROMPTS.pressure.book,
+            question: CANONICAL_PROMPTS.pressure,
             enabled: true
         },
         {
@@ -48,7 +39,7 @@ const BUILT_IN_PROMPTS: Record<InquiryZone, BuiltInPromptSeed[]> = {
         {
             id: 'payoff-core',
             label: 'Payoff',
-            question: CANONICAL_PROMPTS.payoff.book,
+            question: CANONICAL_PROMPTS.payoff,
             enabled: true
         },
         {
@@ -144,7 +135,4 @@ export const normalizeInquiryPromptConfig = (raw?: InquiryPromptConfig): Inquiry
 export const getBuiltInPromptSeed = (zone: InquiryZone, index = 0): BuiltInPromptSeed | undefined =>
     BUILT_IN_PROMPTS[zone][index];
 
-export const getCanonicalPromptText = (zone: InquiryZone, scope: InquiryScope): string => {
-    const entry = CANONICAL_PROMPTS[zone];
-    return scope === 'saga' ? entry.saga : entry.book;
-};
+export const getCanonicalPromptText = (zone: InquiryZone): string => CANONICAL_PROMPTS[zone];

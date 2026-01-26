@@ -4,6 +4,7 @@ import { DEFAULT_SETTINGS } from '../defaults';
 import type {
     InquiryClassConfig,
     InquiryCorpusThresholds,
+    InquiryMaterialMode,
     InquiryPromptConfig,
     InquiryPromptSlot,
     InquirySourcesSettings
@@ -72,6 +73,33 @@ type LegacyInquirySourcesSettings = {
 };
 
 const REFERENCE_ONLY_CLASSES = new Set(['character', 'place', 'power']);
+const MATERIAL_MODES: InquiryMaterialMode[] = ['none', 'summary', 'full', 'digest'];
+const DEFAULT_FULL_CLASSES = new Set(['outline', ...REFERENCE_ONLY_CLASSES]);
+const MATERIAL_LABELS: Record<InquiryMaterialMode, string> = {
+    none: 'None',
+    summary: 'Summary',
+    full: 'Full',
+    digest: 'Digest (soon)'
+};
+
+const defaultModeForClass = (className: string): InquiryMaterialMode => {
+    if (DEFAULT_FULL_CLASSES.has(className)) return 'full';
+    if (className === 'scene') return 'summary';
+    return 'full';
+};
+
+const normalizeMaterialMode = (value: unknown, className: string): InquiryMaterialMode => {
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (MATERIAL_MODES.includes(normalized as InquiryMaterialMode)) {
+            return normalized as InquiryMaterialMode;
+        }
+    }
+    if (typeof value === 'boolean') {
+        return value ? defaultModeForClass(className) : 'none';
+    }
+    return 'none';
+};
 
 const isLegacySources = (sources?: InquirySourcesSettings | LegacyInquirySourcesSettings): sources is LegacyInquirySourcesSettings => {
     if (!sources) return false;
@@ -86,8 +114,9 @@ const defaultClassConfig = (className: string): InquiryClassConfig => {
     return {
         className: normalized,
         enabled: false,
-        bookScope: isScene || isOutline || isReference,
-        sagaScope: isOutline || isReference
+        bookScope: isScene ? 'summary' : (isOutline || isReference ? 'full' : defaultModeForClass(normalized)),
+        sagaScope: isOutline || isReference ? 'full' : 'none',
+        referenceScope: isReference ? 'full' : 'none'
     };
 };
 
@@ -134,24 +163,49 @@ const migrateLegacySources = (legacy: LegacyInquirySourcesSettings): InquirySour
 
     const classes: InquiryClassConfig[] = [];
     if (legacy.sceneFolders?.length) {
-        classes.push({ className: 'scene', enabled: true, bookScope: true, sagaScope: false });
+        classes.push({
+            className: 'scene',
+            enabled: true,
+            bookScope: 'summary',
+            sagaScope: 'none',
+            referenceScope: 'none'
+        });
     }
     if ((legacy.bookOutlineFiles?.length || 0) > 0 || legacy.sagaOutlineFile) {
         classes.push({
             className: 'outline',
             enabled: true,
-            bookScope: (legacy.bookOutlineFiles?.length || 0) > 0,
-            sagaScope: !!legacy.sagaOutlineFile
+            bookScope: (legacy.bookOutlineFiles?.length || 0) > 0 ? 'full' : 'none',
+            sagaScope: legacy.sagaOutlineFile ? 'full' : 'none',
+            referenceScope: 'none'
         });
     }
     if (legacy.characterFolders?.length) {
-        classes.push({ className: 'character', enabled: true, bookScope: true, sagaScope: true });
+        classes.push({
+            className: 'character',
+            enabled: true,
+            bookScope: 'full',
+            sagaScope: 'full',
+            referenceScope: 'full'
+        });
     }
     if (legacy.placeFolders?.length) {
-        classes.push({ className: 'place', enabled: true, bookScope: true, sagaScope: true });
+        classes.push({
+            className: 'place',
+            enabled: true,
+            bookScope: 'full',
+            sagaScope: 'full',
+            referenceScope: 'full'
+        });
     }
     if (legacy.powerFolders?.length) {
-        classes.push({ className: 'power', enabled: true, bookScope: true, sagaScope: true });
+        classes.push({
+            className: 'power',
+            enabled: true,
+            bookScope: 'full',
+            sagaScope: 'full',
+            referenceScope: 'full'
+        });
     }
 
     return {
@@ -177,8 +231,13 @@ const normalizeInquirySources = (raw?: InquirySourcesSettings | LegacyInquirySou
         classes: (raw.classes || []).map(config => ({
             className: config.className.toLowerCase(),
             enabled: !!config.enabled,
-            bookScope: !!config.bookScope,
-            sagaScope: !!config.sagaScope
+            bookScope: normalizeMaterialMode(config.bookScope, config.className.toLowerCase()),
+            sagaScope: normalizeMaterialMode(config.sagaScope, config.className.toLowerCase()),
+            referenceScope: normalizeMaterialMode(
+                (config as InquiryClassConfig).referenceScope
+                    ?? (REFERENCE_ONLY_CLASSES.has(config.className.toLowerCase()) ? true : false),
+                config.className.toLowerCase()
+            )
         })),
         classCounts: raw.classCounts || {},
         resolvedScanRoots: raw.resolvedScanRoots ? normalizeScanRootPatterns(raw.resolvedScanRoots) : [],
@@ -324,7 +383,7 @@ export function renderInquirySection(params: SectionParams): void {
     let resolvedRootCache: { signature: string; resolvedRoots: string[]; total: number } | null = null;
 
     const classTableWrap = classScopeBody.createDiv({ cls: 'ert-controlGroup' });
-    classTableWrap.style.setProperty('--ert-controlGroup-columns', '90px minmax(0, 1.1fr) 140px 140px 110px');
+    classTableWrap.style.setProperty('--ert-controlGroup-columns', '90px minmax(0, 1.1fr) 140px 140px 140px 110px');
 
     const scanInquiryClasses = async (roots: string[]): Promise<{
         discoveredCounts: Record<string, number>;
@@ -391,6 +450,7 @@ export function renderInquirySection(params: SectionParams): void {
         header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Class' });
         header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Book scope' });
         header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Saga scope' });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Reference' });
         header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Matches' });
 
         configs.forEach(config => {
@@ -416,18 +476,35 @@ export function renderInquirySection(params: SectionParams): void {
             const isOutline = config.className === 'outline';
             const isReference = REFERENCE_ONLY_CLASSES.has(config.className);
 
+            const buildModeSelect = (
+                cell: HTMLElement,
+                value: InquiryMaterialMode,
+                disabled: boolean,
+                onChange: (next: InquiryMaterialMode) => void
+            ) => {
+                const select = cell.createEl('select', { cls: 'ert-input ert-input--sm' });
+                MATERIAL_MODES.forEach(mode => {
+                    const option = select.createEl('option', { value: mode, text: MATERIAL_LABELS[mode] });
+                    if (mode === 'digest') {
+                        option.disabled = true;
+                    }
+                });
+                select.value = value;
+                select.disabled = disabled;
+                plugin.registerDomEvent(select, 'change', () => {
+                    onChange(select.value as InquiryMaterialMode);
+                });
+            };
+
             const bookCell = row.createDiv({ cls: 'ert-controlGroup__cell' });
             if (isReference) {
                 bookCell.createSpan({ cls: 'ert-controlGroup__cell--meta', text: 'Reference' });
             } else {
-                const bookToggle = bookCell.createEl('input', { type: 'checkbox' });
-                bookToggle.checked = config.bookScope;
-                bookToggle.disabled = rowDisabled;
-                plugin.registerDomEvent(bookToggle, 'change', () => {
+                buildModeSelect(bookCell, config.bookScope, rowDisabled, (next) => {
                     inquirySources = {
                         ...inquirySources,
                         classes: (inquirySources.classes || []).map(entry =>
-                            entry.className === config.className ? { ...entry, bookScope: bookToggle.checked } : entry
+                            entry.className === config.className ? { ...entry, bookScope: next } : entry
                         )
                     };
                     void refreshClassScan();
@@ -441,14 +518,11 @@ export function renderInquirySection(params: SectionParams): void {
             if (isReference) {
                 sagaCell.createSpan({ cls: 'ert-controlGroup__cell--meta', text: 'Reference' });
             } else {
-                const sagaToggle = sagaCell.createEl('input', { type: 'checkbox' });
-                sagaToggle.checked = config.sagaScope;
-                sagaToggle.disabled = rowDisabled;
-                plugin.registerDomEvent(sagaToggle, 'change', () => {
+                buildModeSelect(sagaCell, config.sagaScope, rowDisabled, (next) => {
                     inquirySources = {
                         ...inquirySources,
                         classes: (inquirySources.classes || []).map(entry =>
-                            entry.className === config.className ? { ...entry, sagaScope: sagaToggle.checked } : entry
+                            entry.className === config.className ? { ...entry, sagaScope: next } : entry
                         )
                     };
                     void refreshClassScan();
@@ -456,6 +530,21 @@ export function renderInquirySection(params: SectionParams): void {
                 if (isOutline) {
                     sagaCell.createSpan({ cls: 'ert-controlGroup__cell--meta', text: 'Saga outline' });
                 }
+            }
+
+            const referenceCell = row.createDiv({ cls: 'ert-controlGroup__cell' });
+            if (isReference) {
+                buildModeSelect(referenceCell, config.referenceScope, rowDisabled, (next) => {
+                    inquirySources = {
+                        ...inquirySources,
+                        classes: (inquirySources.classes || []).map(entry =>
+                            entry.className === config.className ? { ...entry, referenceScope: next } : entry
+                        )
+                    };
+                    void refreshClassScan();
+                });
+            } else {
+                referenceCell.createSpan({ cls: 'ert-controlGroup__cell--meta', text: '—' });
             }
 
             const countCell = row.createDiv({
@@ -562,7 +651,10 @@ export function renderInquirySection(params: SectionParams): void {
 
         const participatingClasses = new Set<string>();
         visibleConfigs.forEach(config => {
-            const participates = config.enabled && (config.bookScope || config.sagaScope || REFERENCE_ONLY_CLASSES.has(config.className));
+            const participates = config.enabled
+                && (config.bookScope !== 'none'
+                    || config.sagaScope !== 'none'
+                    || config.referenceScope !== 'none');
             if (!participates) return;
             participatingClasses.add(config.className);
         });
@@ -777,13 +869,7 @@ export function renderInquirySection(params: SectionParams): void {
             const canonicalRow = body.createDiv({ cls: ERT_CLASSES.ROW });
             canonicalRow.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Canonical' });
             const canonicalInputWrap = canonicalRow.createDiv({ cls: ERT_CLASSES.CONTROL });
-            canonicalInputWrap.style.setProperty('--ert-label-w', '56px');
-            const bookRow = canonicalInputWrap.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
-            bookRow.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Book' });
-            bookRow.createDiv({ cls: 'ert-prompt-question', text: getCanonicalPromptText(zone, 'book') });
-            const sagaRow = canonicalInputWrap.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
-            sagaRow.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Saga' });
-            sagaRow.createDiv({ cls: 'ert-prompt-question', text: getCanonicalPromptText(zone, 'saga') });
+            canonicalInputWrap.createDiv({ cls: 'ert-prompt-question', text: getCanonicalPromptText(zone) });
 
             const customSlots = getCustomSlots(zone);
 

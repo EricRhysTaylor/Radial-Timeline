@@ -11,6 +11,7 @@ export interface InquirySession {
     stale?: boolean;
     status?: InquirySessionStatus;
     briefPath?: string;
+    logPath?: string;
     focusSceneId?: string;
     focusBookId?: string;
     scope?: InquiryScope;

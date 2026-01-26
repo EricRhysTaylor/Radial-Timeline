@@ -54,6 +54,13 @@ export class CommandRegistrar {
                 this.plugin.getInquiryService().activateView();
             },
         });
+        this.plugin.addCommand({
+            id: 'run-inquiry-omnibus-pass',
+            name: 'Inquiry: Run Omnibus Pass',
+            callback: async () => {
+                await this.plugin.getInquiryService().runOmnibusPass();
+            },
+        });
 
         this.plugin.addCommand({
             id: 'search-timeline',

@@ -1,4 +1,5 @@
 import {
+    App,
     ItemView,
     WorkspaceLeaf,
     Platform,
@@ -6,10 +7,16 @@ import {
     setIcon,
     TAbstractFile,
     TFile,
-    normalizePath
+    normalizePath,
+    SuggestModal
 } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { INQUIRY_MAX_OUTPUT_TOKENS, INQUIRY_SCHEMA_VERSION, INQUIRY_VIEW_DISPLAY_TEXT, INQUIRY_VIEW_TYPE } from './constants';
+import {
+    INQUIRY_MAX_OUTPUT_TOKENS,
+    INQUIRY_SCHEMA_VERSION,
+    INQUIRY_VIEW_DISPLAY_TEXT,
+    INQUIRY_VIEW_TYPE
+} from './constants';
 import {
     createDefaultInquiryState,
     InquiryConfidence,
@@ -20,10 +27,12 @@ import {
     InquirySeverity,
     InquiryZone
 } from './state';
-import type { InquiryPromptConfig } from '../types/settings';
+import type { InquiryClassConfig, InquiryMaterialMode, InquiryPromptConfig } from '../types/settings';
 import { buildDefaultInquiryPromptConfig, getBuiltInPromptSeed, getCanonicalPromptText, normalizeInquiryPromptConfig } from './prompts';
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
+import { ensureInquiryLogFolder } from './utils/logs';
 import { openOrRevealFile } from '../utils/fileUtils';
+import { extractTokenUsage, formatAiLogContent, sanitizeLogPayload, type AiLogStatus } from '../ai/log';
 import {
     InquiryGlyph,
     FLOW_RADIUS,
@@ -34,7 +43,14 @@ import {
 } from './components/InquiryGlyph';
 import { ZONE_LAYOUT } from './zoneLayout';
 import { InquiryRunnerService } from './runner/InquiryRunnerService';
-import type { CorpusManifest, CorpusManifestEntry, EvidenceParticipationRules } from './runner/types';
+import type {
+    CorpusManifest,
+    CorpusManifestEntry,
+    EvidenceParticipationRules,
+    InquiryOmnibusInput,
+    InquiryRunTrace,
+    InquiryRunnerInput
+} from './runner/types';
 import { InquirySessionStore } from './InquirySessionStore';
 import type { InquirySession, InquirySessionStatus } from './sessionTypes';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
@@ -82,6 +98,7 @@ const RESULTS_EMPTY_TEXT = 'No notable findings.';
 const RESULTS_MAX_CHIPS = 6;
 const FLOW_FINDING_ORDER: InquiryFinding['kind'][] = ['escalation', 'conflict', 'continuity', 'loose_end', 'unclear', 'error', 'none'];
 const DEPTH_FINDING_ORDER: InquiryFinding['kind'][] = ['continuity', 'loose_end', 'conflict', 'escalation', 'unclear', 'error', 'none'];
+const SIGMA_CHAR = String.fromCharCode(931);
 const MODE_ICON_VIEWBOX = 2048;
 const FLOW_ICON_PATHS = [
     'M1873.99,900.01c.23,1.74-2.27.94-3.48.99-14.3.59-28.74-.35-43.05-.04-2.37.05-4.55,1.03-6.92,1.08-124.15,2.86-248.6,8.35-373,4.92-91.61-2.53-181.2-15.53-273.08-17.92-101.98-2.65-204.05,7.25-305.95.95-83.2-5.14-164.18-24.05-247.02-31.98-121.64-11.65-245.9-13.5-368.04-15.96-2.37-.05-4.55-1.04-6.92-1.08-17.31-.34-34.77.75-52.05.04-1.22-.05-3.72.75-3.48-.99,26.49-.25,53.03.28,79.54.03,144.74-1.38,289.81-5.3,433.95,8.97,18.67,1.85,37.34,5.16,56.01,6.99,165.31,16.18,330.85-3.46,495.99,14.01,118.64,12.56,236.15,30.42,355.97,28.03,87.15,0,174.3,2.45,261.54,1.97h-.01Z',
@@ -138,6 +155,20 @@ const CC_RIGHT_MARGIN = 50;
 const CC_BOTTOM_MARGIN = 50;
 const INQUIRY_GUIDANCE_DOC_URL = 'https://github.com/EricRhysTaylor/Radial-Timeline/wiki';
 const INQUIRY_HELP_TOOLTIP = 'How Inquiry Works';
+const INQUIRY_HELP_CONFIG_TOOLTIP = [
+    'Inquiry is not configured yet.',
+    'Please configure the Inquiry directories where your scenes, books, and outlines are stored (Settings -> Inquiry).',
+    'Then explicitly check which classes to include for the selected scope.'
+].join('\n');
+const INQUIRY_HELP_NO_SCENES_TOOLTIP = [
+    'No scenes found for the current scope.',
+    'Please configure the Inquiry directories where your scenes, books, and outlines are stored (Settings -> Inquiry).',
+    'Then explicitly check which classes to include for the selected scope.'
+].join('\n');
+const INQUIRY_HELP_RESULTS_TOOLTIP = [
+    'Review material citations for granular feedback in the minimap.',
+    'View the Brief for full details.'
+].join('\n');
 const INQUIRY_HELP_ONBOARDING_TOOLTIP = [
     'Number buttons reveal the question and payload.',
     'Click to process a question with AI.',
@@ -165,6 +196,61 @@ type InquiryPreviewRow = {
     label: string;
 };
 
+type InquiryChoiceOption<T> = {
+    label: string;
+    value: T;
+};
+
+class InquiryChoiceModal<T> extends SuggestModal<InquiryChoiceOption<T>> {
+    private didChoose = false;
+
+    constructor(
+        app: App,
+        private choices: InquiryChoiceOption<T>[],
+        private onChoose: (value: T) => void,
+        private onCancel: () => void,
+        placeholder?: string
+    ) {
+        super(app);
+        if (placeholder) {
+            this.setPlaceholder(placeholder);
+        }
+    }
+
+    getSuggestions(query: string): InquiryChoiceOption<T>[] {
+        const normalized = query.trim().toLowerCase();
+        if (!normalized) return this.choices;
+        return this.choices.filter(choice => choice.label.toLowerCase().includes(normalized));
+    }
+
+    renderSuggestion(item: InquiryChoiceOption<T>, el: HTMLElement): void {
+        el.setText(item.label);
+    }
+
+    onChooseSuggestion(item: InquiryChoiceOption<T>, _evt: MouseEvent | KeyboardEvent): void {
+        this.onChooseItem(item);
+    }
+
+    getItems(): InquiryChoiceOption<T>[] {
+        return this.choices;
+    }
+
+    getItemText(item: InquiryChoiceOption<T>): string {
+        return item.label;
+    }
+
+    onChooseItem(item: InquiryChoiceOption<T>): void {
+        this.didChoose = true;
+        this.onChoose(item.value);
+    }
+
+    onClose(): void {
+        if (!this.didChoose) {
+            this.onCancel();
+        }
+    }
+}
+
 type InquiryPayloadStats = {
     scope: InquiryScope;
     focusBookId?: string;
@@ -178,6 +264,9 @@ type InquiryPayloadStats = {
     referenceByClass: Record<string, number>;
     evidenceChars: number;
     resolvedRoots: string[];
+    manifestFingerprint: string;
+    tokenEstimate?: InquiryRunTrace['tokenEstimate'];
+    tokenEstimateQuestion?: string;
 };
 
 type RgbColor = {
@@ -210,6 +299,13 @@ type CorpusCcSlot = {
 type InquiryWritebackOutcome = 'written' | 'duplicate' | 'skipped';
 type InquiryGuidanceState = 'not-configured' | 'no-scenes' | 'ready' | 'running' | 'results';
 type EngineProvider = 'anthropic' | 'gemini' | 'openai' | 'local';
+type OmnibusProviderChoice = {
+    provider: EngineProvider;
+    modelId: string;
+    modelLabel: string;
+    useOmnibus: boolean;
+    reason?: string;
+};
 
 export class InquiryView extends ItemView {
     static readonly viewType = INQUIRY_VIEW_TYPE;
@@ -306,6 +402,7 @@ export class InquiryView extends ItemView {
     private previewShimmerMaskBackdrop?: SVGRectElement;
     private previewPanelHeight = 0;
     private payloadStats?: InquiryPayloadStats;
+    private payloadEstimateRequestId = 0;
     private duplicatePulseTimer?: number;
     private rehydratePulseTimer?: number;
     private rehydrateHighlightTimer?: number;
@@ -1756,7 +1853,7 @@ export class InquiryView extends ItemView {
         return (config[zone] ?? [])
             .map(slot => {
                 const question = slot.builtIn && slot.id === canonicalId
-                    ? getCanonicalPromptText(zone, this.state.scope)
+                    ? getCanonicalPromptText(zone)
                     : slot.question;
                 return { slot, question };
             })
@@ -2912,7 +3009,12 @@ export class InquiryView extends ItemView {
         const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
         const classScope = this.getClassScopeConfig(sources.classScope);
         const outlineConfig = (sources.classes || []).find(cfg => cfg.className === 'outline');
-        const outlineAllowed = outlineConfig?.enabled && (outlineConfig.bookScope || outlineConfig.sagaScope);
+        if (!outlineConfig?.enabled) {
+            return [];
+        }
+        const includeBookOutlines = this.isModeActive(outlineConfig.bookScope);
+        const includeSagaOutlines = this.isModeActive(outlineConfig.sagaScope);
+        const outlineAllowed = includeBookOutlines || includeSagaOutlines;
         if (!outlineAllowed || (!classScope.allowAll && !classScope.allowed.has('outline'))) {
             return [];
         }
@@ -2921,23 +3023,28 @@ export class InquiryView extends ItemView {
         const bookOutlines = outlineFiles.filter(file => (this.getOutlineScope(file) ?? 'book') === 'book');
         const sagaOutlines = outlineFiles.filter(file => this.getOutlineScope(file) === 'saga');
 
-        const entries: CorpusCcEntry[] = corpus.books.map(book => {
-            const outline = bookOutlines.find(file => file.path === book.rootPath || file.path.startsWith(`${book.rootPath}/`));
-            return {
-                id: outline?.path || book.id,
-                label: book.displayLabel,
-                filePath: outline?.path || '',
-                className: 'outline'
-            };
-        });
+        const entries: CorpusCcEntry[] = [];
+        if (includeBookOutlines) {
+            entries.push(...corpus.books.map(book => {
+                const outline = bookOutlines.find(file => file.path === book.rootPath || file.path.startsWith(`${book.rootPath}/`));
+                return {
+                    id: outline?.path || book.id,
+                    label: book.displayLabel,
+                    filePath: outline?.path || '',
+                    className: 'outline'
+                };
+            }));
+        }
 
-        const sagaOutline = sagaOutlines[0];
-        entries.push({
-            id: sagaOutline?.path || 'saga-outline',
-            label: 'Saga',
-            filePath: sagaOutline?.path || '',
-            className: 'outline'
-        });
+        if (includeSagaOutlines) {
+            const sagaOutline = sagaOutlines[0];
+            entries.push({
+                id: sagaOutline?.path || 'saga-outline',
+                label: 'Saga',
+                filePath: sagaOutline?.path || '',
+                className: 'outline'
+            });
+        }
 
         return entries;
     }
@@ -2947,6 +3054,7 @@ export class InquiryView extends ItemView {
         const classScope = this.getClassScopeConfig(sources.classScope);
         const outlineConfig = (sources.classes || []).find(cfg => cfg.className === 'outline');
         if (!outlineConfig?.enabled) return [];
+        if (!this.isModeActive(outlineConfig.bookScope) && !this.isModeActive(outlineConfig.sagaScope)) return [];
         if (!classScope.allowAll && !classScope.allowed.has('outline')) return [];
 
         const scanRoots = normalizeScanRootPatterns(sources.scanRoots);
@@ -3730,12 +3838,16 @@ export class InquiryView extends ItemView {
     private updateGuidanceHelpTooltip(state: InquiryGuidanceState): void {
         if (!this.helpToggleButton) return;
         const hasSessions = this.hasInquirySessions();
-        const tooltip = hasSessions ? INQUIRY_HELP_TOOLTIP : INQUIRY_HELP_ONBOARDING_TOOLTIP;
+        const isAlert = state === 'not-configured' || state === 'no-scenes';
+        const isResults = state === 'results';
+        const tooltip = isAlert
+            ? (state === 'not-configured' ? INQUIRY_HELP_CONFIG_TOOLTIP : INQUIRY_HELP_NO_SCENES_TOOLTIP)
+            : (isResults ? INQUIRY_HELP_RESULTS_TOOLTIP : (hasSessions ? INQUIRY_HELP_TOOLTIP : INQUIRY_HELP_ONBOARDING_TOOLTIP));
 
         this.helpToggleButton.removeAttribute('aria-pressed');
-        const isAlert = state === 'not-configured' || state === 'no-scenes';
-        this.helpToggleButton.classList.toggle('is-help-onboarding', !hasSessions);
-        this.helpToggleButton.classList.toggle('is-guidance-alert', isAlert && hasSessions);
+        this.helpToggleButton.classList.toggle('is-help-onboarding', !hasSessions && !isAlert && !isResults);
+        this.helpToggleButton.classList.toggle('is-help-results', isResults);
+        this.helpToggleButton.classList.toggle('is-guidance-alert', isAlert);
         addTooltipData(this.helpToggleButton, tooltip, 'left');
         this.helpToggleButton.setAttribute('aria-label', tooltip);
     }
@@ -3743,16 +3855,12 @@ export class InquiryView extends ItemView {
     private handleGuidanceHelpClick(): void {
         const state = this.resolveGuidanceState();
         this.guidanceState = state;
-        if (this.hasInquirySessions()) {
-            window.open(INQUIRY_GUIDANCE_DOC_URL, '_blank');
-            return;
-        }
         if (state === 'not-configured') {
             this.openInquirySettings('sources');
             return;
         }
         if (state === 'no-scenes') {
-            this.openInquirySettings('class-scope');
+            this.openInquirySettings('sources');
             return;
         }
         window.open(INQUIRY_GUIDANCE_DOC_URL, '_blank');
@@ -3992,38 +4100,46 @@ export class InquiryView extends ItemView {
         this.setApiStatus('running');
         this.refreshUI();
         let result: InquiryResult;
+        let runTrace: InquiryRunTrace | null = null;
         new Notice('Inquiry: contacting AI provider.');
         console.info('[Inquiry] API HIT');
         const submittedAt = new Date();
+        const runnerInput = {
+            scope: this.state.scope,
+            focusLabel,
+            focusBookId: this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusBookId,
+            mode: this.state.mode,
+            questionId: question.id,
+            questionText: question.question,
+            questionZone: question.zone,
+            corpus: manifest,
+            rules: this.getEvidenceRules(),
+            ai: {
+                provider: this.plugin.settings.defaultAiProvider || 'openai',
+                modelId: this.getActiveInquiryModelId(),
+                modelLabel: this.getActiveInquiryModelLabel()
+            }
+        };
         try {
             // Lens selection is UI-only; do not vary question, evidence, or verdict structure by lens.
             // Each inquiry produces two compressed answers (flow + depth). Keep this dual-answer model intact.
-            result = await this.runner.run({
-                scope: this.state.scope,
-                focusLabel,
-                focusBookId: this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusBookId,
-                mode: this.state.mode,
-                questionId: question.id,
-                questionText: question.question,
-                questionZone: question.zone,
-                corpus: manifest,
-                rules: this.getEvidenceRules(),
-                ai: {
-                    provider: this.plugin.settings.defaultAiProvider || 'openai',
-                    modelId: this.getActiveInquiryModelId(),
-                    modelLabel: this.getActiveInquiryModelLabel()
-                }
-            });
+            const runOutput = await this.runner.runWithTrace(runnerInput);
+            result = runOutput.result;
+            runTrace = runOutput.trace;
             console.info('[Inquiry] API OK');
         } catch (error) {
             console.info('[Inquiry] API FAIL');
             result = this.buildErrorFallback(question, focusLabel, manifest.fingerprint, error);
+            const message = error instanceof Error ? error.message : String(error);
+            runTrace = await this.buildFallbackTrace(runnerInput, `Runner exception: ${message}`);
         }
         const completedAt = new Date();
         result.submittedAt = submittedAt.toISOString();
         result.completedAt = completedAt.toISOString();
         result.roundTripMs = completedAt.getTime() - submittedAt.getTime();
+        const rawResult = result;
         result = this.normalizeLegacyResult(result);
+        const normalizationNotes = this.collectNormalizationNotes(rawResult, result);
 
         if (cacheEnabled && !this.isErrorResult(result)) {
             cacheStatus = 'fresh';
@@ -4044,6 +4160,13 @@ export class InquiryView extends ItemView {
             questionZone: question.zone
         };
         this.sessionStore.setSession(session);
+        const traceForLog = runTrace
+            ?? await this.buildFallbackTrace(runnerInput, 'Trace unavailable; log created without prompt capture.');
+        await this.saveInquiryLog(result, traceForLog, {
+            sessionKey: session.key,
+            normalizationNotes
+        });
+        session = this.sessionStore.peekSession(session.key) ?? session;
 
         const autoSaveEnabled = this.plugin.settings.inquiryAutoSave ?? true;
         const shouldAutoSave = autoSaveEnabled
@@ -4079,6 +4202,534 @@ export class InquiryView extends ItemView {
             this.setApiStatus('success');
         }
         void this.writeInquiryPendingEdits(session, result);
+    }
+
+    public async runOmnibusPass(): Promise<void> {
+        if (Platform.isMobile) {
+            new Notice('Inquiry omnibus pass is available on desktop only.');
+            return;
+        }
+        if (this.state.isRunning) {
+            new Notice('Inquiry running. Please wait.');
+            return;
+        }
+
+        this.refreshCorpus();
+        this.guidanceState = this.resolveGuidanceState();
+        if (this.isInquiryRunDisabled()) {
+            const message = this.isInquiryBlocked()
+                ? 'Inquiry is not configured yet.'
+                : 'No scenes available for Inquiry.';
+            new Notice(message);
+            return;
+        }
+
+        const scope = await this.promptOmnibusScope();
+        if (!scope) return;
+
+        if (scope !== this.state.scope) {
+            this.handleScopeChange(scope);
+        } else {
+            this.refreshCorpus();
+        }
+        this.guidanceState = this.resolveGuidanceState();
+        if (this.isInquiryRunDisabled()) {
+            const message = this.isInquiryBlocked()
+                ? 'Inquiry is not configured yet.'
+                : 'No scenes available for Inquiry.';
+            new Notice(message);
+            return;
+        }
+
+        const questions = this.getOmnibusQuestions();
+        if (!questions.length) {
+            new Notice('No enabled Inquiry questions found.');
+            return;
+        }
+
+        let createIndex = false;
+        if (questions.length > 1) {
+            const choice = await this.promptOmnibusIndexChoice();
+            if (choice === null) return;
+            createIndex = choice;
+        }
+
+        const providerChoice = this.resolveOmnibusProviderChoice();
+        if (!providerChoice) return;
+
+        if (!providerChoice.useOmnibus) {
+            const providerLabel = this.getInquiryProviderLabel(providerChoice.provider);
+            const modelLabel = providerChoice.modelLabel;
+            const reason = providerChoice.reason ? ` (${providerChoice.reason})` : '';
+            new Notice(`Gemini not available${reason}. Running per-question pass with ${providerLabel} · ${modelLabel}.`);
+            await this.runOmnibusSequential(questions, providerChoice, createIndex);
+            return;
+        }
+
+        await this.runOmnibusCombined(questions, providerChoice, createIndex);
+    }
+
+    private async runOmnibusCombined(
+        questions: InquiryQuestion[],
+        providerChoice: OmnibusProviderChoice,
+        createIndex: boolean
+    ): Promise<void> {
+        const focusLabel = this.getFocusLabel();
+        const focusId = this.getFocusId();
+        const focusSceneId = this.state.scope === 'book' ? this.state.focusSceneId : undefined;
+        const focusBookId = this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
+        const manifest = this.buildCorpusManifest('omnibus', { modelId: providerChoice.modelId });
+        const submittedAt = new Date();
+
+        const omnibusInput: InquiryOmnibusInput = {
+            scope: this.state.scope,
+            focusLabel,
+            focusSceneId,
+            focusBookId,
+            mode: this.state.mode,
+            questions: questions.map(question => ({
+                id: question.id,
+                zone: question.zone,
+                question: question.question
+            })),
+            corpus: manifest,
+            rules: this.getEvidenceRules(),
+            ai: {
+                provider: providerChoice.provider,
+                modelId: providerChoice.modelId,
+                modelLabel: providerChoice.modelLabel
+            }
+        };
+
+        this.state.isRunning = true;
+        this.setApiStatus('running');
+        this.refreshUI();
+
+        const briefPaths: string[] = [];
+        let lastSession: InquirySession | null = null;
+        let lastResult: InquiryResult | null = null;
+        let traceForLogs: InquiryRunTrace | null = null;
+
+        try {
+            const runOutput = await this.runner.runOmnibusWithTrace(omnibusInput);
+            traceForLogs = runOutput.trace;
+            const completedAt = new Date();
+            const questionsById = new Map(questions.map(question => [question.id, question]));
+
+            for (let i = 0; i < runOutput.results.length; i += 1) {
+                const result = runOutput.results[i];
+                const question = questionsById.get(result.questionId) ?? questions[i];
+                if (!question) continue;
+                const questionManifest = this.buildCorpusManifest(question.id, { modelId: providerChoice.modelId });
+                const trace = traceForLogs ? this.cloneTrace(traceForLogs) : await this.buildFallbackTrace({
+                    scope: this.state.scope,
+                    focusLabel,
+                    focusSceneId,
+                    focusBookId,
+                    mode: this.state.mode,
+                    questionId: question.id,
+                    questionText: question.question,
+                    questionZone: question.zone,
+                    corpus: questionManifest,
+                    rules: this.getEvidenceRules(),
+                    ai: omnibusInput.ai
+                }, 'Omnibus trace unavailable; log created without prompt capture.');
+
+                const persisted = await this.persistOmnibusResult({
+                    question,
+                    result,
+                    trace,
+                    manifest: questionManifest,
+                    focusId,
+                    focusBookId,
+                    focusSceneId,
+                    submittedAt,
+                    completedAt
+                });
+                if (persisted.briefPath) {
+                    briefPaths.push(persisted.briefPath);
+                }
+                lastSession = persisted.session;
+                lastResult = persisted.normalized;
+                void this.writeInquiryPendingEdits(persisted.session, persisted.normalized);
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            new Notice(`Inquiry omnibus failed: ${message}`);
+        } finally {
+            if (createIndex && briefPaths.length > 1) {
+                await this.saveOmnibusIndexNote(briefPaths, focusLabel);
+            }
+            if (lastSession && lastResult) {
+                this.applySession({
+                    result: lastResult,
+                    key: lastSession.key,
+                    focusBookId: lastSession.focusBookId,
+                    focusSceneId: lastSession.focusSceneId,
+                    scope: lastSession.scope,
+                    questionZone: lastSession.questionZone
+                }, 'missing');
+                if (this.isErrorResult(lastResult)) {
+                    this.setApiStatus('error', this.formatApiErrorReason(lastResult));
+                } else {
+                    this.setApiStatus('success');
+                }
+            } else {
+                this.state.isRunning = false;
+                this.setApiStatus('idle');
+                this.refreshUI();
+            }
+            this.updateBriefingButtonState();
+            this.refreshBriefingPanel();
+        }
+    }
+
+    private async runOmnibusSequential(
+        questions: InquiryQuestion[],
+        providerChoice: OmnibusProviderChoice,
+        createIndex: boolean
+    ): Promise<void> {
+        const focusLabel = this.getFocusLabel();
+        const focusId = this.getFocusId();
+        const focusSceneId = this.state.scope === 'book' ? this.state.focusSceneId : undefined;
+        const focusBookId = this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
+        const briefPaths: string[] = [];
+        let lastSession: InquirySession | null = null;
+        let lastResult: InquiryResult | null = null;
+
+        this.state.isRunning = true;
+        this.setApiStatus('running');
+        this.refreshUI();
+
+        try {
+            for (const question of questions) {
+                const manifest = this.buildCorpusManifest(question.id, { modelId: providerChoice.modelId });
+                const runnerInput: InquiryRunnerInput = {
+                    scope: this.state.scope,
+                    focusLabel,
+                    focusSceneId,
+                    focusBookId,
+                    mode: this.state.mode,
+                    questionId: question.id,
+                    questionText: question.question,
+                    questionZone: question.zone,
+                    corpus: manifest,
+                    rules: this.getEvidenceRules(),
+                    ai: {
+                        provider: providerChoice.provider,
+                        modelId: providerChoice.modelId,
+                        modelLabel: providerChoice.modelLabel
+                    }
+                };
+                const submittedAt = new Date();
+                let result: InquiryResult;
+                let trace: InquiryRunTrace;
+                try {
+                    const runOutput = await this.runner.runWithTrace(runnerInput);
+                    result = runOutput.result;
+                    trace = runOutput.trace;
+                } catch (error) {
+                    result = this.buildErrorFallback(question, focusLabel, manifest.fingerprint, error);
+                    const message = error instanceof Error ? error.message : String(error);
+                    trace = await this.buildFallbackTrace(runnerInput, `Runner exception: ${message}`);
+                }
+                const completedAt = new Date();
+                const persisted = await this.persistOmnibusResult({
+                    question,
+                    result,
+                    trace,
+                    manifest,
+                    focusId,
+                    focusBookId,
+                    focusSceneId,
+                    submittedAt,
+                    completedAt
+                });
+                if (persisted.briefPath) {
+                    briefPaths.push(persisted.briefPath);
+                }
+                lastSession = persisted.session;
+                lastResult = persisted.normalized;
+                void this.writeInquiryPendingEdits(persisted.session, persisted.normalized);
+            }
+        } finally {
+            if (createIndex && briefPaths.length > 1) {
+                await this.saveOmnibusIndexNote(briefPaths, focusLabel);
+            }
+            if (lastSession && lastResult) {
+                this.applySession({
+                    result: lastResult,
+                    key: lastSession.key,
+                    focusBookId: lastSession.focusBookId,
+                    focusSceneId: lastSession.focusSceneId,
+                    scope: lastSession.scope,
+                    questionZone: lastSession.questionZone
+                }, 'missing');
+                if (this.isErrorResult(lastResult)) {
+                    this.setApiStatus('error', this.formatApiErrorReason(lastResult));
+                } else {
+                    this.setApiStatus('success');
+                }
+            } else {
+                this.state.isRunning = false;
+                this.setApiStatus('idle');
+                this.refreshUI();
+            }
+            this.updateBriefingButtonState();
+            this.refreshBriefingPanel();
+        }
+    }
+
+    private async persistOmnibusResult(options: {
+        question: InquiryQuestion;
+        result: InquiryResult;
+        trace: InquiryRunTrace;
+        manifest: CorpusManifest;
+        focusId: string;
+        focusBookId?: string;
+        focusSceneId?: string;
+        submittedAt: Date;
+        completedAt: Date;
+    }): Promise<{ session: InquirySession; briefPath?: string; normalized: InquiryResult }> {
+        const timedResult: InquiryResult = {
+            ...options.result,
+            questionId: options.result.questionId || options.question.id,
+            questionZone: options.result.questionZone || options.question.zone,
+            submittedAt: options.submittedAt.toISOString(),
+            completedAt: options.completedAt.toISOString(),
+            roundTripMs: options.completedAt.getTime() - options.submittedAt.getTime(),
+            corpusFingerprint: options.manifest.fingerprint
+        };
+
+        const normalized = this.normalizeLegacyResult(timedResult);
+        const normalizationNotes = this.collectNormalizationNotes(timedResult, normalized);
+        const baseKey = this.sessionStore.buildBaseKey({
+            questionId: normalized.questionId,
+            scope: normalized.scope,
+            focusId: options.focusId
+        });
+        const key = this.sessionStore.buildKey(baseKey, options.manifest.fingerprint);
+
+        const session: InquirySession = {
+            key,
+            baseKey,
+            result: normalized,
+            createdAt: Date.now(),
+            lastAccessed: Date.now(),
+            status: this.resolveSessionStatusFromResult(normalized),
+            focusBookId: options.focusBookId,
+            focusSceneId: options.focusSceneId,
+            scope: normalized.scope,
+            questionZone: options.question.zone
+        };
+        this.sessionStore.setSession(session);
+
+        const logPath = await this.saveInquiryLog(normalized, options.trace, {
+            sessionKey: session.key,
+            normalizationNotes,
+            silent: true
+        });
+        const briefPath = await this.saveBrief(normalized, {
+            openFile: false,
+            silent: true,
+            sessionKey: session.key,
+            logPath: logPath ?? undefined
+        });
+        const updated = this.sessionStore.peekSession(session.key) ?? session;
+        return {
+            session: updated,
+            briefPath: briefPath ?? undefined,
+            normalized
+        };
+    }
+
+    private cloneTrace(trace: InquiryRunTrace): InquiryRunTrace {
+        return {
+            ...trace,
+            tokenEstimate: { ...trace.tokenEstimate },
+            response: trace.response ? { ...trace.response } : null,
+            usage: trace.usage ? { ...trace.usage } : undefined,
+            sanitizationNotes: [...(trace.sanitizationNotes || [])],
+            notes: [...(trace.notes || [])]
+        };
+    }
+
+    private async saveOmnibusIndexNote(briefPaths: string[], focusLabel: string): Promise<string | null> {
+        const folder = await ensureInquiryArtifactFolder(this.app, this.plugin.settings);
+        if (!folder) return null;
+        const timestamp = this.formatInquiryBriefTimestamp(new Date());
+        const scopeLabel = this.state.scope === 'saga' ? 'Saga' : `Book ${focusLabel}`;
+        const title = `Inquiry Omnibus — ${scopeLabel} ${timestamp}`;
+        const filePath = this.getAvailableArtifactPath(folder.path, title);
+        const links = briefPaths
+            .map(path => path.split('/').pop())
+            .filter((basename): basename is string => typeof basename === 'string' && basename.length > 0)
+            .map(basename => basename.replace(/\.md$/, ''))
+            .map(name => `- [[${name}]]`);
+        const content = [`# ${title}`, '', ...links, ''].join('\n');
+        try {
+            const file = await this.app.vault.create(filePath, content);
+            return file.path;
+        } catch {
+            return null;
+        }
+    }
+
+    private async promptOmnibusScope(): Promise<InquiryScope | null> {
+        const bookLabel = this.getFocusBookLabel();
+        const choices: InquiryChoiceOption<InquiryScope>[] = [
+            { label: `Book (${bookLabel})`, value: 'book' },
+            { label: `Saga (${SIGMA_CHAR})`, value: 'saga' }
+        ];
+        return new Promise(resolve => {
+            const modal = new InquiryChoiceModal(
+                this.app,
+                choices,
+                value => resolve(value),
+                () => resolve(null),
+                'Select omnibus scope'
+            );
+            modal.open();
+        });
+    }
+
+    private async promptOmnibusIndexChoice(): Promise<boolean | null> {
+        const choices: InquiryChoiceOption<boolean>[] = [
+            { label: 'Create omnibus index note', value: true },
+            { label: 'Skip index note', value: false }
+        ];
+        return new Promise(resolve => {
+            const modal = new InquiryChoiceModal(
+                this.app,
+                choices,
+                value => resolve(value),
+                () => resolve(null),
+                'Create omnibus index note?'
+            );
+            modal.open();
+        });
+    }
+
+    private getOmnibusQuestions(): InquiryQuestion[] {
+        const config = this.getPromptConfig();
+        const zones: InquiryZone[] = ['setup', 'pressure', 'payoff'];
+        const questions: InquiryQuestion[] = [];
+        const seen = new Set<string>();
+
+        zones.forEach(zone => {
+            const slots = config[zone] ?? [];
+            if (!slots.length) return;
+            const zoneLabel = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
+            const icon = zone === 'setup' ? 'help-circle' : zone === 'pressure' ? 'activity' : 'check-circle';
+            const canonicalId = getBuiltInPromptSeed(zone)?.id;
+            const canonicalSlot = slots[0];
+            if (canonicalSlot) {
+                const canonicalQuestion = getCanonicalPromptText(zone);
+                const canonicalLabel = canonicalSlot.label || zoneLabel;
+                if (canonicalQuestion.trim()) {
+                    questions.push({
+                        id: canonicalSlot.id,
+                        label: canonicalLabel,
+                        question: canonicalQuestion,
+                        zone,
+                        icon
+                    });
+                    seen.add(canonicalSlot.id);
+                }
+            }
+
+            slots.slice(1).forEach(slot => {
+                if (!slot.enabled) return;
+                if (!slot.question.trim()) return;
+                if (seen.has(slot.id)) return;
+                const questionText = slot.builtIn && slot.id === canonicalId
+                    ? getCanonicalPromptText(zone)
+                    : slot.question;
+                if (!questionText.trim()) return;
+                questions.push({
+                    id: slot.id,
+                    label: slot.label || zoneLabel,
+                    question: questionText,
+                    zone,
+                    icon
+                });
+                seen.add(slot.id);
+            });
+        });
+
+        return questions;
+    }
+
+    private resolveOmnibusProviderChoice(): OmnibusProviderChoice | null {
+        const geminiAvailability = this.getProviderAvailability('gemini');
+        if (geminiAvailability.enabled) {
+            const modelId = this.getInquiryModelIdForProvider('gemini');
+            return {
+                provider: 'gemini',
+                modelId,
+                modelLabel: this.getInquiryModelLabelForProvider('gemini'),
+                useOmnibus: true
+            };
+        }
+
+        const fallbackProvider = (this.plugin.settings.defaultAiProvider || 'openai') as EngineProvider;
+        const fallbackAvailability = this.getProviderAvailability(fallbackProvider);
+        if (!fallbackAvailability.enabled) {
+            const providerLabel = this.getInquiryProviderLabel(fallbackProvider);
+            const reason = fallbackAvailability.reason || 'Provider unavailable';
+            new Notice(`Omnibus unavailable: ${providerLabel} ${reason}.`);
+            return null;
+        }
+
+        return {
+            provider: fallbackProvider,
+            modelId: this.getInquiryModelIdForProvider(fallbackProvider),
+            modelLabel: this.getInquiryModelLabelForProvider(fallbackProvider),
+            useOmnibus: false,
+            reason: geminiAvailability.reason || 'Gemini not configured'
+        };
+    }
+
+    private getInquiryProviderLabel(provider: EngineProvider): string {
+        const labels: Record<EngineProvider, string> = {
+            anthropic: 'Anthropic',
+            gemini: 'Gemini',
+            openai: 'OpenAI',
+            local: 'Local'
+        };
+        return labels[provider] || 'OpenAI';
+    }
+
+    private getInquiryModelIdForProvider(provider: EngineProvider): string {
+        const clean = (value: string) => value.replace(/^models\//, '').trim();
+        if (provider === 'anthropic') {
+            return clean(this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929');
+        }
+        if (provider === 'gemini') {
+            return clean(this.plugin.settings.geminiModelId || 'gemini-pro-latest');
+        }
+        if (provider === 'local') {
+            return clean(this.plugin.settings.localModelId || 'local-model');
+        }
+        return clean(this.plugin.settings.openaiModelId || 'gpt-5.2-chat-latest');
+    }
+
+    private getInquiryModelLabelForProvider(provider: EngineProvider): string {
+        const modelId = this.getInquiryModelIdForProvider(provider);
+        return modelId ? getModelDisplayName(modelId.replace(/^models\//, '')) : 'Unknown model';
+    }
+
+    private getProviderAvailability(provider: EngineProvider): { enabled: boolean; reason?: string } {
+        if (provider === 'local') {
+            const baseUrl = this.plugin.settings.localBaseUrl?.trim();
+            return baseUrl ? { enabled: true } : { enabled: false, reason: 'Local URL missing' };
+        }
+        const key = provider === 'anthropic'
+            ? this.plugin.settings.anthropicApiKey
+            : provider === 'gemini'
+                ? this.plugin.settings.geminiApiKey
+                : this.plugin.settings.openaiApiKey;
+        return key?.trim() ? { enabled: true } : { enabled: false, reason: 'API key missing' };
     }
 
     private applySession(
@@ -4186,6 +4837,66 @@ export class InquiryView extends ItemView {
             normalized.runId = inquiryId;
         }
         return normalized;
+    }
+
+    private collectNormalizationNotes(raw: InquiryResult, normalized: InquiryResult): string[] {
+        const notes: string[] = [];
+        if (!raw.summaryFlow && normalized.summaryFlow) {
+            notes.push('Filled summaryFlow from summary.');
+        }
+        if (!raw.summaryDepth && normalized.summaryDepth) {
+            notes.push('Filled summaryDepth from summary.');
+        }
+        const rawVerdict = raw.verdict as InquiryResult['verdict'] & {
+            severity?: InquirySeverity;
+            confidence?: InquiryConfidence;
+        };
+        if (rawVerdict.impact == null) {
+            if (rawVerdict.severity != null) {
+                notes.push('Mapped verdict severity to impact.');
+            } else {
+                notes.push('Defaulted verdict impact.');
+            }
+        }
+        if (rawVerdict.assessmentConfidence == null) {
+            if (rawVerdict.confidence != null) {
+                notes.push('Mapped verdict confidence to assessmentConfidence.');
+            } else {
+                notes.push('Defaulted verdict assessmentConfidence.');
+            }
+        }
+        const missingImpact = raw.findings.filter(finding => {
+            const legacy = finding as InquiryFinding & { severity?: InquirySeverity };
+            return legacy.impact == null && legacy.severity == null;
+        }).length;
+        const mappedImpact = raw.findings.filter(finding => {
+            const legacy = finding as InquiryFinding & { severity?: InquirySeverity };
+            return legacy.impact == null && legacy.severity != null;
+        }).length;
+        if (mappedImpact > 0) {
+            notes.push(`Mapped finding severity to impact for ${mappedImpact} finding${mappedImpact === 1 ? '' : 's'}.`);
+        }
+        if (missingImpact > 0) {
+            notes.push(`Defaulted finding impact for ${missingImpact} finding${missingImpact === 1 ? '' : 's'}.`);
+        }
+        const missingConfidence = raw.findings.filter(finding => {
+            const legacy = finding as InquiryFinding & { confidence?: InquiryConfidence };
+            return legacy.assessmentConfidence == null && legacy.confidence == null;
+        }).length;
+        const mappedConfidence = raw.findings.filter(finding => {
+            const legacy = finding as InquiryFinding & { confidence?: InquiryConfidence };
+            return legacy.assessmentConfidence == null && legacy.confidence != null;
+        }).length;
+        if (mappedConfidence > 0) {
+            notes.push(`Mapped finding confidence to assessmentConfidence for ${mappedConfidence} finding${mappedConfidence === 1 ? '' : 's'}.`);
+        }
+        if (missingConfidence > 0) {
+            notes.push(`Defaulted finding assessmentConfidence for ${missingConfidence} finding${missingConfidence === 1 ? '' : 's'}.`);
+        }
+        if (raw.runId !== normalized.runId && normalized.runId) {
+            notes.push('Normalized runId to inquiry id.');
+        }
+        return notes;
     }
 
     private async writeInquiryPendingEdits(
@@ -4416,18 +5127,36 @@ export class InquiryView extends ItemView {
         const key = this.sessionStore.buildKey(baseKey, manifest.fingerprint);
         const focusSceneId = this.state.scope === 'book' ? this.state.focusSceneId : undefined;
         const focusBookId = this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusBookId;
+        const runnerInput = {
+            scope: this.state.scope,
+            focusLabel,
+            focusBookId: this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusBookId,
+            mode: this.state.mode,
+            questionId: selectedPrompt.id,
+            questionText: selectedPrompt.question,
+            questionZone: selectedPrompt.zone,
+            corpus: manifest,
+            rules: this.getEvidenceRules(),
+            ai: {
+                provider: this.plugin.settings.defaultAiProvider || 'openai',
+                modelId: this.getActiveInquiryModelId(),
+                modelLabel: this.getActiveInquiryModelLabel()
+            }
+        };
         const submittedAt = new Date();
         this.state.isRunning = true;
         this.setApiStatus('running');
         this.refreshUI();
-        this.apiSimulationTimer = window.setTimeout(() => {
+        this.apiSimulationTimer = window.setTimeout(async () => {
             this.apiSimulationTimer = undefined;
             const completedAt = new Date();
             let result = this.buildSimulationResult(selectedPrompt, focusLabel, manifest.fingerprint);
             result.submittedAt = submittedAt.toISOString();
             result.completedAt = completedAt.toISOString();
             result.roundTripMs = completedAt.getTime() - submittedAt.getTime();
+            const rawResult = result;
             result = this.normalizeLegacyResult(result);
+            const normalizationNotes = this.collectNormalizationNotes(rawResult, result);
 
             const session: InquirySession = {
                 key,
@@ -4442,6 +5171,11 @@ export class InquiryView extends ItemView {
                 questionZone: selectedPrompt.zone
             };
             this.sessionStore.setSession(session);
+            const trace = await this.buildFallbackTrace(runnerInput, 'Simulated run: no provider call.');
+            await this.saveInquiryLog(result, trace, {
+                sessionKey: session.key,
+                normalizationNotes
+            });
             this.applySession({
                 result,
                 key: session.key,
@@ -4535,19 +5269,26 @@ export class InquiryView extends ItemView {
         };
     }
 
-    private buildCorpusManifest(questionId: string): CorpusManifest {
+    private buildCorpusManifest(questionId: string, options?: { modelId?: string }): CorpusManifest {
         const rawSources = this.plugin.settings.inquirySources as Record<string, unknown> | undefined;
         if (rawSources && ('sceneFolders' in rawSources || 'bookOutlineFiles' in rawSources || 'sagaOutlineFile' in rawSources)) {
-            return this.buildLegacyCorpusManifest(rawSources, questionId);
+            return this.buildLegacyCorpusManifest(rawSources, questionId, options);
         }
 
         const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
         const entries: CorpusManifest['entries'] = [];
         const now = Date.now();
+        const modelIdOverride = options?.modelId;
         const classConfigMap = new Map(
             (sources.classes || []).map(config => [config.className, config])
         );
         const classScope = this.getClassScopeConfig(sources.classScope);
+        const isClassActive = (config: InquiryClassConfig): boolean => {
+            return config.enabled
+                && (this.isModeActive(config.bookScope)
+                    || this.isModeActive(config.sagaScope)
+                    || this.isModeActive(config.referenceScope));
+        };
         const scanRoots = normalizeScanRootPatterns(sources.scanRoots);
         const resolvedRoots = scanRoots.length
             ? ((sources.resolvedScanRoots && sources.resolvedScanRoots.length)
@@ -4556,12 +5297,12 @@ export class InquiryView extends ItemView {
             : [];
         const resolvedVaultRoots = resolvedRoots.map(toVaultRoot);
         const allowedClasses = (sources.classes || [])
-            .filter(config => config.enabled)
+            .filter(config => isClassActive(config))
             .filter(config => classScope.allowAll || classScope.allowed.has(config.className))
             .map(config => config.className);
 
         if (!classScope.allowAll && classScope.allowed.size === 0) {
-            const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${this.getActiveInquiryModelId()}|`;
+            const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${modelIdOverride ?? this.getActiveInquiryModelId()}|`;
             return {
                 entries,
                 fingerprint: this.hashString(fingerprintRaw),
@@ -4591,44 +5332,50 @@ export class InquiryView extends ItemView {
                 if (!classScope.allowAll && !classScope.allowed.has(className)) return;
                 const config = classConfigMap.get(className);
                 if (!config || !config.enabled) return;
+                if (!isClassActive(config)) return;
                 if (className === 'outline') {
-                    const outlineScope = this.getFrontmatterScope(frontmatter);
-                    if (outlineScope === 'book' && !config.bookScope) return;
-                    if (outlineScope === 'saga' && !config.sagaScope) return;
+                    const outlineScope = this.getFrontmatterScope(frontmatter) ?? 'book';
+                    const mode = outlineScope === 'saga' ? config.sagaScope : config.bookScope;
+                    if (!this.isModeActive(mode)) return;
                     entries.push({
                         path: file.path,
                         mtime: file.stat.mtime ?? now,
                         class: className,
-                        scope: outlineScope
+                        scope: outlineScope,
+                        mode
                     });
                     return;
                 }
 
                 if (INQUIRY_REFERENCE_ONLY_CLASSES.has(className)) {
+                    const mode = config.referenceScope;
+                    if (!this.isModeActive(mode)) return;
                     entries.push({
                         path: file.path,
                         mtime: file.stat.mtime ?? now,
-                        class: className
+                        class: className,
+                        mode
                     });
                     return;
                 }
 
-                if (this.state.scope === 'book' && !config.bookScope) return;
-                if (this.state.scope === 'saga' && !config.sagaScope) return;
+                const mode = this.state.scope === 'book' ? config.bookScope : config.sagaScope;
+                if (!this.isModeActive(mode)) return;
 
                 entries.push({
                     path: file.path,
                     mtime: file.stat.mtime ?? now,
-                    class: className
+                    class: className,
+                    mode
                 });
             });
         });
 
         const fingerprintSource = entries
-            .map(entry => `${entry.path}:${entry.mtime}`)
+            .map(entry => `${entry.path}:${entry.mtime}:${entry.mode ?? 'none'}`)
             .sort()
             .join('|');
-        const modelId = this.getActiveInquiryModelId();
+        const modelId = modelIdOverride ?? this.getActiveInquiryModelId();
         const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${modelId}|${fingerprintSource}`;
         const fingerprint = this.hashString(fingerprintRaw);
 
@@ -4636,6 +5383,7 @@ export class InquiryView extends ItemView {
             acc[entry.class] = (acc[entry.class] || 0) + 1;
             return acc;
         }, {});
+        const synopsisOnly = !entries.some(entry => this.normalizeEvidenceMode(entry.mode) === 'full');
 
         return {
             entries,
@@ -4643,19 +5391,24 @@ export class InquiryView extends ItemView {
             generatedAt: now,
             resolvedRoots,
             allowedClasses,
-            synopsisOnly: true,
+            synopsisOnly,
             classCounts
         };
     }
 
-    private buildLegacyCorpusManifest(rawSources: Record<string, unknown>, questionId: string): CorpusManifest {
+    private buildLegacyCorpusManifest(
+        rawSources: Record<string, unknown>,
+        questionId: string,
+        options?: { modelId?: string }
+    ): CorpusManifest {
         const entries: CorpusManifest['entries'] = [];
         const now = Date.now();
+        const modelIdOverride = options?.modelId;
         const classScope = this.getClassScopeConfig(
             this.normalizeInquirySources(this.plugin.settings.inquirySources).classScope
         );
         if (!classScope.allowAll && classScope.allowed.size === 0) {
-            const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${this.getActiveInquiryModelId()}|`;
+            const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${modelIdOverride ?? this.getActiveInquiryModelId()}|`;
             return {
                 entries,
                 fingerprint: this.hashString(fingerprintRaw),
@@ -4675,7 +5428,7 @@ export class InquiryView extends ItemView {
             powerFolders?: string[];
         };
 
-        const addEntries = (paths: string[] | undefined, data: { class: string; scope?: InquiryScope }) => {
+        const addEntries = (paths: string[] | undefined, data: { class: string; scope?: InquiryScope; mode: InquiryMaterialMode }) => {
             if (!paths) return;
             if (!classScope.allowAll && !classScope.allowed.has(data.class)) return;
             paths.forEach(rawPath => {
@@ -4687,26 +5440,27 @@ export class InquiryView extends ItemView {
                     path,
                     mtime,
                     class: data.class,
-                    scope: data.scope
+                    scope: data.scope,
+                    mode: data.mode
                 });
             });
         };
 
-        addEntries(sources.sceneFolders, { class: 'scene', scope: 'book' });
-        addEntries(sources.bookOutlineFiles, { class: 'outline', scope: 'book' });
-        addEntries(sources.characterFolders, { class: 'character' });
-        addEntries(sources.placeFolders, { class: 'place' });
-        addEntries(sources.powerFolders, { class: 'power' });
+        addEntries(sources.sceneFolders, { class: 'scene', scope: 'book', mode: 'summary' });
+        addEntries(sources.bookOutlineFiles, { class: 'outline', scope: 'book', mode: 'full' });
+        addEntries(sources.characterFolders, { class: 'character', mode: 'full' });
+        addEntries(sources.placeFolders, { class: 'place', mode: 'full' });
+        addEntries(sources.powerFolders, { class: 'power', mode: 'full' });
 
         if (sources.sagaOutlineFile) {
-            addEntries([sources.sagaOutlineFile], { class: 'outline', scope: 'saga' });
+            addEntries([sources.sagaOutlineFile], { class: 'outline', scope: 'saga', mode: 'full' });
         }
 
         const fingerprintSource = entries
-            .map(entry => `${entry.path}:${entry.mtime}`)
+            .map(entry => `${entry.path}:${entry.mtime}:${entry.mode ?? 'none'}`)
             .sort()
             .join('|');
-        const modelId = this.getActiveInquiryModelId();
+        const modelId = modelIdOverride ?? this.getActiveInquiryModelId();
         const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${modelId}|${fingerprintSource}`;
         const fingerprint = this.hashString(fingerprintRaw);
 
@@ -4717,6 +5471,7 @@ export class InquiryView extends ItemView {
         const allowedClasses = classScope.allowAll
             ? Array.from(new Set(entries.map(entry => entry.class)))
             : Array.from(classScope.allowed);
+        const synopsisOnly = !entries.some(entry => this.normalizeEvidenceMode(entry.mode) === 'full');
 
         return {
             entries,
@@ -4724,9 +5479,37 @@ export class InquiryView extends ItemView {
             generatedAt: now,
             resolvedRoots: [],
             allowedClasses,
-            synopsisOnly: true,
+            synopsisOnly,
             classCounts
         };
+    }
+
+    private getDefaultMaterialMode(className: string): InquiryMaterialMode {
+        if (className === 'scene') return 'summary';
+        return 'full';
+    }
+
+    private normalizeMaterialMode(value: unknown, className: string): InquiryMaterialMode {
+        if (typeof value === 'string') {
+            const normalized = value.trim().toLowerCase();
+            if (normalized === 'none' || normalized === 'summary' || normalized === 'full' || normalized === 'digest') {
+                return normalized as InquiryMaterialMode;
+            }
+        }
+        if (typeof value === 'boolean') {
+            return value ? this.getDefaultMaterialMode(className) : 'none';
+        }
+        return 'none';
+    }
+
+    private normalizeEvidenceMode(mode?: InquiryMaterialMode): 'none' | 'summary' | 'full' {
+        if (mode === 'full') return 'full';
+        if (mode === 'summary' || mode === 'digest') return 'summary';
+        return 'none';
+    }
+
+    private isModeActive(mode?: InquiryMaterialMode): boolean {
+        return this.normalizeEvidenceMode(mode) !== 'none';
     }
 
     private normalizeInquirySources(raw?: InquirySourcesSettings): InquirySourcesSettings {
@@ -4742,8 +5525,13 @@ export class InquiryView extends ItemView {
             classes: (raw.classes || []).map(config => ({
                 className: config.className.toLowerCase(),
                 enabled: !!config.enabled,
-                bookScope: !!config.bookScope,
-                sagaScope: !!config.sagaScope
+                bookScope: this.normalizeMaterialMode(config.bookScope, config.className.toLowerCase()),
+                sagaScope: this.normalizeMaterialMode(config.sagaScope, config.className.toLowerCase()),
+                referenceScope: this.normalizeMaterialMode(
+                    (config as InquiryClassConfig).referenceScope
+                        ?? (INQUIRY_REFERENCE_ONLY_CLASSES.has(config.className.toLowerCase()) ? true : false),
+                    config.className.toLowerCase()
+                )
             })),
             classCounts: raw.classCounts || {},
             resolvedScanRoots: raw.resolvedScanRoots ? normalizeScanRootPatterns(raw.resolvedScanRoots) : [],
@@ -5026,6 +5814,71 @@ export class InquiryView extends ItemView {
         this.previewLast = { zone, question };
         this.updatePromptPreview(zone, mode, question, undefined, undefined, { hideEmpty: true });
         this.previewGroup.classList.add('is-visible');
+        void this.requestPayloadEstimate(question);
+    }
+
+    private async requestPayloadEstimate(questionText: string): Promise<void> {
+        if (!questionText) return;
+        const manifest = this.buildCorpusManifest('payload-preview');
+        const requestedScope = this.state.scope;
+        const requestedFocusBookId = this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
+        const currentStats = this.payloadStats
+            && this.payloadStats.manifestFingerprint === manifest.fingerprint
+            && this.payloadStats.scope === requestedScope
+            && this.payloadStats.focusBookId === requestedFocusBookId
+            ? this.payloadStats
+            : this.buildPayloadStats();
+        if (this.payloadStats !== currentStats) {
+            this.payloadStats = currentStats;
+        }
+        if (currentStats.tokenEstimate && currentStats.tokenEstimateQuestion === questionText) {
+            return;
+        }
+
+        const requestId = ++this.payloadEstimateRequestId;
+        try {
+            const trace = await this.runner.buildTrace({
+                scope: requestedScope,
+                focusLabel: this.getFocusLabel(),
+                focusSceneId: requestedScope === 'book' ? this.state.focusSceneId : undefined,
+                focusBookId: requestedFocusBookId,
+                mode: this.state.mode,
+                questionId: 'payload-preview',
+                questionText,
+                questionZone: this.previewLast?.zone ?? 'setup',
+                corpus: manifest,
+                rules: this.getEvidenceRules(),
+                ai: {
+                    provider: this.plugin.settings.defaultAiProvider || 'openai',
+                    modelId: this.getActiveInquiryModelId(),
+                    modelLabel: this.getActiveInquiryModelLabel()
+                }
+            });
+            if (requestId !== this.payloadEstimateRequestId) return;
+            const latestFocusBookId = this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
+            if (this.state.scope !== requestedScope) return;
+            if (requestedScope === 'book' && latestFocusBookId !== requestedFocusBookId) return;
+            const latestStats = this.payloadStats
+                && this.payloadStats.manifestFingerprint === manifest.fingerprint
+                && this.payloadStats.scope === requestedScope
+                && this.payloadStats.focusBookId === requestedFocusBookId
+                ? this.payloadStats
+                : this.buildPayloadStats();
+            if (latestStats.manifestFingerprint !== manifest.fingerprint) return;
+            this.payloadStats = {
+                ...latestStats,
+                evidenceChars: trace.evidenceText.length,
+                tokenEstimate: trace.tokenEstimate,
+                tokenEstimateQuestion: questionText
+            };
+            if (this.previewLast?.question === questionText
+                && this.previewGroup?.classList.contains('is-visible')
+                && !this.previewLocked) {
+                this.updatePromptPreview(this.previewLast.zone, this.state.mode, questionText, undefined, undefined, { hideEmpty: true });
+            }
+        } catch {
+            // Ignore preview estimate failures; fallback estimates remain.
+        }
     }
 
     private hidePromptPreview(immediate = false): void {
@@ -5615,6 +6468,11 @@ export class InquiryView extends ItemView {
 
     private refreshPayloadStats(): void {
         this.payloadStats = this.buildPayloadStats();
+        if (!this.previewLocked
+            && this.previewGroup?.classList.contains('is-visible')
+            && this.previewLast) {
+            void this.requestPayloadEstimate(this.previewLast.question);
+        }
     }
 
     private getPayloadStats(): InquiryPayloadStats {
@@ -5648,26 +6506,75 @@ export class InquiryView extends ItemView {
             ? outlineEntries.filter(entry => entry.scope === 'saga')
             : [];
 
-        const synopsisStats = this.collectSynopsisStats(scopedSceneEntries);
+        const sceneStats = this.collectSceneStats(scopedSceneEntries);
         const bookOutlineStats = this.collectEntryStats(bookOutlineEntries);
         const sagaOutlineStats = this.collectEntryStats(sagaOutlineEntries);
         const referenceStats = this.collectReferenceStats(referenceEntries);
 
-        const evidenceChars = synopsisStats.chars + bookOutlineStats.chars + sagaOutlineStats.chars + referenceStats.chars;
+        const estimatedEvidenceChars = sceneStats.chars + bookOutlineStats.chars + sagaOutlineStats.chars + referenceStats.chars;
+        const priorStats = this.payloadStats
+            && this.payloadStats.manifestFingerprint === manifest.fingerprint
+            && this.payloadStats.scope === scope
+            && this.payloadStats.focusBookId === focusBookId
+            ? this.payloadStats
+            : undefined;
+        const evidenceChars = priorStats?.evidenceChars ?? estimatedEvidenceChars;
 
         return {
             scope,
             focusBookId,
-            sceneTotal: scopedSceneEntries.length,
-            sceneSynopsisUsed: synopsisStats.count,
-            sceneSynopsisAvailable: scopedSceneEntries.length,
-            sceneFullTextCount: manifest.synopsisOnly ? 0 : scopedSceneEntries.length,
+            sceneTotal: sceneStats.total,
+            sceneSynopsisUsed: sceneStats.synopsisUsed,
+            sceneSynopsisAvailable: sceneStats.synopsisAvailable,
+            sceneFullTextCount: sceneStats.fullCount,
             bookOutlineCount: bookOutlineStats.count,
             sagaOutlineCount: sagaOutlineStats.count,
             referenceCounts: referenceStats.counts,
             referenceByClass: referenceStats.byClass,
             evidenceChars,
-            resolvedRoots: manifest.resolvedRoots
+            resolvedRoots: manifest.resolvedRoots,
+            manifestFingerprint: manifest.fingerprint,
+            tokenEstimate: priorStats?.tokenEstimate,
+            tokenEstimateQuestion: priorStats?.tokenEstimateQuestion
+        };
+    }
+
+    private collectSceneStats(entries: CorpusManifestEntry[]): {
+        total: number;
+        synopsisUsed: number;
+        synopsisAvailable: number;
+        fullCount: number;
+        chars: number;
+    } {
+        let synopsisUsed = 0;
+        let synopsisAvailable = 0;
+        let fullCount = 0;
+        let chars = 0;
+        entries.forEach(entry => {
+            const synopsis = this.getEntrySynopsis(entry.path);
+            if (synopsis) {
+                synopsisAvailable += 1;
+            }
+            const mode = this.normalizeEvidenceMode(entry.mode);
+            if (mode === 'summary') {
+                if (!synopsis) return;
+                synopsisUsed += 1;
+                chars += synopsis.length;
+                return;
+            }
+            if (mode === 'full') {
+                const size = this.getEntryCharCount(entry.path);
+                if (!size) return;
+                fullCount += 1;
+                chars += size;
+            }
+        });
+        return {
+            total: entries.length,
+            synopsisUsed,
+            synopsisAvailable,
+            fullCount,
+            chars
         };
     }
 
@@ -5675,7 +6582,7 @@ export class InquiryView extends ItemView {
         let count = 0;
         let chars = 0;
         entries.forEach(entry => {
-            const size = this.getEntryCharCount(entry.path);
+            const size = this.getEntryContentLength(entry);
             if (!size) return;
             count += 1;
             chars += size;
@@ -5691,7 +6598,7 @@ export class InquiryView extends ItemView {
         const byClass: Record<string, number> = {};
         let chars = 0;
         entries.forEach(entry => {
-            const size = this.getEntryCharCount(entry.path);
+            const size = this.getEntryContentLength(entry);
             if (!size) return;
             chars += size;
             byClass[entry.class] = (byClass[entry.class] || 0) + 1;
@@ -5704,27 +6611,31 @@ export class InquiryView extends ItemView {
         return { counts: { character, place, power, other, total }, byClass, chars };
     }
 
-    private collectSynopsisStats(entries: CorpusManifestEntry[]): { count: number; chars: number } {
-        let count = 0;
-        let chars = 0;
-        entries.forEach(entry => {
-            const file = this.app.vault.getAbstractFileByPath(entry.path);
-            if (!file || !this.isTFile(file)) return;
-            const frontmatter = this.getNormalizedFrontmatter(file);
-            if (!frontmatter) return;
-            const synopsis = this.extractSynopsis(frontmatter);
-            if (!synopsis) return;
-            count += 1;
-            chars += synopsis.length;
-        });
-        return { count, chars };
-    }
-
     private getEntryCharCount(path: string): number {
         const file = this.app.vault.getAbstractFileByPath(path);
         if (!file || !this.isTFile(file)) return 0;
         const size = file.stat.size ?? 0;
         return size > 0 ? size : 0;
+    }
+
+    private getEntrySynopsis(path: string): string {
+        const file = this.app.vault.getAbstractFileByPath(path);
+        if (!file || !this.isTFile(file)) return '';
+        const frontmatter = this.getNormalizedFrontmatter(file);
+        if (!frontmatter) return '';
+        return this.extractSynopsis(frontmatter);
+    }
+
+    private getEntryContentLength(entry: CorpusManifestEntry): number {
+        const mode = this.normalizeEvidenceMode(entry.mode);
+        if (mode === 'summary') {
+            const synopsis = this.getEntrySynopsis(entry.path);
+            return synopsis.length;
+        }
+        if (mode === 'full') {
+            return this.getEntryCharCount(entry.path);
+        }
+        return 0;
     }
 
     private getNormalizedFrontmatter(file: TFile): Record<string, unknown> | null {
@@ -5780,6 +6691,12 @@ export class InquiryView extends ItemView {
 
     private getPreviewTokensValue(questionText: string): string {
         const stats = this.getPayloadStats();
+        if (stats.tokenEstimate && stats.tokenEstimateQuestion === questionText) {
+            const inputTokens = stats.tokenEstimate.inputTokens;
+            const outputTokens = stats.tokenEstimate.outputTokens;
+            const totalTokens = stats.tokenEstimate.totalTokens;
+            return `~${this.formatTokenEstimate(inputTokens)} in · ~${this.formatTokenEstimate(outputTokens)} out · ~${this.formatTokenEstimate(totalTokens)} total`;
+        }
         const questionChars = questionText?.length ?? 0;
         const inputChars = stats.evidenceChars + questionChars + INQUIRY_PROMPT_OVERHEAD_CHARS;
         const inputTokens = this.estimateTokensFromChars(inputChars);
@@ -5950,7 +6867,7 @@ export class InquiryView extends ItemView {
 
     private async saveBrief(
         result: InquiryResult,
-        options: { openFile: boolean; silent: boolean; sessionKey?: string }
+        options: { openFile: boolean; silent: boolean; sessionKey?: string; logPath?: string }
     ): Promise<string | null> {
         const folder = await ensureInquiryArtifactFolder(this.app, this.plugin.settings);
         if (!folder) {
@@ -5963,7 +6880,14 @@ export class InquiryView extends ItemView {
         const briefTitle = this.formatInquiryBriefTitle(result);
         const baseName = briefTitle;
         const filePath = this.getAvailableArtifactPath(folder.path, baseName);
-        const content = this.buildArtifactContent(result, this.plugin.settings.inquiryEmbedJson ?? true, briefTitle);
+        const sessionLogPath = options.logPath
+            ?? (options.sessionKey ? this.sessionStore.peekSession(options.sessionKey)?.logPath : undefined);
+        const content = this.buildArtifactContent(
+            result,
+            this.plugin.settings.inquiryEmbedJson ?? true,
+            briefTitle,
+            sessionLogPath
+        );
 
         try {
             const file = await this.app.vault.create(filePath, content);
@@ -5991,7 +6915,82 @@ export class InquiryView extends ItemView {
         }
     }
 
-    private buildArtifactContent(result: InquiryResult, embedJson: boolean, briefTitle?: string): string {
+    private async buildFallbackTrace(
+        input: InquiryRunnerInput,
+        note?: string
+    ): Promise<InquiryRunTrace> {
+        try {
+            const trace = await this.runner.buildTrace(input);
+            if (note) {
+                trace.notes.push(note);
+            }
+            return trace;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            const notes = note ? [note] : [];
+            if (message) {
+                notes.push(`Trace build error: ${message}`);
+            }
+            return {
+                systemPrompt: '',
+                userPrompt: '',
+                evidenceText: '',
+                tokenEstimate: {
+                    inputTokens: 0,
+                    outputTokens: INQUIRY_MAX_OUTPUT_TOKENS,
+                    totalTokens: INQUIRY_MAX_OUTPUT_TOKENS,
+                    inputChars: 0
+                },
+                outputTokenCap: INQUIRY_MAX_OUTPUT_TOKENS,
+                response: null,
+                sanitizationNotes: [],
+                notes
+            };
+        }
+    }
+
+    private async saveInquiryLog(
+        result: InquiryResult,
+        trace: InquiryRunTrace,
+        options?: { sessionKey?: string; normalizationNotes?: string[]; silent?: boolean }
+    ): Promise<string | null> {
+        if (!this.plugin.settings.logApiInteractions) return null;
+        const folder = await ensureInquiryLogFolder(this.app);
+        const silent = options?.silent ?? true;
+        if (!folder) {
+            if (!silent) {
+                new Notice('Unable to create log folder.');
+            }
+            return null;
+        }
+
+        const logTitle = this.formatInquiryLogTitle(result);
+        const filePath = this.getAvailableArtifactPath(folder.path, logTitle);
+        const content = this.buildInquiryLogContent(result, trace, logTitle, options?.normalizationNotes);
+
+        try {
+            const file = await this.app.vault.create(filePath, content);
+            if (options?.sessionKey) {
+                this.sessionStore.updateSession(options.sessionKey, {
+                    logPath: file.path
+                });
+            }
+            return file.path;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            if (!silent) {
+                new Notice(`Unable to save inquiry log: ${message}`);
+            }
+            return null;
+        }
+    }
+
+    private buildArtifactContent(
+        result: InquiryResult,
+        embedJson: boolean,
+        briefTitle?: string,
+        logPath?: string
+    ): string {
         const submittedAt = result.submittedAt ? new Date(result.submittedAt) : null;
         const completedAt = result.completedAt ? new Date(result.completedAt) : null;
         const submittedAtLocal = submittedAt && Number.isFinite(submittedAt.getTime())
@@ -6034,7 +7033,9 @@ export class InquiryView extends ItemView {
         ].join('\n');
 
         const title = briefTitle ?? this.formatInquiryBriefTitle(result);
-        const heading = `# ${title}\n\n`;
+        const logTitle = this.resolveInquiryLogLinkTitle(result, logPath);
+        const logLine = logTitle ? `Log → [[${logTitle}]]\n\n` : '';
+        const heading = `# ${title}\n\n${logLine}`;
 
         const findingsLines = result.findings.map(finding => {
             const bullets = finding.bullets.map(bullet => `  - ${bullet}`).join('\n');
@@ -6085,6 +7086,101 @@ export class InquiryView extends ItemView {
             : '';
 
         return `${frontmatter}${heading}${summarySection}${payload}`;
+    }
+
+    private buildInquiryLogContent(
+        result: InquiryResult,
+        trace: InquiryRunTrace,
+        logTitle?: string,
+        normalizationNotes?: string[]
+    ): string {
+        const title = logTitle ?? this.formatInquiryLogTitle(result);
+        const zoneLabel = this.resolveInquiryBriefZoneLabel(result);
+        const lensLabel = this.resolveInquiryBriefLensLabel(result, zoneLabel);
+        const scopeLabel = result.scope === 'saga' ? 'Saga' : 'Book';
+        const target = result.focusId || (result.scope === 'saga' ? 'Σ' : 'B0');
+        const aiProvider = result.aiProvider || 'unknown';
+        const aiModelRequested = result.aiModelRequested || 'unknown';
+        const aiModelResolved = result.aiModelResolved || aiModelRequested;
+        const submittedAt = result.submittedAt ? new Date(result.submittedAt) : null;
+        const completedAt = result.completedAt ? new Date(result.completedAt) : null;
+        const durationMs = typeof result.roundTripMs === 'number' && Number.isFinite(result.roundTripMs)
+            ? result.roundTripMs
+            : null;
+
+        let status: AiLogStatus = 'success';
+        if (result.aiReason === 'stub') {
+            status = 'simulated';
+        } else if (this.isErrorResult(result)) {
+            status = 'error';
+        }
+
+        const tokenUsage = trace.usage
+            ?? (trace.response?.responseData ? extractTokenUsage(aiProvider, trace.response.responseData) : null);
+        const { sanitized: sanitizedPayload, redactedKeys } = sanitizeLogPayload(trace.requestPayload ?? null);
+        const redactionNotes = redactedKeys.length
+            ? [`Redacted request keys: ${redactedKeys.join(', ')}.`]
+            : [];
+        const sanitizationSteps = [...(trace.sanitizationNotes || []), ...redactionNotes].filter(Boolean);
+        const schemaWarnings = [
+            ...(trace.notes || []),
+            ...(normalizationNotes || [])
+        ].filter(Boolean);
+
+        return formatAiLogContent({
+            title,
+            metadata: {
+                feature: 'Inquiry',
+                scopeTarget: `${scopeLabel} · ${target} · ${zoneLabel} · ${lensLabel}`,
+                provider: aiProvider,
+                modelRequested: aiModelRequested,
+                modelResolved: aiModelResolved,
+                submittedAt,
+                returnedAt: completedAt,
+                durationMs,
+                status,
+                tokenUsage
+            },
+            request: {
+                systemPrompt: trace.systemPrompt,
+                userPrompt: trace.userPrompt,
+                evidenceText: trace.evidenceText,
+                requestPayload: sanitizedPayload
+            },
+            response: {
+                rawResponse: trace.response?.responseData ?? null,
+                assistantContent: trace.response?.content ?? '',
+                parsedOutput: this.normalizeLegacyResult(result)
+            },
+            notes: {
+                sanitizationSteps,
+                retryAttempts: trace.retryCount,
+                schemaWarnings
+            }
+        });
+    }
+
+    private formatInquiryLogTitle(result: InquiryResult): string {
+        const timestampSource = this.getInquiryTimestamp(result, true) ?? new Date();
+        const timestamp = this.formatInquiryBriefTimestamp(timestampSource);
+        const zoneLabel = this.resolveInquiryBriefZoneLabel(result);
+        const lensLabel = this.resolveInquiryBriefLensLabel(result, zoneLabel);
+        const parts: string[] = [];
+        if (result.scope === 'saga') {
+            parts.push('Saga');
+        }
+        parts.push(zoneLabel, lensLabel);
+        return `Inquiry Log — ${parts.join(' · ')} ${timestamp}`;
+    }
+
+    private resolveInquiryLogLinkTitle(result: InquiryResult, logPath?: string): string {
+        if (logPath) {
+            const basename = logPath.split('/').pop();
+            if (basename) {
+                return basename.replace(/\.md$/, '');
+            }
+        }
+        return this.formatInquiryLogTitle(result);
     }
 
     private formatInquiryBriefTitle(result: InquiryResult): string {
@@ -6156,6 +7252,15 @@ export class InquiryView extends ItemView {
         const includeSeconds = options?.includeSeconds ?? false;
         const secondText = includeSeconds ? `.${String(seconds).padStart(2, '0')}` : '';
         return `${month} ${day} ${year} @ ${hours}.${minuteText}${secondText}${am ? 'am' : 'pm'}`;
+    }
+
+    private stringifyLogValue(value: unknown): string {
+        if (value === undefined) return 'undefined';
+        try {
+            return JSON.stringify(value, null, 2);
+        } catch {
+            return String(value);
+        }
     }
 
     private getInquiryTimestamp(result: InquiryResult, fallbackToNow = false): Date | null {

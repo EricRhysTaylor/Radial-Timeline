@@ -218,11 +218,14 @@ export interface AprCampaign {
     teaserReveal?: TeaserRevealSettings;
 }
 
+export type InquiryMaterialMode = 'none' | 'summary' | 'full' | 'digest';
+
 export interface InquiryClassConfig {
     className: string;
     enabled: boolean;
-    bookScope: boolean;
-    sagaScope: boolean;
+    bookScope: InquiryMaterialMode;
+    sagaScope: InquiryMaterialMode;
+    referenceScope: InquiryMaterialMode;
 }
 
 export interface InquirySourcesSettings {

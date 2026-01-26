@@ -389,7 +389,7 @@ export function renderAiSection(params: {
     localWarningSection.createEl('strong', { text: 'Advisory Note', cls: 'ert-local-llm-advisory-title' });
     const aiOutputFolder = resolveAiOutputFolder(plugin);
     localWarningSection.createSpan({
-        text: `By default, no LLM pulses are written to the scene when local transformer is used. Rather it is stored in a RAW AI file in the local logs output folder (${aiOutputFolder}), as the response does not follow directions and breaks the scene hover formatting. You may still write scene hover metadata with local LLM by toggling off the setting "Bypass scene hover metadata yaml writes" below.`
+        text: `By default, no LLM pulses are written to the scene when local transformer is used. Rather it is stored in an AI log file in the local logs output folder (${aiOutputFolder}), as the response does not follow directions and breaks the scene hover formatting. You may still write scene hover metadata with local LLM by toggling off the setting "Bypass scene hover metadata yaml writes" below.`
     });
 
     const localModelSetting = new Settings(localSection)
@@ -483,7 +483,7 @@ export function renderAiSection(params: {
 
     new Settings(localSection)
         .setName('Bypass scene hover metadata yaml writes')
-        .setDesc('Default is enabled. Local LLM triplet pulse analysis skips writing to the scene note and saves the results in the RAW AI log report instead. Recommended for local models.')
+        .setDesc('Default is enabled. Local LLM triplet pulse analysis skips writing to the scene note and saves the results in the AI log report instead. Recommended for local models.')
         .addToggle(toggle => toggle
             .setValue(plugin.settings.localSendPulseToAiReport ?? true)
             .onChange(async (value) => {
@@ -519,11 +519,11 @@ export function renderAiSection(params: {
     };
     const getLoggingDesc = (fileCount: number | null): string => {
         const countText = formatLogCount(fileCount);
-        return `If enabled, create a new note in "${outputFolder}" for each AI API request/response. (${countText})`;
+        return `When enabled, writes logs for Inquiry, Pulse, and Gossamer runs. Pulse/Gossamer logs go to "${outputFolder}" (${countText}). Inquiry logs go to "Radial Timeline/Logs".`;
     };
 
     const apiLoggingSetting = new Settings(containerEl)
-        .setName('Log AI interactions to file including sent and received payloads')
+        .setName('Enable AI logs')
         .setDesc(getLoggingDesc(null))
         .addToggle(toggle => toggle
             .setValue(plugin.settings.logApiInteractions)

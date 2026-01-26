@@ -1,4 +1,5 @@
-import type { InquiryMode, InquiryScope, InquiryZone, InquiryResult } from '../state';
+import type { InquiryAiStatus, InquiryMode, InquiryScope, InquiryZone, InquiryResult } from '../state';
+import type { InquiryMaterialMode } from '../../types/settings';
 
 export type EvidenceClass = string;
 
@@ -10,12 +11,19 @@ export interface InquiryAiEngineInfo {
     modelLabel: string;
 }
 
+export interface InquiryOmnibusQuestion {
+    id: string;
+    zone: InquiryZone;
+    question: string;
+}
+
 export interface CorpusManifestEntry {
     path: string;
     mtime: number;
     class: EvidenceClass;
     scope?: InquiryScope;
     bookId?: string;
+    mode?: InquiryMaterialMode;
 }
 
 export interface CorpusManifest {
@@ -47,6 +55,48 @@ export interface InquiryRunnerInput {
     corpus: CorpusManifest;
     rules: EvidenceParticipationRules;
     ai: InquiryAiEngineInfo;
+}
+
+export interface InquiryOmnibusInput {
+    scope: InquiryScope;
+    focusLabel: string;
+    focusSceneId?: string;
+    focusBookId?: string;
+    // UI emphasis only; inquiry computation must always include both flow + depth regardless of lens.
+    mode: InquiryMode;
+    questions: InquiryOmnibusQuestion[];
+    corpus: CorpusManifest;
+    rules: EvidenceParticipationRules;
+    ai: InquiryAiEngineInfo;
+}
+
+export interface InquiryRunTrace {
+    systemPrompt: string;
+    userPrompt: string;
+    evidenceText: string;
+    requestPayload?: unknown;
+    tokenEstimate: {
+        inputTokens: number;
+        outputTokens: number;
+        totalTokens: number;
+        inputChars: number;
+    };
+    outputTokenCap: number;
+    retryCount?: number;
+    response: {
+        content: string | null;
+        responseData: unknown;
+        aiStatus?: InquiryAiStatus;
+        aiReason?: string;
+        error?: string;
+    } | null;
+    usage?: {
+        inputTokens?: number;
+        outputTokens?: number;
+        totalTokens?: number;
+    };
+    sanitizationNotes: string[];
+    notes: string[];
 }
 
 export interface InquiryRunner {

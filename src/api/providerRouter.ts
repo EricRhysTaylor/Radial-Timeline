@@ -8,6 +8,7 @@ import { callOpenAiApi, type OpenAiApiResponse } from './openaiApi';
 import { callAnthropicApi, type AnthropicApiResponse } from './anthropicApi';
 import { callGeminiApi, type GeminiApiResponse } from './geminiApi';
 import { sanitizeProviderArgs, type AiProvider, type ProviderCallArgs as ProviderCallArgsBase } from './providerCapabilities';
+import { buildProviderRequestPayload } from './requestPayload';
 import { classifyProviderError, type AiStatus } from './providerErrors';
 
 export interface ProviderCallArgs extends ProviderCallArgsBase {
@@ -19,6 +20,7 @@ export interface ProviderResult<T = unknown> {
   success: boolean;
   content: string | null;
   responseData: T;
+  requestPayload?: unknown;
   provider: AiProvider;
   modelId: string;
   aiProvider: AiProvider;
@@ -27,6 +29,9 @@ export interface ProviderResult<T = unknown> {
   aiStatus: AiStatus;
   aiReason?: string;
   error?: string;
+  sanitizationNotes?: string[];
+  sanitizedParams?: string[];
+  retryCount?: number;
 }
 
 export async function resolveKey(app: App, key: string): Promise<string> {
@@ -71,10 +76,13 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
   }
 
   const baseArgs = sanitizeProviderArgs(provider, requestedModelId, rawArgs);
+  const sanitizedParams = diffProviderArgs(rawArgs, baseArgs);
+  const sanitizationNotes = sanitizedParams.map(param => `Removed unsupported parameter: ${param}.`);
 
   const runCall = async (callArgs: ProviderCallArgsBase): Promise<ProviderResult> => {
     const resolvedMaxTokens = typeof callArgs.maxTokens === 'number' ? callArgs.maxTokens : 4000;
     const openAiMaxTokens = callArgs.maxTokens === null ? null : resolvedMaxTokens;
+    const requestPayload = buildProviderRequestPayload(provider, requestedModelId, callArgs);
     if (provider === 'anthropic') {
       const rawKey = plugin.settings.anthropicApiKey || '';
       const apiKey = await resolveKey(plugin.app, rawKey);
@@ -85,7 +93,7 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
         callArgs.userPrompt,
         resolvedMaxTokens
       );
-      return buildProviderResult(provider, requestedModelId, resp);
+      return { ...buildProviderResult(provider, requestedModelId, resp), requestPayload };
     }
     if (provider === 'gemini') {
       const rawKey = plugin.settings.geminiApiKey || '';
@@ -102,7 +110,7 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
         undefined,
         callArgs.top_p
       );
-      return buildProviderResult(provider, requestedModelId, resp);
+      return { ...buildProviderResult(provider, requestedModelId, resp), requestPayload };
     }
     if (provider === 'local') {
       const rawKey = plugin.settings.localApiKey || '';
@@ -119,7 +127,7 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
         callArgs.temperature,
         callArgs.top_p
       );
-      return buildProviderResult(provider, requestedModelId, resp);
+      return { ...buildProviderResult(provider, requestedModelId, resp), requestPayload };
     }
     const rawKey = plugin.settings.openaiApiKey || '';
     const apiKey = await resolveKey(plugin.app, rawKey);
@@ -134,11 +142,14 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
       callArgs.temperature,
       callArgs.top_p
     );
-    return buildProviderResult(provider, requestedModelId, resp);
+    return { ...buildProviderResult(provider, requestedModelId, resp), requestPayload };
   };
 
   let result = await runCall(baseArgs);
+  let retryCount = 0;
   if (result.aiStatus === 'rejected' && result.aiReason === 'unsupported_param') {
+    retryCount += 1;
+    sanitizationNotes.push('Provider rejected unsupported parameters; retrying without optional controls.');
     const retryArgs = sanitizeProviderArgs(provider, requestedModelId, {
       ...rawArgs,
       temperature: undefined,
@@ -150,7 +161,29 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
     result = await runCall(retryArgs);
   }
 
-  return result;
+  return { ...result, sanitizationNotes, sanitizedParams, retryCount };
+}
+
+function diffProviderArgs(
+  requested: ProviderCallArgsBase,
+  sanitized: ProviderCallArgsBase
+): string[] {
+  const removed: string[] = [];
+  const keys: (keyof ProviderCallArgsBase)[] = [
+    'systemPrompt',
+    'maxTokens',
+    'temperature',
+    'top_p',
+    'responseFormat',
+    'jsonSchema',
+    'disableThinking'
+  ];
+  keys.forEach((key) => {
+    if (requested[key] !== undefined && sanitized[key] === undefined) {
+      removed.push(String(key));
+    }
+  });
+  return removed;
 }
 
 function buildProviderResult<T extends { success: boolean; content: string | null; responseData: unknown; error?: string }>(
