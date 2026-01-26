@@ -41,6 +41,10 @@ export class InquirySessionStore {
         return sessions.slice(0, Math.max(0, limit));
     }
 
+    getSessionCount(): number {
+        return this.cache.sessions.length;
+    }
+
     setSession(session: InquirySession): void {
         const index = this.cache.sessions.findIndex(s => s.key === session.key);
         if (index >= 0) {

@@ -58,7 +58,7 @@ export const APR_LAYOUT = {
         percentSymbolSizeMultiplier: 1.9,
 
         // ─────────────────────────────────────────────────────────────────────
-        // RT BADGE (Bottom-right corner)
+        // STAGE BADGE (Bottom-right corner)
         // ─────────────────────────────────────────────────────────────────────
         rtBadgeFontSize: 6,
         rtBadgeOffsetX: 5,
@@ -106,9 +106,9 @@ export const APR_LAYOUT = {
         percentSymbolSizeMultiplier: 1.9, // % symbol size: 1.0 = small, 2.5 = large (relative to inner radius)
 
         // ─────────────────────────────────────────────────────────────────────
-        // RT BADGE (Bottom-right corner)
+        // STAGE BADGE (Bottom-right corner)
         // ─────────────────────────────────────────────────────────────────────
-        rtBadgeFontSize: 9,         // Font size for RT badge
+        rtBadgeFontSize: 9,         // Font size for stage badge
         rtBadgeOffsetX: 8,           // Inset from right edge
         rtBadgeOffsetY: 8,           // Inset from bottom edge
 
@@ -155,9 +155,9 @@ export const APR_LAYOUT = {
         percentSymbolSizeMultiplier: 2, // % symbol size: 1.0 = small, 2.5 = large (relative to inner radius)
 
         // ─────────────────────────────────────────────────────────────────────
-        // RT BADGE (Bottom-right corner)
+        // STAGE BADGE (Bottom-right corner)
         // ─────────────────────────────────────────────────────────────────────
-        rtBadgeFontSize: 14,         // Font size for RT badge
+        rtBadgeFontSize: 14,         // Font size for stage badge
         rtBadgeOffsetX: 16,          // Inset from right edge
         rtBadgeOffsetY: 16,          // Inset from bottom edge
 
@@ -204,9 +204,9 @@ export const APR_LAYOUT = {
         percentSymbolSizeMultiplier: 2, // % symbol size: 1.0 = small, 2.5 = large (relative to inner radius)
 
         // ─────────────────────────────────────────────────────────────────────
-        // RT BADGE (Bottom-right corner)
+        // STAGE BADGE (Bottom-right corner)
         // ─────────────────────────────────────────────────────────────────────
-        rtBadgeFontSize: 21,         // Font size for RT badge
+        rtBadgeFontSize: 21,         // Font size for stage badge
         rtBadgeOffsetX: 24,          // Inset from right edge
         rtBadgeOffsetY: 24,          // Inset from bottom edge
 
@@ -274,13 +274,13 @@ export const APR_TEXT_COLORS = {
 // =============================================================================
 
 export const APR_FONTS = {
-    // Primary branding font (book title, author, RT badge)
+    // Primary branding font (book title, author, badge text)
     branding: "var(--font-interface, system-ui, sans-serif)",
 
     // Center percent font  
     percent: "var(--font-interface, system-ui, sans-serif)",
 
-    // RT badge font (set to same as branding for consistency, or use pixel font)
+    // Badge font (set to same as branding for consistency, or use pixel font)
     rtBadge: "var(--font-interface, system-ui, sans-serif)",
     // Alternative: "'04b03b', monospace" for pixel font
 } as const;

@@ -88,6 +88,23 @@ export class AuthorProgressService {
         return Math.min(100, Math.max(0, Math.round(percent)));
     }
 
+    private resolvePublishStageLabel(scenes: TimelineItem[]): string {
+        return this.plugin.calculateCompletionEstimate(scenes)?.stage ?? 'Zero';
+    }
+
+    private resolveRevealCountdown(campaign?: AprCampaign): { enabled: boolean; nextRevealAt?: number | string | Date } {
+        const settings = this.plugin.settings.authorProgress as any;
+        const campaignReveal = (campaign as any)?.revealCampaign;
+        const revealCampaign = campaignReveal ?? settings?.revealCampaign;
+        if (!revealCampaign) {
+            return { enabled: false };
+        }
+        return {
+            enabled: !!revealCampaign.enabled,
+            nextRevealAt: revealCampaign.nextRevealAt ?? revealCampaign.nextRevealDate ?? revealCampaign.nextReveal
+        };
+    }
+
     /**
      * Generates and saves the APR report using the dedicated APR renderer.
      */
@@ -97,6 +114,11 @@ export class AuthorProgressService {
 
         const scenes = await getAllScenes(this.app, this.plugin);
         const progressPercent = this.calculateProgress(scenes);
+        const publishStageLabel = this.resolvePublishStageLabel(scenes);
+        const { enabled: revealCampaignEnabled, nextRevealAt } = this.resolveRevealCountdown();
+        const showRtAttribution = isProfessionalActive(this.plugin)
+            ? settings.aprShowRtAttribution !== false
+            : true;
 
         const size = settings.aprSize || 'medium';
         const isThumb = size === 'thumb';
@@ -112,7 +134,7 @@ export class AuthorProgressService {
             showStatusColors: settings.showStatus ?? true,
             showProgressPercent: isThumb ? false : (settings.showProgressPercent ?? true),
             showBranding: !isThumb,
-            centerMark: isThumb ? 'plus' : 'none',
+            centerMark: 'none',
             stageColors: (this.plugin.settings as any).publishStageColors,
             actCount: this.plugin.settings.actCount || undefined,
             backgroundColor: settings.aprBackgroundColor,
@@ -124,6 +146,10 @@ export class AuthorProgressService {
             percentSymbolColor: settings.aprPercentSymbolColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
             theme: settings.aprTheme || 'dark',
             spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor : undefined,
+            publishStageLabel,
+            showRtAttribution,
+            revealCampaignEnabled,
+            nextRevealAt,
             // Typography settings
             bookTitleFontFamily: settings.aprBookTitleFontFamily,
             bookTitleFontWeight: settings.aprBookTitleFontWeight,
@@ -354,6 +380,11 @@ export class AuthorProgressService {
 
         const scenes = await getAllScenes(this.app, this.plugin);
         const progressPercent = this.calculateProgress(scenes);
+        const publishStageLabel = this.resolvePublishStageLabel(scenes);
+        const { enabled: revealCampaignEnabled, nextRevealAt } = this.resolveRevealCountdown(campaign);
+        const showRtAttribution = isProfessionalActive(this.plugin)
+            ? settings.aprShowRtAttribution !== false
+            : true;
 
         let showScenes = true;
         let showSubplots = campaign.showSubplots;
@@ -401,7 +432,7 @@ export class AuthorProgressService {
             grayCompletedScenes,
             showProgressPercent: ringOnly ? false : showProgressPercent,
             showBranding: !ringOnly,
-            centerMark: size === 'thumb' ? 'plus' : 'none',
+            centerMark: 'none',
             stageColors: this.plugin.settings.publishStageColors,
             actCount: this.plugin.settings.actCount || undefined,
             backgroundColor: campaign.customBackgroundColor ?? settings.aprBackgroundColor,
@@ -413,6 +444,10 @@ export class AuthorProgressService {
             percentSymbolColor: settings.aprPercentSymbolColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
             theme: campaign.customTheme ?? settings.aprTheme ?? 'dark',
             spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor : undefined,
+            publishStageLabel,
+            showRtAttribution,
+            revealCampaignEnabled,
+            nextRevealAt,
             // Typography settings
             bookTitleFontFamily: settings.aprBookTitleFontFamily,
             bookTitleFontWeight: settings.aprBookTitleFontWeight,

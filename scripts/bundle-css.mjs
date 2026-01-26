@@ -17,6 +17,7 @@ const files = [
     'font.css',
     'variables.css',
     'base.css',
+    'apr-thumb.css',
     'timeline.css',
     'scenes.css',
     'grid.css',

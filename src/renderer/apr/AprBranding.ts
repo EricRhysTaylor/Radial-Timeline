@@ -1,11 +1,13 @@
 /**
  * APR Branding - Perimeter text rendering for Author Progress Reports
  * 
- * Renders the repeating book title around the outer edge with one instance
- * of Radial Timeline branding replacing one iteration near the bottom.
+ * Renders the repeating book title/author text around the outer edge.
  */
 
-import { getPreset, APR_TEXT_COLORS, APR_FONTS, AprSize } from './AprLayoutConfig';
+import { getPreset, APR_TEXT_COLORS, AprSize } from './AprLayoutConfig';
+
+const cssVar = (name: string, fallback: string) => `var(${name}-override, var(${name}, ${fallback}))`;
+const italicAttr = (isItalic?: boolean) => (isItalic ? 'font-style="italic"' : ''); // SAFE: inline style used for SVG font-style attribute
 
 export interface AprBrandingOptions {
     bookTitle: string;
@@ -14,7 +16,6 @@ export interface AprBrandingOptions {
     size: AprSize;
     bookAuthorColor?: string;
     authorColor?: string;
-    engineColor?: string;
     // Book Title font settings
     bookTitleFontFamily?: string;
     bookTitleFontWeight?: number;
@@ -25,39 +26,29 @@ export interface AprBrandingOptions {
     authorNameFontWeight?: number;
     authorNameFontItalic?: boolean;
     authorNameFontSize?: number;
-    // RT Badge font settings
-    rtBadgeFontFamily?: string;
-    rtBadgeFontWeight?: number;
-    rtBadgeFontItalic?: boolean;
-    rtBadgeFontSize?: number;
 }
 
 /**
  * Generate the perimeter branding SVG elements
- * Creates a continuous text ring of book/author, plus a minimal RT badge at bottom-right
+ * Creates a continuous text ring of book/author (badges handled separately)
  * 
  * Uses SVG textLength to force text to fill exactly 360° with no gap or overlap.
  */
 export function renderAprBranding(options: AprBrandingOptions): string {
     const {
-        bookTitle, authorName, authorUrl, size, bookAuthorColor, authorColor, engineColor,
+        bookTitle, authorName, authorUrl, size, bookAuthorColor, authorColor,
         bookTitleFontFamily = 'Inter', bookTitleFontWeight = 400, bookTitleFontItalic = false, bookTitleFontSize,
-        authorNameFontFamily = 'Inter', authorNameFontWeight = 400, authorNameFontItalic = false, authorNameFontSize,
-        rtBadgeFontFamily = 'Inter', rtBadgeFontWeight = 700, rtBadgeFontItalic = false, rtBadgeFontSize
+        authorNameFontFamily = 'Inter', authorNameFontWeight = 400, authorNameFontItalic = false, authorNameFontSize
     } = options;
     const preset = getPreset(size);
-    const { brandingRadius, brandingFontSize, rtBrandingFontSize } = preset;
+    const { brandingRadius, brandingFontSize } = preset;
 
     // Use custom font sizes if provided, otherwise use preset defaults
     const bookTitleSize = bookTitleFontSize ?? brandingFontSize;
     const authorNameSize = authorNameFontSize ?? brandingFontSize;
-    const rtBadgeSize = rtBadgeFontSize ?? rtBrandingFontSize;
-
-    const rtUrl = 'https://radialtimeline.com';
     // Fallback to Press stage green if no color provided (matches RT default)
     const bookColor = bookAuthorColor || '#6FB971';
     const authColor = authorColor || bookColor; // Default to book color if not specified
-    const engColor = engineColor || APR_TEXT_COLORS.primary;
 
     // Build the repeating title segment
     const separator = ' ~ ';
@@ -93,13 +84,13 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     let textContent = '';
     for (let i = 0; i < repetitions; i++) {
         // Book title with its own font settings (using SVG attributes, not inline styles)
-        textContent += `<tspan fill="${bookColor}" font-family="${bookTitleFontFamily}" font-weight="${bookTitleFontWeight}"${bookTitleFontItalic ? ' font-style="italic"' : ''}>${bookTitleUpper}</tspan>`; // SAFE: inline style used for SVG attribute font-style in template string
+        textContent += `<tspan fill="${cssVar('--apr-book-title-color', bookColor)}" font-family="${bookTitleFontFamily}" font-weight="${bookTitleFontWeight}" ${italicAttr(bookTitleFontItalic)}>${bookTitleUpper}</tspan>`; // SAFE: inline style used for SVG attribute font-style in template string
         if (hasAuthor) {
             // Author name with its own font settings (using SVG attributes, not inline styles)
-            textContent += `<tspan fill="${authColor}" font-family="${authorNameFontFamily}" font-weight="${authorNameFontWeight}"${authorNameFontItalic ? ' font-style="italic"' : ''}>${bullet}${authorNameUpper}</tspan>`; // SAFE: inline style used for SVG attribute font-style in template string
+            textContent += `<tspan fill="${cssVar('--apr-author-color', authColor)}" font-family="${authorNameFontFamily}" font-weight="${authorNameFontWeight}" ${italicAttr(authorNameFontItalic)}>${bullet}${authorNameUpper}</tspan>`; // SAFE: inline style used for SVG attribute font-style in template string
         }
         // Separator uses book title font (using SVG attributes, not inline styles)
-        textContent += `<tspan fill="${bookColor}" font-family="${bookTitleFontFamily}" font-weight="${bookTitleFontWeight}"${bookTitleFontItalic ? ' font-style="italic"' : ''}>${separator}</tspan>`; // SAFE: inline style used for SVG attribute font-style in template string
+        textContent += `<tspan fill="${cssVar('--apr-book-title-color', bookColor)}" font-family="${bookTitleFontFamily}" font-weight="${bookTitleFontWeight}" ${italicAttr(bookTitleFontItalic)}>${separator}</tspan>`; // SAFE: inline style used for SVG attribute font-style in template string
     }
 
     // Use average font size for the text element (textLength needs a consistent base)
@@ -110,39 +101,13 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             font-family="${bookTitleFontFamily}" 
             font-size="${avgFontSize}" 
             font-weight="${bookTitleFontWeight}" 
-            ${bookTitleFontItalic ? 'font-style="italic"' : ''} // SAFE: inline style used for SVG attribute font-style in template string
+            ${italicAttr(bookTitleFontItalic)}
             textLength="${circumference.toFixed(2)}"
             lengthAdjust="spacing">
             <textPath href="#${circlePathId}" startOffset="0%">
                 ${textContent}
             </textPath>
         </text>
-    `;
-
-    // Minimal RT badge at bottom-right corner (outside the ring)
-    // Position uses preset-specific offset for proper scaling at each size
-    const half = preset.svgSize / 2;
-    const rtX = half - preset.rtCornerOffset;
-    const rtY = half - preset.rtCornerOffset;
-    // Use rtBrandingFontSize which is set to multiples of 8 for crisp pixel font rendering
-    const rtFontSize = rtBrandingFontSize;
-
-    const rtBadge = `
-        <a href="${rtUrl}" target="_blank" rel="noopener" class="rt-apr-rt-badge">
-            <text 
-                x="${rtX.toFixed(2)}" 
-                y="${rtY.toFixed(2)}" 
-                text-anchor="end" 
-                dominant-baseline="auto"
-                font-family="${rtBadgeFontFamily}" 
-                font-size="${rtBadgeSize}" 
-                font-weight="${rtBadgeFontWeight}"
-                ${rtBadgeFontItalic ? 'font-style="italic"' : ''} // SAFE: inline style used for SVG attribute font-style in template string
-                fill="${engColor}"
-                opacity="0.7">
-                RT
-            </text>
-        </a>
     `;
 
     // Large clickable hotspot covering the entire timeline for author URL
@@ -158,7 +123,109 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             ${timelineHotspot}
             ${brandingDefs}
             ${brandingText}
-            ${rtBadge}
+        </g>
+    `;
+}
+
+export interface AprBadgeOptions {
+    size: AprSize;
+    stageLabel?: string;
+    showStageBadge?: boolean;
+    showRtAttribution?: boolean;
+    revealCountdownDays?: number;
+    rtBadgeFontFamily?: string;
+    rtBadgeFontWeight?: number;
+    rtBadgeFontItalic?: boolean;
+    rtBadgeFontSize?: number;
+}
+
+export function renderAprBadges(options: AprBadgeOptions): string {
+    const {
+        size,
+        stageLabel,
+        showStageBadge = true,
+        showRtAttribution = true,
+        revealCountdownDays,
+        rtBadgeFontFamily = 'Inter',
+        rtBadgeFontWeight = 700,
+        rtBadgeFontItalic = false,
+        rtBadgeFontSize
+    } = options;
+
+    if (!showStageBadge && !showRtAttribution) return '';
+
+    const preset = getPreset(size);
+    const half = preset.svgSize / 2;
+    const corner = preset.rtCornerOffset;
+    const badgeSize = rtBadgeFontSize ?? preset.rtBrandingFontSize;
+    const stageText = (stageLabel || 'Zero').trim().toUpperCase() || 'ZERO';
+
+    const stageX = half - corner;
+    const stageY = half - corner;
+
+    const approxCharWidth = badgeSize * 0.6;
+    const stageLabelWidth = stageText.length * approxCharWidth;
+    const countdownGap = Math.max(4, Math.round(badgeSize * 0.35));
+    const countdownFontSize = Math.max(6, Math.round(badgeSize * 0.7));
+    const countdownX = stageX - stageLabelWidth - countdownGap;
+
+    const stageBadge = showStageBadge ? `
+        <text 
+            class="apr-stage-badge__text"
+            x="${stageX.toFixed(2)}" 
+            y="${stageY.toFixed(2)}" 
+            text-anchor="end" 
+            dominant-baseline="auto"
+            font-family="${rtBadgeFontFamily}" 
+            font-size="${badgeSize}" 
+            font-weight="${rtBadgeFontWeight}"
+            ${italicAttr(rtBadgeFontItalic)}
+            fill="${cssVar('--apr-stage-badge-color', APR_TEXT_COLORS.primary)}"
+            opacity="var(--apr-stage-badge-opacity, 0.88)">
+            ${stageText}
+        </text>
+    ` : '';
+
+    const countdown = revealCountdownDays && revealCountdownDays > 0 && showStageBadge ? `
+        <text
+            class="apr-reveal-countdown"
+            x="${countdownX.toFixed(2)}"
+            y="${stageY.toFixed(2)}"
+            text-anchor="end"
+            dominant-baseline="auto"
+            font-family="${rtBadgeFontFamily}"
+            font-size="${countdownFontSize}"
+            font-weight="${rtBadgeFontWeight}"
+            ${italicAttr(rtBadgeFontItalic)}
+            fill="${cssVar('--apr-countdown-color', APR_TEXT_COLORS.primary)}"
+            opacity="var(--apr-countdown-opacity, 0.7)">
+            ${revealCountdownDays}d
+        </text>
+    ` : '';
+
+    const rtAttribution = showRtAttribution ? `
+        <a href="https://radialtimeline.com" target="_blank" rel="noopener" class="apr-rt-attribution">
+            <text 
+                x="${(-half + corner).toFixed(2)}" 
+                y="${(half - corner).toFixed(2)}" 
+                text-anchor="start" 
+                dominant-baseline="auto"
+                font-family="${rtBadgeFontFamily}" 
+                font-size="${Math.max(6, Math.round(badgeSize * 0.75))}" 
+                font-weight="${rtBadgeFontWeight}"
+                ${italicAttr(rtBadgeFontItalic)}
+                fill="${cssVar('--apr-rt-attrib-color', APR_TEXT_COLORS.primary)}"
+                opacity="var(--apr-rt-attrib-opacity, 0.35)">
+                RT
+            </text>
+        </a>
+    ` : '';
+
+    return `
+        <g class="apr-badges">
+            ${countdown}
+            ${stageBadge}
+            ${rtAttribution}
         </g>
     `;
 }
@@ -247,9 +314,9 @@ export function renderAprCenterPercent(
                 dominant-baseline="middle"
                 font-family="${percentSymbolFontFamily}" 
                 font-weight="${percentSymbolFontWeight}" 
-                ${percentSymbolFontItalic ? 'font-style="italic"' : ''} // SAFE: inline style used for SVG attribute font-style in template string
+                ${italicAttr(percentSymbolFontItalic)}
                 font-size="${ghostFontSize}" 
-                fill="${symColor}"
+                fill="${cssVar('--apr-percent-symbol-color', symColor)}"
                 opacity="${ghostOpacity}">
                 %
             </text>
@@ -260,10 +327,10 @@ export function renderAprCenterPercent(
                 dominant-baseline="middle"
                 font-family="${percentNumberFontFamily}" 
                 font-weight="${percentNumberFontWeight}" 
-                ${percentNumberFontItalic ? 'font-style="italic"' : ''} // SAFE: inline style used for SVG attribute font-style in template string
+                ${italicAttr(percentNumberFontItalic)}
                 font-size="${fontSize}" 
                 letter-spacing="${preset.percentLetterSpacing}"
-                fill="${numColor}"
+                fill="${cssVar('--apr-percent-number-color', numColor)}"
                 opacity="${numberOpacity}">
                 ${numStr}
             </text>

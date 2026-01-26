@@ -117,10 +117,11 @@ export interface AuthorProgressSettings {
     aprPercentSymbolFontWeight?: number;  // Font weight for % symbol (default: 800)
     aprPercentSymbolFontItalic?: boolean; // Italic for % symbol (default: false)
 
-    aprRtBadgeFontFamily?: string;  // Font family for RT badge (default: 'Inter')
-    aprRtBadgeFontWeight?: number;  // Font weight for RT badge (default: 700)
-    aprRtBadgeFontItalic?: boolean; // Italic for RT badge (default: false)
-    aprRtBadgeFontSize?: number;    // Font size for RT badge (default: from preset)
+    aprRtBadgeFontFamily?: string;  // Font family for stage badge / RT mark (default: 'Inter')
+    aprRtBadgeFontWeight?: number;  // Font weight for stage badge / RT mark (default: 700)
+    aprRtBadgeFontItalic?: boolean; // Italic for stage badge / RT mark (default: false)
+    aprRtBadgeFontSize?: number;    // Font size for stage badge / RT mark (default: from preset)
+    aprShowRtAttribution?: boolean; // Show RT attribution mark (Pro can disable)
 
     // Identity & Branding
     bookTitle: string;

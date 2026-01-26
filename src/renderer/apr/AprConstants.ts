@@ -40,7 +40,7 @@ export const APR_SIZE_PRESETS = {
         centerFontSize: 24,
         brandingFontSize: 7,
         rtBrandingFontSize: 8,  // Minimum for pixel font
-        rtCornerOffset: 8,      // Offset from corner for RT badge
+        rtCornerOffset: 8,      // Offset from corner for badge text
         centerYOffset: 8,       // Y offset for center percent number
         ghostYOffset: 11,       // Y offset for ghost % symbol
         spokeWidth: 0.75,

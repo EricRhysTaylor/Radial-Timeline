@@ -777,6 +777,14 @@ async function renderTeaserStagesPreviews(
         return;
     }
 
+    const publishStageLabel = plugin.calculateCompletionEstimate(scenes)?.stage ?? 'Zero';
+    const revealCampaign = (campaign as any)?.revealCampaign ?? (settings as any)?.revealCampaign;
+    const revealCampaignEnabled = !!revealCampaign?.enabled;
+    const nextRevealAt = revealCampaign?.nextRevealAt ?? revealCampaign?.nextRevealDate ?? revealCampaign?.nextReveal;
+    const showRtAttribution = isProfessionalActive(plugin)
+        ? settings?.aprShowRtAttribution !== false
+        : true;
+
     // Get disabled stages
     const disabledStages = campaign.teaserReveal?.disabledStages ?? {};
 
@@ -845,11 +853,16 @@ async function renderTeaserStagesPreviews(
                 grayCompletedScenes: revealOptions.grayCompletedScenes,
                 showProgressPercent: !isRingOnly,
                 showBranding: !isRingOnly,
+                centerMark: 'none',
                 stageColors: plugin.settings.publishStageColors,
                 actCount: plugin.settings.actCount,
                 backgroundColor: campaign.customBackgroundColor ?? settings.aprBackgroundColor,
                 transparentCenter: campaign.customTransparent ?? settings.aprCenterTransparent,
-                theme: campaign.customTheme ?? settings.aprTheme ?? 'dark'
+                theme: campaign.customTheme ?? settings.aprTheme ?? 'dark',
+                publishStageLabel,
+                showRtAttribution,
+                revealCampaignEnabled,
+                nextRevealAt
             });
 
             svgContainer.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection

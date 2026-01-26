@@ -487,6 +487,13 @@ export class AuthorProgressModal extends Modal {
         const campaign = this.getSelectedCampaign();
         const isCampaign = !!campaign;
         const sizes: Array<'thumb' | 'small' | 'medium' | 'large'> = ['thumb', 'small', 'medium', 'large'];
+        const publishStageLabel = this.plugin.calculateCompletionEstimate(this.cachedScenes)?.stage ?? 'Zero';
+        const revealCampaign = (campaign as any)?.revealCampaign ?? (settings as any)?.revealCampaign;
+        const revealCampaignEnabled = !!revealCampaign?.enabled;
+        const nextRevealAt = revealCampaign?.nextRevealAt ?? revealCampaign?.nextRevealDate ?? revealCampaign?.nextReveal;
+        const showRtAttribution = isProfessionalActive(this.plugin)
+            ? settings?.aprShowRtAttribution !== false
+            : true;
 
         let showScenes = true;
         let showSubplots = this.showSubplots;
@@ -549,7 +556,7 @@ export class AuthorProgressModal extends Modal {
                     grayCompletedScenes,
                     showProgressPercent: ringOnly ? false : showProgressPercent,
                     showBranding: !ringOnly,
-                    centerMark: size === 'thumb' ? 'plus' : 'none',
+                    centerMark: 'none',
                     stageColors: (this.plugin.settings as any).publishStageColors,
                     actCount: this.plugin.settings.actCount || undefined,
                     backgroundColor: campaign?.customBackgroundColor ?? settings?.aprBackgroundColor ?? '#0d0d0f',
@@ -561,6 +568,10 @@ export class AuthorProgressModal extends Modal {
                     percentSymbolColor: settings?.aprPercentSymbolColor ?? settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
                     theme: campaign?.customTheme ?? settings?.aprTheme ?? 'dark',
                     spokeColor: settings?.aprSpokeColorMode === 'custom' ? settings?.aprSpokeColor : undefined,
+                    publishStageLabel,
+                    showRtAttribution,
+                    revealCampaignEnabled,
+                    nextRevealAt,
                     // Typography settings
                     bookTitleFontFamily: settings?.aprBookTitleFontFamily,
                     bookTitleFontWeight: settings?.aprBookTitleFontWeight,
@@ -614,6 +625,7 @@ export class AuthorProgressModal extends Modal {
                 showStatus: true,
                 showProgressPercent: true,
                 aprSize: 'medium',
+                aprShowRtAttribution: true,
                 bookTitle: '',
                 authorUrl: '',
                 updateFrequency: 'manual',

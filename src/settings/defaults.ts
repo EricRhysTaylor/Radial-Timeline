@@ -296,6 +296,7 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
         aprRtBadgeFontWeight: 700,
         aprRtBadgeFontItalic: false,
         aprRtBadgeFontSize: undefined, // Uses preset default
+        aprShowRtAttribution: true,
         
         bookTitle: '',
         authorUrl: '',

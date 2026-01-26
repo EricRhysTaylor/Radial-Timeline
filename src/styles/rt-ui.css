@@ -104,15 +104,17 @@
   --ert-control-bg: var(--background-modifier-form-field);
   --ert-control-border: var(--background-modifier-border);
   --ert-control-color: var(--text-normal);
-  --ert-modal-bg: color-mix(in srgb, var(--background-primary) 86%, transparent);
-  --ert-modal-border: color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
+  --ert-modal-bg: color-mix(in srgb, var(--background-primary) 68%, transparent);
+  --ert-modal-border: color-mix(in srgb, var(--background-modifier-border) 96%, transparent);
   --ert-modal-shadow: var(--shadow-l);
-  --ert-modal-blur: blur(22px);
-  --ert-modal-tint: linear-gradient(180deg,
-      color-mix(in srgb, var(--ert-accent) 18%, transparent) 0%,
-      color-mix(in srgb, var(--background-primary) 8%, transparent) 55%,
-      transparent 80%);
-  --ert-modal-glow: 0 14px 40px color-mix(in srgb, var(--ert-accent) 18%, transparent);
+  --ert-modal-blur: blur(34px) saturate(1.35);
+  --ert-modal-tint: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ert-accent) 28%, transparent) 0%,
+    color-mix(in srgb, var(--background-primary) 10%, transparent) 55%,
+    transparent 82%
+  );
+  --ert-modal-glow: 0 18px 50px color-mix(in srgb, var(--ert-accent) 22%, transparent);
   --ert-input-width-xs: var(--rt-input-width-xs, 6ch);
   --ert-input-width-sm: var(--rt-input-width-sm, 10ch);
   --ert-input-width-md: var(--rt-input-width-md, 16ch);
@@ -1656,6 +1658,10 @@
   min-width: 0;
 }
 
+.ert-ui .ert-elementBlock__right .ert-typography-controls {
+  justify-content: flex-end;
+}
+
 .ert-ui .ert-typography-controls--end {
   justify-content: flex-end;
 }
@@ -1911,8 +1917,8 @@
   display: none;
 }
 
-.ert-ui .ert-settings-searchable-content [data-ert-section]>.setting-item.setting-item-heading {
-  margin-top: calc(var(--ert-gap-md) * 2);
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.setting-item-heading {
+  margin: var(--ert-gap-md) 0 var(--ert-gap-sm);
 }
 
 .ert-ui .ert-settings-searchable-content [data-ert-section]:first-child>.setting-item.setting-item-heading:first-child:not(.ert-setting-heading--top) {

@@ -575,18 +575,6 @@
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-/* APR SVG Styles */
-.apr-svg .rt-apr-rt-badge {
-  text-decoration: none;
-}
-
-.apr-svg .rt-apr-rt-badge:hover {
-  text-decoration: none;
-  fill: var(--rt-social-color, #ffd41d);
-  opacity: 1;
-  transition: fill 0.2s ease, opacity 0.2s ease;
-}
-
 /* Icon button - consistent sizing (includes rt-template-icon-btn for settings) */
 .rt-icon-btn,
 .rt-template-icon-btn {

@@ -6,11 +6,12 @@ import type { TimelineItem } from '../../types';
 import { isBeatNote, sortScenes, sortByManuscriptOrder } from '../../utils/sceneHelpers';
 import { computePositions } from '../utils/SceneLayout';
 import { sceneArcPath } from '../components/SceneArcs';
-import { getPreset, APR_COLORS, AprSize } from './AprLayoutConfig';
+import { getPreset, APR_COLORS, APR_TEXT_COLORS, AprSize } from './AprLayoutConfig';
 import { renderDefs } from '../components/Defs';
 import { getFillForScene } from '../utils/SceneFill';
 import { DEFAULT_SETTINGS } from '../../settings/defaults';
-import { renderAprBranding, renderAprCenterPercent } from './AprBranding';
+import { renderAprBadges, renderAprBranding, renderAprCenterPercent } from './AprBranding';
+import { STAGE_ORDER } from '../../utils/constants';
 
 export interface AprRenderOptions {
     size: AprSize;
@@ -60,6 +61,10 @@ export interface AprRenderOptions {
     rtBadgeFontWeight?: number;
     rtBadgeFontItalic?: boolean;
     rtBadgeFontSize?: number;
+    publishStageLabel?: string;
+    showRtAttribution?: boolean;
+    revealCampaignEnabled?: boolean;
+    nextRevealAt?: number | string | Date;
     debugLabel?: string;
 }
 
@@ -76,6 +81,9 @@ type RingData = {
     outerR: number;
 };
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const cssVar = (name: string, fallback: string) => `var(${name}-override, var(${name}, ${fallback}))`;
+
 export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): AprRenderResult {
     const {
         size,
@@ -86,6 +94,10 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         percentNumberFontSize1Digit, percentNumberFontSize2Digit, percentNumberFontSize3Digit,
         percentSymbolFontFamily, percentSymbolFontWeight, percentSymbolFontItalic,
         rtBadgeFontFamily, rtBadgeFontWeight, rtBadgeFontItalic, rtBadgeFontSize,
+        publishStageLabel,
+        showRtAttribution,
+        revealCampaignEnabled,
+        nextRevealAt,
         bookTitle,
         authorName,
         authorUrl,
@@ -122,6 +134,17 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
 
     // Normalize stage colors to match Publication mode (settings or defaults)
     const stageColorMap = stageColors || DEFAULT_SETTINGS.publishStageColors;
+    const stageColorLookup = stageColorMap as Record<string, string>;
+    const isThumb = size === 'thumb';
+    const showScenesFinal = isThumb ? false : showScenes;
+    const showProgressPercentFinal = isThumb ? false : showProgressPercent;
+    const showBrandingFinal = isThumb ? false : showBranding;
+    const centerMarkFinal = isThumb ? 'none' : centerMark;
+
+    const stageInfo = resolveStageLabel(publishStageLabel);
+    const stageBadgeColor = stageColorLookup[stageInfo.key] ?? stageColorMap.Press ?? '#6FB971';
+    const revealCountdownDays = resolveRevealCountdownDays(revealCampaignEnabled, nextRevealAt);
+    const showRtAttributionFinal = (showRtAttribution ?? true) && !isThumb;
 
     // Filter scenes (exclude beat notes always)
     const filteredScenes = scenes.filter(s => !isBeatNote(s));
@@ -180,9 +203,47 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         });
     }
 
-    let svg = `<svg width="${svgSize}" height="${svgSize}" viewBox="-${half} -${half} ${svgSize} ${svgSize}" xmlns="http://www.w3.org/2000/svg" class="apr-svg apr-${size}">`;
     const bgFill = (transparentCenter || backgroundColor === 'transparent') ? 'none' : (backgroundColor ?? structural.background);
-    svg += `<rect x="-${half}" y="-${half}" width="${svgSize}" height="${svgSize}" fill="${bgFill}" />`;
+    const holeFill = transparentCenter ? 'none' : (backgroundColor ?? structural.centerHole);
+    const bookTitleColorResolved = bookAuthorColor ?? stageColorMap.Press ?? '#6FB971';
+    const authorColorResolved = authorColor ?? bookTitleColorResolved;
+    const engineColorResolved = engineColor ?? APR_TEXT_COLORS.primary;
+    const percentNumberColorResolved = percentNumberColor ?? bookTitleColorResolved;
+    const percentSymbolColorResolved = percentSymbolColor ?? bookTitleColorResolved;
+    const ringOptions = !showScenesFinal && isThumb
+        ? {
+            ghostColor: stageColorMap.Press || '#22c55e',
+            ghostOpacity: 0.1,
+            ghostWidth: (outerRadius - innerRadius) * 0.78,
+            showBorders: false
+        }
+        : undefined;
+    const progressColor = stageColorMap.Press || '#22c55e';
+    const progressGhostColor = ringOptions?.ghostColor ?? structural.border;
+    const progressGhostOpacity = ringOptions?.ghostOpacity ?? 0.25;
+    const svgStyle = [
+        `--apr-bg: ${bgFill}`,
+        `--apr-center-fill: ${holeFill}`,
+        `--apr-struct-border: ${structural.border}`,
+        `--apr-struct-act-spoke: ${structural.actSpoke}`,
+        `--apr-scene-void: ${APR_COLORS.void}`,
+        `--apr-scene-neutral: ${APR_COLORS.sceneNeutral}`,
+        `--apr-book-title-color: ${bookTitleColorResolved}`,
+        `--apr-author-color: ${authorColorResolved}`,
+        `--apr-engine-color: ${engineColorResolved}`,
+        `--apr-percent-number-color: ${percentNumberColorResolved}`,
+        `--apr-percent-symbol-color: ${percentSymbolColorResolved}`,
+        `--apr-stage-badge-color: ${stageBadgeColor}`,
+        `--apr-countdown-color: ${stageBadgeColor}`,
+        `--apr-rt-attrib-color: ${engineColorResolved}`,
+        `--apr-progress-color: ${progressColor}`,
+        `--apr-progress-ghost-color: ${progressGhostColor}`,
+        `--apr-progress-ghost-opacity: ${progressGhostOpacity}`,
+        `--apr-center-mark-color: ${progressColor}`
+    ].join('; ');
+
+    let svg = `<svg width="${svgSize}" height="${svgSize}" viewBox="-${half} -${half} ${svgSize} ${svgSize}" xmlns="http://www.w3.org/2000/svg" class="apr-svg apr-${size}" style="${svgStyle}">`; // SAFE: inline style used for CSS variable surface in SVG
+    svg += `<rect x="-${half}" y="-${half}" width="${svgSize}" height="${svgSize}" fill="${cssVar('--apr-bg', bgFill)}" />`;
 
     // Publication-mode defs (plaid patterns etc.) + percent shadow filter
     // Use patternScale from preset for denser patterns at smaller sizes
@@ -196,15 +257,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     // ─────────────────────────────────────────────────────────────────────────
     // BAR-ONLY MODE (Teaser): Solid progress ring, no scene details
     // ─────────────────────────────────────────────────────────────────────────
-    if (!showScenes) {
-        const ringOptions = size === 'thumb'
-            ? {
-                ghostColor: stageColorMap.Press || '#22c55e',
-                ghostOpacity: 0.1,
-                ghostWidth: (outerRadius - innerRadius) * 0.78,
-                showBorders: false
-            }
-            : undefined;
+    if (!showScenesFinal) {
         svg += renderProgressRing(innerRadius, outerRadius, progressPercent, structural, stageColorMap, ringOptions);
     } else {
         // Normal mode: Draw rings with scene cells
@@ -221,16 +274,15 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     }
 
     // Center hole
-    const holeFill = transparentCenter ? 'none' : (backgroundColor ?? structural.centerHole);
-    svg += `<circle cx="0" cy="0" r="${innerRadius}" fill="${holeFill}" stroke="${structural.border}" stroke-opacity="0.35" />`;
+    svg += `<circle cx="0" cy="0" r="${innerRadius}" fill="${cssVar('--apr-center-fill', holeFill)}" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-opacity="var(--apr-struct-border-opacity, 0.35)" />`;
 
-    if (centerMark !== 'none') {
-        svg += renderCenterMark(innerRadius, centerMark, stageColorMap.Press || '#22c55e');
+    if (centerMarkFinal !== 'none') {
+        svg += renderCenterMark(innerRadius, centerMarkFinal, progressColor);
     }
 
     // Center percent (optional)
-    if (showProgressPercent) {
-        svg += renderAprCenterPercent(progressPercent, size, innerRadius, percentNumberColor, percentSymbolColor, undefined, {
+    if (showProgressPercentFinal) {
+        svg += renderAprCenterPercent(progressPercent, size, innerRadius, percentNumberColorResolved, percentSymbolColorResolved, undefined, {
             percentNumberFontFamily,
             percentNumberFontWeight,
             percentNumberFontItalic,
@@ -243,16 +295,15 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         });
     }
 
-    if (showBranding) {
+    if (showBrandingFinal) {
         // Branding on the perimeter (sanitize placeholder/dummy URLs)
         svg += renderAprBranding({
             bookTitle: bookTitle || 'Working Title',
             authorName,
             authorUrl: sanitizeAuthorUrl(authorUrl),
             size,
-            bookAuthorColor,
-            authorColor,
-            engineColor,
+            bookAuthorColor: bookTitleColorResolved,
+            authorColor: authorColorResolved,
             bookTitleFontFamily,
             bookTitleFontWeight,
             bookTitleFontItalic,
@@ -260,7 +311,17 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
             authorNameFontFamily,
             authorNameFontWeight,
             authorNameFontItalic,
-            authorNameFontSize,
+            authorNameFontSize
+        });
+    }
+
+    if (!isThumb) {
+        svg += renderAprBadges({
+            size,
+            stageLabel: stageInfo.label,
+            showStageBadge: true,
+            showRtAttribution: showRtAttributionFinal,
+            revealCountdownDays,
             rtBadgeFontFamily,
             rtBadgeFontWeight,
             rtBadgeFontItalic,
@@ -268,7 +329,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         });
     }
 
-    if (debugLabel) {
+    if (debugLabel && !isThumb) {
         svg += `<text x="${half - 10}" y="${half - 10}" text-anchor="end" font-family="sans-serif" font-size="10" fill="#ef4444" font-weight="bold">${debugLabel}</text>`;
     }
 
@@ -316,7 +377,7 @@ function renderRing(
         if (scenesInAct.length === 0) {
             // full void arc for this act - use light gray void color
             const voidPath = sceneArcPath(ring.innerR, ring.outerR, actStart, actEnd);
-            svg += `<path d="${voidPath}" fill="${APR_COLORS.void}" fill-opacity="0.85" stroke="${structural.border}" stroke-width="${borderWidth}" />`;
+            svg += `<path d="${voidPath}" fill="${cssVar('--apr-scene-void', APR_COLORS.void)}" fill-opacity="var(--apr-scene-void-opacity, 0.85)" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
             continue;
         }
 
@@ -328,7 +389,7 @@ function renderRing(
             used += pos.endAngle - pos.startAngle;
             const color = resolveSceneColor(scene, showStatusColors, showStageColors, grayCompletedScenes, stageColors);
             const path = sceneArcPath(ring.innerR, ring.outerR, pos.startAngle, pos.endAngle);
-            svg += `<path d="${path}" fill="${color}" stroke="${structural.border}" stroke-width="${borderWidth}" />`;
+            svg += `<path d="${path}" fill="${color}" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
         });
 
         // Void for remaining space in this act, if any - use light gray void color
@@ -337,13 +398,13 @@ function renderRing(
         if (remaining > 0.0001) {
             const voidStart = actEnd - remaining;
             const voidPath = sceneArcPath(ring.innerR, ring.outerR, voidStart, actEnd);
-            svg += `<path d="${voidPath}" fill="${APR_COLORS.void}" fill-opacity="0.85" stroke="${structural.border}" stroke-width="${borderWidth}" />`;
+            svg += `<path d="${voidPath}" fill="${cssVar('--apr-scene-void', APR_COLORS.void)}" fill-opacity="var(--apr-scene-void-opacity, 0.85)" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
         }
     }
 
     // Ring frames (inner/outer)
-    svg += `<circle r="${ring.outerR}" fill="none" stroke="${structural.border}" stroke-width="${borderWidth}" />`;
-    svg += `<circle r="${ring.innerR}" fill="none" stroke="${structural.border}" stroke-width="${borderWidth}" />`;
+    svg += `<circle r="${ring.outerR}" fill="none" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
+    svg += `<circle r="${ring.innerR}" fill="none" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
 
     return svg;
 }
@@ -357,7 +418,7 @@ function renderActSpokes(numActs: number, innerR: number, outerR: number, spokeW
         const y1 = innerR * Math.sin(angle);
         const x2 = outerR * Math.cos(angle);
         const y2 = outerR * Math.sin(angle);
-        svg += `<line x1="${x1.toFixed(3)}" y1="${y1.toFixed(3)}" x2="${x2.toFixed(3)}" y2="${y2.toFixed(3)}" stroke="${structural.actSpoke}" stroke-width="${spokeWidth}" />`;
+        svg += `<line x1="${x1.toFixed(3)}" y1="${y1.toFixed(3)}" x2="${x2.toFixed(3)}" y2="${y2.toFixed(3)}" stroke="${cssVar('--apr-struct-act-spoke', structural.actSpoke)}" stroke-width="${spokeWidth}" />`;
     }
     svg += `</g>`;
     return svg;
@@ -380,7 +441,7 @@ function resolveSceneColor(
     stageColors: Record<string, string>
 ): string {
     // When no colors at all, use neutral gray
-    if (!showStatusColors && !showStageColors) return APR_COLORS.sceneNeutral;
+    if (!showStatusColors && !showStageColors) return cssVar('--apr-scene-neutral', APR_COLORS.sceneNeutral);
 
     // Check if scene is "completed" (has a publish stage set)
     // Use bracket notation since 'Publish Stage' has a space
@@ -391,13 +452,13 @@ function resolveSceneColor(
 
     // SCENES stage: gray out completed scenes to hide publishing progress
     if (grayCompletedScenes && isCompleted) {
-        return APR_COLORS.sceneNeutral;
+        return cssVar('--apr-scene-neutral', APR_COLORS.sceneNeutral);
     }
 
     // When only status colors (not stage colors), show active work but not publish stages
     if (showStatusColors && !showStageColors) {
         // For completed scenes, use neutral (we don't want to show Zero/Author/House/Press)
-        if (isCompleted) return APR_COLORS.sceneNeutral;
+        if (isCompleted) return cssVar('--apr-scene-neutral', APR_COLORS.sceneNeutral);
         // For active work, use getFillForScene which respects status
         return getFillForScene(scene, stageColors);
     }
@@ -413,6 +474,38 @@ function sanitizeAuthorUrl(url?: string): string | undefined {
     const placeholder = 'https://your-site.com';
     if (trimmed.toLowerCase() === placeholder.toLowerCase()) return undefined;
     return trimmed;
+}
+
+function resolveStageLabel(stageLabel?: string): { label: string; key: string } {
+    const raw = (stageLabel ?? 'Zero').toString().trim();
+    const match = STAGE_ORDER.find(stage => stage.toLowerCase() === raw.toLowerCase());
+    const resolved = (match ?? raw) || 'Zero';
+    return { label: resolved.toUpperCase(), key: resolved };
+}
+
+function normalizeTimestamp(value?: number | string | Date): number | undefined {
+    if (!value) return undefined;
+    if (value instanceof Date) {
+        const ms = value.getTime();
+        return Number.isFinite(ms) ? ms : undefined;
+    }
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : undefined;
+    }
+    if (typeof value === 'string') {
+        const ms = Date.parse(value);
+        return Number.isFinite(ms) ? ms : undefined;
+    }
+    return undefined;
+}
+
+function resolveRevealCountdownDays(enabled?: boolean, nextRevealAt?: number | string | Date): number | undefined {
+    if (!enabled) return undefined;
+    const nextRevealMs = normalizeTimestamp(nextRevealAt);
+    if (!nextRevealMs) return undefined;
+    const diffMs = nextRevealMs - Date.now();
+    if (diffMs <= 0) return undefined;
+    return Math.ceil(diffMs / MS_PER_DAY);
 }
 
 function resolveStructuralColors(theme: 'dark' | 'light' | 'none', customSpokeColor?: string) {
@@ -484,7 +577,7 @@ function renderProgressRing(
 
     // Track (empty ring)
     let svg = `<g class="apr-progress-ring">`;
-    svg += `<circle cx="0" cy="0" r="${midR}" fill="none" stroke="${ghostColor}" stroke-width="${ghostWidth}" stroke-opacity="${ghostOpacity}" />`;
+    svg += `<circle cx="0" cy="0" r="${midR}" fill="none" stroke="${cssVar('--apr-progress-ghost-color', ghostColor)}" stroke-width="${ghostWidth}" stroke-opacity="${cssVar('--apr-progress-ghost-opacity', String(ghostOpacity))}" />`;
 
     // Progress arc
     if (progressPercent > 0) {
@@ -492,7 +585,7 @@ function renderProgressRing(
 
         if (clampedPercent >= 100) {
             // Full circle
-            svg += `<circle cx="0" cy="0" r="${midR}" fill="none" stroke="${progressColor}" stroke-width="${progressWidth}" />`;
+            svg += `<circle cx="0" cy="0" r="${midR}" fill="none" stroke="${cssVar('--apr-progress-color', progressColor)}" stroke-width="${progressWidth}" />`;
         } else {
             // Arc from top (-90°) clockwise
             const angle = (clampedPercent / 100) * 2 * Math.PI;
@@ -506,14 +599,14 @@ function renderProgressRing(
 
             const largeArcFlag = angle > Math.PI ? 1 : 0;
 
-            svg += `<path d="M ${x1.toFixed(3)} ${y1.toFixed(3)} A ${midR} ${midR} 0 ${largeArcFlag} 1 ${x2.toFixed(3)} ${y2.toFixed(3)}" fill="none" stroke="${progressColor}" stroke-width="${progressWidth}" stroke-linecap="round" />`;
+            svg += `<path d="M ${x1.toFixed(3)} ${y1.toFixed(3)} A ${midR} ${midR} 0 ${largeArcFlag} 1 ${x2.toFixed(3)} ${y2.toFixed(3)}" fill="none" stroke="${cssVar('--apr-progress-color', progressColor)}" stroke-width="${progressWidth}" stroke-linecap="round" />`;
         }
     }
 
     // Outer and inner border circles
     if (showBorders) {
-        svg += `<circle cx="0" cy="0" r="${outerR}" fill="none" stroke="${structural.border}" stroke-width="1.5" />`;
-        svg += `<circle cx="0" cy="0" r="${innerR}" fill="none" stroke="${structural.border}" stroke-width="1.5" />`;
+        svg += `<circle cx="0" cy="0" r="${outerR}" fill="none" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-width="1.5" />`;
+        svg += `<circle cx="0" cy="0" r="${innerR}" fill="none" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-width="1.5" />`;
     }
 
     svg += `</g>`;
@@ -527,14 +620,14 @@ function renderCenterMark(
 ): string {
     if (mode === 'dot') {
         const markerRadius = Math.max(2, innerR * 0.1);
-        return `<circle cx="0" cy="0" r="${markerRadius}" fill="${color}" fill-opacity="0.6" />`;
+        return `<circle cx="0" cy="0" r="${markerRadius}" fill="${cssVar('--apr-center-mark-color', color)}" fill-opacity="0.6" />`;
     }
 
     const size = Math.max(6, innerR * 0.6);
     const half = size / 2;
     const strokeWidth = Math.max(1, innerR * 0.08);
     return `
-        <g class="apr-center-plus" stroke="${color}" stroke-opacity="0.7" stroke-width="${strokeWidth}" stroke-linecap="round">
+        <g class="apr-center-plus" stroke="${cssVar('--apr-center-mark-color', color)}" stroke-opacity="0.7" stroke-width="${strokeWidth}" stroke-linecap="round">
             <line x1="0" y1="${-half}" x2="0" y2="${half}" />
             <line x1="${-half}" y1="0" x2="${half}" y2="0" />
         </g>

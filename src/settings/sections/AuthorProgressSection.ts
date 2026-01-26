@@ -381,7 +381,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const themeHeaderMain = themeHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
     themeHeaderMain.createEl('h4', { text: 'Theme', cls: ERT_CLASSES.SECTION_TITLE });
     themeHeaderMain.createDiv({
-        text: 'Theme palette applies curated colors across Title, Author, % Symbol, % Number, and RT Badge based on the Title color. Manual edits override per row.',
+        text: 'Theme palette applies curated colors across Title, Author, % Symbol, and % Number based on the Title color. Stage badge uses publish stage colors; manual edits override per row.',
         cls: ERT_CLASSES.SECTION_DESC
     });
     const themeHeaderRight = themeHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
@@ -852,7 +852,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const currentBookTitleColorVal = settings?.aprBookAuthorColor || bookTitleColorFallback;
 
     // ─────────────────────────────────────────────────────────────────────────
-    // ELEMENT BLOCKS (Title, Author, % Symbol, % Number, RT Badge)
+    // ELEMENT BLOCKS (Title, Author, % Symbol, % Number, Stage Badge / RT Mark)
     // ─────────────────────────────────────────────────────────────────────────
     addElementBlock(typographyStack, {
         label: 'Title',
@@ -991,6 +991,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         }
     });
 
+    const isProActive = isProfessionalActive(plugin);
+
     // ─────────────────────────────────────────────────────────────────────────
     // RT BADGE
     // ─────────────────────────────────────────────────────────────────────────
@@ -998,8 +1000,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const currentRtBadgeColor = settings?.aprEngineColor || rtBadgeColorFallback;
 
     addElementBlock(typographyStack, {
-        label: 'RT Badge',
-        desc: 'Radial Timeline badge text.',
+        label: 'Stage Badge / RT Mark',
+        desc: 'Typography for the publish stage badge and the RT attribution mark.',
         dataTypo: 'ert-badgePill',
         color: {
             key: 'aprEngineColor',
@@ -1021,7 +1023,26 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // PUBLISHING SECTION
     // Pro users use Campaign Manager instead, non-Pro users see basic publishing options
     // ─────────────────────────────────────────────────────────────────────────
-    const isProActive = isProfessionalActive(plugin);
+    if (isProActive) {
+        const attributionSetting = new Setting(themeContainer)
+            .setName('RT Attribution')
+            .setDesc('Show the RT attribution mark in APR exports (Pro can hide this).')
+            .addToggle(toggle => {
+                toggle.setValue(settings?.aprShowRtAttribution !== false)
+                    .onChange(async (val) => {
+                        if (!plugin.settings.authorProgress) return;
+                        plugin.settings.authorProgress.aprShowRtAttribution = val;
+                        await plugin.saveSettings();
+                        refreshPreview();
+                    });
+            });
+        attributionSetting.settingEl.addClass(ERT_CLASSES.ROW);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PUBLISHING SECTION
+    // Pro users use Campaign Manager instead, non-Pro users see basic publishing options
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Only show basic Publishing & Automation for non-Pro users
     if (!isProActive) {
@@ -1244,6 +1265,13 @@ async function renderHeroPreview(
         const progressPercent = service.calculateProgress(scenes);
 
         const aprSettings = plugin.settings.authorProgress;
+        const publishStageLabel = plugin.calculateCompletionEstimate(scenes)?.stage ?? 'Zero';
+        const revealCampaign = (aprSettings as any)?.revealCampaign;
+        const revealCampaignEnabled = !!revealCampaign?.enabled;
+        const nextRevealAt = revealCampaign?.nextRevealAt ?? revealCampaign?.nextRevealDate ?? revealCampaign?.nextReveal;
+        const showRtAttribution = isProfessionalActive(plugin)
+            ? aprSettings?.aprShowRtAttribution !== false
+            : true;
 
         const isThumb = size === 'thumb';
         const displayPercent = isThumb && progressPercent <= 0 ? 5 : progressPercent;
@@ -1259,7 +1287,7 @@ async function renderHeroPreview(
             showStatusColors: aprSettings?.showStatus ?? true,
             showProgressPercent: isThumb ? false : (aprSettings?.showProgressPercent ?? true),
             showBranding: !isThumb,
-            centerMark: isThumb ? 'plus' : 'none',
+            centerMark: 'none',
             stageColors: (plugin.settings as any).publishStageColors,
             actCount: plugin.settings.actCount || undefined,
             backgroundColor: aprSettings?.aprBackgroundColor,
@@ -1271,6 +1299,10 @@ async function renderHeroPreview(
             percentSymbolColor: aprSettings?.aprPercentSymbolColor ?? aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
             theme: aprSettings?.aprTheme || 'dark',
             spokeColor: aprSettings?.aprSpokeColorMode === 'custom' ? aprSettings?.aprSpokeColor : undefined,
+            publishStageLabel,
+            showRtAttribution,
+            revealCampaignEnabled,
+            nextRevealAt,
             // Typography settings
             bookTitleFontFamily: aprSettings?.aprBookTitleFontFamily,
             bookTitleFontWeight: aprSettings?.aprBookTitleFontWeight,

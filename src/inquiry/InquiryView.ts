@@ -137,7 +137,13 @@ const INQUIRY_NOTES_DIVIDER = '/* INQUIRY NOTES (auto) */';
 const CC_RIGHT_MARGIN = 50;
 const CC_BOTTOM_MARGIN = 50;
 const INQUIRY_GUIDANCE_DOC_URL = 'https://github.com/EricRhysTaylor/Radial-Timeline/wiki';
-const INQUIRY_GUIDANCE_RESULTS_URL = INQUIRY_GUIDANCE_DOC_URL;
+const INQUIRY_HELP_TOOLTIP = 'How Inquiry Works';
+const INQUIRY_HELP_ONBOARDING_TOOLTIP = [
+    'Number buttons reveal the question and payload.',
+    'Click to process a question with AI.',
+    'Flow and Depth rings adjust the lens of the response.',
+    'The minimap reveals contextual citations.'
+].join('\n');
 const GUIDANCE_TEXT_Y = 360;
 const GUIDANCE_LINE_HEIGHT = 18;
 const GUIDANCE_ALERT_LINE_HEIGHT = 26;
@@ -3585,6 +3591,10 @@ export class InquiryView extends ItemView {
         return stats.sceneTotal;
     }
 
+    private hasInquirySessions(): boolean {
+        return this.sessionStore.getSessionCount() > 0;
+    }
+
     private isInquiryRunDisabled(): boolean {
         return this.guidanceState === 'not-configured' || this.guidanceState === 'no-scenes';
     }
@@ -3719,38 +3729,24 @@ export class InquiryView extends ItemView {
 
     private updateGuidanceHelpTooltip(state: InquiryGuidanceState): void {
         if (!this.helpToggleButton) return;
-        const resultsTooltip = [
-            'Survey the affected scenes or books for insight.',
-            'View the Briefing report, or run a different question.',
-            'Switch between Flow and Depth to reframe the analysis.'
-        ].join('\n');
-        const guidanceTooltip = 'Click to set your sources and document classes.';
-        const tooltip = state === 'not-configured' || state === 'no-scenes'
-            ? guidanceTooltip
-            : state === 'results'
-                ? resultsTooltip
-                : state === 'ready'
-                    ? 'How Inquiry works'
-                    : '';
+        const hasSessions = this.hasInquirySessions();
+        const tooltip = hasSessions ? INQUIRY_HELP_TOOLTIP : INQUIRY_HELP_ONBOARDING_TOOLTIP;
 
         this.helpToggleButton.removeAttribute('aria-pressed');
         const isAlert = state === 'not-configured' || state === 'no-scenes';
-        this.helpToggleButton.classList.toggle('is-guidance-alert', isAlert);
-        if (tooltip) {
-            addTooltipData(this.helpToggleButton, tooltip, 'left');
-            this.helpToggleButton.setAttribute('aria-label', tooltip);
-            return;
-        }
-
-        this.helpToggleButton.removeAttribute('data-tooltip');
-        this.helpToggleButton.removeAttribute('data-tooltip-placement');
-        this.helpToggleButton.classList.remove('rt-tooltip-target');
-        this.helpToggleButton.setAttribute('aria-label', 'Inquiry help');
+        this.helpToggleButton.classList.toggle('is-help-onboarding', !hasSessions);
+        this.helpToggleButton.classList.toggle('is-guidance-alert', isAlert && hasSessions);
+        addTooltipData(this.helpToggleButton, tooltip, 'left');
+        this.helpToggleButton.setAttribute('aria-label', tooltip);
     }
 
     private handleGuidanceHelpClick(): void {
         const state = this.resolveGuidanceState();
         this.guidanceState = state;
+        if (this.hasInquirySessions()) {
+            window.open(INQUIRY_GUIDANCE_DOC_URL, '_blank');
+            return;
+        }
         if (state === 'not-configured') {
             this.openInquirySettings('sources');
             return;
@@ -3759,13 +3755,7 @@ export class InquiryView extends ItemView {
             this.openInquirySettings('class-scope');
             return;
         }
-        if (state === 'ready') {
-            window.open(INQUIRY_GUIDANCE_DOC_URL, '_blank');
-            return;
-        }
-        if (state === 'results') {
-            window.open(INQUIRY_GUIDANCE_RESULTS_URL, '_blank');
-        }
+        window.open(INQUIRY_GUIDANCE_DOC_URL, '_blank');
     }
 
     private openInquirySettings(focus: 'sources' | 'class-scope' | 'scan-roots'): void {
