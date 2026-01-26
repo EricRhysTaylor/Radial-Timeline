@@ -40,15 +40,15 @@
 }
 
 .apr-svg.apr-small {
-  --apr-badge-letter-spacing: 0.1em;
+  --apr-badge-letter-spacing: 0.05em;
 }
 
 .apr-svg.apr-medium {
-  --apr-badge-letter-spacing: 0.09em;
+  --apr-badge-letter-spacing: 0.045em;
 }
 
 .apr-svg.apr-large {
-  --apr-badge-letter-spacing: 0.08em;
+  --apr-badge-letter-spacing: 0.04em;
 }
 
 .apr-svg .apr-rings,

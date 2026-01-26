@@ -165,34 +165,40 @@
   margin: 0;
 }
 
-.ert-ui input.ert-input--xs {
+.ert-ui :is(input, select).ert-input--xs {
   width: var(--ert-input-width-xs);
   min-width: var(--ert-input-width-xs);
+  --ert-control-width: var(--ert-input-width-xs);
 }
 
-.ert-ui input.ert-input--sm {
+.ert-ui :is(input, select).ert-input--sm {
   width: var(--ert-input-width-sm);
   min-width: var(--ert-input-width-sm);
+  --ert-control-width: var(--ert-input-width-sm);
 }
 
-.ert-ui input.ert-input--md {
+.ert-ui :is(input, select).ert-input--md {
   width: var(--ert-input-width-md);
   min-width: var(--ert-input-width-md);
+  --ert-control-width: var(--ert-input-width-md);
 }
 
-.ert-ui input.ert-input--lg {
+.ert-ui :is(input, select).ert-input--lg {
   width: var(--ert-input-width-lg);
   min-width: var(--ert-input-width-lg);
+  --ert-control-width: var(--ert-input-width-lg);
 }
 
-.ert-ui input.ert-input--xl {
+.ert-ui :is(input, select).ert-input--xl {
   width: var(--ert-input-width-xl);
   min-width: var(--ert-input-width-xl);
+  --ert-control-width: var(--ert-input-width-xl);
 }
 
-.ert-ui input.ert-input--full {
+.ert-ui :is(input, select).ert-input--full {
   width: 100%;
   min-width: min(100%, var(--ert-input-width-xl));
+  --ert-control-width: 100%;
 }
 
 .ert-ui :is(input, select).ert-input {
@@ -226,12 +232,14 @@
 .ert-ui textarea.ert-textarea--compact {
   width: min(100%, var(--ert-input-width-xl));
   resize: vertical;
+  --ert-control-width: min(100%, var(--ert-input-width-xl));
 }
 
 .ert-ui textarea.ert-textarea--wide {
   width: var(--ert-input-width-xl);
   max-width: 100%;
   resize: vertical;
+  --ert-control-width: var(--ert-input-width-xl);
 }
 
 .ert-ui textarea.ert-textarea:disabled {
@@ -1480,10 +1488,11 @@
   --rt-input-width-sm: 12ch;
 }
 
-.ert-ui input.ert-input--hex {
+.ert-ui :is(input, select).ert-input--hex {
   width: 10ch;
   min-width: 10ch;
   flex: 0 0 10ch;
+  --ert-control-width: 10ch;
 }
 
 .ert-ui.ert-skin--social input.ert-input--error,
@@ -1574,6 +1583,7 @@
   border-radius: 8px;
   overflow: visible;
 }
+
 
 .ert-ui .ert-elementBlock.setting-item.ert-row--middleAlign {
   align-items: center;
@@ -1931,6 +1941,17 @@
   margin: var(--ert-pad-md) 0 var(--ert-gap-sm);
 }
 
+.setting-item.setting-item-heading .ert-setting-heading-wikilink {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  opacity: 0.85;
+}
+
+.setting-item.setting-item-heading .ert-setting-heading-wikilink:hover {
+  opacity: 1;
+}
+
 .ert-ui .ert-settings-searchable-content [data-ert-section]:first-child>.setting-item.setting-item-heading:first-child:not(.ert-setting-heading--top) {
   margin-top: 0;
 }
@@ -2077,6 +2098,7 @@
   min-width: var(--rt-settings-select-width);
   max-width: var(--rt-settings-select-width);
   flex: 0 0 var(--rt-settings-select-width);
+  --ert-control-width: var(--rt-settings-select-width);
 }
 
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item .setting-item-control select.ert-setting-dropdown--wide {
@@ -2084,6 +2106,7 @@
   min-width: var(--ert-settings-select-width-wide);
   max-width: var(--ert-settings-select-width-wide);
   flex: 0 0 var(--ert-settings-select-width-wide);
+  --ert-control-width: var(--ert-settings-select-width-wide);
 }
 
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-full-width-input {
@@ -2427,6 +2450,48 @@
 
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-micro-backdrop-title-row .ert-color-grid-controls .ert-hex-input {
   width: 120px;
+}
+
+/* Settings row contract */
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-elementBlock.setting-item,
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  column-gap: var(--ert-gap, 16px);
+  align-items: start;
+}
+
+/* Label column must be allowed to shrink/wrap */
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock .ert-label,
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock .setting-item-info {
+  min-width: 0;
+}
+
+/* Control column must hug content and align right */
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock .ert-control,
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock .setting-item-control {
+  width: max-content;
+  min-width: 0;
+  justify-self: end;
+  display: inline-flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--ert-gap-xs, 8px);
+}
+
+/* Inputs respect width tokens; never expand to fill */
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root)
+.setting-item.ert-elementBlock
+:where(input, textarea, select, .dropdown, .ert-select) {
+  width: var(--ert-control-width, auto);
+  max-width: 100%;
+}
+
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root)
+.setting-item.ert-elementBlock
+.setting-item-control
+> :is(input, textarea, select, .dropdown, .ert-select) {
+  flex: 0 0 auto;
 }
 
 /* -------------------------------------------------------------------------- */

@@ -93,6 +93,7 @@ const PREVIEW_PILL_GAP_Y = 14;
 const PREVIEW_PILL_MIN_GAP_X = 8;
 const PREVIEW_FOOTER_GAP = 12;
 const PREVIEW_FOOTER_HEIGHT = 22;
+const PREVIEW_RESULTS_FOOTER_OFFSET = 30;
 const PREVIEW_SHIMMER_WIDTH = 42;
 const RESULTS_EMPTY_TEXT = 'No notable findings.';
 const RESULTS_MAX_CHIPS = 6;
@@ -392,6 +393,7 @@ export class InquiryView extends ItemView {
     private previewHero?: SVGTextElement;
     private previewMeta?: SVGTextElement;
     private previewFooter?: SVGTextElement;
+    private previewClickTarget?: SVGRectElement;
     private previewRows: InquiryPreviewRow[] = [];
     private previewRowDefaultLabels: string[] = [];
     private previewHideTimer?: number;
@@ -708,6 +710,13 @@ export class InquiryView extends ItemView {
             this.dismissResults();
         });
 
+        const clickTarget = this.createSvgElement('rect');
+        clickTarget.classList.add('ert-inquiry-preview-hitbox');
+        clickTarget.setAttribute('fill', 'transparent');
+        clickTarget.setAttribute('pointer-events', 'all');
+        panel.appendChild(clickTarget);
+        this.previewClickTarget = clickTarget;
+
         const hero = this.createSvgText(panel, 'ert-inquiry-preview-hero', '', 0, PREVIEW_PANEL_PADDING_Y);
         hero.setAttribute('text-anchor', 'middle');
         hero.setAttribute('dominant-baseline', 'hanging');
@@ -736,8 +745,8 @@ export class InquiryView extends ItemView {
             return { group, bg, text: textEl, label };
         });
 
-        const footer = this.createSvgText(panel, 'ert-inquiry-preview-footer', '', -PREVIEW_PANEL_WIDTH / 2 + PREVIEW_PANEL_PADDING_X, 0);
-        footer.setAttribute('text-anchor', 'start');
+        const footer = this.createSvgText(panel, 'ert-inquiry-preview-footer', '', 0, 0);
+        footer.setAttribute('text-anchor', 'middle');
         footer.setAttribute('dominant-baseline', 'hanging');
         this.previewFooter = footer;
 
@@ -2571,9 +2580,10 @@ export class InquiryView extends ItemView {
         const usedLength = columnStep * Math.max(0, columnCount - 1);
         const extraSpace = Math.max(0, availableLength - usedLength);
         const startOffset = Math.floor(extraSpace / 2);
-        const horizontalGap = Math.max(0, columnStep - tickWidth);
-        const baselineGap = isSaga ? Math.min(horizontalGap, tickGap) : horizontalGap;
-        const rowTopY = -(baselineGap + tickHeight + (rowCount === 2 ? (tickHeight + horizontalGap) : 0));
+        const verticalGap = 10;
+        const baselineGap = verticalGap;
+        const rowGap = verticalGap;
+        const rowTopY = -(baselineGap + tickHeight + (rowCount === 2 ? (tickHeight + rowGap) : 0));
         const rowBottomY = -(baselineGap + tickHeight);
 
         const baselineStart = Math.round(this.minimapLayout.startX);
@@ -2688,12 +2698,17 @@ export class InquiryView extends ItemView {
 
     private updatePreviewPanelPosition(): void {
         if (!this.previewGroup || !this.minimapGroup) return;
-        const targetY = MINIMAP_GROUP_Y
+        const targetY = this.getPreviewPanelTargetY();
+        if (!Number.isFinite(targetY)) return;
+        this.previewGroup.setAttribute('transform', `translate(0 ${targetY})`);
+        this.updateResultsFooterPosition(targetY);
+    }
+
+    private getPreviewPanelTargetY(): number {
+        return MINIMAP_GROUP_Y
             + this.minimapBottomOffset
             + PREVIEW_PANEL_MINIMAP_GAP
             - PREVIEW_PANEL_PADDING_Y;
-        if (!Number.isFinite(targetY)) return;
-        this.previewGroup.setAttribute('transform', `translate(0 ${targetY})`);
     }
 
     private renderMinimapBackbone(baselineStart: number, length: number): void {
@@ -6053,6 +6068,7 @@ export class InquiryView extends ItemView {
         const scopeLabel = result.scope === 'saga' ? 'Saga' : 'Book';
         const focusLabel = result.focusId || this.getFocusLabel();
         this.setPreviewFooterText(`Focus ${scopeLabel} ${focusLabel} · Click to dismiss.`);
+        this.updateResultsFooterPosition();
     }
 
     private buildResultsHeroText(result: InquiryResult, mode: InquiryMode): string {
@@ -6327,6 +6343,41 @@ export class InquiryView extends ItemView {
             this.previewShimmerMask.setAttribute('width', String(PREVIEW_PANEL_WIDTH));
             this.previewShimmerMask.setAttribute('height', String(height));
         }
+        this.updatePreviewClickTargetLayout();
+    }
+
+    private updateResultsFooterPosition(targetY?: number): void {
+        if (!this.previewFooter || !this.previewGroup) return;
+        if (!this.previewGroup.classList.contains('is-results')) return;
+        const panelY = targetY ?? this.getPreviewPanelTargetY();
+        if (!Number.isFinite(panelY)) return;
+        const backboneBottom = this.minimapBackboneLayout
+            ? this.minimapBackboneLayout.glowY + this.minimapBackboneLayout.glowHeight
+            : 0;
+        const footerY = (MINIMAP_GROUP_Y + backboneBottom + PREVIEW_RESULTS_FOOTER_OFFSET) - panelY;
+        this.previewFooter.setAttribute('y', footerY.toFixed(2));
+        this.updatePreviewClickTargetLayout();
+    }
+
+    private updatePreviewClickTargetLayout(): void {
+        if (!this.previewClickTarget) return;
+        const baseHeight = Math.max(this.previewPanelHeight, PREVIEW_PILL_HEIGHT * 2);
+        const startX = -PREVIEW_PANEL_WIDTH / 2;
+        let startY = 0;
+        let height = baseHeight;
+        if (this.previewFooter && this.previewGroup?.classList.contains('is-results')) {
+            const footerY = Number(this.previewFooter.getAttribute('y') ?? '0');
+            if (Number.isFinite(footerY)) {
+                const minY = Math.min(0, footerY);
+                const maxY = Math.max(baseHeight, footerY + PREVIEW_FOOTER_HEIGHT);
+                startY = minY;
+                height = maxY - minY;
+            }
+        }
+        this.previewClickTarget.setAttribute('x', String(startX));
+        this.previewClickTarget.setAttribute('y', String(startY));
+        this.previewClickTarget.setAttribute('width', String(PREVIEW_PANEL_WIDTH));
+        this.previewClickTarget.setAttribute('height', String(height));
     }
 
     private lockPromptPreview(question: InquiryQuestion): void {

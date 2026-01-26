@@ -1123,6 +1123,16 @@
   transition: opacity 160ms ease;
 }
 
+.ert-inquiry-preview.is-results {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.ert-inquiry-preview-hitbox {
+  fill: transparent;
+  pointer-events: all;
+}
+
 .ert-inquiry-preview.is-visible {
   opacity: 1;
 }

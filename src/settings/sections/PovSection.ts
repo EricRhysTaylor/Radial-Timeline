@@ -58,9 +58,10 @@ export function renderPovSection(params: {
             });
         });
 
-    new ObsidianSetting(containerEl)
+    const yamlOverridesSetting = new ObsidianSetting(containerEl)
         .setName(t('settings.pov.yamlOverrides.name'))
         .setDesc(t('settings.pov.yamlOverrides.desc'));
+    yamlOverridesSetting.settingEl.addClass(ERT_CLASSES.ELEMENT_BLOCK_SKIP);
 
     // Preview section
     const previewContainer = containerEl.createDiv({

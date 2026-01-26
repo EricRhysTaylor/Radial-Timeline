@@ -158,7 +158,7 @@ export function renderAprBadges(options: AprBadgeOptions): string {
     const preset = getPreset(size);
     const half = preset.svgSize / 2;
     const badgeSize = rtBadgeFontSize ?? preset.rtBrandingFontSize;
-    const stageText = (stageLabel || 'Zero').trim().toUpperCase() || 'ZERO';
+    const stageText = getStageBadgeText(size, stageLabel);
 
     const stageEdgeInset = Math.max(1, Math.round(preset.borderWidth));
     const stageX = half - stageEdgeInset;
@@ -229,6 +229,21 @@ export function renderAprBadges(options: AprBadgeOptions): string {
             ${rtAttribution}
         </g>
     `;
+}
+
+function getStageBadgeText(size: AprSize, stageLabel?: string): string {
+    const raw = (stageLabel || 'Zero').trim();
+    const upper = raw.toUpperCase() || 'ZERO';
+    if (size === 'small' || size === 'medium') {
+        const shortMap: Record<string, string> = {
+            ZERO: 'ZE',
+            AUTHOR: 'AU',
+            HOUSE: 'HO',
+            PRESS: 'PR'
+        };
+        return shortMap[upper] ?? upper.slice(0, 2);
+    }
+    return upper;
 }
 
 /**

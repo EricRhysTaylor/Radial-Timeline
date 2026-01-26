@@ -363,7 +363,75 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             const el = settingEl as HTMLElement;
             if (el.classList.contains('setting-item-heading')) return;
             if (el.closest('.ert-color-grid-controls')) return;
+            if (el.classList.contains(ERT_CLASSES.ELEMENT_BLOCK_SKIP)) return;
             el.classList.add(ERT_CLASSES.ELEMENT_BLOCK);
+        });
+    }
+
+    /**
+     * Convert ERT block headers inside Settings into native Obsidian setting-item-heading rows.
+     * Prevents “toolbar-like” header layouts that push links to the far right.
+     */
+    private migrateErtBlockHeadersToNative(containerEl: HTMLElement): void {
+        const headers = Array.from(
+            containerEl.querySelectorAll<HTMLElement>('.ert-header.ert-header--block, .ert-header.ert-header-block')
+        );
+
+        headers.forEach(headerEl => {
+            const titleEl = headerEl.querySelector<HTMLElement>('h1,h2,h3,h4,.ert-header__title,.ert-header-title,.ert-section-title');
+            const descEl = headerEl.querySelector<HTMLElement>('p,.ert-header__desc,.ert-header-desc,.ert-section-desc');
+            const linkEl = headerEl.querySelector<HTMLAnchorElement>('a[href]');
+
+            const titleText = titleEl?.textContent?.trim() ?? '';
+            const descText = descEl?.textContent?.trim() ?? '';
+            if (!titleText && !descText) return;
+
+            const native = document.createElement('div');
+            native.className = 'setting-item setting-item-heading';
+
+            const info = document.createElement('div');
+            info.className = 'setting-item-info';
+
+            const name = document.createElement('div');
+            name.className = 'setting-item-name';
+
+            const iconHost = headerEl.querySelector<HTMLElement>('.ert-header__icon, .ert-header-icon, .ert-setting-heading-icon');
+            const svg = iconHost?.querySelector('svg');
+            if (svg) {
+                const iconWrap = document.createElement('span');
+                iconWrap.className = 'ert-setting-heading-icon';
+                iconWrap.appendChild(svg.cloneNode(true));
+                name.appendChild(iconWrap);
+            }
+
+            const titleSpan = document.createElement('span');
+            titleSpan.textContent = titleText;
+            name.appendChild(titleSpan);
+
+            if (linkEl?.href) {
+                const a = document.createElement('a');
+                a.href = linkEl.href;
+                a.target = '_blank';
+                a.rel = 'noopener';
+                a.className = 'ert-setting-heading-wikilink';
+                a.setAttribute('aria-label', linkEl.getAttribute('aria-label') || 'Read more');
+                setIcon(a, 'external-link');
+                name.appendChild(a);
+            }
+
+            info.appendChild(name);
+
+            if (descText) {
+                const desc = document.createElement('div');
+                desc.className = 'setting-item-description';
+                desc.textContent = descText;
+                info.appendChild(desc);
+            }
+
+            native.appendChild(info);
+
+            headerEl.parentElement?.insertBefore(native, headerEl);
+            headerEl.remove();
         });
     }
 
@@ -391,9 +459,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const badgeIcon = badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
         setIcon(badgeIcon, options.badgeIcon);
         badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: options.badgeLabel });
+        // Place wiki link inline with the badge label, not far right
         const wikiLink = badge.createEl('a', {
             href: options.wikiHref,
-            cls: 'ert-badgePill__rightIcon',
+            cls: 'ert-badgePill__inlineLink',
             attr: {
                 'aria-label': 'Read more in the Wiki',
                 'target': '_blank',
@@ -402,7 +471,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
         setIcon(wikiLink, 'external-link');
 
-        hero.createEl('h3', {
+        // Wrap hero title in a title row for inline/legacy layout
+        const titleRow = hero.createDiv({ cls: 'ert-hero-titleRow' });
+        titleRow.createEl('h3', {
             cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title`,
             text: options.title
         });
@@ -446,8 +517,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             badgeIcon: 'waves',
             badgeVariant: ERT_CLASSES.BADGE_PILL_NEUTRAL,
             wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#inquiry',
-            title: 'Shape the inquiry signals that guide your manuscript.',
-            subtitle: 'Define scan roots, prompt slots, and corpus thresholds so the inquiry engine can surface the right context at the right time.',
+            title: 'Shape the inquiry signals that illuminate your manuscript.',
+            subtitle: 'Evaluate at the scene level to the saga level for a comprehensive analysis. Identify the key themes, motifs, and patterns that will strengthen your writing. Use a corpus including scenes, outlines, character bios, worldbuilding, and more to inform analysis.',
             kicker: 'Inquiry Focus Areas:',
             features: [
                 { icon: 'search', text: 'Source Scans — Choose scan roots, class scopes, and source types to watch' },
@@ -637,6 +708,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const readmeSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'readme' } });
         renderReadmeSection({ app: this.app, containerEl: readmeSection, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
 
+        this.migrateErtBlockHeadersToNative(containerEl);
         this.applyElementBlockLayout(containerEl);
         this.addSearchMetadataToSettings(searchableContent);
     }

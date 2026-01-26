@@ -19,6 +19,7 @@ export const ERT_CLASSES = {
   ELEMENT_BLOCK_ROW: 'ert-elementBlock__row',
   ELEMENT_BLOCK_ROW_PRIMARY: 'ert-elementBlock__row--primary',
   ELEMENT_BLOCK_ROW_SECONDARY: 'ert-elementBlock__row--secondary',
+  ELEMENT_BLOCK_SKIP: 'ert-elementBlock--skip',
   STACK: 'ert-stack',
   INLINE: 'ert-inline',
   DIVIDER: 'ert-divider',
