@@ -147,6 +147,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const showRtAttributionFinal = (showRtAttribution ?? true) && !isThumb;
     const structuralBorderColor = isThumb ? stageBadgeColor : structural.border;
     const structuralBorderOpacity = isThumb ? 1 : undefined;
+    const centerStrokeWidth = isThumb ? 3 : undefined;
 
     // Filter scenes (exclude beat notes always)
     const filteredScenes = scenes.filter(s => !isBeatNote(s));
@@ -281,7 +282,8 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     }
 
     // Center hole
-    svg += `<circle cx="0" cy="0" r="${innerRadius}" fill="${cssVar('--apr-center-fill', holeFill)}" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-opacity="var(--apr-struct-border-opacity, 0.35)" />`;
+    const centerStroke = centerStrokeWidth ? ` stroke-width="${centerStrokeWidth}"` : '';
+    svg += `<circle cx="0" cy="0" r="${innerRadius}" fill="${cssVar('--apr-center-fill', holeFill)}" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-opacity="var(--apr-struct-border-opacity, 0.35)"${centerStroke} />`;
 
     if (centerMarkFinal !== 'none') {
         svg += renderCenterMark(innerRadius, centerMarkFinal, progressColor);

@@ -1575,7 +1575,7 @@
 
 .ert-ui .ert-elementBlock.setting-item {
   display: grid;
-  grid-template-columns: minmax(0, var(--ert-label-w)) minmax(0, 1fr);
+  grid-template-columns: minmax(var(--ert-label-w), 1fr) minmax(0, max-content);
   gap: var(--ert-gap-md);
   align-items: start;
   width: 100%;
@@ -2456,7 +2456,7 @@
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-elementBlock.setting-item,
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock {
   display: grid;
-  grid-template-columns: minmax(0, var(--ert-label-w)) minmax(0, 1fr);
+  grid-template-columns: minmax(var(--ert-label-w), 1fr) minmax(0, max-content);
   column-gap: var(--ert-gap, 16px);
   align-items: start;
 }
@@ -2479,6 +2479,19 @@
   justify-content: flex-end;
   align-items: center;
   gap: var(--ert-gap-sm);
+}
+
+/* Rows inside the control column should size to content, not force full-width */
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root)
+.setting-item.ert-elementBlock .ert-elementBlock__row {
+  width: max-content;
+  max-width: 100%;
+}
+
+/* Full-width element blocks should still allow rows to stretch */
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root)
+.setting-item.ert-elementBlock.ert-setting-full-width-input .ert-elementBlock__row {
+  width: 100%;
 }
 
 /* Full-width input rows should stretch the control column */
@@ -4479,40 +4492,6 @@
   border: 1px solid var(--background-modifier-border);
   border-top: none;
   border-radius: 0 0 var(--ert-control-radius) var(--ert-control-radius);
-}
-
-.ert-ui .ert-campaign-reveal-row {
-  display: flex;
-  align-items: center;
-  gap: var(--ert-gap-sm);
-  padding: var(--ert-gap-xs) 0;
-  flex-wrap: wrap;
-}
-
-.ert-ui .ert-campaign-reveal-note {
-  font-size: 12px;
-  font-style: italic;
-  color: var(--text-muted);
-  padding: var(--ert-gap-xs) 0;
-  opacity: 0.8;
-}
-
-.ert-ui .ert-campaign-reveal-label {
-  font-weight: 500;
-  color: var(--text-muted);
-}
-
-.ert-ui .ert-campaign-checkbox {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ert-gap-xs);
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--text-normal);
-}
-
-.ert-ui .ert-campaign-checkbox input {
-  margin: 0;
 }
 
 .ert-ui .ert-campaign-add-section {

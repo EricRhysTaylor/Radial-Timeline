@@ -335,6 +335,23 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         }
 
+        const legacyManuscriptFolder = 'Radial Timeline/Manuscript';
+        const legacyOutlineFolder = 'Radial Timeline/Outline';
+        const exportFolderDefault = DEFAULT_SETTINGS.manuscriptOutputFolder || 'Radial Timeline/Export';
+        const manuscriptFolder = (this.settings.manuscriptOutputFolder || '').trim();
+        const outlineFolder = (this.settings.outlineOutputFolder || '').trim();
+        let exportFolderMigrated = false;
+
+        if (!manuscriptFolder || manuscriptFolder === legacyManuscriptFolder) {
+            this.settings.manuscriptOutputFolder = exportFolderDefault;
+            exportFolderMigrated = true;
+        }
+
+        if (!outlineFolder || outlineFolder === legacyOutlineFolder || outlineFolder !== this.settings.manuscriptOutputFolder) {
+            this.settings.outlineOutputFolder = this.settings.manuscriptOutputFolder || exportFolderDefault;
+            exportFolderMigrated = true;
+        }
+
         const before = JSON.stringify({
             anthropicModelId: this.settings.anthropicModelId,
             openaiModelId: this.settings.openaiModelId,
@@ -355,7 +372,7 @@ export default class RadialTimelinePlugin extends Plugin {
             geminiModelId: this.settings.geminiModelId,
         });
 
-        if (before !== after || templatesMigrated || actionNotesTargetMigrated) {
+        if (before !== after || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated) {
             await this.saveSettings();
         }
     }

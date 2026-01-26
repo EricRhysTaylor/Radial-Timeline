@@ -177,9 +177,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const contentWrapper = section.createDiv({ cls: `ert-apr-content ${ERT_CLASSES.STACK}` });
 
     // Styling (background + branding colors) - placed first, close to preview
-    const stylingCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
-    const stylingHeader = stylingCard.createDiv({ cls: 'setting-item setting-item-heading' });
-    const stylingInfo = stylingHeader.createDiv({ cls: 'setting-item-info' });
+    const stylingCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
+    const stylingHeader = stylingCard.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
+    const stylingHeading = stylingHeader.createDiv({ cls: 'setting-item setting-item-heading' });
+    const stylingInfo = stylingHeading.createDiv({ cls: 'setting-item-info' });
     const stylingName = stylingInfo.createDiv({ cls: 'setting-item-name' });
     const stylingHeaderIcon = stylingName.createSpan({ cls: 'ert-setting-heading-icon' });
     setIcon(stylingHeaderIcon, 'brush');
@@ -191,6 +192,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     stylingWikiLink.setAttr('target', '_blank');
     stylingWikiLink.setAttr('rel', 'noopener');
     setIcon(stylingWikiLink, 'external-link');
+    const stylingBody = stylingCard.createDiv({ cls: `${ERT_CLASSES.PANEL_BODY} ${ERT_CLASSES.STACK}` });
 
     const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
     const currentTransparent = settings?.aprCenterTransparent ?? true; // Default to true (recommended)
@@ -199,12 +201,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const currentSpokeColor = settings?.aprSpokeColor || '#ffffff';
 
     // Transparency (Recommended) - placed FIRST with special styling
-    const transparencySetting = new Setting(stylingCard)
+    const transparencySetting = new Setting(stylingBody)
         .setName('Transparent Mode (Recommended)')
         .setDesc('No background fill — adapts to any page or app. Ideal for websites, blogs, and platforms that preserve SVG transparency.');
 
     // Background color - for special situations only (when transparency is off)
-    const bgSetting = new Setting(stylingCard)
+    const bgSetting = new Setting(stylingBody)
         .setName('Background Color')
         .setDesc('Bakes in a solid background. Use when transparency isn\'t reliable: email newsletters, Kickstarter, PDF exports, or platforms that rasterize SVGs.');
 
@@ -272,7 +274,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     updateEmphasis(currentTransparent);
 
     // Spokes & border controls (placed before Theme section)
-    const spokeColorSetting = new Setting(stylingCard)
+    const spokeColorSetting = new Setting(stylingBody)
         .setName('Spokes and borders')
         .setDesc('Choose contrasting color or none. Controls all structural elements including scene borders and act division spokes.');
     spokeColorSetting.settingEl.addClass('ert-elementBlock');
@@ -352,7 +354,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     });
 
     // Link URL
-    const linkUrlSetting = new Setting(stylingCard)
+    const linkUrlSetting = new Setting(stylingBody)
         .setName('Link URL')
         .setDesc('Where the graphic should link to (e.g. your website, Kickstarter, or shop).');
 
@@ -377,8 +379,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Each element: Row 1 = Label + Text Input (if applicable) + Color + Hex
     //               Row 2 = Font + Weight
     // ─────────────────────────────────────────────────────────────────────────
-    const themeContainer = stylingCard.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
-    const themeHeading = themeContainer.createDiv({ cls: 'setting-item setting-item-heading' });
+    const themeCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
+    const themeHeader = themeCard.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
+    const themeHeading = themeHeader.createDiv({ cls: 'setting-item setting-item-heading' });
     const themeInfo = themeHeading.createDiv({ cls: 'setting-item-info' });
     const themeName = themeInfo.createDiv({ cls: 'setting-item-name' });
     const themeHeaderIcon = themeName.createSpan({ cls: 'ert-setting-heading-icon' });
@@ -396,7 +399,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         text: 'Theme palette applies curated colors across Title, Author, % Symbol, and % Number based on the Title color. Stage badge uses publish stage colors; manual edits override per row.'
     });
     const themeControl = themeHeading.createDiv({ cls: 'setting-item-control' });
-    const typographyStack = themeContainer.createDiv({ cls: 'ert-typography-stack' });
+    const themeBody = themeCard.createDiv({ cls: `${ERT_CLASSES.PANEL_BODY} ert-typography-stack` });
 
     // Palette tracking & color picker refs
     let lastAppliedPalette: { bookTitle: string; authorName: string; percentNumber: string; percentSymbol: string } | null = null;
@@ -865,9 +868,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     // ELEMENT BLOCKS (Title, Author, % Symbol, % Number, Stage Badge / RT Mark)
     // ─────────────────────────────────────────────────────────────────────────
-    addElementBlock(typographyStack, {
+    addElementBlock(themeBody, {
         label: 'Title',
-        desc: 'Outer ring book title text.',
+        desc: 'Outer ring book title text. This color is used for the palette seed color.',
         dataTypo: 'title',
         text: {
             placeholder: 'Working Title',
@@ -904,7 +907,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const authorColorFallback = settings?.aprBookAuthorColor || bookTitleColorFallback;
     const currentAuthorColor = settings?.aprAuthorColor || authorColorFallback;
 
-    addElementBlock(typographyStack, {
+    addElementBlock(themeBody, {
         label: 'Author',
         desc: 'Outer ring author name text.',
         dataTypo: 'author',
@@ -943,7 +946,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const percentSymbolColorFallback = settings?.aprBookAuthorColor || bookTitleColorFallback;
     const currentPercentSymbolColor = settings?.aprPercentSymbolColor || percentSymbolColorFallback;
 
-    addElementBlock(typographyStack, {
+    addElementBlock(themeBody, {
         label: '% Symbol',
         desc: 'Center percent symbol.',
         dataTypo: 'percent-symbol',
@@ -972,7 +975,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const percentNumberColorFallback = settings?.aprBookAuthorColor || bookTitleColorFallback;
     const currentPercentNumberColor = settings?.aprPercentNumberColor || percentNumberColorFallback;
 
-    addElementBlock(typographyStack, {
+    addElementBlock(themeBody, {
         label: '% Number',
         desc: 'Center progress number.',
         dataTypo: 'percent-number',
@@ -1010,7 +1013,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const rtBadgeColorFallback = '#e5e5e5';
     const currentRtBadgeColor = settings?.aprEngineColor || rtBadgeColorFallback;
 
-    addElementBlock(typographyStack, {
+    addElementBlock(themeBody, {
         label: 'Stage Badge / RT Mark',
         desc: 'Typography for the publish stage badge and the RT attribution mark.',
         dataTypo: 'ert-badgePill',
@@ -1035,7 +1038,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Pro users use Campaign Manager instead, non-Pro users see basic publishing options
     // ─────────────────────────────────────────────────────────────────────────
     if (isProActive) {
-        const attributionSetting = new Setting(themeContainer)
+        const attributionSetting = new Setting(themeBody)
             .setName('RT Attribution')
             .setDesc('Show the RT attribution mark in APR exports (Pro can hide this).')
             .addToggle(toggle => {

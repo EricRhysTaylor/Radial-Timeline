@@ -338,9 +338,15 @@ export class AuthorProgressModal extends Modal {
         if (!this.revealSectionEl) return;
         this.revealSectionEl.empty();
 
+        const settings = this.plugin.settings.authorProgress;
         if (this.isCampaignTarget()) {
             const campaign = this.getSelectedCampaign();
             if (!campaign) return;
+
+            const baseShowSubplots = settings?.showSubplots ?? true;
+            const baseShowActs = settings?.showActs ?? true;
+            const baseShowStatusColors = settings?.showStatus ?? true;
+            const baseShowProgressPercent = settings?.showProgressPercent ?? true;
 
             this.revealSectionEl.createEl('h4', { text: 'What to Reveal', cls: 'rt-apr-reveal-title' });
 
@@ -359,9 +365,9 @@ export class AuthorProgressModal extends Modal {
                 });
             } else {
                 const revealSummary = [
-                    `Subplots ${campaign.showSubplots ? 'On' : 'Off'}`,
-                    // Acts always shown
-                    `Status Colors ${campaign.showStatus ? 'On' : 'Off'}`
+                    `Subplots ${baseShowSubplots ? 'On' : 'Off'}`,
+                    `Acts ${baseShowActs ? 'On' : 'Off'}`,
+                    `Status Colors ${baseShowStatusColors ? 'On' : 'Off'}`
                 ].join(' · ');
                 this.revealSectionEl.createEl('p', {
                     text: `Reveal: ${revealSummary}.`,
@@ -370,13 +376,12 @@ export class AuthorProgressModal extends Modal {
             }
 
             this.revealSectionEl.createEl('p', {
-                text: `% Complete: ${campaign.showProgressPercent ? 'On' : 'Off'}. Edit in Campaign Manager.`,
+                text: `% Complete: ${baseShowProgressPercent ? 'On' : 'Off'}.`,
                 cls: 'rt-apr-reveal-desc'
             });
             return;
         }
 
-        const settings = this.plugin.settings.authorProgress;
         this.showSubplots = settings?.showSubplots ?? true;
         this.showActs = settings?.showActs ?? true;
         this.showStatus = settings?.showStatus ?? true;
@@ -505,10 +510,10 @@ export class AuthorProgressModal extends Modal {
         let isTeaserBar = false;
 
         if (isCampaign && campaign) {
-            showSubplots = campaign.showSubplots;
-            showActs = campaign.showActs;
-            showStatusColors = campaign.showStatus;
-            showProgressPercent = campaign.showProgressPercent;
+            showSubplots = settings?.showSubplots ?? true;
+            showActs = settings?.showActs ?? true;
+            showStatusColors = settings?.showStatus ?? true;
+            showProgressPercent = settings?.showProgressPercent ?? true;
 
             if (campaign.teaserReveal?.enabled) {
                 const preset = campaign.teaserReveal.preset ?? 'standard';

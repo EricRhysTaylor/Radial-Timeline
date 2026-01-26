@@ -182,13 +182,13 @@ export function renderGeneralSection(params: {
         });
     });
 
-    // --- Manuscript Export Folder ---
+    // --- Export Folder ---
     const manuscriptSetting = new ObsidianSetting(containerEl)
         .setName(t('settings.configuration.manuscriptOutputFolder.name'))
         .setDesc(t('settings.configuration.manuscriptOutputFolder.desc'));
     manuscriptSetting.settingEl.addClass(ERT_CLASSES.ROW_INLINE_CONTROL);
     manuscriptSetting.addText(text => {
-        const defaultPath = DEFAULT_SETTINGS.manuscriptOutputFolder || 'Radial Timeline/Manuscript';
+        const defaultPath = DEFAULT_SETTINGS.manuscriptOutputFolder || 'Radial Timeline/Export';
         const fallbackFolder = plugin.settings.manuscriptOutputFolder?.trim() || defaultPath;
         const illegalChars = /[<>:"|?*]/;
 
@@ -227,6 +227,7 @@ export function renderGeneralSection(params: {
             }
 
             plugin.settings.manuscriptOutputFolder = normalized;
+            plugin.settings.outlineOutputFolder = normalized;
             await plugin.saveSettings();
             flashClass('ert-setting-input-success');
         };
@@ -243,78 +244,13 @@ export function renderGeneralSection(params: {
             button.setTooltip(`Reset to ${defaultPath}`);
             button.onClick(async () => {
                 text.setValue(defaultPath);
-                plugin.settings.manuscriptOutputFolder = normalizePath(defaultPath);
+                const normalizedDefault = normalizePath(defaultPath);
+                plugin.settings.manuscriptOutputFolder = normalizedDefault;
+                plugin.settings.outlineOutputFolder = normalizedDefault;
                 await plugin.saveSettings();
                 flashClass('ert-setting-input-success');
             });
         });
     });
 
-    // --- Outline Export Folder ---
-    const outlineSetting = new ObsidianSetting(containerEl)
-        .setName(t('settings.configuration.outlineOutputFolder.name'))
-        .setDesc(t('settings.configuration.outlineOutputFolder.desc'));
-    outlineSetting.settingEl.addClass(ERT_CLASSES.ROW_INLINE_CONTROL);
-    outlineSetting.addText(text => {
-        const defaultPath = DEFAULT_SETTINGS.outlineOutputFolder || 'Radial Timeline/Outline';
-        const fallbackFolder = plugin.settings.outlineOutputFolder?.trim() || defaultPath;
-        const illegalChars = /[<>:"|?*]/;
-
-        text.setPlaceholder(t('settings.configuration.outlineOutputFolder.placeholder'))
-            .setValue(fallbackFolder);
-        text.inputEl.addClass('ert-input--xl');
-
-        const inputEl = text.inputEl;
-
-        const flashClass = (cls: string) => {
-            inputEl.addClass(cls);
-            window.setTimeout(() => inputEl.removeClass(cls), cls === 'ert-setting-input-success' ? 1000 : 2000);
-        };
-
-        const validatePath = async () => {
-            inputEl.removeClass('ert-setting-input-success');
-            inputEl.removeClass('ert-setting-input-error');
-
-            const rawValue = text.getValue();
-            const trimmed = rawValue.trim() || fallbackFolder;
-
-            if (illegalChars.test(trimmed)) {
-                flashClass('ert-setting-input-error');
-                new Notice('Folder path cannot contain the characters < > : " | ? *');
-                return;
-            }
-
-            const normalized = normalizePath(trimmed);
-
-            try { await plugin.app.vault.createFolder(normalized); } catch { /* folder may already exist */ }
-
-            const isValid = await plugin.validateAndRememberPath(normalized);
-            if (!isValid) {
-                flashClass('ert-setting-input-error');
-                return;
-            }
-
-            plugin.settings.outlineOutputFolder = normalized;
-            await plugin.saveSettings();
-            flashClass('ert-setting-input-success');
-        };
-
-        text.onChange(() => {
-            inputEl.removeClass('ert-setting-input-success');
-            inputEl.removeClass('ert-setting-input-error');
-        });
-
-        plugin.registerDomEvent(text.inputEl, 'blur', () => { void validatePath(); });
-
-        outlineSetting.addExtraButton(button => {
-            button.setIcon('rotate-ccw');
-            button.setTooltip(`Reset to ${defaultPath}`);
-            button.onClick(async () => {
-                text.setValue(defaultPath);
-                plugin.settings.outlineOutputFolder = normalizePath(defaultPath);
-                await plugin.saveSettings();
-                flashClass('ert-setting-input-success');
-            });
-        });
-    });
 }

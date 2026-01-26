@@ -40,10 +40,6 @@ export function createDefaultCampaign(name: string): AprCampaign {
         refreshThresholdDays: 7,
         lastPublishedDate: undefined,
         embedPath: `Radial Timeline/Social/${name.toLowerCase().replace(/\s+/g, '-')}-progress.svg`,
-        showSubplots: true,
-        showActs: true,
-        showStatus: true,
-        showProgressPercent: true,
         // aprSize defaults to global setting (undefined)
         customTransparent: true,
         customTheme: 'dark',
@@ -521,59 +517,6 @@ function renderCampaignDetails(
     exportSizeSetting.settingEl.addClass(ERT_CLASSES.ROW);
     exportSizeSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
 
-    // Container for reveal options (hidden when Teaser is enabled)
-    const revealRowContainer = details.createDiv({ cls: 'ert-campaign-reveal-container' });
-
-    // Function to render or hide reveal options based on teaser state
-    const renderRevealOptions = () => {
-        revealRowContainer.empty();
-
-        const currentCampaign = plugin.settings.authorProgress?.campaigns?.[index];
-        if (!currentCampaign) return;
-
-        // If teaser is enabled, these manual options don't apply
-        if (currentCampaign.teaserReveal?.enabled) {
-            // Show a note instead
-            const note = revealRowContainer.createDiv({ cls: 'ert-campaign-reveal-note' });
-            note.setText('Visibility controlled by Teaser Reveal below');
-            return;
-        }
-
-        // Show manual reveal checkboxes
-        const revealRow = revealRowContainer.createDiv({ cls: 'ert-campaign-reveal-row' });
-        revealRow.createEl('span', { text: 'Show:', cls: 'ert-campaign-reveal-label' });
-
-        const revealOptions = [
-            { key: 'showSubplots', label: 'Subplots' },
-            { key: 'showActs', label: 'Acts' },
-            { key: 'showStatus', label: 'Status' },
-            { key: 'showProgressPercent', label: '%' },
-        ] as const;
-
-        revealOptions.forEach(opt => {
-            const checkbox = revealRow.createEl('label', { cls: 'ert-campaign-checkbox' });
-            const input = checkbox.createEl('input', { type: 'checkbox' });
-            input.checked = currentCampaign[opt.key];
-            checkbox.createSpan({ text: opt.label });
-
-            input.onchange = async () => {
-                if (!plugin.settings.authorProgress?.campaigns) return;
-                const targetCampaign = plugin.settings.authorProgress.campaigns[index];
-                if (!targetCampaign) return;
-                switch (opt.key) {
-                    case 'showSubplots': targetCampaign.showSubplots = input.checked; break;
-                    case 'showActs': targetCampaign.showActs = input.checked; break;
-                    case 'showStatus': targetCampaign.showStatus = input.checked; break;
-                    case 'showProgressPercent': targetCampaign.showProgressPercent = input.checked; break;
-                }
-                await plugin.saveSettings();
-            };
-        });
-    };
-
-    // Initial render
-    renderRevealOptions();
-
     // ─────────────────────────────────────────────────────────────────────────
     // TEASER REVEAL (Progressive Reveal)
     // ─────────────────────────────────────────────────────────────────────────
@@ -605,9 +548,8 @@ function renderCampaignDetails(
                         }
                         target.teaserReveal.enabled = val;
                         await plugin.saveSettings();
-                        // Re-render teaser section and update reveal options visibility
+                        // Re-render teaser section
                         renderTeaserContent();
-                        renderRevealOptions();
                     });
             });
 

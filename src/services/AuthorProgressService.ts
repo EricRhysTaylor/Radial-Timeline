@@ -354,7 +354,7 @@ export class AuthorProgressService {
 
     /**
      * Generate a one-time snapshot for a specific campaign.
-     * Saves to the Output folder using campaign-specific reveal settings.
+     * Saves to the Output folder using report defaults and any teaser reveal rules.
      */
     public async generateCampaignSnapshot(campaignId: string): Promise<string | null> {
         const result = await this.buildCampaignSvg(campaignId);
@@ -386,13 +386,18 @@ export class AuthorProgressService {
             ? settings.aprShowRtAttribution !== false
             : true;
 
+        const baseShowSubplots = settings.showSubplots ?? true;
+        const baseShowActs = settings.showActs ?? true;
+        const baseShowStatusColors = settings.showStatus ?? true;
+        const baseShowProgressPercent = settings.showProgressPercent ?? true;
+
         let showScenes = true;
-        let showSubplots = campaign.showSubplots;
-        let showActs = campaign.showActs;
-        let showStatusColors = campaign.showStatus;
+        let showSubplots = baseShowSubplots;
+        let showActs = baseShowActs;
+        let showStatusColors = baseShowStatusColors;
         let showStageColors = true;
         let grayCompletedScenes = false;
-        let showProgressPercent = campaign.showProgressPercent;
+        let showProgressPercent = baseShowProgressPercent;
         let isTeaserBar = false;
         let debugStage = 'Standard';
 

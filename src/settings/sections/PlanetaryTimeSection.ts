@@ -59,7 +59,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
 
     new Settings(containerEl)
         .setName(t('planetary.enable.name'))
-        .setDesc('Keep Earth as the planning source, use the profile label to match your planet or setting calendar. Set epoch offset to align Year 1 to a story milestone, and combine with the backdrop notes for complete context.')
+        .setDesc('Keep Earth as the planning source, use the profile label to match your planet or setting calendar. Set epoch offset to align Year 1 to a story milestone, and combine with the backdrop notes for complete context. Viewable in scene hover metadata and a compehensive parallel timeline in the Chronologue mode ALT sub-mode.')
         .addToggle(toggle => {
             toggle.setValue(!!plugin.settings.enablePlanetaryTime);
             toggle.onChange(async (value) => {

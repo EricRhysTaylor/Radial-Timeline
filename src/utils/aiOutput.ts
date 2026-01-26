@@ -41,8 +41,7 @@ export function countAiLogFiles(plugin: RadialTimelinePlugin): number {
 }
 
 export function resolveManuscriptOutputFolder(plugin: RadialTimelinePlugin): string {
-    const raw = plugin.settings.manuscriptOutputFolder?.trim() || DEFAULT_SETTINGS.manuscriptOutputFolder || 'Manuscript';
-    return normalizePath(raw);
+    return resolveExportOutputFolder(plugin);
 }
 
 export async function ensureManuscriptOutputFolder(plugin: RadialTimelinePlugin): Promise<string> {
@@ -52,12 +51,20 @@ export async function ensureManuscriptOutputFolder(plugin: RadialTimelinePlugin)
 }
 
 export function resolveOutlineOutputFolder(plugin: RadialTimelinePlugin): string {
-    const raw = plugin.settings.outlineOutputFolder?.trim() || DEFAULT_SETTINGS.outlineOutputFolder || 'Outline';
-    return normalizePath(raw);
+    return resolveExportOutputFolder(plugin);
 }
 
 export async function ensureOutlineOutputFolder(plugin: RadialTimelinePlugin): Promise<string> {
     const folder = resolveOutlineOutputFolder(plugin);
     try { await plugin.app.vault.createFolder(folder); } catch { /* folder may already exist */ }
     return folder;
+}
+
+export function resolveExportOutputFolder(plugin: RadialTimelinePlugin): string {
+    const raw = plugin.settings.manuscriptOutputFolder?.trim()
+        || plugin.settings.outlineOutputFolder?.trim()
+        || DEFAULT_SETTINGS.manuscriptOutputFolder
+        || DEFAULT_SETTINGS.outlineOutputFolder
+        || 'Radial Timeline/Export';
+    return normalizePath(raw);
 }

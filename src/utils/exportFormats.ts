@@ -87,7 +87,7 @@ export interface ExportFilenameOptions {
  * Pattern: "[Category] [Preset] [Sub-][Order] [Timestamp].[ext]"
  * Examples:
  *   - "Manuscript Novl Narr Jan 12 @ 3.32PM.md"
- *   - "Manuscript Scrn Sub-Chro Jan 12 @ 3.32PM.docx"
+ *   - "Pandoc Scrn Sub-Chro Jan 12 @ 3.32PM.docx"
  *   - "Outline BtSh RevN Jan 12 @ 3.32PM.md"
  *   - "Outline IdxC Sub-RevC Jan 12 @ 3.32PM.csv"
  */
@@ -96,13 +96,15 @@ export function buildExportFilename(options: ExportFilenameOptions): string {
     const orderAcronym = getOrderAcronym(options.order);
     const hasSubplotFilter = options.subplotFilter && options.subplotFilter !== 'All Subplots';
     const orderPart = hasSubplotFilter ? `Sub-${orderAcronym}` : orderAcronym;
+    const isPandocExport = options.exportType === 'manuscript' && (options.extension === 'docx' || options.extension === 'pdf');
     
     if (options.exportType === 'outline') {
         const presetAcronym = getOutlinePresetAcronym(options.outlinePreset || 'beat-sheet');
         return `Outline ${presetAcronym} ${orderPart} ${timestamp}.${options.extension}`;
     } else {
+        const category = isPandocExport ? 'Pandoc' : 'Manuscript';
         const presetAcronym = getManuscriptPresetAcronym(options.manuscriptPreset || 'novel');
-        return `Manuscript ${presetAcronym} ${orderPart} ${timestamp}.${options.extension}`;
+        return `${category} ${presetAcronym} ${orderPart} ${timestamp}.${options.extension}`;
     }
 }
 
@@ -483,5 +485,3 @@ export async function writeTextFile(
     const adapter = vault.adapter; // SAFE: adapter write used to save generated export content
     await adapter.write(normalized, content);
 }
-
-

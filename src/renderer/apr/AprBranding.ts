@@ -51,46 +51,42 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const authColor = authorColor || bookColor; // Default to book color if not specified
 
     // Build the repeating title segment
-    const separator = '\u00A0~\u00A0';
+    const separator = ' ~ ';
     const bookTitleUpper = bookTitle.toUpperCase();
     const authorNameUpper = authorName?.toUpperCase() || '';
-    const bullet = '\u00A0•\u00A0';
 
     // Calculate exact circumference
     const circumference = 2 * Math.PI * brandingRadius;
 
-    const estimateTextWidth = (text: string, fontSize: number) => {
-        let width = 0;
-        for (const char of text) {
-            if (char === ' ' || char === '\u00A0') {
-                width += fontSize * 0.33;
-                continue;
-            }
-            if (/[A-Z]/.test(char)) {
-                width += fontSize * 0.62;
-                continue;
-            }
-            if (/[0-9]/.test(char)) {
-                width += fontSize * 0.58;
-                continue;
-            }
-            if (char === '•' || char === '~') {
-                width += fontSize * 0.5;
-                continue;
-            }
-            width += fontSize * 0.45;
-        }
-        return width;
-    };
-
     const hasAuthor = authorNameUpper.trim().length > 0;
-    const segmentWidth = estimateTextWidth(bookTitleUpper, bookTitleSize)
-        + (hasAuthor ? estimateTextWidth(`${bullet}${authorNameUpper}`, authorNameSize) : 0)
-        + estimateTextWidth(separator, bookTitleSize);
-    let repetitions = segmentWidth > 0 ? Math.round(circumference / segmentWidth) : 1;
-    repetitions = Math.max(4, Math.min(20, repetitions || 1));
-    while (repetitions < 20 && segmentWidth * repetitions < circumference * 0.95) {
-        repetitions += 1;
+    const unitPattern = hasAuthor
+        ? `${bookTitleUpper}${separator}${authorNameUpper}${separator}`
+        : `${bookTitleUpper}${separator}`;
+
+    // Measure unit length to determine optimal repeats
+    let repeats = 1;
+    const avgFontSize = hasAuthor ? (bookTitleSize + authorNameSize) / 2 : bookTitleSize;
+
+    // SAFE: We are in a browser environment (Obsidian)
+    if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+        try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                // Approximate width measurement using average font size and weight
+                // Note: We use the book title font properties as the primary driver
+                const fontStr = `${italicAttr(bookTitleFontItalic) ? 'italic ' : ''}${bookTitleFontWeight} ${avgFontSize}px "${bookTitleFontFamily}", sans-serif`;
+                ctx.font = fontStr;
+                const unitWidth = ctx.measureText(unitPattern).width;
+
+                if (unitWidth > 0) {
+                    repeats = Math.round(circumference / unitWidth);
+                    if (repeats < 1) repeats = 1;
+                }
+            }
+        } catch (e) {
+            console.warn('APR Branding: Failed to measure text width, defaulting to 1 repeat', e);
+        }
     }
 
     // Full circle path starting from top (12 o'clock) going clockwise
@@ -103,22 +99,21 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         </defs>
     `;
 
-    // Build text content with tspan elements for separate colors and fonts
-    // textLength applies spacing to the entire text content including all tspan children
+    // Construct the seamless text content
     let textContent = '';
-    for (let i = 0; i < repetitions; i++) {
-        // Book title with its own font settings (using SVG attributes, not inline styles)
-        textContent += `<tspan fill="${cssVar('--apr-book-title-color', bookColor)}" font-family="${bookTitleFontFamily}" font-weight="${bookTitleFontWeight}" ${italicAttr(bookTitleFontItalic)}>${bookTitleUpper}</tspan>`; // SAFE: inline style used for SVG attribute font-style in template string
-        if (hasAuthor) {
-            // Author name with its own font settings (using SVG attributes, not inline styles)
-            textContent += `<tspan fill="${cssVar('--apr-author-color', authColor)}" font-family="${authorNameFontFamily}" font-weight="${authorNameFontWeight}" ${italicAttr(authorNameFontItalic)}>${bullet}${authorNameUpper}</tspan>`; // SAFE: inline style used for SVG attribute font-style in template string
-        }
-        // Separator uses book title font (using SVG attributes, not inline styles)
-        textContent += `<tspan fill="${cssVar('--apr-book-title-color', bookColor)}" font-family="${bookTitleFontFamily}" font-weight="${bookTitleFontWeight}" ${italicAttr(bookTitleFontItalic)}>${separator}</tspan>`; // SAFE: inline style used for SVG attribute font-style in template string
-    }
+    const bookTspanStart = `<tspan fill="${cssVar('--apr-book-title-color', bookColor)}" font-family="${bookTitleFontFamily}" font-weight="${bookTitleFontWeight}" font-size="${bookTitleSize}" ${italicAttr(bookTitleFontItalic)}>`;
+    const authorTspanStart = `<tspan fill="${cssVar('--apr-author-color', authColor)}" font-family="${authorNameFontFamily}" font-weight="${authorNameFontWeight}" font-size="${authorNameSize}" ${italicAttr(authorNameFontItalic)}>`;
+    const endTspan = `</tspan>`;
 
-    // Use average font size for the text element (textLength needs a consistent base)
-    const avgFontSize = hasAuthor ? (bookTitleSize + authorNameSize) / 2 : bookTitleSize;
+    for (let i = 0; i < repeats; i++) {
+        textContent += `${bookTspanStart}${bookTitleUpper}${endTspan}`;
+        textContent += `${bookTspanStart}${separator}${endTspan}`; // Separator uses book title styling
+
+        if (hasAuthor) {
+            textContent += `${authorTspanStart}${authorNameUpper}${endTspan}`;
+            textContent += `${bookTspanStart}${separator}${endTspan}`; // Separator match
+        }
+    }
 
     const brandingText = `
         <text 
@@ -126,10 +121,8 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             font-size="${avgFontSize}" 
             font-weight="${bookTitleFontWeight}" 
             ${italicAttr(bookTitleFontItalic)}
-            xml:space="preserve"
-            textLength="${circumference.toFixed(2)}"
-            lengthAdjust="spacing">
-            <textPath href="#${circlePathId}" startOffset="0%">
+            xml:space="preserve">
+            <textPath href="#${circlePathId}" startOffset="0%" textLength="${circumference.toFixed(2)}" lengthAdjust="spacing">
                 ${textContent}
             </textPath>
         </text>

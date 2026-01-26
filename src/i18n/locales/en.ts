@@ -317,14 +317,14 @@ export const en: TranslationKeys = {
                 placeholder: 'Radial Timeline/Logs',
             },
             manuscriptOutputFolder: {
-                name: 'Manuscript export folder',
-                desc: 'Folder where manuscript exports (Markdown, DOCX, PDF) are saved. Default: Radial Timeline/Manuscript.',
-                placeholder: 'Radial Timeline/Manuscript',
+                name: 'Export folder',
+                desc: 'Folder where manuscript, outline, and cue card exports (Markdown, DOCX, PDF, beat sheets, index cards) are saved. Default: Radial Timeline/Export.',
+                placeholder: 'Radial Timeline/Export',
             },
             outlineOutputFolder: {
-                name: 'Outline export folder',
-                desc: 'Folder where outline exports (beat sheets, episode rundowns, index cards) are saved. Default: Radial Timeline/Outline.',
-                placeholder: 'Radial Timeline/Outline',
+                name: 'Outline export folder (legacy)',
+                desc: 'Legacy setting. Outline exports now use the shared Export folder. Default: Radial Timeline/Export.',
+                placeholder: 'Radial Timeline/Export',
             },
             autoExpand: {
                 name: 'Auto-expand clipped scene titles',

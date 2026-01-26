@@ -202,11 +202,6 @@ export interface AprCampaign {
     // Output
     embedPath: string;               // Where to save the SVG for this campaign
 
-    // Per-campaign reveal options (override defaults when Teaser Reveal is OFF)
-    showSubplots: boolean;
-    showActs: boolean;
-    showStatus: boolean;
-    showProgressPercent: boolean;
     aprSize?: 'thumb' | 'small' | 'medium' | 'large';
 
     // Per-campaign styling (optional overrides)

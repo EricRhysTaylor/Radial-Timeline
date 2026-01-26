@@ -13,8 +13,8 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     showSourcePathAsTitle: true, // Default: show source path as title of the work
     validFolderPaths: [], // Default empty array for folder path history
     aiOutputFolder: 'Radial Timeline/Logs',
-    manuscriptOutputFolder: 'Radial Timeline/Manuscript',
-    outlineOutputFolder: 'Radial Timeline/Outline',
+    manuscriptOutputFolder: 'Radial Timeline/Export',
+    outlineOutputFolder: 'Radial Timeline/Export',
     inquiryArtifactFolder: 'Radial Timeline/Inquiry/Artifacts',
     inquiryEmbedJson: true,
     inquiryAutoSave: true,
