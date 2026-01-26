@@ -312,12 +312,12 @@ export function renderInquirySection(params: SectionParams): void {
         .setName('Inquiry scan folders')
         .setDesc('Inquiry only scans within these folders. One path per line. Wildcards like /Book */ or /Book 1-7 */ are allowed. Use / for the vault root. Empty = no scan.');
     scanRootsSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:scan-roots');
-    scanRootsSetting.settingEl.classList.add('ert-setting-two-row');
+    scanRootsSetting.settingEl.classList.add('ert-setting-two-row', 'ert-setting-two-row--stretchControl');
 
     const scanRootsText = new TextAreaComponent(scanRootsSetting.controlEl);
     scanRootsText.setValue(listToText(inquirySources.scanRoots));
     scanRootsText.setPlaceholder('/Book */\n/Character/\n/World/');
-    scanRootsText.inputEl.rows = 3;
+    scanRootsText.inputEl.rows = 4;
     scanRootsText.inputEl.addClass('ert-textarea--wide');
     scanRootsInput = scanRootsText;
 

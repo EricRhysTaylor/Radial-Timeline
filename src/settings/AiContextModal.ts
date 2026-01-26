@@ -147,7 +147,7 @@ export class AiContextModal extends Modal {
 
         // Info section
         const infoEl = contentEl.createDiv({ cls: 'ert-field-note ert-ai-context-info' });
-        infoEl.setText('Define context for AI LLM analysis and Gossamer score generation. This text prepends all prompts sent to LLM to establish role and context and is used for the copy template button to generate Gossamer scores.');
+        infoEl.setText('Define context for AI LLM analysis and pulse triplet editorial feedback. This text prepends select prompts to establish role and context and is used for the copy template button to generate Gossamer scores.');
 
         // Template selector row
         const selectorRow = contentEl.createDiv({ cls: 'ert-row' });
@@ -182,7 +182,7 @@ export class AiContextModal extends Modal {
         
         // New Template button
         new ButtonComponent(buttonRow)
-            .setButtonText('New template')
+            .setButtonText('New')
             .onClick(() => this.createNewTemplate());
         
         // Rename button
@@ -192,7 +192,7 @@ export class AiContextModal extends Modal {
         
         // Copy button (for built-in templates)
         this.copyButton = new ButtonComponent(buttonRow)
-            .setButtonText('Create copy')
+            .setButtonText('Copy')
             .onClick(() => this.copyTemplate());
         
         // Delete button

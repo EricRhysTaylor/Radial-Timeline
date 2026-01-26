@@ -9,7 +9,6 @@ import { getPresetPalettes, generatePaletteFromColor } from '../../utils/aprPale
 import { AprPaletteModal } from '../../modals/AprPaletteModal';
 import { renderCampaignManagerSection } from './CampaignManagerSection';
 import { isProfessionalActive } from './ProfessionalSection';
-import { addWikiLinkToElement } from '../wikiLink';
 import { colorSwatch, type ColorSwatchHandle } from '../../ui/ui';
 import { ERT_CLASSES } from '../../ui/classes';
 
@@ -179,14 +178,19 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Styling (background + branding colors) - placed first, close to preview
     const stylingCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
-    const stylingHeader = stylingCard.createDiv({ cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_INLINE}` });
-    const stylingHeaderLeft = stylingHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
-    const stylingIcon = stylingHeaderLeft.createSpan();
-    setIcon(stylingIcon, 'brush');
-    const stylingHeaderMain = stylingHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
-    stylingHeaderMain.createEl('h4', { text: 'Styling', cls: ERT_CLASSES.SECTION_TITLE });
-    const stylingHeaderRight = stylingHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
-    addWikiLinkToElement(stylingHeaderRight, 'Settings#social-media-styling');
+    const stylingHeader = stylingCard.createDiv({ cls: 'setting-item setting-item-heading' });
+    const stylingInfo = stylingHeader.createDiv({ cls: 'setting-item-info' });
+    const stylingName = stylingInfo.createDiv({ cls: 'setting-item-name' });
+    const stylingHeaderIcon = stylingName.createSpan({ cls: 'ert-setting-heading-icon' });
+    setIcon(stylingHeaderIcon, 'brush');
+    stylingName.createSpan({ text: 'Styling' });
+    const stylingWikiLink = stylingName.createEl('a', {
+        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#social-media-styling',
+        cls: 'ert-setting-heading-wikilink'
+    });
+    stylingWikiLink.setAttr('target', '_blank');
+    stylingWikiLink.setAttr('rel', 'noopener');
+    setIcon(stylingWikiLink, 'external-link');
 
     const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
     const currentTransparent = settings?.aprCenterTransparent ?? true; // Default to true (recommended)
@@ -1054,14 +1058,19 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Only show basic Publishing & Automation for non-Pro users
     if (!isProActive) {
         const automationCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
-        const automationHeader = automationCard.createDiv({ cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_INLINE}` });
-        const automationHeaderLeft = automationHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
-        const automationIcon = automationHeaderLeft.createSpan();
-        setIcon(automationIcon, 'rss');
-        const automationHeaderMain = automationHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
-        automationHeaderMain.createEl('h4', { text: 'Publishing & Automation', cls: ERT_CLASSES.SECTION_TITLE });
-        const automationHeaderRight = automationHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
-        addWikiLinkToElement(automationHeaderRight, 'Settings#social-media-publishing');
+        const automationHeader = automationCard.createDiv({ cls: 'setting-item setting-item-heading' });
+        const automationInfo = automationHeader.createDiv({ cls: 'setting-item-info' });
+        const automationName = automationInfo.createDiv({ cls: 'setting-item-name' });
+        const automationHeaderIcon = automationName.createSpan({ cls: 'ert-setting-heading-icon' });
+        setIcon(automationHeaderIcon, 'rss');
+        automationName.createSpan({ text: 'Publishing & Automation' });
+        const automationWikiLink = automationName.createEl('a', {
+            href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#social-media-publishing',
+            cls: 'ert-setting-heading-wikilink'
+        });
+        automationWikiLink.setAttr('target', '_blank');
+        automationWikiLink.setAttr('rel', 'noopener');
+        setIcon(automationWikiLink, 'external-link');
 
         const frequencySetting = new Setting(automationCard)
             .setName('Update Frequency')

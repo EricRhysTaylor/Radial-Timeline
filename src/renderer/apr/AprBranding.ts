@@ -87,10 +87,11 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const segmentWidth = estimateTextWidth(bookTitleUpper, bookTitleSize)
         + (hasAuthor ? estimateTextWidth(`${bullet}${authorNameUpper}`, authorNameSize) : 0)
         + estimateTextWidth(separator, bookTitleSize);
-    const joinSafety = Math.max(2, bookTitleSize * 0.35);
-    const usableCircumference = Math.max(0, circumference - joinSafety);
-    const idealReps = segmentWidth > 0 ? Math.floor(usableCircumference / segmentWidth) : 1;
-    const repetitions = Math.max(1, Math.min(10, idealReps || 1));
+    let repetitions = segmentWidth > 0 ? Math.round(circumference / segmentWidth) : 1;
+    repetitions = Math.max(4, Math.min(20, repetitions || 1));
+    while (repetitions < 20 && segmentWidth * repetitions < circumference * 0.95) {
+        repetitions += 1;
+    }
 
     // Full circle path starting from top (12 o'clock) going clockwise
     const circlePathId = 'apr-branding-circle';
