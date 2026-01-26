@@ -1065,14 +1065,15 @@ export function renderInquirySection(params: SectionParams): void {
 
     const configBody = createSection(containerEl, {
         title: 'Configuration',
-        desc: 'Artifacts, action notes, and session cache defaults for Inquiry briefs.',
+        desc: 'Briefings, action notes, and session cache defaults for Inquiry briefs.',
         icon: 'settings',
         wiki: 'Settings#inquiry'
     });
 
     const artifactSetting = new Settings(configBody)
-        .setName('Artifact folder')
+        .setName('Briefing folder')
         .setDesc('Inquiry briefs are saved here when auto-save is enabled.');
+    artifactSetting.settingEl.classList.add(ERT_CLASSES.ROW_INLINE_CONTROL);
 
     artifactSetting.addText(text => {
         const defaultPath = DEFAULT_SETTINGS.inquiryArtifactFolder || 'Radial Timeline/Inquiry/Artifacts';
@@ -1081,7 +1082,7 @@ export function renderInquirySection(params: SectionParams): void {
 
         text.setPlaceholder(defaultPath)
             .setValue(fallbackFolder);
-        text.inputEl.addClass('ert-input--xl');
+        text.inputEl.addClass('ert-input--lg');
 
         if (attachFolderSuggest) {
             attachFolderSuggest(text);
@@ -1134,8 +1135,8 @@ export function renderInquirySection(params: SectionParams): void {
     });
 
     new Settings(configBody)
-        .setName('Embed JSON payload in Artifacts')
-        .setDesc('Includes the validated Inquiry JSON payload in the Artifact file.')
+        .setName('Embed JSON payload in Briefings')
+        .setDesc('Includes the validated Inquiry JSON payload in the Briefing file.')
         .addToggle(toggle => {
             toggle.setValue(plugin.settings.inquiryEmbedJson ?? true);
             toggle.onChange(async (value) => {

@@ -157,13 +157,12 @@ export function renderAprBadges(options: AprBadgeOptions): string {
 
     const preset = getPreset(size);
     const half = preset.svgSize / 2;
-    const corner = preset.rtCornerOffset;
     const badgeSize = rtBadgeFontSize ?? preset.rtBrandingFontSize;
     const stageText = (stageLabel || 'Zero').trim().toUpperCase() || 'ZERO';
 
     const stageEdgeInset = Math.max(1, Math.round(preset.borderWidth));
     const stageX = half - stageEdgeInset;
-    const stageY = half - corner;
+    const stageY = half - stageEdgeInset;
 
     const approxCharWidth = badgeSize * 0.6;
     const stageLabelWidth = stageText.length * approxCharWidth;
@@ -177,7 +176,7 @@ export function renderAprBadges(options: AprBadgeOptions): string {
             x="${stageX.toFixed(2)}" 
             y="${stageY.toFixed(2)}" 
             text-anchor="end" 
-            dominant-baseline="auto"
+            dominant-baseline="text-after-edge"
             font-family="${rtBadgeFontFamily}" 
             font-size="${badgeSize}" 
             font-weight="${rtBadgeFontWeight}"
@@ -194,7 +193,7 @@ export function renderAprBadges(options: AprBadgeOptions): string {
             x="${countdownX.toFixed(2)}"
             y="${stageY.toFixed(2)}"
             text-anchor="end"
-            dominant-baseline="auto"
+            dominant-baseline="text-after-edge"
             font-family="${rtBadgeFontFamily}"
             font-size="${countdownFontSize}"
             font-weight="${rtBadgeFontWeight}"
@@ -208,10 +207,10 @@ export function renderAprBadges(options: AprBadgeOptions): string {
     const rtAttribution = showRtAttribution ? `
         <a href="https://radialtimeline.com" target="_blank" rel="noopener" class="apr-rt-attribution">
             <text 
-                x="${(-half + corner).toFixed(2)}" 
-                y="${(half - corner).toFixed(2)}" 
+                x="${(-half + stageEdgeInset).toFixed(2)}" 
+                y="${(half - stageEdgeInset).toFixed(2)}" 
                 text-anchor="start" 
-                dominant-baseline="auto"
+                dominant-baseline="text-after-edge"
                 font-family="${rtBadgeFontFamily}" 
                 font-size="${Math.max(6, Math.round(badgeSize * 0.75))}" 
                 font-weight="${rtBadgeFontWeight}"

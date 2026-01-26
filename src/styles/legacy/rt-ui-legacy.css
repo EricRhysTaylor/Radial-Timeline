@@ -206,12 +206,22 @@
 
 .ert-settings-root .setting-item.setting-item-heading .ert-setting-heading-icon {
   display: inline-flex;
-  width: 14px;
-  height: 14px;
+  width: var(--icon-size, 16px);
+  height: var(--icon-size, 16px);
   align-items: center;
   justify-content: center;
   vertical-align: middle;
   align-self: center;
+  line-height: 1;
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.ert-settings-root .setting-item.setting-item-heading .ert-setting-heading-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  flex: 0 0 auto;
 }
 
 .ert-settings-root .setting-item-control {

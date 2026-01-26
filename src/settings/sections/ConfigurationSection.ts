@@ -4,14 +4,14 @@ import { clearFontMetricsCaches } from '../../renderer/utils/FontMetricsCache';
 import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink } from '../wikiLink';
 
-export function renderAdvancedSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
+export function renderConfigurationSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { app, plugin, containerEl } = params;
 
-    const advancedHeading = new Settings(containerEl)
+    const configurationHeading = new Settings(containerEl)
         .setName(t('settings.configuration.heading'))
         .setHeading();
-    addHeadingIcon(advancedHeading, 'pyramid');
-    addWikiLink(advancedHeading, 'Settings#advanced');
+    addHeadingIcon(configurationHeading, 'pyramid');
+    addWikiLink(configurationHeading, 'Settings#configuration');
 
     // 1. Auto-expand clipped scene titles
     new Settings(containerEl)

@@ -486,15 +486,10 @@ export function renderCompletionEstimatePreview(params: {
                 previewContainer.addClass(`ert-completion-preview-${estimate.staleness}`);
             }
 
-            const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
-            heading.setText(`Completion Estimate • ${estimate.stage} Stage`);
-
-            const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
-
             // Encouragement quote when progress is slowing
             if (estimate.staleness !== 'fresh') {
                 const quote = getRandomQuote(perseveranceQuotes);
-                const encouragementEl = body.createDiv({ cls: 'ert-completion-encouragement' });
+                const encouragementEl = previewContainer.createDiv({ cls: 'ert-completion-encouragement' });
                 const quoteMetrics = getQuoteMetrics(
                     previewContainer,
                     'ert-completion-encouragement ert-completion-encouragement-text',
@@ -509,6 +504,11 @@ export function renderCompletionEstimatePreview(params: {
                     'ert-completion-encouragement-text'
                 );
             }
+
+            const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
+            heading.setText(`Completion Estimate • ${estimate.stage} Stage`);
+
+            const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
 
             // Key metrics row
             const metricsRow = body.createDiv({ cls: 'ert-completion-metrics-row' });

@@ -374,18 +374,18 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     //               Row 2 = Font + Weight
     // ─────────────────────────────────────────────────────────────────────────
     const themeContainer = stylingCard.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
-    const themeHeader = themeContainer.createDiv({ cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK}` });
-    const themeHeaderLeft = themeHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
-    const themeHeaderIcon = themeHeaderLeft.createSpan();
-    setIcon(themeHeaderIcon, 'swatch-book');
+    const themeHeader = themeContainer.createDiv({ cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK} ${ERT_CLASSES.HEADER_NO_LEFT}` });
     const themeHeaderMain = themeHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
-    themeHeaderMain.createEl('h4', { text: 'Theme', cls: ERT_CLASSES.SECTION_TITLE });
+    const themeTitleRow = themeHeaderMain.createEl('h4', { cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}` });
+    const themeHeaderIcon = themeTitleRow.createSpan({ cls: 'ert-setting-heading-icon' });
+    setIcon(themeHeaderIcon, 'swatch-book');
+    themeTitleRow.createSpan({ text: 'Theme' });
+    addWikiLinkToElement(themeTitleRow, 'Settings#social-media-theme');
     themeHeaderMain.createDiv({
         text: 'Theme palette applies curated colors across Title, Author, % Symbol, and % Number based on the Title color. Stage badge uses publish stage colors; manual edits override per row.',
         cls: ERT_CLASSES.SECTION_DESC
     });
     const themeHeaderRight = themeHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
-    addWikiLinkToElement(themeHeaderRight, 'Settings#social-media-theme');
     const typographyStack = themeContainer.createDiv({ cls: 'ert-typography-stack' });
 
     // Palette tracking & color picker refs

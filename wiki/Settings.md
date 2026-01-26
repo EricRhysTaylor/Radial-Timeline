@@ -230,8 +230,8 @@ Configure the AI assistant for narrative analysis.
 > [!NOTE]
 > Learn how to interpret the analysis in [[AI-Analysis]].
 
-<a name="advanced"></a>
-### Advanced
+<a name="configuration"></a>
+### Configuration
 Technical configuration and file handling.
 *   **Auto-expand clipped scene titles**: Automatically expands truncated text in the radial view on hover.
 *   **Timeline readability scale**: Adjusts the global font size of the timeline (Normal or Large).

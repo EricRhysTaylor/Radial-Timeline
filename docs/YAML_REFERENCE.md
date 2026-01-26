@@ -139,7 +139,7 @@ Gossamer1: 12                 # Latest gossamer score
 > **Note**: Beat notes can be ordered two ways:
 > - **Manuscript order** (default): Uses Act field and filename prefix (e.g., `01 Opening Image.md`)
 > - **Chronological order**: Add `When` field to position beats at specific story timeline dates
-> - Enable "Sort by When date" (Settings → Advanced) to position beats chronologically alongside scenes
+> - Enable "Sort by When date" (Settings → Configuration) to position beats chronologically alongside scenes
 
 ### Beat with Historical Gossamer Tracking
 
@@ -207,7 +207,7 @@ When: July 2045       # Month name + year → Jul 1, 2045 @ 12:00 PM
 **Usage:**
 - **Scenes**: Used by Chronologue Mode and "Sort by When date" to arrange scenes chronologically
 - **Beats**: When added to beat notes, allows story beats to be positioned at specific points in the timeline when using chronological sorting
-- **Sorting**: Enable "Sort by When date" (Settings → Advanced) to position both scenes and beats across the full 360° circle based on their `When` dates
+- **Sorting**: Enable "Sort by When date" (Settings → Configuration) to position both scenes and beats across the full 360° circle based on their `When` dates
 
 > **Note**: Red “Missing When” alerts only appear once a scene’s `Status` moves to `Working` or `Complete`, so you can outline Todo scenes without warnings. Additionally, hovering over a scene with a missing date will show the dates of the previous and next scenes in narrative order to provide helpful context for placement.
 

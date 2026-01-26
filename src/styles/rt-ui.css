@@ -394,7 +394,7 @@
 
 .ert-ui .ert-row {
   display: grid;
-  grid-template-columns: minmax(var(--ert-label-w), var(--ert-label-w)) 1fr;
+  grid-template-columns: minmax(0, var(--ert-label-w)) minmax(0, 1fr);
   gap: var(--ert-gap-sm);
   align-items: flex-start;
 }
@@ -547,20 +547,26 @@
   gap: var(--ert-gap-xs);
 }
 
-.ert-ui .ert-section-title.ert-inline .ert-setting-heading-icon {
+.ert-ui .ert-setting-heading-icon {
   display: inline-flex;
-  width: 16px;
-  height: 16px;
+  width: var(--icon-size, 16px);
+  height: var(--icon-size, 16px);
   align-items: center;
   justify-content: center;
   line-height: 1;
-  align-self: center;
+  flex: 0 0 auto;
+  overflow: hidden;
 }
 
-.ert-ui .ert-section-title.ert-inline .ert-setting-heading-icon svg {
-  width: 16px;
-  height: 16px;
+.ert-ui .ert-setting-heading-icon svg {
+  width: 100%;
+  height: 100%;
   display: block;
+  flex: 0 0 auto;
+}
+
+.ert-ui .ert-section-title.ert-inline .ert-setting-heading-icon {
+  align-self: center;
 }
 
 .ert-ui .ert-section-title.ert-inline .ert-wiki-link {
@@ -1559,9 +1565,10 @@
 }
 
 .ert-ui .ert-elementBlock.setting-item {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: minmax(0, var(--ert-label-w)) minmax(0, 1fr);
   gap: var(--ert-gap-md);
+  align-items: start;
   width: 100%;
   padding: var(--ert-row-pad);
   border-radius: 8px;
@@ -1579,8 +1586,7 @@
 }
 
 .ert-ui .ert-elementBlock.setting-item .setting-item-info {
-  flex: 1 1 auto;
-  min-width: 140px;
+  min-width: 0;
 }
 
 .ert-ui .ert-typography-stack {
@@ -1603,7 +1609,8 @@
   align-items: center;
   gap: var(--ert-gap-sm);
   min-width: 0;
-  flex: 0 0 auto;
+  max-width: 100%;
+  justify-self: end;
 }
 
 .ert-ui .ert-elementBlock.setting-item.ert-row--wideControl {
@@ -2341,8 +2348,9 @@
 }
 
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-two-row {
+  --ert-setting-two-row-control-width: var(--ert-input-width-xl);
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) minmax(var(--ert-setting-two-row-control-width), max-content);
   grid-template-rows: auto auto;
   column-gap: 24px;
   row-gap: var(--ert-gap-sm);
@@ -2360,7 +2368,16 @@
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-two-row .setting-item-control {
   grid-column: 2 / 3;
   grid-row: 1 / 2;
-  justify-self: flex-end;
+  justify-self: stretch;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-two-row .setting-item-control textarea.ert-textarea--wide {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-two-row .ert-story-structure-info {
@@ -2504,6 +2521,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--ert-group-gap);
+}
+
+.ert-ui .ert-previewFrame[data-preview="completion"] .ert-planetary-preview-heading {
+  text-align: center;
+  width: 100%;
 }
 
 .ert-ui .ert-completion-stage-Zero {

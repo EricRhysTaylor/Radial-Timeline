@@ -12,7 +12,7 @@ import { fetchGeminiModels } from '../api/geminiApi';
 import RadialTimelinePlugin from '../main';
 import { renderColorsSection } from './sections/ColorsSection';
 import { renderReadmeSection } from './sections/ReadmeSection';
-import { renderAdvancedSection } from './sections/AdvancedSection';
+import { renderConfigurationSection } from './sections/ConfigurationSection';
 import { renderAiSection } from './sections/AiSection';
 import { renderReleaseNotesSection } from './sections/ReleaseNotesSection';
 import { renderPovSection } from './sections/PovSection';
@@ -464,12 +464,12 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             badgeVariant: ERT_CLASSES.BADGE_PILL_NEUTRAL,
             wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#core',
             title: 'Build the core of your radial timeline workflow.',
-            subtitle: 'Using core settings, configure the Radial Timeline to work with your manuscript architecture. Search will bring up any matching section. Make RT work for you and not the other way around.',
+            subtitle: 'The Radial Timeline is designed to empower, you the author, to ever greater productivity and accountability. Using core settings, configure the Radial Timeline to work with your manuscript architecture and writing style. Search will bring up any matching section.',
             kicker: 'Core Highlights:',
             features: [
-                { icon: 'layout-grid', text: 'Story Structure — Manage beats, templates, and outline scaffolds' },
-                { icon: 'orbit', text: 'Chronologue & Time — Align chronologue, backdrop, and planetary clocks' },
-                { icon: 'book-open-text', text: 'Publishing Setup — Configure manuscript formats, metadata, and release prep' },
+                { icon: 'layout-grid', text: 'Story structure — manage beats, templates, and advanced YAML fields.' },
+                { icon: 'orbit', text: 'Chronologue & time — align chronologue, backdrop, and planetary clocks' },
+                { icon: 'book-open-text', text: 'Publishing setup — configure manuscript formats, metadata, and release prep' },
             ]
         });
     }
@@ -625,8 +625,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             },
         });
 
-        const advancedSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'advanced' } });
-        renderAdvancedSection({ app: this.app, plugin: this.plugin, containerEl: advancedSection });
+        const configurationSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'configuration' } });
+        renderConfigurationSection({ app: this.app, plugin: this.plugin, containerEl: configurationSection });
 
         const colorsSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'colors' } });
         renderColorsSection(colorsSection, this.plugin);
