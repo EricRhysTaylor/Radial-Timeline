@@ -2456,7 +2456,7 @@
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-elementBlock.setting-item,
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content;
+  grid-template-columns: minmax(0, 1fr) minmax(0, max-content);
   column-gap: var(--ert-gap, 16px);
   align-items: start;
 }
@@ -2472,11 +2472,34 @@
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock .setting-item-control {
   width: max-content;
   min-width: 0;
+  max-width: 100%;
   justify-self: end;
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
-  gap: var(--ert-gap-xs, 8px);
+  gap: var(--ert-gap-sm);
+}
+
+/* Full-width input rows should stretch the control column */
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock.ert-setting-full-width-input {
+  grid-template-columns: minmax(0, 1fr);
+  --ert-control-width: 100%;
+}
+
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root)
+.setting-item.ert-elementBlock.ert-setting-full-width-input
+.setting-item-control {
+  width: 100%;
+  justify-self: stretch;
+  display: flex;
+  justify-content: flex-start;
+}
+
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock.ert-setting-full-width-input .setting-item-control > :is(input, textarea, select, .dropdown, .ert-select) {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 100%;
 }
 
 /* Inputs respect width tokens; never expand to fill */
@@ -2487,10 +2510,7 @@
   max-width: 100%;
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root)
-.setting-item.ert-elementBlock
-.setting-item-control
-> :is(input, textarea, select, .dropdown, .ert-select) {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock .setting-item-control > :is(input, textarea, select, .dropdown, .ert-select) {
   flex: 0 0 auto;
 }
 

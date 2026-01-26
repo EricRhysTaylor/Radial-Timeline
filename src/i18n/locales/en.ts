@@ -313,8 +313,8 @@ export const en: TranslationKeys = {
             heading: 'Configuration',
             aiOutputFolder: {
                 name: 'Logs & generated files output folder',
-                desc: 'Folder where AI logs and local LLM reports are saved. Default: Radial Timeline/AI Logs.',
-                placeholder: 'Radial Timeline/AI Logs',
+                desc: 'Folder where AI logs and local LLM reports are saved. Default: Radial Timeline/Logs.',
+                placeholder: 'Radial Timeline/Logs',
             },
             manuscriptOutputFolder: {
                 name: 'Manuscript export folder',

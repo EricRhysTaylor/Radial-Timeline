@@ -206,7 +206,7 @@ export class AuthorProgressService {
         } else {
             // Static snapshot - save to Output folder
             const fileName = `apr-snapshot-${Date.now()}.svg`;
-            const folder = this.plugin.settings.aiOutputFolder || 'Radial Timeline/AI Logs';
+            const folder = this.plugin.settings.aiOutputFolder || 'Radial Timeline/Logs';
             const path = `${folder}/${fileName}`;
             await this.ensureFolder(path);
             await this.app.vault.create(path, finalSvg);
@@ -361,7 +361,7 @@ export class AuthorProgressService {
         if (!result) return null;
         const { svgString, campaign } = result;
         const fileName = `apr-snapshot-${campaign.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.svg`;
-        const folder = this.plugin.settings.aiOutputFolder || 'Radial Timeline/AI Logs';
+        const folder = this.plugin.settings.aiOutputFolder || 'Radial Timeline/Logs';
         const path = `${folder}/${fileName}`;
         await this.ensureFolder(path);
         await this.app.vault.create(path, svgString);

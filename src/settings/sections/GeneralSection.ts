@@ -120,7 +120,7 @@ export function renderGeneralSection(params: {
         .setDesc(t('settings.configuration.aiOutputFolder.desc'));
     aiSetting.settingEl.addClass(ERT_CLASSES.ROW_INLINE_CONTROL);
     aiSetting.addText(text => {
-        const defaultPath = DEFAULT_SETTINGS.aiOutputFolder || 'Radial Timeline/AI Logs';
+        const defaultPath = DEFAULT_SETTINGS.aiOutputFolder || 'Radial Timeline/Logs';
         const fallbackFolder = plugin.settings.aiOutputFolder?.trim() || defaultPath;
         const illegalChars = /[<>:"|?*]/;
 

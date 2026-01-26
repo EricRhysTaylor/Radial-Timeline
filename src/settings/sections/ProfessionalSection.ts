@@ -8,7 +8,6 @@
 
 import { App, Setting, setIcon, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import { addWikiLinkToElement } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -237,21 +236,23 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     const pandocPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
 
     // Header
-    const pandocHeader = pandocPanel.createDiv({ cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK}` });
-    const pandocHeaderLeft = pandocHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
-    const pandocHeaderIcon = pandocHeaderLeft.createSpan();
+    const pandocHeading = pandocPanel.createDiv({ cls: 'setting-item setting-item-heading' });
+    const pandocInfo = pandocHeading.createDiv({ cls: 'setting-item-info' });
+    const pandocName = pandocInfo.createDiv({ cls: 'setting-item-name' });
+    const pandocHeaderIcon = pandocName.createSpan({ cls: 'ert-setting-heading-icon' });
     setIcon(pandocHeaderIcon, 'book-open-text');
-    const pandocHeaderMain = pandocHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
-    pandocHeaderMain.createEl('h4', {
-        text: 'Export & Pandoc',
-        cls: ERT_CLASSES.SECTION_TITLE
+    pandocName.createSpan({ text: 'Export & Pandoc' });
+    const pandocWikiLink = pandocName.createEl('a', {
+        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#professional',
+        cls: 'ert-setting-heading-wikilink'
     });
-    pandocHeaderMain.createDiv({
-        cls: ERT_CLASSES.SECTION_DESC,
+    pandocWikiLink.setAttr('target', '_blank');
+    pandocWikiLink.setAttr('rel', 'noopener');
+    setIcon(pandocWikiLink, 'external-link');
+    pandocInfo.createDiv({
+        cls: 'setting-item-description',
         text: 'Configure Pandoc binary paths and manuscript export templates for screenplay, podcast, and novel formats.'
     });
-    const pandocHeaderRight = pandocHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
-    addWikiLinkToElement(pandocHeaderRight, 'Settings#professional');
 
     // Settings
     addProRow(new Setting(pandocPanel))

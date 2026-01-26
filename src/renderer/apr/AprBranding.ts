@@ -51,22 +51,46 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const authColor = authorColor || bookColor; // Default to book color if not specified
 
     // Build the repeating title segment
-    const separator = ' ~ ';
+    const separator = '\u00A0~\u00A0';
     const bookTitleUpper = bookTitle.toUpperCase();
     const authorNameUpper = authorName?.toUpperCase() || '';
-    const bullet = ' • ';
+    const bullet = '\u00A0•\u00A0';
 
     // Calculate exact circumference
     const circumference = 2 * Math.PI * brandingRadius;
 
-    // Estimate segment width for repetition calculation
-    const baseCharWidth = bookTitleSize * 0.55;
-    const singleSegment = authorName
-        ? `${bookTitleUpper}${bullet}${authorNameUpper}${separator}`
-        : `${bookTitleUpper}${separator}`;
-    const segmentBaseWidth = singleSegment.length * baseCharWidth;
-    const idealReps = Math.round(circumference / segmentBaseWidth);
-    const repetitions = Math.max(4, Math.min(10, idealReps));
+    const estimateTextWidth = (text: string, fontSize: number) => {
+        let width = 0;
+        for (const char of text) {
+            if (char === ' ' || char === '\u00A0') {
+                width += fontSize * 0.33;
+                continue;
+            }
+            if (/[A-Z]/.test(char)) {
+                width += fontSize * 0.62;
+                continue;
+            }
+            if (/[0-9]/.test(char)) {
+                width += fontSize * 0.58;
+                continue;
+            }
+            if (char === '•' || char === '~') {
+                width += fontSize * 0.5;
+                continue;
+            }
+            width += fontSize * 0.45;
+        }
+        return width;
+    };
+
+    const hasAuthor = authorNameUpper.trim().length > 0;
+    const segmentWidth = estimateTextWidth(bookTitleUpper, bookTitleSize)
+        + (hasAuthor ? estimateTextWidth(`${bullet}${authorNameUpper}`, authorNameSize) : 0)
+        + estimateTextWidth(separator, bookTitleSize);
+    const joinSafety = Math.max(2, bookTitleSize * 0.35);
+    const usableCircumference = Math.max(0, circumference - joinSafety);
+    const idealReps = segmentWidth > 0 ? Math.floor(usableCircumference / segmentWidth) : 1;
+    const repetitions = Math.max(1, Math.min(10, idealReps || 1));
 
     // Full circle path starting from top (12 o'clock) going clockwise
     const circlePathId = 'apr-branding-circle';
@@ -80,7 +104,6 @@ export function renderAprBranding(options: AprBrandingOptions): string {
 
     // Build text content with tspan elements for separate colors and fonts
     // textLength applies spacing to the entire text content including all tspan children
-    const hasAuthor = authorName && authorName.trim().length > 0;
     let textContent = '';
     for (let i = 0; i < repetitions; i++) {
         // Book title with its own font settings (using SVG attributes, not inline styles)
@@ -102,6 +125,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             font-size="${avgFontSize}" 
             font-weight="${bookTitleFontWeight}" 
             ${italicAttr(bookTitleFontItalic)}
+            xml:space="preserve"
             textLength="${circumference.toFixed(2)}"
             lengthAdjust="spacing">
             <textPath href="#${circlePathId}" startOffset="0%">
@@ -159,6 +183,8 @@ export function renderAprBadges(options: AprBadgeOptions): string {
     const half = preset.svgSize / 2;
     const badgeSize = rtBadgeFontSize ?? preset.rtBrandingFontSize;
     const stageText = getStageBadgeText(size, stageLabel);
+    const stageLetterSpacing = getStageLetterSpacing(size);
+    const countdownLetterSpacing = getBadgeLetterSpacing(size);
 
     const stageEdgeInset = Math.max(1, Math.round(preset.borderWidth));
     const stageX = half - stageEdgeInset;
@@ -181,6 +207,7 @@ export function renderAprBadges(options: AprBadgeOptions): string {
             font-size="${badgeSize}" 
             font-weight="${rtBadgeFontWeight}"
             ${italicAttr(rtBadgeFontItalic)}
+            letter-spacing="${stageLetterSpacing}"
             fill="${cssVar('--apr-stage-badge-color', APR_TEXT_COLORS.primary)}"
             opacity="var(--apr-stage-badge-opacity, 0.88)">
             ${stageText}
@@ -198,6 +225,7 @@ export function renderAprBadges(options: AprBadgeOptions): string {
             font-size="${countdownFontSize}"
             font-weight="${rtBadgeFontWeight}"
             ${italicAttr(rtBadgeFontItalic)}
+            letter-spacing="${countdownLetterSpacing}"
             fill="${cssVar('--apr-countdown-color', APR_TEXT_COLORS.primary)}"
             opacity="var(--apr-countdown-opacity, 0.7)">
             ${revealCountdownDays}d
@@ -244,6 +272,31 @@ function getStageBadgeText(size: AprSize, stageLabel?: string): string {
         return shortMap[upper] ?? upper.slice(0, 2);
     }
     return upper;
+}
+
+function getStageLetterSpacing(size: AprSize): string {
+    switch (size) {
+        case 'small':
+        case 'medium':
+            return '0em';
+        case 'large':
+            return '0.01em';
+        default:
+            return '0.06em';
+    }
+}
+
+function getBadgeLetterSpacing(size: AprSize): string {
+    switch (size) {
+        case 'small':
+            return '0.05em';
+        case 'medium':
+            return '0.045em';
+        case 'large':
+            return '0.04em';
+        default:
+            return '0.08em';
+    }
 }
 
 /**

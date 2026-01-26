@@ -22,10 +22,12 @@ export function renderStoryBeatsSection(params: {
     containerEl: HTMLElement;
 }): void {
     const { app, plugin, containerEl } = params;
-    containerEl.classList.add(ERT_CLASSES.STACK);
+    const actsStack = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
+    const beatsStack = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
+    const yamlStack = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
 
     // Acts Section (above beats)
-    const actsHeading = new Settings(containerEl)
+    const actsHeading = new Settings(actsStack)
         .setName('Acts')
         .setHeading();
     addHeadingIcon(actsHeading, 'chart-pie');
@@ -45,7 +47,7 @@ export function renderStoryBeatsSection(params: {
         actsPreviewBody.setText(previewLabels.join(' · '));
     };
 
-    new Settings(containerEl)
+    new Settings(actsStack)
         .setName('Act count')
         .setDesc('Applies to Narrative, Subplot, and Gossamer modes. Scene and Beats YAML. (Minimum 3)')
         .addText(text => {
@@ -63,7 +65,7 @@ export function renderStoryBeatsSection(params: {
             });
         });
 
-    const actLabelsSetting = new Settings(containerEl)
+    const actLabelsSetting = new Settings(actsStack)
         .setName('Act labels (optional)')
         .setDesc('Comma-separated labels. Leave blank for Act 1, Act 2, Act 3. Examples: "1, 2, 3, 4" or "Spring, Summer, Fall, Winter".')
         .addText(text => {
@@ -79,7 +81,7 @@ export function renderStoryBeatsSection(params: {
     actLabelsSetting.settingEl.classList.add('ert-elementBlock', 'ert-row--inlineControl');
 
     // Preview (planet-style)
-    const actsPreview = containerEl.createDiv({
+    const actsPreview = actsStack.createDiv({
         cls: ['ert-previewFrame', 'ert-previewFrame--center', 'ert-previewFrame--flush'],
         attr: { 'data-preview': 'acts' }
     });
@@ -88,13 +90,13 @@ export function renderStoryBeatsSection(params: {
 
     updateActPreview();
 
-    const beatsHeading = new Settings(containerEl)
+    const beatsHeading = new Settings(beatsStack)
         .setName('Story beats system')
         .setHeading();
     addHeadingIcon(beatsHeading, 'activity');
     addWikiLink(beatsHeading, 'Settings#story-beats');
 
-    const beatSystemSetting = new Settings(containerEl)
+    const beatSystemSetting = new Settings(beatsStack)
         .setName('Available system templates')
         .setDesc('Select the story structure model for your manuscript. This will establish the story beat system and can be used to create beat notes and graph scores using Gossamer mode manually or automatically using AI.')
         .addDropdown(dropdown => {
@@ -138,7 +140,7 @@ export function renderStoryBeatsSection(params: {
     updateStoryStructureDescription(storyStructureInfo, plugin.settings.beatSystem || 'Custom');
 
     // --- Custom System Configuration (Dynamic Visibility) ---
-    const customConfigContainer = containerEl.createDiv({ cls: 'ert-custom-beat-config' });
+    const customConfigContainer = beatsStack.createDiv({ cls: 'ert-custom-beat-config' });
 
     const renderCustomConfig = () => {
         customConfigContainer.empty();
@@ -339,7 +341,7 @@ export function renderStoryBeatsSection(params: {
     // --------------------------------------------------------
 
     // Create template beat note button
-    const templateSetting = new Settings(containerEl)
+    const templateSetting = new Settings(beatsStack)
         .setName('Create story beat template notes')
         .setDesc('Generate template beat notes based on the selected story structure system including YAML frontmatter and body summary.')
         .addButton(button => button
@@ -352,19 +354,19 @@ export function renderStoryBeatsSection(params: {
     updateTemplateButton(templateSetting, plugin.settings.beatSystem || 'Custom');
 
     // Scene YAML Templates Section
-    const yamlHeading = new Settings(containerEl)
+    const yamlHeading = new Settings(yamlStack)
         .setName('Remapping & scene YAML templates')
         .setHeading();
     addHeadingIcon(yamlHeading, 'form');
     addWikiLink(yamlHeading, 'Settings#yaml-templates');
 
     // Frontmatter remapper (moved here) - separate from template editor visibility
-    const remapContainer = containerEl.createDiv();
+    const remapContainer = yamlStack.createDiv();
     renderMetadataSection({ app, plugin, containerEl: remapContainer });
 
     let onAdvancedToggle: (() => void) | undefined;
 
-    new Settings(containerEl)
+    new Settings(yamlStack)
         .setName('Advanced YAML editor')
         .setDesc('Setup custom YAML keys for the advanced scene template. Enable fields to reveal in scene hover synopsis. Assign a perfect lucide icon. Reorder fields to match your preferred order.')
         .addExtraButton(button => {
@@ -383,7 +385,7 @@ export function renderStoryBeatsSection(params: {
             });
         });
 
-    const templateSection = containerEl.createDiv({ cls: ['ert-scene-template-editor', 'ert-stack'] });
+    const templateSection = yamlStack.createDiv({ cls: ['ert-scene-template-editor', 'ert-stack'] });
 
     const advancedContainer = templateSection.createDiv({ cls: ['ert-panel', 'ert-advanced-template-card'] });
 
@@ -889,7 +891,7 @@ export function renderStoryBeatsSection(params: {
     renderAdvancedTemplateEditor();
 
     // Hover Metadata Preview Panel
-    const hoverPreviewContainer = templateSection.createDiv({
+    const hoverPreviewContainer = yamlStack.createDiv({
         cls: ['ert-previewFrame', 'ert-previewFrame--center', 'ert-previewFrame--flush'],
         attr: { 'data-preview': 'metadata' }
     });

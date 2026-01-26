@@ -361,77 +361,12 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const settingItems = containerEl.querySelectorAll('.ert-settings-searchable-content .setting-item');
         settingItems.forEach(settingEl => {
             const el = settingEl as HTMLElement;
+            // Settings headings must use native Obsidian setting-item-heading markup.
+            // Do not convert headers at runtime.
             if (el.classList.contains('setting-item-heading')) return;
             if (el.closest('.ert-color-grid-controls')) return;
             if (el.classList.contains(ERT_CLASSES.ELEMENT_BLOCK_SKIP)) return;
             el.classList.add(ERT_CLASSES.ELEMENT_BLOCK);
-        });
-    }
-
-    /**
-     * Convert ERT block headers inside Settings into native Obsidian setting-item-heading rows.
-     * Prevents “toolbar-like” header layouts that push links to the far right.
-     */
-    private migrateErtBlockHeadersToNative(containerEl: HTMLElement): void {
-        const headers = Array.from(
-            containerEl.querySelectorAll<HTMLElement>('.ert-header.ert-header--block, .ert-header.ert-header-block')
-        );
-
-        headers.forEach(headerEl => {
-            const titleEl = headerEl.querySelector<HTMLElement>('h1,h2,h3,h4,.ert-header__title,.ert-header-title,.ert-section-title');
-            const descEl = headerEl.querySelector<HTMLElement>('p,.ert-header__desc,.ert-header-desc,.ert-section-desc');
-            const linkEl = headerEl.querySelector<HTMLAnchorElement>('a[href]');
-
-            const titleText = titleEl?.textContent?.trim() ?? '';
-            const descText = descEl?.textContent?.trim() ?? '';
-            if (!titleText && !descText) return;
-
-            const native = document.createElement('div');
-            native.className = 'setting-item setting-item-heading';
-
-            const info = document.createElement('div');
-            info.className = 'setting-item-info';
-
-            const name = document.createElement('div');
-            name.className = 'setting-item-name';
-
-            const iconHost = headerEl.querySelector<HTMLElement>('.ert-header__icon, .ert-header-icon, .ert-setting-heading-icon');
-            const svg = iconHost?.querySelector('svg');
-            if (svg) {
-                const iconWrap = document.createElement('span');
-                iconWrap.className = 'ert-setting-heading-icon';
-                iconWrap.appendChild(svg.cloneNode(true));
-                name.appendChild(iconWrap);
-            }
-
-            const titleSpan = document.createElement('span');
-            titleSpan.textContent = titleText;
-            name.appendChild(titleSpan);
-
-            if (linkEl?.href) {
-                const a = document.createElement('a');
-                a.href = linkEl.href;
-                a.target = '_blank';
-                a.rel = 'noopener';
-                a.className = 'ert-setting-heading-wikilink';
-                a.setAttribute('aria-label', linkEl.getAttribute('aria-label') || 'Read more');
-                setIcon(a, 'external-link');
-                name.appendChild(a);
-            }
-
-            info.appendChild(name);
-
-            if (descText) {
-                const desc = document.createElement('div');
-                desc.className = 'setting-item-description';
-                desc.textContent = descText;
-                info.appendChild(desc);
-            }
-
-            native.appendChild(info);
-
-            headerEl.parentElement?.insertBefore(native, headerEl);
-            headerEl.remove();
         });
     }
 
@@ -708,7 +643,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const readmeSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'readme' } });
         renderReadmeSection({ app: this.app, containerEl: readmeSection, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
 
-        this.migrateErtBlockHeadersToNative(containerEl);
         this.applyElementBlockLayout(containerEl);
         this.addSearchMetadataToSettings(searchableContent);
     }

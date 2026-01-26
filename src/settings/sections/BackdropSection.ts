@@ -24,7 +24,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
 
     new Settings(containerEl)
         .setName('Show backdrop ring')
-        .setDesc('Display the backdrop ring in Chronologue mode. When disabled, the ring space is reclaimed for subplot rings.')
+        .setDesc('Display the backdrop ring in Chronologue mode. When disabled, the ring space is reclaimed for subplot rings. Create backdrops using the \'class=Backdrop\' in your notes.')
         .addToggle(toggle => toggle
             .setValue(plugin.settings.showBackdropRing ?? true)
             .onChange(async (value) => {

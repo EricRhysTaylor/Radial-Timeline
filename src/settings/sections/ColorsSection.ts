@@ -3,7 +3,6 @@ import type RadialTimelinePlugin from '../../main';
 import type { PluginRendererFacade } from '../../utils/sceneHelpers';
 import { computeCacheableValues } from '../../renderer/utils/Precompute';
 import { DEFAULT_SETTINGS } from '../defaults';
-import { addWikiLinkToElement } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 
 const SUBPLOT_LABEL_MAX_LENGTH = 16;
@@ -47,18 +46,21 @@ async function getTimelineSubplotOrder(plugin: RadialTimelinePlugin): Promise<st
 
 export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTimelinePlugin): void {
     // --- Publishing Stage Colors ---
-    const pubHeader = containerEl.createDiv({
-        cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK} ${ERT_CLASSES.HEADER_SECTION}`
-    });
-    const pubHeaderLeft = pubHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
-    const pubHeaderIcon = pubHeaderLeft.createSpan();
+    const pubHeading = containerEl.createDiv({ cls: 'setting-item setting-item-heading' });
+    const pubInfo = pubHeading.createDiv({ cls: 'setting-item-info' });
+    const pubName = pubInfo.createDiv({ cls: 'setting-item-name' });
+    const pubHeaderIcon = pubName.createSpan({ cls: 'ert-setting-heading-icon' });
     setIcon(pubHeaderIcon, 'paintbrush-vertical');
-    const pubHeaderMain = pubHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
-    pubHeaderMain.createEl('h4', { text: 'Publishing stage colors', cls: ERT_CLASSES.SECTION_TITLE });
-    const pubHeaderRight = pubHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
-    addWikiLinkToElement(pubHeaderRight, 'Settings#publishing-stage-colors');
-    containerEl.createEl('p', {
-        cls: `${ERT_CLASSES.SECTION_DESC} ert-color-section-desc`,
+    pubName.createSpan({ text: 'Publishing stage colors' });
+    const pubWikiLink = pubName.createEl('a', {
+        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#publishing-stage-colors',
+        cls: 'ert-setting-heading-wikilink'
+    });
+    pubWikiLink.setAttr('target', '_blank');
+    pubWikiLink.setAttr('rel', 'noopener');
+    setIcon(pubWikiLink, 'external-link');
+    pubInfo.createDiv({
+        cls: 'setting-item-description ert-color-section-desc',
         text: 'Used for completed scenes, stage matrix, act labels and more.'
     });
     const stageGrid = containerEl.createDiv({ cls: 'ert-color-grid' });
@@ -115,18 +117,21 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
     });
 
     // --- Subplot palette (16 colors) ---
-    const subplotHeader = containerEl.createDiv({
-        cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK} ${ERT_CLASSES.HEADER_SECTION}`
-    });
-    const subplotHeaderLeft = subplotHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
-    const subplotHeaderIcon = subplotHeaderLeft.createSpan();
+    const subplotHeading = containerEl.createDiv({ cls: 'setting-item setting-item-heading' });
+    const subplotInfo = subplotHeading.createDiv({ cls: 'setting-item-info' });
+    const subplotName = subplotInfo.createDiv({ cls: 'setting-item-name' });
+    const subplotHeaderIcon = subplotName.createSpan({ cls: 'ert-setting-heading-icon' });
     setIcon(subplotHeaderIcon, 'paintbrush-vertical');
-    const subplotHeaderMain = subplotHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
-    subplotHeaderMain.createEl('h4', { text: 'Subplot ring colors', cls: ERT_CLASSES.SECTION_TITLE });
-    const subplotHeaderRight = subplotHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
-    addWikiLinkToElement(subplotHeaderRight, 'Settings#subplot-ring-colors');
-    containerEl.createEl('p', {
-        cls: `${ERT_CLASSES.SECTION_DESC} ert-color-section-desc`,
+    subplotName.createSpan({ text: 'Subplot ring colors' });
+    const subplotWikiLink = subplotName.createEl('a', {
+        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#subplot-ring-colors',
+        cls: 'ert-setting-heading-wikilink'
+    });
+    subplotWikiLink.setAttr('target', '_blank');
+    subplotWikiLink.setAttr('rel', 'noopener');
+    setIcon(subplotWikiLink, 'external-link');
+    subplotInfo.createDiv({
+        cls: 'setting-item-description ert-color-section-desc',
         text: 'Subplot ring colors used for rings 1 through 16 moving inward.'
     });
     const subplotGrid = containerEl.createDiv({ cls: 'ert-color-grid' });

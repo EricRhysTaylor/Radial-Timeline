@@ -9,7 +9,7 @@
 import { App, Setting, TextComponent, DropdownComponent, ToggleComponent, setIcon, Modal, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { RuntimeContentType, RuntimeRateProfile } from '../../types';
-import { addHeadingIcon, addWikiLink, addWikiLinkToElement } from '../wikiLink';
+import { addHeadingIcon, addWikiLink } from '../wikiLink';
 import { isProfessionalActive } from './ProfessionalSection';
 import { ERT_CLASSES } from '../../ui/classes';
 
@@ -107,27 +107,31 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
     // Header row with Pro badge, description, and toggle
     const panelHeader = proContainer.createDiv({
-        cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK} ${ERT_CLASSES.HEADER_NO_LEFT} ${ERT_CLASSES.ROW_RECOMMENDED}`
+        cls: `setting-item setting-item-heading ${ERT_CLASSES.ROW_RECOMMENDED}`
     });
-    const headerMain = panelHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
-    const headerTitle = headerMain.createEl('h4', {
-        cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}`
-    });
-    const badgeEl = headerTitle.createSpan({
+    const headerInfo = panelHeader.createDiv({ cls: 'setting-item-info' });
+    const headerName = headerInfo.createDiv({ cls: 'setting-item-name' });
+    const badgeEl = headerName.createSpan({
         cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
     });
     const badgeIcon = badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
     setIcon(badgeIcon, 'signature');
     badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro' });
-    headerTitle.createSpan({ text: 'Runtime estimation' });
-    addWikiLinkToElement(headerTitle, 'Settings#runtime-estimation');
-    headerMain.createDiv({
-        cls: ERT_CLASSES.SECTION_DESC,
+    headerName.createSpan({ text: 'Runtime estimation' });
+    const headerWikiLink = headerName.createEl('a', {
+        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#runtime-estimation',
+        cls: 'ert-setting-heading-wikilink'
+    });
+    headerWikiLink.setAttr('target', '_blank');
+    headerWikiLink.setAttr('rel', 'noopener');
+    setIcon(headerWikiLink, 'external-link');
+    headerInfo.createDiv({
+        cls: 'setting-item-description',
         text: 'Activate film and book runtime estimates to the scene hover metadata, Chronologue Mode, and the Command Palette Runtime Estimator.'
     });
 
-    const headerRight = panelHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
-    new ToggleComponent(headerRight)
+    const headerControl = panelHeader.createDiv({ cls: 'setting-item-control' });
+    new ToggleComponent(headerControl)
         .setValue(plugin.settings.enableRuntimeEstimation ?? false)
         .onChange(async (value) => {
             if (!hasProfessional) return;
@@ -338,21 +342,23 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             }
 
             // Session planning (optional, per profile)
-            const sessionHeader = detailsContainer.createDiv({ cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK}` });
-            const sessionHeaderLeft = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
-            const sessionIcon = sessionHeaderLeft.createSpan();
+            const sessionHeader = detailsContainer.createDiv({ cls: 'setting-item setting-item-heading' });
+            const sessionInfo = sessionHeader.createDiv({ cls: 'setting-item-info' });
+            const sessionName = sessionInfo.createDiv({ cls: 'setting-item-name' });
+            const sessionIcon = sessionName.createSpan({ cls: 'ert-setting-heading-icon' });
             setIcon(sessionIcon, 'calendar-clock');
-            const sessionHeaderMain = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
-            sessionHeaderMain.createEl('h4', {
-                cls: ERT_CLASSES.SECTION_TITLE,
-                text: 'Session planning (optional)'
+            sessionName.createSpan({ text: 'Session planning (optional)' });
+            const sessionWikiLink = sessionName.createEl('a', {
+                href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#runtime-estimation',
+                cls: 'ert-setting-heading-wikilink'
             });
-            sessionHeaderMain.createDiv({
-                cls: ERT_CLASSES.SECTION_DESC,
+            sessionWikiLink.setAttr('target', '_blank');
+            sessionWikiLink.setAttr('rel', 'noopener');
+            setIcon(sessionWikiLink, 'external-link');
+            sessionInfo.createDiv({
+                cls: 'setting-item-description',
                 text: 'Used in the Outline export: Index cards (JSON) summary to estimate writing hours and total sessions.'
             });
-            const sessionHeaderRight = sessionHeader.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
-            addWikiLinkToElement(sessionHeaderRight, 'Settings#runtime-estimation');
             const session = selectedProfile.sessionPlanning || {};
 
             addProRow(new Setting(detailsContainer))
