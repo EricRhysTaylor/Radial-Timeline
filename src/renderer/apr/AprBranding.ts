@@ -67,36 +67,61 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         ? `${bookTitleUpper}${separator}${authorNameUpper}${separator}`
         : `${bookTitleUpper}${separator}`;
 
-    // Measure unit length to determine optimal repeats
-    let repeats = 1;
+    // Estimate width per token (headless-safe, no DOM measurement)
     const avgFontSize = hasAuthor ? (bookTitleSize + authorNameSize) / 2 : bookTitleSize;
-    const fallbackUnitWidth = Math.max(1, unitPattern.length) * avgFontSize * 0.6;
-    let unitWidth = fallbackUnitWidth;
+    const baseCharWidth = avgFontSize * 0.55;
+    const baseLetterSpacing = brandingLetterSpacing.trim();
+    const baseSpacingEm = baseLetterSpacing.endsWith('em') ? Number.parseFloat(baseLetterSpacing) : 0;
+    const adjustedSpacingEm = Number.isFinite(baseSpacingEm) ? baseSpacingEm * 0.7 : 0;
+    const adjustedLetterSpacing = baseLetterSpacing.endsWith('em')
+        ? `${adjustedSpacingEm.toFixed(3)}em`
+        : brandingLetterSpacing;
 
-    // SAFE: We are in a browser environment (Obsidian)
-    if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
-        try {
-            // Use a DOM element to measure width, ensuring we capture correct font metrics
-            const span = document.createElement('span');
-            span.classList.add('rt-apr-measure-text');
-            span.style.setProperty('--rt-apr-measure-font-family', bookTitleFontFamily);
-            span.style.setProperty('--rt-apr-measure-font-weight', String(bookTitleFontWeight));
-            span.style.setProperty('--rt-apr-measure-font-size', `${avgFontSize}px`);
-            span.style.setProperty('--rt-apr-measure-letter-spacing', brandingLetterSpacing);
-            span.style.setProperty('--rt-apr-measure-font-style', bookTitleFontItalic ? 'italic' : 'normal');
-            span.textContent = unitPattern;
+    const estimateTextWidth = (text: string) => {
+        const charCount = Math.max(1, text.length);
+        const spacingPx = adjustedSpacingEm * avgFontSize;
+        return charCount * baseCharWidth + Math.max(0, charCount - 1) * spacingPx;
+    };
 
-            document.body.appendChild(span);
-            // Add a tiny buffer to avoid rounding errors causing an extra repeat that squishes too much
-            unitWidth = span.getBoundingClientRect().width * 1.01;
-            document.body.removeChild(span);
-        } catch (e) {
-            console.warn('APR Branding: Failed to measure text width, defaulting to 1 repeat', e);
-        }
+    const bookWords = bookTitleUpper.trim().split(/\s+/).filter(Boolean);
+    const authorWords = authorNameUpper.trim().split(/\s+/).filter(Boolean);
+    const bookTokens = bookWords.map((word, idx) => ({
+        kind: 'book' as const,
+        text: idx < bookWords.length - 1 ? `${word} ` : word
+    }));
+    const authorTokens = authorWords.map((word, idx) => ({
+        kind: 'author' as const,
+        text: idx < authorWords.length - 1 ? `${word} ` : word
+    }));
+    const sepToken = { kind: 'sep' as const, text: separator };
+
+    const patternTokens = hasAuthor
+        ? [...bookTokens, sepToken, ...authorTokens, sepToken]
+        : [...bookTokens, sepToken];
+
+    const tokens: Array<{ kind: 'book' | 'author' | 'sep'; text: string }> = [];
+    let totalWidth = 0;
+    let cursor = 0;
+    const maxTokens = Math.max(1, patternTokens.length) * 12;
+    while (totalWidth < circumference && cursor < maxTokens) {
+        const token = patternTokens[cursor % patternTokens.length];
+        tokens.push(token);
+        totalWidth += estimateTextWidth(token.text);
+        cursor += 1;
     }
 
-    if (unitWidth > 0) {
-        repeats = Math.max(1, Math.ceil(circumference / unitWidth));
+    const maxOverlap = avgFontSize * 2;
+    let overlap = totalWidth - circumference;
+    while (overlap > maxOverlap && tokens.length > 0) {
+        const last = tokens[tokens.length - 1];
+        totalWidth -= estimateTextWidth(last.text);
+        tokens.pop();
+        // Remove trailing separator if we just removed a word
+        if (tokens.length > 0 && tokens[tokens.length - 1].kind === 'sep') {
+            totalWidth -= estimateTextWidth(tokens[tokens.length - 1].text);
+            tokens.pop();
+        }
+        overlap = totalWidth - circumference;
     }
 
     // Full circle path starting from top (12 o'clock) going clockwise
@@ -115,15 +140,10 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const authorTspanStart = `<tspan fill="${cssVar('--apr-author-color', authColor)}" font-family="${authorNameFontFamily}" font-weight="${authorNameFontWeight}" font-size="${authorNameSize}" ${italicAttr(authorNameFontItalic)}>`;
     const endTspan = `</tspan>`;
 
-    for (let i = 0; i < repeats; i++) {
-        textContent += `${bookTspanStart}${bookTitleUpper}${endTspan}`;
-        textContent += `${bookTspanStart}${separator}${endTspan}`; // Separator uses book title styling
-
-        if (hasAuthor) {
-            textContent += `${authorTspanStart}${authorNameUpper}${endTspan}`;
-            textContent += `${bookTspanStart}${separator}${endTspan}`; // Separator match
-        }
-    }
+    tokens.forEach(token => {
+        const tspanStart = token.kind === 'author' ? authorTspanStart : bookTspanStart;
+        textContent += `${tspanStart}${token.text}${endTspan}`;
+    });
 
     const brandingText = `
         <text 
@@ -131,7 +151,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             font-size="${avgFontSize}" 
             font-weight="${bookTitleFontWeight}" 
             ${italicAttr(bookTitleFontItalic)}
-            letter-spacing="${brandingLetterSpacing}"
+            letter-spacing="${adjustedLetterSpacing}"
             xml:space="preserve">
             <textPath href="#${circlePathId}" startOffset="0%">
                 ${textContent}
@@ -323,8 +343,8 @@ export function renderAprCenterPercent(
 
     const numStr = String(Math.round(percent));
     const innerRadius = layout.ringInnerR;
-    const percentPx = Math.max(1, innerRadius * 2);
-    const numberPx = Math.max(1, innerRadius * 1.2);
+    const percentPx = Math.max(1, innerRadius * 1.8);
+    const numberPx = Math.max(1, innerRadius * 1.6);
     const percentDy = percentPx * 0.1;
     const numberDy = numberPx * 0.1;
 

@@ -113,29 +113,15 @@ export function renderStoryBeatsSection(params: {
                     updateTemplateButton(templateSetting, value);
                     updateCustomInputsVisibility(value);
                 });
-            dropdown.selectEl.style.minWidth = '200px';
+            dropdown.selectEl.classList.add('ert-setting-dropdown');
         });
 
     beatSystemSetting.settingEl.classList.add('ert-setting-two-row', 'ert-settingRow');
-    
-    // Explicitly enforce grid layout via inline styles to override any stubborn Flexbox
-    beatSystemSetting.settingEl.style.setProperty('display', 'grid', 'important');
-    beatSystemSetting.settingEl.style.gridTemplateColumns = '1fr auto';
-    beatSystemSetting.settingEl.style.gridTemplateRows = 'auto auto';
-
-    // Align the dropdown to the top
-    beatSystemSetting.controlEl.style.setProperty('align-self', 'flex-start', 'important');
-    beatSystemSetting.controlEl.style.marginTop = '6px';
 
     // Story structure explanation
     const storyStructureInfo = beatSystemSetting.settingEl.createDiv({
         cls: 'ert-story-structure-info setting-item-description'
     });
-    // Ensure styles are set if CSS class doesn't fully cover it (redundancy)
-    storyStructureInfo.style.gridColumn = '1 / 3';
-    storyStructureInfo.style.gridRow = '2 / 3';
-    storyStructureInfo.style.marginTop = '8px';
-    storyStructureInfo.style.marginBottom = '0';
     
     updateStoryStructureDescription(storyStructureInfo, plugin.settings.beatSystem || 'Custom');
 
@@ -222,8 +208,7 @@ export function renderStoryBeatsSection(params: {
                 row.createDiv({ cls: 'ert-grid-spacer' });
 
                 // Index
-                const idxEl = row.createDiv({ text: `${index + 1}.`, cls: 'ert-beat-index' });
-                idxEl.style.minWidth = '24px'; // SAFE: inline width for index
+                row.createDiv({ text: `${index + 1}.`, cls: 'ert-beat-index' });
 
                 // Parse "Name [Act]"
                 let name = beatLine.name;
@@ -331,11 +316,7 @@ export function renderStoryBeatsSection(params: {
     renderCustomConfig();
 
     const updateCustomInputsVisibility = (system: string) => {
-        if (system === 'Custom') {
-            customConfigContainer.style.display = 'block'; // SAFE: inline style used for toggling visibility
-        } else {
-            customConfigContainer.style.display = 'none'; // SAFE: inline style used for toggling visibility
-        }
+        customConfigContainer.toggleClass('ert-settings-hidden', system !== 'Custom');
     };
     updateCustomInputsVisibility(plugin.settings.beatSystem || 'Custom');
     // --------------------------------------------------------

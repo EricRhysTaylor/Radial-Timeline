@@ -312,7 +312,7 @@ export function renderInquirySection(params: SectionParams): void {
         .setName('Inquiry scan folders')
         .setDesc('Inquiry only scans within these folders. One path per line. Wildcards like /Book */ or /Book 1-7 */ are allowed. Use / for the vault root. Empty = no scan.');
     scanRootsSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:scan-roots');
-    scanRootsSetting.settingEl.classList.add('ert-setting-two-row', 'ert-setting-two-row--stretchControl', 'ert-settingRow');
+    scanRootsSetting.settingEl.classList.add(ERT_CLASSES.ROW, 'ert-row--stack');
 
     const scanRootsText = new TextAreaComponent(scanRootsSetting.controlEl);
     scanRootsText.setValue(listToText(inquirySources.scanRoots));
@@ -326,9 +326,7 @@ export function renderInquirySection(params: SectionParams): void {
         applyScanRoots(nextRoots);
     });
 
-    const scanRootActions = scanRootsSetting.settingEl.createDiv({
-        cls: ['ert-setting-two-row__actions', ERT_CLASSES.INLINE]
-    });
+    const scanRootActions = scanRootsSetting.controlEl.createDiv({ cls: 'ert-actions' });
     const addActionButton = (label: string, onClick: () => void) => {
         const btn = scanRootActions.createEl('button', { cls: ERT_CLASSES.PILL_BTN });
         btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: label });
@@ -958,16 +956,11 @@ export function renderInquirySection(params: SectionParams): void {
 
         const corpusPanel = targetEl.createDiv({ cls: [ERT_CLASSES.PANEL, ERT_CLASSES.STACK] });
 
-        const table = corpusPanel.createDiv({ cls: 'ert-controlGroup' });
-        table.style.setProperty(
-            '--ert-controlGroup-columns',
-            'minmax(140px, max-content) 56px minmax(var(--ert-input-width-sm), max-content)'
-        );
+        const table = corpusPanel.createDiv({ cls: ['ert-controlGroup', 'ert-controlGroup--corpus'] });
 
         const header = table.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--header'] });
         header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Tier' });
-        const thresholdHeader = header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Threshold' });
-        thresholdHeader.style.gridColumn = '2 / 4';
+        header.createDiv({ cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--span-2'], text: 'Threshold' });
 
         const inputs: Record<keyof InquiryCorpusThresholds, HTMLInputElement> = {
             emptyMax: document.createElement('input'),

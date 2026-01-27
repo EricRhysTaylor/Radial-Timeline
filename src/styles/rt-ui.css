@@ -400,30 +400,30 @@
   align-items: center;
 }
 
-.ert-ui .ert-row {
+.ert-ui .ert-row:not(.ert-settingRow) {
   display: grid;
   grid-template-columns: minmax(var(--ert-label-w), 1fr) minmax(0, max-content);
   gap: var(--ert-gap-sm);
   align-items: flex-start;
 }
 
-.ert-ui .ert-row .setting-item-info {
+.ert-ui .ert-row:not(.ert-settingRow) .setting-item-info {
   align-self: flex-start;
 }
 
-.ert-ui .ert-row .setting-item-control {
+.ert-ui .ert-row:not(.ert-settingRow) .setting-item-control {
   align-self: center;
 }
 
-.ert-ui .ert-row--compact {
+.ert-ui .ert-row--compact:not(.ert-settingRow) {
   gap: var(--ert-gap-xs);
 }
 
-.ert-ui .ert-row--tight {
+.ert-ui .ert-row--tight:not(.ert-settingRow) {
   margin-top: calc(-1 * var(--ert-gap-xs));
 }
 
-.ert-ui .ert-row--middleAlign {
+.ert-ui .ert-row--middleAlign:not(.ert-settingRow) {
   align-items: center;
 }
 
@@ -459,6 +459,10 @@
 
 .ert-ui .ert-controlGroup--spaced {
   margin: 8px 0 16px;
+}
+
+.ert-ui .ert-controlGroup--corpus {
+  --ert-controlGroup-columns: minmax(140px, max-content) 56px minmax(var(--ert-input-width-sm), max-content);
 }
 
 .ert-ui .ert-controlGroup--scroll {
@@ -504,6 +508,10 @@
 .ert-ui .ert-controlGroup__cell--mono {
   font-family: var(--font-monospace);
   font-variant-numeric: tabular-nums;
+}
+
+.ert-ui .ert-controlGroup__cell--span-2 {
+  grid-column: 2 / 4;
 }
 
 .ert-ui .ert-controlGroup__row--header .ert-controlGroup__cell {
@@ -1442,65 +1450,7 @@
   color: var(--text-normal);
 }
 
-.ert-ui .ert-row--wideControl {
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: auto auto;
-  gap: var(--ert-row-gap);
-}
 
-.ert-ui .ert-row--wideControl .setting-item-info {
-  grid-column: 1 / -1;
-  grid-row: 1 / 2;
-}
-
-.ert-ui .ert-row--wideControl .setting-item-control {
-  grid-column: 1 / -1;
-  grid-row: 2 / 3;
-  width: 100%;
-  align-self: start;
-}
-
-.ert-ui .ert-row--wideControl .setting-item-control input[type="text"] {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.ert-ui .ert-row--wideControl .setting-item-control textarea {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  flex: 1 1 auto;
-  resize: vertical;
-}
-
-.ert-ui .ert-row--inlineControl {
-  align-items: stretch;
-}
-
-.ert-ui .ert-row--inlineControl .setting-item-info {
-  align-self: flex-start;
-}
-
-.ert-ui .ert-row--inlineControl .setting-item-control {
-  display: flex;
-  flex-direction: row;
-  align-self: center;
-  align-items: center;
-  gap: var(--ert-gap-sm);
-  flex-wrap: nowrap;
-}
-
-.ert-ui .ert-row--inlineControl .setting-item-control>.setting-editor-extra-setting-button {
-  flex: 0 0 auto;
-}
-
-.ert-ui .ert-row--inlineControl .setting-item-control > :is(input, select, textarea).ert-input--full {
-  flex: 1 1 auto;
-  min-width: 0;
-}
 
 .ert-ui [data-ert-role="inquiry-setting:scan-roots"] {
   --rt-input-width-sm: 12ch;
@@ -1543,11 +1493,11 @@
 }
 
 .ert-ui .ert-row--recommended {
+  --ert-row-pad: 12px 14px;
   border-radius: 8px;
-  padding: var(--ert-gap-md) 14px;
 }
 
-.ert-ui .setting-item.mod-toggle.ert-row {
+.ert-ui .setting-item.mod-toggle.ert-row:not(.ert-settingRow) {
   grid-template-columns: minmax(var(--ert-label-w), 1fr) max-content;
   align-items: center;
 }
@@ -1558,15 +1508,6 @@
   border: 1px solid var(--ert-social-border);
 }
 
-.ert-ui.ert-skin--social .ert-row--recommended .setting-item-name,
-.ert-ui .ert-skin--social .ert-row--recommended .setting-item-name {
-  color: var(--ert-social-accent);
-}
-
-.ert-ui.ert-skin--social .ert-row--recommended .ert-section-title,
-.ert-ui .ert-skin--social .ert-row--recommended .ert-section-title {
-  color: var(--ert-social-accent);
-}
 
 .ert-ui .ert-swatch {
   width: 24px;
@@ -1597,19 +1538,8 @@
 }
 
 .ert-ui .ert-elementBlock.setting-item {
-  display: grid;
-  grid-template-columns: minmax(var(--ert-label-w), 1fr) minmax(0, max-content);
-  gap: var(--ert-gap-md);
-  align-items: start;
-  width: 100%;
-  padding: var(--ert-row-pad);
+  padding: var(--ert-row-pad, 16px);
   border-radius: 8px;
-  overflow: visible;
-}
-
-
-.ert-ui .ert-elementBlock.setting-item.ert-row--middleAlign {
-  align-items: center;
 }
 
 .ert-ui.ert-skin--social .ert-elementBlock.setting-item,
@@ -1618,9 +1548,6 @@
   border: 1px solid var(--ert-social-border);
 }
 
-.ert-ui .ert-elementBlock.setting-item .setting-item-info {
-  min-width: 0;
-}
 
 .ert-ui .ert-typography-stack {
   display: flex;
@@ -1635,59 +1562,6 @@
   margin-bottom: 0;
 }
 
-.ert-ui .ert-elementBlock.setting-item .setting-item-control {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  align-self: start;
-  gap: var(--ert-gap-sm);
-  min-width: 0;
-  max-width: 100%;
-  justify-self: end;
-}
-
-.ert-ui .ert-elementBlock.setting-item.ert-row--wideControl {
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: auto auto;
-  gap: var(--ert-row-gap);
-  align-items: stretch;
-}
-
-.ert-ui .ert-elementBlock.setting-item.ert-row--wideControl .setting-item-info {
-  grid-column: 1 / -1;
-  grid-row: 1 / 2;
-}
-
-.ert-ui .ert-elementBlock.setting-item.ert-row--wideControl .setting-item-control {
-  grid-column: 1 / -1;
-  grid-row: 2 / 3;
-  width: 100%;
-}
-
-.ert-ui .ert-elementBlock.setting-item.ert-row--inlineControl .setting-item-control {
-  flex-wrap: nowrap;
-}
-
-.ert-ui .ert-elementBlock.setting-item.ert-row--inlineControl .setting-item-control>.setting-editor-extra-setting-button {
-  flex: 0 0 auto;
-}
-
-.ert-ui .ert-elementBlock.setting-item .setting-item-control> :is(input, select, textarea) {
-  flex: 1 1 auto;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.ert-ui .ert-elementBlock.setting-item .setting-item-control> :is(input, select).ert-input--xs,
-.ert-ui .ert-elementBlock.setting-item .setting-item-control> :is(input, select).ert-input--sm,
-.ert-ui .ert-elementBlock.setting-item .setting-item-control> :is(input, select).ert-input--md,
-.ert-ui .ert-elementBlock.setting-item .setting-item-control> :is(input, select).ert-input--lg,
-.ert-ui .ert-elementBlock.setting-item .setting-item-control> :is(input, select).ert-input--xl,
-.ert-ui .ert-elementBlock.setting-item .setting-item-control> :is(input, select).ert-input--hex {
-  flex: 0 0 auto;
-}
 
 .ert-ui .ert-elementBlock__row {
   width: 100%;
@@ -1695,7 +1569,7 @@
 
 .ert-ui .ert-elementBlock {
   border-radius: 8px;
-  padding: var(--ert-pad-md);
+  padding: var(--ert-row-pad, 16px);
 }
 
 .ert-ui .ert-typography-controls {
@@ -2133,29 +2007,7 @@
   --ert-control-width: var(--ert-settings-select-width-wide);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-full-width-input {
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: auto auto;
-  gap: var(--ert-gap-md);
-}
-
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-full-width-input .setting-item-info {
-  grid-column: 1 / -1;
-  grid-row: 1 / 2;
-}
-
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-full-width-input .setting-item-control {
-  grid-column: 1 / -1;
-  grid-row: 2 / 3;
-  width: 100%;
-}
-
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-full-width-input .setting-item-control input[type="text"] {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  flex: 1 1 auto;
   height: 42px;
   padding: 10px 14px;
   font-size: 15px;
@@ -2163,10 +2015,6 @@
 }
 
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-full-width-input .setting-item-control textarea {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  flex: 1 1 auto;
   min-height: 80px;
   padding: var(--ert-gap-md) 14px;
   font-size: 14px;
@@ -2394,50 +2242,8 @@
   border-color: var(--interactive-accent);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-two-row {
-  --ert-setting-two-row-control-width: var(--ert-input-width-xl);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(var(--ert-setting-two-row-control-width), max-content);
-  grid-template-rows: auto auto;
-  column-gap: 24px;
-  row-gap: var(--ert-gap-sm);
-  align-items: start;
-}
-
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-two-row .setting-item-info {
-  grid-column: 1 / 2;
-  grid-row: 1 / 2;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-two-row .setting-item-control {
-  grid-column: 2 / 3;
-  grid-row: 1 / 2;
-  justify-self: stretch;
-  width: 100%;
-  max-width: none;
-  min-width: 0;
-}
-
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-two-row .setting-item-control textarea.ert-textarea--wide {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-}
-
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-two-row .ert-story-structure-info {
-  grid-column: 1 / 3;
-  grid-row: 2 / 3;
-  margin: 0;
-}
-
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-two-row__actions {
-  grid-column: 2 / 3;
-  grid-row: 2 / 3;
-  align-self: start;
-  justify-self: start;
+  margin: 8px 0 0;
 }
 
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-micro-backdrop-body {
@@ -2476,12 +2282,45 @@
   width: 120px;
 }
 
+/* Stack row: control column must be wide + stacked */
+.setting-item.ert-row--stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+/* Control cell becomes vertical stack and stretches */
+.setting-item.ert-row--stack .setting-item-control {
+  justify-self: stretch;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+/* Textarea fills width */
+.setting-item.ert-row--stack textarea {
+  width: 100%;
+}
+
+/* Buttons live under textarea */
+.setting-item.ert-row--stack .ert-actions {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
 /* SETTINGS ROW CONTRACT: Col1 flex label, Col2 content-sized control (right aligned) */
 .setting-item.ert-settingRow {
+  --ert-row-pad: 16px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) max-content;
   column-gap: var(--ert-gap, 16px);
   align-items: start;
+  padding: var(--ert-row-pad);
 }
 
 /* Label column shrink/wrap */
@@ -2506,111 +2345,6 @@
 .setting-item.ert-settingRow :where(input, textarea, select, .dropdown, .ert-select) {
   width: var(--ert-control-width, auto);
   max-width: 100%;
-}
-
-/* Settings row contract */
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-elementBlock.setting-item,
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock {
-  display: grid;
-  grid-template-columns: minmax(var(--ert-label-w), 1fr) minmax(0, max-content);
-  column-gap: var(--ert-gap, 16px);
-  align-items: start;
-}
-
-/* Label column must be allowed to shrink/wrap */
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock .ert-label,
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock .setting-item-info {
-  min-width: 0;
-}
-
-/* Control column must hug content and align right */
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock .ert-control,
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock .setting-item-control {
-  width: max-content;
-  min-width: 0;
-  max-width: 100%;
-  justify-self: end;
-  align-self: start;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--ert-gap-sm);
-}
-
-/* Inline-control element blocks should keep controls on one line */
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root)
-.setting-item.ert-elementBlock.ert-row--inlineControl .setting-item-control {
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-end;
-  align-self: center;
-  flex-wrap: nowrap;
-}
-
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root)
-.setting-item.ert-elementBlock.ert-row--inlineControl .setting-item-control > :is(input, select, textarea).ert-input--full {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-/* Rows inside the control column should size to content, not force full-width */
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root)
-.setting-item.ert-elementBlock .ert-elementBlock__row {
-  width: max-content;
-  max-width: 100%;
-}
-
-/* Full-width element blocks should still allow rows to stretch */
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root)
-.setting-item.ert-elementBlock.ert-setting-full-width-input .ert-elementBlock__row {
-  width: 100%;
-}
-
-/* Full-width input rows should stretch the control column */
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock.ert-setting-full-width-input {
-  grid-template-columns: minmax(0, 1fr);
-  --ert-control-width: 100%;
-}
-
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root)
-.setting-item.ert-elementBlock.ert-setting-full-width-input
-.setting-item-control {
-  width: 100%;
-  justify-self: stretch;
-  display: flex;
-  justify-content: flex-start;
-}
-
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock.ert-setting-full-width-input .setting-item-control > :is(input, textarea, select, .dropdown, .ert-select) {
-  flex: 1 1 auto;
-  width: 100%;
-  max-width: 100%;
-}
-
-/* Inputs respect width tokens; never expand to fill */
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root)
-.setting-item.ert-elementBlock
-:where(input, textarea, select, .dropdown, .ert-select) {
-  width: var(--ert-control-width, auto);
-  max-width: 100%;
-}
-
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock .setting-item-control > :is(input, textarea, select, .dropdown, .ert-select) {
-  flex: 0 0 auto;
-}
-
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-two-row.ert-setting-two-row--stretchControl .setting-item-control {
-  width: 100%;
-  justify-self: stretch;
-  justify-content: flex-start;
-}
-
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-two-row.ert-setting-two-row--stretchControl .setting-item-control > textarea {
-  --ert-control-width: 100%;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  flex: 1 1 auto;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3417,6 +3151,10 @@
   justify-self: start;
 }
 
+.ert-ui .ert-beat-index {
+  min-width: 24px;
+}
+
 .ert-ui .ert-custom-beat-add-row {
   background: var(--background-primary);
   border-style: dashed;
@@ -3794,6 +3532,12 @@
   background: transparent;
   border: none;
   box-shadow: none;
+}
+
+.ert-ui.ert-modal-shell--sm.modal,
+.ert-ui .ert-modal-shell--sm.modal {
+  width: 400px;
+  max-width: 92vw;
 }
 
 .ert-ui .ert-modal-container {
@@ -4427,15 +4171,6 @@
   border: 1px solid var(--ert-pro-border);
 }
 
-.ert-ui.ert-skin--pro .ert-row--recommended .setting-item-name,
-.ert-ui .ert-skin--pro .ert-row--recommended .setting-item-name {
-  color: var(--ert-pro-accent);
-}
-
-.ert-ui.ert-skin--pro .ert-row--recommended .ert-section-title,
-.ert-ui .ert-skin--pro .ert-row--recommended .ert-section-title {
-  color: var(--ert-pro-accent);
-}
 
 .ert-ui.ert-skin--pro .ert-pillBtn--pro,
 .ert-ui .ert-skin--pro .ert-pillBtn--pro {

@@ -475,10 +475,8 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     if (!selectedProfile) return;
                     const modal = new Modal(plugin.app);
                     const { modalEl, contentEl } = modal;
-                    modalEl.classList.add('ert-ui', 'ert-modal-shell');
+                    modalEl.classList.add('ert-ui', 'ert-modal-shell', 'ert-modal-shell--sm');
                     modalEl.classList.add(ERT_CLASSES.ROOT, ERT_CLASSES.SKIN_PRO);
-                    modalEl.style.width = '400px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-                    modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
                     contentEl.addClass('ert-modal-container');
 
                     const header = contentEl.createDiv({ cls: 'ert-modal-header' });

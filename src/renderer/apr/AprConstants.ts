@@ -12,8 +12,8 @@
 export const APR_BASE_RADII = {
     // Base radii tuned for the 300px preset (MD)
     inner: 50,
-    outer: 136,
-    text: 140,
+    outer: 130,
+    text: 134,
 } as const;
 
 export const APR_SIZE_SCALES = {
