@@ -57,6 +57,7 @@ export const kRingStroke = 0.01;
 export const kDividerStroke = 0.004;
 export const kCenterNumber = 0.24;
 export const kPercent = 0.5;
+export const kBrandingRadius = 0.9;
 
 export const CENTER_OPTICS = {
     yShiftEm: 0.06,
@@ -86,7 +87,7 @@ export function computeAprLayout(preset: AprPreset, data: AprData = {}): AprLayo
     const ringOuterR = outerR - safeInset - textBand;
     const ringInnerR = preset.innerRadiusPx ?? Math.max(1, ringOuterR - px(outerPx, kTextBand + kInset));
     const ringThickness = ringOuterR - ringInnerR;
-    const textR = preset.enableText ? (outerR - safeInset - textBand / 2) : null;
+    const textR = preset.enableText ? (outerR - safeInset - textBand / 2) * kBrandingRadius : null;
 
     const ringStroke = stroke(outerPx, kRingStroke);
     const dividerStroke = stroke(outerPx, kDividerStroke);

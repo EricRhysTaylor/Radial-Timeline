@@ -323,7 +323,7 @@ export function renderAprCenterPercent(
     const numStr = String(Math.round(percent));
     const innerRadius = layout.ringInnerR;
     const percentPx = Math.max(1, innerRadius * 2);
-    const numberPx = percentPx * 0.8;
+    const numberPx = percentPx;
     const percentDy = percentPx * 0.1;
     const numberDy = numberPx * 0.1;
 

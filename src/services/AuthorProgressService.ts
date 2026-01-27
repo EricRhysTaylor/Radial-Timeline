@@ -115,6 +115,7 @@ export class AuthorProgressService {
         const scenes = await getAllScenes(this.app, this.plugin);
         const progressPercent = this.calculateProgress(scenes);
         const publishStageLabel = this.resolvePublishStageLabel(scenes);
+        const resolvedStageLabel = progressPercent >= 100 ? 'Press' : publishStageLabel;
         const { enabled: revealCampaignEnabled, nextRevealAt } = this.resolveRevealCountdown();
         const showRtAttribution = isProfessionalActive(this.plugin)
             ? settings.aprShowRtAttribution !== false
@@ -146,7 +147,7 @@ export class AuthorProgressService {
             percentSymbolColor: settings.aprPercentSymbolColor ?? settings.aprBookAuthorColor ?? (this.plugin.settings.publishStageColors?.Press),
             theme: settings.aprTheme || 'dark',
             spokeColor: settings.aprSpokeColorMode === 'custom' ? settings.aprSpokeColor : undefined,
-            publishStageLabel,
+            publishStageLabel: resolvedStageLabel,
             showRtAttribution,
             revealCampaignEnabled,
             nextRevealAt,

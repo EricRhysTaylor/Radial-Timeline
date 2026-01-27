@@ -178,7 +178,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Styling (background + branding colors) - placed first, close to preview
     const stylingCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
-    const stylingBody = stylingCard.createDiv({ cls: `${ERT_CLASSES.PANEL_BODY} ${ERT_CLASSES.STACK}` });
+    const stylingBody = stylingCard.createDiv({ cls: `${ERT_CLASSES.PANEL_BODY} ert-typography-stack` });
     const stylingRow = stylingBody.createDiv();
     const stylingHeading = stylingRow.createDiv({ cls: 'setting-item setting-item-heading' });
     const stylingInfo = stylingHeading.createDiv({ cls: 'setting-item-info' });
@@ -1300,7 +1300,10 @@ async function renderHeroPreview(
             : true;
 
         const isThumb = size === 'thumb';
-        const displayPercent = isThumb && progressPercent <= 0 ? 5 : progressPercent;
+        const resolvedStageLabel = progressPercent >= 100 ? 'Press' : publishStageLabel;
+        const displayPercent = isThumb
+            ? (resolvedStageLabel.toLowerCase() === 'press' ? 100 : (progressPercent <= 0 ? 5 : progressPercent))
+            : progressPercent;
         const { svgString, width, height } = createAprSVG(scenes, {
             size: size,
             progressPercent: displayPercent,
@@ -1325,7 +1328,7 @@ async function renderHeroPreview(
             percentSymbolColor: aprSettings?.aprPercentSymbolColor ?? aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
             theme: aprSettings?.aprTheme || 'dark',
             spokeColor: aprSettings?.aprSpokeColorMode === 'custom' ? aprSettings?.aprSpokeColor : undefined,
-            publishStageLabel,
+            publishStageLabel: resolvedStageLabel,
             showRtAttribution,
             revealCampaignEnabled,
             nextRevealAt,
