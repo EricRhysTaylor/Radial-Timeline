@@ -364,11 +364,12 @@ export function renderInquirySection(params: SectionParams): void {
         .setName('Inquiry class scope')
         .setDesc('One YAML class per line. Use / to allow all classes. Empty = no classes allowed.');
     classScopeSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:class-scope');
+    classScopeSetting.settingEl.addClass(ERT_CLASSES.ROW, 'ert-row--stack');
 
     classScopeSetting.addTextArea(text => {
         text.setValue(listToText(inquirySources.classScope));
         text.inputEl.rows = 4;
-        text.inputEl.addClass('ert-input--lg');
+        text.inputEl.addClass('ert-input--lg', 'ert-textarea--wide');
         text.setPlaceholder('scene\noutline');
         classScopeInput = text;
 
@@ -380,8 +381,7 @@ export function renderInquirySection(params: SectionParams): void {
 
     let resolvedRootCache: { signature: string; resolvedRoots: string[]; total: number } | null = null;
 
-    const classTableWrap = classScopeBody.createDiv({ cls: 'ert-controlGroup' });
-    classTableWrap.style.setProperty('--ert-controlGroup-columns', '90px minmax(0, 1.1fr) 140px 140px 140px 110px');
+    const classTableWrap = classScopeBody.createDiv({ cls: ['ert-controlGroup', 'ert-controlGroup--class-scope'] });
 
     const scanInquiryClasses = async (roots: string[]): Promise<{
         discoveredCounts: Record<string, number>;

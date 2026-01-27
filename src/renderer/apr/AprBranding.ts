@@ -63,23 +63,19 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const circumference = 2 * Math.PI * brandingRadius;
 
     const hasAuthor = authorNameUpper.trim().length > 0;
-    const unitPattern = hasAuthor
-        ? `${bookTitleUpper}${separator}${authorNameUpper}${separator}`
-        : `${bookTitleUpper}${separator}`;
-
     // Estimate width per token (headless-safe, no DOM measurement)
     const avgFontSize = hasAuthor ? (bookTitleSize + authorNameSize) / 2 : bookTitleSize;
-    const baseCharWidth = avgFontSize * 0.55;
+    const baseCharWidth = avgFontSize * 0.45;
     const baseLetterSpacing = brandingLetterSpacing.trim();
     const baseSpacingEm = baseLetterSpacing.endsWith('em') ? Number.parseFloat(baseLetterSpacing) : 0;
-    const adjustedSpacingEm = Number.isFinite(baseSpacingEm) ? baseSpacingEm * 0.7 : 0;
-    const adjustedLetterSpacing = baseLetterSpacing.endsWith('em')
-        ? `${adjustedSpacingEm.toFixed(3)}em`
+    const baselineSpacingEm = Number.isFinite(baseSpacingEm) ? baseSpacingEm * 0.7 : 0;
+    const baselineLetterSpacing = baseLetterSpacing.endsWith('em')
+        ? `${baselineSpacingEm.toFixed(3)}em`
         : brandingLetterSpacing;
 
-    const estimateTextWidth = (text: string) => {
+    const estimateTextWidth = (text: string, spacingEm: number) => {
         const charCount = Math.max(1, text.length);
-        const spacingPx = adjustedSpacingEm * avgFontSize;
+        const spacingPx = spacingEm * avgFontSize;
         return charCount * baseCharWidth + Math.max(0, charCount - 1) * spacingPx;
     };
 
@@ -100,29 +96,57 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         : [...bookTokens, sepToken];
 
     const tokens: Array<{ kind: 'book' | 'author' | 'sep'; text: string }> = [];
-    let totalWidth = 0;
-    let cursor = 0;
-    const maxTokens = Math.max(1, patternTokens.length) * 12;
-    while (totalWidth < circumference && cursor < maxTokens) {
-        const token = patternTokens[cursor % patternTokens.length];
-        tokens.push(token);
-        totalWidth += estimateTextWidth(token.text);
-        cursor += 1;
+    let estimatedWidth = 0;
+    let repeats = 0;
+    const maxRepeats = 20;
+    while (estimatedWidth < circumference * 1.25 && repeats < maxRepeats) {
+        for (const token of patternTokens) {
+            tokens.push(token);
+            estimatedWidth += estimateTextWidth(token.text, baselineSpacingEm);
+        }
+        repeats += 1;
     }
 
-    const maxOverlap = avgFontSize * 2;
-    let overlap = totalWidth - circumference;
-    while (overlap > maxOverlap && tokens.length > 0) {
-        const last = tokens[tokens.length - 1];
-        totalWidth -= estimateTextWidth(last.text);
-        tokens.pop();
-        // Remove trailing separator if we just removed a word
-        if (tokens.length > 0 && tokens[tokens.length - 1].kind === 'sep') {
-            totalWidth -= estimateTextWidth(tokens[tokens.length - 1].text);
-            tokens.pop();
+    if (tokens.length === 0) tokens.push(...patternTokens);
+
+    const minSpacingEm = -0.08;
+    const maxSpacingEm = 0.24;
+    let bestCandidate: { count: number; spacingEm: number; adjustment: number; endsWithSep: boolean } | null = null;
+    let bestWithin: { count: number; spacingEm: number; adjustment: number; endsWithSep: boolean } | null = null;
+    let runningChars = 0;
+
+    for (let i = 0; i < tokens.length; i += 1) {
+        runningChars += tokens[i].text.length;
+        if (i < patternTokens.length - 1) continue;
+        const spacingSlots = Math.max(1, runningChars - 1);
+        const requiredSpacingEm = (circumference - runningChars * baseCharWidth) / (spacingSlots * avgFontSize);
+        if (!Number.isFinite(requiredSpacingEm)) continue;
+        const adjustment = Math.abs(requiredSpacingEm - baselineSpacingEm);
+        const endsWithSep = tokens[i].kind === 'sep';
+        const candidate = { count: i + 1, spacingEm: requiredSpacingEm, adjustment, endsWithSep };
+        const within = requiredSpacingEm >= minSpacingEm && requiredSpacingEm <= maxSpacingEm;
+
+        if (within) {
+            if (!bestWithin || candidate.adjustment < bestWithin.adjustment - 0.002 ||
+                (Math.abs(candidate.adjustment - bestWithin.adjustment) <= 0.002 && candidate.endsWithSep && !bestWithin.endsWithSep)) {
+                bestWithin = candidate;
+            }
         }
-        overlap = totalWidth - circumference;
+
+        if (!bestCandidate || candidate.adjustment < bestCandidate.adjustment - 0.002 ||
+            (Math.abs(candidate.adjustment - bestCandidate.adjustment) <= 0.002 && candidate.endsWithSep && !bestCandidate.endsWithSep)) {
+            bestCandidate = candidate;
+        }
     }
+
+    const chosen = bestWithin ?? bestCandidate;
+    const finalTokens = chosen ? tokens.slice(0, chosen.count) : tokens;
+    const finalSpacingEm = chosen
+        ? Math.min(maxSpacingEm, Math.max(minSpacingEm, chosen.spacingEm))
+        : baselineSpacingEm;
+    const finalLetterSpacing = baseLetterSpacing.endsWith('em')
+        ? `${finalSpacingEm.toFixed(3)}em`
+        : baselineLetterSpacing;
 
     // Full circle path starting from top (12 o'clock) going clockwise
     const circlePathId = 'apr-branding-circle';
@@ -140,7 +164,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const authorTspanStart = `<tspan fill="${cssVar('--apr-author-color', authColor)}" font-family="${authorNameFontFamily}" font-weight="${authorNameFontWeight}" font-size="${authorNameSize}" ${italicAttr(authorNameFontItalic)}>`;
     const endTspan = `</tspan>`;
 
-    tokens.forEach(token => {
+    finalTokens.forEach(token => {
         const tspanStart = token.kind === 'author' ? authorTspanStart : bookTspanStart;
         textContent += `${tspanStart}${token.text}${endTspan}`;
     });
@@ -151,9 +175,9 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             font-size="${avgFontSize}" 
             font-weight="${bookTitleFontWeight}" 
             ${italicAttr(bookTitleFontItalic)}
-            letter-spacing="${adjustedLetterSpacing}"
+            letter-spacing="${finalLetterSpacing}"
             xml:space="preserve">
-            <textPath href="#${circlePathId}" startOffset="0%">
+            <textPath href="#${circlePathId}" startOffset="0%" textLength="${circumference.toFixed(2)}" lengthAdjust="spacing">
                 ${textContent}
             </textPath>
         </text>

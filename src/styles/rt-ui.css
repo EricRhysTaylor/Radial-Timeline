@@ -465,6 +465,10 @@
   --ert-controlGroup-columns: minmax(140px, max-content) 56px minmax(var(--ert-input-width-sm), max-content);
 }
 
+.ert-ui .ert-controlGroup--class-scope {
+  --ert-controlGroup-columns: 90px minmax(0, 1.1fr) 140px 140px 140px 110px;
+}
+
 .ert-ui .ert-controlGroup--scroll {
   max-height: var(--ert-controlGroup-max-height, 220px);
   overflow-y: auto;
@@ -2282,16 +2286,21 @@
   width: 120px;
 }
 
-/* Stack row: control column must be wide + stacked */
-.setting-item.ert-row--stack {
+/* Base row contract (standard rows) */
+.setting-item.ert-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) max-content;
   gap: 16px;
   align-items: start;
 }
 
+/* Stack modifier: control column must be wide + stacked */
+.setting-item.ert-row.ert-row--stack {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
 /* Control cell becomes vertical stack and stretches */
-.setting-item.ert-row--stack .setting-item-control {
+.setting-item.ert-row.ert-row--stack .setting-item-control {
   justify-self: stretch;
   width: 100%;
   display: flex;
@@ -2301,17 +2310,18 @@
 }
 
 /* Textarea fills width */
-.setting-item.ert-row--stack textarea {
+.setting-item.ert-row.ert-row--stack textarea {
   width: 100%;
 }
 
 /* Buttons live under textarea */
-.setting-item.ert-row--stack .ert-actions {
+.setting-item.ert-row.ert-row--stack .ert-actions {
   display: inline-flex;
   gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-start;
 }
+
 
 /* SETTINGS ROW CONTRACT: Col1 flex label, Col2 content-sized control (right aligned) */
 .setting-item.ert-settingRow {

@@ -150,7 +150,7 @@ export function computeAprLayout(preset: AprPreset, data: AprData = {}): AprLayo
         branding: {
             radius: textR,
             fontSize: brandingFontSize,
-            letterSpacing: '0.2em',
+            letterSpacing: '0.12em',
         },
         badge: {
             fontSize: badgeFontSize,
