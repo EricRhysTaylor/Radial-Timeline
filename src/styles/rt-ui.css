@@ -407,6 +407,10 @@
   align-items: flex-start;
 }
 
+.ert-ui .ert-row.ert-row--wideControl:not(.ert-settingRow) {
+  grid-template-columns: minmax(var(--ert-label-w), 1fr) minmax(0, 2fr);
+}
+
 .ert-ui .ert-row:not(.ert-settingRow) .setting-item-info {
   align-self: flex-start;
 }

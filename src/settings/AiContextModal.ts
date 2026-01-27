@@ -202,7 +202,7 @@ export class AiContextModal extends Modal {
             .onClick(() => this.deleteTemplate());
 
         // Editor row
-        const editorRow = contentEl.createDiv({ cls: 'ert-row' });
+        const editorRow = contentEl.createDiv({ cls: 'ert-row ert-row--wideControl' });
         editorRow.createDiv({ cls: 'ert-label', text: 'Prompt' });
         const editorControl = editorRow.createDiv({ cls: 'ert-control' });
 
