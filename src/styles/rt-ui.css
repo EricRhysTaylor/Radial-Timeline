@@ -1476,12 +1476,21 @@
 }
 
 .ert-ui .ert-row--inlineControl .setting-item-control {
+  display: flex;
+  flex-direction: row;
   align-self: center;
+  align-items: center;
+  gap: var(--ert-gap-sm);
   flex-wrap: nowrap;
 }
 
 .ert-ui .ert-row--inlineControl .setting-item-control>.setting-editor-extra-setting-button {
   flex: 0 0 auto;
+}
+
+.ert-ui .ert-row--inlineControl .setting-item-control > :is(input, select, textarea).ert-input--full {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .ert-ui [data-ert-role="inquiry-setting:scan-roots"] {
@@ -1617,6 +1626,7 @@
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
+  align-self: start;
   gap: var(--ert-gap-sm);
   min-width: 0;
   max-width: 100%;
@@ -2474,6 +2484,7 @@
   min-width: 0;
   max-width: 100%;
   justify-self: end;
+  align-self: start;
   display: flex;
   flex-direction: column;
   align-items: flex-end;

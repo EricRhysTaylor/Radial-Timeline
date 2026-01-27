@@ -126,7 +126,7 @@ export function renderGeneralSection(params: {
 
         text.setPlaceholder(t('settings.configuration.aiOutputFolder.placeholder'))
             .setValue(fallbackFolder);
-        text.inputEl.addClass('ert-input--xl');
+        text.inputEl.addClass('ert-input--full');
 
         const inputEl = text.inputEl;
 
@@ -194,7 +194,7 @@ export function renderGeneralSection(params: {
 
         text.setPlaceholder(t('settings.configuration.manuscriptOutputFolder.placeholder'))
             .setValue(fallbackFolder);
-        text.inputEl.addClass('ert-input--xl');
+        text.inputEl.addClass('ert-input--full');
 
         const inputEl = text.inputEl;
 

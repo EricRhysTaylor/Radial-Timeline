@@ -99,13 +99,13 @@
 }
 
 .rt-backdrop-ring-background {
-  stroke: var(--rt-color-empty);
+  stroke: var(--rt-color-empty-selected);
   stroke-opacity: 1;
   fill: none;
 }
 
 .rt-backdrop-micro-ring-background {
-  stroke: var(--rt-color-empty);
+  stroke: var(--rt-color-empty-selected);
   stroke-opacity: 1;
   fill: none;
   pointer-events: none;
@@ -270,23 +270,8 @@
 .radial-timeline-svg[data-chronologue-mode="true"]:not([data-shift-mode]).scene-hover .rt-backdrop-micro-ring,
 .radial-timeline-svg[data-mode="chronologue"]:not([data-shift-mode]).scene-hover .rt-backdrop-micro-tick,
 .radial-timeline-svg[data-chronologue-mode="true"]:not([data-shift-mode]).scene-hover .rt-backdrop-micro-tick {
-  stroke: var(--rt-color-empty-selected);
+  stroke: var(--rt-color-empty);
   opacity: 1;
 }
 
-/* Shift/ALT/Runtime: match hover-mute of backdrop ring background for micro rings */
-.radial-timeline-svg[data-shift-mode].rt-shift-scene-hover .rt-backdrop-ring-background {
-  stroke: var(--rt-color-empty-selected);
-  stroke-opacity: 1;
-}
-
-.radial-timeline-svg[data-shift-mode].rt-shift-scene-hover .rt-backdrop-micro-ring-background {
-  stroke: var(--rt-color-empty-selected);
-  stroke-opacity: 1;
-}
-
-.radial-timeline-svg[data-shift-mode].rt-shift-scene-hover .rt-backdrop-micro-ring,
-.radial-timeline-svg[data-shift-mode].rt-shift-scene-hover .rt-backdrop-micro-tick {
-  stroke: var(--rt-color-empty-selected);
-  opacity: 1;
-}
+/* Shift/ALT/Runtime: keep backdrop ring background tint locked during scene hover */

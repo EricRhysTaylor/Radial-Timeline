@@ -220,6 +220,7 @@ export function renderBackdropMicroRings(params: {
                 fill="none"
                 data-tooltip="${safeTitle}"
                 data-tooltip-placement="bottom"
+                data-tooltip-anchor="cursor"
             />
         `;
     });

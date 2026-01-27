@@ -1300,10 +1300,7 @@ async function renderHeroPreview(
             : true;
 
         const isThumb = size === 'thumb';
-        const resolvedStageLabel = progressPercent >= 100 ? 'Press' : publishStageLabel;
-        const displayPercent = isThumb
-            ? (resolvedStageLabel.toLowerCase() === 'press' ? 100 : (progressPercent <= 0 ? 5 : progressPercent))
-            : progressPercent;
+        const displayPercent = progressPercent;
         const { svgString, width, height } = createAprSVG(scenes, {
             size: size,
             progressPercent: displayPercent,
@@ -1328,7 +1325,7 @@ async function renderHeroPreview(
             percentSymbolColor: aprSettings?.aprPercentSymbolColor ?? aprSettings?.aprBookAuthorColor ?? (plugin.settings.publishStageColors?.Press),
             theme: aprSettings?.aprTheme || 'dark',
             spokeColor: aprSettings?.aprSpokeColorMode === 'custom' ? aprSettings?.aprSpokeColor : undefined,
-            publishStageLabel: resolvedStageLabel,
+            publishStageLabel,
             showRtAttribution,
             revealCampaignEnabled,
             nextRevealAt,

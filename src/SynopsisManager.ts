@@ -261,7 +261,13 @@ export default class SynopsisManager {
         }
       }
     }
-    const titleColor = beatStageColor || defaultTitleColor;
+    let titleColor = beatStageColor || defaultTitleColor;
+    if (scene.itemType === 'Backdrop') {
+      const maxStageColor = getComputedStyle(document.documentElement)
+        .getPropertyValue('--rt-max-publish-stage-color')
+        .trim();
+      titleColor = maxStageColor || 'var(--rt-max-publish-stage-color)';
+    }
 
     const { synopsisEndIndex, metadataItems } = splitSynopsisLines(contentLines);
 
@@ -722,6 +728,11 @@ export default class SynopsisManager {
           
           // Create the text element (key: value)
           const textEl = createText(textX, y, 'rt-info-text rt-title-text-secondary rt-hover-metadata-text', valueStr);
+          const isTitleField = field.key.trim().toLowerCase() === 'title';
+          if (isTitleField) {
+            lineGroup.setAttribute('color', titleColor);
+            textEl.style.fill = titleColor;
+          }
           textEl.setAttribute('data-hover-icon-size', String(iconSize));
           textEl.setAttribute('data-hover-icon-gap', String(iconGap));
           lineGroup.appendChild(textEl);

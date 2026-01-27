@@ -192,10 +192,9 @@
   max-width: 100%;
 }
 
-/* Fix alignment of extra buttons (like gear icon) with setting item text */
+/* Align settings rows to the top when descriptions wrap */
 .ert-settings-root .setting-item {
-  display: flex;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .ert-settings-root .setting-item.setting-item-heading .setting-item-name {

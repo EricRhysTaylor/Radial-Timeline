@@ -65,7 +65,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
     const { app, plugin, containerEl } = params;
 
     const chronoHeading = new Settings(containerEl)
-        .setName('Chronologue mode settings')
+        .setName('Chronologue mode discontinuity & duration')
         .setHeading();
     addHeadingIcon(chronoHeading, 'clock-8');
     addWikiLink(chronoHeading, 'Settings#chronologue');
@@ -190,6 +190,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
 
     const discontinuitySetting = new Settings(containerEl)
         .setName('Discontinuity gap threshold');
+    discontinuitySetting.settingEl.addClass(ERT_CLASSES.ROW);
     discontinuitySetting.settingEl.addClass(ERT_CLASSES.ROW_INLINE_CONTROL);
 
     // Declare the text component reference first (before updateDescriptionAndPlaceholder uses it)
@@ -218,6 +219,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
         const currentValue = plugin.settings.discontinuityThreshold || '';
         text.setPlaceholder('Calculating…')
             .setValue(currentValue);
+        text.inputEl.addClass('ert-input--full');
         
         void calculateAutoThreshold(false).then(autoThreshold => {
             text.setPlaceholder(`${autoThreshold.display} (auto)`);

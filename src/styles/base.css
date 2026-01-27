@@ -292,7 +292,7 @@
 
 /* Void cells - empty space in timeline */
 .radial-timeline-container .rt-void-cell {
-  fill: var(--rt-color-empty);
+  fill: var(--rt-color-empty-selected);
   fill-opacity: 0.9;
   stroke: white;
   stroke-width: 1px;

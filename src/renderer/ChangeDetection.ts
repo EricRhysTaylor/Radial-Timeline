@@ -50,6 +50,8 @@ export interface TimelineSnapshot {
     targetDate: string | undefined;
     chronologueDurationCap: string | undefined;
     discontinuityThreshold: string | undefined;
+    showBackdropRing: boolean;
+    microBackdropHash: string;
     publishStageColorsHash: string;
     subplotColorsHash: string;
     dominantSubplotsHash: string;
@@ -142,6 +144,9 @@ export function createSnapshot(
     const dominantSubplotsHash = settings.dominantSubplots
         ? JSON.stringify(settings.dominantSubplots)
         : '';
+    const microBackdropHash = settings.chronologueBackdropMicroRings
+        ? JSON.stringify(settings.chronologueBackdropMicroRings)
+        : '';
     
     const now = new Date();
     
@@ -182,6 +187,8 @@ export function createSnapshot(
         targetDate: settings.targetCompletionDate,
         chronologueDurationCap: settings.chronologueDurationCapSelection,
         discontinuityThreshold: settings.discontinuityThreshold,
+        showBackdropRing: settings.showBackdropRing ?? true,
+        microBackdropHash,
         publishStageColorsHash,
         subplotColorsHash,
         dominantSubplotsHash,
@@ -239,6 +246,8 @@ export function detectChanges(
         prev.targetDate !== current.targetDate ||
         prev.chronologueDurationCap !== current.chronologueDurationCap ||
         prev.discontinuityThreshold !== current.discontinuityThreshold ||
+        prev.showBackdropRing !== current.showBackdropRing ||
+        prev.microBackdropHash !== current.microBackdropHash ||
         prev.publishStageColorsHash !== current.publishStageColorsHash ||
         prev.subplotColorsHash !== current.subplotColorsHash ||
         prev.povMode !== current.povMode) {

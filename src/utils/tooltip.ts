@@ -105,9 +105,14 @@ export function setupTooltipsFromDataAttributes(
                 currentTarget = target;
                 const text = target.getAttribute('data-tooltip') || '';
                 const placement = (target.getAttribute('data-tooltip-placement') || 'bottom') as TooltipPlacement;
+                const anchor = target.getAttribute('data-tooltip-anchor');
                 
                 if (text) {
-                    showCustomTooltip(target, text, placement);
+                    const mouseEvent = e as MouseEvent;
+                    const anchorPoint = anchor === 'cursor'
+                        ? { x: mouseEvent.clientX, y: mouseEvent.clientY }
+                        : undefined;
+                    showCustomTooltip(target, text, placement, anchorPoint);
                 }
             }
         }
@@ -175,11 +180,21 @@ export function setupTooltipsFromDataAttributes(
         }
     };
 
+    const handleMouseMove = (e: Event) => {
+        if (!currentTarget || !customTooltipEl) return;
+        const anchor = currentTarget.getAttribute('data-tooltip-anchor');
+        if (anchor !== 'cursor') return;
+        const placement = (currentTarget.getAttribute('data-tooltip-placement') || 'bottom') as TooltipPlacement;
+        const mouseEvent = e as MouseEvent;
+        updateTooltipPosition(currentTarget, placement, { x: mouseEvent.clientX, y: mouseEvent.clientY });
+    };
+
     // Use Obsidian lifecycle-backed registration for automatic cleanup
     registerDomEvent(svgElement as unknown as HTMLElement, 'mouseover', handleMouseOver);
     registerDomEvent(svgElement as unknown as HTMLElement, 'mouseout', handleMouseOut);
     registerDomEvent(svgElement as unknown as HTMLElement, 'mouseleave', handleMouseLeave);
     registerDomEvent(svgElement as unknown as HTMLElement, 'click', handleClick);
+    registerDomEvent(svgElement as unknown as HTMLElement, 'mousemove', handleMouseMove);
 }
 
 /**
@@ -217,7 +232,69 @@ function updateTooltipWidth(): void {
     }
 }
 
-function showCustomTooltip(target: Element, text: string, placement: TooltipPlacement) {
+type TooltipAnchorPoint = { x: number; y: number };
+
+function updateTooltipPosition(target: Element, placement: TooltipPlacement, anchorPoint?: TooltipAnchorPoint) {
+    if (!customTooltipEl) return;
+
+    const tooltipRect = customTooltipEl.getBoundingClientRect();
+    let top = 0;
+    let left = 0;
+
+    if (anchorPoint) {
+        switch (placement) {
+            case 'bottom':
+                left = anchorPoint.x;
+                top = anchorPoint.y;
+                break;
+            case 'top':
+                left = anchorPoint.x;
+                top = anchorPoint.y - tooltipRect.height;
+                break;
+            case 'left':
+                left = anchorPoint.x - tooltipRect.width;
+                top = anchorPoint.y;
+                break;
+            case 'right':
+                left = anchorPoint.x;
+                top = anchorPoint.y;
+                break;
+        }
+    } else {
+        const rect = target.getBoundingClientRect();
+        switch (placement) {
+            case 'bottom':
+                left = rect.left + (rect.width / 2);
+                top = rect.bottom;
+                break;
+            case 'top':
+                left = rect.left + (rect.width / 2);
+                top = rect.top - tooltipRect.height;
+                break;
+            case 'left':
+                left = rect.left - tooltipRect.width;
+                top = rect.top + (rect.height / 2);
+                break;
+            case 'right':
+                left = rect.right;
+                top = rect.top + (rect.height / 2);
+                break;
+        }
+    }
+
+    const offsetX = parseFloat(target.getAttribute('data-tooltip-offset-x') || '0') || 0;
+    const offsetY = parseFloat(target.getAttribute('data-tooltip-offset-y') || '0') || 0;
+
+    customTooltipEl.style.top = `${top + offsetY}px`;
+    customTooltipEl.style.left = `${left + offsetX}px`;
+}
+
+function showCustomTooltip(
+    target: Element,
+    text: string,
+    placement: TooltipPlacement,
+    anchorPoint?: TooltipAnchorPoint
+) {
     if (!customTooltipEl) ensureCustomTooltip();
     if (!customTooltipEl) return;
 
@@ -238,41 +315,7 @@ function showCustomTooltip(target: Element, text: string, placement: TooltipPlac
 
     customTooltipEl.classList.add(`rt-placement-${placement}`);
     
-    // Calculate Position
-    const rect = target.getBoundingClientRect();
-    const tooltipRect = customTooltipEl.getBoundingClientRect(); // May be 0 if hidden, but text is set so it should layout
-
-    // Default: Bottom
-    let top = 0;
-    let left = 0;
-
-    switch (placement) {
-        case 'bottom':
-            left = rect.left + (rect.width / 2);
-            top = rect.bottom;
-            break;
-        case 'top':
-            left = rect.left + (rect.width / 2);
-            top = rect.top - tooltipRect.height;
-            break;
-        case 'left':
-            left = rect.left - tooltipRect.width;
-            top = rect.top + (rect.height / 2);
-            break;
-        case 'right':
-            left = rect.right;
-            top = rect.top + (rect.height / 2);
-            break;
-    }
-
-    const offsetX = parseFloat(target.getAttribute('data-tooltip-offset-x') || '0') || 0;
-    const offsetY = parseFloat(target.getAttribute('data-tooltip-offset-y') || '0') || 0;
-
-    // Apply coordinates
-    // Note: transforms in CSS handle the centering (e.g. translate(-50%, 0))
-    // We just set the anchor point.
-    customTooltipEl.style.top = `${top + offsetY}px`;
-    customTooltipEl.style.left = `${left + offsetX}px`;
+    updateTooltipPosition(target, placement, anchorPoint);
 
     // Show
     customTooltipEl.classList.add('rt-visible');
