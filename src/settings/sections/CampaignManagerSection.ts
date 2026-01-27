@@ -163,8 +163,6 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
             });
         });
 
-    newCampaignSetting.settingEl.addClass(ERT_CLASSES.ROW);
-    newCampaignSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
 
     // ─────────────────────────────────────────────────────────────────────────
     // QUICK TEMPLATES
@@ -389,8 +387,6 @@ function renderCampaignDetails(
                     await plugin.saveSettings();
                 });
         });
-    freqSetting.settingEl.addClass(ERT_CLASSES.ROW);
-    freqSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
 
     // Refresh threshold (with dynamic description and value label)
     let refreshValueLabel: HTMLSpanElement | undefined;
@@ -424,8 +420,6 @@ function renderCampaignDetails(
 
             return slider;
         });
-    refreshSetting.settingEl.addClass(ERT_CLASSES.ROW);
-    refreshSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
 
     // Embed path (with validation and reset)
     const defaultPath = `Radial Timeline/Social/${campaign.name.toLowerCase().replace(/\s+/g, '-')}-progress.svg`;
@@ -433,9 +427,6 @@ function renderCampaignDetails(
         .setName('Embed File Path')
         .setDesc(`Location for the embed SVG file. Must end with .svg. Default: ${defaultPath}`);
 
-    embedPathSetting.settingEl.addClass(ERT_CLASSES.ROW_WIDE_CONTROL);
-    embedPathSetting.settingEl.addClass(ERT_CLASSES.ROW);
-    embedPathSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
 
     embedPathSetting.addText(text => {
         const successClass = 'ert-input--success';
@@ -514,8 +505,6 @@ function renderCampaignDetails(
                 await plugin.saveSettings();
             });
         });
-    exportSizeSetting.settingEl.addClass(ERT_CLASSES.ROW);
-    exportSizeSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
 
     // ─────────────────────────────────────────────────────────────────────────
     // TEASER REVEAL (Progressive Reveal)
@@ -553,8 +542,6 @@ function renderCampaignDetails(
                     });
             });
 
-        teaserToggleSetting.settingEl.addClass(ERT_CLASSES.ROW);
-        teaserToggleSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
 
         // Add calendar icon to the teaser setting
         const teaserNameEl = teaserToggleSetting.nameEl;

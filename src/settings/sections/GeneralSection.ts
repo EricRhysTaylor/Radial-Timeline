@@ -3,7 +3,6 @@ import { Setting as ObsidianSetting, normalizePath, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { t } from '../../i18n';
 import { DEFAULT_SETTINGS } from '../defaults';
-import { ERT_CLASSES } from '../../ui/classes';
 
 export function renderGeneralSection(params: {
     app: App;
@@ -118,8 +117,6 @@ export function renderGeneralSection(params: {
     const aiSetting = new ObsidianSetting(containerEl)
         .setName(t('settings.configuration.aiOutputFolder.name'))
         .setDesc(t('settings.configuration.aiOutputFolder.desc'));
-    aiSetting.settingEl.addClass(ERT_CLASSES.ROW);
-    aiSetting.settingEl.addClass(ERT_CLASSES.ROW_INLINE_CONTROL, 'ert-settingRow');
     aiSetting.addText(text => {
         const defaultPath = DEFAULT_SETTINGS.aiOutputFolder || 'Radial Timeline/Logs';
         const fallbackFolder = plugin.settings.aiOutputFolder?.trim() || defaultPath;
@@ -187,8 +184,6 @@ export function renderGeneralSection(params: {
     const manuscriptSetting = new ObsidianSetting(containerEl)
         .setName(t('settings.configuration.manuscriptOutputFolder.name'))
         .setDesc(t('settings.configuration.manuscriptOutputFolder.desc'));
-    manuscriptSetting.settingEl.addClass(ERT_CLASSES.ROW);
-    manuscriptSetting.settingEl.addClass(ERT_CLASSES.ROW_INLINE_CONTROL, 'ert-settingRow');
     manuscriptSetting.addText(text => {
         const defaultPath = DEFAULT_SETTINGS.manuscriptOutputFolder || 'Radial Timeline/Export';
         const fallbackFolder = plugin.settings.manuscriptOutputFolder?.trim() || defaultPath;

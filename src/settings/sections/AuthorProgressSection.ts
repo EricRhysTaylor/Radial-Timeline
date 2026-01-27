@@ -216,10 +216,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Helper to swap emphasis and enable/disable background controls
     const updateEmphasis = (isTransparent: boolean) => {
-        // Always apply recommended styling to prevent layout shift
-        transparencySetting.settingEl.classList.add(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
-        bgSetting.settingEl.classList.add(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
-
         if (isTransparent) {
             bgSetting.settingEl.classList.add('is-inactive');
             if (bgColorPicker) bgColorPicker.setDisabled(true);
@@ -358,9 +354,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         .setName('Link URL')
         .setDesc('Where the graphic should link to (e.g. your website, Kickstarter, or shop).');
 
-    linkUrlSetting.settingEl.addClass(ERT_CLASSES.ROW);
-    linkUrlSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
-    linkUrlSetting.settingEl.addClass(ERT_CLASSES.ROW_WIDE_CONTROL);
 
     linkUrlSetting.addText(text => {
         text.setPlaceholder('https://your-site.com')
@@ -1077,8 +1070,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                     }
                 })
             );
-        frequencySetting.settingEl.addClass(ERT_CLASSES.ROW);
-        frequencySetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
 
         // Add red alert border when refresh is needed
         if (needsRefresh) {
@@ -1120,8 +1111,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
                     return slider;
                 });
-            stalenessSetting.settingEl.addClass(ERT_CLASSES.ROW);
-            stalenessSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
 
             // Add red alert border when refresh is needed
             if (needsRefresh) {
@@ -1133,9 +1122,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             .setName('Embed File Path')
             .setDesc(`Location for the "Live Embed" SVG file. Must end with .svg. Default: ${DEFAULT_SETTINGS.authorProgress?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg'}`);
 
-        embedPathSetting.settingEl.addClass(ERT_CLASSES.ROW);
-        embedPathSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
-        embedPathSetting.settingEl.addClass(ERT_CLASSES.ROW_WIDE_CONTROL);
 
         embedPathSetting.addText(text => {
             const defaultPath = DEFAULT_SETTINGS.authorProgress?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg';
@@ -1259,8 +1245,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                         refreshPreview();
                     });
             });
-        attributionSetting.settingEl.addClass(ERT_CLASSES.ROW);
-        attributionSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
     }
 }
 

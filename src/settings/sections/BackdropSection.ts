@@ -69,8 +69,6 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
             .setName(title)
             .setDesc(rangeSummary);
         row.settingEl.classList.add('ert-micro-backdrop-row');
-        row.settingEl.classList.add(ERT_CLASSES.ROW);
-        row.settingEl.classList.add(ERT_CLASSES.ROW_INLINE_CONTROL, 'ert-settingRow');
 
         const isExpanded = expandedIndex === index;
         row.addButton(button => {

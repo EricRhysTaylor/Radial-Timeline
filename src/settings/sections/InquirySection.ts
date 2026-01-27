@@ -1066,7 +1066,6 @@ export function renderInquirySection(params: SectionParams): void {
     const artifactSetting = new Settings(configBody)
         .setName('Briefing folder')
         .setDesc('Inquiry briefs are saved here when auto-save is enabled.');
-    artifactSetting.settingEl.classList.add(ERT_CLASSES.ROW_INLINE_CONTROL, 'ert-settingRow');
 
     artifactSetting.addText(text => {
         const defaultPath = DEFAULT_SETTINGS.inquiryArtifactFolder || 'Radial Timeline/Inquiry/Briefing';

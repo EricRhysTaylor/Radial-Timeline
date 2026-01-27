@@ -65,7 +65,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const hasAuthor = authorNameUpper.trim().length > 0;
     // Estimate width per token (headless-safe, no DOM measurement)
     const avgFontSize = hasAuthor ? (bookTitleSize + authorNameSize) / 2 : bookTitleSize;
-    const baseCharWidth = avgFontSize * 0.45;
+    const baseCharWidth = avgFontSize * 0.42;
     const baseLetterSpacing = brandingLetterSpacing.trim();
     const baseSpacingEm = baseLetterSpacing.endsWith('em') ? Number.parseFloat(baseLetterSpacing) : 0;
     const baselineSpacingEm = Number.isFinite(baseSpacingEm) ? baseSpacingEm * 0.7 : 0;
@@ -109,8 +109,8 @@ export function renderAprBranding(options: AprBrandingOptions): string {
 
     if (tokens.length === 0) tokens.push(...patternTokens);
 
-    const minSpacingEm = Math.max(0, baselineSpacingEm * 0.9);
-    const maxSpacingEm = 0.28;
+    const minSpacingEm = Math.max(0, baselineSpacingEm);
+    const maxSpacingEm = 0.5;
     let bestCandidate: { count: number; spacingEm: number; adjustment: number; endsWithSep: boolean } | null = null;
     let bestWithin: { count: number; spacingEm: number; adjustment: number; endsWithSep: boolean } | null = null;
     let runningChars = 0;
@@ -170,6 +170,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         textContent += `${tspanStart}${token.text}${endTspan}`;
     });
 
+    const startOffset = '25%';
     const brandingText = `
         <text 
             font-family="${bookTitleFontFamily}" 
@@ -178,7 +179,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             ${italicAttr(bookTitleFontItalic)}
             letter-spacing="${finalLetterSpacing}"
             xml:space="preserve">
-            <textPath href="#${circlePathId}" startOffset="0%" textLength="${circumference.toFixed(2)}" lengthAdjust="spacing">
+            <textPath href="#${circlePathId}" startOffset="${startOffset}" textLength="${circumference.toFixed(2)}" lengthAdjust="spacing">
                 ${textContent}
             </textPath>
         </text>
@@ -387,7 +388,8 @@ export function renderAprCenterPercent(
                 font-weight="${percentSymbolFontWeight}" 
                 ${italicAttr(percentSymbolFontItalic)}
                 font-size="${percentPx}"
-                fill="${cssVar('--apr-percent-symbol-color', symColor)}">
+                fill="${cssVar('--apr-percent-symbol-color', symColor)}"
+                fill-opacity="0.5">
                 %
             </text>
             <text 

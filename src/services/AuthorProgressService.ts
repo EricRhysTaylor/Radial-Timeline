@@ -6,6 +6,7 @@ import { getAllScenes } from '../utils/manuscript';
 import type { AprCampaign, AuthorProgressSettings } from '../types/settings';
 import { getTeaserThresholds, getTeaserRevealLevel, teaserLevelToRevealOptions } from '../renderer/apr/AprConstants';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
+import { isBeatNote } from '../utils/sceneHelpers';
 
 export class AuthorProgressService {
     constructor(private plugin: RadialTimelinePlugin, private app: App) { }
@@ -80,7 +81,16 @@ export class AuthorProgressService {
         // Use TimelineMetricsService for consistency with Settings "Completion Estimate" (e.g. 8/49 -> 16%)
         // This replaces the weighted stage calculation (AprConstants) which was causing discrepancies (0%)
         const estimate = this.plugin.calculateCompletionEstimate(scenes);
-        if (!estimate || estimate.total === 0) return 0;
+        if (!estimate || estimate.total === 0) {
+            const sceneNotesOnly = scenes.filter(scene => !isBeatNote(scene));
+            if (sceneNotesOnly.length === 0) return 0;
+            const isCompleted = (status: TimelineItem['status']): boolean => {
+                const val = Array.isArray(status) ? status[0] : status;
+                const normalized = (val ?? '').toString().trim().toLowerCase();
+                return normalized === 'complete' || normalized === 'completed' || normalized === 'done';
+            };
+            return sceneNotesOnly.every(scene => isCompleted(scene.status)) ? 100 : 0;
+        }
 
         const completed = estimate.total - estimate.remaining;
         // Clamp to 0-100 just in case

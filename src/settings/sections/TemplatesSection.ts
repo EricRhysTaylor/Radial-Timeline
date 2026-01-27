@@ -78,7 +78,6 @@ export function renderStoryBeatsSection(params: {
                 updateActPreview();
             });
         });
-    actLabelsSetting.settingEl.classList.add('ert-elementBlock', 'ert-row--inlineControl', 'ert-settingRow');
 
     // Preview (planet-style)
     const actsPreview = actsStack.createDiv({
@@ -115,8 +114,6 @@ export function renderStoryBeatsSection(params: {
                 });
             dropdown.selectEl.classList.add('ert-setting-dropdown');
         });
-
-    beatSystemSetting.settingEl.classList.add('ert-setting-two-row', 'ert-settingRow');
 
     // Story structure explanation
     const storyStructureInfo = beatSystemSetting.settingEl.createDiv({

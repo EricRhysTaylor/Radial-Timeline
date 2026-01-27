@@ -2,7 +2,6 @@ import { App, Setting as Settings, Notice, DropdownComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
 import { parseDurationDetail, formatDurationSelectionLabel, calculateAutoDiscontinuityThreshold } from '../../utils/date';
-import { ERT_CLASSES } from '../../ui/classes';
 import { addHeadingIcon, addWikiLink } from '../wikiLink';
 
 interface DurationCapOption {
@@ -190,8 +189,6 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
 
     const discontinuitySetting = new Settings(containerEl)
         .setName('Discontinuity gap threshold');
-    discontinuitySetting.settingEl.addClass(ERT_CLASSES.ROW);
-    discontinuitySetting.settingEl.addClass(ERT_CLASSES.ROW_INLINE_CONTROL, 'ert-settingRow');
 
     // Declare the text component reference first (before updateDescriptionAndPlaceholder uses it)
     let discontinuityText: any; // SAFE: any type used for Obsidian TextComponent reference (library limitation)
