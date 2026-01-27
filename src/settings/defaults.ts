@@ -15,7 +15,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     aiOutputFolder: 'Radial Timeline/Logs',
     manuscriptOutputFolder: 'Radial Timeline/Export',
     outlineOutputFolder: 'Radial Timeline/Export',
-    inquiryArtifactFolder: 'Radial Timeline/Inquiry/Artifacts',
+    inquiryArtifactFolder: 'Radial Timeline/Inquiry/Briefing',
     inquiryEmbedJson: true,
     inquiryAutoSave: true,
     inquiryCacheEnabled: true,
@@ -203,7 +203,7 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
     chronologueBackdropMicroRings: [
         { title: '', range: '', color: '#EFBDEB' }
     ],
-    
+
     // Runtime Estimation defaults
     enableRuntimeEstimation: false,
     runtimeRateProfiles: [
@@ -253,7 +253,7 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
         enabled: false,
         defaultNoteBehavior: 'preset',
         defaultPublishTarget: 'folder',
-        
+
         // Reveal options
         showSubplots: true,
         showActs: true,
@@ -275,38 +275,38 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
         aprBookTitleFontWeight: 400,
         aprBookTitleFontItalic: false,
         aprBookTitleFontSize: undefined, // Uses preset default
-        
+
         aprAuthorNameFontFamily: 'Inter',
         aprAuthorNameFontWeight: 400,
         aprAuthorNameFontItalic: false,
         aprAuthorNameFontSize: undefined, // Uses preset default
-        
+
         aprPercentNumberFontFamily: 'Inter',
         aprPercentNumberFontWeight: 800,
         aprPercentNumberFontItalic: false,
         aprPercentNumberFontSize1Digit: undefined, // Uses preset default
         aprPercentNumberFontSize2Digit: undefined, // Uses preset default
         aprPercentNumberFontSize3Digit: undefined, // Uses preset default
-        
+
         aprPercentSymbolFontFamily: 'Inter',
         aprPercentSymbolFontWeight: 800,
         aprPercentSymbolFontItalic: false,
-        
+
         aprRtBadgeFontFamily: 'Inter',
         aprRtBadgeFontWeight: 700,
         aprRtBadgeFontItalic: false,
         aprRtBadgeFontSize: undefined, // Uses preset default
         aprShowRtAttribution: true,
-        
+
         bookTitle: '',
         authorUrl: '',
-        
+
         lastPublishedDate: undefined,
         updateFrequency: 'manual',
         stalenessThresholdDays: 30,
         enableReminders: true,
         dynamicEmbedPath: 'Radial Timeline/Social/progress.svg',
-        
+
         // Pro Feature: Campaign Manager (empty by default)
         campaigns: []
     },

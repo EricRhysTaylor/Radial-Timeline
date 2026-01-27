@@ -7,14 +7,22 @@
 export { createAprSVG, type AprRenderOptions, type AprRenderResult } from './AprRenderer';
 export { 
     APR_VIEW_MODE_LABELS,
+    APR_COLORS,
+    APR_TEXT_COLORS,
     type AprViewMode 
 } from './AprConstants';
 export { 
-    APR_LAYOUT,
-    getPreset, 
-    APR_COLORS, 
-    APR_TEXT_COLORS, 
-    APR_FONTS,
-    type AprSize 
-} from './AprLayoutConfig';
+    APR_PRESETS,
+    APR_SIZE_TO_PRESET,
+    getAprPreset,
+    type AprPreset,
+    type AprPresetKey,
+    type AprSize
+} from './aprPresets';
+export {
+    computeAprLayout,
+    CENTER_OPTICS,
+    type AprLayoutSpec
+} from './aprLayout';
+export { APR_FONTS } from './AprLayoutConfig';
 export { renderAprBranding, renderAprCenterPercent } from './AprBranding';

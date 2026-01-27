@@ -2475,9 +2475,8 @@
   max-width: 100%;
   justify-self: end;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-end;
   gap: var(--ert-gap-sm);
 }
 

@@ -14,10 +14,10 @@ APR uses a **weighted stage-based** approach to calculate your book's completion
 | Press (Publication Ready) | 100% |
 
 **Example**: A book with 100 scenes where:
-- 50 scenes are at Zero → 50 × 0.25 = 12.5%
-- 30 scenes are at Author → 30 × 0.50 = 15%
-- 15 scenes are at House → 15 × 0.75 = 11.25%
-- 5 scenes are at Press → 5 × 1.00 = 5%
+- 50 scenes are at Zero -> 50 x 0.25 = 12.5%
+- 30 scenes are at Author -> 30 x 0.50 = 15%
+- 15 scenes are at House -> 15 x 0.75 = 11.25%
+- 5 scenes are at Press -> 5 x 1.00 = 5%
 - **Total Progress: 44%**
 
 This gives fans a realistic view of multi-stage publishing progress rather than just counting "done" scenes.
@@ -35,29 +35,37 @@ Control how much of your story structure is visible:
 | **Status Colors** | Scene stage/status colors (Todo, Draft, Complete, etc.) |
 | **% Complete** | Large percentage number in the center |
 
-**Tip**: Uncheck all options for a simple progress ring—perfect for early teasers or minimal updates.
+**Tip**: Uncheck all options for a simple progress ring—perfect for early teasers or minimal updates. Manual reveal options are disabled when Teaser Reveal is enabled.
 
 ## Teaser Reveal (Pro)
 
-For campaigns, enable **Teaser Reveal** to automatically show more detail as your book progresses:
+For campaigns, enable **Teaser Reveal** to automatically show more detail as your book progresses.
 
-| Level | Threshold | Shows |
-|-------|-----------|-------|
-| Teaser | 0% | Progress ring only |
-| Scenes | 10% | Scene cells (no colors) |
-| Colors | 25% | Scene cells with status colors |
-| Structure | 50% | Scenes + colors + act boundaries |
-| Full | 75% | Complete timeline with subplots |
+Reveal stages:
 
-This creates anticipation as your audience sees more of your timeline structure as you approach completion.
+| Stage | Shows |
+|-------|-------|
+| Teaser | Progress ring only |
+| Scenes | Scene cells (no colors) |
+| Colors | Scene cells with status colors |
+| Full | Complete timeline with subplots and acts |
+
+Preset schedules:
+- **Slow**: 15%, 40%, 70%
+- **Standard**: 10%, 30%, 60% (default)
+- **Fast**: 5%, 20%, 45%
+- **Custom**: Set your own thresholds (1-99%)
+
+You can click the middle stages in the preview (Scenes, Colors) to skip them and jump to the next stage.
 
 ## Export Sizes
 
 | Size | Dimensions | Best For |
 |------|------------|----------|
-| Compact | 600×600px | Social media posts, thumbnails |
-| Standard | 800×800px | Blog posts, newsletters |
-| Large | 1000×1000px | Website embeds, high-res displays |
+| Thumbnail | 100x100px | Tiny embeds, favicons |
+| Small | 150x150px | Social media replies, profile badges |
+| Medium | 300x300px | Posts, newsletters |
+| Large | 450x450px | Website embeds, high-res displays |
 
 ## Styling Options
 
@@ -72,8 +80,8 @@ This creates anticipation as your audience sees more of your timeline structure 
 Create multiple APR configurations for different platforms:
 
 - **Kickstarter**: 7-day refresh reminders
-- **Patreon**: 14-day refresh reminders  
-- **Newsletter**: 30-day refresh reminders
+- **Patreon**: 14-day refresh reminders
+- **Newsletter**: 14-day refresh reminders
 - **Website**: 30-day refresh reminders
 
-Each campaign can have its own size, reveal settings, and Teaser Reveal configuration.
+Each campaign can have its own update frequency, refresh alert threshold, embed file path, export size, and reveal settings. Teaser Reveal can be enabled per campaign, and manual reveal options are available when Teaser Reveal is disabled.

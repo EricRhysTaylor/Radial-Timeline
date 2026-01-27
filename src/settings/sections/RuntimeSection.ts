@@ -106,39 +106,35 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     }
 
     // Header row with Pro badge, description, and toggle
-    const panelHeader = proContainer.createDiv({
-        cls: `setting-item setting-item-heading ${ERT_CLASSES.ROW_RECOMMENDED}`
-    });
-    const headerInfo = panelHeader.createDiv({ cls: 'setting-item-info' });
-    const headerName = headerInfo.createDiv({ cls: 'setting-item-name' });
-    const badgeEl = headerName.createSpan({
+    const panelHeader = new Setting(proContainer)
+        .setHeading()
+        .setDesc('Activate film and book runtime estimates to the scene hover metadata, Chronologue Mode, and the Command Palette Runtime Estimator.');
+    panelHeader.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
+    panelHeader.nameEl.empty();
+    const badgeEl = panelHeader.nameEl.createSpan({
         cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
     });
     const badgeIcon = badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
     setIcon(badgeIcon, 'signature');
     badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro' });
-    headerName.createSpan({ text: 'Runtime estimation' });
-    const headerWikiLink = headerName.createEl('a', {
+    panelHeader.nameEl.createSpan({ text: 'Runtime estimation' });
+    const headerWikiLink = panelHeader.nameEl.createEl('a', {
         href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#runtime-estimation',
         cls: 'ert-setting-heading-wikilink'
     });
     headerWikiLink.setAttr('target', '_blank');
     headerWikiLink.setAttr('rel', 'noopener');
     setIcon(headerWikiLink, 'external-link');
-    headerInfo.createDiv({
-        cls: 'setting-item-description',
-        text: 'Activate film and book runtime estimates to the scene hover metadata, Chronologue Mode, and the Command Palette Runtime Estimator.'
+    panelHeader.addToggle((toggle: ToggleComponent) => {
+        toggle
+            .setValue(plugin.settings.enableRuntimeEstimation ?? false)
+            .onChange(async (value) => {
+                if (!hasProfessional) return;
+                plugin.settings.enableRuntimeEstimation = value;
+                await plugin.saveSettings();
+                renderConditionalContent();
+            });
     });
-
-    const headerControl = panelHeader.createDiv({ cls: 'setting-item-control' });
-    new ToggleComponent(headerControl)
-        .setValue(plugin.settings.enableRuntimeEstimation ?? false)
-        .onChange(async (value) => {
-            if (!hasProfessional) return;
-            plugin.settings.enableRuntimeEstimation = value;
-            await plugin.saveSettings();
-            renderConditionalContent();
-        });
 
     // Container for conditional settings (shown when enabled)
     const conditionalContainer = proContainer.createDiv({

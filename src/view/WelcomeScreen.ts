@@ -37,7 +37,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     };
     addMode('Narrative', 'Color coded subplots and All Scenes outer ring plus Story Beats.');
     addMode('Subplot', 'Isolates individual subplots with a project-management focus.');
-    addMode('Chronologue', 'Shows how scenes unfold in time with shift & alt submodes.');
+    addMode('Chronologue', 'Shows how scenes unfold in time with shift, alt & RT submodes to reveal time gaps and elapsed time between scenes, alien planet parallel timelines and runtime estimation, respectively.');
     addMode('Gossamer', 'Steps back to give you a birds-eye view of pacing and momentum.');
 
     const links = body.createEl('p', { cls: 'rt-welcome-links' });
@@ -53,7 +53,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     const cta = body.createEl('p', {
         cls: 'rt-welcome-paragraph',
-        text: 'Bug reporting & Get Help buttons in the bottom corners of the Radial Timeline window are always available. The Book Designer can help you begin by setting up a starter set of scenes.'
+        text: 'Bug reporting & Get Help buttons in the bottom corners of the Radial Timeline view are always available. The Book Designer can help you begin by setting up a starter set of scenes.'
     });
 
     // Backup Notice
@@ -67,22 +67,12 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     const backupText = backupNotice.createDiv({ cls: 'rt-welcome-backup-text' });
     
     const backupPara = backupText.createDiv();
-    backupPara.createEl('strong', { text: 'Backup your Work: ' });
-    backupPara.createSpan({ text: 'It is strongly recommended for you to ' });
-    backupPara.createEl('a', { text: 'automate backups', href: 'https://help.obsidian.md/backup' });
-    backupPara.createSpan({ text: '. The native ' });
+    backupPara.createSpan({ text: 'Back up your Obsidian vault regularly to protect against data loss. Learn more at ' });
+    backupPara.createEl('a', { text: 'Obsidian Backup Guide', href: 'https://help.obsidian.md/backup' });
+    backupPara.createSpan({ text: '. Sync does not protect against all forms of data loss. Sync options include ' });
     backupPara.createEl('a', { text: 'Obsidian Sync', href: 'https://obsidian.md/sync' });
-    backupPara.createSpan({ text: ' service and community favorite ' });
+    backupPara.createSpan({ text: ' or ' });
     backupPara.createEl('a', { text: 'Obsidian Git', href: 'https://obsidian.md/plugins?id=obsidian-git' });
-    backupPara.createSpan({ text: ' are excellent choices.' });
-
-    const syncPara = backupText.createDiv();
-    syncPara.style.marginTop = '8px';
-    syncPara.createEl('strong', { text: 'Sync Conflicts: ' });
-    syncPara.createSpan({ text: 'Avoid mixing sync services. If using iCloud on macOS alongside another sync tool, append ' });
-    syncPara.createEl('code', { text: '.nosync' });
-    syncPara.createSpan({ text: ' to the folder name to stop iCloud from syncing the vault. ' });
-    syncPara.createEl('a', { text: 'Read the Obsidian Sync Guide.', href: 'https://help.obsidian.md/sync/switch' });
 
     // Button Container
     const buttonContainer = container.createDiv({ cls: 'rt-welcome-actions' });
@@ -96,4 +86,3 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
         });
     bookBtn.buttonEl.classList.add('rt-welcome-book-btn');
 }
-

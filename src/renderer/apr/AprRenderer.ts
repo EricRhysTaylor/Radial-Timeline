@@ -6,7 +6,9 @@ import type { TimelineItem } from '../../types';
 import { isBeatNote, sortScenes, sortByManuscriptOrder } from '../../utils/sceneHelpers';
 import { computePositions } from '../utils/SceneLayout';
 import { sceneArcPath } from '../components/SceneArcs';
-import { getPreset, APR_COLORS, APR_TEXT_COLORS, AprSize } from './AprLayoutConfig';
+import { APR_COLORS, APR_TEXT_COLORS } from './AprConstants';
+import { computeAprLayout } from './aprLayout';
+import { getAprPreset, type AprSize } from './aprPresets';
 import { renderDefs } from '../components/Defs';
 import { getFillForScene } from '../utils/SceneFill';
 import { DEFAULT_SETTINGS } from '../../settings/defaults';
@@ -125,8 +127,14 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         debugLabel
     } = opts;
 
-    const preset = getPreset(size);
-    const { svgSize, innerRadius, outerRadius, spokeWidth, borderWidth, actSpokeWidth, patternScale } = preset;
+    const layout = computeAprLayout(getAprPreset(size), { percent: progressPercent });
+    const svgSize = layout.outerPx;
+    const innerRadius = layout.ringInnerR;
+    const outerRadius = layout.ringOuterR;
+    const spokeWidth = layout.strokes.spoke;
+    const borderWidth = layout.strokes.ring;
+    const actSpokeWidth = layout.strokes.actSpoke;
+    const patternScale = layout.patternScale;
     const half = svgSize / 2;
 
     // Structural palette based on theme (with optional custom spokes color)
@@ -136,18 +144,18 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const stageColorMap = stageColors || DEFAULT_SETTINGS.publishStageColors;
     const stageColorLookup = stageColorMap as Record<string, string>;
     const isThumb = size === 'thumb';
-    const showScenesFinal = isThumb ? false : showScenes;
-    const showProgressPercentFinal = isThumb ? false : showProgressPercent;
-    const showBrandingFinal = isThumb ? false : showBranding;
-    const centerMarkFinal = isThumb ? 'none' : centerMark;
+    const showScenesFinal = showScenes;
+    const showProgressPercentFinal = layout.centerLabel.enabled && showProgressPercent;
+    const showBrandingFinal = layout.preset.enableText && showBranding;
+    const centerMarkFinal = layout.centerLabel.enabled ? centerMark : 'none';
 
     const stageInfo = resolveStageLabel(publishStageLabel);
     const stageBadgeColor = stageColorLookup[stageInfo.key] ?? stageColorMap.Press ?? '#6FB971';
     const revealCountdownDays = resolveRevealCountdownDays(revealCampaignEnabled, nextRevealAt);
-    const showRtAttributionFinal = (showRtAttribution ?? true) && !isThumb;
+    const showRtAttributionFinal = (showRtAttribution ?? true) && layout.preset.enableText && !isThumb;
     const structuralBorderColor = isThumb ? stageBadgeColor : structural.border;
     const structuralBorderOpacity = isThumb ? 1 : undefined;
-    const centerStrokeWidth = isThumb ? 3 : undefined;
+    const centerStrokeWidth = isThumb ? layout.strokes.ring * 2 : undefined;
 
     // Filter scenes (exclude beat notes always)
     const filteredScenes = scenes.filter(s => !isBeatNote(s));
@@ -220,7 +228,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
             ghostWidth: (outerRadius - innerRadius) * 0.78,
             showBorders: false
         }
-        : undefined;
+        : {};
     const progressColor = stageColorMap.Press || '#22c55e';
     const progressGhostColor = ringOptions?.ghostColor ?? structural.border;
     const progressGhostOpacity = ringOptions?.ghostOpacity ?? 0.25;
@@ -266,7 +274,10 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     // BAR-ONLY MODE (Teaser): Solid progress ring, no scene details
     // ─────────────────────────────────────────────────────────────────────────
     if (!showScenesFinal) {
-        svg += renderProgressRing(innerRadius, outerRadius, progressPercent, structural, stageColorMap, ringOptions);
+        svg += renderProgressRing(innerRadius, outerRadius, progressPercent, structural, stageColorMap, {
+            ...ringOptions,
+            borderWidth: borderWidth
+        });
     } else {
         // Normal mode: Draw rings with scene cells
         svg += `<g class="apr-rings">`;
@@ -291,7 +302,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
 
     // Center percent (optional)
     if (showProgressPercentFinal) {
-        svg += renderAprCenterPercent(progressPercent, size, innerRadius, percentNumberColorResolved, percentSymbolColorResolved, undefined, {
+        svg += renderAprCenterPercent(progressPercent, layout, percentNumberColorResolved, percentSymbolColorResolved, {
             percentNumberFontFamily,
             percentNumberFontWeight,
             percentNumberFontItalic,
@@ -311,6 +322,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
             authorName,
             authorUrl: sanitizeAuthorUrl(authorUrl),
             size,
+            layout,
             bookAuthorColor: bookTitleColorResolved,
             authorColor: authorColorResolved,
             bookTitleFontFamily,
@@ -327,6 +339,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     if (!isThumb) {
         svg += renderAprBadges({
             size,
+            layout,
             stageLabel: stageInfo.label,
             showStageBadge: true,
             showRtAttribution: showRtAttributionFinal,
@@ -573,6 +586,7 @@ function renderProgressRing(
         ghostOpacity?: number;
         ghostWidth?: number;
         showBorders?: boolean;
+        borderWidth?: number;
     }
 ): string {
     const midR = (innerR + outerR) / 2;
@@ -583,6 +597,7 @@ function renderProgressRing(
     const ghostOpacity = options?.ghostOpacity ?? 0.25;
     const ghostWidth = options?.ghostWidth ?? ringWidth;
     const showBorders = options?.showBorders ?? true;
+    const borderStrokeWidth = options?.borderWidth ?? 1.5;
 
     // Track (empty ring)
     let svg = `<g class="apr-progress-ring">`;
@@ -614,8 +629,8 @@ function renderProgressRing(
 
     // Outer and inner border circles
     if (showBorders) {
-        svg += `<circle cx="0" cy="0" r="${outerR}" fill="none" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-width="1.5" />`;
-        svg += `<circle cx="0" cy="0" r="${innerR}" fill="none" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-width="1.5" />`;
+        svg += `<circle cx="0" cy="0" r="${outerR}" fill="none" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-width="${borderStrokeWidth}" />`;
+        svg += `<circle cx="0" cy="0" r="${innerR}" fill="none" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-width="${borderStrokeWidth}" />`;
     }
 
     svg += `</g>`;

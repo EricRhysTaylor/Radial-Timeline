@@ -235,7 +235,7 @@ const normalizeInquirySources = (raw?: InquirySourcesSettings | LegacyInquirySou
             sagaScope: normalizeMaterialMode(config.sagaScope, config.className.toLowerCase()),
             referenceScope: normalizeMaterialMode(
                 (config as InquiryClassConfig).referenceScope
-                    ?? (REFERENCE_ONLY_CLASSES.has(config.className.toLowerCase()) ? true : false),
+                ?? (REFERENCE_ONLY_CLASSES.has(config.className.toLowerCase()) ? true : false),
                 config.className.toLowerCase()
             )
         })),
@@ -1076,7 +1076,7 @@ export function renderInquirySection(params: SectionParams): void {
     artifactSetting.settingEl.classList.add(ERT_CLASSES.ROW_INLINE_CONTROL);
 
     artifactSetting.addText(text => {
-        const defaultPath = DEFAULT_SETTINGS.inquiryArtifactFolder || 'Radial Timeline/Inquiry/Artifacts';
+        const defaultPath = DEFAULT_SETTINGS.inquiryArtifactFolder || 'Radial Timeline/Inquiry/Briefing';
         const fallbackFolder = plugin.settings.inquiryArtifactFolder?.trim() || defaultPath;
         const illegalChars = /[<>:"|?*]/;
 

@@ -47,8 +47,10 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         plugin.settings.planetaryProfiles = profiles;
     }
 
+    const headingRow = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
+
     // Section header
-    const planetaryHeading = new Settings(containerEl)
+    const planetaryHeading = new Settings(headingRow)
         .setName(t('planetary.heading'))
         .setHeading();
     addHeadingIcon(planetaryHeading, 'earth');
@@ -57,7 +59,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
     // Feature toggle
     const visibilityTargets: HTMLElement[] = [];
 
-    new Settings(containerEl)
+    new Settings(headingRow)
         .setName(t('planetary.enable.name'))
         .setDesc('Keep Earth as the planning source, use the profile label to match your planet or setting calendar. Set epoch offset to align Year 1 to a story milestone, and combine with the backdrop notes for complete context. Viewable in scene hover metadata and a compehensive parallel timeline in the Chronologue mode ALT sub-mode.')
         .addToggle(toggle => {

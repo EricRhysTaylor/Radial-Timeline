@@ -17,7 +17,7 @@ Chronologue mode is essential for constructing and visualizing the chronological
 2.  **Switch to Chronologue mode** (keyboard **3** or top-right navigation): Scenes rearrange to show story-world event order across the full 360° circle.
 3.  **Activate Shift mode** (keyboard **Shift** or click shift button or use caps lock): See the bones of your story's temporal structure for all scenes and subplots.
 4.  **Compare elapsed time**: In shift mode, click two scenes to see the elapsed story-time between them with the duration arc. Keep clicking more scenes as needed.
-5.  **Analyze time gaps**: Also in shift mode, discontinuities (large time jumps) appear with ∞ symbol—identify gaps that might need bridging scenes.
+5.  **Analyze time gaps**: Also in shift mode, discontinuities (large time jumps) appear with an infinity symbol - identify gaps that might need bridging scenes.
 
 > **Minimum metadata**: Chronologue only needs a year in the `When` field to place a scene. Year-only (`When: 2045`), year+month (`When: 2045-07`), or textual month+year (`When: July 2045`) all work—missing pieces default to the 1st of that month at noon. Month-only, day-only, or time-only values are ignored and treated as "no When" until you add at least the year.
 
@@ -46,7 +46,7 @@ Some authors choose to organize scenes in manuscript/narrative order, but Chrono
 ### Shift Mode (bones view)
 - Toggle with **Shift** (or Caps Lock) to strip the overlays and see the raw chronological scaffold.
 - Click any two scenes to measure elapsed story time; keep clicking to update the arc.
-- Discontinuities (∞ gaps) stay visible so you can spot missing bridges fast.
+- Discontinuities (infinity gaps) stay visible so you can spot missing bridges fast.
 
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/shift.jpeg" alt="Shift mode wireframe view in Chronologue" style="width: 420; max-width: 100%;" />
@@ -68,7 +68,7 @@ Some authors choose to organize scenes in manuscript/narrative order, but Chrono
 
 Runtime Mode is a specialized sub-mode that replaces elapsed story time with **runtime duration arcs**—showing how long each scene takes to read or perform rather than how much story time passes.
 
-- Toggle with the **RT** button in Chronologue mode (requires Runtime Estimation enabled in Settings → Pro)
+- Toggle with the **RT** button in Chronologue mode (requires Runtime Estimation enabled in Settings -> Pro)
 - Blue wireframe overlay distinguishes it from Shift mode (gray) and Alt mode (red)
 - Duration arcs scale to show relative scene runtime—longer scenes have larger arcs
 - Use the **runtime cap slider** to adjust maximum arc size, emphasizing shorter or longer scenes
@@ -80,7 +80,7 @@ Runtime Mode is a specialized sub-mode that replaces elapsed story time with **r
 - **Podcast structure** — Plan episode segments with time awareness
 
 **How to use:**
-1. Enable Runtime Estimation in **Settings → Pro**
+1. Enable Runtime Estimation in **Settings -> Pro**
 2. Configure a runtime profile matching your content type (Novel or Screenplay)
 3. Switch to Chronologue mode (keyboard **3**)
 4. Click the **RT** button to enter Runtime Mode
@@ -96,6 +96,7 @@ Backdrop notes allow you to visualize contextual events—historical wars, plane
 
 *   **Create**: Use the command **Create backdrop note** to generate a file with start/end times.
 *   **Visualize**: These appear as a dedicated ring in Chronologue mode, grounding your scenes in their temporal context.
+*   **Micro backdrops**: Optional microring overlays with a title, color, and date range configured in Settings. Use these for eras, seasons, or historical milestones.
 *   **Overlaps**: Two backdrops may overlap partially via visual plaid pattern
 
 ### Planetary Time
@@ -112,5 +113,6 @@ For sci-fi and fantasy authors, Chronologue mode includes a **Planetary Time** s
 *   **Synopsis Hover**: In Chronologue Mode, hover over a scene to see its date converted to your active planetary profile.
 *   **Calculator**: Use the command palette (`Cmd/Ctrl + P`) and search for **"Radial Timeline: Planetary time converter"** to open a calculator. Enter any Earth date/time to see the corresponding planetary date/time.
 *   **Chronologue Mode**: A special Alt+Shift red-tinted wireframe view revealing the alien timeline and elapsed time between scenes (a mirror of the standard shift mode for your alien location).
+*   **Active profile**: The selected profile in Settings controls which calendar is used for hover and conversion outputs.
 
 > **Note**: You must still plan and enter metadata using standard Earth format (`When: 2045-05-20`). This feature provides a "translation layer" to help you write scene content (e.g., "The sun set at 19:00 local time") without breaking the timeline's chronological structure.

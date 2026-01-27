@@ -178,8 +178,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Styling (background + branding colors) - placed first, close to preview
     const stylingCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
-    const stylingHeader = stylingCard.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
-    const stylingHeading = stylingHeader.createDiv({ cls: 'setting-item setting-item-heading' });
+    const stylingBody = stylingCard.createDiv({ cls: `${ERT_CLASSES.PANEL_BODY} ${ERT_CLASSES.STACK}` });
+    const stylingHeading = stylingBody.createDiv({ cls: 'setting-item setting-item-heading' });
     const stylingInfo = stylingHeading.createDiv({ cls: 'setting-item-info' });
     const stylingName = stylingInfo.createDiv({ cls: 'setting-item-name' });
     const stylingHeaderIcon = stylingName.createSpan({ cls: 'ert-setting-heading-icon' });
@@ -192,7 +192,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     stylingWikiLink.setAttr('target', '_blank');
     stylingWikiLink.setAttr('rel', 'noopener');
     setIcon(stylingWikiLink, 'external-link');
-    const stylingBody = stylingCard.createDiv({ cls: `${ERT_CLASSES.PANEL_BODY} ${ERT_CLASSES.STACK}` });
 
     const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
     const currentTransparent = settings?.aprCenterTransparent ?? true; // Default to true (recommended)
@@ -1037,21 +1036,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // PUBLISHING SECTION
     // Pro users use Campaign Manager instead, non-Pro users see basic publishing options
     // ─────────────────────────────────────────────────────────────────────────
-    if (isProActive) {
-        const attributionSetting = new Setting(themeBody)
-            .setName('RT Attribution')
-            .setDesc('Show the RT attribution mark in APR exports (Pro can hide this).')
-            .addToggle(toggle => {
-                toggle.setValue(settings?.aprShowRtAttribution !== false)
-                    .onChange(async (val) => {
-                        if (!plugin.settings.authorProgress) return;
-                        plugin.settings.authorProgress.aprShowRtAttribution = val;
-                        await plugin.saveSettings();
-                        refreshPreview();
-                    });
-            });
-        attributionSetting.settingEl.addClass(ERT_CLASSES.ROW);
-    }
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // PUBLISHING SECTION
@@ -1244,7 +1229,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // CAMPAIGN MANAGER (PRO FEATURE)
     // Always visible; locked styling handled inside section when Pro is inactive
     // ─────────────────────────────────────────────────────────────────────────
-    const proContainer = contentWrapper.createDiv({ cls: ERT_CLASSES.SKIN_PRO });
+    const proContainer = contentWrapper.createDiv({ cls: `${ERT_CLASSES.SKIN_PRO} ${ERT_CLASSES.STACK}` });
     renderCampaignManagerSection({
         app,
         plugin,
@@ -1255,6 +1240,27 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             void renderHeroPreview(app, plugin, previewContainer, size);
         }
     });
+
+    if (isProActive) {
+        const attributionCard = proContainer.createDiv({
+            cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.SKIN_PRO}`
+        });
+
+        const attributionSetting = new Setting(attributionCard)
+            .setName('RT Attribution')
+            .setDesc('Show the Radial Timeline attribution mark and link in APR exports.')
+            .addToggle(toggle => {
+                toggle.setValue(settings?.aprShowRtAttribution !== false)
+                    .onChange(async (val) => {
+                        if (!plugin.settings.authorProgress) return;
+                        plugin.settings.authorProgress.aprShowRtAttribution = val;
+                        await plugin.saveSettings();
+                        refreshPreview();
+                    });
+            });
+        attributionSetting.settingEl.addClass(ERT_CLASSES.ROW);
+        attributionSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
+    }
 }
 
 /**

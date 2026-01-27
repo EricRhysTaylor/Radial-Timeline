@@ -2,7 +2,7 @@
 
 **Professional tools for serious writers.**
 
-Radial Timeline's Signature tier unlocks advanced capabilities designed for professional workflows—runtime estimation, premium exports, and specialized Chronologue visualization modes.
+Radial Timeline's Signature tier unlocks advanced capabilities designed for professional workflows: runtime estimation, premium exports, campaign tools for Author Progress Reports, and specialized Chronologue visualization modes.
 
 > **Early Access**: During the Open Beta, all Pro features are available free to early adopters. Your feedback shapes the future of Radial Timeline. When paid licensing launches, early supporters may receive special perks.
 
@@ -52,6 +52,23 @@ Export your manuscript in professional formats using customizable Pandoc templat
 
 ---
 
+## Campaign Manager and Teaser Reveal
+
+*Run multiple Author Progress Report (APR) campaigns and reveal your timeline over time.*
+
+Campaign Manager lets you manage multiple APR configurations for different platforms (Kickstarter, Patreon, newsletter, website) with independent schedules and export targets. Teaser Reveal adds a progressive reveal system that exposes more detail as your completion percentage rises.
+
+**Capabilities:**
+- **Multiple campaigns** - Separate refresh schedules, export sizes, and embed paths per platform
+- **Update frequency** - Manual, Daily, Weekly, or Monthly auto-updates
+- **Refresh alerts** - Custom reminder thresholds for manual campaigns
+- **Manual reveal options** - Toggle acts, subplots, status colors, and percent display when Teaser Reveal is disabled
+- **Teaser Reveal presets** - Slow (15/40/70), Standard (10/30/60), Fast (5/20/45), or custom thresholds
+
+> **Settings**: [[Settings#social-media]]
+
+---
+
 ## Chronologue Runtime Mode
 
 *Visualize scene duration in the chronological timeline.*
@@ -83,4 +100,3 @@ Runtime Mode is a specialized sub-mode within Chronologue that replaces elapsed 
 ---
 
 *Questions or feedback? Visit [radial-timeline.com/feedback](https://radial-timeline.com/feedback)*
-

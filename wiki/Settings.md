@@ -1,6 +1,6 @@
 # Settings Reference
 
-Access via Obsidian **Settings → Community Plugins → Radial Timeline**.
+Access via Obsidian **Settings -> Community Plugins -> Radial Timeline**.
 
 This page serves as a comprehensive reference for all plugin settings.
 
@@ -108,6 +108,7 @@ Configure how Inquiry scans, stores, and annotates briefs.
 *   **Thresholds**: Tune word-count tiers (Empty, Sketchy, Medium, Substantive) used in Corpus cards.
 *   **Highlight completed docs with low substance**: Flags completed notes that remain in Empty or Sketchy tiers.
 
+<a name="core"></a>
 ## Core Tab
 
 <a name="general"></a>
@@ -188,7 +189,7 @@ Target dates are validated to ensure proper stage ordering. Overdue dates are hi
 ### Chronologue mode settings
 Configure the time-based visualization of your story.
 *   **Chronologue duration arc cap**: Determines the maximum duration used for scaling the "duration arcs" (outer ring segments). Can be set to "Auto" or specific timeframes.
-*   **Discontinuity gap threshold**: Controls the sensitivity of the Shift Mode (Time gaps). When the gap between scenes exceeds this threshold, an ∞ symbol appears. Default is auto-calculated (3× median gap).
+*   **Discontinuity gap threshold**: Controls the sensitivity of the Shift Mode (Time gaps). When the gap between scenes exceeds this threshold, an infinity symbol appears. Default is auto-calculated (3x median gap).
 
 > [!NOTE]
 > Read more about [[Chronologue-Mode]].
@@ -214,8 +215,10 @@ Configure custom calendars for sci-fi and fantasy worlds.
 Configure the AI assistant for narrative analysis.
 *   **Enable AI LLM features**: Toggles AI commands and visual indicators.
 *   **AI prompt role & context template**: Customize the system prompt and context sent to the AI.
+*   **Manage context templates**: Use the gear icon to edit templates and choose the active prompt role for analysis and Gossamer scores.
 *   **Show previous and next scene analysis**: When enabled, scene hover metadata includes the AI pulse for neighboring scenes. Disable for a more compact view.
 *   **Model**: Select your preferred LLM (Anthropic Claude, Google Gemini, OpenAI GPT, or Local/OpenAI-compatible).
+*   **Latest model tags**: Models labeled "Latest" auto-update to the newest version within that provider.
 *   **API keys**: Enter your API key for the selected provider (Anthropic, Gemini, or OpenAI).
 
 **Local LLM settings** (visible when Local/OpenAI-compatible is selected):
@@ -256,7 +259,7 @@ Generate shareable, spoiler-safe progress graphics for social media, crowdfundin
 > For detailed information about how APR works, see [[Author-Progress-Report]].
 
 **Preview & Size:**
-*   **Preview Size**: Choose Thumbnail (100×100px), Small (150×150px), Medium (300×300px), or Large (450×450px). This also sets the default export size and updates the preview in real time.
+*   **Preview Size**: Choose Thumbnail (100x100px), Small (150x150px), Medium (300x300px), or Large (450x450px). This also sets the default export size and updates the preview in real time.
 
 <a name="social-media-styling"></a>
 #### Styling

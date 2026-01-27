@@ -269,6 +269,19 @@
   pointer-events: none;
 }
 
+/* APR branding text measurement node (HTML span) */
+.rt-apr-measure-text {
+  font-family: var(--rt-apr-measure-font-family, sans-serif);
+  font-size: var(--rt-apr-measure-font-size, 18px);
+  font-weight: var(--rt-apr-measure-font-weight, 400);
+  font-style: var(--rt-apr-measure-font-style, normal);
+  letter-spacing: var(--rt-apr-measure-letter-spacing, 0em);
+  visibility: hidden;
+  position: absolute;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 /* Generic scene-path styling - excludes backdrop segments which have their own rules */
 .radial-timeline-container .rt-scene-path:not(.rt-backdrop-segment) {
   cursor: pointer;

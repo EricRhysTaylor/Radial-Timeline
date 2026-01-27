@@ -4,7 +4,9 @@
  * Renders the repeating book title/author text around the outer edge.
  */
 
-import { getPreset, APR_TEXT_COLORS, AprSize } from './AprLayoutConfig';
+import { APR_TEXT_COLORS } from './AprConstants';
+import { computeAprLayout, type AprLayoutSpec } from './aprLayout';
+import { getAprPreset, type AprSize } from './aprPresets';
 
 const cssVar = (name: string, fallback: string) => `var(${name}-override, var(${name}, ${fallback}))`;
 const italicAttr = (isItalic?: boolean) => (isItalic ? 'font-style="italic"' : ''); // SAFE: inline style used for SVG font-style attribute
@@ -14,6 +16,7 @@ export interface AprBrandingOptions {
     authorName?: string;
     authorUrl?: string;
     size: AprSize;
+    layout?: AprLayoutSpec;
     bookAuthorColor?: string;
     authorColor?: string;
     // Book Title font settings
@@ -40,8 +43,9 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         bookTitleFontFamily = 'Inter', bookTitleFontWeight = 400, bookTitleFontItalic = false, bookTitleFontSize,
         authorNameFontFamily = 'Inter', authorNameFontWeight = 400, authorNameFontItalic = false, authorNameFontSize
     } = options;
-    const preset = getPreset(size);
-    const { brandingRadius, brandingFontSize } = preset;
+    const resolvedLayout = options.layout ?? computeAprLayout(getAprPreset(size), { percent: 0 });
+    if (!resolvedLayout.preset.enableText || !resolvedLayout.branding.radius) return '';
+    const { radius: brandingRadius, fontSize: brandingFontSize, letterSpacing: brandingLetterSpacing } = resolvedLayout.branding;
 
     // Use custom font sizes if provided, otherwise use preset defaults
     const bookTitleSize = bookTitleFontSize ?? brandingFontSize;
@@ -70,19 +74,24 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     // SAFE: We are in a browser environment (Obsidian)
     if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
         try {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-                // Approximate width measurement using average font size and weight
-                // Note: We use the book title font properties as the primary driver
-                const fontStr = `${italicAttr(bookTitleFontItalic) ? 'italic ' : ''}${bookTitleFontWeight} ${avgFontSize}px "${bookTitleFontFamily}", sans-serif`;
-                ctx.font = fontStr;
-                const unitWidth = ctx.measureText(unitPattern).width;
+            // Use a DOM element to measure width, ensuring we capture correct font metrics
+            const span = document.createElement('span');
+            span.classList.add('rt-apr-measure-text');
+            span.style.setProperty('--rt-apr-measure-font-family', bookTitleFontFamily);
+            span.style.setProperty('--rt-apr-measure-font-weight', String(bookTitleFontWeight));
+            span.style.setProperty('--rt-apr-measure-font-size', `${avgFontSize}px`);
+            span.style.setProperty('--rt-apr-measure-letter-spacing', brandingLetterSpacing);
+            span.style.setProperty('--rt-apr-measure-font-style', bookTitleFontItalic ? 'italic' : 'normal');
+            span.textContent = unitPattern;
 
-                if (unitWidth > 0) {
-                    repeats = Math.round(circumference / unitWidth);
-                    if (repeats < 1) repeats = 1;
-                }
+            document.body.appendChild(span);
+            // Add a tiny buffer to avoid rounding errors causing an extra repeat that squishes too much
+            const unitWidth = span.getBoundingClientRect().width * 1.05;
+            document.body.removeChild(span);
+
+            if (unitWidth > 0) {
+                repeats = Math.round(circumference / unitWidth);
+                if (repeats < 1) repeats = 1;
             }
         } catch (e) {
             console.warn('APR Branding: Failed to measure text width, defaulting to 1 repeat', e);
@@ -121,6 +130,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             font-size="${avgFontSize}" 
             font-weight="${bookTitleFontWeight}" 
             ${italicAttr(bookTitleFontItalic)}
+            letter-spacing="${brandingLetterSpacing}"
             xml:space="preserve">
             <textPath href="#${circlePathId}" startOffset="0%" textLength="${circumference.toFixed(2)}" lengthAdjust="spacing">
                 ${textContent}
@@ -147,6 +157,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
 
 export interface AprBadgeOptions {
     size: AprSize;
+    layout?: AprLayoutSpec;
     stageLabel?: string;
     showStageBadge?: boolean;
     showRtAttribution?: boolean;
@@ -171,16 +182,17 @@ export function renderAprBadges(options: AprBadgeOptions): string {
     } = options;
 
     if (!showStageBadge && !showRtAttribution) return '';
-    if (size === 'thumb') return '';
 
-    const preset = getPreset(size);
-    const half = preset.svgSize / 2;
-    const badgeSize = rtBadgeFontSize ?? preset.rtBrandingFontSize;
-    const stageText = getStageBadgeText(size, stageLabel);
-    const stageLetterSpacing = getStageLetterSpacing(size);
-    const countdownLetterSpacing = getBadgeLetterSpacing(size);
+    const resolvedLayout = options.layout ?? computeAprLayout(getAprPreset(size), { percent: 0 });
+    if (!resolvedLayout.preset.enableText) return '';
 
-    const stageEdgeInset = Math.max(1, Math.round(preset.borderWidth));
+    const half = resolvedLayout.outerPx / 2;
+    const badgeSize = rtBadgeFontSize ?? resolvedLayout.badge.fontSize;
+    const stageText = getStageBadgeText(resolvedLayout, stageLabel);
+    const stageLetterSpacing = resolvedLayout.badge.letterSpacing;
+    const countdownLetterSpacing = resolvedLayout.badge.countdownLetterSpacing;
+
+    const stageEdgeInset = Math.max(1, Math.round(resolvedLayout.strokes.ring));
     const stageX = half - stageEdgeInset;
     const stageY = half - stageEdgeInset;
 
@@ -253,10 +265,10 @@ export function renderAprBadges(options: AprBadgeOptions): string {
     `;
 }
 
-function getStageBadgeText(size: AprSize, stageLabel?: string): string {
+function getStageBadgeText(layout: AprLayoutSpec, stageLabel?: string): string {
     const raw = (stageLabel || 'Zero').trim();
     const upper = raw.toUpperCase() || 'ZERO';
-    if (size === 'small' || size === 'medium') {
+    if (layout.outerPx <= 300) {
         const shortMap: Record<string, string> = {
             ZERO: 'ZE',
             AUTHOR: 'AU',
@@ -268,40 +280,10 @@ function getStageBadgeText(size: AprSize, stageLabel?: string): string {
     return upper;
 }
 
-function getStageLetterSpacing(size: AprSize): string {
-    switch (size) {
-        case 'small':
-        case 'medium':
-            return '0em';
-        case 'large':
-            return '0.01em';
-        default:
-            return '0.06em';
-    }
-}
-
-function getBadgeLetterSpacing(size: AprSize): string {
-    switch (size) {
-        case 'small':
-            return '0.05em';
-        case 'medium':
-            return '0.045em';
-        case 'large':
-            return '0.04em';
-        default:
-            return '0.08em';
-    }
-}
-
 /**
  * Options for center percent rendering
  */
 export interface AprCenterPercentOptions {
-    percent: number;
-    size: AprSize;
-    innerRadius: number;
-    numberColor?: string;
-    symbolColor?: string;
     // Percent Number font settings
     percentNumberFontFamily?: string;
     percentNumberFontWeight?: number;
@@ -320,82 +302,69 @@ export interface AprCenterPercentOptions {
  */
 export function renderAprCenterPercent(
     percent: number,
-    size: AprSize,
-    innerRadius: number,
+    layout: AprLayoutSpec,
     numberColor?: string,
     symbolColor?: string,
-    percentFontWeight?: number,
     options?: Partial<AprCenterPercentOptions>
 ): string {
-    const preset = getPreset(size);
+    if (!layout.centerLabel.enabled) return '';
     // Fallback to Press stage green if colors not provided
     const defaultColor = '#6FB971';
     const numColor = numberColor || defaultColor;
     const symColor = symbolColor || defaultColor;
 
-    // Use options if provided, otherwise fall back to legacy percentFontWeight parameter
     const percentNumberFontFamily = options?.percentNumberFontFamily || 'Inter';
-    const percentNumberFontWeight = options?.percentNumberFontWeight ?? percentFontWeight ?? 800;
+    const percentNumberFontWeight = options?.percentNumberFontWeight ?? 800;
     const percentNumberFontItalic = options?.percentNumberFontItalic ?? false;
-    const percentSymbolFontFamily = options?.percentSymbolFontFamily || 'Inter';
-    const percentSymbolFontWeight = options?.percentSymbolFontWeight ?? percentFontWeight ?? 800;
-    const percentSymbolFontItalic = options?.percentSymbolFontItalic ?? false;
+    const percentSymbolFontFamily = options?.percentSymbolFontFamily || percentNumberFontFamily;
+    const percentSymbolFontWeight = options?.percentSymbolFontWeight ?? percentNumberFontWeight;
+    const percentSymbolFontItalic = options?.percentSymbolFontItalic ?? percentNumberFontItalic;
 
-    const numStr = String(percent);
-    const charCount = numStr.length;
+    const numStr = String(Math.round(percent));
+    const charCount = Math.max(1, numStr.length);
+    const perDigitOverride = charCount === 1
+        ? options?.percentNumberFontSize1Digit
+        : charCount === 2
+            ? options?.percentNumberFontSize2Digit
+            : options?.percentNumberFontSize3Digit;
 
-    // Intelligent scaling algorithm:
-    // Pinned to the user's preferred 3-digit density (width constraint) 
-    // and 1-digit max height (height constraint).
-    // Formula: Size = Min(MaxHeight, (Reference3DigitSize * 3) / CharCount)
+    const baseNumberPx = perDigitOverride ?? layout.centerLabel.numberPx;
+    const numberPx = Math.max(1, baseNumberPx);
+    const percentPx = perDigitOverride && layout.centerLabel.numberPx > 0
+        ? (numberPx * (layout.centerLabel.percentPx / layout.centerLabel.numberPx))
+        : layout.centerLabel.percentPx;
 
-    // Use the 1-digit size as the Max Height cap
-    const maxHeight = options?.percentNumberFontSize1Digit ?? preset.centerNumberFontSize1Digit;
-
-    // Use the 3-digit size as the Density Reference (width constraint)
-    const refSize3 = options?.percentNumberFontSize3Digit ?? preset.centerNumberFontSize3Digit;
-
-    // Calculate optimal size
-    const fontSize = Math.min(maxHeight, (refSize3 * 3) / charCount);
-
-    const ghostFontSize = innerRadius * preset.percentSymbolSizeMultiplier;
-    const ghostOpacity = preset.percentSymbolOpacity;
-    const numberOpacity = preset.percentNumberOpacity;
-    // Use preset-specific offsets for proper scaling at each size
-    const ghostYOffset = preset.ghostYOffset;
-    const ghostXOffset = preset.ghostXOffset ?? 0;
-    const numberYOffset = preset.centerYOffset;
-    const numberXOffset = preset.centerXOffset ?? 0;
+    const scale = layout.centerLabel.numberPx > 0 ? (numberPx / layout.centerLabel.numberPx) : 1;
+    const centerDyPx = layout.centerLabel.dyPx * scale;
+    const percentDxPx = layout.centerLabel.percentDxPx * scale;
+    const percentBaselineShiftPx = layout.centerLabel.percentBaselineShiftPx * scale;
 
     // SAFE: inline style used for SVG attribute font-style in template string
     return `
-        <g class="apr-center-percent">
+        <g class="apr-center-percent" transform="translate(0 0)">
             <text 
-                x="${ghostXOffset}" 
-                y="${ghostYOffset}" 
                 text-anchor="middle" 
                 dominant-baseline="middle"
-                font-family="${percentSymbolFontFamily}" 
-                font-weight="${percentSymbolFontWeight}" 
-                ${italicAttr(percentSymbolFontItalic)}
-                font-size="${ghostFontSize}" 
-                fill="${cssVar('--apr-percent-symbol-color', symColor)}"
-                opacity="${ghostOpacity}">
-                %
-            </text>
-            <text 
-                x="${numberXOffset}" 
-                y="${numberYOffset}" 
-                text-anchor="middle" 
-                dominant-baseline="middle"
-                font-family="${percentNumberFontFamily}" 
-                font-weight="${percentNumberFontWeight}" 
-                ${italicAttr(percentNumberFontItalic)}
-                font-size="${fontSize}" 
-                letter-spacing="${preset.percentLetterSpacing}"
-                fill="${cssVar('--apr-percent-number-color', numColor)}"
-                opacity="${numberOpacity}">
-                ${numStr}
+                dy="${centerDyPx}">
+                <tspan
+                    font-family="${percentNumberFontFamily}" 
+                    font-weight="${percentNumberFontWeight}" 
+                    ${italicAttr(percentNumberFontItalic)}
+                    font-size="${numberPx}" 
+                    letter-spacing="${layout.centerLabel.letterSpacing}"
+                    fill="${cssVar('--apr-percent-number-color', numColor)}">
+                    ${numStr}
+                </tspan>
+                <tspan
+                    font-family="${percentSymbolFontFamily}" 
+                    font-weight="${percentSymbolFontWeight}" 
+                    ${italicAttr(percentSymbolFontItalic)}
+                    font-size="${percentPx}"
+                    dx="${percentDxPx}"
+                    baseline-shift="${percentBaselineShiftPx}"
+                    fill="${cssVar('--apr-percent-symbol-color', symColor)}">
+                    %
+                </tspan>
             </text>
         </g>
     `;
