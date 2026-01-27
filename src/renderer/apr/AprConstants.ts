@@ -6,6 +6,29 @@
  */
 
 // =============================================================================
+// CORE RADII (single source of truth + size scaling)
+// =============================================================================
+
+export const APR_BASE_RADII = {
+    // Base radii tuned for the 300px preset (MD)
+    inner: 50,
+    outer: 136,
+    text: 140,
+} as const;
+
+export const APR_SIZE_SCALES = {
+    sm150: 0.5,
+    md300: 1,
+    lg450: 1.5,
+} as const;
+
+export const APR_THUMB_RADII = {
+    inner: 14,
+    outer: 43,
+    text: 44,
+} as const;
+
+// =============================================================================
 // APR VIEW MODES
 // =============================================================================
 

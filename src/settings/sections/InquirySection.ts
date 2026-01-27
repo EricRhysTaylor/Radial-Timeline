@@ -312,7 +312,7 @@ export function renderInquirySection(params: SectionParams): void {
         .setName('Inquiry scan folders')
         .setDesc('Inquiry only scans within these folders. One path per line. Wildcards like /Book */ or /Book 1-7 */ are allowed. Use / for the vault root. Empty = no scan.');
     scanRootsSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:scan-roots');
-    scanRootsSetting.settingEl.classList.add('ert-setting-two-row', 'ert-setting-two-row--stretchControl');
+    scanRootsSetting.settingEl.classList.add('ert-setting-two-row', 'ert-setting-two-row--stretchControl', 'ert-settingRow');
 
     const scanRootsText = new TextAreaComponent(scanRootsSetting.controlEl);
     scanRootsText.setValue(listToText(inquirySources.scanRoots));
@@ -1073,7 +1073,7 @@ export function renderInquirySection(params: SectionParams): void {
     const artifactSetting = new Settings(configBody)
         .setName('Briefing folder')
         .setDesc('Inquiry briefs are saved here when auto-save is enabled.');
-    artifactSetting.settingEl.classList.add(ERT_CLASSES.ROW_INLINE_CONTROL);
+    artifactSetting.settingEl.classList.add(ERT_CLASSES.ROW_INLINE_CONTROL, 'ert-settingRow');
 
     artifactSetting.addText(text => {
         const defaultPath = DEFAULT_SETTINGS.inquiryArtifactFolder || 'Radial Timeline/Inquiry/Briefing';

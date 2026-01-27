@@ -78,7 +78,7 @@ export function renderStoryBeatsSection(params: {
                 updateActPreview();
             });
         });
-    actLabelsSetting.settingEl.classList.add('ert-elementBlock', 'ert-row--inlineControl');
+    actLabelsSetting.settingEl.classList.add('ert-elementBlock', 'ert-row--inlineControl', 'ert-settingRow');
 
     // Preview (planet-style)
     const actsPreview = actsStack.createDiv({
@@ -116,7 +116,7 @@ export function renderStoryBeatsSection(params: {
             dropdown.selectEl.style.minWidth = '200px';
         });
 
-    beatSystemSetting.settingEl.classList.add('ert-setting-two-row');
+    beatSystemSetting.settingEl.classList.add('ert-setting-two-row', 'ert-settingRow');
     
     // Explicitly enforce grid layout via inline styles to override any stubborn Flexbox
     beatSystemSetting.settingEl.style.setProperty('display', 'grid', 'important');

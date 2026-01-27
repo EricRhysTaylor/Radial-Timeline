@@ -82,7 +82,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         .setName(t('planetary.active.name'))
         .setDesc(t('planetary.active.desc'));
     selectorSetting.settingEl.addClass(ERT_CLASSES.ROW);
-    selectorSetting.settingEl.addClass(ERT_CLASSES.ROW_INLINE_CONTROL);
+    selectorSetting.settingEl.addClass(ERT_CLASSES.ROW_INLINE_CONTROL, 'ert-settingRow');
 
     let selector: DropdownComponent | undefined;
 

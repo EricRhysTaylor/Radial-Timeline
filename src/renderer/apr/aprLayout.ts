@@ -3,6 +3,7 @@
  */
 
 import type { AprPreset } from './aprPresets';
+import { APR_BASE_RADII, APR_SIZE_SCALES, APR_THUMB_RADII } from './AprConstants';
 
 export type AprData = {
     percent?: number;
@@ -57,7 +58,6 @@ export const kRingStroke = 0.01;
 export const kDividerStroke = 0.004;
 export const kCenterNumber = 0.24;
 export const kPercent = 0.5;
-export const kBrandingRadius = 0.9;
 
 export const CENTER_OPTICS = {
     yShiftEm: 0.06,
@@ -83,11 +83,19 @@ export function computeAprLayout(preset: AprPreset, data: AprData = {}): AprLayo
     const outerR = outerPx / 2;
     const safeInset = px(outerPx, kInset);
     const textBand = preset.enableText ? px(outerPx, kTextBand) : 0;
-    const ringBand = outerPx - 2 * safeInset - textBand;
-    const ringOuterR = outerR - safeInset - textBand;
-    const ringInnerR = preset.innerRadiusPx ?? Math.max(1, ringOuterR - px(outerPx, kTextBand + kInset));
+    const sizeScale = APR_SIZE_SCALES[preset.key as keyof typeof APR_SIZE_SCALES] ?? 1;
+    const radii = preset.key === 'xs100'
+        ? APR_THUMB_RADII
+        : {
+            inner: APR_BASE_RADII.inner * sizeScale,
+            outer: APR_BASE_RADII.outer * sizeScale,
+            text: APR_BASE_RADII.text * sizeScale,
+        };
+    const ringOuterR = radii.outer;
+    const ringInnerR = radii.inner;
     const ringThickness = ringOuterR - ringInnerR;
-    const textR = preset.enableText ? (outerR - safeInset - textBand / 2) * kBrandingRadius : null;
+    const ringBand = ringOuterR * 2;
+    const textR = preset.enableText ? radii.text : null;
 
     const ringStroke = stroke(outerPx, kRingStroke);
     const dividerStroke = stroke(outerPx, kDividerStroke);

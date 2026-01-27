@@ -217,8 +217,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Helper to swap emphasis and enable/disable background controls
     const updateEmphasis = (isTransparent: boolean) => {
         // Always apply recommended styling to prevent layout shift
-        transparencySetting.settingEl.classList.add(ERT_CLASSES.ROW_RECOMMENDED);
-        bgSetting.settingEl.classList.add(ERT_CLASSES.ROW_RECOMMENDED);
+        transparencySetting.settingEl.classList.add(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
+        bgSetting.settingEl.classList.add(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
 
         if (isTransparent) {
             bgSetting.settingEl.classList.add('is-inactive');
@@ -277,7 +277,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const spokeColorSetting = new Setting(stylingBody)
         .setName('Spokes and borders')
         .setDesc('Choose contrasting color or none. Controls all structural elements including scene borders and act division spokes.');
-    spokeColorSetting.settingEl.addClass('ert-elementBlock');
+    spokeColorSetting.settingEl.addClass('ert-elementBlock', 'ert-settingRow');
     spokeColorSetting.controlEl.addClass('ert-elementBlock__right');
     spokeColorSetting.settingEl.querySelector('.setting-item-info')?.classList.add('ert-elementBlock__left');
 
@@ -359,7 +359,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         .setDesc('Where the graphic should link to (e.g. your website, Kickstarter, or shop).');
 
     linkUrlSetting.settingEl.addClass(ERT_CLASSES.ROW);
-    linkUrlSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
+    linkUrlSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
     linkUrlSetting.settingEl.addClass(ERT_CLASSES.ROW_WIDE_CONTROL);
 
     linkUrlSetting.addText(text => {
@@ -749,7 +749,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     const addElementBlock = (parent: HTMLElement, opts: ElementBlockOptions): void => {
         const block = new Setting(parent).setName(opts.label).setDesc(opts.desc);
-        block.settingEl.addClass('ert-elementBlock');
+        block.settingEl.addClass('ert-elementBlock', 'ert-settingRow');
         block.settingEl.dataset.ertTypo = opts.dataTypo;
         block.controlEl.addClass('ert-elementBlock__right');
         const infoEl = block.settingEl.querySelector('.setting-item-info');
@@ -1078,7 +1078,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 })
             );
         frequencySetting.settingEl.addClass(ERT_CLASSES.ROW);
-        frequencySetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
+        frequencySetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
 
         // Add red alert border when refresh is needed
         if (needsRefresh) {
@@ -1121,7 +1121,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                     return slider;
                 });
             stalenessSetting.settingEl.addClass(ERT_CLASSES.ROW);
-            stalenessSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
+            stalenessSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
 
             // Add red alert border when refresh is needed
             if (needsRefresh) {
@@ -1134,7 +1134,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             .setDesc(`Location for the "Live Embed" SVG file. Must end with .svg. Default: ${DEFAULT_SETTINGS.authorProgress?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg'}`);
 
         embedPathSetting.settingEl.addClass(ERT_CLASSES.ROW);
-        embedPathSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
+        embedPathSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
         embedPathSetting.settingEl.addClass(ERT_CLASSES.ROW_WIDE_CONTROL);
 
         embedPathSetting.addText(text => {
@@ -1260,7 +1260,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                     });
             });
         attributionSetting.settingEl.addClass(ERT_CLASSES.ROW);
-        attributionSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
+        attributionSetting.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
     }
 }
 

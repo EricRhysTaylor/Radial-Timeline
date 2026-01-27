@@ -96,10 +96,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     }
 
     if (unitWidth > 0) {
-        repeats = Math.max(1, Math.floor(circumference / unitWidth));
-        const stretch = circumference / (unitWidth * repeats);
-        if (stretch > 1.08) repeats += 1;
-        if (stretch < 0.92 && repeats > 1) repeats -= 1;
+        repeats = Math.max(1, Math.ceil(circumference / unitWidth));
     }
 
     // Full circle path starting from top (12 o'clock) going clockwise
@@ -136,7 +133,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             ${italicAttr(bookTitleFontItalic)}
             letter-spacing="${brandingLetterSpacing}"
             xml:space="preserve">
-            <textPath href="#${circlePathId}" startOffset="0%" textLength="${circumference.toFixed(2)}" lengthAdjust="spacing">
+            <textPath href="#${circlePathId}" startOffset="0%">
                 ${textContent}
             </textPath>
         </text>
@@ -327,7 +324,7 @@ export function renderAprCenterPercent(
     const numStr = String(Math.round(percent));
     const innerRadius = layout.ringInnerR;
     const percentPx = Math.max(1, innerRadius * 2);
-    const numberPx = Math.max(1, innerRadius * 0.9);
+    const numberPx = Math.max(1, innerRadius * 1.2);
     const percentDy = percentPx * 0.1;
     const numberDy = numberPx * 0.1;
 

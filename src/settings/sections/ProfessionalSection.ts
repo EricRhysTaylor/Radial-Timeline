@@ -145,7 +145,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     // CONTENT STACK
     // ─────────────────────────────────────────────────────────────────────────
     const addProRow = (setting: Setting) => {
-        setting.settingEl.addClass(ERT_CLASSES.ELEMENT_BLOCK);
+        setting.settingEl.addClass(ERT_CLASSES.ELEMENT_BLOCK, 'ert-settingRow');
         return setting;
     };
     const lockPanel = (panel: HTMLElement) => {

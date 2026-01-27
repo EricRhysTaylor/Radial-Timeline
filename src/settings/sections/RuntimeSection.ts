@@ -109,7 +109,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     const panelHeader = new Setting(proContainer)
         .setHeading()
         .setDesc('Activate film and book runtime estimates to the scene hover metadata, Chronologue Mode, and the Command Palette Runtime Estimator.');
-    panelHeader.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED);
+    panelHeader.settingEl.addClass(ERT_CLASSES.ROW_RECOMMENDED, 'ert-settingRow');
     panelHeader.nameEl.empty();
     const badgeEl = panelHeader.nameEl.createSpan({
         cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
@@ -141,7 +141,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         cls: ERT_CLASSES.PANEL_BODY
     });
     const addProRow = (setting: Setting) => {
-        setting.settingEl.addClass(ERT_CLASSES.ELEMENT_BLOCK);
+        setting.settingEl.addClass(ERT_CLASSES.ELEMENT_BLOCK, 'ert-settingRow');
         return setting;
     };
 

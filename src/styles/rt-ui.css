@@ -2476,6 +2476,38 @@
   width: 120px;
 }
 
+/* SETTINGS ROW CONTRACT: Col1 flex label, Col2 content-sized control (right aligned) */
+.setting-item.ert-settingRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  column-gap: var(--ert-gap, 16px);
+  align-items: start;
+}
+
+/* Label column shrink/wrap */
+.setting-item.ert-settingRow .setting-item-info,
+.setting-item.ert-settingRow .ert-label {
+  min-width: 0;
+}
+
+/* Control column: hug content + align right */
+.setting-item.ert-settingRow .setting-item-control,
+.setting-item.ert-settingRow .ert-control {
+  justify-self: end;
+  width: max-content;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ert-gap-xs, 8px);
+}
+
+/* Controls respect width tokens */
+.setting-item.ert-settingRow :where(input, textarea, select, .dropdown, .ert-select) {
+  width: var(--ert-control-width, auto);
+  max-width: 100%;
+}
+
 /* Settings row contract */
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-elementBlock.setting-item,
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-elementBlock {
