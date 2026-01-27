@@ -109,8 +109,8 @@ export function renderAprBranding(options: AprBrandingOptions): string {
 
     if (tokens.length === 0) tokens.push(...patternTokens);
 
-    const minSpacingEm = -0.08;
-    const maxSpacingEm = 0.24;
+    const minSpacingEm = Math.max(0, baselineSpacingEm * 0.9);
+    const maxSpacingEm = 0.28;
     let bestCandidate: { count: number; spacingEm: number; adjustment: number; endsWithSep: boolean } | null = null;
     let bestWithin: { count: number; spacingEm: number; adjustment: number; endsWithSep: boolean } | null = null;
     let runningChars = 0;
@@ -127,8 +127,9 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         const within = requiredSpacingEm >= minSpacingEm && requiredSpacingEm <= maxSpacingEm;
 
         if (within) {
-            if (!bestWithin || candidate.adjustment < bestWithin.adjustment - 0.002 ||
-                (Math.abs(candidate.adjustment - bestWithin.adjustment) <= 0.002 && candidate.endsWithSep && !bestWithin.endsWithSep)) {
+            if (!bestWithin || candidate.count > bestWithin.count ||
+                (candidate.count === bestWithin.count && (candidate.adjustment < bestWithin.adjustment - 0.002 ||
+                (Math.abs(candidate.adjustment - bestWithin.adjustment) <= 0.002 && candidate.endsWithSep && !bestWithin.endsWithSep)))) {
                 bestWithin = candidate;
             }
         }

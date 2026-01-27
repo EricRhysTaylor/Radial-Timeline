@@ -346,7 +346,7 @@ export function renderInquirySection(params: SectionParams): void {
     });
 
     const resolvedPreview = sourcesBody.createDiv({
-        cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--left', 'ert-previewFrame--flush'],
+        cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--flush'],
         attr: { 'data-preview': 'inquiry-resolved' }
     });
     const resolvedHeading = resolvedPreview.createDiv({

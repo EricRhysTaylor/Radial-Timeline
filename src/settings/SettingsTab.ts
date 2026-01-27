@@ -365,9 +365,12 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             // Do not convert headers at runtime.
             if (el.classList.contains('setting-item-heading')) return;
             if (el.closest('.ert-color-grid-controls')) return;
+            if (el.classList.contains('mod-toggle')) {
+                el.classList.remove(ERT_CLASSES.ELEMENT_BLOCK, 'ert-settingRow');
+                return;
+            }
             if (el.classList.contains(ERT_CLASSES.ELEMENT_BLOCK_SKIP)) return;
             if (el.classList.contains(ERT_CLASSES.ROW)) return;
-            el.classList.add(ERT_CLASSES.ELEMENT_BLOCK, 'ert-settingRow');
         });
     }
 

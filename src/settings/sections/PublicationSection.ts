@@ -260,7 +260,7 @@ export function renderCompletionEstimatePreview(params: {
         : null;
 
     // --- Completion Estimate Preview ---
-    const previewClasses = ['ert-previewFrame', 'ert-previewFrame--left'];
+    const previewClasses = ['ert-previewFrame', 'ert-stack'];
     if (frameClass) previewClasses.push(frameClass);
     const previewContainer = containerEl.createDiv({
         cls: previewClasses,

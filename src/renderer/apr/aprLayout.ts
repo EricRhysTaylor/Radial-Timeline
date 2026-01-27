@@ -95,7 +95,7 @@ export function computeAprLayout(preset: AprPreset, data: AprData = {}): AprLayo
     const ringInnerR = radii.inner;
     const ringThickness = ringOuterR - ringInnerR;
     const ringBand = ringOuterR * 2;
-    const textR = preset.enableText ? radii.text : null;
+    const textR = preset.enableText ? APR_BASE_RADII.text * sizeScale : null;
 
     const ringStroke = stroke(outerPx, kRingStroke);
     const dividerStroke = stroke(outerPx, kDividerStroke);

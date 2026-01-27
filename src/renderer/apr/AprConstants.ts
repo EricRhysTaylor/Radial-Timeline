@@ -23,9 +23,8 @@ export const APR_SIZE_SCALES = {
 } as const;
 
 export const APR_THUMB_RADII = {
-    inner: 14,
-    outer: 43,
-    text: 44,
+    inner: 16,
+    outer: 50,
 } as const;
 
 // =============================================================================
