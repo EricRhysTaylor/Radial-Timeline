@@ -322,8 +322,10 @@ export function renderAprCenterPercent(
 
     const numStr = String(Math.round(percent));
     const innerRadius = layout.ringInnerR;
-    const percentPx = Math.max(1, innerRadius * 1.6);
+    const percentPx = Math.max(1, innerRadius * 2);
     const numberPx = percentPx * 0.8;
+    const percentDy = percentPx * 0.1;
+    const numberDy = numberPx * 0.1;
 
     // SAFE: inline style used for SVG attribute font-style in template string
     return `
@@ -333,6 +335,8 @@ export function renderAprCenterPercent(
                 y="0"
                 text-anchor="middle" 
                 dominant-baseline="middle"
+                alignment-baseline="middle"
+                dy="${percentDy}"
                 font-family="${percentSymbolFontFamily}" 
                 font-weight="${percentSymbolFontWeight}" 
                 ${italicAttr(percentSymbolFontItalic)}
@@ -345,6 +349,8 @@ export function renderAprCenterPercent(
                 y="0"
                 text-anchor="middle" 
                 dominant-baseline="middle"
+                alignment-baseline="middle"
+                dy="${numberDy}"
                 font-family="${percentNumberFontFamily}" 
                 font-weight="${percentNumberFontWeight}" 
                 ${italicAttr(percentNumberFontItalic)}

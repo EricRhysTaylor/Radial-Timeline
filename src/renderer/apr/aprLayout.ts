@@ -84,8 +84,8 @@ export function computeAprLayout(preset: AprPreset, data: AprData = {}): AprLayo
     const textBand = preset.enableText ? px(outerPx, kTextBand) : 0;
     const ringBand = outerPx - 2 * safeInset - textBand;
     const ringOuterR = outerR - safeInset - textBand;
-    const ringThickness = px(outerPx, kTextBand + kInset);
-    const ringInnerR = Math.max(1, ringOuterR - ringThickness);
+    const ringInnerR = preset.innerRadiusPx ?? Math.max(1, ringOuterR - px(outerPx, kTextBand + kInset));
+    const ringThickness = ringOuterR - ringInnerR;
     const textR = preset.enableText ? (outerR - safeInset - textBand / 2) : null;
 
     const ringStroke = stroke(outerPx, kRingStroke);

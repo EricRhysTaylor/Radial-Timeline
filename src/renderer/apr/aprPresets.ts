@@ -9,6 +9,7 @@ export type AprPresetKey = 'xs100' | 'sm150' | 'md300' | 'lg450';
 export type AprPreset = {
     key: AprPresetKey;
     outerPx: number;
+    innerRadiusPx?: number;
     enableText: boolean;
     enableCenterLabel: boolean;
     density?: number;
@@ -18,6 +19,7 @@ export const APR_PRESETS: Record<AprPresetKey, AprPreset> = {
     xs100: {
         key: 'xs100',
         outerPx: 100,
+        innerRadiusPx: 14,
         enableText: false,
         enableCenterLabel: false,
         density: 0.07,

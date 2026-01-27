@@ -179,7 +179,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Styling (background + branding colors) - placed first, close to preview
     const stylingCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
     const stylingBody = stylingCard.createDiv({ cls: `${ERT_CLASSES.PANEL_BODY} ${ERT_CLASSES.STACK}` });
-    const stylingHeading = stylingBody.createDiv({ cls: 'setting-item setting-item-heading' });
+    const stylingRow = stylingBody.createDiv();
+    const stylingHeading = stylingRow.createDiv({ cls: 'setting-item setting-item-heading' });
     const stylingInfo = stylingHeading.createDiv({ cls: 'setting-item-info' });
     const stylingName = stylingInfo.createDiv({ cls: 'setting-item-name' });
     const stylingHeaderIcon = stylingName.createSpan({ cls: 'ert-setting-heading-icon' });
@@ -200,7 +201,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const currentSpokeColor = settings?.aprSpokeColor || '#ffffff';
 
     // Transparency (Recommended) - placed FIRST with special styling
-    const transparencySetting = new Setting(stylingBody)
+    const transparencySetting = new Setting(stylingRow)
         .setName('Transparent Mode (Recommended)')
         .setDesc('No background fill — adapts to any page or app. Ideal for websites, blogs, and platforms that preserve SVG transparency.');
 

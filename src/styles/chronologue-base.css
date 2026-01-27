@@ -104,6 +104,13 @@
   fill: none;
 }
 
+.rt-backdrop-micro-ring-background {
+  stroke: var(--rt-color-empty);
+  stroke-opacity: 1;
+  fill: none;
+  pointer-events: none;
+}
+
 .rt-backdrop-border {
   stroke: var(--rt-color-empty);
   stroke-width: 1px;
@@ -253,6 +260,12 @@
   stroke-opacity: 1;
 }
 
+.radial-timeline-svg[data-mode="chronologue"]:not([data-shift-mode]).scene-hover .rt-backdrop-micro-ring-background,
+.radial-timeline-svg[data-chronologue-mode="true"]:not([data-shift-mode]).scene-hover .rt-backdrop-micro-ring-background {
+  stroke: var(--rt-color-empty-selected);
+  stroke-opacity: 1;
+}
+
 .radial-timeline-svg[data-mode="chronologue"]:not([data-shift-mode]).scene-hover .rt-backdrop-micro-ring,
 .radial-timeline-svg[data-chronologue-mode="true"]:not([data-shift-mode]).scene-hover .rt-backdrop-micro-ring,
 .radial-timeline-svg[data-mode="chronologue"]:not([data-shift-mode]).scene-hover .rt-backdrop-micro-tick,
@@ -263,6 +276,11 @@
 
 /* Shift/ALT/Runtime: match hover-mute of backdrop ring background for micro rings */
 .radial-timeline-svg[data-shift-mode].rt-shift-scene-hover .rt-backdrop-ring-background {
+  stroke: var(--rt-color-empty-selected);
+  stroke-opacity: 1;
+}
+
+.radial-timeline-svg[data-shift-mode].rt-shift-scene-hover .rt-backdrop-micro-ring-background {
   stroke: var(--rt-color-empty-selected);
   stroke-opacity: 1;
 }

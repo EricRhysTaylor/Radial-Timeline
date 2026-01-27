@@ -201,7 +201,9 @@ export function computeCacheableValues(
     }
     const microBackdropSubplotIndex = masterSubplotOrder.indexOf('MicroBackdrop');
     if (shouldIncludeMicroBackdrop && microBackdropSubplotIndex !== -1) {
-        const microRingWidth = microRingLaneCount * (MICRO_RING_WIDTH + MICRO_RING_GAP);
+        const microRingWidth = microRingLaneCount > 0
+            ? (microRingLaneCount * MICRO_RING_WIDTH) + ((microRingLaneCount - 1) * MICRO_RING_GAP)
+            : 0;
         if (microRingWidth > 0) {
             fixedRings.push({
                 index: NUM_RINGS - 1 - microBackdropSubplotIndex,

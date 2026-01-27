@@ -8,6 +8,10 @@
   stroke-opacity: 0.1;
 }
 
+.radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-micro-ring-background {
+  stroke-opacity: 0.1;
+}
+
 .radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-border {
   opacity: 0.2;
 }

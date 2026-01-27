@@ -1221,7 +1221,7 @@
 
 .ert-ui .ert-apr-preview-frame.ert-apr-preview--actual {
   margin: 0;
-  padding: calc(var(--ert-pad-md) + var(--ert-pad-md) / 2);
+  padding: 12px;
   background: rgba(0, 0, 0, 0.3);
   border-radius: var(--ert-control-radius);
   border: none;

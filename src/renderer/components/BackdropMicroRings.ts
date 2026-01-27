@@ -193,7 +193,15 @@ export function renderBackdropMicroRings(params: {
     const { layout, baseRadius, laneGap } = params;
     if (!layout.segments.length) return '';
 
+    const laneCount = Math.max(0, layout.laneCount);
+    const interLaneGap = Math.max(0, laneGap - MICRO_RING_WIDTH);
+    const totalBandWidth = laneCount > 0
+        ? (laneCount * MICRO_RING_WIDTH) + ((laneCount - 1) * interLaneGap)
+        : MICRO_RING_WIDTH;
+    const backgroundRadius = baseRadius + ((totalBandWidth - MICRO_RING_WIDTH) / 2);
+
     let svg = '<g class="rt-backdrop-micro-rings">';
+    svg += `<circle cx="0" cy="0" r="${formatNumber(backgroundRadius)}" class="rt-backdrop-micro-ring-background" stroke-width="${formatNumber(totalBandWidth)}" pointer-events="none" fill="none" />`;
     layout.segments.forEach(segment => {
         const radius = baseRadius + (segment.lane * laneGap);
         const largeArcFlag = (segment.endAngle - segment.startAngle) > Math.PI ? 1 : 0;

@@ -6,6 +6,11 @@
   stroke-opacity: 0.15;
 }
 
+.radial-timeline-container .radial-timeline-svg[data-shift-mode="runtime"] .rt-backdrop-micro-ring-background {
+  stroke: rgba(60, 140, 220, 0.5);
+  stroke-opacity: 0.15;
+}
+
 .radial-timeline-container .radial-timeline-svg[data-shift-mode="runtime"] .rt-backdrop-border {
   stroke: rgba(60, 140, 220, 0.5);
   opacity: 1;

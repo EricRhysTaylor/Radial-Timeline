@@ -367,7 +367,7 @@ export function createTimelineSVG(
                 const ringOuterRadius = ringInnerRadius + ringWidths[ringIndex];
                 const laneCount = microRingLayout.laneCount;
                 const laneGap = MICRO_RING_WIDTH + MICRO_RING_GAP;
-                const outermostRadius = ringOuterRadius - MICRO_RING_GAP - (MICRO_RING_WIDTH / 2);
+                const outermostRadius = ringOuterRadius - (MICRO_RING_WIDTH / 2);
                 microRingBaseRadius = outermostRadius - ((laneCount - 1) * laneGap);
                 if (!Number.isFinite(microRingBaseRadius) || microRingBaseRadius <= 0) {
                     microRingBaseRadius = undefined;
