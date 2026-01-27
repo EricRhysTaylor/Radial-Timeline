@@ -47,7 +47,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         plugin.settings.planetaryProfiles = profiles;
     }
 
-    const headingRow = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
+    const headingRow = containerEl.createDiv();
 
     // Section header
     const planetaryHeading = new Settings(headingRow)

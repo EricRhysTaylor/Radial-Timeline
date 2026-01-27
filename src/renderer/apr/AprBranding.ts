@@ -321,50 +321,37 @@ export function renderAprCenterPercent(
     const percentSymbolFontItalic = options?.percentSymbolFontItalic ?? percentNumberFontItalic;
 
     const numStr = String(Math.round(percent));
-    const charCount = Math.max(1, numStr.length);
-    const perDigitOverride = charCount === 1
-        ? options?.percentNumberFontSize1Digit
-        : charCount === 2
-            ? options?.percentNumberFontSize2Digit
-            : options?.percentNumberFontSize3Digit;
-
-    const baseNumberPx = perDigitOverride ?? layout.centerLabel.numberPx;
-    const numberPx = Math.max(1, baseNumberPx);
-    const percentPx = perDigitOverride && layout.centerLabel.numberPx > 0
-        ? (numberPx * (layout.centerLabel.percentPx / layout.centerLabel.numberPx))
-        : layout.centerLabel.percentPx;
-
-    const scale = layout.centerLabel.numberPx > 0 ? (numberPx / layout.centerLabel.numberPx) : 1;
-    const centerDyPx = layout.centerLabel.dyPx * scale;
-    const percentDxPx = layout.centerLabel.percentDxPx * scale;
-    const percentBaselineShiftPx = layout.centerLabel.percentBaselineShiftPx * scale;
+    const innerRadius = layout.ringInnerR;
+    const percentPx = Math.max(1, innerRadius * 1.6);
+    const numberPx = percentPx * 0.8;
 
     // SAFE: inline style used for SVG attribute font-style in template string
     return `
         <g class="apr-center-percent" transform="translate(0 0)">
             <text 
+                x="0"
+                y="0"
                 text-anchor="middle" 
                 dominant-baseline="middle"
-                dy="${centerDyPx}">
-                <tspan
-                    font-family="${percentNumberFontFamily}" 
-                    font-weight="${percentNumberFontWeight}" 
-                    ${italicAttr(percentNumberFontItalic)}
-                    font-size="${numberPx}" 
-                    letter-spacing="${layout.centerLabel.letterSpacing}"
-                    fill="${cssVar('--apr-percent-number-color', numColor)}">
-                    ${numStr}
-                </tspan>
-                <tspan
-                    font-family="${percentSymbolFontFamily}" 
-                    font-weight="${percentSymbolFontWeight}" 
-                    ${italicAttr(percentSymbolFontItalic)}
-                    font-size="${percentPx}"
-                    dx="${percentDxPx}"
-                    baseline-shift="${percentBaselineShiftPx}"
-                    fill="${cssVar('--apr-percent-symbol-color', symColor)}">
-                    %
-                </tspan>
+                font-family="${percentSymbolFontFamily}" 
+                font-weight="${percentSymbolFontWeight}" 
+                ${italicAttr(percentSymbolFontItalic)}
+                font-size="${percentPx}"
+                fill="${cssVar('--apr-percent-symbol-color', symColor)}">
+                %
+            </text>
+            <text 
+                x="0"
+                y="0"
+                text-anchor="middle" 
+                dominant-baseline="middle"
+                font-family="${percentNumberFontFamily}" 
+                font-weight="${percentNumberFontWeight}" 
+                ${italicAttr(percentNumberFontItalic)}
+                font-size="${numberPx}" 
+                letter-spacing="${layout.centerLabel.letterSpacing}"
+                fill="${cssVar('--apr-percent-number-color', numColor)}">
+                ${numStr}
             </text>
         </g>
     `;

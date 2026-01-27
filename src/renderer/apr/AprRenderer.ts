@@ -6,7 +6,7 @@ import type { TimelineItem } from '../../types';
 import { isBeatNote, sortScenes, sortByManuscriptOrder } from '../../utils/sceneHelpers';
 import { computePositions } from '../utils/SceneLayout';
 import { sceneArcPath } from '../components/SceneArcs';
-import { APR_COLORS, APR_TEXT_COLORS } from './AprConstants';
+import { APR_COLORS, APR_TEXT_COLORS, APR_FIXED_STROKES } from './AprConstants';
 import { computeAprLayout } from './aprLayout';
 import { getAprPreset, type AprSize } from './aprPresets';
 import { renderDefs } from '../components/Defs';
@@ -131,9 +131,9 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const svgSize = layout.outerPx;
     const innerRadius = layout.ringInnerR;
     const outerRadius = layout.ringOuterR;
-    const spokeWidth = layout.strokes.spoke;
-    const borderWidth = layout.strokes.ring;
-    const actSpokeWidth = layout.strokes.actSpoke;
+    const spokeWidth = APR_FIXED_STROKES.spoke;
+    const borderWidth = APR_FIXED_STROKES.border;
+    const actSpokeWidth = APR_FIXED_STROKES.actSpoke;
     const patternScale = layout.patternScale;
     const half = svgSize / 2;
 
@@ -155,7 +155,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const showRtAttributionFinal = (showRtAttribution ?? true) && layout.preset.enableText && !isThumb;
     const structuralBorderColor = isThumb ? stageBadgeColor : structural.border;
     const structuralBorderOpacity = isThumb ? 1 : undefined;
-    const centerStrokeWidth = isThumb ? layout.strokes.ring * 2 : undefined;
+    const centerStrokeWidth = isThumb ? APR_FIXED_STROKES.border * 2 : undefined;
 
     // Filter scenes (exclude beat notes always)
     const filteredScenes = scenes.filter(s => !isBeatNote(s));

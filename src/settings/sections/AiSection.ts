@@ -85,6 +85,7 @@ export function renderAiSection(params: {
         .setName('Model')
         .setDesc('Pick preferred model for advanced writing analysis. Models marked "Latest" auto-update to the newest version.');
     modelPickerSetting.settingEl.addClass(ERT_CLASSES.ELEMENT_BLOCK);
+    modelPickerSetting.settingEl.addClass(ERT_CLASSES.ROW_WIDE_CONTROL);
 
     const infoEl = modelPickerSetting.settingEl.querySelector('.setting-item-info');
     const guidanceEl = infoEl?.createDiv({ cls: 'ert-model-guidance' }) ??

@@ -31,9 +31,16 @@
 
 ---
 
-<p><strong>Before</strong>: Scrolling through line after line of spreadsheet tables and files, losing sight of how your B-plot interweaves with the main storyline.</p>
-
-<p><strong>After</strong>: One visual map showing every scene, every subplot, every beat color coded and connected to the big picture.</p>
+<table width="100%">
+  <tr>
+    <td width="50%" valign="top">
+      <p><strong>Before</strong>: Scrolling through line after line of spreadsheet tables and files, losing sight of how your B-plot interweaves with the main storyline.</p>
+    </td>
+    <td width="50%" valign="top">
+      <p><strong>After</strong>: One visual map showing every scene, every subplot, every beat color coded and connected to the big picture.</p>
+    </td>
+  </tr>
+</table>
 
 ---
 
