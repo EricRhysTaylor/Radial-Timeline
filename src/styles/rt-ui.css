@@ -402,9 +402,17 @@
 
 .ert-ui .ert-row {
   display: grid;
-  grid-template-columns: minmax(0, var(--ert-label-w)) minmax(0, 1fr);
+  grid-template-columns: minmax(var(--ert-label-w), 1fr) minmax(0, max-content);
   gap: var(--ert-gap-sm);
   align-items: flex-start;
+}
+
+.ert-ui .ert-row .setting-item-info {
+  align-self: flex-start;
+}
+
+.ert-ui .ert-row .setting-item-control {
+  align-self: center;
 }
 
 .ert-ui .ert-row--compact {
@@ -1450,6 +1458,7 @@
   grid-column: 1 / -1;
   grid-row: 2 / 3;
   width: 100%;
+  align-self: start;
 }
 
 .ert-ui .ert-row--wideControl .setting-item-control input[type="text"] {
@@ -1536,6 +1545,11 @@
 .ert-ui .ert-row--recommended {
   border-radius: 8px;
   padding: var(--ert-gap-md) 14px;
+}
+
+.ert-ui .setting-item.mod-toggle.ert-row {
+  grid-template-columns: minmax(var(--ert-label-w), 1fr) max-content;
+  align-items: center;
 }
 
 .ert-ui.ert-skin--social .ert-row--recommended,
@@ -2489,6 +2503,22 @@
   flex-direction: column;
   align-items: flex-end;
   gap: var(--ert-gap-sm);
+}
+
+/* Inline-control element blocks should keep controls on one line */
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root)
+.setting-item.ert-elementBlock.ert-row--inlineControl .setting-item-control {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  align-self: center;
+  flex-wrap: nowrap;
+}
+
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root)
+.setting-item.ert-elementBlock.ert-row--inlineControl .setting-item-control > :is(input, select, textarea).ert-input--full {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 /* Rows inside the control column should size to content, not force full-width */

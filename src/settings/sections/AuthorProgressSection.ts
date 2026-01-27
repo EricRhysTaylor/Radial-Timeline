@@ -178,9 +178,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Styling (background + branding colors) - placed first, close to preview
     const stylingCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
-    const stylingBody = stylingCard.createDiv({ cls: `${ERT_CLASSES.PANEL_BODY} ert-typography-stack` });
-    const stylingRow = stylingBody.createDiv();
-    const stylingHeading = stylingRow.createDiv({ cls: 'setting-item setting-item-heading' });
+    const stylingHeader = stylingCard.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
+    const stylingHeading = stylingHeader.createDiv({ cls: 'setting-item setting-item-heading' });
     const stylingInfo = stylingHeading.createDiv({ cls: 'setting-item-info' });
     const stylingName = stylingInfo.createDiv({ cls: 'setting-item-name' });
     const stylingHeaderIcon = stylingName.createSpan({ cls: 'ert-setting-heading-icon' });
@@ -193,6 +192,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     stylingWikiLink.setAttr('target', '_blank');
     stylingWikiLink.setAttr('rel', 'noopener');
     setIcon(stylingWikiLink, 'external-link');
+    const stylingBody = stylingCard.createDiv({ cls: `${ERT_CLASSES.PANEL_BODY} ert-typography-stack` });
 
     const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
     const currentTransparent = settings?.aprCenterTransparent ?? true; // Default to true (recommended)
@@ -201,7 +201,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const currentSpokeColor = settings?.aprSpokeColor || '#ffffff';
 
     // Transparency (Recommended) - placed FIRST with special styling
-    const transparencySetting = new Setting(stylingRow)
+    const transparencySetting = new Setting(stylingBody)
         .setName('Transparent Mode (Recommended)')
         .setDesc('No background fill — adapts to any page or app. Ideal for websites, blogs, and platforms that preserve SVG transparency.');
 

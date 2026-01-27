@@ -118,6 +118,7 @@ export function renderGeneralSection(params: {
     const aiSetting = new ObsidianSetting(containerEl)
         .setName(t('settings.configuration.aiOutputFolder.name'))
         .setDesc(t('settings.configuration.aiOutputFolder.desc'));
+    aiSetting.settingEl.addClass(ERT_CLASSES.ROW);
     aiSetting.settingEl.addClass(ERT_CLASSES.ROW_INLINE_CONTROL);
     aiSetting.addText(text => {
         const defaultPath = DEFAULT_SETTINGS.aiOutputFolder || 'Radial Timeline/Logs';
@@ -186,6 +187,7 @@ export function renderGeneralSection(params: {
     const manuscriptSetting = new ObsidianSetting(containerEl)
         .setName(t('settings.configuration.manuscriptOutputFolder.name'))
         .setDesc(t('settings.configuration.manuscriptOutputFolder.desc'));
+    manuscriptSetting.settingEl.addClass(ERT_CLASSES.ROW);
     manuscriptSetting.settingEl.addClass(ERT_CLASSES.ROW_INLINE_CONTROL);
     manuscriptSetting.addText(text => {
         const defaultPath = DEFAULT_SETTINGS.manuscriptOutputFolder || 'Radial Timeline/Export';

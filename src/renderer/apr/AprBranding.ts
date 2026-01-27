@@ -70,6 +70,8 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     // Measure unit length to determine optimal repeats
     let repeats = 1;
     const avgFontSize = hasAuthor ? (bookTitleSize + authorNameSize) / 2 : bookTitleSize;
+    const fallbackUnitWidth = Math.max(1, unitPattern.length) * avgFontSize * 0.6;
+    let unitWidth = fallbackUnitWidth;
 
     // SAFE: We are in a browser environment (Obsidian)
     if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
@@ -86,16 +88,18 @@ export function renderAprBranding(options: AprBrandingOptions): string {
 
             document.body.appendChild(span);
             // Add a tiny buffer to avoid rounding errors causing an extra repeat that squishes too much
-            const unitWidth = span.getBoundingClientRect().width * 1.05;
+            unitWidth = span.getBoundingClientRect().width * 1.01;
             document.body.removeChild(span);
-
-            if (unitWidth > 0) {
-                repeats = Math.round(circumference / unitWidth);
-                if (repeats < 1) repeats = 1;
-            }
         } catch (e) {
             console.warn('APR Branding: Failed to measure text width, defaulting to 1 repeat', e);
         }
+    }
+
+    if (unitWidth > 0) {
+        repeats = Math.max(1, Math.floor(circumference / unitWidth));
+        const stretch = circumference / (unitWidth * repeats);
+        if (stretch > 1.08) repeats += 1;
+        if (stretch < 0.92 && repeats > 1) repeats -= 1;
     }
 
     // Full circle path starting from top (12 o'clock) going clockwise
@@ -323,7 +327,7 @@ export function renderAprCenterPercent(
     const numStr = String(Math.round(percent));
     const innerRadius = layout.ringInnerR;
     const percentPx = Math.max(1, innerRadius * 2);
-    const numberPx = percentPx;
+    const numberPx = Math.max(1, innerRadius * 0.9);
     const percentDy = percentPx * 0.1;
     const numberDy = numberPx * 0.1;
 
