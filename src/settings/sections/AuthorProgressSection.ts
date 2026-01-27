@@ -177,7 +177,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const contentWrapper = section.createDiv({ cls: `ert-apr-content ${ERT_CLASSES.STACK}` });
 
     // Styling (background + branding colors) - placed first, close to preview
-    const stylingCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
+    const stylingCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ert-typography-stack` });
     const stylingHeader = stylingCard.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const stylingHeading = stylingHeader.createDiv({ cls: 'setting-item setting-item-heading' });
     const stylingInfo = stylingHeading.createDiv({ cls: 'setting-item-info' });
@@ -192,7 +192,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     stylingWikiLink.setAttr('target', '_blank');
     stylingWikiLink.setAttr('rel', 'noopener');
     setIcon(stylingWikiLink, 'external-link');
-    const stylingBody = stylingCard.createDiv({ cls: `${ERT_CLASSES.PANEL_BODY} ert-typography-stack` });
+    const stylingBody = stylingCard;
 
     const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
     const currentTransparent = settings?.aprCenterTransparent ?? true; // Default to true (recommended)
@@ -372,9 +372,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Each element: Row 1 = Label + Text Input (if applicable) + Color + Hex
     //               Row 2 = Font + Weight
     // ─────────────────────────────────────────────────────────────────────────
-    const themeCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
+    const themeCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ert-typography-stack` });
     const themeHeader = themeCard.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
-    const themeHeading = themeHeader.createDiv({ cls: 'setting-item setting-item-heading' });
+    const themeHeading = themeHeader.createDiv({ cls: `setting-item setting-item-heading ${ERT_CLASSES.ROW}` });
     const themeInfo = themeHeading.createDiv({ cls: 'setting-item-info' });
     const themeName = themeInfo.createDiv({ cls: 'setting-item-name' });
     const themeHeaderIcon = themeName.createSpan({ cls: 'ert-setting-heading-icon' });
@@ -392,7 +392,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         text: 'Theme palette applies curated colors across Title, Author, % Symbol, and % Number based on the Title color. Stage badge uses publish stage colors; manual edits override per row.'
     });
     const themeControl = themeHeading.createDiv({ cls: 'setting-item-control' });
-    const themeBody = themeCard.createDiv({ cls: `${ERT_CLASSES.PANEL_BODY} ert-typography-stack` });
+    const themeBody = themeCard;
 
     // Palette tracking & color picker refs
     let lastAppliedPalette: { bookTitle: string; authorName: string; percentNumber: string; percentSymbol: string } | null = null;
@@ -748,8 +748,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         const infoEl = block.settingEl.querySelector('.setting-item-info');
         infoEl?.classList.add('ert-elementBlock__left');
 
-        const rowPrimary = block.controlEl.createDiv({ cls: 'ert-elementBlock__row ert-elementBlock__row--primary ert-typography-controls' });
-        const rowSecondary = block.controlEl.createDiv({ cls: 'ert-elementBlock__row ert-elementBlock__row--secondary ert-typography-controls' });
+        const controlGroup = block.controlEl.createDiv({ cls: 'ert-controlGroup' });
+        const rowPrimary = controlGroup.createDiv({ cls: 'ert-typography-controls' });
+        const rowSecondary = controlGroup.createDiv({ cls: 'ert-typography-controls' });
 
         let isSyncing = false;
         const isSyncingCheck = () => isSyncing;
@@ -793,7 +794,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             });
         }
 
-        const colorPicker = colorSwatch(rowPrimary, {
+        const colorPicker = colorSwatch(rowSecondary, {
             value: opts.color.value,
             ariaLabel: `${opts.label} color`,
             onChange: async (val) => {
@@ -807,7 +808,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
         opts.color.setPickerRef?.(colorPicker);
 
-        const colorText = new TextComponent(rowPrimary);
+        const colorText = new TextComponent(rowSecondary);
         opts.color.setTextRef?.(colorText);
         colorText.inputEl.classList.add('ert-input--hex');
         colorText.setPlaceholder(opts.color.fallback).setValue(opts.color.value);
@@ -820,12 +821,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             updateAutoState();
         });
 
-        opts.primaryAction?.(rowPrimary);
+        opts.primaryAction?.(rowSecondary);
 
-        autoButton = rowPrimary.createEl('button', { text: 'Auto', cls: 'ert-chip ert-typography-auto' });
+        autoButton = rowSecondary.createEl('button', { text: 'Auto', cls: 'ert-chip ert-typography-auto' });
         autoButton.type = 'button';
 
-        const typographyRefs = buildTypographyControls(rowSecondary, opts.typography, updateAutoState, isSyncingCheck);
+        const typographyRefs = buildTypographyControls(rowPrimary, opts.typography, updateAutoState, isSyncingCheck);
 
         autoButton.addEventListener('click', async () => {
             if (!plugin.settings.authorProgress) return;
@@ -1230,7 +1231,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     if (isProActive) {
         const attributionCard = proContainer.createDiv({
-            cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.SKIN_PRO}`
+            cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ${ERT_CLASSES.SKIN_PRO}`
         });
 
         const attributionSetting = new Setting(attributionCard)

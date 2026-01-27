@@ -395,10 +395,7 @@ export function renderInquirySection(params: SectionParams): void {
     resolvedList.style.setProperty('--ert-controlGroup-columns', '1fr');
     resolvedList.style.setProperty('--ert-controlGroup-max-height', '220px');
 
-    const classScopePanel = sourcesBody.createDiv({ cls: ERT_CLASSES.PANEL });
-    const classScopeBody = classScopePanel.createDiv({ cls: ERT_CLASSES.PANEL_BODY });
-
-    const classScopeSetting = new Settings(classScopeBody)
+    const classScopeSetting = new Settings(sourcesBody)
         .setName('Inquiry class scope')
         .setDesc('One YAML class per line. Use / to allow all classes. Empty = no classes allowed.');
     classScopeSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:class-scope');
@@ -419,7 +416,7 @@ export function renderInquirySection(params: SectionParams): void {
 
     let resolvedRootCache: { signature: string; resolvedRoots: string[]; total: number } | null = null;
 
-    const presetSetting = new Settings(classScopeBody)
+    const presetSetting = new Settings(sourcesBody)
         .setName('Presets')
         .setDesc('Quick starters for the contribution matrix. Apply one, then tweak as needed.');
     presetSetting.settingEl.addClass(ERT_CLASSES.ROW, ERT_CLASSES.ROW_TIGHT);
@@ -447,7 +444,9 @@ export function renderInquirySection(params: SectionParams): void {
     addPresetButton('deep', 'Deep (expensive)');
     syncPresetButtons();
 
-    const classTableWrap = classScopeBody.createDiv({ cls: ['ert-controlGroup', 'ert-controlGroup--class-scope'] });
+    const classTablePanel = sourcesBody.createDiv({ cls: ERT_CLASSES.PANEL });
+    const classTableBody = classTablePanel.createDiv({ cls: 'ert-panel__body' });
+    const classTableWrap = classTableBody.createDiv({ cls: ['ert-controlGroup', 'ert-controlGroup--class-scope'] });
 
     const scanInquiryClasses = async (roots: string[]): Promise<{
         discoveredCounts: Record<string, number>;
@@ -1010,9 +1009,7 @@ export function renderInquirySection(params: SectionParams): void {
             const header = headerCard.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
             const headerMain = header.createDiv({ cls: ERT_CLASSES.CONTROL });
             headerMain.createEl('h4', { cls: ERT_CLASSES.SECTION_TITLE, text: zoneLabels[zone] });
-            const body = headerCard.createDiv({ cls: ERT_CLASSES.PANEL_BODY });
-
-            const canonicalRow = body.createDiv({ cls: ERT_CLASSES.ROW });
+            const canonicalRow = headerCard.createDiv({ cls: ERT_CLASSES.ROW });
             canonicalRow.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Canonical' });
             const canonicalInputWrap = canonicalRow.createDiv({ cls: ERT_CLASSES.CONTROL });
             canonicalInputWrap.createDiv({ cls: 'ert-prompt-question', text: getCanonicalPromptText(zone) });
@@ -1020,8 +1017,7 @@ export function renderInquirySection(params: SectionParams): void {
             const customSlots = getCustomSlots(zone);
 
             const listCard = zoneStack.createDiv({ cls: ERT_CLASSES.PANEL });
-            const listBody = listCard.createDiv({ cls: ERT_CLASSES.PANEL_BODY });
-            const listEl = listBody.createDiv({ cls: ['ert-template-entries', 'ert-template-indent'] });
+            const listEl = listCard.createDiv({ cls: ['ert-template-entries', 'ert-template-indent'] });
             renderCustomRows(listEl, zone, customSlots, 0, customSlots.length, dragState);
 
             const showProGhost = !isPro

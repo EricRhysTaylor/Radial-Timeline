@@ -34,8 +34,8 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
                 renderMicroBackdrops();
             }));
 
-    const listContainer = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} ert-micro-backdrop-body` });
-    const list = listContainer.createDiv({ cls: `${ERT_CLASSES.PANEL_BODY} ert-micro-backdrop-list` });
+    const listContainer = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} ert-micro-backdrop-body ert-micro-backdrop-list` });
+    const list = listContainer;
     let expandedIndex: number | null = null;
 
     const getMicroBackdrops = (): MicroBackdropConfig[] =>

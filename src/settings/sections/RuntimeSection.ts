@@ -135,10 +135,15 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             });
     });
 
-    // Container for conditional settings (shown when enabled)
-    const conditionalContainer = proContainer.createDiv({
-        cls: ERT_CLASSES.PANEL_BODY
-    });
+    const panelHeaderEl = panelHeader.settingEl;
+    const clearConditionalContent = () => {
+        let node = panelHeaderEl.nextElementSibling;
+        while (node) {
+            const next = node.nextElementSibling;
+            node.remove();
+            node = next;
+        }
+    };
     const addProRow = (setting: Setting) => setting;
 
     // Flash helper for input validation
@@ -152,7 +157,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
     const renderConditionalContent = () => {
         const scrollState = captureScrollState();
-        conditionalContainer.empty();
+        clearConditionalContent();
         
         if (!plugin.settings.enableRuntimeEstimation) {
             restoreScrollState(scrollState);
@@ -165,8 +170,8 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             selectedProfileId = profiles[0].id;
         }
 
-        const headerContainer = conditionalContainer.createDiv();
-        const detailsContainer = conditionalContainer.createDiv();
+        const headerContainer = proContainer.createDiv();
+        const detailsContainer = proContainer.createDiv();
 
         const getSelectedProfile = (): RuntimeRateProfile | undefined => {
             const currentProfiles = plugin.settings.runtimeRateProfiles || [];

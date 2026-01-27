@@ -63,97 +63,57 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const circumference = 2 * Math.PI * brandingRadius;
 
     const hasAuthor = authorNameUpper.trim().length > 0;
-    // Estimate width per token (headless-safe, no DOM measurement)
     const avgFontSize = hasAuthor ? (bookTitleSize + authorNameSize) / 2 : bookTitleSize;
-    const baseCharWidth = avgFontSize * 0.42;
     const baseLetterSpacing = brandingLetterSpacing.trim();
     const baseSpacingEm = baseLetterSpacing.endsWith('em') ? Number.parseFloat(baseLetterSpacing) : 0;
-    const baselineSpacingEm = Number.isFinite(baseSpacingEm) ? baseSpacingEm * 0.7 : 0;
-    const baselineLetterSpacing = baseLetterSpacing.endsWith('em')
-        ? `${baselineSpacingEm.toFixed(3)}em`
-        : brandingLetterSpacing;
+    const spacingEm = Number.isFinite(baseSpacingEm) ? baseSpacingEm : 0;
+    const baseCharWidth = avgFontSize * 0.5;
 
-    const estimateTextWidth = (text: string, spacingEm: number) => {
+    const unitPattern = hasAuthor
+        ? `${bookTitleUpper}${separator}${authorNameUpper}${separator}`
+        : `${bookTitleUpper}${separator}`;
+
+    const estimateTextWidth = (text: string) => {
         const charCount = Math.max(1, text.length);
         const spacingPx = spacingEm * avgFontSize;
         return charCount * baseCharWidth + Math.max(0, charCount - 1) * spacingPx;
     };
 
-    const bookWords = bookTitleUpper.trim().split(/\s+/).filter(Boolean);
-    const authorWords = authorNameUpper.trim().split(/\s+/).filter(Boolean);
-    const bookTokens = bookWords.map((word, idx) => ({
-        kind: 'book' as const,
-        text: idx < bookWords.length - 1 ? `${word} ` : word
-    }));
-    const authorTokens = authorWords.map((word, idx) => ({
-        kind: 'author' as const,
-        text: idx < authorWords.length - 1 ? `${word} ` : word
-    }));
-    const sepToken = { kind: 'sep' as const, text: separator };
-
-    const patternTokens = hasAuthor
-        ? [...bookTokens, sepToken, ...authorTokens, sepToken]
-        : [...bookTokens, sepToken];
-
-    const tokens: Array<{ kind: 'book' | 'author' | 'sep'; text: string }> = [];
-    let estimatedWidth = 0;
-    let repeats = 0;
-    const maxRepeats = 20;
-    while (estimatedWidth < circumference * 1.25 && repeats < maxRepeats) {
-        for (const token of patternTokens) {
-            tokens.push(token);
-            estimatedWidth += estimateTextWidth(token.text, baselineSpacingEm);
-        }
-        repeats += 1;
-    }
-
-    if (tokens.length === 0) tokens.push(...patternTokens);
-
-    const minSpacingEm = Math.max(0, baselineSpacingEm);
-    const maxSpacingEm = 0.5;
-    let bestCandidate: { count: number; spacingEm: number; adjustment: number; endsWithSep: boolean } | null = null;
-    let bestWithin: { count: number; spacingEm: number; adjustment: number; endsWithSep: boolean } | null = null;
-    let runningChars = 0;
-
-    for (let i = 0; i < tokens.length; i += 1) {
-        runningChars += tokens[i].text.length;
-        if (i < patternTokens.length - 1) continue;
-        const spacingSlots = Math.max(1, runningChars - 1);
-        const requiredSpacingEm = (circumference - runningChars * baseCharWidth) / (spacingSlots * avgFontSize);
-        if (!Number.isFinite(requiredSpacingEm)) continue;
-        const adjustment = Math.abs(requiredSpacingEm - baselineSpacingEm);
-        const endsWithSep = tokens[i].kind === 'sep';
-        const candidate = { count: i + 1, spacingEm: requiredSpacingEm, adjustment, endsWithSep };
-        const within = requiredSpacingEm >= minSpacingEm && requiredSpacingEm <= maxSpacingEm;
-
-        if (within) {
-            if (!bestWithin || candidate.count > bestWithin.count ||
-                (candidate.count === bestWithin.count && (candidate.adjustment < bestWithin.adjustment - 0.002 ||
-                (Math.abs(candidate.adjustment - bestWithin.adjustment) <= 0.002 && candidate.endsWithSep && !bestWithin.endsWithSep)))) {
-                bestWithin = candidate;
+    let repeats = 1;
+    const canMeasure = typeof document !== 'undefined' && typeof window !== 'undefined';
+    if (canMeasure) {
+        try {
+            const span = document.createElement('span');
+            const inlineStyle = [
+                'position:absolute',
+                'visibility:hidden',
+                'white-space:nowrap',
+                `font-family:${bookTitleFontFamily}`,
+                `font-weight:${bookTitleFontWeight}`,
+                `font-size:${avgFontSize}px`,
+                `letter-spacing:${brandingLetterSpacing}`,
+                `font-style:${bookTitleFontItalic ? 'italic' : 'normal'}`
+            ].join(';');
+            span.setAttribute('style', inlineStyle);
+            span.textContent = unitPattern;
+            document.body.appendChild(span);
+            const unitWidth = span.getBoundingClientRect().width * 1.02;
+            document.body.removeChild(span);
+            if (unitWidth > 0) {
+                repeats = Math.max(1, Math.round(circumference / unitWidth));
             }
+        } catch {
+            // fall back to headless estimate
         }
-
-        if (!bestCandidate || candidate.adjustment < bestCandidate.adjustment - 0.002 ||
-            (Math.abs(candidate.adjustment - bestCandidate.adjustment) <= 0.002 && candidate.endsWithSep && !bestCandidate.endsWithSep)) {
-            bestCandidate = candidate;
+    }
+    if (!canMeasure) {
+        const unitWidth = estimateTextWidth(unitPattern);
+        if (unitWidth > 0) {
+            repeats = Math.max(1, Math.round(circumference / unitWidth));
         }
     }
 
-    const chosen = bestWithin ?? bestCandidate;
-    const finalTokens = chosen ? tokens.slice(0, chosen.count) : tokens;
-    const finalSpacingEm = chosen
-        ? Math.min(maxSpacingEm, Math.max(minSpacingEm, chosen.spacingEm))
-        : baselineSpacingEm;
-    const finalLetterSpacing = baseLetterSpacing.endsWith('em')
-        ? `${finalSpacingEm.toFixed(3)}em`
-        : baselineLetterSpacing;
-    const plainText = finalTokens.map(token => token.text).join('');
-    const estimatedTextLen = estimateTextWidth(plainText, finalSpacingEm);
-    const gapLen = Math.max(0, circumference - estimatedTextLen);
-    const gapCenter = circumference * 0.25;
-    const startOffsetPx = (gapCenter + gapLen / 2) % circumference;
-    const startOffset = `${((startOffsetPx / circumference) * 100).toFixed(2)}%`;
+    const startOffset = `${(25 + 10 / 360 * 100).toFixed(2)}%`;
 
     // Full circle path starting from top (12 o'clock) going clockwise
     const circlePathId = 'apr-branding-circle';
@@ -171,10 +131,14 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const authorTspanStart = `<tspan fill="${cssVar('--apr-author-color', authColor)}" font-family="${authorNameFontFamily}" font-weight="${authorNameFontWeight}" font-size="${authorNameSize}" ${italicAttr(authorNameFontItalic)}>`;
     const endTspan = `</tspan>`;
 
-    finalTokens.forEach(token => {
-        const tspanStart = token.kind === 'author' ? authorTspanStart : bookTspanStart;
-        textContent += `${tspanStart}${token.text}${endTspan}`;
-    });
+    for (let i = 0; i < repeats; i += 1) {
+        textContent += `${bookTspanStart}${bookTitleUpper}${endTspan}`;
+        textContent += `${bookTspanStart}${separator}${endTspan}`;
+        if (hasAuthor) {
+            textContent += `${authorTspanStart}${authorNameUpper}${endTspan}`;
+            textContent += `${bookTspanStart}${separator}${endTspan}`;
+        }
+    }
 
     const brandingText = `
         <text 
@@ -182,9 +146,9 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             font-size="${avgFontSize}" 
             font-weight="${bookTitleFontWeight}" 
             ${italicAttr(bookTitleFontItalic)}
-            letter-spacing="${finalLetterSpacing}"
+            letter-spacing="${brandingLetterSpacing}"
             xml:space="preserve">
-            <textPath href="#${circlePathId}" startOffset="${startOffset}">
+            <textPath href="#${circlePathId}" startOffset="${startOffset}" textLength="${circumference.toFixed(2)}" lengthAdjust="spacing">
                 ${textContent}
             </textPath>
         </text>

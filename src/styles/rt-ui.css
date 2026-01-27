@@ -470,7 +470,12 @@
 }
 
 .ert-ui .ert-controlGroup--class-scope {
-  --ert-controlGroup-columns: 90px minmax(0, 1.1fr) 140px 110px 110px 120px 110px;
+  --ert-controlGroup-columns: 90px minmax(160px, 1.4fr) minmax(140px, 1fr) 110px 110px 120px minmax(110px, max-content);
+}
+
+.ert-ui .ert-controlGroup--class-scope .ert-controlGroup__row > .ert-controlGroup__cell:last-child {
+  justify-content: flex-end;
+  text-align: right;
 }
 
 .ert-ui .ert-controlGroup--scroll {
@@ -663,12 +668,6 @@
 
 .ert-ui .ert-panel.ert-stack>.ert-section-title {
   margin-bottom: 0;
-}
-
-.ert-ui .ert-panel__body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ert-gap-sm);
 }
 
 .ert-ui .ert-gridForm {
@@ -1578,6 +1577,10 @@
   margin-bottom: 0;
 }
 
+.ert-ui .ert-panel.ert-typography-stack {
+  margin-bottom: 0;
+}
+
 
 .ert-ui .ert-elementBlock__row {
   width: 100%;
@@ -1594,10 +1597,6 @@
   align-items: center;
   gap: var(--ert-gap-sm);
   min-width: 0;
-}
-
-.ert-ui .ert-elementBlock__right .ert-typography-controls {
-  justify-content: flex-end;
 }
 
 .ert-ui .ert-typography-controls--end {
@@ -2030,6 +2029,11 @@
   gap: var(--ert-gap-sm);
 }
 
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-setting-full-width-input .setting-item-info {
+  align-self: flex-start;
+  text-align: left;
+}
+
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-setting-full-width-input .setting-item-control {
   width: 100%;
   margin-left: 0;
@@ -2240,7 +2244,9 @@
 
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .setting-item {
   margin: 0;
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-xs);
   padding: 0;
   border: none;
   flex: 1;
@@ -2250,10 +2256,14 @@
   border-top: none;
 }
 
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .setting-item-info {
+  display: none;
+}
+
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls .setting-item-control {
   display: flex;
   align-items: center;
-  gap: 0;
+  gap: var(--ert-gap-xs);
   padding: 0;
   margin: 0;
 }

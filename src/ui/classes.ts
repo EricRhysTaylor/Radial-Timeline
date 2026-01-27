@@ -71,7 +71,6 @@ export const ERT_CLASSES = {
   PANEL: 'ert-panel',
   PANEL_ELEV: 'ert-panel--elev',
   PANEL_HEADER: 'ert-panel__header',
-  PANEL_BODY: 'ert-panel__body',
   STAGE_CARD: 'ert-stageCard',
   GRID_FORM: 'ert-gridForm',
   GRID_FORM_2: 'ert-gridForm--2',
