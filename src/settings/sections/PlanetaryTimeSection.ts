@@ -76,7 +76,11 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
     visibilityTargets.push(bodyEl);
 
     // Active profile selector + buttons
-    let activeProfileId = plugin.settings.activePlanetaryProfileId || profiles[0]?.id;
+    let activeProfileId = plugin.settings.activePlanetaryProfileId ?? '';
+    if (activeProfileId && !profiles.some(profile => profile.id === activeProfileId)) {
+        activeProfileId = '';
+        plugin.settings.activePlanetaryProfileId = '';
+    }
 
     const selectorSetting = new Settings(bodyEl)
         .setName(t('planetary.active.name'))
@@ -183,7 +187,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
     // Profile fields
     const fieldsContainer = bodyEl.createDiv({ cls: 'ert-planetary-fields' });
     const previewContainer = bodyEl.createDiv({
-        cls: 'ert-previewFrame ert-previewFrame--center ert-previewFrame--flush',
+        cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--flush'],
         attr: { 'data-preview': 'planetary' }
     });
     visibilityTargets.push(selectorSetting.settingEl, fieldsContainer, previewContainer);
@@ -324,7 +328,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         fieldsContainer.classList.toggle('ert-settings-hidden', !hasProfile);
         if (!hasProfile) return;
         const result = convertFromEarth(new Date(), profile);
-        const header = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
+        const header = previewContainer.createDiv({ cls: ['ert-planetary-preview-heading', 'ert-previewFrame__title'] });
         header.setText(`Quick preview (Earth → ${profile.label || 'local'})`);
         const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body' });
         if (!result) {

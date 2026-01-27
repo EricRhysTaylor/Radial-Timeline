@@ -71,7 +71,7 @@ export function renderStoryBeatsSection(params: {
         .addText(text => {
             text.setPlaceholder('Act 1, Act 2, Act 3');
             text.setValue(plugin.settings.actLabelsRaw ?? '');
-            text.inputEl.addClass('ert-input--lg');
+            text.inputEl.addClass('ert-input--xl');
             text.onChange(async (value) => {
                 plugin.settings.actLabelsRaw = value;
                 await plugin.saveSettings();
@@ -112,8 +112,9 @@ export function renderStoryBeatsSection(params: {
                     updateTemplateButton(templateSetting, value);
                     updateCustomInputsVisibility(value);
                 });
-            dropdown.selectEl.classList.add('ert-setting-dropdown');
+            dropdown.selectEl.classList.add('ert-setting-dropdown', 'ert-setting-dropdown--wide');
         });
+    beatSystemSetting.settingEl.addClass('ert-setting-two-row');
 
     // Story structure explanation
     const storyStructureInfo = beatSystemSetting.settingEl.createDiv({

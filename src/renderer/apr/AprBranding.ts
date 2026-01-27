@@ -148,6 +148,12 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const finalLetterSpacing = baseLetterSpacing.endsWith('em')
         ? `${finalSpacingEm.toFixed(3)}em`
         : baselineLetterSpacing;
+    const plainText = finalTokens.map(token => token.text).join('');
+    const estimatedTextLen = estimateTextWidth(plainText, finalSpacingEm);
+    const gapLen = Math.max(0, circumference - estimatedTextLen);
+    const gapCenter = circumference * 0.25;
+    const startOffsetPx = (gapCenter + gapLen / 2) % circumference;
+    const startOffset = `${((startOffsetPx / circumference) * 100).toFixed(2)}%`;
 
     // Full circle path starting from top (12 o'clock) going clockwise
     const circlePathId = 'apr-branding-circle';
@@ -170,7 +176,6 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         textContent += `${tspanStart}${token.text}${endTspan}`;
     });
 
-    const startOffset = '25%';
     const brandingText = `
         <text 
             font-family="${bookTitleFontFamily}" 
@@ -179,7 +184,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             ${italicAttr(bookTitleFontItalic)}
             letter-spacing="${finalLetterSpacing}"
             xml:space="preserve">
-            <textPath href="#${circlePathId}" startOffset="${startOffset}" textLength="${circumference.toFixed(2)}" lengthAdjust="spacing">
+            <textPath href="#${circlePathId}" startOffset="${startOffset}">
                 ${textContent}
             </textPath>
         </text>
@@ -369,8 +374,11 @@ export function renderAprCenterPercent(
 
     const numStr = String(Math.round(percent));
     const innerRadius = layout.ringInnerR;
-    const percentPx = Math.max(1, innerRadius * 1.8);
-    const numberPx = Math.max(1, innerRadius * 1.6);
+    const digitCount = Math.max(1, numStr.length);
+    const baseNumberPx = innerRadius * 1.2;
+    const digitScale = Math.max(0.72, 1 - (digitCount - 1) * 0.14);
+    const numberPx = Math.max(1, baseNumberPx * digitScale);
+    const percentPx = Math.max(1, numberPx * 1.2);
     const percentDy = percentPx * 0.1;
     const numberDy = numberPx * 0.1;
 

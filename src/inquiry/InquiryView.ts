@@ -5572,7 +5572,8 @@ export class InquiryView extends ItemView {
     private normalizeMaterialMode(value: unknown, className: string): InquiryMaterialMode {
         if (typeof value === 'string') {
             const normalized = value.trim().toLowerCase();
-            if (normalized === 'none' || normalized === 'summary' || normalized === 'full' || normalized === 'digest') {
+            if (normalized === 'digest') return 'summary';
+            if (normalized === 'none' || normalized === 'summary' || normalized === 'full') {
                 return normalized as InquiryMaterialMode;
             }
         }
@@ -5582,9 +5583,31 @@ export class InquiryView extends ItemView {
         return 'none';
     }
 
+    private resolveContributionMode(config: InquiryClassConfig): InquiryMaterialMode {
+        const modes: InquiryMaterialMode[] = [config.bookScope, config.sagaScope, config.referenceScope];
+        return modes.reduce((best, mode) => {
+            const rank = { none: 0, summary: 1, full: 2 };
+            return rank[mode] > rank[best] ? mode : best;
+        }, 'none' as InquiryMaterialMode);
+    }
+
+    private normalizeClassContribution(config: InquiryClassConfig): InquiryClassConfig {
+        const isReference = INQUIRY_REFERENCE_ONLY_CLASSES.has(config.className);
+        const contribution = this.resolveContributionMode(config);
+        const bookActive = !isReference && config.bookScope !== 'none';
+        const sagaActive = !isReference && config.sagaScope !== 'none';
+        const referenceActive = isReference && config.referenceScope !== 'none';
+        return {
+            ...config,
+            bookScope: isReference ? 'none' : (bookActive ? contribution : 'none'),
+            sagaScope: isReference ? 'none' : (sagaActive ? contribution : 'none'),
+            referenceScope: isReference ? (referenceActive ? contribution : 'none') : 'none'
+        };
+    }
+
     private normalizeEvidenceMode(mode?: InquiryMaterialMode): 'none' | 'summary' | 'full' {
         if (mode === 'full') return 'full';
-        if (mode === 'summary' || mode === 'digest') return 'summary';
+        if (mode === 'summary') return 'summary';
         return 'none';
     }
 
@@ -5600,9 +5623,10 @@ export class InquiryView extends ItemView {
             return { scanRoots: [], classes: [], classCounts: {}, resolvedScanRoots: [] };
         }
         return {
+            preset: raw.preset,
             scanRoots: raw.scanRoots && raw.scanRoots.length ? normalizeScanRootPatterns(raw.scanRoots) : [],
             classScope: raw.classScope ? raw.classScope.map(value => value.trim().toLowerCase()).filter(Boolean) : [],
-            classes: (raw.classes || []).map(config => ({
+            classes: (raw.classes || []).map(config => this.normalizeClassContribution({
                 className: config.className.toLowerCase(),
                 enabled: !!config.enabled,
                 bookScope: this.normalizeMaterialMode(config.bookScope, config.className.toLowerCase()),
@@ -6800,7 +6824,7 @@ export class InquiryView extends ItemView {
 
     private getPreviewReferencesValue(): string {
         const stats = this.getPayloadStats();
-        if (!stats.referenceCounts.total) return '';
+        if (!stats.referenceCounts.total) return 'none';
         const { character, place, power, other } = stats.referenceCounts;
         return `character ${character} · place ${place} · power ${power} · other ${other}`;
     }

@@ -213,7 +213,9 @@ export interface AprCampaign {
     teaserReveal?: TeaserRevealSettings;
 }
 
-export type InquiryMaterialMode = 'none' | 'summary' | 'full' | 'digest';
+export type InquiryMaterialMode = 'none' | 'summary' | 'full';
+
+export type InquirySourcesPreset = 'default' | 'light' | 'deep';
 
 export interface InquiryClassConfig {
     className: string;
@@ -224,6 +226,7 @@ export interface InquiryClassConfig {
 }
 
 export interface InquirySourcesSettings {
+    preset?: InquirySourcesPreset;
     scanRoots?: string[];
     resolvedScanRoots?: string[];
     classScope?: string[];

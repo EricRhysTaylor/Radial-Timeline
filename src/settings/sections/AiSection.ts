@@ -475,7 +475,8 @@ export function renderAiSection(params: {
                     plugin.settings.localLlmInstructions = value;
                     await plugin.saveSettings();
                 });
-            text.inputEl.rows = 4;
+            text.inputEl.rows = 6;
+            text.inputEl.addClass('ert-textarea');
         });
     customInstructionsSetting.settingEl.addClass('ert-setting-full-width-input');
 

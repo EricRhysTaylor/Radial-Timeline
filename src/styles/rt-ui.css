@@ -466,7 +466,7 @@
 }
 
 .ert-ui .ert-controlGroup--class-scope {
-  --ert-controlGroup-columns: 90px minmax(0, 1.1fr) 140px 140px 140px 110px;
+  --ert-controlGroup-columns: 90px minmax(0, 1.1fr) 140px 110px 110px 120px 110px;
 }
 
 .ert-ui .ert-controlGroup--scroll {
@@ -1492,6 +1492,28 @@
   align-items: center;
 }
 
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item:not(.setting-item-heading):not(.mod-toggle):not(.ert-row):not(.ert-elementBlock):not(.ert-setting-two-row) {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item:not(.setting-item-heading):not(.mod-toggle):not(.ert-row):not(.ert-elementBlock):not(.ert-setting-two-row) .setting-item-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item:not(.setting-item-heading):not(.mod-toggle):not(.ert-row):not(.ert-elementBlock):not(.ert-setting-two-row) .setting-item-control {
+  flex: 0 0 auto;
+  min-width: 0;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ert-gap-xs, 8px);
+}
+
+
 .ert-ui.ert-skin--social .ert-row--recommended,
 .ert-ui .ert-skin--social .ert-row--recommended {
   background: var(--ert-social-surface-2);
@@ -1977,7 +1999,7 @@
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px var(--ert-gap-md);
+  gap: var(--ert-gap-xs) var(--ert-gap-sm);
   margin-top: 8px;
 }
 
@@ -1995,6 +2017,25 @@
   max-width: var(--ert-settings-select-width-wide);
   flex: 0 0 var(--ert-settings-select-width-wide);
   --ert-control-width: var(--ert-settings-select-width-wide);
+}
+
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-setting-full-width-input {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--ert-gap-sm);
+}
+
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-setting-full-width-input .setting-item-control {
+  width: 100%;
+  margin-left: 0;
+  justify-content: flex-start;
+}
+
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-setting-full-width-input .setting-item-control :where(input, textarea, select, .dropdown) {
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-full-width-input .setting-item-control input[type="text"] {
@@ -2048,8 +2089,8 @@
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-color-grid-controls {
   display: flex;
   align-items: center;
-  gap: var(--ert-gap-sm);
-  padding: var(--ert-gap-xs) 0;
+  gap: var(--ert-gap-xs);
+  padding: 2px 0;
   margin-top: 0;
   position: relative;
 }
@@ -2232,8 +2273,27 @@
   border-color: var(--interactive-accent);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-setting-two-row .ert-story-structure-info {
-  margin: 8px 0 0;
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-setting-two-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  column-gap: 16px;
+  row-gap: 8px;
+  align-items: start;
+}
+
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-setting-two-row .setting-item-info {
+  min-width: 0;
+}
+
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-setting-two-row .setting-item-control {
+  justify-self: end;
+  align-self: center;
+  min-width: 0;
+}
+
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-setting-two-row .ert-story-structure-info {
+  grid-column: 1 / -1;
+  margin: 0;
 }
 
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-micro-backdrop-body {

@@ -417,7 +417,7 @@ export class InquiryRunnerService implements InquiryRunner {
 
     private normalizeEntryMode(mode?: CorpusManifestEntry['mode']): 'none' | 'summary' | 'full' {
         if (mode === 'full') return 'full';
-        if (mode === 'summary' || mode === 'digest') return 'summary';
+        if (mode === 'summary') return 'summary';
         return 'none';
     }
 

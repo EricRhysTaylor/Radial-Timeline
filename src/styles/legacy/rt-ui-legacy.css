@@ -193,9 +193,6 @@
 }
 
 /* Align settings rows to the top when descriptions wrap */
-.ert-settings-root .setting-item {
-  align-items: flex-start;
-}
 
 .ert-settings-root .setting-item.setting-item-heading .setting-item-name {
   display: flex;
@@ -223,10 +220,6 @@
   flex: 0 0 auto;
 }
 
-.ert-settings-root .setting-item-control {
-  display: flex;
-  align-items: center;
-}
 
 .ert-settings-root .clickable-icon.extra-setting-button {
   align-self: center;
