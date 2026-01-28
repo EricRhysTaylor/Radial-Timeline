@@ -210,8 +210,8 @@ export class AuthorProgressModal extends Modal {
         container.empty();
         const campaign = this.getSelectedCampaign();
         const desc = campaign
-            ? `Generate a one-time snapshot for "${campaign.name}". Saves to your Output folder.`
-            : 'Generate a one-time image to share immediately. Saves to your Output folder.';
+            ? `Generate a one-time snapshot for "${campaign.name}". Saves alongside the campaign embed file.`
+            : 'Generate a one-time image to share immediately. Saves alongside your embed destination.';
         container.createEl('p', { text: desc, cls: 'rt-apr-tab-desc' });
 
         const btnRow = container.createDiv({ cls: 'rt-row' });

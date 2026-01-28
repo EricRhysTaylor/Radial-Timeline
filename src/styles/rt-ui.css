@@ -235,6 +235,13 @@
   --ert-control-width: min(100%, var(--ert-input-width-xl));
 }
 
+.ert-ui textarea.ert-textarea--md {
+  width: var(--ert-input-width-md);
+  max-width: 100%;
+  resize: vertical;
+  --ert-control-width: var(--ert-input-width-md);
+}
+
 .ert-ui textarea.ert-textarea--wide {
   width: var(--ert-input-width-xl);
   max-width: 100%;
@@ -1066,6 +1073,13 @@
 .ert-ui .ert-divider {
   border-bottom: 1px solid var(--background-modifier-border);
   margin: var(--ert-gap-sm) 0;
+}
+
+.ert-ui .ert-divider--vertical {
+  width: 1px;
+  align-self: stretch;
+  justify-self: stretch;
+  background: var(--background-modifier-border);
 }
 
 .ert-ui .ert-section--hero {

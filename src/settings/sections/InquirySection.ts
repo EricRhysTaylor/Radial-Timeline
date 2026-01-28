@@ -417,12 +417,12 @@ export function renderInquirySection(params: SectionParams): void {
         .setName('Inquiry class scope')
         .setDesc('One YAML class per line. Use / to allow all classes. Empty = no classes allowed.');
     classScopeSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:class-scope');
-    classScopeSetting.settingEl.addClass(ERT_CLASSES.ROW, 'ert-row--stack');
+    classScopeSetting.settingEl.addClass(ERT_CLASSES.ROW, ERT_CLASSES.ROW_WIDE_CONTROL);
 
     classScopeSetting.addTextArea(text => {
         text.setValue(listToText(inquirySources.classScope));
         text.inputEl.rows = 4;
-        text.inputEl.addClass('ert-input--lg', 'ert-textarea--wide');
+        text.inputEl.addClass('ert-textarea--md');
         text.setPlaceholder('scene\noutline');
         classScopeInput = text;
 
@@ -1041,10 +1041,9 @@ export function renderInquirySection(params: SectionParams): void {
             zone: 'setup' | 'pressure' | 'payoff',
             dragState: { index: number | null }
         ) => {
-            const zoneStack = promptContainer.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+            const zoneStack = promptContainer.createDiv({ cls: ERT_CLASSES.STACK });
 
-            const headingStack = zoneStack.createDiv({ cls: ERT_CLASSES.STACK });
-            const headingCard = headingStack.createDiv({ cls: 'setting-item' });
+            const headingCard = zoneStack.createDiv({ cls: 'setting-item' });
             const headingInfo = headingCard.createDiv({ cls: 'setting-item-info' });
             const headingName = headingInfo.createDiv({ cls: 'setting-item-name' });
             headingName.createSpan({ text: zoneLabels[zone] });
@@ -1053,8 +1052,7 @@ export function renderInquirySection(params: SectionParams): void {
                 text: getCanonicalPromptText(zone)
             });
 
-            const editorStack = zoneStack.createDiv({ cls: ERT_CLASSES.STACK });
-            const listCard = editorStack.createDiv({ cls: ERT_CLASSES.PANEL });
+            const listCard = zoneStack.createDiv({ cls: ERT_CLASSES.PANEL });
             const listEl = listCard.createDiv({ cls: ['ert-template-entries', 'ert-template-indent'] });
 
             const slots = getSlotList(zone);

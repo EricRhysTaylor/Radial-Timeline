@@ -244,10 +244,9 @@ export class AuthorProgressService {
 
             return path;
         } else {
-            // Static snapshot - save to Output folder
-            const fileName = `apr-snapshot-${Date.now()}.svg`;
-            const folder = this.plugin.settings.aiOutputFolder || 'Radial Timeline/Logs';
-            const path = `${folder}/${fileName}`;
+            // Static snapshot - save alongside the embed destination
+            const embedPath = settings.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg';
+            const path = this.buildSnapshotPath(embedPath);
             await this.ensureFolder(path);
             await this.app.vault.create(path, finalSvg);
             return path;
@@ -394,15 +393,13 @@ export class AuthorProgressService {
 
     /**
      * Generate a one-time snapshot for a specific campaign.
-     * Saves to the Output folder using report defaults and any teaser reveal rules.
+     * Saves alongside the campaign's embed destination using report defaults and any teaser reveal rules.
      */
     public async generateCampaignSnapshot(campaignId: string): Promise<string | null> {
         const result = await this.buildCampaignSvg(campaignId);
         if (!result) return null;
         const { svgString, campaign } = result;
-        const fileName = `apr-snapshot-${campaign.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.svg`;
-        const folder = this.plugin.settings.aiOutputFolder || 'Radial Timeline/Logs';
-        const path = `${folder}/${fileName}`;
+        const path = this.buildSnapshotPath(campaign.embedPath, campaign.name);
         await this.ensureFolder(path);
         await this.app.vault.create(path, svgString);
         return path;
@@ -561,5 +558,16 @@ export class AuthorProgressService {
                 await this.app.vault.createFolder(folderPath);
             }
         }
+    }
+
+    private buildSnapshotPath(embedPath: string, fallbackBase = 'apr'): string {
+        const trimmed = embedPath.trim();
+        const lastSlash = trimmed.lastIndexOf('/');
+        const folder = lastSlash >= 0 ? trimmed.slice(0, lastSlash) : '';
+        const file = lastSlash >= 0 ? trimmed.slice(lastSlash + 1) : trimmed;
+        const base = file.toLowerCase().endsWith('.svg') ? file.slice(0, -4) : file;
+        const safeBase = base.trim() || fallbackBase;
+        const fileName = `${safeBase}-snapshot-${Date.now()}.svg`;
+        return folder ? `${folder}/${fileName}` : fileName;
     }
 }

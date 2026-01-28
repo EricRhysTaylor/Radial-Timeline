@@ -179,8 +179,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const contentWrapper = section.createDiv({ cls: `ert-apr-content ${ERT_CLASSES.STACK}` });
 
     // Styling (background + branding colors) - placed first, close to preview
-    const stylingCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ert-typography-stack` });
-    const stylingHeader = stylingCard.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
+    const stylingCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
+    const stylingBlock = stylingCard.createDiv({ cls: ERT_CLASSES.STACK });
+    stylingBlock.style.gap = '0';
+    const stylingHeader = stylingBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const stylingHeading = stylingHeader.createDiv({ cls: 'setting-item setting-item-heading ert-setting-heading--top' });
     const stylingInfo = stylingHeading.createDiv({ cls: 'setting-item-info' });
     const stylingName = stylingInfo.createDiv({ cls: 'setting-item-name' });
@@ -198,7 +200,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         cls: 'setting-item-description',
         text: 'Customize the look of your APR to express your personality. Set and style various text attributes such as the Working Title, Author, and geometry elements like the borders and background.'
     });
-    const stylingBody = stylingCard;
+    const stylingBody = stylingBlock.createDiv({ cls: 'ert-typography-stack' });
 
     const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
     const currentTransparent = settings?.aprCenterTransparent ?? true; // Default to true (recommended)
@@ -435,8 +437,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Each element: Row 1 = Label + Text Input (if applicable) + Color + Hex
     //               Row 2 = Font + Weight
     // ─────────────────────────────────────────────────────────────────────────
-    const themeCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ert-typography-stack` });
-    const themeHeader = themeCard.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
+    const themeCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
+    const themeBlock = themeCard.createDiv({ cls: ERT_CLASSES.STACK });
+    themeBlock.style.gap = '0';
+    const themeHeader = themeBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const themeHeading = themeHeader.createDiv({ cls: `setting-item setting-item-heading ert-setting-heading--top ${ERT_CLASSES.ROW}` });
     const themeInfo = themeHeading.createDiv({ cls: 'setting-item-info' });
     const themeName = themeInfo.createDiv({ cls: 'setting-item-name' });
@@ -455,7 +459,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         text: 'Theme palette applies curated colors across Title, Author, % Symbol, and % Number based on the Title color. Stage badge uses publish stage colors; manual edits override per row.'
     });
     const themeControl = themeHeading.createDiv({ cls: 'setting-item-control' });
-    const themeBody = themeCard;
+    const themeBody = themeBlock.createDiv({ cls: 'ert-typography-stack' });
 
     // Palette tracking & color picker refs
     let lastAppliedPalette: { bookTitle: string; authorName: string; percentNumber: string; percentSymbol: string } | null = null;
@@ -1283,8 +1287,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // PUBLISH STAGE DETECTION & PROGRESS MODE
     // ─────────────────────────────────────────────────────────────────────────
     type AprProgressMode = 'stage' | 'zero' | 'date';
-    const progressModeCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
-    const progressModeHeader = progressModeCard.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
+    const progressModeCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
+    const progressModeBlock = progressModeCard.createDiv({ cls: ERT_CLASSES.STACK });
+    progressModeBlock.style.gap = '0';
+    const progressModeHeader = progressModeBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const progressModeHeading = progressModeHeader.createDiv({ cls: 'setting-item setting-item-heading ert-setting-heading--top' });
     const progressModeInfo = progressModeHeading.createDiv({ cls: 'setting-item-info' });
     const progressModeName = progressModeInfo.createDiv({ cls: 'setting-item-name' });
@@ -1303,18 +1309,20 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         text: 'Detects your current publish stage and recommends the APR progress mode to share.'
     });
 
-    const progressModeGroup = progressModeCard.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--flush` });
-    const progressModeGrid = progressModeGroup.createDiv({ cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_2}` });
+    const progressModeGroup = progressModeBlock.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--flush` });
+    const progressModeGrid = progressModeGroup.createDiv({ cls: ERT_CLASSES.GRID_FORM });
+    progressModeGrid.style.gridTemplateColumns = 'minmax(0, 1fr) auto minmax(0, 1fr)';
+    progressModeGrid.style.columnGap = 'var(--ert-gap-md)';
 
     const stageCell = progressModeGrid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
-    stageCell.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Detected stage' });
     const stageBadgeRow = stageCell.createDiv({ cls: ERT_CLASSES.INLINE });
     stageBadgeRow.style.alignSelf = 'flex-start';
-    const stageBadge = stageBadgeRow.createSpan({ cls: ERT_CLASSES.CHIP, text: 'Detecting...' });
+    const stageBadge = stageBadgeRow.createSpan({ cls: ERT_CLASSES.CHIP, text: 'DETECTING…' });
     const stageNote = stageCell.createDiv({ cls: ERT_CLASSES.FIELD_NOTE });
 
+    progressModeGrid.createDiv({ cls: 'ert-divider--vertical' });
+
     const modeCell = progressModeGrid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
-    modeCell.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Progress mode' });
     const modeDropdown = new DropdownComponent(modeCell);
     modeDropdown.selectEl.addClass('ert-input--md');
     const modeGuidance = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
@@ -1446,7 +1454,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     const updateStageUI = (stage: (typeof STAGE_ORDER)[number], total: number, note: string) => {
         isZeroStage = stage === 'Zero';
-        stageBadge.setText(stage);
+        stageBadge.setText(`${stage.toUpperCase()} DETECTED`);
         applyStageBadgeTone(stage);
         stageNote.setText(note);
         updateModeUI();
