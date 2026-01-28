@@ -1721,6 +1721,16 @@
   --ert-panel-shadow-elev: var(--ert-panel-shadow);
 }
 
+.ert-ui.ert-skin--pro .setting-item:not(.setting-item-heading),
+.ert-ui .ert-skin--pro .setting-item:not(.setting-item-heading),
+.ert-ui.ert-skin--pro .setting-item.mod-toggle:not(.setting-item-heading),
+.ert-ui.ert-skin--pro .setting-item.ert-settingRow:not(.setting-item-heading) {
+  background: color-mix(in srgb, var(--background-secondary) 80%, color-mix(in srgb, var(--ert-accent) 24%, transparent) 0%);
+  border: 1px solid var(--ert-pro-border);
+  box-shadow: 0 5px 18px color-mix(in srgb, var(--ert-accent) 16%, transparent);
+}
+
+
 .ert-ui.ert-modal--social,
 .ert-ui .ert-modal--social {
   --ert-modal-tint: linear-gradient(180deg, color-mix(in srgb, var(--ert-accent) 14%, transparent) 0%, transparent 65%);
@@ -4190,6 +4200,21 @@
   background: var(--ert-pro-surface-2);
   border: 1px solid var(--ert-pro-border);
   box-shadow: none;
+}
+
+.ert-ui .ert-prompt-header {
+  align-items: baseline;
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui .ert-prompt-header .ert-section-title {
+  margin: 0;
+}
+
+.ert-ui .ert-prompt-canonical-question {
+  font-size: 0.95rem;
+  font-style: italic;
+  color: var(--text-muted);
 }
 
 .ert-ui .ert-runtime-patterns {

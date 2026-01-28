@@ -446,7 +446,8 @@ export function renderInquirySection(params: SectionParams): void {
     addPresetButton('deep', 'Deep (expensive)');
     syncPresetButtons();
 
-    const classTableWrap = presetsStack.createDiv({ cls: ['ert-controlGroup', 'ert-controlGroup--class-scope'] });
+    const tableCard = presetsStack.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK_TIGHT}` });
+    const classTableWrap = tableCard.createDiv({ cls: ['ert-controlGroup', 'ert-controlGroup--class-scope'] });
 
     const scanInquiryClasses = async (roots: string[]): Promise<{
         discoveredCounts: Record<string, number>;
@@ -1003,12 +1004,12 @@ export function renderInquirySection(params: SectionParams): void {
             const zoneStack = promptContainer.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
             const headerCard = zoneStack.createDiv({ cls: ERT_CLASSES.PANEL });
             const header = headerCard.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
-            const headerMain = header.createDiv({ cls: ERT_CLASSES.CONTROL });
+            const headerMain = header.createDiv({ cls: `${ERT_CLASSES.CONTROL} ert-prompt-header` });
             headerMain.createEl('h4', { cls: ERT_CLASSES.SECTION_TITLE, text: zoneLabels[zone] });
-            const canonicalRow = headerCard.createDiv({ cls: ERT_CLASSES.ROW });
-            canonicalRow.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Canonical' });
-            const canonicalInputWrap = canonicalRow.createDiv({ cls: ERT_CLASSES.CONTROL });
-            canonicalInputWrap.createDiv({ cls: 'ert-prompt-question', text: getCanonicalPromptText(zone) });
+            headerMain.createEl('span', {
+                cls: 'ert-prompt-canonical-question',
+                text: getCanonicalPromptText(zone)
+            });
 
             const customSlots = getCustomSlots(zone);
 
