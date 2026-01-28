@@ -210,12 +210,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
     // Transparency (Recommended) - placed FIRST with special styling
     const transparencySetting = new Setting(stylingBody)
-        .setName('Transparent Mode (Recommended)')
+        .setName('Transparent mode (recommended)')
         .setDesc('No background fill — adapts to any page or app. Ideal for websites, blogs, and platforms that preserve SVG transparency.');
 
     // Background color - for special situations only (when transparency is off)
     const bgSetting = new Setting(stylingBody)
-        .setName('Background Color')
+        .setName('Background color')
         .setDesc('Bakes in a solid background. Use when transparency isn\'t reliable: email newsletters, Kickstarter, PDF exports, or platforms that rasterize SVGs.');
 
     // Store references to the color picker and text input for enabling/disabling
@@ -1075,7 +1075,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const currentRtBadgeColor = settings?.aprEngineColor || rtBadgeColorFallback;
 
     addElementBlock(themeBody, {
-        label: 'Stage Badge / RT Mark',
+        label: 'Stage badge / RT mark',
         desc: 'Typography for the publish stage badge and the RT attribution mark.',
         dataTypo: 'ert-badgePill',
         color: {
@@ -1270,10 +1270,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         setIcon(teaserIcon, 'signature');
         const teaserHeading = headerRow.createDiv({ cls: 'ert-apr-pro-teaser-heading' });
         teaserHeading.createEl('strong', { text: 'Want more?' });
-        const teaserLabel = headerRow.createDiv({ cls: 'ert-apr-pro-teaser-header-label', text: 'Enhance Your Workflow' });
+        const teaserLabel = headerRow.createDiv({ cls: 'ert-apr-pro-teaser-header-label', text: 'Enhance your workflow' });
         const teaserDescription = proTeaser.createDiv({ cls: 'ert-apr-pro-teaser-description' });
         teaserDescription.setText(
-            'Campaign Manager lets you create multiple embeds with Teaser Reveal—progressively show more detail as you write. Get access to Campaign Manager and more Pro workflow features including runtime (RT) chronologue mode and Pandoc manuscript export templates.'
+            'Campaign manager lets you create multiple embeds with Teaser Reveal—progressively show more detail as you write. Get access to Campaign manager and more Pro workflow features including runtime (RT) chronologue mode and Pandoc manuscript export templates.'
         );
         const teaserLink = proTeaser.createEl('a', {
             text: 'Upgrade to Pro Signature →',
@@ -1296,7 +1296,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const progressModeName = progressModeInfo.createDiv({ cls: 'setting-item-name' });
     const progressModeIcon = progressModeName.createSpan({ cls: 'ert-setting-heading-icon' });
     setIcon(progressModeIcon, 'activity');
-    progressModeName.createSpan({ text: 'Publish Stage Detection & Progress Mode' });
+    progressModeName.createSpan({ text: 'Publish stage detection & progress mode' });
     const progressModeWiki = progressModeName.createEl('a', {
         href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#social-media',
         cls: 'ert-setting-heading-wikilink'
@@ -1306,7 +1306,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     setIcon(progressModeWiki, 'external-link');
     progressModeInfo.createDiv({
         cls: 'setting-item-description',
-        text: 'Detects your current publish stage and recommends the APR progress mode to share.'
+        text: 'Detects your current publish stage. In new projects, select between a target manuscript length (recommended) or date range.'
     });
 
     const progressModeGroup = progressModeBlock.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--flush` });

@@ -23,7 +23,6 @@ import { renderProfessionalSection, isProfessionalActive } from './sections/Prof
 import { validateLocalModelAvailability } from '../api/localAiApi';
 import { FolderSuggest } from './FolderSuggest';
 import { ERT_CLASSES, ERT_DATA } from '../ui/classes';
-import { addHeadingIcon } from './wikiLink';
 
 export class RadialTimelineSettingsTab extends PluginSettingTab {
     plugin: RadialTimelinePlugin;
@@ -207,10 +206,22 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const backupSetting = new Settings(panel)
             .setName('Backup & Sync')
             .setDesc('');
-        addHeadingIcon(backupSetting, 'archive-restore');
+
+        const nameEl = backupSetting.nameEl;
+        if (nameEl) {
+            nameEl.textContent = '';
+            const headingGrid = nameEl.createDiv({ cls: 'ert-backup-heading-grid' });
+            const iconColumn = headingGrid.createDiv({ cls: 'ert-backup-heading-grid__icon' });
+            const icon = iconColumn.createSpan({ cls: 'ert-backup-heading-grid__icon-inner' });
+            setIcon(icon, 'archive-restore');
+            const textColumn = headingGrid.createDiv({ cls: 'ert-backup-heading-grid__text' });
+            textColumn.createSpan({ text: 'Backup & Sync', cls: 'ert-section-title' });
+        }
 
         const description = backupSetting.descEl;
         if (!description) return;
+        description.textContent = '';
+        description.addClass('ert-setting-backup-description');
         description.createSpan({ text: 'Back up your Obsidian vault regularly to protect against data loss. Learn more at ' });
         description.createEl('a', { text: 'Obsidian Backup Guide', href: 'https://help.obsidian.md/backup' });
         description.createSpan({ text: '. Sync does not protect against all forms of data loss. Sync options include ' });
