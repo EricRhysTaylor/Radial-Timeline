@@ -78,17 +78,35 @@ export const normalizeInquiryPromptConfig = (raw?: InquiryPromptConfig): Inquiry
     const hasLegacy = !!legacy && ('flow' in legacy || 'depth' in legacy);
 
     const normalizeZone = (zone: InquiryZone): InquiryPromptSlot[] => {
-        const base = defaults[zone];
-        const canonicalSlot = base[0];
+        const canonicalSeed = defaults[zone]?.[0];
+        const canonicalId = canonicalSeed?.id;
         const incoming = hasLegacy
             ? (legacy?.flow?.[zone] ?? legacy?.depth?.[zone] ?? [])
             : (raw?.[zone] ?? []);
-        const usedIds = new Set<string>([canonicalSlot?.id ?? '']);
-        const customSlots: InquiryPromptSlot[] = [];
+        const usedIds = new Set<string>(canonicalId ? [canonicalId] : []);
+        const slots: InquiryPromptSlot[] = [];
+        let canonicalIncluded = false;
 
         incoming.forEach((slot, index) => {
             if (!slot) return;
-            if (slot.id === canonicalSlot?.id) return;
+
+            if (canonicalId && slot.id === canonicalId && canonicalSeed) {
+                canonicalIncluded = true;
+                const questionValue = slot.question?.trim().length
+                    ? slot.question
+                    : canonicalSeed.question;
+                slots.push({
+                    ...canonicalSeed,
+                    ...slot,
+                    id: canonicalId,
+                    label: slot.label ?? canonicalSeed.label ?? '',
+                    question: questionValue,
+                    enabled: true,
+                    builtIn: true
+                });
+                return;
+            }
+
             if (slot.builtIn && !slot.enabled) return;
 
             const label = slot.label ?? '';
@@ -109,7 +127,7 @@ export const normalizeInquiryPromptConfig = (raw?: InquiryPromptConfig): Inquiry
             }
 
             usedIds.add(id);
-            customSlots.push({
+            slots.push({
                 id,
                 label,
                 question,
@@ -118,11 +136,14 @@ export const normalizeInquiryPromptConfig = (raw?: InquiryPromptConfig): Inquiry
             });
         });
 
-        if (canonicalSlot) {
-            return [canonicalSlot, ...customSlots];
+        if (!canonicalIncluded && canonicalSeed) {
+            slots.unshift({
+                ...canonicalSeed,
+                enabled: true
+            });
         }
 
-        return customSlots;
+        return slots;
     };
 
     return {

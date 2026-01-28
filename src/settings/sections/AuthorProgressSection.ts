@@ -1303,11 +1303,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         text: 'Detects your current publish stage and recommends the APR progress mode to share.'
     });
 
-    const progressModeGrid = progressModeCard.createDiv({ cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_2}` });
+    const progressModeGroup = progressModeCard.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--flush` });
+    const progressModeGrid = progressModeGroup.createDiv({ cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_2}` });
 
     const stageCell = progressModeGrid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
     stageCell.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Detected stage' });
-    const stageBadge = stageCell.createSpan({ cls: ERT_CLASSES.CHIP, text: 'Detecting...' });
+    const stageBadgeRow = stageCell.createDiv({ cls: ERT_CLASSES.INLINE });
+    stageBadgeRow.style.alignSelf = 'flex-start';
+    const stageBadge = stageBadgeRow.createSpan({ cls: ERT_CLASSES.CHIP, text: 'Detecting...' });
     const stageNote = stageCell.createDiv({ cls: ERT_CLASSES.FIELD_NOTE });
 
     const modeCell = progressModeGrid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
@@ -1336,36 +1339,25 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const detectPublishStage = (scenes: TimelineItem[]): {
         stage: (typeof STAGE_ORDER)[number];
         total: number;
-        zeroMajority: boolean;
+        note: string;
     } => {
-        const counts: Record<(typeof STAGE_ORDER)[number], number> = {
-            Zero: 0,
-            Author: 0,
-            House: 0,
-            Press: 0
-        };
         const seen = new Set<string>();
         scenes.forEach(scene => {
             if (scene?.itemType && scene.itemType !== 'Scene') return;
             if (scene?.path && seen.has(scene.path)) return;
             if (scene?.path) seen.add(scene.path);
-            const stage = normalizeStage(scene?.['Publish Stage']);
-            counts[stage] += 1;
         });
-        const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
-        if (total === 0) {
-            return { stage: 'Zero', total, zeroMajority: true };
+        const total = seen.size;
+        const estimate = plugin.calculateCompletionEstimate(scenes);
+        const stage = normalizeStage(estimate?.stage);
+        if (!estimate || total === 0) {
+            return {
+                stage: 'Zero',
+                total,
+                note: total === 0 ? 'No scenes found yet; assuming Zero stage.' : 'No progress estimate available yet.'
+            };
         }
-        const zeroCount = counts.Zero;
-        const nonZeroCount = total - zeroCount;
-        if (zeroCount >= nonZeroCount) {
-            return { stage: 'Zero', total, zeroMajority: true };
-        }
-        const nonZeroStages = STAGE_ORDER.filter(stage => stage !== 'Zero');
-        const dominant = nonZeroStages.reduce((leader, stage) => {
-            return counts[stage] >= counts[leader] ? stage : leader;
-        }, 'Author' as (typeof STAGE_ORDER)[number]);
-        return { stage: dominant, total, zeroMajority: false };
+        return { stage, total, note: 'Based on the progress estimate (active publish stage).' };
     };
 
     const applyStageBadgeTone = (stage: (typeof STAGE_ORDER)[number]) => {
@@ -1452,17 +1444,11 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         isUpdatingMode = false;
     };
 
-    const updateStageUI = (stage: (typeof STAGE_ORDER)[number], total: number, zeroMajority: boolean) => {
+    const updateStageUI = (stage: (typeof STAGE_ORDER)[number], total: number, note: string) => {
         isZeroStage = stage === 'Zero';
         stageBadge.setText(stage);
         applyStageBadgeTone(stage);
-        if (total === 0) {
-            stageNote.setText('No scenes found yet; assuming Zero stage.');
-        } else if (zeroMajority && stage === 'Zero') {
-            stageNote.setText('Most scenes are still in Zero stage.');
-        } else {
-            stageNote.setText('Based on scene publish stages.');
-        }
+        stageNote.setText(note);
         updateModeUI();
     };
 
@@ -1519,10 +1505,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         try {
             const scenes = await getAllScenes(app, plugin);
             const result = detectPublishStage(scenes);
-            updateStageUI(result.stage, result.total, result.zeroMajority);
+            updateStageUI(result.stage, result.total, result.note);
             seedDateRange();
         } catch {
-            updateStageUI('Zero', 0, true);
+            updateStageUI('Zero', 0, 'No scenes found yet; assuming Zero stage.');
             seedDateRange();
         }
     };

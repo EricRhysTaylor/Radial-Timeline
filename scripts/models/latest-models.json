@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-01-27T19:55:54.532Z",
+  "generatedAt": "2026-01-28T20:32:10.529Z",
   "summary": {
     "anthropic": 9,
     "openai": 115,
-    "gemini": 50
+    "gemini": 45
   },
   "anthropic": [
     {
@@ -640,14 +640,6 @@
   ],
   "gemini": [
     {
-      "id": "embedding-gecko-001",
-      "name": "models/embedding-gecko-001",
-      "displayName": "Embedding Gecko",
-      "description": "Obtain a distributed representation of a text.",
-      "inputTokenLimit": 1024,
-      "outputTokenLimit": 1
-    },
-    {
       "id": "gemini-2.5-flash",
       "name": "models/gemini-2.5-flash",
       "displayName": "Gemini 2.5 Flash",
@@ -662,14 +654,6 @@
       "description": "Stable release (June 17th, 2025) of Gemini 2.5 Pro",
       "inputTokenLimit": 1048576,
       "outputTokenLimit": 65536
-    },
-    {
-      "id": "gemini-2.0-flash-exp",
-      "name": "models/gemini-2.0-flash-exp",
-      "displayName": "Gemini 2.0 Flash Experimental",
-      "description": "Gemini 2.0 Flash Experimental",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 8192
     },
     {
       "id": "gemini-2.0-flash",
@@ -708,22 +692,6 @@
       "name": "models/gemini-2.0-flash-lite",
       "displayName": "Gemini 2.0 Flash-Lite",
       "description": "Gemini 2.0 Flash-Lite",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 8192
-    },
-    {
-      "id": "gemini-2.0-flash-lite-preview-02-05",
-      "name": "models/gemini-2.0-flash-lite-preview-02-05",
-      "displayName": "Gemini 2.0 Flash-Lite Preview 02-05",
-      "description": "Preview release (February 5th, 2025) of Gemini 2.0 Flash-Lite",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 8192
-    },
-    {
-      "id": "gemini-2.0-flash-lite-preview",
-      "name": "models/gemini-2.0-flash-lite-preview",
-      "displayName": "Gemini 2.0 Flash-Lite Preview",
-      "description": "Preview release (February 5th, 2025) of Gemini 2.0 Flash-Lite",
       "inputTokenLimit": 1048576,
       "outputTokenLimit": 8192
     },
@@ -906,38 +874,6 @@
       "outputTokenLimit": 65536
     },
     {
-      "id": "embedding-001",
-      "name": "models/embedding-001",
-      "displayName": "Embedding 001",
-      "description": "Obtain a distributed representation of a text.",
-      "inputTokenLimit": 2048,
-      "outputTokenLimit": 1
-    },
-    {
-      "id": "text-embedding-004",
-      "name": "models/text-embedding-004",
-      "displayName": "Text Embedding 004",
-      "description": "Obtain a distributed representation of a text.",
-      "inputTokenLimit": 2048,
-      "outputTokenLimit": 1
-    },
-    {
-      "id": "gemini-embedding-exp-03-07",
-      "name": "models/gemini-embedding-exp-03-07",
-      "displayName": "Gemini Embedding Experimental 03-07",
-      "description": "Obtain a distributed representation of a text.",
-      "inputTokenLimit": 8192,
-      "outputTokenLimit": 1
-    },
-    {
-      "id": "gemini-embedding-exp",
-      "name": "models/gemini-embedding-exp",
-      "displayName": "Gemini Embedding Experimental",
-      "description": "Obtain a distributed representation of a text.",
-      "inputTokenLimit": 8192,
-      "outputTokenLimit": 1
-    },
-    {
       "id": "gemini-embedding-001",
       "name": "models/gemini-embedding-001",
       "displayName": "Gemini Embedding 001",
@@ -1031,6 +967,30 @@
       "displayName": "Veo 3.1 fast",
       "description": "Veo 3.1 fast",
       "inputTokenLimit": 480,
+      "outputTokenLimit": 8192
+    },
+    {
+      "id": "gemini-2.5-flash-native-audio-latest",
+      "name": "models/gemini-2.5-flash-native-audio-latest",
+      "displayName": "Gemini 2.5 Flash Native Audio Latest",
+      "description": "Latest release of Gemini 2.5 Flash Native Audio",
+      "inputTokenLimit": 131072,
+      "outputTokenLimit": 8192
+    },
+    {
+      "id": "gemini-2.5-flash-native-audio-preview-09-2025",
+      "name": "models/gemini-2.5-flash-native-audio-preview-09-2025",
+      "displayName": "Gemini 2.5 Flash Native Audio Preview 09-2025",
+      "description": "Gemini 2.5 Flash Native Audio Preview 09-2025",
+      "inputTokenLimit": 131072,
+      "outputTokenLimit": 8192
+    },
+    {
+      "id": "gemini-2.5-flash-native-audio-preview-12-2025",
+      "name": "models/gemini-2.5-flash-native-audio-preview-12-2025",
+      "displayName": "Gemini 2.5 Flash Native Audio Preview 12-2025",
+      "description": "Gemini 2.5 Flash Native Audio Preview 12-2025",
+      "inputTokenLimit": 131072,
       "outputTokenLimit": 8192
     }
   ]

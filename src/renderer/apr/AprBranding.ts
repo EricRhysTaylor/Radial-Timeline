@@ -112,14 +112,45 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         }
     }
     const unitWidth = measuredUnitWidth ?? estimateTextWidth(unitPattern);
+    const estimatedWidth = estimateTextWidth(unitPattern);
     if (unitWidth > 0) {
-        // Add 10% overshoot so textLength compresses text rather than stretching it
-        // This eliminates the gap at the seam where text end meets text start
-        const safetyMultiplier = 1.10;
-        repeats = Math.max(1, Math.ceil((circumference * safetyMultiplier) / unitWidth));
+        // DOM measurement doesn't accurately reflect SVG textPath rendering
+        // textPath rendering on a curve uses different spacing than straight DOM text
+        // Use 2x the calculated repeats to ensure we fill the circle - excess is clipped
+        const baseRepeats = Math.ceil(circumference / unitWidth);
+        repeats = Math.max(2, baseRepeats * 2);
     }
 
-    const startOffset = `${(25 + 10 / 360 * 100).toFixed(2)}%`;
+    // Calculate the total text width (for debugging)
+    const totalTextWidth = repeats * unitWidth;
+    const totalChars = repeats * unitPattern.length;
+
+    // Use original letter-spacing - the extra repeats will ensure full coverage
+    const adjustedLetterSpacing = brandingLetterSpacing;
+
+    // DEBUG: Log all key values for diagnosing text spacing issues
+    console.log('[APR Branding Debug]', {
+        size,
+        brandingRadius,
+        circumference: circumference.toFixed(2),
+        unitPattern,
+        unitPatternLength: unitPattern.length,
+        avgFontSize,
+        letterSpacing: brandingLetterSpacing,
+        baseCharWidth,
+        canMeasure,
+        measuredUnitWidth: measuredUnitWidth?.toFixed(2) ?? 'N/A',
+        estimatedUnitWidth: estimatedWidth.toFixed(2),
+        unitWidthUsed: unitWidth.toFixed(2),
+        repeats,
+        totalChars,
+        totalTextWidth: totalTextWidth.toFixed(2),
+        circumferenceRatio: (totalTextWidth / circumference).toFixed(3),
+    });
+
+    // Start at beginning of path so text fills the full circle
+    // (startOffset > 0 would leave a gap since textPath doesn't loop)
+    const startOffset = '0%';
 
     // Full circle path starting from top (12 o'clock) going clockwise
     const circlePathId = 'apr-branding-circle';
@@ -146,15 +177,17 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         }
     }
 
+    // Use the calculated letter-spacing instead of relying on textLength
+    // textLength with lengthAdjust="spacing" doesn't work reliably on textPath
     const brandingText = `
         <text 
             font-family="${bookTitleFontFamily}" 
             font-size="${avgFontSize}" 
             font-weight="${bookTitleFontWeight}" 
             ${italicAttr(bookTitleFontItalic)}
-            letter-spacing="${brandingLetterSpacing}"
+            letter-spacing="${adjustedLetterSpacing}"
             xml:space="preserve">
-            <textPath href="#${circlePathId}" startOffset="${startOffset}" textLength="${circumference.toFixed(2)}" lengthAdjust="spacing">
+            <textPath href="#${circlePathId}" startOffset="${startOffset}">
                 ${textContent}
             </textPath>
         </text>

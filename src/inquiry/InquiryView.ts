@@ -27,7 +27,7 @@ import {
     InquirySeverity,
     InquiryZone
 } from './state';
-import type { InquiryClassConfig, InquiryMaterialMode, InquiryPromptConfig } from '../types/settings';
+import type { InquiryClassConfig, InquiryMaterialMode, InquiryPromptConfig, InquiryPromptSlot } from '../types/settings';
 import { buildDefaultInquiryPromptConfig, getBuiltInPromptSeed, getCanonicalPromptText, normalizeInquiryPromptConfig } from './prompts';
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
 import { ensureInquiryLogFolder } from './utils/logs';
@@ -1835,7 +1835,7 @@ export class InquiryView extends ItemView {
         const config = this.getPromptConfig();
         const pickFirstAvailable = (zone: InquiryZone): string => {
             const slots = config[zone] ?? [];
-            const firstAvailable = slots.find(slot => slot.question.trim().length > 0);
+            const firstAvailable = slots.find(slot => this.getQuestionTextForSlot(zone, slot).trim().length > 0);
             return firstAvailable?.id ?? slots[0]?.id ?? zone;
         };
         return {
@@ -1856,15 +1856,24 @@ export class InquiryView extends ItemView {
         return normalizeInquiryPromptConfig(this.plugin.settings.inquiryPromptConfig);
     }
 
+    private getQuestionTextForSlot(zone: InquiryZone, slot: InquiryPromptSlot): string {
+        const canonicalId = getBuiltInPromptSeed(zone)?.id;
+        const stored = slot.question ?? '';
+        if (stored.trim().length > 0) {
+            return stored;
+        }
+        if (slot.builtIn && slot.id === canonicalId) {
+            return getCanonicalPromptText(zone);
+        }
+        return stored;
+    }
+
     private getPromptOptions(zone: InquiryZone): InquiryQuestion[] {
         const config = this.getPromptConfig();
         const icon = zone === 'setup' ? 'help-circle' : zone === 'pressure' ? 'activity' : 'check-circle';
-        const canonicalId = getBuiltInPromptSeed(zone)?.id;
         return (config[zone] ?? [])
             .map(slot => {
-                const question = slot.builtIn && slot.id === canonicalId
-                    ? getCanonicalPromptText(zone)
-                    : slot.question;
+                const question = this.getQuestionTextForSlot(zone, slot);
                 return { slot, question };
             })
             .filter(entry => entry.question.trim().length > 0)
@@ -1986,8 +1995,9 @@ export class InquiryView extends ItemView {
         const config = this.getPromptConfig();
         (['setup', 'pressure', 'payoff'] as InquiryZone[]).forEach(zone => {
             const slots = config[zone] ?? [];
-            const available = slots.filter(slot => slot.question.trim().length > 0);
-            const desired = available[0]?.id ?? slots[0]?.id;
+            const available = slots.filter(slot => this.getQuestionTextForSlot(zone, slot).trim().length > 0);
+            const canonicalId = getBuiltInPromptSeed(zone)?.id;
+            const desired = available[0]?.id ?? canonicalId ?? slots[0]?.id ?? zone;
             if (!desired) return;
             const current = this.state.selectedPromptIds[zone];
             const currentValid = available.some(slot => slot.id === current);
@@ -4701,30 +4711,10 @@ export class InquiryView extends ItemView {
             if (!slots.length) return;
             const zoneLabel = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
             const icon = zone === 'setup' ? 'help-circle' : zone === 'pressure' ? 'activity' : 'check-circle';
-            const canonicalId = getBuiltInPromptSeed(zone)?.id;
-            const canonicalSlot = slots[0];
-            if (canonicalSlot) {
-                const canonicalQuestion = getCanonicalPromptText(zone);
-                const canonicalLabel = canonicalSlot.label || zoneLabel;
-                if (canonicalQuestion.trim()) {
-                    questions.push({
-                        id: canonicalSlot.id,
-                        label: canonicalLabel,
-                        question: canonicalQuestion,
-                        zone,
-                        icon
-                    });
-                    seen.add(canonicalSlot.id);
-                }
-            }
-
-            slots.slice(1).forEach(slot => {
+            slots.forEach(slot => {
                 if (!slot.enabled) return;
-                if (!slot.question.trim()) return;
                 if (seen.has(slot.id)) return;
-                const questionText = slot.builtIn && slot.id === canonicalId
-                    ? getCanonicalPromptText(zone)
-                    : slot.question;
+                const questionText = this.getQuestionTextForSlot(zone, slot);
                 if (!questionText.trim()) return;
                 questions.push({
                     id: slot.id,
@@ -5633,7 +5623,7 @@ export class InquiryView extends ItemView {
                 sagaScope: this.normalizeMaterialMode(config.sagaScope, config.className.toLowerCase()),
                 referenceScope: this.normalizeMaterialMode(
                     (config as InquiryClassConfig).referenceScope
-                        ?? (INQUIRY_REFERENCE_ONLY_CLASSES.has(config.className.toLowerCase()) ? true : false),
+                    ?? (INQUIRY_REFERENCE_ONLY_CLASSES.has(config.className.toLowerCase()) ? true : false),
                     config.className.toLowerCase()
                 )
             })),

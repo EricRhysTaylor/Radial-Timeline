@@ -23,6 +23,7 @@ import { renderProfessionalSection, isProfessionalActive } from './sections/Prof
 import { validateLocalModelAvailability } from '../api/localAiApi';
 import { FolderSuggest } from './FolderSuggest';
 import { ERT_CLASSES, ERT_DATA } from '../ui/classes';
+import { addHeadingIcon } from './wikiLink';
 
 export class RadialTimelineSettingsTab extends PluginSettingTab {
     plugin: RadialTimelinePlugin;
@@ -203,12 +204,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
     private renderBackupSafetySection(containerEl: HTMLElement): void {
         const panel = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
-        const titleRow = panel.createEl('h3', { cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}` });
-        const icon = titleRow.createSpan({ cls: 'ert-setting-heading-icon' });
-        setIcon(icon, 'archive-restore');
-        titleRow.createSpan({ text: 'Backup & Sync' });
+        const backupSetting = new Settings(panel)
+            .setName('Backup & Sync')
+            .setDesc('');
+        addHeadingIcon(backupSetting, 'archive-restore');
 
-        const description = panel.createEl('p', { cls: ERT_CLASSES.SECTION_DESC });
+        const description = backupSetting.descEl;
+        if (!description) return;
         description.createSpan({ text: 'Back up your Obsidian vault regularly to protect against data loss. Learn more at ' });
         description.createEl('a', { text: 'Obsidian Backup Guide', href: 'https://help.obsidian.md/backup' });
         description.createSpan({ text: '. Sync does not protect against all forms of data loss. Sync options include ' });
@@ -497,8 +499,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             badgeIcon: 'settings',
             badgeVariant: ERT_CLASSES.BADGE_PILL_NEUTRAL,
             wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#core',
-            title: 'Build the core of your radial timeline workflow.',
-            subtitle: 'The Radial Timeline is designed to empower, you the author, to ever greater productivity and accountability. Using core settings, configure the Radial Timeline to work with your manuscript architecture and writing style. Search will bring up any matching section.',
+            title: 'Build the core of your writing workflow.',
+            subtitle: 'The Radial Timeline is designed to empower you, the author, to greater productivity and accountability. Using core settings, configure the Radial Timeline to reflect your manuscript’s structure and writing style. Search surfaces any matching section instantly.',
             kicker: 'Core Highlights:',
             features: [
                 { icon: 'layout-grid', text: 'Story structure — manage beats, templates, and advanced YAML fields.' },
