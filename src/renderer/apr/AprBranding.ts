@@ -44,7 +44,8 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         authorNameFontFamily = 'Inter', authorNameFontWeight = 400, authorNameFontItalic = false, authorNameFontSize
     } = options;
     const resolvedLayout = options.layout ?? computeAprLayout(getAprPreset(size), { percent: 0 });
-    const brandingRadius = resolvedLayout.ringOuterR ?? resolvedLayout.branding.radius;
+    // Use the actual text radius for accurate circumference calculation
+    const brandingRadius = resolvedLayout.branding.radius ?? resolvedLayout.ringOuterR;
     if (!resolvedLayout.preset.enableText || !brandingRadius) return '';
     const { fontSize: brandingFontSize, letterSpacing: brandingLetterSpacing } = resolvedLayout.branding;
 
@@ -68,7 +69,8 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const baseLetterSpacing = brandingLetterSpacing.trim();
     const baseSpacingEm = baseLetterSpacing.endsWith('em') ? Number.parseFloat(baseLetterSpacing) : 0;
     const spacingEm = Number.isFinite(baseSpacingEm) ? baseSpacingEm : 0;
-    const baseCharWidth = avgFontSize * 0.5;
+    // 0.55 is a better estimate for uppercase letters than 0.5
+    const baseCharWidth = avgFontSize * 0.55;
 
     const unitPattern = hasAuthor
         ? `${bookTitleUpper}${separator}${authorNameUpper}${separator}`
@@ -99,7 +101,8 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             span.setAttribute('style', inlineStyle);
             span.textContent = unitPattern;
             document.body.appendChild(span);
-            const unitWidth = span.getBoundingClientRect().width * 1.02;
+            // Use actual measured width without inflation factor
+            const unitWidth = span.getBoundingClientRect().width;
             document.body.removeChild(span);
             if (unitWidth > 0) {
                 measuredUnitWidth = unitWidth;
@@ -110,7 +113,10 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     }
     const unitWidth = measuredUnitWidth ?? estimateTextWidth(unitPattern);
     if (unitWidth > 0) {
-        repeats = Math.max(1, Math.ceil(circumference / unitWidth));
+        // Add 10% overshoot so textLength compresses text rather than stretching it
+        // This eliminates the gap at the seam where text end meets text start
+        const safetyMultiplier = 1.10;
+        repeats = Math.max(1, Math.ceil((circumference * safetyMultiplier) / unitWidth));
     }
 
     const startOffset = `${(25 + 10 / 360 * 100).toFixed(2)}%`;

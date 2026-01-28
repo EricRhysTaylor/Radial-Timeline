@@ -561,6 +561,10 @@
   gap: var(--ert-group-gap);
 }
 
+.ert-ui .ert-stack .setting-item {
+  margin-bottom: 0;
+}
+
 .ert-ui .ert-mapping-body,
 .ert-ui .ert-mapping-list {
   --ert-group-gap: 0;

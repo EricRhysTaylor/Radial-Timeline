@@ -160,20 +160,20 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         const bannerHeader = betaPanel.createDiv({ cls: ERT_CLASSES.INLINE });
         const bannerIcon = bannerHeader.createSpan({ cls: 'ert-setting-heading-icon' });
         setIcon(bannerIcon, 'gift');
-        bannerHeader.createEl('strong', { text: 'Thank you for supporting the future of Radial Timeline!' });
+        bannerHeader.createEl('strong', { text: 'Thank you for supporting the future of Radial Timeline [RT].' });
 
         betaPanel.createEl('p', {
             cls: ERT_CLASSES.SECTION_DESC,
-            text: 'Pro features are free during the Open Beta. Share feedback and get a free month of Pro.'
+            text: 'Pro features are currently free during the Open Beta.'
         });
 
         const rewardBox = betaPanel.createDiv({ cls: [ERT_CLASSES.PREVIEW_FRAME, 'ert-previewFrame--flush'] });
         const p = rewardBox.createEl('p', { attr: { style: 'margin: 0; line-height: 1.5;' } });
-        p.createEl('strong', { text: 'Founding Pro Reward: ' });
-        p.createSpan({ text: 'During the first year of Pro, for every unique bug report, you will recieve one month of Pro free.' });
+        p.createEl('strong', { text: 'A new phase in development begins. ' });
+        p.createSpan({ text: 'During this phase, bug fixes, stability, and workflow optimization are top priorities. Reproducible technical issues and clear usability problems are actively reviewed and addressed as part of iterative development. Your feedback helps shape what gets refined and improved next.' });
 
         const feedbackLink = betaPanel.createEl('a', {
-            text: 'Share feedback & claim your reward →',
+            text: 'Share feedback →',
             href: 'https://radial-timeline.com/feedback',
             cls: 'ert-link-accent',
             attr: { target: '_blank', rel: 'noopener' }
