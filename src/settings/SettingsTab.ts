@@ -480,13 +480,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             badgeIcon: 'waves',
             badgeVariant: ERT_CLASSES.BADGE_PILL_NEUTRAL,
             wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#inquiry',
-            title: 'Inquiry view provides a big picture appraisal of everything that goes into your story.',
-            subtitle: 'Evaluate at the scene level to the saga level for a comprehensive analysis. Identify the key themes, motifs, and patterns that will strengthen your writing. Use a corpus including scenes, outlines, character bios, worldbuilding, and more to inform analysis.',
+            title: 'Analyze your story as a complete system.',
+            subtitle: 'Evaluate how scenes, books, and entire sagas work together. Inquiry uses your manuscript(s), outlines, characters, and worldbuilding to surface structural weak points, missing or underdeveloped material, and momentum issues—all in a single view with clear visual signals and quantifiers.',
             kicker: 'Inquiry Focus Areas:',
             features: [
-                { icon: 'search', text: 'Source Scans — Choose scan roots, class scopes, and source types to watch' },
+                { icon: 'search', text: 'Source Scans — Choose scan locations, class scopes, and source types to watch' },
                 { icon: 'list', text: 'Prompt Slots — Draft reusable inquiry questions' },
-                { icon: 'layout-grid', text: 'Corpus Tiers — Calibrate thresholds for sketchy → substantive depth' },
+                { icon: 'layout-grid', text: 'Corpus Tiers — Calibrate source quality thresholds from sketchy → substantive depth' },
             ]
         });
     }

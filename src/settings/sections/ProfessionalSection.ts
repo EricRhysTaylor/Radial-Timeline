@@ -159,7 +159,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
 
         const bannerHeader = betaPanel.createDiv({ cls: ERT_CLASSES.INLINE });
         const bannerIcon = bannerHeader.createSpan({ cls: 'ert-setting-heading-icon' });
-        setIcon(bannerIcon, 'gift');
+        setIcon(bannerIcon, 'shell');
         bannerHeader.createEl('strong', { text: 'Thank you for supporting the future of Radial Timeline [RT].' });
 
         betaPanel.createEl('p', {

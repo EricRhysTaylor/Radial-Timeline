@@ -3,6 +3,7 @@ import type RadialTimelinePlugin from '../../main';
 import { AuthorProgressService } from '../../services/AuthorProgressService';
 import { DEFAULT_SETTINGS } from '../defaults';
 import type { AuthorProgressSettings } from '../../types/settings';
+import type { TimelineItem } from '../../types';
 import { getAllScenes } from '../../utils/manuscript';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { getPresetPalettes, generatePaletteFromColor } from '../../utils/aprPaletteGenerator';
@@ -11,6 +12,7 @@ import { renderCampaignManagerSection } from './CampaignManagerSection';
 import { isProfessionalActive } from './ProfessionalSection';
 import { colorSwatch, type ColorSwatchHandle } from '../../ui/ui';
 import { ERT_CLASSES } from '../../ui/classes';
+import { STAGE_ORDER } from '../../utils/constants';
 
 export interface AuthorProgressSectionProps {
     app: App;
@@ -1276,6 +1278,256 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             attr: { target: '_blank', rel: 'noopener' }
         });
     } // End of non-Pro publishing section
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PUBLISH STAGE DETECTION & PROGRESS MODE
+    // ─────────────────────────────────────────────────────────────────────────
+    type AprProgressMode = 'stage' | 'zero' | 'date';
+    const progressModeCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
+    const progressModeHeader = progressModeCard.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
+    const progressModeHeading = progressModeHeader.createDiv({ cls: 'setting-item setting-item-heading ert-setting-heading--top' });
+    const progressModeInfo = progressModeHeading.createDiv({ cls: 'setting-item-info' });
+    const progressModeName = progressModeInfo.createDiv({ cls: 'setting-item-name' });
+    const progressModeIcon = progressModeName.createSpan({ cls: 'ert-setting-heading-icon' });
+    setIcon(progressModeIcon, 'activity');
+    progressModeName.createSpan({ text: 'Publish Stage Detection & Progress Mode' });
+    const progressModeWiki = progressModeName.createEl('a', {
+        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#social-media',
+        cls: 'ert-setting-heading-wikilink'
+    });
+    progressModeWiki.setAttr('target', '_blank');
+    progressModeWiki.setAttr('rel', 'noopener');
+    setIcon(progressModeWiki, 'external-link');
+    progressModeInfo.createDiv({
+        cls: 'setting-item-description',
+        text: 'Detects your current publish stage and recommends the APR progress mode to share.'
+    });
+
+    const progressModeGrid = progressModeCard.createDiv({ cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_2}` });
+
+    const stageCell = progressModeGrid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
+    stageCell.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Detected stage' });
+    const stageBadge = stageCell.createSpan({ cls: ERT_CLASSES.CHIP, text: 'Detecting...' });
+    const stageNote = stageCell.createDiv({ cls: ERT_CLASSES.FIELD_NOTE });
+
+    const modeCell = progressModeGrid.createDiv({ cls: ERT_CLASSES.GRID_FORM_CELL });
+    modeCell.createDiv({ cls: ERT_CLASSES.LABEL, text: 'Progress mode' });
+    const modeDropdown = new DropdownComponent(modeCell);
+    modeDropdown.selectEl.addClass('ert-input--md');
+    const modeGuidance = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+
+    const dateRangeWrap = modeCell.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+    dateRangeWrap.addClass('ert-hidden');
+    const dateRangeInput = new TextComponent(dateRangeWrap);
+    dateRangeInput.setPlaceholder('YYYY-MM-DD to YYYY-MM-DD');
+    dateRangeInput.inputEl.addClass('ert-input--full');
+    dateRangeWrap.createDiv({
+        cls: ERT_CLASSES.FIELD_NOTE,
+        text: 'Format: YYYY-MM-DD to YYYY-MM-DD.'
+    });
+
+    const normalizeStage = (raw: unknown): (typeof STAGE_ORDER)[number] => {
+        const value = Array.isArray(raw) ? raw[0] : raw;
+        const trimmed = (value ?? '').toString().trim().toLowerCase();
+        const match = STAGE_ORDER.find(stage => stage.toLowerCase() === trimmed);
+        return match ?? 'Zero';
+    };
+
+    const detectPublishStage = (scenes: TimelineItem[]): {
+        stage: (typeof STAGE_ORDER)[number];
+        total: number;
+        zeroMajority: boolean;
+    } => {
+        const counts: Record<(typeof STAGE_ORDER)[number], number> = {
+            Zero: 0,
+            Author: 0,
+            House: 0,
+            Press: 0
+        };
+        const seen = new Set<string>();
+        scenes.forEach(scene => {
+            if (scene?.itemType && scene.itemType !== 'Scene') return;
+            if (scene?.path && seen.has(scene.path)) return;
+            if (scene?.path) seen.add(scene.path);
+            const stage = normalizeStage(scene?.['Publish Stage']);
+            counts[stage] += 1;
+        });
+        const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
+        if (total === 0) {
+            return { stage: 'Zero', total, zeroMajority: true };
+        }
+        const zeroCount = counts.Zero;
+        const nonZeroCount = total - zeroCount;
+        if (zeroCount >= nonZeroCount) {
+            return { stage: 'Zero', total, zeroMajority: true };
+        }
+        const nonZeroStages = STAGE_ORDER.filter(stage => stage !== 'Zero');
+        const dominant = nonZeroStages.reduce((leader, stage) => {
+            return counts[stage] >= counts[leader] ? stage : leader;
+        }, 'Author' as (typeof STAGE_ORDER)[number]);
+        return { stage: dominant, total, zeroMajority: false };
+    };
+
+    const applyStageBadgeTone = (stage: (typeof STAGE_ORDER)[number]) => {
+        const color = plugin.settings.publishStageColors?.[stage] ?? '#808080';
+        stageBadge.style.setProperty('--ert-chip-bg', `color-mix(in srgb, ${color} 18%, var(--background-secondary) 82%)`);
+        stageBadge.style.setProperty('border', `1px solid ${color}`);
+        stageBadge.style.setProperty('color', color);
+    };
+
+    const formatDateRange = (start?: string, target?: string): string => {
+        if (!start || !target) return '';
+        return `${start} to ${target}`;
+    };
+
+    const parseIsoDate = (value: string): number | null => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+        const parsed = new Date(`${value}T00:00:00`);
+        const time = parsed.getTime();
+        return Number.isFinite(time) ? time : null;
+    };
+
+    const parseDateRange = (value: string): { start?: string; target?: string; error?: string } => {
+        const matches = value.match(/\d{4}-\d{2}-\d{2}/g);
+        if (!matches || matches.length < 2) {
+            return { error: 'Enter both start and target dates (YYYY-MM-DD).' };
+        }
+        const [start, target] = matches;
+        const startTime = parseIsoDate(start);
+        const targetTime = parseIsoDate(target);
+        if (!startTime || !targetTime) {
+            return { error: 'Use YYYY-MM-DD for both dates.' };
+        }
+        if (startTime > targetTime) {
+            return { error: 'Start date must be before target date.' };
+        }
+        return { start, target };
+    };
+
+    const setGuidanceLines = (lines: string[]): void => {
+        modeGuidance.empty();
+        lines.forEach(line => {
+            modeGuidance.createDiv({ cls: ERT_CLASSES.FIELD_NOTE, text: line });
+        });
+    };
+
+    const dateInputSuccessClass = 'ert-setting-input-success';
+    const dateInputErrorClass = 'ert-setting-input-error';
+
+    const flashDateInput = (cls: string, timeout: number) => {
+        dateRangeInput.inputEl.addClass(cls);
+        window.setTimeout(() => dateRangeInput.inputEl.removeClass(cls), timeout);
+    };
+
+    const clearDateInputState = () => {
+        dateRangeInput.inputEl.removeClass(dateInputSuccessClass);
+        dateRangeInput.inputEl.removeClass(dateInputErrorClass);
+    };
+
+    let isZeroStage = true;
+    let isUpdatingMode = false;
+
+    const updateModeUI = (modeOverride?: AprProgressMode) => {
+        isUpdatingMode = true;
+        modeDropdown.selectEl.options.length = 0;
+        if (isZeroStage) {
+            modeDropdown.addOption('zero', 'Zero Mode (End scene number created by Author)');
+            modeDropdown.addOption('date', 'Date Target Mode');
+            modeDropdown.setDisabled(false);
+            const storedMode = (plugin.settings.authorProgress?.aprProgressMode ?? 'zero') as AprProgressMode;
+            const nextMode = modeOverride ?? (storedMode === 'date' ? 'date' : 'zero');
+            modeDropdown.setValue(nextMode);
+            setGuidanceLines([
+                'Zero Mode (recommended): create a placeholder final scene note with a high prefix number (e.g., "60 The End") to set intended total scene count.',
+                'Date Mode: choose a start date and target completion date.'
+            ]);
+            dateRangeWrap.toggleClass('ert-hidden', nextMode !== 'date');
+        } else {
+            modeDropdown.addOption('stage', 'Publish-stage progress (auto)');
+            modeDropdown.setValue('stage');
+            modeDropdown.setDisabled(true);
+            setGuidanceLines(['Using publish-stage progress.']);
+            dateRangeWrap.addClass('ert-hidden');
+        }
+        isUpdatingMode = false;
+    };
+
+    const updateStageUI = (stage: (typeof STAGE_ORDER)[number], total: number, zeroMajority: boolean) => {
+        isZeroStage = stage === 'Zero';
+        stageBadge.setText(stage);
+        applyStageBadgeTone(stage);
+        if (total === 0) {
+            stageNote.setText('No scenes found yet; assuming Zero stage.');
+        } else if (zeroMajority && stage === 'Zero') {
+            stageNote.setText('Most scenes are still in Zero stage.');
+        } else {
+            stageNote.setText('Based on scene publish stages.');
+        }
+        updateModeUI();
+    };
+
+    modeDropdown.onChange(async (val) => {
+        if (isUpdatingMode || !isZeroStage) return;
+        if (!plugin.settings.authorProgress) return;
+        const nextMode = (val === 'date' ? 'date' : 'zero') as AprProgressMode;
+        plugin.settings.authorProgress.aprProgressMode = nextMode;
+        await plugin.saveSettings();
+        updateModeUI(nextMode);
+    });
+
+    dateRangeInput.onChange(() => {
+        clearDateInputState();
+    });
+
+    const handleDateRangeBlur = async (): Promise<void> => {
+        if (!plugin.settings.authorProgress) return;
+        clearDateInputState();
+        const raw = dateRangeInput.getValue().trim();
+        if (!raw) {
+            plugin.settings.authorProgress.aprProgressDateStart = undefined;
+            plugin.settings.authorProgress.aprProgressDateTarget = undefined;
+            await plugin.saveSettings();
+            return;
+        }
+        const parsed = parseDateRange(raw);
+        if (!parsed.start || !parsed.target) {
+            flashDateInput(dateInputErrorClass, 2000);
+            return;
+        }
+        plugin.settings.authorProgress.aprProgressDateStart = parsed.start;
+        plugin.settings.authorProgress.aprProgressDateTarget = parsed.target;
+        await plugin.saveSettings();
+        dateRangeInput.setValue(formatDateRange(parsed.start, parsed.target));
+        flashDateInput(dateInputSuccessClass, 1000);
+    };
+
+    plugin.registerDomEvent(dateRangeInput.inputEl, 'blur', () => { void handleDateRangeBlur(); });
+    plugin.registerDomEvent(dateRangeInput.inputEl, 'keydown', (evt: KeyboardEvent) => {
+        if (evt.key === 'Enter') {
+            evt.preventDefault();
+            dateRangeInput.inputEl.blur();
+        }
+    });
+
+    const seedDateRange = () => {
+        const start = plugin.settings.authorProgress?.aprProgressDateStart;
+        const target = plugin.settings.authorProgress?.aprProgressDateTarget;
+        dateRangeInput.setValue(formatDateRange(start, target));
+    };
+
+    const refreshPublishStage = async (): Promise<void> => {
+        try {
+            const scenes = await getAllScenes(app, plugin);
+            const result = detectPublishStage(scenes);
+            updateStageUI(result.stage, result.total, result.zeroMajority);
+            seedDateRange();
+        } catch {
+            updateStageUI('Zero', 0, true);
+            seedDateRange();
+        }
+    };
+
+    void refreshPublishStage();
 
     // ─────────────────────────────────────────────────────────────────────────
     // CAMPAIGN MANAGER (PRO FEATURE)

@@ -68,16 +68,19 @@ export class AuthorProgressService {
     }
 
     /**
-     * Calculate progress percentage using weighted publish stage approach.
-     * Delegates to the APR-specific calculation in AprConstants.
-     * 
-     * Each scene contributes based on its Publish Stage:
-     * - Zero = 25%, Author = 50%, House = 75%, Press = 100%
-     * 
-     * This is intentionally separate from TimelineMetricsService
-     * (estimated completion tick) and settings progression preview.
+     * Calculate APR progress percentage.
+     * - Date mode: uses the configured start/target range.
+     * - Otherwise: uses TimelineMetricsService completion estimate (stage-based).
      */
     public calculateProgress(scenes: TimelineItem[]): number {
+        const settings = this.plugin.settings.authorProgress;
+        if (settings?.aprProgressMode === 'date') {
+            const dateProgress = this.calculateDateProgress(settings.aprProgressDateStart, settings.aprProgressDateTarget);
+            if (dateProgress !== null) {
+                return dateProgress;
+            }
+        }
+
         // Use TimelineMetricsService for consistency with Settings "Completion Estimate" (e.g. 8/49 -> 16%)
         // This replaces the weighted stage calculation (AprConstants) which was causing discrepancies (0%)
         const estimate = this.plugin.calculateCompletionEstimate(scenes);
@@ -95,6 +98,33 @@ export class AuthorProgressService {
         const completed = estimate.total - estimate.remaining;
         // Clamp to 0-100 just in case
         const percent = (completed / estimate.total) * 100;
+        return Math.min(100, Math.max(0, Math.round(percent)));
+    }
+
+    private calculateDateProgress(start?: string, target?: string): number | null {
+        if (!start || !target) return null;
+        const parseIsoDate = (value: string): number | null => {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+            const parsed = new Date(`${value}T00:00:00`);
+            const time = parsed.getTime();
+            return Number.isFinite(time) ? time : null;
+        };
+        const startMs = parseIsoDate(start);
+        const targetMs = parseIsoDate(target);
+        if (startMs === null || targetMs === null) return null;
+        if (targetMs < startMs) return null;
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const now = today.getTime();
+
+        if (targetMs === startMs) {
+            return now >= targetMs ? 100 : 0;
+        }
+        if (now <= startMs) return 0;
+        if (now >= targetMs) return 100;
+
+        const percent = ((now - startMs) / (targetMs - startMs)) * 100;
         return Math.min(100, Math.max(0, Math.round(percent)));
     }
 

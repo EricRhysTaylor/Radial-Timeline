@@ -51,17 +51,36 @@ const getClassScopeConfig = (raw?: string[]): { allowAll: boolean; allowed: stri
     return { allowAll, allowed };
 };
 
-const CLASS_ABBREVIATIONS: Record<string, string> = {
-    scene: 's',
-    outline: 'o',
-    character: 'c',
-    place: 'p',
-    power: 'pw'
+const normalizeClassLabel = (className: string): string =>
+    className
+        .replace(/[_-]+/g, ' ')
+        .trim()
+        .toLowerCase();
+
+const pluralizeWord = (word: string): string => {
+    if (!word) return 'items';
+    const secondToLast = word[word.length - 2];
+    if (word.endsWith('y') && secondToLast && !'aeiou'.includes(secondToLast)) {
+        return `${word.slice(0, -1)}ies`;
+    }
+    if (/(s|x|z|ch|sh)$/i.test(word)) {
+        return `${word}es`;
+    }
+    return `${word}s`;
 };
 
-const getClassAbbreviation = (className: string): string => {
-    if (CLASS_ABBREVIATIONS[className]) return CLASS_ABBREVIATIONS[className];
-    return className.charAt(0) || '?';
+const pluralizePhrase = (phrase: string): string => {
+    const tokens = phrase.split(/\s+/).filter(Boolean);
+    if (!tokens.length) return 'items';
+    const last = tokens.pop()!;
+    tokens.push(pluralizeWord(last));
+    return tokens.join(' ');
+};
+
+const formatClassCountLabel = (className: string, count: number): string => {
+    const normalized = normalizeClassLabel(className);
+    if (!normalized) return count === 1 ? 'item' : 'items';
+    return count === 1 ? normalized : pluralizePhrase(normalized);
 };
 
 type LegacyInquirySourcesSettings = {
@@ -723,7 +742,8 @@ export function renderInquirySection(params: SectionParams): void {
             participatingClasses.forEach(className => {
                 const count = classCounts[className] || 0;
                 if (!count) return;
-                parts.push(`${count}${getClassAbbreviation(className)}`);
+                const label = formatClassCountLabel(className, count);
+                parts.push(`${count} ${label}`);
             });
             const suffix = parts.length ? `[${parts.join(', ')}]` : '[0]';
             const row = resolvedList.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });

@@ -83,6 +83,9 @@ export interface AuthorProgressSettings {
     showActs: boolean;      // Show act divisions vs full circle
     showStatus: boolean;    // Show real stage colors vs neutral gray
     showProgressPercent?: boolean; // Show big center %
+    aprProgressMode?: 'stage' | 'zero' | 'date';
+    aprProgressDateStart?: string;
+    aprProgressDateTarget?: string;
     aprSize?: 'thumb' | 'small' | 'medium' | 'large';
     aprBackgroundColor?: string;
     aprCenterTransparent?: boolean;
