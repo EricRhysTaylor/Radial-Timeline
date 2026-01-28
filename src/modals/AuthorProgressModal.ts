@@ -15,7 +15,7 @@ export class AuthorProgressModal extends Modal {
     private service: AuthorProgressService;
     private publishTarget: AuthorProgressPublishTarget;
 
-    // Reveal options (checkbox states)
+    // Reveal options (derived from settings)
     private showSubplots: boolean;
     private showActs: boolean;
     private showStatus: boolean;
@@ -387,60 +387,20 @@ export class AuthorProgressModal extends Modal {
         this.showStatus = settings?.showStatus ?? true;
         this.showPercent = settings?.showProgressPercent ?? true;
 
+        const revealSummary = [
+            `Subplots ${this.showSubplots ? 'On' : 'Off'}`,
+            `Status Colors ${this.showStatus ? 'On' : 'Off'}`
+        ].join(' · ');
+
         this.revealSectionEl.createEl('h4', { text: 'What to Reveal', cls: 'rt-apr-reveal-title' });
         this.revealSectionEl.createEl('p', {
-            text: 'Control how much of your story structure is visible to fans. Uncheck all for a simple progress ring showing how far scenes have advanced through your publishing stages (Zero → Press).',
+            text: `Reveal: ${revealSummary}.`,
             cls: 'rt-apr-reveal-desc'
         });
-
-        const checkboxGrid = this.revealSectionEl.createDiv({ cls: 'rt-apr-checkbox-grid' });
-
-        const subplotsItem = checkboxGrid.createDiv({ cls: 'rt-apr-checkbox-item' });
-        const subplotsInput = subplotsItem.createEl('input', { type: 'checkbox' });
-        subplotsInput.id = 'apr-subplots';
-        subplotsInput.checked = this.showSubplots;
-        subplotsInput.onchange = async () => {
-            this.showSubplots = subplotsInput.checked;
-            await this.saveRevealOptions();
-            await this.renderPreview();
-        };
-        subplotsItem.createEl('label', { text: 'Subplots', attr: { for: 'apr-subplots' } });
-
-        // Acts removed from UI (always on)
-        /*
-        const actsItem = checkboxGrid.createDiv({ cls: 'rt-apr-checkbox-item' });
-        const actsInput = actsItem.createEl('input', { type: 'checkbox' });
-        actsInput.id = 'apr-acts';
-        actsInput.checked = this.showActs;
-        actsInput.onchange = async () => {
-            this.showActs = actsInput.checked;
-            await this.saveRevealOptions();
-            await this.renderPreview();
-        };
-        actsItem.createEl('label', { text: 'Acts', attr: { for: 'apr-acts' } });
-        */
-
-        const statusItem = checkboxGrid.createDiv({ cls: 'rt-apr-checkbox-item' });
-        const statusInput = statusItem.createEl('input', { type: 'checkbox' });
-        statusInput.id = 'apr-status';
-        statusInput.checked = this.showStatus;
-        statusInput.onchange = async () => {
-            this.showStatus = statusInput.checked;
-            await this.saveRevealOptions();
-            await this.renderPreview();
-        };
-        statusItem.createEl('label', { text: 'Status Colors', attr: { for: 'apr-status' } });
-
-        const percentItem = checkboxGrid.createDiv({ cls: 'rt-apr-checkbox-item rt-apr-highlight-check' });
-        const percentInput = percentItem.createEl('input', { type: 'checkbox' });
-        percentInput.id = 'apr-percent';
-        percentInput.checked = this.showPercent;
-        percentInput.onchange = async () => {
-            this.showPercent = percentInput.checked;
-            await this.saveRevealOptions();
-            await this.renderPreview();
-        };
-        percentItem.createEl('label', { text: '% Complete', attr: { for: 'apr-percent' } });
+        this.revealSectionEl.createEl('p', {
+            text: `% Complete: ${this.showPercent ? 'On' : 'Off'}.`,
+            cls: 'rt-apr-reveal-desc'
+        });
     }
 
     private renderSizeSection(): void {

@@ -112,15 +112,24 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         }
     }
     const unitWidth = measuredUnitWidth ?? estimateTextWidth(unitPattern);
-    const estimatedWidth = estimateTextWidth(unitPattern);
     if (unitWidth > 0) {
-        // Small overshoot (5%) to ensure text fills the circle without visible gaps
-        // Excess text is clipped at the path end (invisible since startOffset=0%)
-        const baseRepeats = Math.ceil(circumference / unitWidth);
-        repeats = Math.max(2, Math.ceil(baseRepeats * 1.05));
+        // Use floor to get complete pattern repeats only (never cut mid-word)
+        // The seam will fall between patterns at a " ~ " separator
+        repeats = Math.max(2, Math.floor(circumference / unitWidth));
     }
 
-    const adjustedLetterSpacing = brandingLetterSpacing;
+    // Calculate the gap left after complete pattern repeats
+    // and distribute it as additional letter-spacing to fill the circle perfectly
+    const totalTextWidth = repeats * unitWidth;
+    const gap = circumference - totalTextWidth;
+    const totalChars = repeats * unitPattern.length;
+
+    // Convert base letter-spacing from em to px, add gap distribution, convert back
+    const baseSpacingPx = spacingEm * avgFontSize;
+    const additionalSpacingPerChar = totalChars > 1 ? gap / totalChars : 0;
+    const adjustedSpacingPx = baseSpacingPx + additionalSpacingPerChar;
+    const adjustedSpacingEm = adjustedSpacingPx / avgFontSize;
+    const adjustedLetterSpacing = `${adjustedSpacingEm.toFixed(4)}em`;
 
 
 
