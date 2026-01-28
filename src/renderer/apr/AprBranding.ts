@@ -44,8 +44,9 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         authorNameFontFamily = 'Inter', authorNameFontWeight = 400, authorNameFontItalic = false, authorNameFontSize
     } = options;
     const resolvedLayout = options.layout ?? computeAprLayout(getAprPreset(size), { percent: 0 });
-    if (!resolvedLayout.preset.enableText || !resolvedLayout.branding.radius) return '';
-    const { radius: brandingRadius, fontSize: brandingFontSize, letterSpacing: brandingLetterSpacing } = resolvedLayout.branding;
+    const brandingRadius = resolvedLayout.ringOuterR ?? resolvedLayout.branding.radius;
+    if (!resolvedLayout.preset.enableText || !brandingRadius) return '';
+    const { fontSize: brandingFontSize, letterSpacing: brandingLetterSpacing } = resolvedLayout.branding;
 
     // Use custom font sizes if provided, otherwise use preset defaults
     const bookTitleSize = bookTitleFontSize ?? brandingFontSize;
