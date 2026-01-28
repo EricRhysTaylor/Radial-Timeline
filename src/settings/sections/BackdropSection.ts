@@ -17,7 +17,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
     const { plugin, containerEl } = params;
 
     const backdropHeading = new Settings(containerEl)
-        .setName('Backdrop & Micro Context Rings')
+        .setName('Backdrop & micro context rings')
         .setHeading();
     addHeadingIcon(backdropHeading, 'layers-3');
     addWikiLink(backdropHeading, 'Settings#backdrop');

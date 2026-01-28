@@ -277,9 +277,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const spokeColorSetting = new Setting(stylingBody)
         .setName('Spokes and borders')
         .setDesc('Choose contrasting color or none. Controls all structural elements including scene borders and act division spokes.');
-    spokeColorSetting.settingEl.addClass('ert-elementBlock', 'ert-settingRow');
-    spokeColorSetting.controlEl.addClass('ert-elementBlock__right');
-    spokeColorSetting.settingEl.querySelector('.setting-item-info')?.classList.add('ert-elementBlock__left');
+    spokeColorSetting.controlEl.addClass(ERT_CLASSES.INLINE);
 
     let spokeColorPickerRef: ColorSwatchHandle | undefined;
     let spokeColorInputRef: TextComponent | undefined;
@@ -287,7 +285,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Match Book Title Color layout exactly - always show color picker and text input
     const isCustomMode = currentSpokeMode === 'custom';
     const fallbackColor = '#ffffff';
-    const spokeControlRow = spokeColorSetting.controlEl.createDiv({ cls: 'ert-elementBlock__row ert-typography-controls ert-typography-controls--end' });
+    const spokeControlRow = spokeColorSetting.controlEl;
     const spokeColorPicker = colorSwatch(spokeControlRow, {
         value: isCustomMode ? currentSpokeColor : fallbackColor,
         ariaLabel: 'Spoke color',
@@ -361,15 +359,73 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     linkUrlSetting.settingEl.addClass('ert-setting-full-width-input');
 
     linkUrlSetting.addText(text => {
+        const successClass = 'ert-input--success';
+        const errorClass = 'ert-input--error';
+        const clearInputState = () => {
+            text.inputEl.removeClass(successClass);
+            text.inputEl.removeClass(errorClass);
+        };
+        const flashError = (timeout = 2000) => {
+            text.inputEl.addClass(errorClass);
+            window.setTimeout(() => {
+                text.inputEl.removeClass(errorClass);
+            }, timeout);
+        };
+        const flashSuccess = (timeout = 1000) => {
+            text.inputEl.addClass(successClass);
+            window.setTimeout(() => {
+                text.inputEl.removeClass(successClass);
+            }, timeout);
+        };
+        const isValidUrl = (value: string) => {
+            try {
+                const url = new URL(value);
+                return url.protocol === 'http:' || url.protocol === 'https:';
+            } catch {
+                return false;
+            }
+        };
+
         text.setPlaceholder('https://your-site.com')
             .setValue(settings?.authorUrl || '')
-            .onChange(async (val) => {
+            .onChange(() => {
+                clearInputState();
+            });
+
+        const handleBlur = async () => {
+            const val = text.getValue().trim();
+            clearInputState();
+
+            if (!val) {
                 if (plugin.settings.authorProgress) {
-                    plugin.settings.authorProgress.authorUrl = val;
+                    plugin.settings.authorProgress.authorUrl = '';
                     await plugin.saveSettings();
                     refreshPreview();
+                    flashSuccess();
                 }
-            });
+                return;
+            }
+
+            if (!isValidUrl(val)) {
+                flashError();
+                return;
+            }
+
+            if (plugin.settings.authorProgress) {
+                plugin.settings.authorProgress.authorUrl = val;
+                await plugin.saveSettings();
+                refreshPreview();
+                flashSuccess();
+            }
+        };
+
+        plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
+        plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+            if (evt.key === 'Enter') {
+                evt.preventDefault();
+                text.inputEl.blur();
+            }
+        });
     });
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1202,14 +1258,17 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
 
         // Pro upgrade teaser for non-Pro users
-        const proTeaser = automationCard.createDiv({ cls: 'ert-apr-pro-teaser' });
-        const teaserIcon = proTeaser.createSpan({ cls: 'ert-apr-pro-teaser-icon' });
+        const proTeaser = automationCard.createDiv({ cls: `ert-apr-pro-teaser ${ERT_CLASSES.SKIN_PRO}` });
+        const headerRow = proTeaser.createDiv({ cls: 'ert-apr-pro-teaser-header' });
+        const teaserIcon = headerRow.createSpan({ cls: 'ert-apr-pro-teaser-icon' });
         setIcon(teaserIcon, 'signature');
-        const teaserText = proTeaser.createDiv({ cls: 'ert-apr-pro-teaser-text' });
-        teaserText.createEl('strong', { text: 'Want more?' });
-        teaserText.createEl('span', {
-            text: ' Campaign Manager lets you create multiple embeds with Teaser Reveal—progressively show more detail as you write.'
-        });
+        const teaserHeading = headerRow.createDiv({ cls: 'ert-apr-pro-teaser-heading' });
+        teaserHeading.createEl('strong', { text: 'Want more?' });
+        const teaserLabel = headerRow.createDiv({ cls: 'ert-apr-pro-teaser-header-label', text: 'Pro feature' });
+        const teaserDescription = proTeaser.createDiv({ cls: 'ert-apr-pro-teaser-description' });
+        teaserDescription.setText(
+            'Campaign Manager lets you create multiple embeds with Teaser Reveal—progressively show more detail as you write.'
+        );
         const teaserLink = proTeaser.createEl('a', {
             text: 'Upgrade to Pro →',
             href: 'https://radialtimeline.com/pro',

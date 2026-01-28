@@ -261,17 +261,35 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             this.updateNonSettingBlocks(false);
             return;
         }
+
+        const matchingSections = new Set<HTMLElement>();
+        const settingMatchMap = new Map<HTMLElement, boolean>();
+
         allSettings.forEach(settingEl => {
             const el = settingEl as HTMLElement;
             const searchText = ` ${el.dataset.rtSearchText || ''} `;
             const matches = queryTerms.every(term => this.matchesSearchTerm(searchText, term));
-            this.toggleSearchHidden(el, !matches);
+            settingMatchMap.set(el, matches);
+            if (matches) {
+                const section = el.closest('[data-ert-section]') as HTMLElement | null;
+                if (section) matchingSections.add(section);
+            }
         });
+
+        allSettings.forEach(settingEl => {
+            const el = settingEl as HTMLElement;
+            const section = el.closest('[data-ert-section]') as HTMLElement | null;
+            const sectionIsMatch = section ? matchingSections.has(section) : false;
+            const shouldHide = section ? !sectionIsMatch : !settingMatchMap.get(el);
+            this.toggleSearchHidden(el, shouldHide);
+        });
+
         allSectionContainers.forEach(sectionEl => {
             const section = sectionEl as HTMLElement;
-            const visibleSettings = section.querySelectorAll('.setting-item:not(.ert-search-hidden)');
-            section.classList.toggle('ert-search-section-hidden', visibleSettings.length === 0);
+            const showSection = matchingSections.has(section);
+            section.classList.toggle('ert-search-section-hidden', !showSection);
         });
+
         this.updateNonSettingBlocks(true);
     }
 

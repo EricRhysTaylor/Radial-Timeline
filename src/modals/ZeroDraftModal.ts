@@ -33,6 +33,57 @@ export class ZeroDraftModal extends Modal {
         this.onOverride = options.onOverride;
     }
 
+    private async confirmAction(options: {
+        badge?: string;
+        title: string;
+        subtitle?: string;
+        confirmText: string;
+        confirmWarning?: boolean;
+    }): Promise<boolean> {
+        return await new Promise<boolean>((resolve) => {
+            const modal = new Modal(this.app);
+            const { modalEl, contentEl } = modal;
+            modal.titleEl.setText('');
+            contentEl.empty();
+
+            if (modalEl) {
+                modalEl.classList.add('ert-ui', 'ert-modal-shell', 'ert-modal-shell--sm');
+            }
+            contentEl.addClass('ert-modal-container');
+
+            const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+            if (options.badge) {
+                header.createSpan({ text: options.badge, cls: 'ert-modal-badge' });
+            }
+            header.createDiv({ text: options.title, cls: 'ert-modal-title' });
+            if (options.subtitle) {
+                header.createDiv({ text: options.subtitle, cls: 'ert-modal-subtitle' });
+            }
+
+            const actionsRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
+            const confirmBtn = new ButtonComponent(actionsRow)
+                .setButtonText(options.confirmText);
+            if (options.confirmWarning) {
+                confirmBtn.setWarning();
+            } else {
+                confirmBtn.setCta();
+            }
+            confirmBtn.onClick(() => {
+                modal.close();
+                resolve(true);
+            });
+
+            new ButtonComponent(actionsRow)
+                .setButtonText('Cancel')
+                .onClick(() => {
+                    modal.close();
+                    resolve(false);
+                });
+
+            modal.open();
+        });
+    }
+
     onOpen(): void {
         const { contentEl, titleEl, modalEl } = this;
         titleEl.setText('');
@@ -55,12 +106,11 @@ export class ZeroDraftModal extends Modal {
         infoEl.setText('Zero draft mode is enabled. This scene has Publish Stage = Zero and Status = Complete. You can turn this off in Settings → Zero draft mode.');
 
         // Textarea
-        const textareaRow = contentEl.createDiv({ cls: 'ert-row' });
+        const textareaRow = contentEl.createDiv({ cls: 'ert-row ert-row--stack' });
         textareaRow.createDiv({ cls: 'ert-label', text: 'Pending edits' });
         const textareaControl = textareaRow.createDiv({ cls: 'ert-control' });
         this.textareaEl = textareaControl.createEl('textarea', { cls: 'ert-textarea' });
         this.textareaEl.value = this.originalText;
-        this.textareaEl.style.minHeight = '200px';
 
         // Buttons container
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
@@ -69,11 +119,17 @@ export class ZeroDraftModal extends Modal {
         new ButtonComponent(buttonRow)
             .setButtonText('Save')
             .setCta()
-            .onClick(() => {
+            .onClick(async () => {
                 const next = (this.textareaEl.value || '').trim();
                 // If we are clearing existing non-empty content, confirm deletion
                 if (this.originalText.length > 0 && next.length === 0) {
-                    const confirmed = window.confirm('Delete existing pending edits content? This will remove all previous text.');
+                    const confirmed = await this.confirmAction({
+                        badge: 'Warning',
+                        title: 'Delete pending edits?',
+                        subtitle: 'This will remove all previous text.',
+                        confirmText: 'Delete',
+                        confirmWarning: true
+                    });
                     if (!confirmed) return; // Do not close or write
                 }
                 // Proceed with write
@@ -85,11 +141,17 @@ export class ZeroDraftModal extends Modal {
         new ButtonComponent(buttonRow)
             .setButtonText('Override')
             .setWarning()
-            .onClick(() => {
+            .onClick(async () => {
                 const current = (this.textareaEl.value || '').trim();
                 const isDirty = current !== this.originalText;
                 if (isDirty) {
-                    const discard = window.confirm('Discard changes?');
+                    const discard = await this.confirmAction({
+                        badge: 'Warning',
+                        title: 'Discard changes?',
+                        subtitle: 'Unsaved edits will be lost.',
+                        confirmText: 'Discard',
+                        confirmWarning: true
+                    });
                     if (!discard) return;
                 }
                 // Open note without saving
@@ -100,11 +162,17 @@ export class ZeroDraftModal extends Modal {
         // Cancel button
         new ButtonComponent(buttonRow)
             .setButtonText('Cancel')
-            .onClick(() => {
+            .onClick(async () => {
                 const current = (this.textareaEl.value || '').trim();
                 const isDirty = current !== this.originalText;
                 if (isDirty) {
-                    const discard = window.confirm('Discard changes?');
+                    const discard = await this.confirmAction({
+                        badge: 'Warning',
+                        title: 'Discard changes?',
+                        subtitle: 'Unsaved edits will be lost.',
+                        confirmText: 'Discard',
+                        confirmWarning: true
+                    });
                     if (!discard) return;
                 }
                 this.close();
@@ -113,4 +181,3 @@ export class ZeroDraftModal extends Modal {
 }
 
 export default ZeroDraftModal;
-

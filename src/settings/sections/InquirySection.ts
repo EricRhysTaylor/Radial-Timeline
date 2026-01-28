@@ -416,10 +416,9 @@ export function renderInquirySection(params: SectionParams): void {
 
     let resolvedRootCache: { signature: string; resolvedRoots: string[]; total: number } | null = null;
 
-    const presetsPanel = sourcesBody.createDiv({ cls: ERT_CLASSES.PANEL });
-    const presetsBody = presetsPanel.createDiv({ cls: 'ert-panel__body' });
+    const presetsStack = sourcesBody.createDiv({ cls: [ERT_CLASSES.STACK, ERT_CLASSES.STACK_TIGHT] });
 
-    const presetSetting = new Settings(presetsBody)
+    const presetSetting = new Settings(presetsStack)
         .setName('Presets')
         .setDesc('Quick starters for the contribution matrix. Apply one, then tweak as needed.');
     presetSetting.settingEl.addClass(ERT_CLASSES.ROW, ERT_CLASSES.ROW_TIGHT);
@@ -447,7 +446,7 @@ export function renderInquirySection(params: SectionParams): void {
     addPresetButton('deep', 'Deep (expensive)');
     syncPresetButtons();
 
-    const classTableWrap = presetsBody.createDiv({ cls: ['ert-controlGroup', 'ert-controlGroup--class-scope'] });
+    const classTableWrap = presetsStack.createDiv({ cls: ['ert-controlGroup', 'ert-controlGroup--class-scope'] });
 
     const scanInquiryClasses = async (roots: string[]): Promise<{
         discoveredCounts: Record<string, number>;
@@ -597,16 +596,12 @@ export function renderInquirySection(params: SectionParams): void {
                 cell: HTMLElement,
                 value: boolean,
                 disabled: boolean,
-                onChange: (next: boolean) => void,
-                label?: string
+                onChange: (next: boolean) => void
             ) => {
                 const toggle = cell.createEl('input', { type: 'checkbox' });
                 toggle.checked = value;
                 toggle.disabled = disabled;
                 plugin.registerDomEvent(toggle, 'change', () => onChange(toggle.checked));
-                if (label) {
-                    cell.createSpan({ cls: 'ert-controlGroup__cell--meta', text: label });
-                }
             };
 
             const bookCell = row.createDiv({ cls: 'ert-controlGroup__cell' });
@@ -617,7 +612,7 @@ export function renderInquirySection(params: SectionParams): void {
                     const currentContribution = resolveContributionMode(config);
                     const fallback = currentContribution === 'none' ? defaultModeForClass(config.className) : currentContribution;
                     updateClassConfig({ bookScope: next ? fallback : 'none' });
-                }, isOutline ? 'Book outline' : undefined);
+                });
             }
 
             const sagaCell = row.createDiv({ cls: 'ert-controlGroup__cell' });
@@ -628,7 +623,7 @@ export function renderInquirySection(params: SectionParams): void {
                     const currentContribution = resolveContributionMode(config);
                     const fallback = currentContribution === 'none' ? defaultModeForClass(config.className) : currentContribution;
                     updateClassConfig({ sagaScope: next ? fallback : 'none' });
-                }, isOutline ? 'Saga outline' : undefined);
+                });
             }
 
             const referenceCell = row.createDiv({ cls: 'ert-controlGroup__cell' });
@@ -637,7 +632,7 @@ export function renderInquirySection(params: SectionParams): void {
                     const currentContribution = resolveContributionMode(config);
                     const fallback = currentContribution === 'none' ? defaultModeForClass(config.className) : currentContribution;
                     updateClassConfig({ referenceScope: next ? fallback : 'none' });
-                }, 'Reference');
+                });
             } else {
                 referenceCell.createSpan({ cls: 'ert-controlGroup__cell--meta', text: '—' });
             }

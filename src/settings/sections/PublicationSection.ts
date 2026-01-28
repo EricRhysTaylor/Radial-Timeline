@@ -73,7 +73,7 @@ function splitQuoteForBalance(
     const totalWidth = measureTextWidth(ctx, `"${quote.text}"`, metrics.quote)
         + measureTextWidth(ctx, authorSuffix, metrics.author);
     const targetLine1 = totalWidth * 0.6;
-    const targetLine2 = totalWidth * 0.3;
+    const targetLine2 = totalWidth * 0.4;
     const minWordsPerLine = 2;
 
     let bestIndex = minWordsPerLine - 1;
