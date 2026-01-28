@@ -179,7 +179,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Styling (background + branding colors) - placed first, close to preview
     const stylingCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ert-typography-stack` });
     const stylingHeader = stylingCard.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
-    const stylingHeading = stylingHeader.createDiv({ cls: 'setting-item setting-item-heading' });
+    const stylingHeading = stylingHeader.createDiv({ cls: 'setting-item setting-item-heading ert-setting-heading--top' });
     const stylingInfo = stylingHeading.createDiv({ cls: 'setting-item-info' });
     const stylingName = stylingInfo.createDiv({ cls: 'setting-item-name' });
     const stylingHeaderIcon = stylingName.createSpan({ cls: 'ert-setting-heading-icon' });
@@ -435,7 +435,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     const themeCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ert-typography-stack` });
     const themeHeader = themeCard.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
-    const themeHeading = themeHeader.createDiv({ cls: `setting-item setting-item-heading ${ERT_CLASSES.ROW}` });
+    const themeHeading = themeHeader.createDiv({ cls: `setting-item setting-item-heading ert-setting-heading--top ${ERT_CLASSES.ROW}` });
     const themeInfo = themeHeading.createDiv({ cls: 'setting-item-info' });
     const themeName = themeInfo.createDiv({ cls: 'setting-item-name' });
     const themeHeaderIcon = themeName.createSpan({ cls: 'ert-setting-heading-icon' });

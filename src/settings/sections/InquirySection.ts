@@ -1191,7 +1191,7 @@ export function renderInquirySection(params: SectionParams): void {
 
     const corpusBody = createSection(containerEl, {
         title: 'Corpus (CC)',
-        desc: 'Thresholds are based on content-only word counts (frontmatter excluded).',
+        desc: 'Highlight content quality and completeness according to your quality standards. Thresholds are based on content-only word counts (frontmatter excluded).',
         icon: 'layout-grid',
         wiki: 'Settings#inquiry-corpus'
     });

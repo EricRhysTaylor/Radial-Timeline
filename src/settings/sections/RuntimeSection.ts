@@ -339,9 +339,8 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             }
 
             // Session planning (optional, per profile)
-            const sessionGroup = detailsContainer.createDiv({ cls: ERT_CLASSES.STACK_TIGHT });
-            const sessionHeader = sessionGroup.createDiv({ cls: 'setting-item setting-item-heading' });
-            const sessionInfo = sessionHeader.createDiv({ cls: 'setting-item-info' });
+            const sessionGroup = detailsContainer.createDiv({ cls: 'setting-item setting-item-heading ert-setting-heading--top' });
+            const sessionInfo = sessionGroup.createDiv({ cls: 'setting-item-info' });
             const sessionName = sessionInfo.createDiv({ cls: 'setting-item-name' });
             const sessionIcon = sessionName.createSpan({ cls: 'ert-setting-heading-icon' });
             setIcon(sessionIcon, 'calendar-clock');
@@ -353,11 +352,11 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             sessionWikiLink.setAttr('target', '_blank');
             sessionWikiLink.setAttr('rel', 'noopener');
             setIcon(sessionWikiLink, 'external-link');
-            sessionGroup.createDiv({
+            const session = selectedProfile.sessionPlanning || {};
+            sessionInfo.createDiv({
                 cls: 'setting-item-description',
                 text: 'Used in the Outline export: Index cards (JSON) summary to estimate writing hours and total sessions.'
             });
-            const session = selectedProfile.sessionPlanning || {};
 
             addProRow(new Setting(detailsContainer))
                 .setName('Drafting words per minute (optional)')

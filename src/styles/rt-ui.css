@@ -1913,6 +1913,10 @@
   opacity: 1;
 }
 
+.ert-ui .setting-item.setting-item-heading.ert-setting-heading--top {
+  margin-top: 0;
+}
+
 .ert-ui .ert-settings-searchable-content [data-ert-section]:first-child>.setting-item.setting-item-heading:first-child:not(.ert-setting-heading--top) {
   margin-top: 0;
 }

@@ -159,16 +159,16 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         const bannerHeader = betaPanel.createDiv({ cls: ERT_CLASSES.INLINE });
         const bannerIcon = bannerHeader.createSpan({ cls: 'ert-setting-heading-icon' });
         setIcon(bannerIcon, 'gift');
-        bannerHeader.createEl('strong', { text: 'Thank you for being an early adopter!' });
+        bannerHeader.createEl('strong', { text: 'Thank you for supporting the future of Radial Timeline!' });
 
         betaPanel.createEl('p', {
             cls: ERT_CLASSES.SECTION_DESC,
-            text: 'Pro features are free during the Open Beta. Your feedback helps shape the future of Radial Timeline.'
+            text: 'Pro features are free during the Open Beta. Share feedback and get a free month of Pro.'
         });
 
         const rewardBox = betaPanel.createDiv({ cls: [ERT_CLASSES.PREVIEW_FRAME, 'ert-previewFrame--flush'] });
         const p = rewardBox.createEl('p', { attr: { style: 'margin: 0; line-height: 1.5;' } });
-        p.createEl('strong', { text: 'Early Adopter Reward: ' });
+        p.createEl('strong', { text: 'Founding Pro Reward: ' });
         p.createSpan({ text: 'During the first year of Pro, for every unique bug report, you will recieve one month of Pro free.' });
 
         const feedbackLink = betaPanel.createEl('a', {
