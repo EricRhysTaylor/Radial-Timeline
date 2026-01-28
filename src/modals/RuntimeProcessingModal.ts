@@ -11,6 +11,7 @@ import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
 import { formatRuntimeValue, getRuntimeSettings } from '../utils/runtimeEstimator';
 import { isNonSceneItem } from '../utils/sceneHelpers';
+import { ERT_CLASSES } from '../ui/classes';
 
 export type RuntimeScope = 'current' | 'subplot' | 'all';
 export type RuntimeMode = 'local' | 'ai';
@@ -105,7 +106,7 @@ export class RuntimeProcessingModal extends Modal {
         titleEl.setText('');
 
         if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-modal-shell', 'rt-runtime-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-modal-shell', 'rt-runtime-modal-shell', ERT_CLASSES.SKIN_PRO);
         }
         contentEl.addClass('ert-modal-container', 'rt-runtime-modal');
 
@@ -136,19 +137,26 @@ export class RuntimeProcessingModal extends Modal {
 
         // Header
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        
+
         const contentType = this.plugin.settings.runtimeContentType || 'novel';
         const modeLabel = contentType === 'screenplay' ? 'Screenplay' : 'Audiobook';
-        const badgeText = `Runtime estimator · ${modeLabel}`;
-        
-        const badge = header.createSpan({ cls: 'ert-modal-badge' });
-        const signatureIcon = badge.createSpan({ cls: 'ert-modal-badge-icon' });
-        setIcon(signatureIcon, 'signature');
-        badge.createSpan({ text: 'Runtime estimator · ' });
-        const modeIcon = badge.createSpan({ cls: 'ert-modal-badge-icon' });
         const modeIconName = contentType === 'screenplay' ? 'film' : 'mic-vocal';
+        const badgeText = `Runtime estimator · ${modeLabel}`;
+
+        const pill = header.createSpan({
+            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}`,
+        });
+        const pillIcon = pill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
+        setIcon(pillIcon, 'signature');
+        pill.createSpan({
+            cls: ERT_CLASSES.BADGE_PILL_TEXT,
+            text: 'PRO',
+        });
+
+        const runtimeInfo = header.createSpan({ cls: 'rt-runtime-mode-info' });
+        const modeIcon = runtimeInfo.createSpan({ cls: 'ert-modal-badge-icon' });
         setIcon(modeIcon, modeIconName);
-        badge.createSpan({ text: ` ${modeLabel}` });
+        runtimeInfo.createSpan({ text: badgeText });
         header.createDiv({ cls: 'ert-modal-title', text: 'Runtime Estimation' });
         header.createDiv({ cls: 'ert-modal-subtitle', text: 'Algorithmic word-count analysis. Calculates runtime from scene text using configured WPM rates and parenthetical timing.' });
 

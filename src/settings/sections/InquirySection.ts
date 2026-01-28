@@ -339,8 +339,7 @@ export function renderInquirySection(params: SectionParams): void {
     const sourcesBody = createSection(containerEl, {
         title: 'Inquiry sources',
         icon: 'search',
-        wiki: 'Settings#inquiry-sources',
-        headingClass: 'ert-setting-heading--top'
+        wiki: 'Settings#inquiry-sources'
     });
 
     let scanRootsInput: TextAreaComponent | null = null;

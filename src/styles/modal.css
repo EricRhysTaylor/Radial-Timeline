@@ -109,6 +109,16 @@
   fill: none;
 }
 
+.rt-runtime-mode-info {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 /* Rename Subplot Modal sizing */
 .rt-rename-subplot-modal.modal {
   width: min(640px, 92vw);

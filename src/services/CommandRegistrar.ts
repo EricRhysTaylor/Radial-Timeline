@@ -119,8 +119,8 @@ export class CommandRegistrar {
         });
 
         this.plugin.addCommand({
-            id: 'manage-export',
-            name: 'Manage export',
+            id: 'manuscript-export',
+            name: 'Manuscript export',
             callback: () => {
                 new ManuscriptOptionsModal(this.app, this.plugin, this.handleManuscriptExport.bind(this)).open();
             }

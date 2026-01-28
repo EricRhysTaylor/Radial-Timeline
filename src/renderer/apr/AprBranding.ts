@@ -82,6 +82,7 @@ export function renderAprBranding(options: AprBrandingOptions): string {
 
     let repeats = 1;
     const canMeasure = typeof document !== 'undefined' && typeof window !== 'undefined';
+    let measuredUnitWidth: number | null = null;
     if (canMeasure) {
         try {
             const span = document.createElement('span');
@@ -101,17 +102,15 @@ export function renderAprBranding(options: AprBrandingOptions): string {
             const unitWidth = span.getBoundingClientRect().width * 1.02;
             document.body.removeChild(span);
             if (unitWidth > 0) {
-                repeats = Math.max(1, Math.round(circumference / unitWidth));
+                measuredUnitWidth = unitWidth;
             }
         } catch {
             // fall back to headless estimate
         }
     }
-    if (!canMeasure) {
-        const unitWidth = estimateTextWidth(unitPattern);
-        if (unitWidth > 0) {
-            repeats = Math.max(1, Math.round(circumference / unitWidth));
-        }
+    const unitWidth = measuredUnitWidth ?? estimateTextWidth(unitPattern);
+    if (unitWidth > 0) {
+        repeats = Math.max(1, Math.ceil(circumference / unitWidth));
     }
 
     const startOffset = `${(25 + 10 / 360 * 100).toFixed(2)}%`;
@@ -340,10 +339,10 @@ export function renderAprCenterPercent(
     const numStr = String(Math.round(percent));
     const innerRadius = layout.ringInnerR;
     const digitCount = Math.max(1, numStr.length);
-    const baseNumberPx = innerRadius * 1.2;
+    const baseNumberPx = innerRadius * 1.35;
     const digitScale = Math.max(0.72, 1 - (digitCount - 1) * 0.14);
     const numberPx = Math.max(1, baseNumberPx * digitScale);
-    const percentPx = Math.max(1, numberPx * 1.2);
+    const percentPx = Math.max(1, numberPx * 1.5);
     const percentDy = percentPx * 0.1;
     const numberDy = numberPx * 0.1;
 
@@ -362,7 +361,7 @@ export function renderAprCenterPercent(
                 ${italicAttr(percentSymbolFontItalic)}
                 font-size="${percentPx}"
                 fill="${cssVar('--apr-percent-symbol-color', symColor)}"
-                fill-opacity="0.5">
+                fill-opacity="0.3">
                 %
             </text>
             <text 

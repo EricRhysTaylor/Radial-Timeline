@@ -400,7 +400,7 @@ export const en: TranslationKeys = {
     },
     manuscriptModal: {
         badge: 'Export',
-        title: 'Manuscript generate',
+        title: 'Manuscript export',
         description: 'Choose export presets for manuscripts or outlines. Use markdown-linked TOC for Obsidian-friendly navigation, or plain TOC for AI processing. All orderings support custom ranges with the draggable selector.',
         heroLoading: 'Loading scenes...',
         heroNarrativeMeta: 'Drag handles to select range',

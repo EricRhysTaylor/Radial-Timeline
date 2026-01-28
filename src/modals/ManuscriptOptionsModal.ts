@@ -7,6 +7,7 @@ import { getSceneFilesByOrder, ManuscriptOrder, TocMode } from '../utils/manuscr
 import { t } from '../i18n';
 import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, presetRequiresTemplate, validateTemplateForPreset } from '../utils/exportFormats';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
+import { ERT_CLASSES } from '../ui/classes';
 
 export interface ManuscriptModalResult {
     order: ManuscriptOrder;
@@ -133,10 +134,15 @@ export class ManuscriptOptionsModal extends Modal {
         
         // Pro badge with signature icon (only when Pro is active)
         if (this.isPro) {
-            const badge = hero.createSpan({ cls: 'ert-modal-badge ert-modal-badge-pro' });
-            const iconSpan = badge.createSpan({ cls: 'ert-modal-badge-icon' });
+            const badge = hero.createSpan({
+                cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}`,
+            });
+            const iconSpan = badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
             setIcon(iconSpan, 'signature');
-            badge.createSpan({ text: 'Pro' });
+            badge.createSpan({
+                cls: ERT_CLASSES.BADGE_PILL_TEXT,
+                text: 'PRO',
+            });
         }
         
         hero.createDiv({
