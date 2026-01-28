@@ -1264,13 +1264,13 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         setIcon(teaserIcon, 'signature');
         const teaserHeading = headerRow.createDiv({ cls: 'ert-apr-pro-teaser-heading' });
         teaserHeading.createEl('strong', { text: 'Want more?' });
-        const teaserLabel = headerRow.createDiv({ cls: 'ert-apr-pro-teaser-header-label', text: 'Pro feature' });
+        const teaserLabel = headerRow.createDiv({ cls: 'ert-apr-pro-teaser-header-label', text: 'Enhance Your Workflow' });
         const teaserDescription = proTeaser.createDiv({ cls: 'ert-apr-pro-teaser-description' });
         teaserDescription.setText(
-            'Campaign Manager lets you create multiple embeds with Teaser Reveal—progressively show more detail as you write.'
+            'Campaign Manager lets you create multiple embeds with Teaser Reveal—progressively show more detail as you write. Get access to Campaign Manager and more Pro workflow features including runtime (RT) chronologue mode and Pandoc manuscript export templates.'
         );
         const teaserLink = proTeaser.createEl('a', {
-            text: 'Upgrade to Pro →',
+            text: 'Upgrade to Pro Signature →',
             href: 'https://radialtimeline.com/pro',
             cls: 'ert-apr-pro-teaser-link',
             attr: { target: '_blank', rel: 'noopener' }

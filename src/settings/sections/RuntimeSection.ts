@@ -170,8 +170,8 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             selectedProfileId = profiles[0].id;
         }
 
-        const headerContainer = proContainer.createDiv();
-        const detailsContainer = proContainer.createDiv();
+        const headerContainer = proContainer.createDiv({ cls: ERT_CLASSES.STACK });
+        const detailsContainer = proContainer.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
 
         const getSelectedProfile = (): RuntimeRateProfile | undefined => {
             const currentProfiles = plugin.settings.runtimeRateProfiles || [];
@@ -339,7 +339,8 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             }
 
             // Session planning (optional, per profile)
-            const sessionHeader = detailsContainer.createDiv({ cls: 'setting-item setting-item-heading' });
+            const sessionGroup = detailsContainer.createDiv({ cls: ERT_CLASSES.STACK_TIGHT });
+            const sessionHeader = sessionGroup.createDiv({ cls: 'setting-item setting-item-heading' });
             const sessionInfo = sessionHeader.createDiv({ cls: 'setting-item-info' });
             const sessionName = sessionInfo.createDiv({ cls: 'setting-item-name' });
             const sessionIcon = sessionName.createSpan({ cls: 'ert-setting-heading-icon' });
@@ -352,7 +353,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             sessionWikiLink.setAttr('target', '_blank');
             sessionWikiLink.setAttr('rel', 'noopener');
             setIcon(sessionWikiLink, 'external-link');
-            sessionInfo.createDiv({
+            sessionGroup.createDiv({
                 cls: 'setting-item-description',
                 text: 'Used in the Outline export: Index cards (JSON) summary to estimate writing hours and total sessions.'
             });
@@ -404,7 +405,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             // Explicit Duration Patterns (always shown when enabled)
             const patternsInfo = detailsContainer.createDiv({
-                cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-panel--muted ert-runtime-patterns`
+                cls: `${ERT_CLASSES.STACK} ert-runtime-patterns`
             });
             patternsInfo.createEl('p', {
                 cls: ERT_CLASSES.SECTION_DESC,

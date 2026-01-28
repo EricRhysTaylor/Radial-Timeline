@@ -348,7 +348,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         if (term.length >= 3) {
             variants.push(term.endsWith('s') ? term.slice(0, -1) : `${term}s`);
         }
-        return variants.some(variant => searchText.includes(` ${variant} `));
+        return variants.some(variant => {
+            const exactMatch = searchText.includes(` ${variant} `);
+            const prefixMatch = searchText.includes(`${variant} `);
+            const suffixMatch = searchText.includes(` ${variant}`);
+            const substringMatch = searchText.includes(variant);
+            return exactMatch || prefixMatch || suffixMatch || substringMatch;
+        });
     }
 
     private renderProCallout(containerEl: HTMLElement, text: string, switchToProTab: () => void): void {

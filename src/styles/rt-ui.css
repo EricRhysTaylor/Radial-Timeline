@@ -4192,6 +4192,14 @@
   box-shadow: none;
 }
 
+.ert-ui .ert-runtime-patterns {
+  padding: var(--ert-pad-sm);
+  border-radius: calc(var(--ert-panel-radius) + var(--ert-gap-xs));
+  background: color-mix(in srgb, var(--background-secondary) 88%, var(--background-primary) 12%);
+  border: 1px solid var(--background-modifier-border);
+  gap: var(--ert-gap-xs);
+}
+
 .ert-ui .ert-runtime-gate-note {
   text-align: center;
   font-size: var(--font-ui-small, 13px);
