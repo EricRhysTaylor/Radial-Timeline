@@ -5,6 +5,7 @@ import { handleDominantSubplotSelection } from '../interactions/DominantSubplotH
 import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
 import { updateSynopsisTitleColor } from '../interactions/SynopsisTitleColorManager';
 import { OuterRingDragController, isDragInProgress, wasRecentlyHandledByDrag } from '../interactions/OuterRingDragController';
+import { maybeHandleZeroDraftClick } from '../interactions/ZeroDraftHandler';
 
 export interface AllScenesView {
     currentMode: string;
@@ -42,45 +43,17 @@ export function setupSceneInteractions(view: AllScenesView, group: Element, svgE
             // Handle dominant subplot selection for scenes in multiple subplots
             await handleDominantSubplotSelection(view, group, svgElement, scenes);
 
-            if (view.plugin.settings.enableZeroDraftMode) {
-                const cache = view.plugin.app.metadataCache.getFileCache(file);
-                const fm = (cache && cache.frontmatter) ? (cache.frontmatter as Record<string, unknown>) : {};
-                const getFm = (key: string): unknown => {
-                    if (!fm) return undefined;
-                    const lower = key.toLowerCase();
-                    for (const k of Object.keys(fm)) {
-                        if (k.toLowerCase() === lower) return (fm as any)[k];
-                    }
-                    return undefined;
-                };
-                const stageValue = String(getFm('Publish Stage') ?? 'Zero');
-                const statusValue = String(getFm('Status') ?? 'Todo');
-                const isStageZero = stageValue.trim().toLowerCase() === 'zero';
-                const isStatusComplete = statusValue.trim().toLowerCase() === 'complete';
-                if (isStageZero && isStatusComplete) {
-                    evt.preventDefault();
-                    evt.stopPropagation();
-                    const pendingEdits = String(getFm('Pending Edits') ?? '').trim();
-                    const sceneTitle = file.basename || 'Scene';
-                    const modal = new (require('../../modals/ZeroDraftModal').default)(view.plugin.app, {
-                        titleText: `Pending Edits — ${sceneTitle}`,
-                        initialText: pendingEdits,
-                        onOk: async (nextText: string) => {
-                            try {
-                                await view.plugin.app.fileManager.processFrontMatter(file, (yaml: Record<string, unknown>) => {
-                                    (yaml as Record<string, unknown>)['Pending Edits'] = nextText;
-                                });
-                            } catch (e) {
-                                // SAFE: Notice suppressed here to avoid UI noise; modal informs user on failure
-                            }
-                        },
-                        onOverride: async () => {
-                            await openOrRevealFile(view.plugin.app as any, file, false);
-                        }
-                    });
-                    modal.open();
-                    return;
-                }
+            const zeroDraftHandled = await maybeHandleZeroDraftClick({
+                app: view.plugin.app,
+                file,
+                enableZeroDraftMode: view.plugin.settings.enableZeroDraftMode,
+                sceneTitle: file.basename || 'Scene',
+                onOverrideOpen: async () => openOrRevealFile(view.plugin.app as any, file, false)
+            });
+            if (zeroDraftHandled) {
+                evt.preventDefault();
+                evt.stopPropagation();
+                return;
             }
 
             await openOrRevealFile(view.plugin.app as any, file, false);
@@ -187,4 +160,3 @@ export function setupOuterRingDrag(view: AllScenesView, svg: SVGSVGElement): voi
     });
     controller.attach();
 }
-

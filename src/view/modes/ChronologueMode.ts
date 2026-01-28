@@ -12,6 +12,7 @@ import { openOrRevealFile } from '../../utils/fileUtils';
 import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';
 import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
 import { updateSynopsisTitleColor } from '../interactions/SynopsisTitleColorManager';
+import { maybeHandleZeroDraftClick } from '../interactions/ZeroDraftHandler';
 
 export interface ChronologueView {
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
@@ -22,6 +23,7 @@ export interface ChronologueView {
         settings: {
             dominantSubplots?: Record<string, string>;
             enableSceneTitleAutoExpand?: boolean;
+            enableZeroDraftMode?: boolean;
         };
         saveSettings?: () => Promise<void>;
         synopsisManager: SynopsisManager;
@@ -399,6 +401,18 @@ function setupSceneClickInteractions(view: ChronologueView, svg: SVGSVGElement):
         if (view.plugin.app) {
             const file = view.plugin.app.vault.getAbstractFileByPath(filePath);
             if (file instanceof TFile) {
+                const zeroDraftHandled = await maybeHandleZeroDraftClick({
+                    app: view.plugin.app,
+                    file,
+                    enableZeroDraftMode: view.plugin.settings.enableZeroDraftMode,
+                    sceneTitle: file.basename || 'Scene',
+                    onOverrideOpen: async () => openOrRevealFile((view.plugin as any).app, file)
+                });
+                if (zeroDraftHandled) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                }
                 await openOrRevealFile((view.plugin as any).app, file);
             }
         }

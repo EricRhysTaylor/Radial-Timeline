@@ -2,12 +2,14 @@ import { TFile, App } from 'obsidian';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
 import { updateSynopsisTitleColor } from '../interactions/SynopsisTitleColorManager';
+import { maybeHandleZeroDraftClick } from '../interactions/ZeroDraftHandler';
 
 interface ViewLike {
     plugin: {
         app: App;
         settings: {
             enableSceneTitleAutoExpand?: boolean;
+            enableZeroDraftMode?: boolean;
         };
     };
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
@@ -98,9 +100,20 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
         const filePath = decodeURIComponent(encodedPath);
         const file = view.plugin.app.vault.getAbstractFileByPath(filePath);
         if (file instanceof TFile) {
+            const zeroDraftHandled = await maybeHandleZeroDraftClick({
+                app: view.plugin.app,
+                file,
+                enableZeroDraftMode: view.plugin.settings.enableZeroDraftMode,
+                sceneTitle: file.basename || 'Scene',
+                onOverrideOpen: async () => openOrRevealFile((view.plugin as any).app, file)
+            });
+            if (zeroDraftHandled) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
             await openOrRevealFile((view.plugin as any).app, file);
         }
     });
 }
-
 

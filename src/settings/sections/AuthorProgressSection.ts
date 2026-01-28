@@ -192,6 +192,10 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     stylingWikiLink.setAttr('target', '_blank');
     stylingWikiLink.setAttr('rel', 'noopener');
     setIcon(stylingWikiLink, 'external-link');
+    stylingInfo.createDiv({
+        cls: 'setting-item-description',
+        text: 'Customize the look of your APR to express your personality. Set and style various text attributes such as the Working Title, Author, and geometry elements like the borders and background.'
+    });
     const stylingBody = stylingCard;
 
     const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
@@ -354,6 +358,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         .setName('Link URL')
         .setDesc('Where the graphic should link to (e.g. your website, Kickstarter, or shop).');
 
+    linkUrlSetting.settingEl.addClass('ert-setting-full-width-input');
 
     linkUrlSetting.addText(text => {
         text.setPlaceholder('https://your-site.com')
@@ -1246,6 +1251,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                         refreshPreview();
                     });
             });
+        attributionSetting.settingEl.addClass('ert-setting--flush');
     }
 }
 

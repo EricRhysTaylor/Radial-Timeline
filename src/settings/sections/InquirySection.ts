@@ -416,7 +416,10 @@ export function renderInquirySection(params: SectionParams): void {
 
     let resolvedRootCache: { signature: string; resolvedRoots: string[]; total: number } | null = null;
 
-    const presetSetting = new Settings(sourcesBody)
+    const presetsPanel = sourcesBody.createDiv({ cls: ERT_CLASSES.PANEL });
+    const presetsBody = presetsPanel.createDiv({ cls: 'ert-panel__body' });
+
+    const presetSetting = new Settings(presetsBody)
         .setName('Presets')
         .setDesc('Quick starters for the contribution matrix. Apply one, then tweak as needed.');
     presetSetting.settingEl.addClass(ERT_CLASSES.ROW, ERT_CLASSES.ROW_TIGHT);
@@ -444,9 +447,7 @@ export function renderInquirySection(params: SectionParams): void {
     addPresetButton('deep', 'Deep (expensive)');
     syncPresetButtons();
 
-    const classTablePanel = sourcesBody.createDiv({ cls: ERT_CLASSES.PANEL });
-    const classTableBody = classTablePanel.createDiv({ cls: 'ert-panel__body' });
-    const classTableWrap = classTableBody.createDiv({ cls: ['ert-controlGroup', 'ert-controlGroup--class-scope'] });
+    const classTableWrap = presetsBody.createDiv({ cls: ['ert-controlGroup', 'ert-controlGroup--class-scope'] });
 
     const scanInquiryClasses = async (roots: string[]): Promise<{
         discoveredCounts: Record<string, number>;
@@ -1218,7 +1219,7 @@ export function renderInquirySection(params: SectionParams): void {
 
         text.setPlaceholder(defaultPath)
             .setValue(fallbackFolder);
-        text.inputEl.addClass('ert-input--lg');
+        text.inputEl.addClass('ert-input--xl');
 
         if (attachFolderSuggest) {
             attachFolderSuggest(text);
@@ -1303,21 +1304,35 @@ export function renderInquirySection(params: SectionParams): void {
             });
         });
 
-    new Settings(configBody)
+    const actionNotesFieldSetting = new Settings(configBody)
         .setName('Action notes target YAML field')
-        .setDesc('Frontmatter field to receive Inquiry Pending Edits notes.')
-        .addText(text => {
-            const defaultField = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
-            const current = plugin.settings.inquiryActionNotesTargetField?.trim() || defaultField;
-            text.setPlaceholder(defaultField);
-            text.setValue(current);
-            text.inputEl.addClass('ert-input--lg');
-            text.onChange(async (value) => {
-                const next = value.trim() || defaultField;
-                plugin.settings.inquiryActionNotesTargetField = next;
+        .setDesc('Frontmatter field to receive Inquiry Pending Edits notes.');
+    const defaultActionNotesField = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
+    let actionNotesFieldInput: TextComponent | null = null;
+
+    actionNotesFieldSetting.addText(text => {
+        const current = plugin.settings.inquiryActionNotesTargetField?.trim() || defaultActionNotesField;
+        actionNotesFieldInput = text;
+        text.setPlaceholder(defaultActionNotesField);
+        text.setValue(current);
+        text.inputEl.addClass('ert-input--lg');
+        text.onChange(async (value) => {
+            const next = value.trim() || defaultActionNotesField;
+            plugin.settings.inquiryActionNotesTargetField = next;
+            await plugin.saveSettings();
+        });
+    });
+
+    actionNotesFieldSetting.addExtraButton(button => {
+        button
+            .setIcon('reset')
+            .setTooltip('Reset to default')
+            .onClick(async () => {
+                plugin.settings.inquiryActionNotesTargetField = defaultActionNotesField;
+                actionNotesFieldInput?.setValue(defaultActionNotesField);
                 await plugin.saveSettings();
             });
-        });
+    });
 
     const cacheDesc = () => `Cache up to ${plugin.settings.inquiryCacheMaxSessions ?? 30} Inquiry sessions. Set the cap here.`;
 

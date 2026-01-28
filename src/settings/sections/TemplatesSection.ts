@@ -818,13 +818,13 @@ export function renderStoryBeatsSection(params: {
                     modal.titleEl.setText('');
                     contentEl.empty();
 
-                    modalEl.classList.add('ert-ui', 'ert-modal-shell', 'ert-modal-shell--sm');
+                    modalEl.classList.add('ert-ui', 'ert-modal-shell', 'ert-modal-shell--md');
                     contentEl.addClass('ert-modal-container');
 
                     const header = contentEl.createDiv({ cls: 'ert-modal-header' });
                     header.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
                     header.createDiv({ text: 'Reset advanced YAML template', cls: 'ert-modal-title' });
-                    header.createDiv({ text: 'Resetting will delete all custom changes and restore the default template.', cls: 'ert-modal-subtitle' });
+                    header.createDiv({ text: 'Resetting will delete all renamed and custom fields, lucide icons, and restore the default template.', cls: 'ert-modal-subtitle' });
 
                     const body = contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
                     body.createDiv({ text: 'Are you sure you want to reset? This cannot be undone.', cls: 'ert-purge-warning' });

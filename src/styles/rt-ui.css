@@ -3610,6 +3610,12 @@
   max-width: 92vw;
 }
 
+.ert-ui.ert-modal-shell--md.modal,
+.ert-ui .ert-modal-shell--md.modal {
+  width: 500px;
+  max-width: 92vw;
+}
+
 .ert-ui .ert-modal-container {
   position: relative;
   isolation: isolate;
@@ -4612,6 +4618,10 @@
 .ert-ui .setting-item.is-inactive {
   opacity: 0.5;
   pointer-events: none;
+}
+
+.ert-ui .setting-item.ert-setting--flush {
+  margin-bottom: 0;
 }
 
 /* Debug overlay (opt-in via .is-debug) */
