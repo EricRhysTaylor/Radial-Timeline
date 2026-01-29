@@ -1,9 +1,10 @@
-import { Setting as Settings, ColorComponent, TextComponent, setIcon } from 'obsidian';
+import { Setting as Settings, ColorComponent, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { PluginRendererFacade } from '../../utils/sceneHelpers';
 import { computeCacheableValues } from '../../renderer/utils/Precompute';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { ERT_CLASSES } from '../../ui/classes';
+import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 
 const SUBPLOT_LABEL_MAX_LENGTH = 16;
 
@@ -46,23 +47,14 @@ async function getTimelineSubplotOrder(plugin: RadialTimelinePlugin): Promise<st
 
 export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTimelinePlugin): void {
     // --- Publishing Stage Colors ---
-    const pubHeading = containerEl.createDiv({ cls: 'setting-item setting-item-heading' });
-    const pubInfo = pubHeading.createDiv({ cls: 'setting-item-info' });
-    const pubName = pubInfo.createDiv({ cls: 'setting-item-name' });
-    const pubHeaderIcon = pubName.createSpan({ cls: 'ert-setting-heading-icon' });
-    setIcon(pubHeaderIcon, 'paintbrush-vertical');
-    pubName.createSpan({ text: 'Publishing stage colors' });
-    const pubWikiLink = pubName.createEl('a', {
-        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#publishing-stage-colors',
-        cls: 'ert-setting-heading-wikilink'
-    });
-    pubWikiLink.setAttr('target', '_blank');
-    pubWikiLink.setAttr('rel', 'noopener');
-    setIcon(pubWikiLink, 'external-link');
-    pubInfo.createDiv({
-        cls: 'setting-item-description ert-color-section-desc',
-        text: 'Used for completed scenes, stage matrix, act labels and more.'
-    });
+    const pubHeading = new Settings(containerEl)
+        .setName('Publishing stage colors')
+        .setDesc('Used for completed scenes, stage matrix, act labels and more.')
+        .setHeading();
+    addHeadingIcon(pubHeading, 'paintbrush-vertical');
+    addWikiLink(pubHeading, 'Settings#publishing-stage-colors');
+    pubHeading.descEl?.addClass('ert-color-section-desc');
+    applyErtHeaderLayout(pubHeading);
     const stageGrid = containerEl.createDiv({ cls: 'ert-color-grid' });
     const stages = Object.entries(plugin.settings.publishStageColors);
     stages.forEach(([stage, color]) => {
@@ -117,23 +109,14 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
     });
 
     // --- Subplot palette (16 colors) ---
-    const subplotHeading = containerEl.createDiv({ cls: 'setting-item setting-item-heading' });
-    const subplotInfo = subplotHeading.createDiv({ cls: 'setting-item-info' });
-    const subplotName = subplotInfo.createDiv({ cls: 'setting-item-name' });
-    const subplotHeaderIcon = subplotName.createSpan({ cls: 'ert-setting-heading-icon' });
-    setIcon(subplotHeaderIcon, 'paintbrush-vertical');
-    subplotName.createSpan({ text: 'Subplot ring colors' });
-    const subplotWikiLink = subplotName.createEl('a', {
-        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#subplot-ring-colors',
-        cls: 'ert-setting-heading-wikilink'
-    });
-    subplotWikiLink.setAttr('target', '_blank');
-    subplotWikiLink.setAttr('rel', 'noopener');
-    setIcon(subplotWikiLink, 'external-link');
-    subplotInfo.createDiv({
-        cls: 'setting-item-description ert-color-section-desc',
-        text: 'Subplot ring colors used for rings 1 through 16 moving inward.'
-    });
+    const subplotHeading = new Settings(containerEl)
+        .setName('Subplot ring colors')
+        .setDesc('Subplot ring colors used for rings 1 through 16 moving inward.')
+        .setHeading();
+    addHeadingIcon(subplotHeading, 'paintbrush-vertical');
+    addWikiLink(subplotHeading, 'Settings#subplot-ring-colors');
+    subplotHeading.descEl?.addClass('ert-color-section-desc');
+    applyErtHeaderLayout(subplotHeading);
     const subplotGrid = containerEl.createDiv({ cls: 'ert-color-grid' });
     const ensureArray = (arr: unknown): string[] => Array.isArray(arr) ? arr as string[] : [];
     const subplotColors = ensureArray(plugin.settings.subplotColors);

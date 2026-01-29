@@ -3,7 +3,7 @@ import type RadialTimelinePlugin from '../../main';
 import type { PlanetaryProfile } from '../../types';
 import { convertFromEarth, parseCommaNames, validatePlanetaryProfile } from '../../utils/planetaryTime';
 import { t } from '../../i18n';
-import { addHeadingIcon, addWikiLink } from '../wikiLink';
+import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 
 interface SectionParams {
@@ -55,6 +55,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         .setHeading();
     addHeadingIcon(planetaryHeading, 'earth');
     addWikiLink(planetaryHeading, 'Settings#planetary-time');
+    applyErtHeaderLayout(planetaryHeading);
 
     // Feature toggle
     const visibilityTargets: HTMLElement[] = [];

@@ -13,6 +13,7 @@ import { isProfessionalActive } from './ProfessionalSection';
 import { colorSwatch, type ColorSwatchHandle } from '../../ui/ui';
 import { ERT_CLASSES } from '../../ui/classes';
 import { STAGE_ORDER } from '../../utils/constants';
+import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 
 export interface AuthorProgressSectionProps {
     app: App;
@@ -181,25 +182,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Styling (background + branding colors) - placed first, close to preview
     const stylingCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
     const stylingBlock = stylingCard.createDiv({ cls: ERT_CLASSES.STACK });
-    stylingBlock.style.gap = '0';
     const stylingHeader = stylingBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
-    const stylingHeading = stylingHeader.createDiv({ cls: 'setting-item setting-item-heading ert-setting-heading--top' });
-    const stylingInfo = stylingHeading.createDiv({ cls: 'setting-item-info' });
-    const stylingName = stylingInfo.createDiv({ cls: 'setting-item-name' });
-    const stylingHeaderIcon = stylingName.createSpan({ cls: 'ert-setting-heading-icon' });
-    setIcon(stylingHeaderIcon, 'brush');
-    stylingName.createSpan({ text: 'Styling' });
-    const stylingWikiLink = stylingName.createEl('a', {
-        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#social-media-styling',
-        cls: 'ert-setting-heading-wikilink'
-    });
-    stylingWikiLink.setAttr('target', '_blank');
-    stylingWikiLink.setAttr('rel', 'noopener');
-    setIcon(stylingWikiLink, 'external-link');
-    stylingInfo.createDiv({
-        cls: 'setting-item-description',
-        text: 'Customize the look of your APR to express your personality. Set and style various text attributes such as the Working Title, Author, and geometry elements like the borders and background.'
-    });
+    const stylingHeading = new Setting(stylingHeader)
+        .setName('Styling')
+        .setDesc('Customize the look of your APR to express your personality. Set and style various text attributes such as the Working Title, Author, and geometry elements like the borders and background.')
+        .setHeading();
+    addHeadingIcon(stylingHeading, 'brush');
+    addWikiLink(stylingHeading, 'Settings#social-media-styling');
+    applyErtHeaderLayout(stylingHeading);
     const stylingBody = stylingBlock.createDiv({ cls: 'ert-typography-stack' });
 
     const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
@@ -439,26 +429,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     const themeCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
     const themeBlock = themeCard.createDiv({ cls: ERT_CLASSES.STACK });
-    themeBlock.style.gap = '0';
     const themeHeader = themeBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
-    const themeHeading = themeHeader.createDiv({ cls: `setting-item setting-item-heading ert-setting-heading--top ${ERT_CLASSES.ROW}` });
-    const themeInfo = themeHeading.createDiv({ cls: 'setting-item-info' });
-    const themeName = themeInfo.createDiv({ cls: 'setting-item-name' });
-    const themeHeaderIcon = themeName.createSpan({ cls: 'ert-setting-heading-icon' });
-    setIcon(themeHeaderIcon, 'swatch-book');
-    themeName.createSpan({ text: 'Theme' });
-    const themeWikiLink = themeName.createEl('a', {
-        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#social-media-theme',
-        cls: 'ert-setting-heading-wikilink'
-    });
-    themeWikiLink.setAttr('target', '_blank');
-    themeWikiLink.setAttr('rel', 'noopener');
-    setIcon(themeWikiLink, 'external-link');
-    themeInfo.createDiv({
-        cls: 'setting-item-description',
-        text: 'Theme palette applies curated colors across Title, Author, % Symbol, and % Number based on the Title color. Stage badge uses publish stage colors; manual edits override per row.'
-    });
-    const themeControl = themeHeading.createDiv({ cls: 'setting-item-control' });
+    const themeHeading = new Setting(themeHeader)
+        .setName('Theme')
+        .setDesc('Theme palette applies curated colors across Title, Author, % Symbol, and % Number based on the Title color. Stage badge uses publish stage colors; manual edits override per row.')
+        .setHeading();
+    addHeadingIcon(themeHeading, 'swatch-book');
+    addWikiLink(themeHeading, 'Settings#social-media-theme');
+    const themeControl = themeHeading.controlEl;
     const themeBody = themeBlock.createDiv({ cls: 'ert-typography-stack' });
 
     // Palette tracking & color picker refs
@@ -497,6 +475,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         );
         modal.open();
     });
+    applyErtHeaderLayout(themeHeading);
 
     const bookTitleColorFallback = plugin.settings.publishStageColors?.Press || '#6FB971';
 
@@ -1108,19 +1087,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Only show basic Publishing & Automation for non-Pro users
     if (!isProActive) {
         const automationCard = contentWrapper.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
-        const automationHeader = automationCard.createDiv({ cls: 'setting-item setting-item-heading' });
-        const automationInfo = automationHeader.createDiv({ cls: 'setting-item-info' });
-        const automationName = automationInfo.createDiv({ cls: 'setting-item-name' });
-        const automationHeaderIcon = automationName.createSpan({ cls: 'ert-setting-heading-icon' });
-        setIcon(automationHeaderIcon, 'rss');
-        automationName.createSpan({ text: 'Publishing & Automation' });
-        const automationWikiLink = automationName.createEl('a', {
-            href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#social-media-publishing',
-            cls: 'ert-setting-heading-wikilink'
-        });
-        automationWikiLink.setAttr('target', '_blank');
-        automationWikiLink.setAttr('rel', 'noopener');
-        setIcon(automationWikiLink, 'external-link');
+        const automationHeader = new Setting(automationCard)
+            .setName('Publishing & Automation')
+            .setHeading();
+        addHeadingIcon(automationHeader, 'rss');
+        addWikiLink(automationHeader, 'Settings#social-media-publishing');
+        applyErtHeaderLayout(automationHeader);
 
         const frequencySetting = new Setting(automationCard)
             .setName('Update Frequency')
@@ -1289,25 +1261,14 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     type AprProgressMode = 'stage' | 'zero' | 'date';
     const progressModeCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
     const progressModeBlock = progressModeCard.createDiv({ cls: ERT_CLASSES.STACK });
-    progressModeBlock.style.gap = '0';
     const progressModeHeader = progressModeBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
-    const progressModeHeading = progressModeHeader.createDiv({ cls: 'setting-item setting-item-heading ert-setting-heading--top' });
-    const progressModeInfo = progressModeHeading.createDiv({ cls: 'setting-item-info' });
-    const progressModeName = progressModeInfo.createDiv({ cls: 'setting-item-name' });
-    const progressModeIcon = progressModeName.createSpan({ cls: 'ert-setting-heading-icon' });
-    setIcon(progressModeIcon, 'activity');
-    progressModeName.createSpan({ text: 'Publish stage detection & progress mode' });
-    const progressModeWiki = progressModeName.createEl('a', {
-        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#social-media',
-        cls: 'ert-setting-heading-wikilink'
-    });
-    progressModeWiki.setAttr('target', '_blank');
-    progressModeWiki.setAttr('rel', 'noopener');
-    setIcon(progressModeWiki, 'external-link');
-    progressModeInfo.createDiv({
-        cls: 'setting-item-description',
-        text: 'Detects your current publish stage. In new projects, select between a target manuscript length (recommended) or date range.'
-    });
+    const progressModeHeading = new Setting(progressModeHeader)
+        .setName('Publish stage detection & progress mode')
+        .setDesc('Detects your current publish stage. In new projects, select between a target manuscript length (recommended) or date range.')
+        .setHeading();
+    addHeadingIcon(progressModeHeading, 'activity');
+    addWikiLink(progressModeHeading, 'Settings#social-media');
+    applyErtHeaderLayout(progressModeHeading);
 
     const progressModeGroup = progressModeBlock.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--flush` });
     const progressModeGrid = progressModeGroup.createDiv({ cls: ERT_CLASSES.GRID_FORM });

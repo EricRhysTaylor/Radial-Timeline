@@ -34,11 +34,11 @@ const BASELINE_KEY = MAINTENANCE_MODE ? "maintenance" : MIGRATION_MODE ? "migrat
 const FAIL = [];
 const WARN = [];
 
-function addFail(file, msg, sample, rule) {
-  FAIL.push({ file, msg, sample, rule });
+function addFail(file, msg, sample, rule, line) {
+  FAIL.push({ file, msg, sample, rule, line });
 }
-function addWarn(file, msg, sample, rule) {
-  WARN.push({ file, msg, sample, rule });
+function addWarn(file, msg, sample, rule, line) {
+  WARN.push({ file, msg, sample, rule, line });
 }
 
 function findAll(re, text) {
@@ -46,6 +46,28 @@ function findAll(re, text) {
   let m;
   while ((m = re.exec(text))) hits.push(m);
   return hits;
+}
+
+function buildLineIndex(text) {
+  const starts = [0];
+  for (let i = 0; i < text.length; i += 1) {
+    if (text[i] === "\n") starts.push(i + 1);
+  }
+  return starts;
+}
+
+function getLineNumber(lineStarts, index) {
+  let low = 0;
+  let high = lineStarts.length - 1;
+  while (low <= high) {
+    const mid = (low + high) >> 1;
+    if (lineStarts[mid] <= index) {
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+  return high + 1;
 }
 
 const SKIN_SELECTOR_RE = /\.ert-skin--[a-zA-Z0-9_-]+/;
@@ -135,6 +157,7 @@ function describeBaseline(pathLabel, key, source) {
  */
 for (const file of FILES.filter(exists)) {
   const css = read(file);
+  const lineStarts = buildLineIndex(css);
 
   // 0) Skin overreach (fail) — .ert-skin--* selectors must remain visual-only
   const ruleRe = /([^{}]+)\{([^{}]*)\}/g;
@@ -157,14 +180,16 @@ for (const file of FILES.filter(exists)) {
           file,
           `Skin selector sets forbidden property "${prop}".`,
           `${selectorLabel} { ${prop}: ${value}; }`,
-          "skin-overreach"
+          "skin-overreach",
+          getLineNumber(lineStarts, m.index)
         );
       } else if (!isSkinAllowedProp(prop)) {
         addFail(
           file,
           `Skin selector sets non-allowed property "${prop}".`,
           `${selectorLabel} { ${prop}: ${value}; }`,
-          "skin-overreach"
+          "skin-overreach",
+          getLineNumber(lineStarts, m.index)
         );
       }
     }
@@ -172,13 +197,25 @@ for (const file of FILES.filter(exists)) {
 
   // 1) !important (fail)
   for (const m of findAll(/!important\b/g, css)) {
-    addFail(file, "Found !important (ban).", "!important", "important");
+    addFail(
+      file,
+      "Found !important (ban).",
+      "!important",
+      "important",
+      getLineNumber(lineStarts, m.index)
+    );
   }
 
   // 2) Global selectors in UI css (fail) — coarse but effective
   const globalSelectorRe = /(^|\n)\s*(\*|html|body|button|input|select|textarea)\s*\{/g;
   for (const m of findAll(globalSelectorRe, css)) {
-    addFail(file, "Global element selector (likely bleed). Scope under .ert-ui.", m[2] + " {", "global-element");
+    addFail(
+      file,
+      "Global element selector (likely bleed). Scope under .ert-ui.",
+      m[2] + " {",
+      "global-element",
+      getLineNumber(lineStarts, m.index)
+    );
   }
 
   // 3) Raw hex colors outside token lines (fail in strict, warn in migration/maintenance)
@@ -191,9 +228,9 @@ for (const file of FILES.filter(exists)) {
     if (!isVarLine) {
       const rule = "raw-hex";
       if (LOOSE_MODE) {
-        addWarn(file, `Raw hex color outside token/var line at L${idx + 1}.`, line.trim(), rule);
+        addWarn(file, `Raw hex color outside token/var line at L${idx + 1}.`, line.trim(), rule, idx + 1);
       } else {
-        addFail(file, `Raw hex color outside token/var line at L${idx + 1}.`, line.trim(), rule);
+        addFail(file, `Raw hex color outside token/var line at L${idx + 1}.`, line.trim(), rule, idx + 1);
       }
     }
   });
@@ -208,15 +245,23 @@ for (const file of FILES.filter(exists)) {
         file,
         `Unscoped Obsidian selector ".${cls}…" — must be under ".ert-ui …"`,
         m[0].trim(),
-        "unscoped-obsidian"
+        "unscoped-obsidian",
+        getLineNumber(lineStarts, m.index)
       );
     }
   }
 
   // 5) Legacy prefix usage inside rt-ui.css (fail)
   if (file.endsWith("rt-ui.css")) {
-    if (/\.(rt-|rt-apr-)/.test(css)) {
-      addFail(file, "Legacy .rt-* selectors detected in rt-ui.css (backslide).", ".rt-*", "rt-in-rt-ui");
+    const legacyMatch = css.match(/\.(rt-|rt-apr-)/);
+    if (legacyMatch) {
+      addFail(
+        file,
+        "Legacy .rt-* selectors detected in rt-ui.css (backslide).",
+        legacyMatch[0],
+        "rt-in-rt-ui",
+        getLineNumber(lineStarts, legacyMatch.index || 0)
+      );
     }
   }
 
@@ -224,7 +269,13 @@ for (const file of FILES.filter(exists)) {
   if (!file.endsWith("rt-ui.css")) {
     const rtSelectorRe = /(^|\n)\s*[^@{]*\brt-[a-zA-Z0-9_-]+[^,{]*\{/g;
     for (const m of findAll(rtSelectorRe, css)) {
-      addWarn(file, "Legacy .rt-* selector (legacy warning).", m[0].trim(), "rt-legacy");
+      addWarn(
+        file,
+        "Legacy .rt-* selector (legacy warning).",
+        m[0].trim(),
+        "rt-legacy",
+        getLineNumber(lineStarts, m.index)
+      );
     }
   }
 
@@ -232,12 +283,24 @@ for (const file of FILES.filter(exists)) {
   for (const m of findAll(/\b(padding|margin|gap)\s*:\s*[^;]*\b\d+px\b/g, css)) {
     // ignore zero px
     if (/\b0px\b/.test(m[0])) continue;
-    addWarn(file, "Spacing uses literal px (prefer var(--ert-*) tokens).", m[0].trim(), "spacing-px");
+    addWarn(
+      file,
+      "Spacing uses literal px (prefer var(--ert-*) tokens).",
+      m[0].trim(),
+      "spacing-px",
+      getLineNumber(lineStarts, m.index)
+    );
   }
 
   // 8) Token bypass for shadows (warn)
   for (const m of findAll(/\bbox-shadow\s*:\s*[^;]*\brgba?\(/g, css)) {
-    addWarn(file, "Box-shadow uses raw rgba() (prefer theme vars/tokens).", m[0].trim(), "shadow-rgba");
+    addWarn(
+      file,
+      "Box-shadow uses raw rgba() (prefer theme vars/tokens).",
+      m[0].trim(),
+      "shadow-rgba",
+      getLineNumber(lineStarts, m.index)
+    );
   }
 }
 
@@ -245,14 +308,30 @@ function print(items, label) {
   if (!items.length) return;
   console.log(`\n${label} (${items.length})`);
   for (const it of items.slice(0, 50)) {
-    console.log(`- ${it.file}: ${it.msg}`);
+    const line = it.line ? `:${it.line}` : "";
+    console.log(`- ${it.file}${line}: ${it.msg}`);
     if (it.sample) console.log(`  ${it.sample}`);
   }
   if (items.length > 50) console.log(`…and ${items.length - 50} more`);
 }
 
+function printFailTop(items, limit = 20) {
+  if (!items.length) return;
+  const sorted = [...items].sort((a, b) => {
+    if (a.file === b.file) return (a.line || 0) - (b.line || 0);
+    return a.file.localeCompare(b.file);
+  });
+  console.log(`\nTop FAIL offenders (${Math.min(limit, sorted.length)})`);
+  for (const it of sorted.slice(0, limit)) {
+    const line = it.line ? `:${it.line}` : "";
+    console.log(`- ${it.file}${line}: ${it.msg}`);
+    if (it.sample) console.log(`  ${it.sample}`);
+  }
+}
+
 print(WARN, "CSS drift warnings");
 print(FAIL, "CSS drift failures");
+printFailTop(FAIL, 20);
 
 const warnSummary = WARN.reduce(
   (acc, it) => {

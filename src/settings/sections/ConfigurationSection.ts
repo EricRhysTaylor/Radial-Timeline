@@ -2,7 +2,7 @@ import { App, Setting as Settings, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { clearFontMetricsCaches } from '../../renderer/utils/FontMetricsCache';
 import { t } from '../../i18n';
-import { addHeadingIcon, addWikiLink } from '../wikiLink';
+import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 
 export function renderConfigurationSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { app, plugin, containerEl } = params;
@@ -12,6 +12,7 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
         .setHeading();
     addHeadingIcon(configurationHeading, 'pyramid');
     addWikiLink(configurationHeading, 'Settings#configuration');
+    applyErtHeaderLayout(configurationHeading);
 
     // 1. Auto-expand clipped scene titles
     new Settings(containerEl)

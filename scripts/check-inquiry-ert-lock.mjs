@@ -5,6 +5,7 @@ const ROOT = process.cwd();
 const TARGET_DIRS = ["src/settings", "src/modals"];
 const CSS_FILE = "src/styles/rt-ui.css";
 const FORBIDDEN_PREFIX = "ert-inquiry-";
+const CSS_VAR_PREFIX = "--ert-inquiry-";
 const ALLOWED_PREFIXES = ["data-ert-inquiry-"];
 
 const stringPattern = /`([^`]+)`|"([^"]+)"|'([^']+)'/g;
@@ -16,7 +17,14 @@ const extractTokens = (raw) => {
   return cleaned.split(/\s+/).map((token) => token.trim()).filter(Boolean);
 };
 
-const isAllowed = (token) => ALLOWED_PREFIXES.some((prefix) => token.startsWith(prefix));
+const isAllowed = (token) => {
+  if (token.includes(CSS_VAR_PREFIX)) {
+    if (token.includes(`.${FORBIDDEN_PREFIX}`)) return false;
+    if (token.startsWith(FORBIDDEN_PREFIX)) return false;
+    return true;
+  }
+  return ALLOWED_PREFIXES.some((prefix) => token.startsWith(prefix));
+};
 
 const addViolation = (file, line, token) => {
   violations.push({ file, line, token });
@@ -58,11 +66,16 @@ TARGET_DIRS.forEach(scanDir);
 const cssPath = path.join(ROOT, CSS_FILE);
 if (fs.existsSync(cssPath)) {
   const content = fs.readFileSync(cssPath, "utf8");
-  const pattern = new RegExp(FORBIDDEN_PREFIX + "[a-z0-9-]+", "g");
+  const selectorPattern = /([^{}]+)\{[^{}]*\}/g;
   let match;
-  while ((match = pattern.exec(content))) {
-    const line = content.slice(0, match.index).split("\n").length;
-    addViolation(CSS_FILE, line, match[0]);
+  while ((match = selectorPattern.exec(content))) {
+    const selectorText = match[1] ?? "";
+    const classPattern = /\.ert-inquiry-[a-z0-9-]+/gi;
+    let classMatch;
+    while ((classMatch = classPattern.exec(selectorText))) {
+      const line = content.slice(0, match.index).split("\n").length;
+      addViolation(CSS_FILE, line, classMatch[0]);
+    }
   }
 }
 

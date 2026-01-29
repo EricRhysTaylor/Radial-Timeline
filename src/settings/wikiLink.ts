@@ -1,4 +1,5 @@
 import { Setting, setIcon } from 'obsidian';
+import { ERT_CLASSES } from '../ui/classes';
 
 /**
  * Adds a wiki link icon to a setting's name element.
@@ -16,6 +17,63 @@ const HEADING_ICON_ALIASES: Record<string, string> = {
 export function addHeadingIcon(setting: Setting, icon: string): void {
     const resolved = HEADING_ICON_ALIASES[icon] ?? icon;
     addHeadingIconToElement(setting.nameEl, resolved);
+}
+
+export function applyErtHeaderLayout(
+    setting: Setting,
+    options: { variant?: 'inline' | 'block' } = {}
+): { header: HTMLElement; left: HTMLElement; main: HTMLElement; right: HTMLElement } | null {
+    const nameEl = setting.nameEl;
+    if (!nameEl) return null;
+    const descEl = setting.descEl;
+    const infoEl = setting.settingEl.querySelector('.setting-item-info') as HTMLElement | null;
+    if (!infoEl) return null;
+
+    infoEl.empty();
+    const hasDesc = Boolean(descEl && descEl.textContent && descEl.textContent.trim().length > 0);
+    const variant = options.variant ?? (hasDesc ? 'block' : 'inline');
+    const header = infoEl.createDiv({
+        cls: [
+            ERT_CLASSES.HEADER,
+            variant === 'block' ? ERT_CLASSES.HEADER_BLOCK : ERT_CLASSES.HEADER_INLINE
+        ]
+    });
+    const left = header.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
+    const main = header.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
+    const right = header.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
+
+    const iconEl = nameEl.querySelector('.ert-setting-heading-icon') as HTMLElement | null;
+    if (iconEl) {
+        left.appendChild(iconEl);
+    } else {
+        header.addClass(ERT_CLASSES.HEADER_NO_LEFT);
+    }
+
+    const wikiLink = nameEl.querySelector('.ert-wiki-link, .ert-setting-heading-wikilink') as HTMLElement | null;
+    if (wikiLink) {
+        wikiLink.classList.add('ert-wiki-link');
+        right.appendChild(wikiLink);
+    }
+
+    nameEl.classList.add(ERT_CLASSES.SECTION_TITLE);
+    main.appendChild(nameEl);
+    if (descEl && hasDesc) {
+        descEl.classList.add(ERT_CLASSES.SECTION_DESC);
+        main.appendChild(descEl);
+    } else if (descEl) {
+        descEl.remove();
+    }
+
+    const controlEl = setting.controlEl;
+    if (controlEl) {
+        const controls = Array.from(controlEl.childNodes);
+        if (controls.length) {
+            controls.forEach(node => right.appendChild(node));
+        }
+        controlEl.empty();
+    }
+
+    return { header, left, main, right };
 }
 
 /**

@@ -94,7 +94,7 @@ const PREVIEW_PILL_MIN_GAP_X = 8;
 const PREVIEW_FOOTER_GAP = 12;
 const PREVIEW_FOOTER_HEIGHT = 22;
 const PREVIEW_RESULTS_FOOTER_OFFSET = 30;
-const PREVIEW_SHIMMER_WIDTH = 42;
+const PREVIEW_SHIMMER_WIDTH = 80;
 const RESULTS_EMPTY_TEXT = 'No notable findings.';
 const RESULTS_MAX_CHIPS = 6;
 const FLOW_FINDING_ORDER: InquiryFinding['kind'][] = ['escalation', 'conflict', 'continuity', 'loose_end', 'unclear', 'error', 'none'];
@@ -6305,6 +6305,28 @@ export class InquiryView extends ItemView {
 
     private ensurePreviewShimmerMask(): void {
         if (this.previewShimmerMask || !this.svgDefs) return;
+        const gradient = this.createSvgElement('linearGradient');
+        gradient.setAttribute('id', 'ert-inquiry-preview-shimmer-grad');
+        gradient.setAttribute('x1', '0%');
+        gradient.setAttribute('y1', '0%');
+        gradient.setAttribute('x2', '100%');
+        gradient.setAttribute('y2', '0%');
+        const stops = [
+            { offset: '0%', opacity: '0' },
+            { offset: '20%', opacity: '0.55' },
+            { offset: '50%', opacity: '1' },
+            { offset: '80%', opacity: '0.55' },
+            { offset: '100%', opacity: '0' }
+        ];
+        stops.forEach(stopDef => {
+            const stop = this.createSvgElement('stop');
+            stop.setAttribute('offset', stopDef.offset);
+            stop.setAttribute('stop-color', '#fff');
+            stop.setAttribute('stop-opacity', stopDef.opacity);
+            gradient.appendChild(stop);
+        });
+        this.svgDefs.appendChild(gradient);
+
         const mask = this.createSvgElement('mask');
         mask.setAttribute('id', 'ert-inquiry-preview-shimmer-mask');
         mask.setAttribute('maskUnits', 'userSpaceOnUse');

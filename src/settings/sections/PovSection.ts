@@ -3,7 +3,7 @@ import type RadialTimelinePlugin from '../../main';
 import type { GlobalPovMode } from '../../types/settings';
 import { resolveScenePov } from '../../utils/pov';
 import { t } from '../../i18n';
-import { addHeadingIcon, addWikiLink } from '../wikiLink';
+import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 
 const POV_LABELS: Record<string, string> = {
@@ -25,6 +25,7 @@ export function renderPovSection(params: {
         .setHeading();
     addHeadingIcon(povHeading, 'eye');
     addWikiLink(povHeading, 'Settings#pov');
+    applyErtHeaderLayout(povHeading);
 
     const povModeOptions: Record<GlobalPovMode, string> = {
         off: t('settings.pov.modes.off'),

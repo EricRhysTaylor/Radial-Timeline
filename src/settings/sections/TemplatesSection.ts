@@ -5,7 +5,7 @@ import { getPlotSystem, getCustomSystemFromSettings } from '../../utils/beatsSys
 import { createBeatTemplateNotes } from '../../utils/beatsTemplates';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { renderMetadataSection } from './MetadataSection';
-import { addHeadingIcon, addWikiLink } from '../wikiLink';
+import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import type { HoverMetadataField } from '../../types/settings';
 import { IconSuggest } from '../IconSuggest';
 import { parseActLabels, resolveActLabel } from '../../utils/acts';
@@ -32,6 +32,7 @@ export function renderStoryBeatsSection(params: {
         .setHeading();
     addHeadingIcon(actsHeading, 'chart-pie');
     addWikiLink(actsHeading, 'Settings#acts');
+    applyErtHeaderLayout(actsHeading);
 
     const getActCount = () => Math.max(3, plugin.settings.actCount ?? 3);
 
@@ -94,6 +95,7 @@ export function renderStoryBeatsSection(params: {
         .setHeading();
     addHeadingIcon(beatsHeading, 'activity');
     addWikiLink(beatsHeading, 'Settings#story-beats');
+    applyErtHeaderLayout(beatsHeading);
 
     const beatSystemSetting = new Settings(beatsStack)
         .setName('Available system templates')
@@ -338,6 +340,7 @@ export function renderStoryBeatsSection(params: {
         .setHeading();
     addHeadingIcon(yamlHeading, 'form');
     addWikiLink(yamlHeading, 'Settings#yaml-templates');
+    applyErtHeaderLayout(yamlHeading);
 
     // Frontmatter remapper (moved here) - separate from template editor visibility
     const remapContainer = yamlStack.createDiv();

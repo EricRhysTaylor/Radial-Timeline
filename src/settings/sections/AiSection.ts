@@ -8,7 +8,7 @@ import { fetchLocalModels } from '../../api/localAiApi';
 import { CURATED_MODELS, CuratedModel, AiProvider } from '../../data/aiModels';
 import { AiContextModal } from '../AiContextModal';
 import { resolveAiLogFolder, countAiLogFiles } from '../../ai/log';
-import { addHeadingIcon, addWikiLink } from '../wikiLink';
+import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
 
@@ -32,6 +32,7 @@ export function renderAiSection(params: {
         .setHeading();
     addHeadingIcon(aiHeading, 'cpu');
     addWikiLink(aiHeading, 'Settings#ai');
+    applyErtHeaderLayout(aiHeading);
 
     const getActiveTemplateName = (): string => {
         const templates = plugin.settings.aiContextTemplates || [];

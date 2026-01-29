@@ -131,7 +131,10 @@
 
 /* Utility: hidden (doubled specificity for override) */
 .ert-ui .ert-hidden,
-.ert-ui .ert-hidden.ert-hidden {
+.ert-ui .ert-hidden.ert-hidden,
+.ert-ui .ert-settings-hidden,
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-search-hidden,
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-search-section-hidden {
   display: none;
 }
 
@@ -1908,27 +1911,8 @@
   height: 14px;
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-search-hidden {
-  display: none;
-}
-
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-search-section-hidden {
-  display: none;
-}
-
 :is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.setting-item-heading {
   margin: var(--ert-pad-md) 0 var(--ert-gap-sm);
-}
-
-.setting-item.setting-item-heading .ert-setting-heading-wikilink {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 8px;
-  opacity: 0.85;
-}
-
-.setting-item.setting-item-heading .ert-setting-heading-wikilink:hover {
-  opacity: 1;
 }
 
 .ert-ui .setting-item.setting-item-heading.ert-setting-heading--top {
@@ -2022,7 +2006,9 @@
 }
 
 .ert-ui .ert-settings-release-notes-details summary::marker,
-.ert-ui .ert-settings-release-notes-details summary::-webkit-details-marker {
+.ert-ui .ert-settings-release-notes-details summary::-webkit-details-marker,
+.ert-ui .ert-release-notes-details summary::marker,
+.ert-ui .ert-release-notes-details summary::-webkit-details-marker {
   display: none;
 }
 
@@ -2441,7 +2427,7 @@
 }
 
 /* Base row contract (standard rows) */
-.setting-item.ert-row {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) max-content;
   gap: 16px;
@@ -2449,12 +2435,12 @@
 }
 
 /* Stack modifier: control column must be wide + stacked */
-.setting-item.ert-row.ert-row--stack {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-row.ert-row--stack {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
 /* Control cell becomes vertical stack and stretches */
-.setting-item.ert-row.ert-row--stack .setting-item-control {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-row.ert-row--stack .setting-item-control {
   justify-self: stretch;
   width: 100%;
   display: flex;
@@ -2464,12 +2450,12 @@
 }
 
 /* Textarea fills width */
-.setting-item.ert-row.ert-row--stack textarea {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-row.ert-row--stack textarea {
   width: 100%;
 }
 
 /* Buttons live under textarea */
-.setting-item.ert-row.ert-row--stack .ert-actions {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-row.ert-row--stack .ert-actions {
   display: inline-flex;
   gap: 8px;
   flex-wrap: wrap;
@@ -2478,7 +2464,7 @@
 
 
 /* SETTINGS ROW CONTRACT: Col1 flex label, Col2 content-sized control (right aligned) */
-.setting-item.ert-settingRow {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-settingRow {
   --ert-row-pad: 16px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) max-content;
@@ -2488,14 +2474,14 @@
 }
 
 /* Label column shrink/wrap */
-.setting-item.ert-settingRow .setting-item-info,
-.setting-item.ert-settingRow .ert-label {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-settingRow .setting-item-info,
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-settingRow .ert-label {
   min-width: 0;
 }
 
 /* Control column: hug content + align right */
-.setting-item.ert-settingRow .setting-item-control,
-.setting-item.ert-settingRow .ert-control {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-settingRow .setting-item-control,
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-settingRow .ert-control {
   justify-self: end;
   width: max-content;
   min-width: 0;
@@ -2506,7 +2492,7 @@
 }
 
 /* Controls respect width tokens */
-.setting-item.ert-settingRow :where(input, textarea, select, .dropdown, .ert-select) {
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .setting-item.ert-settingRow :where(input, textarea, select, .dropdown, .ert-select) {
   width: var(--ert-control-width, auto);
   max-width: 100%;
 }
@@ -3248,8 +3234,35 @@
 }
 
 .ert-ui .ert-template-indent {
+  --ert-template-indent-accent: var(--ert-accent);
   padding-left: calc(var(--ert-gap-md) + var(--ert-gap-xs) + (var(--ert-gap-xs) / 2));
-  border-left: calc(var(--ert-gap-xs) / 2) solid var(--ert-accent);
+  border-left: calc(var(--ert-gap-xs) / 2) solid var(--ert-template-indent-accent);
+}
+
+.ert-ui .ert-inq-zone--setup {
+  --ert-inquiry-zone-color: var(--ert-inquiry-zone-setup);
+  --ert-inquiry-zone-stroke: var(--ert-inquiry-zone-setup-stroke);
+}
+
+.ert-ui .ert-inq-zone--pressure {
+  --ert-inquiry-zone-color: var(--ert-inquiry-zone-pressure);
+  --ert-inquiry-zone-stroke: var(--ert-inquiry-zone-pressure-stroke);
+}
+
+.ert-ui .ert-inq-zone--payoff {
+  --ert-inquiry-zone-color: var(--ert-inquiry-zone-payoff);
+  --ert-inquiry-zone-stroke: var(--ert-inquiry-zone-payoff-stroke);
+}
+
+.ert-ui .ert-inq-zone-indent {
+  --ert-template-indent-accent: var(--ert-inquiry-zone-stroke);
+}
+
+.ert-ui .ert-inq-zone-pillLabel {
+  background: color-mix(in srgb, var(--ert-inquiry-zone-color) 18%, var(--background-secondary));
+  border-color: var(--ert-inquiry-zone-stroke);
+  color: var(--ert-inquiry-zone-stroke);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ert-inquiry-zone-stroke) 35%, transparent);
 }
 
 .ert-ui .ert-template-hint-row {
@@ -4083,11 +4096,6 @@
   gap: var(--ert-gap-sm);
   font-weight: 600;
   padding-right: calc(var(--ert-gap-md) + var(--ert-gap-xs));
-}
-
-.ert-ui .ert-release-notes-details summary::marker,
-.ert-ui .ert-release-notes-details summary::-webkit-details-marker {
-  display: none;
 }
 
 .ert-ui .ert-release-notes-details summary::after {

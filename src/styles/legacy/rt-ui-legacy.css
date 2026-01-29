@@ -1,45 +1,6 @@
 /* Legacy rt-* selectors extracted from rt-ui.css during ERT migration. */
 
 
-/* ==========================================================================
-   OPTIMIZED: Pro pill v1 - do not normalize
-   Design-locked reference. Changes require explicit approval.
-   ========================================================================== */
-.rt-optimized-pro-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: linear-gradient(135deg, #9333ea, #6366f1);
-  color: white;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  line-height: 1;
-  vertical-align: middle;
-}
-
-.rt-optimized-pro-pill__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.rt-optimized-pro-pill__icon svg {
-  width: 14px;
-  height: 14px;
-  display: block;
-}
-
-.rt-optimized-pro-pill__text {
-  line-height: 1;
-  padding-top: 1px;
-}
-
-
 /* Pro Target Dropdown */
 .rt-apr-pro-target .dropdown {
   background: color-mix(in srgb, var(--rt-pro-color, #d946ef) 8%, transparent);
@@ -53,20 +14,6 @@
 .rt-apr-pro-target .dropdown:focus {
   border-color: var(--rt-pro-color, #d946ef);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--rt-pro-color, #d946ef) 20%, transparent);
-}
-
-/* Highlighted Checkbox (% Complete) - Social/Yellow styling */
-.rt-apr-highlight-check {
-  background: rgba(var(--rt-social-color-rgb, 255, 212, 29), 0.08);
-  border-radius: 6px;
-  padding: 2px 8px;
-  margin: -2px -8px;
-  /* Compensate for padding to alignment */
-}
-
-.rt-apr-highlight-check label {
-  color: var(--rt-social-color, #ffd41d);
-  font-weight: 600;
 }
 
 /* Legacy settings tokens */
@@ -152,11 +99,6 @@
 .rt-input-sm {
   width: var(--rt-input-width-sm);
   min-width: var(--rt-input-width-sm);
-}
-
-.rt-input-md {
-  width: var(--rt-input-width-md);
-  min-width: var(--rt-input-width-md);
 }
 
 .rt-input-lg {

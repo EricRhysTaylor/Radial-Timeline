@@ -11,7 +11,7 @@ import type {
     InquirySourcesSettings
 } from '../../types/settings';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
-import { addHeadingIcon, addWikiLink } from '../wikiLink';
+import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 import { badgePill } from '../../ui/ui';
 import { isProfessionalActive } from './ProfessionalSection';
@@ -348,6 +348,7 @@ export function renderInquirySection(params: SectionParams): void {
         if (options.wiki) {
             addWikiLink(header, options.wiki);
         }
+        applyErtHeaderLayout(header);
 
         return parent.createDiv({ cls: [ERT_CLASSES.SECTION_BODY, ERT_CLASSES.STACK] });
     };
@@ -1041,19 +1042,29 @@ export function renderInquirySection(params: SectionParams): void {
             zone: 'setup' | 'pressure' | 'payoff',
             dragState: { index: number | null }
         ) => {
-            const zoneStack = promptContainer.createDiv({ cls: ERT_CLASSES.STACK });
+            const zoneStack = promptContainer.createDiv({
+                cls: [ERT_CLASSES.STACK, `ert-inq-zone--${zone}`]
+            });
 
             const headingCard = zoneStack.createDiv({ cls: 'setting-item' });
             const headingInfo = headingCard.createDiv({ cls: 'setting-item-info' });
             const headingName = headingInfo.createDiv({ cls: 'setting-item-name' });
-            headingName.createSpan({ text: zoneLabels[zone] });
+            const headingPill = headingName.createSpan({
+                cls: ['ert-badgePill', 'ert-badgePill--sm', 'ert-inq-zone-pillLabel']
+            });
+            headingPill.createSpan({
+                cls: 'ert-badgePill__text',
+                text: zoneLabels[zone].toUpperCase()
+            });
             headingInfo.createDiv({
                 cls: 'setting-item-description',
                 text: getCanonicalPromptText(zone)
             });
 
             const listCard = zoneStack.createDiv({ cls: ERT_CLASSES.PANEL });
-            const listEl = listCard.createDiv({ cls: ['ert-template-entries', 'ert-template-indent'] });
+            const listEl = listCard.createDiv({
+                cls: ['ert-template-entries', 'ert-template-indent', 'ert-inq-zone-indent']
+            });
 
             const slots = getSlotList(zone);
             const customSlots = slots.filter(slot => !slot.builtIn);

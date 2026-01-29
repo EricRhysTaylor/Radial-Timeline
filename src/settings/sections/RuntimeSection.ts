@@ -9,7 +9,7 @@
 import { App, Setting, TextComponent, DropdownComponent, ToggleComponent, setIcon, Modal, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { RuntimeContentType, RuntimeRateProfile } from '../../types';
-import { addHeadingIcon, addWikiLink } from '../wikiLink';
+import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { isProfessionalActive } from './ProfessionalSection';
 import { ERT_CLASSES } from '../../ui/classes';
 
@@ -109,21 +109,6 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     const panelHeader = new Setting(proContainer)
         .setHeading()
         .setDesc('Activate film and book runtime estimates to the scene hover metadata, Chronologue Mode, and the Command Palette Runtime Estimator.');
-    panelHeader.nameEl.empty();
-    const badgeEl = panelHeader.nameEl.createSpan({
-        cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
-    });
-    const badgeIcon = badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
-    setIcon(badgeIcon, 'signature');
-    badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro' });
-    panelHeader.nameEl.createSpan({ text: 'Runtime estimation' });
-    const headerWikiLink = panelHeader.nameEl.createEl('a', {
-        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#runtime-estimation',
-        cls: 'ert-setting-heading-wikilink'
-    });
-    headerWikiLink.setAttr('target', '_blank');
-    headerWikiLink.setAttr('rel', 'noopener');
-    setIcon(headerWikiLink, 'external-link');
     panelHeader.addToggle((toggle: ToggleComponent) => {
         toggle
             .setValue(plugin.settings.enableRuntimeEstimation ?? false)
@@ -134,6 +119,46 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                 renderConditionalContent();
             });
     });
+
+    const panelInfo = panelHeader.settingEl.querySelector('.setting-item-info') as HTMLElement | null;
+    if (panelInfo) {
+        panelInfo.empty();
+        const headerRow = panelInfo.createDiv({ cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK}` });
+        const headerLeft = headerRow.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
+        const headerMain = headerRow.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
+        const headerRight = headerRow.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
+
+        const badgeEl = headerLeft.createSpan({
+            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
+        });
+        const badgeIcon = badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
+        setIcon(badgeIcon, 'signature');
+        badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro' });
+
+        panelHeader.nameEl.setText('Runtime estimation');
+        panelHeader.nameEl.addClass(ERT_CLASSES.SECTION_TITLE);
+        headerMain.appendChild(panelHeader.nameEl);
+        if (panelHeader.descEl) {
+            panelHeader.descEl.addClass(ERT_CLASSES.SECTION_DESC);
+            headerMain.appendChild(panelHeader.descEl);
+        }
+
+        const headerWikiLink = headerRight.createEl('a', {
+            href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#runtime-estimation',
+            cls: 'ert-wiki-link',
+            attr: { target: '_blank', rel: 'noopener' }
+        });
+        setIcon(headerWikiLink, 'external-link');
+
+        const controlEl = panelHeader.controlEl;
+        if (controlEl) {
+            const controls = Array.from(controlEl.childNodes);
+            if (controls.length) {
+                controls.forEach(node => headerRight.appendChild(node));
+            }
+            controlEl.empty();
+        }
+    }
 
     const panelHeaderEl = panelHeader.settingEl;
     const clearConditionalContent = () => {
@@ -209,6 +234,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             const ratesIconName = contentType === 'screenplay' ? 'projector' : 'mic-vocal';
             addHeadingIcon(ratesHeading, ratesIconName);
             addWikiLink(ratesHeading, 'Settings#runtime-estimation');
+            applyErtHeaderLayout(ratesHeading);
 
             // Content Type Selection
             addProRow(new Setting(detailsContainer))
@@ -344,7 +370,8 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                 .setDesc('Used in the Outline export: Index cards (JSON) summary to estimate writing hours and total sessions.')
                 .setHeading();
             addHeadingIcon(sessionHeading, 'calendar-clock');
-            addWikiLink(sessionHeading, 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#runtime-estimation');
+            addWikiLink(sessionHeading, 'Settings#runtime-estimation');
+            applyErtHeaderLayout(sessionHeading);
             const session = selectedProfile.sessionPlanning || {};
 
             addProRow(new Setting(detailsContainer))

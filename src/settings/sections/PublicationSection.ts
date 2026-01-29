@@ -2,7 +2,7 @@ import type { App } from 'obsidian';
 import { Setting as ObsidianSetting, Notice, setIcon, setTooltip } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { t } from '../../i18n';
-import { addHeadingIcon, addWikiLink } from '../wikiLink';
+import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { getAllScenes } from '../../utils/manuscript';
 import type { CompletionEstimate } from '../../services/TimelineMetricsService';
 import { STAGE_ORDER } from '../../utils/constants';
@@ -770,6 +770,7 @@ export function renderPublicationSection(params: {
         .setHeading();
     addHeadingIcon(pubHeading, 'printer');
     addWikiLink(pubHeading, 'Settings#publication');
+    applyErtHeaderLayout(pubHeading);
 
     // --- Stage Target Dates ---
     // Create target date settings for each publish stage (Zero, Author, House, Press)

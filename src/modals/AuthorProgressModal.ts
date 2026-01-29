@@ -336,70 +336,108 @@ export class AuthorProgressModal extends Modal {
 
     private renderRevealSection(): void {
         if (!this.revealSectionEl) return;
-        this.revealSectionEl.empty();
+        const revealSectionEl = this.revealSectionEl;
+        revealSectionEl.empty();
 
         const settings = this.plugin.settings.authorProgress;
-        if (this.isCampaignTarget()) {
-            const campaign = this.getSelectedCampaign();
-            if (!campaign) return;
+        const isCampaign = this.isCampaignTarget();
+        const campaign = this.getSelectedCampaign();
+        const publishStageLabel = this.plugin.calculateCompletionEstimate(this.cachedScenes)?.stage ?? 'Zero';
+        const progressPercent = Number.isFinite(this.progressPercent) ? Math.round(this.progressPercent) : 0;
+        const hasScenes = this.cachedScenes.length > 0;
 
-            const baseShowSubplots = settings?.showSubplots ?? true;
-            const baseShowActs = settings?.showActs ?? true;
-            const baseShowStatusColors = settings?.showStatus ?? true;
-            const baseShowProgressPercent = settings?.showProgressPercent ?? true;
+        const formatPresetLabel = (preset?: string): string => {
+            if (!preset) return 'Standard';
+            return `${preset.charAt(0).toUpperCase()}${preset.slice(1)}`;
+        };
 
-            this.revealSectionEl.createEl('h4', { text: 'What to Reveal', cls: 'rt-apr-reveal-title' });
+        const formatDateLabel = (value?: number | string | Date): string | null => {
+            if (!value) return null;
+            const date = new Date(value);
+            if (!Number.isFinite(date.getTime())) return null;
+            return date.toLocaleDateString();
+        };
 
-            if (campaign.teaserReveal?.enabled) {
-                const preset = campaign.teaserReveal.preset ?? 'standard';
-                const thresholds = getTeaserThresholds(preset, campaign.teaserReveal.customThresholds);
-                const level = getTeaserRevealLevel(
-                    this.progressPercent,
-                    thresholds,
-                    campaign.teaserReveal.disabledStages
-                );
-                const levelLabel = TEASER_LEVEL_INFO[level]?.label ?? 'Teaser';
-                this.revealSectionEl.createEl('p', {
-                    text: `Teaser Reveal: ${preset} (${thresholds.scenes}/${thresholds.colors}/${thresholds.full}%). Current: ${levelLabel}.`,
-                    cls: 'rt-apr-reveal-desc'
-                });
-            } else {
-                const revealSummary = [
-                    `Subplots ${baseShowSubplots ? 'On' : 'Off'}`,
-                    `Acts ${baseShowActs ? 'On' : 'Off'}`,
-                    `Status Colors ${baseShowStatusColors ? 'On' : 'Off'}`
-                ].join(' · ');
-                this.revealSectionEl.createEl('p', {
-                    text: `Reveal: ${revealSummary}.`,
-                    cls: 'rt-apr-reveal-desc'
-                });
-            }
+        const getThresholdDateLabel = (threshold: number): string | null => {
+            if (!settings?.aprProgressDateStart || !settings?.aprProgressDateTarget) return null;
+            if (settings.aprProgressMode !== 'date') return null;
+            const start = new Date(`${settings.aprProgressDateStart}T00:00:00`);
+            const target = new Date(`${settings.aprProgressDateTarget}T00:00:00`);
+            if (!Number.isFinite(start.getTime()) || !Number.isFinite(target.getTime())) return null;
+            if (target.getTime() <= start.getTime()) return null;
+            const nextMs = start.getTime() + ((target.getTime() - start.getTime()) * (threshold / 100));
+            const nextDate = new Date(nextMs);
+            if (!Number.isFinite(nextDate.getTime())) return null;
+            return nextDate.toLocaleDateString();
+        };
 
-            this.revealSectionEl.createEl('p', {
-                text: `% Complete: ${baseShowProgressPercent ? 'On' : 'Off'}.`,
-                cls: 'rt-apr-reveal-desc'
+        const summaryLines: string[] = [];
+        const updateFrequency = isCampaign ? campaign?.updateFrequency : settings?.updateFrequency;
+        const refreshDays = isCampaign ? campaign?.refreshThresholdDays : settings?.stalenessThresholdDays;
+        const frequency = updateFrequency ?? 'manual';
+        const updateLabel = `${frequency.charAt(0).toUpperCase()}${frequency.slice(1)}`;
+        const reminderLabel = frequency === 'manual' && refreshDays ? ` (reminder ${refreshDays}d)` : '';
+        summaryLines.push(`Mode: ${isCampaign ? `Campaign — ${campaign?.name ?? 'Unknown'}` : 'Default report'} · Update: ${updateLabel}${reminderLabel}`);
+        summaryLines.push(`Publish stage: ${publishStageLabel}`);
+        summaryLines.push(`Progress: ${hasScenes ? `${progressPercent}% complete` : 'No scenes yet'}`);
+
+        if (isCampaign && campaign?.teaserReveal?.enabled) {
+            const preset = campaign.teaserReveal.preset ?? 'standard';
+            const thresholds = getTeaserThresholds(preset, campaign.teaserReveal.customThresholds);
+            const level = getTeaserRevealLevel(
+                this.progressPercent,
+                thresholds,
+                campaign.teaserReveal.disabledStages
+            );
+            const levelLabel = TEASER_LEVEL_INFO[level]?.label ?? 'Teaser';
+            summaryLines.push(`Reveal stage: ${levelLabel} (${formatPresetLabel(preset)})`);
+
+            const stageOrder = ['bar', 'scenes', 'colors', 'full'] as const;
+            const nextStage = stageOrder.slice(stageOrder.indexOf(level) + 1).find(stage => {
+                if (stage === 'scenes' && campaign.teaserReveal?.disabledStages?.scenes) return false;
+                if (stage === 'colors' && campaign.teaserReveal?.disabledStages?.colors) return false;
+                return true;
             });
-            return;
+
+            if (nextStage && nextStage !== 'bar') {
+                const nextThreshold = nextStage === 'scenes'
+                    ? thresholds.scenes
+                    : nextStage === 'colors'
+                        ? thresholds.colors
+                        : thresholds.full;
+                const thresholdDate = getThresholdDateLabel(nextThreshold);
+                summaryLines.push(`Next: ${TEASER_LEVEL_INFO[nextStage].label} at ${nextThreshold}%${thresholdDate ? ` (${thresholdDate})` : ''}`);
+            } else {
+                summaryLines.push('Next: Full reveal unlocked');
+            }
+        } else {
+            this.showSubplots = settings?.showSubplots ?? true;
+            this.showActs = settings?.showActs ?? true;
+            this.showStatus = settings?.showStatus ?? true;
+            this.showPercent = settings?.showProgressPercent ?? true;
+            const revealSummary = [
+                `Subplots ${this.showSubplots ? 'On' : 'Off'}`,
+                `Acts ${this.showActs ? 'On' : 'Off'}`,
+                `Status Colors ${this.showStatus ? 'On' : 'Off'}`,
+                `% Complete ${this.showPercent ? 'On' : 'Off'}`
+            ].join(' · ');
+            summaryLines.push(`Reveal settings: ${revealSummary}`);
         }
 
-        this.showSubplots = settings?.showSubplots ?? true;
-        this.showActs = settings?.showActs ?? true;
-        this.showStatus = settings?.showStatus ?? true;
-        this.showPercent = settings?.showProgressPercent ?? true;
+        const revealCampaign = (campaign as any)?.revealCampaign ?? (settings as any)?.revealCampaign;
+        const revealCampaignEnabled = !!revealCampaign?.enabled;
+        const nextRevealAt = revealCampaign?.nextRevealAt ?? revealCampaign?.nextRevealDate ?? revealCampaign?.nextReveal;
+        if (revealCampaignEnabled) {
+            const nextRevealLabel = formatDateLabel(nextRevealAt);
+            summaryLines.push(nextRevealLabel ? `Countdown: ${nextRevealLabel}` : 'Countdown: Enabled');
+        }
 
-        const revealSummary = [
-            `Subplots ${this.showSubplots ? 'On' : 'Off'}`,
-            `Status Colors ${this.showStatus ? 'On' : 'Off'}`
-        ].join(' · ');
-
-        this.revealSectionEl.createEl('h4', { text: 'What to Reveal', cls: 'rt-apr-reveal-title' });
-        this.revealSectionEl.createEl('p', {
-            text: `Reveal: ${revealSummary}.`,
-            cls: 'rt-apr-reveal-desc'
-        });
-        this.revealSectionEl.createEl('p', {
-            text: `% Complete: ${this.showPercent ? 'On' : 'Off'}.`,
-            cls: 'rt-apr-reveal-desc'
+        revealSectionEl.createEl('h4', { text: 'Summary & Status', cls: 'rt-apr-reveal-title' });
+        summaryLines.forEach(line => {
+            revealSectionEl.createEl('p', {
+                text: line,
+                cls: 'rt-apr-reveal-desc'
+            });
         });
     }
 

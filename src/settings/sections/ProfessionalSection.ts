@@ -9,7 +9,7 @@
 import { App, Setting, setIcon, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { ERT_CLASSES } from '../../ui/classes';
-import { addHeadingIcon, addWikiLink } from '../wikiLink';
+import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // OPEN BETA CONFIGURATION
@@ -237,7 +237,8 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         .setDesc('Configure Pandoc binary paths and manuscript export templates for screenplay, podcast, and novel formats.')
         .setHeading();
     addHeadingIcon(pandocHeading, 'book-open-text');
-    addWikiLink(pandocHeading, 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#professional');
+    addWikiLink(pandocHeading, 'Settings#professional');
+    applyErtHeaderLayout(pandocHeading);
 
     // Settings
     addProRow(new Setting(pandocPanel))

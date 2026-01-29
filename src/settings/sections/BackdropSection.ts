@@ -3,7 +3,7 @@ import type RadialTimelinePlugin from '../../main';
 import { parseDateRangeInput } from '../../utils/date';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { ERT_CLASSES } from '../../ui/classes';
-import { addHeadingIcon, addWikiLink } from '../wikiLink';
+import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 
 type MicroBackdropConfig = {
     title: string;
@@ -21,6 +21,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
         .setHeading();
     addHeadingIcon(backdropHeading, 'layers-3');
     addWikiLink(backdropHeading, 'Settings#backdrop');
+    applyErtHeaderLayout(backdropHeading);
 
     new Settings(containerEl)
         .setName('Show backdrop ring')

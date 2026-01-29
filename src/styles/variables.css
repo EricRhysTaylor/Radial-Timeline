@@ -35,6 +35,14 @@
   --rt-color-empty-selected: #EFEFEF;
   /* Slightly darker gray for selected empty cells */
 
+  /* Inquiry Zone Colors */
+  --ert-inquiry-zone-setup: #2fbf6a;
+  --ert-inquiry-zone-setup-stroke: color-mix(in srgb, var(--ert-inquiry-zone-setup) 35%, #ffffff);
+  --ert-inquiry-zone-pressure: #3b7ddd;
+  --ert-inquiry-zone-pressure-stroke: color-mix(in srgb, var(--ert-inquiry-zone-pressure) 35%, #ffffff);
+  --ert-inquiry-zone-payoff: #d65252;
+  --ert-inquiry-zone-payoff-stroke: color-mix(in srgb, var(--ert-inquiry-zone-payoff) 35%, #ffffff);
+
   /* Search and UI Colors */
   --rt-color-search: #ffd700;
   /* Pure gold yellow for search highlighting */
