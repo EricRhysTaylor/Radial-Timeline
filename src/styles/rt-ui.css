@@ -345,7 +345,15 @@
 }
 
 .ert-ui .ert-header--inline {
+  display: inline-grid;
+  width: fit-content;
+  max-width: 100%;
+  grid-template-columns: auto auto auto;
   padding: 0;
+}
+
+.ert-ui .ert-header--inline.ert-header--no-left {
+  grid-template-columns: auto auto;
 }
 
 .ert-ui .ert-header--no-left {
