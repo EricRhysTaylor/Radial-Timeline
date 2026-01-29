@@ -97,10 +97,13 @@ export function computeAprLayout(preset: AprPreset, data: AprData = {}): AprLayo
     const ringBand = ringOuterR * 2;
     const textR = preset.enableText ? APR_BASE_RADII.text * sizeScale : null;
 
-    const ringStroke = stroke(outerPx, kRingStroke);
-    const dividerStroke = stroke(outerPx, kDividerStroke);
-    const spokeWidth = dividerStroke;
-    const actSpokeWidth = stroke(outerPx, kDividerStroke * 2);
+    // Fixed stroke widths as requested: 1px for 150px, 2px for 300px+
+    const fixedStroke = outerPx <= 150 ? 1 : 2;
+
+    const ringStroke = fixedStroke;
+    const dividerStroke = fixedStroke;
+    const spokeWidth = fixedStroke;
+    const actSpokeWidth = fixedStroke;
 
     const patternScale = preset.density ?? (outerPx / 300) * 0.4;
 

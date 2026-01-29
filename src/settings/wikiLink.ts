@@ -32,8 +32,6 @@ export function applyErtHeaderLayout(
     infoEl.empty();
     const descHtml = descEl ? descEl.innerHTML.trim() : '';
     const hasDesc = Boolean(descEl && descHtml.length > 0);
-    const controlEl = setting.controlEl;
-    const controls = controlEl ? Array.from(controlEl.childNodes) : [];
     const variant = options.variant ?? (hasDesc ? 'block' : 'inline');
     const useHeader2 = hasDesc;
     const headerWrapper = useHeader2
@@ -72,11 +70,6 @@ export function applyErtHeaderLayout(
         headerWrapper.appendChild(descEl);
     } else if (descEl) {
         descEl.remove();
-    }
-
-    if (controlEl && controls.length) {
-        controls.forEach(node => right.appendChild(node));
-        controlEl.empty();
     }
 
     return { header, left, main, right };

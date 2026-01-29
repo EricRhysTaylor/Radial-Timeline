@@ -106,9 +106,12 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     }
 
     // Header row with Pro badge, description, and toggle
+    const runtimeDescOn = 'Activate film and book runtime estimates to the scene hover metadata, Chronologue Mode, and the Command Palette Runtime Estimator.';
+    const runtimeDescOff = 'Feature off: runtime estimation will no longer appear in Chronologue Mode (button and functionality).';
     const panelHeader = new Setting(proContainer)
+        .setName('Runtime estimation')
         .setHeading()
-        .setDesc('Activate film and book runtime estimates to the scene hover metadata, Chronologue Mode, and the Command Palette Runtime Estimator.');
+        .setDesc(runtimeDescOn);
     panelHeader.addToggle((toggle: ToggleComponent) => {
         toggle
             .setValue(plugin.settings.enableRuntimeEstimation ?? false)
@@ -116,49 +119,29 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                 if (!hasProfessional) return;
                 plugin.settings.enableRuntimeEstimation = value;
                 await plugin.saveSettings();
+                updateRuntimeDescription(value);
                 renderConditionalContent();
             });
     });
 
-    const panelInfo = panelHeader.settingEl.querySelector('.setting-item-info') as HTMLElement | null;
-    if (panelInfo) {
-        panelInfo.empty();
-        const headerRow = panelInfo.createDiv({ cls: `${ERT_CLASSES.HEADER} ${ERT_CLASSES.HEADER_BLOCK}` });
-        const headerLeft = headerRow.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
-        const headerMain = headerRow.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
-        const headerRight = headerRow.createDiv({ cls: ERT_CLASSES.HEADER_RIGHT });
-
-        const badgeEl = headerLeft.createSpan({
+    addWikiLink(panelHeader, 'Settings#runtime-estimation');
+    const headerLayout = applyErtHeaderLayout(panelHeader);
+    if (headerLayout) {
+        headerLayout.header.removeClass(ERT_CLASSES.HEADER_NO_LEFT);
+        const badgeEl = headerLayout.left.createSpan({
             cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
         });
         const badgeIcon = badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
         setIcon(badgeIcon, 'signature');
         badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro' });
-
-        panelHeader.nameEl.setText('Runtime estimation');
-        panelHeader.nameEl.addClass(ERT_CLASSES.SECTION_TITLE);
-        headerMain.appendChild(panelHeader.nameEl);
-        if (panelHeader.descEl) {
-            panelHeader.descEl.addClass(ERT_CLASSES.SECTION_DESC);
-            headerMain.appendChild(panelHeader.descEl);
-        }
-
-        const headerWikiLink = headerRight.createEl('a', {
-            href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#runtime-estimation',
-            cls: 'ert-wiki-link',
-            attr: { target: '_blank', rel: 'noopener' }
-        });
-        setIcon(headerWikiLink, 'external-link');
-
-        const controlEl = panelHeader.controlEl;
-        if (controlEl) {
-            const controls = Array.from(controlEl.childNodes);
-            if (controls.length) {
-                controls.forEach(node => headerRight.appendChild(node));
-            }
-            controlEl.empty();
-        }
     }
+    const updateRuntimeDescription = (isEnabled: boolean) => {
+        const descEl = panelHeader.descEl;
+        if (!descEl) return;
+        descEl.setText(isEnabled ? runtimeDescOn : runtimeDescOff);
+        descEl.classList.toggle('ert-section-desc--alert', !isEnabled);
+    };
+    updateRuntimeDescription(plugin.settings.enableRuntimeEstimation ?? false);
 
     const panelHeaderEl = panelHeader.settingEl;
     const clearConditionalContent = () => {
