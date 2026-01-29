@@ -832,13 +832,13 @@
   gap: var(--ert-gap-xs);
   padding: 4px 10px;
   border-radius: 999px;
-  border: 1px solid var(--background-modifier-border);
-  background: var(--background-secondary);
-  color: var(--text-normal);
+  border: 1px solid var(--ert-badgePill-border, var(--background-modifier-border));
+  background: var(--ert-badgePill-bg, var(--background-secondary));
+  color: var(--ert-badgePill-color, var(--text-normal));
   font-weight: 700;
   font-size: 12px;
   line-height: 1.2;
-  box-shadow: var(--shadow-s1, 0 6px 18px rgba(0, 0, 0, 0.08));
+  box-shadow: var(--ert-badgePill-shadow, var(--shadow-s1, 0 6px 18px rgba(0, 0, 0, 0.08)));
 }
 
 .ert-ui .ert-badgePill--sm {
@@ -1929,14 +1929,24 @@
 .ert-ui .ert-backup-heading-grid__icon {
   width: 32px;
   height: 32px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
+  align-self: center;
 }
 
 .ert-ui .ert-backup-heading-grid__icon svg {
   width: 20px;
   height: 20px;
+  display: block;
+}
+
+.ert-ui .ert-backup-heading-grid__icon-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
 }
 
 .ert-ui .ert-backup-heading-grid__text .ert-section-title {
@@ -3237,32 +3247,6 @@
   --ert-template-indent-accent: var(--ert-accent);
   padding-left: calc(var(--ert-gap-md) + var(--ert-gap-xs) + (var(--ert-gap-xs) / 2));
   border-left: calc(var(--ert-gap-xs) / 2) solid var(--ert-template-indent-accent);
-}
-
-.ert-ui .ert-inq-zone--setup {
-  --ert-inquiry-zone-color: var(--ert-inquiry-zone-setup);
-  --ert-inquiry-zone-stroke: var(--ert-inquiry-zone-setup-stroke);
-}
-
-.ert-ui .ert-inq-zone--pressure {
-  --ert-inquiry-zone-color: var(--ert-inquiry-zone-pressure);
-  --ert-inquiry-zone-stroke: var(--ert-inquiry-zone-pressure-stroke);
-}
-
-.ert-ui .ert-inq-zone--payoff {
-  --ert-inquiry-zone-color: var(--ert-inquiry-zone-payoff);
-  --ert-inquiry-zone-stroke: var(--ert-inquiry-zone-payoff-stroke);
-}
-
-.ert-ui .ert-inq-zone-indent {
-  --ert-template-indent-accent: var(--ert-inquiry-zone-stroke);
-}
-
-.ert-ui .ert-inq-zone-pillLabel {
-  background: color-mix(in srgb, var(--ert-inquiry-zone-color) 18%, var(--background-secondary));
-  border-color: var(--ert-inquiry-zone-stroke);
-  color: var(--ert-inquiry-zone-stroke);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ert-inquiry-zone-stroke) 35%, transparent);
 }
 
 .ert-ui .ert-template-hint-row {

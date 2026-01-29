@@ -337,6 +337,15 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         elements.forEach(el => {
             if (el === this._coreSearchableContent) return;
             if (el.closest('.setting-item')) return;
+
+            // If element is a descendant of a preview frame (but not the frame itself), always show it.
+            // The visibility of the preview frame itself determines the visibility of its children.
+            const previewParent = el.closest('.ert-previewFrame, [data-preview]');
+            if (previewParent && previewParent !== el) {
+                this.toggleSearchHidden(el, false);
+                return;
+            }
+
             const isPreview = el.matches('.ert-previewFrame, [data-preview]');
             const section = el.closest('[data-ert-section]');
             if (active && isPreview && section?.querySelector('.setting-item:not(.ert-search-hidden)')) {

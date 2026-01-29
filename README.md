@@ -38,7 +38,7 @@
     </td>
     <td>&nbsp;&nbsp;</td>
     <td width="50%" valign="top">
-      <p><strong>After:</strong> One visual map showing every scene, every subplot, every beat color coded and connected to the big picture.</p>
+      <p><strong>After:</strong> One visual map showing every scene, every subplot, color coded and ordered in context and connected to the big picture.</p>
     </td>
   </tr>
 </table>

@@ -1042,29 +1042,36 @@ export function renderInquirySection(params: SectionParams): void {
             zone: 'setup' | 'pressure' | 'payoff',
             dragState: { index: number | null }
         ) => {
-            const zoneStack = promptContainer.createDiv({
-                cls: [ERT_CLASSES.STACK, `ert-inq-zone--${zone}`]
-            });
+            const zoneStack = promptContainer.createDiv({ cls: ERT_CLASSES.STACK });
 
             const headingCard = zoneStack.createDiv({ cls: 'setting-item' });
             const headingInfo = headingCard.createDiv({ cls: 'setting-item-info' });
             const headingName = headingInfo.createDiv({ cls: 'setting-item-name' });
-            const headingPill = headingName.createSpan({
-                cls: ['ert-badgePill', 'ert-badgePill--sm', 'ert-inq-zone-pillLabel']
-            });
+            const headingPill = headingName.createSpan({ cls: ['ert-badgePill', 'ert-badgePill--sm'] });
             headingPill.createSpan({
                 cls: 'ert-badgePill__text',
                 text: zoneLabels[zone].toUpperCase()
             });
+            const zoneColor = `var(--ert-inquiry-zone-${zone})`;
+            const zoneStroke = `var(--ert-inquiry-zone-${zone}-stroke)`;
+            headingPill.style.setProperty(
+                '--ert-badgePill-bg',
+                `color-mix(in srgb, ${zoneColor} 18%, var(--background-secondary))`
+            );
+            headingPill.style.setProperty('--ert-badgePill-border', zoneStroke);
+            headingPill.style.setProperty('--ert-badgePill-color', zoneStroke);
+            headingPill.style.setProperty(
+                '--ert-badgePill-shadow',
+                `0 0 0 1px color-mix(in srgb, ${zoneStroke} 35%, transparent)`
+            );
             headingInfo.createDiv({
                 cls: 'setting-item-description',
                 text: getCanonicalPromptText(zone)
             });
 
             const listCard = zoneStack.createDiv({ cls: ERT_CLASSES.PANEL });
-            const listEl = listCard.createDiv({
-                cls: ['ert-template-entries', 'ert-template-indent', 'ert-inq-zone-indent']
-            });
+            const listEl = listCard.createDiv({ cls: ['ert-template-entries', 'ert-template-indent'] });
+            listEl.style.setProperty('--ert-template-indent-accent', zoneStroke);
 
             const slots = getSlotList(zone);
             const customSlots = slots.filter(slot => !slot.builtIn);
