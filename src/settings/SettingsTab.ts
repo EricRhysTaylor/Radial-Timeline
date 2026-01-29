@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Component, Setting as Settings, setIcon, TextComponent, normalizePath } from 'obsidian';
+import { App, PluginSettingTab, Component, setIcon, TextComponent, normalizePath } from 'obsidian';
 import { renderGeneralSection } from './sections/GeneralSection';
 import { renderCompletionEstimatePreview, renderPublicationSection } from './sections/PublicationSection';
 import { renderChronologueSection } from './sections/ChronologueSection';
@@ -202,26 +202,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     }
 
     private renderBackupSafetySection(containerEl: HTMLElement): void {
-        const panel = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
-        const backupSetting = new Settings(panel)
-            .setName('Backup & Sync')
-            .setDesc('');
+        containerEl.addClass(ERT_CLASSES.PANEL, ERT_CLASSES.STACK, 'ert-backup-callout');
 
-        const nameEl = backupSetting.nameEl;
-        if (nameEl) {
-            nameEl.textContent = '';
-            const headingGrid = nameEl.createDiv({ cls: 'ert-backup-heading-grid' });
-            const iconColumn = headingGrid.createDiv({ cls: 'ert-backup-heading-grid__icon' });
-            const icon = iconColumn.createSpan({ cls: 'ert-backup-heading-grid__icon-inner' });
-            setIcon(icon, 'archive-restore');
-            const textColumn = headingGrid.createDiv({ cls: 'ert-backup-heading-grid__text' });
-            textColumn.createSpan({ text: 'Backup & Sync', cls: 'ert-section-title' });
-        }
+        const heading = containerEl.createDiv({ cls: 'ert-backup-callout__heading' });
+        const iconWrapper = heading.createDiv({ cls: 'ert-backup-callout__icon' });
+        setIcon(iconWrapper, 'archive-restore');
+        heading.createSpan({ text: 'Backup & Sync', cls: 'ert-backup-callout__title' });
 
-        const description = backupSetting.descEl;
-        if (!description) return;
-        description.textContent = '';
-        description.addClass('ert-setting-backup-description');
+        const description = containerEl.createDiv({ cls: 'ert-backup-callout__description' });
         description.createSpan({ text: 'Back up your Obsidian vault regularly to protect against data loss. Learn more at ' });
         description.createEl('a', { text: 'Obsidian Backup Guide', href: 'https://help.obsidian.md/backup' });
         description.createSpan({ text: '. Sync does not protect against all forms of data loss. Sync options include ' });

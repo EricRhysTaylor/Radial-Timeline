@@ -1047,7 +1047,7 @@ export function renderInquirySection(params: SectionParams): void {
         ) => {
             const zoneStack = promptContainer.createDiv({ cls: ERT_CLASSES.STACK });
 
-            const headingCard = zoneStack.createDiv({ cls: 'setting-item' });
+            const headingCard = zoneStack.createDiv({ cls: ['setting-item', 'ert-inquiry-prompt-header'] });
             const headingInfo = headingCard.createDiv({ cls: 'setting-item-info' });
             const headingName = headingInfo.createDiv({ cls: 'setting-item-name' });
             const headingPill = headingName.createSpan({ cls: ['ert-badgePill', 'ert-badgePill--sm'] });

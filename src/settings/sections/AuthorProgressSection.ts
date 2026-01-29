@@ -189,7 +189,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         .setHeading();
     addHeadingIcon(stylingHeading, 'brush');
     addWikiLink(stylingHeading, 'Settings#social-media-styling');
-    applyErtHeaderLayout(stylingHeading);
+    applyErtHeaderLayout(stylingHeading, { variant: 'inline' });
     const stylingBody = stylingBlock.createDiv({ cls: 'ert-typography-stack' });
 
     const currentBg = settings?.aprBackgroundColor || '#0d0d0f';

@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-01-28T20:32:10.529Z",
+  "generatedAt": "2026-01-29T20:35:46.032Z",
   "summary": {
     "anthropic": 9,
     "openai": 115,
-    "gemini": 45
+    "gemini": 47
   },
   "anthropic": [
     {
@@ -872,6 +872,22 @@
       "description": "Preview release (December 12th, 2025) of Deep Research Pro",
       "inputTokenLimit": 131072,
       "outputTokenLimit": 65536
+    },
+    {
+      "id": "embedding-001",
+      "name": "models/embedding-001",
+      "displayName": "Embedding 001",
+      "description": "Obtain a distributed representation of a text.",
+      "inputTokenLimit": 2048,
+      "outputTokenLimit": 1
+    },
+    {
+      "id": "text-embedding-004",
+      "name": "models/text-embedding-004",
+      "displayName": "Text Embedding 004",
+      "description": "Obtain a distributed representation of a text.",
+      "inputTokenLimit": 2048,
+      "outputTokenLimit": 1
     },
     {
       "id": "gemini-embedding-001",

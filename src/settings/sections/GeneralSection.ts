@@ -85,7 +85,7 @@ export function renderGeneralSection(params: {
 
     // --- Show Source Path as Title ---
     const isShowingSourcePath = plugin.settings.showSourcePathAsTitle !== false;
-    
+
     const getFolderTitle = () => {
         const sourcePath = plugin.settings.sourcePath;
         if (!sourcePath) return 'Work in Progress';
@@ -93,16 +93,16 @@ export function renderGeneralSection(params: {
         const segments = sourcePath.split('/').filter(s => s.length > 0);
         return segments.length > 0 ? segments[segments.length - 1] : 'Work in Progress';
     };
-    
+
     const getDescText = (enabled: boolean) => {
         const title = enabled ? getFolderTitle() : 'Work in Progress';
         return `Currently showing "${title}" as the title.`;
     };
-    
+
     const titleToggleSetting = new ObsidianSetting(containerEl)
         .setName('Show source path as title')
         .setDesc(getDescText(isShowingSourcePath));
-    
+
     titleToggleSetting.addToggle(toggle => {
         toggle
             .setValue(isShowingSourcePath)
@@ -113,73 +113,6 @@ export function renderGeneralSection(params: {
                 // Update description to reflect new state
                 titleToggleSetting.setDesc(getDescText(value));
             });
-    });
-
-    // --- AI Output Folder ---
-    const aiSetting = new ObsidianSetting(containerEl)
-        .setName(t('settings.configuration.aiOutputFolder.name'))
-        .setDesc(t('settings.configuration.aiOutputFolder.desc'));
-    aiSetting.addText(text => {
-        const defaultPath = DEFAULT_SETTINGS.aiOutputFolder || 'Radial Timeline/Logs';
-        const fallbackFolder = plugin.settings.aiOutputFolder?.trim() || defaultPath;
-        const illegalChars = /[<>:"|?*]/;
-
-        text.setPlaceholder(t('settings.configuration.aiOutputFolder.placeholder'))
-            .setValue(fallbackFolder);
-        text.inputEl.addClass('ert-input--full');
-
-        const inputEl = text.inputEl;
-
-        const flashClass = (cls: string) => {
-            inputEl.addClass(cls);
-            window.setTimeout(() => inputEl.removeClass(cls), cls === 'ert-setting-input-success' ? 1000 : 2000);
-        };
-
-        const validatePath = async () => {
-            inputEl.removeClass('ert-setting-input-success');
-            inputEl.removeClass('ert-setting-input-error');
-
-            const rawValue = text.getValue();
-            const trimmed = rawValue.trim() || fallbackFolder;
-
-            if (illegalChars.test(trimmed)) {
-                flashClass('ert-setting-input-error');
-                new Notice('Folder path cannot contain the characters < > : " | ? *');
-                return;
-            }
-
-            const normalized = normalizePath(trimmed);
-
-            try { await plugin.app.vault.createFolder(normalized); } catch { /* folder may already exist */ }
-
-            const isValid = await plugin.validateAndRememberPath(normalized);
-            if (!isValid) {
-                flashClass('ert-setting-input-error');
-                return;
-            }
-
-            plugin.settings.aiOutputFolder = normalized;
-            await plugin.saveSettings();
-            flashClass('ert-setting-input-success');
-        };
-
-        text.onChange(() => {
-            inputEl.removeClass('ert-setting-input-success');
-            inputEl.removeClass('ert-setting-input-error');
-        });
-
-        plugin.registerDomEvent(text.inputEl, 'blur', () => { void validatePath(); });
-
-        aiSetting.addExtraButton(button => {
-            button.setIcon('rotate-ccw');
-            button.setTooltip(`Reset to ${defaultPath}`);
-            button.onClick(async () => {
-                text.setValue(defaultPath);
-                plugin.settings.aiOutputFolder = normalizePath(defaultPath);
-                await plugin.saveSettings();
-                flashClass('ert-setting-input-success');
-            });
-        });
     });
 
     // --- Export Folder ---
@@ -246,6 +179,73 @@ export function renderGeneralSection(params: {
                 const normalizedDefault = normalizePath(defaultPath);
                 plugin.settings.manuscriptOutputFolder = normalizedDefault;
                 plugin.settings.outlineOutputFolder = normalizedDefault;
+                await plugin.saveSettings();
+                flashClass('ert-setting-input-success');
+            });
+        });
+    });
+
+    // --- AI Output Folder ---
+    const aiSetting = new ObsidianSetting(containerEl)
+        .setName(t('settings.configuration.aiOutputFolder.name'))
+        .setDesc(t('settings.configuration.aiOutputFolder.desc'));
+    aiSetting.addText(text => {
+        const defaultPath = DEFAULT_SETTINGS.aiOutputFolder || 'Radial Timeline/Logs';
+        const fallbackFolder = plugin.settings.aiOutputFolder?.trim() || defaultPath;
+        const illegalChars = /[<>:"|?*]/;
+
+        text.setPlaceholder(t('settings.configuration.aiOutputFolder.placeholder'))
+            .setValue(fallbackFolder);
+        text.inputEl.addClass('ert-input--full');
+
+        const inputEl = text.inputEl;
+
+        const flashClass = (cls: string) => {
+            inputEl.addClass(cls);
+            window.setTimeout(() => inputEl.removeClass(cls), cls === 'ert-setting-input-success' ? 1000 : 2000);
+        };
+
+        const validatePath = async () => {
+            inputEl.removeClass('ert-setting-input-success');
+            inputEl.removeClass('ert-setting-input-error');
+
+            const rawValue = text.getValue();
+            const trimmed = rawValue.trim() || fallbackFolder;
+
+            if (illegalChars.test(trimmed)) {
+                flashClass('ert-setting-input-error');
+                new Notice('Folder path cannot contain the characters < > : " | ? *');
+                return;
+            }
+
+            const normalized = normalizePath(trimmed);
+
+            try { await plugin.app.vault.createFolder(normalized); } catch { /* folder may already exist */ }
+
+            const isValid = await plugin.validateAndRememberPath(normalized);
+            if (!isValid) {
+                flashClass('ert-setting-input-error');
+                return;
+            }
+
+            plugin.settings.aiOutputFolder = normalized;
+            await plugin.saveSettings();
+            flashClass('ert-setting-input-success');
+        };
+
+        text.onChange(() => {
+            inputEl.removeClass('ert-setting-input-success');
+            inputEl.removeClass('ert-setting-input-error');
+        });
+
+        plugin.registerDomEvent(text.inputEl, 'blur', () => { void validatePath(); });
+
+        aiSetting.addExtraButton(button => {
+            button.setIcon('rotate-ccw');
+            button.setTooltip(`Reset to ${defaultPath}`);
+            button.onClick(async () => {
+                text.setValue(defaultPath);
+                plugin.settings.aiOutputFolder = normalizePath(defaultPath);
                 await plugin.saveSettings();
                 flashClass('ert-setting-input-success');
             });

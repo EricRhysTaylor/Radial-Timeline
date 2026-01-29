@@ -1837,6 +1837,22 @@
   100% { filter: drop-shadow(0 0 0 color-mix(in srgb, var(--ert-inquiry-zone-color) 40%, transparent)); }
 }
 
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-inquiry-prompt-header .setting-item-info {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: start;
+  column-gap: var(--ert-gap-sm, 12px);
+}
+
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-inquiry-prompt-header .setting-item-description {
+  align-self: start;
+  margin: 0;
+}
+
+:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-inquiry-prompt-header .setting-item-name {
+  align-self: start;
+}
+
 @keyframes ert-inquiry-help-pulse {
   0% { filter: drop-shadow(0 0 0 color-mix(in srgb, var(--ert-inquiry-help-onboarding) 40%, transparent)); }
   50% { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ert-inquiry-help-onboarding) 45%, transparent)); }

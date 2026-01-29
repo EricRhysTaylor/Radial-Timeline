@@ -30,12 +30,12 @@ export function applyErtHeaderLayout(
     if (!infoEl) return null;
 
     infoEl.empty();
-    const hasDesc = Boolean(descEl && descEl.textContent && descEl.textContent.trim().length > 0);
+    const descHtml = descEl ? descEl.innerHTML.trim() : '';
+    const hasDesc = Boolean(descEl && descHtml.length > 0);
     const controlEl = setting.controlEl;
     const controls = controlEl ? Array.from(controlEl.childNodes) : [];
-    const hasControls = controls.length > 0;
-    const useHeader2 = hasDesc && !hasControls;
     const variant = options.variant ?? (hasDesc ? 'block' : 'inline');
+    const useHeader2 = hasDesc;
     const headerWrapper = useHeader2
         ? infoEl.createDiv({
             cls: [
@@ -44,9 +44,7 @@ export function applyErtHeaderLayout(
             ]
         })
         : infoEl;
-    const headerVariant = useHeader2
-        ? ERT_CLASSES.HEADER_INLINE
-        : (variant === 'block' ? ERT_CLASSES.HEADER_BLOCK : ERT_CLASSES.HEADER_INLINE);
+    const headerVariant = variant === 'block' ? ERT_CLASSES.HEADER_BLOCK : ERT_CLASSES.HEADER_INLINE;
     const header = headerWrapper.createDiv({
         cls: [ERT_CLASSES.HEADER, headerVariant]
     });
@@ -71,11 +69,7 @@ export function applyErtHeaderLayout(
     main.appendChild(nameEl);
     if (descEl && hasDesc) {
         descEl.classList.add(ERT_CLASSES.SECTION_DESC);
-        if (useHeader2) {
-            headerWrapper.appendChild(descEl);
-        } else {
-            main.appendChild(descEl);
-        }
+        headerWrapper.appendChild(descEl);
     } else if (descEl) {
         descEl.remove();
     }

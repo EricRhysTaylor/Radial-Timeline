@@ -1930,46 +1930,82 @@
   margin: var(--ert-pad-md) 0 var(--ert-gap-sm);
 }
 
+.ert-ui .setting-item.setting-item-heading > .setting-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-xs);
+  min-width: 0;
+}
+
+.ert-ui .setting-item.setting-item-heading > .setting-item-info > .setting-item-name {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+  width: 100%;
+  min-width: 0;
+}
+
+.ert-ui .setting-item.setting-item-heading .setting-item-description {
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+.ert-ui .setting-item.setting-item-heading .ert-wiki-link {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
 .ert-ui .setting-item.setting-item-heading.ert-setting-heading--top {
   margin-top: 0;
 }
 
-.ert-ui .ert-backup-heading-grid {
-  display: grid;
+.ert-ui .ert-backup-callout {
+  display: flex;
+  flex-direction: column;
   gap: var(--ert-gap-sm);
-  grid-template-columns: 32px 1fr;
+  padding: var(--ert-panel-pad);
+  border-radius: var(--ert-panel-radius);
+  border: 1px solid var(--ert-panel-border);
+  background: var(--ert-panel-bg);
+}
+
+.ert-ui .ert-backup-callout__heading {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--ert-gap-sm);
   align-items: center;
 }
 
-.ert-ui .ert-backup-heading-grid__icon {
-  width: 32px;
-  height: 32px;
-  display: flex;
+.ert-ui .ert-backup-callout__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  align-self: center;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
 }
 
-.ert-ui .ert-backup-heading-grid__icon svg {
+.ert-ui .ert-backup-callout__icon svg {
   width: 20px;
   height: 20px;
-  display: block;
 }
 
-.ert-ui .ert-backup-heading-grid__icon-inner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-}
-
-.ert-ui .ert-backup-heading-grid__text .ert-section-title {
+.ert-ui .ert-backup-callout__title {
   margin: 0;
+  font-size: 16px;
+  font-weight: 600;
 }
 
-.ert-ui .ert-setting-backup-description {
-  margin-left: calc(32px + var(--ert-gap-sm));
+.ert-ui .ert-backup-callout__description {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ert-ui .ert-backup-callout__description a {
+  color: var(--text-accent);
 }
 
 .ert-ui .ert-settings-separator {

@@ -359,15 +359,16 @@ export function renderAiSection(params: {
         }
     );
 
-    const localSection = stackEl.createDiv({
+    const localWrapper = stackEl.createDiv({
         cls: ['ert-provider-section', 'ert-provider-local', ERT_CLASSES.STACK]
     });
-    params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection, local: localSection } as any);
-    params.addAiRelatedElement(localSection);
+    params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection, local: localWrapper } as any);
+    params.addAiRelatedElement(localWrapper);
 
+    const localBaseStack = localWrapper.createDiv({ cls: ERT_CLASSES.STACK });
     let localModelText: TextComponent | null = null;
 
-    const localBaseUrlSetting = new Settings(localSection)
+    const localBaseUrlSetting = new Settings(localBaseStack)
         .setName('Local LLM Base URL')
         .setDesc('The API endpoint. For Ollama, use "http://localhost:11434/v1". For LM Studio, use "http://localhost:1234/v1".')
         .addText(text => {
@@ -396,14 +397,16 @@ export function renderAiSection(params: {
     localBaseUrlSetting.settingEl.addClass('ert-setting-full-width-input');
 
     // Advisory note as separate section
-    const localWarningSection = localSection.createDiv({ cls: 'ert-local-llm-advisory' });
+    const localWarningSection = localBaseStack.createDiv({ cls: ['ert-local-llm-advisory', ERT_CLASSES.ROW] });
     localWarningSection.createEl('strong', { text: 'Advisory Note', cls: 'ert-local-llm-advisory-title' });
     const aiLogFolder = resolveAiLogFolder();
     localWarningSection.createSpan({
         text: `By default, no LLM pulses are written to the scene when local transformer is used. Rather it is stored in an AI log file in the local logs output folder (${aiLogFolder}), as the response does not follow directions and breaks the scene hover formatting. You may still write scene hover metadata with local LLM by toggling off the setting "Bypass scene hover metadata yaml writes" below.`
     });
 
-    const localModelSetting = new Settings(localSection)
+    const localExtrasStack = localWrapper.createDiv({ cls: [ERT_CLASSES.STACK, 'ert-ai-local-extras'] });
+
+    const localModelSetting = new Settings(localExtrasStack)
         .setName('Model ID')
         .setDesc('The exact model name your server expects (e.g., "llama3", "mistral-7b", "local-model").')
         .addText(text => {
@@ -430,6 +433,7 @@ export function renderAiSection(params: {
             plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
             params.setLocalConnectionInputs({ modelInput: text.inputEl });
         });
+    localModelSetting.settingEl.addClass(ERT_CLASSES.ROW);
 
     localModelSetting.addExtraButton(button => {
         button
@@ -477,7 +481,7 @@ export function renderAiSection(params: {
             });
     });
 
-    const customInstructionsSetting = new Settings(localSection)
+    const customInstructionsSetting = new Settings(localExtrasStack)
         .setName('Custom Instructions')
         .setDesc('Additional instructions added to the start of the prompt. Useful for fine-tuning local model behavior.')
         .addTextArea(text => {
@@ -491,9 +495,9 @@ export function renderAiSection(params: {
             text.inputEl.rows = 6;
             text.inputEl.addClass('ert-textarea');
         });
-    customInstructionsSetting.settingEl.addClass('ert-setting-full-width-input');
+    customInstructionsSetting.settingEl.addClass('ert-setting-full-width-input', ERT_CLASSES.ROW);
 
-    new Settings(localSection)
+    const bypassSetting = new Settings(localExtrasStack)
         .setName('Bypass scene hover metadata yaml writes')
         .setDesc('Default is enabled. Local LLM triplet pulse analysis skips writing to the scene note and saves the results in the AI log report instead. Recommended for local models.')
         .addToggle(toggle => toggle
@@ -502,10 +506,12 @@ export function renderAiSection(params: {
                 plugin.settings.localSendPulseToAiReport = value;
                 await plugin.saveSettings();
             }));
+    bypassSetting.settingEl.addClass(ERT_CLASSES.ROW);
 
-    const apiKeySetting = new Settings(localSection)
+    const apiKeySetting = new Settings(localExtrasStack)
         .setName('API Key (Optional)')
         .setDesc('Required by some servers. For local tools like Ollama, this is usually ignored.')
+    apiKeySetting.settingEl.addClass(ERT_CLASSES.ROW);
 
     addApiKeyInput(
         apiKeySetting,
