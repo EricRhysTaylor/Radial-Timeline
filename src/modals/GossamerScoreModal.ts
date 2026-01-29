@@ -208,7 +208,7 @@ export class GossamerScoreModal extends Modal {
       modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
     }
 
-    contentEl.addClass('ert-modal-container', 'rt-gossamer-score-modal');
+    contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-gossamer-score-modal');
 
     // Use settings as source of truth for beat system
     const settingsSystem = this.plugin.settings.beatSystem || 'Save The Cat';
@@ -887,7 +887,7 @@ export class GossamerScoreModal extends Modal {
       contentEl.empty();
       
       modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-      contentEl.addClass('ert-modal-container', 'rt-gossamer-score-modal');
+      contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-gossamer-score-modal');
 
       const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
       hero.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
@@ -1012,7 +1012,7 @@ class NormalizeConfirmationModal extends Modal {
     if (modalEl) {
       modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
     }
-    contentEl.addClass('ert-modal-container', 'rt-gossamer-score-modal');
+    contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-gossamer-score-modal');
 
     const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
     hero.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });

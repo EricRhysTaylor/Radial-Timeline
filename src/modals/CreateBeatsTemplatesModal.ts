@@ -38,7 +38,7 @@ export class CreateBeatsTemplatesModal extends Modal {
       modalEl.style.width = '620px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
       modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
     }
-    contentEl.addClass('ert-modal-container');
+    contentEl.addClass('ert-modal-container', 'ert-stack');
     contentEl.addClass('rt-create-plot-templates-modal');
 
     // Header

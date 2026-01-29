@@ -36,7 +36,7 @@ export class PlanetaryTimeModal extends Modal {
             modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw';
         }
-        contentEl.addClass('ert-modal-container', 'rt-planetary-modal');
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-planetary-modal');
 
         // Header
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });

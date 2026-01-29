@@ -226,7 +226,7 @@ class SubplotPickerModal extends Modal {
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('ert-modal-container');
+        contentEl.addClass('ert-modal-container', 'ert-stack');
         contentEl.addClass('rt-subplot-picker-modal');
 
         const modelName = this.service.getActiveModelName();

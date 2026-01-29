@@ -3929,6 +3929,23 @@
   margin-top: 20px;
 }
 
+.ert-ui.ert-scope--modal .ert-modal-header {
+  margin-bottom: 0;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--modal .ert-modal-badge {
+  margin-bottom: 0;
+}
+
+.ert-ui.ert-scope--modal .ert-modal-meta {
+  margin-top: 0;
+}
+
+.ert-ui.ert-scope--modal .ert-modal-actions {
+  margin-top: 0;
+}
+
 .ert-ui.ert-scope--modal .ert-ai-context-selector-row {
   display: flex;
   gap: var(--ert-gap-sm);
@@ -4089,6 +4106,9 @@
   --ert-panel-shadow: var(--shadow-l);
   --ert-panel-radius: calc(var(--ert-panel-radius) + var(--ert-gap-xs));
   --ert-panel-pad: calc(var(--ert-pad-md) + var(--ert-gap-xs));
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-sm);
   position: relative;
   transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
 }
@@ -4191,7 +4211,7 @@
 
 .ert-ui.ert-scope--modal .ert-release-notes-details-body.markdown-preview-view {
   padding: var(--ert-gap-sm) 0 var(--ert-gap-xs);
-  margin-top: var(--ert-gap-sm);
+  margin-top: 0;
   border-top: 1px solid var(--background-modifier-border);
   background: none;
 }
@@ -4251,7 +4271,7 @@
 .ert-ui.ert-scope--modal .ert-apr-palette-swatches {
   display: flex;
   gap: var(--ert-gap-xs);
-  margin: calc(var(--ert-gap-xs) / 2) 0;
+  margin: 0;
 }
 
 .ert-ui.ert-scope--modal .ert-apr-palette-swatch {
@@ -4262,7 +4282,7 @@
 }
 
 .ert-ui.ert-scope--modal .ert-apr-palette-card .setting-item-control {
-  margin-top: var(--ert-gap-xs);
+  margin-top: 0;
 }
 
 .ert-ui.ert-scope--modal .ert-apr-palette-generate .ert-apr-palette-swatches {
@@ -5089,47 +5109,46 @@
    APR Teaser Stepper (Author Progress Modal)
    ============================================================================= */
 
-.rt-apr-stepper {
-    display: flex;
-    justify-content: space-around;
-    margin-top: 16px;
+.ert-ui.ert-scope--modal .ert-apr-stepper {
+  display: flex;
+  justify-content: space-around;
 }
 
-.rt-apr-step {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    opacity: 0.4;
-    transition: opacity 0.2s ease;
+.ert-ui.ert-scope--modal .ert-apr-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.4;
+  transition: opacity 0.2s ease;
 }
 
-.rt-apr-step.rt-active {
-    opacity: 1;
+.ert-ui.ert-scope--modal .ert-apr-step.is-active {
+  opacity: 1;
 }
 
-.rt-apr-step-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background-color: var(--background-modifier-border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s ease;
+.ert-ui.ert-scope--modal .ert-apr-step-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--background-modifier-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
 }
 
-.rt-apr-step.rt-active .rt-apr-step-icon {
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
+.ert-ui.ert-scope--modal .ert-apr-step.is-active .ert-apr-step-icon {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
 }
 
-.rt-apr-step-label {
-    font-size: var(--font-ui-small);
-    color: var(--text-muted);
+.ert-ui.ert-scope--modal .ert-apr-step-label {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
 }
 
-.rt-apr-step.rt-active .rt-apr-step-label {
-    color: var(--text-normal);
-    font-weight: 600;
+.ert-ui.ert-scope--modal .ert-apr-step.is-active .ert-apr-step-label {
+  color: var(--text-normal);
+  font-weight: 600;
 }

@@ -102,7 +102,7 @@ export class ManuscriptOptionsModal extends Modal {
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
         }
-        contentEl.classList.add('ert-modal-container', 'rt-manuscript-modal');
+        contentEl.classList.add('ert-modal-container', 'ert-stack', 'rt-manuscript-modal');
 
         this.renderSkeleton(contentEl);
         await this.loadSubplots();

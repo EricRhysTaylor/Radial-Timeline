@@ -35,7 +35,7 @@ class SaveTemplateModal extends Modal {
     onOpen(): void {
         const { contentEl } = this;
         contentEl.empty();
-        contentEl.addClass('ert-modal-container');
+        contentEl.addClass('ert-modal-container', 'ert-stack');
         contentEl.addClass('rt-template-dialog');
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
@@ -102,7 +102,7 @@ class DeleteTemplateModal extends Modal {
     onOpen(): void {
         const { contentEl } = this;
         contentEl.empty();
-        contentEl.addClass('ert-modal-container');
+        contentEl.addClass('ert-modal-container', 'ert-stack');
         contentEl.addClass('rt-template-dialog');
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
@@ -558,7 +558,7 @@ export class BookDesignerModal extends Modal {
             modalEl.style.maxWidth = '96vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('ert-modal-container');
+        contentEl.addClass('ert-modal-container', 'ert-stack');
         contentEl.addClass('rt-book-designer-modal');
         contentEl.addClass('rt-manuscript-surface');
 

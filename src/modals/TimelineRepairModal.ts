@@ -89,7 +89,7 @@ export class TimelineRepairModal extends Modal {
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
 
-        contentEl.addClass('ert-modal-container', 'rt-timeline-repair-modal');
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-timeline-repair-modal');
 
         // Load scene data
         await this.loadSceneData();

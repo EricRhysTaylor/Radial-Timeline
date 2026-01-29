@@ -1,33 +1,24 @@
-import { App, Modal, Setting, ButtonComponent, Notice, setIcon } from 'obsidian';
+import { App, Modal, Setting, ButtonComponent, Notice, setIcon, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { AuthorProgressPublishTarget } from '../types/settings';
-import { getKickstarterEmbed, getPatreonEmbed } from '../renderer/utils/AuthorProgressUtils';
-import { createAprSVG } from '../renderer/apr/AprRenderer';
 import { getAllScenes } from '../utils/manuscript';
 import { TimelineItem } from '../types/timeline';
 import { AuthorProgressService } from '../services/AuthorProgressService';
 import type { AprCampaign } from '../types/settings';
-import { getTeaserThresholds, getTeaserRevealLevel, teaserLevelToRevealOptions, TEASER_LEVEL_INFO } from '../renderer/apr/AprConstants';
-import type { TeaserRevealLevel, TeaserThresholds } from '../types/settings';
+import { getTeaserThresholds, getTeaserRevealLevel, TEASER_LEVEL_INFO } from '../renderer/apr/AprConstants';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 
 export class AuthorProgressModal extends Modal {
     private plugin: RadialTimelinePlugin;
     private service: AuthorProgressService;
-    private publishTarget: AuthorProgressPublishTarget;
 
     // Reveal options (derived from settings)
     private aprSize: 'thumb' | 'small' | 'medium' | 'large';
     private selectedTargetId: 'default' | string = 'default';
 
-    private alertContainer: HTMLElement | null = null;
-    private revealSectionEl: HTMLElement | null = null;
-    private sizeSectionEl: HTMLElement | null = null;
-    private actionsContentEl: HTMLElement | null = null;
-    private activePublishTab: 'snapshot' | 'dynamic' = 'snapshot';
-
-    private previewContainers: Map<'thumb' | 'small' | 'medium' | 'large', HTMLElement> = new Map();
-    private previewCards: Map<'thumb' | 'small' | 'medium' | 'large', HTMLElement> = new Map();
+    private statusSectionEl: HTMLElement | null = null;
+    private campaignsSectionEl: HTMLElement | null = null;
+    private actionsSectionEl: HTMLElement | null = null;
+    private actionsBodyEl: HTMLElement | null = null;
 
     private cachedScenes: TimelineItem[] = [];
     private progressPercent: number = 0;
@@ -55,7 +46,6 @@ export class AuthorProgressModal extends Modal {
         // Initialize reveal options from settings
         // Initialize size from settings
         this.aprSize = settings.aprSize ?? 'medium';
-        this.publishTarget = settings.defaultPublishTarget;
     }
 
     private getSelectedCampaign(): AprCampaign | undefined {
@@ -83,7 +73,7 @@ export class AuthorProgressModal extends Modal {
         }
 
         // Standard modal container with glassy styling
-        contentEl.addClass('ert-modal-container', 'rt-apr-content');
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-apr-content');
 
         // Modal Header with Badge (following modal template pattern)
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
@@ -111,82 +101,42 @@ export class AuthorProgressModal extends Modal {
             this.selectedTargetId = 'default';
         }
 
-        // Render sections
-        this.alertContainer = contentEl.createDiv({ cls: 'rt-apr-refresh-alert-container' });
-        this.revealSectionEl = contentEl.createDiv({ cls: 'rt-apr-reveal-section' });
-        this.sizeSectionEl = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-size-section' });
+        // Status (always shown)
+        this.statusSectionEl = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-status-card' });
 
-        this.renderRefreshAlert();
-        this.renderRevealSection();
-        this.renderSizeSection();
-
-        // Actions Section with Tabs
-        const actionsSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-actions-section' });
-        actionsSection.createEl('h4', { text: 'Publish', cls: 'rt-section-title' });
-
-        const tabsContainer = actionsSection.createDiv({ cls: 'rt-apr-tabs-container' });
-        const snapshotTab = tabsContainer.createDiv({ cls: 'rt-apr-tab rt-active' });
-        setIcon(snapshotTab.createSpan(), 'camera');
-        snapshotTab.createSpan({ text: 'Static Snapshot' });
-
-        const dynamicTab = tabsContainer.createDiv({ cls: 'rt-apr-tab' });
-        setIcon(dynamicTab.createSpan(), 'refresh-cw');
-        dynamicTab.createSpan({ text: 'Live Embed' });
-
-        const actionsContent = actionsSection.createDiv({ cls: 'rt-apr-actions-content' });
-        this.actionsContentEl = actionsContent;
-        this.activePublishTab = 'snapshot';
-
-        this.renderPublishActions();
-
-        snapshotTab.onclick = () => {
-            snapshotTab.addClass('rt-active');
-            dynamicTab.removeClass('rt-active');
-            this.activePublishTab = 'snapshot';
-            this.renderPublishActions();
-        };
-
-        dynamicTab.onclick = () => {
-            dynamicTab.addClass('rt-active');
-            snapshotTab.removeClass('rt-active');
-            this.activePublishTab = 'dynamic';
-            this.renderPublishActions();
-        };
-
-        // Target Selector at bottom of Publish container (Pro feature)
-        if (campaigns.length > 0) {
-            const targetContainer = actionsSection.createDiv({ cls: 'rt-apr-target-container' });
+        // Campaign status table (Pro users or existing campaigns)
+        if (isProActive || campaigns.length > 0) {
+            this.campaignsSectionEl = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-campaigns-card' });
             if (!isProActive) {
-                targetContainer.addClass('ert-pro-locked');
+                this.campaignsSectionEl.addClass('ert-pro-locked');
             }
-            // Add spacing/divider
-            targetContainer.style.marginTop = '16px';
-            targetContainer.style.paddingTop = '16px';
-            targetContainer.style.borderTop = '1px solid var(--background-modifier-border)';
+        }
 
-            const targetSetting = new Setting(targetContainer)
+        // Actions (context-sensitive)
+        const actionsSection = contentEl.createDiv({ cls: 'rt-glass-card rt-apr-actions-section' });
+        actionsSection.createEl('h4', { text: 'Actions', cls: 'rt-section-title' });
+        this.actionsSectionEl = actionsSection;
+
+        if (isProActive && campaigns.length > 0) {
+            const targetSetting = new Setting(actionsSection)
                 .setName('Publish Target')
-                .setDesc('Choose user group');
-
-            // Add 'Pro' styling to the dropdown field
+                .setDesc('Choose default report or a campaign');
             targetSetting.controlEl.addClass('rt-apr-pro-target');
-
             targetSetting.addDropdown(dropdown => {
                 dropdown.addOption('default', 'Default Report');
                 campaigns.forEach(campaign => {
                     dropdown.addOption(campaign.id, `Campaign: ${campaign.name}`);
                 });
                 dropdown.setValue(this.selectedTargetId);
-                dropdown.onChange(async (val) => {
+                dropdown.onChange(val => {
                     this.selectedTargetId = val === 'default' ? 'default' : val;
-                    this.renderRefreshAlert();
-                    this.renderRevealSection();
-                    this.renderSizeSection();
-                    this.renderPublishActions();
-                    await this.renderPreview(false);
+                    this.renderStatusSection();
+                    this.renderActions();
                 });
             });
         }
+
+        this.actionsBodyEl = actionsSection.createDiv({ cls: 'rt-apr-actions-body' });
 
         // Footer actions
         const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
@@ -195,212 +145,9 @@ export class AuthorProgressModal extends Modal {
             .onClick(() => this.close());
 
         await this.loadData();
-        this.renderRevealSection();
-        this.renderRefreshAlert();
-        await this.renderPreview(false);
-    }
-
-    private renderSnapshotActions(container: HTMLElement) {
-        container.empty();
-        const campaign = this.getSelectedCampaign();
-        const desc = campaign
-            ? `Generate a one-time snapshot for "${campaign.name}". Saves alongside the campaign embed file.`
-            : 'Generate a one-time image to share immediately. Saves alongside your embed destination.';
-        container.createEl('p', { text: desc, cls: 'rt-apr-tab-desc' });
-
-        const btnRow = container.createDiv({ cls: 'rt-row' });
-        new ButtonComponent(btnRow)
-            .setButtonText('Save Snapshot')
-            .setCta()
-            .onClick(() => this.publish('static'));
-    }
-
-    private renderDynamicActions(container: HTMLElement) {
-        container.empty();
-        const campaign = this.getSelectedCampaign();
-        const desc = campaign
-            ? `Update the live embed file for "${campaign.name}".`
-            : 'Update the persistent file for your hosted embed. Use with GitHub Pages or similar.';
-        container.createEl('p', { text: desc, cls: 'rt-apr-tab-desc' });
-
-        const btnRow = container.createDiv({ cls: 'rt-row' });
-        new ButtonComponent(btnRow)
-            .setButtonText('Update Live File')
-            .setCta()
-            .onClick(() => this.publish('dynamic'));
-
-        const embedSection = container.createDiv({ cls: 'rt-apr-embed-codes' });
-        embedSection.createEl('h5', { text: 'Embed Codes' });
-
-        const embedBtns = embedSection.createDiv({ cls: 'rt-row' });
-        new ButtonComponent(embedBtns)
-            .setButtonText('Copy Kickstarter Embed')
-            .onClick(() => this.copyEmbed('kickstarter'));
-
-        new ButtonComponent(embedBtns)
-            .setButtonText('Copy Patreon Embed')
-            .onClick(() => this.copyEmbed('patreon'));
-    }
-
-    private createPreviewCard(
-        container: HTMLElement,
-        size: 'thumb' | 'small' | 'medium' | 'large',
-        label: string,
-        dimension: string,
-        useCase: string,
-        options?: { locked?: boolean }
-    ) {
-        const isLocked = options?.locked ?? false;
-        const card = container.createDiv({ cls: 'rt-apr-preview-card' });
-        if (isLocked) {
-            card.addClass('is-locked');
-        }
-        if (this.getActiveAprSize() === size) {
-            card.addClass('rt-active');
-        }
-
-        // Preview container (will hold SVG)
-        const previewArea = card.createDiv({ cls: 'rt-apr-preview-thumb' });
-        previewArea.createDiv({ cls: 'rt-apr-loading', text: '...' });
-        this.previewContainers.set(size, previewArea);
-        this.previewCards.set(size, card);
-
-        // Label area
-        const labelArea = card.createDiv({ cls: 'rt-apr-preview-label' });
-        labelArea.createEl('strong', { text: label });
-        const dims = labelArea.createEl('span', { cls: 'rt-apr-preview-dims' });
-        dims.append(document.createTextNode(dimension));
-        dims.createEl('sup', { text: '2' });
-        labelArea.createEl('span', { text: useCase, cls: 'rt-apr-preview-usecase' });
-
-        // Click to select
-        if (!isLocked) {
-            card.onclick = async () => {
-                this.aprSize = size;
-                this.updateCardSelection();
-                await this.saveSize();
-            };
-        }
-    }
-
-    private updateCardSelection() {
-        const activeSize = this.getActiveAprSize();
-        this.previewCards.forEach((card, size) => {
-            if (size === activeSize) {
-                card.addClass('rt-active');
-            } else {
-                card.removeClass('rt-active');
-            }
-        });
-    }
-
-    private renderTargetSections(): void {
-        this.renderRefreshAlert();
-        this.renderRevealSection();
-        this.renderSizeSection();
-    }
-
-    private renderRefreshAlert(): void {
-        if (!this.alertContainer) return;
-        this.alertContainer.empty();
-
-        if (this.isCampaignTarget()) {
-            const campaign = this.getSelectedCampaign();
-            if (!campaign) return;
-            if (!this.service.campaignNeedsRefresh(campaign)) return;
-            const daysSince = campaign.lastPublishedDate
-                ? Math.floor((Date.now() - new Date(campaign.lastPublishedDate).getTime()) / (1000 * 60 * 60 * 24))
-                : 'many';
-            const alert = this.alertContainer.createDiv({ cls: 'rt-apr-refresh-alert rt-glass-card' });
-            const alertIcon = alert.createSpan({ cls: 'rt-apr-refresh-icon' });
-            setIcon(alertIcon, 'alert-triangle');
-            alert.createEl('span', { text: `Campaign "${campaign.name}" is ${daysSince} days old. Time to refresh!` });
-            return;
-        }
-
-        if (!this.service.isStale()) return;
-        const daysSince = this.plugin.settings.authorProgress?.lastPublishedDate
-            ? Math.floor((Date.now() - new Date(this.plugin.settings.authorProgress.lastPublishedDate).getTime()) / (1000 * 60 * 60 * 24))
-            : 'many';
-        const alert = this.alertContainer.createDiv({ cls: 'rt-apr-refresh-alert rt-glass-card' });
-        const alertIcon = alert.createSpan({ cls: 'rt-apr-refresh-icon' });
-        setIcon(alertIcon, 'alert-triangle');
-        alert.createEl('span', { text: `Your report is ${daysSince} days old. Time to refresh!` });
-    }
-
-    private renderRevealSection(): void {
-        if (!this.revealSectionEl) return;
-        this.revealSectionEl.empty();
-
-        const isCampaign = this.isCampaignTarget();
-        const campaign = this.getSelectedCampaign();
-
-        // Calculate Teaser Level (Unified Logic)
-        let thresholds: TeaserThresholds;
-        let level: TeaserRevealLevel;
-
-        if (isCampaign && campaign?.teaserReveal?.enabled) {
-            thresholds = getTeaserThresholds(campaign.teaserReveal.preset ?? 'standard', campaign.teaserReveal.customThresholds);
-            level = getTeaserRevealLevel(this.progressPercent, thresholds, campaign.teaserReveal.disabledStages);
-        } else {
-            thresholds = getTeaserThresholds('standard');
-            level = getTeaserRevealLevel(this.progressPercent, thresholds);
-        }
-
-        const info = TEASER_LEVEL_INFO[level];
-        this.revealSectionEl.createEl('h4', { text: `Current Stage: ${info.label.toUpperCase()}`, cls: 'rt-apr-reveal-title' });
-        this.revealSectionEl.createDiv({ text: info.description, cls: 'rt-apr-reveal-desc' });
-
-        // Visual Stepper for Teaser Stages
-        const stepper = this.revealSectionEl.createDiv({ cls: 'rt-apr-stepper' });
-
-        (['bar', 'scenes', 'colors', 'full'] as const).forEach(stage => {
-            const stageInfo = TEASER_LEVEL_INFO[stage];
-            const isActive = stage === level;
-            const step = stepper.createDiv({ cls: `rt-apr-step ${isActive ? 'rt-active' : ''}` });
-
-            const iconContainer = step.createDiv({ cls: 'rt-apr-step-icon' });
-
-            // Icon
-            const icon = iconContainer.createSpan();
-            setIcon(icon, stageInfo.icon);
-
-            // Text Label
-            step.createDiv({ text: stageInfo.label, cls: 'rt-apr-step-label' });
-        });
-    }
-
-    private renderSizeSection(): void {
-        if (!this.sizeSectionEl) return;
-        this.sizeSectionEl.empty();
-        this.previewContainers = new Map();
-        this.previewCards = new Map();
-
-        const isCampaign = this.isCampaignTarget();
-        const campaign = this.getSelectedCampaign();
-        const settings = this.plugin.settings.authorProgress;
-        if (!isCampaign) {
-            this.aprSize = settings?.aprSize ?? 'medium';
-        }
-
-        this.sizeSectionEl.createEl('h4', { text: 'Choose Export Size', cls: 'rt-section-title' });
-        const descText = isCampaign
-            ? `Campaign size is set in Campaign Manager (${campaign?.aprSize ?? 'medium'}).`
-            : 'Click a preview to select. SVG exports are resolution-independent and look crisp on any screen.';
-        this.sizeSectionEl.createEl('p', { text: descText, cls: 'rt-apr-size-desc' });
-
-        const previewRow = this.sizeSectionEl.createDiv({ cls: 'rt-apr-preview-row' });
-        const locked = isCampaign;
-        this.createPreviewCard(previewRow, 'thumb', 'Thumb', '100', 'Teaser ring', { locked });
-        this.createPreviewCard(previewRow, 'small', 'Small', '150', 'Widgets, sidebars', { locked });
-        this.createPreviewCard(previewRow, 'medium', 'Medium', '300', 'Social posts, newsletters', { locked });
-        this.createPreviewCard(previewRow, 'large', 'Large', '450', 'Website embeds', { locked });
-
-        const infoNote = this.sizeSectionEl.createDiv({ cls: 'rt-apr-density-note' });
-        setIcon(infoNote.createSpan({ cls: 'rt-apr-density-icon' }), 'info');
-        infoNote.createSpan({
-            text: 'Tip: If your platform rasterizes SVG to PNG (Twitter does this), use Large for best quality on Retina/high-DPI screens.'
-        });
+        this.renderStatusSection();
+        this.renderCampaignStatusSection();
+        this.renderActions();
     }
 
     private async loadData() {
@@ -408,131 +155,371 @@ export class AuthorProgressModal extends Modal {
         this.progressPercent = this.service.calculateProgress(this.cachedScenes);
     }
 
-    private async renderPreview(refreshScenes = true) {
-        if (this.previewContainers.size === 0) return;
-
-        if (refreshScenes) {
-            await this.loadData();
-        }
+    private renderStatusSection(): void {
+        if (!this.statusSectionEl) return;
+        this.statusSectionEl.empty();
 
         const settings = this.plugin.settings.authorProgress;
         const campaign = this.getSelectedCampaign();
-        const isCampaign = !!campaign;
-        const sizes: Array<'thumb' | 'small' | 'medium' | 'large'> = ['thumb', 'small', 'medium', 'large'];
-        const publishStageLabel = this.plugin.calculateCompletionEstimate(this.cachedScenes)?.stage ?? 'Zero';
-        const revealCampaign = (campaign as any)?.revealCampaign ?? (settings as any)?.revealCampaign;
-        const revealCampaignEnabled = !!revealCampaign?.enabled;
-        const nextRevealAt = revealCampaign?.nextRevealAt ?? revealCampaign?.nextRevealDate ?? revealCampaign?.nextReveal;
-        const showRtAttribution = isProfessionalActive(this.plugin)
-            ? settings?.aprShowRtAttribution !== false
-            : true;
+        const isCampaign = this.isCampaignTarget();
+        if (!isCampaign && settings?.aprSize) {
+            this.aprSize = settings.aprSize;
+        }
+        const sizeMeta = this.getSizeMeta(this.getActiveAprSize());
+        const targetPath = this.getEffectiveTargetPath();
+        const teaserStatus = this.resolveTeaserStatus(campaign);
 
-        // TEASER / REVEAL LOGIC (Unified)
-        let thresholds: TeaserThresholds;
-        let level: TeaserRevealLevel;
+        const header = this.statusSectionEl.createDiv({ cls: 'rt-apr-status-header' });
+        header.createEl('h4', { text: 'Status: Sharing Output', cls: 'rt-section-title' });
 
-        if (isCampaign && campaign?.teaserReveal?.enabled) {
-            thresholds = getTeaserThresholds(campaign.teaserReveal.preset ?? 'standard', campaign.teaserReveal.customThresholds);
-            level = getTeaserRevealLevel(this.progressPercent, thresholds, campaign.teaserReveal.disabledStages);
-        } else {
-            thresholds = getTeaserThresholds('standard');
-            level = getTeaserRevealLevel(this.progressPercent, thresholds);
+        this.renderRefreshAlert(this.statusSectionEl);
+
+        const grid = this.statusSectionEl.createDiv({ cls: 'rt-apr-status-grid' });
+
+        const sizeRow = this.createStatusRow(grid, 'Export size');
+        const sizePill = sizeRow.createSpan({ cls: 'rt-apr-status-pill rt-apr-status-pill--accent' });
+        sizePill.createSpan({ text: `${sizeMeta.label} ${sizeMeta.dimension}` });
+        sizePill.createEl('sup', { text: '2' });
+
+        const stageInfo = teaserStatus.info ?? TEASER_LEVEL_INFO.full;
+        const stageRow = this.createStatusRow(grid, 'Stage');
+        const stagePill = stageRow.createSpan({ cls: 'rt-apr-status-pill' });
+        const stageIcon = stagePill.createSpan({ cls: 'rt-apr-status-pill-icon' });
+        setIcon(stageIcon, stageInfo.icon);
+        stagePill.createSpan({ text: stageInfo.label });
+
+        const targetRow = this.createStatusRow(grid, 'Target path');
+        const targetValue = targetRow.createSpan({
+            cls: 'rt-apr-status-value rt-apr-status-path',
+            text: this.summarizePath(targetPath)
+        });
+        targetValue.setAttr('title', targetPath);
+
+        if (campaign) {
+            const teaserRow = this.createStatusRow(grid, 'Teaser reveal');
+            const teaserEnabled = (campaign.teaserReveal?.enabled ?? true);
+            const teaserPill = teaserRow.createSpan({
+                cls: `rt-apr-status-pill ${teaserEnabled ? 'rt-apr-status-pill--on' : 'rt-apr-status-pill--off'}`
+            });
+            teaserPill.createSpan({ text: teaserEnabled ? 'On' : 'Off' });
         }
 
-        const options = teaserLevelToRevealOptions(level);
-        const isTeaserBar = level === 'bar';
+        const nextInfo = this.getNextUpdateInfo({
+            frequency: isCampaign ? campaign?.updateFrequency : settings?.updateFrequency,
+            lastPublishedDate: isCampaign ? campaign?.lastPublishedDate : settings?.lastPublishedDate,
+            reminderDays: isCampaign ? campaign?.refreshThresholdDays : settings?.stalenessThresholdDays,
+            remindersEnabled: isCampaign ? true : settings?.enableReminders
+        });
 
-        const showScenes = isTeaserBar ? false : options.showScenes;
-        const showSubplots = options.showSubplots;
-        const showActs = options.showActs;
-        const showStatusColors = options.showStatusColors;
-        const showStageColors = options.showStageColors;
-        const grayCompletedScenes = options.grayCompletedScenes;
-        const showProgressPercent = !isTeaserBar; // Hide center % for pure bar mode (or user preference?)
+        const nextRow = this.statusSectionEl.createDiv({ cls: 'rt-apr-next-update' });
+        nextRow.createSpan({ text: 'Next update in:', cls: 'rt-apr-next-update-label' });
+        nextRow.createSpan({ text: nextInfo.label, cls: 'rt-apr-next-update-value' });
 
-
-        for (const size of sizes) {
-            const container = this.previewContainers.get(size);
-            if (!container) continue;
-            container.empty();
-
-            if (this.cachedScenes.length === 0) {
-                container.createDiv({ text: 'No scenes', cls: 'rt-apr-empty' });
-                continue;
-            }
-
-            try {
-                const ringOnly = isTeaserBar || size === 'thumb';
-                const displayPercent = ringOnly && this.progressPercent <= 0 ? 5 : this.progressPercent;
-                const { svgString } = createAprSVG(this.cachedScenes, {
-                    size,
-                    progressPercent: displayPercent,
-                    bookTitle: settings?.bookTitle || 'Working Title',
-                    authorName: settings?.authorName || '',
-                    authorUrl: settings?.authorUrl || '',
-                    showScenes: ringOnly ? false : showScenes,
-                    showSubplots,
-                    showActs,
-                    showStatusColors,
-                    showStageColors,
-                    grayCompletedScenes,
-                    showProgressPercent: ringOnly ? false : showProgressPercent,
-                    showBranding: !ringOnly,
-                    centerMark: 'none',
-                    stageColors: (this.plugin.settings as any).publishStageColors,
-                    actCount: this.plugin.settings.actCount || undefined,
-                    backgroundColor: campaign?.customBackgroundColor ?? settings?.aprBackgroundColor ?? '#0d0d0f',
-                    transparentCenter: campaign?.customTransparent ?? settings?.aprCenterTransparent ?? true,
-                    bookAuthorColor: settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
-                    authorColor: settings?.aprAuthorColor ?? settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
-                    engineColor: settings?.aprEngineColor ?? '#e5e5e5',
-                    percentNumberColor: settings?.aprPercentNumberColor ?? settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
-                    percentSymbolColor: settings?.aprPercentSymbolColor ?? settings?.aprBookAuthorColor ?? this.plugin.settings.publishStageColors?.Press ?? '#6FB971',
-                    theme: campaign?.customTheme ?? settings?.aprTheme ?? 'dark',
-                    spokeColor: settings?.aprSpokeColorMode === 'custom' ? settings?.aprSpokeColor : undefined,
-                    publishStageLabel,
-                    showRtAttribution,
-                    revealCampaignEnabled,
-                    nextRevealAt,
-                    // Typography settings
-                    bookTitleFontFamily: settings?.aprBookTitleFontFamily,
-                    bookTitleFontWeight: settings?.aprBookTitleFontWeight,
-                    bookTitleFontItalic: settings?.aprBookTitleFontItalic,
-                    bookTitleFontSize: settings?.aprBookTitleFontSize,
-                    authorNameFontFamily: settings?.aprAuthorNameFontFamily,
-                    authorNameFontWeight: settings?.aprAuthorNameFontWeight,
-                    authorNameFontItalic: settings?.aprAuthorNameFontItalic,
-                    authorNameFontSize: settings?.aprAuthorNameFontSize,
-                    percentNumberFontFamily: settings?.aprPercentNumberFontFamily,
-                    percentNumberFontWeight: settings?.aprPercentNumberFontWeight,
-                    percentNumberFontItalic: settings?.aprPercentNumberFontItalic,
-                    percentNumberFontSize1Digit: settings?.aprPercentNumberFontSize1Digit,
-                    percentNumberFontSize2Digit: settings?.aprPercentNumberFontSize2Digit,
-                    percentNumberFontSize3Digit: settings?.aprPercentNumberFontSize3Digit,
-                    percentSymbolFontFamily: settings?.aprPercentSymbolFontFamily,
-                    percentSymbolFontWeight: settings?.aprPercentSymbolFontWeight,
-                    percentSymbolFontItalic: settings?.aprPercentSymbolFontItalic,
-                    rtBadgeFontFamily: settings?.aprRtBadgeFontFamily,
-                    rtBadgeFontWeight: settings?.aprRtBadgeFontWeight,
-                    rtBadgeFontItalic: settings?.aprRtBadgeFontItalic,
-                    rtBadgeFontSize: settings?.aprRtBadgeFontSize
-                });
-
-                container.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection
-            } catch (e) {
-                container.createDiv({ text: 'Error', cls: 'rt-apr-error' });
-                console.error(`APR Preview render error (${size}):`, e);
-            }
+        if (nextInfo.reminder) {
+            this.statusSectionEl.createDiv({ text: nextInfo.reminder, cls: 'rt-apr-next-update-reminder' });
         }
     }
 
-    private renderPublishActions(): void {
-        if (!this.actionsContentEl) return;
-        if (this.activePublishTab === 'dynamic') {
-            this.renderDynamicActions(this.actionsContentEl);
-        } else {
-            this.renderSnapshotActions(this.actionsContentEl);
+    private renderCampaignStatusSection(): void {
+        if (!this.campaignsSectionEl) return;
+        this.campaignsSectionEl.empty();
+
+        const campaigns = this.plugin.settings.authorProgress?.campaigns || [];
+        const header = this.campaignsSectionEl.createDiv({ cls: 'rt-apr-campaigns-header' });
+        header.createEl('h4', { text: 'Campaigns', cls: 'rt-section-title' });
+
+        if (campaigns.length === 0) {
+            this.campaignsSectionEl.createDiv({
+                text: 'No campaigns yet.',
+                cls: 'rt-apr-campaigns-empty'
+            });
+            return;
         }
+
+        const activeCampaigns = campaigns.filter(campaign => campaign.isActive);
+        const pausedCampaigns = campaigns.filter(campaign => !campaign.isActive);
+
+        const renderGroup = (label: string, group: AprCampaign[]) => {
+            const groupEl = this.campaignsSectionEl!.createDiv({ cls: 'rt-apr-campaign-group' });
+            groupEl.createDiv({ text: label, cls: 'rt-apr-campaign-group-title' });
+
+            if (group.length === 0) {
+                groupEl.createDiv({ text: 'None', cls: 'rt-apr-campaign-group-empty' });
+                return;
+            }
+
+            const table = groupEl.createDiv({ cls: 'rt-apr-campaign-table' });
+            const headerRow = table.createDiv({ cls: 'rt-apr-campaign-row rt-apr-campaign-row--header' });
+            ['Campaign', 'Mode', 'Next update', 'Output', 'Last updated'].forEach(labelText => {
+                headerRow.createDiv({ text: labelText, cls: 'rt-apr-campaign-cell' });
+            });
+
+            group.forEach(campaign => {
+                const row = table.createDiv({ cls: 'rt-apr-campaign-row' });
+                if (!campaign.isActive) row.addClass('is-paused');
+
+                const nextInfo = this.getNextUpdateInfo({
+                    frequency: campaign.updateFrequency,
+                    lastPublishedDate: campaign.lastPublishedDate,
+                    reminderDays: campaign.refreshThresholdDays,
+                    remindersEnabled: true
+                });
+
+                row.createDiv({ text: campaign.name, cls: 'rt-apr-campaign-cell' });
+                row.createDiv({
+                    text: this.formatFrequencyLabel(campaign.updateFrequency),
+                    cls: 'rt-apr-campaign-cell rt-apr-campaign-cell--muted'
+                });
+                row.createDiv({ text: nextInfo.label, cls: 'rt-apr-campaign-cell' });
+                row.createDiv({
+                    text: this.summarizePath(campaign.embedPath),
+                    cls: 'rt-apr-campaign-cell rt-apr-campaign-path',
+                    attr: { title: campaign.embedPath }
+                });
+                row.createDiv({
+                    text: campaign.lastPublishedDate ? new Date(campaign.lastPublishedDate).toLocaleDateString() : 'Never',
+                    cls: 'rt-apr-campaign-cell rt-apr-campaign-cell--muted'
+                });
+            });
+        };
+
+        renderGroup('Active', activeCampaigns);
+        renderGroup('Paused', pausedCampaigns);
+    }
+
+    private renderActions(): void {
+        if (!this.actionsBodyEl) return;
+        this.actionsBodyEl.empty();
+
+        const campaigns = this.plugin.settings.authorProgress?.campaigns || [];
+        const isProActive = isProfessionalActive(this.plugin);
+
+        if (isProActive && this.selectedTargetId !== 'default') {
+            this.renderProActions(this.actionsBodyEl, campaigns);
+        } else {
+            this.renderCoreActions(this.actionsBodyEl);
+        }
+    }
+
+    private renderCoreActions(container: HTMLElement): void {
+        const settings = this.plugin.settings.authorProgress;
+        this.aprSize = settings?.aprSize ?? this.aprSize ?? 'medium';
+        const sizeRow = container.createDiv({ cls: 'rt-apr-action-row' });
+        sizeRow.createSpan({ text: 'Export size', cls: 'rt-apr-action-label' });
+        const sizeControls = sizeRow.createDiv({ cls: 'rt-apr-size-selector' });
+
+        const sizeOptions: Array<{ size: 'thumb' | 'small' | 'medium' | 'large'; label: string; dimension: string }> = [
+            { size: 'thumb', label: 'Thumb', dimension: '100' },
+            { size: 'small', label: 'Small', dimension: '150' },
+            { size: 'medium', label: 'Medium', dimension: '300' },
+            { size: 'large', label: 'Large', dimension: '450' }
+        ];
+
+        sizeOptions.forEach(option => {
+            const btn = sizeControls.createEl('button', {
+                cls: `rt-apr-size-btn ${option.size === this.getActiveAprSize() ? 'rt-active' : ''}`
+            });
+            btn.createSpan({ text: option.label });
+            const dims = btn.createSpan({ cls: 'rt-apr-size-dim' });
+            dims.append(document.createTextNode(option.dimension));
+            dims.createEl('sup', { text: '2' });
+            btn.onclick = async () => {
+                this.aprSize = option.size;
+                await this.saveSize();
+                this.renderStatusSection();
+                this.renderActions();
+            };
+        });
+
+        const stageRow = container.createDiv({ cls: 'rt-apr-action-row' });
+        stageRow.createSpan({ text: 'Stage', cls: 'rt-apr-action-label' });
+        const stageInfo = this.resolveTeaserStatus(this.getSelectedCampaign());
+        const stageFallback = TEASER_LEVEL_INFO.full;
+        const stageDisplay = stageInfo.info ?? stageFallback;
+        const stagePill = stageRow.createSpan({ cls: 'rt-apr-status-pill' });
+        const stageIcon = stagePill.createSpan({ cls: 'rt-apr-status-pill-icon' });
+        setIcon(stageIcon, stageDisplay.icon);
+        stagePill.createSpan({ text: stageDisplay.label });
+
+        const pathSetting = new Setting(container)
+            .setName('Output path')
+            .setDesc('Location for the live embed file.');
+        pathSetting.settingEl.addClass('rt-apr-action-setting');
+
+        pathSetting.addText(text => {
+            const defaultPath = 'Radial Timeline/Social/progress.svg';
+            const currentPath = settings?.dynamicEmbedPath || defaultPath;
+            const errorClass = 'rt-apr-input--error';
+            const successClass = 'rt-apr-input--success';
+            const clearState = () => {
+                text.inputEl.removeClass(errorClass);
+                text.inputEl.removeClass(successClass);
+            };
+
+            text.setPlaceholder(defaultPath);
+            text.setValue(currentPath);
+            text.inputEl.addClass('rt-apr-path-input');
+
+            const savePath = async () => {
+                const val = text.getValue().trim();
+                clearState();
+                if (!val || !val.toLowerCase().endsWith('.svg')) {
+                    text.inputEl.addClass(errorClass);
+                    return;
+                }
+                if (!this.plugin.settings.authorProgress) return;
+                this.plugin.settings.authorProgress.dynamicEmbedPath = normalizePath(val);
+                await this.plugin.saveSettings();
+                text.inputEl.addClass(successClass);
+                window.setTimeout(() => text.inputEl.removeClass(successClass), 900);
+            };
+
+            text.inputEl.addEventListener('blur', () => { void savePath(); });
+            text.inputEl.addEventListener('keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+        });
+
+        const actionRow = container.createDiv({ cls: 'rt-apr-action-row rt-apr-action-row--primary' });
+        const primaryButton = new ButtonComponent(actionRow)
+            .setButtonText('Publish')
+            .setCta();
+        primaryButton.onClick(() => this.publish('dynamic'));
+    }
+
+    private renderProActions(container: HTMLElement, campaigns: AprCampaign[]): void {
+        const campaign = this.getSelectedCampaign() ?? campaigns.find(c => c.id === this.selectedTargetId);
+        if (!campaign) {
+            container.createDiv({ text: 'Select a campaign to publish.', cls: 'rt-apr-actions-empty' });
+            return;
+        }
+
+        const modeRow = container.createDiv({ cls: 'rt-apr-action-row' });
+        modeRow.createSpan({ text: 'Update mode', cls: 'rt-apr-action-label' });
+        modeRow.createSpan({
+            text: this.formatFrequencyLabel(campaign.updateFrequency),
+            cls: 'rt-apr-action-value'
+        });
+
+        if ((campaign.updateFrequency ?? 'manual') === 'manual') {
+            const reminderRow = container.createDiv({ cls: 'rt-apr-action-row' });
+            reminderRow.createSpan({ text: 'Reminder', cls: 'rt-apr-action-label' });
+            reminderRow.createSpan({
+                text: campaign.refreshThresholdDays ? `${campaign.refreshThresholdDays} days` : 'Not set',
+                cls: 'rt-apr-action-value'
+            });
+        }
+
+        const actionRow = container.createDiv({ cls: 'rt-apr-action-row rt-apr-action-row--primary' });
+        const primaryButton = new ButtonComponent(actionRow)
+            .setButtonText('Publish Campaign')
+            .setCta();
+        primaryButton.onClick(() => this.publish('dynamic'));
+    }
+
+    private renderRefreshAlert(container: HTMLElement): void {
+        if (this.isCampaignTarget()) {
+            const campaign = this.getSelectedCampaign();
+            if (!campaign) return;
+            if (!this.service.campaignNeedsRefresh(campaign)) return;
+            const daysSince = this.getDaysSince(campaign.lastPublishedDate);
+            const ageLabel = daysSince === null ? 'many' : `${daysSince}`;
+            const alert = container.createDiv({ cls: 'rt-apr-refresh-alert' });
+            const alertIcon = alert.createSpan({ cls: 'rt-apr-refresh-icon' });
+            setIcon(alertIcon, 'alert-triangle');
+            alert.createEl('span', { text: `Campaign "${campaign.name}" is ${ageLabel} days old. Time to refresh!` });
+            return;
+        }
+
+        if (!this.service.isStale()) return;
+        const daysSince = this.getDaysSince(this.plugin.settings.authorProgress?.lastPublishedDate);
+        const ageLabel = daysSince === null ? 'many' : `${daysSince}`;
+        const alert = container.createDiv({ cls: 'rt-apr-refresh-alert' });
+        const alertIcon = alert.createSpan({ cls: 'rt-apr-refresh-icon' });
+        setIcon(alertIcon, 'alert-triangle');
+        alert.createEl('span', { text: `Your report is ${ageLabel} days old. Time to refresh!` });
+    }
+
+    private resolveTeaserStatus(campaign?: AprCampaign): { enabled: boolean; info?: { label: string; icon: string } } {
+        if (!campaign) return { enabled: false };
+        const teaserSettings = campaign.teaserReveal ?? { enabled: true, preset: 'standard' as const };
+        if (!teaserSettings.enabled) return { enabled: false };
+        const thresholds = getTeaserThresholds(teaserSettings.preset ?? 'standard', teaserSettings.customThresholds);
+        const level = getTeaserRevealLevel(this.progressPercent, thresholds, teaserSettings.disabledStages);
+        return { enabled: true, info: TEASER_LEVEL_INFO[level] };
+    }
+
+    private getEffectiveTargetPath(): string {
+        const settings = this.plugin.settings.authorProgress;
+        const campaign = this.getSelectedCampaign();
+        if (campaign?.embedPath) return campaign.embedPath;
+        return settings?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg';
+    }
+
+    private getSizeMeta(size: 'thumb' | 'small' | 'medium' | 'large'): { label: string; dimension: string } {
+        switch (size) {
+            case 'thumb': return { label: 'Thumb', dimension: '100' };
+            case 'small': return { label: 'Small', dimension: '150' };
+            case 'large': return { label: 'Large', dimension: '450' };
+            default: return { label: 'Medium', dimension: '300' };
+        }
+    }
+
+    private summarizePath(path: string, maxLength = 42): string {
+        if (!path) return '—';
+        if (path.length <= maxLength) return path;
+        const parts = path.split('/');
+        if (parts.length <= 2) return `…${path.slice(-maxLength + 1)}`;
+        return `…/${parts.slice(-2).join('/')}`;
+    }
+
+    private formatFrequencyLabel(frequency?: 'manual' | 'daily' | 'weekly' | 'monthly'): string {
+        if (!frequency || frequency === 'manual') return 'Manual';
+        const label = frequency.charAt(0).toUpperCase() + frequency.slice(1);
+        return `Auto · ${label}`;
+    }
+
+    private getDaysSince(date?: string): number | null {
+        if (!date) return null;
+        const time = new Date(date).getTime();
+        if (!Number.isFinite(time)) return null;
+        return Math.floor((Date.now() - time) / (1000 * 60 * 60 * 24));
+    }
+
+    private formatDays(value: number): string {
+        const safe = Math.max(0, Math.round(value));
+        return safe === 1 ? '1 day' : `${safe} days`;
+    }
+
+    private getNextUpdateInfo(opts: {
+        frequency?: 'manual' | 'daily' | 'weekly' | 'monthly';
+        lastPublishedDate?: string;
+        reminderDays?: number;
+        remindersEnabled?: boolean;
+    }): { label: string; reminder?: string } {
+        const frequency = opts.frequency ?? 'manual';
+        if (frequency === 'manual') {
+            const reminderDays = opts.reminderDays ?? 0;
+            const daysSince = this.getDaysSince(opts.lastPublishedDate) ?? 0;
+            const reminder = (opts.remindersEnabled && reminderDays > 0)
+                ? `Reminder in: ${this.formatDays(Math.max(0, reminderDays - daysSince))}`
+                : undefined;
+            return { label: 'Manual (no schedule)', reminder };
+        }
+
+        const intervalDays = frequency === 'daily' ? 1 : frequency === 'weekly' ? 7 : 30;
+        const daysSince = this.getDaysSince(opts.lastPublishedDate);
+        const remaining = daysSince === null ? 0 : Math.max(0, intervalDays - daysSince);
+        return { label: this.formatDays(remaining) };
+    }
+
+    private createStatusRow(container: HTMLElement, label: string): HTMLElement {
+        const row = container.createDiv({ cls: 'rt-apr-status-row' });
+        row.createSpan({ text: label, cls: 'rt-apr-status-label' });
+        return row;
     }
 
     private async saveSize() {
@@ -591,23 +578,6 @@ export class AuthorProgressModal extends Modal {
         } else {
             new Notice('Failed to generate report.');
         }
-    }
-
-    private copyEmbed(type: 'kickstarter' | 'patreon') {
-        const campaign = this.getSelectedCampaign();
-        const embedPath = campaign?.embedPath || this.plugin.settings.authorProgress?.dynamicEmbedPath || 'progress.svg';
-        // Placeholder URL - user needs to replace with their actual hosted URL
-        const url = `https://YOUR_GITHUB_PAGES_URL/${embedPath}`;
-        let code = '';
-
-        if (type === 'kickstarter') {
-            code = getKickstarterEmbed(url);
-        } else if (type === 'patreon') {
-            code = getPatreonEmbed(url);
-        }
-
-        navigator.clipboard.writeText(code);
-        new Notice('Embed code copied! Replace YOUR_GITHUB_PAGES_URL with your actual hosted URL.');
     }
 
     onClose() {

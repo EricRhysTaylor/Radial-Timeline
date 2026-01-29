@@ -75,7 +75,7 @@ export class GossamerProcessingModal extends Modal {
             modalEl.style.maxHeight = '92vh'; // Align with other tall modals for small screens
         }
 
-        contentEl.addClass('ert-modal-container', 'rt-gossamer-processing-modal');
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-gossamer-processing-modal');
 
         // Show confirmation view first
         this.showConfirmationView();

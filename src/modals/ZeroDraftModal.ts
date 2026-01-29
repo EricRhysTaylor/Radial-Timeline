@@ -49,7 +49,7 @@ export class ZeroDraftModal extends Modal {
             if (modalEl) {
                 modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--sm');
             }
-            contentEl.addClass('ert-modal-container');
+            contentEl.addClass('ert-modal-container', 'ert-stack');
 
             const header = contentEl.createDiv({ cls: 'ert-modal-header' });
             if (options.badge) {

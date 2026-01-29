@@ -213,7 +213,7 @@ export async function processEntireSubplotWithModal(
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('ert-modal-container', 'rt-scene-analysis-modal');
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-scene-analysis-modal');
         
         // Show progress view immediately (skip confirmation)
         this.showProgressView();
@@ -318,7 +318,7 @@ export async function processBySubplotNameWithModal(
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('ert-modal-container', 'rt-scene-analysis-modal');
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-scene-analysis-modal');
         
         // Show progress view immediately (skip confirmation)
         this.showProgressView();

@@ -449,6 +449,7 @@ function renderCampaignDetails(
         };
         text.setPlaceholder(defaultPath)
             .setValue(campaign.embedPath);
+        text.inputEl.addClass('ert-input--xl');
 
         // Validate on blur
         const handleBlur = async () => {

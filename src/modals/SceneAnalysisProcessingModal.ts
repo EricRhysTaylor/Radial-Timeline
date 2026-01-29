@@ -155,7 +155,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('ert-modal-container');
+        contentEl.addClass('ert-modal-container', 'ert-stack');
         contentEl.addClass('rt-scene-analysis-modal');
         titleEl.setText('');
 
@@ -190,7 +190,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (this.modalEl && !this.modalEl.classList.contains('ert-modal-shell')) {
             this.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
         }
-        this.contentEl.classList.add('ert-modal-container');
+        this.contentEl.classList.add('ert-modal-container', 'ert-stack');
         this.contentEl.classList.add('rt-scene-analysis-modal');
     }
 

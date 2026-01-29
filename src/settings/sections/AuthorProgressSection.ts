@@ -1160,7 +1160,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
         const embedPathSetting = new Setting(automationCard)
             .setName('Embed File Path')
-            .setDesc(`Location for the "Live Embed" SVG file. Must end with .svg. Default: ${DEFAULT_SETTINGS.authorProgress?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg'}`);
+            .setDesc(`Location for the "Live Embed" SVG file.`);
 
 
         embedPathSetting.addText(text => {

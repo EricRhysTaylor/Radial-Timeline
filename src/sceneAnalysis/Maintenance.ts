@@ -201,7 +201,7 @@ class PurgeConfirmationModal extends Modal {
             modalEl.style.maxWidth = '92vw';
             modalEl.style.maxHeight = '92vh';
         }
-        contentEl.addClass('ert-modal-container');
+        contentEl.addClass('ert-modal-container', 'ert-stack');
         contentEl.addClass('rt-purge-confirm-modal');
 
         const hero = contentEl.createDiv({ cls: 'ert-modal-header' });

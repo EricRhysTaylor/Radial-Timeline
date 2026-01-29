@@ -36,7 +36,7 @@ export class ManageSubplotsModal extends Modal {
         
         // Apply generic modal shell + modal-specific class
         modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
-        contentEl.addClass('ert-modal-container', 'rt-manage-subplots-modal');
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-manage-subplots-modal');
 
         // Hero Section (generic header)
         const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
@@ -234,7 +234,7 @@ class RenameSubplotModal extends Modal {
         
         // Shell & Container (matching PlanetaryTimeModal)
         modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'rt-rename-subplot-modal');
-        contentEl.addClass('ert-modal-container');
+        contentEl.addClass('ert-modal-container', 'ert-stack');
 
         // Header (matching PlanetaryTimeModal)
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
