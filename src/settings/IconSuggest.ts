@@ -32,7 +32,7 @@ export class IconSuggest extends AbstractInputSuggest<string> {
     }
 
     renderSuggestion(iconId: string, el: HTMLElement): void {
-        el.addClass('ert-ui', 'ert-icon-suggestion');
+        el.addClass('ert-ui', 'ert-scope--settings', 'ert-icon-suggestion');
         
         // Create icon preview
         const iconPreview = el.createSpan({ cls: 'ert-icon-suggestion-preview' });

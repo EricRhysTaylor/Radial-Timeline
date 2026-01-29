@@ -131,7 +131,7 @@ class DeleteTemplateModal extends Modal {
 
 export class BookDesignerModal extends Modal {
     private plugin: RadialTimelinePlugin;
-    
+
     // Form values
     private timeIncrement: string = "1 day";
     private scenesToGenerate: number = 1;
@@ -550,10 +550,10 @@ export class BookDesignerModal extends Modal {
         this.beatPills = [];
         this.heroLocationMeta = null;
         this.heroModeMeta = null;
-        
+
         // Use generic modal system + Book Designer specific class
         if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
             modalEl.style.width = '860px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '96vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
@@ -562,20 +562,20 @@ export class BookDesignerModal extends Modal {
         contentEl.addClass('rt-book-designer-modal');
         contentEl.addClass('rt-manuscript-surface');
 
-           
+
         const sourcePath = this.plugin.settings.sourcePath || 'vault root';
         // Hero Header using generic modal system
         const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
         hero.createSpan({ cls: 'ert-modal-badge', text: 'SETUP' });
         hero.createDiv({ cls: 'ert-modal-title', text: 'Book designer' });
         hero.createDiv({ cls: 'ert-modal-subtitle', text: `Configure and generate the scaffold for your new novel. Drag scenes in Preview to different acts and subplots to activate manual mode. Save the template to reuse it later.` });
-    
-        
+
+
         const heroMeta = hero.createDiv({ cls: 'ert-modal-meta' });
         this.heroLocationMeta = heroMeta.createSpan({ cls: 'ert-modal-meta-item', text: `Location: ${sourcePath}` });
         this.heroModeMeta = heroMeta.createSpan({ cls: 'ert-modal-meta-item rt-meta-auto', text: 'Auto mode' });
         this.updateHeroMeta();
-        
+
         const scrollContainer = contentEl.createDiv({ cls: 'rt-container rt-card-stack' });
 
         // SECTION 1: LOCATION & STRUCTURE
@@ -585,20 +585,20 @@ export class BookDesignerModal extends Modal {
         // Time Increment Setting
         new Setting(structCard)
             .setName('Date increment per scene')
-            .setDesc('Timeline increment across scenes (e.g. 1 hour, 1 day, 1 week).')
+            .setDesc('Timeline increment across scenes (e.g. 1 hour, 1 day, 1 week). Set to 0 to disable increments.')
             .addText(text => {
                 this.timeIncrementInput = text;
                 text.setValue(this.timeIncrement)
                     .setPlaceholder('1 day');
                 text.inputEl.addClass('rt-input-sm');
-                
+
                 // Use blur to validate
                 text.inputEl.addEventListener('blur', () => {
                     const raw = text.getValue().trim();
                     // Clear previous animation classes to allow re-triggering
                     text.inputEl.removeClass('rt-input-flash-success');
                     text.inputEl.removeClass('rt-input-flash-error');
-                    
+
                     // Force a reflow to restart animation if class is re-added immediately (though we clear above)
                     void text.inputEl.offsetWidth;
 
@@ -608,8 +608,11 @@ export class BookDesignerModal extends Modal {
                         text.inputEl.addClass('rt-input-flash-success');
                         return;
                     }
+
                     const valid = parseDurationDetail(raw);
-                    if (valid) {
+                    const isZero = parseDuration(raw) === 0;
+
+                    if (valid || isZero) {
                         this.timeIncrement = raw;
                         text.inputEl.addClass('rt-input-flash-success');
                     } else {
@@ -628,13 +631,13 @@ export class BookDesignerModal extends Modal {
         // No, we can just define the update helper to take setting instance.
         // We need lengthSetting instance to update it when scenes changes.
         // So we create the element but populate it.
-        
+
         // Actually, we can just define lengthSetting AFTER scenesSetting, 
         // but update it inside scenesSetting's onChange.
         // But scenesSetting's onChange runs later, so lengthSetting will be defined by then.
         // TypeScript might complain about "used before declaration" if inside the closure.
         // Let's use `this` or a mutable reference.
-        
+
         let lengthSettingRef: Setting;
 
         const scenesSetting = new Setting(countsGrid)
@@ -746,7 +749,7 @@ export class BookDesignerModal extends Modal {
                 });
             });
         subplotsSetting.settingEl.addClass('rt-manuscript-group-setting');
-        
+
         const characterSetting = new Setting(leftCol)
             .setName('Characters')
             .setDesc('Enter one character per line.')
@@ -790,7 +793,7 @@ export class BookDesignerModal extends Modal {
         templSetting.createDiv({ cls: 'rt-manuscript-setting-label', text: 'Scene template' });
         const templPills = templSetting.createDiv({ cls: 'rt-manuscript-pill-row' });
 
-        const options: {id: 'base' | 'advanced', label: string}[] = [
+        const options: { id: 'base' | 'advanced', label: string }[] = [
             { id: 'base', label: 'Base (Minimal)' },
             { id: 'advanced', label: 'Advanced' }
         ];
@@ -811,11 +814,11 @@ export class BookDesignerModal extends Modal {
         // Generate Beats Toggle (Pills)
         const beatSystem = this.plugin.settings.beatSystem || 'Custom';
         const beatLabel = beatSystem === 'Custom' ? 'custom beats' : `${beatSystem} beats`;
-        
+
         const beatSetting = extraRow.createDiv({ cls: 'rt-manuscript-setting-row rt-manuscript-card-block' });
         beatSetting.createDiv({ cls: 'rt-manuscript-setting-label', text: `Generate ${beatLabel}` });
         const beatPills = beatSetting.createDiv({ cls: 'rt-manuscript-pill-row' });
-        
+
         const beatOptions = [{ val: false, label: 'No' }, { val: true, label: 'Yes' }];
         beatOptions.forEach(opt => {
             const pill = beatPills.createDiv({ cls: 'rt-manuscript-pill' });
@@ -890,11 +893,11 @@ export class BookDesignerModal extends Modal {
                 this.close();
                 this.generateBook();
             });
-        
+
         new ButtonComponent(footer)
             .setButtonText('Cancel')
             .onClick(() => this.close());
-        
+
         // Add cursor pointer to footer buttons
         footer.querySelectorAll('button').forEach(btn => {
             btn.style.cursor = 'pointer';
@@ -904,24 +907,24 @@ export class BookDesignerModal extends Modal {
     private updateTargetDesc(setting: Setting): void {
         const scenes = this.scenesToGenerate;
         const max = this.targetRangeMax;
-        
+
         // Calculate example numbers
         let examples: number[] = [];
         if (scenes <= 1) examples = [1];
         else if (scenes <= 3) {
             // e.g. 1, 50, 100
-            for (let i=1; i<=scenes; i++) {
+            for (let i = 1; i <= scenes; i++) {
                 const step = (max - 1) / (scenes - 1);
-                examples.push(Math.round(1 + (i-1) * step));
+                examples.push(Math.round(1 + (i - 1) * step));
             }
         } else {
             // Show first 3
-            for (let i=1; i<=3; i++) {
+            for (let i = 1; i <= 3; i++) {
                 const step = (max - 1) / (scenes - 1);
-                examples.push(Math.round(1 + (i-1) * step));
+                examples.push(Math.round(1 + (i - 1) * step));
             }
         }
-        
+
         const suffix = scenes > 3 ? '...' : '';
         setting.setDesc(`Scenes will be numbered: ${examples.join(', ')}${suffix} based on ${scenes} scenes across ${max} units.`);
     }
@@ -1028,7 +1031,7 @@ export class BookDesignerModal extends Modal {
             const y1 = cy + innerR * Math.sin(angle);
             const x2 = cx + (outerR + 6) * Math.cos(angle);
             const y2 = cy + (outerR + 6) * Math.sin(angle);
-            
+
             const line = svg.createSvg('line');
             line.setAttr('x1', `${x1}`);
             line.setAttr('y1', `${y1}`);
@@ -1237,7 +1240,7 @@ export class BookDesignerModal extends Modal {
         // Anchor generated scenes to today and advance each by time increment
         const sceneBaseDate = new Date();
         sceneBaseDate.setHours(0, 0, 0, 0);
-        const incrementMs = parseDuration(this.timeIncrement) || (24 * 60 * 60 * 1000); // Default 1 day
+        const incrementMs = parseDuration(this.timeIncrement) ?? (24 * 60 * 60 * 1000); // Default 1 day
 
         let createdScenes = 0;
         let skippedScenes = 0;
@@ -1247,7 +1250,7 @@ export class BookDesignerModal extends Modal {
         // Ensure we don't divide by zero if user sets range < count
         const rangeMax = Math.max(this.targetRangeMax, this.scenesToGenerate);
         const assignments = this.getWorkingAssignments();
-        
+
         // Distribution Logic:
         // We want to distribute 'scenesToGenerate' items across 'rangeMax' slots.
         // Example: 10 scenes, 100 range.
@@ -1270,23 +1273,27 @@ export class BookDesignerModal extends Modal {
         // If the user wants 1 to be "1 Title", then for 10 scenes in 100 range, it might be 1, 11, 21...
         // But 10, 20, 30 is cleaner "scene number distribution". 
         // Let's try to map the *index* (1-based) to the *target range*.
-        
+
         for (let i = 1; i <= this.scenesToGenerate; i++) {
             // Increment time for each successive scene
-            const sceneDate = new Date(sceneBaseDate.getTime() + (incrementMs * (i - 1)));
-            let when = sceneDate.toISOString().slice(0, 10);
-            
-            if (incrementMs < (24 * 60 * 60 * 1000)) {
-                 const hours = sceneDate.getHours().toString().padStart(2, '0');
-                 const mins = sceneDate.getMinutes().toString().padStart(2, '0');
-                 when = `${when} ${hours}:${mins}`;
+            let when = '';
+
+            if (incrementMs > 0) {
+                const sceneDate = new Date(sceneBaseDate.getTime() + (incrementMs * (i - 1)));
+                when = sceneDate.toISOString().slice(0, 10);
+
+                if (incrementMs < (24 * 60 * 60 * 1000)) {
+                    const hours = sceneDate.getHours().toString().padStart(2, '0');
+                    const mins = sceneDate.getMinutes().toString().padStart(2, '0');
+                    when = `${when} ${hours}:${mins}`;
+                }
             }
 
             // Calculate distributed scene number
             // Force at least 1, max at targetRangeMax.
             // Spread i from [1..N] to [1..Range]
             let sceneNum = Math.round((i / this.scenesToGenerate) * this.targetRangeMax);
-            
+
             // Correction: If i=1, we often want scene 1 to exist.
             // If we strictly follow math for 10 scenes in 100: 10, 20, 30...
             // If the user *wants* "Scene 1", they might expect the first file to be "1 Scene.md".
@@ -1322,8 +1329,8 @@ export class BookDesignerModal extends Modal {
             const yamlInlineArray = (values: string[]) => `[${values.map(v => `"${yamlEscapeDoubleQuoted(v)}"`).join(', ')}]`;
             const characterString =
                 characterList.length === 0 ? 'Hero'
-                : characterList.length === 1 ? characterList[0]
-                : yamlInlineArray(characterList);
+                    : characterList.length === 1 ? characterList[0]
+                        : yamlInlineArray(characterList);
 
             // Place list fallback
             const placeListRaw = targetPath ? [targetPath] : [];
@@ -1367,12 +1374,12 @@ export class BookDesignerModal extends Modal {
         let beatsCreated = 0;
         if (this.generateBeats) {
             const beatSystem = this.plugin.settings.beatSystem || 'Custom';
-            
+
             // Handle Custom Dynamic System
             if (beatSystem === 'Custom') {
                 const customSystem = getCustomSystemFromSettings(this.plugin.settings);
                 if (customSystem.beats.length > 0) {
-                     try {
+                    try {
                         const result = await createBeatTemplateNotes(vault, 'Custom', targetFolder, customSystem);
                         beatsCreated = result.created;
                     } catch (e) {

@@ -821,7 +821,7 @@ export function renderStoryBeatsSection(params: {
                     modal.titleEl.setText('');
                     contentEl.empty();
 
-                    modalEl.classList.add('ert-ui', 'ert-modal-shell', 'ert-modal-shell--md');
+                    modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
                     contentEl.addClass('ert-modal-container');
 
                     const header = contentEl.createDiv({ cls: 'ert-modal-header' });

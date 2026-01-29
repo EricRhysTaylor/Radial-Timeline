@@ -1872,14 +1872,14 @@
   }
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-inquiry-prompt-header .setting-item-info {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-header .setting-item-info {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   align-items: center;
   column-gap: var(--ert-gap-sm, 12px);
 }
 
-:is(.ert-ui.ert-settings-root, .ert-ui .ert-settings-root) .ert-inquiry-prompt-header .setting-item-description {
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-header .setting-item-description {
   margin: 0;
   font-size: var(--font-text-size);
 }

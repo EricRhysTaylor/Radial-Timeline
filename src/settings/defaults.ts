@@ -205,7 +205,6 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
     ],
 
     // Runtime Estimation defaults
-    enableRuntimeEstimation: false,
     runtimeRateProfiles: [
         {
             id: 'default',

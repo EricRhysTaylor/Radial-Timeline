@@ -8,6 +8,7 @@ import { TimelineItem } from '../types/timeline';
 import { AuthorProgressService } from '../services/AuthorProgressService';
 import type { AprCampaign } from '../types/settings';
 import { getTeaserThresholds, getTeaserRevealLevel, teaserLevelToRevealOptions, TEASER_LEVEL_INFO } from '../renderer/apr/AprConstants';
+import type { TeaserRevealLevel, TeaserThresholds } from '../types/settings';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 
 export class AuthorProgressModal extends Modal {
@@ -16,10 +17,6 @@ export class AuthorProgressModal extends Modal {
     private publishTarget: AuthorProgressPublishTarget;
 
     // Reveal options (derived from settings)
-    private showSubplots: boolean;
-    private showActs: boolean;
-    private showStatus: boolean;
-    private showPercent: boolean;
     private aprSize: 'thumb' | 'small' | 'medium' | 'large';
     private selectedTargetId: 'default' | string = 'default';
 
@@ -56,10 +53,7 @@ export class AuthorProgressModal extends Modal {
         };
 
         // Initialize reveal options from settings
-        this.showSubplots = settings.showSubplots ?? true;
-        this.showActs = settings.showActs ?? true;
-        this.showStatus = settings.showStatus ?? true;
-        this.showPercent = settings.showProgressPercent ?? true;
+        // Initialize size from settings
         this.aprSize = settings.aprSize ?? 'medium';
         this.publishTarget = settings.defaultPublishTarget;
     }
@@ -83,7 +77,7 @@ export class AuthorProgressModal extends Modal {
 
         // Apply shell styling and sizing
         if (modalEl) {
-            modalEl.classList.add('ert-modal-shell', 'rt-apr-modal', 'ert-ui', 'ert-modal--social');
+            modalEl.classList.add('ert-modal-shell', 'rt-apr-modal', 'ert-ui', 'ert-scope--modal', 'ert-modal--social');
             modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw';
         }
@@ -284,7 +278,7 @@ export class AuthorProgressModal extends Modal {
             card.onclick = async () => {
                 this.aprSize = size;
                 this.updateCardSelection();
-                await this.saveRevealOptions();
+                await this.saveSize();
             };
         }
     }
@@ -336,108 +330,43 @@ export class AuthorProgressModal extends Modal {
 
     private renderRevealSection(): void {
         if (!this.revealSectionEl) return;
-        const revealSectionEl = this.revealSectionEl;
-        revealSectionEl.empty();
+        this.revealSectionEl.empty();
 
-        const settings = this.plugin.settings.authorProgress;
         const isCampaign = this.isCampaignTarget();
         const campaign = this.getSelectedCampaign();
-        const publishStageLabel = this.plugin.calculateCompletionEstimate(this.cachedScenes)?.stage ?? 'Zero';
-        const progressPercent = Number.isFinite(this.progressPercent) ? Math.round(this.progressPercent) : 0;
-        const hasScenes = this.cachedScenes.length > 0;
 
-        const formatPresetLabel = (preset?: string): string => {
-            if (!preset) return 'Standard';
-            return `${preset.charAt(0).toUpperCase()}${preset.slice(1)}`;
-        };
-
-        const formatDateLabel = (value?: number | string | Date): string | null => {
-            if (!value) return null;
-            const date = new Date(value);
-            if (!Number.isFinite(date.getTime())) return null;
-            return date.toLocaleDateString();
-        };
-
-        const getThresholdDateLabel = (threshold: number): string | null => {
-            if (!settings?.aprProgressDateStart || !settings?.aprProgressDateTarget) return null;
-            if (settings.aprProgressMode !== 'date') return null;
-            const start = new Date(`${settings.aprProgressDateStart}T00:00:00`);
-            const target = new Date(`${settings.aprProgressDateTarget}T00:00:00`);
-            if (!Number.isFinite(start.getTime()) || !Number.isFinite(target.getTime())) return null;
-            if (target.getTime() <= start.getTime()) return null;
-            const nextMs = start.getTime() + ((target.getTime() - start.getTime()) * (threshold / 100));
-            const nextDate = new Date(nextMs);
-            if (!Number.isFinite(nextDate.getTime())) return null;
-            return nextDate.toLocaleDateString();
-        };
-
-        const summaryLines: string[] = [];
-        const updateFrequency = isCampaign ? campaign?.updateFrequency : settings?.updateFrequency;
-        const refreshDays = isCampaign ? campaign?.refreshThresholdDays : settings?.stalenessThresholdDays;
-        const frequency = updateFrequency ?? 'manual';
-        const updateLabel = `${frequency.charAt(0).toUpperCase()}${frequency.slice(1)}`;
-        const reminderLabel = frequency === 'manual' && refreshDays ? ` (reminder ${refreshDays}d)` : '';
-        summaryLines.push(`Mode: ${isCampaign ? `Campaign — ${campaign?.name ?? 'Unknown'}` : 'Default report'} · Update: ${updateLabel}${reminderLabel}`);
-        summaryLines.push(`Publish stage: ${publishStageLabel}`);
-        summaryLines.push(`Progress: ${hasScenes ? `${progressPercent}% complete` : 'No scenes yet'}`);
+        // Calculate Teaser Level (Unified Logic)
+        let thresholds: TeaserThresholds;
+        let level: TeaserRevealLevel;
 
         if (isCampaign && campaign?.teaserReveal?.enabled) {
-            const preset = campaign.teaserReveal.preset ?? 'standard';
-            const thresholds = getTeaserThresholds(preset, campaign.teaserReveal.customThresholds);
-            const level = getTeaserRevealLevel(
-                this.progressPercent,
-                thresholds,
-                campaign.teaserReveal.disabledStages
-            );
-            const levelLabel = TEASER_LEVEL_INFO[level]?.label ?? 'Teaser';
-            summaryLines.push(`Reveal stage: ${levelLabel} (${formatPresetLabel(preset)})`);
-
-            const stageOrder = ['bar', 'scenes', 'colors', 'full'] as const;
-            const nextStage = stageOrder.slice(stageOrder.indexOf(level) + 1).find(stage => {
-                if (stage === 'scenes' && campaign.teaserReveal?.disabledStages?.scenes) return false;
-                if (stage === 'colors' && campaign.teaserReveal?.disabledStages?.colors) return false;
-                return true;
-            });
-
-            if (nextStage && nextStage !== 'bar') {
-                const nextThreshold = nextStage === 'scenes'
-                    ? thresholds.scenes
-                    : nextStage === 'colors'
-                        ? thresholds.colors
-                        : thresholds.full;
-                const thresholdDate = getThresholdDateLabel(nextThreshold);
-                summaryLines.push(`Next: ${TEASER_LEVEL_INFO[nextStage].label} at ${nextThreshold}%${thresholdDate ? ` (${thresholdDate})` : ''}`);
-            } else {
-                summaryLines.push('Next: Full reveal unlocked');
-            }
+            thresholds = getTeaserThresholds(campaign.teaserReveal.preset ?? 'standard', campaign.teaserReveal.customThresholds);
+            level = getTeaserRevealLevel(this.progressPercent, thresholds, campaign.teaserReveal.disabledStages);
         } else {
-            this.showSubplots = settings?.showSubplots ?? true;
-            this.showActs = settings?.showActs ?? true;
-            this.showStatus = settings?.showStatus ?? true;
-            this.showPercent = settings?.showProgressPercent ?? true;
-            const revealSummary = [
-                `Subplots ${this.showSubplots ? 'On' : 'Off'}`,
-                `Acts ${this.showActs ? 'On' : 'Off'}`,
-                `Status Colors ${this.showStatus ? 'On' : 'Off'}`,
-                `% Complete ${this.showPercent ? 'On' : 'Off'}`
-            ].join(' · ');
-            summaryLines.push(`Reveal settings: ${revealSummary}`);
+            thresholds = getTeaserThresholds('standard');
+            level = getTeaserRevealLevel(this.progressPercent, thresholds);
         }
 
-        const revealCampaign = (campaign as any)?.revealCampaign ?? (settings as any)?.revealCampaign;
-        const revealCampaignEnabled = !!revealCampaign?.enabled;
-        const nextRevealAt = revealCampaign?.nextRevealAt ?? revealCampaign?.nextRevealDate ?? revealCampaign?.nextReveal;
-        if (revealCampaignEnabled) {
-            const nextRevealLabel = formatDateLabel(nextRevealAt);
-            summaryLines.push(nextRevealLabel ? `Countdown: ${nextRevealLabel}` : 'Countdown: Enabled');
-        }
+        const info = TEASER_LEVEL_INFO[level];
+        this.revealSectionEl.createEl('h4', { text: `Current Stage: ${info.label.toUpperCase()}`, cls: 'rt-apr-reveal-title' });
+        this.revealSectionEl.createDiv({ text: info.description, cls: 'rt-apr-reveal-desc' });
 
-        revealSectionEl.createEl('h4', { text: 'Summary & Status', cls: 'rt-apr-reveal-title' });
-        summaryLines.forEach(line => {
-            revealSectionEl.createEl('p', {
-                text: line,
-                cls: 'rt-apr-reveal-desc'
-            });
+        // Visual Stepper for Teaser Stages
+        const stepper = this.revealSectionEl.createDiv({ cls: 'rt-apr-stepper' });
+
+        (['bar', 'scenes', 'colors', 'full'] as const).forEach(stage => {
+            const stageInfo = TEASER_LEVEL_INFO[stage];
+            const isActive = stage === level;
+            const step = stepper.createDiv({ cls: `rt-apr-step ${isActive ? 'rt-active' : ''}` });
+
+            const iconContainer = step.createDiv({ cls: 'rt-apr-step-icon' });
+
+            // Icon
+            const icon = iconContainer.createSpan();
+            setIcon(icon, stageInfo.icon);
+
+            // Text Label
+            step.createDiv({ text: stageInfo.label, cls: 'rt-apr-step-label' });
         });
     }
 
@@ -498,39 +427,29 @@ export class AuthorProgressModal extends Modal {
             ? settings?.aprShowRtAttribution !== false
             : true;
 
-        let showScenes = true;
-        let showSubplots = this.showSubplots;
-        let showActs = this.showActs;
-        let showStatusColors = this.showStatus;
-        let showStageColors = true;
-        let grayCompletedScenes = false;
-        let showProgressPercent = this.showPercent;
-        let isTeaserBar = false;
+        // TEASER / REVEAL LOGIC (Unified)
+        let thresholds: TeaserThresholds;
+        let level: TeaserRevealLevel;
 
-        if (isCampaign && campaign) {
-            showSubplots = settings?.showSubplots ?? true;
-            showActs = settings?.showActs ?? true;
-            showStatusColors = settings?.showStatus ?? true;
-            showProgressPercent = settings?.showProgressPercent ?? true;
-
-            if (campaign.teaserReveal?.enabled) {
-                const preset = campaign.teaserReveal.preset ?? 'standard';
-                const thresholds = getTeaserThresholds(preset, campaign.teaserReveal.customThresholds);
-                const revealLevel = getTeaserRevealLevel(
-                    this.progressPercent,
-                    thresholds,
-                    campaign.teaserReveal.disabledStages
-                );
-                const revealOptions = teaserLevelToRevealOptions(revealLevel);
-                isTeaserBar = revealLevel === 'bar';
-                showScenes = revealOptions.showScenes;
-                showSubplots = revealOptions.showSubplots;
-                showActs = revealOptions.showActs;
-                showStatusColors = revealOptions.showStatusColors;
-                showStageColors = revealOptions.showStageColors;
-                grayCompletedScenes = revealOptions.grayCompletedScenes;
-            }
+        if (isCampaign && campaign?.teaserReveal?.enabled) {
+            thresholds = getTeaserThresholds(campaign.teaserReveal.preset ?? 'standard', campaign.teaserReveal.customThresholds);
+            level = getTeaserRevealLevel(this.progressPercent, thresholds, campaign.teaserReveal.disabledStages);
+        } else {
+            thresholds = getTeaserThresholds('standard');
+            level = getTeaserRevealLevel(this.progressPercent, thresholds);
         }
+
+        const options = teaserLevelToRevealOptions(level);
+        const isTeaserBar = level === 'bar';
+
+        const showScenes = isTeaserBar ? false : options.showScenes;
+        const showSubplots = options.showSubplots;
+        const showActs = options.showActs;
+        const showStatusColors = options.showStatusColors;
+        const showStageColors = options.showStageColors;
+        const grayCompletedScenes = options.grayCompletedScenes;
+        const showProgressPercent = !isTeaserBar; // Hide center % for pure bar mode (or user preference?)
+
 
         for (const size of sizes) {
             const container = this.previewContainers.get(size);
@@ -616,17 +535,17 @@ export class AuthorProgressModal extends Modal {
         }
     }
 
-    private async saveRevealOptions() {
+    private async saveSize() {
         if (this.isCampaignTarget()) return;
         if (!this.plugin.settings.authorProgress) {
             this.plugin.settings.authorProgress = {
                 enabled: false,
                 defaultNoteBehavior: 'preset',
                 defaultPublishTarget: 'folder',
+                // Legacy fields preserved for type compatibility
                 showSubplots: true,
                 showActs: true,
                 showStatus: true,
-                showProgressPercent: true,
                 aprSize: 'medium',
                 aprShowRtAttribution: true,
                 bookTitle: '',
@@ -637,10 +556,6 @@ export class AuthorProgressModal extends Modal {
                 dynamicEmbedPath: 'Radial Timeline/Social/progress.svg'
             };
         }
-        this.plugin.settings.authorProgress.showSubplots = this.showSubplots;
-        this.plugin.settings.authorProgress.showActs = this.showActs;
-        this.plugin.settings.authorProgress.showStatus = this.showStatus;
-        this.plugin.settings.authorProgress.showProgressPercent = this.showPercent;
         this.plugin.settings.authorProgress.aprSize = this.aprSize;
         await this.plugin.saveSettings();
     }

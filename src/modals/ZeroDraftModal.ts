@@ -47,7 +47,7 @@ export class ZeroDraftModal extends Modal {
             contentEl.empty();
 
             if (modalEl) {
-                modalEl.classList.add('ert-ui', 'ert-modal-shell', 'ert-modal-shell--sm');
+                modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--sm');
             }
             contentEl.addClass('ert-modal-container');
 
@@ -89,7 +89,7 @@ export class ZeroDraftModal extends Modal {
         titleEl.setText('');
         
         if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
             modalEl.style.width = '680px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }

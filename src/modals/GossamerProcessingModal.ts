@@ -69,7 +69,7 @@ export class GossamerProcessingModal extends Modal {
         titleEl.setText('');
 
         if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
             modalEl.style.width = '800px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // Align with other tall modals for small screens

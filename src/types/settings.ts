@@ -378,7 +378,6 @@ export interface RadialTimelineSettings {
     devProActive?: boolean;  // Dev toggle to test Pro features as active/inactive (defaults to true during beta)
 
     // Runtime Estimation Settings (Professional feature)
-    enableRuntimeEstimation?: boolean;
     runtimeRateProfiles?: RuntimeRateProfile[];
     defaultRuntimeProfileId?: string;
     runtimeContentType?: RuntimeContentType;

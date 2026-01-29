@@ -205,7 +205,7 @@ export class GossamerScoreModal extends Modal {
       modalEl.style.width = '980px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
       modalEl.style.maxWidth = '98vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
       modalEl.style.maxHeight = '92vh'; // Prevent button clipping at bottom
-      modalEl.classList.add('ert-ui', 'ert-modal-shell');
+      modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
     }
 
     contentEl.addClass('ert-modal-container', 'rt-gossamer-score-modal');
@@ -886,7 +886,7 @@ export class GossamerScoreModal extends Modal {
       modal.titleEl.setText('');
       contentEl.empty();
       
-      modalEl.classList.add('ert-ui', 'ert-modal-shell');
+      modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
       contentEl.addClass('ert-modal-container', 'rt-gossamer-score-modal');
 
       const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
@@ -1010,7 +1010,7 @@ class NormalizeConfirmationModal extends Modal {
     contentEl.empty();
 
     if (modalEl) {
-      modalEl.classList.add('ert-ui', 'ert-modal-shell');
+      modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
     }
     contentEl.addClass('ert-modal-container', 'rt-gossamer-score-modal');
 

@@ -106,7 +106,7 @@ export class RuntimeProcessingModal extends Modal {
         titleEl.setText('');
 
         if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-modal-shell', 'rt-runtime-modal-shell', ERT_CLASSES.SKIN_PRO);
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'rt-runtime-modal-shell', ERT_CLASSES.SKIN_PRO);
         }
         contentEl.addClass('ert-modal-container', 'rt-runtime-modal');
 

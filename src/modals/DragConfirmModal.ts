@@ -20,7 +20,7 @@ export class DragConfirmModal extends Modal {
         contentEl.empty();
         
         if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
             modalEl.style.width = 'min(660px, 90vw)'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
 

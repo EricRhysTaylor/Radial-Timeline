@@ -521,7 +521,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        containerEl.addClass('ert-ui', 'ert-settings-root');
+        containerEl.addClass('ert-ui', 'ert-settings-root', 'ert-scope--settings');
         this._aiRelatedElements = [];
 
         const tabBar = containerEl.createDiv({ cls: 'ert-settings-tab-bar' });
@@ -545,12 +545,12 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         socialTab.createSpan({ text: 'Social Media', cls: 'ert-settings-tab-label' });
 
         const proContent = containerEl.createDiv({
-            cls: `ert-settings-tab-content ert-settings-pro-content ${ERT_CLASSES.ROOT} ${ERT_CLASSES.SKIN_PRO}`
+            cls: `ert-settings-tab-content ert-settings-pro-content ${ERT_CLASSES.ROOT} ert-scope--settings ${ERT_CLASSES.SKIN_PRO}`
         });
-        const inquiryContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-inquiry-content' });
-        const coreContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-core-content' });
+        const inquiryContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-inquiry-content ert-scope--settings' });
+        const coreContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-core-content ert-scope--settings' });
         const socialContent = containerEl.createDiv({
-            cls: 'ert-settings-tab-content ert-settings-social-content ert-ui ert-skin--social ert-density--compact'
+            cls: 'ert-settings-tab-content ert-settings-social-content ert-ui ert-scope--settings ert-skin--social ert-density--compact'
         });
 
         const updateTabState = () => {

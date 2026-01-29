@@ -60,7 +60,7 @@ export class ReleaseNotesModal extends Modal {
         contentEl.empty();
         titleEl.setText('');
         if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-modal-shell', 'ert-modal--release-notes');
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal--release-notes');
         }
         contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-release-notes');
 

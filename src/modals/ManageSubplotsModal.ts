@@ -35,7 +35,7 @@ export class ManageSubplotsModal extends Modal {
         contentEl.empty();
         
         // Apply generic modal shell + modal-specific class
-        modalEl.classList.add('ert-ui', 'ert-modal-shell');
+        modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
         contentEl.addClass('ert-modal-container', 'rt-manage-subplots-modal');
 
         // Hero Section (generic header)
@@ -175,7 +175,7 @@ class SubplotDeletionConfirmModal extends Modal {
         titleEl.setText('');
         
         if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
             modalEl.style.width = '600px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
@@ -233,7 +233,7 @@ class RenameSubplotModal extends Modal {
         contentEl.empty();
         
         // Shell & Container (matching PlanetaryTimeModal)
-        modalEl.classList.add('ert-ui', 'ert-modal-shell', 'rt-rename-subplot-modal');
+        modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'rt-rename-subplot-modal');
         contentEl.addClass('ert-modal-container');
 
         // Header (matching PlanetaryTimeModal)

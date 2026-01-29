@@ -83,7 +83,7 @@ export class TimelineRepairModal extends Modal {
         titleEl.setText('');
 
         if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-modal-shell', 'rt-timeline-repair-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'rt-timeline-repair-modal-shell');
             modalEl.style.width = '900px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '95vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)

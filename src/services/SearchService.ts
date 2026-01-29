@@ -16,7 +16,7 @@ export class SearchService {
         const { modalEl, contentEl } = modal;
         
         // Apply generic modal shell + modal-specific class
-        modalEl.classList.add('ert-ui', 'ert-modal-shell');
+        modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
         contentEl.empty();
         contentEl.addClass('ert-modal-container', 'ert-search-modal');
         

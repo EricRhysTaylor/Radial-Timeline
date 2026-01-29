@@ -6,7 +6,7 @@
  * Runtime Estimation Settings Section
  */
 
-import { App, Setting, TextComponent, DropdownComponent, ToggleComponent, setIcon, Modal, ButtonComponent } from 'obsidian';
+import { App, Setting, TextComponent, DropdownComponent, setIcon, Modal, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { RuntimeContentType, RuntimeRateProfile } from '../../types';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
@@ -105,24 +105,12 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         proContainer.addClass('ert-pro-locked');
     }
 
-    // Header row with Pro badge, description, and toggle
+    // Header row with Pro badge and description
     const runtimeDescOn = 'Activate film and book runtime estimates to the scene hover metadata, Chronologue Mode, and the Command Palette Runtime Estimator.';
-    const runtimeDescOff = 'Feature off: runtime estimation will no longer appear in Chronologue Mode (button and functionality).';
     const panelHeader = new Setting(proContainer)
         .setName('Runtime estimation')
         .setHeading()
         .setDesc(runtimeDescOn);
-    panelHeader.addToggle((toggle: ToggleComponent) => {
-        toggle
-            .setValue(plugin.settings.enableRuntimeEstimation ?? false)
-            .onChange(async (value) => {
-                if (!hasProfessional) return;
-                plugin.settings.enableRuntimeEstimation = value;
-                await plugin.saveSettings();
-                updateRuntimeDescription(value);
-                renderConditionalContent();
-            });
-    });
 
     addWikiLink(panelHeader, 'Settings#runtime-estimation');
     const headerLayout = applyErtHeaderLayout(panelHeader);
@@ -135,14 +123,6 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         setIcon(badgeIcon, 'signature');
         badgeEl.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro' });
     }
-    const updateRuntimeDescription = (isEnabled: boolean) => {
-        const descEl = panelHeader.descEl;
-        if (!descEl) return;
-        descEl.setText(isEnabled ? runtimeDescOn : runtimeDescOff);
-        descEl.classList.toggle('ert-section-desc--alert', !isEnabled);
-    };
-    updateRuntimeDescription(plugin.settings.enableRuntimeEstimation ?? false);
-
     const panelHeaderEl = panelHeader.settingEl;
     const clearConditionalContent = () => {
         let node = panelHeaderEl.nextElementSibling;
@@ -167,11 +147,6 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         const scrollState = captureScrollState();
         clearConditionalContent();
         
-        if (!plugin.settings.enableRuntimeEstimation) {
-            restoreScrollState(scrollState);
-            return;
-        }
-
         ensureProfiles();
         const profiles = plugin.settings.runtimeRateProfiles || [];
         if (!selectedProfileId && profiles[0]) {
@@ -475,7 +450,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     if (!selectedProfile) return;
                     const modal = new Modal(plugin.app);
                     const { modalEl, contentEl } = modal;
-                    modalEl.classList.add('ert-ui', 'ert-modal-shell', 'ert-modal-shell--sm');
+                    modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--sm');
                     modalEl.classList.add(ERT_CLASSES.ROOT, ERT_CLASSES.SKIN_PRO);
                     contentEl.addClass('ert-modal-container');
 

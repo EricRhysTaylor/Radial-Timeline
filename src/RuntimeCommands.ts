@@ -416,9 +416,9 @@ export function registerRuntimeCommands(plugin: RadialTimelinePlugin): void {
         id: 'runtime-estimator',
         name: 'Runtime estimator',
         checkCallback: (checking: boolean) => {
-            // Only show command when Pro is active and runtime estimation is enabled
+            // Only show command when Pro is active
             const hasPro = isProfessionalActive(plugin);
-            if (!hasPro || !plugin.settings.enableRuntimeEstimation) {
+            if (!hasPro) {
                 return false;
             }
             if (!checking) {

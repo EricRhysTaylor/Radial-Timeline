@@ -39,7 +39,7 @@ class ConfirmationModal extends Modal {
         titleEl.setText('');
 
         if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
             modalEl.style.width = '520px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
@@ -150,7 +150,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         const { contentEl, titleEl, modalEl } = this;
         // Use generic modal base + scene analysis specific styling
         if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-modal-shell');
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
             modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
@@ -188,7 +188,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     private ensureModalShell(): void {
         if (this.modalEl && !this.modalEl.classList.contains('ert-modal-shell')) {
-            this.modalEl.classList.add('ert-ui', 'ert-modal-shell');
+            this.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
         }
         this.contentEl.classList.add('ert-modal-container');
         this.contentEl.classList.add('rt-scene-analysis-modal');

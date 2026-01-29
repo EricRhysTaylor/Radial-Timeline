@@ -219,13 +219,9 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
 
     const hasRuntimeData = checkHasRuntimeData();
 
-    // Only show runtime button if runtime estimation is enabled
-    const shouldShowRuntime = view.plugin.settings?.enableRuntimeEstimation ?? false;
-    if (shouldShowRuntime) {
-        const runtimeContentType: RuntimeContentType = view.plugin.settings?.runtimeContentType || 'novel';
-        rtButton = createRtButton(runtimeContentType, !hasRuntimeData);
-        svg.appendChild(rtButton);
-    }
+    const runtimeContentType: RuntimeContentType = view.plugin.settings?.runtimeContentType || 'novel';
+    rtButton = createRtButton(runtimeContentType, !hasRuntimeData);
+    svg.appendChild(rtButton);
 
     const deactivateRuntimeMode = () => {
         if (!runtimeModeActive || !rtButton) return;
