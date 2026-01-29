@@ -7,7 +7,7 @@ import { fetchGeminiModels } from '../../api/geminiApi';
 import { fetchLocalModels } from '../../api/localAiApi';
 import { CURATED_MODELS, CuratedModel, AiProvider } from '../../data/aiModels';
 import { AiContextModal } from '../AiContextModal';
-import { resolveAiLogFolder, countAiLogFiles } from '../../ai/log';
+import { resolveAiLogFolder } from '../../ai/log';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 
@@ -26,6 +26,7 @@ export function renderAiSection(params: {
     setLocalConnectionInputs: (refs: { baseInput?: HTMLInputElement; modelInput?: HTMLInputElement }) => void;
 }): void {
     const { app, plugin, containerEl } = params;
+    containerEl.classList.add(ERT_CLASSES.STACK);
 
     // --- AI for Scene Analysis ---
     const aiHeading = new Settings(containerEl)
@@ -201,9 +202,15 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(modelPickerSetting.settingEl);
 
     // Provider sections
-    const anthropicSection = stackEl.createDiv({ cls: 'ert-provider-section ert-provider-anthropic' });
-    const geminiSection = stackEl.createDiv({ cls: 'ert-provider-section ert-provider-gemini' });
-    const openaiSection = stackEl.createDiv({ cls: 'ert-provider-section ert-provider-openai' });
+    const anthropicSection = stackEl.createDiv({
+        cls: ['ert-provider-section', 'ert-provider-anthropic', ERT_CLASSES.STACK]
+    });
+    const geminiSection = stackEl.createDiv({
+        cls: ['ert-provider-section', 'ert-provider-gemini', ERT_CLASSES.STACK]
+    });
+    const openaiSection = stackEl.createDiv({
+        cls: ['ert-provider-section', 'ert-provider-openai', ERT_CLASSES.STACK]
+    });
     params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection });
     params.addAiRelatedElement(anthropicSection);
     params.addAiRelatedElement(geminiSection);
@@ -352,7 +359,9 @@ export function renderAiSection(params: {
         }
     );
 
-    const localSection = stackEl.createDiv({ cls: 'ert-provider-section ert-provider-local' });
+    const localSection = stackEl.createDiv({
+        cls: ['ert-provider-section', 'ert-provider-local', ERT_CLASSES.STACK]
+    });
     params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection, local: localSection } as any);
     params.addAiRelatedElement(localSection);
 
@@ -509,48 +518,6 @@ export function renderAiSection(params: {
 
     // Apply provider dimming on first render
     params.refreshProviderDimming();
-
-    // API Logging toggle with dynamic file count
-    const outputFolder = resolveAiLogFolder();
-    const formatLogCount = (fileCount: number | null): string => {
-        if (fileCount === null) return 'Counting log files...';
-        return fileCount === 0
-            ? 'No log files yet'
-            : fileCount === 1
-                ? '1 log file'
-                : `${fileCount} log files`;
-    };
-    const getLoggingDesc = (fileCount: number | null): string => {
-        const countText = formatLogCount(fileCount);
-        return `When enabled, writes logs for Inquiry, Pulse, and Gossamer runs. Logs are stored in "${outputFolder}" (${countText}).`;
-    };
-
-    const apiLoggingSetting = new Settings(stackEl)
-        .setName('Enable AI logs')
-        .setDesc(getLoggingDesc(null))
-        .addToggle(toggle => toggle
-            .setValue(plugin.settings.logApiInteractions)
-            .onChange(async (value) => {
-                plugin.settings.logApiInteractions = value;
-                await plugin.saveSettings();
-            }));
-    params.addAiRelatedElement(apiLoggingSetting.settingEl);
-
-    const scheduleLogCount = () => {
-        const runCount = () => {
-            const fileCount = countAiLogFiles(plugin);
-            apiLoggingSetting.setDesc(getLoggingDesc(fileCount));
-        };
-        const requestIdleCallback = (window as Window & {
-            requestIdleCallback?: (cb: () => void) => void;
-        }).requestIdleCallback;
-        if (requestIdleCallback) {
-            requestIdleCallback(runCount);
-        } else {
-            window.setTimeout(runCount, 0);
-        }
-    };
-    scheduleLogCount();
 
     // Set initial visibility state
     params.toggleAiSettingsVisibility(plugin.settings.enableAiSceneAnalysis ?? true);

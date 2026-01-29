@@ -3347,6 +3347,23 @@
   padding: 2px 0;
 }
 
+.ert-ui .ert-reorder-row--two-col {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--ert-gap-md);
+}
+
+.ert-ui .ert-reorder-col {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  min-width: 0;
+}
+
+.ert-ui .ert-reorder-col--question {
+  width: 100%;
+  min-width: 0;
+}
+
 .ert-ui .ert-reorder-row--pro {
   background: color-mix(in srgb, var(--rt-pro-color, #d946ef) 8%, var(--background-secondary));
   border: 1px solid color-mix(in srgb, var(--rt-pro-color, #d946ef) 28%, transparent);

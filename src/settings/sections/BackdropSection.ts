@@ -15,6 +15,7 @@ const isValidHexColor = (value: string) => /^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/
 
 export function renderBackdropSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { plugin, containerEl } = params;
+    containerEl.classList.add(ERT_CLASSES.STACK);
 
     const backdropHeading = new Settings(containerEl)
         .setName('Backdrop & micro context rings')

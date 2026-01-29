@@ -948,7 +948,7 @@ export function renderInquirySection(params: SectionParams): void {
             const canonicalId = getCanonicalId(zone);
             const canonicalSeed = getCanonicalSeed(zone);
             slots.forEach((slot, slotIndex) => {
-                const row = listEl.createDiv({ cls: 'ert-reorder-row' });
+                const row = listEl.createDiv({ cls: 'ert-reorder-row ert-reorder-row--two-col' });
                 const customIndex = customIndexMap.has(slot.id) ? customIndexMap.get(slot.id)! : -1;
                 const isProRow = customIndex >= freeCustomLimit;
                 if (isProRow) {
@@ -958,20 +958,23 @@ export function renderInquirySection(params: SectionParams): void {
                     }
                 }
 
-                const dragHandle = row.createDiv({ cls: 'ert-drag-handle' });
+                const labelCol = row.createDiv({ cls: 'ert-reorder-col ert-reorder-col--label' });
+                const questionCol = row.createDiv({ cls: 'ert-reorder-col ert-reorder-col--question' });
+
+                const dragHandle = labelCol.createDiv({ cls: 'ert-drag-handle' });
                 dragHandle.draggable = true;
                 setIcon(dragHandle, 'grip-vertical');
                 setTooltip(dragHandle, 'Drag to reorder');
 
-                const labelInput = new TextComponent(row);
+                const labelInput = new TextComponent(labelCol);
                 labelInput.setPlaceholder('Label (optional)')
                     .setValue(slot.label ?? '');
-                labelInput.inputEl.addClass('ert-input', 'ert-input--sm');
+                labelInput.inputEl.addClass('ert-input', 'ert-input--md');
                 labelInput.onChange(async (value) => {
                     await updateSlot(zone, slotIndex, { label: value });
                 });
 
-                const questionInput = new TextComponent(row);
+                const questionInput = new TextComponent(questionCol);
                 questionInput.setPlaceholder('Question text')
                     .setValue(slot.question ?? '');
                 questionInput.inputEl.addClass('ert-input', 'ert-input--full');
@@ -980,7 +983,7 @@ export function renderInquirySection(params: SectionParams): void {
                 });
 
                 if (slot.builtIn && slot.id === canonicalId) {
-                    const resetButton = row.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
+                    const resetButton = questionCol.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
                     setIcon(resetButton, 'rotate-ccw');
                     setTooltip(resetButton, 'Reset to default question');
                     resetButton.onclick = () => {
@@ -994,7 +997,7 @@ export function renderInquirySection(params: SectionParams): void {
                         });
                     };
                 } else {
-                    const deleteBtn = row.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
+                    const deleteBtn = questionCol.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
                     setIcon(deleteBtn, 'trash');
                     setTooltip(deleteBtn, 'Delete question');
                     deleteBtn.onclick = () => {
@@ -1084,7 +1087,7 @@ export function renderInquirySection(params: SectionParams): void {
                 && customSlots.length < proCustomLimit;
             if (showProGhost) {
                 const ghostRow = listEl.createDiv({
-                    cls: 'ert-reorder-row ert-reorder-row--pro ert-reorder-row--ghost'
+                    cls: 'ert-reorder-row ert-reorder-row--two-col ert-reorder-row--pro ert-reorder-row--ghost'
                 });
                 const ghostText = ghostRow.createDiv({
                     cls: 'ert-reorder-placeholder ert-reorder-placeholder--pro'
@@ -1101,21 +1104,25 @@ export function renderInquirySection(params: SectionParams): void {
 
             const addLimit = isPro ? proCustomLimit : freeCustomLimit;
             if (customSlots.length < addLimit) {
-                const addRow = listEl.createDiv({ cls: 'ert-reorder-row' });
+                const addRow = listEl.createDiv({ cls: 'ert-reorder-row ert-reorder-row--two-col' });
                 if (isPro && customSlots.length >= freeCustomLimit) {
                     addRow.addClass('ert-reorder-row--pro');
                 }
-                addRow.createDiv({ cls: 'ert-drag-handle ert-drag-placeholder' });
 
-                const labelInput = new TextComponent(addRow);
+                const labelCol = addRow.createDiv({ cls: 'ert-reorder-col ert-reorder-col--label' });
+                const questionCol = addRow.createDiv({ cls: 'ert-reorder-col ert-reorder-col--question' });
+
+                labelCol.createDiv({ cls: 'ert-drag-handle ert-drag-placeholder' });
+
+                const labelInput = new TextComponent(labelCol);
                 labelInput.setPlaceholder('Label (optional)').setValue('');
-                labelInput.inputEl.addClass('ert-input', 'ert-input--sm');
+                labelInput.inputEl.addClass('ert-input', 'ert-input--md');
 
-                const questionInput = new TextComponent(addRow);
+                const questionInput = new TextComponent(questionCol);
                 questionInput.setPlaceholder('Question text').setValue('');
                 questionInput.inputEl.addClass('ert-input', 'ert-input--full');
 
-                const addBtn = addRow.createEl('button', { cls: [ERT_CLASSES.ICON_BTN, 'ert-mod-cta'] });
+                const addBtn = questionCol.createEl('button', { cls: [ERT_CLASSES.ICON_BTN, 'ert-mod-cta'] });
                 setIcon(addBtn, 'plus');
                 setTooltip(addBtn, 'Add question');
 

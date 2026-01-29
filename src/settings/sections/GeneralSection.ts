@@ -3,12 +3,14 @@ import { Setting as ObsidianSetting, normalizePath, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { t } from '../../i18n';
 import { DEFAULT_SETTINGS } from '../defaults';
+import { resolveAiLogFolder, countAiLogFiles } from '../../ai/log';
 
 export function renderGeneralSection(params: {
     app: App;
     plugin: RadialTimelinePlugin;
     attachFolderSuggest: (text: TextComponent) => void;
     containerEl: HTMLElement;
+    addAiRelatedElement?: (el: HTMLElement) => void;
 }): void {
     const { app, plugin, attachFolderSuggest, containerEl } = params;
 
@@ -249,5 +251,48 @@ export function renderGeneralSection(params: {
             });
         });
     });
+
+    // --- AI Logs Toggle ---
+    const outputFolder = resolveAiLogFolder();
+    const formatLogCount = (fileCount: number | null): string => {
+        if (fileCount === null) return 'Counting log files...';
+        return fileCount === 0
+            ? 'No log files yet'
+            : fileCount === 1
+                ? '1 log file'
+                : `${fileCount} log files`;
+    };
+    const getLoggingDesc = (fileCount: number | null): string => {
+        const countText = formatLogCount(fileCount);
+        return `When enabled, writes logs for Inquiry, Pulse, and Gossamer runs. Logs are stored in "${outputFolder}" (${countText}).`;
+    };
+
+    const apiLoggingSetting = new ObsidianSetting(containerEl)
+        .setName('Enable AI logs')
+        .setDesc(getLoggingDesc(null))
+        .addToggle(toggle => toggle
+            .setValue(plugin.settings.logApiInteractions)
+            .onChange(async (value) => {
+                plugin.settings.logApiInteractions = value;
+                await plugin.saveSettings();
+            }));
+
+    params.addAiRelatedElement?.(apiLoggingSetting.settingEl);
+
+    const scheduleLogCount = () => {
+        const runCount = () => {
+            const fileCount = countAiLogFiles(plugin);
+            apiLoggingSetting.setDesc(getLoggingDesc(fileCount));
+        };
+        const requestIdleCallback = (window as Window & {
+            requestIdleCallback?: (cb: () => void) => void;
+        }).requestIdleCallback;
+        if (requestIdleCallback) {
+            requestIdleCallback(runCount);
+        } else {
+            window.setTimeout(runCount, 0);
+        }
+    };
+    scheduleLogCount();
 
 }

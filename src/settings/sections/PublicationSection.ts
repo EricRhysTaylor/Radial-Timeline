@@ -765,6 +765,7 @@ export function renderPublicationSection(params: {
     onCompletionPreviewRefresh?: () => void;
 }): void {
     const { plugin, containerEl, onCompletionPreviewRefresh } = params;
+    containerEl.classList.add(ERT_CLASSES.STACK);
 
     const pubHeading = new ObsidianSetting(containerEl)
         .setName('Publication and progress')

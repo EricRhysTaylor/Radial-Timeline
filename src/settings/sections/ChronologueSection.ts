@@ -63,6 +63,7 @@ async function collectDurationCapOptions(
 
 export function renderChronologueSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { app, plugin, containerEl } = params;
+    containerEl.classList.add(ERT_CLASSES.STACK);
 
     const chronoHeading = new Settings(containerEl)
         .setName('Chronologue mode discontinuity & duration')

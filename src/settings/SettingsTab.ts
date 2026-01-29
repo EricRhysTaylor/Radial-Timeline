@@ -623,10 +623,16 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         // Setup Section - Source path settings
         const generalSection = searchableContent.createDiv({
-            cls: ERT_CLASSES.STACK,
             attr: { [ERT_DATA.SECTION]: 'general' }
         });
-        renderGeneralSection({ app: this.app, plugin: this.plugin, attachFolderSuggest: (t) => this.attachFolderSuggest(t), containerEl: generalSection });
+        const generalStack = generalSection.createDiv({ cls: ERT_CLASSES.STACK });
+        renderGeneralSection({
+            app: this.app,
+            plugin: this.plugin,
+            attachFolderSuggest: (t) => this.attachFolderSuggest(t),
+            containerEl: generalStack,
+            addAiRelatedElement: (el) => this._aiRelatedElements.push(el)
+        });
         this.renderProCallout(generalSection, 'Manuscript exports via Pandoc', switchToProTab);
 
         const inquirySection = inquiryBody.createDiv({
@@ -649,9 +655,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         renderTemplatesSection({ app: this.app, plugin: this.plugin, containerEl: beatsSection });
 
         const publicationSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'publication' } });
+        const publicationStack = publicationSection.createDiv({ cls: ERT_CLASSES.STACK });
         renderPublicationSection({
             plugin: this.plugin,
-            containerEl: publicationSection,
+            containerEl: publicationStack,
             onCompletionPreviewRefresh: completionPreviewRefresh
         });
         this.renderProCallout(publicationSection, 'Runtime estimation for screenplay & audiobook', switchToProTab);

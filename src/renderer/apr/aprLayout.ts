@@ -3,7 +3,7 @@
  */
 
 import type { AprPreset } from './aprPresets';
-import { APR_BASE_RADII, APR_SIZE_SCALES, APR_THUMB_RADII } from './AprConstants';
+import { APR_BASE_RADII, APR_SIZE_SCALES, APR_THUMB_RADII, APR_BRANDING_TUNING } from './AprConstants';
 
 export type AprData = {
     percent?: number;
@@ -150,7 +150,7 @@ export function computeAprLayout(preset: AprPreset, data: AprData = {}): AprLayo
         branding: {
             radius: textR,
             fontSize: brandingFontSize,
-            letterSpacing: '0.12em',
+            letterSpacing: APR_BRANDING_TUNING.baseLetterSpacing,
         },
         badge: {
             fontSize: badgeFontSize,

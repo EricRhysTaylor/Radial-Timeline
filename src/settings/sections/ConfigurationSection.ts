@@ -7,6 +7,7 @@ import { ERT_CLASSES } from '../../ui/classes';
 
 export function renderConfigurationSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { app, plugin, containerEl } = params;
+    containerEl.classList.add(ERT_CLASSES.STACK);
 
     const configurationHeading = new Settings(containerEl)
         .setName(t('settings.configuration.heading'))

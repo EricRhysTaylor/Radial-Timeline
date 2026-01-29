@@ -4,7 +4,7 @@
  * Renders the repeating book title/author text around the outer edge.
  */
 
-import { APR_TEXT_COLORS } from './AprConstants';
+import { APR_TEXT_COLORS, APR_BRANDING_TUNING } from './AprConstants';
 import { computeAprLayout, type AprLayoutSpec } from './aprLayout';
 import { getAprPreset, type AprSize } from './aprPresets';
 
@@ -112,24 +112,34 @@ export function renderAprBranding(options: AprBrandingOptions): string {
         }
     }
     const unitWidth = measuredUnitWidth ?? estimateTextWidth(unitPattern);
+    let safeUnitWidth = unitWidth;
     if (unitWidth > 0) {
+        // Inflate measured width by safety buffer for font rendering differences
+        safeUnitWidth = unitWidth * APR_BRANDING_TUNING.measurementSafetyBuffer;
+
         // Use floor to get complete pattern repeats only (never cut mid-word)
-        // The seam will fall between patterns at a " ~ " separator
-        repeats = Math.max(2, Math.floor(circumference / unitWidth));
+        repeats = Math.max(2, Math.floor(circumference / safeUnitWidth));
     }
 
-    // Calculate the gap left after complete pattern repeats
-    // and distribute it as additional letter-spacing to fill the circle perfectly
-    const totalTextWidth = repeats * unitWidth;
+    // Calculate the gap left after complete pattern repeats using the SAFE width
+    // This ensures we don't add too much spacing which would cause overlap
+    const totalTextWidth = repeats * safeUnitWidth;
     const gap = circumference - totalTextWidth;
     const totalChars = repeats * unitPattern.length;
+
+    // Parse limits from tuning config
+    const minSpacingEm = Number.parseFloat(APR_BRANDING_TUNING.minLetterSpacing) || 0;
+    const maxSpacingEm = Number.parseFloat(APR_BRANDING_TUNING.maxLetterSpacing) || 1;
 
     // Convert base letter-spacing from em to px, add gap distribution, convert back
     const baseSpacingPx = spacingEm * avgFontSize;
     const additionalSpacingPerChar = totalChars > 1 ? gap / totalChars : 0;
     const adjustedSpacingPx = baseSpacingPx + additionalSpacingPerChar;
-    const adjustedSpacingEm = adjustedSpacingPx / avgFontSize;
-    const adjustedLetterSpacing = `${adjustedSpacingEm.toFixed(4)}em`;
+    const rawAdjustedEm = adjustedSpacingPx / avgFontSize;
+
+    // Clamp the final spacing to the user-defined range
+    const clampedEm = Math.max(minSpacingEm, Math.min(maxSpacingEm, rawAdjustedEm));
+    const adjustedLetterSpacing = `${clampedEm.toFixed(4)}em`;
 
 
 

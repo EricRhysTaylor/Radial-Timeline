@@ -40,6 +40,27 @@ export const APR_VIEW_MODE_LABELS: Record<AprViewMode, string> = {
 };
 
 // =============================================================================
+// BRANDING TEXT TUNING (Manual Control)
+// =============================================================================
+
+export const APR_BRANDING_TUNING = {
+    // Base spacing between characters (the starting point)
+    baseLetterSpacing: '0.12em',
+
+    // Minimum allowed spacing (prevents excessive squishing)
+    minLetterSpacing: '0.05em',
+
+    // Maximum allowed spacing (limits how much we stretch to fill gaps)
+    // If exact fit requires more than this, we stop at this max and leave a visible gap at the seam.
+    maxLetterSpacing: '0.50em',
+
+    // Safety buffer for text measurement logic
+    // Inflate measured width by this factor to account for font rendering discrepancies (SVG vs DOM)
+    // 1.05 = 5% safety buffer
+    measurementSafetyBuffer: 1.05,
+} as const;
+
+// =============================================================================
 // COLORS & STYLING
 // =============================================================================
 
@@ -166,23 +187,23 @@ import type { TeaserDisabledStages } from '../../types/settings';
  * Order: bar → scenes → colors → full
  */
 export function getTeaserRevealLevel(
-    progress: number, 
+    progress: number,
     thresholds: TeaserThresholds,
     disabledStages?: TeaserDisabledStages
 ): TeaserRevealLevel {
     // Full is always the end state
     if (progress >= thresholds.full) return 'full';
-    
+
     // Colors stage (if not disabled)
     if (progress >= thresholds.colors) {
         return disabledStages?.colors ? 'scenes' : 'colors';
     }
-    
+
     // Scenes stage (if not disabled)
     if (progress >= thresholds.scenes) {
         return disabledStages?.scenes ? 'bar' : 'scenes';
     }
-    
+
     return 'bar';
 }
 
@@ -206,40 +227,40 @@ export function teaserLevelToRevealOptions(level: TeaserRevealLevel): {
     switch (level) {
         case 'bar':
             // Just progress ring, no details
-            return { 
-                showScenes: false, 
-                showActs: false, 
-                showSubplots: false, 
+            return {
+                showScenes: false,
+                showActs: false,
+                showSubplots: false,
                 showStatusColors: false,
                 showStageColors: false,
                 grayCompletedScenes: false
             };
         case 'scenes':
             // Scene cells + acts, status colors for active work, completed = gray
-            return { 
-                showScenes: true, 
+            return {
+                showScenes: true,
                 showActs: true,  // Acts bundled with scenes
-                showSubplots: false, 
+                showSubplots: false,
                 showStatusColors: true,   // Show Todo, In Progress, Overdue
                 showStageColors: false,   // Don't show Zero/Author/House/Press
                 grayCompletedScenes: true // Gray out completed scenes
             };
         case 'colors':
             // Full colors including publish stage colors
-            return { 
-                showScenes: true, 
-                showActs: true, 
-                showSubplots: false, 
+            return {
+                showScenes: true,
+                showActs: true,
+                showSubplots: false,
                 showStatusColors: true,
                 showStageColors: true,    // Now show all stage colors
                 grayCompletedScenes: false
             };
         case 'full':
             // Complete view with all subplot rings
-            return { 
-                showScenes: true, 
-                showActs: true, 
-                showSubplots: true, 
+            return {
+                showScenes: true,
+                showActs: true,
+                showSubplots: true,
                 showStatusColors: true,
                 showStageColors: true,
                 grayCompletedScenes: false
