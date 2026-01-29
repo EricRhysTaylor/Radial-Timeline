@@ -23,7 +23,9 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
     addWikiLink(backdropHeading, 'Settings#backdrop');
     applyErtHeaderLayout(backdropHeading);
 
-    new Settings(containerEl)
+    const stackEl = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
+
+    new Settings(stackEl)
         .setName('Show backdrop ring')
         .setDesc('Display the backdrop ring in Chronologue mode. When disabled, the ring space is reclaimed for subplot rings. Create backdrops using the \'class=Backdrop\' in your notes.')
         .addToggle(toggle => toggle
@@ -35,7 +37,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
                 renderMicroBackdrops();
             }));
 
-    const listContainer = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} ert-micro-backdrop-body ert-micro-backdrop-list` });
+    const listContainer = stackEl.createDiv({ cls: `${ERT_CLASSES.PANEL} ert-micro-backdrop-body ert-micro-backdrop-list` });
     const list = listContainer;
     let expandedIndex: number | null = null;
 

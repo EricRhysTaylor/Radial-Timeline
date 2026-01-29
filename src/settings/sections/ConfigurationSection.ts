@@ -3,6 +3,7 @@ import type RadialTimelinePlugin from '../../main';
 import { clearFontMetricsCaches } from '../../renderer/utils/FontMetricsCache';
 import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
+import { ERT_CLASSES } from '../../ui/classes';
 
 export function renderConfigurationSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { app, plugin, containerEl } = params;
@@ -14,8 +15,10 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
     addWikiLink(configurationHeading, 'Settings#configuration');
     applyErtHeaderLayout(configurationHeading);
 
+    const stackEl = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
+
     // 1. Auto-expand clipped scene titles
-    new Settings(containerEl)
+    new Settings(stackEl)
         .setName(t('settings.configuration.autoExpand.name'))
         .setDesc(t('settings.configuration.autoExpand.desc'))
         .addToggle(toggle => toggle
@@ -26,7 +29,7 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
             }));
 
     // 1b. Timeline readability scale
-    new Settings(containerEl)
+    new Settings(stackEl)
         .setName(t('settings.configuration.readability.name'))
         .setDesc(t('settings.configuration.readability.desc'))
         .addDropdown(drop => {
@@ -43,7 +46,7 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
         });
 
     // 2. Metadata refresh debounce
-    new Settings(containerEl)
+    new Settings(stackEl)
         .setName(t('settings.configuration.debounce.name'))
         .setDesc(t('settings.configuration.debounce.desc'))
         .addText(text => {
@@ -74,7 +77,7 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
         });
 
     // 3. Reset subplot color precedence
-    new Settings(containerEl)
+    new Settings(stackEl)
         .setName(t('settings.configuration.resetSubplotColors.name'))
         .setDesc(t('settings.configuration.resetSubplotColors.desc'))
         .addButton(button => button
@@ -84,10 +87,10 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
                 const count = Object.keys(plugin.settings.dominantSubplots || {}).length;
                 plugin.settings.dominantSubplots = {};
                 await plugin.saveSettings();
-                
+
                 // Refresh timeline using debounced method
                 plugin.refreshTimelineIfNeeded(null);
-                
+
                 if (count > 0) {
                     new Notice(t('settings.configuration.resetSubplotColors.clearedNotice', { count: String(count) }));
                 } else {

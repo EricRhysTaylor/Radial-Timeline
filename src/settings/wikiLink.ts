@@ -21,7 +21,7 @@ export function addHeadingIcon(setting: Setting, icon: string): void {
 
 export function applyErtHeaderLayout(
     setting: Setting,
-    options: { variant?: 'inline' | 'block' } = {}
+    options: { variant?: 'inline' | 'block'; indent?: 'flush' | 'indent' } = {}
 ): { header: HTMLElement; left: HTMLElement; main: HTMLElement; right: HTMLElement } | null {
     const nameEl = setting.nameEl;
     if (!nameEl) return null;
@@ -31,12 +31,24 @@ export function applyErtHeaderLayout(
 
     infoEl.empty();
     const hasDesc = Boolean(descEl && descEl.textContent && descEl.textContent.trim().length > 0);
+    const controlEl = setting.controlEl;
+    const controls = controlEl ? Array.from(controlEl.childNodes) : [];
+    const hasControls = controls.length > 0;
+    const useHeader2 = hasDesc && !hasControls;
     const variant = options.variant ?? (hasDesc ? 'block' : 'inline');
-    const header = infoEl.createDiv({
-        cls: [
-            ERT_CLASSES.HEADER,
-            variant === 'block' ? ERT_CLASSES.HEADER_BLOCK : ERT_CLASSES.HEADER_INLINE
-        ]
+    const headerWrapper = useHeader2
+        ? infoEl.createDiv({
+            cls: [
+                ERT_CLASSES.HEADER2,
+                options.indent === 'indent' ? ERT_CLASSES.HEADER2_INDENT : ERT_CLASSES.HEADER2_FLUSH
+            ]
+        })
+        : infoEl;
+    const headerVariant = useHeader2
+        ? ERT_CLASSES.HEADER_INLINE
+        : (variant === 'block' ? ERT_CLASSES.HEADER_BLOCK : ERT_CLASSES.HEADER_INLINE);
+    const header = headerWrapper.createDiv({
+        cls: [ERT_CLASSES.HEADER, headerVariant]
     });
     const left = header.createDiv({ cls: ERT_CLASSES.HEADER_LEFT });
     const main = header.createDiv({ cls: ERT_CLASSES.HEADER_MAIN });
@@ -59,17 +71,17 @@ export function applyErtHeaderLayout(
     main.appendChild(nameEl);
     if (descEl && hasDesc) {
         descEl.classList.add(ERT_CLASSES.SECTION_DESC);
-        main.appendChild(descEl);
+        if (useHeader2) {
+            headerWrapper.appendChild(descEl);
+        } else {
+            main.appendChild(descEl);
+        }
     } else if (descEl) {
         descEl.remove();
     }
 
-    const controlEl = setting.controlEl;
-    if (controlEl) {
-        const controls = Array.from(controlEl.childNodes);
-        if (controls.length) {
-            controls.forEach(node => right.appendChild(node));
-        }
+    if (controlEl && controls.length) {
+        controls.forEach(node => right.appendChild(node));
         controlEl.empty();
     }
 

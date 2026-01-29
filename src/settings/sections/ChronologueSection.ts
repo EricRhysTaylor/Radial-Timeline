@@ -3,6 +3,7 @@ import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
 import { parseDurationDetail, formatDurationSelectionLabel, calculateAutoDiscontinuityThreshold } from '../../utils/date';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
+import { ERT_CLASSES } from '../../ui/classes';
 
 interface DurationCapOption {
     key: string;
@@ -70,10 +71,12 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
     addWikiLink(chronoHeading, 'Settings#chronologue');
     applyErtHeaderLayout(chronoHeading);
 
+    const stackEl = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
+
     // 1. Chronologue duration arc cap
     const baseDurationDesc = 'Scenes with durations at or above the selected value fill the entire segment. All other durations below this are proportionally scaled.';
 
-    const durationSetting = new Settings(containerEl)
+    const durationSetting = new Settings(stackEl)
         .setName('Chronologue duration arc cap')
         .setDesc(baseDurationDesc);
 
@@ -132,7 +135,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
     void loadDurationOptions(false);
 
     // 2. Discontinuity threshold customization
-    
+
     // Calculate the actual auto threshold based on current scenes
     // Uses single source of truth helper to ensure this matches the renderer's calculation
     const getScenesForThreshold = async (allowFetch: boolean): Promise<TimelineItem[] | null> => {
@@ -159,19 +162,19 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
             if (!scenes) {
                 return { display: 'Open timeline to calculate', days: null, loaded: false };
             }
-            
+
             // Use single source of truth helper
             const thresholdMs = calculateAutoDiscontinuityThreshold(scenes);
-            
+
             if (thresholdMs === null) {
                 return { display: 'not yet calculated', days: null, loaded: true };
             }
-            
+
             // Convert to appropriate time unit for display
             const minutes = thresholdMs / (60 * 1000);
             const hours = thresholdMs / (60 * 60 * 1000);
             const days = thresholdMs / (24 * 60 * 60 * 1000);
-            
+
             let display: string;
             if (days >= 1) {
                 display = `${Math.round(days)} ${Math.round(days) === 1 ? 'day' : 'days'}`;
@@ -180,7 +183,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
             } else {
                 display = `${Math.round(minutes)} ${Math.round(minutes) === 1 ? 'minute' : 'minutes'}`;
             }
-            
+
             return { display, days: Math.round(days * 100) / 100, loaded: true };
         } catch (err) {
             console.error('[Settings] Error calculating threshold:', err);
@@ -188,7 +191,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
         }
     };
 
-    const discontinuitySetting = new Settings(containerEl)
+    const discontinuitySetting = new Settings(stackEl)
         .setName('Discontinuity gap threshold');
 
     // Declare the text component reference first (before updateDescriptionAndPlaceholder uses it)
@@ -218,17 +221,17 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
         text.setPlaceholder('Calculating…')
             .setValue(currentValue);
         text.inputEl.addClass('ert-input--full');
-        
+
         void calculateAutoThreshold(false).then(autoThreshold => {
             text.setPlaceholder(`${autoThreshold.display} (auto)`);
             if (!currentValue) {
                 text.setValue('');
             }
         });
-        
+
         const handleBlur = async () => {
             const trimmed = text.getValue().trim();
-            
+
             // Clear validation state
             text.inputEl.removeClass('ert-setting-input-success');
             text.inputEl.removeClass('ert-setting-input-error');
@@ -254,7 +257,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
             text.inputEl.addClass('ert-setting-input-success');
             await plugin.saveSettings();
             plugin.refreshTimelineIfNeeded(null);
-            
+
             // Clear success state after a moment
             window.setTimeout(() => {
                 text.inputEl.removeClass('ert-setting-input-success');

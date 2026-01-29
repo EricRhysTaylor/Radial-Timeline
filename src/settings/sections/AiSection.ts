@@ -9,6 +9,7 @@ import { CURATED_MODELS, CuratedModel, AiProvider } from '../../data/aiModels';
 import { AiContextModal } from '../AiContextModal';
 import { resolveAiLogFolder, countAiLogFiles } from '../../ai/log';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
+import { ERT_CLASSES } from '../../ui/classes';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
 
@@ -34,6 +35,8 @@ export function renderAiSection(params: {
     addWikiLink(aiHeading, 'Settings#ai');
     applyErtHeaderLayout(aiHeading);
 
+    const stackEl = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
+
     const getActiveTemplateName = (): string => {
         const templates = plugin.settings.aiContextTemplates || [];
         const activeId = plugin.settings.activeAiContextTemplateId;
@@ -41,7 +44,7 @@ export function renderAiSection(params: {
         return active?.name || 'Generic Editor';
     };
 
-    const contextTemplateSetting = new Settings(containerEl)
+    const contextTemplateSetting = new Settings(stackEl)
         .setName('AI prompt role & context template')
         .setDesc(`Active: ${getActiveTemplateName()}`)
         .addExtraButton(button => button
@@ -56,7 +59,7 @@ export function renderAiSection(params: {
 
     // Enable/disable scene beats features
     // NOTE: This toggle should always be visible (not added to _aiRelatedElements)
-    new Settings(containerEl)
+    new Settings(stackEl)
         .setName('Enable AI LLM features')
         .setDesc('Show command palette options and UI scene analysis colors and hover synopsis. When off, these visuals are hidden, but metadata remains unchanged.')
         .addToggle(toggle => toggle
@@ -68,7 +71,7 @@ export function renderAiSection(params: {
                 plugin.refreshTimelineIfNeeded(null);
             }));
 
-    const tripletDisplaySetting = new Settings(containerEl)
+    const tripletDisplaySetting = new Settings(stackEl)
         .setName('Show previous and next scene analysis')
         .setDesc('When enabled, scene hover metadata include the AI pulse for the previous and next scenes. Turn off to display only the current scene for a more compact view.')
         .addToggle(toggle => toggle
@@ -81,7 +84,7 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(tripletDisplaySetting.settingEl);
 
     // Single model picker
-    const modelPickerSetting = new Settings(containerEl)
+    const modelPickerSetting = new Settings(stackEl)
         .setName('Model')
         .setDesc('Pick preferred model for advanced writing analysis. Models marked "Latest" auto-update to the newest version.');
 
@@ -198,9 +201,9 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(modelPickerSetting.settingEl);
 
     // Provider sections
-    const anthropicSection = containerEl.createDiv({ cls: 'ert-provider-section ert-provider-anthropic' });
-    const geminiSection = containerEl.createDiv({ cls: 'ert-provider-section ert-provider-gemini' });
-    const openaiSection = containerEl.createDiv({ cls: 'ert-provider-section ert-provider-openai' });
+    const anthropicSection = stackEl.createDiv({ cls: 'ert-provider-section ert-provider-anthropic' });
+    const geminiSection = stackEl.createDiv({ cls: 'ert-provider-section ert-provider-gemini' });
+    const openaiSection = stackEl.createDiv({ cls: 'ert-provider-section ert-provider-openai' });
     params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection });
     params.addAiRelatedElement(anthropicSection);
     params.addAiRelatedElement(geminiSection);
@@ -219,12 +222,12 @@ export function renderAiSection(params: {
         const configure = (component: TextComponent) => {
             component.inputEl.addClass('ert-input--full');
             component.setPlaceholder(placeholder).setValue(value);
-            
+
             component.onChange(() => {
                 component.inputEl.removeClass('ert-setting-input-success');
                 component.inputEl.removeClass('ert-setting-input-error');
             });
-            
+
             plugin.registerDomEvent(component.inputEl, 'keydown', (evt: KeyboardEvent) => {
                 if (evt.key === 'Enter') {
                     evt.preventDefault();
@@ -236,17 +239,17 @@ export function renderAiSection(params: {
                 const trimmed = component.getValue().trim();
                 await save(trimmed);
                 setRef(component.inputEl);
-                
+
                 let valid = true;
                 if (extraCheck) {
                     valid = extraCheck(trimmed, component.inputEl);
                 }
-                
+
                 if (valid && trimmed) {
                     validate();
                 }
             };
-            
+
             plugin.registerDomEvent(component.inputEl, 'blur', () => { void handleBlur(); });
         };
 
@@ -276,7 +279,7 @@ export function renderAiSection(params: {
             frag.appendChild(link);
             return frag;
         })());
-    
+
     addApiKeyInput(
         anthropicKeySetting,
         'Enter your Anthropic API key',
@@ -349,7 +352,7 @@ export function renderAiSection(params: {
         }
     );
 
-    const localSection = containerEl.createDiv({ cls: 'ert-provider-section ert-provider-local' });
+    const localSection = stackEl.createDiv({ cls: 'ert-provider-section ert-provider-local' });
     params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection, local: localSection } as any);
     params.addAiRelatedElement(localSection);
 
@@ -494,7 +497,7 @@ export function renderAiSection(params: {
     const apiKeySetting = new Settings(localSection)
         .setName('API Key (Optional)')
         .setDesc('Required by some servers. For local tools like Ollama, this is usually ignored.')
-    
+
     addApiKeyInput(
         apiKeySetting,
         'not-needed',
@@ -522,7 +525,7 @@ export function renderAiSection(params: {
         return `When enabled, writes logs for Inquiry, Pulse, and Gossamer runs. Logs are stored in "${outputFolder}" (${countText}).`;
     };
 
-    const apiLoggingSetting = new Settings(containerEl)
+    const apiLoggingSetting = new Settings(stackEl)
         .setName('Enable AI logs')
         .setDesc(getLoggingDesc(null))
         .addToggle(toggle => toggle

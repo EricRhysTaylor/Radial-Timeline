@@ -6,6 +6,7 @@ import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { getAllScenes } from '../../utils/manuscript';
 import type { CompletionEstimate } from '../../services/TimelineMetricsService';
 import { STAGE_ORDER } from '../../utils/constants';
+import { ERT_CLASSES } from '../../ui/classes';
 
 type Stage = typeof STAGE_ORDER[number];
 type Quote = { text: string; author: string };
@@ -130,7 +131,7 @@ function createTargetTickIcon(color: string, size = 16): SVGElement {
     svg.setAttribute('height', String(size));
     svg.setAttribute('viewBox', '0 0 16 16');
     svg.classList.add('ert-target-tick-icon');
-    
+
     // Vertical line (pointing up like the timeline tick)
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', '8');
@@ -139,7 +140,7 @@ function createTargetTickIcon(color: string, size = 16): SVGElement {
     line.setAttribute('y2', '5');
     line.setAttribute('stroke', color);
     line.setAttribute('stroke-width', '2');
-    
+
     // Empty square at top (the marker)
     const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     rect.setAttribute('x', '4');
@@ -149,10 +150,10 @@ function createTargetTickIcon(color: string, size = 16): SVGElement {
     rect.setAttribute('fill', 'none');
     rect.setAttribute('stroke', color);
     rect.setAttribute('stroke-width', '2');
-    
+
     svg.appendChild(line);
     svg.appendChild(rect);
-    
+
     return svg;
 }
 
@@ -168,7 +169,7 @@ function createEstimateTickIcon(color: string, size = 16): SVGElement {
     svg.setAttribute('height', String(size));
     svg.setAttribute('viewBox', '0 0 16 16');
     svg.classList.add('ert-estimate-tick-icon');
-    
+
     // Vertical line (pointing up)
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', '8');
@@ -177,7 +178,7 @@ function createEstimateTickIcon(color: string, size = 16): SVGElement {
     line.setAttribute('y2', '6');
     line.setAttribute('stroke', color);
     line.setAttribute('stroke-width', '2');
-    
+
     // Filled circle at top (the dot marker)
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('cx', '8');
@@ -186,10 +187,10 @@ function createEstimateTickIcon(color: string, size = 16): SVGElement {
     circle.setAttribute('fill', color);
     circle.setAttribute('stroke', color);
     circle.setAttribute('stroke-width', '1');
-    
+
     svg.appendChild(line);
     svg.appendChild(circle);
-    
+
     return svg;
 }
 
@@ -219,7 +220,7 @@ function validateStageOrder(plugin: RadialTimelinePlugin, stage: Stage, newDate:
     const dates = plugin.settings.stageTargetDates ?? {};
     const stageIndex = STAGE_ORDER.indexOf(stage);
     const newDateObj = new Date(newDate + 'T00:00:00');
-    
+
     // Check earlier stages - their dates should be before this one
     for (let i = 0; i < stageIndex; i++) {
         const earlierStage = STAGE_ORDER[i];
@@ -231,7 +232,7 @@ function validateStageOrder(plugin: RadialTimelinePlugin, stage: Stage, newDate:
             }
         }
     }
-    
+
     // Check later stages - their dates should be after this one
     for (let i = stageIndex + 1; i < STAGE_ORDER.length; i++) {
         const laterStage = STAGE_ORDER[i];
@@ -243,7 +244,7 @@ function validateStageOrder(plugin: RadialTimelinePlugin, stage: Stage, newDate:
             }
         }
     }
-    
+
     return null;
 }
 
@@ -266,7 +267,7 @@ export function renderCompletionEstimatePreview(params: {
         cls: previewClasses,
         attr: { 'data-preview': 'completion' }
     });
-    
+
     // Quotes for different states
     const startingQuotes: Quote[] = [
         { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
@@ -275,7 +276,7 @@ export function renderCompletionEstimatePreview(params: {
         { text: "The first draft is just you telling yourself the story.", author: "Terry Pratchett" },
         { text: "Begin at the beginning and go on till you come to the end; then stop.", author: "Lewis Carroll" },
     ];
-    
+
     const perseveranceQuotes: Quote[] = [
         { text: "You can always edit a bad page. You can't edit a blank page.", author: "Jodi Picoult" },
         { text: "I write only when inspiration strikes. Fortunately it strikes every morning at nine o'clock sharp.", author: "W. Somerset Maugham" },
@@ -285,7 +286,7 @@ export function renderCompletionEstimatePreview(params: {
         { text: "Don't get it right, get it written.", author: "James Thurber" },
         { text: "Writing a book is a horrible, exhausting struggle. One would never undertake such a thing if one were not driven.", author: "George Orwell" },
     ];
-    
+
     function getRandomQuote(quotes: Quote[]): Quote {
         return quotes[Math.floor(Math.random() * quotes.length)];
     }
@@ -316,7 +317,7 @@ export function renderCompletionEstimatePreview(params: {
     async function renderCompletionPreview(allowFetch: boolean): Promise<void> {
         previewContainer.empty();
         previewContainer.removeClass('ert-completion-preview-empty');
-        
+
         try {
             const cachedScenes = getCachedScenes();
             const scenes = cachedScenes ?? (allowFetch ? await getAllScenes(app, plugin) : null);
@@ -334,10 +335,10 @@ export function renderCompletionEstimatePreview(params: {
                 const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
                 heading.setText('Completion Estimate');
                 const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
-                
+
                 // Inspiring quote for empty state
                 const quote = getRandomQuote(startingQuotes);
-                
+
                 const quoteEl = body.createDiv({ cls: 'ert-completion-empty-quote' });
                 const quoteMetrics = getQuoteMetrics(previewContainer, 'ert-completion-quote-text', 'ert-completion-quote-author');
                 const split = splitQuoteForBalance(quote, quoteMetrics, measureContext);
@@ -349,15 +350,15 @@ export function renderCompletionEstimatePreview(params: {
 
             // Calculate completion estimate using the plugin's service
             const estimate: CompletionEstimate | null = plugin.calculateCompletionEstimate(scenes);
-            
+
             if (!estimate) {
                 previewContainer.removeClass('ert-completion-preview-warn', 'ert-completion-preview-late', 'ert-completion-preview-stalled');
-                
+
                 // Use shared MilestonesService - single source of truth
                 // This ensures the hero cards match the timeline indicator exactly
                 // Note: This is the MILESTONES system, separate from TimelineMetricsService (estimation/tick tracking)
                 const milestone = plugin.milestonesService.detectMilestone(scenes);
-                
+
                 if (!milestone || !milestone.type.includes('complete')) {
                     // Not actually complete - show a simple "no estimate available" message
                     const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
@@ -366,18 +367,18 @@ export function renderCompletionEstimatePreview(params: {
                     body.createDiv({ cls: 'ert-completion-no-data', text: 'Complete some scenes to see progress calculations.' });
                     return;
                 }
-                
+
                 // Show hero card based on milestone type (single source of truth)
                 if (milestone.type === 'book-complete') {
                     // ULTIMATE celebration - the book is DONE!
                     previewContainer.addClass('ert-completion-preview-book-complete');
-                    
+
                     const bgIcon = previewContainer.createDiv({ cls: 'ert-completion-complete-bg-icon' });
                     setIcon(bgIcon, 'shell');
-                    
+
                     const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
                     heading.setText('Book Complete');
-                    
+
                     const bookCelebrations = [
                         { title: "You wrote a book.", subtitle: "Let that sink in." },
                         { title: "It's done.", subtitle: "You actually did it. A whole book." },
@@ -389,7 +390,7 @@ export function renderCompletionEstimatePreview(params: {
                         { title: "Standing ovation.", subtitle: "From first word to final scene — you did this." },
                     ];
                     const celebration = bookCelebrations[Math.floor(Math.random() * bookCelebrations.length)];
-                    
+
                     const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
                     const completeContent = body.createDiv({ cls: 'ert-completion-complete' });
                     completeContent.createDiv({ cls: 'ert-completion-complete-title', text: celebration.title });
@@ -397,13 +398,13 @@ export function renderCompletionEstimatePreview(params: {
                 } else if (milestone.type === 'stage-zero-complete') {
                     // Zero draft complete - first major milestone! Sprout icon
                     previewContainer.addClass('ert-completion-preview-zero-complete');
-                    
+
                     const bgIcon = previewContainer.createDiv({ cls: 'ert-completion-complete-bg-icon' });
                     setIcon(bgIcon, 'sprout');
-                    
+
                     const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
                     heading.setText('Zero Draft Complete');
-                    
+
                     const zeroCelebrations = [
                         { title: "The seed is planted.", subtitle: "A complete zero draft. That's the hardest part." },
                         { title: "First draft done.", subtitle: "You told yourself the whole story." },
@@ -415,7 +416,7 @@ export function renderCompletionEstimatePreview(params: {
                         { title: "The clay is on the wheel.", subtitle: "Now you can shape it." },
                     ];
                     const celebration = zeroCelebrations[Math.floor(Math.random() * zeroCelebrations.length)];
-                    
+
                     const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
                     const completeContent = body.createDiv({ cls: 'ert-completion-complete' });
                     completeContent.createDiv({ cls: 'ert-completion-complete-title', text: celebration.title });
@@ -423,13 +424,13 @@ export function renderCompletionEstimatePreview(params: {
                 } else if (milestone.type === 'stage-author-complete') {
                     // Author stage complete - the sapling grows! Tree-pine icon
                     previewContainer.addClass('ert-completion-preview-author-complete');
-                    
+
                     const bgIcon = previewContainer.createDiv({ cls: 'ert-completion-complete-bg-icon' });
                     setIcon(bgIcon, 'tree-pine');
-                    
+
                     const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
                     heading.setText('Author Stage Complete');
-                    
+
                     const authorCelebrations = [
                         { title: "The sapling stands.", subtitle: "Author revisions complete. Your vision is taking shape." },
                         { title: "Revision one: done.", subtitle: "You've refined your raw material into something real." },
@@ -441,7 +442,7 @@ export function renderCompletionEstimatePreview(params: {
                         { title: "Manuscript shaped.", subtitle: "Author stage complete. Onward to the house." },
                     ];
                     const celebration = authorCelebrations[Math.floor(Math.random() * authorCelebrations.length)];
-                    
+
                     const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
                     const completeContent = body.createDiv({ cls: 'ert-completion-complete' });
                     completeContent.createDiv({ cls: 'ert-completion-complete-title', text: celebration.title });
@@ -449,13 +450,13 @@ export function renderCompletionEstimatePreview(params: {
                 } else if (milestone.type === 'stage-house-complete') {
                     // House stage complete - the forest grows! Trees icon
                     previewContainer.addClass('ert-completion-preview-house-complete');
-                    
+
                     const bgIcon = previewContainer.createDiv({ cls: 'ert-completion-complete-bg-icon' });
                     setIcon(bgIcon, 'trees');
-                    
+
                     const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
                     heading.setText('House Stage Complete');
-                    
+
                     const houseCelebrations = [
                         { title: "The forest grows.", subtitle: "House edits complete. The manuscript is maturing." },
                         { title: "Editor approved.", subtitle: "You've incorporated professional feedback. Almost there." },
@@ -467,7 +468,7 @@ export function renderCompletionEstimatePreview(params: {
                         { title: "Almost there.", subtitle: "House stage complete. One final stage remains." },
                     ];
                     const celebration = houseCelebrations[Math.floor(Math.random() * houseCelebrations.length)];
-                    
+
                     const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
                     const completeContent = body.createDiv({ cls: 'ert-completion-complete' });
                     completeContent.createDiv({ cls: 'ert-completion-complete-title', text: celebration.title });
@@ -512,7 +513,7 @@ export function renderCompletionEstimatePreview(params: {
 
             // Key metrics row
             const metricsRow = body.createDiv({ cls: 'ert-completion-metrics-row' });
-            
+
             // Completed / Total
             const completedMetric = metricsRow.createDiv({ cls: 'ert-completion-metric' });
             completedMetric.createDiv({ cls: 'ert-completion-metric-value', text: `${estimate.total - estimate.remaining}/${estimate.total}` });
@@ -540,15 +541,15 @@ export function renderCompletionEstimatePreview(params: {
             // Estimated completion date
             const dateRow = body.createDiv({ cls: 'ert-completion-date-row' });
             if (estimate.date && estimate.labelText !== '?') {
-                const dateFormatter = new Intl.DateTimeFormat('en-US', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
+                const dateFormatter = new Intl.DateTimeFormat('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
                 });
                 dateRow.createDiv({ cls: 'ert-completion-date-label', text: 'Estimated Completion:' });
                 dateRow.createDiv({ cls: 'ert-completion-date-value', text: dateFormatter.format(estimate.date) });
-                
+
                 // Days until completion
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
@@ -565,11 +566,11 @@ export function renderCompletionEstimatePreview(params: {
             // Monthly projection breakdown
             if (estimate.date && estimate.rate > 0) {
                 const projectionSection = body.createDiv({ cls: 'ert-completion-projection' });
-                const projectionHeading = estimate.labelText === '?' 
+                const projectionHeading = estimate.labelText === '?'
                     ? 'Monthly Progress Projection (based on last known pace)'
                     : 'Monthly Progress Projection';
                 projectionSection.createDiv({ cls: 'ert-completion-projection-heading', text: projectionHeading });
-                
+
                 const projectionGrid = projectionSection.createDiv({ cls: 'ert-completion-projection-grid' });
                 renderMonthlyProjection(projectionGrid, estimate);
             }
@@ -619,10 +620,10 @@ export function renderCompletionEstimatePreview(params: {
         today.setHours(0, 0, 0, 0);
         const targetDate = estimate.date;
         const scenesPerDay = estimate.rate / 7;
-        
+
         // Get stage target dates for markers
         const stageTargetDates = plugin.settings.stageTargetDates ?? {};
-        
+
         let remaining = estimate.remaining;
         let cumulative = estimate.total - estimate.remaining;
         interface MonthData {
@@ -635,31 +636,31 @@ export function renderCompletionEstimatePreview(params: {
             stageTargets: { stage: Stage; date: Date; isOverdue: boolean }[];
         }
         const months: MonthData[] = [];
-        
+
         // Start from current month
         let current = new Date(today.getFullYear(), today.getMonth(), 1);
         const maxMonths = 24; // Limit to 2 years
-        
+
         for (let i = 0; i < maxMonths && remaining > 0; i++) {
             const monthStart = new Date(current);
             const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0);
-            
+
             // Calculate days in this month that fall within our projection
             const projectionStart = i === 0 ? today : monthStart;
             const projectionEnd = monthEnd > targetDate ? targetDate : monthEnd;
-            
+
             if (projectionStart > projectionEnd) {
                 current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
                 continue;
             }
-            
+
             const daysInPeriod = Math.max(0, Math.ceil((projectionEnd.getTime() - projectionStart.getTime()) / (24 * 60 * 60 * 1000)) + 1);
             const scenesThisMonth = Math.min(remaining, Math.round(daysInPeriod * scenesPerDay));
-            
+
             if (scenesThisMonth > 0 || i === 0) {
                 remaining -= scenesThisMonth;
                 cumulative += scenesThisMonth;
-                
+
                 // Find stage targets that fall within this month
                 const stageTargets: { stage: Stage; date: Date; isOverdue: boolean }[] = [];
                 for (const stage of STAGE_ORDER) {
@@ -671,9 +672,9 @@ export function renderCompletionEstimatePreview(params: {
                         if (stageDate >= monthStart && stageDate <= monthEnd) {
                             stageTargets.push({ stage, date: stageDate, isOverdue: stageDate < today });
                         }
-                    } catch {}
+                    } catch { }
                 }
-                
+
                 const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: '2-digit' });
                 months.push({
                     month: monthFormatter.format(monthStart),
@@ -685,7 +686,7 @@ export function renderCompletionEstimatePreview(params: {
                     stageTargets
                 });
             }
-            
+
             if (monthEnd >= targetDate) break;
             current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
         }
@@ -700,7 +701,7 @@ export function renderCompletionEstimatePreview(params: {
         headerRow.createSpan({ text: 'Progress' });
 
         const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
-        
+
         for (let idx = 0; idx < months.length; idx++) {
             const m = months[idx];
             const isFuture = idx > 0; // First month is current, rest are future projections
@@ -711,13 +712,13 @@ export function renderCompletionEstimatePreview(params: {
                 isFuture && estimate.staleness !== 'fresh' ? `ert-completion-projection-${estimate.staleness}` : '',
                 hasTargets ? 'ert-completion-projection-has-target' : ''
             ].filter(Boolean).join(' ');
-            
+
             const row = container.createDiv({ cls: rowClasses });
-            
+
             // Month cell with target markers
             const monthCell = row.createSpan({ cls: 'ert-completion-projection-month' });
             monthCell.createSpan({ text: m.month });
-            
+
             // Add target markers for this month
             if (hasTargets) {
                 const markersContainer = monthCell.createSpan({ cls: 'ert-completion-target-markers' });
@@ -726,7 +727,7 @@ export function renderCompletionEstimatePreview(params: {
                     const displayColor = target.isOverdue ? '#d05e5e' : stageColor;
                     const marker = markersContainer.createSpan({ cls: 'ert-completion-target-marker' });
                     marker.setCssStyles({ backgroundColor: displayColor });
-                    
+
                     // Tooltip with stage and date (Obsidian's styled tooltip)
                     const tooltipText = target.isOverdue
                         ? `${target.stage} target: ${dateFormatter.format(target.date)} (OVERDUE)`
@@ -734,10 +735,10 @@ export function renderCompletionEstimatePreview(params: {
                     setTooltip(marker, tooltipText, { placement: 'top' });
                 }
             }
-            
+
             row.createSpan({ cls: 'ert-completion-projection-added', text: `+${m.added}` });
             row.createSpan({ cls: 'ert-completion-projection-cumulative', text: String(m.cumulative) });
-            
+
             const percent = Math.round((m.cumulative / estimate.total) * 100);
             const progressContainer = row.createSpan({ cls: 'ert-completion-projection-progress' });
             const barClasses = [
@@ -772,6 +773,8 @@ export function renderPublicationSection(params: {
     addWikiLink(pubHeading, 'Settings#publication');
     applyErtHeaderLayout(pubHeading);
 
+    const stackEl = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
+
     // --- Stage Target Dates ---
     // Create target date settings for each publish stage (Zero, Author, House, Press)
     const stageDescriptions: Record<Stage, string> = {
@@ -780,51 +783,51 @@ export function renderPublicationSection(params: {
         House: 'Professional Editor feedback incorporated; structural and tonal notes addressed, ready for press.',
         Press: 'Line edited, copy edited, proofread. No open queries. No tracked changes. Publication-ready manuscript.'
     };
-    
+
     for (const stage of STAGE_ORDER) {
         const stageColor = getStageColor(plugin, stage);
         const currentDateStr = plugin.settings.stageTargetDates?.[stage];
         const overdue = isOverdue(currentDateStr);
         const displayColor = overdue ? '#d05e5e' : stageColor;
-        
-        const setting = new ObsidianSetting(containerEl)
+
+        const setting = new ObsidianSetting(stackEl)
             .setDesc(stageDescriptions[stage])
-        .addText(text => {
-            text.inputEl.type = 'date';
+            .addText(text => {
+                text.inputEl.type = 'date';
                 text.inputEl.addClass('ert-input--md');
                 text.setValue(currentDateStr || '');
-                
+
                 // Apply overdue styling
                 if (overdue) {
                     text.inputEl.addClass('ert-setting-input-overdue');
                 }
 
-            text.onChange(() => {
-                text.inputEl.removeClass('ert-setting-input-error');
+                text.onChange(() => {
+                    text.inputEl.removeClass('ert-setting-input-error');
                     text.inputEl.removeClass('ert-setting-input-overdue');
-            });
+                });
 
-            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-                if (evt.key === 'Enter') {
-                    evt.preventDefault();
-                    text.inputEl.blur();
-                }
-            });
+                plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                    if (evt.key === 'Enter') {
+                        evt.preventDefault();
+                        text.inputEl.blur();
+                    }
+                });
 
-            const handleBlur = async () => {
-                const value = text.getValue();
+                const handleBlur = async () => {
+                    const value = text.getValue();
 
                     // Initialize stageTargetDates if needed
                     if (!plugin.settings.stageTargetDates) {
                         plugin.settings.stageTargetDates = {};
                     }
 
-                if (!value) {
+                    if (!value) {
                         plugin.settings.stageTargetDates[stage] = undefined;
-                    text.inputEl.removeClass('ert-setting-input-error');
+                        text.inputEl.removeClass('ert-setting-input-error');
                         text.inputEl.removeClass('ert-setting-input-overdue');
-                    await plugin.saveSettings();
-                    plugin.refreshTimelineIfNeeded(null);
+                        await plugin.saveSettings();
+                        plugin.refreshTimelineIfNeeded(null);
                         // Update icon color
                         const icon = setting.nameEl.querySelector('.ert-target-tick-icon');
                         if (icon) {
@@ -841,20 +844,20 @@ export function renderPublicationSection(params: {
                         new Notice(validationError);
                         text.inputEl.addClass('ert-setting-input-error');
                         text.setValue(plugin.settings.stageTargetDates[stage] || '');
-                    return;
-                }
+                        return;
+                    }
 
                     plugin.settings.stageTargetDates[stage] = value;
                     text.inputEl.removeClass('ert-setting-input-error');
-                    
+
                     // Check if now overdue and update styling
                     const nowOverdue = isOverdue(value);
                     if (nowOverdue) {
                         text.inputEl.addClass('ert-setting-input-overdue');
-                } else {
+                    } else {
                         text.inputEl.removeClass('ert-setting-input-overdue');
                     }
-                    
+
                     // Update icon color
                     const icon = setting.nameEl.querySelector('.ert-target-tick-icon');
                     if (icon) {
@@ -862,21 +865,21 @@ export function renderPublicationSection(params: {
                         const newColor = nowOverdue ? '#d05e5e' : stageColor;
                         const newIcon = createTargetTickIcon(newColor);
                         setting.nameEl.insertBefore(newIcon, setting.nameEl.firstChild);
-                }
-                    
-                await plugin.saveSettings();
-                plugin.refreshTimelineIfNeeded(null);
-            };
+                    }
 
-            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
-        });
-        
+                    await plugin.saveSettings();
+                    plugin.refreshTimelineIfNeeded(null);
+                };
+
+                plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
+            });
+
         // Create custom name with icon
         setting.nameEl.empty();
         const icon = createTargetTickIcon(displayColor);
         setting.nameEl.appendChild(icon);
         setting.nameEl.appendText(` ${stage} target date`);
-        
+
         // Add stage color indicator class
         setting.settingEl.addClass(`ert-stage-target-${stage.toLowerCase()}`);
         if (overdue) {
@@ -886,7 +889,7 @@ export function renderPublicationSection(params: {
 
     // --- Zero draft mode toggle ---
     const zeroStageColor = getStageColor(plugin, 'Zero');
-    const zeroDraftSetting = new ObsidianSetting(containerEl)
+    const zeroDraftSetting = new ObsidianSetting(stackEl)
         .setName('Zero draft mode')
         .setDesc('Intercept clicks on scenes with Publish Stage = Zero and Status = Complete to capture Pending Edits without opening the scene.')
         .addToggle(toggle => toggle
@@ -898,7 +901,7 @@ export function renderPublicationSection(params: {
                     backgroundColor: value ? `${zeroStageColor}20` : 'transparent'
                 });
             }));
-    
+
     // Apply initial styles including background tint if enabled
     const isEnabled = plugin.settings.enableZeroDraftMode ?? false;
     zeroDraftSetting.settingEl.setCssStyles({
@@ -911,7 +914,7 @@ export function renderPublicationSection(params: {
 
     // --- Show completion estimate ---
     // Estimated completion uses a dot instead of square, different from target ticks
-    const estimateToggle = new ObsidianSetting(containerEl)
+    const estimateToggle = new ObsidianSetting(stackEl)
         .setDesc(t('settings.configuration.showEstimate.desc'))
         .addToggle(toggle => toggle
             .setValue(plugin.settings.showCompletionEstimate ?? true)
@@ -920,7 +923,7 @@ export function renderPublicationSection(params: {
                 await plugin.saveSettings();
                 plugin.refreshTimelineIfNeeded(null);
             }));
-    
+
     // Add estimate icon (line with dot at end, like the estimated completion tick)
     estimateToggle.nameEl.empty();
     const estimateIcon = createEstimateTickIcon('#6FB971'); // Default to Press color
@@ -928,7 +931,7 @@ export function renderPublicationSection(params: {
     estimateToggle.nameEl.appendText(` ${t('settings.configuration.showEstimate.name')}`);
 
     // --- Completion estimate window (days) ---
-    new ObsidianSetting(containerEl)
+    new ObsidianSetting(stackEl)
         .setName('Completion estimate window (days)')
         .setDesc('Active Publish Stage only. Pace = completed scenes in the last N days ÷ N. Estimate date = remaining scenes ÷ pace. Inactivity colors the date (7/14/21 days) and shows “?” after 21 days of no progress.')
         .addText(text => {
@@ -959,8 +962,8 @@ export function renderPublicationSection(params: {
                 plugin.refreshTimelineIfNeeded(null);
             };
 
-            plugin.registerDomEvent(text.inputEl, 'blur', () => { 
-                void handleBlur(); 
+            plugin.registerDomEvent(text.inputEl, 'blur', () => {
+                void handleBlur();
                 onCompletionPreviewRefresh?.();
             });
         });

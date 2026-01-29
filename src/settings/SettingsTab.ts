@@ -622,11 +622,17 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const switchToProTab = () => { this._activeTab = 'pro'; updateTabState(); };
 
         // Setup Section - Source path settings
-        const generalSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'general' } });
+        const generalSection = searchableContent.createDiv({
+            cls: ERT_CLASSES.STACK,
+            attr: { [ERT_DATA.SECTION]: 'general' }
+        });
         renderGeneralSection({ app: this.app, plugin: this.plugin, attachFolderSuggest: (t) => this.attachFolderSuggest(t), containerEl: generalSection });
         this.renderProCallout(generalSection, 'Manuscript exports via Pandoc', switchToProTab);
 
-        const inquirySection = inquiryBody.createDiv({ attr: { [ERT_DATA.SECTION]: 'inquiry' } });
+        const inquirySection = inquiryBody.createDiv({
+            cls: ERT_CLASSES.STACK,
+            attr: { [ERT_DATA.SECTION]: 'inquiry' }
+        });
         renderInquirySection({
             app: this.app,
             plugin: this.plugin,
@@ -639,7 +645,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const povSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'pov' } });
         renderPovSection({ plugin: this.plugin, containerEl: povSection });
 
-        const beatsSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'beats' } });
+        const beatsSection = searchableContent.createDiv({ cls: ERT_CLASSES.STACK, attr: { [ERT_DATA.SECTION]: 'beats' } });
         renderTemplatesSection({ app: this.app, plugin: this.plugin, containerEl: beatsSection });
 
         const publicationSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'publication' } });
