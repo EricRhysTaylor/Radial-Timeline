@@ -1104,24 +1104,29 @@ export class InquiryView extends ItemView {
             const item = listEl.createEl('button', { cls: 'ert-inquiry-engine-item', attr: { type: 'button' } });
             if (choice.isActive) item.classList.add('is-active');
             if (!choice.enabled) item.classList.add('is-disabled');
-            const main = item.createDiv({ cls: 'ert-inquiry-engine-item-main' });
+            const textRow = item.createDiv({ cls: 'ert-inquiry-engine-item-row ert-inquiry-engine-item-row--text' });
+            const main = textRow.createDiv({ cls: 'ert-inquiry-engine-item-main' });
             main.createDiv({ cls: 'ert-inquiry-engine-item-title', text: `${choice.providerLabel} · ${choice.modelLabel}` });
             main.createDiv({ cls: 'ert-inquiry-engine-item-meta', text: choice.modelId });
-            const statusParts: string[] = [];
+            const statuses: Array<{ label: string; tone?: 'active' | 'warning' }> = [];
             if (!choice.enabled && choice.disabledReason) {
-                statusParts.push(choice.disabledReason);
+                statuses.push({ label: choice.disabledReason });
             } else if (choice.isActive) {
-                statusParts.push('Active');
+                statuses.push({ label: 'Active', tone: 'active' });
             }
             const key = `${choice.provider}::${choice.modelId}`;
             if (showTruncateWarning && !options.recommendedKeys.has(key) && choice.enabled) {
-                statusParts.push('May truncate');
+                statuses.push({ label: 'May truncate', tone: 'warning' });
             }
-            if (statusParts.length) {
-                const statusEl = item.createDiv({ cls: 'ert-inquiry-engine-item-status', text: statusParts.join(' · ') });
-                if (showTruncateWarning && statusParts.includes('May truncate')) {
-                    statusEl.classList.add('is-warning');
-                }
+            if (statuses.length) {
+                const actionRow = item.createDiv({ cls: 'ert-inquiry-engine-item-row ert-inquiry-engine-item-row--actions' });
+                const statusGroup = actionRow.createDiv({ cls: 'ert-inquiry-engine-item-statuses' });
+                statuses.forEach(status => {
+                    const statusEl = statusGroup.createDiv({ cls: 'ert-inquiry-engine-item-status', text: status.label });
+                    if (status.tone) {
+                        statusEl.classList.add(`is-${status.tone}`);
+                    }
+                });
             }
             this.registerDomEvent(item, 'click', (event: MouseEvent) => {
                 event.stopPropagation();

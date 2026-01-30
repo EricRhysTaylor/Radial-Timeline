@@ -1656,9 +1656,9 @@
 .ert-inquiry-engine-item {
   appearance: none;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   width: 100%;
   padding: 12px 16px;
   border-radius: 12px;
@@ -1686,8 +1686,23 @@
   opacity: 0.5;
 }
 
+.ert-inquiry-engine-item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ert-inquiry-engine-item-row--text {
+  align-items: flex-start;
+}
+
+.ert-inquiry-engine-item-row--actions {
+  flex-wrap: wrap;
+}
+
 .ert-inquiry-engine-item-main {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1697,11 +1712,20 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--text-normal);
+  white-space: normal;
 }
 
 .ert-inquiry-engine-item-meta {
   font-size: 11px;
   color: var(--text-muted);
+  white-space: normal;
+}
+
+.ert-inquiry-engine-item-statuses {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .ert-inquiry-engine-item-status {
@@ -1719,7 +1743,7 @@
   background: color-mix(in srgb, var(--text-warning) 12%, transparent);
 }
 
-.ert-inquiry-engine-item.is-active .ert-inquiry-engine-item-status {
+.ert-inquiry-engine-item-status.is-active {
   color: var(--text-normal);
   background: color-mix(in srgb, var(--interactive-accent) 16%, transparent);
 }

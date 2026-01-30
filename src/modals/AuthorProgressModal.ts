@@ -204,7 +204,7 @@ export class AuthorProgressModal extends Modal {
         const sizePill = sizeRow.valueEl.createSpan({
             cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
         });
-        sizePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: `${sizeMeta.label} ${sizeMeta.dimension}` });
+        sizePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: sizeMeta.dimension });
         sizePill.createEl('sup', { text: '2' });
 
         const stageInfo = teaserStatus.info ?? TEASER_LEVEL_INFO.full;
@@ -215,24 +215,6 @@ export class AuthorProgressModal extends Modal {
         const stageIcon = stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
         setIcon(stageIcon, stageInfo.icon);
         stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: stageInfo.label });
-
-        const targetRow = this.createStatusRow(rows, 'Target path');
-        const targetValue = targetRow.valueEl.createSpan({
-            cls: `${ERT_CLASSES.FIELD_NOTE} ert-mono ert-truncate`,
-            text: this.summarizePath(targetPath)
-        });
-        targetValue.setAttr('title', targetPath);
-
-        if (campaign) {
-            const teaserRow = this.createStatusRow(rows, 'Teaser reveal');
-            const teaserEnabled = (campaign.teaserReveal?.enabled ?? true);
-            const teaserPill = teaserRow.valueEl.createSpan({
-                cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
-            });
-            const teaserIcon = teaserPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
-            setIcon(teaserIcon, teaserEnabled ? 'calendar-clock' : 'calendar-x');
-            teaserPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: teaserEnabled ? 'On' : 'Off' });
-        }
 
         const nextInfo = this.getNextUpdateInfo({
             frequency: isCampaign ? campaign?.updateFrequency : settings?.updateFrequency,
@@ -247,10 +229,19 @@ export class AuthorProgressModal extends Modal {
         });
         nextPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: nextInfo.label });
 
-        if (nextInfo.reminder) {
-            const reminderRow = this.createStatusRow(rows, 'Reminder');
-            reminderRow.valueEl.createSpan({ cls: ERT_CLASSES.FIELD_NOTE, text: nextInfo.reminder });
-        }
+        const reminderRow = this.createStatusRow(rows, 'Reminder');
+        reminderRow.valueEl.createSpan({
+            cls: ERT_CLASSES.FIELD_NOTE,
+            text: nextInfo.reminder ?? '—'
+        });
+
+        const targetBlock = this.statusSectionEl.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+        targetBlock.createSpan({ text: 'Target file', cls: ERT_CLASSES.LABEL });
+        const targetValue = targetBlock.createSpan({
+            cls: `${ERT_CLASSES.FIELD_NOTE} ert-mono ert-truncate`,
+            text: this.summarizePath(targetPath)
+        });
+        targetValue.setAttr('title', targetPath);
     }
 
     private renderCampaignStatusSection(): void {
@@ -324,7 +315,7 @@ export class AuthorProgressModal extends Modal {
 
                 const pathMeta = rowLeft.createSpan({
                     cls: `${ERT_CLASSES.OBJECT_ROW_META} ert-mono ert-truncate`,
-                    text: this.summarizePath(campaign.embedPath)
+                    text: this.getFileName(campaign.embedPath)
                 });
                 pathMeta.setAttr('title', campaign.embedPath);
 
@@ -394,7 +385,6 @@ export class AuthorProgressModal extends Modal {
             const btn = sizeControls.createEl('button', {
                 cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_SOCIAL} ${isActive ? ERT_CLASSES.IS_ACTIVE : ''}`
             });
-            btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL, text: option.label });
             const dims = btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL });
             dims.append(document.createTextNode(option.dimension));
             dims.createEl('sup', { text: '2' });
@@ -483,7 +473,7 @@ export class AuthorProgressModal extends Modal {
         sizeRow.createSpan({ text: 'Export size', cls: ERT_CLASSES.LABEL });
         const sizeValue = sizeRow.createDiv({ cls: ERT_CLASSES.INLINE });
         const sizePill = sizeValue.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}` });
-        sizePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: `${sizeMeta.label} ${sizeMeta.dimension}` });
+        sizePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: sizeMeta.dimension });
         sizePill.createEl('sup', { text: '2' });
 
         const stageRow = container.createDiv({
@@ -562,6 +552,12 @@ export class AuthorProgressModal extends Modal {
         if (label.includes('news')) return 'mail';
         if (label.includes('site') || label.includes('web')) return 'globe';
         return 'share-2';
+    }
+
+    private getFileName(path: string): string {
+        if (!path) return '—';
+        const normalized = path.split('\\').pop() ?? path;
+        return normalized.split('/').pop() ?? normalized;
     }
 
     private getEffectiveTargetPath(): string {
