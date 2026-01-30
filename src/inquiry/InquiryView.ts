@@ -389,22 +389,13 @@ export class InquiryView extends ItemView {
     private briefingHideTimer?: number;
     private engineBadgeGroup?: SVGGElement;
     private enginePanelEl?: HTMLDivElement;
-    private enginePanelRecommendedEl?: HTMLDivElement;
-    private enginePanelRecommendedNoteEl?: HTMLDivElement;
-    private enginePanelRecommendedListEl?: HTMLDivElement;
     private enginePanelAllLabelEl?: HTMLDivElement;
-    private enginePanelControlsEl?: HTMLDivElement;
-    private enginePanelNextRunToggle?: HTMLButtonElement;
-    private enginePanelSetDefaultButton?: HTMLButtonElement;
     private enginePanelGuardEl?: HTMLDivElement;
     private enginePanelGuardNoteEl?: HTMLDivElement;
     private enginePanelRunAnywayButton?: HTMLButtonElement;
     private enginePanelListEl?: HTMLDivElement;
     private enginePanelMetaEl?: HTMLDivElement;
     private enginePanelHideTimer?: number;
-    private engineNextRunOnly?: boolean;
-    private engineNextRunOnlyTouched = false;
-    private nextRunEngineOverride?: { provider: EngineProvider; providerLabel: string; modelId: string; modelLabel: string };
     private pendingGuardQuestion?: InquiryQuestion;
     private minimapTicksEl?: SVGGElement;
     private minimapBaseline?: SVGLineElement;
@@ -897,45 +888,18 @@ export class InquiryView extends ItemView {
         this.enginePanelGuardEl = panel.createDiv({ cls: 'ert-inquiry-engine-guard ert-hidden' });
         this.enginePanelGuardNoteEl = this.enginePanelGuardEl.createDiv({
             cls: 'ert-inquiry-engine-guard-note',
-            text: 'Payload is very large. Choose a larger-context model or run anyway.'
+            text: 'Payload is very large. Choose a larger-context model or adjust the Inquiry class presets.'
         });
         this.enginePanelRunAnywayButton = this.enginePanelGuardEl.createEl('button', {
             cls: 'ert-inquiry-engine-run-anyway',
-            text: 'Run anyway',
+            text: 'Adjust Settings',
             attr: { type: 'button' }
         });
         this.registerDomEvent(this.enginePanelRunAnywayButton, 'click', (event: MouseEvent) => {
             event.stopPropagation();
-            void this.handleRunAnywayClick();
+            this.handleGuardSettingsClick();
         });
 
-        this.enginePanelControlsEl = panel.createDiv({ cls: 'ert-inquiry-engine-controls' });
-        this.enginePanelNextRunToggle = this.enginePanelControlsEl.createEl('button', {
-            cls: 'ert-inquiry-engine-toggle',
-            text: 'Use for next run only',
-            attr: { type: 'button', 'aria-pressed': 'false' }
-        });
-        this.enginePanelSetDefaultButton = this.enginePanelControlsEl.createEl('button', {
-            cls: 'ert-inquiry-engine-set-default',
-            text: 'Set as default',
-            attr: { type: 'button', 'aria-pressed': 'false' }
-        });
-        this.registerDomEvent(this.enginePanelNextRunToggle, 'click', (event: MouseEvent) => {
-            event.stopPropagation();
-            this.toggleEngineNextRunOnly();
-        });
-        this.registerDomEvent(this.enginePanelSetDefaultButton, 'click', (event: MouseEvent) => {
-            event.stopPropagation();
-            void this.commitEngineOverrideAsDefault();
-        });
-
-        this.enginePanelRecommendedEl = panel.createDiv({ cls: 'ert-inquiry-engine-recommended ert-hidden' });
-        this.enginePanelRecommendedEl.createDiv({ cls: 'ert-inquiry-engine-section-title', text: 'Recommended' });
-        this.enginePanelRecommendedNoteEl = this.enginePanelRecommendedEl.createDiv({
-            cls: 'ert-inquiry-engine-recommended-note',
-            text: ''
-        });
-        this.enginePanelRecommendedListEl = this.enginePanelRecommendedEl.createDiv({ cls: 'ert-inquiry-engine-list' });
         this.enginePanelAllLabelEl = panel.createDiv({ cls: 'ert-inquiry-engine-section-title', text: 'All models' });
         this.enginePanelListEl = panel.createDiv({ cls: 'ert-inquiry-engine-list' });
         panel.createDiv({ cls: 'ert-inquiry-engine-note', text: 'Updates Settings > AI.' });
@@ -978,7 +942,6 @@ export class InquiryView extends ItemView {
     private refreshEnginePanel(): void {
         if (!this.enginePanelListEl) return;
         this.enginePanelListEl.empty();
-        this.enginePanelRecommendedListEl?.empty();
 
         const clean = (value: string) => value.replace(/^models\//, '').trim();
         const getProviderModelId = (provider: EngineProvider): string => {
@@ -1007,8 +970,6 @@ export class InquiryView extends ItemView {
         const contextQuestion = this.getEngineContextQuestion();
         const payloadSummary = this.buildEnginePayloadSummary(contextQuestion);
         const tokenTier = contextQuestion ? payloadSummary.tier : 'normal';
-        const geminiChoice = choices.find(choice => choice.provider === 'gemini');
-        const geminiAvailable = Boolean(geminiChoice?.enabled);
         if (this.enginePanelMetaEl) {
             const activeLabel = `${this.getActiveInquiryProviderLabel()} · ${this.getActiveInquiryModelLabel()}`;
             this.enginePanelMetaEl.setText(`Active: ${activeLabel} · ${payloadSummary.text}`);
@@ -1016,22 +977,6 @@ export class InquiryView extends ItemView {
 
         const recommendedChoices = tokenTier === 'red' ? this.pickRecommendedEngineChoices(choices) : [];
         const recommendedKeys = new Set(recommendedChoices.map(choice => `${choice.provider}::${choice.modelId}`));
-        const recommendedNote = this.buildEngineRecommendationNote(tokenTier, payloadSummary.hasQuestion, geminiAvailable);
-        const showRecommendedList = tokenTier === 'red' && recommendedChoices.length > 0;
-        const showRecommendedSection = Boolean(recommendedNote);
-
-        if (this.enginePanelRecommendedEl) {
-            this.enginePanelRecommendedEl.classList.toggle('ert-hidden', !showRecommendedSection);
-        }
-        if (this.enginePanelRecommendedNoteEl) {
-            this.enginePanelRecommendedNoteEl.setText(recommendedNote);
-        }
-        if (this.enginePanelRecommendedListEl) {
-            this.enginePanelRecommendedListEl.classList.toggle('ert-hidden', !showRecommendedList);
-        }
-        if (this.enginePanelAllLabelEl) {
-            this.enginePanelAllLabelEl.classList.toggle('ert-hidden', !showRecommendedSection);
-        }
 
         if (this.enginePanelGuardEl) {
             const showGuard = Boolean(this.pendingGuardQuestion) && tokenTier === 'red';
@@ -1041,27 +986,14 @@ export class InquiryView extends ItemView {
                 const guardSummary = this.buildEnginePayloadSummary(guardQuestion);
                 const guardTokens = this.formatTokenEstimate(guardSummary.inputTokens);
                 const guardThreshold = this.formatTokenEstimate(INQUIRY_INPUT_TOKENS_RED);
-                const guardText = geminiAvailable
-                    ? `Payload is very large (~${guardTokens} input tokens; guard ${guardThreshold}). Gemini is recommended, or run anyway.`
-                    : `Payload is very large (~${guardTokens} input tokens; guard ${guardThreshold}). Choose a larger-context model or run anyway.`;
+                const guardText = `Payload is very large (~${guardTokens} input tokens; guard ${guardThreshold}). Choose a larger-context model or adjust the Inquiry class presets.`;
                 this.enginePanelGuardNoteEl.setText(guardText);
             }
         }
 
-        this.syncEngineNextRunToggle(tokenTier);
-        this.syncEngineDefaultButtonState();
-
         if (!choices.length) {
             this.enginePanelListEl.createDiv({ cls: 'ert-inquiry-engine-empty', text: 'No models configured yet.' });
             return;
-        }
-
-        if (showRecommendedList && this.enginePanelRecommendedListEl) {
-            this.renderEngineChoices(this.enginePanelRecommendedListEl, recommendedChoices, {
-                tokenTier,
-                recommendedKeys,
-                layout: 'pill'
-            });
         }
 
         this.renderEngineChoices(this.enginePanelListEl, choices, {
@@ -1077,63 +1009,13 @@ export class InquiryView extends ItemView {
         if (choice.provider === 'gemini') this.plugin.settings.geminiModelId = choice.modelId;
         if (choice.provider === 'openai') this.plugin.settings.openaiModelId = choice.modelId;
         if (choice.provider === 'local') this.plugin.settings.localModelId = choice.modelId;
-        this.nextRunEngineOverride = undefined;
         await this.plugin.saveSettings();
         this.updateEngineBadge();
     }
 
-    private toggleEngineNextRunOnly(): void {
-        const next = !(this.engineNextRunOnly ?? false);
-        this.engineNextRunOnly = next;
-        this.engineNextRunOnlyTouched = true;
-        if (this.enginePanelNextRunToggle) {
-            this.enginePanelNextRunToggle.classList.toggle('is-active', next);
-            this.enginePanelNextRunToggle.setAttribute('aria-pressed', next ? 'true' : 'false');
-        }
-    }
-
-    private syncEngineNextRunToggle(tokenTier: TokenTier): void {
-        if (!this.engineNextRunOnlyTouched) {
-            this.engineNextRunOnly = tokenTier === 'red';
-        }
-        if (this.enginePanelNextRunToggle) {
-            const active = this.engineNextRunOnly ?? false;
-            this.enginePanelNextRunToggle.classList.toggle('is-active', active);
-            this.enginePanelNextRunToggle.setAttribute('aria-pressed', active ? 'true' : 'false');
-        }
-    }
-
-    private syncEngineDefaultButtonState(): void {
-        if (!this.enginePanelSetDefaultButton) return;
-        const canCommit = Boolean(this.nextRunEngineOverride);
-        this.enginePanelSetDefaultButton.classList.toggle('is-disabled', !canCommit);
-        this.enginePanelSetDefaultButton.setAttribute('aria-disabled', canCommit ? 'false' : 'true');
-    }
-
-    private setNextRunEngineOverride(choice: EngineChoice): void {
-        this.nextRunEngineOverride = {
-            provider: choice.provider,
-            providerLabel: choice.providerLabel,
-            modelId: choice.modelId,
-            modelLabel: choice.modelLabel
-        };
-        this.syncEngineDefaultButtonState();
-    }
-
-    private async commitEngineOverrideAsDefault(): Promise<void> {
-        if (!this.nextRunEngineOverride) return;
-        const { provider, modelId } = this.nextRunEngineOverride;
-        await this.applyEngineChoice({ provider, modelId });
-        this.syncEngineDefaultButtonState();
-    }
-
     private async handleEngineChoiceClick(choice: EngineChoice): Promise<void> {
         if (!choice.enabled) return;
-        if (this.engineNextRunOnly) {
-            this.setNextRunEngineOverride(choice);
-        } else {
-            await this.applyEngineChoice({ provider: choice.provider, modelId: choice.modelId });
-        }
+        await this.applyEngineChoice({ provider: choice.provider, modelId: choice.modelId });
         this.refreshEnginePanel();
         if (this.pendingGuardQuestion) {
             const pending = this.pendingGuardQuestion;
@@ -1143,14 +1025,10 @@ export class InquiryView extends ItemView {
         }
     }
 
-    private async handleRunAnywayClick(): Promise<void> {
-        if (!this.pendingGuardQuestion) return;
-        const pending = this.pendingGuardQuestion;
+    private handleGuardSettingsClick(): void {
         this.pendingGuardQuestion = undefined;
         this.hideEnginePanel();
-        this.nextRunEngineOverride = undefined;
-        this.syncEngineDefaultButtonState();
-        await this.runInquiry(pending, { bypassTokenGuard: true, ignoreNextRunOverride: true });
+        this.openInquirySettings('class-presets');
     }
 
     private renderEngineChoices(
@@ -1258,22 +1136,6 @@ export class InquiryView extends ItemView {
             tier: this.getTokenTier(estimate.inputTokens),
             hasQuestion
         };
-    }
-
-    private buildEngineRecommendationNote(
-        tokenTier: TokenTier,
-        hasQuestion: boolean,
-        geminiAvailable: boolean
-    ): string {
-        if (!hasQuestion) {
-            return 'Payload estimate is based on the current scope. Hover a question to refine.';
-        }
-        if (tokenTier === 'red') {
-            return geminiAvailable
-                ? 'Large payload — Gemini is recommended for its large context window.'
-                : 'Large payload — Gemini (large context) is recommended. Enable it in Settings > AI.';
-        }
-        return 'Payload is within normal range — any model is fine.';
     }
 
     private pickRecommendedEngineChoices(choices: EngineChoice[]): EngineChoice[] {
@@ -2784,22 +2646,13 @@ export class InquiryView extends ItemView {
         return modelId ? getModelDisplayName(modelId.replace(/^models\//, '')) : 'Unknown model';
     }
 
-    private resolveEngineSelectionForRun(ignoreOverride?: boolean): {
+    private resolveEngineSelectionForRun(): {
         provider: EngineProvider;
         modelId: string;
         modelLabel: string;
         nextRunOnly: boolean;
         usedOverride: boolean;
     } {
-        if (!ignoreOverride && this.nextRunEngineOverride) {
-            return {
-                provider: this.nextRunEngineOverride.provider,
-                modelId: this.nextRunEngineOverride.modelId,
-                modelLabel: this.nextRunEngineOverride.modelLabel,
-                nextRunOnly: true,
-                usedOverride: true
-            };
-        }
         const provider = (this.plugin.settings.defaultAiProvider || 'openai') as EngineProvider;
         return {
             provider,
@@ -3519,24 +3372,17 @@ export class InquiryView extends ItemView {
 
     private getCorpusCcHeaderTooltip(className: string, mode: InquiryMaterialMode, count: number): string {
         const meta = this.getCorpusCcModeMeta(mode);
-        const label = this.getCorpusCcHeaderShortLabel(className);
-        const parts = [label, meta.short];
+        const label = this.getCorpusCcHeaderDisplayLabel(className);
+        const parts = [label, meta.label];
         if (meta.isActive || count > 0) {
             parts.push(String(count));
         }
         return parts.join(' · ');
     }
 
-    private getCorpusCcHeaderShortLabel(className: string): string {
-        const normalized = className.trim().toLowerCase();
-        if (normalized === 'outline-saga') return 'SAGA';
-        if (normalized === 'outline') return 'OUTLINE';
-        if (normalized === 'scene') return 'SCENE';
-        if (normalized === 'character') return 'CHA';
-        if (normalized === 'place') return 'PLA';
-        if (normalized === 'power') return 'POW';
-        if (!normalized) return 'CLS';
-        return normalized.slice(0, 3).toUpperCase();
+    private getCorpusCcHeaderDisplayLabel(className: string): string {
+        const variants = this.getCorpusClassLabelVariants(className);
+        return variants[0] ?? 'Class';
     }
 
     private getCorpusClassLabelVariants(className: string): string[] {
@@ -4021,9 +3867,8 @@ export class InquiryView extends ItemView {
         }
 
         const tierLabel = this.getCorpusTierLabel(tier);
-        const modeLabel = entry.mode === 'summary' ? 'Synopsis' : 'Full';
         const wordLabel = wordCount.toLocaleString();
-        conditions.push(`${modeLabel}: ${tierLabel} (${wordLabel} words)`);
+        conditions.push(`Tier: ${tierLabel} (${wordLabel} words)`);
 
         if (isMismatch) {
             conditions.push(`Alert: complete under ${thresholds.sketchyMin} words`);
@@ -4643,7 +4488,7 @@ export class InquiryView extends ItemView {
         window.open(INQUIRY_GUIDANCE_DOC_URL, '_blank');
     }
 
-    private openInquirySettings(focus: 'sources' | 'class-scope' | 'scan-roots'): void {
+    private openInquirySettings(focus: 'sources' | 'class-scope' | 'scan-roots' | 'class-presets'): void {
         if (this.plugin.settingsTab) {
             this.plugin.settingsTab.setActiveTab('inquiry');
         }
@@ -4663,7 +4508,7 @@ export class InquiryView extends ItemView {
         }, 160);
     }
 
-    private scrollInquirySetting(target: 'class-scope' | 'scan-roots'): void {
+    private scrollInquirySetting(target: 'class-scope' | 'scan-roots' | 'class-presets'): void {
         const el = document.querySelector(`[data-ert-role="inquiry-setting:${target}"]`);
         if (!(el instanceof HTMLElement)) return;
         el.scrollIntoView({ block: 'center' });
@@ -4820,7 +4665,7 @@ export class InquiryView extends ItemView {
 
     private async runInquiry(
         question: InquiryQuestion,
-        options?: { bypassTokenGuard?: boolean; ignoreNextRunOverride?: boolean }
+        options?: { bypassTokenGuard?: boolean }
     ): Promise<void> {
         if (this.isInquiryRunDisabled()) return;
         if (this.state.isRunning) {
@@ -4836,7 +4681,7 @@ export class InquiryView extends ItemView {
         const focusSceneId = this.state.scope === 'book' ? this.state.focusSceneId : undefined;
         const focusBookId = this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusBookId;
 
-        const engineSelection = this.resolveEngineSelectionForRun(options?.ignoreNextRunOverride);
+        const engineSelection = this.resolveEngineSelectionForRun();
         const manifest = this.buildCorpusManifest(question.id, { modelId: engineSelection.modelId });
         const baseKey = this.sessionStore.buildBaseKey({
             questionId: question.id,
@@ -4988,8 +4833,7 @@ export class InquiryView extends ItemView {
         }
 
         if (engineSelection.usedOverride) {
-            this.nextRunEngineOverride = undefined;
-            this.syncEngineDefaultButtonState();
+            this.refreshEnginePanel();
         }
 
         this.applySession({

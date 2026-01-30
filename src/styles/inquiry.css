@@ -551,8 +551,8 @@
 
 .ert-inquiry-cc-cell.is-tier-bare,
 .ert-inquiry-cc-cell.is-tier-sketchy {
-  --ert-inquiry-cc-cell-color: var(--ert-inquiry-low);
-  --ert-inquiry-cc-cell-fill-color: var(--ert-inquiry-low);
+  --ert-inquiry-cc-cell-color: var(--ert-inquiry-alert);
+  --ert-inquiry-cc-cell-fill-color: var(--ert-inquiry-alert);
 }
 
 .ert-inquiry-cc-cell.is-openable {
@@ -2120,13 +2120,14 @@
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-header .setting-item-info {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
-  align-items: center;
+  align-items: start;
   column-gap: var(--ert-gap-sm, 12px);
 }
 
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-header .setting-item-description {
   margin: 0;
-  font-size: var(--font-text-size);
+  font-size: var(--font-ui-small, 13px);
+  color: var(--ert-inquiry-zone-color);
 }
 
 

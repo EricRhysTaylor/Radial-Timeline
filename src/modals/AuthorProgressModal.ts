@@ -18,6 +18,7 @@ export class AuthorProgressModal extends Modal {
     private selectedTargetId: 'default' | string = 'default';
 
     private statusSectionEl: HTMLElement | null = null;
+    private campaignsSectionEl: HTMLElement | null = null;
     private actionsSectionEl: HTMLElement | null = null;
     private actionsBodyEl: HTMLElement | null = null;
 
@@ -107,6 +108,16 @@ export class AuthorProgressModal extends Modal {
             cls: `${ERT_CLASSES.PANEL} ert-panel--glass ${ERT_CLASSES.STACK}`
         });
 
+        if (isProActive || campaigns.length > 0) {
+            const campaignsSkin = contentEl.createDiv({ cls: ERT_CLASSES.SKIN_PRO });
+            this.campaignsSectionEl = campaignsSkin.createDiv({
+                cls: `${ERT_CLASSES.PANEL} ert-panel--glass ${ERT_CLASSES.STACK}`
+            });
+            if (!isProActive) {
+                this.campaignsSectionEl.addClass('ert-pro-locked');
+            }
+        }
+
         // Actions (context-sensitive)
         const actionsSection = contentEl.createDiv({
             cls: `${ERT_CLASSES.PANEL} ert-panel--glass ${ERT_CLASSES.STACK}`
@@ -148,6 +159,7 @@ export class AuthorProgressModal extends Modal {
 
         await this.loadData();
         this.renderStatusSection();
+        this.renderCampaignStatusSection();
         this.renderActions();
     }
 
@@ -183,33 +195,62 @@ export class AuthorProgressModal extends Modal {
 
         this.renderRefreshAlert(this.statusSectionEl);
 
-        const statusGrid = this.statusSectionEl.createDiv({ cls: 'ert-apr-status-grid' });
+        const statusTargets = this.getAprStatusTargets().filter(target => !target.campaign);
+        this.renderStatusGrid(this.statusSectionEl, statusTargets);
+    }
+
+    private renderCampaignStatusSection(): void {
+        if (!this.campaignsSectionEl) return;
+        this.campaignsSectionEl.empty();
+
+        const header = this.campaignsSectionEl.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
+        const headerMain = header.createDiv({ cls: ERT_CLASSES.CONTROL });
+        const headerRow = headerMain.createDiv({ cls: ERT_CLASSES.INLINE });
+        const headerIcon = headerRow.createSpan({ cls: ERT_CLASSES.SECTION_ICON });
+        setIcon(headerIcon, 'layers');
+        headerRow.createEl('h4', { text: 'Campaign Status', cls: ERT_CLASSES.SECTION_TITLE });
+
+        const headerActions = header.createDiv({ cls: ERT_CLASSES.SECTION_ACTIONS });
+        const proPill = headerActions.createSpan({
+            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM} ${ERT_CLASSES.BADGE_PILL_PRO}`
+        });
+        const proIcon = proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
+        setIcon(proIcon, 'signature');
+        proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro' });
+
+        const campaignTargets = this.getAprStatusTargets().filter(target => target.campaign);
+        if (campaignTargets.length === 0) {
+            this.campaignsSectionEl.createDiv({ text: 'No campaigns yet.', cls: ERT_CLASSES.FIELD_NOTE });
+            return;
+        }
+
+        this.renderStatusGrid(this.campaignsSectionEl, campaignTargets);
+    }
+
+    private renderStatusGrid(container: HTMLElement, targets: Array<{
+        id: string;
+        label: string;
+        path: string;
+        size: 'thumb' | 'small' | 'medium' | 'large';
+        campaign?: AprCampaign;
+    }>): void {
+        if (targets.length === 0) return;
+
+        const settings = this.plugin.settings.authorProgress;
+        const statusGrid = container.createDiv({ cls: 'ert-apr-status-grid' });
         const statusHeaderRow = statusGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--header' });
         ['Item', 'Export', 'Stage', 'Update in', 'Reminder'].forEach(label => {
             statusHeaderRow.createDiv({ text: label, cls: 'ert-apr-status-cell ert-apr-status-cell--header' });
         });
 
-        const statusTargets = this.getAprStatusTargets();
-        statusTargets.forEach((target, index) => {
-            const nameRow = statusGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--file' });
-            const nameCell = nameRow.createDiv({
-                cls: `ert-apr-status-file${target.campaign ? ' ert-apr-status-file--campaign' : ''}`
-            });
-            const nameContent = nameCell.createDiv({ cls: 'ert-apr-status-fileLabel' });
-            nameContent.createSpan({ text: target.label });
-            if (target.path) {
-                nameCell.setAttr('title', target.path);
-            }
-
+        targets.forEach((target) => {
             const dataRow = statusGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--data' });
             dataRow.createDiv({
-                text: String(index + 1),
-                cls: `ert-apr-status-cell ert-apr-status-cell--item${target.campaign ? ' ert-apr-status-cell--campaign' : ''}`
+                text: target.label,
+                cls: 'ert-apr-status-cell ert-apr-status-cell--item'
             });
 
-            const exportCell = dataRow.createDiv({
-                cls: `ert-apr-status-cell${target.campaign ? ' ert-apr-status-cell--campaign' : ''}`
-            });
+            const exportCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
             const exportPill = exportCell.createSpan({
                 cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
             });
@@ -217,9 +258,7 @@ export class AuthorProgressModal extends Modal {
             exportPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: targetSize.dimension });
             exportPill.createEl('sup', { text: '2' });
 
-            const stageCell = dataRow.createDiv({
-                cls: `ert-apr-status-cell${target.campaign ? ' ert-apr-status-cell--campaign' : ''}`
-            });
+            const stageCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
             const stagePill = stageCell.createSpan({
                 cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
             });
@@ -233,9 +272,7 @@ export class AuthorProgressModal extends Modal {
                 setTooltip(stagePill, stageMeta.tooltip);
             }
 
-            const updateCell = dataRow.createDiv({
-                cls: `ert-apr-status-cell${target.campaign ? ' ert-apr-status-cell--campaign' : ''}`
-            });
+            const updateCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
             const updatePill = updateCell.createSpan({
                 cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
             });
@@ -254,9 +291,7 @@ export class AuthorProgressModal extends Modal {
                     });
             updatePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: updateInfo.label });
 
-            const reminderCell = dataRow.createDiv({
-                cls: `ert-apr-status-cell ert-apr-status-cell--reminder${target.campaign ? ' ert-apr-status-cell--campaign' : ''}`
-            });
+            const reminderCell = dataRow.createDiv({ cls: 'ert-apr-status-cell ert-apr-status-cell--reminder' });
             reminderCell.createSpan({
                 cls: ERT_CLASSES.FIELD_NOTE,
                 text: updateInfo.reminder ?? '—'
@@ -270,8 +305,12 @@ export class AuthorProgressModal extends Modal {
 
         const campaigns = this.plugin.settings.authorProgress?.campaigns || [];
         const isProActive = isProfessionalActive(this.plugin);
+        const showProActions = isProActive && this.selectedTargetId !== 'default';
+        if (this.actionsSectionEl) {
+            this.actionsSectionEl.classList.toggle(ERT_CLASSES.SKIN_PRO, showProActions);
+        }
 
-        if (isProActive && this.selectedTargetId !== 'default') {
+        if (showProActions) {
             this.renderProActions(this.actionsBodyEl, campaigns);
         } else {
             this.renderCoreActions(this.actionsBodyEl);
@@ -502,7 +541,7 @@ export class AuthorProgressModal extends Modal {
         campaigns.forEach(campaign => {
             targets.push({
                 id: campaign.id,
-                label: `Campaign: ${campaign.name}`,
+                label: campaign.name,
                 path: campaign.embedPath,
                 size: campaign.aprSize ?? defaultSize,
                 campaign

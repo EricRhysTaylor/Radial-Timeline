@@ -15,7 +15,7 @@ import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 import { badgePill } from '../../ui/ui';
 import { isProfessionalActive } from './ProfessionalSection';
-import { buildDefaultInquiryPromptConfig, getCanonicalPromptText, normalizeInquiryPromptConfig } from '../../inquiry/prompts';
+import { buildDefaultInquiryPromptConfig, getInquiryZoneDescription, normalizeInquiryPromptConfig } from '../../inquiry/prompts';
 import {
     MAX_RESOLVED_SCAN_ROOTS,
     normalizeScanRootPatterns,
@@ -360,6 +360,13 @@ export function renderInquirySection(params: SectionParams): void {
     let inquirySources = normalizeInquirySources(plugin.settings.inquirySources);
     plugin.settings.inquirySources = inquirySources;
 
+    const promptsBody = createSection(containerEl, {
+        title: 'Inquiry prompts',
+        icon: 'list',
+        wiki: 'Settings#inquiry-prompts'
+    });
+    renderPromptConfiguration(promptsBody);
+
     const sourcesBody = createSection(containerEl, {
         title: 'Inquiry sources',
         icon: 'search',
@@ -420,7 +427,7 @@ export function renderInquirySection(params: SectionParams): void {
 
     const classScopeSetting = new Settings(sourcesBody)
         .setName('Inquiry class scope')
-        .setDesc('One YAML class per line. Use / to allow all classes. Empty = no classes allowed.');
+        .setDesc('A class is the label in a note\'s YAML (frontmatter) that says what kind of note it is (scene, outline, character, place). One class per line. Use / to allow all classes. Empty = no classes allowed.');
     classScopeSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:class-scope');
     classScopeSetting.settingEl.addClass(ERT_CLASSES.ROW, ERT_CLASSES.ROW_WIDE_CONTROL);
 
@@ -428,7 +435,7 @@ export function renderInquirySection(params: SectionParams): void {
         text.setValue(listToText(inquirySources.classScope));
         text.inputEl.rows = 4;
         text.inputEl.addClass('ert-textarea--md');
-        text.setPlaceholder('scene\noutline');
+        text.setPlaceholder('scene\noutline\ncharacter\nplace');
         classScopeInput = text;
 
         plugin.registerDomEvent(text.inputEl, 'blur', () => {
@@ -442,6 +449,7 @@ export function renderInquirySection(params: SectionParams): void {
     const presetSetting = new Settings(sourcesBody)
         .setName('Presets')
         .setDesc('Quick starters for the contribution matrix. Apply one, then tweak as needed.');
+    presetSetting.settingEl.setAttribute('data-ert-role', 'inquiry-setting:class-presets');
     presetSetting.settingEl.addClass(ERT_CLASSES.ROW, ERT_CLASSES.ROW_TIGHT);
     const presetControls = presetSetting.controlEl.createDiv({ cls: [ERT_CLASSES.INLINE] });
     const presetButtons = new Map<InquirySourcesPreset, HTMLButtonElement>();
@@ -810,7 +818,7 @@ export function renderInquirySection(params: SectionParams): void {
 
     };
 
-    const renderPromptConfiguration = (targetEl: HTMLElement) => {
+    function renderPromptConfiguration(targetEl: HTMLElement): void {
         const promptContainer = targetEl.createDiv({ cls: ERT_CLASSES.STACK });
         const freeCustomLimit = 2;
         const proCustomLimit = 7;
@@ -1023,6 +1031,12 @@ export function renderInquirySection(params: SectionParams): void {
             });
         };
 
+        const zoneExpanded: Record<'setup' | 'pressure' | 'payoff', boolean> = {
+            setup: true,
+            pressure: true,
+            payoff: true
+        };
+
         const renderZoneCard = (
             zone: 'setup' | 'pressure' | 'payoff',
             dragState: { index: number | null }
@@ -1049,14 +1063,30 @@ export function renderInquirySection(params: SectionParams): void {
                 '--ert-badgePill-shadow',
                 `0 0 0 1px color-mix(in srgb, ${zoneStroke} 35%, transparent)`
             );
+            headingInfo.style.setProperty('--ert-inquiry-zone-color', zoneColor);
             headingInfo.createDiv({
                 cls: 'setting-item-description',
-                text: getCanonicalPromptText(zone)
+                text: getInquiryZoneDescription(zone)
             });
 
             const listCard = zoneStack.createDiv({ cls: ERT_CLASSES.PANEL });
+            listCard.toggleClass('ert-settings-hidden', !zoneExpanded[zone]);
             const listEl = listCard.createDiv({ cls: ['ert-template-entries', 'ert-template-indent'] });
             listEl.style.setProperty('--ert-template-indent-accent', zoneStroke);
+
+            const headingControl = headingCard.createDiv({ cls: 'setting-item-control' });
+            const toggleButton = headingControl.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
+            const refreshToggle = () => {
+                const expanded = zoneExpanded[zone];
+                setIcon(toggleButton, expanded ? 'chevron-down' : 'chevron-right');
+                setTooltip(toggleButton, expanded ? 'Collapse' : 'Expand');
+                listCard.toggleClass('ert-settings-hidden', !expanded);
+            };
+            refreshToggle();
+            toggleButton.onclick = () => {
+                zoneExpanded[zone] = !zoneExpanded[zone];
+                refreshToggle();
+            };
 
             const slots = getSlotList(zone);
             const customSlots = slots.filter(slot => !slot.builtIn);
@@ -1140,7 +1170,7 @@ export function renderInquirySection(params: SectionParams): void {
         };
 
         render();
-    };
+    }
 
     const renderCorpusCcSettings = (targetEl: HTMLElement) => {
         const thresholdDefaults = normalizeCorpusThresholds(plugin.settings.inquiryCorpusThresholds);
@@ -1233,13 +1263,6 @@ export function renderInquirySection(params: SectionParams): void {
                 });
             });
     };
-
-    const promptsBody = createSection(containerEl, {
-        title: 'Inquiry prompts',
-        icon: 'list',
-        wiki: 'Settings#inquiry-prompts'
-    });
-    renderPromptConfiguration(promptsBody);
 
     const corpusBody = createSection(containerEl, {
         title: 'Corpus (CC)',

@@ -14,6 +14,26 @@ const CANONICAL_PROMPTS: Record<InquiryZone, string> = {
     payoff: 'Across the material, where are promises paid off, deferred, dangling, or abandoned?'
 };
 
+const ZONE_DESCRIPTIONS: Record<InquiryZone, string> = {
+    setup: [
+        'Foundations the story depends on.',
+        'Questions here examine what must already exist or be understood for the material to work:',
+        'context, relationships, rules, and narrative assumptions.',
+        'Use this zone to find missing groundwork, unrealized threads, or weak setup that later material relies on.'
+    ].join(' '),
+    pressure: [
+        'Where momentum and tension are changing.',
+        'Questions here focus on movement: escalation, pacing, conflict, and cause-and-effect across the material.',
+        'Use this zone to identify where the story accelerates, stalls, repeats itself, or dissipates tension.'
+    ].join(' '),
+    payoff: [
+        'What resolves - and what does not.',
+        'Questions here evaluate promises made by the material and how they are handled.',
+        'Use this zone to locate payoffs, deferrals, dangling threads, abandoned ideas,',
+        'and whether consequences feel earned or incomplete.'
+    ].join(' ')
+};
+
 const BUILT_IN_PROMPTS: Record<InquiryZone, BuiltInPromptSeed[]> = {
     setup: [{
         id: 'setup-core',
@@ -187,3 +207,5 @@ export const getBuiltInPromptSeedById = (zone: InquiryZone, id?: string): BuiltI
     id ? BUILT_IN_SEEDS_BY_ID[zone].get(id) : undefined;
 
 export const getCanonicalPromptText = (zone: InquiryZone): string => CANONICAL_PROMPTS[zone];
+
+export const getInquiryZoneDescription = (zone: InquiryZone): string => ZONE_DESCRIPTIONS[zone];
