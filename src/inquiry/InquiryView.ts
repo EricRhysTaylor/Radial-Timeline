@@ -1129,7 +1129,10 @@ export class InquiryView extends ItemView {
         const hasQuestion = Boolean(trimmedQuestion);
         const estimate = this.getTokenEstimateForQuestion(trimmedQuestion);
         const inputLabel = this.formatTokenEstimate(estimate.inputTokens);
-        const prefix = hasQuestion ? 'Payload' : 'Payload (base)';
+        const scopeLabel = this.state.scope === 'saga' ? 'Saga' : 'Book';
+        const targetLabel = this.getFocusBookLabel();
+        const contextLabel = `${scopeLabel} ${targetLabel}`;
+        const prefix = hasQuestion ? `Payload (${contextLabel} + Q)` : `Payload (${contextLabel})`;
         return {
             text: `${prefix}: ~${inputLabel} in`,
             inputTokens: estimate.inputTokens,
@@ -2612,7 +2615,15 @@ export class InquiryView extends ItemView {
             const payloadSummary = this.buildEnginePayloadSummary(this.getEngineContextQuestion());
             this.enginePanelMetaEl.setText(`Active: ${providerLabel} · ${modelLabel} · ${payloadSummary.text}`);
         }
+        this.syncEngineBadgePulse();
         this.refreshEnginePanel();
+    }
+
+    private syncEngineBadgePulse(): void {
+        if (!this.engineBadgeGroup) return;
+        const baseSummary = this.buildEnginePayloadSummary(null);
+        this.engineBadgeGroup.classList.toggle('is-engine-pulse-amber', baseSummary.tier === 'amber');
+        this.engineBadgeGroup.classList.toggle('is-engine-pulse-red', baseSummary.tier === 'red');
     }
 
     private getActiveInquiryModelId(): string {

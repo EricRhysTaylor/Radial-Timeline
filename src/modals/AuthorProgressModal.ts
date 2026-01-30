@@ -7,7 +7,7 @@ import type { AprCampaign } from '../types/settings';
 import { getTeaserThresholds, getTeaserRevealLevel, TEASER_LEVEL_INFO } from '../renderer/apr/AprConstants';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { ERT_CLASSES } from '../ui/classes';
-import { buildDefaultEmbedPath } from '../utils/aprPaths';
+import { buildCampaignEmbedPath, buildDefaultEmbedPath } from '../utils/aprPaths';
 
 export class AuthorProgressModal extends Modal {
     private plugin: RadialTimelinePlugin;
@@ -135,6 +135,7 @@ export class AuthorProgressModal extends Modal {
             const targetSetting = new Setting(actionsSection)
                 .setName('Publish Target')
                 .setDesc('Choose default report or a campaign');
+            targetSetting.settingEl.addClass('ert-apr-actions-target');
             targetSetting.addDropdown(dropdown => {
                 dropdown.addOption('default', 'Default Report');
                 campaigns.forEach(campaign => {
@@ -246,10 +247,8 @@ export class AuthorProgressModal extends Modal {
 
         targets.forEach((target) => {
             const dataRow = statusGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--data' });
-            dataRow.createDiv({
-                text: target.label,
-                cls: 'ert-apr-status-cell ert-apr-status-cell--item'
-            });
+            const itemCell = dataRow.createDiv({ cls: 'ert-apr-status-cell ert-apr-status-cell--item' });
+            itemCell.createSpan({ text: target.label, cls: 'ert-apr-status-title' });
 
             const exportCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
             const exportPill = exportCell.createSpan({
@@ -425,6 +424,24 @@ export class AuthorProgressModal extends Modal {
             return;
         }
 
+        const settings = this.plugin.settings.authorProgress;
+        if (settings?.autoUpdateEmbedPaths) {
+            const legacySlug = campaign.name.toLowerCase().replace(/\s+/g, '-');
+            const legacyPath = `Radial Timeline/Social/${legacySlug}-progress.svg`;
+            if (campaign.embedPath === legacyPath) {
+                const nextPath = buildCampaignEmbedPath({
+                    bookTitle: settings.bookTitle,
+                    campaignName: campaign.name,
+                    updateFrequency: campaign.updateFrequency,
+                    aprSize: campaign.aprSize,
+                    fallbackSize: settings.aprSize,
+                    teaserEnabled: campaign.teaserReveal?.enabled ?? true
+                });
+                campaign.embedPath = nextPath;
+                void this.plugin.saveSettings();
+            }
+        }
+
         const sizeStageRow = container.createDiv({
             cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ert-apr-actions-row--split`
         });
@@ -465,6 +482,7 @@ export class AuthorProgressModal extends Modal {
         const primaryButton = new ButtonComponent(actionControl)
             .setButtonText('Publish Campaign')
             .setCta();
+        primaryButton.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro');
         primaryButton.onClick(() => this.publish('dynamic'));
     }
 

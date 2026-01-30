@@ -256,6 +256,28 @@
   animation: ert-inquiry-guidance-icon 2.4s ease-in-out infinite;
 }
 
+.ert-inquiry-icon-btn.is-engine-pulse-amber {
+  --ert-inquiry-engine-pulse: var(--ert-inquiry-medium);
+  color: var(--ert-inquiry-medium);
+}
+
+.ert-inquiry-icon-btn.is-engine-pulse-red {
+  --ert-inquiry-engine-pulse: var(--ert-inquiry-high);
+  color: var(--ert-inquiry-high);
+}
+
+.ert-inquiry-icon-btn.is-engine-pulse-amber .ert-inquiry-icon-btn-bg,
+.ert-inquiry-icon-btn.is-engine-pulse-red .ert-inquiry-icon-btn-bg {
+  fill: color-mix(in srgb, var(--ert-inquiry-engine-pulse) 18%, var(--background-secondary));
+  stroke: color-mix(in srgb, var(--ert-inquiry-engine-pulse) 70%, var(--background-modifier-border));
+  animation: ert-inquiry-engine-pulse 2.2s ease-in-out infinite;
+}
+
+.ert-inquiry-icon-btn.is-engine-pulse-amber .ert-inquiry-icon,
+.ert-inquiry-icon-btn.is-engine-pulse-red .ert-inquiry-icon {
+  animation: ert-inquiry-engine-icon 2.2s ease-in-out infinite;
+}
+
 .ert-inquiry-icon-btn.is-help-onboarding {
   color: var(--ert-inquiry-help-onboarding);
 }
@@ -2213,6 +2235,34 @@
 
   100% {
     opacity: 0.75;
+  }
+}
+
+@keyframes ert-inquiry-engine-pulse {
+  0% {
+    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--ert-inquiry-engine-pulse) 40%, transparent));
+  }
+
+  50% {
+    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ert-inquiry-engine-pulse) 55%, transparent));
+  }
+
+  100% {
+    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--ert-inquiry-engine-pulse) 40%, transparent));
+  }
+}
+
+@keyframes ert-inquiry-engine-icon {
+  0% {
+    opacity: 0.78;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.78;
   }
 }
 
