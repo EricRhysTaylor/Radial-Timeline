@@ -186,7 +186,6 @@ const INQUIRY_PROMPT_OVERHEAD_CHARS = 900;
 const INQUIRY_CHARS_PER_TOKEN = 4;
 const INQUIRY_INPUT_TOKENS_AMBER = 60000;
 const INQUIRY_INPUT_TOKENS_RED = 110000;
-const INQUIRY_TOKENS_RED_TOOLTIP = 'Payload is very large and may be truncated by some models. Consider switching to a larger-context model.';
 
 type InquiryQuestion = {
     id: string;
@@ -797,11 +796,12 @@ export class InquiryView extends ItemView {
         meta.setAttribute('dominant-baseline', 'hanging');
         this.previewMeta = meta;
 
-        const rowLabels = ['SCOPE', 'SCENES', 'OUTLINES', 'REFERENCES', 'TOKENS', 'ROOTS', 'CLASSES'];
+        const rowLabels = ['', '', '', '', '', ''];
         this.previewRowDefaultLabels = rowLabels.slice();
-        this.previewRows = rowLabels.map(label => {
+        const tokensRowIndex = 3;
+        this.previewRows = rowLabels.map((label, index) => {
             const group = this.createSvgGroup(panel, 'ert-inquiry-preview-pill');
-            if (label === 'TOKENS') {
+            if (index === tokensRowIndex) {
                 group.classList.add('is-tokens-slot');
             }
             const bg = this.createSvgElement('rect');
@@ -3879,7 +3879,13 @@ export class InquiryView extends ItemView {
 
         const tierLabel = this.getCorpusTierLabel(tier);
         const wordLabel = wordCount.toLocaleString();
-        conditions.push(`Tier: ${tierLabel} (${wordLabel} words)`);
+        const isSynopsisCapable = entry.className === 'scene' || entry.className.startsWith('outline');
+        if (isSynopsisCapable) {
+            const contentLabel = entry.mode === 'summary' ? 'Synopsis' : 'Body';
+            conditions.push(`Tier: ${contentLabel} ${tierLabel.toLowerCase()} (${wordLabel} words)`);
+        } else {
+            conditions.push(`Tier: ${tierLabel} (${wordLabel} words)`);
+        }
 
         if (isMismatch) {
             conditions.push(`Alert: complete under ${thresholds.sketchyMin} words`);
@@ -7120,10 +7126,11 @@ export class InquiryView extends ItemView {
             items.slice(splitIndex)
         ].filter(row => row.length);
 
+        const shouldStretch = rows.length > 1;
         rows.forEach((row, rowIndex) => {
             const widths = row.map(item => item.width);
             const totalWidth = widths.reduce((sum, value) => sum + value, 0);
-            const gap = this.computePillGap(totalWidth, row.length, maxRowWidth, rowIndex === 0);
+            const gap = this.computePillGap(totalWidth, row.length, maxRowWidth, shouldStretch);
             const rowWidth = totalWidth + gap * (row.length - 1);
             let cursor = -rowWidth / 2;
             const rowY = startY + (rowIndex * (PREVIEW_PILL_HEIGHT + PREVIEW_PILL_GAP_Y));
@@ -7162,10 +7169,9 @@ export class InquiryView extends ItemView {
             row.group.removeAttribute('data-tooltip-placement');
             row.group.classList.remove('rt-tooltip-target');
         });
+        if (this.previewGroup?.classList.contains('is-results')) return;
         const tokensRow = this.previewRows.find(row => row.group.classList.contains('is-tokens-slot'));
         if (!tokensRow) return;
-        const label = tokensRow.label?.trim().toUpperCase();
-        if (label !== 'TOKENS') return;
         if (!questionText) return;
         const tier = this.getTokenTierForQuestion(questionText);
         if (tier === 'amber') {
@@ -7173,7 +7179,6 @@ export class InquiryView extends ItemView {
         }
         if (tier === 'red') {
             tokensRow.group.classList.add('is-token-red');
-            addTooltipData(tokensRow.group, this.balanceTooltipText(INQUIRY_TOKENS_RED_TOOLTIP), 'bottom');
         }
     }
 
@@ -7181,10 +7186,10 @@ export class InquiryView extends ItemView {
         const total = widths.length;
         let bestIndex = Math.ceil((total + 1) / 2);
         let bestScore = Number.POSITIVE_INFINITY;
-        const computeRowWidth = (slice: number[], stretch: boolean): number => {
+        const computeRowWidth = (slice: number[]): number => {
             if (!slice.length) return 0;
             const rowTotal = slice.reduce((sum, value) => sum + value, 0);
-            const gap = this.computePillGap(rowTotal, slice.length, maxWidth, stretch);
+            const gap = this.computePillGap(rowTotal, slice.length, maxWidth, false);
             return rowTotal + gap * (slice.length - 1);
         };
 
@@ -7193,14 +7198,13 @@ export class InquiryView extends ItemView {
             const row2Count = total - i;
             if (row1Count < row2Count) continue;
 
-            const row1Width = computeRowWidth(widths.slice(0, i), true);
-            const row2Width = computeRowWidth(widths.slice(i), false);
-            if (row1Width <= row2Width) continue;
+            const row1Width = computeRowWidth(widths.slice(0, i));
+            const row2Width = computeRowWidth(widths.slice(i));
 
             const overflow = Math.max(0, row1Width - maxWidth) + Math.max(0, row2Width - maxWidth);
             const countDiff = row1Count - row2Count;
-            const countPenalty = countDiff === 0 ? 300 : (countDiff === 1 ? 0 : 80 * (countDiff - 1));
-            const score = Math.abs(row1Width - row2Width) + (overflow * 3) + countPenalty;
+            const countPenalty = countDiff === 0 ? 0 : (countDiff === 1 ? 120 : 260 * (countDiff - 1));
+            const score = Math.abs(row1Width - row2Width) + (overflow * 5) + countPenalty;
             if (score < bestScore) {
                 bestScore = score;
                 bestIndex = i;
@@ -7505,47 +7509,42 @@ export class InquiryView extends ItemView {
             this.getPreviewScopeValue(),
             this.getPreviewScenesValue(),
             this.getPreviewOutlinesValue(),
-            this.getPreviewReferencesValue(),
-            this.getPreviewTokensValue(questionText),
-            this.getPreviewRootsValue(),
-            this.getPreviewClassesValue()
+            this.getPreviewTokensValue(questionText)
         ];
     }
 
     private getPreviewScopeValue(): string {
-        if (this.state.scope === 'saga') return this.getFocusLabel();
+        if (this.state.scope === 'saga') return `${SIGMA_CHAR} Saga`;
         return `Book ${this.getFocusLabel()}`;
     }
 
     private getPreviewScenesValue(): string {
         const stats = this.getPayloadStats();
-        return `${stats.sceneSynopsisUsed}× synopsis · ${stats.sceneFullTextCount}× full`;
+        if (stats.sceneFullTextCount > 0) {
+            return `Scenes · ${stats.sceneFullTextCount} (Full)`;
+        }
+        if (stats.sceneSynopsisUsed > 0) {
+            return `Scenes · ${stats.sceneSynopsisUsed} (Synopsis)`;
+        }
+        return '';
     }
 
     private getPreviewOutlinesValue(): string {
         const stats = this.getPayloadStats();
-        const formatScope = (label: string, summaryCount: number, fullCount: number) => {
-            if (summaryCount > 0) {
-                return `${label} ${summaryCount}× synopsis · ${fullCount}× full`;
-            }
-            return `${label} ${fullCount}× full`;
-        };
-        return [
-            formatScope('book', stats.bookOutlineSummaryCount, stats.bookOutlineFullCount),
-            formatScope('saga', stats.sagaOutlineSummaryCount, stats.sagaOutlineFullCount)
-        ].join(' · ');
-    }
-
-    private getPreviewReferencesValue(): string {
-        const stats = this.getPayloadStats();
-        if (!stats.referenceCounts.total) return 'none';
-        const { character, place, power, other } = stats.referenceCounts;
-        return `character ${character}× full · place ${place}× full · power ${power}× full · other ${other}× full`;
+        const summaryCount = stats.bookOutlineSummaryCount + stats.sagaOutlineSummaryCount;
+        const fullCount = stats.bookOutlineFullCount + stats.sagaOutlineFullCount;
+        if (fullCount > 0) {
+            return `Outline · ${fullCount} (Full)`;
+        }
+        if (summaryCount > 0) {
+            return `Outline · ${summaryCount} (Synopsis)`;
+        }
+        return '';
     }
 
     private getPreviewTokensValue(questionText: string): string {
         const estimate = this.getTokenEstimateForQuestion(questionText);
-        return `~${this.formatTokenEstimate(estimate.inputTokens)} in · ~${this.formatTokenEstimate(estimate.outputTokens)} out · ~${this.formatTokenEstimate(estimate.totalTokens)} total`;
+        return `Tokens · ~${this.formatTokenEstimate(estimate.inputTokens)}`;
     }
 
     private getTokenEstimateForQuestion(questionText: string): InquiryRunTrace['tokenEstimate'] {
@@ -7577,34 +7576,6 @@ export class InquiryView extends ItemView {
         return this.getTokenTier(estimate.inputTokens);
     }
 
-    private getPreviewRootsValue(): string {
-        const stats = this.getPayloadStats();
-        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
-        return this.formatRootsSummary(stats.resolvedRoots, sources.scanRoots ?? []);
-    }
-
-    private getPreviewClassesValue(): string {
-        const stats = this.getPayloadStats();
-        const classes: string[] = [];
-        if (stats.sceneSynopsisUsed > 0 || stats.sceneFullTextCount > 0) {
-            classes.push('scene');
-        }
-        if (stats.bookOutlineCount > 0 || stats.sagaOutlineCount > 0) {
-            classes.push('outline');
-        }
-        const referenceClasses = Object.keys(stats.referenceByClass).filter(key => stats.referenceByClass[key] > 0);
-        const orderedReferences = this.orderReferenceClasses(referenceClasses);
-        classes.push(...orderedReferences);
-        return classes.length ? classes.join(' · ') : 'None';
-    }
-
-    private orderReferenceClasses(referenceClasses: string[]): string[] {
-        const priority = ['character', 'place', 'power'];
-        const ordered = priority.filter(name => referenceClasses.includes(name));
-        const others = referenceClasses.filter(name => !priority.includes(name)).sort();
-        return [...ordered, ...others];
-    }
-
     private estimateTokensFromChars(chars: number): number {
         if (!Number.isFinite(chars) || chars <= 0) return 0;
         return Math.max(1, Math.ceil(chars / INQUIRY_CHARS_PER_TOKEN));
@@ -7617,21 +7588,6 @@ export class InquiryView extends ItemView {
             return `${rounded.toFixed(rounded % 1 === 0 ? 0 : 1)}k`;
         }
         return String(Math.round(safe));
-    }
-
-    private formatRootsSummary(resolvedRoots: string[], scanRoots: string[]): string {
-        if (!resolvedRoots.length) {
-            const hasVaultRoot = scanRoots.length === 0 || scanRoots.some(root => !root || root === '/');
-            return hasVaultRoot ? '/ (entire vault · 1 root)' : 'No scan roots';
-        }
-        if (resolvedRoots.length === 1) {
-            const root = resolvedRoots[0];
-            if (!root) return '/ (entire vault · 1 root)';
-            return `/${root} (1 root)`;
-        }
-        const root = resolvedRoots[0];
-        const first = root ? `/${root}` : '/';
-        return `${first} … (${resolvedRoots.length} roots)`;
     }
 
     private toggleDetails(): void {

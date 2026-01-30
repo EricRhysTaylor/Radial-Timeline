@@ -99,7 +99,7 @@ const DEFAULT_FULL_CLASSES = new Set(['outline', ...REFERENCE_ONLY_CLASSES]);
 const CONTRIBUTION_LABELS: Record<InquiryMaterialMode, string> = {
     none: 'Off',
     summary: 'Synopsis',
-    full: 'Full'
+    full: 'Body'
 };
 
 const defaultModeForClass = (className: string): InquiryMaterialMode => {

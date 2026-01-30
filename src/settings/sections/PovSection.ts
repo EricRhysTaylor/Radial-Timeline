@@ -74,25 +74,31 @@ export function renderPovSection(params: {
         cls: 'ert-planetary-preview-heading ert-previewFrame__title',
         text: t('settings.pov.preview.heading')
     });
-    const previewToggle = previewHeader.createEl('button', {
+    const previewBody = previewContainer.createDiv({ cls: 'ert-pov-preview-body' });
+    let previewExpanded = true;
+    const refreshPreviewToggle = () => {
+        previewContainer.toggleClass('ert-settings-hidden', !previewExpanded);
+    };
+
+    const previewToggle = yamlOverridesSetting.controlEl.createEl('button', {
         cls: ERT_CLASSES.ICON_BTN,
         attr: {
             type: 'button',
             'aria-label': 'Hide POV preview'
         }
     });
-    const previewBody = previewContainer.createDiv({ cls: 'ert-pov-preview-body' });
-    let previewExpanded = true;
-    const refreshPreviewToggle = () => {
+    const refreshPreviewButton = () => {
         setIcon(previewToggle, previewExpanded ? 'chevron-down' : 'chevron-right');
         setTooltip(previewToggle, previewExpanded ? 'Hide POV preview' : 'Show POV preview');
         previewToggle.setAttribute('aria-label', previewExpanded ? 'Hide POV preview' : 'Show POV preview');
-        previewBody.toggleClass('ert-settings-hidden', !previewExpanded);
+        previewToggle.setAttribute('aria-expanded', previewExpanded ? 'true' : 'false');
     };
     refreshPreviewToggle();
+    refreshPreviewButton();
     previewToggle.addEventListener('click', () => {
         previewExpanded = !previewExpanded;
         refreshPreviewToggle();
+        refreshPreviewButton();
     });
 
     const buildPreviewEntries = (
