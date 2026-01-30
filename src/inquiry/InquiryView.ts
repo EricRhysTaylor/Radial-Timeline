@@ -6360,14 +6360,29 @@ export class InquiryView extends ItemView {
         this.previewGroup.classList.add(`is-zone-${zone}`);
         const zoneLabel = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
         const modeLabel = mode === 'flow' ? 'Flow' : 'Depth';
-        const heroMaxWidth = this.minimapLayout?.length ?? (PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2));
-        const heroLines = this.setBalancedHeroText(
+        const heroTargetLines = 3;
+        const heroBaseWidth = this.minimapLayout?.length ?? (PREVIEW_PANEL_WIDTH - (PREVIEW_PANEL_PADDING_X * 2));
+        let heroLines = this.setBalancedHeroText(
             this.previewHero,
             question,
-            heroMaxWidth,
+            heroBaseWidth,
             PREVIEW_HERO_LINE_HEIGHT,
             PREVIEW_HERO_MAX_LINES
         );
+        if (heroLines > heroTargetLines) {
+            const stageHeroWidth = Math.min(
+                VIEWBOX_SIZE - (PREVIEW_PANEL_PADDING_X * 2),
+                VIEWBOX_SIZE * 0.9
+            );
+            const expandedWidth = Math.max(heroBaseWidth, stageHeroWidth);
+            heroLines = this.setBalancedHeroText(
+                this.previewHero,
+                question,
+                expandedWidth,
+                PREVIEW_HERO_LINE_HEIGHT,
+                heroTargetLines
+            );
+        }
         if (this.previewMeta) {
             const metaY = PREVIEW_PANEL_PADDING_Y + (heroLines * PREVIEW_HERO_LINE_HEIGHT) + PREVIEW_META_GAP;
             const metaText = metaOverride ?? `${zoneLabel} + ${modeLabel}`.toUpperCase();
