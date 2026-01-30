@@ -151,9 +151,6 @@ const CC_CELL_SIZE = 20;
 const CC_PAGE_BASE_SIZE = Math.round(CC_CELL_SIZE * 0.8);
 const CC_PAGE_MIN_SIZE = Math.max(6, Math.round(CC_CELL_SIZE * 0.33));
 const INQUIRY_NOTES_MAX = 5;
-const INQUIRY_NOTES_SENTINEL = 'INQUIRY NOTES (auto)';
-const INQUIRY_NOTES_SENTINEL_OVERFLOW = 'INQUIRY NOTES (auto) — showing last 5 (older notes omitted)';
-const INQUIRY_NOTES_DIVIDER = '/* INQUIRY NOTES (auto) */';
 const CC_RIGHT_MARGIN = 50;
 const CC_BOTTOM_MARGIN = 50;
 const INQUIRY_GUIDANCE_DOC_URL = 'https://github.com/EricRhysTaylor/Radial-Timeline/wiki';
@@ -1398,7 +1395,10 @@ export class InquiryView extends ItemView {
             this.notifyInteraction('Inquiry running. Please wait.');
             return;
         }
-        if (session.pendingEditsApplied) return;
+        if (session.pendingEditsApplied) {
+            this.notifyInteraction('Pending Edits already updated for this session.');
+            return;
+        }
         await this.writeInquiryPendingEdits(session, session.result, { notify: true });
     }
 
@@ -5387,97 +5387,59 @@ export class InquiryView extends ItemView {
         notes: string[]
     ): Promise<InquiryWritebackOutcome> {
         if (!notes.length) return 'skipped';
-        const briefLink = `[[${briefTitle}]]`;
+        const briefLinkNeedle = `[[${briefTitle}`;
         let outcome: InquiryWritebackOutcome = 'skipped';
-
-        const isInquiryDividerLine = (line: string): boolean => {
-            const trimmed = line.trim();
-            if (!trimmed) return false;
-            if (trimmed.startsWith('/*') && trimmed.includes(INQUIRY_NOTES_SENTINEL)) return true;
-            return trimmed === INQUIRY_NOTES_SENTINEL || trimmed === INQUIRY_NOTES_SENTINEL_OVERFLOW;
-        };
-
-        const findDividerMatch = (text: string): RegExpMatchArray | null => {
-            const patterns = [
-                /^[ \t]*\/\* INQUIRY NOTES \(auto\).*$/m,
-                /^[ \t]*INQUIRY NOTES \(auto\).*$/m
-            ];
-            let match: RegExpMatchArray | null = null;
-            patterns.forEach(pattern => {
-                const candidate = text.match(pattern);
-                if (!candidate || candidate.index === undefined) return;
-                if (!match || match.index === undefined || candidate.index < match.index) {
-                    match = candidate;
-                }
-            });
-            return match;
+        const inquiryLinkToken = '[[Inquiry Brief —';
+        const isInquiryLine = (line: string): boolean => line.includes(inquiryLinkToken);
+        const quoteWikiLink = (line: string): string => {
+            const match = line.match(/\[\[[^\]]+\]\]/);
+            if (!match || match.index === undefined) return line;
+            const start = match.index;
+            const end = start + match[0].length;
+            const alreadyQuoted = (start > 0 && line[start - 1] === '"') && line[end] === '"';
+            if (alreadyQuoted) return line;
+            return `${line.slice(0, start)}"${match[0]}"${line.slice(end)}`;
         };
 
         await this.app.fileManager.processFrontMatter(file, (fm) => {
             const frontmatter = fm as Record<string, unknown>;
             const rawValue = frontmatter[fieldKey];
-            let newline = '\n';
-            let humanText = '';
-            let humanLines: string[] = [];
-            let inquiryLines: string[] = [];
-
+            let rawText = '';
             if (typeof rawValue === 'string') {
-                const rawText = rawValue;
-                newline = rawText.includes('\r\n') ? '\r\n' : '\n';
-                const dividerMatch = findDividerMatch(rawText);
-                if (dividerMatch && dividerMatch.index !== undefined) {
-                    const dividerStart = dividerMatch.index;
-                    const afterDivider = rawText.slice(dividerStart);
-                    const afterLines = afterDivider.split(/\r?\n/);
-                    humanText = rawText.slice(0, dividerStart);
-                    humanLines = humanText.split(/\r?\n/);
-                    inquiryLines = afterLines.slice(1)
-                        .map(line => line.trim())
-                        .filter(Boolean);
-                } else {
-                    humanText = rawText;
-                    humanLines = rawText.split(/\r?\n/);
-                }
+                rawText = rawValue;
             } else if (Array.isArray(rawValue)) {
-                const entries = rawValue.map(entry => (typeof entry === 'string' ? entry : String(entry)));
-                const dividerIndex = entries.findIndex(entry => isInquiryDividerLine(entry));
-                humanLines = dividerIndex >= 0 ? entries.slice(0, dividerIndex) : entries.slice();
-                inquiryLines = (dividerIndex >= 0 ? entries.slice(dividerIndex + 1) : [])
-                    .map(line => line.trim())
-                    .filter(Boolean);
-                humanText = humanLines.join('\n');
+                rawText = rawValue.map(entry => (typeof entry === 'string' ? entry : String(entry))).join('\n');
             } else if (rawValue !== undefined && rawValue !== null) {
-                const rawText = String(rawValue);
-                newline = rawText.includes('\r\n') ? '\r\n' : '\n';
-                humanText = rawText;
-                humanLines = rawText.split(/\r?\n/);
+                rawText = String(rawValue);
             }
 
-            const existingLines = [...humanLines, ...inquiryLines]
-                .map(line => line.trim())
-                .filter(Boolean);
-            if (existingLines.some(line => line.includes(briefLink))) {
+            const newline = rawText.includes('\r\n') ? '\r\n' : '\n';
+            const lines = rawText === '' ? [] : rawText.split(/\r?\n/);
+            const inquiryIndices = lines.reduce<number[]>((acc, line, index) => {
+                if (isInquiryLine(line)) acc.push(index);
+                return acc;
+            }, []);
+
+            if (inquiryIndices.some(index => lines[index].includes(briefLinkNeedle))) {
                 outcome = 'duplicate';
                 return;
             }
 
-            const combined = [...inquiryLines, ...notes];
-            let trimmed = combined;
-            if (combined.length > INQUIRY_NOTES_MAX) {
-                trimmed = combined.slice(combined.length - INQUIRY_NOTES_MAX);
-            }
-            const divider = INQUIRY_NOTES_DIVIDER;
+            const shouldQuoteLink = lines.length === 0 && notes.length === 1 && !rawText.includes('\n') && !rawText.includes('\r');
+            const nextNotes = shouldQuoteLink ? notes.map(note => quoteWikiLink(note)) : notes.slice();
+            let nextLines = [...lines, ...nextNotes];
 
-            let nextText = humanText;
-            if (nextText) {
-                if (!nextText.endsWith('\n') && !nextText.endsWith('\r')) {
-                    nextText += newline;
-                }
+            const nextInquiryIndices = nextLines.reduce<number[]>((acc, line, index) => {
+                if (isInquiryLine(line)) acc.push(index);
+                return acc;
+            }, []);
+            if (nextInquiryIndices.length > INQUIRY_NOTES_MAX) {
+                const dropCount = nextInquiryIndices.length - INQUIRY_NOTES_MAX;
+                const dropIndices = new Set(nextInquiryIndices.slice(0, dropCount));
+                nextLines = nextLines.filter((_, index) => !dropIndices.has(index));
             }
-            nextText += divider;
-            if (trimmed.length) {
-                nextText += `${newline}${trimmed.join(newline)}`;
-            }
+
+            const nextText = nextLines.join(newline);
             frontmatter[fieldKey] = nextText;
             outcome = 'written';
         });
@@ -8018,12 +7980,18 @@ export class InquiryView extends ItemView {
         return (headline || 'Finding').replace(/\s+/g, ' ').trim();
     }
 
+    private formatInquiryBriefLink(briefTitle: string, alias = 'Briefing'): string {
+        if (!alias) return `[[${briefTitle}]]`;
+        return `[[${briefTitle}|${alias}]]`;
+    }
+
     private formatInquiryActionNote(
         finding: InquiryFinding,
         briefTitle: string
     ): string {
         const suggestion = this.buildInquiryActionSuggestion(finding);
-        return `IB — ${suggestion} → [[${briefTitle}]]`;
+        const briefLink = this.formatInquiryBriefLink(briefTitle);
+        return `${briefLink} — ${suggestion}`;
     }
 
     private buildInquiryActionSuggestion(finding: InquiryFinding): string {
