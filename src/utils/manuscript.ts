@@ -211,10 +211,9 @@ export async function getSceneFilesByOrder(
 
     const rf = scene.rawFrontmatter as Record<string, unknown> | undefined;
 
-    // Prefer Synopsis, fallback to Summary, then scene.synopsis
+    // Prefer Synopsis, then scene.synopsis
     let synopsis: string | null = null;
     if (rf && typeof rf.Synopsis === 'string') synopsis = rf.Synopsis as string;
-    else if (rf && typeof rf.Summary === 'string') synopsis = rf.Summary as string;
     else if (scene.synopsis && scene.synopsis.trim().length > 0) synopsis = scene.synopsis;
     synopses.push(synopsis);
 

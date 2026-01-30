@@ -1023,7 +1023,7 @@ export class InquiryRunnerService implements InquiryRunner {
     }
 
     private extractSynopsis(frontmatter: Record<string, unknown>): string {
-        const raw = frontmatter['Synopsis'] ?? frontmatter['Summary'];
+        const raw = frontmatter['Synopsis'];
         if (Array.isArray(raw)) {
             return raw.map(value => String(value)).join('\n').trim();
         }

@@ -51,6 +51,12 @@ const BUILT_IN_PROMPTS: Record<InquiryZone, BuiltInPromptSeed[]> = {
     ]
 };
 
+const BUILT_IN_SEEDS_BY_ID: Record<InquiryZone, Map<string, BuiltInPromptSeed>> = {
+    setup: new Map(BUILT_IN_PROMPTS.setup.map(seed => [seed.id, seed])),
+    pressure: new Map(BUILT_IN_PROMPTS.pressure.map(seed => [seed.id, seed])),
+    payoff: new Map(BUILT_IN_PROMPTS.payoff.map(seed => [seed.id, seed]))
+};
+
 const buildBuiltInSlot = (seed: BuiltInPromptSeed): InquiryPromptSlot => ({
     id: seed.id,
     label: seed.label,
@@ -80,6 +86,7 @@ export const normalizeInquiryPromptConfig = (raw?: InquiryPromptConfig): Inquiry
     const normalizeZone = (zone: InquiryZone): InquiryPromptSlot[] => {
         const canonicalSeed = defaults[zone]?.[0];
         const canonicalId = canonicalSeed?.id;
+        const builtInSeeds = BUILT_IN_SEEDS_BY_ID[zone];
         const incoming = hasLegacy
             ? (legacy?.flow?.[zone] ?? legacy?.depth?.[zone] ?? [])
             : (raw?.[zone] ?? []);
@@ -89,6 +96,7 @@ export const normalizeInquiryPromptConfig = (raw?: InquiryPromptConfig): Inquiry
 
         incoming.forEach((slot, index) => {
             if (!slot) return;
+            const builtInSeed = slot.id ? builtInSeeds.get(slot.id) : undefined;
 
             if (canonicalId && slot.id === canonicalId && canonicalSeed) {
                 canonicalIncluded = true;
@@ -102,6 +110,25 @@ export const normalizeInquiryPromptConfig = (raw?: InquiryPromptConfig): Inquiry
                     label: slot.label ?? canonicalSeed.label ?? '',
                     question: questionValue,
                     enabled: true,
+                    builtIn: true
+                });
+                return;
+            }
+
+            if (builtInSeed) {
+                if (slot.enabled === false) return;
+                if (usedIds.has(builtInSeed.id)) return;
+                const questionValue = slot.question?.trim().length
+                    ? slot.question
+                    : builtInSeed.question;
+                usedIds.add(builtInSeed.id);
+                slots.push({
+                    ...buildBuiltInSlot(builtInSeed),
+                    ...slot,
+                    id: builtInSeed.id,
+                    label: slot.label ?? builtInSeed.label ?? '',
+                    question: questionValue,
+                    enabled: slot.enabled ?? builtInSeed.enabled ?? true,
                     builtIn: true
                 });
                 return;
@@ -155,5 +182,8 @@ export const normalizeInquiryPromptConfig = (raw?: InquiryPromptConfig): Inquiry
 
 export const getBuiltInPromptSeed = (zone: InquiryZone, index = 0): BuiltInPromptSeed | undefined =>
     BUILT_IN_PROMPTS[zone][index];
+
+export const getBuiltInPromptSeedById = (zone: InquiryZone, id?: string): BuiltInPromptSeed | undefined =>
+    id ? BUILT_IN_SEEDS_BY_ID[zone].get(id) : undefined;
 
 export const getCanonicalPromptText = (zone: InquiryZone): string => CANONICAL_PROMPTS[zone];

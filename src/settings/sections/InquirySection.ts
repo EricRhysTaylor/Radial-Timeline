@@ -97,7 +97,7 @@ const CONTRIBUTION_MODES: InquiryMaterialMode[] = ['none', 'summary', 'full'];
 const DEFAULT_FULL_CLASSES = new Set(['outline', ...REFERENCE_ONLY_CLASSES]);
 const CONTRIBUTION_LABELS: Record<InquiryMaterialMode, string> = {
     none: 'None',
-    summary: 'Summary',
+    summary: 'Synopsis',
     full: 'Full'
 };
 const CONTRIBUTION_RANK: Record<InquiryMaterialMode, number> = {

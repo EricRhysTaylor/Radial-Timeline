@@ -183,6 +183,9 @@ const GUIDANCE_LINE_HEIGHT = 18;
 const GUIDANCE_ALERT_LINE_HEIGHT = 26;
 const INQUIRY_PROMPT_OVERHEAD_CHARS = 900;
 const INQUIRY_CHARS_PER_TOKEN = 4;
+const INQUIRY_INPUT_TOKENS_AMBER = 60000;
+const INQUIRY_INPUT_TOKENS_RED = 110000;
+const INQUIRY_TOKENS_RED_TOOLTIP = 'Payload is very large and may be truncated by some models. Consider switching to a larger-context model.';
 
 type InquiryQuestion = {
     id: string;
@@ -192,12 +195,34 @@ type InquiryQuestion = {
     icon: string;
 };
 
+type InquiryBriefModel = {
+    questionTitle: string;
+    questionText: string;
+    scopeIndicator?: string | null;
+    pills: string[];
+    flowSummary: string;
+    depthSummary: string;
+    findings: Array<{
+        headline: string;
+        clarity: string;
+        impact: string;
+        confidence: string;
+        lens: string;
+        bullets: string[];
+    }>;
+    sceneNotes: Array<{ label: string; note: string }>;
+    pendingActions: string[];
+    logTitle?: string | null;
+};
+
 type InquiryPreviewRow = {
     group: SVGGElement;
     bg: SVGRectElement;
     text: SVGTextElement;
     label: string;
 };
+
+type TokenTier = 'normal' | 'amber' | 'red';
 
 type InquiryChoiceOption<T> = {
     label: string;
@@ -309,6 +334,15 @@ type OmnibusProviderChoice = {
     useOmnibus: boolean;
     reason?: string;
 };
+type EngineChoice = {
+    provider: EngineProvider;
+    providerLabel: string;
+    modelId: string;
+    modelLabel: string;
+    isActive: boolean;
+    enabled: boolean;
+    disabledReason?: string;
+};
 
 export class InquiryView extends ItemView {
     static readonly viewType = INQUIRY_VIEW_TYPE;
@@ -333,9 +367,22 @@ export class InquiryView extends ItemView {
     private briefingHideTimer?: number;
     private engineBadgeGroup?: SVGGElement;
     private enginePanelEl?: HTMLDivElement;
+    private enginePanelRecommendedEl?: HTMLDivElement;
+    private enginePanelRecommendedListEl?: HTMLDivElement;
+    private enginePanelAllLabelEl?: HTMLDivElement;
+    private enginePanelControlsEl?: HTMLDivElement;
+    private enginePanelNextRunToggle?: HTMLButtonElement;
+    private enginePanelSetDefaultButton?: HTMLButtonElement;
+    private enginePanelGuardEl?: HTMLDivElement;
+    private enginePanelGuardNoteEl?: HTMLDivElement;
+    private enginePanelRunAnywayButton?: HTMLButtonElement;
     private enginePanelListEl?: HTMLDivElement;
     private enginePanelMetaEl?: HTMLDivElement;
     private enginePanelHideTimer?: number;
+    private engineNextRunOnly?: boolean;
+    private engineNextRunOnlyTouched = false;
+    private nextRunEngineOverride?: { provider: EngineProvider; providerLabel: string; modelId: string; modelLabel: string };
+    private pendingGuardQuestion?: InquiryQuestion;
     private minimapTicksEl?: SVGGElement;
     private minimapBaseline?: SVGLineElement;
     private minimapEndCapStart?: SVGRectElement;
@@ -731,6 +778,9 @@ export class InquiryView extends ItemView {
         this.previewRowDefaultLabels = rowLabels.slice();
         this.previewRows = rowLabels.map(label => {
             const group = this.createSvgGroup(panel, 'ert-inquiry-preview-pill');
+            if (label === 'TOKENS') {
+                group.classList.add('is-tokens-slot');
+            }
             const bg = this.createSvgElement('rect');
             bg.classList.add('ert-inquiry-preview-pill-bg');
             group.appendChild(bg);
@@ -810,6 +860,46 @@ export class InquiryView extends ItemView {
         const header = panel.createDiv({ cls: 'ert-inquiry-engine-header' });
         header.createDiv({ cls: 'ert-inquiry-engine-title', text: 'AI Engine' });
         this.enginePanelMetaEl = header.createDiv({ cls: 'ert-inquiry-engine-meta', text: '' });
+
+        this.enginePanelGuardEl = panel.createDiv({ cls: 'ert-inquiry-engine-guard ert-hidden' });
+        this.enginePanelGuardNoteEl = this.enginePanelGuardEl.createDiv({
+            cls: 'ert-inquiry-engine-guard-note',
+            text: 'Payload is very large. Choose a larger-context model or run anyway.'
+        });
+        this.enginePanelRunAnywayButton = this.enginePanelGuardEl.createEl('button', {
+            cls: 'ert-inquiry-engine-run-anyway',
+            text: 'Run anyway',
+            attr: { type: 'button' }
+        });
+        this.registerDomEvent(this.enginePanelRunAnywayButton, 'click', (event: MouseEvent) => {
+            event.stopPropagation();
+            void this.handleRunAnywayClick();
+        });
+
+        this.enginePanelControlsEl = panel.createDiv({ cls: 'ert-inquiry-engine-controls' });
+        this.enginePanelNextRunToggle = this.enginePanelControlsEl.createEl('button', {
+            cls: 'ert-inquiry-engine-toggle',
+            text: 'Use for next run only',
+            attr: { type: 'button', 'aria-pressed': 'false' }
+        });
+        this.enginePanelSetDefaultButton = this.enginePanelControlsEl.createEl('button', {
+            cls: 'ert-inquiry-engine-set-default',
+            text: 'Set as default',
+            attr: { type: 'button', 'aria-pressed': 'false' }
+        });
+        this.registerDomEvent(this.enginePanelNextRunToggle, 'click', (event: MouseEvent) => {
+            event.stopPropagation();
+            this.toggleEngineNextRunOnly();
+        });
+        this.registerDomEvent(this.enginePanelSetDefaultButton, 'click', (event: MouseEvent) => {
+            event.stopPropagation();
+            void this.commitEngineOverrideAsDefault();
+        });
+
+        this.enginePanelRecommendedEl = panel.createDiv({ cls: 'ert-inquiry-engine-recommended ert-hidden' });
+        this.enginePanelRecommendedEl.createDiv({ cls: 'ert-inquiry-engine-section-title', text: 'Recommended' });
+        this.enginePanelRecommendedListEl = this.enginePanelRecommendedEl.createDiv({ cls: 'ert-inquiry-engine-list' });
+        this.enginePanelAllLabelEl = panel.createDiv({ cls: 'ert-inquiry-engine-section-title', text: 'All models' });
         this.enginePanelListEl = panel.createDiv({ cls: 'ert-inquiry-engine-list' });
         panel.createDiv({ cls: 'ert-inquiry-engine-note', text: 'Updates Settings > AI.' });
         this.registerDomEvent(panel, 'pointerenter', () => this.cancelEnginePanelHide());
@@ -828,6 +918,10 @@ export class InquiryView extends ItemView {
         if (!this.enginePanelEl) return;
         this.cancelEnginePanelHide();
         this.enginePanelEl.classList.add('ert-hidden');
+        if (this.pendingGuardQuestion && !this.state.isRunning) {
+            this.pendingGuardQuestion = undefined;
+            this.refreshEnginePanel();
+        }
     }
 
     private scheduleEnginePanelHide(): void {
@@ -847,23 +941,7 @@ export class InquiryView extends ItemView {
     private refreshEnginePanel(): void {
         if (!this.enginePanelListEl) return;
         this.enginePanelListEl.empty();
-
-        type EngineChoice = {
-            provider: EngineProvider;
-            providerLabel: string;
-            modelId: string;
-            modelLabel: string;
-            isActive: boolean;
-            enabled: boolean;
-            disabledReason?: string;
-        };
-
-        const providerLabels: Record<EngineProvider, string> = {
-            anthropic: 'Anthropic',
-            gemini: 'Gemini',
-            openai: 'OpenAI',
-            local: 'Local'
-        };
+        this.enginePanelRecommendedListEl?.empty();
 
         const clean = (value: string) => value.replace(/^models\//, '').trim();
         const getProviderModelId = (provider: EngineProvider): string => {
@@ -873,27 +951,14 @@ export class InquiryView extends ItemView {
             return clean(this.plugin.settings.openaiModelId || 'gpt-5.2-chat-latest');
         };
 
-        const getProviderAvailability = (provider: EngineProvider): { enabled: boolean; reason?: string } => {
-            if (provider === 'local') {
-                const baseUrl = this.plugin.settings.localBaseUrl?.trim();
-                return baseUrl ? { enabled: true } : { enabled: false, reason: 'Local URL missing' };
-            }
-            const key = provider === 'anthropic'
-                ? this.plugin.settings.anthropicApiKey
-                : provider === 'gemini'
-                    ? this.plugin.settings.geminiApiKey
-                    : this.plugin.settings.openaiApiKey;
-            return key?.trim() ? { enabled: true } : { enabled: false, reason: 'API key missing' };
-        };
-
         const activeProvider = (this.plugin.settings.defaultAiProvider || 'openai') as EngineProvider;
         const providers: EngineProvider[] = ['anthropic', 'gemini', 'openai', 'local'];
         const choices: EngineChoice[] = providers.map(provider => {
             const modelId = getProviderModelId(provider);
-            const availability = getProviderAvailability(provider);
+            const availability = this.getProviderAvailability(provider);
             return {
                 provider,
-                providerLabel: providerLabels[provider],
+                providerLabel: this.getInquiryProviderLabel(provider),
                 modelId,
                 modelLabel: getModelDisplayName(modelId),
                 isActive: provider === activeProvider,
@@ -907,28 +972,43 @@ export class InquiryView extends ItemView {
             this.enginePanelMetaEl.setText(`Active: ${activeLabel}`);
         }
 
+        const contextQuestion = this.getEngineContextQuestion();
+        const tokenTier = contextQuestion ? this.getTokenTierForQuestion(contextQuestion) : 'normal';
+        const showRecommendations = tokenTier !== 'normal';
+        const recommendedChoices = showRecommendations ? this.pickRecommendedEngineChoices(choices) : [];
+        const recommendedKeys = new Set(recommendedChoices.map(choice => `${choice.provider}::${choice.modelId}`));
+        const showRecommendedSection = showRecommendations && recommendedChoices.length > 0;
+
+        if (this.enginePanelRecommendedEl) {
+            this.enginePanelRecommendedEl.classList.toggle('ert-hidden', !showRecommendedSection);
+        }
+        if (this.enginePanelAllLabelEl) {
+            this.enginePanelAllLabelEl.classList.toggle('ert-hidden', !showRecommendedSection);
+        }
+
+        if (this.enginePanelGuardEl) {
+            const showGuard = Boolean(this.pendingGuardQuestion) && tokenTier === 'red';
+            this.enginePanelGuardEl.classList.toggle('ert-hidden', !showGuard);
+        }
+
+        this.syncEngineNextRunToggle(tokenTier);
+        this.syncEngineDefaultButtonState();
+
         if (!choices.length) {
             this.enginePanelListEl.createDiv({ cls: 'ert-inquiry-engine-empty', text: 'No models configured yet.' });
             return;
         }
 
-        choices.forEach(choice => {
-            const item = this.enginePanelListEl?.createEl('button', { cls: 'ert-inquiry-engine-item', attr: { type: 'button' } });
-            if (!item) return;
-            if (choice.isActive) item.classList.add('is-active');
-            if (!choice.enabled) item.classList.add('is-disabled');
-            const main = item.createDiv({ cls: 'ert-inquiry-engine-item-main' });
-            main.createDiv({ cls: 'ert-inquiry-engine-item-title', text: `${choice.providerLabel} · ${choice.modelLabel}` });
-            main.createDiv({ cls: 'ert-inquiry-engine-item-meta', text: choice.modelId });
-            const statusText = !choice.enabled ? choice.disabledReason : (choice.isActive ? 'Active' : undefined);
-            if (statusText) {
-                item.createDiv({ cls: 'ert-inquiry-engine-item-status', text: statusText });
-            }
-            this.registerDomEvent(item, 'click', (event: MouseEvent) => {
-                event.stopPropagation();
-                if (!choice.enabled) return;
-                void this.applyEngineChoice(choice);
+        if (showRecommendedSection && this.enginePanelRecommendedListEl) {
+            this.renderEngineChoices(this.enginePanelRecommendedListEl, recommendedChoices, {
+                tokenTier,
+                recommendedKeys
             });
+        }
+
+        this.renderEngineChoices(this.enginePanelListEl, choices, {
+            tokenTier,
+            recommendedKeys
         });
     }
 
@@ -938,8 +1018,131 @@ export class InquiryView extends ItemView {
         if (choice.provider === 'gemini') this.plugin.settings.geminiModelId = choice.modelId;
         if (choice.provider === 'openai') this.plugin.settings.openaiModelId = choice.modelId;
         if (choice.provider === 'local') this.plugin.settings.localModelId = choice.modelId;
+        this.nextRunEngineOverride = undefined;
         await this.plugin.saveSettings();
         this.updateEngineBadge();
+    }
+
+    private toggleEngineNextRunOnly(): void {
+        const next = !(this.engineNextRunOnly ?? false);
+        this.engineNextRunOnly = next;
+        this.engineNextRunOnlyTouched = true;
+        if (this.enginePanelNextRunToggle) {
+            this.enginePanelNextRunToggle.classList.toggle('is-active', next);
+            this.enginePanelNextRunToggle.setAttribute('aria-pressed', next ? 'true' : 'false');
+        }
+    }
+
+    private syncEngineNextRunToggle(tokenTier: TokenTier): void {
+        if (!this.engineNextRunOnlyTouched) {
+            this.engineNextRunOnly = tokenTier === 'red';
+        }
+        if (this.enginePanelNextRunToggle) {
+            const active = this.engineNextRunOnly ?? false;
+            this.enginePanelNextRunToggle.classList.toggle('is-active', active);
+            this.enginePanelNextRunToggle.setAttribute('aria-pressed', active ? 'true' : 'false');
+        }
+    }
+
+    private syncEngineDefaultButtonState(): void {
+        if (!this.enginePanelSetDefaultButton) return;
+        const canCommit = Boolean(this.nextRunEngineOverride);
+        this.enginePanelSetDefaultButton.classList.toggle('is-disabled', !canCommit);
+        this.enginePanelSetDefaultButton.setAttribute('aria-disabled', canCommit ? 'false' : 'true');
+    }
+
+    private setNextRunEngineOverride(choice: EngineChoice): void {
+        this.nextRunEngineOverride = {
+            provider: choice.provider,
+            providerLabel: choice.providerLabel,
+            modelId: choice.modelId,
+            modelLabel: choice.modelLabel
+        };
+        this.syncEngineDefaultButtonState();
+    }
+
+    private async commitEngineOverrideAsDefault(): Promise<void> {
+        if (!this.nextRunEngineOverride) return;
+        const { provider, modelId } = this.nextRunEngineOverride;
+        await this.applyEngineChoice({ provider, modelId });
+        this.syncEngineDefaultButtonState();
+    }
+
+    private async handleEngineChoiceClick(choice: EngineChoice): Promise<void> {
+        if (!choice.enabled) return;
+        if (this.engineNextRunOnly) {
+            this.setNextRunEngineOverride(choice);
+        } else {
+            await this.applyEngineChoice({ provider: choice.provider, modelId: choice.modelId });
+        }
+        this.refreshEnginePanel();
+        if (this.pendingGuardQuestion) {
+            const pending = this.pendingGuardQuestion;
+            this.pendingGuardQuestion = undefined;
+            this.hideEnginePanel();
+            await this.runInquiry(pending, { bypassTokenGuard: true });
+        }
+    }
+
+    private async handleRunAnywayClick(): Promise<void> {
+        if (!this.pendingGuardQuestion) return;
+        const pending = this.pendingGuardQuestion;
+        this.pendingGuardQuestion = undefined;
+        this.hideEnginePanel();
+        this.nextRunEngineOverride = undefined;
+        this.syncEngineDefaultButtonState();
+        await this.runInquiry(pending, { bypassTokenGuard: true, ignoreNextRunOverride: true });
+    }
+
+    private renderEngineChoices(
+        listEl: HTMLDivElement,
+        choices: EngineChoice[],
+        options: { tokenTier: TokenTier; recommendedKeys: Set<string> }
+    ): void {
+        const showTruncateWarning = options.tokenTier === 'red';
+        choices.forEach(choice => {
+            const item = listEl.createEl('button', { cls: 'ert-inquiry-engine-item', attr: { type: 'button' } });
+            if (choice.isActive) item.classList.add('is-active');
+            if (!choice.enabled) item.classList.add('is-disabled');
+            const main = item.createDiv({ cls: 'ert-inquiry-engine-item-main' });
+            main.createDiv({ cls: 'ert-inquiry-engine-item-title', text: `${choice.providerLabel} · ${choice.modelLabel}` });
+            main.createDiv({ cls: 'ert-inquiry-engine-item-meta', text: choice.modelId });
+            const statusParts: string[] = [];
+            if (!choice.enabled && choice.disabledReason) {
+                statusParts.push(choice.disabledReason);
+            } else if (choice.isActive) {
+                statusParts.push('Active');
+            }
+            const key = `${choice.provider}::${choice.modelId}`;
+            if (showTruncateWarning && !options.recommendedKeys.has(key) && choice.enabled) {
+                statusParts.push('May truncate');
+            }
+            if (statusParts.length) {
+                const statusEl = item.createDiv({ cls: 'ert-inquiry-engine-item-status', text: statusParts.join(' · ') });
+                if (showTruncateWarning && statusParts.includes('May truncate')) {
+                    statusEl.classList.add('is-warning');
+                }
+            }
+            this.registerDomEvent(item, 'click', (event: MouseEvent) => {
+                event.stopPropagation();
+                void this.handleEngineChoiceClick(choice);
+            });
+        });
+    }
+
+    private getEngineContextQuestion(): string | null {
+        if (this.pendingGuardQuestion?.question) return this.pendingGuardQuestion.question;
+        if (this.previewLast?.question) return this.previewLast.question;
+        const activeQuestion = this.getQuestionTextById(this.state.activeQuestionId);
+        return activeQuestion ?? null;
+    }
+
+    private pickRecommendedEngineChoices(choices: EngineChoice[]): EngineChoice[] {
+        const enabled = choices.filter(choice => choice.enabled);
+        if (!enabled.length) return [];
+        const rank: EngineProvider[] = ['gemini', 'anthropic', 'openai', 'local'];
+        const ranked = enabled.slice().sort((a, b) => rank.indexOf(a.provider) - rank.indexOf(b.provider));
+        return ranked.slice(0, Math.min(2, ranked.length));
     }
 
     private showBriefingPanel(): void {
@@ -1004,7 +1207,8 @@ export class InquiryView extends ItemView {
             if (session.key === this.state.activeSessionId) {
                 item.classList.add('is-active');
             }
-            const main = item.createDiv({ cls: 'ert-inquiry-briefing-main' });
+            const textRow = item.createDiv({ cls: 'ert-inquiry-briefing-row ert-inquiry-briefing-row--text' });
+            const main = textRow.createDiv({ cls: 'ert-inquiry-briefing-main' });
             const zoneLabel = this.resolveSessionZoneLabel(session);
             const lensLabel = this.resolveSessionLensLabel(session, zoneLabel);
             const header = `${zoneLabel} · ${lensLabel}`;
@@ -1012,15 +1216,17 @@ export class InquiryView extends ItemView {
             const metaText = `${this.formatSessionTime(session)} · ${this.formatSessionScope(session)}`;
             main.createDiv({ cls: 'ert-inquiry-briefing-meta', text: metaText });
 
+            const actionRow = item.createDiv({ cls: 'ert-inquiry-briefing-row ert-inquiry-briefing-row--actions' });
             const status = this.resolveSessionStatus(session);
-            const statusEl = item.createDiv({
+            const statusEl = actionRow.createDiv({
                 cls: `ert-inquiry-briefing-status ert-inquiry-briefing-status--${status}`,
                 text: status
             });
             statusEl.setAttribute('aria-label', `Session status: ${status}`);
 
             const pendingEditsApplied = !!session.pendingEditsApplied;
-            const updateBtn = item.createEl('button', {
+            const actionGroup = actionRow.createDiv({ cls: 'ert-inquiry-briefing-actions' });
+            const updateBtn = actionGroup.createEl('button', {
                 cls: 'ert-inquiry-briefing-update',
                 attr: {
                     'aria-label': pendingEditsApplied ? 'Pending Edits updated' : 'Update Pending Edits'
@@ -1038,7 +1244,7 @@ export class InquiryView extends ItemView {
             }
 
             if (session.briefPath) {
-                const openBtn = item.createEl('button', {
+                const openBtn = actionGroup.createEl('button', {
                     cls: 'ert-inquiry-briefing-open',
                     attr: { 'aria-label': 'Open saved brief' }
                 });
@@ -2433,6 +2639,32 @@ export class InquiryView extends ItemView {
     private getActiveInquiryModelLabel(): string {
         const modelId = this.getActiveInquiryModelId();
         return modelId ? getModelDisplayName(modelId.replace(/^models\//, '')) : 'Unknown model';
+    }
+
+    private resolveEngineSelectionForRun(ignoreOverride?: boolean): {
+        provider: EngineProvider;
+        modelId: string;
+        modelLabel: string;
+        nextRunOnly: boolean;
+        usedOverride: boolean;
+    } {
+        if (!ignoreOverride && this.nextRunEngineOverride) {
+            return {
+                provider: this.nextRunEngineOverride.provider,
+                modelId: this.nextRunEngineOverride.modelId,
+                modelLabel: this.nextRunEngineOverride.modelLabel,
+                nextRunOnly: true,
+                usedOverride: true
+            };
+        }
+        const provider = (this.plugin.settings.defaultAiProvider || 'openai') as EngineProvider;
+        return {
+            provider,
+            modelId: this.getActiveInquiryModelId(),
+            modelLabel: this.getActiveInquiryModelLabel(),
+            nextRunOnly: false,
+            usedOverride: false
+        };
     }
 
     private getClassScopeConfig(raw?: string[]): { allowAll: boolean; allowed: Set<string> } {
@@ -4137,6 +4369,13 @@ export class InquiryView extends ItemView {
     }
 
     private async handleQuestionClick(question: InquiryQuestion): Promise<void> {
+        await this.runInquiry(question);
+    }
+
+    private async runInquiry(
+        question: InquiryQuestion,
+        options?: { bypassTokenGuard?: boolean; ignoreNextRunOverride?: boolean }
+    ): Promise<void> {
         if (this.isInquiryRunDisabled()) return;
         if (this.state.isRunning) {
             this.notifyInteraction('Inquiry running. Please wait.');
@@ -4146,11 +4385,13 @@ export class InquiryView extends ItemView {
         this.state.activeZone = question.zone;
         this.updateActiveZoneStyling();
 
-        const manifest = this.buildCorpusManifest(question.id);
         const focusLabel = this.getFocusLabel();
         const focusId = this.getFocusId();
         const focusSceneId = this.state.scope === 'book' ? this.state.focusSceneId : undefined;
         const focusBookId = this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusBookId;
+
+        const engineSelection = this.resolveEngineSelectionForRun(options?.ignoreNextRunOverride);
+        const manifest = this.buildCorpusManifest(question.id, { modelId: engineSelection.modelId });
         const baseKey = this.sessionStore.buildBaseKey({
             questionId: question.id,
             scope: this.state.scope,
@@ -4188,6 +4429,15 @@ export class InquiryView extends ItemView {
             return;
         }
 
+        if (!options?.bypassTokenGuard) {
+            const tokenTier = this.getTokenTierForQuestion(question.question);
+            if (tokenTier === 'red') {
+                this.pendingGuardQuestion = question;
+                this.showEnginePanel();
+                return;
+            }
+        }
+
         this.clearActiveResultState();
         this.state.activeQuestionId = question.id;
         this.state.activeZone = question.zone;
@@ -4214,9 +4464,9 @@ export class InquiryView extends ItemView {
             corpus: manifest,
             rules: this.getEvidenceRules(),
             ai: {
-                provider: this.plugin.settings.defaultAiProvider || 'openai',
-                modelId: this.getActiveInquiryModelId(),
-                modelLabel: this.getActiveInquiryModelLabel()
+                provider: engineSelection.provider,
+                modelId: engineSelection.modelId,
+                modelLabel: engineSelection.modelLabel
             }
         };
         try {
@@ -4236,6 +4486,10 @@ export class InquiryView extends ItemView {
         result.submittedAt = submittedAt.toISOString();
         result.completedAt = completedAt.toISOString();
         result.roundTripMs = completedAt.getTime() - submittedAt.getTime();
+        const tokenEstimate = runTrace?.tokenEstimate ?? this.getTokenEstimateForQuestion(question.question);
+        result.tokenEstimateInput = tokenEstimate.inputTokens;
+        result.tokenEstimateTier = this.getTokenTier(tokenEstimate.inputTokens);
+        result.aiModelNextRunOnly = engineSelection.nextRunOnly;
         const rawResult = result;
         result = this.normalizeLegacyResult(result);
         const normalizationNotes = this.collectNormalizationNotes(rawResult, result);
@@ -4285,6 +4539,11 @@ export class InquiryView extends ItemView {
         const elapsed = Date.now() - startTime;
         if (elapsed < MIN_PROCESSING_MS) {
             await new Promise(resolve => window.setTimeout(resolve, MIN_PROCESSING_MS - elapsed));
+        }
+
+        if (engineSelection.usedOverride) {
+            this.nextRunEngineOverride = undefined;
+            this.syncEngineDefaultButtonState();
         }
 
         this.applySession({
@@ -4590,6 +4849,7 @@ export class InquiryView extends ItemView {
         submittedAt: Date;
         completedAt: Date;
     }): Promise<{ session: InquirySession; briefPath?: string; normalized: InquiryResult }> {
+        const tokenEstimate = options.trace?.tokenEstimate ?? this.getTokenEstimateForQuestion(options.question.question);
         const timedResult: InquiryResult = {
             ...options.result,
             questionId: options.result.questionId || options.question.id,
@@ -4599,6 +4859,15 @@ export class InquiryView extends ItemView {
             roundTripMs: options.completedAt.getTime() - options.submittedAt.getTime(),
             corpusFingerprint: options.manifest.fingerprint
         };
+        if (typeof timedResult.tokenEstimateInput !== 'number') {
+            timedResult.tokenEstimateInput = tokenEstimate.inputTokens;
+        }
+        if (!timedResult.tokenEstimateTier) {
+            timedResult.tokenEstimateTier = this.getTokenTier(tokenEstimate.inputTokens);
+        }
+        if (typeof timedResult.aiModelNextRunOnly !== 'boolean') {
+            timedResult.aiModelNextRunOnly = false;
+        }
 
         const normalized = this.normalizeLegacyResult(timedResult);
         const normalizationNotes = this.collectNormalizationNotes(timedResult, normalized);
@@ -5233,6 +5502,10 @@ export class InquiryView extends ItemView {
             result.submittedAt = submittedAt.toISOString();
             result.completedAt = completedAt.toISOString();
             result.roundTripMs = completedAt.getTime() - submittedAt.getTime();
+            const tokenEstimate = this.getTokenEstimateForQuestion(selectedPrompt.question);
+            result.tokenEstimateInput = tokenEstimate.inputTokens;
+            result.tokenEstimateTier = this.getTokenTier(tokenEstimate.inputTokens);
+            result.aiModelNextRunOnly = false;
             const rawResult = result;
             result = this.normalizeLegacyResult(result);
             const normalizationNotes = this.collectNormalizationNotes(rawResult, result);
@@ -6071,6 +6344,10 @@ export class InquiryView extends ItemView {
         if (this.previewShimmerGroup) {
             this.updatePreviewShimmerText();
         }
+        this.syncTokensPillState(question);
+        if (this.enginePanelEl && !this.enginePanelEl.classList.contains('ert-hidden')) {
+            this.refreshEnginePanel();
+        }
     }
 
     private showResultsPreview(result: InquiryResult): void {
@@ -6112,24 +6389,43 @@ export class InquiryView extends ItemView {
         const maxSlots = Math.min(RESULTS_MAX_CHIPS, this.previewRows.length || RESULTS_MAX_CHIPS);
         const items = this.getResultItems(result);
         const ordered = this.getOrderedFindings(result, mode);
-        const labels: string[] = [];
-        const values: string[] = [];
+        const selections: Array<{
+            label: string;
+            value: string;
+            order: number;
+            selectionIndex: number;
+        }> = [];
         const seen = new Set<string>();
 
         for (const finding of ordered) {
-            if (labels.length >= maxSlots) break;
+            if (selections.length >= maxSlots) break;
             const label = this.resolveFindingChipLabel(finding, result, items);
             if (!label || seen.has(label)) continue;
             seen.add(label);
-            labels.push(label);
-            values.push(this.truncatePreviewValue(this.normalizeInquiryHeadline(finding.headline), 46));
+            selections.push({
+                label,
+                value: this.truncatePreviewValue(this.normalizeInquiryHeadline(finding.headline), 46),
+                order: this.resolveFindingChipOrder(label, result, items),
+                selectionIndex: selections.length
+            });
         }
 
-        if (!labels.length) {
-            labels.push('');
-            values.push(RESULTS_EMPTY_TEXT);
+        if (!selections.length) {
+            selections.push({
+                label: '',
+                value: RESULTS_EMPTY_TEXT,
+                order: Number.POSITIVE_INFINITY,
+                selectionIndex: 0
+            });
+        } else {
+            selections.sort((a, b) => {
+                if (a.order !== b.order) return a.order - b.order;
+                return a.selectionIndex - b.selectionIndex;
+            });
         }
 
+        const labels = selections.map(entry => entry.label);
+        const values = selections.map(entry => entry.value);
         const targetLength = this.previewRows.length || labels.length;
         const paddedLabels = Array(targetLength).fill('');
         const paddedValues = Array(targetLength).fill('');
@@ -6170,6 +6466,25 @@ export class InquiryView extends ItemView {
         }
 
         return null;
+    }
+
+    private resolveFindingChipOrder(
+        label: string,
+        result: InquiryResult,
+        items: InquiryCorpusItem[]
+    ): number {
+        const lower = label.toLowerCase();
+        const itemIndex = items.findIndex(item => item.displayLabel.toLowerCase() === lower);
+        if (itemIndex >= 0) return itemIndex;
+
+        const scopePrefix = result.scope === 'saga' ? 'B' : 'S';
+        const match = new RegExp(`^${scopePrefix}(\\d+)$`, 'i').exec(label);
+        if (match) {
+            const numeric = Number(match[1]);
+            if (Number.isFinite(numeric)) return numeric - 1;
+        }
+
+        return Number.POSITIVE_INFINITY;
     }
 
     private sanitizeInquirySummary(rawSummary?: string | null): string {
@@ -6532,6 +6847,31 @@ export class InquiryView extends ItemView {
         row.text.appendChild(detail);
     }
 
+    private syncTokensPillState(questionText: string): void {
+        if (!this.previewRows.length) return;
+        this.previewRows.forEach(row => {
+            row.group.classList.remove('is-token-amber', 'is-token-red');
+            if (row.group.getAttribute('data-tooltip')) {
+                row.group.removeAttribute('data-tooltip');
+            }
+            row.group.removeAttribute('data-tooltip-placement');
+            row.group.classList.remove('rt-tooltip-target');
+        });
+        const tokensRow = this.previewRows.find(row => row.group.classList.contains('is-tokens-slot'));
+        if (!tokensRow) return;
+        const label = tokensRow.label?.trim().toUpperCase();
+        if (label !== 'TOKENS') return;
+        if (!questionText) return;
+        const tier = this.getTokenTierForQuestion(questionText);
+        if (tier === 'amber') {
+            tokensRow.group.classList.add('is-token-amber');
+        }
+        if (tier === 'red') {
+            tokensRow.group.classList.add('is-token-red');
+            addTooltipData(tokensRow.group, this.balanceTooltipText(INQUIRY_TOKENS_RED_TOOLTIP), 'bottom');
+        }
+    }
+
     private pickPillSplit(widths: number[], maxWidth: number): number {
         const total = widths.length;
         let bestIndex = Math.ceil((total + 1) / 2);
@@ -6821,7 +7161,7 @@ export class InquiryView extends ItemView {
     }
 
     private extractSynopsis(frontmatter: Record<string, unknown>): string {
-        const raw = frontmatter['Synopsis'] ?? frontmatter['Summary'];
+        const raw = frontmatter['Synopsis'];
         if (Array.isArray(raw)) {
             return raw.map(value => String(value)).join('\n').trim();
         }
@@ -6865,19 +7205,37 @@ export class InquiryView extends ItemView {
     }
 
     private getPreviewTokensValue(questionText: string): string {
+        const estimate = this.getTokenEstimateForQuestion(questionText);
+        return `~${this.formatTokenEstimate(estimate.inputTokens)} in · ~${this.formatTokenEstimate(estimate.outputTokens)} out · ~${this.formatTokenEstimate(estimate.totalTokens)} total`;
+    }
+
+    private getTokenEstimateForQuestion(questionText: string): InquiryRunTrace['tokenEstimate'] {
         const stats = this.getPayloadStats();
         if (stats.tokenEstimate && stats.tokenEstimateQuestion === questionText) {
-            const inputTokens = stats.tokenEstimate.inputTokens;
-            const outputTokens = stats.tokenEstimate.outputTokens;
-            const totalTokens = stats.tokenEstimate.totalTokens;
-            return `~${this.formatTokenEstimate(inputTokens)} in · ~${this.formatTokenEstimate(outputTokens)} out · ~${this.formatTokenEstimate(totalTokens)} total`;
+            return stats.tokenEstimate;
         }
         const questionChars = questionText?.length ?? 0;
         const inputChars = stats.evidenceChars + questionChars + INQUIRY_PROMPT_OVERHEAD_CHARS;
         const inputTokens = this.estimateTokensFromChars(inputChars);
         const outputTokens = INQUIRY_MAX_OUTPUT_TOKENS;
         const totalTokens = inputTokens + outputTokens;
-        return `~${this.formatTokenEstimate(inputTokens)} in · ~${this.formatTokenEstimate(outputTokens)} out · ~${this.formatTokenEstimate(totalTokens)} total`;
+        return {
+            inputTokens,
+            outputTokens,
+            totalTokens,
+            inputChars
+        };
+    }
+
+    private getTokenTier(inputTokens: number): TokenTier {
+        if (inputTokens >= INQUIRY_INPUT_TOKENS_RED) return 'red';
+        if (inputTokens >= INQUIRY_INPUT_TOKENS_AMBER) return 'amber';
+        return 'normal';
+    }
+
+    private getTokenTierForQuestion(questionText: string): TokenTier {
+        const estimate = this.getTokenEstimateForQuestion(questionText);
+        return this.getTokenTier(estimate.inputTokens);
     }
 
     private getPreviewRootsValue(): string {
@@ -7048,12 +7406,7 @@ export class InquiryView extends ItemView {
         const filePath = this.getAvailableArtifactPath(folder.path, baseName);
         const sessionLogPath = options.logPath
             ?? (options.sessionKey ? this.sessionStore.peekSession(options.sessionKey)?.logPath : undefined);
-        const content = this.buildArtifactContent(
-            result,
-            this.plugin.settings.inquiryEmbedJson ?? true,
-            briefTitle,
-            sessionLogPath
-        );
+        const content = this.buildArtifactContent(result, sessionLogPath);
 
         try {
             const file = await this.app.vault.create(filePath, content);
@@ -7153,105 +7506,185 @@ export class InquiryView extends ItemView {
 
     private buildArtifactContent(
         result: InquiryResult,
-        embedJson: boolean,
-        briefTitle?: string,
         logPath?: string
     ): string {
-        const submittedAt = result.submittedAt ? new Date(result.submittedAt) : null;
-        const completedAt = result.completedAt ? new Date(result.completedAt) : null;
-        const submittedAtLocal = submittedAt && Number.isFinite(submittedAt.getTime())
-            ? this.formatInquiryBriefTimestamp(submittedAt, { includeSeconds: true })
-            : 'unknown';
-        const completedAtLocal = completedAt && Number.isFinite(completedAt.getTime())
-            ? this.formatInquiryBriefTimestamp(completedAt, { includeSeconds: true })
-            : 'unknown';
-        const durationLocal = typeof result.roundTripMs === 'number' && Number.isFinite(result.roundTripMs)
-            ? this.formatRoundTripDuration(result.roundTripMs)
-            : 'unknown';
-        const artifactId = `artifact-${Date.now()}`;
-        const questionIds = result.questionId ? `\n  - ${result.questionId}` : '';
-        const fingerprint = result.corpusFingerprint || 'not available';
-        const aiProvider = result.aiProvider || 'unknown';
-        const aiModelRequested = result.aiModelRequested || 'unknown';
-        const aiModelResolved = result.aiModelResolved || 'unknown';
-        const aiStatus = result.aiStatus || 'unknown';
-        const aiReason = result.aiReason || 'none';
+        const brief = this.buildInquiryBriefModel(result, logPath);
+        return this.renderInquiryBrief(brief);
+    }
 
-        const frontmatter = [
-            '---',
-            `artifactId: ${artifactId}`,
-            `scope: ${result.scope}`,
-            `targetId: ${result.focusId}`,
-            `mode: ${result.mode}`,
-            `questionIds:${questionIds}`,
-            `pluginVersion: ${this.plugin.manifest.version}`,
-            `corpusFingerprint: ${fingerprint}`,
-            `aiProvider: ${aiProvider}`,
-            `aiModelRequested: ${aiModelRequested}`,
-            `aiModelResolved: ${aiModelResolved}`,
-            `aiStatus: ${aiStatus}`,
-            `aiReason: ${aiReason}`,
-            `submittedAt: ${submittedAtLocal}`,
-            `returnedAt: ${completedAtLocal}`,
-            `duration: ${durationLocal}`,
-            '---',
-            ''
-        ].join('\n');
+    private buildInquiryBriefModel(result: InquiryResult, logPath?: string): InquiryBriefModel {
+        const questionTitle = this.findPromptLabelById(result.questionId) || 'Inquiry Question';
+        const questionTextRaw = this.getQuestionTextById(result.questionId);
+        const questionText = questionTextRaw && questionTextRaw.trim().length > 0
+            ? questionTextRaw
+            : 'Question text unavailable.';
+        const scopeIndicator = this.resolveInquiryScopeIndicator(result);
 
-        const title = briefTitle ?? this.formatInquiryBriefTitle(result);
-        const logTitle = this.resolveInquiryLogLinkTitle(result, logPath);
-        const logLine = logTitle ? `Log → [[${logTitle}]]\n\n` : '';
-        const heading = `# ${title}\n\n${logLine}`;
-
-        const findingsLines = result.findings.map(finding => {
-            const bullets = finding.bullets.map(bullet => `  - ${bullet}`).join('\n');
-            return `- ${finding.headline} (${finding.kind}, ${finding.impact}, ${finding.assessmentConfidence})\n${bullets}`;
-        }).join('\n');
-
-        const timingLines: string[] = [];
-        if (submittedAt && Number.isFinite(submittedAt.getTime())) {
-            timingLines.push(`Submitted: ${this.formatInquiryBriefTimestamp(submittedAt, { includeSeconds: true })}`);
-        }
-        if (completedAt && Number.isFinite(completedAt.getTime())) {
-            timingLines.push(`Returned: ${this.formatInquiryBriefTimestamp(completedAt, { includeSeconds: true })}`);
-        }
-        if (typeof result.roundTripMs === 'number' && Number.isFinite(result.roundTripMs)) {
-            timingLines.push(`Round trip: ${this.formatRoundTripDuration(result.roundTripMs)}`);
-        }
-
-        // Briefs always include both flow + depth; never omit based on active lens.
-        const flowSummary = this.getResultSummaryForMode(result, 'flow');
-        const depthSummary = this.getResultSummaryForMode(result, 'depth');
-        const summaryLines = [
-            '## Flow summary',
-            flowSummary,
-            '',
-            '## Depth summary',
-            depthSummary,
-            '',
-            '## Verdict',
-            `Flow: ${this.formatMetricDisplay(result.verdict.flow)}`,
-            `Depth: ${this.formatMetricDisplay(result.verdict.depth)}`,
-            `Impact: ${result.verdict.impact}`,
-            `Assessment confidence: ${result.verdict.assessmentConfidence}`
+        const pills: string[] = [
+            `Flow ${this.formatMetricDisplay(result.verdict.flow)}`,
+            `Depth ${this.formatMetricDisplay(result.verdict.depth)}`,
+            `Impact ${this.formatBriefLabel(result.verdict.impact)}`,
+            `Assessment confidence ${this.formatBriefLabel(result.verdict.assessmentConfidence)}`
         ];
-        if (timingLines.length) {
-            summaryLines.push('', '## Timing', ...timingLines);
+
+        if (result.mode) {
+            pills.push(`Mode ${this.formatBriefLabel(result.mode)}`);
         }
-        summaryLines.push('', '## Findings', findingsLines || '- No findings', '');
-        const summarySection = summaryLines.join('\n');
 
-        const payload = embedJson
-            ? [
-                '## RT Artifact Data (Do Not Edit)',
-                '```json',
-                JSON.stringify(this.normalizeLegacyResult(result), null, 2),
-                '```',
-                ''
-            ].join('\n')
-            : '';
+        const modelLabel = this.getBriefModelLabel(result);
+        if (modelLabel) pills.push(modelLabel);
 
-        return `${frontmatter}${heading}${summarySection}${payload}`;
+        const flowSummary = this.getResultSummaryForMode(result, 'flow') || 'No flow summary available.';
+        const depthSummary = this.getResultSummaryForMode(result, 'depth') || 'No depth summary available.';
+
+        const orderedFindings = this.getOrderedFindings(result, result.mode);
+        const findings = orderedFindings
+            .filter(finding => this.isFindingHit(finding))
+            .map(finding => ({
+                headline: this.normalizeInquiryHeadline(finding.headline),
+                clarity: this.formatBriefLabel(finding.status || 'unclear'),
+                impact: this.formatBriefLabel(finding.impact),
+                confidence: this.formatBriefLabel(finding.assessmentConfidence),
+                lens: finding.lens === 'both'
+                    ? 'Flow / Depth'
+                    : this.formatBriefLabel(finding.lens || result.mode || 'flow'),
+                bullets: (finding.bullets || []).filter(Boolean).slice(0, 3)
+            }));
+
+        const sceneNotes = this.buildInquirySceneNotes(result);
+        const pendingActions = this.getPendingInquiryActions(result);
+        const logTitle = this.resolveInquiryLogLinkTitle(result, logPath);
+
+        return {
+            questionTitle,
+            questionText,
+            scopeIndicator,
+            pills,
+            flowSummary,
+            depthSummary,
+            findings,
+            sceneNotes,
+            pendingActions,
+            logTitle
+        };
+    }
+
+    private renderInquiryBrief(brief: InquiryBriefModel): string {
+        const lines: string[] = [];
+
+        lines.push('# Question', '', `**${brief.questionTitle}**`, brief.questionText);
+        if (brief.scopeIndicator) {
+            lines.push(`Scope: ${brief.scopeIndicator}`);
+        }
+
+        lines.push('', '## Summary Pills', brief.pills.map(pill => `[${pill}]`).join(' '));
+
+        lines.push('', '## High-Level Conclusions', '### Flow', brief.flowSummary, '', '### Depth', brief.depthSummary);
+
+        lines.push('', '## Key Findings (Structural Hits)');
+        if (!brief.findings.length) {
+            lines.push('No structural hits.');
+        } else {
+            brief.findings.forEach(finding => {
+                lines.push(
+                    '',
+                    `### ${finding.headline}`,
+                    `Clarity: ${finding.clarity} · Impact: ${finding.impact} · Confidence: ${finding.confidence} · Lens: ${finding.lens}`
+                );
+                if (finding.bullets.length) {
+                    finding.bullets.forEach(bullet => {
+                        lines.push(`- ${bullet}`);
+                    });
+                }
+            });
+        }
+
+        if (brief.sceneNotes.length) {
+            lines.push('', '## Per-Scene / Per-Moment Notes');
+            brief.sceneNotes.forEach(note => {
+                lines.push(`- ${note.label}: ${note.note}`);
+            });
+        }
+
+        if (brief.pendingActions.length) {
+            lines.push('', '## Pending Author Actions');
+            brief.pendingActions.forEach(action => {
+                lines.push(`- ${action}`);
+            });
+        }
+
+        lines.push('', brief.logTitle
+            ? `[[${brief.logTitle}|View full Inquiry Log →]]`
+            : 'View full Inquiry Log →');
+
+        lines.push('');
+        return lines.join('\n');
+    }
+
+    private resolveInquiryScopeIndicator(result: InquiryResult): string | null {
+        const focusId = result.focusId?.trim();
+        if (result.scope === 'saga') {
+            return focusId && focusId.toLowerCase() !== 'saga' ? `Saga ${focusId}` : 'Saga';
+        }
+        if (focusId) {
+            const lowered = focusId.toLowerCase();
+            if (/^s\d+/.test(lowered) || lowered.startsWith('scene')) {
+                return `Scene ${focusId}`;
+            }
+            if (/^c\d+/.test(lowered) || lowered.startsWith('chapter')) {
+                return `Chapter ${focusId}`;
+            }
+            return `Book ${focusId}`;
+        }
+        return null;
+    }
+
+    private formatBriefLabel(value?: string | null): string {
+        if (!value) return 'Unknown';
+        return value
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (char) => char.toUpperCase());
+    }
+
+    private getBriefModelLabel(result: InquiryResult): string | null {
+        const raw = result.aiModelResolved || result.aiModelRequested;
+        if (!raw) return null;
+        const label = getModelDisplayName(raw.replace(/^models\//, ''));
+        return label.replace(/\s*\(.*\)\s*$/, '').trim() || null;
+    }
+
+    private buildInquirySceneNotes(result: InquiryResult): Array<{ label: string; note: string }> {
+        if (result.scope !== 'book') return [];
+        const items = this.getResultItems(result);
+        const orderedFindings = this.getOrderedFindings(result, result.mode);
+        const notes = new Map<string, string>();
+
+        orderedFindings.forEach(finding => {
+            if (!this.isFindingHit(finding)) return;
+            const label = this.resolveFindingChipLabel(finding, result, items)
+                ?? (finding.refId && /^s\d+$/i.test(finding.refId.trim()) ? finding.refId.trim().toUpperCase() : null);
+            if (!label || notes.has(label)) return;
+            const note = (finding.bullets?.find(entry => entry?.trim()) || finding.headline || '')
+                .replace(/\s+/g, ' ')
+                .trim();
+            if (!note) return;
+            notes.set(label, note);
+        });
+
+        return Array.from(notes.entries()).map(([label, note]) => ({ label, note }));
+    }
+
+    private getPendingInquiryActions(result: InquiryResult): string[] {
+        const legacy = result as unknown as {
+            pendingActions?: unknown;
+            followUps?: unknown;
+            pendingInputs?: unknown;
+        };
+        const raw = legacy.pendingActions ?? legacy.followUps ?? legacy.pendingInputs;
+        if (!Array.isArray(raw)) return [];
+        return raw
+            .map(item => String(item).replace(/\s+/g, ' ').trim())
+            .filter(Boolean);
     }
 
     private buildInquiryLogContent(
@@ -7268,11 +7701,22 @@ export class InquiryView extends ItemView {
         const aiProvider = result.aiProvider || 'unknown';
         const aiModelRequested = result.aiModelRequested || 'unknown';
         const aiModelResolved = result.aiModelResolved || aiModelRequested;
+        const aiModelNextRunOnly = typeof result.aiModelNextRunOnly === 'boolean' ? result.aiModelNextRunOnly : null;
         const submittedAt = result.submittedAt ? new Date(result.submittedAt) : null;
         const completedAt = result.completedAt ? new Date(result.completedAt) : null;
         const durationMs = typeof result.roundTripMs === 'number' && Number.isFinite(result.roundTripMs)
             ? result.roundTripMs
             : null;
+        const inquiryId = this.formatInquiryIdFromResult(result);
+        const artifactId = result.runId
+            ? `artifact-${result.runId}`
+            : (inquiryId ? `artifact-${inquiryId}` : `artifact-${Date.now()}`);
+        const tokenEstimateInput = typeof trace.tokenEstimate?.inputTokens === 'number'
+            ? trace.tokenEstimate.inputTokens
+            : (typeof result.tokenEstimateInput === 'number' ? result.tokenEstimateInput : null);
+        const tokenTier = typeof tokenEstimateInput === 'number'
+            ? this.getTokenTier(tokenEstimateInput)
+            : (result.tokenEstimateTier || null);
 
         let status: AiLogStatus = 'success';
         if (result.aiReason === 'stub') {
@@ -7293,7 +7737,7 @@ export class InquiryView extends ItemView {
             ...(normalizationNotes || [])
         ].filter(Boolean);
 
-        return formatAiLogContent({
+        const logContent = formatAiLogContent({
             title,
             metadata: {
                 feature: 'Inquiry',
@@ -7301,6 +7745,9 @@ export class InquiryView extends ItemView {
                 provider: aiProvider,
                 modelRequested: aiModelRequested,
                 modelResolved: aiModelResolved,
+                modelNextRunOnly: aiModelNextRunOnly,
+                estimatedInputTokens: tokenEstimateInput,
+                tokenTier,
                 submittedAt,
                 returnedAt: completedAt,
                 durationMs,
@@ -7323,7 +7770,33 @@ export class InquiryView extends ItemView {
                 retryAttempts: trace.retryCount,
                 schemaWarnings
             }
-        });
+        }, { jsonSpacing: 0 });
+
+        const contextLines = [
+            '## Inquiry Context',
+            `- Artifact ID: ${artifactId}`,
+            `- Run ID: ${result.runId || 'unknown'}`,
+            `- Plugin version: ${this.plugin.manifest.version}`,
+            `- Corpus fingerprint: ${result.corpusFingerprint || 'unknown'}`,
+            `- Scope: ${result.scope || 'unknown'}`,
+            `- Focus ID: ${result.focusId || 'unknown'}`,
+            `- Mode: ${result.mode || 'unknown'}`,
+            `- Question ID: ${result.questionId || 'unknown'}`,
+            `- Question zone: ${result.questionZone || 'unknown'}`,
+            `- AI provider: ${result.aiProvider || 'unknown'}`,
+            `- AI model requested: ${result.aiModelRequested || 'unknown'}`,
+            `- AI model resolved: ${result.aiModelResolved || 'unknown'}`,
+            `- AI next-run override: ${typeof result.aiModelNextRunOnly === 'boolean' ? String(result.aiModelNextRunOnly) : 'unknown'}`,
+            `- AI status: ${result.aiStatus || 'unknown'}`,
+            `- AI reason: ${result.aiReason || 'none'}`,
+            `- Submitted at (raw): ${result.submittedAt || 'unknown'}`,
+            `- Returned at (raw): ${result.completedAt || 'unknown'}`,
+            `- Round trip ms: ${typeof result.roundTripMs === 'number' ? String(result.roundTripMs) : 'unknown'}`,
+            `- Token estimate input: ${typeof result.tokenEstimateInput === 'number' ? String(Math.round(result.tokenEstimateInput)) : 'unknown'}`,
+            `- Token estimate tier: ${result.tokenEstimateTier || 'unknown'}`
+        ];
+
+        return `${logContent}\n\n${contextLines.join('\n')}\n`;
     }
 
     private formatInquiryLogTitle(result: InquiryResult): string {
@@ -7396,6 +7869,19 @@ export class InquiryView extends ItemView {
             if ((config[zone] || []).some(entry => entry.id === questionId)) {
                 return zone;
             }
+        }
+        return null;
+    }
+
+    private getQuestionTextById(questionId?: string): string | null {
+        if (!questionId) return null;
+        const config = this.getPromptConfig();
+        const zones: InquiryZone[] = ['setup', 'pressure', 'payoff'];
+        for (const zone of zones) {
+            const slot = (config[zone] || []).find(entry => entry.id === questionId);
+            if (!slot) continue;
+            const questionText = this.getQuestionTextForSlot(zone, slot);
+            if (questionText.trim()) return questionText;
         }
         return null;
     }

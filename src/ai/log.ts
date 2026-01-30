@@ -41,6 +41,9 @@ export type AiLogEnvelope = {
         provider?: string | null;
         modelRequested?: string | null;
         modelResolved?: string | null;
+        modelNextRunOnly?: boolean | null;
+        estimatedInputTokens?: number | null;
+        tokenTier?: string | null;
         submittedAt?: Date | null;
         returnedAt?: Date | null;
         durationMs?: number | null;
@@ -152,7 +155,10 @@ export function formatDuration(ms?: number | null): string {
     return `${rounded.replace(/\.0+$/, '')}s (${Math.round(ms)}ms)`;
 }
 
-export function formatAiLogContent(envelope: AiLogEnvelope): string {
+export function formatAiLogContent(
+    envelope: AiLogEnvelope,
+    options?: { jsonSpacing?: number }
+): string {
     const lines: string[] = [];
     const normalizeText = (value?: string | null) => value && value.trim() ? value : 'N/A';
     const formatList = (items?: string[]) => items && items.length ? items.join('; ') : 'None.';
@@ -166,10 +172,24 @@ export function formatAiLogContent(envelope: AiLogEnvelope): string {
         const total = usage.totalTokens ?? 'n/a';
         return `input=${input}, output=${output}, total=${total}`;
     };
+    const formatNextRunOnly = (value?: boolean | null) => {
+        if (value === true) return 'true';
+        if (value === false) return 'false';
+        return 'unknown';
+    };
+    const formatTokenEstimate = (value?: number | null) => {
+        if (typeof value !== 'number' || !Number.isFinite(value)) return 'unknown';
+        return Math.round(value).toString();
+    };
+    const formatTokenTier = (value?: string | null) => {
+        if (!value) return 'unknown';
+        return value;
+    };
+    const jsonSpacing = typeof options?.jsonSpacing === 'number' ? options.jsonSpacing : 2;
     const safeStringify = (value: unknown) => {
         if (value === undefined) return 'undefined';
         try {
-            return JSON.stringify(value, null, 2);
+            return JSON.stringify(value, null, jsonSpacing);
         } catch {
             return JSON.stringify(String(value));
         }
@@ -182,6 +202,11 @@ export function formatAiLogContent(envelope: AiLogEnvelope): string {
     lines.push(`- Scope / Target: ${envelope.metadata.scopeTarget ?? 'unknown'}`);
     lines.push(`- Provider: ${envelope.metadata.provider ?? 'unknown'}`);
     lines.push(`- Model requested / resolved: ${envelope.metadata.modelRequested ?? 'unknown'} / ${envelope.metadata.modelResolved ?? 'unknown'}`);
+    if (envelope.metadata.feature === 'Inquiry') {
+        lines.push(`- Next-run override: ${formatNextRunOnly(envelope.metadata.modelNextRunOnly)}`);
+        lines.push(`- Estimated input tokens: ${formatTokenEstimate(envelope.metadata.estimatedInputTokens)}`);
+        lines.push(`- Input token tier: ${formatTokenTier(envelope.metadata.tokenTier)}`);
+    }
     lines.push(`- Submitted: ${formatLocalAndIso(envelope.metadata.submittedAt)}`);
     lines.push(`- Returned: ${formatLocalAndIso(envelope.metadata.returnedAt)}`);
     lines.push(`- Duration: ${formatDuration(envelope.metadata.durationMs)}`);

@@ -52,6 +52,16 @@ const isUnsupportedParamMessage = (normalized: string): boolean => {
     return false;
 };
 
+const isTruncationMessage = (normalized: string): boolean => {
+    if (!normalized) return false;
+    if (normalized.includes('truncated')) return true;
+    if (normalized.includes('max tokens') || normalized.includes('maximum token')) return true;
+    if (normalized.includes('maximum context') || normalized.includes('context length')) return true;
+    if (normalized.includes('token limit') || normalized.includes('too many tokens')) return true;
+    if (normalized.includes('length exceeded')) return true;
+    return false;
+};
+
 export function classifyProviderError(err: unknown): ProviderErrorClassification {
     const envelope: ErrorEnvelope = typeof err === 'object' && err !== null
         ? err as ErrorEnvelope
@@ -86,6 +96,10 @@ export function classifyProviderError(err: unknown): ProviderErrorClassification
 
     if (isUnsupportedParamMessage(normalized)) {
         return { aiStatus: 'rejected', aiReason: 'unsupported_param' };
+    }
+
+    if (isTruncationMessage(normalized)) {
+        return { aiStatus: 'rejected', aiReason: 'truncated' };
     }
 
     return { aiStatus: 'rejected' };

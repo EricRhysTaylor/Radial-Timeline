@@ -42,8 +42,11 @@ export interface InquiryResult {
     aiProvider?: string;
     aiModelRequested?: string;
     aiModelResolved?: string;
+    aiModelNextRunOnly?: boolean;
     aiStatus?: InquiryAiStatus;
     aiReason?: string;
+    tokenEstimateInput?: number;
+    tokenEstimateTier?: 'normal' | 'amber' | 'red';
     submittedAt?: string;
     completedAt?: string;
     roundTripMs?: number;
