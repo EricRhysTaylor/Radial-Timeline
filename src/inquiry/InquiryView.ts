@@ -95,9 +95,11 @@ const PREVIEW_PILL_MIN_GAP_X = 8;
 const PREVIEW_FOOTER_GAP = 12;
 const PREVIEW_FOOTER_HEIGHT = 22;
 const PREVIEW_RESULTS_FOOTER_OFFSET = 30;
-const PREVIEW_SHIMMER_WIDTH = 140;
+const PREVIEW_SHIMMER_WIDTH = 80;
+const PREVIEW_SHIMMER_OVERHANG = 110;
 const RESULTS_EMPTY_TEXT = 'No notable findings.';
 const RESULTS_MAX_CHIPS = 6;
+const SWEEP_RANDOM_CYCLE_MS = 2000;
 const FLOW_FINDING_ORDER: InquiryFinding['kind'][] = ['escalation', 'conflict', 'continuity', 'loose_end', 'unclear', 'error', 'none'];
 const DEPTH_FINDING_ORDER: InquiryFinding['kind'][] = ['continuity', 'loose_end', 'conflict', 'escalation', 'unclear', 'error', 'none'];
 const SIGMA_CHAR = String.fromCharCode(931);
@@ -132,7 +134,6 @@ const DEPTH_ICON_PATHS = [
     'M1551.99,1114.01c.23,1.74-2.27.94-3.49.99-28.7,1.17-57.41,3.38-86.01,6.01-50.64,4.65-102.69,10.42-152.69,19.31-45.89,8.16-90.99,20.29-137.44,25.56-70.68,8.02-151.77,8.26-222.92,5.17-53.24-2.32-94.82-10.23-146.27-20.73-38.54-7.87-77.78-13.26-116.83-18.17-54.21-6.82-108.69-12.32-163.37-13.64,0-.98,17.41-.43,19.5-.51,1.91-.07,3.84-.94,5.97-1.03,56.79-2.41,114.18-4.01,171.05-1.97,79.85,2.87,154.28,20.33,235.03,22.97,81.86,2.68,167.54,3.23,248.82-7.1,25.84-3.29,51.37-8.72,77.27-11.73,90.03-10.49,180.85-4.28,271.37-5.11v-.02Z',
     'M1464.99,1229.01l-38.18,7.3c-72.97,11.22-134.53,47.2-200.84,74.16-98.8,40.16-244.57,42.87-347.39,16.45-36.36-9.34-69.09-24.27-104.06-36.94-31.43-11.39-63.54-21.36-94.77-33.23-27.19-10.33-53.12-24.79-82.76-27.25,0-1.28,23.18,1.27,25.5,1.51,51.08,5.23,105.07,12.63,154.03,27.97,26.92,8.44,52.68,20.15,79.71,28.29,98.26,29.58,239.21,30.92,337.76,2.23,39.72-11.56,75.86-32.19,115.79-43.21,50.47-13.94,103.1-15.27,155.21-17.27h0Z'
 ];
-const SWEEP_DURATION_MS = 2800;
 const BACKBONE_SWEEP_WIDTH_RATIO = 0.2;
 const BACKBONE_SWEEP_MIN_WIDTH = 80;
 const BACKBONE_SWEEP_MAX_WIDTH = 200;
@@ -411,6 +412,8 @@ export class InquiryView extends ItemView {
     private backboneFadeTimer?: number;
     private minimapSweepTicks: Array<{ rect: SVGRectElement; centerX: number; rowIndex: number }> = [];
     private minimapSweepLayout?: { startX: number; endX: number; bandWidth: number };
+    private sweepRandomCycle = -1;
+    private sweepRandomActive = new Set<number>();
     private minimapBottomOffset = 0;
     private minimapEmptyUpdateId = 0;
     private runningAnimationFrame?: number;
@@ -811,7 +814,8 @@ export class InquiryView extends ItemView {
 
             // Set the travel distance css variable on the mask rect
             if (this.previewShimmerMaskRect) {
-                this.previewShimmerMaskRect.style.setProperty('--ert-inquiry-shimmer-travel', `${Math.max(0, PREVIEW_PANEL_WIDTH - PREVIEW_SHIMMER_WIDTH)}px`);
+                const travel = Math.max(0, (PREVIEW_PANEL_WIDTH + (PREVIEW_SHIMMER_OVERHANG * 2)) - PREVIEW_SHIMMER_WIDTH);
+                this.previewShimmerMaskRect.style.setProperty('--ert-inquiry-shimmer-travel', `${travel}px`);
             }
         }
 
@@ -1002,13 +1006,15 @@ export class InquiryView extends ItemView {
         if (showRecommendedSection && this.enginePanelRecommendedListEl) {
             this.renderEngineChoices(this.enginePanelRecommendedListEl, recommendedChoices, {
                 tokenTier,
-                recommendedKeys
+                recommendedKeys,
+                layout: 'pill'
             });
         }
 
         this.renderEngineChoices(this.enginePanelListEl, choices, {
             tokenTier,
-            recommendedKeys
+            recommendedKeys,
+            layout: 'select'
         });
     }
 
@@ -1097,10 +1103,51 @@ export class InquiryView extends ItemView {
     private renderEngineChoices(
         listEl: HTMLDivElement,
         choices: EngineChoice[],
-        options: { tokenTier: TokenTier; recommendedKeys: Set<string> }
+        options: { tokenTier: TokenTier; recommendedKeys: Set<string>; layout?: 'pill' | 'select' }
     ): void {
         const showTruncateWarning = options.tokenTier === 'red';
+        const layout = options.layout ?? 'pill';
         choices.forEach(choice => {
+            const key = `${choice.provider}::${choice.modelId}`;
+            if (layout === 'select') {
+                const item = listEl.createDiv({ cls: 'ert-inquiry-engine-item ert-inquiry-engine-item--select' });
+                if (choice.isActive) item.classList.add('is-active');
+                if (!choice.enabled) item.classList.add('is-disabled');
+                const main = item.createDiv({ cls: 'ert-inquiry-engine-item-main' });
+                main.createDiv({ cls: 'ert-inquiry-engine-item-title', text: `${choice.providerLabel} · ${choice.modelLabel}` });
+                const metaParts = [choice.modelId];
+                if (!choice.enabled && choice.disabledReason) {
+                    metaParts.push(choice.disabledReason);
+                } else if (showTruncateWarning && !options.recommendedKeys.has(key) && choice.enabled) {
+                    metaParts.push('May truncate');
+                }
+                main.createDiv({ cls: 'ert-inquiry-engine-item-meta', text: metaParts.join(' · ') });
+
+                const action = item.createDiv({ cls: 'ert-inquiry-engine-item-action' });
+                const buttonLabel = !choice.enabled ? 'Unavailable' : choice.isActive ? 'Active' : 'Select';
+                const selectButton = action.createEl('button', {
+                    cls: 'ert-inquiry-engine-item-select',
+                    text: buttonLabel,
+                    attr: { type: 'button' }
+                });
+                if (choice.isActive) {
+                    selectButton.classList.add('is-active');
+                }
+                if (!choice.enabled) {
+                    selectButton.disabled = true;
+                    selectButton.setAttribute('aria-disabled', 'true');
+                }
+                this.registerDomEvent(selectButton, 'click', (event: MouseEvent) => {
+                    event.stopPropagation();
+                    void this.handleEngineChoiceClick(choice);
+                });
+                this.registerDomEvent(item, 'click', (event: MouseEvent) => {
+                    if ((event.target as HTMLElement).closest('.ert-inquiry-engine-item-select')) return;
+                    void this.handleEngineChoiceClick(choice);
+                });
+                return;
+            }
+
             const item = listEl.createEl('button', { cls: 'ert-inquiry-engine-item', attr: { type: 'button' } });
             if (choice.isActive) item.classList.add('is-active');
             if (!choice.enabled) item.classList.add('is-disabled');
@@ -1114,7 +1161,6 @@ export class InquiryView extends ItemView {
             } else if (choice.isActive) {
                 statuses.push({ label: 'Active', tone: 'active' });
             }
-            const key = `${choice.provider}::${choice.modelId}`;
             if (showTruncateWarning && !options.recommendedKeys.has(key) && choice.enabled) {
                 statuses.push({ label: 'May truncate', tone: 'warning' });
             }
@@ -2977,8 +3023,8 @@ export class InquiryView extends ItemView {
             }
         }
 
-        const barHeight = 8;
-        const barY = -4;
+        const barHeight = 2;
+        const barY = -1;
         const glowHeight = barHeight;
         const glowY = barY;
         const shineHeight = barHeight;
@@ -4292,27 +4338,27 @@ export class InquiryView extends ItemView {
 
     private updateSweep(elapsed: number): void {
         if (!this.minimapSweepLayout || !this.minimapSweepTicks.length) return;
-        const rowCount = this.minimapSweepTicks.reduce((max, tick) => Math.max(max, tick.rowIndex + 1), 1);
-        const rowDuration = SWEEP_DURATION_MS;
-        const totalDuration = rowDuration * rowCount;
-        const cycleElapsed = elapsed % totalDuration;
-        const activeRow = rowCount === 1 ? 0 : Math.min(rowCount - 1, Math.floor(cycleElapsed / rowDuration));
-        const rowElapsed = rowCount === 1 ? (elapsed % rowDuration) : (cycleElapsed - (activeRow * rowDuration));
-        const progress = rowElapsed / rowDuration;
-        const { startX, endX, bandWidth } = this.minimapSweepLayout;
-        const bandCenter = startX + ((endX - startX) * progress);
-        const bandHalf = bandWidth / 2;
-        this.minimapSweepTicks.forEach(tick => {
-            if (rowCount > 1 && tick.rowIndex !== activeRow) {
+        const cycleIndex = Math.floor(elapsed / SWEEP_RANDOM_CYCLE_MS);
+        if (cycleIndex !== this.sweepRandomCycle) {
+            this.sweepRandomCycle = cycleIndex;
+            const total = this.minimapSweepTicks.length;
+            const count = Math.max(1, Math.floor(Math.random() * total) + 1);
+            const indices = Array.from({ length: total }, (_, idx) => idx);
+            for (let i = indices.length - 1; i > 0; i -= 1) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [indices[i], indices[j]] = [indices[j], indices[i]];
+            }
+            this.sweepRandomActive = new Set(indices.slice(0, count));
+        }
+
+        const phase = (elapsed % SWEEP_RANDOM_CYCLE_MS) / SWEEP_RANDOM_CYCLE_MS;
+        const pulse = Math.sin(Math.PI * phase);
+        const intensity = 0.2 + (pulse * 0.8);
+        this.minimapSweepTicks.forEach((tick, index) => {
+            if (!this.sweepRandomActive.has(index)) {
                 tick.rect.setAttribute('opacity', '0');
                 return;
             }
-            const distance = Math.abs(tick.centerX - bandCenter);
-            if (distance > bandHalf) {
-                tick.rect.setAttribute('opacity', '0');
-                return;
-            }
-            const intensity = 1 - (distance / bandHalf);
             tick.rect.setAttribute('opacity', intensity.toFixed(2));
         });
     }
@@ -6701,7 +6747,8 @@ export class InquiryView extends ItemView {
     private updatePreviewShimmerLayout(): void {
         if (!this.previewShimmerMaskRect || !this.previewShimmerGroup) return;
         const height = Math.max(this.previewPanelHeight, PREVIEW_PILL_HEIGHT * 2);
-        const startX = -PREVIEW_PANEL_WIDTH / 2;
+        const startX = (-PREVIEW_PANEL_WIDTH / 2) - PREVIEW_SHIMMER_OVERHANG;
+        const maskWidth = PREVIEW_PANEL_WIDTH + (PREVIEW_SHIMMER_OVERHANG * 2);
 
         // Update the white text overlay group (if it needs layout updates? No, it's just children)
         // Actually, the group is in the panel, so it inherits panel transform.
@@ -6709,7 +6756,7 @@ export class InquiryView extends ItemView {
         if (this.previewShimmerMask) {
             this.previewShimmerMask.setAttribute('x', String(startX));
             this.previewShimmerMask.setAttribute('y', '0');
-            this.previewShimmerMask.setAttribute('width', String(PREVIEW_PANEL_WIDTH));
+            this.previewShimmerMask.setAttribute('width', String(maskWidth));
             this.previewShimmerMask.setAttribute('height', String(height));
         }
 
@@ -6720,7 +6767,10 @@ export class InquiryView extends ItemView {
         this.previewShimmerMaskRect.setAttribute('height', String(height));
 
         // Set the css variable for travel on the MASK RECT
-        this.previewShimmerMaskRect.style.setProperty('--ert-inquiry-shimmer-travel', `${Math.max(0, PREVIEW_PANEL_WIDTH - PREVIEW_SHIMMER_WIDTH)}px`);
+        this.previewShimmerMaskRect.style.setProperty(
+            '--ert-inquiry-shimmer-travel',
+            `${Math.max(0, maskWidth - PREVIEW_SHIMMER_WIDTH)}px`
+        );
 
         this.updatePreviewClickTargetLayout();
     }

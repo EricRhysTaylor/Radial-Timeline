@@ -494,6 +494,12 @@
   line-height: 1.5;
 }
 
+.ert-ui.ert-scope--settings .ert-apr-size-meta .ert-row-desc {
+  grid-column: 1 / -1;
+  justify-self: center;
+  text-align: center;
+}
+
 .ert-ui .ert-prompt-question {
   font-size: 0.95em;
   font-style: italic;
@@ -548,6 +554,10 @@
   border-radius: calc(var(--ert-control-radius) + (var(--ert-gap-xs) / 2));
   border: 1px solid var(--background-modifier-border);
   background: var(--background-secondary);
+}
+
+.ert-ui.ert-scope--settings .ert-controlGroup__row--header {
+  padding: 0 calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2));
 }
 
 .ert-ui.ert-scope--settings .ert-controlGroup__cell {

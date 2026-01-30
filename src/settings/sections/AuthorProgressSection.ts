@@ -102,9 +102,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const sizeSelectorControls = sizeSelectorRow.createDiv({ cls: ERT_CLASSES.INLINE });
     let teaserPreviewMode: TeaserPreviewMode = 'auto';
     let refreshPreview = () => {};
-    let teaserPreviewRow!: HTMLDivElement;
+    let teaserSelectWrap: HTMLDivElement | null = null;
     const updateTeaserPreviewVisibility = (size: 'thumb' | 'small' | 'medium' | 'large') => {
-        teaserPreviewRow.toggleClass('ert-hidden', size === 'thumb');
+        teaserSelectWrap?.toggleClass('ert-hidden', size === 'thumb');
     };
 
     const sizeButtons = [
@@ -155,39 +155,32 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         };
     });
 
-    // Dimension info
-    const currentDim = sizeButtons.find(s => s.size === currentSize)?.dimension || '300';
-    dimLabel = sizeSelectorRow.createEl('em', { cls: ERT_CLASSES.ROW_DESC });
-    setSizeLabel(dimLabel, currentDim, 'Actual size preview');
-
-    // Teaser preview (Pro only, sizes 150+)
-    teaserPreviewRow = previewCard.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_TIGHT} ${ERT_CLASSES.SKIN_PRO} ert-apr-teaser-preview-row` });
-    if (!isProActive) {
-        teaserPreviewRow.addClass('ert-pro-locked');
+    if (isProActive) {
+        teaserSelectWrap = sizeSelectorControls.createDiv({ cls: ERT_CLASSES.SKIN_PRO });
+        const teaserSelect = teaserSelectWrap.createEl('select', { cls: 'dropdown ert-input ert-input--lg' });
+        const teaserOptions: { value: TeaserPreviewMode; label: string }[] = [
+            { value: 'auto', label: 'Teaser: Auto (Current Stage)' },
+            { value: 'bar', label: 'Teaser' },
+            { value: 'scenes', label: 'Scenes (B&W)' },
+            { value: 'colors', label: 'Colors' },
+            { value: 'full', label: 'Full (Subplots)' },
+        ];
+        teaserOptions.forEach(opt => {
+            teaserSelect.createEl('option', { value: opt.value, text: opt.label });
+        });
+        teaserSelect.value = teaserPreviewMode;
+        teaserSelect.onchange = () => {
+            teaserPreviewMode = teaserSelect.value as TeaserPreviewMode;
+            refreshPreview?.();
+        };
+        updateTeaserPreviewVisibility(currentSize);
     }
-    const teaserLabel = teaserPreviewRow.createDiv({ cls: ERT_CLASSES.INLINE });
-    teaserLabel.createSpan({ text: 'Teaser Preview', cls: ERT_CLASSES.LABEL });
-    const teaserBadge = teaserLabel.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}` });
-    setIcon(teaserBadge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), 'signature');
-    teaserBadge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
-    const teaserControls = teaserPreviewRow.createDiv({ cls: ERT_CLASSES.INLINE });
-    const teaserSelect = teaserControls.createEl('select', { cls: 'dropdown ert-input ert-input--md' });
-    const teaserOptions: { value: TeaserPreviewMode; label: string }[] = [
-        { value: 'auto', label: 'Auto (Current stage)' },
-        { value: 'bar', label: 'Teaser' },
-        { value: 'scenes', label: 'Scenes (B&W)' },
-        { value: 'colors', label: 'Colors' },
-        { value: 'full', label: 'Full (Subplots)' },
-    ];
-    teaserOptions.forEach(opt => {
-        teaserSelect.createEl('option', { value: opt.value, text: opt.label });
-    });
-    teaserSelect.value = teaserPreviewMode;
-    teaserSelect.onchange = () => {
-        teaserPreviewMode = teaserSelect.value as TeaserPreviewMode;
-        refreshPreview?.();
-    };
-    updateTeaserPreviewVisibility(currentSize);
+
+    // Dimension info (second row, second column)
+    const sizeMetaRow = previewCard.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_TIGHT} ert-row--stack ert-apr-size-meta` });
+    const currentDim = sizeButtons.find(s => s.size === currentSize)?.dimension || '300';
+    dimLabel = sizeMetaRow.createEl('em', { cls: ERT_CLASSES.ROW_DESC });
+    setSizeLabel(dimLabel, currentDim, 'Actual size preview');
 
     // 1:1 preview
     const previewSection = previewCard.createDiv({ cls: 'ert-apr-preview' });

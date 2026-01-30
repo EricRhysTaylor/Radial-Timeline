@@ -1170,7 +1170,8 @@ export function renderInquirySection(params: SectionParams): void {
 
         const header = table.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--header'] });
         header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Tier' });
-        header.createDiv({ cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--span-2'], text: 'Threshold' });
+        header.createDiv({ cls: 'ert-controlGroup__cell' });
+        header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Threshold' });
 
         const inputs: Record<keyof InquiryCorpusThresholds, HTMLInputElement> = {
             emptyMax: document.createElement('input'),
