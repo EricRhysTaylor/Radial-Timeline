@@ -549,6 +549,12 @@
   --ert-inquiry-cc-cell-fill-color: var(--ert-inquiry-empty);
 }
 
+.ert-inquiry-cc-cell.is-tier-bare,
+.ert-inquiry-cc-cell.is-tier-sketchy {
+  --ert-inquiry-cc-cell-color: var(--ert-inquiry-low);
+  --ert-inquiry-cc-cell-fill-color: var(--ert-inquiry-low);
+}
+
 .ert-inquiry-cc-cell.is-openable {
   cursor: pointer;
 }
@@ -561,12 +567,29 @@
   fill: var(--text-muted);
 }
 
+.ert-inquiry-cc-class {
+  pointer-events: auto;
+}
+
 .ert-inquiry-cc-class-label {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   fill: var(--text-muted);
+}
+
+.ert-inquiry-cc-class-icon {
+  fill: var(--text-muted);
+}
+
+.ert-inquiry-cc-class.is-active .ert-inquiry-cc-class-label,
+.ert-inquiry-cc-class.is-active .ert-inquiry-cc-class-icon {
+  fill: var(--text-normal);
+}
+
+.ert-inquiry-cc-class.is-off {
+  opacity: 0.45;
 }
 
 .ert-inquiry-cc-cell-base {

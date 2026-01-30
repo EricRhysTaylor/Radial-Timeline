@@ -526,7 +526,7 @@
 }
 
 .ert-ui.ert-scope--settings .ert-controlGroup--class-scope {
-  --ert-controlGroup-columns: minmax(70px, max-content) minmax(140px, 1.2fr) minmax(120px, max-content) repeat(3, minmax(70px, max-content)) minmax(90px, max-content);
+  --ert-controlGroup-columns: minmax(70px, max-content) minmax(140px, 1.2fr) repeat(3, minmax(var(--ert-input-width-sm), max-content)) minmax(90px, max-content);
 }
 
 .ert-ui.ert-scope--settings .ert-controlGroup--class-scope .ert-controlGroup__row > .ert-controlGroup__cell:last-child {

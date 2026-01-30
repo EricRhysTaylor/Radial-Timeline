@@ -61,6 +61,7 @@ import { InquiryCorpusResolver, InquiryCorpusSnapshot, InquiryCorpusItem } from 
 import { getModelDisplayName } from '../utils/modelResolver';
 import { addTooltipData, setupTooltipsFromDataAttributes } from '../utils/tooltip';
 import { splitIntoBalancedLinesOptimal } from '../utils/text';
+import { classifySynopsis, type SynopsisQuality } from '../sceneAnalysis/synopsisQuality';
 import {
     MAX_RESOLVED_SCAN_ROOTS,
     normalizeScanRootPatterns,
@@ -75,7 +76,6 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const VIEWBOX_MIN = -800;
 const VIEWBOX_MAX = 800;
 const VIEWBOX_SIZE = 1600;
-const INQUIRY_REFERENCE_ONLY_CLASSES = new Set(['character', 'place', 'power']);
 const INQUIRY_SYNOPSIS_CAPABLE_CLASSES = new Set(['scene', 'outline']);
 const MINIMAP_GROUP_Y = -520;
 const PREVIEW_PANEL_WIDTH = 640;
@@ -151,6 +151,8 @@ const BRIEFING_HIDE_DELAY_MS = 220;
 const CC_CELL_SIZE = 20;
 const CC_PAGE_BASE_SIZE = Math.round(CC_CELL_SIZE * 0.8);
 const CC_PAGE_MIN_SIZE = Math.max(6, Math.round(CC_CELL_SIZE * 0.33));
+const CC_HEADER_ICON_SIZE = 12;
+const CC_HEADER_ICON_GAP = 6;
 const INQUIRY_NOTES_MAX = 5;
 const CC_RIGHT_MARGIN = 50;
 const CC_BOTTOM_MARGIN = 50;
@@ -317,6 +319,7 @@ type CorpusCcEntry = {
     filePath: string;
     className: string;
     scope?: InquiryScope;
+    mode: InquiryMaterialMode;
     sortLabel?: string;
 };
 
@@ -327,6 +330,20 @@ type CorpusCcSlot = {
     border: SVGRectElement;
     icon: SVGTextElement;
     fold: SVGPathElement;
+};
+
+type CorpusCcHeader = {
+    group: SVGGElement;
+    icon: SVGUseElement;
+    text: SVGTextElement;
+};
+
+type CorpusCcStats = {
+    bodyWords: number;
+    synopsisWords: number;
+    synopsisQuality: SynopsisQuality;
+    status?: 'todo' | 'working' | 'complete';
+    title?: string;
 };
 
 type InquiryWritebackOutcome = 'written' | 'duplicate' | 'skipped';
@@ -473,12 +490,19 @@ export class InquiryView extends ItemView {
     private ccGroup?: SVGGElement;
     private ccLabel?: SVGTextElement;
     private ccEmptyText?: SVGTextElement;
-    private ccClassLabels: SVGTextElement[] = [];
+    private ccClassLabels: CorpusCcHeader[] = [];
     private ccEntries: CorpusCcEntry[] = [];
     private ccSlots: CorpusCcSlot[] = [];
     private ccUpdateId = 0;
     private ccLayout?: { pageWidth: number; pageHeight: number; gap: number };
-    private ccWordCache = new Map<string, { mtime: number; words: number; status?: 'todo' | 'working' | 'complete'; title?: string }>();
+    private ccWordCache = new Map<string, {
+        mtime: number;
+        bodyWords: number;
+        synopsisWords: number;
+        synopsisQuality: SynopsisQuality;
+        status?: 'todo' | 'working' | 'complete';
+        title?: string;
+    }>();
     private apiSimulationTimer?: number;
     private navPrevButton?: SVGGElement;
     private navNextButton?: SVGGElement;
@@ -1609,7 +1633,10 @@ export class InquiryView extends ItemView {
             'activity',
             'check-circle',
             'sigma',
-            'x'
+            'x',
+            'circle',
+            'circle-dot',
+            'disc'
         ].forEach(icon => {
             const symbolId = this.createIconSymbol(defs, icon);
             if (symbolId) {
@@ -2868,27 +2895,27 @@ export class InquiryView extends ItemView {
         const wordCounts = await Promise.all(items.map(async item => {
             const scenePath = (item as { filePath?: string }).filePath;
             if (scenePath) {
-                const stats = await this.loadCorpusCcStats(scenePath);
-                return stats.words;
+                const stats = await this.loadCorpusCcStatsByPath(scenePath);
+                return stats.bodyWords;
             }
 
             const rootPath = (item as { rootPath?: string }).rootPath;
             if (rootPath) {
                 const rootFile = this.app.vault.getAbstractFileByPath(rootPath);
                 if (rootFile && this.isTFile(rootFile)) {
-                    const stats = await this.loadCorpusCcStats(rootPath);
-                    return stats.words;
+                    const stats = await this.loadCorpusCcStatsByPath(rootPath);
+                    return stats.bodyWords;
                 }
                 const scenePaths = getScenePathsForBook(rootPath);
                 if (!scenePaths.length) return 0;
-                const stats = await Promise.all(scenePaths.map(path => this.loadCorpusCcStats(path)));
-                return stats.reduce((sum, stat) => sum + stat.words, 0);
+                const stats = await Promise.all(scenePaths.map(path => this.loadCorpusCcStatsByPath(path)));
+                return stats.reduce((sum, stat) => sum + stat.bodyWords, 0);
             }
 
             const fallbackPaths = item.filePaths ?? [];
             if (!fallbackPaths.length) return 0;
-            const stats = await Promise.all(fallbackPaths.map(path => this.loadCorpusCcStats(path)));
-            return stats.reduce((sum, stat) => sum + stat.words, 0);
+            const stats = await Promise.all(fallbackPaths.map(path => this.loadCorpusCcStatsByPath(path)));
+            return stats.reduce((sum, stat) => sum + stat.bodyWords, 0);
         }));
 
         if (updateId !== this.minimapEmptyUpdateId) return;
@@ -3199,18 +3226,9 @@ export class InquiryView extends ItemView {
         entriesByClass.forEach(items => {
             items.sort((a, b) => this.compareCorpusCcEntries(a, b));
         });
-        const classes = Array.from(entriesByClass.entries())
-            .map(([className, items]) => ({ className, items }))
-            .sort((a, b) => (b.items.length - a.items.length) || a.className.localeCompare(b.className));
-        const outlineIndex = classes.findIndex(group => group.className === 'outline');
-        const sagaIndex = classes.findIndex(group => group.className === 'outline-saga');
-        if (outlineIndex !== -1 && sagaIndex !== -1 && Math.abs(outlineIndex - sagaIndex) > 1) {
-            const [sagaGroup] = classes.splice(sagaIndex, 1);
-            const insertIndex = Math.min(outlineIndex + 1, classes.length);
-            classes.splice(insertIndex, 0, sagaGroup);
-        }
+        const classGroups = this.getCorpusCcClassGroups(entriesByClass);
 
-        if (!entries.length) {
+        if (!entries.length && classGroups.length === 0) {
             if (this.ccGroup) {
                 this.ccGroup.classList.add('ert-hidden');
             }
@@ -3247,9 +3265,13 @@ export class InquiryView extends ItemView {
             let leftColumnsUsed = 0;
             const placements: Array<{ entry: CorpusCcEntry; x: number; y: number }> = [];
             const layoutEntries: CorpusCcEntry[] = [];
-            const classLayouts: Array<{ className: string; centerX: number; width: number }> = [];
+            const classLayouts: Array<{
+                group: { className: string; items: CorpusCcEntry[]; count: number; mode: InquiryMaterialMode };
+                centerX: number;
+                width: number;
+            }> = [];
 
-            classes.forEach(group => {
+            classGroups.forEach(group => {
                 const columnsNeeded = Math.max(1, Math.ceil(group.items.length / rowsPerColumn));
                 const side = placeLeft ? 'left' : 'right';
                 const startIndex = side === 'right' ? rightColumnsUsed : leftColumnsUsed;
@@ -3261,7 +3283,7 @@ export class InquiryView extends ItemView {
                     : anchorLeftX + ((startIndex + columnsNeeded - 1) * columnStep) + pageWidth;
                 const classWidth = classRightEdge - classLeftEdge;
                 classLayouts.push({
-                    className: group.className,
+                    group,
                     centerX: Math.round(classLeftEdge + (classWidth / 2)),
                     width: Math.round(classWidth)
                 });
@@ -3338,9 +3360,9 @@ export class InquiryView extends ItemView {
             this.ccLabel.setAttribute('text-anchor', 'middle');
             this.ccLabel.setAttribute('dominant-baseline', 'middle');
         }
-        this.ccLabel.textContent = 'Corpus';
-        this.ccLabel.setAttribute('x', String(Math.round((layout.rightBlockLeft + layout.rightBlockRight) / 2)));
-        this.ccLabel.setAttribute('y', '0');
+                this.ccLabel.textContent = this.getCorpusCcScopeLabel();
+                this.ccLabel.setAttribute('x', String(Math.round((layout.rightBlockLeft + layout.rightBlockRight) / 2)));
+                this.ccLabel.setAttribute('y', '0');
 
         if (!this.ccEmptyText) {
             this.ccEmptyText = this.createSvgText(this.ccGroup, 'ert-inquiry-cc-empty ert-hidden', 'No corpus data', 0, 0);
@@ -3420,31 +3442,101 @@ export class InquiryView extends ItemView {
 
         const titleTexts = this.ccClassLabels;
         while (titleTexts.length < layout.classLayouts.length) {
-            const label = this.createSvgText(this.ccGroup, 'ert-inquiry-cc-class-label', '', 0, 0);
-            label.setAttribute('text-anchor', 'middle');
+            const headerGroup = this.createSvgGroup(this.ccGroup, 'ert-inquiry-cc-class');
+            const icon = this.createIconUse('circle', 0, 0, CC_HEADER_ICON_SIZE);
+            icon.classList.add('ert-inquiry-cc-class-icon');
+            const label = this.createSvgText(headerGroup, 'ert-inquiry-cc-class-label', '', 0, 0);
+            label.setAttribute('text-anchor', 'start');
             label.setAttribute('dominant-baseline', 'middle');
-            titleTexts.push(label);
+            headerGroup.appendChild(icon);
+            headerGroup.appendChild(label);
+            titleTexts.push({ group: headerGroup, icon, text: label });
         }
-        layout.classLayouts.forEach((group, idx) => {
-            const labelEl = titleTexts[idx];
-            const availableWidth = Math.max(4, group.width - layout.gap);
-            labelEl.classList.remove('ert-hidden');
-            const variants = this.getCorpusClassLabelVariants(group.className);
-            labelEl.textContent = variants[0] ?? '';
+        layout.classLayouts.forEach((classLayout, idx) => {
+            const header = titleTexts[idx];
+            const { group, centerX, width } = classLayout;
+            const availableWidth = Math.max(4, width - layout.gap);
+            const modeMeta = this.getCorpusCcModeMeta(group.mode);
+            header.group.classList.toggle('is-off', !modeMeta.isActive);
+            header.group.classList.toggle('is-active', modeMeta.isActive);
+            this.setIconUse(header.icon, modeMeta.icon);
+
+            const variants = this.getCorpusCcHeaderLabelVariants(group.className, group.count);
+            header.text.textContent = variants[0] ?? '';
             for (let i = 0; i < variants.length; i += 1) {
-                labelEl.textContent = variants[i];
-                if (labelEl.getComputedTextLength() <= availableWidth) break;
+                header.text.textContent = variants[i];
+                const iconAllowance = CC_HEADER_ICON_SIZE + CC_HEADER_ICON_GAP;
+                if (header.text.getComputedTextLength() + iconAllowance <= availableWidth) break;
             }
-            labelEl.setAttribute('x', String(group.centerX));
-            labelEl.setAttribute('y', String(layout.titleY));
+
+            const textWidth = header.text.getComputedTextLength();
+            const totalWidth = CC_HEADER_ICON_SIZE + CC_HEADER_ICON_GAP + textWidth;
+            const startX = centerX - (totalWidth / 2);
+            const iconY = layout.titleY - (CC_HEADER_ICON_SIZE / 2);
+            header.icon.setAttribute('x', String(Math.round(startX)));
+            header.icon.setAttribute('y', String(Math.round(iconY)));
+            header.text.setAttribute('x', String(Math.round(startX + CC_HEADER_ICON_SIZE + CC_HEADER_ICON_GAP)));
+            header.text.setAttribute('y', String(layout.titleY));
+            header.group.classList.remove('ert-hidden');
+            addTooltipData(header.group, this.getCorpusCcHeaderTooltip(group.className, group.mode, group.count), 'top');
         });
-        titleTexts.forEach((label, idx) => {
+        titleTexts.forEach((header, idx) => {
             if (idx < layout.classLayouts.length) return;
-            label.classList.add('ert-hidden');
+            header.group.classList.add('ert-hidden');
         });
 
         this.ccEntries = layout.layoutEntries;
         void this.updateCorpusCcData(layout.layoutEntries);
+    }
+
+    private getCorpusCcScopeLabel(): string {
+        const focusLabel = this.getFocusLabel();
+        if (this.state.scope === 'saga') {
+            return `Corpus · Saga ${focusLabel}`;
+        }
+        return `Corpus · Book ${focusLabel}`;
+    }
+
+    private getCorpusCcModeMeta(mode: InquiryMaterialMode): {
+        label: string;
+        short: string;
+        icon: string;
+        isActive: boolean;
+    } {
+        if (mode === 'summary') {
+            return { label: 'Synopsis', short: 'SYN', icon: 'circle-dot', isActive: true };
+        }
+        if (mode === 'full') {
+            return { label: 'Full', short: 'FULL', icon: 'disc', isActive: true };
+        }
+        return { label: 'Off', short: 'OFF', icon: 'circle', isActive: false };
+    }
+
+    private getCorpusCcHeaderLabelVariants(className: string, count: number): string[] {
+        const base = this.getCorpusClassLabelVariants(className);
+        return base.map(label => `${label} ${count}`);
+    }
+
+    private getCorpusCcHeaderTooltip(className: string, mode: InquiryMaterialMode, count: number): string {
+        const meta = this.getCorpusCcModeMeta(mode);
+        const label = this.getCorpusCcHeaderShortLabel(className);
+        const parts = [label, meta.short];
+        if (meta.isActive || count > 0) {
+            parts.push(String(count));
+        }
+        return parts.join(' · ');
+    }
+
+    private getCorpusCcHeaderShortLabel(className: string): string {
+        const normalized = className.trim().toLowerCase();
+        if (normalized === 'outline-saga') return 'SAGA';
+        if (normalized === 'outline') return 'OUTLINE';
+        if (normalized === 'scene') return 'SCENE';
+        if (normalized === 'character') return 'CHA';
+        if (normalized === 'place') return 'PLA';
+        if (normalized === 'power') return 'POW';
+        if (!normalized) return 'CLS';
+        return normalized.slice(0, 3).toUpperCase();
     }
 
     private getCorpusClassLabelVariants(className: string): string[] {
@@ -3470,9 +3562,99 @@ export class InquiryView extends ItemView {
         return Array.from(new Set(variants.filter(Boolean)));
     }
 
+    private getCorpusCcClassGroups(entriesByClass: Map<string, CorpusCcEntry[]>): Array<{
+        className: string;
+        items: CorpusCcEntry[];
+        count: number;
+        mode: InquiryMaterialMode;
+    }> {
+        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const classScope = this.getClassScopeConfig(sources.classScope);
+        const configs = (sources.classes || [])
+            .filter(config => classScope.allowAll || classScope.allowed.has(config.className));
+        const groups: Array<{ className: string; items: CorpusCcEntry[]; count: number; mode: InquiryMaterialMode }> = [];
+        const ensureGroup = (className: string, mode: InquiryMaterialMode) => {
+            const items = entriesByClass.get(className) ?? [];
+            groups.push({ className, items, count: items.length, mode });
+        };
+
+        configs.forEach(config => {
+            if (!config) return;
+            const normalizedName = config.className;
+            if (normalizedName === 'outline') {
+                const outlineMode = config.enabled
+                    ? this.normalizeContributionMode(config.bookScope, 'outline')
+                    : 'none';
+                ensureGroup('outline', outlineMode);
+                if (this.state.scope === 'saga') {
+                    const sagaMode = config.enabled
+                        ? this.normalizeContributionMode(config.sagaScope, 'outline')
+                        : 'none';
+                    ensureGroup('outline-saga', sagaMode);
+                }
+                return;
+            }
+
+            if (!this.isSynopsisCapableClass(normalizedName)) {
+                const referenceMode = config.enabled
+                    ? this.normalizeContributionMode(config.referenceScope, normalizedName)
+                    : 'none';
+                ensureGroup(normalizedName, referenceMode);
+                return;
+            }
+
+            const scopeMode = this.state.scope === 'saga' ? config.sagaScope : config.bookScope;
+            const normalizedMode = config.enabled
+                ? this.normalizeContributionMode(scopeMode, normalizedName)
+                : 'none';
+            ensureGroup(normalizedName, normalizedMode);
+        });
+
+        entriesByClass.forEach((items, className) => {
+            if (groups.some(group => group.className === className)) return;
+            const mode = items[0]?.mode ?? 'none';
+            groups.push({ className, items, count: items.length, mode });
+        });
+
+        const order = ['scene', 'outline', 'outline-saga', 'character', 'place', 'power'];
+        groups.sort((a, b) => {
+            const aIndex = order.indexOf(a.className);
+            const bIndex = order.indexOf(b.className);
+            if (aIndex !== -1 || bIndex !== -1) {
+                return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
+            }
+            return a.className.localeCompare(b.className);
+        });
+
+        return groups;
+    }
+
     private getCorpusCcEntries(): CorpusCcEntry[] {
         const manifest = this.buildCorpusManifest(this.state.activeQuestionId ?? 'cc-preview');
-        return manifest.entries.map(entry => {
+        const scope = this.state.scope;
+        const focusBookId = this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
+        const sceneEntries = manifest.entries.filter(entry => entry.class === 'scene');
+        const outlineEntries = manifest.entries.filter(entry => entry.class === 'outline');
+        const referenceEntries = manifest.entries.filter(entry => entry.class !== 'scene' && entry.class !== 'outline');
+
+        const scopedSceneEntries = scope === 'book' && focusBookId
+            ? sceneEntries.filter(entry => entry.path === focusBookId || entry.path.startsWith(`${focusBookId}/`))
+            : sceneEntries;
+        const bookOutlineEntries = outlineEntries
+            .filter(entry => entry.scope !== 'saga')
+            .filter(entry => scope === 'saga' || !focusBookId || entry.path === focusBookId || entry.path.startsWith(`${focusBookId}/`));
+        const sagaOutlineEntries = scope === 'saga'
+            ? outlineEntries.filter(entry => entry.scope === 'saga')
+            : [];
+
+        const scopedEntries = [
+            ...scopedSceneEntries,
+            ...bookOutlineEntries,
+            ...sagaOutlineEntries,
+            ...referenceEntries
+        ];
+
+        return scopedEntries.map(entry => {
             const fallbackLabel = entry.path.split('/').pop() || entry.path;
             const file = this.app.vault.getAbstractFileByPath(entry.path);
             const label = file && this.isTFile(file) ? this.getDocumentTitle(file) : fallbackLabel;
@@ -3485,6 +3667,7 @@ export class InquiryView extends ItemView {
                 filePath: entry.path,
                 className,
                 scope: entry.scope,
+                mode: this.normalizeContributionMode(entry.mode ?? 'none', entry.class),
                 sortLabel: label
             };
         });
@@ -3564,7 +3747,8 @@ export class InquiryView extends ItemView {
                     id: outline?.path || book.id,
                     label: book.displayLabel,
                     filePath: outline?.path || '',
-                    className: 'outline'
+                    className: 'outline',
+                    mode: this.normalizeContributionMode(outlineConfig.bookScope, 'outline')
                 };
             }));
         }
@@ -3575,7 +3759,8 @@ export class InquiryView extends ItemView {
                 id: sagaOutline?.path || 'saga-outline',
                 label: 'Saga',
                 filePath: sagaOutline?.path || '',
-                className: 'outline'
+                className: 'outline',
+                mode: this.normalizeContributionMode(outlineConfig.sagaScope, 'outline')
             });
         }
 
@@ -3621,7 +3806,7 @@ export class InquiryView extends ItemView {
 
     private async updateCorpusCcData(entries: CorpusCcEntry[]): Promise<void> {
         const updateId = ++this.ccUpdateId;
-        const stats = await Promise.all(entries.map(entry => this.loadCorpusCcStats(entry.filePath)));
+        const stats = await Promise.all(entries.map(entry => this.loadCorpusCcStats(entry)));
         if (updateId !== this.ccUpdateId) return;
         stats.forEach((entryStats, idx) => {
             this.applyCorpusCcSlot(idx, entries[idx], entryStats);
@@ -3631,13 +3816,17 @@ export class InquiryView extends ItemView {
     private applyCorpusCcSlot(
         index: number,
         entry: CorpusCcEntry,
-        stats: { words: number; status?: 'todo' | 'working' | 'complete'; title?: string }
+        stats: CorpusCcStats
     ): void {
         const slot = this.ccSlots[index];
         if (!slot) return;
         const thresholds = this.getCorpusThresholds();
-        const tier = this.getCorpusTier(stats.words, thresholds);
-        const ratioBase = thresholds.substantiveMin > 0 ? (stats.words / thresholds.substantiveMin) : 0;
+        const isSynopsis = entry.mode === 'summary';
+        const wordCount = isSynopsis ? stats.synopsisWords : stats.bodyWords;
+        const tier = isSynopsis
+            ? this.getCorpusSynopsisTier(stats.synopsisQuality, wordCount, thresholds)
+            : this.getCorpusTier(wordCount, thresholds);
+        const ratioBase = thresholds.substantiveMin > 0 ? (wordCount / thresholds.substantiveMin) : 0;
         const ratio = Math.min(Math.max(ratioBase, 0), 1);
         const pageHeight = this.ccLayout?.pageHeight ?? Math.round(CC_PAGE_BASE_SIZE * 1.45);
         const fillHeight = Math.round(pageHeight * ratio);
@@ -3650,12 +3839,15 @@ export class InquiryView extends ItemView {
             'is-tier-sketchy',
             'is-tier-medium',
             'is-tier-substantive',
+            'is-mode-summary',
+            'is-mode-full',
             'is-status-todo',
             'is-status-working',
             'is-status-complete',
             'is-mismatch'
         );
         slot.group.classList.add(`is-tier-${tier}`);
+        slot.group.classList.add(isSynopsis ? 'is-mode-summary' : 'is-mode-full');
 
         if (stats.status) {
             slot.group.classList.add(`is-status-${stats.status}`);
@@ -3666,13 +3858,15 @@ export class InquiryView extends ItemView {
         slot.icon.setAttribute('opacity', statusIcon ? '1' : '0');
 
         const highlightMismatch = this.plugin.settings.inquiryCorpusHighlightLowSubstanceComplete ?? true;
-        const lowSubstance = stats.words < thresholds.sketchyMin;
+        const lowSubstance = isSynopsis
+            ? stats.synopsisQuality !== 'ok'
+            : wordCount < thresholds.sketchyMin;
         const isMismatch = highlightMismatch && stats.status === 'complete' && lowSubstance;
         if (isMismatch) {
             slot.group.classList.add('is-mismatch');
         }
 
-        const tooltip = this.buildCorpusCcTooltip(entry, stats, thresholds, tier, isMismatch);
+        const tooltip = this.buildCorpusCcTooltip(entry, stats, thresholds, tier, isMismatch, wordCount);
         slot.group.classList.add('rt-tooltip-target');
         slot.group.setAttribute('data-tooltip', tooltip);
         slot.group.setAttribute('data-tooltip-placement', 'left');
@@ -3713,24 +3907,77 @@ export class InquiryView extends ItemView {
         return 'substantive';
     }
 
-    private async loadCorpusCcStats(
-        filePath: string
-    ): Promise<{ words: number; status?: 'todo' | 'working' | 'complete'; title?: string }> {
-        if (!filePath) return { words: 0 };
+    private getCorpusSynopsisTier(
+        quality: SynopsisQuality,
+        wordCount: number,
+        thresholds: { emptyMax: number; sketchyMin: number; mediumMin: number; substantiveMin: number }
+    ): 'empty' | 'bare' | 'sketchy' | 'medium' | 'substantive' {
+        if (quality === 'missing') return 'empty';
+        if (quality === 'weak') return 'sketchy';
+        return this.getCorpusTier(wordCount, thresholds);
+    }
+
+    private getCorpusTierLabel(tier: 'empty' | 'bare' | 'sketchy' | 'medium' | 'substantive'): string {
+        if (tier === 'empty') return 'Empty';
+        if (tier === 'bare' || tier === 'sketchy') return 'Sketchy';
+        if (tier === 'medium') return 'Medium';
+        return 'Substantive';
+    }
+
+    private async loadCorpusCcStats(entry: CorpusCcEntry): Promise<CorpusCcStats> {
+        const filePath = entry.filePath;
+        if (!filePath) {
+            return { bodyWords: 0, synopsisWords: 0, synopsisQuality: 'missing' };
+        }
         const file = this.app.vault.getAbstractFileByPath(filePath);
-        if (!file || !this.isTFile(file)) return { words: 0 };
+        if (!file || !this.isTFile(file)) {
+            return { bodyWords: 0, synopsisWords: 0, synopsisQuality: 'missing' };
+        }
         const mtime = file.stat.mtime ?? 0;
         const status = this.getDocumentStatus(file);
         const title = this.getDocumentTitle(file);
         const cached = this.ccWordCache.get(filePath);
         if (cached && cached.mtime === mtime && cached.status === status && cached.title === title) {
-            return { words: cached.words, status: cached.status, title: cached.title };
+            return {
+                bodyWords: cached.bodyWords,
+                synopsisWords: cached.synopsisWords,
+                synopsisQuality: cached.synopsisQuality,
+                status: cached.status,
+                title: cached.title
+            };
         }
         const content = await this.app.vault.cachedRead(file);
         const body = this.stripFrontmatter(content);
-        const words = this.countWords(body);
-        this.ccWordCache.set(filePath, { mtime, words, status, title });
-        return { words, status, title };
+        const bodyWords = this.countWords(body);
+        const frontmatter = this.getNormalizedFrontmatter(file) ?? {};
+        const synopsis = this.extractSynopsis(frontmatter);
+        const synopsisWords = this.countWords(synopsis);
+        const synopsisQuality = classifySynopsis(synopsis);
+        this.ccWordCache.set(filePath, {
+            mtime,
+            bodyWords,
+            synopsisWords,
+            synopsisQuality,
+            status,
+            title
+        });
+        return {
+            bodyWords,
+            synopsisWords,
+            synopsisQuality,
+            status,
+            title
+        };
+    }
+
+    private async loadCorpusCcStatsByPath(filePath: string): Promise<CorpusCcStats> {
+        return this.loadCorpusCcStats({
+            id: filePath,
+            label: filePath,
+            filePath,
+            className: '',
+            mode: 'full'
+        });
     }
 
     private getDocumentStatus(file: TFile): 'todo' | 'working' | 'complete' | undefined {
@@ -3755,10 +4002,11 @@ export class InquiryView extends ItemView {
 
     private buildCorpusCcTooltip(
         entry: CorpusCcEntry,
-        stats: { words: number; status?: 'todo' | 'working' | 'complete'; title?: string },
+        stats: CorpusCcStats,
         thresholds: { emptyMax: number; sketchyMin: number; mediumMin: number; substantiveMin: number },
         tier: 'empty' | 'bare' | 'sketchy' | 'medium' | 'substantive',
-        isMismatch: boolean
+        isMismatch: boolean,
+        wordCount: number
     ): string {
         const tooltipTitle = stats.title || entry.label;
         const classInitial = entry.className?.trim().charAt(0).toLowerCase() || '?';
@@ -3772,15 +4020,10 @@ export class InquiryView extends ItemView {
             conditions.push(`Status: ${statusLabel}${statusIconText}${statusBorderNote}`);
         }
 
-        if (thresholds.substantiveMin > 0) {
-            const fillPercent = Math.round((stats.words / thresholds.substantiveMin) * 100);
-            conditions.push(`Fill: ${fillPercent}% of substantive (${stats.words} words)`);
-        } else {
-            conditions.push(`Fill: ${stats.words} words`);
-        }
-
-        const tierLabel = `${tier.charAt(0).toUpperCase()}${tier.slice(1)}`;
-        conditions.push(`Tier: ${tierLabel}`);
+        const tierLabel = this.getCorpusTierLabel(tier);
+        const modeLabel = entry.mode === 'summary' ? 'Synopsis' : 'Full';
+        const wordLabel = wordCount.toLocaleString();
+        conditions.push(`${modeLabel}: ${tierLabel} (${wordLabel} words)`);
 
         if (isMismatch) {
             conditions.push(`Alert: complete under ${thresholds.sketchyMin} words`);
@@ -5867,7 +6110,7 @@ export class InquiryView extends ItemView {
                     return;
                 }
 
-                if (INQUIRY_REFERENCE_ONLY_CLASSES.has(className)) {
+                if (!this.isSynopsisCapableClass(className)) {
                     const mode = this.normalizeContributionMode(config.referenceScope, className);
                     if (!this.isModeActive(mode)) return;
                     entries.push({
@@ -6047,7 +6290,7 @@ export class InquiryView extends ItemView {
     }
 
     private normalizeClassContribution(config: InquiryClassConfig): InquiryClassConfig {
-        const isReference = INQUIRY_REFERENCE_ONLY_CLASSES.has(config.className);
+        const isReference = !this.isSynopsisCapableClass(config.className);
         const contribution = this.normalizeContributionMode(this.resolveContributionMode(config), config.className);
         const bookActive = !isReference && config.bookScope !== 'none';
         const sagaActive = !isReference && config.sagaScope !== 'none';
@@ -6088,7 +6331,7 @@ export class InquiryView extends ItemView {
                 sagaScope: this.normalizeMaterialMode(config.sagaScope, config.className.toLowerCase()),
                 referenceScope: this.normalizeMaterialMode(
                     (config as InquiryClassConfig).referenceScope
-                    ?? (INQUIRY_REFERENCE_ONLY_CLASSES.has(config.className.toLowerCase()) ? true : false),
+                    ?? (!this.isSynopsisCapableClass(config.className.toLowerCase()) ? true : false),
                     config.className.toLowerCase()
                 )
             })),
@@ -7427,7 +7670,10 @@ export class InquiryView extends ItemView {
     private getPreviewOutlinesValue(): string {
         const stats = this.getPayloadStats();
         const formatScope = (label: string, summaryCount: number, fullCount: number) => {
-            return `${label} ${summaryCount}× synopsis · ${fullCount}× full`;
+            if (summaryCount > 0) {
+                return `${label} ${summaryCount}× synopsis · ${fullCount}× full`;
+            }
+            return `${label} ${fullCount}× full`;
         };
         return [
             formatScope('book', stats.bookOutlineSummaryCount, stats.bookOutlineFullCount),
