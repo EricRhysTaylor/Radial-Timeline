@@ -122,6 +122,7 @@ export class AuthorProgressModal extends Modal {
         const actionsSection = contentEl.createDiv({
             cls: `${ERT_CLASSES.PANEL} ert-panel--glass ${ERT_CLASSES.STACK}`
         });
+        actionsSection.addClass('ert-apr-actions');
         const actionsHeader = actionsSection.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
         const actionsHeaderMain = actionsHeader.createDiv({ cls: ERT_CLASSES.CONTROL });
         const actionsTitleRow = actionsHeaderMain.createDiv({ cls: ERT_CLASSES.INLINE });
@@ -139,7 +140,7 @@ export class AuthorProgressModal extends Modal {
                 campaigns.forEach(campaign => {
                     dropdown.addOption(campaign.id, `Campaign: ${campaign.name}`);
                 });
-                dropdown.selectEl.addClass('ert-input--md');
+                dropdown.selectEl.addClass('ert-input--lg');
                 dropdown.setValue(this.selectedTargetId);
                 dropdown.onChange(val => {
                     this.selectedTargetId = val === 'default' ? 'default' : val;
@@ -254,9 +255,7 @@ export class AuthorProgressModal extends Modal {
             const exportPill = exportCell.createSpan({
                 cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
             });
-            const targetSize = this.getSizeMeta(target.size);
-            exportPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: targetSize.dimension });
-            exportPill.createEl('sup', { text: '2' });
+            exportPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: this.getSizeLabelPx(target.size) });
 
             const stageCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
             const stagePill = stageCell.createSpan({
@@ -320,17 +319,21 @@ export class AuthorProgressModal extends Modal {
     private renderCoreActions(container: HTMLElement): void {
         const settings = this.plugin.settings.authorProgress;
         this.aprSize = settings?.aprSize ?? this.aprSize ?? 'medium';
-        const sizeRow = container.createDiv({
+        const sizeStageRow = container.createDiv({
+            cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ert-apr-actions-row--split`
+        });
+
+        const sizeRow = sizeStageRow.createDiv({
             cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ${ERT_CLASSES.ROW_MIDDLE_ALIGN}`
         });
         sizeRow.createSpan({ text: 'Export size', cls: ERT_CLASSES.LABEL });
         const sizeControls = sizeRow.createDiv({ cls: ERT_CLASSES.INLINE });
 
         const sizeOptions: Array<{ size: 'thumb' | 'small' | 'medium' | 'large'; label: string; dimension: string }> = [
-            { size: 'thumb', label: 'Thumb', dimension: '100' },
-            { size: 'small', label: 'Small', dimension: '150' },
-            { size: 'medium', label: 'Medium', dimension: '300' },
-            { size: 'large', label: 'Large', dimension: '450' }
+            { size: 'thumb', label: 'Thumb', dimension: '100px' },
+            { size: 'small', label: 'Small', dimension: '150px' },
+            { size: 'medium', label: 'Medium', dimension: '300px' },
+            { size: 'large', label: 'Large', dimension: '450px' }
         ];
 
         sizeOptions.forEach(option => {
@@ -340,7 +343,6 @@ export class AuthorProgressModal extends Modal {
             });
             const dims = btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL });
             dims.append(document.createTextNode(option.dimension));
-            dims.createEl('sup', { text: '2' });
             if (isActive) {
                 btn.setAttr('aria-pressed', 'true');
             }
@@ -352,7 +354,7 @@ export class AuthorProgressModal extends Modal {
             };
         });
 
-        const stageRow = container.createDiv({
+        const stageRow = sizeStageRow.createDiv({
             cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ${ERT_CLASSES.ROW_MIDDLE_ALIGN}`
         });
         stageRow.createSpan({ text: 'Stage', cls: ERT_CLASSES.LABEL });
@@ -423,17 +425,19 @@ export class AuthorProgressModal extends Modal {
             return;
         }
 
+        const sizeStageRow = container.createDiv({
+            cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ert-apr-actions-row--split`
+        });
         const sizeMeta = this.getSizeMeta(this.getActiveAprSize());
-        const sizeRow = container.createDiv({
+        const sizeRow = sizeStageRow.createDiv({
             cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ${ERT_CLASSES.ROW_MIDDLE_ALIGN}`
         });
         sizeRow.createSpan({ text: 'Export size', cls: ERT_CLASSES.LABEL });
         const sizeValue = sizeRow.createDiv({ cls: ERT_CLASSES.INLINE });
         const sizePill = sizeValue.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}` });
-        sizePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: sizeMeta.dimension });
-        sizePill.createEl('sup', { text: '2' });
+        sizePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: this.getSizeLabelPx(this.getActiveAprSize()) });
 
-        const stageRow = container.createDiv({
+        const stageRow = sizeStageRow.createDiv({
             cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ${ERT_CLASSES.ROW_MIDDLE_ALIGN}`
         });
         stageRow.createSpan({ text: 'Stage', cls: ERT_CLASSES.LABEL });
@@ -569,6 +573,11 @@ export class AuthorProgressModal extends Modal {
             case 'large': return { label: 'Large', dimension: '450' };
             default: return { label: 'Medium', dimension: '300' };
         }
+    }
+
+    private getSizeLabelPx(size: 'thumb' | 'small' | 'medium' | 'large'): string {
+        const meta = this.getSizeMeta(size);
+        return `${meta.dimension}px`;
     }
 
     private summarizePath(path: string, maxLength = 42): string {

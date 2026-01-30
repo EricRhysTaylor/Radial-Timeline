@@ -888,7 +888,7 @@ export class InquiryView extends ItemView {
         this.enginePanelGuardEl = panel.createDiv({ cls: 'ert-inquiry-engine-guard ert-hidden' });
         this.enginePanelGuardNoteEl = this.enginePanelGuardEl.createDiv({
             cls: 'ert-inquiry-engine-guard-note',
-            text: 'Payload is very large. Choose a larger-context model or adjust the Inquiry class presets.'
+            text: 'Payload is very large. Confirm larger-context model or adjust the Inquiry class presets.'
         });
         this.enginePanelRunAnywayButton = this.enginePanelGuardEl.createEl('button', {
             cls: 'ert-inquiry-engine-run-anyway',
@@ -986,7 +986,7 @@ export class InquiryView extends ItemView {
                 const guardSummary = this.buildEnginePayloadSummary(guardQuestion);
                 const guardTokens = this.formatTokenEstimate(guardSummary.inputTokens);
                 const guardThreshold = this.formatTokenEstimate(INQUIRY_INPUT_TOKENS_RED);
-                const guardText = `Payload is very large (~${guardTokens} input tokens; guard ${guardThreshold}). Choose a larger-context model or adjust the Inquiry class presets.`;
+                const guardText = `Payload is very large (~${guardTokens} input tokens; guard ${guardThreshold}). Confirm larger-context model or adjust the Inquiry class presets.`;
                 this.enginePanelGuardNoteEl.setText(guardText);
             }
         }

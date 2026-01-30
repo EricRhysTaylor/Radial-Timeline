@@ -1,4 +1,4 @@
-import { Setting as ObsidianSetting } from 'obsidian';
+import { Setting as ObsidianSetting, setIcon, setTooltip } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { GlobalPovMode } from '../../types/settings';
 import { resolveScenePov } from '../../utils/pov';
@@ -69,8 +69,31 @@ export function renderPovSection(params: {
         cls: 'ert-previewFrame ert-previewFrame--center ert-previewFrame--flush',
         attr: { 'data-preview': 'pov' }
     });
-    const previewHeading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading', text: t('settings.pov.preview.heading') });
+    const previewHeader = previewContainer.createDiv({ cls: 'ert-previewFrame__header' });
+    const previewHeading = previewHeader.createDiv({
+        cls: 'ert-planetary-preview-heading ert-previewFrame__title',
+        text: t('settings.pov.preview.heading')
+    });
+    const previewToggle = previewHeader.createEl('button', {
+        cls: ERT_CLASSES.ICON_BTN,
+        attr: {
+            type: 'button',
+            'aria-label': 'Hide POV preview'
+        }
+    });
     const previewBody = previewContainer.createDiv({ cls: 'ert-pov-preview-body' });
+    let previewExpanded = true;
+    const refreshPreviewToggle = () => {
+        setIcon(previewToggle, previewExpanded ? 'chevron-down' : 'chevron-right');
+        setTooltip(previewToggle, previewExpanded ? 'Hide POV preview' : 'Show POV preview');
+        previewToggle.setAttribute('aria-label', previewExpanded ? 'Hide POV preview' : 'Show POV preview');
+        previewBody.toggleClass('ert-settings-hidden', !previewExpanded);
+    };
+    refreshPreviewToggle();
+    previewToggle.addEventListener('click', () => {
+        previewExpanded = !previewExpanded;
+        refreshPreviewToggle();
+    });
 
     const buildPreviewEntries = (
         characters: string[],

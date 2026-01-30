@@ -1002,6 +1002,20 @@
   margin: 0;
 }
 
+.ert-ui.ert-scope--settings .ert-previewFrame__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  align-self: stretch;
+  width: 100%;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-previewFrame__header .ert-previewFrame__title {
+  flex: 1 1 auto;
+  text-align: center;
+}
+
 .ert-ui.ert-scope--settings .ert-previewFrame__inner {
   display: flex;
   align-items: center;

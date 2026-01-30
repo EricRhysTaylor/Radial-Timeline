@@ -2127,7 +2127,7 @@
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-inquiry-prompt-header .setting-item-description {
   margin: 0;
   font-size: var(--font-ui-small, 13px);
-  color: var(--ert-inquiry-zone-color);
+  color: var(--ert-inquiry-zone-stroke);
 }
 
 

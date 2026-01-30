@@ -348,24 +348,30 @@ export function renderStoryBeatsSection(params: {
 
     let onAdvancedToggle: (() => void) | undefined;
 
-    new Settings(yamlStack)
+    const advancedYamlSetting = new Settings(yamlStack)
         .setName('Advanced YAML editor')
-        .setDesc('Setup custom YAML keys for the advanced scene template. Enable fields to reveal in scene hover synopsis. Assign a perfect lucide icon. Reorder fields to match your preferred order.')
-        .addExtraButton(button => {
-            const refreshButton = () => {
-                const expanded = plugin.settings.enableAdvancedYamlEditor ?? false;
-                button.setIcon(expanded ? 'chevron-down' : 'chevron-right');
-                button.setTooltip(expanded ? 'Hide advanced YAML editor' : 'Show advanced YAML editor');
-            };
-            refreshButton();
-            button.onClick(async () => {
-                const next = !(plugin.settings.enableAdvancedYamlEditor ?? false);
-                plugin.settings.enableAdvancedYamlEditor = next;
-                refreshButton();
-                await plugin.saveSettings();
-                onAdvancedToggle?.();
-            });
-        });
+        .setDesc('Setup custom YAML keys for the advanced scene template. Enable fields to reveal in scene hover synopsis. Assign a perfect lucide icon. Reorder fields to match your preferred order.');
+    const advancedToggleButton = advancedYamlSetting.controlEl.createEl('button', {
+        cls: ERT_CLASSES.ICON_BTN,
+        attr: {
+            type: 'button',
+            'aria-label': 'Show advanced YAML editor'
+        }
+    });
+    const refreshAdvancedToggle = () => {
+        const expanded = plugin.settings.enableAdvancedYamlEditor ?? false;
+        setIcon(advancedToggleButton, expanded ? 'chevron-down' : 'chevron-right');
+        setTooltip(advancedToggleButton, expanded ? 'Hide advanced YAML editor' : 'Show advanced YAML editor');
+        advancedToggleButton.setAttribute('aria-label', expanded ? 'Hide advanced YAML editor' : 'Show advanced YAML editor');
+    };
+    refreshAdvancedToggle();
+    advancedToggleButton.addEventListener('click', async () => {
+        const next = !(plugin.settings.enableAdvancedYamlEditor ?? false);
+        plugin.settings.enableAdvancedYamlEditor = next;
+        refreshAdvancedToggle();
+        await plugin.saveSettings();
+        onAdvancedToggle?.();
+    });
 
     const templateSection = yamlStack.createDiv({ cls: ['ert-scene-template-editor', 'ert-stack'] });
 

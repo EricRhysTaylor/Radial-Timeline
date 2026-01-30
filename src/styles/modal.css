@@ -1397,7 +1397,7 @@
 /* APR Status Grid */
 .ert-ui.ert-scope--modal .ert-apr-status-grid {
   display: grid;
-  grid-template-columns: 64px minmax(110px, 1.05fr) minmax(110px, 1fr) minmax(140px, 1.2fr) minmax(140px, 1.2fr);
+  grid-template-columns: 64px minmax(160px, 1.5fr) minmax(120px, 1fr) minmax(120px, 1fr) minmax(90px, 0.7fr);
   column-gap: var(--ert-gap-lg);
   row-gap: var(--ert-gap-xs);
   width: 100%;
@@ -1436,7 +1436,7 @@
   margin-top: 6px;
   padding-top: 6px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 0.85rem;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-normal);
 }
@@ -1445,6 +1445,30 @@
   display: flex;
   align-items: center;
   gap: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--modal .ert-badgePill--sm {
+  min-height: 24px;
+}
+
+.ert-ui.ert-scope--modal .ert-apr-actions.ert-skin--pro.ert-panel--glass {
+  --ert-panel-bg: var(--ert-pro-surface-bg);
+  --ert-panel-border: var(--ert-pro-border);
+  --ert-panel-shadow: var(--ert-panel-shadow);
+}
+
+.ert-ui.ert-scope--modal .ert-apr-actions-row--split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--ert-gap-lg);
+  align-items: start;
+}
+
+.ert-ui.ert-scope--modal .ert-apr-actions-row--split > .ert-row {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
 }
 
 /* Refresh Alert */

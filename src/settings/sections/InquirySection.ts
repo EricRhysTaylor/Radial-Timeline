@@ -1063,7 +1063,9 @@ export function renderInquirySection(params: SectionParams): void {
                 '--ert-badgePill-shadow',
                 `0 0 0 1px color-mix(in srgb, ${zoneStroke} 35%, transparent)`
             );
+            headingName.style.alignSelf = 'center';
             headingInfo.style.setProperty('--ert-inquiry-zone-color', zoneColor);
+            headingInfo.style.setProperty('--ert-inquiry-zone-stroke', zoneStroke);
             headingInfo.createDiv({
                 cls: 'setting-item-description',
                 text: getInquiryZoneDescription(zone)
