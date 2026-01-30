@@ -3,13 +3,14 @@
  * Allows managing multiple APR campaigns with independent refresh schedules
  */
 
-import { App, Setting, setIcon, setTooltip, ButtonComponent, TextComponent, Notice } from 'obsidian';
+import { App, Setting, setIcon, setTooltip, ButtonComponent, Notice, Modal } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { AprCampaign, TeaserPreset, TeaserRevealLevel } from '../../types/settings';
 import { isProfessionalActive } from './ProfessionalSection';
-import { TEASER_PRESETS, TEASER_LEVEL_INFO, getTeaserThresholds, teaserLevelToRevealOptions } from '../../renderer/apr/AprConstants';
+import { getTeaserThresholds, teaserLevelToRevealOptions } from '../../renderer/apr/AprConstants';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { getAllScenes } from '../../utils/manuscript';
+import { buildCampaignEmbedPath, type AprSize } from '../../utils/aprPaths';
 
 import { ERT_CLASSES } from '../../ui/classes';
 
@@ -20,6 +21,85 @@ export interface CampaignManagerProps {
     onCampaignChange?: () => void;
 }
 
+interface CampaignNameModalOptions {
+    badgeLabel?: string;
+    title: string;
+    subtitle: string;
+    initialValue: string;
+    actionLabel: string;
+    onSubmit: (value: string) => Promise<boolean>;
+}
+
+class CampaignNameModal extends Modal {
+    private readonly options: CampaignNameModalOptions;
+
+    constructor(app: App, options: CampaignNameModalOptions) {
+        super(app);
+        this.options = options;
+    }
+
+    onOpen() {
+        const { contentEl, modalEl } = this;
+        contentEl.empty();
+
+        if (modalEl) {
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-campaign-name-modal');
+            modalEl.style.width = '420px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '92vw';
+        }
+
+        contentEl.addClass('ert-modal-container', 'ert-stack');
+
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: this.options.badgeLabel ?? 'Edit' });
+        header.createDiv({ cls: 'ert-modal-title', text: this.options.title });
+        header.createDiv({ cls: 'ert-modal-subtitle', text: this.options.subtitle });
+
+        const inputContainer = contentEl.createDiv({ cls: 'ert-search-input-container' });
+        const inputEl = inputContainer.createEl('input', {
+            type: 'text',
+            value: this.options.initialValue,
+            cls: 'ert-input ert-input--full'
+        });
+        inputEl.setAttr('placeholder', 'Campaign name');
+
+        window.setTimeout(() => inputEl.focus(), 50);
+
+        const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        const save = async () => {
+            const val = inputEl.value.trim();
+            if (!val) {
+                new Notice('Please enter a campaign name');
+                return;
+            }
+            const shouldClose = await this.options.onSubmit(val);
+            if (shouldClose) {
+                this.close();
+            }
+        };
+
+        new ButtonComponent(buttonRow)
+            .setButtonText(this.options.actionLabel)
+            .setCta()
+            .onClick(() => { void save(); });
+
+        new ButtonComponent(buttonRow)
+            .setButtonText('Cancel')
+            .onClick(() => this.close());
+
+        inputEl.addEventListener('keydown', (evt: KeyboardEvent) => {
+            if (evt.key === 'Enter') {
+                evt.preventDefault();
+                void save();
+            }
+        });
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+}
+
 /**
  * Generate a unique campaign ID
  */
@@ -27,10 +107,59 @@ function generateCampaignId(): string {
     return `campaign-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
+function getDaysSince(date?: string): number | null {
+    if (!date) return null;
+    const time = new Date(date).getTime();
+    if (!Number.isFinite(time)) return null;
+    return Math.floor((Date.now() - time) / (1000 * 60 * 60 * 24));
+}
+
+function getNextUpdateLabel(campaign: AprCampaign): string {
+    if (!campaign.isActive) return 'Paused';
+    const frequency = campaign.updateFrequency ?? 'manual';
+    const daysSince = getDaysSince(campaign.lastPublishedDate);
+
+    if (frequency === 'manual') {
+        const reminderDays = campaign.refreshThresholdDays ?? 0;
+        if (reminderDays <= 0) return 'Manual (no reminder)';
+        if (daysSince === null) return `Reminder in ${reminderDays}d`;
+        const remaining = Math.max(0, reminderDays - daysSince);
+        return remaining === 0 ? 'Reminder due' : `Reminder in ${remaining}d`;
+    }
+
+    const intervalDays = frequency === 'daily' ? 1 : frequency === 'weekly' ? 7 : 30;
+    if (daysSince === null) return 'Auto update due';
+    const remaining = Math.max(0, intervalDays - daysSince);
+    return remaining === 0 ? 'Auto update due' : `Auto update in ${remaining}d`;
+}
+
+function getScheduleBadge(campaign: AprCampaign): { label: string; cls: string } {
+    if (!campaign.isActive) return { label: 'Paused', cls: 'is-paused' };
+    const frequency = campaign.updateFrequency ?? 'manual';
+    if (frequency !== 'manual') {
+        const label = frequency.charAt(0).toUpperCase() + frequency.slice(1);
+        return { label: `Auto · ${label}`, cls: 'is-auto' };
+    }
+    return { label: `Manual · ${campaign.refreshThresholdDays}d`, cls: 'is-manual' };
+}
+
 /**
  * Create a new campaign with default values
  */
-export function createDefaultCampaign(name: string): AprCampaign {
+export function createDefaultCampaign(
+    name: string,
+    options?: {
+        bookTitle?: string;
+        aprSize?: AprSize;
+    }
+): AprCampaign {
+    const embedPath = buildCampaignEmbedPath({
+        bookTitle: options?.bookTitle,
+        campaignName: name,
+        updateFrequency: 'manual',
+        aprSize: options?.aprSize,
+        teaserEnabled: true
+    });
     return {
         id: generateCampaignId(),
         name,
@@ -39,7 +168,7 @@ export function createDefaultCampaign(name: string): AprCampaign {
         updateFrequency: 'manual',
         refreshThresholdDays: 7,
         lastPublishedDate: undefined,
-        embedPath: `Radial Timeline/Social/${name.toLowerCase().replace(/\s+/g, '-')}-progress.svg`,
+        embedPath,
         // aprSize defaults to global setting (undefined)
         customTransparent: true,
         customTheme: 'dark',
@@ -57,6 +186,7 @@ export function createDefaultCampaign(name: string): AprCampaign {
  */
 export function campaignNeedsRefresh(campaign: AprCampaign): boolean {
     if (!campaign.isActive) return false;
+    if (campaign.updateFrequency && campaign.updateFrequency !== 'manual') return false;
     if (!campaign.lastPublishedDate) return true; // Never published
 
     const last = new Date(campaign.lastPublishedDate).getTime();
@@ -98,6 +228,19 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
         cls: `${ERT_CLASSES.SECTION_DESC} ert-campaign-desc`
     });
 
+    new Setting(card)
+        .setName('Auto-update embed paths')
+        .setDesc('When size or schedule changes, update the default embed path if it still matches the default pattern.')
+        .addToggle(toggle => {
+            const current = plugin.settings.authorProgress?.autoUpdateEmbedPaths ?? false;
+            toggle.setValue(current);
+            toggle.onChange(async (val) => {
+                if (!plugin.settings.authorProgress) return;
+                plugin.settings.authorProgress.autoUpdateEmbedPaths = val;
+                await plugin.saveSettings();
+            });
+        });
+
     // ─────────────────────────────────────────────────────────────────────────
     // CAMPAIGN LIST
     // ─────────────────────────────────────────────────────────────────────────
@@ -121,45 +264,45 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     const addSection = card.createDiv({ cls: 'ert-campaign-add-section' });
 
     const addRow = addSection.createDiv({ cls: 'ert-campaign-add-row' });
-    let nameInput: TextComponent;
 
     const newCampaignSetting = new Setting(addRow)
         .setName('New Campaign')
-        .setDesc('Give your campaign a name (e.g., "Kickstarter", "Newsletter")')
-        .addText(text => {
-            nameInput = text;
-            text.setPlaceholder('Campaign name...');
-        })
+        .setDesc('Create a new campaign that targets a specific platform or audience.')
         .addButton(button => {
             button.setButtonText('Add Campaign');
             button.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro');
             button.onClick(async () => {
-                const name = nameInput.getValue().trim();
-                if (!name) {
-                    new Notice('Please enter a campaign name');
-                    return;
-                }
+                const modal = new CampaignNameModal(app, {
+                    badgeLabel: 'New',
+                    title: 'New Campaign',
+                    subtitle: 'Give your campaign a name (e.g., "Website Hero Page", "Kickstarter Campaign", "Newsletter")',
+                    initialValue: '',
+                    actionLabel: 'Create',
+                    onSubmit: async (name) => {
+                        const existing = campaigns.find(c => c.name.toLowerCase() === name.toLowerCase());
+                        if (existing) {
+                            new Notice('A campaign with this name already exists');
+                            return false;
+                        }
 
-                // Check for duplicate names
-                const existing = campaigns.find(c => c.name.toLowerCase() === name.toLowerCase());
-                if (existing) {
-                    new Notice('A campaign with this name already exists');
-                    return;
-                }
+                        const newCampaign = createDefaultCampaign(name, {
+                            bookTitle: plugin.settings.authorProgress?.bookTitle,
+                            aprSize: plugin.settings.authorProgress?.aprSize
+                        });
+                        if (!plugin.settings.authorProgress) return false;
+                        if (!plugin.settings.authorProgress.campaigns) {
+                            plugin.settings.authorProgress.campaigns = [];
+                        }
+                        plugin.settings.authorProgress.campaigns.push(newCampaign);
+                        await plugin.saveSettings();
 
-                // Create and add the campaign
-                const newCampaign = createDefaultCampaign(name);
-                if (!plugin.settings.authorProgress) return;
-                if (!plugin.settings.authorProgress.campaigns) {
-                    plugin.settings.authorProgress.campaigns = [];
-                }
-                plugin.settings.authorProgress.campaigns.push(newCampaign);
-                await plugin.saveSettings();
-
-                nameInput.setValue('');
-                new Notice(`Campaign "${name}" created!`);
-                rerenderCampaignList();
-                onCampaignChange?.();
+                        new Notice(`Campaign "${name}" created!`);
+                        rerenderCampaignList();
+                        onCampaignChange?.();
+                        return true;
+                    }
+                });
+                modal.open();
             });
         });
 
@@ -195,7 +338,10 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
         btn.onclick = async () => {
             if (exists) return;
 
-            const newCampaign = createDefaultCampaign(template.name);
+            const newCampaign = createDefaultCampaign(template.name, {
+                bookTitle: plugin.settings.authorProgress?.bookTitle,
+                aprSize: plugin.settings.authorProgress?.aprSize
+            });
             newCampaign.refreshThresholdDays = template.days;
 
             if (!plugin.settings.authorProgress) return;
@@ -245,7 +391,10 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
             btn.onclick = async () => {
                 if (exists) return;
 
-                const newCampaign = createDefaultCampaign(template.name);
+                const newCampaign = createDefaultCampaign(template.name, {
+                    bookTitle: plugin.settings.authorProgress?.bookTitle,
+                    aprSize: plugin.settings.authorProgress?.aprSize
+                });
                 newCampaign.refreshThresholdDays = template.days;
 
                 if (!plugin.settings.authorProgress) return;
@@ -290,30 +439,97 @@ function renderCampaignRow(
     const statusIndicator = titleRow.createDiv({ cls: 'ert-campaign-status' });
     if (needsRefresh) {
         setIcon(statusIndicator, 'alert-triangle');
-        setTooltip(statusIndicator, 'Needs refresh');
+        setTooltip(statusIndicator, 'Refresh needed');
     } else if (campaign.isActive) {
         setIcon(statusIndicator, 'check-circle');
-        setTooltip(statusIndicator, 'Up to date');
+        setTooltip(statusIndicator, 'Up to date (no refresh needed)');
     } else {
         setIcon(statusIndicator, 'pause-circle');
         setTooltip(statusIndicator, 'Paused');
     }
 
     // Campaign info
-    titleRow.createSpan({ text: campaign.name, cls: 'ert-campaign-name' });
+    const nameEl = titleRow.createSpan({
+        text: campaign.name,
+        cls: `ert-campaign-name ert-campaign-name--clickable ${campaign.isActive ? 'is-active' : 'is-paused'}`
+    });
+    setTooltip(nameEl, 'Click to rename campaign');
+    nameEl.setAttr('role', 'button');
+    nameEl.setAttr('tabindex', '0');
+    nameEl.setAttr('aria-label', `Rename campaign ${campaign.name}`);
+    const openRenameModal = () => {
+        const modal = new CampaignNameModal(plugin.app, {
+            title: 'Rename Campaign',
+            subtitle: `Enter a new name for "${campaign.name}"`,
+            initialValue: campaign.name,
+            actionLabel: 'Rename',
+            onSubmit: async (nextName) => {
+                const newName = nextName.trim();
+                if (!newName) {
+                    new Notice('Please enter a campaign name');
+                    return false;
+                }
+                if (newName.toLowerCase() === campaign.name.toLowerCase()) {
+                    return true;
+                }
+                if (!plugin.settings.authorProgress?.campaigns) return false;
+                const existing = plugin.settings.authorProgress.campaigns.find(c => c.name.toLowerCase() === newName.toLowerCase());
+                if (existing) {
+                    new Notice('A campaign with this name already exists');
+                    return false;
+                }
 
-    if (campaign.refreshThresholdDays) {
-        titleRow.createSpan({
-            text: `${campaign.refreshThresholdDays}d refresh`,
-            cls: 'ert-campaign-refresh-badge'
+                const oldDefaultPath = buildCampaignEmbedPath({
+                    bookTitle: plugin.settings.authorProgress?.bookTitle,
+                    campaignName: campaign.name,
+                    updateFrequency: campaign.updateFrequency,
+                    aprSize: campaign.aprSize,
+                    fallbackSize: plugin.settings.authorProgress?.aprSize,
+                    teaserEnabled: campaign.teaserReveal?.enabled ?? true
+                });
+                const newDefaultPath = buildCampaignEmbedPath({
+                    bookTitle: plugin.settings.authorProgress?.bookTitle,
+                    campaignName: newName,
+                    updateFrequency: campaign.updateFrequency,
+                    aprSize: campaign.aprSize,
+                    fallbackSize: plugin.settings.authorProgress?.aprSize,
+                    teaserEnabled: campaign.teaserReveal?.enabled ?? true
+                });
+
+                plugin.settings.authorProgress.campaigns[index].name = newName;
+                if (plugin.settings.authorProgress.campaigns[index].embedPath === oldDefaultPath) {
+                    plugin.settings.authorProgress.campaigns[index].embedPath = newDefaultPath;
+                }
+                await plugin.saveSettings();
+                onUpdate();
+                return true;
+            }
         });
-    }
+        modal.open();
+    };
+    nameEl.addEventListener('click', openRenameModal);
+    nameEl.addEventListener('keydown', (evt: KeyboardEvent) => {
+        if (evt.key === 'Enter' || evt.key === ' ') {
+            evt.preventDefault();
+            openRenameModal();
+        }
+    });
+
+    const scheduleBadge = getScheduleBadge(campaign);
+    titleRow.createSpan({
+        text: scheduleBadge.label,
+        cls: `ert-campaign-refresh-badge ${scheduleBadge.cls}`
+    });
 
     // Last published info
     const lastPublished = campaign.lastPublishedDate
         ? `Updated ${new Date(campaign.lastPublishedDate).toLocaleDateString()}`
         : 'Never published';
     rowLeft.createSpan({ text: lastPublished, cls: `${ERT_CLASSES.OBJECT_ROW_META} ert-campaign-last-published` });
+    rowLeft.createSpan({
+        text: getNextUpdateLabel(campaign),
+        cls: `${ERT_CLASSES.OBJECT_ROW_META} ert-campaign-next-update`
+    });
 
     // Actions
     const actions = row.createDiv({ cls: ERT_CLASSES.OBJECT_ROW_ACTIONS });
@@ -322,6 +538,7 @@ function renderCampaignRow(
     // Toggle active
     const toggleBtn = actionGroup.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
     setIcon(toggleBtn, campaign.isActive ? 'pause' : 'play');
+    toggleBtn.addClass(campaign.isActive ? 'ert-iconBtn--active' : 'ert-iconBtn--paused');
     setTooltip(toggleBtn, campaign.isActive ? 'Pause campaign' : 'Resume campaign');
     toggleBtn.onclick = async () => {
         if (!plugin.settings.authorProgress?.campaigns) return;
@@ -383,8 +600,30 @@ function renderCampaignDetails(
                 .setValue(campaign.updateFrequency || 'manual')
                 .onChange(async (val) => {
                     if (!plugin.settings.authorProgress?.campaigns) return;
-                    plugin.settings.authorProgress.campaigns[index].updateFrequency = val as 'manual' | 'daily' | 'weekly' | 'monthly';
+                    const settings = plugin.settings.authorProgress;
+                    if (!settings.campaigns) return;
+                    const target = settings.campaigns[index];
+                    const oldDefaultPath = buildCampaignEmbedPath({
+                        bookTitle: settings.bookTitle,
+                        campaignName: target.name,
+                        updateFrequency: target.updateFrequency,
+                        aprSize: target.aprSize,
+                        fallbackSize: settings.aprSize,
+                        teaserEnabled: target.teaserReveal?.enabled ?? true
+                    });
+                    target.updateFrequency = val as 'manual' | 'daily' | 'weekly' | 'monthly';
+                    if (settings.autoUpdateEmbedPaths && target.embedPath === oldDefaultPath) {
+                        target.embedPath = buildCampaignEmbedPath({
+                            bookTitle: settings.bookTitle,
+                            campaignName: target.name,
+                            updateFrequency: target.updateFrequency,
+                            aprSize: target.aprSize,
+                            fallbackSize: settings.aprSize,
+                            teaserEnabled: target.teaserReveal?.enabled ?? true
+                        });
+                    }
                     await plugin.saveSettings();
+                    onUpdate();
                 });
         });
 
@@ -422,7 +661,14 @@ function renderCampaignDetails(
         });
 
     // Embed path (with validation and reset)
-    const defaultPath = `Radial Timeline/Social/${campaign.name.toLowerCase().replace(/\s+/g, '-')}-progress.svg`;
+    const defaultPath = buildCampaignEmbedPath({
+        bookTitle: plugin.settings.authorProgress?.bookTitle,
+        campaignName: campaign.name,
+        updateFrequency: campaign.updateFrequency,
+        aprSize: campaign.aprSize,
+        fallbackSize: plugin.settings.authorProgress?.aprSize,
+        teaserEnabled: campaign.teaserReveal?.enabled ?? true
+    });
     const embedPathSetting = new Setting(details)
         .setName('Embed File Path')
         .setDesc(`Location for the embed SVG file.`);
@@ -502,8 +748,30 @@ function renderCampaignDetails(
             drop.setValue(campaign.aprSize || '');
             drop.onChange(async (val) => {
                 if (!plugin.settings.authorProgress?.campaigns) return;
-                plugin.settings.authorProgress.campaigns[index].aprSize = val === '' ? undefined : val as 'thumb' | 'small' | 'medium' | 'large';
+                const settings = plugin.settings.authorProgress;
+                if (!settings.campaigns) return;
+                const target = settings.campaigns[index];
+                const oldDefaultPath = buildCampaignEmbedPath({
+                    bookTitle: settings.bookTitle,
+                    campaignName: target.name,
+                    updateFrequency: target.updateFrequency,
+                    aprSize: target.aprSize,
+                    fallbackSize: settings.aprSize,
+                    teaserEnabled: target.teaserReveal?.enabled ?? true
+                });
+                target.aprSize = val === '' ? undefined : val as 'thumb' | 'small' | 'medium' | 'large';
+                if (settings.autoUpdateEmbedPaths && target.embedPath === oldDefaultPath) {
+                    target.embedPath = buildCampaignEmbedPath({
+                        bookTitle: settings.bookTitle,
+                        campaignName: target.name,
+                        updateFrequency: target.updateFrequency,
+                        aprSize: target.aprSize,
+                        fallbackSize: settings.aprSize,
+                        teaserEnabled: target.teaserReveal?.enabled ?? true
+                    });
+                }
                 await plugin.saveSettings();
+                onUpdate();
             });
         });
 

@@ -137,6 +137,7 @@ export interface AuthorProgressSettings {
     stalenessThresholdDays: number; // For Manual mode
     enableReminders: boolean;
     dynamicEmbedPath: string;
+    autoUpdateEmbedPaths?: boolean;
 
     // Pro Feature: Campaign Manager
     campaigns?: AprCampaign[];

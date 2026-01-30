@@ -311,6 +311,8 @@ type CorpusCcEntry = {
     label: string;
     filePath: string;
     className: string;
+    scope?: InquiryScope;
+    sortLabel?: string;
 };
 
 type CorpusCcSlot = {
@@ -3112,9 +3114,19 @@ export class InquiryView extends ItemView {
             list.push(entry);
             entriesByClass.set(entry.className, list);
         });
+        entriesByClass.forEach(items => {
+            items.sort((a, b) => this.compareCorpusCcEntries(a, b));
+        });
         const classes = Array.from(entriesByClass.entries())
             .map(([className, items]) => ({ className, items }))
             .sort((a, b) => (b.items.length - a.items.length) || a.className.localeCompare(b.className));
+        const outlineIndex = classes.findIndex(group => group.className === 'outline');
+        const sagaIndex = classes.findIndex(group => group.className === 'outline-saga');
+        if (outlineIndex !== -1 && sagaIndex !== -1 && Math.abs(outlineIndex - sagaIndex) > 1) {
+            const [sagaGroup] = classes.splice(sagaIndex, 1);
+            const insertIndex = Math.min(outlineIndex + 1, classes.length);
+            classes.splice(insertIndex, 0, sagaGroup);
+        }
 
         if (!entries.length) {
             if (this.ccGroup) {
@@ -3356,6 +3368,9 @@ export class InquiryView extends ItemView {
     private getCorpusClassLabelVariants(className: string): string[] {
         const normalized = className.trim();
         if (!normalized) return ['Class', 'Cls', 'C'];
+        if (normalized === 'outline-saga') {
+            return ['Series Outline', 'Series', 'Saga'];
+        }
         const words = normalized
             .replace(/([a-z])([A-Z])/g, '$1 $2')
             .replace(/[^a-zA-Z0-9]+/g, ' ')
@@ -3376,14 +3391,69 @@ export class InquiryView extends ItemView {
     private getCorpusCcEntries(): CorpusCcEntry[] {
         const manifest = this.buildCorpusManifest(this.state.activeQuestionId ?? 'cc-preview');
         return manifest.entries.map(entry => {
-            const label = entry.path.split('/').pop() || entry.path;
+            const fallbackLabel = entry.path.split('/').pop() || entry.path;
+            const file = this.app.vault.getAbstractFileByPath(entry.path);
+            const label = file && this.isTFile(file) ? this.getDocumentTitle(file) : fallbackLabel;
+            const className = entry.class === 'outline' && entry.scope === 'saga'
+                ? 'outline-saga'
+                : entry.class;
             return {
                 id: `${entry.class}:${entry.path}`,
                 label,
                 filePath: entry.path,
-                className: entry.class
+                className,
+                scope: entry.scope,
+                sortLabel: label
             };
         });
+    }
+
+    private compareCorpusCcEntries(a: CorpusCcEntry, b: CorpusCcEntry): number {
+        const aLabel = (a.sortLabel ?? a.label).trim();
+        const bLabel = (b.sortLabel ?? b.label).trim();
+        const aNumber = this.getCorpusCcOrderNumber(aLabel, a.className);
+        const bNumber = this.getCorpusCcOrderNumber(bLabel, b.className);
+        const aHasNumber = aNumber !== null;
+        const bHasNumber = bNumber !== null;
+
+        if (aHasNumber && bHasNumber && aNumber !== bNumber) {
+            return aNumber - bNumber;
+        }
+        if (aHasNumber !== bHasNumber) {
+            return aHasNumber ? -1 : 1;
+        }
+
+        const labelCompare = aLabel.localeCompare(bLabel, undefined, { numeric: false, sensitivity: 'base' });
+        if (labelCompare !== 0) return labelCompare;
+        return a.filePath.localeCompare(b.filePath);
+    }
+
+    private getCorpusCcOrderNumber(label: string, className: string): number | null {
+        const normalized = label.toLowerCase();
+        const patterns: RegExp[] = [];
+        const isOutline = className === 'outline' || className === 'outline-saga';
+
+        if (className === 'scene') {
+            patterns.push(/^\s*(?:scene|sc)\s*#?\s*(\d+)/);
+            patterns.push(/^\s*s(\d+)\b/);
+            patterns.push(/^\s*(\d+)\b/);
+            patterns.push(/\bscene\s*#?\s*(\d+)/);
+        } else if (isOutline) {
+            patterns.push(/^\s*(?:book|bk)\s*#?\s*(\d+)/);
+            patterns.push(/\bbook\s*#?\s*(\d+)/);
+            patterns.push(/^\s*(\d+)\b/);
+        } else {
+            patterns.push(/^\s*(\d+)\b/);
+        }
+
+        for (const pattern of patterns) {
+            const match = normalized.match(pattern);
+            if (!match) continue;
+            const num = Number.parseInt(match[1], 10);
+            if (Number.isFinite(num)) return num;
+        }
+
+        return null;
     }
 
     private buildSagaCcEntries(corpus: InquiryCorpusSnapshot): CorpusCcEntry[] {
@@ -6003,9 +6073,14 @@ export class InquiryView extends ItemView {
 
     private drillIntoBook(bookId: string): void {
         if (!bookId) return;
+        const wasScope = this.state.scope;
         this.state.focusBookId = bookId;
         this.scheduleFocusPersist();
-        this.handleScopeChange('book');
+        if (wasScope === 'saga') {
+            this.handleScopeChange('book');
+            return;
+        }
+        this.refreshUI();
     }
 
     private shiftFocus(delta: number): void {

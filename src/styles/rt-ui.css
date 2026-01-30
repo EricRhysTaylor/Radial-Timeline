@@ -4001,6 +4001,26 @@
   flex: 1;
 }
 
+.ert-ui.ert-scope--modal .ert-apr-status-cell--campaign {
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ert-accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ert-accent) 25%, transparent);
+}
+
+.ert-ui.ert-scope--modal .ert-apr-status-fileLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--modal .ert-apr-status-file--campaign {
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ert-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ert-accent) 28%, transparent);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Release Notes modal                                                        */
 /* -------------------------------------------------------------------------- */
@@ -4571,11 +4591,66 @@
   color: var(--text-normal);
 }
 
+.ert-ui.ert-scope--settings .ert-campaign-name--clickable {
+  cursor: pointer;
+}
+
+.ert-ui.ert-scope--settings .ert-campaign-name--clickable:hover {
+  text-decoration: underline;
+}
+
+.ert-ui.ert-scope--settings .ert-campaign-name--clickable:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ert-accent) 45%, transparent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.ert-ui.ert-scope--settings .ert-campaign-name.is-active {
+  color: var(--text-success);
+}
+
+.ert-ui.ert-scope--settings .ert-campaign-name.is-paused {
+  color: var(--text-muted);
+}
+
 .ert-ui.ert-scope--settings .ert-campaign-refresh-badge {
   font-size: 10px;
   padding: calc(var(--ert-gap-xs) / 2) var(--ert-gap-xs);
   background: color-mix(in srgb, var(--background-secondary) 65%, transparent);
   border-radius: 999px;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-campaign-refresh-badge.is-auto {
+  background: color-mix(in srgb, var(--text-success) 18%, transparent);
+  color: var(--text-success);
+}
+
+.ert-ui.ert-scope--settings .ert-campaign-refresh-badge.is-manual {
+  background: color-mix(in srgb, var(--ert-accent) 18%, transparent);
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-campaign-refresh-badge.is-paused {
+  background: color-mix(in srgb, var(--text-muted) 20%, transparent);
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-campaign-next-update {
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-iconBtn--active {
+  color: var(--text-success);
+  border-color: color-mix(in srgb, var(--text-success) 50%, transparent);
+  background: color-mix(in srgb, var(--text-success) 12%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-iconBtn--active:hover {
+  box-shadow: var(--ert-iconBtn-shadow), 0 0 0 2px color-mix(in srgb, var(--text-success) 30%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-iconBtn--paused {
   color: var(--text-muted);
 }
 

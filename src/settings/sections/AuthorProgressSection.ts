@@ -15,6 +15,7 @@ import { colorSwatch, type ColorSwatchHandle } from '../../ui/ui';
 import { ERT_CLASSES } from '../../ui/classes';
 import { STAGE_ORDER } from '../../utils/constants';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
+import { buildDefaultEmbedPath } from '../../utils/aprPaths';
 
 export interface AuthorProgressSectionProps {
     app: App;
@@ -133,7 +134,20 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
         btn.onclick = async () => {
             if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprSize = size;
+            const settings = plugin.settings.authorProgress;
+            const oldDefaultPath = buildDefaultEmbedPath({
+                bookTitle: settings.bookTitle,
+                updateFrequency: settings.updateFrequency,
+                aprSize: settings.aprSize
+            });
+            settings.aprSize = size;
+            if (settings.autoUpdateEmbedPaths && settings.dynamicEmbedPath === oldDefaultPath) {
+                settings.dynamicEmbedPath = buildDefaultEmbedPath({
+                    bookTitle: settings.bookTitle,
+                    updateFrequency: settings.updateFrequency,
+                    aprSize: size
+                });
+            }
             await plugin.saveSettings();
 
             // Update button states
@@ -1137,7 +1151,20 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 .setValue(settings?.updateFrequency || 'manual')
                 .onChange(async (val) => {
                     if (plugin.settings.authorProgress) {
-                        plugin.settings.authorProgress.updateFrequency = val as any;
+                        const current = plugin.settings.authorProgress;
+                        const oldDefaultPath = buildDefaultEmbedPath({
+                            bookTitle: current.bookTitle,
+                            updateFrequency: current.updateFrequency,
+                            aprSize: current.aprSize
+                        });
+                        current.updateFrequency = val as any;
+                        if (current.autoUpdateEmbedPaths && current.dynamicEmbedPath === oldDefaultPath) {
+                            current.dynamicEmbedPath = buildDefaultEmbedPath({
+                                bookTitle: current.bookTitle,
+                                updateFrequency: current.updateFrequency,
+                                aprSize: current.aprSize
+                            });
+                        }
                         await plugin.saveSettings();
                     }
                 })
@@ -1196,7 +1223,11 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
 
         embedPathSetting.addText(text => {
-            const defaultPath = DEFAULT_SETTINGS.authorProgress?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg';
+            const defaultPath = buildDefaultEmbedPath({
+                bookTitle: settings?.bookTitle,
+                updateFrequency: settings?.updateFrequency,
+                aprSize: settings?.aprSize
+            });
             const successClass = 'ert-input--success';
             const errorClass = 'ert-input--error';
             const clearInputState = () => {
@@ -1266,6 +1297,18 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
                 });
             });
         });
+
+        new Setting(automationCard)
+            .setName('Auto-update embed paths')
+            .setDesc('When size or schedule changes, update the default embed path if it still matches the default pattern.')
+            .addToggle(toggle => {
+                toggle.setValue(settings?.autoUpdateEmbedPaths ?? false);
+                toggle.onChange(async (val) => {
+                    if (!plugin.settings.authorProgress) return;
+                    plugin.settings.authorProgress.autoUpdateEmbedPaths = val;
+                    await plugin.saveSettings();
+                });
+            });
 
         // Pro upgrade teaser for non-Pro users
         const proTeaser = automationCard.createDiv({ cls: `ert-apr-pro-teaser ${ERT_CLASSES.SKIN_PRO}` });

@@ -1433,10 +1433,10 @@
 
 .ert-ui.ert-scope--modal .ert-apr-status-file {
   grid-column: 1 / -1;
-  margin-top: var(--ert-gap-sm);
-  padding-top: var(--ert-gap-xs);
+  margin-top: 6px;
+  padding-top: 6px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-normal);
 }

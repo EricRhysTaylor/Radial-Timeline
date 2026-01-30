@@ -1,4 +1,4 @@
-import { App, Modal, Setting, ButtonComponent, Notice, TextComponent, setIcon, normalizePath } from 'obsidian';
+import { App, Modal, Setting, ButtonComponent, Notice, TextComponent, setIcon, setTooltip, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { getAllScenes } from '../utils/manuscript';
 import { TimelineItem } from '../types/timeline';
@@ -7,6 +7,7 @@ import type { AprCampaign } from '../types/settings';
 import { getTeaserThresholds, getTeaserRevealLevel, TEASER_LEVEL_INFO } from '../renderer/apr/AprConstants';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { ERT_CLASSES } from '../ui/classes';
+import { buildDefaultEmbedPath } from '../utils/aprPaths';
 
 export class AuthorProgressModal extends Modal {
     private plugin: RadialTimelinePlugin;
@@ -17,7 +18,6 @@ export class AuthorProgressModal extends Modal {
     private selectedTargetId: 'default' | string = 'default';
 
     private statusSectionEl: HTMLElement | null = null;
-    private campaignsSectionEl: HTMLElement | null = null;
     private actionsSectionEl: HTMLElement | null = null;
     private actionsBodyEl: HTMLElement | null = null;
 
@@ -41,7 +41,7 @@ export class AuthorProgressModal extends Modal {
             updateFrequency: 'manual',
             stalenessThresholdDays: 30,
             enableReminders: true,
-            dynamicEmbedPath: 'Radial Timeline/Social/progress.svg'
+            dynamicEmbedPath: 'Radial Timeline/Social/book/apr-book-default-manual-medium.svg'
         };
 
         // Initialize reveal options from settings
@@ -107,16 +107,6 @@ export class AuthorProgressModal extends Modal {
             cls: `${ERT_CLASSES.PANEL} ert-panel--glass ${ERT_CLASSES.STACK}`
         });
 
-        // Campaign status table (Pro users or existing campaigns)
-        if (isProActive || campaigns.length > 0) {
-            this.campaignsSectionEl = contentEl.createDiv({
-                cls: `${ERT_CLASSES.PANEL} ert-panel--glass ${ERT_CLASSES.STACK} ${ERT_CLASSES.SKIN_PRO}`
-            });
-            if (!isProActive) {
-                this.campaignsSectionEl.addClass('ert-pro-locked');
-            }
-        }
-
         // Actions (context-sensitive)
         const actionsSection = contentEl.createDiv({
             cls: `${ERT_CLASSES.PANEL} ert-panel--glass ${ERT_CLASSES.STACK}`
@@ -158,7 +148,6 @@ export class AuthorProgressModal extends Modal {
 
         await this.loadData();
         this.renderStatusSection();
-        this.renderCampaignStatusSection();
         this.renderActions();
     }
 
@@ -172,13 +161,10 @@ export class AuthorProgressModal extends Modal {
         this.statusSectionEl.empty();
 
         const settings = this.plugin.settings.authorProgress;
-        const campaign = this.getSelectedCampaign();
         const isCampaign = this.isCampaignTarget();
         if (!isCampaign && settings?.aprSize) {
             this.aprSize = settings.aprSize;
         }
-        const sizeMeta = this.getSizeMeta(this.getActiveAprSize());
-        const teaserStatus = this.resolveTeaserStatus(campaign);
 
         const header = this.statusSectionEl.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
         const headerMain = header.createDiv({ cls: ERT_CLASSES.CONTROL });
@@ -197,163 +183,91 @@ export class AuthorProgressModal extends Modal {
 
         this.renderRefreshAlert(this.statusSectionEl);
 
-        const stageInfo = teaserStatus.info ?? TEASER_LEVEL_INFO.full;
-        const nextInfo = this.getNextUpdateInfo({
-            frequency: isCampaign ? campaign?.updateFrequency : settings?.updateFrequency,
-            lastPublishedDate: isCampaign ? campaign?.lastPublishedDate : settings?.lastPublishedDate,
-            reminderDays: isCampaign ? campaign?.refreshThresholdDays : settings?.stalenessThresholdDays,
-            remindersEnabled: isCampaign ? true : settings?.enableReminders
-        });
         const statusGrid = this.statusSectionEl.createDiv({ cls: 'ert-apr-status-grid' });
         const statusHeaderRow = statusGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--header' });
         ['Item', 'Export', 'Stage', 'Update in', 'Reminder'].forEach(label => {
             statusHeaderRow.createDiv({ text: label, cls: 'ert-apr-status-cell ert-apr-status-cell--header' });
         });
 
-        const statusFiles = this.getAprStatusFiles();
-        statusFiles.forEach((fileName, index) => {
+        const statusTargets = this.getAprStatusTargets();
+        statusTargets.forEach((target, index) => {
             const nameRow = statusGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--file' });
-            nameRow.createDiv({ text: fileName, cls: 'ert-apr-status-file' });
+            const nameCell = nameRow.createDiv({
+                cls: `ert-apr-status-file${target.campaign ? ' ert-apr-status-file--campaign' : ''}`
+            });
+            const nameContent = nameCell.createDiv({ cls: 'ert-apr-status-fileLabel' });
+            nameContent.createSpan({ text: target.label });
+            if (target.campaign) {
+                const proPill = nameContent.createSpan({
+                    cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM} ${ERT_CLASSES.BADGE_PILL_PRO}`
+                });
+                proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro' });
+            }
+            if (target.path) {
+                nameCell.setAttr('title', target.path);
+            }
 
             const dataRow = statusGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--data' });
             dataRow.createDiv({
                 text: String(index + 1),
-                cls: 'ert-apr-status-cell ert-apr-status-cell--item'
+                cls: `ert-apr-status-cell ert-apr-status-cell--item${target.campaign ? ' ert-apr-status-cell--campaign' : ''}`
             });
 
-            const exportCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
+            const exportCell = dataRow.createDiv({
+                cls: `ert-apr-status-cell${target.campaign ? ' ert-apr-status-cell--campaign' : ''}`
+            });
             const exportPill = exportCell.createSpan({
                 cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
             });
-            exportPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: sizeMeta.dimension });
+            const targetSize = this.getSizeMeta(target.size);
+            exportPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: targetSize.dimension });
             exportPill.createEl('sup', { text: '2' });
 
-            const stageCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
+            const stageCell = dataRow.createDiv({
+                cls: `ert-apr-status-cell${target.campaign ? ' ert-apr-status-cell--campaign' : ''}`
+            });
             const stagePill = stageCell.createSpan({
                 cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
             });
             const stageIcon = stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
-            setIcon(stageIcon, stageInfo.icon);
-            stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: stageInfo.label });
+            const stageMeta = target.campaign
+                ? this.getCampaignStageDisplay(target.campaign)
+                : { label: TEASER_LEVEL_INFO.full.label.toUpperCase(), icon: TEASER_LEVEL_INFO.full.icon };
+            setIcon(stageIcon, stageMeta.icon);
+            stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: stageMeta.label });
+            if (stageMeta.tooltip) {
+                setTooltip(stagePill, stageMeta.tooltip);
+            }
 
-            const updateCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
+            const updateCell = dataRow.createDiv({
+                cls: `ert-apr-status-cell${target.campaign ? ' ert-apr-status-cell--campaign' : ''}`
+            });
             const updatePill = updateCell.createSpan({
                 cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
             });
-            updatePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: nextInfo.label });
+            const frequency = target.campaign ? target.campaign.updateFrequency : settings?.updateFrequency;
+            const lastPublishedDate = target.campaign ? target.campaign.lastPublishedDate : settings?.lastPublishedDate;
+            const isAuto = !!frequency && frequency !== 'manual';
+            const updateInfo = target.campaign && !target.campaign.isActive
+                ? { label: 'Paused', reminder: undefined }
+                : (isAuto && !lastPublishedDate)
+                    ? { label: 'Auto update due', reminder: undefined }
+                    : this.getNextUpdateInfo({
+                        frequency,
+                        lastPublishedDate,
+                        reminderDays: target.campaign ? target.campaign.refreshThresholdDays : settings?.stalenessThresholdDays,
+                        remindersEnabled: target.campaign ? true : settings?.enableReminders
+                    });
+            updatePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: updateInfo.label });
 
-            const reminderCell = dataRow.createDiv({ cls: 'ert-apr-status-cell ert-apr-status-cell--reminder' });
+            const reminderCell = dataRow.createDiv({
+                cls: `ert-apr-status-cell ert-apr-status-cell--reminder${target.campaign ? ' ert-apr-status-cell--campaign' : ''}`
+            });
             reminderCell.createSpan({
                 cls: ERT_CLASSES.FIELD_NOTE,
-                text: nextInfo.reminder ?? '—'
+                text: updateInfo.reminder ?? '—'
             });
         });
-    }
-
-    private renderCampaignStatusSection(): void {
-        if (!this.campaignsSectionEl) return;
-        this.campaignsSectionEl.empty();
-
-        const campaigns = this.plugin.settings.authorProgress?.campaigns || [];
-        const header = this.campaignsSectionEl.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
-        const headerMain = header.createDiv({ cls: ERT_CLASSES.CONTROL });
-        const headerRow = headerMain.createDiv({ cls: ERT_CLASSES.INLINE });
-        const headerIcon = headerRow.createSpan({ cls: ERT_CLASSES.SECTION_ICON });
-        setIcon(headerIcon, 'layers');
-        headerRow.createEl('h4', { text: 'Campaigns', cls: ERT_CLASSES.SECTION_TITLE });
-        const headerActions = header.createDiv({ cls: ERT_CLASSES.SECTION_ACTIONS });
-        const proPill = headerActions.createSpan({
-            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM} ${ERT_CLASSES.BADGE_PILL_PRO}`
-        });
-        const proIcon = proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
-        setIcon(proIcon, 'signature');
-        proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro' });
-
-        if (campaigns.length === 0) {
-            this.campaignsSectionEl.createDiv({
-                text: 'No campaigns yet.',
-                cls: ERT_CLASSES.FIELD_NOTE
-            });
-            return;
-        }
-
-        const activeCampaigns = campaigns.filter(campaign => campaign.isActive);
-        const pausedCampaigns = campaigns.filter(campaign => !campaign.isActive);
-
-        const renderGroup = (label: string, group: AprCampaign[]) => {
-            const groupEl = this.campaignsSectionEl!.createDiv({ cls: ERT_CLASSES.STACK });
-            const groupHeader = groupEl.createDiv({ cls: ERT_CLASSES.INLINE });
-            const groupPill = groupHeader.createSpan({
-                cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM} ${ERT_CLASSES.BADGE_PILL_NEUTRAL}`
-            });
-            groupPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: label });
-
-            if (group.length === 0) {
-                groupEl.createDiv({ text: 'None', cls: ERT_CLASSES.FIELD_NOTE });
-                return;
-            }
-
-            group.forEach(campaign => {
-                const needsRefresh = this.service.campaignNeedsRefresh(campaign);
-                const rowClasses: string[] = [ERT_CLASSES.OBJECT_ROW];
-                if (needsRefresh) rowClasses.push('is-needs-refresh');
-                if (!campaign.isActive) rowClasses.push('is-inactive');
-                const row = groupEl.createDiv({ cls: rowClasses.join(' ') });
-
-                const nextInfo = this.getNextUpdateInfo({
-                    frequency: campaign.updateFrequency,
-                    lastPublishedDate: campaign.lastPublishedDate,
-                    reminderDays: campaign.refreshThresholdDays,
-                    remindersEnabled: true
-                });
-                const nextLabel = nextInfo.label.startsWith('Manual') ? 'Manual' : nextInfo.label;
-
-                const rowLeft = row.createDiv({ cls: ERT_CLASSES.OBJECT_ROW_LEFT });
-                const titleRow = rowLeft.createDiv({ cls: ERT_CLASSES.INLINE });
-
-                const stateIcon = titleRow.createSpan({ cls: `${ERT_CLASSES.ICON_BADGE} ert-campaign-status` });
-                setIcon(stateIcon, needsRefresh ? 'alert-triangle' : campaign.isActive ? 'check-circle' : 'pause-circle');
-
-                const typeIcon = titleRow.createSpan({ cls: ERT_CLASSES.ICON_BADGE });
-                setIcon(typeIcon, this.getCampaignTypeIcon(campaign));
-
-                titleRow.createSpan({ text: campaign.name });
-
-                const pathMeta = rowLeft.createSpan({
-                    cls: `${ERT_CLASSES.OBJECT_ROW_META} ert-mono ert-truncate`,
-                    text: this.getFileName(campaign.embedPath)
-                });
-                pathMeta.setAttr('title', campaign.embedPath);
-
-                const lastPublished = campaign.lastPublishedDate
-                    ? `Updated ${new Date(campaign.lastPublishedDate).toLocaleDateString()}`
-                    : 'Never updated';
-                rowLeft.createSpan({ text: lastPublished, cls: ERT_CLASSES.OBJECT_ROW_META });
-
-                const actions = row.createDiv({ cls: ERT_CLASSES.OBJECT_ROW_ACTIONS });
-                const modePill = actions.createSpan({
-                    cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
-                });
-                modePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: this.formatFrequencyLabel(campaign.updateFrequency) });
-
-                const nextPill = actions.createSpan({
-                    cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
-                });
-                nextPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: nextLabel });
-
-                if (campaign.teaserReveal?.enabled) {
-                    const teaserPill = actions.createSpan({
-                        cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM} ${ERT_CLASSES.BADGE_PILL_NEUTRAL}`
-                    });
-                    const teaserIcon = teaserPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
-                    setIcon(teaserIcon, 'calendar-clock');
-                    teaserPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Teaser' });
-                }
-            });
-        };
-
-        renderGroup('Active', activeCampaigns);
-        renderGroup('Paused', pausedCampaigns);
     }
 
     private renderActions(): void {
@@ -424,7 +338,11 @@ export class AuthorProgressModal extends Modal {
         pathRow.createSpan({ text: 'Output path', cls: ERT_CLASSES.LABEL });
         const pathControl = pathRow.createDiv({ cls: ERT_CLASSES.CONTROL });
         const pathInput = new TextComponent(pathControl);
-        const defaultPath = 'Radial Timeline/Social/progress.svg';
+        const defaultPath = buildDefaultEmbedPath({
+            bookTitle: settings?.bookTitle,
+            updateFrequency: settings?.updateFrequency,
+            aprSize: settings?.aprSize
+        });
         const currentPath = settings?.dynamicEmbedPath || defaultPath;
         const clearState = () => {
             pathInput.inputEl.removeClass('ert-input--error');
@@ -551,36 +469,64 @@ export class AuthorProgressModal extends Modal {
         return { enabled: true, info: TEASER_LEVEL_INFO[level] };
     }
 
-    private getCampaignTypeIcon(campaign: AprCampaign): string {
-        const label = campaign.name.toLowerCase();
-        if (label.includes('kick')) return 'rocket';
-        if (label.includes('patreon')) return 'heart';
-        if (label.includes('news')) return 'mail';
-        if (label.includes('site') || label.includes('web')) return 'globe';
-        return 'share-2';
-    }
-
     private getFileName(path: string): string {
         if (!path) return '—';
         const normalized = path.split('\\').pop() ?? path;
         return normalized.split('/').pop() ?? normalized;
     }
 
-    private getAprStatusFiles(): string[] {
-        const folderPath = normalizePath('Radial Timeline/Social');
-        const prefix = `${folderPath}/`;
-        const files = this.app.vault.getFiles().filter(file => file.path.startsWith(prefix));
-        if (files.length === 0) {
-            return [this.getFileName(this.getEffectiveTargetPath())];
-        }
-        return files.map(file => file.name);
+    private getAprStatusTargets(): Array<{
+        id: string;
+        label: string;
+        path: string;
+        size: 'thumb' | 'small' | 'medium' | 'large';
+        campaign?: AprCampaign;
+    }> {
+        const settings = this.plugin.settings.authorProgress;
+        const targets: Array<{
+            id: string;
+            label: string;
+            path: string;
+            size: 'thumb' | 'small' | 'medium' | 'large';
+            campaign?: AprCampaign;
+        }> = [];
+
+        const defaultPath = buildDefaultEmbedPath({
+            bookTitle: settings?.bookTitle,
+            updateFrequency: settings?.updateFrequency,
+            aprSize: settings?.aprSize
+        });
+        const defaultSize = settings?.aprSize ?? 'medium';
+        targets.push({
+            id: 'default',
+            label: 'Default Report',
+            path: settings?.dynamicEmbedPath || defaultPath,
+            size: defaultSize
+        });
+
+        const campaigns = settings?.campaigns || [];
+        campaigns.forEach(campaign => {
+            targets.push({
+                id: campaign.id,
+                label: `Campaign: ${campaign.name}`,
+                path: campaign.embedPath,
+                size: campaign.aprSize ?? defaultSize,
+                campaign
+            });
+        });
+
+        return targets;
     }
 
     private getEffectiveTargetPath(): string {
         const settings = this.plugin.settings.authorProgress;
         const campaign = this.getSelectedCampaign();
         if (campaign?.embedPath) return campaign.embedPath;
-        return settings?.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg';
+        return settings?.dynamicEmbedPath || buildDefaultEmbedPath({
+            bookTitle: settings?.bookTitle,
+            updateFrequency: settings?.updateFrequency,
+            aprSize: settings?.aprSize
+        });
     }
 
     private getSizeMeta(size: 'thumb' | 'small' | 'medium' | 'large'): { label: string; dimension: string } {
@@ -629,15 +575,50 @@ export class AuthorProgressModal extends Modal {
             const reminderDays = opts.reminderDays ?? 0;
             const daysSince = this.getDaysSince(opts.lastPublishedDate) ?? 0;
             const reminder = (opts.remindersEnabled && reminderDays > 0)
-                ? `Reminder in: ${this.formatDays(Math.max(0, reminderDays - daysSince))}`
+                ? this.formatDays(Math.max(0, reminderDays - daysSince))
                 : undefined;
-            return { label: 'Manual (no schedule)', reminder };
+            return { label: 'Manual', reminder };
         }
 
         const intervalDays = frequency === 'daily' ? 1 : frequency === 'weekly' ? 7 : 30;
         const daysSince = this.getDaysSince(opts.lastPublishedDate);
         const remaining = daysSince === null ? 0 : Math.max(0, intervalDays - daysSince);
         return { label: this.formatDays(remaining) };
+    }
+
+    private getCampaignStageDisplay(campaign: AprCampaign): { label: string; icon: string; tooltip?: string } {
+        const teaserSettings = campaign.teaserReveal ?? { enabled: true, preset: 'standard' as const };
+        if (!teaserSettings.enabled) {
+            return { label: TEASER_LEVEL_INFO.full.label.toUpperCase(), icon: TEASER_LEVEL_INFO.full.icon };
+        }
+
+        const thresholds = getTeaserThresholds(teaserSettings.preset ?? 'standard', teaserSettings.customThresholds);
+        const level = getTeaserRevealLevel(this.progressPercent, thresholds, teaserSettings.disabledStages);
+        const info = TEASER_LEVEL_INFO[level];
+        const progress = Math.max(0, Math.round(this.progressPercent));
+
+        const steps: Array<{ level: 'scenes' | 'colors' | 'full'; threshold: number }> = [
+            { level: 'scenes', threshold: thresholds.scenes },
+            { level: 'colors', threshold: thresholds.colors },
+            { level: 'full', threshold: thresholds.full },
+        ];
+        const disabled = teaserSettings.disabledStages ?? {};
+        const filtered = steps.filter(step => !(step.level === 'scenes' && disabled.scenes) && !(step.level === 'colors' && disabled.colors));
+        const currentIndex = filtered.findIndex(step => step.level === level);
+        const nextThreshold = level === 'bar'
+            ? filtered[0]?.threshold
+            : (currentIndex >= 0 && currentIndex < filtered.length - 1
+                ? filtered[currentIndex + 1].threshold
+                : undefined);
+
+        const label = nextThreshold
+            ? `${info.label.toUpperCase()} ${progress}/${Math.round(nextThreshold)}`
+            : info.label.toUpperCase();
+        const tooltip = nextThreshold
+            ? `${progress}% complete. Next stage at ${Math.round(nextThreshold)}%. Adjust ranges in the Campaign Manager.`
+            : `${progress}% complete.`;
+
+        return { label, icon: info.icon, tooltip };
     }
 
     private createStatusRow(container: HTMLElement, label: string): { rowEl: HTMLElement; valueEl: HTMLElement } {
@@ -667,7 +648,7 @@ export class AuthorProgressModal extends Modal {
                 updateFrequency: 'manual',
                 stalenessThresholdDays: 30,
                 enableReminders: true,
-                dynamicEmbedPath: 'Radial Timeline/Social/progress.svg'
+                dynamicEmbedPath: 'Radial Timeline/Social/book/apr-book-default-manual-medium.svg'
             };
         }
         this.plugin.settings.authorProgress.aprSize = this.aprSize;

@@ -432,7 +432,7 @@
 .ert-inquiry-minimap-tick {
   --ert-inquiry-minimap-tick-color: var(--icon-color, var(--text-normal));
   --ert-inquiry-minimap-tick-fill: color-mix(in srgb, var(--ert-inquiry-minimap-tick-color) 18%, var(--background-secondary));
-  opacity: 0.6;
+  opacity: 1;
   cursor: pointer;
 }
 
@@ -625,7 +625,7 @@
 }
 
 .ert-inquiry-minimap-tick.is-hit {
-  opacity: 0.95;
+  opacity: 1;
 }
 
 .ert-inquiry-svg.is-results .ert-inquiry-minimap-tick.is-hit {

@@ -7,6 +7,7 @@ import type { AprCampaign, AuthorProgressSettings } from '../types/settings';
 import { getTeaserThresholds, getTeaserRevealLevel, teaserLevelToRevealOptions } from '../renderer/apr/AprConstants';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { isBeatNote } from '../utils/sceneHelpers';
+import { buildDefaultEmbedPath } from '../utils/aprPaths';
 
 export class AuthorProgressService {
     constructor(private plugin: RadialTimelinePlugin, private app: App) { }
@@ -43,6 +44,7 @@ export class AuthorProgressService {
      */
     public campaignNeedsRefresh(campaign: AprCampaign): boolean {
         if (!campaign.isActive) return false;
+        if (campaign.updateFrequency && campaign.updateFrequency !== 'manual') return false;
         if (!campaign.lastPublishedDate) return true; // Never published
 
         const last = new Date(campaign.lastPublishedDate).getTime();
@@ -227,7 +229,11 @@ export class AuthorProgressService {
                 return await this.createNoteWithApr(finalSvg, settings);
             }
 
-            const path = settings.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg';
+            const path = settings.dynamicEmbedPath || buildDefaultEmbedPath({
+                bookTitle: settings.bookTitle,
+                updateFrequency: settings.updateFrequency,
+                aprSize: settings.aprSize
+            });
             await this.ensureFolder(path);
 
             // Use Vault API: modify if exists, create if not
@@ -245,7 +251,11 @@ export class AuthorProgressService {
             return path;
         } else {
             // Static snapshot - save alongside the embed destination
-            const embedPath = settings.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg';
+            const embedPath = settings.dynamicEmbedPath || buildDefaultEmbedPath({
+                bookTitle: settings.bookTitle,
+                updateFrequency: settings.updateFrequency,
+                aprSize: settings.aprSize
+            });
             const path = this.buildSnapshotPath(embedPath);
             await this.ensureFolder(path);
             await this.app.vault.create(path, finalSvg);
@@ -259,7 +269,11 @@ export class AuthorProgressService {
      */
     private async createNoteWithApr(svgString: string, settings: AuthorProgressSettings): Promise<string | null> {
         // First, save the SVG file
-        const svgPath = settings.dynamicEmbedPath || 'Radial Timeline/Social/progress.svg';
+        const svgPath = settings.dynamicEmbedPath || buildDefaultEmbedPath({
+            bookTitle: settings.bookTitle,
+            updateFrequency: settings.updateFrequency,
+            aprSize: settings.aprSize
+        });
         await this.ensureFolder(svgPath);
         const existingSvgFile = this.app.vault.getAbstractFileByPath(svgPath);
         if (existingSvgFile) {
@@ -330,30 +344,73 @@ export class AuthorProgressService {
 
     public async checkAutoUpdate(): Promise<void> {
         const settings = this.plugin.settings.authorProgress;
-        if (!settings || !settings.enabled || settings.updateFrequency === 'manual') return;
+        if (!settings || !settings.enabled) return;
 
-        // Check frequency
-        const last = settings.lastPublishedDate ? new Date(settings.lastPublishedDate).getTime() : 0;
-        const now = Date.now();
-        const diffMs = now - last;
+        if (settings.updateFrequency !== 'manual') {
+            // Check frequency
+            const last = settings.lastPublishedDate ? new Date(settings.lastPublishedDate).getTime() : 0;
+            const now = Date.now();
+            const diffMs = now - last;
 
-        let thresholdMs = 0;
-        switch (settings.updateFrequency) {
-            case 'daily': thresholdMs = 24 * 60 * 60 * 1000; break;
-            case 'weekly': thresholdMs = 7 * 24 * 60 * 60 * 1000; break;
-            case 'monthly': thresholdMs = 30 * 24 * 60 * 60 * 1000; break;
+            let thresholdMs = 0;
+            switch (settings.updateFrequency) {
+                case 'daily': thresholdMs = 24 * 60 * 60 * 1000; break;
+                case 'weekly': thresholdMs = 7 * 24 * 60 * 60 * 1000; break;
+                case 'monthly': thresholdMs = 30 * 24 * 60 * 60 * 1000; break;
+            }
+
+            // Cooldown check (e.g., don't update if updated in last 5 mins to prevent spam on reload)
+            const COOLDOWN = 5 * 60 * 1000;
+
+            if (diffMs > thresholdMs && diffMs > COOLDOWN) {
+                try {
+                    await this.generateReport('dynamic');
+                    new Notice('Author Progress Report updated automatically.');
+                } catch {
+                    // Silent failure for auto-update - user can manually trigger if needed
+                }
+            }
         }
 
-        // Cooldown check (e.g., don't update if updated in last 5 mins to prevent spam on reload)
-        const COOLDOWN = 5 * 60 * 1000;
+        await this.checkCampaignAutoUpdates(settings);
+    }
 
-        if (diffMs > thresholdMs && diffMs > COOLDOWN) {
-            try {
-                await this.generateReport('dynamic');
-                new Notice('Author Progress Report updated automatically.');
-            } catch {
-                // Silent failure for auto-update - user can manually trigger if needed
+    private async checkCampaignAutoUpdates(settings: AuthorProgressSettings): Promise<void> {
+        if (!isProfessionalActive(this.plugin)) return;
+        const campaigns = settings.campaigns || [];
+        if (campaigns.length === 0) return;
+
+        const COOLDOWN = 5 * 60 * 1000;
+        const now = Date.now();
+        let updatedCount = 0;
+
+        for (const campaign of campaigns) {
+            if (!campaign.isActive) continue;
+            const frequency = campaign.updateFrequency ?? 'manual';
+            if (frequency === 'manual') continue;
+
+            const last = campaign.lastPublishedDate ? new Date(campaign.lastPublishedDate).getTime() : 0;
+            const diffMs = now - last;
+
+            let thresholdMs = 0;
+            switch (frequency) {
+                case 'daily': thresholdMs = 24 * 60 * 60 * 1000; break;
+                case 'weekly': thresholdMs = 7 * 24 * 60 * 60 * 1000; break;
+                case 'monthly': thresholdMs = 30 * 24 * 60 * 60 * 1000; break;
             }
+
+            if (diffMs > thresholdMs && diffMs > COOLDOWN) {
+                try {
+                    await this.generateCampaignReport(campaign.id, { silent: true });
+                    updatedCount++;
+                } catch {
+                    // Silent failure for auto-update - user can manually trigger if needed
+                }
+            }
+        }
+
+        if (updatedCount > 0) {
+            new Notice(`Updated ${updatedCount} campaign${updatedCount > 1 ? 's' : ''} automatically.`);
         }
     }
 
@@ -361,7 +418,7 @@ export class AuthorProgressService {
      * Generate and save a report for a specific campaign.
      * Pro Feature: Each campaign has its own settings and output path.
      */
-    public async generateCampaignReport(campaignId: string): Promise<string | null> {
+    public async generateCampaignReport(campaignId: string, options?: { silent?: boolean }): Promise<string | null> {
         const settings = this.plugin.settings.authorProgress;
         if (!settings) return null;
         const result = await this.buildCampaignSvg(campaignId);
@@ -387,7 +444,9 @@ export class AuthorProgressService {
             await this.plugin.saveSettings();
         }
 
-        new Notice(`Campaign "${campaign.name}" published!\nSize: ${result.meta.size} | Stage: ${result.meta.stage} | Progress: ${result.meta.percent.toFixed(1)}%`);
+        if (!options?.silent) {
+            new Notice(`Campaign "${campaign.name}" published!\nSize: ${result.meta.size} | Stage: ${result.meta.stage} | Progress: ${result.meta.percent.toFixed(1)}%`);
+        }
         return path;
     }
 
