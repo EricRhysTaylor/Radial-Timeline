@@ -434,6 +434,7 @@ export class AuthorProgressService {
         let showStatusColors = baseShowStatusColors;
         let showStageColors = true;
         let grayCompletedScenes = false;
+        let grayscaleScenes = false;
         let showProgressPercent = baseShowProgressPercent;
         let isTeaserBar = false;
         let debugStage = 'Standard';
@@ -456,6 +457,7 @@ export class AuthorProgressService {
             showStatusColors = revealOptions.showStatusColors;
             showStageColors = revealOptions.showStageColors;
             grayCompletedScenes = revealOptions.grayCompletedScenes;
+            grayscaleScenes = revealOptions.grayscaleScenes;
         }
 
         const size = campaign.aprSize || settings.aprSize || 'medium';
@@ -472,6 +474,7 @@ export class AuthorProgressService {
             showStatusColors,
             showStageColors,
             grayCompletedScenes,
+            grayscaleScenes,
             showProgressPercent: ringOnly ? false : showProgressPercent,
             showBranding: !ringOnly,
             centerMark: 'none',

@@ -147,8 +147,8 @@ export interface AuthorProgressSettings {
  * Each level unlocks more visual detail as progress increases
  * 
  * bar     = Progress ring only, no scenes
- * scenes  = Scene cells with status colors (active work visible, completed = gray) + act dividers
- * colors  = Full publish stage colors revealed
+ * scenes  = Scene cells + acts rendered in grayscale with patterns, completed = gray
+ * colors  = Full publish stage colors revealed (status + stage)
  * full    = All subplot rings visible
  */
 export type TeaserRevealLevel = 'bar' | 'scenes' | 'colors' | 'full';

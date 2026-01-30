@@ -27,6 +27,7 @@ export interface AprRenderOptions {
     showStatusColors?: boolean;     // Show status colors (Todo, In Progress, etc.)
     showStageColors?: boolean;      // Show publish stage colors (Zero, Author, House, Press)
     grayCompletedScenes?: boolean;  // For SCENES stage: gray out completed scenes
+    grayscaleScenes?: boolean;      // Force grayscale rendering for scene colors
     showProgressPercent?: boolean;
     showBranding?: boolean;
     centerMark?: 'dot' | 'plus' | 'none';
@@ -110,6 +111,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         showStatusColors = true,
         showStageColors = true,
         grayCompletedScenes = false,
+        grayscaleScenes = false,
         showProgressPercent = true,
         showBranding = true,
         centerMark = 'none',
@@ -268,7 +270,12 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
             <feDropShadow dx="0" dy="2" stdDeviation="2.2" flood-color="#000" flood-opacity="0.45"/>
         </filter>
     `;
-    svg += `<defs>${renderDefs(stageColorMap, patternScale)}${percentShadow}</defs>`;
+    const grayscaleFilter = grayscaleScenes ? `
+        <filter id="aprGrayscale" color-interpolation-filters="sRGB">
+            <feColorMatrix type="saturate" values="0" />
+        </filter>
+    ` : '';
+    svg += `<defs>${renderDefs(stageColorMap, patternScale)}${percentShadow}${grayscaleFilter}</defs>`;
 
     // ─────────────────────────────────────────────────────────────────────────
     // BAR-ONLY MODE (Teaser): Solid progress ring, no scene details
@@ -280,7 +287,8 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         });
     } else {
         // Normal mode: Draw rings with scene cells
-        svg += `<g class="apr-rings">`;
+        const ringFilter = grayscaleScenes ? ' filter="url(#aprGrayscale)"' : '';
+        svg += `<g class="apr-rings"${ringFilter}>`;
         ringsToRender.forEach(ring => {
             svg += renderRing(ring, safeScenes, borderWidth, showStatusColors, showStageColors, grayCompletedScenes, stageColorMap, numActs, structural);
         });

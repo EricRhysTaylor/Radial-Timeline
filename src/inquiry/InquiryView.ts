@@ -60,6 +60,7 @@ import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { InquiryCorpusResolver, InquiryCorpusSnapshot, InquiryCorpusItem } from './services/InquiryCorpusResolver';
 import { getModelDisplayName } from '../utils/modelResolver';
 import { addTooltipData, setupTooltipsFromDataAttributes } from '../utils/tooltip';
+import { splitIntoBalancedLinesOptimal } from '../utils/text';
 import {
     MAX_RESOLVED_SCAN_ROOTS,
     normalizeScanRootPatterns,
@@ -94,7 +95,7 @@ const PREVIEW_PILL_MIN_GAP_X = 8;
 const PREVIEW_FOOTER_GAP = 12;
 const PREVIEW_FOOTER_HEIGHT = 22;
 const PREVIEW_RESULTS_FOOTER_OFFSET = 30;
-const PREVIEW_SHIMMER_WIDTH = 80;
+const PREVIEW_SHIMMER_WIDTH = 140;
 const RESULTS_EMPTY_TEXT = 'No notable findings.';
 const RESULTS_MAX_CHIPS = 6;
 const FLOW_FINDING_ORDER: InquiryFinding['kind'][] = ['escalation', 'conflict', 'continuity', 'loose_end', 'unclear', 'error', 'none'];
@@ -176,6 +177,7 @@ const INQUIRY_HELP_ONBOARDING_TOOLTIP = [
     'Flow and Depth rings adjust the lens of the response.',
     'The minimap reveals contextual citations.'
 ].join('\n');
+const INQUIRY_TOOLTIP_BALANCE_WIDTH = 360;
 const GUIDANCE_TEXT_Y = 360;
 const GUIDANCE_LINE_HEIGHT = 18;
 const GUIDANCE_ALERT_LINE_HEIGHT = 26;
@@ -399,10 +401,9 @@ export class InquiryView extends ItemView {
     private previewHideTimer?: number;
     private previewLast?: { zone: InquiryZone; question: string };
     private previewLocked = false;
-    private previewShimmerRect?: SVGRectElement;
+    private previewShimmerGroup?: SVGGElement;
     private previewShimmerMask?: SVGMaskElement;
-    private previewShimmerMaskText?: SVGGElement;
-    private previewShimmerMaskBackdrop?: SVGRectElement;
+    private previewShimmerMaskRect?: SVGRectElement;
     private previewPanelHeight = 0;
     private payloadStats?: InquiryPayloadStats;
     private payloadEstimateRequestId = 0;
@@ -572,7 +573,7 @@ export class InquiryView extends ItemView {
         this.scopeToggleButton = this.createIconButton(hudGroup, 0, 0, iconSize, 'columns-2', 'Toggle scope');
         this.scopeToggleIcon = this.scopeToggleButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
         this.scopeToggleButton.querySelector('title')?.remove();
-        addTooltipData(this.scopeToggleButton, 'Toggle scope', 'left');
+        addTooltipData(this.scopeToggleButton, this.balanceTooltipText('Toggle scope'), 'left');
         this.registerDomEvent(this.scopeToggleButton as unknown as HTMLElement, 'click', () => {
             this.handleScopeChange(this.state.scope === 'book' ? 'saga' : 'book');
         });
@@ -581,7 +582,7 @@ export class InquiryView extends ItemView {
         const helpX = artifactX - (iconSize + iconGap);
         const simulateX = helpX - (iconSize + iconGap);
         this.apiSimulationButton = this.createIconButton(hudGroup, simulateX, 0, iconSize, 'activity', 'Simulate API run');
-        addTooltipData(this.apiSimulationButton, 'Simulate API run', 'left');
+        addTooltipData(this.apiSimulationButton, this.balanceTooltipText('Simulate API run'), 'left');
         this.registerDomEvent(this.apiSimulationButton as unknown as HTMLElement, 'click', () => this.startApiSimulation());
 
         this.helpToggleButton = this.createIconButton(
@@ -598,7 +599,6 @@ export class InquiryView extends ItemView {
 
         this.artifactButton = this.createIconButton(hudGroup, artifactX, 0, iconSize, 'aperture', 'Briefing');
         this.artifactButton.querySelector('title')?.remove();
-        addTooltipData(this.artifactButton, 'Briefing · Recent inquiries', 'left');
         this.registerDomEvent(this.artifactButton as unknown as HTMLElement, 'pointerenter', () => this.showBriefingPanel());
         this.registerDomEvent(this.artifactButton as unknown as HTMLElement, 'pointerleave', () => this.scheduleBriefingHide());
         this.registerDomEvent(this.artifactButton as unknown as HTMLElement, 'click', () => this.toggleBriefingPanel());
@@ -750,16 +750,19 @@ export class InquiryView extends ItemView {
         footer.setAttribute('dominant-baseline', 'hanging');
         this.previewFooter = footer;
 
-        this.ensurePreviewShimmerMask();
-        if (!this.previewShimmerRect) {
-            const shimmer = this.createSvgElement('rect');
-            shimmer.classList.add('ert-inquiry-preview-shimmer');
+        this.ensurePreviewShimmerResources(panel);
+        if (!this.previewShimmerGroup) {
+            const group = this.createSvgGroup(panel, 'ert-inquiry-preview-shimmer-group');
             if (this.previewShimmerMask) {
-                shimmer.setAttribute('mask', `url(#${this.previewShimmerMask.getAttribute('id')})`);
+                group.setAttribute('mask', `url(#${this.previewShimmerMask.getAttribute('id')})`);
             }
-            panel.appendChild(shimmer);
-            this.previewShimmerRect = shimmer;
-            panel.style.setProperty('--ert-inquiry-shimmer-travel', `${Math.max(0, PREVIEW_PANEL_WIDTH - PREVIEW_SHIMMER_WIDTH)}px`);
+            // Use simple alpha blending for "highlight" effect
+            this.previewShimmerGroup = group;
+
+            // Set the travel distance css variable on the mask rect
+            if (this.previewShimmerMaskRect) {
+                this.previewShimmerMaskRect.style.setProperty('--ert-inquiry-shimmer-travel', `${Math.max(0, PREVIEW_PANEL_WIDTH - PREVIEW_SHIMMER_WIDTH)}px`);
+            }
         }
 
         this.updatePromptPreview('setup', this.state.mode, 'Hover a question to preview its payload.', undefined, undefined, { hideEmpty: true });
@@ -1115,7 +1118,7 @@ export class InquiryView extends ItemView {
         const tooltip = status === 'unsaved'
             ? 'Briefing · Save latest brief'
             : 'Briefing · Recent inquiries';
-        this.artifactButton.setAttribute('data-tooltip', tooltip);
+        this.artifactButton.setAttribute('data-tooltip', this.balanceTooltipText(tooltip));
     }
 
     private async handleBriefingSaveClick(): Promise<void> {
@@ -2376,6 +2379,12 @@ export class InquiryView extends ItemView {
         button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     }
 
+    private balanceTooltipText(text: string): string {
+        if (!text || text.includes('\n')) return text;
+        const lines = splitIntoBalancedLinesOptimal(text, INQUIRY_TOOLTIP_BALANCE_WIDTH, 1);
+        return lines.length > 1 ? lines.join('\n') : text;
+    }
+
     private setIconButtonDisabled(button: SVGGElement | undefined, disabled: boolean): void {
         if (!button) return;
         button.classList.toggle('is-disabled', disabled);
@@ -2389,7 +2398,6 @@ export class InquiryView extends ItemView {
         const providerLabel = this.getActiveInquiryProviderLabel();
         const tooltip = `AI Engine · ${providerLabel} · ${modelLabel}`;
         this.engineBadgeGroup.setAttribute('aria-label', tooltip);
-        addTooltipData(this.engineBadgeGroup, tooltip, 'bottom');
         if (this.enginePanelMetaEl) {
             this.enginePanelMetaEl.setText(`Active: ${providerLabel} · ${modelLabel}`);
         }
@@ -2668,7 +2676,7 @@ export class InquiryView extends ItemView {
             tick.setAttribute('data-id', item.id);
             tick.setAttribute('data-label', label);
             tick.setAttribute('data-full-label', fullLabel);
-            tick.setAttribute('data-tooltip', fullLabel);
+            tick.setAttribute('data-tooltip', this.balanceTooltipText(fullLabel));
             tick.setAttribute('data-tooltip-placement', 'bottom');
             tick.setAttribute('data-tooltip-offset-y', '6');
             this.registerDomEvent(tick as unknown as HTMLElement, 'click', (event: MouseEvent) => {
@@ -3684,7 +3692,7 @@ export class InquiryView extends ItemView {
                 const label = tick.getAttribute('data-label') || '';
                 if (label) {
                     const fullLabel = tick.getAttribute('data-full-label') || label;
-                    tick.setAttribute('data-tooltip', fullLabel);
+                    tick.setAttribute('data-tooltip', this.balanceTooltipText(fullLabel));
                 }
             });
             return;
@@ -3698,7 +3706,7 @@ export class InquiryView extends ItemView {
             severityClasses.forEach(cls => tick.classList.remove(cls));
             const fullLabel = tick.getAttribute('data-full-label') || label;
             const tooltip = finding ? `${fullLabel} • ${finding.headline}` : fullLabel;
-            tick.setAttribute('data-tooltip', tooltip);
+            tick.setAttribute('data-tooltip', this.balanceTooltipText(tooltip));
         });
     }
 
@@ -3933,12 +3941,13 @@ export class InquiryView extends ItemView {
         const tooltip = isAlert
             ? (state === 'not-configured' ? INQUIRY_HELP_CONFIG_TOOLTIP : INQUIRY_HELP_NO_SCENES_TOOLTIP)
             : (isResults ? INQUIRY_HELP_RESULTS_TOOLTIP : (hasSessions ? INQUIRY_HELP_TOOLTIP : INQUIRY_HELP_ONBOARDING_TOOLTIP));
+        const balancedTooltip = this.balanceTooltipText(tooltip);
 
         this.helpToggleButton.removeAttribute('aria-pressed');
         this.helpToggleButton.classList.toggle('is-help-onboarding', !hasSessions && !isAlert && !isResults);
         this.helpToggleButton.classList.toggle('is-help-results', isResults);
         this.helpToggleButton.classList.toggle('is-guidance-alert', isAlert);
-        addTooltipData(this.helpToggleButton, tooltip, 'left');
+        addTooltipData(this.helpToggleButton, balancedTooltip, 'left');
         this.helpToggleButton.setAttribute('aria-label', tooltip);
     }
 
@@ -6059,7 +6068,9 @@ export class InquiryView extends ItemView {
         }
         this.previewPanelHeight = footerY + PREVIEW_FOOTER_HEIGHT;
         this.updatePreviewShimmerLayout();
-        this.updatePreviewShimmerMask();
+        if (this.previewShimmerGroup) {
+            this.updatePreviewShimmerText();
+        }
     }
 
     private showResultsPreview(result: InquiryResult): void {
@@ -6303,82 +6314,94 @@ export class InquiryView extends ItemView {
         return 2;
     }
 
-    private ensurePreviewShimmerMask(): void {
-        if (this.previewShimmerMask || !this.svgDefs) return;
-        const gradient = this.createSvgElement('linearGradient');
-        gradient.setAttribute('id', 'ert-inquiry-preview-shimmer-grad');
-        gradient.setAttribute('x1', '0%');
-        gradient.setAttribute('y1', '0%');
-        gradient.setAttribute('x2', '100%');
-        gradient.setAttribute('y2', '0%');
-        const stops = [
-            { offset: '0%', opacity: '0' },
-            { offset: '20%', opacity: '0.55' },
-            { offset: '50%', opacity: '1' },
-            { offset: '80%', opacity: '0.55' },
-            { offset: '100%', opacity: '0' }
-        ];
-        stops.forEach(stopDef => {
-            const stop = this.createSvgElement('stop');
-            stop.setAttribute('offset', stopDef.offset);
-            stop.setAttribute('stop-color', '#fff');
-            stop.setAttribute('stop-opacity', stopDef.opacity);
-            gradient.appendChild(stop);
-        });
-        this.svgDefs.appendChild(gradient);
+    private ensurePreviewShimmerResources(panel: SVGGElement): void {
+        if (this.previewShimmerMask) return;
 
+        // Gradient for the shimmer band
+        // Gradients usually live in defs, which is fine. CSS addressing of the rect using the url(#grad) doesn't require the gradient to be in the same scope, just available.
+        if (this.svgDefs && !this.svgDefs.querySelector('#ert-inquiry-preview-shimmer-grad')) {
+            const gradient = this.createSvgElement('linearGradient');
+            gradient.setAttribute('id', 'ert-inquiry-preview-shimmer-grad');
+            gradient.setAttribute('x1', '0%');
+            gradient.setAttribute('y1', '0%');
+            gradient.setAttribute('x2', '100%');
+            gradient.setAttribute('y2', '0%');
+            const stops = [
+                { offset: '0%', opacity: '0' },
+                { offset: '20%', opacity: '0.55' },
+                { offset: '50%', opacity: '1' },
+                { offset: '80%', opacity: '0.55' },
+                { offset: '100%', opacity: '0' }
+            ];
+            stops.forEach(stopDef => {
+                const stop = this.createSvgElement('stop');
+                stop.setAttribute('offset', stopDef.offset);
+                stop.setAttribute('stop-color', '#fff'); // White mask = reveal
+                stop.setAttribute('stop-opacity', stopDef.opacity);
+                gradient.appendChild(stop);
+            });
+            this.svgDefs.appendChild(gradient);
+        }
+
+        // Mask that contains the moving/animating rect
         const mask = this.createSvgElement('mask');
         mask.setAttribute('id', 'ert-inquiry-preview-shimmer-mask');
         mask.setAttribute('maskUnits', 'userSpaceOnUse');
-        const backdrop = this.createSvgElement('rect');
-        backdrop.setAttribute('x', String(-PREVIEW_PANEL_WIDTH / 2));
-        backdrop.setAttribute('y', '0');
-        backdrop.setAttribute('width', String(PREVIEW_PANEL_WIDTH));
-        backdrop.setAttribute('height', String(PREVIEW_PANEL_PADDING_Y * 6));
-        backdrop.setAttribute('fill', '#000');
-        mask.appendChild(backdrop);
-        const textGroup = this.createSvgGroup(mask, 'ert-inquiry-preview-shimmer-mask-text');
+
+        // The moving band
+        const band = this.createSvgElement('rect');
+        band.classList.add('ert-inquiry-preview-shimmer-band'); // New class for the band
+        band.setAttribute('fill', 'url(#ert-inquiry-preview-shimmer-grad)');
+        // Initial values, will be updated by layout
+        band.setAttribute('x', '0');
+        band.setAttribute('y', '0');
+        band.setAttribute('width', '100');
+        band.setAttribute('height', '100');
+
+        mask.appendChild(band);
         this.previewShimmerMask = mask;
-        this.previewShimmerMaskText = textGroup;
-        this.previewShimmerMaskBackdrop = backdrop;
-        this.svgDefs.appendChild(mask);
+        this.previewShimmerMaskRect = band;
+        // Append mask to panel so its children can be targeted by CSS selectors scoped to the panel
+        panel.appendChild(mask);
     }
 
-    private updatePreviewShimmerMask(): void {
-        if (!this.previewShimmerMaskText) return;
-        this.clearSvgChildren(this.previewShimmerMaskText);
+    private updatePreviewShimmerText(): void {
+        if (!this.previewShimmerGroup) return;
+        this.clearSvgChildren(this.previewShimmerGroup);
         const textNodes: SVGTextElement[] = [];
         if (this.previewHero) textNodes.push(this.previewHero);
-        if (this.previewMeta) textNodes.push(this.previewMeta);
-        this.previewRows.forEach(row => {
-            if (row.text) textNodes.push(row.text);
-        });
         textNodes.forEach(node => {
             const clone = node.cloneNode(true) as SVGTextElement;
             clone.setAttribute('fill', '#fff');
             clone.setAttribute('opacity', '1');
-            this.previewShimmerMaskText?.appendChild(clone);
+            this.previewShimmerGroup?.appendChild(clone);
         });
     }
 
     private updatePreviewShimmerLayout(): void {
-        if (!this.previewShimmerRect || !this.previewShimmerMaskBackdrop) return;
+        if (!this.previewShimmerMaskRect || !this.previewShimmerGroup) return;
         const height = Math.max(this.previewPanelHeight, PREVIEW_PILL_HEIGHT * 2);
         const startX = -PREVIEW_PANEL_WIDTH / 2;
-        this.previewShimmerRect.setAttribute('x', String(startX));
-        this.previewShimmerRect.setAttribute('y', '0');
-        this.previewShimmerRect.setAttribute('width', String(PREVIEW_SHIMMER_WIDTH));
-        this.previewShimmerRect.setAttribute('height', String(height));
-        this.previewShimmerMaskBackdrop.setAttribute('x', String(startX));
-        this.previewShimmerMaskBackdrop.setAttribute('y', '0');
-        this.previewShimmerMaskBackdrop.setAttribute('width', String(PREVIEW_PANEL_WIDTH));
-        this.previewShimmerMaskBackdrop.setAttribute('height', String(height));
+
+        // Update the white text overlay group (if it needs layout updates? No, it's just children)
+        // Actually, the group is in the panel, so it inherits panel transform.
+
         if (this.previewShimmerMask) {
             this.previewShimmerMask.setAttribute('x', String(startX));
             this.previewShimmerMask.setAttribute('y', '0');
             this.previewShimmerMask.setAttribute('width', String(PREVIEW_PANEL_WIDTH));
             this.previewShimmerMask.setAttribute('height', String(height));
         }
+
+        // Update the mask rect
+        this.previewShimmerMaskRect.setAttribute('x', String(startX));
+        this.previewShimmerMaskRect.setAttribute('y', '0');
+        this.previewShimmerMaskRect.setAttribute('width', String(PREVIEW_SHIMMER_WIDTH));
+        this.previewShimmerMaskRect.setAttribute('height', String(height));
+
+        // Set the css variable for travel on the MASK RECT
+        this.previewShimmerMaskRect.style.setProperty('--ert-inquiry-shimmer-travel', `${Math.max(0, PREVIEW_PANEL_WIDTH - PREVIEW_SHIMMER_WIDTH)}px`);
+
         this.updatePreviewClickTargetLayout();
     }
 
@@ -6938,11 +6961,12 @@ export class InquiryView extends ItemView {
         const targets = this.getHelpTooltipTargets();
         targets.forEach(({ element, text, placement }) => {
             if (!element) return;
+            const balancedText = this.balanceTooltipText(text);
             if (this.helpTipsEnabled) {
-                addTooltipData(element, text, placement ?? 'bottom');
+                addTooltipData(element, balancedText, placement ?? 'bottom');
                 return;
             }
-            if (element.getAttribute('data-tooltip') === text) {
+            if (element.getAttribute('data-tooltip') === text || element.getAttribute('data-tooltip') === balancedText) {
                 element.removeAttribute('data-tooltip');
             }
             element.removeAttribute('data-tooltip-placement');
@@ -6955,16 +6979,6 @@ export class InquiryView extends ItemView {
             {
                 element: this.scopeToggleButton,
                 text: 'Toggle between Book and Saga scope.',
-                placement: 'bottom'
-            },
-            {
-                element: this.engineBadgeGroup,
-                text: 'Select the active AI model.',
-                placement: 'bottom'
-            },
-            {
-                element: this.artifactButton,
-                text: 'Open recent Inquiry sessions and save briefs.',
                 placement: 'bottom'
             },
             {

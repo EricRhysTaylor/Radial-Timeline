@@ -1268,6 +1268,7 @@
   font-family: var(--font-interface);
   display: inline-block;
   width: var(--rt-tooltip-width, auto);
+  text-align: center;
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow-wrap: anywhere;

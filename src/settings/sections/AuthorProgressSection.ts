@@ -2,10 +2,11 @@ import { App, Setting, Notice, setIcon, normalizePath, DropdownComponent, TextCo
 import type RadialTimelinePlugin from '../../main';
 import { AuthorProgressService } from '../../services/AuthorProgressService';
 import { DEFAULT_SETTINGS } from '../defaults';
-import type { AuthorProgressSettings } from '../../types/settings';
+import type { AuthorProgressSettings, TeaserRevealLevel } from '../../types/settings';
 import type { TimelineItem } from '../../types';
 import { getAllScenes } from '../../utils/manuscript';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
+import { getTeaserRevealLevel, getTeaserThresholds, teaserLevelToRevealOptions } from '../../renderer/apr/AprConstants';
 import { getPresetPalettes, generatePaletteFromColor } from '../../utils/aprPaletteGenerator';
 import { AprPaletteModal } from '../../modals/AprPaletteModal';
 import { renderCampaignManagerSection } from './CampaignManagerSection';
@@ -21,6 +22,8 @@ export interface AuthorProgressSectionProps {
     containerEl: HTMLElement;
 }
 
+type TeaserPreviewMode = 'auto' | TeaserRevealLevel;
+
 export function renderAuthorProgressSection({ app, plugin, containerEl }: AuthorProgressSectionProps): void {
     // Social is ERT-only; avoid legacy classes.
     const section = containerEl.createDiv({
@@ -30,6 +33,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Check if APR needs refresh
     const aprService = new AuthorProgressService(plugin, app);
     const needsRefresh = aprService.isStale();
+    const isProActive = isProfessionalActive(plugin);
 
     // ─────────────────────────────────────────────────────────────────────────
     // APR HERO SECTION
@@ -96,6 +100,12 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const sizeSelectorRow = previewCard.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
     sizeSelectorRow.createSpan({ text: 'Preview Size:', cls: ERT_CLASSES.LABEL });
     const sizeSelectorControls = sizeSelectorRow.createDiv({ cls: ERT_CLASSES.INLINE });
+    let teaserPreviewMode: TeaserPreviewMode = 'auto';
+    let refreshPreview = () => {};
+    let teaserPreviewRow!: HTMLDivElement;
+    const updateTeaserPreviewVisibility = (size: 'thumb' | 'small' | 'medium' | 'large') => {
+        teaserPreviewRow.toggleClass('ert-hidden', size === 'thumb');
+    };
 
     const sizeButtons = [
         { size: 'thumb', dimension: '100' },
@@ -140,7 +150,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             }
 
             // Re-render preview at new size
-            void renderHeroPreview(app, plugin, previewContainer, size);
+            updateTeaserPreviewVisibility(size);
+            refreshPreview?.();
         };
     });
 
@@ -148,6 +159,35 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const currentDim = sizeButtons.find(s => s.size === currentSize)?.dimension || '300';
     dimLabel = sizeSelectorRow.createEl('em', { cls: ERT_CLASSES.ROW_DESC });
     setSizeLabel(dimLabel, currentDim, 'Actual size preview');
+
+    // Teaser preview (Pro only, sizes 150+)
+    teaserPreviewRow = previewCard.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_TIGHT} ${ERT_CLASSES.SKIN_PRO} ert-apr-teaser-preview-row` });
+    if (!isProActive) {
+        teaserPreviewRow.addClass('ert-pro-locked');
+    }
+    const teaserLabel = teaserPreviewRow.createDiv({ cls: ERT_CLASSES.INLINE });
+    teaserLabel.createSpan({ text: 'Teaser Preview', cls: ERT_CLASSES.LABEL });
+    const teaserBadge = teaserLabel.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}` });
+    setIcon(teaserBadge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), 'signature');
+    teaserBadge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
+    const teaserControls = teaserPreviewRow.createDiv({ cls: ERT_CLASSES.INLINE });
+    const teaserSelect = teaserControls.createEl('select', { cls: 'dropdown ert-input ert-input--md' });
+    const teaserOptions: { value: TeaserPreviewMode; label: string }[] = [
+        { value: 'auto', label: 'Auto (Current stage)' },
+        { value: 'bar', label: 'Teaser' },
+        { value: 'scenes', label: 'Scenes (B&W)' },
+        { value: 'colors', label: 'Colors' },
+        { value: 'full', label: 'Full (Subplots)' },
+    ];
+    teaserOptions.forEach(opt => {
+        teaserSelect.createEl('option', { value: opt.value, text: opt.label });
+    });
+    teaserSelect.value = teaserPreviewMode;
+    teaserSelect.onchange = () => {
+        teaserPreviewMode = teaserSelect.value as TeaserPreviewMode;
+        refreshPreview?.();
+    };
+    updateTeaserPreviewVisibility(currentSize);
 
     // 1:1 preview
     const previewSection = previewCard.createDiv({ cls: 'ert-apr-preview' });
@@ -157,10 +197,11 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     previewContainer.createDiv({ cls: `ert-apr-preview-loading ${ERT_CLASSES.PREVIEW_INNER}`, text: 'Loading preview...' });
 
     // Load and render preview asynchronously at actual size
-    renderHeroPreview(app, plugin, previewContainer, currentSize);
-    const refreshPreview = () => {
+    renderHeroPreview(app, plugin, previewContainer, currentSize, teaserPreviewMode);
+    refreshPreview = () => {
         const size = plugin.settings.authorProgress?.aprSize || 'medium';
-        void renderHeroPreview(app, plugin, previewContainer, size);
+        updateTeaserPreviewVisibility(size);
+        void renderHeroPreview(app, plugin, previewContainer, size, teaserPreviewMode);
     };
 
     // Meta tags
@@ -1045,8 +1086,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         }
     });
 
-    const isProActive = isProfessionalActive(plugin);
-
     // ─────────────────────────────────────────────────────────────────────────
     // RT BADGE
     // ─────────────────────────────────────────────────────────────────────────
@@ -1495,8 +1534,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         containerEl: proContainer,
         onCampaignChange: () => {
             // Refresh the hero preview when campaigns change
-            const size = plugin.settings.authorProgress?.aprSize || 'medium';
-            void renderHeroPreview(app, plugin, previewContainer, size);
+            refreshPreview?.();
         }
     });
 
@@ -1529,7 +1567,8 @@ async function renderHeroPreview(
     app: App,
     plugin: RadialTimelinePlugin,
     container: HTMLElement,
-    size: 'thumb' | 'small' | 'medium' | 'large' = 'medium'
+    size: 'thumb' | 'small' | 'medium' | 'large' = 'medium',
+    teaserPreviewMode: TeaserPreviewMode = 'auto'
 ): Promise<void> {
     try {
         const scenes = await getAllScenes(app, plugin);
@@ -1552,11 +1591,59 @@ async function renderHeroPreview(
         const revealCampaign = (aprSettings as any)?.revealCampaign;
         const revealCampaignEnabled = !!revealCampaign?.enabled;
         const nextRevealAt = revealCampaign?.nextRevealAt ?? revealCampaign?.nextRevealDate ?? revealCampaign?.nextReveal;
-        const showRtAttribution = isProfessionalActive(plugin)
+        const isProActive = isProfessionalActive(plugin);
+        const showRtAttribution = isProActive
             ? aprSettings?.aprShowRtAttribution !== false
             : true;
 
         const isThumb = size === 'thumb';
+        const baseShowSubplots = aprSettings?.showSubplots ?? true;
+        const baseShowActs = aprSettings?.showActs ?? true;
+        const baseShowStatusColors = aprSettings?.showStatus ?? true;
+        const baseShowProgressPercent = aprSettings?.showProgressPercent ?? true;
+
+        let showScenes = !isThumb;
+        let showSubplots = baseShowSubplots;
+        let showActs = baseShowActs;
+        let showStatusColors = baseShowStatusColors;
+        let showStageColors = true;
+        let grayCompletedScenes = false;
+        let grayscaleScenes = false;
+        let showProgressPercent = isThumb ? false : baseShowProgressPercent;
+        let showBranding = !isThumb;
+
+        if (isProActive && !isThumb) {
+            let previewLevel: TeaserRevealLevel | null = null;
+            if (teaserPreviewMode !== 'auto') {
+                previewLevel = teaserPreviewMode;
+            } else {
+                const campaigns = aprSettings?.campaigns ?? [];
+                const activeCampaign = campaigns.find(c => c.isActive) ?? campaigns[0];
+                const teaserSettings = activeCampaign?.teaserReveal;
+                if (teaserSettings?.enabled) {
+                    const preset = teaserSettings.preset ?? 'standard';
+                    const thresholds = getTeaserThresholds(preset, teaserSettings.customThresholds);
+                    previewLevel = getTeaserRevealLevel(progressPercent, thresholds, teaserSettings.disabledStages);
+                }
+            }
+
+            if (previewLevel) {
+                const revealOptions = teaserLevelToRevealOptions(previewLevel);
+                showScenes = revealOptions.showScenes;
+                showSubplots = revealOptions.showSubplots;
+                showActs = revealOptions.showActs;
+                showStatusColors = revealOptions.showStatusColors;
+                showStageColors = revealOptions.showStageColors;
+                grayCompletedScenes = revealOptions.grayCompletedScenes;
+                grayscaleScenes = revealOptions.grayscaleScenes;
+
+                if (previewLevel === 'bar') {
+                    showProgressPercent = false;
+                    showBranding = false;
+                }
+            }
+        }
+
         const displayPercent = progressPercent;
         const { svgString, width, height } = createAprSVG(scenes, {
             size: size,
@@ -1564,12 +1651,15 @@ async function renderHeroPreview(
             bookTitle: aprSettings?.bookTitle || 'Working Title',
             authorName: aprSettings?.authorName || '',
             authorUrl: aprSettings?.authorUrl || '',
-            showScenes: !isThumb,
-            showSubplots: aprSettings?.showSubplots ?? true,
-            showActs: aprSettings?.showActs ?? true,
-            showStatusColors: aprSettings?.showStatus ?? true,
-            showProgressPercent: isThumb ? false : (aprSettings?.showProgressPercent ?? true),
-            showBranding: !isThumb,
+            showScenes,
+            showSubplots,
+            showActs,
+            showStatusColors,
+            showStageColors,
+            grayCompletedScenes,
+            grayscaleScenes,
+            showProgressPercent,
+            showBranding,
             centerMark: 'none',
             stageColors: (plugin.settings as any).publishStageColors,
             actCount: plugin.settings.actCount || undefined,

@@ -264,13 +264,14 @@ export class AuthorProgressModal extends Modal {
                     reminderDays: campaign.refreshThresholdDays,
                     remindersEnabled: true
                 });
+                const nextLabel = nextInfo.label.startsWith('Manual') ? 'Manual' : nextInfo.label;
 
                 row.createDiv({ text: campaign.name, cls: 'rt-apr-campaign-cell' });
                 row.createDiv({
                     text: this.formatFrequencyLabel(campaign.updateFrequency),
                     cls: 'rt-apr-campaign-cell rt-apr-campaign-cell--muted'
                 });
-                row.createDiv({ text: nextInfo.label, cls: 'rt-apr-campaign-cell' });
+                row.createDiv({ text: nextLabel, cls: 'rt-apr-campaign-cell' });
                 row.createDiv({
                     text: this.summarizePath(campaign.embedPath),
                     cls: 'rt-apr-campaign-cell rt-apr-campaign-path',

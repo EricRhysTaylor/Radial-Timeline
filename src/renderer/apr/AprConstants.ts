@@ -155,7 +155,7 @@ export const TEASER_LEVEL_INFO: Record<TeaserRevealLevel, { label: string; icon:
     scenes: {
         label: 'Scenes',
         icon: 'sprout',        // First sign of life
-        description: 'Active work visible, completed = gray, act structure shown',
+        description: 'Scene structure in grayscale with patterns, completed = gray',
     },
     colors: {
         label: 'Colors',
@@ -212,7 +212,7 @@ export function getTeaserRevealLevel(
  * 
  * 4-stage progression:
  * - bar:    Progress ring only, no scenes
- * - scenes: Scene cells + acts, status colors for active work, completed = gray
+ * - scenes: Scene cells + acts, grayscale patterns, completed = gray
  * - colors: Full publish stage colors for all scenes
  * - full:   All subplot rings visible
  */
@@ -223,6 +223,7 @@ export function teaserLevelToRevealOptions(level: TeaserRevealLevel): {
     showStatusColors: boolean;       // Show status colors (Todo, In Progress, etc.)
     showStageColors: boolean;        // Show publish stage colors (Zero, Author, House, Press)
     grayCompletedScenes: boolean;    // Gray out completed scenes (for SCENES stage)
+    grayscaleScenes: boolean;        // Force grayscale rendering for scene colors
 } {
     switch (level) {
         case 'bar':
@@ -233,17 +234,19 @@ export function teaserLevelToRevealOptions(level: TeaserRevealLevel): {
                 showSubplots: false,
                 showStatusColors: false,
                 showStageColors: false,
-                grayCompletedScenes: false
+                grayCompletedScenes: false,
+                grayscaleScenes: false
             };
         case 'scenes':
-            // Scene cells + acts, status colors for active work, completed = gray
+            // Scene cells + acts, grayscale patterns, completed = gray
             return {
                 showScenes: true,
                 showActs: true,  // Acts bundled with scenes
                 showSubplots: false,
                 showStatusColors: true,   // Show Todo, In Progress, Overdue
                 showStageColors: false,   // Don't show Zero/Author/House/Press
-                grayCompletedScenes: true // Gray out completed scenes
+                grayCompletedScenes: true, // Gray out completed scenes
+                grayscaleScenes: true
             };
         case 'colors':
             // Full colors including publish stage colors
@@ -253,7 +256,8 @@ export function teaserLevelToRevealOptions(level: TeaserRevealLevel): {
                 showSubplots: false,
                 showStatusColors: true,
                 showStageColors: true,    // Now show all stage colors
-                grayCompletedScenes: false
+                grayCompletedScenes: false,
+                grayscaleScenes: false
             };
         case 'full':
             // Complete view with all subplot rings
@@ -263,7 +267,8 @@ export function teaserLevelToRevealOptions(level: TeaserRevealLevel): {
                 showSubplots: true,
                 showStatusColors: true,
                 showStageColors: true,
-                grayCompletedScenes: false
+                grayCompletedScenes: false,
+                grayscaleScenes: false
             };
     }
 }

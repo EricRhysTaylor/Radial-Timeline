@@ -425,7 +425,7 @@ function renderCampaignDetails(
     const defaultPath = `Radial Timeline/Social/${campaign.name.toLowerCase().replace(/\s+/g, '-')}-progress.svg`;
     const embedPathSetting = new Setting(details)
         .setName('Embed File Path')
-        .setDesc(`Location for the embed SVG file. Must end with .svg. Default: ${defaultPath}`);
+        .setDesc(`Location for the embed SVG file.`);
 
 
     embedPathSetting.addText(text => {
@@ -781,6 +781,7 @@ async function renderTeaserStagesPreviews(
                 showStatusColors: revealOptions.showStatusColors,
                 showStageColors: revealOptions.showStageColors,
                 grayCompletedScenes: revealOptions.grayCompletedScenes,
+                grayscaleScenes: revealOptions.grayscaleScenes,
                 showProgressPercent: !isRingOnly,
                 showBranding: !isRingOnly,
                 centerMark: 'none',
