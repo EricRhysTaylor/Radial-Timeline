@@ -45,6 +45,8 @@ export const ERT_CLASSES = {
   ICON_BADGE: 'ert-iconBadge',
   CHIP: 'ert-chip',
   CARD_HEADER: 'ert-card__header',
+  MODAL_BADGE: 'ert-modal-badge',
+  MODAL_BADGE_ICON: 'ert-modal-badge-icon',
   BADGE_PILL: 'ert-badgePill',
   BADGE_PILL_ICON: 'ert-badgePill__icon',
   BADGE_PILL_TEXT: 'ert-badgePill__text',

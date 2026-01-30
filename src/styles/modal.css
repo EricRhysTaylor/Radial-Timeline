@@ -1394,6 +1394,53 @@
   stroke: var(--rt-social-color, #ffd41d);
 }
 
+/* APR Status Grid */
+.ert-ui.ert-scope--modal .ert-apr-status-grid {
+  display: grid;
+  grid-template-columns: 64px minmax(110px, 1.05fr) minmax(110px, 1fr) minmax(140px, 1.2fr) minmax(140px, 1.2fr);
+  column-gap: var(--ert-gap-lg);
+  row-gap: var(--ert-gap-xs);
+  width: 100%;
+}
+
+.ert-ui.ert-scope--modal .ert-apr-status-row {
+  display: contents;
+}
+
+.ert-ui.ert-scope--modal .ert-apr-status-cell {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--modal .ert-apr-status-cell--header {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--modal .ert-apr-status-cell--item {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--modal .ert-apr-status-cell--reminder .ert-field-note {
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--modal .ert-apr-status-file {
+  grid-column: 1 / -1;
+  margin-top: var(--ert-gap-sm);
+  padding-top: var(--ert-gap-xs);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
 /* Refresh Alert */
 .rt-apr-refresh-alert {
   display: flex;

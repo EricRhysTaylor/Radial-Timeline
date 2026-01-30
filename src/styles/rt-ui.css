@@ -3857,8 +3857,10 @@
 }
 
 .ert-ui .ert-modal-badge {
-  display: inline-block;
-  padding: var(--ert-gap-xs) var(--ert-gap-md);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -3870,10 +3872,14 @@
   margin-bottom: 8px;
 }
 
-.ert-ui .ert-modal-badge.ert-modal-badge-pro {
+.ert-ui .ert-modal-badge-icon {
   display: inline-flex;
   align-items: center;
-  gap: var(--ert-gap-xs);
+  justify-content: center;
+}
+
+.ert-ui .ert-modal-badge.ert-modal-badge-pro {
+  align-items: center;
   background: rgba(var(--rt-pro-color-rgb, 217, 70, 239), 0.15);
   border-color: rgba(var(--rt-pro-color-rgb, 217, 70, 239), 0.3);
   color: var(--rt-pro-color);

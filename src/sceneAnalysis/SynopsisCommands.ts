@@ -7,13 +7,14 @@
 import { Vault, Notice, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { SceneAnalysisProcessingModal, type ProcessingMode, type SceneQueueItem } from '../modals/SceneAnalysisProcessingModal';
-import { getAllSceneData, compareScenesByOrder } from './data';
+import { getAllSceneData, compareScenesByOrder, getPulseUpdateFlag, hasProcessableContent } from './data';
 import { classifySynopsis, type SynopsisQuality } from './synopsisQuality';
 import { buildSynopsisPrompt } from '../ai/prompts/synopsis';
 import { createAiRunner } from './RequestRunner';
 import { callAiProvider } from './aiProvider';
 import type { SceneData } from './types';
 import { parseSceneTitle, decodeHtmlEntities } from '../utils/text';
+import { normalizeBooleanValue } from '../utils/sceneHelpers';
 
 export async function calculateSynopsisSceneCount(
     plugin: RadialTimelinePlugin,
@@ -24,13 +25,18 @@ export async function calculateSynopsisSceneCount(
         const allScenes = await getAllSceneData(plugin, vault);
         // Only consider scenes visible in the current manuscript/timeline view (respects book scope if applicable)
         // getAllSceneData respects the plugin's source/book settings.
+        const isFlagged = (scene: SceneData) =>
+            normalizeBooleanValue(getPulseUpdateFlag(scene.frontmatter)) &&
+            hasProcessableContent(scene.frontmatter);
 
         let count = 0;
         for (const scene of allScenes) {
             const currentSynopsis = scene.frontmatter.Synopsis;
             const quality = classifySynopsis(currentSynopsis);
 
-            if (mode === 'synopsis-missing-weak') {
+            if (mode === 'synopsis-flagged') {
+                if (isFlagged(scene)) count++;
+            } else if (mode === 'synopsis-missing-weak') {
                 if (quality === 'missing' || quality === 'weak') count++;
             } else if (mode === 'synopsis-missing') {
                 if (quality === 'missing') count++;
@@ -77,6 +83,9 @@ async function runSynopsisBatch(
     // Filter scenes based on mode
     const scenesToProcess = allScenes.filter(scene => {
         const quality = classifySynopsis(scene.frontmatter.Synopsis);
+        const isFlagged = normalizeBooleanValue(getPulseUpdateFlag(scene.frontmatter)) &&
+            hasProcessableContent(scene.frontmatter);
+        if (mode === 'synopsis-flagged') return isFlagged;
         if (mode === 'synopsis-missing-weak') return quality === 'missing' || quality === 'weak';
         if (mode === 'synopsis-missing') return quality === 'missing';
         if (mode === 'synopsis-all') return true;

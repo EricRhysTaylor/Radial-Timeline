@@ -13,7 +13,7 @@ import { resolveAiLogFolder } from '../ai/log';
 import { getModelDisplayName } from '../utils/modelResolver';
 import type { LlmTimingStats } from '../types/settings';
 
-export type ProcessingMode = 'flagged' | 'unprocessed' | 'force-all' | 'synopsis-missing-weak' | 'synopsis-missing' | 'synopsis-all';
+export type ProcessingMode = 'flagged' | 'unprocessed' | 'force-all' | 'synopsis-flagged' | 'synopsis-missing-weak' | 'synopsis-missing' | 'synopsis-all';
 
 export type SceneQueueItem = {
     id: string;
@@ -196,7 +196,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     private getProcessingTitle(): string {
         if (this.taskType === 'synopsis') {
-            return 'Scene Synopsis AI';
+            return 'Synopsis scene refresh';
         }
         if (this.subplotName) {
             return this.isEntireSubplot
@@ -211,6 +211,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             case 'unprocessed': return 'Scenes missing pulse metadata';
             case 'force-all': return 'Reprocessing every completed scene';
             case 'flagged': return 'Analyze flagged scenes in manuscript order';
+            case 'synopsis-flagged': return 'Update flagged scenes';
             case 'synopsis-missing-weak': return 'Update missing or weak synopses';
             case 'synopsis-missing': return 'Update missing synopses only';
             case 'synopsis-all': return 'Regenerate ALL synopses';
@@ -436,6 +437,13 @@ export class SceneAnalysisProcessingModal extends Modal {
         const modesSection = contentEl.createDiv({ cls: 'rt-pulse-modes rt-glass-card' });
 
         if (this.taskType === 'synopsis') {
+            this.createModeOption(
+                modesSection,
+                'synopsis-flagged',
+                'Update flagged scenes',
+                'Processes scenes with Pulse Update: Yes and Status: Working or Complete, then creates fresh synopses.',
+                false
+            );
             this.createModeOption(
                 modesSection,
                 'synopsis-missing-weak',

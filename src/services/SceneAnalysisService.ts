@@ -20,7 +20,7 @@ export class SceneAnalysisService {
     private registerSynopsisCommand(): void {
         this.plugin.addCommand({
             id: 'refresh-scene-synopses-ai',
-            name: 'Refresh Scene Synopses (AI)',
+            name: 'Synopsis scene refresh',
             checkCallback: (checking) => {
                 if (!this.plugin.settings.enableAiSceneAnalysis) return false;
                 if (checking) return true;

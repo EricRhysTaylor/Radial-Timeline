@@ -80,8 +80,8 @@ export class AuthorProgressModal extends Modal {
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
 
         // Badge with Radio icon for social media theme
-        const badge = header.createSpan({ cls: 'ert-modal-badge' });
-        const badgeIcon = badge.createSpan({ cls: 'ert-modal-badge-icon' });
+        const badge = header.createSpan({ cls: ERT_CLASSES.MODAL_BADGE });
+        const badgeIcon = badge.createSpan({ cls: ERT_CLASSES.MODAL_BADGE_ICON });
         setIcon(badgeIcon, 'radio');
         badge.createSpan({ text: 'Share' });
 
@@ -178,7 +178,6 @@ export class AuthorProgressModal extends Modal {
             this.aprSize = settings.aprSize;
         }
         const sizeMeta = this.getSizeMeta(this.getActiveAprSize());
-        const targetPath = this.getEffectiveTargetPath();
         const teaserStatus = this.resolveTeaserStatus(campaign);
 
         const header = this.statusSectionEl.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
@@ -198,50 +197,57 @@ export class AuthorProgressModal extends Modal {
 
         this.renderRefreshAlert(this.statusSectionEl);
 
-        const rows = this.statusSectionEl.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
-
-        const sizeRow = this.createStatusRow(rows, 'Export size');
-        const sizePill = sizeRow.valueEl.createSpan({
-            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
-        });
-        sizePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: sizeMeta.dimension });
-        sizePill.createEl('sup', { text: '2' });
-
         const stageInfo = teaserStatus.info ?? TEASER_LEVEL_INFO.full;
-        const stageRow = this.createStatusRow(rows, 'Stage');
-        const stagePill = stageRow.valueEl.createSpan({
-            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
-        });
-        const stageIcon = stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
-        setIcon(stageIcon, stageInfo.icon);
-        stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: stageInfo.label });
-
         const nextInfo = this.getNextUpdateInfo({
             frequency: isCampaign ? campaign?.updateFrequency : settings?.updateFrequency,
             lastPublishedDate: isCampaign ? campaign?.lastPublishedDate : settings?.lastPublishedDate,
             reminderDays: isCampaign ? campaign?.refreshThresholdDays : settings?.stalenessThresholdDays,
             remindersEnabled: isCampaign ? true : settings?.enableReminders
         });
-
-        const nextRow = this.createStatusRow(rows, 'Next update in');
-        const nextPill = nextRow.valueEl.createSpan({
-            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
-        });
-        nextPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: nextInfo.label });
-
-        const reminderRow = this.createStatusRow(rows, 'Reminder');
-        reminderRow.valueEl.createSpan({
-            cls: ERT_CLASSES.FIELD_NOTE,
-            text: nextInfo.reminder ?? '—'
+        const statusGrid = this.statusSectionEl.createDiv({ cls: 'ert-apr-status-grid' });
+        const statusHeaderRow = statusGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--header' });
+        ['Item', 'Export', 'Stage', 'Update in', 'Reminder'].forEach(label => {
+            statusHeaderRow.createDiv({ text: label, cls: 'ert-apr-status-cell ert-apr-status-cell--header' });
         });
 
-        const targetBlock = this.statusSectionEl.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
-        targetBlock.createSpan({ text: 'Target file', cls: ERT_CLASSES.LABEL });
-        const targetValue = targetBlock.createSpan({
-            cls: `${ERT_CLASSES.FIELD_NOTE} ert-mono ert-truncate`,
-            text: this.summarizePath(targetPath)
+        const statusFiles = this.getAprStatusFiles();
+        statusFiles.forEach((fileName, index) => {
+            const nameRow = statusGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--file' });
+            nameRow.createDiv({ text: fileName, cls: 'ert-apr-status-file' });
+
+            const dataRow = statusGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--data' });
+            dataRow.createDiv({
+                text: String(index + 1),
+                cls: 'ert-apr-status-cell ert-apr-status-cell--item'
+            });
+
+            const exportCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
+            const exportPill = exportCell.createSpan({
+                cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
+            });
+            exportPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: sizeMeta.dimension });
+            exportPill.createEl('sup', { text: '2' });
+
+            const stageCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
+            const stagePill = stageCell.createSpan({
+                cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
+            });
+            const stageIcon = stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
+            setIcon(stageIcon, stageInfo.icon);
+            stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: stageInfo.label });
+
+            const updateCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
+            const updatePill = updateCell.createSpan({
+                cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
+            });
+            updatePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: nextInfo.label });
+
+            const reminderCell = dataRow.createDiv({ cls: 'ert-apr-status-cell ert-apr-status-cell--reminder' });
+            reminderCell.createSpan({
+                cls: ERT_CLASSES.FIELD_NOTE,
+                text: nextInfo.reminder ?? '—'
+            });
         });
-        targetValue.setAttr('title', targetPath);
     }
 
     private renderCampaignStatusSection(): void {
@@ -558,6 +564,16 @@ export class AuthorProgressModal extends Modal {
         if (!path) return '—';
         const normalized = path.split('\\').pop() ?? path;
         return normalized.split('/').pop() ?? normalized;
+    }
+
+    private getAprStatusFiles(): string[] {
+        const folderPath = normalizePath('Radial Timeline/Social');
+        const prefix = `${folderPath}/`;
+        const files = this.app.vault.getFiles().filter(file => file.path.startsWith(prefix));
+        if (files.length === 0) {
+            return [this.getFileName(this.getEffectiveTargetPath())];
+        }
+        return files.map(file => file.name);
     }
 
     private getEffectiveTargetPath(): string {
