@@ -93,10 +93,11 @@ type LegacyInquirySourcesSettings = {
 };
 
 const REFERENCE_ONLY_CLASSES = new Set(['character', 'place', 'power']);
+const SYNOPSIS_CAPABLE_CLASSES = new Set(['scene', 'outline']);
 const CONTRIBUTION_MODES: InquiryMaterialMode[] = ['none', 'summary', 'full'];
 const DEFAULT_FULL_CLASSES = new Set(['outline', ...REFERENCE_ONLY_CLASSES]);
 const CONTRIBUTION_LABELS: Record<InquiryMaterialMode, string> = {
-    none: 'None',
+    none: 'Off',
     summary: 'Synopsis',
     full: 'Full'
 };
@@ -112,16 +113,30 @@ const defaultModeForClass = (className: string): InquiryMaterialMode => {
     return 'full';
 };
 
+const isSynopsisCapableClass = (className: string): boolean =>
+    SYNOPSIS_CAPABLE_CLASSES.has(className.toLowerCase());
+
+const normalizeContributionMode = (mode: InquiryMaterialMode, className: string): InquiryMaterialMode => {
+    if (mode === 'summary' && !isSynopsisCapableClass(className)) {
+        return 'full';
+    }
+    return mode;
+};
+
+const getContributionModesForClass = (className: string): InquiryMaterialMode[] =>
+    isSynopsisCapableClass(className) ? ['none', 'summary', 'full'] : ['none', 'full'];
+
 const normalizeMaterialMode = (value: unknown, className: string): InquiryMaterialMode => {
+    let normalized: InquiryMaterialMode = 'none';
     if (typeof value === 'string') {
-        const normalized = value.trim().toLowerCase();
-        if (normalized === 'digest') return 'summary';
-        if (CONTRIBUTION_MODES.includes(normalized as InquiryMaterialMode)) return normalized as InquiryMaterialMode;
+        const raw = value.trim().toLowerCase();
+        if (raw === 'digest') normalized = 'summary';
+        if (CONTRIBUTION_MODES.includes(raw as InquiryMaterialMode)) normalized = raw as InquiryMaterialMode;
     }
     if (typeof value === 'boolean') {
-        return value ? defaultModeForClass(className) : 'none';
+        normalized = value ? defaultModeForClass(className) : 'none';
     }
-    return 'none';
+    return normalizeContributionMode(normalized, className);
 };
 
 const resolveContributionMode = (config: InquiryClassConfig): InquiryMaterialMode => {
@@ -131,7 +146,7 @@ const resolveContributionMode = (config: InquiryClassConfig): InquiryMaterialMod
 
 const normalizeClassContribution = (config: InquiryClassConfig): InquiryClassConfig => {
     const isReference = REFERENCE_ONLY_CLASSES.has(config.className);
-    const contribution = resolveContributionMode(config);
+    const contribution = normalizeContributionMode(resolveContributionMode(config), config.className);
     const bookActive = !isReference && config.bookScope !== 'none';
     const sagaActive = !isReference && config.sagaScope !== 'none';
     const referenceActive = isReference && config.referenceScope !== 'none';
@@ -555,8 +570,8 @@ export function renderInquirySection(params: SectionParams): void {
             const nameCell = row.createDiv({ cls: 'ert-controlGroup__cell' });
             nameCell.createEl('strong', { text: config.className });
 
-            const isOutline = config.className === 'outline';
             const isReference = REFERENCE_ONLY_CLASSES.has(config.className);
+            const allowedModes = getContributionModesForClass(config.className);
 
             const buildContributionSelect = (
                 cell: HTMLElement,
@@ -565,7 +580,7 @@ export function renderInquirySection(params: SectionParams): void {
                 onChange: (next: InquiryMaterialMode) => void
             ) => {
                 const select = cell.createEl('select', { cls: 'ert-input ert-input--sm' });
-                CONTRIBUTION_MODES.forEach(mode => {
+                allowedModes.forEach(mode => {
                     select.createEl('option', { value: mode, text: CONTRIBUTION_LABELS[mode] });
                 });
                 select.value = value;
@@ -586,9 +601,10 @@ export function renderInquirySection(params: SectionParams): void {
             };
 
             const contributionCell = row.createDiv({ cls: 'ert-controlGroup__cell' });
-            const contributionValue = resolveContributionMode(config);
+            const contributionValue = normalizeContributionMode(resolveContributionMode(config), config.className);
             buildContributionSelect(contributionCell, contributionValue, rowDisabled, (next) => {
-                if (next === 'none') {
+                const normalizedNext = normalizeContributionMode(next, config.className);
+                if (normalizedNext === 'none') {
                     updateClassConfig({ bookScope: 'none', sagaScope: 'none', referenceScope: 'none' });
                     return;
                 }
@@ -604,9 +620,9 @@ export function renderInquirySection(params: SectionParams): void {
                     reference: currentParticipation.reference || (!currentParticipation.book && !currentParticipation.saga && fallback.reference)
                 };
                 updateClassConfig({
-                    bookScope: !isReference && apply.book ? next : 'none',
-                    sagaScope: !isReference && apply.saga ? next : 'none',
-                    referenceScope: isReference && apply.reference ? next : 'none'
+                    bookScope: !isReference && apply.book ? normalizedNext : 'none',
+                    sagaScope: !isReference && apply.saga ? normalizedNext : 'none',
+                    referenceScope: isReference && apply.reference ? normalizedNext : 'none'
                 });
             });
 
@@ -672,22 +688,25 @@ export function renderInquirySection(params: SectionParams): void {
         const normalized = className.toLowerCase();
         const isReference = REFERENCE_ONLY_CLASSES.has(normalized);
         if (preset === 'default') {
-            if (normalized === 'scene') return 'summary';
-            if (normalized === 'outline') return 'full';
-            if (isReference) return 'summary';
-            return 'none';
+            let mode: InquiryMaterialMode = 'none';
+            if (normalized === 'scene') mode = 'summary';
+            if (normalized === 'outline') mode = 'full';
+            if (isReference) mode = 'full';
+            return normalizeContributionMode(mode, normalized);
         }
         if (preset === 'light') {
-            if (normalized === 'scene') return 'summary';
-            if (normalized === 'outline') return 'summary';
-            if (isReference) return 'none';
-            return 'none';
+            let mode: InquiryMaterialMode = 'none';
+            if (normalized === 'scene') mode = 'summary';
+            if (normalized === 'outline') mode = 'summary';
+            if (isReference) mode = 'none';
+            return normalizeContributionMode(mode, normalized);
         }
         if (preset === 'deep') {
-            if (normalized === 'scene') return 'full';
-            if (normalized === 'outline') return 'full';
-            if (isReference) return 'full';
-            return 'none';
+            let mode: InquiryMaterialMode = 'none';
+            if (normalized === 'scene') mode = 'full';
+            if (normalized === 'outline') mode = 'full';
+            if (isReference) mode = 'full';
+            return normalizeContributionMode(mode, normalized);
         }
         return 'none';
     };

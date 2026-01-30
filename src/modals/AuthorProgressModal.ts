@@ -197,12 +197,6 @@ export class AuthorProgressModal extends Modal {
             });
             const nameContent = nameCell.createDiv({ cls: 'ert-apr-status-fileLabel' });
             nameContent.createSpan({ text: target.label });
-            if (target.campaign) {
-                const proPill = nameContent.createSpan({
-                    cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM} ${ERT_CLASSES.BADGE_PILL_PRO}`
-                });
-                proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro' });
-            }
             if (target.path) {
                 nameCell.setAttr('title', target.path);
             }

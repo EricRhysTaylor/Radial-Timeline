@@ -459,6 +459,10 @@
   stroke-linejoin: round;
 }
 
+.ert-inquiry-minimap-tick-marker {
+  fill: color-mix(in srgb, var(--ert-inquiry-minimap-tick-color) 70%, transparent);
+}
+
 .ert-inquiry-svg.is-running .inq-zone-control,
 .ert-inquiry-svg.is-running .inq-zone-dot,
 .ert-inquiry-svg.is-running .inq-zone-dot-hit,
@@ -1642,6 +1646,12 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-faint);
+}
+
+.ert-inquiry-engine-recommended-note {
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--text-muted);
 }
 
 .ert-inquiry-engine-recommended .ert-inquiry-engine-list {

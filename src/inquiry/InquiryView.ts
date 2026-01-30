@@ -76,6 +76,7 @@ const VIEWBOX_MIN = -800;
 const VIEWBOX_MAX = 800;
 const VIEWBOX_SIZE = 1600;
 const INQUIRY_REFERENCE_ONLY_CLASSES = new Set(['character', 'place', 'power']);
+const INQUIRY_SYNOPSIS_CAPABLE_CLASSES = new Set(['scene', 'outline']);
 const MINIMAP_GROUP_Y = -520;
 const PREVIEW_PANEL_WIDTH = 640;
 const PREVIEW_PANEL_Y = -390;
@@ -285,7 +286,11 @@ type InquiryPayloadStats = {
     sceneSynopsisAvailable: number;
     sceneFullTextCount: number;
     bookOutlineCount: number;
+    bookOutlineSummaryCount: number;
+    bookOutlineFullCount: number;
     sagaOutlineCount: number;
+    sagaOutlineSummaryCount: number;
+    sagaOutlineFullCount: number;
     referenceCounts: { character: number; place: number; power: number; other: number; total: number };
     referenceByClass: Record<string, number>;
     evidenceChars: number;
@@ -368,6 +373,7 @@ export class InquiryView extends ItemView {
     private engineBadgeGroup?: SVGGElement;
     private enginePanelEl?: HTMLDivElement;
     private enginePanelRecommendedEl?: HTMLDivElement;
+    private enginePanelRecommendedNoteEl?: HTMLDivElement;
     private enginePanelRecommendedListEl?: HTMLDivElement;
     private enginePanelAllLabelEl?: HTMLDivElement;
     private enginePanelControlsEl?: HTMLDivElement;
@@ -901,6 +907,10 @@ export class InquiryView extends ItemView {
 
         this.enginePanelRecommendedEl = panel.createDiv({ cls: 'ert-inquiry-engine-recommended ert-hidden' });
         this.enginePanelRecommendedEl.createDiv({ cls: 'ert-inquiry-engine-section-title', text: 'Recommended' });
+        this.enginePanelRecommendedNoteEl = this.enginePanelRecommendedEl.createDiv({
+            cls: 'ert-inquiry-engine-recommended-note',
+            text: ''
+        });
         this.enginePanelRecommendedListEl = this.enginePanelRecommendedEl.createDiv({ cls: 'ert-inquiry-engine-list' });
         this.enginePanelAllLabelEl = panel.createDiv({ cls: 'ert-inquiry-engine-section-title', text: 'All models' });
         this.enginePanelListEl = panel.createDiv({ cls: 'ert-inquiry-engine-list' });
@@ -970,20 +980,30 @@ export class InquiryView extends ItemView {
             };
         });
 
+        const contextQuestion = this.getEngineContextQuestion();
+        const payloadSummary = this.buildEnginePayloadSummary(contextQuestion);
+        const tokenTier = contextQuestion ? payloadSummary.tier : 'normal';
+        const geminiChoice = choices.find(choice => choice.provider === 'gemini');
+        const geminiAvailable = Boolean(geminiChoice?.enabled);
         if (this.enginePanelMetaEl) {
             const activeLabel = `${this.getActiveInquiryProviderLabel()} · ${this.getActiveInquiryModelLabel()}`;
-            this.enginePanelMetaEl.setText(`Active: ${activeLabel}`);
+            this.enginePanelMetaEl.setText(`Active: ${activeLabel} · ${payloadSummary.text}`);
         }
 
-        const contextQuestion = this.getEngineContextQuestion();
-        const tokenTier = contextQuestion ? this.getTokenTierForQuestion(contextQuestion) : 'normal';
-        const showRecommendations = tokenTier !== 'normal';
-        const recommendedChoices = showRecommendations ? this.pickRecommendedEngineChoices(choices) : [];
+        const recommendedChoices = tokenTier === 'red' ? this.pickRecommendedEngineChoices(choices) : [];
         const recommendedKeys = new Set(recommendedChoices.map(choice => `${choice.provider}::${choice.modelId}`));
-        const showRecommendedSection = showRecommendations && recommendedChoices.length > 0;
+        const recommendedNote = this.buildEngineRecommendationNote(tokenTier, payloadSummary.hasQuestion, geminiAvailable);
+        const showRecommendedList = tokenTier === 'red' && recommendedChoices.length > 0;
+        const showRecommendedSection = Boolean(recommendedNote);
 
         if (this.enginePanelRecommendedEl) {
             this.enginePanelRecommendedEl.classList.toggle('ert-hidden', !showRecommendedSection);
+        }
+        if (this.enginePanelRecommendedNoteEl) {
+            this.enginePanelRecommendedNoteEl.setText(recommendedNote);
+        }
+        if (this.enginePanelRecommendedListEl) {
+            this.enginePanelRecommendedListEl.classList.toggle('ert-hidden', !showRecommendedList);
         }
         if (this.enginePanelAllLabelEl) {
             this.enginePanelAllLabelEl.classList.toggle('ert-hidden', !showRecommendedSection);
@@ -992,6 +1012,16 @@ export class InquiryView extends ItemView {
         if (this.enginePanelGuardEl) {
             const showGuard = Boolean(this.pendingGuardQuestion) && tokenTier === 'red';
             this.enginePanelGuardEl.classList.toggle('ert-hidden', !showGuard);
+            if (this.enginePanelGuardNoteEl && showGuard) {
+                const guardQuestion = this.pendingGuardQuestion?.question ?? contextQuestion;
+                const guardSummary = this.buildEnginePayloadSummary(guardQuestion);
+                const guardTokens = this.formatTokenEstimate(guardSummary.inputTokens);
+                const guardThreshold = this.formatTokenEstimate(INQUIRY_INPUT_TOKENS_RED);
+                const guardText = geminiAvailable
+                    ? `Payload is very large (~${guardTokens} input tokens; guard ${guardThreshold}). Gemini is recommended, or run anyway.`
+                    : `Payload is very large (~${guardTokens} input tokens; guard ${guardThreshold}). Choose a larger-context model or run anyway.`;
+                this.enginePanelGuardNoteEl.setText(guardText);
+            }
         }
 
         this.syncEngineNextRunToggle(tokenTier);
@@ -1002,7 +1032,7 @@ export class InquiryView extends ItemView {
             return;
         }
 
-        if (showRecommendedSection && this.enginePanelRecommendedListEl) {
+        if (showRecommendedList && this.enginePanelRecommendedListEl) {
             this.renderEngineChoices(this.enginePanelRecommendedListEl, recommendedChoices, {
                 tokenTier,
                 recommendedKeys,
@@ -1187,12 +1217,44 @@ export class InquiryView extends ItemView {
         return activeQuestion ?? null;
     }
 
+    private buildEnginePayloadSummary(questionText: string | null): {
+        text: string;
+        inputTokens: number;
+        tier: TokenTier;
+        hasQuestion: boolean;
+    } {
+        const trimmedQuestion = questionText?.trim() ?? '';
+        const hasQuestion = Boolean(trimmedQuestion);
+        const estimate = this.getTokenEstimateForQuestion(trimmedQuestion);
+        const inputLabel = this.formatTokenEstimate(estimate.inputTokens);
+        const prefix = hasQuestion ? 'Payload' : 'Payload (base)';
+        return {
+            text: `${prefix}: ~${inputLabel} in`,
+            inputTokens: estimate.inputTokens,
+            tier: this.getTokenTier(estimate.inputTokens),
+            hasQuestion
+        };
+    }
+
+    private buildEngineRecommendationNote(
+        tokenTier: TokenTier,
+        hasQuestion: boolean,
+        geminiAvailable: boolean
+    ): string {
+        if (!hasQuestion) {
+            return 'Payload estimate is based on the current scope. Hover a question to refine.';
+        }
+        if (tokenTier === 'red') {
+            return geminiAvailable
+                ? 'Large payload — Gemini is recommended for its large context window.'
+                : 'Large payload — Gemini (large context) is recommended. Enable it in Settings > AI.';
+        }
+        return 'Payload is within normal range — any model is fine.';
+    }
+
     private pickRecommendedEngineChoices(choices: EngineChoice[]): EngineChoice[] {
-        const enabled = choices.filter(choice => choice.enabled);
-        if (!enabled.length) return [];
-        const rank: EngineProvider[] = ['gemini', 'anthropic', 'openai', 'local'];
-        const ranked = enabled.slice().sort((a, b) => rank.indexOf(a.provider) - rank.indexOf(b.provider));
-        return ranked.slice(0, Math.min(2, ranked.length));
+        const geminiChoice = choices.find(choice => choice.provider === 'gemini' && choice.enabled);
+        return geminiChoice ? [geminiChoice] : [];
     }
 
     private showBriefingPanel(): void {
@@ -2658,7 +2720,8 @@ export class InquiryView extends ItemView {
         const tooltip = `AI Engine · ${providerLabel} · ${modelLabel}`;
         this.engineBadgeGroup.setAttribute('aria-label', tooltip);
         if (this.enginePanelMetaEl) {
-            this.enginePanelMetaEl.setText(`Active: ${providerLabel} · ${modelLabel}`);
+            const payloadSummary = this.buildEnginePayloadSummary(this.getEngineContextQuestion());
+            this.enginePanelMetaEl.setText(`Active: ${providerLabel} · ${modelLabel} · ${payloadSummary.text}`);
         }
         this.refreshEnginePanel();
     }
@@ -2920,6 +2983,9 @@ export class InquiryView extends ItemView {
         this.minimapBackboneGroup?.removeAttribute('display');
         const tickCorner = Math.max(2, Math.round(tickWidth * 0.18));
         const foldSize = Math.max(3, Math.round(tickWidth * 0.5));
+        const markerWidth = Math.max(3, Math.round(tickWidth * 0.18));
+        const markerHeight = Math.min(8, Math.max(6, Math.round(tickHeight * 0.35)));
+        const markerInsetX = 4;
         const tickLayouts: Array<{ x: number; y: number; width: number; height: number; rowIndex: number }> = [];
 
         for (let i = 0; i < count; i += 1) {
@@ -2933,6 +2999,10 @@ export class InquiryView extends ItemView {
             const x = Math.round(pos - (tickWidth / 2));
             const y = Math.round(rowY);
             const tick = this.createSvgGroup(this.minimapTicksEl, 'ert-inquiry-minimap-tick rt-tooltip-target', x, y);
+            const isSagaScope = this.state.scope === 'saga';
+            if (isSagaScope) {
+                tick.classList.add('is-saga');
+            }
             const base = this.createSvgElement('rect');
             base.classList.add('ert-inquiry-minimap-tick-base');
             base.setAttribute('x', '0');
@@ -2949,12 +3019,24 @@ export class InquiryView extends ItemView {
             border.setAttribute('height', String(tickHeight));
             border.setAttribute('rx', String(tickCorner));
             border.setAttribute('ry', String(tickCorner));
-            const fold = this.createSvgElement('path');
-            fold.classList.add('ert-inquiry-minimap-tick-fold');
-            fold.setAttribute('d', `M ${tickWidth - foldSize} 0 L ${tickWidth} 0 L ${tickWidth} ${foldSize} Z`);
             tick.appendChild(base);
             tick.appendChild(border);
-            tick.appendChild(fold);
+            if (isSagaScope) {
+                const marker = this.createSvgElement('rect');
+                marker.classList.add('ert-inquiry-minimap-tick-marker');
+                marker.setAttribute('width', String(markerWidth));
+                marker.setAttribute('height', String(markerHeight));
+                marker.setAttribute('x', String(Math.round(tickWidth - markerInsetX - markerWidth)));
+                marker.setAttribute('y', '0');
+                marker.setAttribute('rx', '1');
+                marker.setAttribute('ry', '1');
+                tick.appendChild(marker);
+            } else {
+                const fold = this.createSvgElement('path');
+                fold.classList.add('ert-inquiry-minimap-tick-fold');
+                fold.setAttribute('d', `M ${tickWidth - foldSize} 0 L ${tickWidth} 0 L ${tickWidth} ${foldSize} Z`);
+                tick.appendChild(fold);
+            }
             const label = item.displayLabel;
             const fullLabel = this.getMinimapItemTitle(item) || label;
             tick.setAttribute('data-index', String(i + 1));
@@ -5770,7 +5852,10 @@ export class InquiryView extends ItemView {
                 if (!isClassActive(config)) return;
                 if (className === 'outline') {
                     const outlineScope = this.getFrontmatterScope(frontmatter) ?? 'book';
-                    const mode = outlineScope === 'saga' ? config.sagaScope : config.bookScope;
+                    const mode = this.normalizeContributionMode(
+                        outlineScope === 'saga' ? config.sagaScope : config.bookScope,
+                        className
+                    );
                     if (!this.isModeActive(mode)) return;
                     entries.push({
                         path: file.path,
@@ -5783,7 +5868,7 @@ export class InquiryView extends ItemView {
                 }
 
                 if (INQUIRY_REFERENCE_ONLY_CLASSES.has(className)) {
-                    const mode = config.referenceScope;
+                    const mode = this.normalizeContributionMode(config.referenceScope, className);
                     if (!this.isModeActive(mode)) return;
                     entries.push({
                         path: file.path,
@@ -5794,7 +5879,10 @@ export class InquiryView extends ItemView {
                     return;
                 }
 
-                const mode = this.state.scope === 'book' ? config.bookScope : config.sagaScope;
+                const mode = this.normalizeContributionMode(
+                    this.state.scope === 'book' ? config.bookScope : config.sagaScope,
+                    className
+                );
                 if (!this.isModeActive(mode)) return;
 
                 entries.push({
@@ -5924,18 +6012,30 @@ export class InquiryView extends ItemView {
         return 'full';
     }
 
+    private isSynopsisCapableClass(className: string): boolean {
+        return INQUIRY_SYNOPSIS_CAPABLE_CLASSES.has(className.toLowerCase());
+    }
+
+    private normalizeContributionMode(mode: InquiryMaterialMode, className: string): InquiryMaterialMode {
+        if (mode === 'summary' && !this.isSynopsisCapableClass(className)) {
+            return 'full';
+        }
+        return mode;
+    }
+
     private normalizeMaterialMode(value: unknown, className: string): InquiryMaterialMode {
+        let normalized: InquiryMaterialMode = 'none';
         if (typeof value === 'string') {
-            const normalized = value.trim().toLowerCase();
-            if (normalized === 'digest') return 'summary';
-            if (normalized === 'none' || normalized === 'summary' || normalized === 'full') {
-                return normalized as InquiryMaterialMode;
+            const raw = value.trim().toLowerCase();
+            if (raw === 'digest') normalized = 'summary';
+            if (raw === 'none' || raw === 'summary' || raw === 'full') {
+                normalized = raw as InquiryMaterialMode;
             }
         }
         if (typeof value === 'boolean') {
-            return value ? this.getDefaultMaterialMode(className) : 'none';
+            normalized = value ? this.getDefaultMaterialMode(className) : 'none';
         }
-        return 'none';
+        return this.normalizeContributionMode(normalized, className);
     }
 
     private resolveContributionMode(config: InquiryClassConfig): InquiryMaterialMode {
@@ -5948,7 +6048,7 @@ export class InquiryView extends ItemView {
 
     private normalizeClassContribution(config: InquiryClassConfig): InquiryClassConfig {
         const isReference = INQUIRY_REFERENCE_ONLY_CLASSES.has(config.className);
-        const contribution = this.resolveContributionMode(config);
+        const contribution = this.normalizeContributionMode(this.resolveContributionMode(config), config.className);
         const bookActive = !isReference && config.bookScope !== 'none';
         const sagaActive = !isReference && config.sagaScope !== 'none';
         const referenceActive = isReference && config.referenceScope !== 'none';
@@ -7150,7 +7250,11 @@ export class InquiryView extends ItemView {
             sceneSynopsisAvailable: sceneStats.synopsisAvailable,
             sceneFullTextCount: sceneStats.fullCount,
             bookOutlineCount: bookOutlineStats.count,
+            bookOutlineSummaryCount: bookOutlineStats.summaryCount,
+            bookOutlineFullCount: bookOutlineStats.fullCount,
             sagaOutlineCount: sagaOutlineStats.count,
+            sagaOutlineSummaryCount: sagaOutlineStats.summaryCount,
+            sagaOutlineFullCount: sagaOutlineStats.fullCount,
             referenceCounts: referenceStats.counts,
             referenceByClass: referenceStats.byClass,
             evidenceChars,
@@ -7200,16 +7304,37 @@ export class InquiryView extends ItemView {
         };
     }
 
-    private collectEntryStats(entries: CorpusManifestEntry[]): { count: number; chars: number } {
-        let count = 0;
+    private collectEntryStats(entries: CorpusManifestEntry[]): {
+        count: number;
+        summaryCount: number;
+        fullCount: number;
+        chars: number;
+    } {
+        let summaryCount = 0;
+        let fullCount = 0;
         let chars = 0;
         entries.forEach(entry => {
-            const size = this.getEntryContentLength(entry);
-            if (!size) return;
-            count += 1;
-            chars += size;
+            const mode = this.normalizeEvidenceMode(entry.mode);
+            if (mode === 'summary') {
+                const synopsis = this.getEntrySynopsis(entry.path);
+                if (!synopsis) return;
+                summaryCount += 1;
+                chars += synopsis.length;
+                return;
+            }
+            if (mode === 'full') {
+                const size = this.getEntryCharCount(entry.path);
+                if (!size) return;
+                fullCount += 1;
+                chars += size;
+            }
         });
-        return { count, chars };
+        return {
+            count: summaryCount + fullCount,
+            summaryCount,
+            fullCount,
+            chars
+        };
     }
 
     private collectReferenceStats(entries: CorpusManifestEntry[]): {
@@ -7296,19 +7421,25 @@ export class InquiryView extends ItemView {
 
     private getPreviewScenesValue(): string {
         const stats = this.getPayloadStats();
-        return `total ${stats.sceneTotal} · synopsis ${stats.sceneSynopsisUsed}/${stats.sceneSynopsisAvailable} · full ${stats.sceneFullTextCount}`;
+        return `${stats.sceneSynopsisUsed}× synopsis · ${stats.sceneFullTextCount}× full`;
     }
 
     private getPreviewOutlinesValue(): string {
         const stats = this.getPayloadStats();
-        return `book ${stats.bookOutlineCount} · saga ${stats.sagaOutlineCount}`;
+        const formatScope = (label: string, summaryCount: number, fullCount: number) => {
+            return `${label} ${summaryCount}× synopsis · ${fullCount}× full`;
+        };
+        return [
+            formatScope('book', stats.bookOutlineSummaryCount, stats.bookOutlineFullCount),
+            formatScope('saga', stats.sagaOutlineSummaryCount, stats.sagaOutlineFullCount)
+        ].join(' · ');
     }
 
     private getPreviewReferencesValue(): string {
         const stats = this.getPayloadStats();
         if (!stats.referenceCounts.total) return 'none';
         const { character, place, power, other } = stats.referenceCounts;
-        return `character ${character} · place ${place} · power ${power} · other ${other}`;
+        return `character ${character}× full · place ${place}× full · power ${power}× full · other ${other}× full`;
     }
 
     private getPreviewTokensValue(questionText: string): string {

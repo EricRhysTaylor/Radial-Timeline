@@ -1774,8 +1774,21 @@
 
 .ert-ui.ert-modal--social,
 .ert-ui .ert-modal--social {
-  --ert-modal-tint: linear-gradient(180deg, color-mix(in srgb, var(--ert-accent) 14%, transparent) 0%, transparent 65%);
-  --ert-modal-glow: 0 18px 40px color-mix(in srgb, var(--ert-accent) 16%, transparent);
+  --ert-modal-tint: transparent;
+  --ert-modal-glow: none;
+  --ert-modal-bg: color-mix(in srgb, var(--background-primary) 78%, transparent);
+  --ert-modal-border: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  --ert-panel-bg: color-mix(in srgb, var(--background-primary) 86%, transparent);
+  --ert-panel-border: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  --ert-panel-shadow: 0 10px 30px color-mix(in srgb, var(--background-primary) 22%, transparent);
+}
+
+.ert-ui.ert-modal--social .ert-panel--glass,
+.ert-ui .ert-modal--social .ert-panel--glass {
+  --ert-panel-bg: color-mix(in srgb, var(--background-primary) 78%, transparent);
+  --ert-panel-border: color-mix(in srgb, var(--background-modifier-border) 60%, transparent);
+  --ert-panel-shadow: 0 8px 20px color-mix(in srgb, var(--background-primary) 18%, transparent);
+  --ert-panel-backdrop: blur(16px) saturate(1.1);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3999,26 +4012,6 @@
 
 .ert-ui .ert-search-input-container>* {
   flex: 1;
-}
-
-.ert-ui.ert-scope--modal .ert-apr-status-cell--campaign {
-  padding: 4px 8px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--ert-accent) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ert-accent) 25%, transparent);
-}
-
-.ert-ui.ert-scope--modal .ert-apr-status-fileLabel {
-  display: flex;
-  align-items: center;
-  gap: var(--ert-gap-xs);
-}
-
-.ert-ui.ert-scope--modal .ert-apr-status-file--campaign {
-  padding: 6px 8px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--ert-accent) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ert-accent) 28%, transparent);
 }
 
 /* -------------------------------------------------------------------------- */
