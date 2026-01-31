@@ -573,8 +573,7 @@ export class AuthorProgressService {
             rtBadgeFontFamily: settings.aprRtBadgeFontFamily,
             rtBadgeFontWeight: settings.aprRtBadgeFontWeight,
             rtBadgeFontItalic: settings.aprRtBadgeFontItalic,
-            rtBadgeFontSize: settings.aprRtBadgeFontSize,
-            debugLabel: `Size: ${size} | Stage: ${debugStage} | ${progressPercent.toFixed(1)}%`
+            rtBadgeFontSize: settings.aprRtBadgeFontSize
         });
 
         return {

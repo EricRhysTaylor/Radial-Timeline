@@ -662,7 +662,7 @@ export function renderInquirySection(params: SectionParams): void {
             let mode: InquiryMaterialMode = 'none';
             if (normalized === 'scene') mode = 'summary';
             if (normalized === 'outline') mode = 'full';
-            if (isReference) mode = 'full';
+            if (isReference) mode = 'none';
             return normalizeContributionMode(mode, normalized);
         }
         if (preset === 'light') {
@@ -1344,6 +1344,71 @@ export function renderInquirySection(params: SectionParams): void {
         });
     });
 
+    const resolveActionNotesFieldLabel = () => {
+        const fallback = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
+        return (plugin.settings.inquiryActionNotesTargetField ?? fallback).trim() || fallback;
+    };
+
+    const actionNotesSetting = new Settings(configBody)
+        .setName(`Write Inquiry notes to ${resolveActionNotesFieldLabel()}`)
+        .setDesc('Append Inquiry action notes to the target yaml field for hit scenes and book outlines.')
+        .addToggle(toggle => {
+            toggle.setValue(plugin.settings.inquiryActionNotesEnabled ?? false);
+            toggle.onChange(async (value) => {
+                plugin.settings.inquiryActionNotesEnabled = value;
+                await plugin.saveSettings();
+            });
+        });
+
+    const actionNotesFieldSetting = new Settings(configBody)
+        .setName('Action notes target YAML field')
+        .setDesc('Frontmatter field to receive Inquiry action notes.');
+    const defaultActionNotesField = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
+    let actionNotesFieldInput: TextComponent | null = null;
+
+    const autoPopulateSetting = new Settings(configBody)
+        .setName(`Auto-populate ${resolveActionNotesFieldLabel()}`)
+        .setDesc('Automatically write action notes to the target yaml field after each Inquiry run.')
+        .addToggle(toggle => {
+            toggle.setValue(plugin.settings.inquiryActionNotesAutoPopulate ?? false);
+            toggle.onChange(async (value) => {
+                plugin.settings.inquiryActionNotesAutoPopulate = value;
+                await plugin.saveSettings();
+            });
+        });
+
+    const refreshActionNotesLabels = () => {
+        const fieldLabel = resolveActionNotesFieldLabel();
+        actionNotesSetting.setName(`Write Inquiry notes to ${fieldLabel}`);
+        autoPopulateSetting.setName(`Auto-populate ${fieldLabel}`);
+    };
+
+    actionNotesFieldSetting.addText(text => {
+        const current = plugin.settings.inquiryActionNotesTargetField?.trim() || defaultActionNotesField;
+        actionNotesFieldInput = text;
+        text.setPlaceholder(defaultActionNotesField);
+        text.setValue(current);
+        text.inputEl.addClass('ert-input--lg');
+        text.onChange(async (value) => {
+            const next = value.trim() || defaultActionNotesField;
+            plugin.settings.inquiryActionNotesTargetField = next;
+            await plugin.saveSettings();
+            refreshActionNotesLabels();
+        });
+    });
+
+    actionNotesFieldSetting.addExtraButton(button => {
+        button
+            .setIcon('reset')
+            .setTooltip('Reset to default')
+            .onClick(async () => {
+                plugin.settings.inquiryActionNotesTargetField = defaultActionNotesField;
+                actionNotesFieldInput?.setValue(defaultActionNotesField);
+                await plugin.saveSettings();
+                refreshActionNotesLabels();
+            });
+    });
+
     new Settings(configBody)
         .setName('Embed JSON payload in Briefings')
         .setDesc('Includes the validated Inquiry JSON payload in the Briefing file.')
@@ -1365,47 +1430,6 @@ export function renderInquirySection(params: SectionParams): void {
                 await plugin.saveSettings();
             });
         });
-
-    new Settings(configBody)
-        .setName('Write Inquiry notes to Pending Edits')
-        .setDesc('Append Inquiry action notes to the Pending Edits field for hit scenes.')
-        .addToggle(toggle => {
-            toggle.setValue(plugin.settings.inquiryActionNotesEnabled ?? false);
-            toggle.onChange(async (value) => {
-                plugin.settings.inquiryActionNotesEnabled = value;
-                await plugin.saveSettings();
-            });
-        });
-
-    const actionNotesFieldSetting = new Settings(configBody)
-        .setName('Action notes target YAML field')
-        .setDesc('Frontmatter field to receive Inquiry Pending Edits notes.');
-    const defaultActionNotesField = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
-    let actionNotesFieldInput: TextComponent | null = null;
-
-    actionNotesFieldSetting.addText(text => {
-        const current = plugin.settings.inquiryActionNotesTargetField?.trim() || defaultActionNotesField;
-        actionNotesFieldInput = text;
-        text.setPlaceholder(defaultActionNotesField);
-        text.setValue(current);
-        text.inputEl.addClass('ert-input--lg');
-        text.onChange(async (value) => {
-            const next = value.trim() || defaultActionNotesField;
-            plugin.settings.inquiryActionNotesTargetField = next;
-            await plugin.saveSettings();
-        });
-    });
-
-    actionNotesFieldSetting.addExtraButton(button => {
-        button
-            .setIcon('reset')
-            .setTooltip('Reset to default')
-            .onClick(async () => {
-                plugin.settings.inquiryActionNotesTargetField = defaultActionNotesField;
-                actionNotesFieldInput?.setValue(defaultActionNotesField);
-                await plugin.saveSettings();
-            });
-    });
 
     const cacheDesc = () => `Cache up to ${plugin.settings.inquiryCacheMaxSessions ?? 30} Inquiry sessions. Set the cap here.`;
 

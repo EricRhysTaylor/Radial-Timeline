@@ -41,6 +41,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     },
     inquiryCorpusHighlightLowSubstanceComplete: true,
     inquiryActionNotesEnabled: false,
+    inquiryActionNotesAutoPopulate: false,
     inquiryActionNotesTargetField: 'Pending Edits',
     actCount: 3,
     actLabelsRaw: '',

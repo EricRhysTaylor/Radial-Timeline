@@ -247,6 +247,7 @@ export interface InquiryPromptSlot {
     question: string;
     enabled: boolean;
     builtIn?: boolean;
+    requiresContext?: boolean;
 }
 
 export type InquiryPromptConfig = Record<InquiryPromptZone, InquiryPromptSlot[]>;
@@ -302,6 +303,7 @@ export interface RadialTimelineSettings {
     inquiryCorpusThresholds?: InquiryCorpusThresholds;
     inquiryCorpusHighlightLowSubstanceComplete?: boolean;
     inquiryActionNotesEnabled?: boolean;
+    inquiryActionNotesAutoPopulate?: boolean;
     inquiryActionNotesTargetField?: string;
     actCount?: number;
     actLabelsRaw?: string;

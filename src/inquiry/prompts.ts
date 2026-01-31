@@ -6,6 +6,7 @@ type BuiltInPromptSeed = {
     label: string;
     question: string;
     enabled?: boolean;
+    requiresContext?: boolean;
 };
 
 const CANONICAL_PROMPTS: Record<InquiryZone, string> = {
@@ -82,7 +83,8 @@ const buildBuiltInSlot = (seed: BuiltInPromptSeed): InquiryPromptSlot => ({
     label: seed.label,
     question: seed.question,
     enabled: seed.enabled ?? true,
-    builtIn: true
+    builtIn: true,
+    requiresContext: seed.requiresContext
 });
 
 export const buildDefaultInquiryPromptConfig = (): InquiryPromptConfig => {
@@ -179,7 +181,8 @@ export const normalizeInquiryPromptConfig = (raw?: InquiryPromptConfig): Inquiry
                 label,
                 question,
                 enabled: rawEnabled || question.trim().length > 0,
-                builtIn: false
+                builtIn: false,
+                requiresContext: slot.requiresContext
             });
         });
 

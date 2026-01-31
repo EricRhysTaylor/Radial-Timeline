@@ -14,17 +14,17 @@ export function renderDefs(PUBLISH_STAGE_COLORS: Record<string, string>, pattern
     // Working pattern: wavy chevrons (scale the path via transform)
     const workingPath = `
       <pattern id="plaidWorking${stage}" patternUnits="userSpaceOnUse" width="${workingW}" height="${workingH}" patternTransform="rotate(-20)">
-        <rect width="${workingW}" height="${workingH}" fill="var(--rt-color-working)" opacity="var(--rt-color-plaid-opacity)"/>
+        <rect width="${workingW}" height="${workingH}" fill="var(--rt-color-working, #FF69B4)" opacity="var(--rt-color-plaid-opacity, 1)"/>
         <g transform="scale(${patternScale})">
           <path d="M 0 10 Q 2.5 -5, 5 10 Q 7.5 25, 10 10 Q 12.5 5, 15 10 Q 17.5 25, 20 10 Q 22.5 -5, 25 10 Q 27.5 25, 30 10 Q 32.5 5, 35 10 Q 37.5 25, 40 10 Q 42.5 -5, 45 10 Q 47.5 25, 50 10 Q 52.5 5, 55 10 Q 57.5 25, 60 10 Q 62.5 -5, 65 10 Q 67.5 25, 70 10 Q 72.5 5, 75 10 Q 77.5 25, 80 10" 
-            stroke="${color}" stroke-opacity="var(--rt-color-plaid-stroke-opacity)" stroke-width="${strokeWidth / patternScale}" fill="none" />
+            stroke="${color}" stroke-opacity="var(--rt-color-plaid-stroke-opacity, 1)" stroke-width="${strokeWidth / patternScale}" fill="none" />
         </g>
       </pattern>`;
     
     // Todo pattern: crosshatch grid
     const todoPath = `
       <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="${todoSize}" height="${todoSize}" patternTransform="rotate(45)">
-        <rect width="${todoSize}" height="${todoSize}" fill="var(--rt-color-todo)" opacity="var(--rt-color-plaid-opacity)"/>
+        <rect width="${todoSize}" height="${todoSize}" fill="var(--rt-color-todo, #cccccc)" opacity="var(--rt-color-plaid-opacity, 1)"/>
         <line x1="0" y1="0" x2="0" y2="${todoSize}" stroke="${color}" stroke-width="${strokeWidth}" stroke-opacity="0.5"/>
         <line x1="0" y1="0" x2="${todoSize}" y2="0" stroke="${color}" stroke-width="${strokeWidth}" stroke-opacity="0.5"/>
       </pattern>`;
@@ -141,4 +141,3 @@ export function renderProgressRingGradients(radius: number): string {
   gradients += '</defs>';
   return gradients;
 }
-

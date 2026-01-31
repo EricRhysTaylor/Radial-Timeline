@@ -264,7 +264,7 @@ export function renderGeneralSection(params: {
     };
     const getLoggingDesc = (fileCount: number | null): string => {
         const countText = formatLogCount(fileCount);
-        return `When enabled, writes logs for Inquiry, Pulse, and Gossamer runs. Logs are stored in "${outputFolder}" (${countText}).`;
+        return `When enabled, writes detailed AI content logs for Inquiry, Pulse, and Gossamer runs. Inquiry summary logs are always stored in "${outputFolder}" (${countText}).`;
     };
 
     const apiLoggingSetting = new ObsidianSetting(containerEl)
