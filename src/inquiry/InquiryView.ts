@@ -168,6 +168,10 @@ const INQUIRY_HELP_NO_SCENES_TOOLTIP = [
     'Please configure the Inquiry directories where your scenes, books, and outlines are stored (Settings -> Inquiry).',
     'Then explicitly check which classes to include for the selected scope.'
 ].join('\n');
+const INQUIRY_HELP_CORPUS_TOOLTIP = [
+    'Corpus disabled.',
+    'Enable corpus scopes in the Corpus strip to run Inquiry.'
+].join('\n');
 const INQUIRY_HELP_RESULTS_TOOLTIP = [
     'Review material citations for granular feedback in the minimap.',
     'View the Brief for full details.'
@@ -314,9 +318,11 @@ type BackboneColors = {
 
 type CorpusCcEntry = {
     id: string;
+    entryKey: string;
     label: string;
     filePath: string;
     className: string;
+    classKey: string;
     scope?: InquiryScope;
     mode: InquiryMaterialMode;
     sortLabel?: string;
@@ -493,6 +499,9 @@ export class InquiryView extends ItemView {
         status?: 'todo' | 'working' | 'complete';
         title?: string;
     }>();
+    private corpusClassOverrides = new Map<string, InquiryMaterialMode>();
+    private corpusItemOverrides = new Map<string, InquiryMaterialMode>();
+    private corpusWarningActive = false;
     private apiSimulationTimer?: number;
     private navPrevButton?: SVGGElement;
     private navNextButton?: SVGGElement;
@@ -3255,10 +3264,15 @@ export class InquiryView extends ItemView {
             this.ccLabel = this.createSvgText(this.ccGroup, 'ert-inquiry-cc-label', 'Corpus', 0, 0);
             this.ccLabel.setAttribute('text-anchor', 'middle');
             this.ccLabel.setAttribute('dominant-baseline', 'middle');
+            this.ccLabel.classList.add('is-actionable');
+            this.registerDomEvent(this.ccLabel as unknown as HTMLElement, 'click', () => {
+                this.handleCorpusGlobalToggle();
+            });
         }
-                this.ccLabel.textContent = this.getCorpusCcScopeLabel();
-                this.ccLabel.setAttribute('x', String(Math.round((layout.rightBlockLeft + layout.rightBlockRight) / 2)));
-                this.ccLabel.setAttribute('y', '0');
+        this.ccLabel.textContent = this.getCorpusCcScopeLabel();
+        this.ccLabel.setAttribute('x', String(Math.round((layout.rightBlockLeft + layout.rightBlockRight) / 2)));
+        this.ccLabel.setAttribute('y', '0');
+        addTooltipData(this.ccLabel, this.balanceTooltipText('Cycle all corpus scopes.'), 'top');
 
         if (!this.ccEmptyText) {
             this.ccEmptyText = this.createSvgText(this.ccGroup, 'ert-inquiry-cc-empty ert-hidden', 'No corpus data', 0, 0);
@@ -3296,14 +3310,20 @@ export class InquiryView extends ItemView {
             group.appendChild(border);
             group.appendChild(fold);
             group.appendChild(icon);
-            this.registerDomEvent(group as unknown as HTMLElement, 'click', () => {
+            this.registerDomEvent(group as unknown as HTMLElement, 'click', (evt) => {
                 if (this.state.isRunning) return;
-                const filePath = group.getAttribute('data-file-path');
-                if (!filePath) return;
-                const file = this.app.vault.getAbstractFileByPath(filePath);
-                if (file && this.isTFile(file)) {
-                    void openOrRevealFile(this.app, file);
+                const entryKey = group.getAttribute('data-entry-key');
+                if (!entryKey) return;
+                if (evt.shiftKey) {
+                    const filePath = group.getAttribute('data-file-path');
+                    if (!filePath) return;
+                    const file = this.app.vault.getAbstractFileByPath(filePath);
+                    if (file && this.isTFile(file)) {
+                        void openOrRevealFile(this.app, file);
+                    }
+                    return;
                 }
+                this.handleCorpusItemToggle(entryKey);
             });
             this.ccSlots.push({ group, base, fill, border, icon, fold });
         }
@@ -3311,11 +3331,13 @@ export class InquiryView extends ItemView {
         this.ccSlots.forEach((slot, idx) => {
             if (idx >= totalEntries) {
                 slot.group.classList.add('ert-hidden');
+                slot.group.removeAttribute('data-entry-key');
                 return;
             }
             const placement = layout.placements[idx];
             slot.group.classList.remove('ert-hidden');
             slot.group.setAttribute('data-class', placement.entry.className);
+            slot.group.setAttribute('data-entry-key', placement.entry.entryKey);
             slot.group.setAttribute('transform', `translate(${placement.x} ${placement.y})`);
             slot.base.setAttribute('width', String(layout.pageWidth));
             slot.base.setAttribute('height', String(layout.pageHeight));
@@ -3346,6 +3368,11 @@ export class InquiryView extends ItemView {
             label.setAttribute('dominant-baseline', 'middle');
             headerGroup.appendChild(icon);
             headerGroup.appendChild(label);
+            this.registerDomEvent(headerGroup as unknown as HTMLElement, 'click', () => {
+                const className = headerGroup.getAttribute('data-class');
+                if (!className) return;
+                this.handleCorpusGroupToggle(className);
+            });
             titleTexts.push({ group: headerGroup, icon, text: label });
         }
         layout.classLayouts.forEach((classLayout, idx) => {
@@ -3353,6 +3380,7 @@ export class InquiryView extends ItemView {
             const { group, centerX, width } = classLayout;
             const availableWidth = Math.max(4, width - layout.gap);
             const modeMeta = this.getCorpusCcModeMeta(group.mode);
+            header.group.setAttribute('data-class', group.className);
             header.group.classList.toggle('is-off', !modeMeta.isActive);
             header.group.classList.toggle('is-active', modeMeta.isActive);
             this.setIconUse(header.icon, modeMeta.icon);
@@ -3393,6 +3421,226 @@ export class InquiryView extends ItemView {
         return `Corpus · Book ${focusLabel}`;
     }
 
+    private getCorpusGroupBaseClass(className: string): string {
+        return className === 'outline-saga' ? 'outline' : className;
+    }
+
+    private getCorpusGroupKey(className: string, scope?: InquiryScope): string {
+        if (className === 'outline' && scope === 'saga') return 'outline-saga';
+        return className;
+    }
+
+    private getCorpusItemKey(className: string, filePath: string, scope?: InquiryScope): string {
+        const scopeKey = scope ?? 'none';
+        return `${className}::${scopeKey}::${filePath}`;
+    }
+
+    private parseCorpusItemKey(entryKey: string): { className: string; scope?: InquiryScope; path: string } {
+        const parts = entryKey.split('::');
+        const className = parts.shift() ?? '';
+        const scopeRaw = parts.shift() ?? 'none';
+        const scope = scopeRaw === 'book' || scopeRaw === 'saga' ? scopeRaw : undefined;
+        const path = parts.join('::');
+        return { className, scope, path };
+    }
+
+    private getCorpusCycleModes(className: string): InquiryMaterialMode[] {
+        const baseClass = this.getCorpusGroupBaseClass(className);
+        return this.isSynopsisCapableClass(baseClass) ? ['none', 'summary', 'full'] : ['none', 'full'];
+    }
+
+    private getCorpusGroupBaseMode(
+        className: string,
+        configMap: Map<string, InquiryClassConfig>
+    ): InquiryMaterialMode {
+        const baseClass = this.getCorpusGroupBaseClass(className);
+        const config = configMap.get(baseClass);
+        if (!config) {
+            const fallback = this.ccEntries.find(entry => entry.className === className);
+            if (fallback) {
+                return this.normalizeContributionMode(fallback.mode ?? 'none', baseClass);
+            }
+            return 'none';
+        }
+        if (!config.enabled) return 'none';
+        if (baseClass === 'outline') {
+            const scopeMode = className === 'outline-saga' ? config.sagaScope : config.bookScope;
+            return this.normalizeContributionMode(scopeMode, baseClass);
+        }
+        if (!this.isSynopsisCapableClass(baseClass)) {
+            return this.normalizeContributionMode(config.referenceScope, baseClass);
+        }
+        const scopeMode = this.state.scope === 'saga' ? config.sagaScope : config.bookScope;
+        return this.normalizeContributionMode(scopeMode, baseClass);
+    }
+
+    private getCorpusGroupEffectiveMode(
+        className: string,
+        configMap: Map<string, InquiryClassConfig>
+    ): InquiryMaterialMode {
+        const baseClass = this.getCorpusGroupBaseClass(className);
+        const baseMode = this.getCorpusGroupBaseMode(className, configMap);
+        const override = this.corpusClassOverrides.get(className);
+        const effective = override ?? baseMode;
+        return this.normalizeContributionMode(effective, baseClass);
+    }
+
+    private getCorpusItemEffectiveMode(
+        entry: CorpusManifestEntry,
+        configMap: Map<string, InquiryClassConfig>
+    ): InquiryMaterialMode {
+        const groupKey = this.getCorpusGroupKey(entry.class, entry.scope);
+        const baseClass = this.getCorpusGroupBaseClass(groupKey);
+        const baseMode = this.getCorpusGroupBaseMode(groupKey, configMap);
+        const classOverride = this.corpusClassOverrides.get(groupKey);
+        const itemOverride = this.corpusItemOverrides.get(this.getCorpusItemKey(entry.class, entry.path, entry.scope));
+        const effective = itemOverride ?? classOverride ?? baseMode;
+        return this.normalizeContributionMode(effective, baseClass);
+    }
+
+    private getCorpusGroupKeys(sources: InquirySourcesSettings): string[] {
+        const classScope = this.getClassScopeConfig(sources.classScope);
+        const keys: string[] = [];
+        const addKey = (key: string) => {
+            if (!keys.includes(key)) keys.push(key);
+        };
+        (sources.classes || []).forEach(config => {
+            if (!classScope.allowAll && !classScope.allowed.has(config.className)) return;
+            if (config.className === 'outline') {
+                addKey('outline');
+                addKey('outline-saga');
+                return;
+            }
+            addKey(config.className);
+        });
+        this.ccEntries.forEach(entry => {
+            addKey(entry.className);
+        });
+        return keys;
+    }
+
+    private getCorpusGlobalMode(
+        groupKeys: string[],
+        configMap: Map<string, InquiryClassConfig>
+    ): InquiryMaterialMode | 'mixed' {
+        if (!groupKeys.length) return 'none';
+        const groupModes = groupKeys.map(key => this.getCorpusGroupEffectiveMode(key, configMap));
+        const allNone = groupModes.every(mode => mode === 'none');
+        if (allNone) return 'none';
+        const allFull = groupModes.every(mode => mode === 'full');
+        if (allFull) return 'full';
+
+        const synopsisKeys = groupKeys.filter(key => this.isSynopsisCapableClass(this.getCorpusGroupBaseClass(key)));
+        const nonSynopsisKeys = groupKeys.filter(key => !this.isSynopsisCapableClass(this.getCorpusGroupBaseClass(key)));
+        const synopsisAllSummary = synopsisKeys.length > 0
+            && synopsisKeys.every(key => this.getCorpusGroupEffectiveMode(key, configMap) === 'summary');
+        const nonSynopsisAllNone = nonSynopsisKeys.length === 0
+            || nonSynopsisKeys.every(key => this.getCorpusGroupEffectiveMode(key, configMap) === 'none');
+        if (synopsisAllSummary && nonSynopsisAllNone) return 'summary';
+        return 'mixed';
+    }
+
+    private getNextCorpusMode(current: InquiryMaterialMode, modes: InquiryMaterialMode[]): InquiryMaterialMode {
+        const index = modes.indexOf(current);
+        if (index === -1) return modes[0] ?? 'none';
+        return modes[(index + 1) % modes.length] ?? 'none';
+    }
+
+    private clearItemOverridesForGroup(groupKey: string): void {
+        Array.from(this.corpusItemOverrides.keys()).forEach(key => {
+            const parsed = this.parseCorpusItemKey(key);
+            if (this.getCorpusGroupKey(parsed.className, parsed.scope) === groupKey) {
+                this.corpusItemOverrides.delete(key);
+            }
+        });
+    }
+
+    private handleCorpusGroupToggle(groupKey: string): void {
+        if (this.state.isRunning) return;
+        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
+        const currentMode = this.getCorpusGroupEffectiveMode(groupKey, configMap);
+        const modes = this.getCorpusCycleModes(groupKey);
+        const nextMode = this.getNextCorpusMode(currentMode, modes);
+        const baseMode = this.getCorpusGroupBaseMode(groupKey, configMap);
+        const normalizedNext = this.normalizeContributionMode(nextMode, this.getCorpusGroupBaseClass(groupKey));
+        if (normalizedNext === baseMode) {
+            this.corpusClassOverrides.delete(groupKey);
+        } else {
+            this.corpusClassOverrides.set(groupKey, normalizedNext);
+        }
+        this.clearItemOverridesForGroup(groupKey);
+        this.corpusWarningActive = false;
+        this.refreshUI();
+    }
+
+    private handleCorpusItemToggle(entryKey: string): void {
+        if (this.state.isRunning) return;
+        const entry = this.ccEntries.find(candidate => candidate.entryKey === entryKey);
+        if (!entry) return;
+        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
+        const groupKey = this.getCorpusGroupKey(entry.classKey, entry.scope);
+        const classMode = this.getCorpusGroupEffectiveMode(groupKey, configMap);
+        const currentMode = this.normalizeContributionMode(entry.mode, this.getCorpusGroupBaseClass(groupKey));
+        const modes = this.getCorpusCycleModes(groupKey);
+        const nextMode = this.getNextCorpusMode(currentMode, modes);
+        const normalizedNext = this.normalizeContributionMode(nextMode, this.getCorpusGroupBaseClass(groupKey));
+        if (normalizedNext === classMode) {
+            this.corpusItemOverrides.delete(entryKey);
+        } else {
+            this.corpusItemOverrides.set(entryKey, normalizedNext);
+        }
+        this.corpusWarningActive = false;
+        this.refreshUI();
+    }
+
+    private handleCorpusGlobalToggle(): void {
+        if (this.state.isRunning) return;
+        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
+        const groupKeys = this.getCorpusGroupKeys(sources);
+        if (!groupKeys.length) return;
+        const current = this.getCorpusGlobalMode(groupKeys, configMap);
+        const next = current === 'none'
+            ? 'summary'
+            : current === 'summary'
+                ? 'full'
+                : 'none';
+
+        this.corpusClassOverrides.clear();
+        this.corpusItemOverrides.clear();
+        groupKeys.forEach(groupKey => {
+            const baseClass = this.getCorpusGroupBaseClass(groupKey);
+            let target: InquiryMaterialMode = next;
+            if (next === 'summary' && !this.isSynopsisCapableClass(baseClass)) {
+                target = 'none';
+            }
+            const normalizedTarget = this.normalizeContributionMode(target, baseClass);
+            const baseMode = this.getCorpusGroupBaseMode(groupKey, configMap);
+            if (normalizedTarget !== baseMode) {
+                this.corpusClassOverrides.set(groupKey, normalizedTarget);
+            }
+        });
+        this.corpusWarningActive = false;
+        this.refreshUI();
+    }
+
+    private isCorpusEmpty(): boolean {
+        const stats = this.getPayloadStats();
+        const total = stats.sceneTotal
+            + stats.bookOutlineCount
+            + stats.sagaOutlineCount
+            + stats.referenceCounts.total;
+        return total === 0;
+    }
+
+    private handleEmptyCorpusRun(): void {
+        this.corpusWarningActive = true;
+        this.updateGuidanceHelpTooltip(this.guidanceState);
+        this.notifyInteraction('Corpus disabled. Enable corpus to run Inquiry.');
+    }
+
     private getCorpusCcModeMeta(mode: InquiryMaterialMode): {
         label: string;
         short: string;
@@ -3403,9 +3651,15 @@ export class InquiryView extends ItemView {
             return { label: 'Synopsis', short: 'SYN', icon: 'circle-dot', isActive: true };
         }
         if (mode === 'full') {
-            return { label: 'Full', short: 'FULL', icon: 'disc', isActive: true };
+            return { label: 'Body', short: 'BODY', icon: 'disc', isActive: true };
         }
         return { label: 'Off', short: 'OFF', icon: 'circle', isActive: false };
+    }
+
+    private getCorpusModeGlyph(mode: InquiryMaterialMode): string {
+        if (mode === 'summary') return '◉';
+        if (mode === 'full') return '●';
+        return '○';
     }
 
     private getCorpusCcHeaderLabelVariants(className: string, count: number): string[] {
@@ -3459,6 +3713,7 @@ export class InquiryView extends ItemView {
     }> {
         const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
         const classScope = this.getClassScopeConfig(sources.classScope);
+        const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
         const configs = (sources.classes || [])
             .filter(config => classScope.allowAll || classScope.allowed.has(config.className));
         const groups: Array<{ className: string; items: CorpusCcEntry[]; count: number; mode: InquiryMaterialMode }> = [];
@@ -3471,38 +3726,24 @@ export class InquiryView extends ItemView {
             if (!config) return;
             const normalizedName = config.className;
             if (normalizedName === 'outline') {
-                const outlineMode = config.enabled
-                    ? this.normalizeContributionMode(config.bookScope, 'outline')
-                    : 'none';
+                const outlineMode = this.getCorpusGroupEffectiveMode('outline', configMap);
                 ensureGroup('outline', outlineMode);
                 if (this.state.scope === 'saga') {
-                    const sagaMode = config.enabled
-                        ? this.normalizeContributionMode(config.sagaScope, 'outline')
-                        : 'none';
+                    const sagaMode = this.getCorpusGroupEffectiveMode('outline-saga', configMap);
                     ensureGroup('outline-saga', sagaMode);
                 }
                 return;
             }
 
-            if (!this.isSynopsisCapableClass(normalizedName)) {
-                const referenceMode = config.enabled
-                    ? this.normalizeContributionMode(config.referenceScope, normalizedName)
-                    : 'none';
-                ensureGroup(normalizedName, referenceMode);
-                return;
-            }
-
-            const scopeMode = this.state.scope === 'saga' ? config.sagaScope : config.bookScope;
-            const normalizedMode = config.enabled
-                ? this.normalizeContributionMode(scopeMode, normalizedName)
-                : 'none';
+            const normalizedMode = this.getCorpusGroupEffectiveMode(normalizedName, configMap);
             ensureGroup(normalizedName, normalizedMode);
         });
 
         entriesByClass.forEach((items, className) => {
             if (groups.some(group => group.className === className)) return;
-            const mode = items[0]?.mode ?? 'none';
-            groups.push({ className, items, count: items.length, mode });
+            const override = this.corpusClassOverrides.get(className);
+            const mode = override ?? items[0]?.mode ?? 'none';
+            groups.push({ className, items, count: items.length, mode: this.normalizeContributionMode(mode, this.getCorpusGroupBaseClass(className)) });
         });
 
         const order = ['scene', 'outline', 'outline-saga', 'character', 'place', 'power'];
@@ -3519,8 +3760,10 @@ export class InquiryView extends ItemView {
     }
 
     private getCorpusCcEntries(): CorpusCcEntry[] {
-        const manifest = this.buildCorpusManifest(this.state.activeQuestionId ?? 'cc-preview', {
-            questionZone: this.state.activeZone ?? undefined
+        const manifest = this.buildCorpusEntryList(this.state.activeQuestionId ?? 'cc-preview', {
+            questionZone: this.state.activeZone ?? undefined,
+            includeInactive: true,
+            applyOverrides: true
         });
         const scope = this.state.scope;
         const focusBookId = this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
@@ -3552,11 +3795,14 @@ export class InquiryView extends ItemView {
             const className = entry.class === 'outline' && entry.scope === 'saga'
                 ? 'outline-saga'
                 : entry.class;
+            const entryKey = this.getCorpusItemKey(entry.class, entry.path, entry.scope);
             return {
                 id: `${entry.class}:${entry.path}`,
+                entryKey,
                 label,
                 filePath: entry.path,
                 className,
+                classKey: entry.class,
                 scope: entry.scope,
                 mode: this.normalizeContributionMode(entry.mode ?? 'none', entry.class),
                 sortLabel: label
@@ -3634,11 +3880,14 @@ export class InquiryView extends ItemView {
         if (includeBookOutlines) {
             entries.push(...corpus.books.map(book => {
                 const outline = bookOutlines.find(file => file.path === book.rootPath || file.path.startsWith(`${book.rootPath}/`));
+                const filePath = outline?.path || '';
                 return {
                     id: outline?.path || book.id,
+                    entryKey: this.getCorpusItemKey('outline', filePath || book.id, 'book'),
                     label: book.displayLabel,
-                    filePath: outline?.path || '',
+                    filePath,
                     className: 'outline',
+                    classKey: 'outline',
                     mode: this.normalizeContributionMode(outlineConfig.bookScope, 'outline')
                 };
             }));
@@ -3646,11 +3895,14 @@ export class InquiryView extends ItemView {
 
         if (includeSagaOutlines) {
             const sagaOutline = sagaOutlines[0];
+            const filePath = sagaOutline?.path || '';
             entries.push({
                 id: sagaOutline?.path || 'saga-outline',
+                entryKey: this.getCorpusItemKey('outline', filePath || 'saga-outline', 'saga'),
                 label: 'Saga',
-                filePath: sagaOutline?.path || '',
+                filePath,
                 className: 'outline',
+                classKey: 'outline',
                 mode: this.normalizeContributionMode(outlineConfig.sagaScope, 'outline')
             });
         }
@@ -3712,7 +3964,8 @@ export class InquiryView extends ItemView {
         const slot = this.ccSlots[index];
         if (!slot) return;
         const thresholds = this.getCorpusThresholds();
-        const isSynopsis = entry.mode === 'summary';
+        const mode = entry.mode ?? 'none';
+        const isSynopsis = mode === 'summary';
         const wordCount = isSynopsis ? stats.synopsisWords : stats.bodyWords;
         const tier = isSynopsis
             ? this.getCorpusSynopsisTier(stats.synopsisQuality, wordCount, thresholds)
@@ -3730,6 +3983,7 @@ export class InquiryView extends ItemView {
             'is-tier-sketchy',
             'is-tier-medium',
             'is-tier-substantive',
+            'is-mode-none',
             'is-mode-summary',
             'is-mode-full',
             'is-status-todo',
@@ -3738,15 +3992,21 @@ export class InquiryView extends ItemView {
             'is-mismatch'
         );
         slot.group.classList.add(`is-tier-${tier}`);
-        slot.group.classList.add(isSynopsis ? 'is-mode-summary' : 'is-mode-full');
+        if (mode === 'summary') {
+            slot.group.classList.add('is-mode-summary');
+        } else if (mode === 'full') {
+            slot.group.classList.add('is-mode-full');
+        } else {
+            slot.group.classList.add('is-mode-none');
+        }
 
         if (stats.status) {
             slot.group.classList.add(`is-status-${stats.status}`);
         }
 
-        const statusIcon = this.getCorpusCcStatusIcon(stats.status);
-        slot.icon.textContent = statusIcon;
-        slot.icon.setAttribute('opacity', statusIcon ? '1' : '0');
+        const modeGlyph = this.getCorpusModeGlyph(mode);
+        slot.icon.textContent = modeGlyph;
+        slot.icon.setAttribute('opacity', mode === 'none' ? '0.5' : '1');
 
         const highlightMismatch = this.plugin.settings.inquiryCorpusHighlightLowSubstanceComplete ?? true;
         const lowSubstance = isSynopsis
@@ -3864,9 +4124,11 @@ export class InquiryView extends ItemView {
     private async loadCorpusCcStatsByPath(filePath: string): Promise<CorpusCcStats> {
         return this.loadCorpusCcStats({
             id: filePath,
+            entryKey: this.getCorpusItemKey('', filePath),
             label: filePath,
             filePath,
             className: '',
+            classKey: '',
             mode: 'full'
         });
     }
@@ -3914,9 +4176,17 @@ export class InquiryView extends ItemView {
         const tierLabel = this.getCorpusTierLabel(tier);
         const wordLabel = wordCount.toLocaleString();
         const isSynopsisCapable = entry.className === 'scene' || entry.className.startsWith('outline');
+        if (entry.mode === 'none') {
+            conditions.push('Mode: Off');
+        }
         if (isSynopsisCapable) {
-            const contentLabel = entry.mode === 'summary' ? 'Synopsis' : 'Body';
-            conditions.push(`Tier: ${contentLabel} ${tierLabel.toLowerCase()} (${wordLabel} words)`);
+            if (entry.mode === 'summary') {
+                conditions.push(`Tier: Synopsis ${tierLabel.toLowerCase()} (${wordLabel} words)`);
+            } else if (entry.mode === 'full') {
+                conditions.push(`Tier: Body ${tierLabel.toLowerCase()} (${wordLabel} words)`);
+            } else {
+                conditions.push(`Tier: ${tierLabel} (${wordLabel} words)`);
+            }
         } else {
             conditions.push(`Tier: ${tierLabel} (${wordLabel} words)`);
         }
@@ -4367,8 +4637,11 @@ export class InquiryView extends ItemView {
 
     private getInquirySceneCount(): number {
         if (!this.isInquiryConfigured()) return 0;
-        const stats = this.payloadStats ?? this.buildPayloadStats();
-        return stats.sceneTotal;
+        const entryList = this.buildCorpusEntryList('scene-count', {
+            includeInactive: true,
+            applyOverrides: false
+        });
+        return entryList.entries.filter(entry => entry.class === 'scene').length;
     }
 
     private hasInquirySessions(): boolean {
@@ -4510,16 +4783,19 @@ export class InquiryView extends ItemView {
     private updateGuidanceHelpTooltip(state: InquiryGuidanceState): void {
         if (!this.helpToggleButton) return;
         const hasSessions = this.hasInquirySessions();
-        const isAlert = state === 'not-configured' || state === 'no-scenes';
+        const corpusAlert = this.corpusWarningActive && this.isCorpusEmpty();
+        const isAlert = state === 'not-configured' || state === 'no-scenes' || corpusAlert;
         const isResults = state === 'results';
-        const tooltip = isAlert
-            ? (state === 'not-configured' ? INQUIRY_HELP_CONFIG_TOOLTIP : INQUIRY_HELP_NO_SCENES_TOOLTIP)
-            : (isResults ? INQUIRY_HELP_RESULTS_TOOLTIP : (hasSessions ? INQUIRY_HELP_TOOLTIP : INQUIRY_HELP_ONBOARDING_TOOLTIP));
+        const tooltip = corpusAlert
+            ? INQUIRY_HELP_CORPUS_TOOLTIP
+            : (isAlert
+                ? (state === 'not-configured' ? INQUIRY_HELP_CONFIG_TOOLTIP : INQUIRY_HELP_NO_SCENES_TOOLTIP)
+                : (isResults ? INQUIRY_HELP_RESULTS_TOOLTIP : (hasSessions ? INQUIRY_HELP_TOOLTIP : INQUIRY_HELP_ONBOARDING_TOOLTIP)));
         const balancedTooltip = this.balanceTooltipText(tooltip);
 
         this.helpToggleButton.removeAttribute('aria-pressed');
         this.helpToggleButton.classList.toggle('is-help-onboarding', !hasSessions && !isAlert && !isResults);
-        this.helpToggleButton.classList.toggle('is-help-results', isResults);
+        this.helpToggleButton.classList.toggle('is-help-results', isResults && !corpusAlert);
         this.helpToggleButton.classList.toggle('is-guidance-alert', isAlert);
         addTooltipData(this.helpToggleButton, balancedTooltip, 'left');
         this.helpToggleButton.setAttribute('aria-label', tooltip);
@@ -4737,6 +5013,10 @@ export class InquiryView extends ItemView {
             modelId: engineSelection.modelId,
             questionZone: question.zone
         });
+        if (!manifest.entries.length) {
+            this.handleEmptyCorpusRun();
+            return;
+        }
         const baseKey = this.sessionStore.buildBaseKey({
             questionId: question.id,
             scope: this.state.scope,
@@ -4987,6 +5267,10 @@ export class InquiryView extends ItemView {
             modelId: providerChoice.modelId,
             contextRequired
         });
+        if (!manifest.entries.length) {
+            this.handleEmptyCorpusRun();
+            return;
+        }
         const submittedAt = new Date();
 
         const omnibusInput: InquiryOmnibusInput = {
@@ -5120,6 +5404,10 @@ export class InquiryView extends ItemView {
                     modelId: providerChoice.modelId,
                     questionZone: question.zone
                 });
+                if (!manifest.entries.length) {
+                    this.handleEmptyCorpusRun();
+                    break;
+                }
                 const runnerInput: InquiryRunnerInput = {
                     scope: this.state.scope,
                     focusLabel,
@@ -5849,6 +6137,11 @@ export class InquiryView extends ItemView {
         const manifest = this.buildCorpusManifest(selectedPrompt.id, {
             questionZone: selectedPrompt.zone
         });
+        if (!manifest.entries.length) {
+            this.unlockPromptPreview();
+            this.handleEmptyCorpusRun();
+            return;
+        }
         const focusLabel = this.getFocusLabel();
         const focusId = this.getFocusId();
         const baseKey = this.sessionStore.buildBaseKey({
@@ -6005,19 +6298,43 @@ export class InquiryView extends ItemView {
         };
     }
 
-    private buildCorpusManifest(
+    private buildCorpusEntryList(
         questionId: string,
-        options?: { modelId?: string; questionZone?: InquiryZone; contextRequired?: boolean }
-    ): CorpusManifest {
+        options?: {
+            modelId?: string;
+            questionZone?: InquiryZone;
+            contextRequired?: boolean;
+            includeInactive?: boolean;
+            applyOverrides?: boolean;
+        }
+    ): { entries: CorpusManifestEntry[]; resolvedRoots: string[] } {
         const rawSources = this.plugin.settings.inquirySources as Record<string, unknown> | undefined;
         if (rawSources && ('sceneFolders' in rawSources || 'bookOutlineFiles' in rawSources || 'sagaOutlineFile' in rawSources)) {
-            return this.buildLegacyCorpusManifest(rawSources, questionId, options);
+            const legacy = this.buildLegacyCorpusManifest(rawSources, questionId, { modelId: options?.modelId });
+            const applyOverrides = options?.applyOverrides ?? true;
+            const includeInactive = options?.includeInactive ?? false;
+            let entries = legacy.entries;
+            if (applyOverrides) {
+                entries = entries.map(entry => {
+                    const groupKey = this.getCorpusGroupKey(entry.class, entry.scope);
+                    const baseClass = this.getCorpusGroupBaseClass(groupKey);
+                    const classOverride = this.corpusClassOverrides.get(groupKey);
+                    const itemOverride = this.corpusItemOverrides.get(this.getCorpusItemKey(entry.class, entry.path, entry.scope));
+                    const mode = this.normalizeContributionMode(itemOverride ?? classOverride ?? entry.mode ?? 'none', baseClass);
+                    return { ...entry, mode };
+                });
+            }
+            if (!includeInactive) {
+                entries = entries.filter(entry => this.isModeActive(entry.mode));
+            }
+            return { entries, resolvedRoots: legacy.resolvedRoots };
         }
 
         const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
-        const entries: CorpusManifest['entries'] = [];
+        const entries: CorpusManifestEntry[] = [];
         const now = Date.now();
-        const modelIdOverride = options?.modelId;
+        const includeInactive = options?.includeInactive ?? false;
+        const applyOverrides = options?.applyOverrides ?? true;
         const classConfigMap = new Map(
             (sources.classes || []).map(config => [config.className, config])
         );
@@ -6025,12 +6342,6 @@ export class InquiryView extends ItemView {
         const contextRequired = typeof options?.contextRequired === 'boolean'
             ? options.contextRequired
             : this.isContextRequiredForQuestion(questionId, options?.questionZone);
-        const isClassActive = (config: InquiryClassConfig): boolean => {
-            return config.enabled
-                && (this.isModeActive(config.bookScope)
-                    || this.isModeActive(config.sagaScope)
-                    || this.isModeActive(config.referenceScope));
-        };
         const scanRoots = normalizeScanRootPatterns(sources.scanRoots);
         const resolvedRoots = scanRoots.length
             ? ((sources.resolvedScanRoots && sources.resolvedScanRoots.length)
@@ -6038,37 +6349,16 @@ export class InquiryView extends ItemView {
                 : resolveScanRoots(scanRoots, this.app.vault, MAX_RESOLVED_SCAN_ROOTS).resolvedRoots)
             : [];
         const resolvedVaultRoots = resolvedRoots.map(toVaultRoot);
-        const allowedClasses = (sources.classes || [])
-            .filter(config => isClassActive(config))
-            .filter(config => classScope.allowAll || classScope.allowed.has(config.className))
-            .map(config => config.className);
-        if (contextRequired) {
-            INQUIRY_CONTEXT_CLASSES.forEach(className => {
-                if (!classScope.allowAll && !classScope.allowed.has(className)) return;
-                if (!allowedClasses.includes(className)) {
-                    allowedClasses.push(className);
-                }
-            });
-        }
 
         if (!classScope.allowAll && classScope.allowed.size === 0) {
-            const fingerprintRaw = `${INQUIRY_SCHEMA_VERSION}|${questionId}|${modelIdOverride ?? this.getActiveInquiryModelId()}|`;
-            return {
-                entries,
-                fingerprint: this.hashString(fingerprintRaw),
-                generatedAt: now,
-                resolvedRoots,
-                allowedClasses,
-                synopsisOnly: true,
-                classCounts: {}
-            };
+            return { entries, resolvedRoots };
         }
-        const files = this.app.vault.getMarkdownFiles();
 
         const inRoots = (path: string) => {
             return resolvedVaultRoots.some(root => !root || path === root || path.startsWith(`${root}/`));
         };
 
+        const files = this.app.vault.getMarkdownFiles();
         files.forEach(file => {
             if (!inRoots(file.path)) return;
             const cache = this.app.metadataCache.getFileCache(file);
@@ -6084,16 +6374,27 @@ export class InquiryView extends ItemView {
                 const isContextClass = INQUIRY_CONTEXT_CLASSES.has(className);
                 const contextOverride = contextRequired && isContextClass;
                 if (!config && !contextOverride) return;
-                if (config && !config.enabled && !contextOverride) return;
-                if (config && !isClassActive(config) && !contextOverride) return;
+
+                let mode: InquiryMaterialMode = 'none';
                 if (className === 'outline') {
-                    if (!config) return;
                     const outlineScope = this.getFrontmatterScope(frontmatter) ?? 'book';
-                    const mode = this.normalizeContributionMode(
-                        outlineScope === 'saga' ? config.sagaScope : config.bookScope,
-                        className
-                    );
-                    if (!this.isModeActive(mode)) return;
+                    if (config && config.enabled) {
+                        mode = this.normalizeContributionMode(
+                            outlineScope === 'saga' ? config.sagaScope : config.bookScope,
+                            className
+                        );
+                    }
+                    if (contextOverride) {
+                        mode = 'full';
+                    }
+                    if (applyOverrides) {
+                        const groupKey = this.getCorpusGroupKey(className, outlineScope);
+                        const classOverride = this.corpusClassOverrides.get(groupKey);
+                        const itemOverride = this.corpusItemOverrides.get(this.getCorpusItemKey(className, file.path, outlineScope));
+                        mode = itemOverride ?? classOverride ?? mode;
+                        mode = this.normalizeContributionMode(mode, className);
+                    }
+                    if (!includeInactive && !this.isModeActive(mode)) return;
                     entries.push({
                         path: file.path,
                         mtime: file.stat.mtime ?? now,
@@ -6105,11 +6406,20 @@ export class InquiryView extends ItemView {
                 }
 
                 if (!this.isSynopsisCapableClass(className)) {
-                    let mode = config ? this.normalizeContributionMode(config.referenceScope, className) : 'full';
+                    if (config && config.enabled) {
+                        mode = this.normalizeContributionMode(config.referenceScope, className);
+                    }
                     if (contextOverride) {
                         mode = 'full';
                     }
-                    if (!this.isModeActive(mode)) return;
+                    if (applyOverrides) {
+                        const groupKey = this.getCorpusGroupKey(className);
+                        const classOverride = this.corpusClassOverrides.get(groupKey);
+                        const itemOverride = this.corpusItemOverrides.get(this.getCorpusItemKey(className, file.path));
+                        mode = itemOverride ?? classOverride ?? mode;
+                        mode = this.normalizeContributionMode(mode, className);
+                    }
+                    if (!includeInactive && !this.isModeActive(mode)) return;
                     entries.push({
                         path: file.path,
                         mtime: file.stat.mtime ?? now,
@@ -6119,12 +6429,20 @@ export class InquiryView extends ItemView {
                     return;
                 }
 
-                if (!config) return;
-                const mode = this.normalizeContributionMode(
-                    this.state.scope === 'book' ? config.bookScope : config.sagaScope,
-                    className
-                );
-                if (!this.isModeActive(mode)) return;
+                if (config && config.enabled) {
+                    mode = this.normalizeContributionMode(
+                        this.state.scope === 'book' ? config.bookScope : config.sagaScope,
+                        className
+                    );
+                }
+                if (applyOverrides) {
+                    const groupKey = this.getCorpusGroupKey(className);
+                    const classOverride = this.corpusClassOverrides.get(groupKey);
+                    const itemOverride = this.corpusItemOverrides.get(this.getCorpusItemKey(className, file.path));
+                    mode = itemOverride ?? classOverride ?? mode;
+                    mode = this.normalizeContributionMode(mode, className);
+                }
+                if (!includeInactive && !this.isModeActive(mode)) return;
 
                 entries.push({
                     path: file.path,
@@ -6134,6 +6452,30 @@ export class InquiryView extends ItemView {
                 });
             });
         });
+
+        return { entries, resolvedRoots };
+    }
+
+    private buildCorpusManifest(
+        questionId: string,
+        options?: { modelId?: string; questionZone?: InquiryZone; contextRequired?: boolean; applyOverrides?: boolean }
+    ): CorpusManifest {
+        const rawSources = this.plugin.settings.inquirySources as Record<string, unknown> | undefined;
+        if (rawSources && ('sceneFolders' in rawSources || 'bookOutlineFiles' in rawSources || 'sagaOutlineFile' in rawSources)) {
+            return this.buildLegacyCorpusManifest(rawSources, questionId, options);
+        }
+        const now = Date.now();
+        const modelIdOverride = options?.modelId;
+        const applyOverrides = options?.applyOverrides ?? true;
+        const entryResult = this.buildCorpusEntryList(questionId, {
+            modelId: modelIdOverride,
+            questionZone: options?.questionZone,
+            contextRequired: options?.contextRequired,
+            includeInactive: false,
+            applyOverrides
+        });
+        const entries = entryResult.entries;
+        const resolvedRoots = entryResult.resolvedRoots;
 
         const fingerprintSource = entries
             .map(entry => `${entry.path}:${entry.mtime}:${entry.mode ?? 'none'}`)
@@ -6147,6 +6489,7 @@ export class InquiryView extends ItemView {
             acc[entry.class] = (acc[entry.class] || 0) + 1;
             return acc;
         }, {});
+        const allowedClasses = Array.from(new Set(entries.map(entry => entry.class)));
         const synopsisOnly = !entries.some(entry => this.normalizeEvidenceMode(entry.mode) === 'full');
 
         return {
@@ -7422,6 +7765,16 @@ export class InquiryView extends ItemView {
 
     private refreshPayloadStats(): void {
         this.payloadStats = this.buildPayloadStats();
+        if (this.corpusWarningActive) {
+            const stats = this.payloadStats;
+            const total = stats.sceneTotal
+                + stats.bookOutlineCount
+                + stats.sagaOutlineCount
+                + stats.referenceCounts.total;
+            if (total > 0) {
+                this.corpusWarningActive = false;
+            }
+        }
         if (!this.previewLocked
             && this.previewGroup?.classList.contains('is-visible')
             && this.previewLast) {
@@ -7653,7 +8006,7 @@ export class InquiryView extends ItemView {
     private getPreviewScenesValue(): string {
         const stats = this.getPayloadStats();
         if (stats.sceneFullTextCount > 0) {
-            return `Scenes · ${stats.sceneFullTextCount} (Full)`;
+            return `Scenes · ${stats.sceneFullTextCount} (Body)`;
         }
         if (stats.sceneSynopsisUsed > 0) {
             return `Scenes · ${stats.sceneSynopsisUsed} (Synopsis)`;
@@ -7666,7 +8019,7 @@ export class InquiryView extends ItemView {
         const summaryCount = stats.bookOutlineSummaryCount + stats.sagaOutlineSummaryCount;
         const fullCount = stats.bookOutlineFullCount + stats.sagaOutlineFullCount;
         if (fullCount > 0) {
-            return `Outline · ${fullCount} (Full)`;
+            return `Outline · ${fullCount} (Body)`;
         }
         if (summaryCount > 0) {
             return `Outline · ${summaryCount} (Synopsis)`;
@@ -8224,7 +8577,7 @@ export class InquiryView extends ItemView {
                     .filter(mode => mode !== 'none')
             );
             if (modes.size === 1) {
-                return modes.has('summary') ? 'Synopsis' : 'Full';
+                return modes.has('summary') ? 'Synopsis' : 'Body';
             }
             if (modes.size > 1) {
                 return 'Mixed';

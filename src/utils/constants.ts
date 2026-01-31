@@ -9,10 +9,10 @@ export const NUM_ACTS = 3;
 // Grid and legend sizing
 // Status colors - references CSS variables
 export const STATUS_COLORS = {
-    Working: 'var(--rt-color-working)',
-    Todo: 'var(--rt-color-todo)',
-    Empty: 'var(--rt-color-empty)',
-    Due: 'var(--rt-color-due)',
+    Working: 'var(--rt-color-working, #FF69B4)',
+    Todo: 'var(--rt-color-todo, #cccccc)',
+    Empty: 'var(--rt-color-empty, #ffffff)',
+    Due: 'var(--rt-color-due, #d05e5e)',
     Complete: 'var(--rt-color-complete)',
 } as const;
 

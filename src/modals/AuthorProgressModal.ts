@@ -15,6 +15,7 @@ export class AuthorProgressModal extends Modal {
 
     // Reveal options (derived from settings)
     private aprSize: 'thumb' | 'small' | 'medium' | 'large';
+    private lastFullSize: 'small' | 'medium' | 'large' = 'medium';
     private selectedTargetId: 'default' | string = 'default';
 
     private statusSectionEl: HTMLElement | null = null;
@@ -48,6 +49,9 @@ export class AuthorProgressModal extends Modal {
         // Initialize reveal options from settings
         // Initialize size from settings
         this.aprSize = settings.aprSize ?? 'medium';
+        if (this.aprSize !== 'thumb') {
+            this.lastFullSize = this.aprSize;
+        }
     }
 
     private getSelectedCampaign(): AprCampaign | undefined {
@@ -326,21 +330,45 @@ export class AuthorProgressModal extends Modal {
         });
 
         const sizeRow = sizeStageRow.createDiv({
-            cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ${ERT_CLASSES.ROW_MIDDLE_ALIGN}`
+            cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ert-apr-actions-block`
         });
         sizeRow.createSpan({ text: 'Export size', cls: ERT_CLASSES.LABEL });
-        const sizeControls = sizeRow.createDiv({ cls: ERT_CLASSES.INLINE });
+        const sizeControls = sizeRow.createDiv({ cls: 'ert-apr-size-controls' });
+        const viewRow = sizeControls.createDiv({ cls: ERT_CLASSES.INLINE });
+        const viewSelect = viewRow.createEl('select', { cls: 'dropdown ert-input ert-input--lg' });
+        const activeSize = this.getActiveAprSize();
+        const activeView = activeSize === 'thumb' ? 'thumb' : 'full';
+        const viewOptions: Array<{ value: 'thumb' | 'full'; label: string }> = [
+            { value: 'thumb', label: 'View: Thumb (100px)' },
+            { value: 'full', label: 'View: Full (150–450px)' }
+        ];
+        viewOptions.forEach(option => {
+            viewSelect.createEl('option', { value: option.value, text: option.label });
+        });
+        viewSelect.value = activeView;
+        viewSelect.onchange = async () => {
+            const nextView = viewSelect.value as 'thumb' | 'full';
+            const nextSize = nextView === 'thumb' ? 'thumb' : (this.lastFullSize ?? 'medium');
+            if (nextSize !== 'thumb') {
+                this.lastFullSize = nextSize;
+            }
+            this.aprSize = nextSize;
+            await this.saveSize();
+            this.renderStatusSection();
+            this.renderActions();
+        };
 
-        const sizeOptions: Array<{ size: 'thumb' | 'small' | 'medium' | 'large'; label: string; dimension: string }> = [
-            { size: 'thumb', label: 'Thumb', dimension: '100px' },
-            { size: 'small', label: 'Small', dimension: '150px' },
-            { size: 'medium', label: 'Medium', dimension: '300px' },
-            { size: 'large', label: 'Large', dimension: '450px' }
+        const sizeOptions: Array<{ size: 'thumb' | 'small' | 'medium' | 'large'; label: string; dimension: string; view: 'thumb' | 'full' }> = [
+            { size: 'thumb', label: 'Thumb', dimension: '100px', view: 'thumb' },
+            { size: 'small', label: 'Small', dimension: '150px', view: 'full' },
+            { size: 'medium', label: 'Medium', dimension: '300px', view: 'full' },
+            { size: 'large', label: 'Large', dimension: '450px', view: 'full' }
         ];
 
-        sizeOptions.forEach(option => {
+        const sizeButtonRow = sizeControls.createDiv({ cls: `ert-apr-size-buttons ${ERT_CLASSES.INLINE}` });
+        sizeOptions.filter(option => option.view === activeView).forEach(option => {
             const isActive = option.size === this.getActiveAprSize();
-            const btn = sizeControls.createEl('button', {
+            const btn = sizeButtonRow.createEl('button', {
                 cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_SOCIAL} ${isActive ? ERT_CLASSES.IS_ACTIVE : ''}`
             });
             const dims = btn.createSpan({ cls: ERT_CLASSES.PILL_BTN_LABEL });
@@ -350,6 +378,9 @@ export class AuthorProgressModal extends Modal {
             }
             btn.onclick = async () => {
                 this.aprSize = option.size;
+                if (option.size !== 'thumb') {
+                    this.lastFullSize = option.size;
+                }
                 await this.saveSize();
                 this.renderStatusSection();
                 this.renderActions();
@@ -357,7 +388,7 @@ export class AuthorProgressModal extends Modal {
         });
 
         const stageRow = sizeStageRow.createDiv({
-            cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ${ERT_CLASSES.ROW_MIDDLE_ALIGN}`
+            cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ert-apr-actions-block`
         });
         stageRow.createSpan({ text: 'Stage', cls: ERT_CLASSES.LABEL });
         const stageInfo = this.resolveTeaserStatus(this.getSelectedCampaign());
@@ -450,7 +481,7 @@ export class AuthorProgressModal extends Modal {
         });
         const sizeMeta = this.getSizeMeta(this.getActiveAprSize());
         const sizeRow = sizeStageRow.createDiv({
-            cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ${ERT_CLASSES.ROW_MIDDLE_ALIGN}`
+            cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ert-apr-actions-block`
         });
         sizeRow.createSpan({ text: 'Export size', cls: ERT_CLASSES.LABEL });
         const sizeValue = sizeRow.createDiv({ cls: ERT_CLASSES.INLINE });
@@ -458,7 +489,7 @@ export class AuthorProgressModal extends Modal {
         sizePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: this.getSizeLabelPx(this.getActiveAprSize()) });
 
         const stageRow = sizeStageRow.createDiv({
-            cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ${ERT_CLASSES.ROW_MIDDLE_ALIGN}`
+            cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ert-apr-actions-block`
         });
         stageRow.createSpan({ text: 'Stage', cls: ERT_CLASSES.LABEL });
         const stageValue = stageRow.createDiv({ cls: ERT_CLASSES.INLINE });
@@ -721,7 +752,22 @@ export class AuthorProgressModal extends Modal {
                 dynamicEmbedPath: 'Radial Timeline/Social/book/apr-book-default-manual-medium.svg'
             };
         }
-        this.plugin.settings.authorProgress.aprSize = this.aprSize;
+        const settings = this.plugin.settings.authorProgress;
+        const oldDefaultPath = buildDefaultEmbedPath({
+            bookTitle: settings.bookTitle,
+            updateFrequency: settings.updateFrequency,
+            aprSize: settings.aprSize
+        });
+        const legacyPath = 'Radial Timeline/Social/progress.svg';
+        settings.aprSize = this.aprSize;
+        if (settings.autoUpdateEmbedPaths
+            && (settings.dynamicEmbedPath === oldDefaultPath || settings.dynamicEmbedPath === legacyPath)) {
+            settings.dynamicEmbedPath = buildDefaultEmbedPath({
+                bookTitle: settings.bookTitle,
+                updateFrequency: settings.updateFrequency,
+                aprSize: settings.aprSize
+            });
+        }
         await this.plugin.saveSettings();
     }
 

@@ -564,6 +564,7 @@
   pointer-events: auto;
   --ert-inquiry-cc-cell-color: var(--text-muted);
   --ert-inquiry-cc-cell-fill-color: var(--text-normal);
+  cursor: pointer;
 }
 
 .ert-inquiry-cc-cell.is-tier-empty {
@@ -589,8 +590,17 @@
   fill: var(--text-muted);
 }
 
+.ert-inquiry-cc-label.is-actionable {
+  cursor: pointer;
+}
+
+.ert-inquiry-cc-label.is-actionable:hover {
+  fill: var(--text-normal);
+}
+
 .ert-inquiry-cc-class {
   pointer-events: auto;
+  cursor: pointer;
 }
 
 .ert-inquiry-cc-class-label {
@@ -622,6 +632,10 @@
 .ert-inquiry-cc-cell-fill {
   fill: color-mix(in srgb, var(--ert-inquiry-cc-cell-fill-color) 35%, transparent);
   opacity: 0.8;
+}
+
+.ert-inquiry-cc-cell.is-mode-none {
+  opacity: 0.4;
 }
 
 .ert-inquiry-cc-cell-border {
