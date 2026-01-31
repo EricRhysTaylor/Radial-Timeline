@@ -39,6 +39,12 @@ export interface InquiryResult {
     verdict: InquiryVerdict;
     findings: InquiryFinding[];
     corpusFingerprint?: string;
+    corpusOverridesActive?: boolean;
+    corpusOverrideSummary?: {
+        classCount: number;
+        itemCount: number;
+        total: number;
+    };
     aiProvider?: string;
     aiModelRequested?: string;
     aiModelResolved?: string;

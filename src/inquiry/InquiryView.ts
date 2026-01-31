@@ -389,6 +389,7 @@ export class InquiryView extends ItemView {
     private briefingFooterEl?: HTMLDivElement;
     private briefingSaveButton?: HTMLButtonElement;
     private briefingClearButton?: HTMLButtonElement;
+    private briefingResetButton?: HTMLButtonElement;
     private briefingEmptyEl?: HTMLDivElement;
     private briefingPinned = false;
     private briefingHideTimer?: number;
@@ -485,6 +486,8 @@ export class InquiryView extends ItemView {
     private apiStatusState: { state: 'idle' | 'running' | 'success' | 'error'; reason?: string } = { state: 'idle' };
     private ccGroup?: SVGGElement;
     private ccLabel?: SVGTextElement;
+    private ccLabelHint?: SVGGElement;
+    private ccLabelHintIcon?: SVGUseElement;
     private ccEmptyText?: SVGTextElement;
     private ccClassLabels: CorpusCcHeader[] = [];
     private ccEntries: CorpusCcEntry[] = [];
@@ -873,6 +876,15 @@ export class InquiryView extends ItemView {
             cls: 'ert-inquiry-briefing-clear',
             text: 'Clear sessions'
         });
+        this.briefingResetButton = this.briefingFooterEl.createEl('button', {
+            cls: 'ert-inquiry-briefing-reset',
+            text: 'Reset Corpus to Settings'
+        });
+        addTooltipData(
+            this.briefingResetButton,
+            this.balanceTooltipText('Resets live corpus overrides only.'),
+            'top'
+        );
         this.briefingFooterEl.createDiv({
             cls: 'ert-inquiry-briefing-note',
             text: 'Does not delete briefs.'
@@ -880,6 +892,10 @@ export class InquiryView extends ItemView {
         this.registerDomEvent(this.briefingClearButton, 'click', (event: MouseEvent) => {
             event.stopPropagation();
             this.handleBriefingClearClick();
+        });
+        this.registerDomEvent(this.briefingResetButton, 'click', (event: MouseEvent) => {
+            event.stopPropagation();
+            this.handleBriefingResetCorpusClick();
         });
         this.registerDomEvent(panel, 'pointerenter', () => this.cancelBriefingHide());
         this.registerDomEvent(panel, 'pointerleave', () => this.scheduleBriefingHide());
@@ -1199,88 +1215,89 @@ export class InquiryView extends ItemView {
         if (!this.briefingListEl || !this.briefingEmptyEl || !this.briefingFooterEl) return;
         this.briefingListEl.empty();
         const sessions = this.sessionStore.getRecentSessions(BRIEFING_SESSION_LIMIT);
+        const hasSessions = sessions.length > 0;
         const blocked = this.isInquiryBlocked();
-        if (!sessions.length) {
+        if (!hasSessions) {
             this.briefingEmptyEl.classList.remove('ert-hidden');
-            this.briefingFooterEl.classList.add('ert-hidden');
-            return;
-        }
-        this.briefingEmptyEl.classList.add('ert-hidden');
-        sessions.forEach(session => {
-            const item = this.briefingListEl?.createDiv({ cls: 'ert-inquiry-briefing-item' });
-            if (!item) return;
-            const zoneId = session.questionZone ?? this.findPromptZoneById(session.result.questionId) ?? 'setup';
-            item.classList.add(`is-zone-${zoneId}`);
-            if (session.key === this.rehydrateTargetKey) {
-                item.classList.add('is-rehydrate-target');
-            }
-            if (session.key === this.state.activeSessionId) {
-                item.classList.add('is-active');
-            }
-            const textRow = item.createDiv({ cls: 'ert-inquiry-briefing-row ert-inquiry-briefing-row--text' });
-            const main = textRow.createDiv({ cls: 'ert-inquiry-briefing-main' });
-            const zoneLabel = this.resolveSessionZoneLabel(session);
-            const lensLabel = this.resolveSessionLensLabel(session, zoneLabel);
-            const header = `${zoneLabel} · ${lensLabel}`;
-            main.createDiv({ cls: 'ert-inquiry-briefing-title-row', text: header });
-            const metaText = `${this.formatSessionTime(session)} · ${this.formatSessionScope(session)}`;
-            main.createDiv({ cls: 'ert-inquiry-briefing-meta', text: metaText });
-
-            const actionRow = item.createDiv({ cls: 'ert-inquiry-briefing-row ert-inquiry-briefing-row--actions' });
-            const status = this.resolveSessionStatus(session);
-            const statusEl = actionRow.createDiv({
-                cls: `ert-inquiry-briefing-status ert-inquiry-briefing-status--${status}`,
-                text: status
-            });
-            statusEl.setAttribute('aria-label', `Session status: ${status}`);
-
-            const pendingEditsApplied = !!session.pendingEditsApplied;
-            const actionNotesEnabled = this.plugin.settings.inquiryActionNotesEnabled ?? false;
-            const autoPopulateEnabled = this.plugin.settings.inquiryActionNotesAutoPopulate ?? false;
-            const usesAutoPopulate = actionNotesEnabled && autoPopulateEnabled;
-            const actionGroup = actionRow.createDiv({ cls: 'ert-inquiry-briefing-actions' });
-            const fieldLabel = this.resolveInquiryActionNotesFieldLabel();
-            const pendingLabel = pendingEditsApplied
-                ? (usesAutoPopulate ? `${fieldLabel} updated` : `${fieldLabel} confirmed`)
-                : (actionNotesEnabled
-                    ? (usesAutoPopulate ? `Update ${fieldLabel}` : `Confirm ${fieldLabel} written`)
-                    : `Enable ${fieldLabel} writeback`);
-            const updateBtn = actionGroup.createEl('button', {
-                cls: 'ert-inquiry-briefing-update',
-                attr: {
-                    'aria-label': pendingLabel
+        } else {
+            this.briefingEmptyEl.classList.add('ert-hidden');
+            sessions.forEach(session => {
+                const item = this.briefingListEl?.createDiv({ cls: 'ert-inquiry-briefing-item' });
+                if (!item) return;
+                const zoneId = session.questionZone ?? this.findPromptZoneById(session.result.questionId) ?? 'setup';
+                item.classList.add(`is-zone-${zoneId}`);
+                if (session.key === this.rehydrateTargetKey) {
+                    item.classList.add('is-rehydrate-target');
                 }
-            });
-            setIcon(updateBtn, pendingEditsApplied ? 'check' : (usesAutoPopulate ? 'plus' : 'x'));
-            updateBtn.disabled = blocked;
-            this.registerDomEvent(updateBtn, 'click', (event: MouseEvent) => {
-                event.stopPropagation();
-                if (pendingEditsApplied) return;
-                void this.handleBriefingPendingEditsClick(session);
-            });
-            if (pendingEditsApplied) {
-                updateBtn.classList.add('is-applied');
-            }
+                if (session.key === this.state.activeSessionId) {
+                    item.classList.add('is-active');
+                }
+                const textRow = item.createDiv({ cls: 'ert-inquiry-briefing-row ert-inquiry-briefing-row--text' });
+                const main = textRow.createDiv({ cls: 'ert-inquiry-briefing-main' });
+                const zoneLabel = this.resolveSessionZoneLabel(session);
+                const lensLabel = this.resolveSessionLensLabel(session, zoneLabel);
+                const header = `${zoneLabel} · ${lensLabel}`;
+                main.createDiv({ cls: 'ert-inquiry-briefing-title-row', text: header });
+                const overrideLabel = this.formatSessionOverrides(session);
+                const metaText = `${this.formatSessionTime(session)} · ${this.formatSessionScope(session)}${overrideLabel ? ` · ${overrideLabel}` : ''}`;
+                main.createDiv({ cls: 'ert-inquiry-briefing-meta', text: metaText });
 
-            if (session.briefPath) {
-                const openBtn = actionGroup.createEl('button', {
-                    cls: 'ert-inquiry-briefing-open',
-                    attr: { 'aria-label': 'Open saved brief' }
+                const actionRow = item.createDiv({ cls: 'ert-inquiry-briefing-row ert-inquiry-briefing-row--actions' });
+                const status = this.resolveSessionStatus(session);
+                const statusEl = actionRow.createDiv({
+                    cls: `ert-inquiry-briefing-status ert-inquiry-briefing-status--${status}`,
+                    text: status
                 });
-                setIcon(openBtn, 'file-text');
-                openBtn.disabled = blocked;
-                this.registerDomEvent(openBtn, 'click', (event: MouseEvent) => {
+                statusEl.setAttribute('aria-label', `Session status: ${status}`);
+
+                const pendingEditsApplied = !!session.pendingEditsApplied;
+                const actionNotesEnabled = this.plugin.settings.inquiryActionNotesEnabled ?? false;
+                const autoPopulateEnabled = this.plugin.settings.inquiryActionNotesAutoPopulate ?? false;
+                const usesAutoPopulate = actionNotesEnabled && autoPopulateEnabled;
+                const actionGroup = actionRow.createDiv({ cls: 'ert-inquiry-briefing-actions' });
+                const fieldLabel = this.resolveInquiryActionNotesFieldLabel();
+                const pendingLabel = pendingEditsApplied
+                    ? (usesAutoPopulate ? `${fieldLabel} updated` : `${fieldLabel} confirmed`)
+                    : (actionNotesEnabled
+                        ? (usesAutoPopulate ? `Update ${fieldLabel}` : `Confirm ${fieldLabel} written`)
+                        : `Enable ${fieldLabel} writeback`);
+                const updateBtn = actionGroup.createEl('button', {
+                    cls: 'ert-inquiry-briefing-update',
+                    attr: {
+                        'aria-label': pendingLabel
+                    }
+                });
+                setIcon(updateBtn, pendingEditsApplied ? 'check' : (usesAutoPopulate ? 'plus' : 'x'));
+                updateBtn.disabled = blocked;
+                this.registerDomEvent(updateBtn, 'click', (event: MouseEvent) => {
                     event.stopPropagation();
-                    void this.openBriefFromSession(session);
+                    if (pendingEditsApplied) return;
+                    void this.handleBriefingPendingEditsClick(session);
                 });
-            }
+                if (pendingEditsApplied) {
+                    updateBtn.classList.add('is-applied');
+                }
 
-            this.registerDomEvent(item, 'click', () => {
-                this.activateSession(session);
-                this.briefingPinned = false;
-                this.hideBriefingPanel(true);
+                if (session.briefPath) {
+                    const openBtn = actionGroup.createEl('button', {
+                        cls: 'ert-inquiry-briefing-open',
+                        attr: { 'aria-label': 'Open saved brief' }
+                    });
+                    setIcon(openBtn, 'file-text');
+                    openBtn.disabled = blocked;
+                    this.registerDomEvent(openBtn, 'click', (event: MouseEvent) => {
+                        event.stopPropagation();
+                        void this.openBriefFromSession(session);
+                    });
+                }
+
+                this.registerDomEvent(item, 'click', () => {
+                    this.activateSession(session);
+                    this.briefingPinned = false;
+                    this.hideBriefingPanel(true);
+                });
             });
-        });
+        }
 
         const activeSession = this.state.activeSessionId
             ? this.sessionStore.peekSession(this.state.activeSessionId)
@@ -1288,6 +1305,7 @@ export class InquiryView extends ItemView {
         const activeStatus = activeSession ? this.resolveSessionStatus(activeSession) : null;
         const canSave = !!activeSession && activeStatus === 'unsaved';
         this.briefingSaveButton?.classList.toggle('ert-hidden', !canSave);
+        this.briefingClearButton?.classList.toggle('ert-hidden', !hasSessions);
         this.briefingFooterEl.classList.remove('ert-hidden');
     }
 
@@ -1329,6 +1347,14 @@ export class InquiryView extends ItemView {
         const scopeLabel = session.result.scope === 'saga' ? 'Saga' : 'Book';
         const focus = session.result.focusId || '';
         return `${scopeLabel} ${focus}`.trim();
+    }
+
+    private formatSessionOverrides(session: InquirySession): string | null {
+        const result = session.result;
+        if (!result?.corpusOverridesActive) return null;
+        const summary = result.corpusOverrideSummary;
+        if (!summary) return 'Overrides on';
+        return `Overrides ${summary.classCount}c/${summary.itemCount}i`;
     }
 
     private updateBriefingButtonState(): void {
@@ -1417,6 +1443,19 @@ export class InquiryView extends ItemView {
         this.unlockPromptPreview();
         this.setApiStatus('idle');
         this.refreshUI();
+    }
+
+    private handleBriefingResetCorpusClick(): void {
+        if (this.state.isRunning) {
+            this.notifyInteraction('Inquiry running. Please wait to reset corpus overrides.');
+            return;
+        }
+        if (!this.hasCorpusOverrides()) {
+            this.notifyInteraction('Corpus overrides already match settings.');
+            return;
+        }
+        this.resetCorpusOverrides();
+        this.notifyInteraction('Corpus overrides reset to settings; sessions, logs, and briefs untouched.');
     }
 
     private activateSession(session: InquirySession): void {
@@ -1537,6 +1576,7 @@ export class InquiryView extends ItemView {
             'chevron-down',
             'help-circle',
             'activity',
+            'arrow-big-up',
             'check-circle',
             'sigma',
             'x',
@@ -3269,10 +3309,28 @@ export class InquiryView extends ItemView {
                 this.handleCorpusGlobalToggle();
             });
         }
+        if (!this.ccLabelHint) {
+            this.ccLabelHint = this.createSvgGroup(this.ccGroup, 'ert-inquiry-cc-hint', 0, 0);
+            const size = 10;
+            this.ccLabelHintIcon = this.createIconUse('arrow-big-up', -size / 2, -size / 2, size);
+            this.ccLabelHintIcon.classList.add('ert-inquiry-cc-hint-icon');
+            this.ccLabelHint.appendChild(this.ccLabelHintIcon);
+            addTooltipData(
+                this.ccLabelHint,
+                this.balanceTooltipText('Click to cycle · Shift-click to open'),
+                'top'
+            );
+        }
         this.ccLabel.textContent = this.getCorpusCcScopeLabel();
-        this.ccLabel.setAttribute('x', String(Math.round((layout.rightBlockLeft + layout.rightBlockRight) / 2)));
+        const labelX = Math.round((layout.rightBlockLeft + layout.rightBlockRight) / 2);
+        this.ccLabel.setAttribute('x', String(labelX));
         this.ccLabel.setAttribute('y', '0');
         addTooltipData(this.ccLabel, this.balanceTooltipText('Cycle all corpus scopes.'), 'top');
+        if (this.ccLabelHint) {
+            const labelWidth = this.ccLabel.getComputedTextLength?.() ?? 0;
+            const hintX = Math.round(labelX + (labelWidth / 2) + 10);
+            this.ccLabelHint.setAttribute('transform', `translate(${hintX} 0)`);
+        }
 
         if (!this.ccEmptyText) {
             this.ccEmptyText = this.createSvgText(this.ccGroup, 'ert-inquiry-cc-empty ert-hidden', 'No corpus data', 0, 0);
@@ -3553,6 +3611,39 @@ export class InquiryView extends ItemView {
                 this.corpusItemOverrides.delete(key);
             }
         });
+    }
+
+    private hasCorpusOverrides(): boolean {
+        return this.corpusClassOverrides.size > 0 || this.corpusItemOverrides.size > 0;
+    }
+
+    private getCorpusOverrideSummary(): { active: boolean; classCount: number; itemCount: number; total: number } {
+        const classCount = this.corpusClassOverrides.size;
+        const itemCount = this.corpusItemOverrides.size;
+        return {
+            active: classCount > 0 || itemCount > 0,
+            classCount,
+            itemCount,
+            total: classCount + itemCount
+        };
+    }
+
+    private applyCorpusOverrideSummary(result: InquiryResult): InquiryResult {
+        const summary = this.getCorpusOverrideSummary();
+        result.corpusOverridesActive = summary.active;
+        result.corpusOverrideSummary = {
+            classCount: summary.classCount,
+            itemCount: summary.itemCount,
+            total: summary.total
+        };
+        return result;
+    }
+
+    private resetCorpusOverrides(): void {
+        this.corpusClassOverrides.clear();
+        this.corpusItemOverrides.clear();
+        this.corpusWarningActive = false;
+        this.refreshUI();
     }
 
     private handleCorpusGroupToggle(groupKey: string): void {
@@ -4700,6 +4791,9 @@ export class InquiryView extends ItemView {
         if (this.briefingClearButton) {
             this.briefingClearButton.disabled = lockout;
         }
+        if (this.briefingResetButton) {
+            this.briefingResetButton.disabled = lockout || this.state.isRunning || !this.hasCorpusOverrides();
+        }
         if (lockout) {
             this.hideBriefingPanel(true);
             this.hideEnginePanel();
@@ -5115,6 +5209,7 @@ export class InquiryView extends ItemView {
         result.tokenEstimateInput = tokenEstimate.inputTokens;
         result.tokenEstimateTier = this.getTokenTier(tokenEstimate.inputTokens);
         result.aiModelNextRunOnly = engineSelection.nextRunOnly;
+        result = this.applyCorpusOverrideSummary(result);
         const rawResult = result;
         result = this.normalizeLegacyResult(result);
         const normalizationNotes = this.collectNormalizationNotes(rawResult, result);
@@ -5507,6 +5602,7 @@ export class InquiryView extends ItemView {
             roundTripMs: options.completedAt.getTime() - options.submittedAt.getTime(),
             corpusFingerprint: options.manifest.fingerprint
         };
+        this.applyCorpusOverrideSummary(timedResult);
         if (typeof timedResult.tokenEstimateInput !== 'number') {
             timedResult.tokenEstimateInput = tokenEstimate.inputTokens;
         }
@@ -6183,6 +6279,7 @@ export class InquiryView extends ItemView {
             result.tokenEstimateInput = tokenEstimate.inputTokens;
             result.tokenEstimateTier = this.getTokenTier(tokenEstimate.inputTokens);
             result.aiModelNextRunOnly = false;
+            result = this.applyCorpusOverrideSummary(result);
             const rawResult = result;
             result = this.normalizeLegacyResult(result);
             const normalizationNotes = this.collectNormalizationNotes(rawResult, result);
@@ -7778,6 +7875,14 @@ export class InquiryView extends ItemView {
         if (!this.previewLocked
             && this.previewGroup?.classList.contains('is-visible')
             && this.previewLast) {
+            this.updatePromptPreview(
+                this.previewLast.zone,
+                this.state.mode,
+                this.previewLast.question,
+                undefined,
+                undefined,
+                { hideEmpty: true }
+            );
             void this.requestPayloadEstimate(this.previewLast.question);
         }
     }
@@ -8537,6 +8642,10 @@ export class InquiryView extends ItemView {
         const tokenTier = typeof tokenEstimateInput === 'number'
             ? this.getTokenTier(tokenEstimateInput)
             : (result.tokenEstimateTier || null);
+        const overrideSummary = result.corpusOverridesActive ? result.corpusOverrideSummary : null;
+        const overrideLabel = overrideSummary
+            ? `On (classes: ${overrideSummary.classCount}, items: ${overrideSummary.itemCount})`
+            : (result.corpusOverridesActive ? 'On' : 'None');
 
         let status: AiLogStatus = 'success';
         if (result.aiReason === 'stub') {
@@ -8710,6 +8819,7 @@ export class InquiryView extends ItemView {
         lines.push(`- Scope: ${scopeLabel} · ${target}`);
         lines.push(`- Question: ${questionLabel}`);
         lines.push(`- Provider / Model: ${providerLabel} · ${modelLabel}`);
+        lines.push(`- Overrides: ${overrideLabel}`);
         lines.push(`- Status: ${statusLabel}${statusDetail}`);
         lines.push(`- Duration: ${formatDuration(durationMs)}`);
         lines.push('');
@@ -8774,6 +8884,10 @@ export class InquiryView extends ItemView {
         const tokenTier = typeof tokenEstimateInput === 'number'
             ? this.getTokenTier(tokenEstimateInput)
             : (result.tokenEstimateTier || null);
+        const overrideSummary = result.corpusOverridesActive ? result.corpusOverrideSummary : null;
+        const overrideLabel = overrideSummary
+            ? `on (classes=${overrideSummary.classCount}, items=${overrideSummary.itemCount})`
+            : (result.corpusOverridesActive ? 'on' : 'none');
 
         let status: AiLogStatus = 'success';
         if (result.aiReason === 'stub') {
@@ -8835,6 +8949,7 @@ export class InquiryView extends ItemView {
             `- Run ID: ${result.runId || 'unknown'}`,
             `- Plugin version: ${this.plugin.manifest.version}`,
             `- Corpus fingerprint: ${result.corpusFingerprint || 'unknown'}`,
+            `- Corpus overrides: ${overrideLabel}`,
             `- Scope: ${result.scope || 'unknown'}`,
             `- Focus ID: ${result.focusId || 'unknown'}`,
             `- Mode: ${result.mode || 'unknown'}`,
