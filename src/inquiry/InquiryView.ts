@@ -214,7 +214,7 @@ type InquiryBriefModel = {
         lens: string;
         bullets: string[];
     }>;
-    sceneNotes: Array<{ label: string; note: string }>;
+    sceneNotes: Array<{ label: string; note: string; anchorId?: string }>;
     pendingActions: string[];
     logTitle?: string | null;
 };
@@ -878,7 +878,7 @@ export class InquiryView extends ItemView {
         });
         this.briefingResetButton = this.briefingFooterEl.createEl('button', {
             cls: 'ert-inquiry-briefing-reset',
-            text: 'Reset Corpus to Settings'
+            text: 'Reset Overrides to Settings'
         });
         addTooltipData(
             this.briefingResetButton,
@@ -1481,15 +1481,20 @@ export class InquiryView extends ItemView {
         this.sessionStore.updateSession(session.key, { lastAccessed: Date.now() });
     }
 
-    private async openBriefFromSession(session: InquirySession): Promise<void> {
+    private async openBriefFromSession(session: InquirySession, anchorId?: string): Promise<void> {
         if (this.isInquiryBlocked()) return;
         if (!session.briefPath) return;
         const file = this.app.vault.getAbstractFileByPath(session.briefPath);
-        if (file && file instanceof TFile) {
+        if (!(file instanceof TFile)) {
+            new Notice('Brief not found. It may have been moved or deleted.');
+            return;
+        }
+        if (!anchorId) {
             await openOrRevealFile(this.app, file);
             return;
         }
-        new Notice('Brief not found. It may have been moved or deleted.');
+        const linkPath = `${file.path}#^${anchorId}`;
+        await this.app.workspace.openLinkText(linkPath, '');
     }
 
     private createSvgElement<K extends keyof SVGElementTagNameMap>(tag: K): SVGElementTagNameMap[K] {
@@ -3026,10 +3031,14 @@ export class InquiryView extends ItemView {
                 }
                 if (this.state.scope === 'book') {
                     if (event.shiftKey) {
-                        void this.openActiveBrief();
+                        const filePath = this.getMinimapItemFilePath(item);
+                        const targetPath = filePath || item.id;
+                        if (targetPath) {
+                            void this.openSceneFromMinimap(targetPath);
+                        }
                         return;
                     }
-                    void this.openSceneFromMinimap(item.id);
+                    void this.openActiveBriefForItem(item);
                     return;
                 }
                 this.drillIntoBook(item.id);
@@ -3503,8 +3512,7 @@ export class InquiryView extends ItemView {
     }
 
     private getCorpusCycleModes(className: string): InquiryMaterialMode[] {
-        const baseClass = this.getCorpusGroupBaseClass(className);
-        return this.isSynopsisCapableClass(baseClass) ? ['none', 'summary', 'full'] : ['none', 'full'];
+        return ['none', 'summary', 'full'];
     }
 
     private getCorpusGroupBaseMode(
@@ -3592,9 +3600,9 @@ export class InquiryView extends ItemView {
         const nonSynopsisKeys = groupKeys.filter(key => !this.isSynopsisCapableClass(this.getCorpusGroupBaseClass(key)));
         const synopsisAllSummary = synopsisKeys.length > 0
             && synopsisKeys.every(key => this.getCorpusGroupEffectiveMode(key, configMap) === 'summary');
-        const nonSynopsisAllNone = nonSynopsisKeys.length === 0
-            || nonSynopsisKeys.every(key => this.getCorpusGroupEffectiveMode(key, configMap) === 'none');
-        if (synopsisAllSummary && nonSynopsisAllNone) return 'summary';
+        const nonSynopsisAllFull = nonSynopsisKeys.length === 0
+            || nonSynopsisKeys.every(key => this.getCorpusGroupEffectiveMode(key, configMap) === 'full');
+        if (synopsisAllSummary && nonSynopsisAllFull) return 'summary';
         return 'mixed';
     }
 
@@ -3703,11 +3711,7 @@ export class InquiryView extends ItemView {
         this.corpusItemOverrides.clear();
         groupKeys.forEach(groupKey => {
             const baseClass = this.getCorpusGroupBaseClass(groupKey);
-            let target: InquiryMaterialMode = next;
-            if (next === 'summary' && !this.isSynopsisCapableClass(baseClass)) {
-                target = 'none';
-            }
-            const normalizedTarget = this.normalizeContributionMode(target, baseClass);
+            const normalizedTarget = this.normalizeContributionMode(next, baseClass);
             const baseMode = this.getCorpusGroupBaseMode(groupKey, configMap);
             if (normalizedTarget !== baseMode) {
                 this.corpusClassOverrides.set(groupKey, normalizedTarget);
@@ -6811,6 +6815,10 @@ export class InquiryView extends ItemView {
         return `h${Math.abs(hash)}`;
     }
 
+    private getBriefSceneAnchorId(source: string): string {
+        return `inquiry-${this.hashString(source || 'scene')}`;
+    }
+
     private setFocusByIndex(index: number): void {
         const items = this.getCurrentItems();
         const item = items[index - 1];
@@ -6829,7 +6837,7 @@ export class InquiryView extends ItemView {
         this.updateFocusGlyph();
     }
 
-    private async openActiveBrief(): Promise<void> {
+    private async openActiveBrief(anchorId?: string): Promise<void> {
         const sessionId = this.state.activeSessionId;
         if (!sessionId) {
             new Notice('No active inquiry brief.');
@@ -6840,7 +6848,7 @@ export class InquiryView extends ItemView {
             new Notice('No brief saved for the active inquiry.');
             return;
         }
-        await this.openBriefFromSession(session);
+        await this.openBriefFromSession(session, anchorId);
     }
 
     private async openSceneFromMinimap(sceneId: string): Promise<void> {
@@ -6850,6 +6858,12 @@ export class InquiryView extends ItemView {
             return;
         }
         new Notice('Scene file not found.');
+    }
+
+    private async openActiveBriefForItem(item: InquiryCorpusItem): Promise<void> {
+        const anchorSource = this.getMinimapItemFilePath(item) || item.id || item.displayLabel;
+        const anchorId = this.getBriefSceneAnchorId(anchorSource);
+        await this.openActiveBrief(anchorId);
     }
 
     private drillIntoBook(bookId: string): void {
@@ -8525,7 +8539,8 @@ export class InquiryView extends ItemView {
         if (brief.sceneNotes.length) {
             lines.push('', '## Per-Scene / Per-Moment Notes');
             brief.sceneNotes.forEach(note => {
-                lines.push(`- ${note.label}: ${note.note}`);
+                const anchor = note.anchorId ? ` ^${note.anchorId}` : '';
+                lines.push(`- ${note.label}: ${note.note}${anchor}`);
             });
         }
 
@@ -8576,11 +8591,11 @@ export class InquiryView extends ItemView {
         return label.replace(/\s*\(.*\)\s*$/, '').trim() || null;
     }
 
-    private buildInquirySceneNotes(result: InquiryResult): Array<{ label: string; note: string }> {
+    private buildInquirySceneNotes(result: InquiryResult): Array<{ label: string; note: string; anchorId?: string }> {
         if (result.scope !== 'book') return [];
         const items = this.getResultItems(result);
         const orderedFindings = this.getOrderedFindings(result, result.mode);
-        const notes = new Map<string, string>();
+        const notes = new Map<string, { note: string; anchorId?: string }>();
 
         orderedFindings.forEach(finding => {
             if (!this.isFindingHit(finding)) return;
@@ -8591,10 +8606,24 @@ export class InquiryView extends ItemView {
                 .replace(/\s+/g, ' ')
                 .trim();
             if (!note) return;
-            notes.set(label, note);
+            const labelLower = label.toLowerCase();
+            const match = items.find(item => {
+                if (item.displayLabel.toLowerCase() === labelLower) return true;
+                if (item.id.toLowerCase() === labelLower) return true;
+                return item.filePaths?.some(path => path.toLowerCase() === labelLower) ?? false;
+            });
+            const anchorSource = match
+                ? (this.getMinimapItemFilePath(match) || match.id || label)
+                : label;
+            const anchorId = anchorSource ? this.getBriefSceneAnchorId(anchorSource) : undefined;
+            notes.set(label, { note, anchorId });
         });
 
-        return Array.from(notes.entries()).map(([label, note]) => ({ label, note }));
+        return Array.from(notes.entries()).map(([label, entry]) => ({
+            label,
+            note: entry.note,
+            anchorId: entry.anchorId
+        }));
     }
 
     private getPendingInquiryActions(result: InquiryResult): string[] {

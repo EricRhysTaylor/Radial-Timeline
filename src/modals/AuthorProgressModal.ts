@@ -253,7 +253,7 @@ export class AuthorProgressModal extends Modal {
             const dataRow = statusGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--data' });
             const itemCell = dataRow.createDiv({ cls: 'ert-apr-status-cell ert-apr-status-cell--item' });
             const itemLabel = itemCell.createSpan({
-                text: this.truncateLabel(target.label, 20),
+                text: this.truncateLabel(target.label, 26),
                 cls: 'ert-apr-status-title'
             });
             itemLabel.setAttr('title', target.label);

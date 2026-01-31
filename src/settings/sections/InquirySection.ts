@@ -1351,7 +1351,7 @@ export function renderInquirySection(params: SectionParams): void {
 
     const actionNotesSetting = new Settings(configBody)
         .setName(`Write Inquiry notes to ${resolveActionNotesFieldLabel()}`)
-        .setDesc('Append Inquiry action notes to the target yaml field for hit scenes and book outlines.')
+        .setDesc('Append Inquiry action notes to the target yaml field for hit scenes and book outlines. For manual session writes, use the Session Status panel.')
         .addToggle(toggle => {
             toggle.setValue(plugin.settings.inquiryActionNotesEnabled ?? false);
             toggle.onChange(async (value) => {
