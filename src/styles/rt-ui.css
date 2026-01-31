@@ -1886,7 +1886,7 @@
   transition: opacity 0.15s ease;
 }
 
-.ert-ui.ert-scope--settings .ert-settings-visible:not(.setting-item) {
+.ert-ui.ert-scope--settings .ert-settings-visible:not(.setting-item):not(.ert-stack) {
   display: block;
 }
 
@@ -3760,6 +3760,30 @@
   color: var(--text-muted);
   font-style: italic;
   line-height: 1.5;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-toggle-warning {
+  margin-top: 10px;
+  color: var(--text-error);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-toggle-warning-title {
+  font-weight: 600;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-toggle-warning-list {
+  margin: 6px 0 6px 18px;
+  padding: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-toggle-warning-list li {
+  margin: 0 0 4px 0;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-toggle-warning-footer {
+  margin-top: 6px;
 }
 
 /* -------------------------------------------------------------------------- */

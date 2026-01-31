@@ -153,6 +153,8 @@ const CC_PAGE_BASE_SIZE = Math.round(CC_CELL_SIZE * 0.8);
 const CC_PAGE_MIN_SIZE = Math.max(6, Math.round(CC_CELL_SIZE * 0.33));
 const CC_HEADER_ICON_SIZE = 12;
 const CC_HEADER_ICON_GAP = 6;
+const CC_HEADER_ICON_OFFSET = 1;
+const CC_CELL_ICON_OFFSET = 1;
 const INQUIRY_NOTES_MAX = 5;
 const CC_RIGHT_MARGIN = 50;
 const CC_BOTTOM_MARGIN = 50;
@@ -333,12 +335,15 @@ type CorpusCcSlot = {
     base: SVGRectElement;
     fill: SVGRectElement;
     border: SVGRectElement;
-    icon: SVGTextElement;
+    icon: SVGGElement;
+    iconOuter: SVGCircleElement;
+    iconInner: SVGCircleElement;
     fold: SVGPathElement;
 };
 
 type CorpusCcHeader = {
     group: SVGGElement;
+    hit: SVGRectElement;
     icon: SVGUseElement;
     text: SVGTextElement;
 };
@@ -485,6 +490,8 @@ export class InquiryView extends ItemView {
     private apiStatusEl?: SVGTextElement;
     private apiStatusState: { state: 'idle' | 'running' | 'success' | 'error'; reason?: string } = { state: 'idle' };
     private ccGroup?: SVGGElement;
+    private ccLabelGroup?: SVGGElement;
+    private ccLabelHit?: SVGRectElement;
     private ccLabel?: SVGTextElement;
     private ccLabelHint?: SVGGElement;
     private ccLabelHintIcon?: SVGUseElement;
@@ -2085,6 +2092,24 @@ export class InquiryView extends ItemView {
             if (child.tagName.toLowerCase() === 'title') return;
             symbol.appendChild(child.cloneNode(true));
         });
+        if (iconName === 'circle-dot') {
+            const circles = Array.from(symbol.querySelectorAll('circle'));
+            if (circles.length >= 2) {
+                const sorted = circles
+                    .slice()
+                    .sort((a, b) => (Number(a.getAttribute('r')) || 0) - (Number(b.getAttribute('r')) || 0));
+                const inner = sorted[0];
+                const outer = sorted[sorted.length - 1];
+                const outerCx = outer.getAttribute('cx');
+                const outerCy = outer.getAttribute('cy');
+                if (outerCx) inner.setAttribute('cx', outerCx);
+                if (outerCy) inner.setAttribute('cy', outerCy);
+                const innerRadius = Number(inner.getAttribute('r'));
+                if (Number.isFinite(innerRadius) && innerRadius > 0) {
+                    inner.setAttribute('r', String(Math.max(1, innerRadius * 0.7)));
+                }
+            }
+        }
         defs.appendChild(symbol);
         return symbolId;
     }
@@ -3309,36 +3334,54 @@ export class InquiryView extends ItemView {
         this.ccLayout = { pageWidth: layout.pageWidth, pageHeight: layout.pageHeight, gap: layout.gap };
         this.ccGroup.setAttribute('transform', `translate(0 ${topLimit})`);
 
-        if (!this.ccLabel) {
-            this.ccLabel = this.createSvgText(this.ccGroup, 'ert-inquiry-cc-label', 'Corpus', 0, 0);
-            this.ccLabel.setAttribute('text-anchor', 'middle');
-            this.ccLabel.setAttribute('dominant-baseline', 'middle');
-            this.ccLabel.classList.add('is-actionable');
-            this.registerDomEvent(this.ccLabel as unknown as HTMLElement, 'click', () => {
+        if (!this.ccLabelGroup) {
+            this.ccLabelGroup = this.createSvgGroup(this.ccGroup, 'ert-inquiry-cc-label-group', 0, 0);
+            this.ccLabelHit = this.createSvgElement('rect');
+            this.ccLabelHit.classList.add('ert-inquiry-cc-label-hit');
+            this.ccLabelGroup.appendChild(this.ccLabelHit);
+            this.registerDomEvent(this.ccLabelGroup as unknown as HTMLElement, 'click', () => {
                 this.handleCorpusGlobalToggle();
             });
         }
+        if (!this.ccLabel) {
+            this.ccLabel = this.createSvgText(this.ccLabelGroup ?? this.ccGroup, 'ert-inquiry-cc-label', 'Corpus', 0, 0);
+            this.ccLabel.setAttribute('text-anchor', 'middle');
+            this.ccLabel.setAttribute('dominant-baseline', 'middle');
+            this.ccLabel.classList.add('is-actionable');
+        }
         if (!this.ccLabelHint) {
-            this.ccLabelHint = this.createSvgGroup(this.ccGroup, 'ert-inquiry-cc-hint', 0, 0);
+            this.ccLabelHint = this.createSvgGroup(this.ccLabelGroup ?? this.ccGroup, 'ert-inquiry-cc-hint', 0, 0);
             const size = 10;
             this.ccLabelHintIcon = this.createIconUse('arrow-big-up', -size / 2, -size / 2, size);
             this.ccLabelHintIcon.classList.add('ert-inquiry-cc-hint-icon');
             this.ccLabelHint.appendChild(this.ccLabelHintIcon);
-            addTooltipData(
-                this.ccLabelHint,
-                this.balanceTooltipText('Click to cycle · Shift-click to open'),
-                'top'
-            );
         }
         this.ccLabel.textContent = this.getCorpusCcScopeLabel();
         const labelX = Math.round((layout.rightBlockLeft + layout.rightBlockRight) / 2);
+        const labelYOffset = -5;
+        if (this.ccLabelGroup) {
+            this.ccLabelGroup.setAttribute('transform', `translate(0 ${labelYOffset})`);
+        }
         this.ccLabel.setAttribute('x', String(labelX));
         this.ccLabel.setAttribute('y', '0');
-        addTooltipData(this.ccLabel, this.balanceTooltipText('Cycle all corpus scopes.'), 'top');
+        if (this.ccLabelGroup) {
+            addTooltipData(this.ccLabelGroup, this.balanceTooltipText('Cycle all corpus scopes.'), 'top');
+        }
         if (this.ccLabelHint) {
             const labelWidth = this.ccLabel.getComputedTextLength?.() ?? 0;
             const hintX = Math.round(labelX + (labelWidth / 2) + 10);
             this.ccLabelHint.setAttribute('transform', `translate(${hintX} 0)`);
+            if (this.ccLabelHit) {
+                const hitPaddingX = 6;
+                const hitHeight = 20;
+                const hitStartX = Math.round(labelX - (labelWidth / 2) - hitPaddingX);
+                const hitEndX = Math.round(hintX + 5 + hitPaddingX);
+                const hitWidth = Math.max(0, hitEndX - hitStartX);
+                this.ccLabelHit.setAttribute('x', String(hitStartX));
+                this.ccLabelHit.setAttribute('y', String(-Math.round(hitHeight / 2)));
+                this.ccLabelHit.setAttribute('width', String(hitWidth));
+                this.ccLabelHit.setAttribute('height', String(hitHeight));
+            }
         }
 
         if (!this.ccEmptyText) {
@@ -3367,9 +3410,13 @@ export class InquiryView extends ItemView {
             fill.classList.add('ert-inquiry-cc-cell-fill');
             const border = this.createSvgElement('rect');
             border.classList.add('ert-inquiry-cc-cell-border');
-            const icon = this.createSvgText(group, 'ert-inquiry-cc-cell-icon', '', 0, 0);
-            icon.setAttribute('text-anchor', 'middle');
-            icon.setAttribute('dominant-baseline', 'middle');
+            const icon = this.createSvgGroup(group, 'ert-inquiry-cc-cell-icon');
+            const iconOuter = this.createSvgElement('circle');
+            iconOuter.classList.add('ert-inquiry-cc-cell-icon-outer');
+            const iconInner = this.createSvgElement('circle');
+            iconInner.classList.add('ert-inquiry-cc-cell-icon-inner');
+            icon.appendChild(iconOuter);
+            icon.appendChild(iconInner);
             const fold = this.createSvgElement('path');
             fold.classList.add('ert-inquiry-cc-cell-fold');
             group.appendChild(base);
@@ -3392,7 +3439,7 @@ export class InquiryView extends ItemView {
                 }
                 this.handleCorpusItemToggle(entryKey);
             });
-            this.ccSlots.push({ group, base, fill, border, icon, fold });
+            this.ccSlots.push({ group, base, fill, border, icon, iconOuter, iconInner, fold });
         }
 
         this.ccSlots.forEach((slot, idx) => {
@@ -3421,13 +3468,26 @@ export class InquiryView extends ItemView {
             slot.border.setAttribute('rx', String(corner));
             slot.border.setAttribute('ry', String(corner));
             slot.fold.setAttribute('d', `M ${layout.pageWidth - foldSize} 0 L ${layout.pageWidth} 0 L ${layout.pageWidth} ${foldSize} Z`);
-            slot.icon.setAttribute('x', String(Math.round(layout.pageWidth / 2)));
-            slot.icon.setAttribute('y', String(Math.round(layout.pageHeight / 2)));
+            const iconCenterX = Math.round(layout.pageWidth / 2);
+            const iconCenterY = Math.round(layout.pageHeight / 2) + CC_CELL_ICON_OFFSET;
+            const maxRadius = Math.max(2, (layout.pageWidth - 2) / 2);
+            const outerRadius = Math.min(maxRadius, Math.max(3, Math.round(layout.pageWidth * 0.25 * 10) / 10));
+            const innerRadius = Math.max(1.2, Math.round(outerRadius * 0.35 * 10) / 10);
+            slot.icon.setAttribute('transform', `translate(${iconCenterX} ${iconCenterY})`);
+            slot.iconOuter.setAttribute('cx', '0');
+            slot.iconOuter.setAttribute('cy', '0');
+            slot.iconOuter.setAttribute('r', String(outerRadius));
+            slot.iconInner.setAttribute('cx', '0');
+            slot.iconInner.setAttribute('cy', '0');
+            slot.iconInner.setAttribute('r', String(innerRadius));
         });
 
         const titleTexts = this.ccClassLabels;
         while (titleTexts.length < layout.classLayouts.length) {
             const headerGroup = this.createSvgGroup(this.ccGroup, 'ert-inquiry-cc-class');
+            const hit = this.createSvgElement('rect');
+            hit.classList.add('ert-inquiry-cc-class-hit');
+            headerGroup.appendChild(hit);
             const icon = this.createIconUse('circle', 0, 0, CC_HEADER_ICON_SIZE);
             icon.classList.add('ert-inquiry-cc-class-icon');
             const label = this.createSvgText(headerGroup, 'ert-inquiry-cc-class-label', '', 0, 0);
@@ -3440,7 +3500,7 @@ export class InquiryView extends ItemView {
                 if (!className) return;
                 this.handleCorpusGroupToggle(className);
             });
-            titleTexts.push({ group: headerGroup, icon, text: label });
+            titleTexts.push({ group: headerGroup, hit, icon, text: label });
         }
         layout.classLayouts.forEach((classLayout, idx) => {
             const header = titleTexts[idx];
@@ -3463,11 +3523,17 @@ export class InquiryView extends ItemView {
             const textWidth = header.text.getComputedTextLength();
             const totalWidth = CC_HEADER_ICON_SIZE + CC_HEADER_ICON_GAP + textWidth;
             const startX = centerX - (totalWidth / 2);
-            const iconY = layout.titleY - (CC_HEADER_ICON_SIZE / 2);
+            const iconY = layout.titleY - (CC_HEADER_ICON_SIZE / 2) - CC_HEADER_ICON_OFFSET;
             header.icon.setAttribute('x', String(Math.round(startX)));
             header.icon.setAttribute('y', String(Math.round(iconY)));
             header.text.setAttribute('x', String(Math.round(startX + CC_HEADER_ICON_SIZE + CC_HEADER_ICON_GAP)));
             header.text.setAttribute('y', String(layout.titleY));
+            const hitPaddingX = 4;
+            const hitHeight = Math.max(CC_HEADER_ICON_SIZE, 12) + 8;
+            header.hit.setAttribute('x', String(Math.round(startX - hitPaddingX)));
+            header.hit.setAttribute('y', String(Math.round(layout.titleY - (hitHeight / 2))));
+            header.hit.setAttribute('width', String(Math.round(totalWidth + (hitPaddingX * 2))));
+            header.hit.setAttribute('height', String(Math.round(hitHeight)));
             header.group.classList.remove('ert-hidden');
             addTooltipData(header.group, this.getCorpusCcHeaderTooltip(group.className, group.mode, group.count), 'top');
         });
@@ -3749,12 +3815,6 @@ export class InquiryView extends ItemView {
             return { label: 'Body', short: 'BODY', icon: 'disc', isActive: true };
         }
         return { label: 'Off', short: 'OFF', icon: 'circle', isActive: false };
-    }
-
-    private getCorpusModeGlyph(mode: InquiryMaterialMode): string {
-        if (mode === 'summary') return '◉';
-        if (mode === 'full') return '●';
-        return '○';
     }
 
     private getCorpusCcHeaderLabelVariants(className: string, count: number): string[] {
@@ -4098,10 +4158,6 @@ export class InquiryView extends ItemView {
         if (stats.status) {
             slot.group.classList.add(`is-status-${stats.status}`);
         }
-
-        const modeGlyph = this.getCorpusModeGlyph(mode);
-        slot.icon.textContent = modeGlyph;
-        slot.icon.setAttribute('opacity', mode === 'none' ? '0.5' : '1');
 
         const highlightMismatch = this.plugin.settings.inquiryCorpusHighlightLowSubstanceComplete ?? true;
         const lowSubstance = isSynopsis

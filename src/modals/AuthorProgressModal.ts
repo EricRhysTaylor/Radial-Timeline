@@ -253,7 +253,7 @@ export class AuthorProgressModal extends Modal {
             const dataRow = statusGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--data' });
             const itemCell = dataRow.createDiv({ cls: 'ert-apr-status-cell ert-apr-status-cell--item' });
             const itemLabel = itemCell.createSpan({
-                text: this.truncateLabel(target.label, 26),
+                text: target.label,
                 cls: 'ert-apr-status-title'
             });
             itemLabel.setAttr('title', target.label);
@@ -562,13 +562,6 @@ export class AuthorProgressModal extends Modal {
         if (!path) return '—';
         const normalized = path.split('\\').pop() ?? path;
         return normalized.split('/').pop() ?? normalized;
-    }
-
-    private truncateLabel(label: string, maxLength: number): string {
-        const trimmed = label.trim();
-        if (trimmed.length <= maxLength) return trimmed;
-        const limit = Math.max(0, maxLength - 1);
-        return `${trimmed.slice(0, limit).trimEnd()}…`;
     }
 
     private getAprStatusTargets(): Array<{

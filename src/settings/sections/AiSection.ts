@@ -45,7 +45,49 @@ export function renderAiSection(params: {
         return active?.name || 'Generic Editor';
     };
 
-    const contextTemplateSetting = new Settings(stackEl)
+    // Enable/disable scene beats features
+    // NOTE: This toggle should always be visible (not added to _aiRelatedElements)
+    const aiToggleSetting = new Settings(stackEl)
+        .setName('Enable AI LLM features')
+        .setDesc('Show command palette options and UI scene analysis colors and hover synopsis. When off, these visuals are hidden, but metadata remains unchanged.')
+        .addToggle(toggle => toggle
+            .setValue(plugin.settings.enableAiSceneAnalysis ?? true)
+            .onChange(async (value) => {
+                plugin.settings.enableAiSceneAnalysis = value;
+                await plugin.saveSettings();
+                params.toggleAiSettingsVisibility(value);
+                plugin.refreshTimelineIfNeeded(null);
+                updateAiToggleWarning(value);
+            }));
+
+    const aiToggleInfo = aiToggleSetting.settingEl.querySelector('.setting-item-info');
+    const aiToggleWarning = (aiToggleInfo ?? aiToggleSetting.settingEl).createDiv({ cls: 'ert-ai-toggle-warning' });
+    aiToggleWarning.createDiv({ cls: 'ert-ai-toggle-warning-title', text: 'AI features disabled.' });
+    const aiToggleWarningList = aiToggleWarning.createEl('ul', { cls: 'ert-ai-toggle-warning-list' });
+    [
+        'Inquiry mode (signals, prompt slots, and AI briefings).',
+        'Scene Analysis / Pulse (hover synopsis, grades, and triplet context).',
+        'Gossamer AI analysis and score generation.',
+        'AI processing modals (Inquiry, Scene Analysis, Gossamer, and AI runtime estimation).',
+        'AI command palette actions and AI log outputs.'
+    ].forEach(item => {
+        aiToggleWarningList.createEl('li', { text: item });
+    });
+    aiToggleWarning.createDiv({
+        cls: 'ert-ai-toggle-warning-footer',
+        text: 'The Radial Timeline and other core features continue to operate.'
+    });
+
+    const updateAiToggleWarning = (enabled: boolean) => {
+        aiToggleWarning.toggleClass('ert-settings-hidden', enabled);
+        aiToggleWarning.toggleClass('ert-settings-visible', !enabled);
+    };
+    updateAiToggleWarning(plugin.settings.enableAiSceneAnalysis ?? true);
+
+    const aiSettingsGroup = stackEl.createDiv({ cls: ERT_CLASSES.STACK });
+    params.addAiRelatedElement(aiSettingsGroup);
+
+    const contextTemplateSetting = new Settings(aiSettingsGroup)
         .setName('AI prompt role & context template')
         .setDesc(`Active: ${getActiveTemplateName()}`)
         .addExtraButton(button => button
@@ -57,22 +99,9 @@ export function renderAiSection(params: {
                 });
                 modal.open();
             }));
+    params.addAiRelatedElement(contextTemplateSetting.settingEl);
 
-    // Enable/disable scene beats features
-    // NOTE: This toggle should always be visible (not added to _aiRelatedElements)
-    new Settings(stackEl)
-        .setName('Enable AI LLM features')
-        .setDesc('Show command palette options and UI scene analysis colors and hover synopsis. When off, these visuals are hidden, but metadata remains unchanged.')
-        .addToggle(toggle => toggle
-            .setValue(plugin.settings.enableAiSceneAnalysis ?? true)
-            .onChange(async (value) => {
-                plugin.settings.enableAiSceneAnalysis = value;
-                await plugin.saveSettings();
-                params.toggleAiSettingsVisibility(value);
-                plugin.refreshTimelineIfNeeded(null);
-            }));
-
-    const tripletDisplaySetting = new Settings(stackEl)
+    const tripletDisplaySetting = new Settings(aiSettingsGroup)
         .setName('Show previous and next scene analysis')
         .setDesc('When enabled, scene hover metadata include the AI pulse for the previous and next scenes. Turn off to display only the current scene for a more compact view.')
         .addToggle(toggle => toggle
@@ -85,7 +114,7 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(tripletDisplaySetting.settingEl);
 
     // Single model picker
-    const modelPickerSetting = new Settings(stackEl)
+    const modelPickerSetting = new Settings(aiSettingsGroup)
         .setName('Model')
         .setDesc('Pick preferred model for advanced writing analysis. Models marked "Latest" auto-update to the newest version.');
 
@@ -202,13 +231,13 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(modelPickerSetting.settingEl);
 
     // Provider sections
-    const anthropicSection = stackEl.createDiv({
+    const anthropicSection = aiSettingsGroup.createDiv({
         cls: ['ert-provider-section', 'ert-provider-anthropic', ERT_CLASSES.STACK]
     });
-    const geminiSection = stackEl.createDiv({
+    const geminiSection = aiSettingsGroup.createDiv({
         cls: ['ert-provider-section', 'ert-provider-gemini', ERT_CLASSES.STACK]
     });
-    const openaiSection = stackEl.createDiv({
+    const openaiSection = aiSettingsGroup.createDiv({
         cls: ['ert-provider-section', 'ert-provider-openai', ERT_CLASSES.STACK]
     });
     params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection });
@@ -359,7 +388,7 @@ export function renderAiSection(params: {
         }
     );
 
-    const localWrapper = stackEl.createDiv({
+    const localWrapper = aiSettingsGroup.createDiv({
         cls: ['ert-provider-section', 'ert-provider-local', ERT_CLASSES.STACK]
     });
     params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection, local: localWrapper } as any);

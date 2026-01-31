@@ -1398,7 +1398,7 @@
 .ert-ui.ert-scope--modal .ert-apr-status-grid {
   display: grid;
   grid-template-columns: minmax(100px, 1fr) max-content max-content max-content max-content;
-  column-gap: var(--ert-gap-lg);
+  column-gap: 10px;
   row-gap: var(--ert-gap-xs);
   width: 100%;
 }
@@ -1438,7 +1438,7 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
-  max-width: 20ch;
+  max-width: 35ch;
   overflow: hidden;
   text-overflow: ellipsis;
   display: inline-block;

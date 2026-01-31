@@ -131,6 +131,10 @@ export interface AuthorProgressSettings {
     authorName?: string;
     authorUrl: string;
 
+    // Social Project Configuration (Core)
+    socialProjectPath?: string;  // Project folder path for Social target
+    socialBookTitle?: string;    // Display title for Social target (overrides bookTitle)
+
     // Updates & Frequency
     lastPublishedDate?: string; // ISO string
     updateFrequency: AuthorProgressFrequency;
@@ -205,6 +209,10 @@ export interface AprCampaign {
 
     // Output
     embedPath: string;               // Where to save the SVG for this campaign
+
+    // Campaign-specific Project Configuration (Pro overrides)
+    projectPath?: string;            // Override project folder path (inherits from socialProjectPath if not set)
+    bookTitle?: string;              // Override display title (inherits from socialBookTitle if not set)
 
     aprSize?: 'thumb' | 'small' | 'medium' | 'large';
 
