@@ -6,7 +6,7 @@ import { getAllScenes } from '../utils/manuscript';
 import type { AprCampaign, AuthorProgressSettings } from '../types/settings';
 import { getTeaserThresholds, getTeaserRevealLevel, teaserLevelToRevealOptions } from '../renderer/apr/AprConstants';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
-import { isBeatNote } from '../utils/sceneHelpers';
+import { isBeatNote, isSceneItem } from '../utils/sceneHelpers';
 import { buildDefaultEmbedPath } from '../utils/aprPaths';
 import { resolveBookTitle, resolveProjectPath } from '../renderer/apr/aprHelpers';
 
@@ -158,7 +158,7 @@ export class AuthorProgressService {
         // Resolve project path for scene loading (Core Social → fallback to Source)
         const projectPath = resolveProjectPath(settings, null, this.plugin.settings.sourcePath);
         const scenes = await this.plugin.getSceneData({ sourcePath: projectPath });
-        const scenesFiltered = scenes.filter(s => s.itemType === 'Scene' || !s.itemType);
+        const scenesFiltered = scenes.filter(isSceneItem);
         const progressPercent = this.calculateProgress(scenesFiltered);
         const publishStageLabel = this.resolvePublishStageLabel(scenesFiltered);
         const { enabled: revealCampaignEnabled, nextRevealAt } = this.resolveRevealCountdown();
@@ -487,7 +487,7 @@ export class AuthorProgressService {
         // Resolve project path for scene loading (Campaign override → Core Social → fallback to Source)
         const projectPath = resolveProjectPath(settings, campaign, this.plugin.settings.sourcePath);
         const scenes = await this.plugin.getSceneData({ sourcePath: projectPath });
-        const scenesFiltered = scenes.filter(s => s.itemType === 'Scene' || !s.itemType);
+        const scenesFiltered = scenes.filter(isSceneItem);
         const progressPercent = this.calculateProgress(scenesFiltered);
         const publishStageLabel = this.resolvePublishStageLabel(scenesFiltered);
         const { enabled: revealCampaignEnabled, nextRevealAt } = this.resolveRevealCountdown(campaign);

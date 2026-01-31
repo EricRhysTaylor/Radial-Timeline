@@ -50,6 +50,15 @@ export function isBeatNote(scene: TimelineItem | { itemType?: string }): boolean
 }
 
 /**
+ * Check if item IS an actual scene (not a Beat, Plot, or Backdrop)
+ * Scenes are identified by itemType === 'Scene' or missing itemType (legacy)
+ * Use this for filtering when you only want to process writable scene content.
+ */
+export function isSceneItem(item: TimelineItem | { itemType?: string }): boolean {
+    return item.itemType === 'Scene' || !item.itemType;
+}
+
+/**
  * Check if item is NOT an actual scene (is Beat, Plot, or Backdrop)
  * Only scenes should be counted in grid statistics, runtime, etc.
  * Use this for filtering when you only want to process writable scene content.

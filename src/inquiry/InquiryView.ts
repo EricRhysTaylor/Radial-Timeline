@@ -155,7 +155,7 @@ const CC_HEADER_ICON_SIZE = 12;
 const CC_HEADER_ICON_GAP = 6;
 const CC_HEADER_ICON_OFFSET = 1;
 const CC_CELL_ICON_OFFSET = -1;
-const CC_LABEL_HINT_SIZE = 14;
+const CC_LABEL_HINT_SIZE = 7;
 const INQUIRY_NOTES_MAX = 5;
 const CC_RIGHT_MARGIN = 50;
 const CC_BOTTOM_MARGIN = 50;
@@ -406,6 +406,7 @@ export class InquiryView extends ItemView {
     private enginePanelAllLabelEl?: HTMLDivElement;
     private enginePanelGuardEl?: HTMLDivElement;
     private enginePanelGuardNoteEl?: HTMLDivElement;
+    private enginePanelGuardTokenEl?: HTMLElement;
     private enginePanelRunAnywayButton?: HTMLButtonElement;
     private enginePanelListEl?: HTMLDivElement;
     private enginePanelMetaEl?: HTMLDivElement;
@@ -922,12 +923,19 @@ export class InquiryView extends ItemView {
 
         this.enginePanelGuardEl = panel.createDiv({ cls: 'ert-inquiry-engine-guard ert-hidden' });
         this.enginePanelGuardNoteEl = this.enginePanelGuardEl.createDiv({
-            cls: 'ert-inquiry-engine-guard-note',
-            text: 'Payload is very large. Confirm larger-context model or adjust the Inquiry class presets.'
+            cls: 'ert-inquiry-engine-guard-note'
+        });
+        this.enginePanelGuardNoteEl.createSpan({ text: 'Current payload: ' });
+        this.enginePanelGuardTokenEl = this.enginePanelGuardNoteEl.createEl('strong', {
+            cls: 'ert-inquiry-engine-guard-token',
+            text: ''
+        });
+        this.enginePanelGuardNoteEl.createSpan({
+            text: '. Adjust the corpus down to the individual note in the Inquiry View Corpus manager, or update general settings in Settings > Inquiry.'
         });
         this.enginePanelRunAnywayButton = this.enginePanelGuardEl.createEl('button', {
             cls: 'ert-inquiry-engine-run-anyway',
-            text: 'Adjust Settings',
+            text: 'Edit Scope',
             attr: { type: 'button' }
         });
         this.registerDomEvent(this.enginePanelRunAnywayButton, 'click', (event: MouseEvent) => {
@@ -1020,9 +1028,10 @@ export class InquiryView extends ItemView {
                 const guardQuestion = this.pendingGuardQuestion?.question ?? contextQuestion;
                 const guardSummary = this.buildEnginePayloadSummary(guardQuestion);
                 const guardTokens = this.formatTokenEstimate(guardSummary.inputTokens);
-                const guardThreshold = this.formatTokenEstimate(INQUIRY_INPUT_TOKENS_RED);
-                const guardText = `Payload is very large (~${guardTokens} input tokens; guard ${guardThreshold}). Confirm larger-context model or adjust the Inquiry class presets.`;
-                this.enginePanelGuardNoteEl.setText(guardText);
+                if (this.enginePanelGuardTokenEl) {
+                    this.enginePanelGuardTokenEl.setText(`~${guardTokens} input tokens`);
+                    this.enginePanelGuardTokenEl.classList.toggle('is-large', guardSummary.tier === 'red');
+                }
             }
         }
 
@@ -1063,7 +1072,7 @@ export class InquiryView extends ItemView {
     private handleGuardSettingsClick(): void {
         this.pendingGuardQuestion = undefined;
         this.hideEnginePanel();
-        this.openInquirySettings('class-presets');
+        this.openInquirySettings('class-scope');
     }
 
     private renderEngineChoices(
@@ -3355,7 +3364,7 @@ export class InquiryView extends ItemView {
             this.ccLabel.classList.add('is-actionable');
         }
         if (!this.ccLabelHint) {
-            this.ccLabelHint = this.createSvgGroup(this.ccLabelGroup ?? this.ccGroup, 'ert-inquiry-cc-hint', 0, 0);
+            this.ccLabelHint = this.createSvgGroup(this.ccGroup, 'ert-inquiry-cc-hint', 0, 0);
             this.ccLabelHintIcon = this.createIconUse(
                 'arrow-big-up',
                 -CC_LABEL_HINT_SIZE / 2,
@@ -3364,6 +3373,11 @@ export class InquiryView extends ItemView {
             );
             this.ccLabelHintIcon.classList.add('ert-inquiry-cc-hint-icon');
             this.ccLabelHint.appendChild(this.ccLabelHintIcon);
+            addTooltipData(
+                this.ccLabelHint,
+                this.balanceTooltipText('Click notes to adjust scope. Shift-click to open note.'),
+                'top'
+            );
         }
         this.ccLabel.textContent = this.getCorpusCcScopeLabel();
         const labelX = Math.round((layout.rightBlockLeft + layout.rightBlockRight) / 2);
@@ -3377,18 +3391,14 @@ export class InquiryView extends ItemView {
             addTooltipData(this.ccLabelGroup, this.balanceTooltipText('Cycle all corpus scopes.'), 'top');
         }
         if (this.ccLabelHint) {
-            this.ccLabelHint.removeAttribute('data-tooltip');
-            this.ccLabelHint.removeAttribute('data-tooltip-placement');
-            this.ccLabelHint.removeAttribute('data-tooltip-offset-x');
             const labelWidth = this.ccLabel.getComputedTextLength?.() ?? 0;
-            const hintX = Math.round(labelX + (labelWidth / 2) + 10);
-            this.ccLabelHint.setAttribute('transform', `translate(${hintX} 0)`);
+            const hintX = Math.round(labelX + (labelWidth / 2) + 5 + (CC_LABEL_HINT_SIZE / 2));
+            this.ccLabelHint.setAttribute('transform', `translate(${hintX} ${labelYOffset})`);
             if (this.ccLabelHit) {
                 const hitPaddingX = 6;
                 const hitHeight = 20;
                 const hitStartX = Math.round(labelX - (labelWidth / 2) - hitPaddingX);
-                const hitEndX = Math.round(hintX + (CC_LABEL_HINT_SIZE / 2) + hitPaddingX);
-                const hitWidth = Math.max(0, hitEndX - hitStartX);
+                const hitWidth = Math.max(0, Math.round(labelWidth + (hitPaddingX * 2)));
                 this.ccLabelHit.setAttribute('x', String(hitStartX));
                 this.ccLabelHit.setAttribute('y', String(-Math.round(hitHeight / 2)));
                 this.ccLabelHit.setAttribute('width', String(hitWidth));
@@ -5000,7 +5010,9 @@ export class InquiryView extends ItemView {
         window.open(INQUIRY_GUIDANCE_DOC_URL, '_blank');
     }
 
-    private openInquirySettings(focus: 'sources' | 'class-scope' | 'scan-roots' | 'class-presets'): void {
+    private openInquirySettings(
+        focus: 'overview' | 'sources' | 'class-scope' | 'scan-roots' | 'class-presets'
+    ): void {
         if (this.plugin.settingsTab) {
             this.plugin.settingsTab.setActiveTab('inquiry');
         }
@@ -5011,6 +5023,9 @@ export class InquiryView extends ItemView {
             setting.openTabById('radial-timeline');
         }
         window.setTimeout(() => {
+            if (focus === 'overview') {
+                return;
+            }
             if (focus === 'sources') {
                 this.scrollInquirySetting('class-scope');
                 window.setTimeout(() => this.scrollInquirySetting('scan-roots'), 80);

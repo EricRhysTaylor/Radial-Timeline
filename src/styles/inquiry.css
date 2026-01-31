@@ -600,17 +600,17 @@
 }
 
 .ert-inquiry-cc-hint {
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: help;
 }
 
 .ert-inquiry-cc-hint-icon {
   fill: var(--text-faint);
   opacity: 1;
   transition: fill 120ms ease, opacity 120ms ease;
-  pointer-events: none;
 }
 
-.ert-inquiry-cc-label-group:hover .ert-inquiry-cc-hint-icon {
+.ert-inquiry-cc-hint:hover .ert-inquiry-cc-hint-icon {
   fill: var(--text-normal);
 }
 
@@ -1756,6 +1756,15 @@
 .ert-inquiry-engine-guard-note {
   font-size: 10px;
   color: var(--text-muted);
+}
+
+.ert-inquiry-engine-guard-token {
+  font-weight: 700;
+  color: var(--text-normal);
+}
+
+.ert-inquiry-engine-guard-token.is-large {
+  color: var(--text-error);
 }
 
 .ert-inquiry-engine-run-anyway {

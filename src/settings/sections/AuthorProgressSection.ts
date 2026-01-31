@@ -249,7 +249,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Book Title for Social
     const bookTitleSetting = new Setting(stylingBody)
         .setName('Book Title')
-        .setDesc('Display title for your Social APR graphic. Leave blank to use the main book title. Pro campaigns can override this per campaign.');
+        .setDesc('Display title for your Social APR graphic. Leave blank to use the main book title.');
 
     bookTitleSetting.settingEl.addClass('ert-setting-full-width-input');
 
@@ -283,7 +283,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // Project Path for Social
     const projectPathSetting = new Setting(stylingBody)
         .setName('Project Path')
-        .setDesc('Project folder path for this Social target. Leave blank to use the main Source path. Pro campaigns can override this per campaign.');
+        .setDesc('Project folder path for this Social target. Leave blank to use the main Source path.');
 
     projectPathSetting.settingEl.addClass('ert-setting-full-width-input');
 

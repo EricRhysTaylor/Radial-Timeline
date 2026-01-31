@@ -1397,7 +1397,7 @@
 /* APR Status Grid */
 .ert-ui.ert-scope--modal .ert-apr-status-grid {
   display: grid;
-  grid-template-columns: minmax(100px, 1fr) max-content max-content max-content max-content;
+  grid-template-columns: minmax(120px, 1fr) minmax(140px, 1.1fr) max-content max-content max-content max-content;
   column-gap: 10px;
   row-gap: var(--ert-gap-xs);
   width: 100%;
@@ -1422,7 +1422,8 @@
   color: var(--text-muted);
 }
 
-.ert-ui.ert-scope--modal .ert-apr-status-cell--item {
+.ert-ui.ert-scope--modal .ert-apr-status-cell--apr,
+.ert-ui.ert-scope--modal .ert-apr-status-cell--book {
   font-weight: 600;
   color: var(--text-muted);
   min-width: 0;
@@ -1439,6 +1440,17 @@
   text-transform: uppercase;
   white-space: nowrap;
   max-width: 35ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+}
+
+.ert-ui.ert-scope--modal .ert-apr-status-book {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-normal);
+  white-space: nowrap;
+  max-width: 40ch;
   overflow: hidden;
   text-overflow: ellipsis;
   display: inline-block;

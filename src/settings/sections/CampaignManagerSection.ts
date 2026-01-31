@@ -11,8 +11,10 @@ import { getTeaserThresholds, teaserLevelToRevealOptions } from '../../renderer/
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { getAllScenes } from '../../utils/manuscript';
 import { buildCampaignEmbedPath, type AprSize } from '../../utils/aprPaths';
+import { validateAndRememberProjectPath } from '../../renderer/apr/aprHelpers';
 
 import { ERT_CLASSES } from '../../ui/classes';
+import { ProjectPathSuggest } from '../ProjectPathSuggest';
 
 export interface CampaignManagerProps {
     app: App;
@@ -202,6 +204,7 @@ export function campaignNeedsRefresh(campaign: AprCampaign): boolean {
 export function renderCampaignManagerSection({ app, plugin, containerEl, onCampaignChange }: CampaignManagerProps): void {
     const isProActive = isProfessionalActive(plugin);
     const campaigns = plugin.settings.authorProgress?.campaigns || [];
+    const expandedCampaigns = new Set<string>();
 
     // ─────────────────────────────────────────────────────────────────────────
     // CAMPAIGN MANAGER CARD
@@ -254,7 +257,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
             renderCampaignRow(listContainer, campaign, index, plugin, () => {
                 rerenderCampaignList();
                 onCampaignChange?.();
-            });
+            }, expandedCampaigns);
         });
     }
 
@@ -366,11 +369,17 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
             const emptyState = listContainer.createDiv({ cls: 'ert-campaign-empty-state' });
             emptyState.createEl('p', { text: 'No campaigns yet. Create your first campaign to track multiple embed destinations.' });
         } else {
+            const campaignIds = new Set(updatedCampaigns.map(campaign => campaign.id));
+            expandedCampaigns.forEach((id) => {
+                if (!campaignIds.has(id)) {
+                    expandedCampaigns.delete(id);
+                }
+            });
             updatedCampaigns.forEach((campaign, index) => {
                 renderCampaignRow(listContainer, campaign, index, plugin, () => {
                     rerenderCampaignList();
                     onCampaignChange?.();
-                });
+                }, expandedCampaigns);
             });
         }
 
@@ -420,7 +429,8 @@ function renderCampaignRow(
     campaign: AprCampaign,
     index: number,
     plugin: RadialTimelinePlugin,
-    onUpdate: () => void
+    onUpdate: () => void,
+    expandedCampaigns: Set<string>
 ): void {
     const needsRefresh = campaignNeedsRefresh(campaign);
 
@@ -433,6 +443,7 @@ function renderCampaignRow(
 
     const row = wrapper.createDiv({ cls: rowClasses.join(' ') });
     const rowLeft = row.createDiv({ cls: ERT_CLASSES.OBJECT_ROW_LEFT });
+    const campaignKey = campaign.id;
 
     // Status indicator
     const titleRow = rowLeft.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-campaign-title-row` });
@@ -531,6 +542,11 @@ function renderCampaignRow(
         cls: `${ERT_CLASSES.OBJECT_ROW_META} ert-campaign-next-update`
     });
 
+    if (expandedCampaigns.has(campaignKey)) {
+        row.classList.add('is-expanded');
+        renderCampaignDetails(wrapper, campaign, index, plugin, onUpdate);
+    }
+
     // Actions
     const actions = row.createDiv({ cls: ERT_CLASSES.OBJECT_ROW_ACTIONS });
     const actionGroup = actions.createDiv({ cls: ERT_CLASSES.ICON_BTN_GROUP });
@@ -557,8 +573,10 @@ function renderCampaignRow(
         if (existingDetails) {
             existingDetails.remove();
             row.classList.remove('is-expanded');
+            expandedCampaigns.delete(campaignKey);
         } else {
             row.classList.add('is-expanded');
+            expandedCampaigns.add(campaignKey);
             renderCampaignDetails(wrapper, campaign, index, plugin, onUpdate);
         }
     };
@@ -627,38 +645,115 @@ function renderCampaignDetails(
                 });
         });
 
-    // Refresh threshold (with dynamic description and value label)
-    let refreshValueLabel: HTMLSpanElement | undefined;
+    // Refresh threshold (with dynamic description and editable value input)
+    const refreshMin = 1;
+    const refreshMax = 90;
+    const refreshStep = 1;
+    let refreshValueInput: HTMLInputElement | null = null;
+    const getRefreshValue = () =>
+        plugin.settings.authorProgress?.campaigns?.[index]?.refreshThresholdDays ?? campaign.refreshThresholdDays;
+    const clampRefreshValue = (value: number) => Math.min(refreshMax, Math.max(refreshMin, Math.round(value)));
+
     const refreshSetting = new Setting(details)
         .setName('Refresh Alert Threshold')
-        .setDesc(`Days before showing a refresh reminder in the timeline view. Currently: ${campaign.refreshThresholdDays} days.`)
-        .addSlider(slider => {
-            slider.setLimits(1, 90, 1)
-                .setValue(campaign.refreshThresholdDays)
-                .onChange(async (val) => {
-                    if (!plugin.settings.authorProgress?.campaigns) return;
-                    plugin.settings.authorProgress.campaigns[index].refreshThresholdDays = val;
-                    await plugin.saveSettings();
-                    // Update description with new value
-                    const descEl = refreshSetting.descEl;
-                    if (descEl) {
-                        descEl.setText(`Days before showing a refresh reminder in the timeline view. Currently: ${val} days.`);
-                    }
-                    // Update value label
-                    if (refreshValueLabel) {
-                        refreshValueLabel.setText(String(val));
-                    }
-                });
+        .setDesc(`Days before showing a refresh reminder in the timeline view. Currently: ${campaign.refreshThresholdDays} days.`);
 
-            // Add value label next to the slider
-            const sliderEl = slider.sliderEl;
-            refreshValueLabel = sliderEl.parentElement?.createEl('span', {
-                cls: 'ert-sliderValueLabel',
-                text: String(campaign.refreshThresholdDays)
+    const updateRefreshDescription = (val: number) => {
+        const descEl = refreshSetting.descEl;
+        if (descEl) {
+            descEl.setText(`Days before showing a refresh reminder in the timeline view. Currently: ${val} days.`);
+        }
+    };
+
+    const syncRefreshDisplay = (val: number, { skipInput = false }: { skipInput?: boolean } = {}) => {
+        updateRefreshDescription(val);
+        if (!refreshValueInput || skipInput) return;
+        if (document.activeElement === refreshValueInput) return;
+        refreshValueInput.value = String(val);
+    };
+
+    const commitRefreshValue = async (val: number) => {
+        if (!plugin.settings.authorProgress?.campaigns) return;
+        const nextValue = clampRefreshValue(val);
+        plugin.settings.authorProgress.campaigns[index].refreshThresholdDays = nextValue;
+        await plugin.saveSettings();
+        syncRefreshDisplay(nextValue);
+        if (refreshValueInput) {
+            refreshValueInput.value = String(nextValue);
+        }
+    };
+
+    const parseRefreshValue = (raw: string) => {
+        if (!raw.trim()) return null;
+        const parsed = Number(raw);
+        if (!Number.isFinite(parsed)) return null;
+        return parsed;
+    };
+
+    refreshSetting.addSlider(slider => {
+        slider.setLimits(refreshMin, refreshMax, refreshStep)
+            .setValue(getRefreshValue())
+            .onChange(async (val) => {
+                await commitRefreshValue(val);
             });
 
-            return slider;
+        const sliderEl = slider.sliderEl;
+        sliderEl.addEventListener('input', () => {
+            const nextValue = clampRefreshValue(Number(sliderEl.value));
+            syncRefreshDisplay(nextValue);
         });
+
+        const controlEl = sliderEl.parentElement;
+        if (controlEl) {
+            refreshValueInput = controlEl.createEl('input', {
+                type: 'number',
+                cls: 'ert-input ert-input--xs',
+                value: String(getRefreshValue()),
+                attr: {
+                    min: String(refreshMin),
+                    max: String(refreshMax),
+                    step: String(refreshStep),
+                    'aria-label': 'Refresh alert threshold (days)'
+                }
+            });
+
+            refreshValueInput.addEventListener('input', () => {
+                const parsed = parseRefreshValue(refreshValueInput?.value ?? '');
+                if (parsed === null) return;
+                if (parsed < refreshMin || parsed > refreshMax) return;
+                syncRefreshDisplay(parsed, { skipInput: true });
+                slider.setValue(parsed);
+            });
+
+            const finalizeInput = async () => {
+                const currentValue = getRefreshValue();
+                const parsed = parseRefreshValue(refreshValueInput?.value ?? '');
+                const nextValue = parsed === null ? currentValue : clampRefreshValue(parsed);
+                if (refreshValueInput) {
+                    refreshValueInput.value = String(nextValue);
+                }
+                slider.setValue(nextValue);
+                if (nextValue !== currentValue) {
+                    await commitRefreshValue(nextValue);
+                } else {
+                    syncRefreshDisplay(nextValue);
+                }
+            };
+
+            refreshValueInput.addEventListener('blur', () => {
+                void finalizeInput();
+            });
+
+            refreshValueInput.addEventListener('keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    refreshValueInput?.blur();
+                }
+            });
+        }
+
+        return slider;
+    });
 
     // ─────────────────────────────────────────────────────────────────────────
     // BOOK TITLE & PROJECT PATH OVERRIDES (Pro Campaign Feature)
@@ -728,6 +823,22 @@ function renderCampaignDetails(
             .setValue(campaign.projectPath || '');
         text.inputEl.addClass('ert-input--lg');
 
+        text.onChange(() => {
+            clearInputState();
+        });
+
+        new ProjectPathSuggest(plugin.app, text.inputEl, plugin, text, {
+            onValidPath: async (normalized) => {
+                if (!plugin.settings.authorProgress?.campaigns) return;
+                plugin.settings.authorProgress.campaigns[index].projectPath = normalized;
+                await plugin.saveSettings();
+                onUpdate();
+            },
+            getSavedValue: () => plugin.settings.authorProgress?.campaigns?.[index]?.projectPath || '',
+            successClass,
+            errorClass
+        });
+
         const handleBlur = async () => {
             const val = text.getValue().trim();
             clearInputState();
@@ -743,10 +854,7 @@ function renderCampaignDetails(
             }
 
             // Validate the path exists
-            const { normalizePath, TFolder } = require('obsidian');
-            const normalizedPath = normalizePath(val);
-            const file = plugin.app.vault.getAbstractFileByPath(normalizedPath);
-            const isValid = file !== null && file instanceof TFolder && file.path === normalizedPath;
+            const isValid = await validateAndRememberProjectPath(val, plugin);
 
             if (!isValid) {
                 // Invalid path - revert to last saved value

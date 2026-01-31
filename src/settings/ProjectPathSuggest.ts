@@ -7,6 +7,14 @@ import { App, AbstractInputSuggest, TFolder, TextComponent, normalizePath, Notic
 import RadialTimelinePlugin from '../main';
 import { validateAndRememberProjectPath } from '../renderer/apr/aprHelpers';
 
+interface ProjectPathSuggestOptions {
+  onValidPath?: (normalized: string) => Promise<void> | void;
+  onInvalidPath?: (normalized: string) => void;
+  getSavedValue?: () => string;
+  successClass?: string;
+  errorClass?: string;
+}
+
 /**
  * ProjectPathSuggest provides folder suggestions for the Social Project Path setting.
  * Similar to FolderSuggest but uses the Project Path validation and storage.
@@ -14,11 +22,19 @@ import { validateAndRememberProjectPath } from '../renderer/apr/aprHelpers';
 export class ProjectPathSuggest extends AbstractInputSuggest<TFolder> {
   private plugin: RadialTimelinePlugin;
   private text: TextComponent;
+  private options?: ProjectPathSuggestOptions;
 
-  constructor(app: App, input: HTMLInputElement, plugin: RadialTimelinePlugin, text: TextComponent) {
+  constructor(
+    app: App,
+    input: HTMLInputElement,
+    plugin: RadialTimelinePlugin,
+    text: TextComponent,
+    options?: ProjectPathSuggestOptions
+  ) {
     super(app, input);
     this.plugin = plugin;
     this.text = text;
+    this.options = options;
   }
 
   getSuggestions(query: string): TFolder[] {
@@ -43,23 +59,36 @@ export class ProjectPathSuggest extends AbstractInputSuggest<TFolder> {
       try { (this as any).inputEl.value = normalized; } catch {}
     }
 
+    const successClass = this.options?.successClass ?? 'is-success';
+    const errorClass = this.options?.errorClass ?? 'is-error';
+
     // Validate and remember using Project Path validation
     void validateAndRememberProjectPath(normalized, this.plugin).then(async (ok) => {
       if (ok) {
-        // Save to authorProgress.socialProjectPath
-        if (!this.plugin.settings.authorProgress) return;
-        this.plugin.settings.authorProgress.socialProjectPath = normalized;
-        await this.plugin.saveSettings();
-        inputEl.removeClass('is-error');
-        inputEl.addClass('is-success');
-        window.setTimeout(() => inputEl.removeClass('is-success'), 1000);
+        if (this.options?.onValidPath) {
+          await this.options.onValidPath(normalized);
+        } else {
+          // Save to authorProgress.socialProjectPath
+          if (!this.plugin.settings.authorProgress) return;
+          this.plugin.settings.authorProgress.socialProjectPath = normalized;
+          await this.plugin.saveSettings();
+        }
+        inputEl.removeClass(errorClass);
+        inputEl.addClass(successClass);
+        window.setTimeout(() => inputEl.removeClass(successClass), 1000);
       } else {
         // Invalid path - revert to last saved value
-        const savedValue = this.plugin.settings.authorProgress?.socialProjectPath || '';
+        const savedValue = this.options?.getSavedValue?.()
+          ?? this.plugin.settings.authorProgress?.socialProjectPath
+          ?? '';
         this.text.setValue(savedValue);
-        inputEl.addClass('is-error');
-        window.setTimeout(() => inputEl.removeClass('is-error'), 2000);
-        new Notice(`Invalid project path: "${normalized}" does not exist or is not a folder. Reverting to saved value.`);
+        inputEl.addClass(errorClass);
+        window.setTimeout(() => inputEl.removeClass(errorClass), 2000);
+        if (this.options?.onInvalidPath) {
+          this.options.onInvalidPath(normalized);
+        } else {
+          new Notice(`Invalid project path: "${normalized}" does not exist or is not a folder. Reverting to saved value.`);
+        }
       }
       // Close suggestions and focus input
       try { this.close(); } catch {}

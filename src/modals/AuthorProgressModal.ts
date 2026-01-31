@@ -8,6 +8,7 @@ import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { ERT_CLASSES } from '../ui/classes';
 import { buildCampaignEmbedPath, buildDefaultEmbedPath } from '../utils/aprPaths';
 import { resolveBookTitle, resolveProjectPath } from '../renderer/apr/aprHelpers';
+import { isSceneItem } from '../utils/sceneHelpers';
 
 export class AuthorProgressModal extends Modal {
     private plugin: RadialTimelinePlugin;
@@ -25,6 +26,7 @@ export class AuthorProgressModal extends Modal {
 
     private cachedScenes: TimelineItem[] = [];
     private progressPercent: number = 0;
+    private cachedProjectPath: string = '';
 
     constructor(app: App, plugin: RadialTimelinePlugin) {
         super(app);
@@ -176,6 +178,7 @@ export class AuthorProgressModal extends Modal {
         if (!settings) {
             this.cachedScenes = [];
             this.progressPercent = 0;
+            this.cachedProjectPath = '';
             return;
         }
 
@@ -183,10 +186,22 @@ export class AuthorProgressModal extends Modal {
         const campaign = this.getSelectedCampaign();
         const projectPath = resolveProjectPath(settings, campaign ?? null, this.plugin.settings.sourcePath);
 
+        // Only reload if project path changed (cache invalidation on projectPath change)
+        if (this.cachedProjectPath === projectPath && this.cachedScenes.length > 0) {
+            return; // Cache hit - skip reload
+        }
+
         // Load scenes from the resolved project path
         const allScenes = await this.plugin.getSceneData({ sourcePath: projectPath });
-        this.cachedScenes = allScenes.filter(s => s.itemType === 'Scene' || !s.itemType);
+        this.cachedScenes = allScenes.filter(isSceneItem);
         this.progressPercent = this.service.calculateProgress(this.cachedScenes);
+        this.cachedProjectPath = projectPath;
+
+        // Empty project feedback - show Notice when valid path has no scenes
+        if (this.cachedScenes.length === 0) {
+            const targetLabel = campaign ? `Campaign "${campaign.name}"` : 'Default Report';
+            new Notice(`${targetLabel}: Project path "${projectPath}" contains no scenes.`);
+        }
     }
 
     private renderStatusSection(): void {
@@ -262,30 +277,35 @@ export class AuthorProgressModal extends Modal {
         const settings = this.plugin.settings.authorProgress;
         const statusGrid = container.createDiv({ cls: 'ert-apr-status-grid' });
         const statusHeaderRow = statusGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--header' });
-        ['Item', 'Export', 'Stage', 'Update in', 'Reminder'].forEach(label => {
-            statusHeaderRow.createDiv({ text: label, cls: 'ert-apr-status-cell ert-apr-status-cell--header' });
+        const headerLabels = ['APR', 'Book Title', 'Export', 'Stage', 'Update In', 'Reminder'];
+        headerLabels.forEach(label => {
+            const headerCell = statusHeaderRow.createDiv({
+                text: label,
+                cls: 'ert-apr-status-cell ert-apr-status-cell--header'
+            });
+            if (label === 'APR') {
+                setTooltip(headerCell, 'APR = Author Progress Report (the generated SVG output).');
+            }
         });
 
         targets.forEach((target) => {
             const dataRow = statusGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--data' });
-            const itemCell = dataRow.createDiv({ cls: 'ert-apr-status-cell ert-apr-status-cell--item' });
 
-            // Show target name as main label
-            const itemLabel = itemCell.createSpan({
+            const aprCell = dataRow.createDiv({ cls: 'ert-apr-status-cell ert-apr-status-cell--apr' });
+            const aprLabel = aprCell.createSpan({
                 text: target.label,
                 cls: 'ert-apr-status-title'
             });
+            aprLabel.setAttr('title', target.label);
 
-            // Show resolved book title as auxiliary info (dimmed subtitle)
-            const bookTitleLabel = itemCell.createDiv({
+            const bookCell = dataRow.createDiv({ cls: 'ert-apr-status-cell ert-apr-status-cell--book' });
+            const bookLabel = bookCell.createSpan({
                 text: target.bookTitle,
-                cls: `${ERT_CLASSES.FIELD_NOTE} ert-apr-status-subtitle`
+                cls: `${ERT_CLASSES.FIELD_NOTE} ert-apr-status-book`
             });
-
-            // Tooltip shows full context: Target name + Book Title + Project Path
-            const tooltipText = `${target.label}\nBook: ${target.bookTitle}\nProject: ${target.projectPath}`;
-            itemLabel.setAttr('title', tooltipText);
-            bookTitleLabel.setAttr('title', tooltipText);
+            if (target.projectPath) {
+                bookLabel.setAttr('title', `Project: ${target.projectPath}`);
+            }
 
             const exportCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
             const exportPill = exportCell.createSpan({
