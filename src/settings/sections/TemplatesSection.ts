@@ -22,6 +22,7 @@ export function renderStoryBeatsSection(params: {
     containerEl: HTMLElement;
 }): void {
     const { app, plugin, containerEl } = params;
+    containerEl.classList.add(ERT_CLASSES.STACK);
     const actsStack = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
     const beatsStack = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
     const yamlStack = containerEl.createDiv({ cls: ERT_CLASSES.STACK });

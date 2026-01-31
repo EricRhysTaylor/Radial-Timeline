@@ -33,11 +33,10 @@
 
 <table width="100%">
   <tr>
-    <td width="50%" valign="top">
+    <td width="50%" valign="top" style="padding-right: 12px;">
       <p><strong>Before:</strong> Scrolling through line after line of spreadsheet tables and files, losing sight of how your B-plot interweaves with the main storyline.</p>
     </td>
-    <td>&nbsp;&nbsp;</td>
-    <td width="50%" valign="top">
+    <td width="50%" valign="top" style="padding-left: 12px;">
       <p><strong>After:</strong> One visual map showing every scene, every subplot, color coded and ordered in context and connected to the big picture.</p>
     </td>
   </tr>

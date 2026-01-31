@@ -1886,7 +1886,7 @@
   transition: opacity 0.15s ease;
 }
 
-.ert-ui.ert-scope--settings .ert-settings-visible {
+.ert-ui.ert-scope--settings .ert-settings-visible:not(.setting-item) {
   display: block;
 }
 

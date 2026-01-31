@@ -254,96 +254,31 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private filterSettings(query: string): void {
         if (!this._coreSearchableContent) return;
         const queryTerms = this.getSearchTerms(query, 3, this._searchShortAllowList);
-        const allSettings = this._coreSearchableContent.querySelectorAll('.setting-item');
         const allSectionContainers = this._coreSearchableContent.querySelectorAll('[data-ert-section]');
+
+        // If no query, show all sections
         if (queryTerms.length === 0) {
-            allSettings.forEach(el => this.toggleSearchHidden(el as HTMLElement, false));
             allSectionContainers.forEach(el => (el as HTMLElement).classList.remove('ert-search-section-hidden'));
             this.updateNonSettingBlocks(false);
             return;
         }
 
-        const matchingSections = new Set<HTMLElement>();
-        const settingMatchMap = new Map<HTMLElement, boolean>();
-
-        allSettings.forEach(settingEl => {
-            const el = settingEl as HTMLElement;
-            const searchText = ` ${el.dataset.rtSearchText || ''} `;
-            const matches = queryTerms.every(term => this.matchesSearchTerm(searchText, term));
-            settingMatchMap.set(el, matches);
-            if (matches) {
-                const section = el.closest('[data-ert-section]') as HTMLElement | null;
-                if (section) matchingSections.add(section);
-            }
-        });
-
-        allSettings.forEach(settingEl => {
-            const el = settingEl as HTMLElement;
-            const section = el.closest('[data-ert-section]') as HTMLElement | null;
-            const sectionIsMatch = section ? matchingSections.has(section) : false;
-            const shouldHide = section ? !sectionIsMatch : !settingMatchMap.get(el);
-            this.toggleSearchHidden(el, shouldHide);
-        });
-
+        // Filter entire sections based on header match
         allSectionContainers.forEach(sectionEl => {
             const section = sectionEl as HTMLElement;
-            const showSection = matchingSections.has(section);
-            section.classList.toggle('ert-search-section-hidden', !showSection);
+            const searchText = ` ${section.dataset.rtSearchText || ''} `;
+            const matches = queryTerms.every(term => this.matchesSearchTerm(searchText, term));
+            section.classList.toggle('ert-search-section-hidden', !matches);
         });
 
         this.updateNonSettingBlocks(true);
     }
 
-    private toggleSearchHidden(el: HTMLElement, hide: boolean): void {
-        el.classList.toggle('ert-search-hidden', hide);
-        if (hide) {
-            if (el.dataset.rtSearchDisplay === undefined) {
-                el.dataset.rtSearchDisplay = el.style.getPropertyValue('display');
-                el.dataset.rtSearchDisplayPriority = el.style.getPropertyPriority('display');
-            }
-            el.style.setProperty('display', 'none', 'important');
-            return;
-        }
-        if (el.dataset.rtSearchDisplay !== undefined) {
-            const display = el.dataset.rtSearchDisplay;
-            const priority = el.dataset.rtSearchDisplayPriority || '';
-            if (display) {
-                el.style.setProperty('display', display, priority);
-            } else {
-                el.style.removeProperty('display');
-            }
-            delete el.dataset.rtSearchDisplay;
-            delete el.dataset.rtSearchDisplayPriority;
-        } else if (el.style.getPropertyValue('display') === 'none') {
-            el.style.removeProperty('display');
-        }
-    }
-
     private updateNonSettingBlocks(active: boolean): void {
-        if (!this._coreSearchableContent) return;
-        const elements = this._coreSearchableContent.querySelectorAll<HTMLElement>('*');
-        elements.forEach(el => {
-            if (el === this._coreSearchableContent) return;
-            if (el.closest('.setting-item')) return;
-
-            // If element is a descendant of a preview frame (but not the frame itself), always show it.
-            // The visibility of the preview frame itself determines the visibility of its children.
-            const previewParent = el.closest('.ert-previewFrame, [data-preview]');
-            if (previewParent && previewParent !== el) {
-                this.toggleSearchHidden(el, false);
-                return;
-            }
-
-            const isPreview = el.matches('.ert-previewFrame, [data-preview]');
-            const section = el.closest('[data-ert-section]');
-            if (active && isPreview && section?.querySelector('.setting-item:not(.ert-search-hidden)')) {
-                this.toggleSearchHidden(el, false);
-                return;
-            }
-            const hasVisibleSettings = !!el.querySelector('.setting-item:not(.ert-search-hidden)');
-            const shouldHide = active && !hasVisibleSettings;
-            this.toggleSearchHidden(el, shouldHide);
-        });
+        // Since we now hide entire sections, non-setting blocks within sections
+        // are automatically hidden/shown with their parent section.
+        // This function is now a no-op but kept for compatibility.
+        return;
     }
 
     private getSearchTerms(text: string, minLength = 1, allowList: Set<string> = new Set()): string[] {
@@ -378,16 +313,18 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     }
 
     private addSearchMetadataToSettings(containerEl: HTMLElement): void {
-        const settingItems = containerEl.querySelectorAll('.setting-item');
-        settingItems.forEach(settingEl => {
-            const el = settingEl as HTMLElement;
-            if (el.dataset.rtSearchText) return;
-            const nameEl = el.querySelector('.setting-item-name');
-            const descEl = el.querySelector('.setting-item-description');
-            const name = nameEl?.textContent || '';
-            const desc = descEl?.textContent || '';
-            const searchTerms = this.getSearchTerms(`${name} ${desc}`, 1);
-            el.dataset.rtSearchText = searchTerms.join(' ');
+        // Only add search metadata to section headers, not individual settings
+        const sectionHeaders = containerEl.querySelectorAll('.ert-header');
+        sectionHeaders.forEach(header => {
+            const titleEl = header.querySelector('.ert-section-title');
+            const titleText = titleEl?.textContent || '';
+            const searchTerms = this.getSearchTerms(titleText, 1);
+
+            // Store search text on the section container
+            const sectionContainer = header.closest('[data-ert-section]') as HTMLElement;
+            if (sectionContainer && !sectionContainer.dataset.rtSearchText) {
+                sectionContainer.dataset.rtSearchText = searchTerms.join(' ');
+            }
         });
     }
 
