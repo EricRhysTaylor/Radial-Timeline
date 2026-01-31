@@ -59,6 +59,7 @@ const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline"; // Sentence case per guide
 
 export interface GetSceneDataOptions {
     filterBeatsBySystem?: boolean;
+    sourcePath?: string;  // Override the default source path (used for Social APR project targeting)
 }
 
 export default class RadialTimelinePlugin extends Plugin {

@@ -1,6 +1,5 @@
 import { App, Modal, Setting, ButtonComponent, Notice, TextComponent, setIcon, setTooltip, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { getAllScenes } from '../utils/manuscript';
 import { TimelineItem } from '../types/timeline';
 import { AuthorProgressService } from '../services/AuthorProgressService';
 import type { AprCampaign } from '../types/settings';
@@ -8,6 +7,7 @@ import { getTeaserThresholds, getTeaserRevealLevel, TEASER_LEVEL_INFO } from '..
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { ERT_CLASSES } from '../ui/classes';
 import { buildCampaignEmbedPath, buildDefaultEmbedPath } from '../utils/aprPaths';
+import { resolveBookTitle, resolveProjectPath } from '../renderer/apr/aprHelpers';
 
 export class AuthorProgressModal extends Modal {
     private plugin: RadialTimelinePlugin;
@@ -147,8 +147,10 @@ export class AuthorProgressModal extends Modal {
                 });
                 dropdown.selectEl.addClass('ert-input--lg');
                 dropdown.setValue(this.selectedTargetId);
-                dropdown.onChange(val => {
+                dropdown.onChange(async (val) => {
                     this.selectedTargetId = val === 'default' ? 'default' : val;
+                    // Reload data with the new target's resolved project path
+                    await this.loadData();
                     this.renderStatusSection();
                     this.renderActions();
                 });
@@ -170,7 +172,20 @@ export class AuthorProgressModal extends Modal {
     }
 
     private async loadData() {
-        this.cachedScenes = await getAllScenes(this.app, this.plugin);
+        const settings = this.plugin.settings.authorProgress;
+        if (!settings) {
+            this.cachedScenes = [];
+            this.progressPercent = 0;
+            return;
+        }
+
+        // Get resolved project path for the selected target
+        const campaign = this.getSelectedCampaign();
+        const projectPath = resolveProjectPath(settings, campaign ?? null, this.plugin.settings.sourcePath);
+
+        // Load scenes from the resolved project path
+        const allScenes = await this.plugin.getSceneData({ sourcePath: projectPath });
+        this.cachedScenes = allScenes.filter(s => s.itemType === 'Scene' || !s.itemType);
         this.progressPercent = this.service.calculateProgress(this.cachedScenes);
     }
 
@@ -236,6 +251,8 @@ export class AuthorProgressModal extends Modal {
     private renderStatusGrid(container: HTMLElement, targets: Array<{
         id: string;
         label: string;
+        bookTitle: string;
+        projectPath: string;
         path: string;
         size: 'thumb' | 'small' | 'medium' | 'large';
         campaign?: AprCampaign;
@@ -252,11 +269,23 @@ export class AuthorProgressModal extends Modal {
         targets.forEach((target) => {
             const dataRow = statusGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--data' });
             const itemCell = dataRow.createDiv({ cls: 'ert-apr-status-cell ert-apr-status-cell--item' });
+
+            // Show target name as main label
             const itemLabel = itemCell.createSpan({
                 text: target.label,
                 cls: 'ert-apr-status-title'
             });
-            itemLabel.setAttr('title', target.label);
+
+            // Show resolved book title as auxiliary info (dimmed subtitle)
+            const bookTitleLabel = itemCell.createDiv({
+                text: target.bookTitle,
+                cls: `${ERT_CLASSES.FIELD_NOTE} ert-apr-status-subtitle`
+            });
+
+            // Tooltip shows full context: Target name + Book Title + Project Path
+            const tooltipText = `${target.label}\nBook: ${target.bookTitle}\nProject: ${target.projectPath}`;
+            itemLabel.setAttr('title', tooltipText);
+            bookTitleLabel.setAttr('title', tooltipText);
 
             const exportCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
             const exportPill = exportCell.createSpan({
@@ -324,7 +353,24 @@ export class AuthorProgressModal extends Modal {
 
     private renderCoreActions(container: HTMLElement): void {
         const settings = this.plugin.settings.authorProgress;
-        this.aprSize = settings?.aprSize ?? this.aprSize ?? 'medium';
+        if (!settings) return;
+
+        this.aprSize = settings.aprSize ?? this.aprSize ?? 'medium';
+
+        // Show resolved book title and project path info
+        const projectPath = resolveProjectPath(settings, null, this.plugin.settings.sourcePath);
+        const bookTitle = resolveBookTitle(settings, null, projectPath);
+
+        const infoRow = container.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
+        infoRow.createSpan({ text: 'Book', cls: ERT_CLASSES.LABEL });
+        const infoValue = infoRow.createDiv({ cls: ERT_CLASSES.INLINE });
+        infoValue.createSpan({ text: bookTitle, cls: 'ert-apr-info-value' });
+        const projectPathNote = infoValue.createSpan({
+            text: ` • ${this.summarizePath(projectPath, 30)}`,
+            cls: ERT_CLASSES.FIELD_NOTE
+        });
+        projectPathNote.setAttr('title', `Project: ${projectPath}`);
+
         const sizeStageRow = container.createDiv({
             cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ert-apr-actions-row--split`
         });
@@ -459,6 +505,21 @@ export class AuthorProgressModal extends Modal {
         }
 
         const settings = this.plugin.settings.authorProgress;
+        if (!settings) return;
+
+        // Show resolved book title and project path info
+        const projectPath = resolveProjectPath(settings, campaign, this.plugin.settings.sourcePath);
+        const bookTitle = resolveBookTitle(settings, campaign, projectPath);
+
+        const infoRow = container.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
+        infoRow.createSpan({ text: 'Book', cls: ERT_CLASSES.LABEL });
+        const infoValue = infoRow.createDiv({ cls: ERT_CLASSES.INLINE });
+        infoValue.createSpan({ text: bookTitle, cls: 'ert-apr-info-value' });
+        const projectPathNote = infoValue.createSpan({
+            text: ` • ${this.summarizePath(projectPath, 30)}`,
+            cls: ERT_CLASSES.FIELD_NOTE
+        });
+        projectPathNote.setAttr('title', `Project: ${projectPath}`);
         if (settings?.autoUpdateEmbedPaths) {
             const legacySlug = campaign.name.toLowerCase().replace(/\s+/g, '-');
             const legacyPath = `Radial Timeline/Social/${legacySlug}-progress.svg`;
@@ -567,6 +628,8 @@ export class AuthorProgressModal extends Modal {
     private getAprStatusTargets(): Array<{
         id: string;
         label: string;
+        bookTitle: string;
+        projectPath: string;
         path: string;
         size: 'thumb' | 'small' | 'medium' | 'large';
         campaign?: AprCampaign;
@@ -575,29 +638,43 @@ export class AuthorProgressModal extends Modal {
         const targets: Array<{
             id: string;
             label: string;
+            bookTitle: string;
+            projectPath: string;
             path: string;
             size: 'thumb' | 'small' | 'medium' | 'large';
             campaign?: AprCampaign;
         }> = [];
 
+        if (!settings) return targets;
+
+        // Default Report (Core Social)
+        const defaultProjectPath = resolveProjectPath(settings, null, this.plugin.settings.sourcePath);
+        const defaultBookTitle = resolveBookTitle(settings, null, defaultProjectPath);
         const defaultPath = buildDefaultEmbedPath({
-            bookTitle: settings?.bookTitle,
-            updateFrequency: settings?.updateFrequency,
-            aprSize: settings?.aprSize
+            bookTitle: settings.bookTitle,
+            updateFrequency: settings.updateFrequency,
+            aprSize: settings.aprSize
         });
-        const defaultSize = settings?.aprSize ?? 'medium';
+        const defaultSize = settings.aprSize ?? 'medium';
         targets.push({
             id: 'default',
             label: 'Default Report',
-            path: settings?.dynamicEmbedPath || defaultPath,
+            bookTitle: defaultBookTitle,
+            projectPath: defaultProjectPath,
+            path: settings.dynamicEmbedPath || defaultPath,
             size: defaultSize
         });
 
-        const campaigns = settings?.campaigns || [];
+        // Campaigns (Pro overrides)
+        const campaigns = settings.campaigns || [];
         campaigns.forEach(campaign => {
+            const campaignProjectPath = resolveProjectPath(settings, campaign, this.plugin.settings.sourcePath);
+            const campaignBookTitle = resolveBookTitle(settings, campaign, campaignProjectPath);
             targets.push({
                 id: campaign.id,
                 label: campaign.name,
+                bookTitle: campaignBookTitle,
+                projectPath: campaignProjectPath,
                 path: campaign.embedPath,
                 size: campaign.aprSize ?? defaultSize,
                 campaign

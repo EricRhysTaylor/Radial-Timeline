@@ -660,6 +660,121 @@ function renderCampaignDetails(
             return slider;
         });
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // BOOK TITLE & PROJECT PATH OVERRIDES (Pro Campaign Feature)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // Book Title Override
+    const bookTitleOverrideSetting = new Setting(details)
+        .setName('Book Title Override')
+        .setDesc('Optional: Override the display title for this campaign. Leave blank to inherit from Social Configuration.');
+
+    bookTitleOverrideSetting.settingEl.addClass('ert-setting-full-width-input');
+
+    bookTitleOverrideSetting.addText(text => {
+        text.setPlaceholder('Leave blank to inherit')
+            .setValue(campaign.bookTitle || '');
+        text.inputEl.addClass('ert-input--lg');
+
+        const handleBlur = async () => {
+            if (!plugin.settings.authorProgress?.campaigns) return;
+            const val = text.getValue().trim();
+            plugin.settings.authorProgress.campaigns[index].bookTitle = val || undefined;
+            await plugin.saveSettings();
+            onUpdate();
+        };
+
+        // SAFE: Settings sections rebuild DOM on any change; input element cleanup handles listener
+        text.inputEl.addEventListener('blur', handleBlur);
+        text.inputEl.addEventListener('keydown', (evt: KeyboardEvent) => {
+            if (evt.key === 'Enter') {
+                evt.preventDefault();
+                text.inputEl.blur();
+            }
+        });
+    });
+
+    // Project Path Override
+    const projectPathOverrideSetting = new Setting(details)
+        .setName('Project Path Override')
+        .setDesc('Optional: Override the project folder path for this campaign. Leave blank to inherit from Social Configuration.');
+
+    projectPathOverrideSetting.settingEl.addClass('ert-setting-full-width-input');
+
+    projectPathOverrideSetting.addText(text => {
+        const successClass = 'ert-input--success';
+        const errorClass = 'ert-input--error';
+
+        const clearInputState = () => {
+            text.inputEl.removeClass(successClass);
+            text.inputEl.removeClass(errorClass);
+        };
+
+        const flashError = (timeout = 2000) => {
+            text.inputEl.addClass(errorClass);
+            window.setTimeout(() => {
+                text.inputEl.removeClass(errorClass);
+            }, timeout);
+        };
+
+        const flashSuccess = (timeout = 1000) => {
+            text.inputEl.addClass(successClass);
+            window.setTimeout(() => {
+                text.inputEl.removeClass(successClass);
+            }, timeout);
+        };
+
+        text.setPlaceholder('Leave blank to inherit')
+            .setValue(campaign.projectPath || '');
+        text.inputEl.addClass('ert-input--lg');
+
+        const handleBlur = async () => {
+            const val = text.getValue().trim();
+            clearInputState();
+
+            if (!val) {
+                // Empty is allowed - means inherit from Social Configuration
+                if (!plugin.settings.authorProgress?.campaigns) return;
+                plugin.settings.authorProgress.campaigns[index].projectPath = undefined;
+                await plugin.saveSettings();
+                flashSuccess();
+                onUpdate();
+                return;
+            }
+
+            // Validate the path exists
+            const { normalizePath, TFolder } = require('obsidian');
+            const normalizedPath = normalizePath(val);
+            const file = plugin.app.vault.getAbstractFileByPath(normalizedPath);
+            const isValid = file !== null && file instanceof TFolder && file.path === normalizedPath;
+
+            if (!isValid) {
+                // Invalid path - revert to last saved value
+                const savedValue = plugin.settings.authorProgress?.campaigns?.[index]?.projectPath || '';
+                text.setValue(savedValue);
+                flashError();
+                new Notice(`Invalid project path: "${val}" does not exist or is not a folder. Reverting to saved value.`);
+                return;
+            }
+
+            // Save if valid
+            flashSuccess();
+            if (!plugin.settings.authorProgress?.campaigns) return;
+            plugin.settings.authorProgress.campaigns[index].projectPath = val;
+            await plugin.saveSettings();
+            onUpdate();
+        };
+
+        // SAFE: Settings sections rebuild DOM on any change; input element cleanup handles listener
+        text.inputEl.addEventListener('blur', handleBlur);
+        text.inputEl.addEventListener('keydown', (evt: KeyboardEvent) => {
+            if (evt.key === 'Enter') {
+                evt.preventDefault();
+                text.inputEl.blur();
+            }
+        });
+    });
+
     // Embed path (with validation and reset)
     const defaultPath = buildCampaignEmbedPath({
         bookTitle: plugin.settings.authorProgress?.bookTitle,

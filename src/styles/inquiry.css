@@ -583,40 +583,46 @@
 }
 
 .ert-inquiry-cc-label {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   fill: var(--text-muted);
+  pointer-events: none;
 }
 
-.ert-inquiry-cc-label.is-actionable {
+.ert-inquiry-cc-label-group {
   cursor: pointer;
 }
 
-.ert-inquiry-cc-label.is-actionable:hover {
+.ert-inquiry-cc-label-group:hover .ert-inquiry-cc-label {
   fill: var(--text-normal);
 }
 
 .ert-inquiry-cc-hint {
-  pointer-events: auto;
-  cursor: help;
+  pointer-events: none;
 }
 
 .ert-inquiry-cc-hint-icon {
   fill: var(--text-faint);
-  opacity: 0.7;
+  opacity: 1;
   transition: fill 120ms ease, opacity 120ms ease;
+  pointer-events: none;
 }
 
-.ert-inquiry-cc-hint:hover .ert-inquiry-cc-hint-icon {
+.ert-inquiry-cc-label-group:hover .ert-inquiry-cc-hint-icon {
   fill: var(--text-normal);
-  opacity: 1;
+}
+
+.ert-inquiry-cc-label-hit {
+  fill: transparent;
+  pointer-events: all;
 }
 
 .ert-inquiry-cc-class {
   pointer-events: auto;
   cursor: pointer;
+  --ert-inquiry-cc-class-color: var(--text-muted);
 }
 
 .ert-inquiry-cc-class-label {
@@ -624,34 +630,59 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  fill: var(--text-muted);
+  fill: var(--ert-inquiry-cc-class-color);
+  pointer-events: none;
 }
 
 .ert-inquiry-cc-class-icon {
-  fill: var(--text-muted);
+  pointer-events: none;
 }
 
-.ert-inquiry-cc-class.is-active .ert-inquiry-cc-class-label,
-.ert-inquiry-cc-class.is-active .ert-inquiry-cc-class-icon {
-  fill: var(--text-normal);
+.ert-inquiry-cc-class-icon-outer {
+  fill: none;
+  stroke: var(--ert-inquiry-cc-class-color);
+  stroke-width: 1.2;
+}
+
+.ert-inquiry-cc-class-icon-inner {
+  fill: var(--ert-inquiry-cc-class-color);
+}
+
+.ert-inquiry-cc-class.is-active {
+  --ert-inquiry-cc-class-color: var(--text-normal);
+}
+
+.ert-inquiry-cc-class.is-mode-full .ert-inquiry-cc-class-icon-outer {
+  fill: var(--ert-inquiry-cc-class-color);
+  stroke: none;
+}
+
+.ert-inquiry-cc-class.is-mode-full .ert-inquiry-cc-class-icon-inner,
+.ert-inquiry-cc-class.is-mode-none .ert-inquiry-cc-class-icon-inner {
+  opacity: 0;
 }
 
 .ert-inquiry-cc-class.is-off {
-  opacity: 0.45;
+  opacity: 1;
+}
+
+.ert-inquiry-cc-class-hit {
+  fill: transparent;
+  pointer-events: all;
 }
 
 .ert-inquiry-cc-cell-base {
   fill: color-mix(in srgb, var(--ert-inquiry-cc-cell-color) 30%, transparent);
-  opacity: 0.45;
+  opacity: 1;
 }
 
 .ert-inquiry-cc-cell-fill {
   fill: color-mix(in srgb, var(--ert-inquiry-cc-cell-fill-color) 35%, transparent);
-  opacity: 0.8;
+  opacity: 1;
 }
 
 .ert-inquiry-cc-cell.is-mode-none {
-  opacity: 0.4;
+  opacity: 1;
 }
 
 .ert-inquiry-cc-cell-border {
@@ -669,9 +700,27 @@
 }
 
 .ert-inquiry-cc-cell-icon {
-  font-size: 15px;
-  font-weight: 700;
+  pointer-events: none;
+}
+
+.ert-inquiry-cc-cell-icon-outer {
+  fill: none;
+  stroke: var(--ert-inquiry-cc-cell-color);
+  stroke-width: 1.2;
+}
+
+.ert-inquiry-cc-cell-icon-inner {
   fill: var(--ert-inquiry-cc-cell-color);
+}
+
+.ert-inquiry-cc-cell.is-mode-full .ert-inquiry-cc-cell-icon-outer {
+  fill: var(--ert-inquiry-cc-cell-color);
+  stroke: none;
+}
+
+.ert-inquiry-cc-cell.is-mode-full .ert-inquiry-cc-cell-icon-inner,
+.ert-inquiry-cc-cell.is-mode-none .ert-inquiry-cc-cell-icon-inner {
+  opacity: 0;
 }
 
 .ert-inquiry-cc-cell.is-status-todo .ert-inquiry-cc-cell-border {

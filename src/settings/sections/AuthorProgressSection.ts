@@ -16,6 +16,8 @@ import { ERT_CLASSES } from '../../ui/classes';
 import { STAGE_ORDER } from '../../utils/constants';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { buildDefaultEmbedPath } from '../../utils/aprPaths';
+import { ProjectPathSuggest } from '../ProjectPathSuggest';
+import { validateAndRememberProjectPath } from '../../renderer/apr/aprHelpers';
 
 export interface AuthorProgressSectionProps {
     app: App;
@@ -227,18 +229,140 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     // ─────────────────────────────────────────────────────────────────────────
     const contentWrapper = section.createDiv({ cls: `ert-apr-content ${ERT_CLASSES.STACK}` });
 
-    // Styling (background + branding colors) - placed first, close to preview
+    // Configuration (project setup, book title, and styling) - placed first, close to preview
     const stylingCard = contentWrapper.createDiv({ cls: ERT_CLASSES.PANEL });
     const stylingBlock = stylingCard.createDiv({ cls: ERT_CLASSES.STACK });
     const stylingHeader = stylingBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const stylingHeading = new Setting(stylingHeader)
-        .setName('Styling')
-        .setDesc('Customize the look of your APR to express your personality. Set and style various text attributes such as the Working Title, Author, and geometry elements like the borders and background.')
+        .setName('Configuration')
+        .setDesc('Configure your project settings and customize the look of your APR. Set the book title, project path, and style various visual elements like borders and background.')
         .setHeading();
-    addHeadingIcon(stylingHeading, 'brush');
+    addHeadingIcon(stylingHeading, 'settings');
     addWikiLink(stylingHeading, 'Settings#social-media-styling');
     applyErtHeaderLayout(stylingHeading, { variant: 'inline' });
     const stylingBody = stylingBlock.createDiv({ cls: 'ert-typography-stack' });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // BOOK TITLE & PROJECT PATH (Core Social Configuration)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // Book Title for Social
+    const bookTitleSetting = new Setting(stylingBody)
+        .setName('Book Title')
+        .setDesc('Display title for your Social APR graphic. Leave blank to use the main book title. Pro campaigns can override this per campaign.');
+
+    bookTitleSetting.settingEl.addClass('ert-setting-full-width-input');
+
+    bookTitleSetting.addText(text => {
+        text.setPlaceholder('Book 1, Songrise 2.0, etc.')
+            .setValue(settings?.socialBookTitle || '')
+            .onChange(async (val) => {
+                if (!plugin.settings.authorProgress) return;
+                plugin.settings.authorProgress.socialBookTitle = val.trim();
+                await plugin.saveSettings();
+                refreshPreview();
+            });
+
+        // Apply same blur/enter handling as other fields
+        plugin.registerDomEvent(text.inputEl, 'blur', async () => {
+            if (!plugin.settings.authorProgress) return;
+            const val = text.getValue().trim();
+            plugin.settings.authorProgress.socialBookTitle = val;
+            await plugin.saveSettings();
+            refreshPreview();
+        });
+
+        plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+            if (evt.key === 'Enter') {
+                evt.preventDefault();
+                text.inputEl.blur();
+            }
+        });
+    });
+
+    // Project Path for Social
+    const projectPathSetting = new Setting(stylingBody)
+        .setName('Project Path')
+        .setDesc('Project folder path for this Social target. Leave blank to use the main Source path. Pro campaigns can override this per campaign.');
+
+    projectPathSetting.settingEl.addClass('ert-setting-full-width-input');
+
+    projectPathSetting.addText(text => {
+        const successClass = 'ert-input--success';
+        const errorClass = 'ert-input--error';
+
+        const clearInputState = () => {
+            text.inputEl.removeClass(successClass);
+            text.inputEl.removeClass(errorClass);
+        };
+
+        const flashError = (timeout = 2000) => {
+            text.inputEl.addClass(errorClass);
+            window.setTimeout(() => {
+                text.inputEl.removeClass(errorClass);
+            }, timeout);
+        };
+
+        const flashSuccess = (timeout = 1000) => {
+            text.inputEl.addClass(successClass);
+            window.setTimeout(() => {
+                text.inputEl.removeClass(successClass);
+            }, timeout);
+        };
+
+        text.setPlaceholder('Projects/My Novel')
+            .setValue(settings?.socialProjectPath || '')
+            .onChange(() => {
+                clearInputState();
+            });
+
+        // Attach ProjectPathSuggest for autocomplete
+        new ProjectPathSuggest(app, text.inputEl, plugin, text);
+
+        const handleBlur = async () => {
+            const val = text.getValue().trim();
+            clearInputState();
+
+            if (!val) {
+                // Empty is allowed - means use Source path
+                if (plugin.settings.authorProgress) {
+                    plugin.settings.authorProgress.socialProjectPath = '';
+                    await plugin.saveSettings();
+                    refreshPreview();
+                    flashSuccess();
+                }
+                return;
+            }
+
+            // Validate the path
+            const isValid = await validateAndRememberProjectPath(val, plugin);
+
+            if (!isValid) {
+                // Invalid path - revert to last saved value
+                const savedValue = plugin.settings.authorProgress?.socialProjectPath || '';
+                text.setValue(savedValue);
+                flashError();
+                new Notice(`Invalid project path: "${val}" does not exist or is not a folder. Reverting to saved value.`);
+                return;
+            }
+
+            // Save if valid
+            if (plugin.settings.authorProgress) {
+                plugin.settings.authorProgress.socialProjectPath = val;
+                await plugin.saveSettings();
+                refreshPreview();
+                flashSuccess();
+            }
+        };
+
+        plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
+        plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+            if (evt.key === 'Enter') {
+                evt.preventDefault();
+                text.inputEl.blur();
+            }
+        });
+    });
 
     const currentBg = settings?.aprBackgroundColor || '#0d0d0f';
     const currentTransparent = settings?.aprCenterTransparent ?? true; // Default to true (recommended)

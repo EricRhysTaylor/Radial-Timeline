@@ -22,6 +22,7 @@ import { clampActNumber, getConfiguredActCount } from '../utils/acts';
 
 export interface GetSceneDataOptions {
     filterBeatsBySystem?: boolean;
+    sourcePath?: string;  // Override the default source path (used for Social APR project targeting)
 }
 
 const PULSE_FLAG_METADATA_KEYS = [
@@ -67,12 +68,14 @@ export class SceneDataService {
      */
     async getSceneData(options?: GetSceneDataOptions): Promise<TimelineItem[]> {
         const filterBeats = options?.filterBeatsBySystem ?? true;
+        // Use override sourcePath if provided (for Social APR project targeting), otherwise use settings
+        const sourcePath = options?.sourcePath ?? this.settings.sourcePath;
 
         // Find markdown files in vault that match the filters
         const files = this.app.vault.getMarkdownFiles().filter((file: TFile) => {
             // If sourcePath is empty, include all files, otherwise only include files in the sourcePath
-            if (this.settings.sourcePath) {
-                return file.path.startsWith(this.settings.sourcePath);
+            if (sourcePath) {
+                return file.path.startsWith(sourcePath);
             }
             return true;
         });

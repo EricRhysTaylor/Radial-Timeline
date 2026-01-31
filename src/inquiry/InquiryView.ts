@@ -154,7 +154,8 @@ const CC_PAGE_MIN_SIZE = Math.max(6, Math.round(CC_CELL_SIZE * 0.33));
 const CC_HEADER_ICON_SIZE = 12;
 const CC_HEADER_ICON_GAP = 6;
 const CC_HEADER_ICON_OFFSET = 1;
-const CC_CELL_ICON_OFFSET = 1;
+const CC_CELL_ICON_OFFSET = -1;
+const CC_LABEL_HINT_SIZE = 14;
 const INQUIRY_NOTES_MAX = 5;
 const CC_RIGHT_MARGIN = 50;
 const CC_BOTTOM_MARGIN = 50;
@@ -344,7 +345,9 @@ type CorpusCcSlot = {
 type CorpusCcHeader = {
     group: SVGGElement;
     hit: SVGRectElement;
-    icon: SVGUseElement;
+    icon: SVGGElement;
+    iconOuter: SVGCircleElement;
+    iconInner: SVGCircleElement;
     text: SVGTextElement;
 };
 
@@ -2108,6 +2111,8 @@ export class InquiryView extends ItemView {
                 if (Number.isFinite(innerRadius) && innerRadius > 0) {
                     inner.setAttribute('r', String(Math.max(1, innerRadius * 0.7)));
                 }
+                inner.setAttribute('fill', 'currentColor');
+                inner.setAttribute('stroke', 'none');
             }
         }
         defs.appendChild(symbol);
@@ -3351,8 +3356,12 @@ export class InquiryView extends ItemView {
         }
         if (!this.ccLabelHint) {
             this.ccLabelHint = this.createSvgGroup(this.ccLabelGroup ?? this.ccGroup, 'ert-inquiry-cc-hint', 0, 0);
-            const size = 10;
-            this.ccLabelHintIcon = this.createIconUse('arrow-big-up', -size / 2, -size / 2, size);
+            this.ccLabelHintIcon = this.createIconUse(
+                'arrow-big-up',
+                -CC_LABEL_HINT_SIZE / 2,
+                -CC_LABEL_HINT_SIZE / 2,
+                CC_LABEL_HINT_SIZE
+            );
             this.ccLabelHintIcon.classList.add('ert-inquiry-cc-hint-icon');
             this.ccLabelHint.appendChild(this.ccLabelHintIcon);
         }
@@ -3368,6 +3377,9 @@ export class InquiryView extends ItemView {
             addTooltipData(this.ccLabelGroup, this.balanceTooltipText('Cycle all corpus scopes.'), 'top');
         }
         if (this.ccLabelHint) {
+            this.ccLabelHint.removeAttribute('data-tooltip');
+            this.ccLabelHint.removeAttribute('data-tooltip-placement');
+            this.ccLabelHint.removeAttribute('data-tooltip-offset-x');
             const labelWidth = this.ccLabel.getComputedTextLength?.() ?? 0;
             const hintX = Math.round(labelX + (labelWidth / 2) + 10);
             this.ccLabelHint.setAttribute('transform', `translate(${hintX} 0)`);
@@ -3375,7 +3387,7 @@ export class InquiryView extends ItemView {
                 const hitPaddingX = 6;
                 const hitHeight = 20;
                 const hitStartX = Math.round(labelX - (labelWidth / 2) - hitPaddingX);
-                const hitEndX = Math.round(hintX + 5 + hitPaddingX);
+                const hitEndX = Math.round(hintX + (CC_LABEL_HINT_SIZE / 2) + hitPaddingX);
                 const hitWidth = Math.max(0, hitEndX - hitStartX);
                 this.ccLabelHit.setAttribute('x', String(hitStartX));
                 this.ccLabelHit.setAttribute('y', String(-Math.round(hitHeight / 2)));
@@ -3488,19 +3500,23 @@ export class InquiryView extends ItemView {
             const hit = this.createSvgElement('rect');
             hit.classList.add('ert-inquiry-cc-class-hit');
             headerGroup.appendChild(hit);
-            const icon = this.createIconUse('circle', 0, 0, CC_HEADER_ICON_SIZE);
-            icon.classList.add('ert-inquiry-cc-class-icon');
+            const icon = this.createSvgGroup(headerGroup, 'ert-inquiry-cc-class-icon');
+            const iconOuter = this.createSvgElement('circle');
+            iconOuter.classList.add('ert-inquiry-cc-class-icon-outer');
+            const iconInner = this.createSvgElement('circle');
+            iconInner.classList.add('ert-inquiry-cc-class-icon-inner');
+            icon.appendChild(iconOuter);
+            icon.appendChild(iconInner);
             const label = this.createSvgText(headerGroup, 'ert-inquiry-cc-class-label', '', 0, 0);
             label.setAttribute('text-anchor', 'start');
             label.setAttribute('dominant-baseline', 'middle');
-            headerGroup.appendChild(icon);
             headerGroup.appendChild(label);
             this.registerDomEvent(headerGroup as unknown as HTMLElement, 'click', () => {
                 const className = headerGroup.getAttribute('data-class');
                 if (!className) return;
                 this.handleCorpusGroupToggle(className);
             });
-            titleTexts.push({ group: headerGroup, hit, icon, text: label });
+            titleTexts.push({ group: headerGroup, hit, icon, iconOuter, iconInner, text: label });
         }
         layout.classLayouts.forEach((classLayout, idx) => {
             const header = titleTexts[idx];
@@ -3510,7 +3526,14 @@ export class InquiryView extends ItemView {
             header.group.setAttribute('data-class', group.className);
             header.group.classList.toggle('is-off', !modeMeta.isActive);
             header.group.classList.toggle('is-active', modeMeta.isActive);
-            this.setIconUse(header.icon, modeMeta.icon);
+            header.group.classList.remove('is-mode-none', 'is-mode-summary', 'is-mode-full');
+            if (group.mode === 'summary') {
+                header.group.classList.add('is-mode-summary');
+            } else if (group.mode === 'full') {
+                header.group.classList.add('is-mode-full');
+            } else {
+                header.group.classList.add('is-mode-none');
+            }
 
             const variants = this.getCorpusCcHeaderLabelVariants(group.className, group.count);
             header.text.textContent = variants[0] ?? '';
@@ -3523,9 +3546,17 @@ export class InquiryView extends ItemView {
             const textWidth = header.text.getComputedTextLength();
             const totalWidth = CC_HEADER_ICON_SIZE + CC_HEADER_ICON_GAP + textWidth;
             const startX = centerX - (totalWidth / 2);
-            const iconY = layout.titleY - (CC_HEADER_ICON_SIZE / 2) - CC_HEADER_ICON_OFFSET;
-            header.icon.setAttribute('x', String(Math.round(startX)));
-            header.icon.setAttribute('y', String(Math.round(iconY)));
+            const iconCenterX = startX + (CC_HEADER_ICON_SIZE / 2);
+            const iconCenterY = layout.titleY - CC_HEADER_ICON_OFFSET;
+            const outerRadius = Math.max(3, Math.round(CC_HEADER_ICON_SIZE * 0.45 * 10) / 10);
+            const innerRadius = Math.max(1.2, Math.round(outerRadius * 0.35 * 10) / 10);
+            header.icon.setAttribute('transform', `translate(${Math.round(iconCenterX)} ${Math.round(iconCenterY)})`);
+            header.iconOuter.setAttribute('cx', '0');
+            header.iconOuter.setAttribute('cy', '0');
+            header.iconOuter.setAttribute('r', String(outerRadius));
+            header.iconInner.setAttribute('cx', '0');
+            header.iconInner.setAttribute('cy', '0');
+            header.iconInner.setAttribute('r', String(innerRadius));
             header.text.setAttribute('x', String(Math.round(startX + CC_HEADER_ICON_SIZE + CC_HEADER_ICON_GAP)));
             header.text.setAttribute('y', String(layout.titleY));
             const hitPaddingX = 4;

@@ -8,6 +8,7 @@ import { getTeaserThresholds, getTeaserRevealLevel, teaserLevelToRevealOptions }
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { isBeatNote } from '../utils/sceneHelpers';
 import { buildDefaultEmbedPath } from '../utils/aprPaths';
+import { resolveBookTitle, resolveProjectPath } from '../renderer/apr/aprHelpers';
 
 export class AuthorProgressService {
     constructor(private plugin: RadialTimelinePlugin, private app: App) { }
@@ -154,9 +155,12 @@ export class AuthorProgressService {
         const settings = this.plugin.settings.authorProgress;
         if (!settings) return null;
 
-        const scenes = await getAllScenes(this.app, this.plugin);
-        const progressPercent = this.calculateProgress(scenes);
-        const publishStageLabel = this.resolvePublishStageLabel(scenes);
+        // Resolve project path for scene loading (Core Social → fallback to Source)
+        const projectPath = resolveProjectPath(settings, null, this.plugin.settings.sourcePath);
+        const scenes = await this.plugin.getSceneData({ sourcePath: projectPath });
+        const scenesFiltered = scenes.filter(s => s.itemType === 'Scene' || !s.itemType);
+        const progressPercent = this.calculateProgress(scenesFiltered);
+        const publishStageLabel = this.resolvePublishStageLabel(scenesFiltered);
         const { enabled: revealCampaignEnabled, nextRevealAt } = this.resolveRevealCountdown();
         const showRtAttribution = isProfessionalActive(this.plugin)
             ? settings.aprShowRtAttribution !== false
@@ -164,10 +168,14 @@ export class AuthorProgressService {
 
         const size = settings.aprSize || 'medium';
         const isThumb = size === 'thumb';
-        const { svgString } = createAprSVG(scenes, {
+
+        // Resolve book title using inheritance (Core Social → fallback)
+        const bookTitle = resolveBookTitle(settings, null, projectPath);
+
+        const { svgString } = createAprSVG(scenesFiltered, {
             size,
             progressPercent,
-            bookTitle: settings.bookTitle || 'Working Title',
+            bookTitle,
             authorName: settings.authorName || '',
             authorUrl: settings.authorUrl || '',
             showScenes: !isThumb,
@@ -332,8 +340,10 @@ export class AuthorProgressService {
      * Create preset note content with SVG embed and author comment placeholder.
      */
     private createPresetNoteContent(svgPath: string): string {
-        const bookTitle = this.plugin.settings.authorProgress?.bookTitle || 'Working Title';
-        const authorName = this.plugin.settings.authorProgress?.authorName || '';
+        const settings = this.plugin.settings.authorProgress;
+        const projectPath = resolveProjectPath(settings!, null, this.plugin.settings.sourcePath);
+        const bookTitle = resolveBookTitle(settings!, null, projectPath);
+        const authorName = settings?.authorName || '';
 
         let content = `# ${bookTitle}${authorName ? ` by ${authorName}` : ''}\n\n`;
         content += `![Author Progress Report](${svgPath})\n\n`;
@@ -474,9 +484,12 @@ export class AuthorProgressService {
             return null;
         }
 
-        const scenes = await getAllScenes(this.app, this.plugin);
-        const progressPercent = this.calculateProgress(scenes);
-        const publishStageLabel = this.resolvePublishStageLabel(scenes);
+        // Resolve project path for scene loading (Campaign override → Core Social → fallback to Source)
+        const projectPath = resolveProjectPath(settings, campaign, this.plugin.settings.sourcePath);
+        const scenes = await this.plugin.getSceneData({ sourcePath: projectPath });
+        const scenesFiltered = scenes.filter(s => s.itemType === 'Scene' || !s.itemType);
+        const progressPercent = this.calculateProgress(scenesFiltered);
+        const publishStageLabel = this.resolvePublishStageLabel(scenesFiltered);
         const { enabled: revealCampaignEnabled, nextRevealAt } = this.resolveRevealCountdown(campaign);
         const showRtAttribution = isProfessionalActive(this.plugin)
             ? settings.aprShowRtAttribution !== false
@@ -521,10 +534,14 @@ export class AuthorProgressService {
 
         const size = campaign.aprSize || settings.aprSize || 'medium';
         const ringOnly = size === 'thumb' || isTeaserBar;
-        const { svgString } = createAprSVG(scenes, {
+
+        // Resolve book title using inheritance (Campaign override → Core Social → fallback)
+        const bookTitle = resolveBookTitle(settings, campaign, projectPath);
+
+        const { svgString } = createAprSVG(scenesFiltered, {
             size,
             progressPercent,
-            bookTitle: settings.bookTitle || 'Working Title',
+            bookTitle,
             authorName: settings.authorName || '',
             authorUrl: settings.authorUrl || '',
             showScenes: ringOnly ? false : showScenes,
