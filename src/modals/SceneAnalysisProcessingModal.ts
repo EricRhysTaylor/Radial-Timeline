@@ -445,9 +445,14 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (this.taskType === 'synopsis') {
             const controlsCard = contentEl.createDiv({ cls: 'rt-glass-card rt-synopsis-controls' });
 
-            // Target Synopsis Length
-            const targetControl = controlsCard.createDiv({ cls: 'rt-synopsis-control' });
-            targetControl.createEl('label', { text: 'Target synopsis length', cls: 'rt-synopsis-control-label' });
+            // Target Synopsis Length - Two column layout
+            const targetControl = controlsCard.createDiv({ cls: 'rt-synopsis-control rt-synopsis-control--row' });
+            const targetInfo = targetControl.createDiv({ cls: 'rt-synopsis-control-info' });
+            targetInfo.createEl('label', { text: 'Target synopsis length', cls: 'rt-synopsis-control-label' });
+            targetInfo.createDiv({
+                text: 'Used when generating or regenerating synopses.',
+                cls: 'rt-synopsis-control-help'
+            });
             const targetInput = targetControl.createEl('input', {
                 type: 'number',
                 cls: 'rt-synopsis-control-input',
@@ -461,14 +466,18 @@ export class SceneAnalysisProcessingModal extends Modal {
                     this.checkThresholdWarning(warningEl);
                 }
             });
-            targetControl.createDiv({
-                text: 'Used when generating or regenerating synopses.',
+
+            // Horizontal rule separator
+            controlsCard.createEl('hr', { cls: 'rt-synopsis-control-divider' });
+
+            // Weak Synopsis Threshold - Two column layout
+            const thresholdControl = controlsCard.createDiv({ cls: 'rt-synopsis-control rt-synopsis-control--row' });
+            const thresholdInfo = thresholdControl.createDiv({ cls: 'rt-synopsis-control-info' });
+            thresholdInfo.createEl('label', { text: 'Treat synopsis as weak if under', cls: 'rt-synopsis-control-label' });
+            thresholdInfo.createDiv({
+                text: 'Only used to decide which scenes are selected for update.',
                 cls: 'rt-synopsis-control-help'
             });
-
-            // Weak Synopsis Threshold
-            const thresholdControl = controlsCard.createDiv({ cls: 'rt-synopsis-control' });
-            thresholdControl.createEl('label', { text: 'Treat synopsis as weak if under', cls: 'rt-synopsis-control-label' });
             const thresholdInput = thresholdControl.createEl('input', {
                 type: 'number',
                 cls: 'rt-synopsis-control-input',
@@ -482,10 +491,6 @@ export class SceneAnalysisProcessingModal extends Modal {
                     updateCount(); // Re-calculate scene counts with new threshold
                     this.checkThresholdWarning(warningEl);
                 }
-            });
-            thresholdControl.createDiv({
-                text: 'Only used to decide which scenes are selected for update.',
-                cls: 'rt-synopsis-control-help'
             });
 
             // Warning for target < threshold

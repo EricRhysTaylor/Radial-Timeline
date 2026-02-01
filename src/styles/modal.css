@@ -1904,6 +1904,22 @@
   gap: 6px;
 }
 
+/* Two-column row layout for synopsis controls */
+.rt-synopsis-control--row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.rt-synopsis-control-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
 .rt-synopsis-control-label {
   font-size: 0.9rem;
   font-weight: 600;
@@ -1912,7 +1928,7 @@
 }
 
 .rt-synopsis-control-input {
-  width: 120px;
+  width: 100px;
   padding: 8px 12px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 6px;
@@ -1920,6 +1936,8 @@
   color: var(--text-normal);
   font-size: 0.95rem;
   font-family: var(--font-monospace);
+  flex-shrink: 0;
+  text-align: center;
 }
 
 .rt-synopsis-control-input:focus {
@@ -1932,7 +1950,13 @@
   font-size: 0.85rem;
   color: var(--text-muted);
   line-height: 1.5;
-  margin-top: 2px;
+  margin-top: 0;
+}
+
+.rt-synopsis-control-divider {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 4px 0;
 }
 
 .rt-synopsis-threshold-warning {
