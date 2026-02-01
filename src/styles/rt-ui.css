@@ -2053,13 +2053,12 @@
    Shows migration notices with dismiss/update/view buttons
    ============================================================================= */
 
-/* Reassurance intro text above alerts */
-.ert-ui.ert-scope--settings .ert-refactor-alert__intro {
+/* Reassurance text inside alert */
+.ert-ui.ert-scope--settings .ert-refactor-alert__reassurance {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.4;
-  margin-bottom: var(--ert-gap-sm);
-  padding: 0 var(--ert-gap-xs);
+  margin-top: var(--ert-gap-xs);
 }
 
 .ert-ui.ert-scope--settings .ert-refactor-alert {
@@ -2123,31 +2122,12 @@
   flex-shrink: 0;
 }
 
-.ert-ui.ert-scope--settings .ert-refactor-alert__btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid var(--background-modifier-border);
-  background: var(--background-primary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-}
-
-.ert-ui.ert-scope--settings .ert-refactor-alert__btn:hover {
-  background: var(--background-modifier-hover);
+/* Alert action buttons use ert-iconBtn base class */
+.ert-ui.ert-scope--settings .ert-refactor-alert__actions .ert-iconBtn:hover {
   border-color: var(--alert-color);
 }
 
-.ert-ui.ert-scope--settings .ert-refactor-alert__btn svg {
-  width: 16px;
-  height: 16px;
-  color: var(--text-muted);
-}
-
-.ert-ui.ert-scope--settings .ert-refactor-alert__btn:hover svg {
+.ert-ui.ert-scope--settings .ert-refactor-alert__actions .ert-iconBtn:hover svg {
   color: var(--alert-color);
 }
 
@@ -2182,11 +2162,11 @@
 }
 
 /* Update button - pulses with severity color */
-.ert-ui.ert-scope--settings .ert-refactor-alert--warning .ert-refactor-alert__btn--update {
+.ert-ui.ert-scope--settings .ert-refactor-alert--warning .ert-refactor-alert__btn--update.ert-iconBtn {
   animation: ert-pulse-btn-warning 2s ease-in-out infinite;
 }
 
-.ert-ui.ert-scope--settings .ert-refactor-alert--critical .ert-refactor-alert__btn--update {
+.ert-ui.ert-scope--settings .ert-refactor-alert--critical .ert-refactor-alert__btn--update.ert-iconBtn {
   animation: ert-pulse-btn-critical 1.5s ease-in-out infinite;
 }
 

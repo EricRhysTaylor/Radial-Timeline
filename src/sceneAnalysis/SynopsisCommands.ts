@@ -88,7 +88,7 @@ async function runSynopsisBatch(
 
     // Get settings with fallbacks
     const threshold = weakThreshold ?? plugin.settings.synopsisWeakThreshold ?? 75;
-    const target = targetWords ?? plugin.settings.synopsisTargetWords ?? 300;
+    const target = targetWords ?? plugin.settings.synopsisTargetWords ?? 200;
 
     // Filter scenes based on mode
     const scenesToProcess = allScenes.filter(scene => {

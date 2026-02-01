@@ -227,13 +227,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const activeAlerts = getActiveRefactorAlerts(this.plugin.settings);
         if (activeAlerts.length === 0) return;
 
-        // Reassurance intro text - lowers friction for cautious users
-        const introEl = containerEl.createDiv({ cls: 'ert-refactor-alert__intro' });
-        introEl.setText('These updates help keep your YAML consistent with the latest features. You can review or dismiss any change.');
-
         for (const alert of activeAlerts) {
             const alertEl = containerEl.createDiv({
-                cls: ['ert-refactor-alert', `ert-refactor-alert--${alert.severity}`]
+                cls: ['ert-refactor-alert', `ert-refactor-alert--${alert.severity}`],
+                attr: { 'data-alert-id': alert.id }
             });
 
             // Left side: Icon + Content
@@ -247,16 +244,19 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             const description = contentSide.createDiv({ cls: 'ert-refactor-alert__description' });
             description.setText(alert.description);
 
+            // Reassurance text inside alert - lowers friction for cautious users
+            const reassurance = contentSide.createDiv({ cls: 'ert-refactor-alert__reassurance' });
+            reassurance.setText('These updates help keep your YAML consistent with the latest features. You can review or dismiss any change.');
+
             // Right side: Action buttons (stacked vertically)
             const actionSide = alertEl.createDiv({ cls: 'ert-refactor-alert__actions' });
 
             // Dismiss button (X)
             const dismissBtn = actionSide.createEl('button', {
-                cls: 'ert-refactor-alert__btn ert-refactor-alert__btn--dismiss',
+                cls: 'ert-iconBtn ert-refactor-alert__btn--dismiss',
                 attr: { 'aria-label': 'Dismiss alert' }
             });
             setIcon(dismissBtn, 'x');
-            dismissBtn.title = 'Dismiss';
             this.plugin.registerDomEvent(dismissBtn, 'click', async () => {
                 if (!this.plugin.settings.dismissedAlerts) {
                     this.plugin.settings.dismissedAlerts = [];
@@ -269,11 +269,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             // Auto Update button (↻)
             if (alert.migrations?.length) {
                 const autoUpdateBtn = actionSide.createEl('button', {
-                    cls: 'ert-refactor-alert__btn ert-refactor-alert__btn--update',
+                    cls: 'ert-iconBtn ert-refactor-alert__btn--update',
                     attr: { 'aria-label': 'Apply update automatically' }
                 });
                 setIcon(autoUpdateBtn, 'refresh-cw');
-                autoUpdateBtn.title = 'Auto Update';
                 this.plugin.registerDomEvent(autoUpdateBtn, 'click', async () => {
                     const template = this.plugin.settings.sceneYamlTemplates?.advanced ?? '';
                     const updated = applyAlertMigrations(alert, template);
@@ -295,21 +294,29 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
                 // View YAML button (↓)
                 const viewBtn = actionSide.createEl('button', {
-                    cls: 'ert-refactor-alert__btn ert-refactor-alert__btn--view',
+                    cls: 'ert-iconBtn ert-refactor-alert__btn--view',
                     attr: { 'aria-label': 'View in YAML editor' }
                 });
                 setIcon(viewBtn, 'chevron-down');
-                viewBtn.title = 'View YAML';
                 this.plugin.registerDomEvent(viewBtn, 'click', async () => {
                     // Enable advanced YAML editor if not already
                     this.plugin.settings.enableAdvancedYamlEditor = true;
                     await this.plugin.saveSettings();
 
-                    // Scroll to templates section
-                    const templatesSection = document.querySelector('[data-ert-section="beats"]');
-                    if (templatesSection) {
-                        templatesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
+                    // Small delay to let the editor expand, then scroll to the migration row or advanced card
+                    setTimeout(() => {
+                        // Try to scroll to the specific migration row first
+                        const migrationRow = document.querySelector('.ert-yaml-row--needs-migration');
+                        if (migrationRow) {
+                            migrationRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            return;
+                        }
+                        // Fallback: scroll to the advanced template card
+                        const advancedCard = document.querySelector('.ert-advanced-template-card');
+                        if (advancedCard) {
+                            advancedCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }, 100);
                 });
             }
         }

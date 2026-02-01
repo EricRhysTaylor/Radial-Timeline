@@ -369,7 +369,7 @@ export interface RadialTimelineSettings {
     _resumingMode?: 'flagged' | 'unprocessed' | 'force-all';
     lastSeenReleaseNotesVersion?: string;
     // Synopsis generation settings
-    synopsisTargetWords?: number; // Target word count for AI-generated synopses (default: 300)
+    synopsisTargetWords?: number; // Target word count for AI-generated synopses (default: 200)
     synopsisWeakThreshold?: number; // Word count below which a synopsis is considered "weak" (default: 75)
     cachedReleaseNotes?: EmbeddedReleaseNotesBundle | null;
     releaseNotesLastFetched?: string;

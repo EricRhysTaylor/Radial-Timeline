@@ -243,6 +243,7 @@ type InquiryOmnibusModalOptions = {
     bookLabel: string;
     questions: InquiryQuestion[];
     providerSummary: string;
+    logsEnabled: boolean;
     runDisabledReason?: string | null;
 };
 
@@ -342,6 +343,13 @@ class InquiryOmnibusModal extends Modal {
             const reason = contentEl.createDiv({ cls: 'ert-field-note' });
             reason.setText(`Run disabled: ${this.runDisabledReason}`);
         }
+
+        const totalQuestions = this.options.questions.length;
+        const briefLabel = totalQuestions === 1 ? 'Brief' : 'Briefs';
+        const logLabel = totalQuestions === 1 ? 'Log' : 'Logs';
+        const logsDisabledNote = this.options.logsEnabled ? '' : ' Logs are disabled in settings.';
+        const volumeLine = contentEl.createDiv({ cls: 'ert-field-note' });
+        volumeLine.setText(`This will generate ${totalQuestions} Inquiry ${briefLabel} and ${totalQuestions} ${logLabel}.${logsDisabledNote}`);
 
         const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
         const runButton = new ButtonComponent(actions)
@@ -5512,6 +5520,7 @@ export class InquiryView extends ItemView {
             bookLabel: this.getFocusBookLabel(),
             questions,
             providerSummary: providerPlan.summary,
+            logsEnabled: this.plugin.settings.logApiInteractions ?? true,
             runDisabledReason
         });
         if (!plan) return;

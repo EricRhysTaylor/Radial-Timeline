@@ -91,7 +91,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     enableAiSceneAnalysis: true,
     showFullTripletAnalysis: true,
     enableZeroDraftMode: false,
-    synopsisTargetWords: 300, // Target word count for generated synopses
+    synopsisTargetWords: 200, // Target word count for generated synopses
     synopsisWeakThreshold: 75, // Synopses under this word count are considered "weak"
     metadataRefreshDebounceMs: 10000,
     discontinuityThreshold: undefined, // Default to auto-calculated (3x median gap or 30 days)

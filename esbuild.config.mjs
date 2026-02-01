@@ -75,7 +75,7 @@ if (isCI) {
 	// Local development paths
 	destDirs = [
 		{ path: "/Users/ericrhystaylor/Documents/Author/Obsidian Vault Author .nosync/.obsidian/plugins/radial-timeline", name: "Author" },
-		{ path: "/Users/ericrhystaylor/Documents/Code Projects/Obsidian Vault Fresh/.obsidian/plugins/radial-timeline", name: "Fresh" },
+		{ path: "/Users/ericrhystaylor/Documents/Code Projects/Obsidian Vault New/.obsidian/plugins/radial-timeline", name: "New" },
 		{ path: "/Users/ericrhystaylor/Documents/Code Projects/Obsidian Vault Jane Austin/.obsidian/plugins/radial-timeline", name: "Jane Austin" },
 		{ path: "./release", name: "release" }
 	];

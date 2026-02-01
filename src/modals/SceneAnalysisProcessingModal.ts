@@ -96,7 +96,7 @@ export class SceneAnalysisProcessingModal extends Modal {
     private abortController: AbortController | null = null;
 
     // Synopsis-specific controls
-    private synopsisTargetWords: number = 300;
+    private synopsisTargetWords: number = 200;
     private synopsisWeakThreshold: number = 75;
 
     // Progress tracking
@@ -150,7 +150,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.taskType = taskType;
 
         // Initialize synopsis settings from plugin settings
-        this.synopsisTargetWords = plugin.settings.synopsisTargetWords ?? 300;
+        this.synopsisTargetWords = plugin.settings.synopsisTargetWords ?? 200;
         this.synopsisWeakThreshold = plugin.settings.synopsisWeakThreshold ?? 75;
     }
 
@@ -230,7 +230,7 @@ export class SceneAnalysisProcessingModal extends Modal {
     private getProcessingSubtitle(): string {
         if (this.taskType === 'synopsis') {
             const maxLines = this.plugin.settings.synopsisHoverMaxLines ?? 5;
-            return `Evaluate scene and update synopsis according to the following settings. Note: Claude Sonnet does an excellent job of this. Adjust how many lines are visible for scene hover in Settings > Configuration. (Lines = ${maxLines})`;
+            return `AI-generated scene synopses using settings below. Claude Sonnet recommended. Hover preview lines: ${maxLines} (Settings → Configuration)`;
         }
         if (this.subplotName) {
             return this.isEntireSubplot
@@ -481,11 +481,23 @@ export class SceneAnalysisProcessingModal extends Modal {
                 attr: { min: '75', max: '500', step: '25' }
             }) as HTMLInputElement;
             targetInput.value = String(this.synopsisTargetWords);
-            targetInput.addEventListener('change', () => {
+
+            const saveTargetValue = () => {
                 const val = parseInt(targetInput.value, 10);
                 if (!isNaN(val) && val >= 75 && val <= 500) {
                     this.synopsisTargetWords = val;
+                    this.plugin.settings.synopsisTargetWords = val;
+                    this.plugin.saveSettings();
                     this.checkThresholdWarning(warningEl);
+                }
+            };
+
+            targetInput.addEventListener('change', saveTargetValue);
+            targetInput.addEventListener('blur', saveTargetValue);
+            targetInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    saveTargetValue();
+                    targetInput.blur();
                 }
             });
 
@@ -506,12 +518,24 @@ export class SceneAnalysisProcessingModal extends Modal {
                 attr: { min: '10', max: '300', step: '5' }
             }) as HTMLInputElement;
             thresholdInput.value = String(this.synopsisWeakThreshold);
-            thresholdInput.addEventListener('change', () => {
+
+            const saveThresholdValue = () => {
                 const val = parseInt(thresholdInput.value, 10);
                 if (!isNaN(val) && val >= 10 && val <= 300) {
                     this.synopsisWeakThreshold = val;
+                    this.plugin.settings.synopsisWeakThreshold = val;
+                    this.plugin.saveSettings();
                     updateCount(); // Re-calculate scene counts with new threshold
                     this.checkThresholdWarning(warningEl);
+                }
+            };
+
+            thresholdInput.addEventListener('change', saveThresholdValue);
+            thresholdInput.addEventListener('blur', saveThresholdValue);
+            thresholdInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    saveThresholdValue();
+                    thresholdInput.blur();
                 }
             });
 
@@ -663,23 +687,26 @@ export class SceneAnalysisProcessingModal extends Modal {
                 }
             });
 
-        new ButtonComponent(buttonRow)
-            .setButtonText('Purge all pulse')
-            .setWarning()
-            .onClick(async () => {
-                try {
-                    // Dynamic import to avoid circular dependency
-                    const { purgeBeatsByManuscriptOrder } = await import('../SceneAnalysisCommands');
+        // Only show purge button for pulse mode (not synopsis)
+        if (this.taskType !== 'synopsis') {
+            new ButtonComponent(buttonRow)
+                .setButtonText('Purge all pulse')
+                .setWarning()
+                .onClick(async () => {
+                    try {
+                        // Dynamic import to avoid circular dependency
+                        const { purgeBeatsByManuscriptOrder } = await import('../SceneAnalysisCommands');
 
-                    // Close this modal before showing purge confirmation
-                    this.close();
+                        // Close this modal before showing purge confirmation
+                        this.close();
 
-                    // Execute purge (it has its own confirmation dialog)
-                    await purgeBeatsByManuscriptOrder(this.plugin, this.plugin.app.vault);
-                } catch (error) {
-                    new Notice(`Error: ${error instanceof Error ? error.message : String(error)}`);
-                }
-            });
+                        // Execute purge (it has its own confirmation dialog)
+                        await purgeBeatsByManuscriptOrder(this.plugin, this.plugin.app.vault);
+                    } catch (error) {
+                        new Notice(`Error: ${error instanceof Error ? error.message : String(error)}`);
+                    }
+                });
+        }
 
         new ButtonComponent(buttonRow)
             .setButtonText('Cancel')

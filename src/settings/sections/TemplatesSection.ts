@@ -338,7 +338,7 @@ export function renderStoryBeatsSection(params: {
 
     // Scene YAML Templates Section
     const yamlHeading = new Settings(yamlStack)
-        .setName('Remapping & scene YAML templates')
+        .setName('Remap  & advanced YAML templates')
         .setHeading();
     addHeadingIcon(yamlHeading, 'form');
     addWikiLink(yamlHeading, 'Settings#yaml-templates');
@@ -745,6 +745,13 @@ export function renderStoryBeatsSection(params: {
                                 plugin.settings.dismissedAlerts.push(migration.alertId);
                             }
                             await plugin.saveSettings();
+                            
+                            // Remove the specific alert element from the DOM
+                            const alertEl = document.querySelector(`[data-alert-id="${migration.alertId}"]`);
+                            if (alertEl) {
+                                alertEl.remove();
+                            }
+                            
                             new Notice('Migration complete! Alert dismissed.');
                         }
                         

@@ -137,28 +137,6 @@ export class AuthorProgressModal extends Modal {
         actionsTitleRow.createEl('h4', { text: 'Actions', cls: ERT_CLASSES.SECTION_TITLE });
         this.actionsSectionEl = actionsSection;
 
-        if (isProActive && campaigns.length > 0) {
-            const targetSetting = new Setting(actionsSection)
-                .setName('Publish Target')
-                .setDesc('Choose default report or a campaign');
-            targetSetting.settingEl.addClass('ert-apr-actions-target');
-            targetSetting.addDropdown(dropdown => {
-                dropdown.addOption('default', 'Default Report');
-                campaigns.forEach(campaign => {
-                    dropdown.addOption(campaign.id, `Campaign: ${campaign.name}`);
-                });
-                dropdown.selectEl.addClass('ert-input--lg');
-                dropdown.setValue(this.selectedTargetId);
-                dropdown.onChange(async (val) => {
-                    this.selectedTargetId = val === 'default' ? 'default' : val;
-                    // Reload data with the new target's resolved project path
-                    await this.loadData();
-                    this.renderStatusSection();
-                    this.renderActions();
-                });
-            });
-        }
-
         this.actionsBodyEl = actionsSection.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
 
         // Footer actions
@@ -377,62 +355,62 @@ export class AuthorProgressModal extends Modal {
 
         this.aprSize = settings.aprSize ?? this.aprSize ?? 'medium';
 
+        const campaigns = this.plugin.settings.authorProgress?.campaigns || [];
+        const isProActive = isProfessionalActive(this.plugin);
+
+        // === TARGET + BOOK BLOCK ===
         // Show resolved book title and project path info
         const projectPath = resolveProjectPath(settings, null, this.plugin.settings.sourcePath);
         const bookTitle = resolveBookTitle(settings, null, projectPath);
 
-        const infoRow = container.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
-        infoRow.createSpan({ text: 'Book', cls: ERT_CLASSES.LABEL });
-        const infoValue = infoRow.createDiv({ cls: ERT_CLASSES.INLINE });
-        infoValue.createSpan({ text: bookTitle, cls: 'ert-apr-info-value' });
-        const projectPathNote = infoValue.createSpan({
-            text: ` • ${this.summarizePath(projectPath, 30)}`,
-            cls: ERT_CLASSES.FIELD_NOTE
-        });
-        projectPathNote.setAttr('title', `Project: ${projectPath}`);
+        // Target dropdown (only shown when Pro is active and campaigns exist)
+        if (isProActive && campaigns.length > 0) {
+            const targetRow = container.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
+            targetRow.createSpan({ text: 'Target', cls: ERT_CLASSES.LABEL });
+            const targetControl = targetRow.createDiv({ cls: ERT_CLASSES.CONTROL });
+            const targetSelect = targetControl.createEl('select', { cls: 'dropdown ert-input ert-input--lg' });
+            targetSelect.createEl('option', { value: 'default', text: 'Default Report' });
+            campaigns.forEach(campaign => {
+                targetSelect.createEl('option', { value: campaign.id, text: `Campaign: ${campaign.name}` });
+            });
+            targetSelect.value = this.selectedTargetId;
+            targetSelect.onchange = async () => {
+                this.selectedTargetId = targetSelect.value === 'default' ? 'default' : targetSelect.value;
+                await this.loadData();
+                this.renderStatusSection();
+                this.renderActions();
+            };
+        }
 
-        const sizeStageRow = container.createDiv({
+        // Book row (compact, single line)
+        const bookRow = container.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
+        bookRow.createSpan({ text: 'Book', cls: ERT_CLASSES.LABEL });
+        const bookValue = bookRow.createSpan({ text: bookTitle, cls: 'ert-apr-info-value' });
+        bookValue.setAttr('title', `Project: ${projectPath}`);
+
+        // === EXPORT BLOCK ===
+        const exportRow = container.createDiv({
             cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ert-apr-actions-row--split`
         });
 
-        const sizeRow = sizeStageRow.createDiv({
+        // Size buttons
+        const sizeBlock = exportRow.createDiv({
             cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ert-apr-actions-block`
         });
-        sizeRow.createSpan({ text: 'Export size', cls: ERT_CLASSES.LABEL });
-        const sizeControls = sizeRow.createDiv({ cls: 'ert-apr-size-controls' });
-        const viewRow = sizeControls.createDiv({ cls: ERT_CLASSES.INLINE });
-        const viewSelect = viewRow.createEl('select', { cls: 'dropdown ert-input ert-input--lg' });
+        sizeBlock.createSpan({ text: 'Export', cls: ERT_CLASSES.LABEL });
+
         const activeSize = this.getActiveAprSize();
         const activeView = activeSize === 'thumb' ? 'thumb' : 'full';
-        const viewOptions: Array<{ value: 'thumb' | 'full'; label: string }> = [
-            { value: 'thumb', label: 'View: Thumb (100px)' },
-            { value: 'full', label: 'View: Full (150–450px)' }
-        ];
-        viewOptions.forEach(option => {
-            viewSelect.createEl('option', { value: option.value, text: option.label });
-        });
-        viewSelect.value = activeView;
-        viewSelect.onchange = async () => {
-            const nextView = viewSelect.value as 'thumb' | 'full';
-            const nextSize = nextView === 'thumb' ? 'thumb' : (this.lastFullSize ?? 'medium');
-            if (nextSize !== 'thumb') {
-                this.lastFullSize = nextSize;
-            }
-            this.aprSize = nextSize;
-            await this.saveSize();
-            this.renderStatusSection();
-            this.renderActions();
-        };
 
-        const sizeOptions: Array<{ size: 'thumb' | 'small' | 'medium' | 'large'; label: string; dimension: string; view: 'thumb' | 'full' }> = [
-            { size: 'thumb', label: 'Thumb', dimension: '100px', view: 'thumb' },
-            { size: 'small', label: 'Small', dimension: '150px', view: 'full' },
-            { size: 'medium', label: 'Medium', dimension: '300px', view: 'full' },
-            { size: 'large', label: 'Large', dimension: '450px', view: 'full' }
+        const sizeOptions: Array<{ size: 'thumb' | 'small' | 'medium' | 'large'; dimension: string; view: 'thumb' | 'full' }> = [
+            { size: 'thumb', dimension: '100px', view: 'thumb' },
+            { size: 'small', dimension: '150px', view: 'full' },
+            { size: 'medium', dimension: '300px', view: 'full' },
+            { size: 'large', dimension: '450px', view: 'full' }
         ];
 
-        const sizeButtonRow = sizeControls.createDiv({ cls: `ert-apr-size-buttons ${ERT_CLASSES.INLINE}` });
-        sizeOptions.filter(option => option.view === activeView).forEach(option => {
+        const sizeButtonRow = sizeBlock.createDiv({ cls: `ert-apr-size-buttons ${ERT_CLASSES.INLINE}` });
+        sizeOptions.forEach(option => {
             const isActive = option.size === this.getActiveAprSize();
             const btn = sizeButtonRow.createEl('button', {
                 cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_SOCIAL} ${isActive ? ERT_CLASSES.IS_ACTIVE : ''}`
@@ -453,23 +431,27 @@ export class AuthorProgressModal extends Modal {
             };
         });
 
-        const stageRow = sizeStageRow.createDiv({
+        // View/Stage indicator (read-only)
+        const stageBlock = exportRow.createDiv({
             cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ert-apr-actions-block`
         });
-        stageRow.createSpan({ text: 'Stage', cls: ERT_CLASSES.LABEL });
         const stageInfo = this.resolveTeaserStatus(this.getSelectedCampaign());
         const stageFallback = TEASER_LEVEL_INFO.full;
         const stageDisplay = stageInfo.info ?? stageFallback;
-        const stageValue = stageRow.createDiv({ cls: ERT_CLASSES.INLINE });
-        const stagePill = stageValue.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}` });
+        const viewLabel = activeView === 'thumb' ? 'Thumb' : 'Full';
+        const stageIndicator = stageBlock.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-apr-view-stage` });
+        const viewPill = stageIndicator.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}` });
+        viewPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: viewLabel });
+        const stagePill = stageIndicator.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}` });
         const stageIcon = stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
         setIcon(stageIcon, stageDisplay.icon);
         stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: stageDisplay.label });
 
+        // === OUTPUT FILE ===
         const pathRow = container.createDiv({
             cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ${ERT_CLASSES.ROW_MIDDLE_ALIGN}`
         });
-        pathRow.createSpan({ text: 'Output path', cls: ERT_CLASSES.LABEL });
+        pathRow.createSpan({ text: 'Output file', cls: ERT_CLASSES.LABEL });
         const pathControl = pathRow.createDiv({ cls: ERT_CLASSES.CONTROL });
         const pathInput = new TextComponent(pathControl);
         const defaultPath = buildDefaultEmbedPath({
@@ -508,6 +490,7 @@ export class AuthorProgressModal extends Modal {
             }
         });
 
+        // === PUBLISH BUTTON ===
         const actionRow = container.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_MIDDLE_ALIGN}` });
         actionRow.createSpan({ text: '', cls: ERT_CLASSES.LABEL });
         const actionControl = actionRow.createDiv({ cls: ERT_CLASSES.CONTROL });
@@ -518,28 +501,34 @@ export class AuthorProgressModal extends Modal {
     }
 
     private renderProActions(container: HTMLElement, campaigns: AprCampaign[]): void {
+        const settings = this.plugin.settings.authorProgress;
+        if (!settings) return;
+
+        // === TARGET + BOOK BLOCK ===
+        // Target dropdown (always shown in Pro Actions since we have campaigns)
+        const targetRow = container.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
+        targetRow.createSpan({ text: 'Target', cls: ERT_CLASSES.LABEL });
+        const targetControl = targetRow.createDiv({ cls: ERT_CLASSES.CONTROL });
+        const targetSelect = targetControl.createEl('select', { cls: 'dropdown ert-input ert-input--lg' });
+        targetSelect.createEl('option', { value: 'default', text: 'Default Report' });
+        campaigns.forEach(campaign => {
+            targetSelect.createEl('option', { value: campaign.id, text: `Campaign: ${campaign.name}` });
+        });
+        targetSelect.value = this.selectedTargetId;
+        targetSelect.onchange = async () => {
+            this.selectedTargetId = targetSelect.value === 'default' ? 'default' : targetSelect.value;
+            await this.loadData();
+            this.renderStatusSection();
+            this.renderActions();
+        };
+
         const campaign = this.getSelectedCampaign() ?? campaigns.find(c => c.id === this.selectedTargetId);
         if (!campaign) {
             container.createDiv({ text: 'Select a campaign to publish.', cls: ERT_CLASSES.FIELD_NOTE });
             return;
         }
 
-        const settings = this.plugin.settings.authorProgress;
-        if (!settings) return;
-
-        // Show resolved book title and project path info
-        const projectPath = resolveProjectPath(settings, campaign, this.plugin.settings.sourcePath);
-        const bookTitle = resolveBookTitle(settings, campaign, projectPath);
-
-        const infoRow = container.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
-        infoRow.createSpan({ text: 'Book', cls: ERT_CLASSES.LABEL });
-        const infoValue = infoRow.createDiv({ cls: ERT_CLASSES.INLINE });
-        infoValue.createSpan({ text: bookTitle, cls: 'ert-apr-info-value' });
-        const projectPathNote = infoValue.createSpan({
-            text: ` • ${this.summarizePath(projectPath, 30)}`,
-            cls: ERT_CLASSES.FIELD_NOTE
-        });
-        projectPathNote.setAttr('title', `Project: ${projectPath}`);
+        // Auto-update legacy embed paths if enabled
         if (settings?.autoUpdateEmbedPaths) {
             const legacySlug = campaign.name.toLowerCase().replace(/\s+/g, '-');
             const legacyPath = `Radial Timeline/Social/${legacySlug}-progress.svg`;
@@ -557,33 +546,48 @@ export class AuthorProgressModal extends Modal {
             }
         }
 
-        const sizeStageRow = container.createDiv({
+        // Book row (compact, single line)
+        const projectPath = resolveProjectPath(settings, campaign, this.plugin.settings.sourcePath);
+        const bookTitle = resolveBookTitle(settings, campaign, projectPath);
+        const bookRow = container.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
+        bookRow.createSpan({ text: 'Book', cls: ERT_CLASSES.LABEL });
+        const bookValue = bookRow.createSpan({ text: bookTitle, cls: 'ert-apr-info-value' });
+        bookValue.setAttr('title', `Project: ${projectPath}`);
+
+        // === EXPORT BLOCK ===
+        const exportRow = container.createDiv({
             cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ert-apr-actions-row--split`
         });
-        const sizeMeta = this.getSizeMeta(this.getActiveAprSize());
-        const sizeRow = sizeStageRow.createDiv({
+
+        // Size indicator (read-only for campaigns)
+        const sizeBlock = exportRow.createDiv({
             cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ert-apr-actions-block`
         });
-        sizeRow.createSpan({ text: 'Export size', cls: ERT_CLASSES.LABEL });
-        const sizeValue = sizeRow.createDiv({ cls: ERT_CLASSES.INLINE });
-        const sizePill = sizeValue.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}` });
+        sizeBlock.createSpan({ text: 'Export', cls: ERT_CLASSES.LABEL });
+        const sizePill = sizeBlock.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}` });
         sizePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: this.getSizeLabelPx(this.getActiveAprSize()) });
 
-        const stageRow = sizeStageRow.createDiv({
+        // View/Stage indicator (read-only)
+        const stageBlock = exportRow.createDiv({
             cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ert-apr-actions-block`
         });
-        stageRow.createSpan({ text: 'Stage', cls: ERT_CLASSES.LABEL });
-        const stageValue = stageRow.createDiv({ cls: ERT_CLASSES.INLINE });
+        const activeSize = this.getActiveAprSize();
+        const activeView = activeSize === 'thumb' ? 'thumb' : 'full';
+        const viewLabel = activeView === 'thumb' ? 'Thumb' : 'Full';
         const stageInfo = this.resolveTeaserStatus(campaign).info ?? TEASER_LEVEL_INFO.full;
-        const stagePill = stageValue.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}` });
+        const stageIndicator = stageBlock.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-apr-view-stage` });
+        const viewPill = stageIndicator.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}` });
+        viewPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: viewLabel });
+        const stagePill = stageIndicator.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}` });
         const stageIcon = stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
         setIcon(stageIcon, stageInfo.icon);
         stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: stageInfo.label });
 
+        // === OUTPUT FILE ===
         const pathRow = container.createDiv({
             cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT} ${ERT_CLASSES.ROW_MIDDLE_ALIGN}`
         });
-        pathRow.createSpan({ text: 'Output path', cls: ERT_CLASSES.LABEL });
+        pathRow.createSpan({ text: 'Output file', cls: ERT_CLASSES.LABEL });
         const pathValue = pathRow.createDiv({ cls: ERT_CLASSES.INLINE });
         const pathText = pathValue.createSpan({
             cls: `${ERT_CLASSES.FIELD_NOTE} ert-mono ert-truncate`,
@@ -591,6 +595,7 @@ export class AuthorProgressModal extends Modal {
         });
         pathText.setAttr('title', campaign.embedPath);
 
+        // === PUBLISH BUTTON ===
         const actionRow = container.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_MIDDLE_ALIGN}` });
         actionRow.createSpan({ text: '', cls: ERT_CLASSES.LABEL });
         const actionControl = actionRow.createDiv({ cls: ERT_CLASSES.CONTROL });
