@@ -350,6 +350,7 @@ export interface RadialTimelineSettings {
     enableZeroDraftMode?: boolean;
     metadataRefreshDebounceMs?: number;
     enableSceneTitleAutoExpand?: boolean;
+    synopsisHoverMaxLines?: number; // Max lines to display in hover synopsis (default: 5)
     enableHoverDebugLogging?: boolean;
     showFullTripletAnalysis?: boolean;
     sortByWhenDate?: boolean;

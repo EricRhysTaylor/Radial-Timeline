@@ -4,6 +4,23 @@ import { splitIntoBalancedLinesOptimal } from '../../utils/text';
 import { resolveScenePov } from '../../utils/pov';
 import { getReadabilityMultiplier } from '../../utils/readability';
 
+/** Default max lines for hover synopsis (used if setting is not configured) */
+const DEFAULT_SYNOPSIS_MAX_LINES = 5;
+
+/**
+ * Split text into balanced lines and truncate to a maximum line count.
+ * Adds "..." to the last line if truncated.
+ */
+function splitAndTruncateLines(text: string, maxTextWidth: number, fontScale: number, maxLines: number): string[] {
+    if (!text) return [];
+    const allLines = splitIntoBalancedLinesOptimal(text, maxTextWidth, fontScale);
+    if (allLines.length <= maxLines) return allLines;
+    const truncated = allLines.slice(0, maxLines);
+    // Add ellipsis to the last line
+    truncated[truncated.length - 1] = truncated[truncated.length - 1] + '...';
+    return truncated;
+}
+
 export function buildSynopsisElement(
     plugin: PluginRendererFacade,
     scene: TimelineItem,
@@ -13,14 +30,15 @@ export function buildSynopsisElement(
     subplotIndexResolver?: (name: string) => number
 ): SVGGElement {
     const fontScale = getReadabilityMultiplier(plugin.settings as any);
+    const maxLines = (plugin.settings as any).synopsisHoverMaxLines ?? DEFAULT_SYNOPSIS_MAX_LINES;
 
     // For Backdrop items, only show Title and Synopsis/Description
     if (scene.itemType === 'Backdrop') {
         const lines = [scene.title || 'Untitled'];
         if (scene.synopsis) {
-            lines.push(...splitIntoBalancedLinesOptimal(scene.synopsis, maxTextWidth, fontScale));
+            lines.push(...splitAndTruncateLines(scene.synopsis, maxTextWidth, fontScale, maxLines));
         } else if (scene.Description) {
-            lines.push(...splitIntoBalancedLinesOptimal(scene.Description, maxTextWidth, fontScale));
+            lines.push(...splitAndTruncateLines(scene.Description, maxTextWidth, fontScale, maxLines));
         }
         return plugin.synopsisManager.generateElement(scene, lines, sceneId, subplotIndexResolver);
     }
@@ -28,9 +46,9 @@ export function buildSynopsisElement(
     const contentLines = [
         scene.title || '',
         ...(isBeatNote(scene) && scene.Description
-            ? splitIntoBalancedLinesOptimal(scene.Description, maxTextWidth, fontScale)
+            ? splitAndTruncateLines(scene.Description, maxTextWidth, fontScale, maxLines)
             : scene.synopsis
-                ? splitIntoBalancedLinesOptimal(scene.synopsis, maxTextWidth, fontScale)
+                ? splitAndTruncateLines(scene.synopsis, maxTextWidth, fontScale, maxLines)
                 : [])
     ];
 

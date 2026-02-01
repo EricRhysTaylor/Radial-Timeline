@@ -418,8 +418,8 @@
   font-style: italic;
 }
 
-/* Revisions/Pending edits text styling */
-.rt-revisions-text {
+/* Pending Edits text styling */
+.rt-pending-edits-text {
   fill: var(--rt-gossamer-historical-color);
 }
 

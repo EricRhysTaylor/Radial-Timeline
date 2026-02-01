@@ -18,7 +18,39 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
 
     const stackEl = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
 
-    // 1. Auto-expand clipped scene titles
+    // 1. Synopsis hover max lines
+    new Settings(stackEl)
+        .setName(t('settings.configuration.synopsisMaxLines.name'))
+        .setDesc(t('settings.configuration.synopsisMaxLines.desc'))
+        .addText(text => {
+            const current = String(plugin.settings.synopsisHoverMaxLines ?? 5);
+            text.setPlaceholder(t('settings.configuration.synopsisMaxLines.placeholder'));
+            text.setValue(current);
+            text.inputEl.addClass('ert-input--sm');
+
+            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+
+            const handleBlur = async () => {
+                const n = Number(text.getValue().trim());
+                if (!Number.isFinite(n) || n < 1) {
+                    new Notice(t('settings.configuration.synopsisMaxLines.error'));
+                    text.setValue(String(plugin.settings.synopsisHoverMaxLines ?? 5));
+                    return;
+                }
+                plugin.settings.synopsisHoverMaxLines = n;
+                await plugin.saveSettings();
+                plugin.refreshTimelineIfNeeded(null);
+            };
+
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
+        });
+
+    // 2. Auto-expand clipped scene titles
     new Settings(stackEl)
         .setName(t('settings.configuration.autoExpand.name'))
         .setDesc(t('settings.configuration.autoExpand.desc'))

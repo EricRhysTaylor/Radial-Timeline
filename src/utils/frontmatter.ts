@@ -46,7 +46,8 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>, customMapp
     'supportfiles': 'Support Files',
     'due': 'Due',
     'pendingedits': 'Pending Edits',
-    'revision': 'Revision',
+    'iterations': 'Iterations',
+    'revision': 'Iterations', // Deprecated: "Revision" renamed to "Iterations" (v3.x migration)
     'pov': 'POV',
     'duration': 'Duration',
     'type': 'Type',

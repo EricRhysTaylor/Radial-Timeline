@@ -383,3 +383,17 @@ export function stripWikiLinks(text: string): string {
   // Replace [[Link|Alias]] with Alias, and [[Link]] with Link
   return text.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, link, alias) => alias || link).trim();
 }
+
+/**
+ * Truncate text to a maximum word count, adding ellipsis if truncated.
+ * Used for display-only truncation (e.g., hover synopsis preview).
+ * @param text - The text to truncate
+ * @param maxWords - Maximum number of words to keep (default: 100)
+ * @returns Truncated text with "..." appended if it exceeded the limit
+ */
+export function truncateToWordLimit(text: string, maxWords: number = 100): string {
+  if (!text) return '';
+  const words = text.split(/\s+/).filter(w => w.length > 0);
+  if (words.length <= maxWords) return text;
+  return words.slice(0, maxWords).join(' ') + '...';
+}

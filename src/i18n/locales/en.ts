@@ -82,6 +82,12 @@ export interface TranslationKeys {
                 desc: string;
                 placeholder: string;
             };
+            synopsisMaxLines: {
+                name: string;
+                desc: string;
+                placeholder: string;
+                error: string;
+            };
             autoExpand: {
                 name: string;
                 desc: string;
@@ -325,6 +331,12 @@ export const en: TranslationKeys = {
                 name: 'Outline export folder (legacy)',
                 desc: 'Legacy setting. Outline exports now use the shared Export folder. Default: Radial Timeline/Export.',
                 placeholder: 'Radial Timeline/Export',
+            },
+            synopsisMaxLines: {
+                name: 'Synopsis hover max lines',
+                desc: 'Maximum number of lines to display for synopsis text in the scene hover view. Longer synopses will be truncated with ellipsis.',
+                placeholder: '5',
+                error: 'Please enter a valid number (1 or greater).',
             },
             autoExpand: {
                 name: 'Auto-expand clipped scene titles',

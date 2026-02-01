@@ -5,13 +5,13 @@
 
 import { App, Setting, setIcon, setTooltip, ButtonComponent, Notice, Modal } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import type { AprCampaign, TeaserPreset, TeaserRevealLevel } from '../../types/settings';
+import type { AprCampaign, AuthorProgressSettings, TeaserPreset, TeaserRevealLevel } from '../../types/settings';
 import { isProfessionalActive } from './ProfessionalSection';
 import { getTeaserThresholds, teaserLevelToRevealOptions } from '../../renderer/apr/AprConstants';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { getAllScenes } from '../../utils/manuscript';
 import { buildCampaignEmbedPath, type AprSize } from '../../utils/aprPaths';
-import { validateAndRememberProjectPath } from '../../renderer/apr/aprHelpers';
+import { resolveBookTitle, resolveProjectPath, validateAndRememberProjectPath } from '../../renderer/apr/aprHelpers';
 
 import { ERT_CLASSES } from '../../ui/classes';
 import { ProjectPathSuggest } from '../ProjectPathSuggest';
@@ -143,6 +143,16 @@ function getScheduleBadge(campaign: AprCampaign): { label: string; cls: string }
         return { label: `Auto · ${label}`, cls: 'is-auto' };
     }
     return { label: `Manual · ${campaign.refreshThresholdDays}d`, cls: 'is-manual' };
+}
+
+function resolveCampaignBookTitle(
+    settings: AuthorProgressSettings | undefined,
+    campaign: AprCampaign | null,
+    sourcePath: string
+): string | undefined {
+    if (!settings) return undefined;
+    const projectPath = resolveProjectPath(settings, campaign, sourcePath);
+    return resolveBookTitle(settings, campaign, projectPath);
 }
 
 /**
@@ -288,10 +298,15 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
                             return false;
                         }
 
-                        const newCampaign = createDefaultCampaign(name, {
-                            bookTitle: plugin.settings.authorProgress?.bookTitle,
-                            aprSize: plugin.settings.authorProgress?.aprSize
-                        });
+        const resolvedBookTitle = resolveCampaignBookTitle(
+            plugin.settings.authorProgress,
+            null,
+            plugin.settings.sourcePath
+        );
+        const newCampaign = createDefaultCampaign(name, {
+            bookTitle: resolvedBookTitle,
+            aprSize: plugin.settings.authorProgress?.aprSize
+        });
                         if (!plugin.settings.authorProgress) return false;
                         if (!plugin.settings.authorProgress.campaigns) {
                             plugin.settings.authorProgress.campaigns = [];
@@ -341,8 +356,13 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
         btn.onclick = async () => {
             if (exists) return;
 
+            const resolvedBookTitle = resolveCampaignBookTitle(
+                plugin.settings.authorProgress,
+                null,
+                plugin.settings.sourcePath
+            );
             const newCampaign = createDefaultCampaign(template.name, {
-                bookTitle: plugin.settings.authorProgress?.bookTitle,
+                bookTitle: resolvedBookTitle,
                 aprSize: plugin.settings.authorProgress?.aprSize
             });
             newCampaign.refreshThresholdDays = template.days;
@@ -400,8 +420,13 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
             btn.onclick = async () => {
                 if (exists) return;
 
+                const resolvedBookTitle = resolveCampaignBookTitle(
+                    plugin.settings.authorProgress,
+                    null,
+                    plugin.settings.sourcePath
+                );
                 const newCampaign = createDefaultCampaign(template.name, {
-                    bookTitle: plugin.settings.authorProgress?.bookTitle,
+                    bookTitle: resolvedBookTitle,
                     aprSize: plugin.settings.authorProgress?.aprSize
                 });
                 newCampaign.refreshThresholdDays = template.days;
@@ -490,8 +515,13 @@ function renderCampaignRow(
                     return false;
                 }
 
+                const resolvedBookTitle = resolveCampaignBookTitle(
+                    plugin.settings.authorProgress,
+                    campaign,
+                    plugin.settings.sourcePath
+                );
                 const oldDefaultPath = buildCampaignEmbedPath({
-                    bookTitle: plugin.settings.authorProgress?.bookTitle,
+                    bookTitle: resolvedBookTitle,
                     campaignName: campaign.name,
                     updateFrequency: campaign.updateFrequency,
                     aprSize: campaign.aprSize,
@@ -499,7 +529,7 @@ function renderCampaignRow(
                     teaserEnabled: campaign.teaserReveal?.enabled ?? true
                 });
                 const newDefaultPath = buildCampaignEmbedPath({
-                    bookTitle: plugin.settings.authorProgress?.bookTitle,
+                    bookTitle: resolvedBookTitle,
                     campaignName: newName,
                     updateFrequency: campaign.updateFrequency,
                     aprSize: campaign.aprSize,
@@ -621,8 +651,13 @@ function renderCampaignDetails(
                     const settings = plugin.settings.authorProgress;
                     if (!settings.campaigns) return;
                     const target = settings.campaigns[index];
+                    const resolvedBookTitle = resolveCampaignBookTitle(
+                        settings,
+                        target,
+                        plugin.settings.sourcePath
+                    );
                     const oldDefaultPath = buildCampaignEmbedPath({
-                        bookTitle: settings.bookTitle,
+                        bookTitle: resolvedBookTitle,
                         campaignName: target.name,
                         updateFrequency: target.updateFrequency,
                         aprSize: target.aprSize,
@@ -632,7 +667,7 @@ function renderCampaignDetails(
                     target.updateFrequency = val as 'manual' | 'daily' | 'weekly' | 'monthly';
                     if (settings.autoUpdateEmbedPaths && target.embedPath === oldDefaultPath) {
                         target.embedPath = buildCampaignEmbedPath({
-                            bookTitle: settings.bookTitle,
+                            bookTitle: resolvedBookTitle,
                             campaignName: target.name,
                             updateFrequency: target.updateFrequency,
                             aprSize: target.aprSize,
@@ -884,8 +919,13 @@ function renderCampaignDetails(
     });
 
     // Embed path (with validation and reset)
+    const resolvedBookTitle = resolveCampaignBookTitle(
+        plugin.settings.authorProgress,
+        campaign,
+        plugin.settings.sourcePath
+    );
     const defaultPath = buildCampaignEmbedPath({
-        bookTitle: plugin.settings.authorProgress?.bookTitle,
+        bookTitle: resolvedBookTitle,
         campaignName: campaign.name,
         updateFrequency: campaign.updateFrequency,
         aprSize: campaign.aprSize,
@@ -974,8 +1014,13 @@ function renderCampaignDetails(
                 const settings = plugin.settings.authorProgress;
                 if (!settings.campaigns) return;
                 const target = settings.campaigns[index];
+                const resolvedBookTitle = resolveCampaignBookTitle(
+                    settings,
+                    target,
+                    plugin.settings.sourcePath
+                );
                 const oldDefaultPath = buildCampaignEmbedPath({
-                    bookTitle: settings.bookTitle,
+                    bookTitle: resolvedBookTitle,
                     campaignName: target.name,
                     updateFrequency: target.updateFrequency,
                     aprSize: target.aprSize,
@@ -985,7 +1030,7 @@ function renderCampaignDetails(
                 target.aprSize = val === '' ? undefined : val as 'thumb' | 'small' | 'medium' | 'large';
                 if (settings.autoUpdateEmbedPaths && target.embedPath === oldDefaultPath) {
                     target.embedPath = buildCampaignEmbedPath({
-                        bookTitle: settings.bookTitle,
+                        bookTitle: resolvedBookTitle,
                         campaignName: target.name,
                         updateFrequency: target.updateFrequency,
                         aprSize: target.aprSize,
@@ -1259,11 +1304,16 @@ async function renderTeaserStagesPreviews(
         const svgContainer = card.createDiv({ cls: 'ert-stageCard__svg' });
 
         try {
+            const resolvedBookTitle = resolveCampaignBookTitle(
+                settings,
+                campaign,
+                plugin.settings.sourcePath
+            ) ?? 'Book';
             const isRingOnly = stage.level === 'bar';
             const { svgString } = createAprSVG(scenes, {
                 size: 'small',
                 progressPercent: stage.progress,
-                bookTitle: settings.bookTitle || 'Book',
+                bookTitle: resolvedBookTitle,
                 authorName: settings.authorName || '',
                 authorUrl: '',
                 showScenes: isRingOnly ? false : revealOptions.showScenes,

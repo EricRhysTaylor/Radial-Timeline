@@ -11,7 +11,7 @@ Character:                # Characters in the scene (use array format below for 
 POV:                      # blank, first, you, third, omni, narrator, two, all, count
 Status: Todo              # Scene status (Todo/Working/Complete)
 Due:                      # Target completion date (YYYY-MM-DD). When setting Scene to Complete, change this to that day's date for better novel completion estimate
-Publish Stage: Zero       # Revision stage (Zero/Author/House/Press)
+Publish Stage: Zero       # Publication stage (Zero/Author/House/Press)
 Pending Edits:            # Notes for next revision (especially for zero draft mode)
 Pulse Update:             # AI-generated scene pulse analysis flag
 ```
@@ -88,7 +88,7 @@ Status: Todo
 Due:
 Words:                                #Statistics
 Total Time:
-Revision: 
+Iterations:                           # Edit iteration count (deprecated: was "Revision")
 Pending Edits:
 Pulse Update: No
 ```

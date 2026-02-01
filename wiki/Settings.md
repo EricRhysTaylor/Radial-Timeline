@@ -86,7 +86,7 @@ Configure how Inquiry scans, stores, and annotates briefs.
 
 **Action notes:**
 *   **Write Inquiry action notes to scenes**: Append Inquiry action notes to the target YAML field on hit scenes.
-*   **Action notes target YAML field**: Frontmatter field to receive Inquiry action notes (default `Revision`).
+*   **Action notes target YAML field**: Frontmatter field to receive Inquiry action notes (default `Pending Edits`).
 
 **Session cache:**
 *   **Enable session cache**: Stores recent Inquiry runs for fast reloads.

@@ -95,6 +95,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     metadataRefreshDebounceMs: 10000,
     discontinuityThreshold: undefined, // Default to auto-calculated (3x median gap or 30 days)
     enableSceneTitleAutoExpand: true, // Default: enabled to maintain current behavior
+    synopsisHoverMaxLines: 5, // Default: show up to 5 lines in hover synopsis
     enableHoverDebugLogging: false,
     sortByWhenDate: false, // Default: manuscript order (backward compatible)
     chronologueDurationCapSelection: 'auto',
@@ -168,7 +169,7 @@ Character: {{Character}}  # Characters in the scene (use array format below for 
 POV:                      # blank, first, you, third, omni, narrator, two, all, count
 Status: Todo              # Scene status (Todo/Working/Complete)
 Due: {{When}}             # Target completion date (YYYY-MM-DD). When setting Scene to Complete, change this to that day's date for better novel completion estimate
-Publish Stage: Zero       # Revision stage (Zero/Author/House/Press)
+Publish Stage: Zero       # Publication stage (Zero/Author/House/Press)
 Pending Edits:            # Notes for next revision (especially for zero draft mode)
 Pulse Update:             # AI-generated scene pulse analysis flag`,
         advanced: `Class: Scene
@@ -193,7 +194,7 @@ Status: Todo
 Due:                                  # Target completion date (YYYY-MM-DD).
 Words:                                # Statistics
 Total Time:                           # Tracked time spent writing scene
-Revision:                             # Revision count (suggest leaving blank until stage > Zero)
+Iterations:                           # Edit iteration count (suggest leaving blank until stage > Zero)
 Pending Edits:
 Pulse Update: No`
     },

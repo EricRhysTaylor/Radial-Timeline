@@ -381,7 +381,7 @@ export default class SynopsisManager {
       synopsisTextGroup.appendChild(metadataElement);
     }
 
-    // Insert special extra lines right after the title (Due/Revisions), then the regular synopsis lines
+    // Insert special extra lines right after the title (Due/Pending Edits), then the regular synopsis lines
     let extraLineCount = 0;
 
     const appendInfoLine = (className: string, text: string) => {
@@ -442,16 +442,16 @@ export default class SynopsisManager {
       appendInfoLine('rt-info-text rt-title-text-secondary rt-overdue-text', `Overdue: ${dueString}`);
     }
 
-    // Revisions (Pending Edits) line if non-empty
+    // Pending Edits line if non-empty (notes for next revision)
     const pendingEdits = scene.pendingEdits && typeof scene.pendingEdits === 'string' ? scene.pendingEdits.trim() : '';
     if (pendingEdits) {
-      // Wrap revisions text using same logic as synopsis
+      // Wrap pending edits text using same logic as synopsis
       const maxWidth = 500 * fontScale; // Match timeline synopsis width
       const lines = splitIntoBalancedLines(pendingEdits, maxWidth, fontScale);
       for (let i = 0; i < lines.length; i++) {
         const y = (1 + extraLineCount) * metadataLineHeight + (i * metadataLineHeight);
-        const text = `${i === 0 ? 'Revisions: ' : ''}${lines[i]}`;
-        synopsisTextGroup.appendChild(createText(0, y, 'rt-info-text rt-title-text-secondary rt-revisions-text', text));
+        const text = `${i === 0 ? 'Pending Edits: ' : ''}${lines[i]}`;
+        synopsisTextGroup.appendChild(createText(0, y, 'rt-info-text rt-title-text-secondary rt-pending-edits-text', text));
       }
       extraLineCount += lines.length;
     }

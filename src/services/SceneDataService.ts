@@ -189,7 +189,9 @@ export class SceneDataService {
                             "Publish Stage": metadata["Publish Stage"] as string | undefined,
                             due: metadata.Due as string | undefined,
                             pendingEdits: (() => {
-                                const raw = metadata["Revision"] ?? metadata["Pending Edits"];
+                                // Only read Pending Edits field (text notes for next revision)
+                                // Note: "Iterations" is a separate numeric field for revision count
+                                const raw = metadata["Pending Edits"];
                                 if (Array.isArray(raw)) {
                                     return raw.map(entry => String(entry)).join('\n');
                                 }

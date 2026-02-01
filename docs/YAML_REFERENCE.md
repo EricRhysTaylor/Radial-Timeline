@@ -21,7 +21,7 @@ Complete guide to frontmatter fields used in Radial Timeline. This YAML must be 
 | `Synopsis` | String | Brief description of what happens |
 | `Character` | Array | Characters on stage (link to character notes) |
 | `Publish Stage` | String | `Zero`, `Author`, `House`, or `Press` |
-| `Revision` | Number | Revision count (leave blank until stage > zero) |
+| `Iterations` | Number | Edit iteration count (leave blank until stage > zero) |
 | `Due` | Date | Deadline for this scene (YYYY-MM-DD) |
 
 ---
@@ -90,7 +90,7 @@ Place:
 
 Status: Todo
 Publish Stage: Zero
-Revision:
+Iterations:
 Due: 2026-01-31
 Pending Edits:
 
@@ -290,10 +290,12 @@ Used for color coding in Publication mode.
 
 ---
 
-### Revision
+### Iterations
 **Optional** | Type: Number
 
-Track how many times you've rewritten the scene. Leave blank until stage > zero, then increment with each revision.
+Track how many times you've rewritten the scene. Leave blank until stage > zero, then increment with each edit iteration.
+
+> **Migration note**: This field was previously named `Revision`. The old field name is still recognized for backwards compatibility.
 
 ---
 
