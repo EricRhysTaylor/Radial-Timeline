@@ -16,7 +16,18 @@ import type { AiProviderResponse, ParsedSceneAnalysis } from './types';
 import { parseGptResult } from './responseParsing';
 import { cacheResolvedModel, isLatestAlias } from '../utils/modelResolver';
 import { buildProviderRequestPayload } from '../api/requestPayload';
-import { extractTokenUsage, formatAiLogContent, formatLogTimestamp, sanitizeLogPayload, writeAiLog, type AiLogStatus } from '../ai/log';
+import {
+    extractTokenUsage,
+    formatAiLogContent,
+    formatSummaryLogContent,
+    formatLogTimestamp,
+    resolveAiLogFolder,
+    resolveAvailableLogPath,
+    sanitizeLogPayload,
+    type AiLogStatus
+} from '../ai/log';
+import { ensurePulseContentLogFolder, resolvePulseContentLogFolder } from '../inquiry/utils/logs';
+import { normalizePath, TFolder } from 'obsidian';
 
 type PulseLogPayload = {
     provider: 'openai' | 'anthropic' | 'gemini' | 'local';
@@ -80,14 +91,11 @@ async function writePulseLog(
     vault: Vault,
     payload: PulseLogPayload
 ): Promise<void> {
-    if (!plugin.settings.logApiInteractions) return;
-
     const timestampSource = payload.returnedAt ?? payload.submittedAt ?? new Date();
     const readableTimestamp = formatLogTimestamp(timestampSource);
     const sceneLabel = payload.sceneName?.trim() || 'Scene';
     const safeSceneLabel = sanitizeSegment(sceneLabel) || 'Scene';
-    const title = `Pulse Log — ${sceneLabel} ${readableTimestamp}`;
-    const baseName = `Pulse Log — ${safeSceneLabel} ${readableTimestamp}`;
+    const logType = payload.commandContext === 'synopsis' ? 'Synopsis' : 'Pulse';
 
     const scopeBits = [`Scene ${sceneLabel}`];
     if (payload.subplotName) scopeBits.push(`Subplot ${payload.subplotName}`);
@@ -95,52 +103,119 @@ async function writePulseLog(
         scopeBits.push(`Triplet ${payload.tripletInfo.prev}/${payload.tripletInfo.current}/${payload.tripletInfo.next}`);
     }
     if (payload.commandContext) scopeBits.push(`Command ${payload.commandContext}`);
+    const scopeTarget = scopeBits.join(' · ');
 
     const { sanitized: sanitizedPayload, redactedKeys } = sanitizeLogPayload(payload.requestPayload ?? null);
     const tokenUsage = extractTokenUsage(payload.provider, payload.responseData);
     const sanitizedNotes = redactedKeys.length
         ? [`Redacted request keys: ${redactedKeys.join(', ')}.`]
         : [];
-    const evidenceText = payload.userPrompt ? extractEvidenceText(payload.userPrompt) : '';
+    const durationMs = payload.submittedAt && payload.returnedAt
+        ? payload.returnedAt.getTime() - payload.submittedAt.getTime()
+        : null;
 
-    const content = formatAiLogContent({
-        title,
-        metadata: {
-            feature: 'Pulse',
-            scopeTarget: scopeBits.join(' · '),
+    const isError = payload.status === 'error';
+    const shouldWriteContent = plugin.settings.logApiInteractions || isError;
+
+    // Write Content Log first (if enabled) so we know whether to mark it as written
+    let contentLogWritten = false;
+    if (shouldWriteContent) {
+        try {
+            const contentFolder = await ensurePulseContentLogFolder(plugin.app);
+            if (contentFolder) {
+                const contentTitle = `${logType} Content Log — ${sceneLabel} ${readableTimestamp}`;
+                const contentBaseName = `${logType} Content Log — ${safeSceneLabel} ${readableTimestamp}`;
+                const evidenceText = payload.userPrompt ? extractEvidenceText(payload.userPrompt) : '';
+
+                const contentLogContent = formatAiLogContent({
+                    title: contentTitle,
+                    metadata: {
+                        feature: payload.commandContext === 'synopsis' ? 'Synopsis' : 'Pulse',
+                        scopeTarget,
+                        provider: payload.provider,
+                        modelRequested: payload.modelRequested ?? 'unknown',
+                        modelResolved: payload.modelResolved ?? 'unknown',
+                        submittedAt: payload.submittedAt ?? null,
+                        returnedAt: payload.returnedAt ?? null,
+                        durationMs,
+                        status: payload.status,
+                        tokenUsage
+                    },
+                    request: {
+                        systemPrompt: payload.systemPrompt ?? '',
+                        userPrompt: payload.userPrompt ?? '',
+                        evidenceText,
+                        requestPayload: sanitizedPayload
+                    },
+                    response: {
+                        rawResponse: payload.responseData ?? null,
+                        assistantContent: payload.rawTextResult ?? '',
+                        parsedOutput: payload.parsed ?? null
+                    },
+                    notes: {
+                        sanitizationSteps: sanitizedNotes,
+                        retryAttempts: payload.retryCount,
+                        schemaWarnings: payload.normalizationWarnings
+                    }
+                });
+
+                const contentFolderPath = resolvePulseContentLogFolder();
+                const contentFilePath = resolveAvailableLogPath(vault, contentFolderPath, contentBaseName);
+                await vault.create(contentFilePath, contentLogContent.trim());
+                contentLogWritten = true;
+            }
+        } catch (e) {
+            console.error('[Pulse][log] Failed to write content log:', e);
+            // Non-blocking: continue with summary log
+        }
+    }
+
+    // Write Summary Log (always written for AI runs)
+    try {
+        const summaryFolderPath = normalizePath(resolveAiLogFolder());
+        const existing = vault.getAbstractFileByPath(summaryFolderPath);
+        if (existing && !(existing instanceof TFolder)) {
+            console.error('[Pulse][log] Log folder path is not a folder.');
+            return;
+        }
+        try {
+            await vault.createFolder(summaryFolderPath);
+        } catch {
+            // Folder may already exist.
+        }
+
+        const summaryTitle = `${logType} Log — ${sceneLabel} ${readableTimestamp}`;
+        const summaryBaseName = `${logType} Log — ${safeSceneLabel} ${readableTimestamp}`;
+
+        const resultSummary = payload.status === 'success' && payload.parsed
+            ? `Analysis complete.`
+            : undefined;
+
+        const summaryContent = formatSummaryLogContent({
+            title: summaryTitle,
+            feature: payload.commandContext === 'synopsis' ? 'Synopsis' : 'Pulse',
+            scopeTarget,
             provider: payload.provider,
             modelRequested: payload.modelRequested ?? 'unknown',
             modelResolved: payload.modelResolved ?? 'unknown',
             submittedAt: payload.submittedAt ?? null,
             returnedAt: payload.returnedAt ?? null,
-            durationMs: payload.submittedAt && payload.returnedAt
-                ? payload.returnedAt.getTime() - payload.submittedAt.getTime()
-                : null,
+            durationMs,
             status: payload.status,
-            tokenUsage
-        },
-        request: {
-            systemPrompt: payload.systemPrompt ?? '',
-            userPrompt: payload.userPrompt ?? '',
-            evidenceText,
-            requestPayload: sanitizedPayload
-        },
-        response: {
-            rawResponse: payload.responseData ?? null,
-            assistantContent: payload.rawTextResult ?? '',
-            parsedOutput: payload.parsed ?? null
-        },
-        notes: {
-            sanitizationSteps: sanitizedNotes,
-            retryAttempts: payload.retryCount,
-            schemaWarnings: payload.normalizationWarnings
-        }
-    });
+            tokenUsage,
+            resultSummary,
+            errorReason: isError ? (payload.rawTextResult || 'Unknown error.') : null,
+            suggestedFixes: isError ? ['Retry or check API configuration.'] : undefined,
+            contentLogWritten,
+            retryAttempts: payload.retryCount
+        });
 
-    await writeAiLog(plugin, vault, {
-        baseName,
-        content
-    });
+        const summaryFilePath = resolveAvailableLogPath(vault, summaryFolderPath, summaryBaseName);
+        await vault.create(summaryFilePath, summaryContent.trim());
+    } catch (e) {
+        console.error('[Pulse][log] Failed to write summary log:', e);
+        // Non-blocking: logging failures should not break the AI run
+    }
 }
 
 async function retryWithBackoff<T>(
@@ -199,6 +274,21 @@ export async function callAiProvider(
     let returnedAt: Date | null = null;
 
     try {
+        // Determine which schema and system prompt to use based on commandContext
+        let jsonSchema: Record<string, unknown>;
+        let systemPrompt: string;
+
+        if (commandContext === 'synopsis') {
+            // Use Synopsis-specific schema and system prompt
+            const { getSynopsisJsonSchema, getSynopsisSystemPrompt } = await import('../ai/prompts/synopsis');
+            jsonSchema = getSynopsisJsonSchema();
+            systemPrompt = getSynopsisSystemPrompt();
+        } else {
+            // Default to Pulse Analysis schema for all other contexts
+            jsonSchema = getSceneAnalysisJsonSchema();
+            systemPrompt = getSceneAnalysisSystemPrompt();
+        }
+
         const normalizeModelId = (prov: string, id: string | undefined): string | undefined => {
             if (!id) return id;
             switch (prov) {
@@ -240,9 +330,6 @@ export async function callAiProvider(
                     return id;
             }
         };
-
-        const jsonSchema = getSceneAnalysisJsonSchema();
-        systemPrompt = getSceneAnalysisSystemPrompt();
 
         if (provider === 'anthropic') {
             const maxTokens = getSceneAnalysisTokenLimit('anthropic');

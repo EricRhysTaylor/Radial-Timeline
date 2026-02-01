@@ -63,6 +63,24 @@ export function getPulseUpdateFlag(fm: Record<string, unknown> | undefined): unk
     return undefined;
 }
 
+/**
+ * Get the Synopsis Update flag from frontmatter (separate from Pulse)
+ */
+export function getSynopsisUpdateFlag(fm: Record<string, unknown> | undefined): unknown {
+    if (!fm) return undefined;
+    const keys = [
+        'Synopsis Update',
+        'SynopsisUpdate',
+        'synopsisupdate'
+    ];
+    for (const key of keys) {
+        if (Object.prototype.hasOwnProperty.call(fm, key)) {
+            return (fm as Record<string, unknown>)[key];
+        }
+    }
+    return undefined;
+}
+
 function hasWordsContent(fm: Record<string, unknown>): boolean {
     const w1 = fm?.words as unknown;
     const w2 = (fm as Record<string, unknown>)['Words'] as unknown;

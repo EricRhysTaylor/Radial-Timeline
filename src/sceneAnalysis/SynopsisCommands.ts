@@ -7,7 +7,7 @@
 import { Vault, Notice, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { SceneAnalysisProcessingModal, type ProcessingMode, type SceneQueueItem } from '../modals/SceneAnalysisProcessingModal';
-import { getAllSceneData, compareScenesByOrder, getPulseUpdateFlag, hasProcessableContent } from './data';
+import { getAllSceneData, compareScenesByOrder, getSynopsisUpdateFlag, hasProcessableContent } from './data';
 import { classifySynopsis, type SynopsisQuality } from './synopsisQuality';
 import { buildSynopsisPrompt } from '../ai/prompts/synopsis';
 import { createAiRunner } from './RequestRunner';
@@ -19,23 +19,27 @@ import { normalizeBooleanValue } from '../utils/sceneHelpers';
 export async function calculateSynopsisSceneCount(
     plugin: RadialTimelinePlugin,
     vault: Vault,
-    mode: ProcessingMode
+    mode: ProcessingMode,
+    weakThreshold?: number
 ): Promise<number> {
     try {
         const allScenes = await getAllSceneData(plugin, vault);
         // Only consider scenes visible in the current manuscript/timeline view (respects book scope if applicable)
         // getAllSceneData respects the plugin's source/book settings.
-        const isFlagged = (scene: SceneData) =>
-            normalizeBooleanValue(getPulseUpdateFlag(scene.frontmatter)) &&
-            hasProcessableContent(scene.frontmatter);
+
+        // Get threshold from settings or parameter
+        const threshold = weakThreshold ?? plugin.settings.synopsisWeakThreshold ?? 75;
+
+        const isSynopsisFlagged = (scene: SceneData) =>
+            normalizeBooleanValue(getSynopsisUpdateFlag(scene.frontmatter));
 
         let count = 0;
         for (const scene of allScenes) {
             const currentSynopsis = scene.frontmatter.Synopsis;
-            const quality = classifySynopsis(currentSynopsis);
+            const quality = classifySynopsis(currentSynopsis, threshold);
 
             if (mode === 'synopsis-flagged') {
-                if (isFlagged(scene)) count++;
+                if (isSynopsisFlagged(scene)) count++;
             } else if (mode === 'synopsis-missing-weak') {
                 if (quality === 'missing' || quality === 'weak') count++;
             } else if (mode === 'synopsis-missing') {
@@ -59,9 +63,9 @@ export async function processSynopsisByManuscriptOrder(
     const modal = new SceneAnalysisProcessingModal(
         plugin.app,
         plugin,
-        (mode) => calculateSynopsisSceneCount(plugin, vault, mode),
-        async (mode) => {
-            await runSynopsisBatch(plugin, vault, mode, modal);
+        (mode, weakThreshold) => calculateSynopsisSceneCount(plugin, vault, mode, weakThreshold),
+        async (mode, weakThreshold, targetWords) => {
+            await runSynopsisBatch(plugin, vault, mode, modal, weakThreshold, targetWords);
         },
         undefined,
         undefined,
@@ -75,17 +79,22 @@ async function runSynopsisBatch(
     plugin: RadialTimelinePlugin,
     vault: Vault,
     mode: ProcessingMode,
-    modal: SceneAnalysisProcessingModal
+    modal: SceneAnalysisProcessingModal,
+    weakThreshold?: number,
+    targetWords?: number
 ): Promise<void> {
     const allScenes = await getAllSceneData(plugin, vault);
     allScenes.sort(compareScenesByOrder);
 
+    // Get settings with fallbacks
+    const threshold = weakThreshold ?? plugin.settings.synopsisWeakThreshold ?? 75;
+    const target = targetWords ?? plugin.settings.synopsisTargetWords ?? 300;
+
     // Filter scenes based on mode
     const scenesToProcess = allScenes.filter(scene => {
-        const quality = classifySynopsis(scene.frontmatter.Synopsis);
-        const isFlagged = normalizeBooleanValue(getPulseUpdateFlag(scene.frontmatter)) &&
-            hasProcessableContent(scene.frontmatter);
-        if (mode === 'synopsis-flagged') return isFlagged;
+        const quality = classifySynopsis(scene.frontmatter.Synopsis, threshold);
+        const isSynopsisFlagged = normalizeBooleanValue(getSynopsisUpdateFlag(scene.frontmatter));
+        if (mode === 'synopsis-flagged') return isSynopsisFlagged;
         if (mode === 'synopsis-missing-weak') return quality === 'missing' || quality === 'weak';
         if (mode === 'synopsis-missing') return quality === 'missing';
         if (mode === 'synopsis-all') return true;
@@ -139,10 +148,11 @@ async function runSynopsisBatch(
             modal.setSynopsisPreview(currentSynopsis, 'Generating...');
         }
 
-        // Build Prompt
+        // Build Prompt with target word count
         const prompt = buildSynopsisPrompt(
             scene.body,
-            String(scene.sceneNumber || 'N/A')
+            String(scene.sceneNumber || 'N/A'),
+            target
         );
 
         // Run AI

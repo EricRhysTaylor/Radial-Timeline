@@ -23,11 +23,14 @@ export async function updateSceneAnalysis(
       delete fmObj['currentSceneAnalysis'];
       delete fmObj['nextSceneAnalysis'];
 
+      // Use single-field pattern: replace flag with timestamp (cleaner than two fields)
       const now = new Date();
       const timestamp = now.toLocaleString(undefined, {
         year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
       } as Intl.DateTimeFormatOptions);
-      fmObj['Pulse Last Updated'] = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
+
+      // Remove old separate "Pulse Last Updated" field if it exists (legacy cleanup)
+      delete fmObj['Pulse Last Updated'];
 
       const pulseKeys = [
         'Pulse Update',
@@ -43,11 +46,15 @@ export async function updateSceneAnalysis(
       let updatedFlag = false;
       for (const key of pulseKeys) {
         if (Object.prototype.hasOwnProperty.call(fmObj, key)) {
-          fmObj[key] = false;
+          // Replace flag with timestamp string (interpreted as false by normalizeBooleanValue)
+          fmObj[key] = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
           updatedFlag = true;
+          break; // Only update the first matching key
         }
       }
-      if (!updatedFlag) fmObj['Pulse Update'] = false;
+      if (!updatedFlag) {
+        fmObj['Pulse Update'] = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
+      }
 
       const b1 = parsedAnalysis['previousSceneAnalysis']?.trim();
       const b2 = parsedAnalysis['currentSceneAnalysis']?.trim();
@@ -73,6 +80,7 @@ export async function markPulseProcessed(
     await plugin.app.fileManager.processFrontMatter(file, (fm) => {
       const fmObj = fm as Record<string, unknown>;
 
+      // Use single-field pattern: replace flag with timestamp
       const now = new Date();
       const timestamp = now.toLocaleString(undefined, {
         year: 'numeric',
@@ -82,7 +90,9 @@ export async function markPulseProcessed(
         minute: '2-digit',
         hour12: true
       } as Intl.DateTimeFormatOptions);
-      fmObj['Pulse Last Updated'] = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
+
+      // Remove old separate "Pulse Last Updated" field if it exists (legacy cleanup)
+      delete fmObj['Pulse Last Updated'];
 
       const pulseKeys = [
         'Pulse Update',
@@ -98,11 +108,15 @@ export async function markPulseProcessed(
       let updatedFlag = false;
       for (const key of pulseKeys) {
         if (Object.prototype.hasOwnProperty.call(fmObj, key)) {
-          fmObj[key] = false;
+          // Replace flag with timestamp string (interpreted as false by normalizeBooleanValue)
+          fmObj[key] = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
           updatedFlag = true;
+          break; // Only update the first matching key
         }
       }
-      if (!updatedFlag) fmObj['Pulse Update'] = false;
+      if (!updatedFlag) {
+        fmObj['Pulse Update'] = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
+      }
     });
     return true;
   } catch (e) {

@@ -82,8 +82,8 @@ export interface ProcessingOptions {
  */
 export class SceneAnalysisProcessingModal extends Modal {
     private readonly plugin: RadialTimelinePlugin;
-    private readonly onConfirm: (mode: ProcessingMode) => Promise<void>;
-    private readonly getSceneCount: (mode: ProcessingMode) => Promise<number>;
+    private readonly onConfirm: (mode: ProcessingMode, weakThreshold?: number, targetWords?: number) => Promise<void>;
+    private readonly getSceneCount: (mode: ProcessingMode, weakThreshold?: number) => Promise<number>;
     private readonly resumeCommandId?: string; // Optional command ID to trigger on resume
     private readonly subplotName?: string; // Optional subplot name for resume (subplot processing only)
     private readonly isEntireSubplot?: boolean; // Track if this is "entire subplot" vs "flagged scenes"
@@ -94,6 +94,10 @@ export class SceneAnalysisProcessingModal extends Modal {
     private selectedMode: ProcessingMode = 'flagged';
     public isProcessing: boolean = false;
     private abortController: AbortController | null = null;
+
+    // Synopsis-specific controls
+    private synopsisTargetWords: number = 300;
+    private synopsisWeakThreshold: number = 75;
 
     // Progress tracking
     private progressBarEl?: HTMLElement;
@@ -129,8 +133,8 @@ export class SceneAnalysisProcessingModal extends Modal {
     constructor(
         app: App,
         plugin: RadialTimelinePlugin,
-        getSceneCount: (mode: ProcessingMode) => Promise<number>,
-        onConfirm: (mode: ProcessingMode) => Promise<void>,
+        getSceneCount: (mode: ProcessingMode, weakThreshold?: number) => Promise<number>,
+        onConfirm: (mode: ProcessingMode, weakThreshold?: number, targetWords?: number) => Promise<void>,
         resumeCommandId?: string,
         subplotName?: string,
         isEntireSubplot?: boolean,
@@ -144,6 +148,10 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.subplotName = subplotName;
         this.isEntireSubplot = isEntireSubplot;
         this.taskType = taskType;
+
+        // Initialize synopsis settings from plugin settings
+        this.synopsisTargetWords = plugin.settings.synopsisTargetWords ?? 300;
+        this.synopsisWeakThreshold = plugin.settings.synopsisWeakThreshold ?? 75;
     }
 
     onOpen(): void {
@@ -433,6 +441,58 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         this.renderProcessingHero(contentEl);
 
+        // Synopsis size controls (only for synopsis mode)
+        if (this.taskType === 'synopsis') {
+            const controlsCard = contentEl.createDiv({ cls: 'rt-glass-card rt-synopsis-controls' });
+
+            // Target Synopsis Length
+            const targetControl = controlsCard.createDiv({ cls: 'rt-synopsis-control' });
+            targetControl.createEl('label', { text: 'Target synopsis length', cls: 'rt-synopsis-control-label' });
+            const targetInput = targetControl.createEl('input', {
+                type: 'number',
+                cls: 'rt-synopsis-control-input',
+                attr: { min: '75', max: '500', step: '25' }
+            }) as HTMLInputElement;
+            targetInput.value = String(this.synopsisTargetWords);
+            targetInput.addEventListener('change', () => {
+                const val = parseInt(targetInput.value, 10);
+                if (!isNaN(val) && val >= 75 && val <= 500) {
+                    this.synopsisTargetWords = val;
+                    this.checkThresholdWarning(warningEl);
+                }
+            });
+            targetControl.createDiv({
+                text: 'Used when generating or regenerating synopses.',
+                cls: 'rt-synopsis-control-help'
+            });
+
+            // Weak Synopsis Threshold
+            const thresholdControl = controlsCard.createDiv({ cls: 'rt-synopsis-control' });
+            thresholdControl.createEl('label', { text: 'Treat synopsis as weak if under', cls: 'rt-synopsis-control-label' });
+            const thresholdInput = thresholdControl.createEl('input', {
+                type: 'number',
+                cls: 'rt-synopsis-control-input',
+                attr: { min: '10', max: '300', step: '5' }
+            }) as HTMLInputElement;
+            thresholdInput.value = String(this.synopsisWeakThreshold);
+            thresholdInput.addEventListener('change', () => {
+                const val = parseInt(thresholdInput.value, 10);
+                if (!isNaN(val) && val >= 10 && val <= 300) {
+                    this.synopsisWeakThreshold = val;
+                    updateCount(); // Re-calculate scene counts with new threshold
+                    this.checkThresholdWarning(warningEl);
+                }
+            });
+            thresholdControl.createDiv({
+                text: 'Only used to decide which scenes are selected for update.',
+                cls: 'rt-synopsis-control-help'
+            });
+
+            // Warning for target < threshold
+            const warningEl = controlsCard.createDiv({ cls: 'rt-synopsis-threshold-warning' });
+            this.checkThresholdWarning(warningEl);
+        }
+
         // Mode selection
         const modesSection = contentEl.createDiv({ cls: 'rt-pulse-modes rt-glass-card' });
 
@@ -440,29 +500,29 @@ export class SceneAnalysisProcessingModal extends Modal {
             this.createModeOption(
                 modesSection,
                 'synopsis-flagged',
-                'Update flagged scenes',
-                'Processes scenes with Pulse Update: Yes and Status: Working or Complete, then creates fresh synopses.',
+                'Selected scenes (Synopsis Update: yes)',
+                'Processes scenes with Synopsis Update: yes in frontmatter.',
+                false
+            );
+            this.createModeOption(
+                modesSection,
+                'synopsis-missing',
+                'Missing only',
+                'Only processes scenes with absolutely no synopsis text.',
                 false
             );
             this.createModeOption(
                 modesSection,
                 'synopsis-missing-weak',
-                'Update missing or weak synopses (Recommended)',
-                'Processes scenes with no synopsis or very short placeholder text (< 20 words).',
+                'Missing or weak (Recommended)',
+                `Processes scenes with no synopsis or under ${this.synopsisWeakThreshold} words.`,
                 true
             );
             this.createModeOption(
                 modesSection,
-                'synopsis-missing',
-                'Update missing synopses only',
-                'Only processes scenes that have absolutely no synopsis text.',
-                false
-            );
-            this.createModeOption(
-                modesSection,
                 'synopsis-all',
-                'Regenerate ALL synopses (Warning)',
-                'Regenerates synopses for every scene in the book. Existing synopses will be overwritten on apply.',
+                'Regenerate all (Warning)',
+                'Regenerates synopses for every scene. Existing synopses will be overwritten.',
                 false
             );
         } else {
@@ -502,7 +562,10 @@ export class SceneAnalysisProcessingModal extends Modal {
             countEl.setText('Calculating...');
 
             try {
-                const count = await this.getSceneCount(this.selectedMode);
+                const count = await this.getSceneCount(
+                    this.selectedMode,
+                    this.taskType === 'synopsis' ? this.synopsisWeakThreshold : undefined
+                );
                 // ~6 seconds per scene (1.5s delay + 3-5s API call) = 0.1 minutes
                 const estimatedMinutes = Math.ceil(count * 0.1);
                 countEl.empty();
@@ -545,7 +608,10 @@ export class SceneAnalysisProcessingModal extends Modal {
             .setCta()
             .onClick(async () => {
                 try {
-                    const count = await this.getSceneCount(this.selectedMode);
+                    const count = await this.getSceneCount(
+                        this.selectedMode,
+                        this.taskType === 'synopsis' ? this.synopsisWeakThreshold : undefined
+                    );
                     if (count === 0) {
                         new Notice('No scenes to process with the selected mode.');
                         return;
@@ -591,6 +657,18 @@ export class SceneAnalysisProcessingModal extends Modal {
         new ButtonComponent(buttonRow)
             .setButtonText('Cancel')
             .onClick(() => this.close());
+    }
+
+    /**
+     * Check if target word count is less than weak threshold and show warning
+     */
+    private checkThresholdWarning(warningEl: HTMLElement): void {
+        if (this.synopsisTargetWords < this.synopsisWeakThreshold) {
+            warningEl.textContent = `⚠️ Target size (${this.synopsisTargetWords}) is less than weak threshold (${this.synopsisWeakThreshold}). Newly generated synopses may be immediately classified as weak.`;
+            warningEl.classList.add('is-visible');
+        } else {
+            warningEl.classList.remove('is-visible');
+        }
     }
 
     private createModeOption(
@@ -652,7 +730,11 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.showProgressView();
 
         try {
-            await this.onConfirm(this.selectedMode);
+            await this.onConfirm(
+                this.selectedMode,
+                this.taskType === 'synopsis' ? this.synopsisWeakThreshold : undefined,
+                this.taskType === 'synopsis' ? this.synopsisTargetWords : undefined
+            );
 
             // Show appropriate summary even if the last/only scene finished after an abort request
             if (this.abortController && this.abortController.signal.aborted) {
@@ -806,11 +888,51 @@ export class SceneAnalysisProcessingModal extends Modal {
         let updated = 0;
 
         try {
+            // Get current model ID for timestamp
+            const provider = this.plugin.settings.defaultAiProvider || 'openai';
+            let modelId = 'Unknown Model';
+            if (provider === 'anthropic') {
+                modelId = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
+            } else if (provider === 'gemini') {
+                modelId = this.plugin.settings.geminiModelId || 'gemini-3-pro-preview';
+            } else if (provider === 'openai') {
+                modelId = this.plugin.settings.openaiModelId || 'gpt-5.1-chat-latest';
+            } else if (provider === 'local') {
+                modelId = this.plugin.settings.localModelId || 'local-model';
+            }
+
             for (const [path, newSynopsis] of processedResults.entries()) {
                 const file = this.plugin.app.vault.getAbstractFileByPath(path);
-                if (file && file instanceof TFile) { // Ensure import TFile if needed or use 'any' if TFile not imported
+                if (file && file instanceof TFile) {
                     await this.plugin.app.fileManager.processFrontMatter(file, (fm) => {
                         fm['Synopsis'] = newSynopsis;
+
+                        // Replace Synopsis Update flag with timestamp (single field pattern)
+                        // This is cleaner than Pulse's two-field approach
+                        const now = new Date();
+                        const timestamp = now.toLocaleString(undefined, {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                        } as Intl.DateTimeFormatOptions);
+
+                        // Check all possible variations and replace with timestamp
+                        const synopsisUpdateKeys = ['Synopsis Update', 'SynopsisUpdate', 'synopsisupdate'];
+                        let updatedFlag = false;
+                        for (const key of synopsisUpdateKeys) {
+                            if (key in fm) {
+                                fm[key] = `${timestamp} by ${modelId}`;
+                                updatedFlag = true;
+                                break; // Only update the first matching key
+                            }
+                        }
+                        // If no existing flag, create one
+                        if (!updatedFlag) {
+                            fm['Synopsis Update'] = `${timestamp} by ${modelId}`;
+                        }
                     });
                     updated++;
                 }

@@ -18,9 +18,10 @@ const PLACEHOLDER_PATTERNS = [
 /**
  * Classify the quality of a synopsis string.
  * @param synopsis The raw synopsis text from frontmatter
+ * @param weakThreshold Word count below which synopsis is considered weak (default: 75)
  * @returns 'missing' | 'weak' | 'ok'
  */
-export function classifySynopsis(synopsis: unknown): SynopsisQuality {
+export function classifySynopsis(synopsis: unknown, weakThreshold: number = 75): SynopsisQuality {
     if (synopsis === null || synopsis === undefined) {
         return 'missing';
     }
@@ -37,9 +38,9 @@ export function classifySynopsis(synopsis: unknown): SynopsisQuality {
         }
     }
 
-    // Check word count
+    // Check word count against threshold
     const wordCount = text.split(/\s+/).length;
-    if (wordCount < 20) {
+    if (wordCount < weakThreshold) {
         return 'weak';
     }
 

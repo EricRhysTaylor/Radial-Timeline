@@ -1,5 +1,10 @@
 import { App, normalizePath, TFolder } from 'obsidian';
-import { DEFAULT_INQUIRY_CONTENT_LOG_FOLDER, DEFAULT_INQUIRY_LOG_FOLDER } from '../constants';
+import {
+    DEFAULT_INQUIRY_CONTENT_LOG_FOLDER,
+    DEFAULT_INQUIRY_LOG_FOLDER,
+    DEFAULT_PULSE_CONTENT_LOG_FOLDER,
+    DEFAULT_GOSSAMER_CONTENT_LOG_FOLDER
+} from '../constants';
 
 export function resolveInquiryLogFolder(): string {
     return normalizePath(DEFAULT_INQUIRY_LOG_FOLDER);
@@ -26,6 +31,44 @@ export async function ensureInquiryLogFolder(app: App): Promise<TFolder | null> 
 
 export async function ensureInquiryContentLogFolder(app: App): Promise<TFolder | null> {
     const folderPath = resolveInquiryContentLogFolder();
+    const existing = app.vault.getAbstractFileByPath(folderPath);
+    if (existing && !(existing instanceof TFolder)) {
+        return null;
+    }
+    try {
+        await app.vault.createFolder(folderPath);
+    } catch {
+        // Folder may already exist.
+    }
+    const folder = app.vault.getAbstractFileByPath(folderPath);
+    return folder instanceof TFolder ? folder : null;
+}
+
+export function resolvePulseContentLogFolder(): string {
+    return normalizePath(DEFAULT_PULSE_CONTENT_LOG_FOLDER);
+}
+
+export async function ensurePulseContentLogFolder(app: App): Promise<TFolder | null> {
+    const folderPath = resolvePulseContentLogFolder();
+    const existing = app.vault.getAbstractFileByPath(folderPath);
+    if (existing && !(existing instanceof TFolder)) {
+        return null;
+    }
+    try {
+        await app.vault.createFolder(folderPath);
+    } catch {
+        // Folder may already exist.
+    }
+    const folder = app.vault.getAbstractFileByPath(folderPath);
+    return folder instanceof TFolder ? folder : null;
+}
+
+export function resolveGossamerContentLogFolder(): string {
+    return normalizePath(DEFAULT_GOSSAMER_CONTENT_LOG_FOLDER);
+}
+
+export async function ensureGossamerContentLogFolder(app: App): Promise<TFolder | null> {
+    const folderPath = resolveGossamerContentLogFolder();
     const existing = app.vault.getAbstractFileByPath(folderPath);
     if (existing && !(existing instanceof TFolder)) {
         return null;

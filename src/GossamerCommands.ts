@@ -4,7 +4,7 @@
 import type RadialTimelinePlugin from './main';
 import { DEFAULT_GEMINI_MODEL_ID } from './constants/aiDefaults';
 import { buildRunFromDefault, buildAllGossamerRuns, GossamerRun, normalizeBeatName, appendGossamerScore, extractBeatOrder, detectDominantStage } from './utils/gossamer';
-import { Notice, TFile, App } from 'obsidian';
+import { Notice, TFile, TFolder, App, normalizePath } from 'obsidian';
 import { GossamerScoreModal } from './modals/GossamerScoreModal';
 import { GossamerProcessingModal, type ManuscriptInfo, type AnalysisOptions } from './modals/GossamerProcessingModal';
 import { TimelineMode } from './modes/ModeDefinition';
@@ -12,7 +12,16 @@ import { assembleManuscript } from './utils/manuscript';
 import { buildUnifiedBeatAnalysisPrompt, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
 import { callGeminiApi } from './api/geminiApi';
 import { buildProviderRequestPayload } from './api/requestPayload';
-import { extractTokenUsage, formatAiLogContent, formatLogTimestamp, resolveAiLogFolder, resolveAvailableLogPath, sanitizeLogPayload } from './ai/log';
+import {
+  extractTokenUsage,
+  formatAiLogContent,
+  formatSummaryLogContent,
+  formatLogTimestamp,
+  resolveAiLogFolder,
+  resolveAvailableLogPath,
+  sanitizeLogPayload
+} from './ai/log';
+import { ensureGossamerContentLogFolder, resolveGossamerContentLogFolder } from './inquiry/utils/logs';
 const resolveGeminiModelId = (plugin?: RadialTimelinePlugin): string =>
   plugin?.settings?.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
 
@@ -55,13 +64,10 @@ async function writeGossamerLog(
   plugin: RadialTimelinePlugin,
   payload: GossamerLogPayload
 ): Promise<TFile | null> {
-  if (!plugin.settings.logApiInteractions) return null;
-
   const timestampSource = payload.returnedAt ?? payload.submittedAt ?? new Date();
   const readableTimestamp = formatLogTimestamp(timestampSource);
   const safeBeatSystem = sanitizeSegment(payload.beatSystemLabel) || 'Gossamer';
-  const title = `Gossamer Log — ${payload.beatSystemLabel} ${readableTimestamp}`;
-  const baseName = `Gossamer Log — ${safeBeatSystem} ${readableTimestamp}`;
+  const scopeTarget = `Manuscript · ${payload.beatSystemLabel}`;
 
   const { sanitized: sanitizedPayload, redactedKeys } = sanitizeLogPayload(payload.requestPayload ?? null);
   const sanitizationNotes = redactedKeys.length
@@ -69,50 +75,118 @@ async function writeGossamerLog(
     : [];
   const tokenUsage = extractTokenUsage('gemini', payload.responseData);
   const schemaWarnings = payload.schemaWarnings ?? [];
+  const durationMs = payload.submittedAt && payload.returnedAt
+    ? payload.returnedAt.getTime() - payload.submittedAt.getTime()
+    : null;
 
-  const content = formatAiLogContent({
-    title,
-    metadata: {
+  const isError = payload.status === 'error';
+  const shouldWriteContent = plugin.settings.logApiInteractions || isError;
+
+  // Write Content Log first (if enabled) so we know whether to mark it as written
+  let contentLogWritten = false;
+  if (shouldWriteContent) {
+    try {
+      const contentFolder = await ensureGossamerContentLogFolder(plugin.app);
+      if (contentFolder) {
+        const contentTitle = `Gossamer Content Log — ${payload.beatSystemLabel} ${readableTimestamp}`;
+        const contentBaseName = `Gossamer Content Log — ${safeBeatSystem} ${readableTimestamp}`;
+
+        const contentLogContent = formatAiLogContent({
+          title: contentTitle,
+          metadata: {
+            feature: 'Gossamer',
+            scopeTarget,
+            provider: 'gemini',
+            modelRequested: payload.modelRequested,
+            modelResolved: payload.modelResolved ?? payload.modelRequested,
+            submittedAt: payload.submittedAt ?? null,
+            returnedAt: payload.returnedAt ?? null,
+            durationMs,
+            status: payload.status,
+            tokenUsage
+          },
+          request: {
+            systemPrompt: '',
+            userPrompt: payload.prompt,
+            evidenceText: payload.manuscriptText,
+            requestPayload: sanitizedPayload
+          },
+          response: {
+            rawResponse: payload.responseData ?? null,
+            assistantContent: payload.assistantContent ?? '',
+            parsedOutput: payload.parsedOutput ?? null
+          },
+          notes: {
+            sanitizationSteps: sanitizationNotes,
+            retryAttempts: 0,
+            schemaWarnings
+          },
+          derivedSummary: payload.derivedSummary
+        });
+
+        const contentFolderPath = resolveGossamerContentLogFolder();
+        const contentFilePath = resolveAvailableLogPath(plugin.app.vault, contentFolderPath, contentBaseName);
+        await plugin.app.vault.create(contentFilePath, contentLogContent.trim());
+        contentLogWritten = true;
+      }
+    } catch (e) {
+      console.error('[Gossamer][log] Failed to write content log:', e);
+      // Non-blocking: continue with summary log
+    }
+  }
+
+  // Write Summary Log (always written for AI runs)
+  let summaryFile: TFile | null = null;
+  try {
+    const summaryFolderPath = normalizePath(resolveAiLogFolder());
+    const existing = plugin.app.vault.getAbstractFileByPath(summaryFolderPath);
+    if (existing && !(existing instanceof TFolder)) {
+      console.error('[Gossamer][log] Log folder path is not a folder.');
+      return null;
+    }
+    try {
+      await plugin.app.vault.createFolder(summaryFolderPath);
+    } catch {
+      // Folder may already exist.
+    }
+
+    const summaryTitle = `Gossamer Log — ${payload.beatSystemLabel} ${readableTimestamp}`;
+    const summaryBaseName = `Gossamer Log — ${safeBeatSystem} ${readableTimestamp}`;
+
+    // Build result summary from derived summary (first line or key info)
+    let resultSummary: string | undefined;
+    if (payload.status === 'success' && payload.derivedSummary) {
+      const firstLine = payload.derivedSummary.split('\n').find(line => line.trim().length > 0);
+      resultSummary = firstLine ? firstLine.trim().slice(0, 100) : 'Analysis complete.';
+    }
+
+    const summaryContent = formatSummaryLogContent({
+      title: summaryTitle,
       feature: 'Gossamer',
-      scopeTarget: `Manuscript · ${payload.beatSystemLabel}`,
+      scopeTarget,
       provider: 'gemini',
       modelRequested: payload.modelRequested,
       modelResolved: payload.modelResolved ?? payload.modelRequested,
       submittedAt: payload.submittedAt ?? null,
       returnedAt: payload.returnedAt ?? null,
-      durationMs: payload.submittedAt && payload.returnedAt
-        ? payload.returnedAt.getTime() - payload.submittedAt.getTime()
-        : null,
+      durationMs,
       status: payload.status,
-      tokenUsage
-    },
-    request: {
-      systemPrompt: '',
-      userPrompt: payload.prompt,
-      evidenceText: payload.manuscriptText,
-      requestPayload: sanitizedPayload
-    },
-    response: {
-      rawResponse: payload.responseData ?? null,
-      assistantContent: payload.assistantContent ?? '',
-      parsedOutput: payload.parsedOutput ?? null
-    },
-    notes: {
-      sanitizationSteps: sanitizationNotes,
-      retryAttempts: 0,
-      schemaWarnings
-    },
-    derivedSummary: payload.derivedSummary
-  });
+      tokenUsage,
+      resultSummary,
+      errorReason: isError ? (payload.assistantContent || 'Unknown error.') : null,
+      suggestedFixes: isError ? ['Retry or check Gemini API configuration.'] : undefined,
+      contentLogWritten,
+      retryAttempts: 0
+    });
 
-  const folderPath = resolveAiLogFolder();
-  try {
-    await plugin.app.vault.createFolder(folderPath);
-  } catch {
-    // Folder may already exist.
+    const summaryFilePath = resolveAvailableLogPath(plugin.app.vault, summaryFolderPath, summaryBaseName);
+    summaryFile = await plugin.app.vault.create(summaryFilePath, summaryContent.trim());
+  } catch (e) {
+    console.error('[Gossamer][log] Failed to write summary log:', e);
+    // Non-blocking: logging failures should not break the AI run
   }
-  const filePath = resolveAvailableLogPath(plugin.app.vault, folderPath, baseName);
-  return await plugin.app.vault.create(filePath, content);
+
+  return summaryFile;
 }
 
 // Helper to find Beat note by beat title (prefers Beat over Plot)

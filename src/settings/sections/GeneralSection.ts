@@ -264,11 +264,11 @@ export function renderGeneralSection(params: {
     };
     const getLoggingDesc = (fileCount: number | null): string => {
         const countText = formatLogCount(fileCount);
-        return `When enabled, writes detailed AI content logs for Inquiry, Pulse, and Gossamer runs. Inquiry summary logs are always stored in "${outputFolder}" (${countText}).`;
+        return `Summary logs (run metadata, token usage, results) are always written for Inquiry, Pulse, and Gossamer. When enabled, also writes Content logs containing full prompts, materials, and API responses—useful for debugging and understanding AI behavior. Recommended while learning the system. Logs are stored in "${outputFolder}" (${countText}).`;
     };
 
     const apiLoggingSetting = new ObsidianSetting(containerEl)
-        .setName('Enable AI logs')
+        .setName('Enable AI content logs')
         .setDesc(getLoggingDesc(null))
         .addToggle(toggle => toggle
             .setValue(plugin.settings.logApiInteractions)

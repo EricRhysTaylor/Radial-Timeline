@@ -5,7 +5,7 @@ import type RadialTimelinePlugin from '../main';
 import { normalizePath, Notice, type Vault, TFile, TFolder } from 'obsidian';
 import { resolveInquiryLogFolder } from '../inquiry/utils/logs';
 
-export type AiLogFeature = 'Inquiry' | 'Pulse' | 'Gossamer';
+export type AiLogFeature = 'Inquiry' | 'Pulse' | 'Synopsis' | 'Gossamer';
 export type AiLogStatus = 'success' | 'error' | 'simulated';
 
 export type TokenUsage = {
@@ -54,6 +54,25 @@ export type AiLogEnvelope = {
     response: AiLogResponse;
     notes: AiLogNotes;
     derivedSummary?: string | null;
+};
+
+export type SummaryLogEnvelope = {
+    title: string;
+    feature: AiLogFeature;
+    scopeTarget?: string | null;
+    provider?: string | null;
+    modelRequested?: string | null;
+    modelResolved?: string | null;
+    submittedAt?: Date | null;
+    returnedAt?: Date | null;
+    durationMs?: number | null;
+    status: AiLogStatus;
+    tokenUsage?: TokenUsage | null;
+    resultSummary?: string | null;
+    errorReason?: string | null;
+    suggestedFixes?: string[];
+    contentLogWritten: boolean;
+    retryAttempts?: number;
 };
 
 const REDACT_KEYS = new Set([
@@ -254,6 +273,63 @@ export function formatAiLogContent(
     if (envelope.derivedSummary && envelope.derivedSummary.trim()) {
         lines.push('', '## DERIVED SUMMARY', envelope.derivedSummary.trim());
     }
+
+    return lines.join('\n');
+}
+
+export function formatSummaryLogContent(envelope: SummaryLogEnvelope): string {
+    const lines: string[] = [];
+
+    const formatUsage = (usage?: TokenUsage | null) => {
+        if (!usage || (usage.inputTokens === undefined && usage.outputTokens === undefined && usage.totalTokens === undefined)) {
+            return 'not available';
+        }
+        const input = usage.inputTokens ?? 'n/a';
+        const output = usage.outputTokens ?? 'n/a';
+        const total = usage.totalTokens ?? 'n/a';
+        return `input=${input}, output=${output}, total=${total}`;
+    };
+
+    const formatRetries = (count?: number) => typeof count === 'number' ? String(count) : '0';
+
+    lines.push(`# ${envelope.title}`, '');
+
+    lines.push('## Run Summary');
+    lines.push(`- Feature: ${envelope.feature}`);
+    lines.push(`- Scope / Target: ${envelope.scopeTarget ?? 'unknown'}`);
+    lines.push(`- Provider: ${envelope.provider ?? 'unknown'}`);
+    lines.push(`- Model requested / resolved: ${envelope.modelRequested ?? 'unknown'} / ${envelope.modelResolved ?? 'unknown'}`);
+    lines.push(`- Submitted: ${formatLocalAndIso(envelope.submittedAt)}`);
+    lines.push(`- Returned: ${formatLocalAndIso(envelope.returnedAt)}`);
+    lines.push(`- Duration: ${formatDuration(envelope.durationMs)}`);
+    lines.push(`- Status: ${envelope.status}`);
+    lines.push(`- Token usage: ${formatUsage(envelope.tokenUsage)}`);
+    lines.push(`- Retry attempts: ${formatRetries(envelope.retryAttempts)}`);
+    lines.push('');
+
+    if (envelope.status === 'error') {
+        lines.push('## Failure Reason');
+        lines.push(envelope.errorReason ?? 'Unknown failure.');
+        lines.push('');
+        if (envelope.suggestedFixes && envelope.suggestedFixes.length) {
+            lines.push('## Suggested Fixes');
+            envelope.suggestedFixes.forEach(fix => {
+                lines.push(`- ${fix}`);
+            });
+            lines.push('');
+        }
+    } else {
+        lines.push('## Result');
+        if (envelope.status === 'success') {
+            lines.push(`- ${envelope.resultSummary ?? 'Completed successfully.'}`);
+        } else if (envelope.status === 'simulated') {
+            lines.push('- Simulated run (no provider call).');
+        }
+        lines.push('');
+    }
+
+    lines.push(`Content Log: ${envelope.contentLogWritten ? 'written' : 'skipped'}`);
+    lines.push('');
 
     return lines.join('\n');
 }

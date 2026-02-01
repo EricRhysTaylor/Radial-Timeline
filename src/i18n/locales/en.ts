@@ -355,7 +355,7 @@ export const en: TranslationKeys = {
             },
         },
         ai: {
-            heading: 'AI LLM for scene analysis',
+            heading: 'AI LLM configuration',
             enable: {
                 name: 'Enable AI LLM features',
                 desc: 'Show command palette options and UI scene analysis colors and hover synopsis. When off, these visuals are hidden, but metadata remains unchanged.',

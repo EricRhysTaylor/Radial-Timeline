@@ -8486,7 +8486,8 @@ export class InquiryView extends ItemView {
 
         const logTitle = this.formatInquiryLogTitle(result);
         const filePath = this.getAvailableArtifactPath(folder.path, logTitle);
-        const content = this.buildInquiryLogContent(result, trace, manifest, logTitle);
+        const shouldWriteContent = this.plugin.settings.logApiInteractions || this.isErrorResult(result);
+        const content = this.buildInquiryLogContent(result, trace, manifest, logTitle, shouldWriteContent);
 
         let summaryPath: string | null = null;
         try {
@@ -8504,7 +8505,6 @@ export class InquiryView extends ItemView {
             }
         }
 
-        const shouldWriteContent = this.plugin.settings.logApiInteractions || this.isErrorResult(result);
         if (shouldWriteContent) {
             await this.saveInquiryContentLog(result, trace, manifest, {
                 normalizationNotes: options?.normalizationNotes,
@@ -8745,7 +8745,8 @@ export class InquiryView extends ItemView {
         result: InquiryResult,
         trace: InquiryRunTrace,
         manifest: CorpusManifest | null,
-        logTitle?: string
+        logTitle?: string,
+        contentLogWritten?: boolean
     ): string {
         const title = logTitle ?? this.formatInquiryLogTitle(result);
         const questionLabel = this.findPromptLabelById(result.questionId)
@@ -8979,6 +8980,9 @@ export class InquiryView extends ItemView {
         buildSuggestedFixes().forEach(fix => {
             lines.push(`- ${fix}`);
         });
+        lines.push('');
+
+        lines.push(`Content Log: ${contentLogWritten ? 'written' : 'skipped'}`);
         lines.push('');
 
         return lines.join('\n');
