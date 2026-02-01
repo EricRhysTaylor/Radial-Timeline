@@ -109,3 +109,13 @@ dramatica:
 If your vault already uses different frontmatter keys for scene metadata, you can map them to Radial Timeline's system keys in **Settings → Custom Metadata Mapping**.
 
 Example: If you use `Timeline: 2024-01-01` instead of `When: 2024-01-01`, create a mapping from `Timeline` to `When`.
+
+### Backwards Compatibility
+
+The plugin automatically recognizes legacy field names, so you don't need to update existing scene notes when field names change:
+
+| Current Name | Legacy Names (still work) |
+|--------------|---------------------------|
+| `Iteration:` | `Revision:`, `Iterations:` |
+
+Existing notes with old field names will continue to work. Only new notes created from templates will use the current field names.

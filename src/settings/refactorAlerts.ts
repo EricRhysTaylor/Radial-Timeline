@@ -44,7 +44,7 @@ export const REFACTOR_ALERTS: RefactorAlert[] = [
         severity: 'warning',
         icon: 'alert-triangle',
         title: 'YAML Template Update Required',
-        description: 'The "Revision" field has been renamed to "Iteration". Update your Advanced YAML template.',
+        description: 'The "Revision" field has been renamed to "Iteration". Update your Advanced YAML template. Existing notes with "Revision:" will continue to work.',
         migrations: [
             {
                 alertId: 'yaml-revision-to-iteration-v6',

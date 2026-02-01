@@ -227,6 +227,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const activeAlerts = getActiveRefactorAlerts(this.plugin.settings);
         if (activeAlerts.length === 0) return;
 
+        // Reassurance intro text - lowers friction for cautious users
+        const introEl = containerEl.createDiv({ cls: 'ert-refactor-alert__intro' });
+        introEl.setText('These updates help keep your YAML consistent with the latest features. You can review or dismiss any change.');
+
         for (const alert of activeAlerts) {
             const alertEl = containerEl.createDiv({
                 cls: ['ert-refactor-alert', `ert-refactor-alert--${alert.severity}`]

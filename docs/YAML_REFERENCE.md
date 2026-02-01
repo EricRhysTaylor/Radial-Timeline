@@ -298,7 +298,7 @@ Used for color coding in Publication mode.
 
 Track how many times you've rewritten the scene. Leave blank until stage > zero, then increment with each edit iteration.
 
-> **Migration note**: This field was previously named `Revision`. The old field name is still recognized for backwards compatibility.
+> **Migration note**: This field was previously named `Revision` (and `Iterations`). Both old field names are still recognized for backwards compatibility - you don't need to update existing scene notes. Only new notes will use `Iteration:`.
 
 ---
 
