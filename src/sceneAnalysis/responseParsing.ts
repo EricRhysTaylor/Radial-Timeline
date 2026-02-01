@@ -143,13 +143,13 @@ function parseJsonBeatsResponse(jsonResult: string, plugin: RadialTimelinePlugin
     }
 }
 
-export function parseGptResult(gptResult: string, plugin: RadialTimelinePlugin): ParsedSceneAnalysis | null {
+export function parsePulseAnalysisResponse(llmResult: string, plugin: RadialTimelinePlugin): ParsedSceneAnalysis | null {
     try {
-        if (!gptResult || typeof gptResult !== 'string') {
+        if (!llmResult || typeof llmResult !== 'string') {
             throw new Error('LLM returned empty result.');
         }
 
-        let trimmed = gptResult.trim();
+        let trimmed = llmResult.trim();
         if (trimmed.startsWith('```')) {
             trimmed = trimmed.replace(/^```[a-zA-Z0-9_-]*\s*/i, '');
             if (trimmed.endsWith('```')) {
@@ -169,7 +169,7 @@ export function parseGptResult(gptResult: string, plugin: RadialTimelinePlugin):
         }
         return null;
     } catch (error) {
-        console.error('[parseGptResult] Error parsing beats response:', error);
+        console.error('[parsePulseAnalysisResponse] Error parsing beats response:', error);
         (plugin as any).lastAnalysisError = String(error);
         return null;
     }

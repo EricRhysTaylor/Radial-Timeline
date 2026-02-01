@@ -800,7 +800,11 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.queueActiveId = undefined;
         this.renderQueueItems();
         this.queueNoteEl = rulerBlock.createDiv({ cls: 'rt-pulse-ruler-note' });
-        this.queueNoteEl.setText('Triplets animate as the AI advances - starts, endings, and missing scenes handled automatically.');
+        if (this.taskType === 'synopsis') {
+            this.queueNoteEl.setText('Processing scenes to generate or update synopses based on scene content.');
+        } else {
+            this.queueNoteEl.setText('Triplets animate as the AI advances - starts, endings, and missing scenes handled automatically.');
+        }
 
         this.errorListEl = bodyEl.createDiv({ cls: 'rt-pulse-error-list rt-glass-card rt-hidden' });
 
@@ -1245,9 +1249,12 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         contentEl.querySelectorAll('.rt-pulse-summary-tip').forEach(el => el.remove());
 
-        if (this.plugin.settings.logApiInteractions) {
+        // Only show log message for pulse analysis (synopsis doesn't write detailed logs)
+        if (this.plugin.settings.logApiInteractions && this.taskType !== 'synopsis') {
             const logNoteEl = contentEl.createDiv({ cls: 'rt-pulse-summary-tip' });
             logNoteEl.createEl('strong', { text: 'Logs: ' });
+
+            // Pulse-specific log message
             const isLocal = (this.plugin.settings.defaultAiProvider || 'openai') === 'local';
             const pulsesBypassed = isLocal && (this.plugin.settings.localSendPulseToAiReport ?? true);
             const pulseRouting = pulsesBypassed

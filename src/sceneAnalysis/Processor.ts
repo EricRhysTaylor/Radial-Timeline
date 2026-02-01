@@ -20,7 +20,7 @@ import {
 } from './data';
 import { normalizeBooleanValue } from '../utils/sceneHelpers';
 import { buildSceneAnalysisPrompt } from '../ai/prompts/sceneAnalysis';
-import { parseGptResult } from './responseParsing';
+import { parsePulseAnalysisResponse } from './responseParsing';
 import { callAiProvider } from './aiProvider';
 import type { SceneData } from './types';
 import { parseSceneTitle, decodeHtmlEntities } from '../utils/text';
@@ -193,7 +193,7 @@ export async function processWithModal(
             }
 
             if (aiResult.result) {
-                const parsedAnalysis = parseGptResult(aiResult.result, plugin);
+                const parsedAnalysis = parsePulseAnalysisResponse(aiResult.result, plugin);
                 if (parsedAnalysis) {
                     if (!triplet.prev) parsedAnalysis['previousSceneAnalysis'] = '';
                     if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
@@ -333,7 +333,7 @@ export async function processBySubplotOrder(
                 const aiResult = await runAi(userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog, tripletForLog);
 
                 if (aiResult.result) {
-                    const parsedAnalysis = parseGptResult(aiResult.result, plugin);
+                    const parsedAnalysis = parsePulseAnalysisResponse(aiResult.result, plugin);
                     if (parsedAnalysis) {
                         if (!triplet.prev) parsedAnalysis['previousSceneAnalysis'] = '';
                         if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
@@ -469,7 +469,7 @@ export async function processSubplotWithModal(
             }
 
             if (aiResult.result) {
-                const parsedAnalysis = parseGptResult(aiResult.result, plugin);
+                const parsedAnalysis = parsePulseAnalysisResponse(aiResult.result, plugin);
                 if (parsedAnalysis) {
                     if (!triplet.prev) parsedAnalysis['previousSceneAnalysis'] = '';
                     if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
@@ -617,7 +617,7 @@ export async function processEntireSubplotWithModalInternal(
             }
 
             if (aiResult.result) {
-                const parsedAnalysis = parseGptResult(aiResult.result, plugin);
+                const parsedAnalysis = parsePulseAnalysisResponse(aiResult.result, plugin);
                 if (parsedAnalysis) {
                     if (!triplet.prev) parsedAnalysis['previousSceneAnalysis'] = '';
                     if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';

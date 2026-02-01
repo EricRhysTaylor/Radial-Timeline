@@ -9,7 +9,7 @@ import { sanitizeSourcePath, buildInitialSceneFilename } from '../utils/sceneCre
 import { openOrRevealFileByPath } from '../utils/fileUtils';
 import { getAllSceneData, getSubplotNamesFromFM } from './data';
 import type { SceneData, ParsedSceneAnalysis } from './types';
-import { parseGptResult } from './responseParsing';
+import { parsePulseAnalysisResponse } from './responseParsing';
 import { generateSceneContent, SceneCreationData } from '../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 
@@ -162,7 +162,7 @@ export async function testYamlUpdateFormatting(
             body: currentBody
         };
 
-        const parsedAnalysis = parseGptResult(DUMMY_API_RESPONSE, plugin);
+        const parsedAnalysis = parsePulseAnalysisResponse(DUMMY_API_RESPONSE, plugin);
         if (!parsedAnalysis) {
             new Notice('Error: Failed to parse dummy API response data.');
             return;

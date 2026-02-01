@@ -1397,7 +1397,7 @@
 /* APR Status Grid */
 .ert-ui.ert-scope--modal .ert-apr-status-grid {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(140px, 1.1fr) max-content max-content max-content max-content;
+  grid-template-columns: fit-content(32ch) fit-content(20ch) max-content max-content max-content max-content;
   column-gap: 10px;
   row-gap: var(--ert-gap-xs);
   width: 100%;
@@ -1439,7 +1439,7 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
-  max-width: 35ch;
+  max-width: 32ch;
   overflow: hidden;
   text-overflow: ellipsis;
   display: inline-block;
@@ -1450,7 +1450,7 @@
   font-weight: 600;
   color: var(--text-normal);
   white-space: nowrap;
-  max-width: 40ch;
+  max-width: 20ch;
   overflow: hidden;
   text-overflow: ellipsis;
   display: inline-block;

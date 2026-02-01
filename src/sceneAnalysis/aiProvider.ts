@@ -13,7 +13,7 @@ import { callOpenAiApi } from '../api/openaiApi';
 import { callGeminiApi } from '../api/geminiApi';
 import { getSceneAnalysisJsonSchema, getSceneAnalysisSystemPrompt } from '../ai/prompts/sceneAnalysis';
 import type { AiProviderResponse, ParsedSceneAnalysis } from './types';
-import { parseGptResult } from './responseParsing';
+import { parsePulseAnalysisResponse } from './responseParsing';
 import { cacheResolvedModel, isLatestAlias } from '../utils/modelResolver';
 import { buildProviderRequestPayload } from '../api/requestPayload';
 import {
@@ -488,26 +488,31 @@ export async function callAiProvider(
             throw new Error(`Unsupported AI provider: ${provider}`);
         }
 
-        const parsedForLog = result ? parseGptResult(result, plugin) : null;
-        await writePulseLog(plugin, vault, {
-            provider,
-            modelRequested,
-            modelResolved: modelResolved ?? modelId,
-            requestPayload,
-            responseData: responseDataForLog,
-            parsed: parsedForLog,
-            status: 'success',
-            systemPrompt,
-            userPrompt,
-            rawTextResult: result,
-            sceneName,
-            subplotName,
-            commandContext,
-            tripletInfo,
-            submittedAt,
-            returnedAt,
-            retryCount
-        });
+        // Only parse for pulse analysis (not synopsis)
+        const parsedForLog = (result && commandContext !== 'synopsis') ? parsePulseAnalysisResponse(result, plugin) : null;
+
+        // Only write pulse logs for pulse analysis (not synopsis)
+        if (commandContext !== 'synopsis') {
+            await writePulseLog(plugin, vault, {
+                provider,
+                modelRequested,
+                modelResolved: modelResolved ?? modelId,
+                requestPayload,
+                responseData: responseDataForLog,
+                parsed: parsedForLog,
+                status: 'success',
+                systemPrompt,
+                userPrompt,
+                rawTextResult: result,
+                sceneName,
+                subplotName,
+                commandContext,
+                tripletInfo,
+                submittedAt,
+                returnedAt,
+                retryCount
+            });
+        }
 
         return { result, modelIdUsed: modelId };
     } catch (error) {
@@ -528,25 +533,29 @@ export async function callAiProvider(
         if (!modelResolved) {
             modelResolved = resolveModelIdFromResponse(provider, responseDataForLog) ?? modelId;
         }
-        await writePulseLog(plugin, vault, {
-            provider,
-            modelRequested,
-            modelResolved: modelResolved ?? modelId,
-            requestPayload,
-            responseData: responseDataForLog,
-            parsed: null,
-            status: 'error',
-            systemPrompt,
-            userPrompt,
-            rawTextResult: result,
-            sceneName,
-            subplotName,
-            commandContext,
-            tripletInfo,
-            submittedAt,
-            returnedAt,
-            retryCount
-        });
+
+        // Only write pulse logs for pulse analysis (not synopsis)
+        if (commandContext !== 'synopsis') {
+            await writePulseLog(plugin, vault, {
+                provider,
+                modelRequested,
+                modelResolved: modelResolved ?? modelId,
+                requestPayload,
+                responseData: responseDataForLog,
+                parsed: null,
+                status: 'error',
+                systemPrompt,
+                userPrompt,
+                rawTextResult: result,
+                sceneName,
+                subplotName,
+                commandContext,
+                tripletInfo,
+                submittedAt,
+                returnedAt,
+                retryCount
+            });
+        }
 
         throw error instanceof Error ? error : new Error(String(error));
     }

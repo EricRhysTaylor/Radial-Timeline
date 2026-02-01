@@ -19,7 +19,7 @@ import {
     getPulseUpdateFlag
 } from './sceneAnalysis/data';
 import { callAiProvider } from './sceneAnalysis/aiProvider';
-import { parseGptResult } from './sceneAnalysis/responseParsing';
+import { parsePulseAnalysisResponse } from './sceneAnalysis/responseParsing';
 import type { ParsedSceneAnalysis, SceneData } from './sceneAnalysis/types';
 import { buildSceneAnalysisPrompt } from './ai/prompts/sceneAnalysis';
 import {
