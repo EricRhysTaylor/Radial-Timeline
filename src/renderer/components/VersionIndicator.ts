@@ -56,6 +56,17 @@ const BUG_ICON = `
 <path d="M9 7.13V6a3 3 0 1 1 6 0v1.13"/>
 `;
 
+/**
+ * Settings alert icon (lucide-settings-2) - shown when settings alerts are active
+ * Size: 24x24, stroke-width: 1
+ */
+const SETTINGS_ALERT_ICON = `
+<path d="M20 7h-9"/>
+<path d="M14 17H5"/>
+<circle cx="17" cy="17" r="3"/>
+<circle cx="7" cy="7" r="3"/>
+`;
+
 /** Approximate font size used for version text (px) — must match styles.css */
 const VERSION_TEXT_FONT_SIZE_PX = 20;
 
@@ -86,6 +97,7 @@ export interface VersionIndicatorOptions {
     version: string;
     hasUpdate: boolean;
     latestVersion?: string;
+    hasSettingsAlert?: boolean;  // When true, shows settings icon with "SETTINGS ALERT" text
 }
 
 export interface VersionIndicatorResult {
@@ -140,7 +152,7 @@ function getUpdateSeverity(current: string, latest: string | undefined): 'none' 
  * Returns both the SVG and the computed X for aligning APR indicator above.
  */
 export function renderVersionIndicator(options: VersionIndicatorOptions): VersionIndicatorResult {
-    const { version, hasUpdate, latestVersion } = options;
+    const { version, hasUpdate, latestVersion, hasSettingsAlert } = options;
 
     const currentVersionLabel = version.trim() || version;
     const latestVersionLabel = (latestVersion ?? '').trim();
@@ -148,12 +160,31 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): Versio
         ? `${currentVersionLabel} -> ${latestVersionLabel}`
         : currentVersionLabel;
 
-    const rawVersionText = hasUpdate ? 'NEW RELEASE' : currentVersionLabel;
-    const versionText = rawVersionText.trim() || rawVersionText;
+    // Priority: Settings Alert > Update Available > Bug Report
+    let versionText: string;
+    let actionText: string;
+    let iconContent: string;
+    let iconClass: string;
 
-    const actionText = hasUpdate
-        ? (updateRangeText || 'UPDATE TO LATEST VERSION')
-        : 'REPORT BUG';
+    if (hasSettingsAlert) {
+        // Settings alert mode (highest priority)
+        versionText = 'SETTINGS ALERT';
+        actionText = 'OPEN SETTINGS';
+        iconContent = SETTINGS_ALERT_ICON;
+        iconClass = 'rt-version-settings-icon';
+    } else if (hasUpdate) {
+        // Update available mode
+        versionText = 'NEW RELEASE';
+        actionText = updateRangeText || 'UPDATE TO LATEST VERSION';
+        iconContent = BADGE_ALERT_ICON;
+        iconClass = 'rt-version-alert-icon';
+    } else {
+        // Default bug report mode
+        versionText = currentVersionLabel;
+        actionText = 'REPORT BUG';
+        iconContent = BUG_ICON;
+        iconClass = 'rt-version-bug-icon';
+    }
 
     const versionTextHalfWidth = estimateTextHalfWidth(versionText);
     const actionTextHalfWidth = estimateTextHalfWidth(actionText);
@@ -166,12 +197,14 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): Versio
     const x = formatNumber(computedX);
     const y = formatNumber(VERSION_ICON_Y);
 
-    // Determine update severity
-    const severity = hasUpdate ? getUpdateSeverity(version, latestVersion) : 'none';
+    // Determine severity for styling
+    const severity = hasSettingsAlert ? 'settings' : (hasUpdate ? getUpdateSeverity(version, latestVersion) : 'none');
 
-    // Build classes based on update state and severity
+    // Build classes based on state
     const groupClasses = ['rt-version-indicator', `rt-update-${severity}`];
-    if (hasUpdate) {
+    if (hasSettingsAlert) {
+        groupClasses.push('rt-has-settings-alert');
+    } else if (hasUpdate) {
         groupClasses.push('rt-has-update');
     }
 
@@ -181,10 +214,6 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): Versio
         (maxHalfWidth * 2) + (HITAREA_HORIZONTAL_PADDING * 2)
     );
     const hitAreaHeight = 60;
-
-    // Choose icon based on update state
-    const iconContent = hasUpdate ? BADGE_ALERT_ICON : BUG_ICON;
-    const iconClass = hasUpdate ? 'rt-version-alert-icon' : 'rt-version-bug-icon';
 
     const svg = `
         <g id="version-indicator" class="${groupClasses.join(' ')}" transform="translate(${x}, ${y})">

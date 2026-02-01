@@ -10,6 +10,7 @@ import type { HoverMetadataField } from '../../types/settings';
 import { IconSuggest } from '../IconSuggest';
 import { parseActLabels, resolveActLabel } from '../../utils/acts';
 import { ERT_CLASSES } from '../../ui/classes';
+import { getActiveMigrations, REFACTOR_ALERTS, areAlertMigrationsComplete, type FieldMigration } from '../refactorAlerts';
 
 type TemplateEntryValue = string | string[];
 type TemplateEntry = { key: string; value: TemplateEntryValue; required: boolean };
@@ -430,13 +431,29 @@ export function renderStoryBeatsSection(params: {
     const renderAdvancedTemplateEditor = () => {
         advancedContainer.empty();
 
-        const isEnabled = plugin.settings.enableAdvancedYamlEditor ?? false;
+        // Check if there are active migrations - auto-expand if so
+        const currentTemplate = plugin.settings.sceneYamlTemplates?.advanced ?? '';
+        const activeMigrations = getActiveMigrations(plugin.settings);
+        const hasPendingMigrations = activeMigrations.some(m => currentTemplate.includes(`${m.oldKey}:`));
+        
+        let isEnabled = plugin.settings.enableAdvancedYamlEditor ?? false;
+        
+        // Auto-expand if migrations are pending
+        if (hasPendingMigrations && !isEnabled) {
+            isEnabled = true;
+            plugin.settings.enableAdvancedYamlEditor = true;
+            void plugin.saveSettings();
+            // Update the toggle button state
+            setIcon(advancedToggleButton, 'chevron-down');
+            setTooltip(advancedToggleButton, 'Hide advanced YAML editor');
+        }
+        
         advancedContainer.toggleClass('ert-settings-hidden', !isEnabled);
         if (!isEnabled) return;
 
         // Prepare template data
         const defaultTemplate = DEFAULT_SETTINGS.sceneYamlTemplates!.advanced;
-        const currentTemplate = plugin.settings.sceneYamlTemplates?.advanced ?? '';
+        // currentTemplate already declared above for migration check
         const baseTemplate = DEFAULT_SETTINGS.sceneYamlTemplates!.base;
 
         const requiredOrder = extractKeysInOrder(baseTemplate);
@@ -568,9 +585,21 @@ export function renderStoryBeatsSection(params: {
 
             const listEl = advancedContainer.createDiv({ cls: ['ert-template-entries', 'ert-template-indent'] });
 
+            // Get active migrations for highlighting rows that need updates
+            const activeMigrations = getActiveMigrations(plugin.settings);
+
             const renderEntryRow = (entry: TemplateEntry, idx: number, list: TemplateEntry[]) => {
+                // Check if this entry needs migration
+                const migration = activeMigrations.find(m => m.oldKey === entry.key);
+                const alert = migration ? REFACTOR_ALERTS.find(a => a.id === migration.alertId) : undefined;
+
                 // Match beats row structure: all inputs are direct grid children
-                const row = listEl.createDiv({ cls: ['ert-yaml-row', 'ert-yaml-row--hover-meta'] });
+                const rowClasses = ['ert-yaml-row', 'ert-yaml-row--hover-meta'];
+                if (migration) {
+                    rowClasses.push('ert-yaml-row--needs-migration');
+                    if (alert) rowClasses.push(`ert-yaml-row--${alert.severity}`);
+                }
+                const row = listEl.createDiv({ cls: rowClasses });
 
                 // Get existing hover metadata for this key
                 const hoverMeta = getHoverMetadata(entry.key);
@@ -684,16 +713,57 @@ export function renderStoryBeatsSection(params: {
                     };
                 }
 
-                // 7. Delete button (direct child - no wrapper!)
-                const delBtn = row.createEl('button', { cls: 'ert-iconBtn' });
-                setIcon(delBtn, 'trash');
-                delBtn.onclick = () => {
-                    removeHoverMetadata(entry.key);
-                    const nextList = list.filter((_, i) => i !== idx);
-                    saveEntries(nextList);
-                    rerender(nextList);
-                    updateHoverPreview?.();
-                };
+                // 7. Action button: Migrate (if migration needed) or Delete
+                if (migration && alert) {
+                    // Migration button - replaces delete for entries that need updating
+                    const migrateBtn = row.createEl('button', { 
+                        cls: ['ert-iconBtn', 'ert-migrate-btn', `ert-migrate-btn--${alert.severity}`],
+                        attr: { 'aria-label': migration.tooltip }
+                    });
+                    setIcon(migrateBtn, 'arrow-right-circle');
+                    setTooltip(migrateBtn, migration.tooltip);
+                    migrateBtn.onclick = async () => {
+                        // Rename the key in the entry
+                        const oldKey = entry.key;
+                        entry.key = migration.newKey;
+                        
+                        // Update hover metadata key if it exists
+                        renameHoverMetadataKey(oldKey, migration.newKey);
+                        
+                        // Save the updated entries
+                        saveEntries(list);
+                        
+                        // Check if all migrations for this alert are complete
+                        const template = plugin.settings.sceneYamlTemplates?.advanced ?? '';
+                        const alertObj = REFACTOR_ALERTS.find(a => a.id === migration.alertId);
+                        if (alertObj && areAlertMigrationsComplete(alertObj, template)) {
+                            // All migrations done - auto-dismiss the alert
+                            if (!plugin.settings.dismissedAlerts) {
+                                plugin.settings.dismissedAlerts = [];
+                            }
+                            if (!plugin.settings.dismissedAlerts.includes(migration.alertId)) {
+                                plugin.settings.dismissedAlerts.push(migration.alertId);
+                            }
+                            await plugin.saveSettings();
+                            new Notice('Migration complete! Alert dismissed.');
+                        }
+                        
+                        // Re-render to update the UI
+                        rerender(list);
+                        updateHoverPreview?.();
+                    };
+                } else {
+                    // Normal delete button
+                    const delBtn = row.createEl('button', { cls: 'ert-iconBtn' });
+                    setIcon(delBtn, 'trash');
+                    delBtn.onclick = () => {
+                        removeHoverMetadata(entry.key);
+                        const nextList = list.filter((_, i) => i !== idx);
+                        saveEntries(nextList);
+                        rerender(nextList);
+                        updateHoverPreview?.();
+                    };
+                }
 
                 plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
                     dragIndex = idx;

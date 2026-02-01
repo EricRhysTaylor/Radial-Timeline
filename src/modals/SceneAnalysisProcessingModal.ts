@@ -229,7 +229,8 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     private getProcessingSubtitle(): string {
         if (this.taskType === 'synopsis') {
-            return this.getModeLabel(this.selectedMode);
+            const maxLines = this.plugin.settings.synopsisHoverMaxLines ?? 5;
+            return `Evaluate scene and update synopsis according to the following settings. Note: Claude Sonnet does an excellent job of this. Adjust how many lines are visible for scene hover in Settings > Configuration. (Lines = ${maxLines})`;
         }
         if (this.subplotName) {
             return this.isEntireSubplot
@@ -884,7 +885,8 @@ export class SceneAnalysisProcessingModal extends Modal {
         card.createDiv({ cls: 'rt-apply-message', text: `Processing complete. ${results.size} scenes have new synopses ready to apply.` });
 
         const warning = card.createDiv({ cls: 'rt-apply-warning' });
-        warning.createSpan({ cls: 'rt-warning-icon', text: '⚠️' });
+        const warningIcon = warning.createSpan({ cls: 'rt-warning-icon' });
+        setIcon(warningIcon, 'alert-triangle');
         warning.createSpan({ text: 'This will overwrite existing Synopsis fields in your frontmatter.' });
 
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });

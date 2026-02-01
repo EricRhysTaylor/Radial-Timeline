@@ -2048,6 +2048,149 @@
   color: var(--text-accent);
 }
 
+/* =============================================================================
+   REFACTOR ALERT CALLOUT
+   Shows migration notices with dismiss/update/view buttons
+   ============================================================================= */
+
+.ert-ui.ert-scope--settings .ert-refactor-alert {
+  display: flex;
+  gap: var(--ert-gap-md);
+  padding: var(--ert-panel-pad);
+  border-radius: var(--ert-panel-radius);
+  border: 1px solid var(--alert-color, var(--ert-panel-border));
+  background: var(--alert-bg, var(--ert-panel-bg));
+  margin-bottom: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-refactor-alert__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-refactor-alert__heading {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--ert-gap-sm);
+  align-items: center;
+}
+
+.ert-ui.ert-scope--settings .ert-refactor-alert__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--alert-bg);
+  border: 1px solid var(--alert-color);
+  color: var(--alert-color);
+}
+
+.ert-ui.ert-scope--settings .ert-refactor-alert__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ert-ui.ert-scope--settings .ert-refactor-alert__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--alert-color);
+}
+
+.ert-ui.ert-scope--settings .ert-refactor-alert__description {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ert-ui.ert-scope--settings .ert-refactor-alert__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-refactor-alert__btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.ert-ui.ert-scope--settings .ert-refactor-alert__btn:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--alert-color);
+}
+
+.ert-ui.ert-scope--settings .ert-refactor-alert__btn svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-refactor-alert__btn:hover svg {
+  color: var(--alert-color);
+}
+
+/* Severity: Info (blue) - static */
+.ert-ui.ert-scope--settings .ert-refactor-alert--info {
+  --alert-color: #3b82f6;
+  --alert-bg: rgba(59, 130, 246, 0.1);
+}
+
+/* Severity: Warning (orange) - pulsing */
+.ert-ui.ert-scope--settings .ert-refactor-alert--warning {
+  --alert-color: #f59e0b;
+  --alert-bg: rgba(245, 158, 11, 0.1);
+  animation: ert-pulse-warning 2s ease-in-out infinite;
+}
+
+/* Severity: Critical (red) - faster pulsing */
+.ert-ui.ert-scope--settings .ert-refactor-alert--critical {
+  --alert-color: #ef4444;
+  --alert-bg: rgba(239, 68, 68, 0.1);
+  animation: ert-pulse-critical 1.5s ease-in-out infinite;
+}
+
+@keyframes ert-pulse-warning {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+}
+
+@keyframes ert-pulse-critical {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
+/* Update button - pulses with severity color */
+.ert-ui.ert-scope--settings .ert-refactor-alert--warning .ert-refactor-alert__btn--update {
+  animation: ert-pulse-btn-warning 2s ease-in-out infinite;
+}
+
+.ert-ui.ert-scope--settings .ert-refactor-alert--critical .ert-refactor-alert__btn--update {
+  animation: ert-pulse-btn-critical 1.5s ease-in-out infinite;
+}
+
+@keyframes ert-pulse-btn-warning {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); box-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+}
+
+@keyframes ert-pulse-btn-critical {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); box-shadow: 0 0 10px rgba(239, 68, 68, 0.6); }
+}
+
 .ert-ui.ert-scope--settings .ert-settings-separator {
   margin: 1em 0 2em;
   border: none;
@@ -3513,6 +3656,66 @@
   background: var(--background-primary);
   border-style: dashed;
   opacity: 0.95;
+}
+
+/* Migration-needed row highlight */
+.ert-ui.ert-scope--settings .ert-yaml-row--needs-migration {
+  position: relative;
+}
+
+.ert-ui.ert-scope--settings .ert-yaml-row--needs-migration::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ert-panel-radius);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Severity-based row highlighting */
+.ert-ui.ert-scope--settings .ert-yaml-row--warning::before {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.ert-ui.ert-scope--settings .ert-yaml-row--critical::before {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.ert-ui.ert-scope--settings .ert-yaml-row--info::before {
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+/* Migrate button - replaces trash for migration rows */
+.ert-ui.ert-scope--settings .ert-migrate-btn {
+  position: relative;
+  z-index: 1;
+}
+
+.ert-ui.ert-scope--settings .ert-migrate-btn--warning {
+  color: #f59e0b;
+  animation: ert-pulse-migrate-warning 2s ease-in-out infinite;
+}
+
+.ert-ui.ert-scope--settings .ert-migrate-btn--critical {
+  color: #ef4444;
+  animation: ert-pulse-migrate-critical 1.5s ease-in-out infinite;
+}
+
+.ert-ui.ert-scope--settings .ert-migrate-btn--info {
+  color: #3b82f6;
+}
+
+@keyframes ert-pulse-migrate-warning {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.08); }
+}
+
+@keyframes ert-pulse-migrate-critical {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.12); }
 }
 
 .ert-ui.ert-scope--settings .ert-hover-icon-wrapper {

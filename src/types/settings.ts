@@ -424,6 +424,9 @@ export interface RadialTimelineSettings {
 
     // Pro experience (visual/hero activation)
     hasSeenProActivation?: boolean;
+
+    // Refactor Alerts System
+    dismissedAlerts?: string[];
 }
 
 export interface ChronologueBackdropMicroRing {

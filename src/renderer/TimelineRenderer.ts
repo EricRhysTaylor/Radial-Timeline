@@ -99,6 +99,7 @@ import type { CompletionEstimate } from './utils/Estimation';
 import { renderProgressRingBaseLayer } from './utils/ProgressRing';
 import { getReadabilityMultiplier, getReadabilityScale } from '../utils/readability';
 import { getVersionCheckService } from '../services/VersionCheckService';
+import { hasActiveAlerts } from '../settings/refactorAlerts';
 import { getConfiguredActCount, parseActLabels } from '../utils/acts';
 
 
@@ -729,13 +730,16 @@ export function createTimelineSVG(
 
     // Add version indicator (bottom-left corner)
     // Returns computed X position for aligning APR indicator above it
+    // Priority: Settings Alert > Update Available > Bug Report
     let versionIndicatorX: number | undefined;
     try {
         const versionService = getVersionCheckService();
+        const hasSettingsAlert = hasActiveAlerts(plugin.settings as any);
         const versionResult = renderVersionIndicator({
             version: versionService.getCurrentVersion(),
             hasUpdate: versionService.isUpdateAvailable(),
-            latestVersion: versionService.getLatestVersion() || undefined
+            latestVersion: versionService.getLatestVersion() || undefined,
+            hasSettingsAlert
         });
         svg += versionResult.svg;
         versionIndicatorX = versionResult.computedX;

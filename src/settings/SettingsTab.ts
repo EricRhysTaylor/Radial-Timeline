@@ -23,6 +23,7 @@ import { renderProfessionalSection, isProfessionalActive } from './sections/Prof
 import { validateLocalModelAvailability } from '../api/localAiApi';
 import { FolderSuggest } from './FolderSuggest';
 import { ERT_CLASSES, ERT_DATA } from '../ui/classes';
+import { getActiveRefactorAlerts, applyAlertMigrations, type RefactorAlert } from './refactorAlerts';
 
 export class RadialTimelineSettingsTab extends PluginSettingTab {
     plugin: RadialTimelinePlugin;
@@ -216,6 +217,98 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         description.createEl('a', { text: 'Obsidian Sync', href: 'https://obsidian.md/sync' });
         description.createSpan({ text: ' or ' });
         description.createEl('a', { text: 'Obsidian Git', href: 'https://obsidian.md/plugins?id=obsidian-git' });
+    }
+
+    /**
+     * Render refactor alerts at the top of Core settings.
+     * Shows dismissible alerts for YAML migrations and other refactoring notices.
+     */
+    private renderRefactorAlerts(containerEl: HTMLElement): void {
+        const activeAlerts = getActiveRefactorAlerts(this.plugin.settings);
+        if (activeAlerts.length === 0) return;
+
+        for (const alert of activeAlerts) {
+            const alertEl = containerEl.createDiv({
+                cls: ['ert-refactor-alert', `ert-refactor-alert--${alert.severity}`]
+            });
+
+            // Left side: Icon + Content
+            const contentSide = alertEl.createDiv({ cls: 'ert-refactor-alert__content' });
+
+            const heading = contentSide.createDiv({ cls: 'ert-refactor-alert__heading' });
+            const iconWrapper = heading.createDiv({ cls: 'ert-refactor-alert__icon' });
+            setIcon(iconWrapper, alert.icon);
+            heading.createSpan({ text: alert.title, cls: 'ert-refactor-alert__title' });
+
+            const description = contentSide.createDiv({ cls: 'ert-refactor-alert__description' });
+            description.setText(alert.description);
+
+            // Right side: Action buttons (stacked vertically)
+            const actionSide = alertEl.createDiv({ cls: 'ert-refactor-alert__actions' });
+
+            // Dismiss button (X)
+            const dismissBtn = actionSide.createEl('button', {
+                cls: 'ert-refactor-alert__btn ert-refactor-alert__btn--dismiss',
+                attr: { 'aria-label': 'Dismiss alert' }
+            });
+            setIcon(dismissBtn, 'x');
+            dismissBtn.title = 'Dismiss';
+            this.plugin.registerDomEvent(dismissBtn, 'click', async () => {
+                if (!this.plugin.settings.dismissedAlerts) {
+                    this.plugin.settings.dismissedAlerts = [];
+                }
+                this.plugin.settings.dismissedAlerts.push(alert.id);
+                await this.plugin.saveSettings();
+                alertEl.remove();
+            });
+
+            // Auto Update button (↻)
+            if (alert.migrations?.length) {
+                const autoUpdateBtn = actionSide.createEl('button', {
+                    cls: 'ert-refactor-alert__btn ert-refactor-alert__btn--update',
+                    attr: { 'aria-label': 'Apply update automatically' }
+                });
+                setIcon(autoUpdateBtn, 'refresh-cw');
+                autoUpdateBtn.title = 'Auto Update';
+                this.plugin.registerDomEvent(autoUpdateBtn, 'click', async () => {
+                    const template = this.plugin.settings.sceneYamlTemplates?.advanced ?? '';
+                    const updated = applyAlertMigrations(alert, template);
+
+                    if (!this.plugin.settings.sceneYamlTemplates) {
+                        this.plugin.settings.sceneYamlTemplates = { base: '', advanced: '' };
+                    }
+                    this.plugin.settings.sceneYamlTemplates.advanced = updated;
+
+                    if (!this.plugin.settings.dismissedAlerts) {
+                        this.plugin.settings.dismissedAlerts = [];
+                    }
+                    this.plugin.settings.dismissedAlerts.push(alert.id);
+
+                    await this.plugin.saveSettings();
+                    alertEl.remove();
+                    new (await import('obsidian')).Notice('Template updated successfully');
+                });
+
+                // View YAML button (↓)
+                const viewBtn = actionSide.createEl('button', {
+                    cls: 'ert-refactor-alert__btn ert-refactor-alert__btn--view',
+                    attr: { 'aria-label': 'View in YAML editor' }
+                });
+                setIcon(viewBtn, 'chevron-down');
+                viewBtn.title = 'View YAML';
+                this.plugin.registerDomEvent(viewBtn, 'click', async () => {
+                    // Enable advanced YAML editor if not already
+                    this.plugin.settings.enableAdvancedYamlEditor = true;
+                    await this.plugin.saveSettings();
+
+                    // Scroll to templates section
+                    const templatesSection = document.querySelector('[data-ert-section="beats"]');
+                    if (templatesSection) {
+                        templatesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
+            }
+        }
     }
 
     private renderSearchBox(containerEl: HTMLElement): HTMLInputElement {
@@ -526,6 +619,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         const coreStack = coreContent.createDiv({ cls: ERT_CLASSES.STACK });
         this.renderCoreHero(coreStack);
+
+        // Refactor alerts (shown at top when migrations are needed)
+        const alertsRow = coreStack.createDiv();
+        this.renderRefactorAlerts(alertsRow);
 
         const backupRow = coreStack.createDiv();
         this.renderBackupSafetySection(backupRow);

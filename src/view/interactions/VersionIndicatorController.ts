@@ -45,8 +45,9 @@ interface VersionIndicatorView {
 
 /**
  * Setup click handlers for the version indicator
- * - Bug icon: Opens GitHub issues for bug reporting
+ * - Settings icon: Opens plugin settings (when settings alerts are active)
  * - Alert icon: Opens Obsidian's community plugins settings for updates
+ * - Bug icon: Opens GitHub issues for bug reporting
  */
 export function setupVersionIndicatorController(view: VersionIndicatorView, svg: SVGSVGElement): void {
     const versionIndicator = svg.querySelector('#version-indicator') as SVGGElement | null;
@@ -61,6 +62,16 @@ export function setupVersionIndicatorController(view: VersionIndicatorView, svg:
 
     const handleClick = (ev: Event) => {
         ev.stopPropagation();
+        
+        // Check for settings alert mode (highest priority)
+        if (versionIndicator.classList.contains('rt-has-settings-alert')) {
+            // Open Radial Timeline settings
+            const app = view.plugin.app;
+            (app as any).setting?.open?.();
+            (app as any).setting?.openTabById?.('radial-timeline');
+            return;
+        }
+        
         try {
             const versionService = getVersionCheckService();
             if (versionService.isUpdateAvailable()) {

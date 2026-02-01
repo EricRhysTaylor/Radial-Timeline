@@ -1,14 +1,16 @@
 import {
     App,
+    ButtonComponent,
     ItemView,
-    WorkspaceLeaf,
-    Platform,
+    Modal,
     Notice,
+    Platform,
     setIcon,
     TAbstractFile,
     TFile,
-    normalizePath,
-    SuggestModal
+    ToggleComponent,
+    WorkspaceLeaf,
+    normalizePath
 } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import {
@@ -231,58 +233,156 @@ type InquiryPreviewRow = {
 
 type TokenTier = 'normal' | 'amber' | 'red';
 
-type InquiryChoiceOption<T> = {
-    label: string;
-    value: T;
+type InquiryOmnibusPlan = {
+    scope: InquiryScope;
+    createIndex: boolean;
 };
 
-class InquiryChoiceModal<T> extends SuggestModal<InquiryChoiceOption<T>> {
-    private didChoose = false;
+type InquiryOmnibusModalOptions = {
+    initialScope: InquiryScope;
+    bookLabel: string;
+    questions: InquiryQuestion[];
+    providerSummary: string;
+    runDisabledReason?: string | null;
+};
+
+class InquiryOmnibusModal extends Modal {
+    private didResolve = false;
+    private selectedScope: InquiryScope;
+    private createIndex = true;
+    private runDisabledReason?: string | null;
 
     constructor(
         app: App,
-        private choices: InquiryChoiceOption<T>[],
-        private onChoose: (value: T) => void,
-        private onCancel: () => void,
-        placeholder?: string
+        private options: InquiryOmnibusModalOptions,
+        private onResolve: (result: InquiryOmnibusPlan | null) => void
     ) {
         super(app);
-        if (placeholder) {
-            this.setPlaceholder(placeholder);
+        this.selectedScope = options.initialScope;
+        this.runDisabledReason = options.runDisabledReason;
+    }
+
+    onOpen(): void {
+        const { contentEl, modalEl } = this;
+        contentEl.empty();
+
+        if (modalEl) {
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
+            modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-    }
 
-    getSuggestions(query: string): InquiryChoiceOption<T>[] {
-        const normalized = query.trim().toLowerCase();
-        if (!normalized) return this.choices;
-        return this.choices.filter(choice => choice.label.toLowerCase().includes(normalized));
-    }
+        contentEl.addClass('ert-modal-container', 'ert-stack');
 
-    renderSuggestion(item: InquiryChoiceOption<T>, el: HTMLElement): void {
-        el.setText(item.label);
-    }
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'Inquiry' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Run Omnibus Pass' });
+        header.createDiv({ cls: 'ert-modal-subtitle', text: 'Runs all enabled Inquiry questions for the selected scope.' });
 
-    onChooseSuggestion(item: InquiryChoiceOption<T>, _evt: MouseEvent | KeyboardEvent): void {
-        this.onChooseItem(item);
-    }
+        const panel = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-stack' });
 
-    getItems(): InquiryChoiceOption<T>[] {
-        return this.choices;
-    }
+        const scopeSection = panel.createDiv({ cls: 'ert-stack' });
+        scopeSection.createDiv({ cls: 'ert-section-title', text: 'Scope' });
+        const scopeRow = scopeSection.createDiv({ cls: 'ert-inline' });
+        scopeRow.createSpan({ cls: 'ert-label', text: 'Run against' });
+        const scopeSelect = scopeRow.createEl('select', { cls: 'ert-input ert-input--md' });
+        scopeSelect.createEl('option', { text: `Book (${this.options.bookLabel})`, value: 'book' });
+        scopeSelect.createEl('option', { text: `Saga (${SIGMA_CHAR})`, value: 'saga' });
+        scopeSelect.value = this.selectedScope;
+        scopeSelect.addEventListener('change', () => {
+            this.selectedScope = scopeSelect.value as InquiryScope;
+        });
 
-    getItemText(item: InquiryChoiceOption<T>): string {
-        return item.label;
-    }
+        const questionCounts = this.countQuestionsByZone(this.options.questions);
+        const questionsSection = panel.createDiv({ cls: 'ert-stack' });
+        questionsSection.createDiv({ cls: 'ert-section-title', text: 'Questions' });
+        const countsGrid = questionsSection.createDiv({ cls: 'ert-gridForm ert-gridForm--2' });
+        countsGrid.createDiv({ text: `Setup: ${questionCounts.setup}` });
+        countsGrid.createDiv({ text: `Pressure: ${questionCounts.pressure}` });
+        countsGrid.createDiv({ text: `Payoff: ${questionCounts.payoff}` });
+        countsGrid.createDiv({ text: `Total: ${this.options.questions.length}` });
 
-    onChooseItem(item: InquiryChoiceOption<T>): void {
-        this.didChoose = true;
-        this.onChoose(item.value);
+        if (this.options.questions.length > 0) {
+            const details = questionsSection.createEl('details');
+            details.createEl('summary', { text: 'View list' });
+            const list = details.createEl('ul', { cls: 'ert-stack' });
+            this.options.questions.forEach(question => {
+                const zoneLabel = question.zone === 'setup' ? 'Setup' : question.zone === 'pressure' ? 'Pressure' : 'Payoff';
+                list.createEl('li', { text: `${zoneLabel}: ${question.question}` });
+            });
+        }
+
+        const providerSection = panel.createDiv({ cls: 'ert-stack' });
+        providerSection.createDiv({ cls: 'ert-section-title', text: 'Provider strategy' });
+        providerSection.createDiv({ cls: 'ert-field-note', text: this.options.providerSummary });
+
+        const outputsSection = panel.createDiv({ cls: 'ert-stack' });
+        outputsSection.createDiv({ cls: 'ert-section-title', text: 'Outputs' });
+
+        const indexRow = outputsSection.createDiv({ cls: 'ert-inline' });
+        const indexToggle = new ToggleComponent(indexRow);
+        indexToggle.setValue(this.createIndex);
+        indexToggle.onChange(value => {
+            this.createIndex = value;
+        });
+        indexRow.createSpan({ text: 'Create omnibus index note' });
+
+        const briefRow = outputsSection.createDiv({ cls: 'ert-inline' });
+        const briefToggle = new ToggleComponent(briefRow);
+        briefToggle.setValue(true);
+        briefToggle.setDisabled(true);
+        briefRow.createSpan({ text: 'Save brief + log per question (always on)' });
+
+        const sideEffectsSection = panel.createDiv({ cls: 'ert-stack' });
+        sideEffectsSection.createDiv({ cls: 'ert-section-title', text: 'Side effects' });
+        sideEffectsSection.createDiv({ cls: 'ert-field-note', text: 'No automatic Pending Edits writeback during Omnibus.' });
+
+        if (this.runDisabledReason) {
+            const reason = contentEl.createDiv({ cls: 'ert-field-note' });
+            reason.setText(`Run disabled: ${this.runDisabledReason}`);
+        }
+
+        const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        const runButton = new ButtonComponent(actions)
+            .setButtonText('Run Omnibus')
+            .setCta();
+        if (this.runDisabledReason) {
+            runButton.setDisabled(true);
+        }
+        runButton.onClick(() => {
+            if (this.runDisabledReason) return;
+            this.resolveOnce({ scope: this.selectedScope, createIndex: this.createIndex });
+            this.close();
+        });
+
+        new ButtonComponent(actions)
+            .setButtonText('Cancel')
+            .onClick(() => {
+                this.resolveOnce(null);
+                this.close();
+            });
     }
 
     onClose(): void {
-        if (!this.didChoose) {
-            this.onCancel();
-        }
+        this.resolveOnce(null);
+    }
+
+    private resolveOnce(result: InquiryOmnibusPlan | null): void {
+        if (this.didResolve) return;
+        this.didResolve = true;
+        this.onResolve(result);
+    }
+
+    private countQuestionsByZone(questions: InquiryQuestion[]): Record<InquiryZone, number> {
+        return questions.reduce<Record<InquiryZone, number>>((acc, question) => {
+            acc[question.zone] += 1;
+            return acc;
+        }, {
+            setup: 0,
+            pressure: 0,
+            payoff: 0
+        });
     }
 }
 
@@ -368,6 +468,11 @@ type OmnibusProviderChoice = {
     modelLabel: string;
     useOmnibus: boolean;
     reason?: string;
+};
+type OmnibusProviderPlan = {
+    choice: OmnibusProviderChoice | null;
+    summary: string;
+    disabledReason?: string;
 };
 type EngineChoice = {
     provider: EngineProvider;
@@ -5394,26 +5499,30 @@ export class InquiryView extends ItemView {
             new Notice('Inquiry omnibus pass is available on desktop only.');
             return;
         }
+
+        this.refreshCorpus();
+        this.guidanceState = this.resolveGuidanceState();
+
+        const questions = this.getOmnibusQuestions();
+        const providerPlan = this.buildOmnibusProviderPlan();
+        const runDisabledReason = this.getOmnibusRunDisabledReason(questions, providerPlan);
+
+        const plan = await this.promptOmnibusPlan({
+            initialScope: this.state.scope,
+            bookLabel: this.getFocusBookLabel(),
+            questions,
+            providerSummary: providerPlan.summary,
+            runDisabledReason
+        });
+        if (!plan) return;
+
         if (this.state.isRunning) {
             new Notice('Inquiry running. Please wait.');
             return;
         }
 
-        this.refreshCorpus();
-        this.guidanceState = this.resolveGuidanceState();
-        if (this.isInquiryRunDisabled()) {
-            const message = this.isInquiryBlocked()
-                ? 'Inquiry is not configured yet.'
-                : 'No scenes available for Inquiry.';
-            new Notice(message);
-            return;
-        }
-
-        const scope = await this.promptOmnibusScope();
-        if (!scope) return;
-
-        if (scope !== this.state.scope) {
-            this.handleScopeChange(scope);
+        if (plan.scope !== this.state.scope) {
+            this.handleScopeChange(plan.scope);
         } else {
             this.refreshCorpus();
         }
@@ -5426,32 +5535,26 @@ export class InquiryView extends ItemView {
             return;
         }
 
-        const questions = this.getOmnibusQuestions();
-        if (!questions.length) {
+        const nextQuestions = this.getOmnibusQuestions();
+        if (!nextQuestions.length) {
             new Notice('No enabled Inquiry questions found.');
             return;
         }
 
-        let createIndex = false;
-        if (questions.length > 1) {
-            const choice = await this.promptOmnibusIndexChoice();
-            if (choice === null) return;
-            createIndex = choice;
-        }
-
-        const providerChoice = this.resolveOmnibusProviderChoice();
-        if (!providerChoice) return;
-
-        if (!providerChoice.useOmnibus) {
-            const providerLabel = this.getInquiryProviderLabel(providerChoice.provider);
-            const modelLabel = providerChoice.modelLabel;
-            const reason = providerChoice.reason ? ` (${providerChoice.reason})` : '';
-            new Notice(`Gemini not available${reason}. Running per-question pass with ${providerLabel} · ${modelLabel}.`);
-            await this.runOmnibusSequential(questions, providerChoice, createIndex);
+        const nextProviderPlan = this.buildOmnibusProviderPlan();
+        if (!nextProviderPlan.choice) {
+            const reason = nextProviderPlan.disabledReason || 'Provider unavailable';
+            new Notice(`Omnibus unavailable: ${reason}.`);
             return;
         }
 
-        await this.runOmnibusCombined(questions, providerChoice, createIndex);
+        const providerChoice = nextProviderPlan.choice;
+        if (!providerChoice.useOmnibus) {
+            await this.runOmnibusSequential(nextQuestions, providerChoice, plan.createIndex);
+            return;
+        }
+
+        await this.runOmnibusCombined(nextQuestions, providerChoice, plan.createIndex);
     }
 
     private async runOmnibusCombined(
@@ -5547,9 +5650,6 @@ export class InquiryView extends ItemView {
                 }
                 lastSession = persisted.session;
                 lastResult = persisted.normalized;
-                if (this.shouldAutoPopulatePendingEdits()) {
-                    void this.writeInquiryPendingEdits(persisted.session, persisted.normalized);
-                }
             }
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
@@ -5655,9 +5755,6 @@ export class InquiryView extends ItemView {
                 }
                 lastSession = persisted.session;
                 lastResult = persisted.normalized;
-                if (this.shouldAutoPopulatePendingEdits()) {
-                    void this.writeInquiryPendingEdits(persisted.session, persisted.normalized);
-                }
             }
         } finally {
             if (createIndex && briefPaths.length > 1) {
@@ -5793,37 +5890,9 @@ export class InquiryView extends ItemView {
         }
     }
 
-    private async promptOmnibusScope(): Promise<InquiryScope | null> {
-        const bookLabel = this.getFocusBookLabel();
-        const choices: InquiryChoiceOption<InquiryScope>[] = [
-            { label: `Book (${bookLabel})`, value: 'book' },
-            { label: `Saga (${SIGMA_CHAR})`, value: 'saga' }
-        ];
+    private async promptOmnibusPlan(options: InquiryOmnibusModalOptions): Promise<InquiryOmnibusPlan | null> {
         return new Promise(resolve => {
-            const modal = new InquiryChoiceModal(
-                this.app,
-                choices,
-                value => resolve(value),
-                () => resolve(null),
-                'Select omnibus scope'
-            );
-            modal.open();
-        });
-    }
-
-    private async promptOmnibusIndexChoice(): Promise<boolean | null> {
-        const choices: InquiryChoiceOption<boolean>[] = [
-            { label: 'Create omnibus index note', value: true },
-            { label: 'Skip index note', value: false }
-        ];
-        return new Promise(resolve => {
-            const modal = new InquiryChoiceModal(
-                this.app,
-                choices,
-                value => resolve(value),
-                () => resolve(null),
-                'Create omnibus index note?'
-            );
+            const modal = new InquiryOmnibusModal(this.app, options, result => resolve(result));
             modal.open();
         });
     }
@@ -5858,34 +5927,56 @@ export class InquiryView extends ItemView {
         return questions;
     }
 
-    private resolveOmnibusProviderChoice(): OmnibusProviderChoice | null {
+    private buildOmnibusProviderPlan(): OmnibusProviderPlan {
         const geminiAvailability = this.getProviderAvailability('gemini');
         if (geminiAvailability.enabled) {
             const modelId = this.getInquiryModelIdForProvider('gemini');
+            const modelLabel = this.getInquiryModelLabelForProvider('gemini');
             return {
-                provider: 'gemini',
-                modelId,
-                modelLabel: this.getInquiryModelLabelForProvider('gemini'),
-                useOmnibus: true
+                choice: {
+                    provider: 'gemini',
+                    modelId,
+                    modelLabel,
+                    useOmnibus: true
+                },
+                summary: `Prefers Gemini for a combined omnibus run when available. Gemini is available, so this run will use Gemini · ${modelLabel}.`
             };
         }
 
         const fallbackProvider = (this.plugin.settings.defaultAiProvider || 'openai') as EngineProvider;
         const fallbackAvailability = this.getProviderAvailability(fallbackProvider);
+        const geminiReason = geminiAvailability.reason || 'Gemini not configured';
         if (!fallbackAvailability.enabled) {
             const providerLabel = this.getInquiryProviderLabel(fallbackProvider);
             const reason = fallbackAvailability.reason || 'Provider unavailable';
-            new Notice(`Omnibus unavailable: ${providerLabel} ${reason}.`);
-            return null;
+            return {
+                choice: null,
+                summary: `Prefers Gemini for a combined omnibus run when available. Gemini is unavailable (${geminiReason}); ${providerLabel} is also unavailable (${reason}).`,
+                disabledReason: `${providerLabel} ${reason}`
+            };
         }
 
+        const providerLabel = this.getInquiryProviderLabel(fallbackProvider);
+        const modelLabel = this.getInquiryModelLabelForProvider(fallbackProvider);
         return {
-            provider: fallbackProvider,
-            modelId: this.getInquiryModelIdForProvider(fallbackProvider),
-            modelLabel: this.getInquiryModelLabelForProvider(fallbackProvider),
-            useOmnibus: false,
-            reason: geminiAvailability.reason || 'Gemini not configured'
+            choice: {
+                provider: fallbackProvider,
+                modelId: this.getInquiryModelIdForProvider(fallbackProvider),
+                modelLabel,
+                useOmnibus: false,
+                reason: geminiReason
+            },
+            summary: `Prefers Gemini for a combined omnibus run when available. Gemini is unavailable (${geminiReason}), so this run will execute sequentially with ${providerLabel} · ${modelLabel}.`
         };
+    }
+
+    private getOmnibusRunDisabledReason(questions: InquiryQuestion[], providerPlan: OmnibusProviderPlan): string | null {
+        if (this.state.isRunning) return 'Inquiry is already running.';
+        if (this.isInquiryBlocked()) return 'Inquiry is not configured yet.';
+        if (this.guidanceState === 'no-scenes') return 'No scenes available for Inquiry.';
+        if (!questions.length) return 'No enabled Inquiry questions found.';
+        if (!providerPlan.choice) return providerPlan.disabledReason || 'Provider unavailable';
+        return null;
     }
 
     private getInquiryProviderLabel(provider: EngineProvider): string {

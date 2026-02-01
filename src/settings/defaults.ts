@@ -43,6 +43,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     inquiryActionNotesEnabled: false,
     inquiryActionNotesAutoPopulate: false,
     inquiryActionNotesTargetField: 'Pending Edits',
+    dismissedAlerts: [],
     actCount: 3,
     actLabelsRaw: '',
     publishStageColors: {
@@ -187,7 +188,7 @@ Status: Todo
 Publish Stage: Zero
 Due:                                  # Target completion date (YYYY-MM-DD).
 Pending Edits:
-Iterations:                           # Edit iteration count (suggest leaving blank until stage > Zero)
+Iteration:                            # Edit iteration count (suggest leaving blank until stage > Zero)
 Type:
 Shift:
 Questions:                            # Analysis Block

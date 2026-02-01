@@ -82,7 +82,7 @@ Status: Todo
 Publish Stage: Zero
 Due:
 Pending Edits:
-Iterations:                           # Edit iteration count (deprecated: was "Revision")
+Iteration:                            # Edit iteration count (deprecated: was "Revision")
 Type:                                 #Story Grid: Scene type (Inciting Incident, Progressive Complication, Crisis, Climax, Resolution)
 Shift:                                #Story Grid: Value shift (e.g. Life to Death, Hope to Despair)
 Questions:                            #Analysis Block

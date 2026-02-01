@@ -810,12 +810,16 @@
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.3s ease;
+  overflow: hidden;
 }
 
 .rt-pulse-card-icon-bg svg {
   width: 80%;
   height: 80%;
+  max-width: 100%;
+  max-height: 100%;
   opacity: 0.12;
+  flex-shrink: 0;
 }
 
 /* Content wrapper sits above the background */
@@ -992,11 +996,17 @@
 
 .rt-pulse-ruler-item.rt-synopsis-pending .rt-pulse-card-icon-bg {
   opacity: 0.3;
+  overflow: hidden;
 }
 
 .rt-pulse-ruler-item.rt-synopsis-pending .rt-pulse-card-icon-bg svg {
   color: var(--text-muted);
   opacity: 0.4;
+  width: 80%;
+  height: 80%;
+  max-width: 100%;
+  max-height: 100%;
+  flex-shrink: 0;
 }
 
 /* Synopsis Active - pulsing animation with theme color */
@@ -1030,12 +1040,17 @@
 
 .rt-pulse-ruler-item.rt-synopsis-complete .rt-pulse-card-icon-bg {
   opacity: 1;
+  overflow: hidden;
 }
 
 .rt-pulse-ruler-item.rt-synopsis-complete .rt-pulse-card-icon-bg svg {
   color: #2ecc71;
   opacity: 0.25;
-  transform: scale(1.2);
+  width: 90%;
+  height: 90%;
+  max-width: 100%;
+  max-height: 100%;
+  flex-shrink: 0;
 }
 
 .rt-pulse-ruler-item.rt-synopsis-complete .rt-pulse-ruler-value,
