@@ -445,9 +445,14 @@ export default class SynopsisManager {
     // Pending Edits line if non-empty (notes for next revision)
     const pendingEdits = scene.pendingEdits && typeof scene.pendingEdits === 'string' ? scene.pendingEdits.trim() : '';
     if (pendingEdits) {
-      // Wrap pending edits text using same logic as synopsis
+      // Wrap pending edits text using same logic as synopsis, limit to 2 lines
       const maxWidth = 500 * fontScale; // Match timeline synopsis width
-      const lines = splitIntoBalancedLines(pendingEdits, maxWidth, fontScale);
+      const PENDING_EDITS_MAX_LINES = 2;
+      let lines = splitIntoBalancedLines(pendingEdits, maxWidth, fontScale);
+      if (lines.length > PENDING_EDITS_MAX_LINES) {
+        lines = lines.slice(0, PENDING_EDITS_MAX_LINES);
+        lines[lines.length - 1] = lines[lines.length - 1] + '...';
+      }
       for (let i = 0; i < lines.length; i++) {
         const y = (1 + extraLineCount) * metadataLineHeight + (i * metadataLineHeight);
         const text = `${i === 0 ? 'Pending Edits: ' : ''}${lines[i]}`;

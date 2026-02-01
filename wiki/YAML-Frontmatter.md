@@ -10,8 +10,8 @@ Subplot: Main Plot        # Single subplot (or use array format below for multip
 Character:                # Characters in the scene (use array format below for multiple)
 POV:                      # blank, first, you, third, omni, narrator, two, all, count
 Status: Todo              # Scene status (Todo/Working/Complete)
-Due:                      # Target completion date (YYYY-MM-DD). When setting Scene to Complete, change this to that day's date for better novel completion estimate
 Publish Stage: Zero       # Publication stage (Zero/Author/House/Press)
+Due:                      # Target completion date (YYYY-MM-DD). When setting Scene to Complete, change this to that day's date for better novel completion estimate
 Pending Edits:            # Notes for next revision (especially for zero draft mode)
 Pulse Update:             # AI-generated scene pulse analysis flag
 ```
@@ -78,19 +78,21 @@ Character:
   - "[[Character 1]]"
 Place:
   - "[[Earth]]"
-Questions:                           #Analysis Block
-Reader Emotion:
-Internal: How do the characters change?
+Status: Todo
+Publish Stage: Zero
+Due:
+Pending Edits:
+Iterations:                           # Edit iteration count (deprecated: was "Revision")
 Type:                                 #Story Grid: Scene type (Inciting Incident, Progressive Complication, Crisis, Climax, Resolution)
 Shift:                                #Story Grid: Value shift (e.g. Life to Death, Hope to Despair)
-Publish Stage: Zero
-Status: Todo
-Due:
-Words:                                #Statistics
+Questions:                            #Analysis Block
+Reader Emotion:
+Internal: How do the characters change?
 Total Time:
-Iterations:                           # Edit iteration count (deprecated: was "Revision")
-Pending Edits:
+Words:                                #Statistics
+Runtime:                              # Technical runtime (screenplay time / reading time, e.g., "2:30", "45s")
 Pulse Update: No
+Synopsis Update:
 ```
 
 **Tip for Advanced Methodologies (e.g., Dramatica):**

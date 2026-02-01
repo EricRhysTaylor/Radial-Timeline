@@ -168,15 +168,14 @@ Subplot: {{Subplot}}      # Single subplot (or use array format below for multip
 Character: {{Character}}  # Characters in the scene (use array format below for multiple)
 POV:                      # blank, first, you, third, omni, narrator, two, all, count
 Status: Todo              # Scene status (Todo/Working/Complete)
-Due: {{When}}             # Target completion date (YYYY-MM-DD). When setting Scene to Complete, change this to that day's date for better novel completion estimate
 Publish Stage: Zero       # Publication stage (Zero/Author/House/Press)
+Due: {{When}}             # Target completion date (YYYY-MM-DD). When setting Scene to Complete, change this to that day's date for better novel completion estimate
 Pending Edits:            # Notes for next revision (especially for zero draft mode)
 Pulse Update:             # AI-generated scene pulse analysis flag`,
         advanced: `Class: Scene
 Act: {{Act}}
 When: {{When}}
 Duration: 1 hours
-Runtime:                             # Technical runtime (screenplay time / reading time, e.g., "2:30", "45s")
 Synopsis: Short scene summary.
 Subplot:
 {{SubplotList}}
@@ -184,19 +183,21 @@ Character:
 {{CharacterList}}
 Place:
 {{PlaceList}}
-Questions:                           # Analysis Block
-Reader Emotion:
-Internal: How do the characters change?
+Status: Todo
+Publish Stage: Zero
+Due:                                  # Target completion date (YYYY-MM-DD).
+Pending Edits:
+Iterations:                           # Edit iteration count (suggest leaving blank until stage > Zero)
 Type:
 Shift:
-Publish Stage: Zero
-Status: Todo
-Due:                                  # Target completion date (YYYY-MM-DD).
-Words:                                # Statistics
+Questions:                            # Analysis Block
+Reader Emotion:
+Internal: How do the characters change?
 Total Time:                           # Tracked time spent writing scene
-Iterations:                           # Edit iteration count (suggest leaving blank until stage > Zero)
-Pending Edits:
-Pulse Update: No`
+Words:                                # Statistics
+Runtime:                              # Technical runtime (screenplay time / reading time, e.g., "2:30", "45s")
+Pulse Update: No
+Synopsis Update:`
     },
     bookDesignerTemplates: [],
     backdropYamlTemplate: `Class: Backdrop                   # Backdrop events appear below the outer ring in Chronologue Mode
@@ -311,7 +312,7 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
         updateFrequency: 'manual',
         stalenessThresholdDays: 30,
         enableReminders: true,
-        dynamicEmbedPath: 'Radial Timeline/Social/book/apr-book-default-manual-medium.svg',
+        dynamicEmbedPath: 'Radial Timeline/Social/book/apr-default-manual-medium.svg',
         autoUpdateEmbedPaths: false,
 
         // Pro Feature: Campaign Manager (empty by default)

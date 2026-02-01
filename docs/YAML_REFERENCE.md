@@ -59,7 +59,8 @@ Character:
   - "[[Mentor B]]"
 Status: Todo
 Publish Stage: Zero
-Due: 2025-01-31
+Due: 2026-01-31
+Pending Edits:
 ---
 ```
 
@@ -90,9 +91,9 @@ Place:
 
 Status: Todo
 Publish Stage: Zero
-Iterations:
 Due: 2026-01-31
 Pending Edits:
+Iterations:
 
 # Story Grid Analysis
 Type:     # revelation / turning point / confrontation / decision / setup / payoff / inciting incident / deepening
@@ -104,6 +105,7 @@ Internal:     # How do the character change? (e.g., from trusting → suspicious
 # Optional tracking
 Total Time: 0.0     # Writing/production time spent (hours in decimal)
 Words: 0
+Runtime:     # Technical runtime (screenplay time / reading time, e.g., "2:30", "45s")
 Support Files:
 
 # AI-Generated Beats (triplets)
@@ -115,6 +117,7 @@ currentSceneAnalysis:
 nextSceneAnalysis:
   - 14 Setback ? / Plan fails at the last moment New approach needed
 Pulse Update: Yes
+Synopsis Update:
 ---
 ```
 
@@ -314,9 +317,16 @@ Concrete revisions to address. Used by Zero Draft Mode to capture editing ideas 
 ---
 
 ### Duration
-**Optional** | Type: Number
+**Optional** | Type: String
 
-How much story time passes (minutes, hours, days).
+How much story time passes. Supports flexible formats like "45 seconds", "45s", "2 hours", "3 days".
+
+---
+
+### Runtime
+**Optional** | Type: String
+
+Technical runtime for screenplay or reading time. Use formats like "2:30" (minutes:seconds) or "45s" for short durations. Distinct from Duration which measures in-world story time.
 
 ---
 
@@ -406,6 +416,13 @@ nextSceneAnalysis:
 **Optional** | Type: String
 
 Set to `Yes` to flag a scene for AI pulse (triplet) analysis. Legacy `Review Update`/`Beats Update` values are still recognized.
+
+---
+
+### Synopsis Update
+**Optional** | Type: String
+
+Flag to indicate the synopsis needs updating or has been updated. Used by Book Designer workflows.
 
 ---
 

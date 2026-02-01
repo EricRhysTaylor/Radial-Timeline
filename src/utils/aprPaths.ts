@@ -1,6 +1,29 @@
 export type AprSize = 'thumb' | 'small' | 'medium' | 'large';
 export type AprFrequency = 'manual' | 'daily' | 'weekly' | 'monthly';
 
+/**
+ * APR Path Schema (LOCKED - do not modify without migration plan)
+ * ═══════════════════════════════════════════════════════════════
+ * Book scoping is handled ONLY in the folder path, never in the filename.
+ *
+ * Folder structure:
+ *   Default/Core:  Radial Timeline/Social/{bookSlug}/
+ *   Campaigns:     Radial Timeline/Social/{bookSlug}/campaigns/
+ *
+ * Filename schema (frozen token order):
+ *   apr-{campaignSlug}-{mode}-{size}{-teaser}.svg
+ *
+ * Where:
+ *   {campaignSlug} = slugified campaign name (use "default" for core report)
+ *   {mode}         = manual | auto-daily | auto-weekly | auto-monthly
+ *   {size}         = thumb | small | medium | large
+ *   {-teaser}      = suffix only if teaser enabled
+ *
+ * Examples:
+ *   Core:     Radial Timeline/Social/my-novel/apr-default-manual-large.svg
+ *   Campaign: Radial Timeline/Social/my-novel/campaigns/apr-kickstarter-auto-weekly-large-teaser.svg
+ */
+
 export function slugify(value: string | undefined, fallback: string): string {
     const cleaned = (value ?? '')
         .toLowerCase()
@@ -19,6 +42,10 @@ function resolveAprSize(primary?: AprSize, fallback?: AprSize): AprSize {
     return primary ?? fallback ?? 'medium';
 }
 
+/**
+ * Builds the embed path for the default/core APR report.
+ * Book title scopes the folder; filename uses "default" as campaignSlug.
+ */
 export function buildDefaultEmbedPath(options: {
     bookTitle?: string;
     updateFrequency?: AprFrequency;
@@ -27,9 +54,14 @@ export function buildDefaultEmbedPath(options: {
     const bookSlug = slugify(options.bookTitle, 'book');
     const mode = formatAprMode(options.updateFrequency);
     const size = resolveAprSize(options.aprSize);
-    return `Radial Timeline/Social/${bookSlug}/apr-${bookSlug}-default-${mode}-${size}.svg`;
+    // Filename: apr-default-{mode}-{size}.svg (no bookSlug in filename)
+    return `Radial Timeline/Social/${bookSlug}/apr-default-${mode}-${size}.svg`;
 }
 
+/**
+ * Builds the embed path for a campaign APR report.
+ * Book title scopes the folder; campaignSlug identifies the campaign in filename.
+ */
 export function buildCampaignEmbedPath(options: {
     bookTitle?: string;
     campaignName: string;
@@ -43,5 +75,6 @@ export function buildCampaignEmbedPath(options: {
     const mode = formatAprMode(options.updateFrequency);
     const size = resolveAprSize(options.aprSize, options.fallbackSize);
     const teaserSuffix = options.teaserEnabled ? '-teaser' : '';
-    return `Radial Timeline/Social/${bookSlug}/campaigns/apr-${bookSlug}-${campaignSlug}-${mode}-${size}${teaserSuffix}.svg`;
+    // Filename: apr-{campaignSlug}-{mode}-{size}{-teaser}.svg (no bookSlug in filename)
+    return `Radial Timeline/Social/${bookSlug}/campaigns/apr-${campaignSlug}-${mode}-${size}${teaserSuffix}.svg`;
 }

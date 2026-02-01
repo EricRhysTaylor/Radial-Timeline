@@ -45,7 +45,7 @@ export class AuthorProgressModal extends Modal {
             updateFrequency: 'manual',
             stalenessThresholdDays: 30,
             enableReminders: true,
-            dynamicEmbedPath: 'Radial Timeline/Social/book/apr-book-default-manual-medium.svg'
+            dynamicEmbedPath: 'Radial Timeline/Social/book/apr-default-manual-medium.svg'
         };
 
         // Initialize reveal options from settings
@@ -839,7 +839,7 @@ export class AuthorProgressModal extends Modal {
                 updateFrequency: 'manual',
                 stalenessThresholdDays: 30,
                 enableReminders: true,
-                dynamicEmbedPath: 'Radial Timeline/Social/book/apr-book-default-manual-medium.svg'
+                dynamicEmbedPath: 'Radial Timeline/Social/book/apr-default-manual-medium.svg'
             };
         }
         const settings = this.plugin.settings.authorProgress;

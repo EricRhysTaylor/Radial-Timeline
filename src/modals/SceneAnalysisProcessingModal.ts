@@ -294,9 +294,15 @@ export class SceneAnalysisProcessingModal extends Modal {
             const entry = this.queueTrackEl.createDiv({ cls: 'rt-pulse-ruler-item' });
             entry.setAttr('data-queue-id', item.id);
 
-            // Background icon container (for grade-based icons)
+            // Background icon container (for grade-based icons or synopsis icons)
             const iconBg = entry.createDiv({ cls: 'rt-pulse-card-icon-bg' });
             iconBg.setAttr('aria-hidden', 'true');
+
+            // For synopsis mode, add "?" icon for unprocessed scenes
+            if (this.taskType === 'synopsis') {
+                setIcon(iconBg, 'help-circle');
+                entry.addClass('rt-synopsis-pending');
+            }
 
             // Content wrapper to sit above the background
             const content = entry.createDiv({ cls: 'rt-pulse-card-content' });
@@ -309,9 +315,11 @@ export class SceneAnalysisProcessingModal extends Modal {
                 content.createSpan({ cls: 'rt-pulse-ruler-label', text: secondary });
             }
 
-            // Grade placeholder - always present to reserve space, prevents resize when grade arrives
-            const gradePlaceholder = content.createDiv({ cls: 'rt-pulse-grade rt-pulse-grade-placeholder' });
-            gradePlaceholder.setAttr('aria-hidden', 'true');
+            // Grade placeholder - always present to reserve space, prevents resize when grade arrives (pulse mode only)
+            if (this.taskType !== 'synopsis') {
+                const gradePlaceholder = content.createDiv({ cls: 'rt-pulse-grade rt-pulse-grade-placeholder' });
+                gradePlaceholder.setAttr('aria-hidden', 'true');
+            }
 
             const grade = this.queueGrades.get(item.id);
             if (grade) {
@@ -363,7 +371,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     private applyQueueStatus(entry: HTMLElement, status: 'success' | 'error', grade?: 'A' | 'B' | 'C'): void {
         // Remove old status classes
-        entry.removeClass('rt-status-success', 'rt-status-error', 'rt-grade-a', 'rt-grade-b', 'rt-grade-c');
+        entry.removeClass('rt-status-success', 'rt-status-error', 'rt-grade-a', 'rt-grade-b', 'rt-grade-c', 'rt-synopsis-complete');
 
         // For errors only (API failures), apply error styling
         if (status === 'error') {
@@ -371,7 +379,20 @@ export class SceneAnalysisProcessingModal extends Modal {
             return;
         }
 
-        // For successful items, style by grade (not generic success)
+        // Synopsis mode: use checkmark icon instead of grades
+        if (this.taskType === 'synopsis') {
+            entry.addClass('rt-synopsis-complete');
+
+            // Add checkmark icon in background
+            const iconBg = entry.querySelector('.rt-pulse-card-icon-bg');
+            if (iconBg) {
+                iconBg.empty();
+                setIcon(iconBg as HTMLElement, 'check');
+            }
+            return;
+        }
+
+        // Pulse mode: style by grade
         if (grade) {
             entry.addClass(`rt-grade-${grade.toLowerCase()}`);
 
@@ -783,8 +804,8 @@ export class SceneAnalysisProcessingModal extends Modal {
         const progressContainer = progressCard.createDiv({ cls: 'rt-pulse-progress-container' });
         const progressBg = progressContainer.createDiv({ cls: 'rt-pulse-progress-bg' });
         this.progressBarEl = progressBg.createDiv({ cls: 'rt-pulse-progress-bar' });
-        // Start at 25% so the bar isn't empty while waiting for first API response
-        this.progressBarEl.style.setProperty('--progress-width', '25%');
+        // Start at 0% for smooth animation
+        this.progressBarEl.style.setProperty('--progress-width', '0%');
 
         this.progressTextEl = progressCard.createDiv({ cls: 'rt-pulse-progress-text' });
         this.progressTextEl.setText('Initializing… preparing first scene (0%)');
@@ -834,25 +855,17 @@ export class SceneAnalysisProcessingModal extends Modal {
     public setSynopsisPreview(oldSynopsis: string, newSynopsis: string): void {
         if (!this.heroStatusEl) return;
 
-        // Use the hero status area for the preview
+        // Use the hero status area for the preview - single line with inline label
         this.heroStatusEl.empty();
-        const container = this.heroStatusEl.createDiv({ cls: 'rt-synopsis-preview-container' });
+        const previewLine = this.heroStatusEl.createDiv({ cls: 'rt-synopsis-preview-line' });
 
-        // Old Synopsis (Collapsed)
-        const oldCol = container.createDiv({ cls: 'rt-synopsis-col rt-synopsis-old' });
-        oldCol.createDiv({ cls: 'rt-synopsis-label', text: 'Previous' });
-        const oldText = oldCol.createDiv({ cls: 'rt-synopsis-text' });
-        oldText.setText(oldSynopsis || '(No synopsis)');
+        // "Previous:" label inline
+        previewLine.createSpan({ cls: 'rt-synopsis-preview-label', text: 'Previous: ' });
 
-        // New Synopsis (Preview)
-        const newCol = container.createDiv({ cls: 'rt-synopsis-col rt-synopsis-new' });
-        newCol.createDiv({ cls: 'rt-synopsis-label', text: 'New Preview' });
-        const newText = newCol.createDiv({ cls: 'rt-synopsis-text' });
-        if (newSynopsis === 'Generating...') {
-            newText.addClass('rt-synopsis-generating');
-            newText.setText('Generating...');
-        } else {
-            newText.setText(newSynopsis);
+        // Old synopsis in italics (only show if there's a new synopsis, not during "Generating...")
+        if (newSynopsis !== 'Generating...') {
+            const oldText = previewLine.createSpan({ cls: 'rt-synopsis-preview-old' });
+            oldText.setText(oldSynopsis || '(No synopsis)');
         }
     }
 
@@ -974,8 +987,15 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.plugin.showBeatsStatusBar(current, total);
 
         if (this.progressBarEl) {
-            // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
-            this.progressBarEl.style.setProperty('--progress-width', `${percentage}%`);
+            // Get current progress to avoid backward jumps
+            const currentStyle = this.progressBarEl.style.getPropertyValue('--progress-width');
+            const currentPercent = parseFloat(currentStyle || '0');
+
+            // Only update if moving forward (prevents animation from jumping backward)
+            if (percentage >= currentPercent) {
+                // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
+                this.progressBarEl.style.setProperty('--progress-width', `${percentage}%`);
+            }
         }
 
         if (this.progressTextEl) {
@@ -1025,10 +1045,18 @@ export class SceneAnalysisProcessingModal extends Modal {
         const estimatedSeconds = this.estimateDuration(tripletMetric);
         this.currentEstimatedSeconds = estimatedSeconds;
 
+        // Get current progress bar position
+        const currentStyle = this.progressBarEl?.style.getPropertyValue('--progress-width');
+        const currentPercent = parseFloat(currentStyle || '0');
+
         // Calculate target: don't go past what this scene's completion would be
-        const sceneStartPercent = total > 0 ? (sceneIndex / total) * 100 : 0;
         const sceneEndPercent = total > 0 ? ((sceneIndex + 1) / total) * 100 : 100;
-        const targetPercent = sceneStartPercent + (sceneEndPercent - sceneStartPercent) * 0.85;
+        const targetPercent = Math.min(sceneEndPercent * 0.85, 95); // Cap at 95% until actual completion
+
+        // Only animate forward, never backward
+        if (currentPercent >= targetPercent) {
+            return;
+        }
 
         // Animate in 200ms steps
         const steps = Math.max(1, Math.ceil(estimatedSeconds * 5));
@@ -1042,10 +1070,12 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.animationIntervalId = this.plugin.registerInterval(window.setInterval(() => { // SAFE: setInterval wrapped with plugin.registerInterval for cleanup
             step++;
             const progress = step / steps;
-            const currentPercent = sceneStartPercent + (targetPercent - sceneStartPercent) * progress;
+            // Smooth easing: starts fast, slows down near the end
+            const easedProgress = 1 - Math.pow(1 - progress, 2);
+            const newPercent = currentPercent + (targetPercent - currentPercent) * easedProgress;
 
             if (this.progressBarEl) {
-                this.progressBarEl.style.setProperty('--progress-width', `${currentPercent}%`);
+                this.progressBarEl.style.setProperty('--progress-width', `${newPercent}%`);
             }
 
             if (step >= steps) {

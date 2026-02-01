@@ -979,6 +979,90 @@
   box-shadow: 0 12px 32px rgba(231, 76, 60, 0.4), inset 0 0 40px rgba(231, 76, 60, 0.12);
 }
 
+/* ========================================
+   Synopsis Mode Styling
+   ======================================== */
+
+/* Synopsis Pending - "?" icon, subtle styling */
+.rt-pulse-ruler-item.rt-synopsis-pending {
+  opacity: 0.5;
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.rt-pulse-ruler-item.rt-synopsis-pending .rt-pulse-card-icon-bg {
+  opacity: 0.3;
+}
+
+.rt-pulse-ruler-item.rt-synopsis-pending .rt-pulse-card-icon-bg svg {
+  color: var(--text-muted);
+  opacity: 0.4;
+}
+
+/* Synopsis Active - pulsing animation with theme color */
+.rt-pulse-ruler-item.rt-synopsis-pending.rt-is-active {
+  opacity: 1;
+  background: rgba(var(--interactive-accent-rgb, 136, 87, 255), 0.15);
+  border-color: rgba(var(--interactive-accent-rgb, 136, 87, 255), 0.4);
+  transform: scale(1.08);
+  animation: rt-synopsis-pulse 2s ease-in-out infinite;
+}
+
+@keyframes rt-synopsis-pulse {
+  0%, 100% {
+    transform: scale(1.08);
+    box-shadow: 0 4px 12px rgba(var(--interactive-accent-rgb, 136, 87, 255), 0.3);
+  }
+  50% {
+    transform: scale(1.12);
+    box-shadow: 0 8px 20px rgba(var(--interactive-accent-rgb, 136, 87, 255), 0.5);
+  }
+}
+
+/* Synopsis Complete - checkmark fills the card */
+.rt-pulse-ruler-item.rt-synopsis-complete {
+  opacity: 1;
+  background: linear-gradient(145deg, rgba(46, 204, 113, 0.2) 0%, rgba(39, 174, 96, 0.12) 50%, rgba(46, 204, 113, 0.06) 100%);
+  border-width: 3px;
+  border-color: rgba(46, 204, 113, 0.5);
+  box-shadow: 0 6px 18px rgba(46, 204, 113, 0.2);
+}
+
+.rt-pulse-ruler-item.rt-synopsis-complete .rt-pulse-card-icon-bg {
+  opacity: 1;
+}
+
+.rt-pulse-ruler-item.rt-synopsis-complete .rt-pulse-card-icon-bg svg {
+  color: #2ecc71;
+  opacity: 0.25;
+  transform: scale(1.2);
+}
+
+.rt-pulse-ruler-item.rt-synopsis-complete .rt-pulse-ruler-value,
+.rt-pulse-ruler-item.rt-synopsis-complete .rt-pulse-ruler-label {
+  color: #2ecc71;
+  -webkit-text-fill-color: #2ecc71;
+}
+
+/* Synopsis Preview - Inline Layout */
+.rt-synopsis-preview-line {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.rt-synopsis-preview-label {
+  font-weight: 600;
+  color: var(--text-normal);
+  margin-right: 4px;
+}
+
+.rt-synopsis-preview-old {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
 .rt-pulse-actions {
   display: flex;
   gap: 12px;
