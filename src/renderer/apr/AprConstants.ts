@@ -145,25 +145,31 @@ export const TEASER_PRESETS: Record<Exclude<TeaserPreset, 'custom'>, TeaserThres
 /**
  * Reveal level labels with icons (4 stages)
  * Order: bar → scenes → colors → full
+ * 
+ * STANDARDIZED LABELS (used everywhere in APR UI):
+ * - Ring: Progress ring only
+ * - Scenes: Scene structure visible
+ * - Color: Publish stage colors visible
+ * - Complete: All subplot rings visible
  */
 export const TEASER_LEVEL_INFO: Record<TeaserRevealLevel, { label: string; icon: string; description: string }> = {
     bar: {
-        label: 'Teaser',
+        label: 'Ring',
         icon: 'circle',        // Minimal: just a ring
         description: 'Progress ring only — maximum mystery',
     },
     scenes: {
         label: 'Scenes',
         icon: 'sprout',        // First sign of life
-        description: 'Scene structure in grayscale with patterns, completed = gray',
+        description: 'Scene structure in grayscale with patterns',
     },
     colors: {
-        label: 'Colors',
+        label: 'Color',
         icon: 'tree-pine',     // Growing
-        description: 'Full publish stage colors revealed',
+        description: 'Publish stage colors revealed',
     },
     full: {
-        label: 'Full',
+        label: 'Complete',
         icon: 'shell',         // Complete
         description: 'All subplot rings visible — complete picture',
     },

@@ -376,12 +376,9 @@ export class AuthorProgressModal extends Modal {
             };
         }
 
-        // === EXPORT SIZE ROW ===
-        const exportRow = container.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
-        exportRow.createSpan({ text: 'Export', cls: ERT_CLASSES.LABEL });
-
-        const activeSize = this.getActiveAprSize();
-        const activeView = activeSize === 'thumb' ? 'thumb' : 'full';
+        // === EXPORT SIZE ROW (two-column: label left, buttons right) ===
+        const exportRow = container.createDiv({ cls: 'ert-apr-target-row' });
+        exportRow.createSpan({ text: 'Export Size', cls: ERT_CLASSES.LABEL });
 
         const sizeOptions: Array<{ size: 'thumb' | 'small' | 'medium' | 'large'; dimension: string }> = [
             { size: 'thumb', dimension: '100px' },
@@ -411,23 +408,6 @@ export class AuthorProgressModal extends Modal {
                 this.renderActions();
             };
         });
-
-        // === VIEW/STAGE INDICATOR ROW ===
-        const stageRow = container.createDiv({ cls: `${ERT_CLASSES.ROW} ${ERT_CLASSES.ROW_COMPACT}` });
-        stageRow.createSpan({ text: '', cls: ERT_CLASSES.LABEL }); // Empty label for alignment
-
-        const stageInfo = this.resolveTeaserStatus(this.getSelectedCampaign());
-        const stageFallback = TEASER_LEVEL_INFO.full;
-        const stageDisplay = stageInfo.info ?? stageFallback;
-        const viewLabel = activeView === 'thumb' ? 'Thumb' : 'Full';
-
-        const stageIndicator = stageRow.createDiv({ cls: `${ERT_CLASSES.INLINE} ert-apr-view-stage` });
-        const viewPill = stageIndicator.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}` });
-        viewPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: viewLabel });
-        const stagePill = stageIndicator.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}` });
-        const stageIcon = stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
-        setIcon(stageIcon, stageDisplay.icon);
-        stagePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: stageDisplay.label });
 
         // === OUTPUT FILE ===
         const pathRow = container.createDiv({

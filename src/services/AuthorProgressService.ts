@@ -22,7 +22,7 @@ export class AuthorProgressService {
         if (!settings || !settings.enabled) return false;
         if (settings.updateFrequency !== 'manual') return false; // Auto modes don't need refresh reminders
 
-        if (!settings.lastPublishedDate) return true; // Never published
+        if (!settings.lastPublishedDate) return false; // Never published - nothing to refresh yet
 
         const last = new Date(settings.lastPublishedDate).getTime();
         const now = Date.now();
@@ -46,7 +46,7 @@ export class AuthorProgressService {
     public campaignNeedsRefresh(campaign: AprCampaign): boolean {
         if (!campaign.isActive) return false;
         if (campaign.updateFrequency && campaign.updateFrequency !== 'manual') return false;
-        if (!campaign.lastPublishedDate) return true; // Never published
+        if (!campaign.lastPublishedDate) return false; // Never published - nothing to refresh yet
 
         const last = new Date(campaign.lastPublishedDate).getTime();
         const now = Date.now();

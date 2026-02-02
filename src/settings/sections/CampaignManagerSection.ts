@@ -7,7 +7,7 @@ import { App, Setting, setIcon, setTooltip, ButtonComponent, Notice, Modal } fro
 import type RadialTimelinePlugin from '../../main';
 import type { AprCampaign, AuthorProgressSettings, TeaserPreset, TeaserRevealLevel } from '../../types/settings';
 import { isProfessionalActive } from './ProfessionalSection';
-import { getTeaserThresholds, teaserLevelToRevealOptions } from '../../renderer/apr/AprConstants';
+import { getTeaserThresholds, teaserLevelToRevealOptions, TEASER_LEVEL_INFO } from '../../renderer/apr/AprConstants';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { getAllScenes } from '../../utils/manuscript';
 import { buildCampaignEmbedPath, type AprSize } from '../../utils/aprPaths';
@@ -199,7 +199,7 @@ export function createDefaultCampaign(
 export function campaignNeedsRefresh(campaign: AprCampaign): boolean {
     if (!campaign.isActive) return false;
     if (campaign.updateFrequency && campaign.updateFrequency !== 'manual') return false;
-    if (!campaign.lastPublishedDate) return true; // Never published
+    if (!campaign.lastPublishedDate) return false; // Never published - nothing to refresh yet
 
     const last = new Date(campaign.lastPublishedDate).getTime();
     const now = Date.now();
@@ -1254,8 +1254,8 @@ async function renderTeaserStagesPreviews(
     // Get disabled stages
     const disabledStages = campaign.teaserReveal?.disabledStages ?? {};
 
-    // 4 stages with their properties
-    // Note: Teaser uses 5% for preview (shows ring) even though threshold is 0%
+    // 4 stages with their properties (labels/icons from TEASER_LEVEL_INFO)
+    // Note: Ring stage uses 5% for preview (shows ring) even though threshold is 0%
     const stages: {
         level: TeaserRevealLevel;
         label: string;
@@ -1265,10 +1265,10 @@ async function renderTeaserStagesPreviews(
         isDisabled: boolean;
         disableKey?: 'scenes' | 'colors';
     }[] = [
-            { level: 'bar', label: 'Teaser', progress: 5, icon: 'circle', canDisable: false, isDisabled: false },
-            { level: 'scenes', label: 'Scenes', progress: thresholds.scenes, icon: 'sprout', canDisable: true, isDisabled: !!disabledStages.scenes, disableKey: 'scenes' },
-            { level: 'colors', label: 'Colors', progress: thresholds.colors, icon: 'tree-pine', canDisable: true, isDisabled: !!disabledStages.colors, disableKey: 'colors' },
-            { level: 'full', label: 'Full', progress: thresholds.full, icon: 'shell', canDisable: false, isDisabled: false },
+            { level: 'bar', label: TEASER_LEVEL_INFO.bar.label, progress: 5, icon: TEASER_LEVEL_INFO.bar.icon, canDisable: false, isDisabled: false },
+            { level: 'scenes', label: TEASER_LEVEL_INFO.scenes.label, progress: thresholds.scenes, icon: TEASER_LEVEL_INFO.scenes.icon, canDisable: true, isDisabled: !!disabledStages.scenes, disableKey: 'scenes' },
+            { level: 'colors', label: TEASER_LEVEL_INFO.colors.label, progress: thresholds.colors, icon: TEASER_LEVEL_INFO.colors.icon, canDisable: true, isDisabled: !!disabledStages.colors, disableKey: 'colors' },
+            { level: 'full', label: TEASER_LEVEL_INFO.full.label, progress: thresholds.full, icon: TEASER_LEVEL_INFO.full.icon, canDisable: false, isDisabled: false },
         ];
 
     stages.forEach(stage => {
