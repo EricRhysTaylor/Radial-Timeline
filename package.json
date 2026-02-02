@@ -16,7 +16,7 @@
 		"check-quality": "node code-quality-check.mjs src/main.ts src/styles/settings.css",
 		"check-obsidian": "node scripts/check-obsidian-version.mjs",
 		"backup": "node scripts/check-model-updates.mjs && node check-css-duplicates.mjs && npm run build-only && BACKUP_NOTE=\"${npm_config_note:-$npm_config_message}\" node backup.mjs",
-		"standards": "node scripts/check-obsidian-version.mjs && node scripts/compliance-check.mjs && node code-quality-check.mjs src/main.ts src/styles/settings.css && node check-css-duplicates.mjs && node scripts/check-model-updates.mjs",
+		"standards": "node scripts/check-obsidian-version.mjs && node scripts/compliance-check.mjs && node code-quality-check.mjs --all && node check-css-duplicates.mjs && node scripts/check-model-updates.mjs",
 		"scripts": "node show-scripts.mjs",
 		"sync-yaml": "node scripts/sync-yaml-to-wiki.mjs",
 		"sync-release-notes": "node sync-release-notes.mjs",
@@ -25,7 +25,8 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
-		"css-drift": "node scripts/css-drift-check.mjs"
+		"css-drift": "node scripts/css-drift-check.mjs",
+		"verify": "node scripts/verify.mjs"
 	},
 	"keywords": [
 		"obsidian",

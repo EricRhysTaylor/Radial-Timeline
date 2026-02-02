@@ -408,8 +408,8 @@ async function performBuildAndUpload(version, isDraft = false) {
         console.warn('⚠️  Could not commit synced notes or move tag. Proceeding anyway.');
     }
 
-    // 3. Build
-    runCommand("npm run build", "Building plugin (with new notes)");
+    // 3. Verify (build + checks)
+    runCommand("npm run verify", "Verifying release (build + checks)");
     injectEmbeddedFontsIntoReleaseCss();
 
     // 4. Upload Assets

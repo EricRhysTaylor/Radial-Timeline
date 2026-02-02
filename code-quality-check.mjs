@@ -235,10 +235,49 @@ function processFile(filePath) {
 }
 
 // Process files passed as arguments
+function collectAllFiles() {
+  const root = process.cwd();
+  const srcDir = path.join(root, 'src');
+  const results = [];
+
+  const walk = (dir) => {
+    if (!fs.existsSync(dir)) return;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+        continue;
+      }
+      if (entry.name.endsWith('.ts')) {
+        results.push(fullPath);
+      }
+    }
+  };
+
+  walk(srcDir);
+
+  const keyCssFiles = [
+    path.join(root, 'src', 'styles', 'settings.css'),
+    path.join(root, 'src', 'styles', 'rt-ui.css'),
+    path.join(root, 'src', 'styles', 'modal.css'),
+    path.join(root, 'src', 'styles', 'inquiry.css'),
+  ];
+
+  keyCssFiles.forEach((filePath) => {
+    if (fs.existsSync(filePath)) {
+      results.push(filePath);
+    }
+  });
+
+  return Array.from(new Set(results));
+}
+
 function main() {
   const args = process.argv.slice(2);
   const quiet = args.includes('--quiet');
-  const files = args.filter(arg => !arg.startsWith('--'));
+  const useAll = args.includes('--all');
+  const files = useAll ? collectAllFiles() : args.filter(arg => !arg.startsWith('--'));
   
   if (files.length === 0) {
     console.error('No files specified');
