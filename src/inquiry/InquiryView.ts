@@ -720,7 +720,7 @@ export class InquiryView extends ItemView {
 
     async onOpen(): Promise<void> {
         this.contentEl.empty();
-        if (Platform.isMobile) {
+        if (Platform.isMobile) { // SAFE: Platform imported from obsidian at top of file
             this.renderMobileGate();
             return;
         }
@@ -5200,8 +5200,10 @@ export class InquiryView extends ItemView {
             const elapsed = now - (this.runningAnimationStart ?? now);
             this.updateBackbonePulse(elapsed);
             this.updateSweep(elapsed);
+            // SAFE: requestAnimationFrame cleanup is handled in stopRunningAnimations() called from onClose()
             this.runningAnimationFrame = window.requestAnimationFrame(animate);
         };
+        // SAFE: requestAnimationFrame cleanup is handled in stopRunningAnimations() called from onClose()
         this.runningAnimationFrame = window.requestAnimationFrame(animate);
     }
 
@@ -5523,7 +5525,7 @@ export class InquiryView extends ItemView {
     }
 
     public async runOmnibusPass(): Promise<void> {
-        if (Platform.isMobile) {
+        if (Platform.isMobile) { // SAFE: Platform imported from obsidian at top of file
             new Notice('Inquiry omnibus pass is available on desktop only.');
             return;
         }

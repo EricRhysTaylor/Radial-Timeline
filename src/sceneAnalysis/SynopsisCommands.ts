@@ -209,7 +209,7 @@ async function runSynopsisBatch(
         }
 
         // Small delay to let UI render
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise(r => window.setTimeout(r, 100));
     }
 
     // Processing finished. Now trigger the "Apply" phase UI in the modal.

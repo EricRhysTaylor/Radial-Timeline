@@ -304,7 +304,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
 
                     // Small delay to let the editor expand, then scroll to the migration row or advanced card
-                    setTimeout(() => {
+                    window.setTimeout(() => {
                         // Try to scroll to the specific migration row first
                         const migrationRow = document.querySelector('.ert-yaml-row--needs-migration');
                         if (migrationRow) {
