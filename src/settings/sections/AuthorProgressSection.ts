@@ -868,6 +868,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         const colorPicker = colorSwatch(rowSecondary, {
             value: opts.color.value,
             ariaLabel: `${opts.label} color`,
+            plugin,
             onChange: async (val) => {
                 if (isSyncing) return;
                 const next = val || opts.color.fallback;
@@ -1138,6 +1139,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const bgSwatch = colorSwatch(bgSetting.controlEl, {
         value: currentBg,
         ariaLabel: 'Background color',
+        plugin,
         onChange: async (val) => {
             if (!plugin.settings.authorProgress) return;
             const next = val || '#0d0d0f';
@@ -1180,6 +1182,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const spokeColorPicker = colorSwatch(spokeControlRow, {
         value: isCustomMode ? currentSpokeColor : fallbackColor,
         ariaLabel: 'Spoke color',
+        plugin,
         onChange: async (val) => {
             if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
                 if (!plugin.settings.authorProgress) return;

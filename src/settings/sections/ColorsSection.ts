@@ -1,9 +1,9 @@
-import { Setting as Settings, ColorComponent, TextComponent } from 'obsidian';
+import { Setting as Settings, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { PluginRendererFacade } from '../../utils/sceneHelpers';
 import { computeCacheableValues } from '../../renderer/utils/Precompute';
 import { DEFAULT_SETTINGS } from '../defaults';
-import { ERT_CLASSES } from '../../ui/classes';
+import { colorSwatch, type ColorSwatchHandle } from '../../ui/ui';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 
 const SUBPLOT_LABEL_MAX_LENGTH = 16;
@@ -63,23 +63,23 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
         label.setText(stage);
 
         let textInputRef: TextComponent | undefined;
-        let colorPickerRef: ColorComponent | undefined;
         const control = cell.createDiv({ cls: 'ert-color-grid-controls' });
-        colorPickerRef = new ColorComponent(control)
-            .setValue(color)
-            .onChange(async (value) => {
+
+        const swatchHandle: ColorSwatchHandle = colorSwatch(control, {
+            value: color,
+            ariaLabel: `${stage} stage color`,
+            swatchClass: `ert-stage-${stage}`,
+            plugin,
+            onChange: async (value) => {
                 if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value)) {
                     (plugin.settings.publishStageColors as Record<string, string>)[stage] = value;
                     await plugin.saveSettings();
                     plugin.setCSSColorVariables();
                     textInputRef?.setValue(value);
                 }
-            });
-        const colorInput = control.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
-        if (colorInput) colorInput.classList.add('ert-hidden-color-input');
-        const swatchEl = control.createEl('button', { cls: `${ERT_CLASSES.SWATCH} ert-stage-${stage}` });
-        swatchEl.type = 'button';
-        plugin.registerDomEvent(swatchEl, 'click', () => { colorInput?.click(); });
+            }
+        });
+
         new Settings(control)
             .addText(textInput => {
                 textInputRef = textInput;
@@ -90,7 +90,7 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
                             (plugin.settings.publishStageColors as Record<string, string>)[stage] = value;
                             await plugin.saveSettings();
                             plugin.setCSSColorVariables();
-                            colorPickerRef?.setValue(value);
+                            swatchHandle.setValue(value);
                         }
                     });
             })
@@ -103,7 +103,7 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
                         await plugin.saveSettings();
                         plugin.setCSSColorVariables();
                         textInputRef?.setValue(defaultColor);
-                        colorPickerRef?.setValue(defaultColor);
+                        swatchHandle.setValue(defaultColor);
                     });
             });
     });
@@ -131,10 +131,13 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
 
         const control = cell.createDiv({ cls: 'ert-color-grid-controls' });
         let inputRef: TextComponent | undefined;
-        let colorPickerRef: ColorComponent | undefined;
-        colorPickerRef = new ColorComponent(control)
-            .setValue(current)
-            .onChange(async (value) => {
+
+        const swatchHandle: ColorSwatchHandle = colorSwatch(control, {
+            value: current,
+            ariaLabel: `Subplot ring ${i + 1} color`,
+            swatchClass: `ert-subplot-${i}`,
+            plugin,
+            onChange: async (value) => {
                 if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value)) {
                     const next = [...(plugin.settings.subplotColors || DEFAULT_SETTINGS.subplotColors)];
                     next[i] = value;
@@ -143,12 +146,9 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
                     plugin.setCSSColorVariables();
                     inputRef?.setValue(value);
                 }
-            });
-        const colorInput2 = control.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
-        if (colorInput2) colorInput2.classList.add('ert-hidden-color-input');
-        const swatchEl2 = control.createEl('button', { cls: `${ERT_CLASSES.SWATCH} ert-subplot-${i}` });
-        swatchEl2.type = 'button';
-        plugin.registerDomEvent(swatchEl2, 'click', () => { colorInput2?.click(); });
+            }
+        });
+
         new Settings(control)
             .addText(text => {
                 inputRef = text;
@@ -161,7 +161,7 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
                             plugin.settings.subplotColors = next;
                             await plugin.saveSettings();
                             plugin.setCSSColorVariables();
-                            colorPickerRef?.setValue(value);
+                            swatchHandle.setValue(value);
                         }
                     });
             })
@@ -176,7 +176,7 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
                         await plugin.saveSettings();
                         plugin.setCSSColorVariables();
                         inputRef?.setValue(value);
-                        colorPickerRef?.setValue(value);
+                        swatchHandle.setValue(value);
                     });
             });
     }

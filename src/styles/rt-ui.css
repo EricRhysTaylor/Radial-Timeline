@@ -1641,6 +1641,10 @@
   outline-offset: 2px;
 }
 
+.ert-ui .ert-swatchContainer {
+  position: relative;
+}
+
 .ert-ui .ert-colorInput--hidden {
   position: absolute;
   width: 1px;

@@ -12,6 +12,7 @@ export const ERT_CLASSES = {
   ROW_RECOMMENDED: 'ert-row--recommended',
   ROW_INLINE_CONTROL: 'ert-row--inlineControl',
   SWATCH: 'ert-swatch',
+  SWATCH_CONTAINER: 'ert-swatchContainer',
   COLOR_INPUT_HIDDEN: 'ert-colorInput--hidden',
   ELEMENT_BLOCK: 'ert-elementBlock',
   ELEMENT_BLOCK_LEFT: 'ert-elementBlock__left',

@@ -1,8 +1,9 @@
-import { App, Setting as Settings, ColorComponent, TextComponent } from 'obsidian';
+import { App, Setting as Settings, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { parseDateRangeInput } from '../../utils/date';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { ERT_CLASSES } from '../../ui/classes';
+import { colorSwatch, type ColorSwatchHandle } from '../../ui/ui';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 
 type MicroBackdropConfig = {
@@ -131,27 +132,19 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
 
         const colorControls = titleColorSetting.controlEl.createDiv({ cls: 'ert-color-grid-controls' });
         let colorTextInput: TextComponent | undefined;
-        let colorPickerRef: ColorComponent | undefined;
-        let swatchEl: HTMLButtonElement | null = null;
         const colorValue = config.color || '#ffffff';
 
-        colorPickerRef = new ColorComponent(colorControls)
-            .setValue(colorValue)
-            .onChange(async (value) => {
+        const swatchHandle: ColorSwatchHandle = colorSwatch(colorControls, {
+            value: colorValue,
+            ariaLabel: `${config.title || 'Micro backdrop'} color`,
+            plugin,
+            onChange: async (value) => {
                 if (!isValidHexColor(value)) return;
                 const normalized = value.startsWith('#') ? value : `#${value}`;
                 await updateMicroBackdrop(index, { color: normalized });
                 colorTextInput?.setValue(normalized);
-                if (swatchEl) swatchEl.style.setProperty('--ert-swatch-color', normalized);
-            });
-
-        const colorInput = colorControls.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
-        if (colorInput) colorInput.classList.add('ert-hidden-color-input');
-
-        swatchEl = colorControls.createEl('button', { cls: ERT_CLASSES.SWATCH });
-        swatchEl.type = 'button';
-        swatchEl.style.setProperty('--ert-swatch-color', colorValue);
-        plugin.registerDomEvent(swatchEl, 'click', () => { colorInput?.click(); });
+            }
+        });
 
         const hexInput = new TextComponent(colorControls);
         colorTextInput = hexInput;
@@ -161,8 +154,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
                 if (!isValidHexColor(value)) return;
                 const normalized = value.startsWith('#') ? value : `#${value}`;
                 await updateMicroBackdrop(index, { color: normalized });
-                colorPickerRef?.setValue(normalized);
-                if (swatchEl) swatchEl.style.setProperty('--ert-swatch-color', normalized);
+                swatchHandle.setValue(normalized);
             });
 
         const rangeSetting = new Settings(details)

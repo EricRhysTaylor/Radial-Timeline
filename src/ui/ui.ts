@@ -206,6 +206,9 @@ export function colorPicker(slot: HTMLElement, opts: ColorPickerOpts): ColorComp
 }
 
 export function colorSwatch(slot: HTMLElement, opts: ColorSwatchOpts = {}): ColorSwatchHandle {
+  // Add container class for position: relative (needed for the absolutely positioned hidden input)
+  slot.classList.add(ERT_CLASSES.SWATCH_CONTAINER);
+
   const colorComponent = new ColorComponent(slot);
   if (opts.value !== undefined) colorComponent.setValue(opts.value);
 
@@ -215,7 +218,10 @@ export function colorSwatch(slot: HTMLElement, opts: ColorSwatchOpts = {}): Colo
     warnUnknownErtClasses([ERT_CLASSES.COLOR_INPUT_HIDDEN], inputEl);
   }
 
-  const swatchEl = slot.createEl('button', { cls: ERT_CLASSES.SWATCH });
+  const swatchCls = opts.swatchClass
+    ? `${ERT_CLASSES.SWATCH} ${opts.swatchClass}`
+    : ERT_CLASSES.SWATCH;
+  const swatchEl = slot.createEl('button', { cls: swatchCls });
   warnUnknownErtClasses([ERT_CLASSES.SWATCH], swatchEl);
   swatchEl.type = 'button';
   if (opts.ariaLabel) swatchEl.setAttribute('aria-label', opts.ariaLabel);
@@ -227,9 +233,14 @@ export function colorSwatch(slot: HTMLElement, opts: ColorSwatchOpts = {}): Colo
   };
 
   applyColor(opts.value);
-  swatchEl.addEventListener('click', () => {
-    inputEl?.click();
-  });
+
+  // Use plugin.registerDomEvent if available for proper lifecycle management
+  const clickHandler = () => { inputEl?.click(); };
+  if (opts.plugin) {
+    opts.plugin.registerDomEvent(swatchEl, 'click', clickHandler);
+  } else {
+    swatchEl.addEventListener('click', clickHandler);
+  }
 
   colorComponent.onChange((value) => {
     if (isSetting) return;
