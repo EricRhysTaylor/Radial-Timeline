@@ -1427,23 +1427,19 @@ export class InquiryView extends ItemView {
                 statusEl.setAttribute('aria-label', `Session status: ${status}`);
 
                 const pendingEditsApplied = !!session.pendingEditsApplied;
-                const actionNotesEnabled = this.plugin.settings.inquiryActionNotesEnabled ?? false;
                 const autoPopulateEnabled = this.plugin.settings.inquiryActionNotesAutoPopulate ?? false;
-                const usesAutoPopulate = actionNotesEnabled && autoPopulateEnabled;
                 const actionGroup = actionRow.createDiv({ cls: 'ert-inquiry-briefing-actions' });
                 const fieldLabel = this.resolveInquiryActionNotesFieldLabel();
                 const pendingLabel = pendingEditsApplied
-                    ? (usesAutoPopulate ? `${fieldLabel} updated` : `${fieldLabel} confirmed`)
-                    : (actionNotesEnabled
-                        ? (usesAutoPopulate ? `Update ${fieldLabel}` : `Confirm ${fieldLabel} written`)
-                        : `Enable ${fieldLabel} writeback`);
+                    ? `${fieldLabel} updated`
+                    : (autoPopulateEnabled ? `Update ${fieldLabel}` : `Write to ${fieldLabel}`);
                 const updateBtn = actionGroup.createEl('button', {
                     cls: 'ert-inquiry-briefing-update',
                     attr: {
                         'aria-label': pendingLabel
                     }
                 });
-                setIcon(updateBtn, pendingEditsApplied ? 'check' : (usesAutoPopulate ? 'plus' : 'x'));
+                setIcon(updateBtn, pendingEditsApplied ? 'check' : 'plus');
                 updateBtn.disabled = blocked;
                 this.registerDomEvent(updateBtn, 'click', (event: MouseEvent) => {
                     event.stopPropagation();
@@ -1573,29 +1569,7 @@ export class InquiryView extends ItemView {
             this.notifyInteraction(`${fieldLabel} already updated for this session.`);
             return;
         }
-        const actionNotesEnabled = this.plugin.settings.inquiryActionNotesEnabled ?? false;
-        if (!actionNotesEnabled) {
-            const fieldLabel = this.resolveInquiryActionNotesFieldLabel();
-            this.notifyInteraction(`Enable "Write Inquiry notes to ${fieldLabel}" in Inquiry settings.`);
-            return;
-        }
-        const autoPopulateEnabled = this.plugin.settings.inquiryActionNotesAutoPopulate ?? false;
-        if (!autoPopulateEnabled) {
-            this.confirmPendingEditsApplied(session);
-            return;
-        }
         await this.writeInquiryPendingEdits(session, session.result, { notify: true });
-    }
-
-    private confirmPendingEditsApplied(session: InquirySession): void {
-        if (session.pendingEditsApplied) return;
-        session.pendingEditsApplied = true;
-        if (session.key) {
-            this.sessionStore.updateSession(session.key, { pendingEditsApplied: true });
-        }
-        this.refreshBriefingPanel();
-        const fieldLabel = this.resolveInquiryActionNotesFieldLabel();
-        this.notifyInteraction(`${fieldLabel} confirmed for this session.`);
     }
 
     private handleBriefingClearClick(): void {
@@ -6251,9 +6225,7 @@ export class InquiryView extends ItemView {
     }
 
     private shouldAutoPopulatePendingEdits(): boolean {
-        const actionNotesEnabled = this.plugin.settings.inquiryActionNotesEnabled ?? false;
-        const autoPopulateEnabled = this.plugin.settings.inquiryActionNotesAutoPopulate ?? false;
-        return actionNotesEnabled && autoPopulateEnabled;
+        return this.plugin.settings.inquiryActionNotesAutoPopulate ?? false;
     }
 
     private async writeInquiryPendingEdits(
@@ -6262,22 +6234,6 @@ export class InquiryView extends ItemView {
         options?: { notify?: boolean }
     ): Promise<boolean> {
         if (session.pendingEditsApplied) return true;
-        const enabled = this.plugin.settings.inquiryActionNotesEnabled ?? false;
-        if (!enabled) {
-            if (options?.notify) {
-                const fieldLabel = this.resolveInquiryActionNotesFieldLabel();
-                this.notifyInteraction(`Enable "Write Inquiry notes to ${fieldLabel}" in Inquiry settings.`);
-            }
-            return false;
-        }
-        const autoPopulateEnabled = this.plugin.settings.inquiryActionNotesAutoPopulate ?? false;
-        if (!autoPopulateEnabled) {
-            if (options?.notify) {
-                const fieldLabel = this.resolveInquiryActionNotesFieldLabel();
-                this.notifyInteraction(`Enable "Auto-populate ${fieldLabel}" in Inquiry settings.`);
-            }
-            return false;
-        }
         if (session.status === 'simulated' || result.aiReason === 'simulated') {
             if (options?.notify) {
                 const fieldLabel = this.resolveInquiryActionNotesFieldLabel();

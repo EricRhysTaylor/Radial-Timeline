@@ -1344,31 +1344,31 @@ export function renderInquirySection(params: SectionParams): void {
         });
     });
 
+    new Settings(configBody)
+        .setName('Auto-save Inquiry briefs')
+        .setDesc('Save a brief automatically after each successful Inquiry run.')
+        .addToggle(toggle => {
+            toggle.setValue(plugin.settings.inquiryAutoSave ?? true);
+            toggle.onChange(async (value) => {
+                plugin.settings.inquiryAutoSave = value;
+                await plugin.saveSettings();
+            });
+        });
+
     const resolveActionNotesFieldLabel = () => {
         const fallback = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
         return (plugin.settings.inquiryActionNotesTargetField ?? fallback).trim() || fallback;
     };
 
-    const actionNotesSetting = new Settings(configBody)
-        .setName(`Write Inquiry notes to ${resolveActionNotesFieldLabel()}`)
-        .setDesc('Append Inquiry action notes to the target yaml field for hit scenes and book outlines. For manual session writes, use the Session Status panel.')
-        .addToggle(toggle => {
-            toggle.setValue(plugin.settings.inquiryActionNotesEnabled ?? false);
-            toggle.onChange(async (value) => {
-                plugin.settings.inquiryActionNotesEnabled = value;
-                await plugin.saveSettings();
-            });
-        });
-
     const actionNotesFieldSetting = new Settings(configBody)
         .setName('Action notes target YAML field')
-        .setDesc('Frontmatter field to receive Inquiry action notes.');
+        .setDesc('Frontmatter field to receive Inquiry action notes. Default is "Pending Edits". Notes are appended after any existing content with a link to the Inquiry brief.');
     const defaultActionNotesField = DEFAULT_SETTINGS.inquiryActionNotesTargetField || 'Pending Edits';
     let actionNotesFieldInput: TextComponent | null = null;
 
     const autoPopulateSetting = new Settings(configBody)
         .setName(`Auto-populate ${resolveActionNotesFieldLabel()}`)
-        .setDesc('Automatically write action notes to the target yaml field after each Inquiry run.')
+        .setDesc('Automatically write action notes to the target yaml field after each Inquiry run. When off, use the Recent Inquiries popover to write manually.')
         .addToggle(toggle => {
             toggle.setValue(plugin.settings.inquiryActionNotesAutoPopulate ?? false);
             toggle.onChange(async (value) => {
@@ -1379,7 +1379,6 @@ export function renderInquirySection(params: SectionParams): void {
 
     const refreshActionNotesLabels = () => {
         const fieldLabel = resolveActionNotesFieldLabel();
-        actionNotesSetting.setName(`Write Inquiry notes to ${fieldLabel}`);
         autoPopulateSetting.setName(`Auto-populate ${fieldLabel}`);
     };
 
@@ -1408,28 +1407,6 @@ export function renderInquirySection(params: SectionParams): void {
                 refreshActionNotesLabels();
             });
     });
-
-    new Settings(configBody)
-        .setName('Embed JSON payload in Briefings')
-        .setDesc('Includes the validated Inquiry JSON payload in the Briefing file.')
-        .addToggle(toggle => {
-            toggle.setValue(plugin.settings.inquiryEmbedJson ?? true);
-            toggle.onChange(async (value) => {
-                plugin.settings.inquiryEmbedJson = value;
-                await plugin.saveSettings();
-            });
-        });
-
-    new Settings(configBody)
-        .setName('Auto-save Inquiry briefs')
-        .setDesc('Save a brief automatically after each successful Inquiry run.')
-        .addToggle(toggle => {
-            toggle.setValue(plugin.settings.inquiryAutoSave ?? true);
-            toggle.onChange(async (value) => {
-                plugin.settings.inquiryAutoSave = value;
-                await plugin.saveSettings();
-            });
-        });
 
     const cacheDesc = () => `Cache up to ${plugin.settings.inquiryCacheMaxSessions ?? 30} Inquiry sessions. Set the cap here.`;
 

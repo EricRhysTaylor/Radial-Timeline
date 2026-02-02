@@ -300,7 +300,6 @@ export interface RadialTimelineSettings {
     manuscriptOutputFolder?: string;
     outlineOutputFolder?: string;
     inquiryArtifactFolder?: string;
-    inquiryEmbedJson?: boolean;
     inquiryAutoSave?: boolean;
     inquiryCacheEnabled?: boolean;
     inquiryCacheMaxSessions?: number;
@@ -311,7 +310,6 @@ export interface RadialTimelineSettings {
     inquiryLastMode?: 'flow' | 'depth';
     inquiryCorpusThresholds?: InquiryCorpusThresholds;
     inquiryCorpusHighlightLowSubstanceComplete?: boolean;
-    inquiryActionNotesEnabled?: boolean;
     inquiryActionNotesAutoPopulate?: boolean;
     inquiryActionNotesTargetField?: string;
     actCount?: number;

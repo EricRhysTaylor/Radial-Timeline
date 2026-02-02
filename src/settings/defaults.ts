@@ -16,7 +16,6 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     manuscriptOutputFolder: 'Radial Timeline/Export',
     outlineOutputFolder: 'Radial Timeline/Export',
     inquiryArtifactFolder: 'Radial Timeline/Inquiry/Briefing',
-    inquiryEmbedJson: true,
     inquiryAutoSave: true,
     inquiryCacheEnabled: true,
     inquiryCacheMaxSessions: 30,
@@ -40,7 +39,6 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         substantiveMin: 1000
     },
     inquiryCorpusHighlightLowSubstanceComplete: true,
-    inquiryActionNotesEnabled: false,
     inquiryActionNotesAutoPopulate: false,
     inquiryActionNotesTargetField: 'Pending Edits',
     dismissedAlerts: [],
