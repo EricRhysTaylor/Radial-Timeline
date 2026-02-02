@@ -1480,6 +1480,53 @@
   min-height: 24px;
 }
 
+/* Omnibus grids (APR-aligned layout) */
+.ert-ui.ert-scope--modal .ert-omnibus-summary-grid {
+  grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
+  column-gap: 12px;
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-question-grid {
+  grid-template-columns: max-content minmax(0, 1fr) max-content max-content max-content;
+  column-gap: 12px;
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-question-cell {
+  min-width: 0;
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-question {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-group {
+  grid-column: 1 / -1;
+  margin-top: var(--ert-gap-xs);
+  padding-top: var(--ert-gap-xs);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-pill {
+  cursor: pointer;
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-pill.is-active {
+  --ert-badgePill-bg: color-mix(in srgb, var(--ert-accent) 18%, var(--background-secondary));
+  --ert-badgePill-border: color-mix(in srgb, var(--ert-accent) 60%, var(--background-modifier-border));
+  --ert-badgePill-color: var(--text-normal);
+}
+
 .ert-ui.ert-scope--modal .ert-apr-actions.ert-skin--pro.ert-panel--glass {
   --ert-panel-bg: var(--ert-pro-surface-bg);
   --ert-panel-border: var(--ert-pro-border);
@@ -1525,6 +1572,50 @@
   background: transparent;
   border: none;
   box-shadow: none;
+}
+
+/* Target Row: two-column layout with dropdown right-aligned */
+.ert-ui.ert-scope--modal .ert-apr-target-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--ert-gap-md);
+  padding: var(--ert-gap-xs) 0;
+}
+
+.ert-ui.ert-scope--modal .ert-apr-target-row .ert-label {
+  flex-shrink: 0;
+}
+
+.ert-ui.ert-scope--modal .ert-apr-target-row select {
+  flex: 0 1 auto;
+  min-width: 180px;
+  max-width: 280px;
+}
+
+/* Actions Status Row (campaign mode): grid-style row matching Status section */
+.ert-ui.ert-scope--modal .ert-apr-actions-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ert-gap-sm) var(--ert-gap-md);
+  padding: var(--ert-gap-sm) 0;
+}
+
+.ert-ui.ert-scope--modal .ert-apr-actions-status .ert-apr-status-cell {
+  padding: 0;
+}
+
+.ert-ui.ert-scope--modal .ert-apr-actions-status .ert-apr-status-cell--book {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* View/Stage indicator row */
+.ert-ui.ert-scope--modal .ert-apr-view-stage {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
 }
 
 /* Refresh Alert */

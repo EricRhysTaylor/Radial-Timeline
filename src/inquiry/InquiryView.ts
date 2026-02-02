@@ -6,6 +6,7 @@ import {
     Notice,
     Platform,
     setIcon,
+    setTooltip,
     TAbstractFile,
     TFile,
     ToggleComponent,
@@ -243,6 +244,7 @@ type InquiryOmnibusModalOptions = {
     bookLabel: string;
     questions: InquiryQuestion[];
     providerSummary: string;
+    providerLabel: string;
     logsEnabled: boolean;
     runDisabledReason?: string | null;
 };
@@ -283,61 +285,113 @@ class InquiryOmnibusModal extends Modal {
 
         const panel = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-stack' });
 
-        const scopeSection = panel.createDiv({ cls: 'ert-stack' });
-        scopeSection.createDiv({ cls: 'ert-section-title', text: 'Scope' });
-        const scopeRow = scopeSection.createDiv({ cls: 'ert-inline' });
-        scopeRow.createSpan({ cls: 'ert-label', text: 'Run against' });
-        const scopeSelect = scopeRow.createEl('select', { cls: 'ert-input ert-input--md' });
-        scopeSelect.createEl('option', { text: `Book (${this.options.bookLabel})`, value: 'book' });
-        scopeSelect.createEl('option', { text: `Saga (${SIGMA_CHAR})`, value: 'saga' });
-        scopeSelect.value = this.selectedScope;
-        scopeSelect.addEventListener('change', () => {
-            this.selectedScope = scopeSelect.value as InquiryScope;
+        const summaryGrid = panel.createDiv({ cls: 'ert-apr-status-grid ert-omnibus-summary-grid' });
+        const summaryHeaderRow = summaryGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--header' });
+        ['Scope', 'Questions', 'Provider', 'Index'].forEach(label => {
+            summaryHeaderRow.createDiv({
+                text: label,
+                cls: 'ert-apr-status-cell ert-apr-status-cell--header'
+            });
         });
 
-        const questionCounts = this.countQuestionsByZone(this.options.questions);
-        const questionsSection = panel.createDiv({ cls: 'ert-stack' });
-        questionsSection.createDiv({ cls: 'ert-section-title', text: 'Questions' });
-        const countsGrid = questionsSection.createDiv({ cls: 'ert-gridForm ert-gridForm--2' });
-        countsGrid.createDiv({ text: `Setup: ${questionCounts.setup}` });
-        countsGrid.createDiv({ text: `Pressure: ${questionCounts.pressure}` });
-        countsGrid.createDiv({ text: `Payoff: ${questionCounts.payoff}` });
-        countsGrid.createDiv({ text: `Total: ${this.options.questions.length}` });
+        const summaryRow = summaryGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--data' });
+        const scopeCell = summaryRow.createDiv({ cls: 'ert-apr-status-cell' });
+        const scopePillRow = scopeCell.createDiv({ cls: 'ert-inline' });
+        const bookPill = scopePillRow.createEl('button', {
+            cls: 'ert-badgePill ert-badgePill--sm ert-omnibus-pill',
+            text: `Book (${this.options.bookLabel})`,
+            type: 'button'
+        });
+        const sagaPill = scopePillRow.createEl('button', {
+            cls: 'ert-badgePill ert-badgePill--sm ert-omnibus-pill',
+            text: `Saga (${SIGMA_CHAR})`,
+            type: 'button'
+        });
 
-        if (this.options.questions.length > 0) {
-            const details = questionsSection.createEl('details');
-            details.createEl('summary', { text: 'View list' });
-            const list = details.createEl('ul', { cls: 'ert-stack' });
-            this.options.questions.forEach(question => {
-                const zoneLabel = question.zone === 'setup' ? 'Setup' : question.zone === 'pressure' ? 'Pressure' : 'Payoff';
-                list.createEl('li', { text: `${zoneLabel}: ${question.question}` });
-            });
-        }
+        const totalCell = summaryRow.createDiv({ cls: 'ert-apr-status-cell' });
+        totalCell.createSpan({
+            cls: 'ert-badgePill ert-badgePill--sm',
+            text: `${this.options.questions.length} questions`
+        });
 
-        const providerSection = panel.createDiv({ cls: 'ert-stack' });
-        providerSection.createDiv({ cls: 'ert-section-title', text: 'Provider strategy' });
-        providerSection.createDiv({ cls: 'ert-field-note', text: this.options.providerSummary });
+        const providerCell = summaryRow.createDiv({ cls: 'ert-apr-status-cell' });
+        const providerPill = providerCell.createSpan({
+            cls: 'ert-badgePill ert-badgePill--sm',
+            text: this.options.providerLabel
+        });
+        setTooltip(providerPill, this.options.providerSummary);
 
-        const outputsSection = panel.createDiv({ cls: 'ert-stack' });
-        outputsSection.createDiv({ cls: 'ert-section-title', text: 'Outputs' });
-
-        const indexRow = outputsSection.createDiv({ cls: 'ert-inline' });
+        const indexCell = summaryRow.createDiv({ cls: 'ert-apr-status-cell' });
+        const indexRow = indexCell.createDiv({ cls: 'ert-inline' });
         const indexToggle = new ToggleComponent(indexRow);
         indexToggle.setValue(this.createIndex);
         indexToggle.onChange(value => {
             this.createIndex = value;
         });
-        indexRow.createSpan({ text: 'Create omnibus index note' });
+        indexRow.createSpan({ text: 'Index note' });
 
-        const briefRow = outputsSection.createDiv({ cls: 'ert-inline' });
-        const briefToggle = new ToggleComponent(briefRow);
-        briefToggle.setValue(true);
-        briefToggle.setDisabled(true);
-        briefRow.createSpan({ text: 'Save brief + log per question (always on)' });
+        panel.createDiv({ cls: 'ert-divider' });
 
-        const sideEffectsSection = panel.createDiv({ cls: 'ert-stack' });
-        sideEffectsSection.createDiv({ cls: 'ert-section-title', text: 'Side effects' });
-        sideEffectsSection.createDiv({ cls: 'ert-field-note', text: 'No automatic Pending Edits writeback during Omnibus.' });
+        const questionGrid = panel.createDiv({ cls: 'ert-apr-status-grid ert-omnibus-question-grid' });
+        const questionHeaderRow = questionGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--header' });
+        ['Zone', 'Question', 'Lens', 'Scope', 'Status'].forEach(label => {
+            questionHeaderRow.createDiv({
+                text: label,
+                cls: 'ert-apr-status-cell ert-apr-status-cell--header'
+            });
+        });
+
+        const scopePills: HTMLSpanElement[] = [];
+        const getScopeLabel = (scope: InquiryScope): string =>
+            scope === 'saga' ? `Saga (${SIGMA_CHAR})` : `Book (${this.options.bookLabel})`;
+
+        const updateScopeSelection = (scope: InquiryScope): void => {
+            this.selectedScope = scope;
+            const scopeLabel = getScopeLabel(scope);
+            scopePills.forEach(pill => pill.setText(scopeLabel));
+            bookPill.classList.toggle('is-active', scope === 'book');
+            sagaPill.classList.toggle('is-active', scope === 'saga');
+            bookPill.setAttribute('aria-pressed', scope === 'book' ? 'true' : 'false');
+            sagaPill.setAttribute('aria-pressed', scope === 'saga' ? 'true' : 'false');
+        };
+
+        bookPill.addEventListener('click', () => updateScopeSelection('book'));
+        sagaPill.addEventListener('click', () => updateScopeSelection('saga'));
+        updateScopeSelection(this.selectedScope);
+
+        const lensLabel = 'Flow + Depth';
+        const zoneOrder: InquiryZone[] = ['setup', 'pressure', 'payoff'];
+        zoneOrder.forEach(zone => {
+            const zoneQuestions = this.options.questions.filter(question => question.zone === zone);
+            if (!zoneQuestions.length) return;
+            const zoneLabel = zone === 'setup' ? 'Setup' : zone === 'pressure' ? 'Pressure' : 'Payoff';
+            const groupRow = questionGrid.createDiv({ cls: 'ert-apr-status-row' });
+            groupRow.createDiv({ cls: 'ert-apr-status-cell ert-omnibus-group', text: zoneLabel });
+
+            zoneQuestions.forEach(question => {
+                const dataRow = questionGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--data' });
+
+                const zoneCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
+                zoneCell.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: zoneLabel });
+
+                const questionCell = dataRow.createDiv({ cls: 'ert-apr-status-cell ert-omnibus-question-cell' });
+                const questionText = questionCell.createSpan({ cls: 'ert-omnibus-question', text: question.question });
+                setTooltip(questionText, question.question);
+
+                const lensCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
+                lensCell.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: lensLabel });
+
+                const scopeCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
+                const scopePill = scopeCell.createSpan({
+                    cls: 'ert-badgePill ert-badgePill--sm',
+                    text: getScopeLabel(this.selectedScope)
+                });
+                scopePills.push(scopePill);
+
+                const statusCell = dataRow.createDiv({ cls: 'ert-apr-status-cell' });
+                statusCell.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: 'Brief + Log' });
+            });
+        });
 
         if (this.runDisabledReason) {
             const reason = contentEl.createDiv({ cls: 'ert-field-note' });
@@ -380,17 +434,6 @@ class InquiryOmnibusModal extends Modal {
         if (this.didResolve) return;
         this.didResolve = true;
         this.onResolve(result);
-    }
-
-    private countQuestionsByZone(questions: InquiryQuestion[]): Record<InquiryZone, number> {
-        return questions.reduce<Record<InquiryZone, number>>((acc, question) => {
-            acc[question.zone] += 1;
-            return acc;
-        }, {
-            setup: 0,
-            pressure: 0,
-            payoff: 0
-        });
     }
 }
 
@@ -480,6 +523,7 @@ type OmnibusProviderChoice = {
 type OmnibusProviderPlan = {
     choice: OmnibusProviderChoice | null;
     summary: string;
+    label: string;
     disabledReason?: string;
 };
 type EngineChoice = {
@@ -1044,7 +1088,7 @@ export class InquiryView extends ItemView {
             text: ''
         });
         this.enginePanelGuardNoteEl.createSpan({
-            text: '. Adjust the corpus down to the individual note in the Inquiry View Corpus manager, or update general settings in Settings > Inquiry.'
+            text: '. Adjust corpus via the Inquiry View Corpus manager below, or update general settings in Settings > Inquiry.'
         });
         this.enginePanelRunAnywayButton = this.enginePanelGuardEl.createEl('button', {
             cls: 'ert-inquiry-engine-run-anyway',
@@ -1135,7 +1179,7 @@ export class InquiryView extends ItemView {
         const recommendedKeys = new Set(recommendedChoices.map(choice => `${choice.provider}::${choice.modelId}`));
 
         if (this.enginePanelGuardEl) {
-            const showGuard = Boolean(this.pendingGuardQuestion) && tokenTier === 'red';
+            const showGuard = Boolean(this.pendingGuardQuestion);
             this.enginePanelGuardEl.classList.toggle('ert-hidden', !showGuard);
             if (this.enginePanelGuardNoteEl && showGuard) {
                 const guardQuestion = this.pendingGuardQuestion?.question ?? contextQuestion;
@@ -5520,6 +5564,7 @@ export class InquiryView extends ItemView {
             bookLabel: this.getFocusBookLabel(),
             questions,
             providerSummary: providerPlan.summary,
+            providerLabel: providerPlan.label,
             logsEnabled: this.plugin.settings.logApiInteractions ?? true,
             runDisabledReason
         });
@@ -5948,7 +5993,8 @@ export class InquiryView extends ItemView {
                     modelLabel,
                     useOmnibus: true
                 },
-                summary: `Prefers Gemini for a combined omnibus run when available. Gemini is available, so this run will use Gemini · ${modelLabel}.`
+                summary: `Prefers Gemini for a combined omnibus run when available. Gemini is available, so this run will use Gemini · ${modelLabel}.`,
+                label: 'Gemini omnibus'
             };
         }
 
@@ -5961,6 +6007,7 @@ export class InquiryView extends ItemView {
             return {
                 choice: null,
                 summary: `Prefers Gemini for a combined omnibus run when available. Gemini is unavailable (${geminiReason}); ${providerLabel} is also unavailable (${reason}).`,
+                label: 'Unavailable',
                 disabledReason: `${providerLabel} ${reason}`
             };
         }
@@ -5975,7 +6022,8 @@ export class InquiryView extends ItemView {
                 useOmnibus: false,
                 reason: geminiReason
             },
-            summary: `Prefers Gemini for a combined omnibus run when available. Gemini is unavailable (${geminiReason}), so this run will execute sequentially with ${providerLabel} · ${modelLabel}.`
+            summary: `Prefers Gemini for a combined omnibus run when available. Gemini is unavailable (${geminiReason}), so this run will execute sequentially with ${providerLabel} · ${modelLabel}.`,
+            label: `Sequential · ${providerLabel}`
         };
     }
 
