@@ -480,6 +480,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const themeIcon = themeButton.createSpan({ cls: 'ert-pillBtn__icon' });
     setIcon(themeIcon, 'swatch-book');
     themeButton.createSpan({ cls: 'ert-pillBtn__label', text: 'Choose Palette' });
+    // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
     themeButton.addEventListener('click', () => {
         const modal = new AprPaletteModal(
             app,
@@ -900,6 +901,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
 
         const typographyRefs = buildTypographyControls(rowPrimary, opts.typography, updateAutoState, isSyncingCheck);
 
+        // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
         autoButton.addEventListener('click', async () => {
             if (!plugin.settings.authorProgress) return;
             const updates: Partial<AuthorProgressSettings> = {

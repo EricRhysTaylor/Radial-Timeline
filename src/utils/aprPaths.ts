@@ -42,6 +42,26 @@ function resolveAprSize(primary?: AprSize, fallback?: AprSize): AprSize {
     return primary ?? fallback ?? 'medium';
 }
 
+const DEFAULT_SIZES: AprSize[] = ['thumb', 'small', 'medium', 'large'];
+
+/**
+ * Returns true if the path is a default/core APR path for the given book and mode (any size).
+ * Matches current format (apr-default-{mode}-{size}.svg) and legacy format (apr-{bookSlug}-default-{mode}-{size}.svg).
+ */
+export function isDefaultEmbedPath(path: string | undefined, options: { bookTitle?: string; updateFrequency?: AprFrequency }): boolean {
+    if (!path?.trim() || !path.toLowerCase().endsWith('.svg')) return false;
+    const bookSlug = slugify(options.bookTitle, 'book');
+    const mode = formatAprMode(options.updateFrequency);
+    const prefix = `Radial Timeline/Social/${bookSlug}/`;
+    if (!path.startsWith(prefix)) return false;
+    const filename = path.slice(prefix.length);
+    for (const size of DEFAULT_SIZES) {
+        if (filename === `apr-default-${mode}-${size}.svg`) return true;
+        if (filename === `apr-${bookSlug}-default-${mode}-${size}.svg`) return true;
+    }
+    return false;
+}
+
 /**
  * Builds the embed path for the default/core APR report.
  * Book title scopes the folder; filename uses "default" as campaignSlug.

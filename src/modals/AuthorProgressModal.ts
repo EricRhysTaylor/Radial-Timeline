@@ -6,7 +6,7 @@ import type { AprCampaign } from '../types/settings';
 import { getTeaserThresholds, getTeaserRevealLevel, TEASER_LEVEL_INFO } from '../renderer/apr/AprConstants';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { ERT_CLASSES } from '../ui/classes';
-import { buildCampaignEmbedPath, buildDefaultEmbedPath } from '../utils/aprPaths';
+import { buildCampaignEmbedPath, buildDefaultEmbedPath, isDefaultEmbedPath } from '../utils/aprPaths';
 import { resolveBookTitle, resolveProjectPath } from '../renderer/apr/aprHelpers';
 import { isSceneItem } from '../utils/sceneHelpers';
 
@@ -816,17 +816,15 @@ export class AuthorProgressModal extends Modal {
             };
         }
         const settings = this.plugin.settings.authorProgress;
-        const oldDefaultPath = buildDefaultEmbedPath({
-            bookTitle: settings.bookTitle,
-            updateFrequency: settings.updateFrequency,
-            aprSize: settings.aprSize
-        });
         const legacyPath = 'Radial Timeline/Social/progress.svg';
         settings.aprSize = this.aprSize;
-        // Recompute default path when size changes if path is unset or still the previous default
+        // Recompute default path when size changes if path is unset or any default (current or legacy format)
         const pathIsDefaultOrUnset = !settings.dynamicEmbedPath?.trim()
-            || settings.dynamicEmbedPath === oldDefaultPath
-            || settings.dynamicEmbedPath === legacyPath;
+            || settings.dynamicEmbedPath === legacyPath
+            || isDefaultEmbedPath(settings.dynamicEmbedPath, {
+                bookTitle: settings.bookTitle,
+                updateFrequency: settings.updateFrequency
+            });
         if (settings.autoUpdateEmbedPaths !== false && pathIsDefaultOrUnset) {
             settings.dynamicEmbedPath = buildDefaultEmbedPath({
                 bookTitle: settings.bookTitle,

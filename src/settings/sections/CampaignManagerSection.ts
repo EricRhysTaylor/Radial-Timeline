@@ -89,6 +89,7 @@ class CampaignNameModal extends Modal {
             .setButtonText('Cancel')
             .onClick(() => this.close());
 
+        // SAFE: Modal classes do not have registerDomEvent; Obsidian manages Modal lifecycle
         inputEl.addEventListener('keydown', (evt: KeyboardEvent) => {
             if (evt.key === 'Enter') {
                 evt.preventDefault();
@@ -555,7 +556,9 @@ function renderCampaignRow(
         });
         modal.open();
     };
+    // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
     nameEl.addEventListener('click', openRenameModal);
+    // SAFE: Settings sections are standalone functions without Component lifecycle
     nameEl.addEventListener('keydown', (evt: KeyboardEvent) => {
         if (evt.key === 'Enter' || evt.key === ' ') {
             evt.preventDefault();
@@ -740,6 +743,7 @@ function renderCampaignDetails(
             });
 
         const sliderEl = slider.sliderEl;
+        // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
         sliderEl.addEventListener('input', () => {
             const nextValue = clampRefreshValue(Number(sliderEl.value));
             syncRefreshDisplay(nextValue);
@@ -759,6 +763,7 @@ function renderCampaignDetails(
                 }
             });
 
+            // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
             refreshValueInput.addEventListener('input', () => {
                 const parsed = parseRefreshValue(refreshValueInput?.value ?? '');
                 if (parsed === null) return;
@@ -782,10 +787,12 @@ function renderCampaignDetails(
                 }
             };
 
+            // SAFE: Settings sections are standalone functions without Component lifecycle
             refreshValueInput.addEventListener('blur', () => {
                 void finalizeInput();
             });
 
+            // SAFE: Settings sections are standalone functions without Component lifecycle
             refreshValueInput.addEventListener('keydown', (evt: KeyboardEvent) => {
                 if (evt.key === 'Enter') {
                     evt.preventDefault();
@@ -823,6 +830,7 @@ function renderCampaignDetails(
 
         // SAFE: Settings sections rebuild DOM on any change; input element cleanup handles listener
         text.inputEl.addEventListener('blur', handleBlur);
+        // SAFE: Settings sections rebuild DOM on any change; input element cleanup handles listener
         text.inputEl.addEventListener('keydown', (evt: KeyboardEvent) => {
             if (evt.key === 'Enter') {
                 evt.preventDefault();
@@ -917,6 +925,7 @@ function renderCampaignDetails(
 
         // SAFE: Settings sections rebuild DOM on any change; input element cleanup handles listener
         text.inputEl.addEventListener('blur', handleBlur);
+        // SAFE: Settings sections rebuild DOM on any change; input element cleanup handles listener
         text.inputEl.addEventListener('keydown', (evt: KeyboardEvent) => {
             if (evt.key === 'Enter') {
                 evt.preventDefault();

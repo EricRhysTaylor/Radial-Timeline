@@ -392,16 +392,19 @@ export class InquiryGlyph {
                     promptId?: string;
                     promptText?: string;
                 } = { group: dotGroup, circle: dotCircle, text: dotText, zone: zone.id, index: i };
+                // SAFE: InquiryGlyph is a plain class without Component lifecycle; owner view manages cleanup
                 dotGroup.addEventListener('click', () => {
                     if (!this.zoneInteractionsEnabled) return;
                     if (!marker.promptId) return;
                     this.promptState?.onPromptSelect?.(marker.zone, marker.promptId);
                 });
+                // SAFE: InquiryGlyph is a plain class without Component lifecycle
                 dotGroup.addEventListener('pointerenter', () => {
                     if (!this.zoneInteractionsEnabled) return;
                     if (!marker.promptId || !marker.promptText) return;
                     this.promptState?.onPromptHover?.(marker.zone, marker.promptId, marker.promptText);
                 });
+                // SAFE: InquiryGlyph is a plain class without Component lifecycle
                 dotGroup.addEventListener('pointerleave', () => {
                     if (!this.zoneInteractionsEnabled) return;
                     this.promptState?.onPromptHoverEnd?.();
@@ -456,11 +459,13 @@ export class InquiryGlyph {
     ): void {
         const state = this.ensureZoneControlState(zone);
         const entryTarget = hoverTarget ?? group;
+        // SAFE: InquiryGlyph is a plain class without Component lifecycle; owner view manages cleanup
         entryTarget.addEventListener('pointerenter', () => {
             if (!this.zoneInteractionsEnabled) return;
             state.hovered = true;
             this.updateZoneControlScale(state, group);
         });
+        // SAFE: InquiryGlyph is a plain class without Component lifecycle
         group.addEventListener('pointerout', event => {
             if (!this.zoneInteractionsEnabled) return;
             const related = event.relatedTarget;
@@ -468,6 +473,7 @@ export class InquiryGlyph {
             state.hovered = false;
             this.updateZoneControlScale(state, group);
         });
+        // SAFE: InquiryGlyph is a plain class without Component lifecycle
         group.addEventListener('click', () => {
             if (!this.zoneInteractionsEnabled) return;
             if (state.locked) return;

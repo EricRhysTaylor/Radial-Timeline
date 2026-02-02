@@ -367,6 +367,7 @@ export function renderStoryBeatsSection(params: {
         advancedToggleButton.setAttribute('aria-label', expanded ? 'Hide advanced YAML editor' : 'Show advanced YAML editor');
     };
     refreshAdvancedToggle();
+    // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
     advancedToggleButton.addEventListener('click', async () => {
         const next = !(plugin.settings.enableAdvancedYamlEditor ?? false);
         plugin.settings.enableAdvancedYamlEditor = next;

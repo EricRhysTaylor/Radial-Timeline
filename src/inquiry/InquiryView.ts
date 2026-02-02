@@ -355,8 +355,9 @@ class InquiryOmnibusModal extends Modal {
             sagaPill.setAttribute('aria-pressed', scope === 'saga' ? 'true' : 'false');
         };
 
+        // SAFE: Modal classes do not have registerDomEvent; Obsidian manages Modal lifecycle
         bookPill.addEventListener('click', () => updateScopeSelection('book'));
-        sagaPill.addEventListener('click', () => updateScopeSelection('saga'));
+        sagaPill.addEventListener('click', () => updateScopeSelection('saga')); // SAFE: continued
         updateScopeSelection(this.selectedScope);
 
         const lensLabel = 'Flow + Depth';
@@ -1655,6 +1656,7 @@ export class InquiryView extends ItemView {
         const configDir = (this.app.vault as unknown as { configDir?: string }).configDir ?? '.obsidian';
         const pluginId = this.plugin.manifest.id;
         const assetPath = normalizePath(`${configDir}/plugins/${pluginId}/inquiry/assets/${fileName}`);
+        // SAFE: vault.adapter.getResourcePath is required for converting vault paths to asset URLs (no Vault API alternative)
         const adapter = this.app.vault.adapter as unknown as { getResourcePath?: (path: string) => string };
         return adapter.getResourcePath ? adapter.getResourcePath(assetPath) : assetPath;
     }

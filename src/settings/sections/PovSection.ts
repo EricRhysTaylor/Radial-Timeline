@@ -95,6 +95,7 @@ export function renderPovSection(params: {
     };
     refreshPreviewToggle();
     refreshPreviewButton();
+    // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
     previewToggle.addEventListener('click', () => {
         previewExpanded = !previewExpanded;
         refreshPreviewToggle();

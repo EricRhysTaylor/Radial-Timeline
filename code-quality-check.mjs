@@ -82,6 +82,8 @@ const ALLOWED_CLASS_NAMES = [
   'setting-item-info',
   'setting-item-name',
   'setting-item-description',
+  'setting-input-error',    // Obsidian native form validation class
+  'setting-input-success',  // Obsidian native form validation class
   'modal',
   'modal-container',
   'modal-content',

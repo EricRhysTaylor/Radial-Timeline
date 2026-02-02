@@ -25,6 +25,7 @@
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
 		"css-drift": "node scripts/css-drift-check.mjs",
+		"scan-ert": "node scripts/scan-ert-classes.mjs",
 		"verify": "node scripts/verify.mjs"
 	},
 	"keywords": [
@@ -46,8 +47,6 @@
 		"husky": "^9.1.7",
 		"lint-staged": "^15.5.0",
 		"obsidian": "^1.4.11",
-		"ts-node": "^10.9.2",
-		"tslib": "2.6.2",
 		"typescript": "5.3.3",
 		"vitest": "^4.0.16"
 	},

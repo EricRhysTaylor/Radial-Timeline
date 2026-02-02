@@ -239,6 +239,7 @@ export function colorSwatch(slot: HTMLElement, opts: ColorSwatchOpts = {}): Colo
   if (opts.plugin) {
     opts.plugin.registerDomEvent(swatchEl, 'click', clickHandler);
   } else {
+    // SAFE: Fallback for contexts without plugin reference; caller is responsible for cleanup
     swatchEl.addEventListener('click', clickHandler);
   }
 
