@@ -311,23 +311,26 @@ export class AuthorProgressModal extends Modal {
             });
             const frequency = target.campaign ? target.campaign.updateFrequency : settings?.updateFrequency;
             const lastPublishedDate = target.campaign ? target.campaign.lastPublishedDate : settings?.lastPublishedDate;
+            const isUnpublished = !lastPublishedDate?.trim();
             const isAuto = !!frequency && frequency !== 'manual';
-            const updateInfo = target.campaign && !target.campaign.isActive
-                ? { label: 'Paused', reminder: undefined }
-                : (isAuto && !lastPublishedDate)
-                    ? { label: 'Auto update due', reminder: undefined }
-                    : this.getNextUpdateInfo({
-                        frequency,
-                        lastPublishedDate,
-                        reminderDays: target.campaign ? target.campaign.refreshThresholdDays : settings?.stalenessThresholdDays,
-                        remindersEnabled: target.campaign ? true : settings?.enableReminders
-                    });
+            const updateInfo = isUnpublished
+                ? { label: 'Unpublished', reminder: undefined }
+                : target.campaign && !target.campaign.isActive
+                    ? { label: 'Paused', reminder: undefined }
+                    : (isAuto && !lastPublishedDate)
+                        ? { label: 'Auto update due', reminder: undefined }
+                        : this.getNextUpdateInfo({
+                            frequency,
+                            lastPublishedDate,
+                            reminderDays: target.campaign ? target.campaign.refreshThresholdDays : settings?.stalenessThresholdDays,
+                            remindersEnabled: target.campaign ? true : settings?.enableReminders
+                        });
             updatePill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: updateInfo.label });
 
             const reminderCell = dataRow.createDiv({ cls: 'ert-apr-status-cell ert-apr-status-cell--reminder' });
             reminderCell.createSpan({
                 cls: ERT_CLASSES.FIELD_NOTE,
-                text: updateInfo.reminder ?? '—'
+                text: (isUnpublished ? '—' : undefined) ?? updateInfo.reminder ?? '—'
             });
         });
     }
@@ -511,7 +514,8 @@ export class AuthorProgressModal extends Modal {
         const bookTitle = resolveBookTitle(settings, campaign, projectPath);
         const activeSize = this.getActiveAprSize();
         const activeView = activeSize === 'thumb' ? 'thumb' : 'full';
-        const viewLabel = activeView === 'thumb' ? 'Thumb' : 'Full';
+        // Render-mode pill: Thumb (ring-only) or Standard (full APR render). Distinct from reveal-stage "Complete".
+        const viewLabel = activeView === 'thumb' ? 'Thumb' : 'Standard';
         const stageInfo = this.resolveTeaserStatus(campaign).info ?? TEASER_LEVEL_INFO.full;
 
         const statusRow = container.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--data ert-apr-actions-status' });
@@ -531,7 +535,7 @@ export class AuthorProgressModal extends Modal {
         });
         exportPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: this.getSizeLabelPx(activeSize) });
 
-        // Type cell (Thumb/Full)
+        // Type cell (Thumb / Standard)
         const typeCell = statusRow.createDiv({ cls: 'ert-apr-status-cell' });
         const typePill = typeCell.createSpan({
             cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM}`
@@ -819,8 +823,11 @@ export class AuthorProgressModal extends Modal {
         });
         const legacyPath = 'Radial Timeline/Social/progress.svg';
         settings.aprSize = this.aprSize;
-        if (settings.autoUpdateEmbedPaths
-            && (settings.dynamicEmbedPath === oldDefaultPath || settings.dynamicEmbedPath === legacyPath)) {
+        // Recompute default path when size changes if path is unset or still the previous default
+        const pathIsDefaultOrUnset = !settings.dynamicEmbedPath?.trim()
+            || settings.dynamicEmbedPath === oldDefaultPath
+            || settings.dynamicEmbedPath === legacyPath;
+        if (settings.autoUpdateEmbedPaths !== false && pathIsDefaultOrUnset) {
             settings.dynamicEmbedPath = buildDefaultEmbedPath({
                 bookTitle: settings.bookTitle,
                 updateFrequency: settings.updateFrequency,

@@ -118,31 +118,38 @@ function getDaysSince(date?: string): number | null {
 
 function getNextUpdateLabel(campaign: AprCampaign): string {
     if (!campaign.isActive) return 'Paused';
+    const hasPublished = !!campaign.lastPublishedDate?.trim();
+    if (!hasPublished) return 'Unpublished';
+
     const frequency = campaign.updateFrequency ?? 'manual';
-    const daysSince = getDaysSince(campaign.lastPublishedDate);
+    const daysSince = getDaysSince(campaign.lastPublishedDate) ?? 0;
 
     if (frequency === 'manual') {
         const reminderDays = campaign.refreshThresholdDays ?? 0;
         if (reminderDays <= 0) return 'Manual (no reminder)';
-        if (daysSince === null) return `Reminder in ${reminderDays}d`;
         const remaining = Math.max(0, reminderDays - daysSince);
         return remaining === 0 ? 'Reminder due' : `Reminder in ${remaining}d`;
     }
 
     const intervalDays = frequency === 'daily' ? 1 : frequency === 'weekly' ? 7 : 30;
-    if (daysSince === null) return 'Auto update due';
     const remaining = Math.max(0, intervalDays - daysSince);
     return remaining === 0 ? 'Auto update due' : `Auto update in ${remaining}d`;
 }
 
+const AUTO_UPDATE_FREQUENCIES: readonly string[] = ['daily', 'weekly', 'monthly'];
+
 function getScheduleBadge(campaign: AprCampaign): { label: string; cls: string } {
     if (!campaign.isActive) return { label: 'Paused', cls: 'is-paused' };
     const frequency = campaign.updateFrequency ?? 'manual';
-    if (frequency !== 'manual') {
+    // Only treat known auto frequencies as auto (avoids showing "Auto · Full" or other invalid values)
+    if (frequency !== 'manual' && AUTO_UPDATE_FREQUENCIES.includes(frequency)) {
         const label = frequency.charAt(0).toUpperCase() + frequency.slice(1);
         return { label: `Auto · ${label}`, cls: 'is-auto' };
     }
-    return { label: `Manual · ${campaign.refreshThresholdDays}d`, cls: 'is-manual' };
+    const days = Number.isFinite(campaign.refreshThresholdDays) && campaign.refreshThresholdDays > 0
+        ? campaign.refreshThresholdDays
+        : 7;
+    return { label: `Manual · ${days}d`, cls: 'is-manual' };
 }
 
 function resolveCampaignBookTitle(
