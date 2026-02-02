@@ -603,8 +603,8 @@ export class BookDesignerModal extends Modal {
                     void text.inputEl.offsetWidth;
 
                     if (!raw) {
-                        this.timeIncrement = '1 day';
-                        text.setValue('1 day');
+                        this.timeIncrement = '0';
+                        text.setValue('0');
                         text.inputEl.addClass('rt-input-flash-success');
                         return;
                     }

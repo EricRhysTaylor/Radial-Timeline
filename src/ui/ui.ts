@@ -13,7 +13,15 @@ type ToggleOpts = { value?: boolean; onChange?: (value: boolean) => void };
 type ButtonOpts = { text: string; onClick?: () => void; variant?: string; cta?: boolean };
 type SliderOpts = { value?: number; min: number; max: number; step?: number; onChange?: (value: number) => void };
 type ColorPickerOpts = { value?: string; onChange?: (value: string) => void; disabled?: boolean };
-type ColorSwatchOpts = { value?: string; onChange?: (value: string) => void; ariaLabel?: string };
+type ColorSwatchOpts = {
+  value?: string;
+  onChange?: (value: string) => void;
+  ariaLabel?: string;
+  /** Optional plugin reference for proper event lifecycle management via registerDomEvent */
+  plugin?: { registerDomEvent: <K extends keyof HTMLElementEventMap>(el: HTMLElement, type: K, callback: (ev: HTMLElementEventMap[K]) => void) => void };
+  /** Additional CSS classes for the swatch button */
+  swatchClass?: string;
+};
 type BadgePillOpts = { icon: string; label: string; variant?: ErtVariant | ErtVariant[]; size?: ErtVariant };
 
 export type ColorSwatchHandle = {

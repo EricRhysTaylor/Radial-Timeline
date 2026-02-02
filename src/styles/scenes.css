@@ -144,9 +144,10 @@
 }
 
 /* Scene group drag source styling - when dragging from scene cell */
+/* Fill with drag arc color instead of border to indicate drag source */
 .radial-timeline-svg[data-mode="narrative"] .rt-scene-group.rt-drag-source .rt-scene-path {
-  stroke: var(--rt-drag-stroke-color, var(--interactive-accent, #705DCF));
-  stroke-width: 4px;
+  fill: var(--rt-drag-stroke-color, var(--interactive-accent, #705DCF));
+  fill-opacity: 0.65;
 }
 
 /* Scene cells in narrative mode: pointer cursor by default (like a link) */

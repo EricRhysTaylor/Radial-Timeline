@@ -235,7 +235,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const stylingHeader = stylingBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const stylingHeading = new Setting(stylingHeader)
         .setName('Configuration')
-        .setDesc('Configure your project settings and customize the look of your APR. Set the book title, project path, and style various visual elements like borders and background.')
+        .setDesc('Configure your project settings and customize the look of your APR. Set the book title, project path.')
         .setHeading();
     addHeadingIcon(stylingHeading, 'settings');
     addWikiLink(stylingHeading, 'Settings#social-media-styling');
@@ -370,153 +370,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const currentSpokeMode = settings?.aprSpokeColorMode || 'dark';
     const currentSpokeColor = settings?.aprSpokeColor || '#ffffff';
 
-    // Transparency (Recommended) - placed FIRST with special styling
-    const transparencySetting = new Setting(stylingBody)
-        .setName('Transparent mode (recommended)')
-        .setDesc('No background fill — adapts to any page or app. Ideal for websites, blogs, and platforms that preserve SVG transparency.');
-
-    // Background color - for special situations only (when transparency is off)
-    const bgSetting = new Setting(stylingBody)
-        .setName('Background color')
-        .setDesc('Bakes in a solid background. Use when transparency isn\'t reliable: email newsletters, Kickstarter, PDF exports, or platforms that rasterize SVGs.');
-
-    // Store references to the color picker and text input for enabling/disabling
-    let bgColorPicker: ColorSwatchHandle | null = null;
-    let bgTextInput: TextComponent | null = null;
-
-    // Helper to swap emphasis and enable/disable background controls
-    const updateEmphasis = (isTransparent: boolean) => {
-        if (isTransparent) {
-            bgSetting.settingEl.classList.add('is-inactive');
-            if (bgColorPicker) bgColorPicker.setDisabled(true);
-            if (bgTextInput) bgTextInput.setDisabled(true);
-        } else {
-            bgSetting.settingEl.classList.remove('is-inactive');
-            if (bgColorPicker) bgColorPicker.setDisabled(false);
-            if (bgTextInput) bgTextInput.setDisabled(false);
-        }
-    };
-
-    transparencySetting.addToggle(toggle => {
-        toggle.setValue(currentTransparent);
-        toggle.onChange(async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprCenterTransparent = val;
-            await plugin.saveSettings();
-            updateEmphasis(val);
-            refreshPreview();
-        });
-    });
-
-    const bgSwatch = colorSwatch(bgSetting.controlEl, {
-        value: currentBg,
-        ariaLabel: 'Background color',
-        onChange: async (val) => {
-            if (!plugin.settings.authorProgress) return;
-            const next = val || '#0d0d0f';
-            plugin.settings.authorProgress.aprBackgroundColor = next;
-            await plugin.saveSettings();
-            bgTextInput?.setValue(next);
-            refreshPreview();
-        }
-    });
-    bgColorPicker = bgSwatch;
-
-    bgSetting.addText(text => {
-        bgTextInput = text;
-        text.setPlaceholder('#0d0d0f').setValue(currentBg);
-        text.inputEl.classList.add('ert-input--hex');
-        text.onChange(async (val) => {
-            if (!val) return;
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprBackgroundColor = val;
-            await plugin.saveSettings();
-            bgColorPicker?.setValue(val);
-            refreshPreview();
-        });
-    });
-
-    // Set initial emphasis state after controls are created
-    updateEmphasis(currentTransparent);
-
-    // Spokes & border controls (placed before Theme section)
-    const spokeColorSetting = new Setting(stylingBody)
-        .setName('Spokes and borders')
-        .setDesc('Choose contrasting color or none. Controls all structural elements including scene borders and act division spokes.');
-    spokeColorSetting.controlEl.addClass(ERT_CLASSES.INLINE);
-
-    let spokeColorPickerRef: ColorSwatchHandle | undefined;
-    let spokeColorInputRef: TextComponent | undefined;
-
-    // Match Book Title Color layout exactly - always show color picker and text input
-    const isCustomMode = currentSpokeMode === 'custom';
-    const fallbackColor = '#ffffff';
-    const spokeControlRow = spokeColorSetting.controlEl;
-    const spokeColorPicker = colorSwatch(spokeControlRow, {
-        value: isCustomMode ? currentSpokeColor : fallbackColor,
-        ariaLabel: 'Spoke color',
-        onChange: async (val) => {
-            if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
-                if (!plugin.settings.authorProgress) return;
-                plugin.settings.authorProgress.aprSpokeColor = val || fallbackColor;
-                await plugin.saveSettings();
-                refreshPreview();
-                spokeColorInputRef?.setValue(val);
-            }
-        }
-    });
-    spokeColorPickerRef = spokeColorPicker;
-    spokeColorPicker.setDisabled(!isCustomMode);
-
-    const spokeColorInput = new TextComponent(spokeControlRow);
-    spokeColorInputRef = spokeColorInput;
-    spokeColorInput.inputEl.classList.add('ert-input--hex');
-    spokeColorInput.setPlaceholder(fallbackColor).setValue(isCustomMode ? currentSpokeColor : fallbackColor);
-    spokeColorInput.setDisabled(!isCustomMode);
-    spokeColorInput.onChange(async (val) => {
-        if (!val) return;
-        if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
-            if (!plugin.settings.authorProgress) return;
-            plugin.settings.authorProgress.aprSpokeColor = val;
-            await plugin.saveSettings();
-            refreshPreview();
-            spokeColorPickerRef?.setValue(val);
-        }
-    });
-
-    // Dropdown for mode (added after color controls, appears to the right)
-    const spokeModeDropdown = new DropdownComponent(spokeControlRow);
-    spokeModeDropdown.addOption('dark', 'Light Strokes');
-    spokeModeDropdown.addOption('light', 'Dark Strokes');
-    spokeModeDropdown.addOption('none', 'No Strokes');
-    spokeModeDropdown.addOption('custom', 'Custom Color');
-    // Use spoke mode if set, otherwise fall back to theme
-    const currentValue = currentSpokeMode !== 'dark' ? currentSpokeMode : (currentTheme !== 'dark' ? currentTheme : 'dark');
-    spokeModeDropdown.setValue(currentValue);
-    spokeModeDropdown.onChange(async (val) => {
-        if (!plugin.settings.authorProgress) return;
-        const mode = (val as 'dark' | 'light' | 'none' | 'custom') || 'dark';
-        // Update both theme and spoke mode to keep them in sync
-        plugin.settings.authorProgress.aprTheme = mode === 'custom' ? 'dark' : (mode as 'dark' | 'light' | 'none');
-        plugin.settings.authorProgress.aprSpokeColorMode = mode;
-        await plugin.saveSettings();
-
-        // Enable/disable color controls based on mode (always visible, just disabled)
-        const isCustom = mode === 'custom';
-        spokeColorPickerRef?.setDisabled(!isCustom);
-        spokeColorInputRef?.setDisabled(!isCustom);
-        if (isCustom && spokeColorInputRef) {
-            const current = plugin.settings.authorProgress.aprSpokeColor || fallbackColor;
-            spokeColorInputRef.setValue(current);
-            spokeColorPickerRef?.setValue(current);
-        } else if (spokeColorInputRef) {
-            spokeColorInputRef.setValue(fallbackColor);
-            spokeColorPickerRef?.setValue(fallbackColor);
-        }
-
-        refreshPreview();
-    });
-
     // Link URL
     const linkUrlSetting = new Setting(stylingBody)
         .setName('Link URL')
@@ -603,8 +456,8 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
     const themeBlock = themeCard.createDiv({ cls: ERT_CLASSES.STACK });
     const themeHeader = themeBlock.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
     const themeHeading = new Setting(themeHeader)
-        .setName('Theme')
-        .setDesc('Theme palette applies curated colors across Title, Author, % Symbol, and % Number based on the Title color. Stage badge uses publish stage colors; manual edits override per row.')
+        .setName('Styling')
+        .setDesc('Adjust colors, fonts and borders for your APR. Configure the background based on the hosted location. Use the theme palette (keys off the Title color) to apply curated colors across Title, Author, % Symbol, and % Number. Manual edits override per row.')
         .setHeading();
     addHeadingIcon(themeHeading, 'swatch-book');
     addWikiLink(themeHeading, 'Settings#social-media-theme');
@@ -1241,6 +1094,148 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             showSizeControls: false,
             weightDefault: 700
         }
+    });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // TRANSPARENT MODE, BACKGROUND COLOR, SPOKES AND BORDERS (styled like Theme rows)
+    // ─────────────────────────────────────────────────────────────────────────
+    const transparencySetting = new Setting(themeBody)
+        .setName('Transparent mode')
+        .setDesc('No background fill — adapts to any page or app. Ideal for websites, blogs, and platforms that preserve SVG transparency.');
+    transparencySetting.settingEl.addClass('ert-elementBlock', 'ert-settingRow');
+
+    const bgSetting = new Setting(themeBody)
+        .setName('Background color')
+        .setDesc('Bakes in a solid background. Use when transparency isn\'t reliable: email newsletters, Kickstarter, PDF exports, or platforms that rasterize SVGs.');
+    bgSetting.settingEl.addClass('ert-elementBlock', 'ert-settingRow');
+
+    let bgColorPicker: ColorSwatchHandle | null = null;
+    let bgTextInput: TextComponent | null = null;
+
+    const updateEmphasis = (isTransparent: boolean) => {
+        if (isTransparent) {
+            bgSetting.settingEl.classList.add('is-inactive');
+            if (bgColorPicker) bgColorPicker.setDisabled(true);
+            if (bgTextInput) bgTextInput.setDisabled(true);
+        } else {
+            bgSetting.settingEl.classList.remove('is-inactive');
+            if (bgColorPicker) bgColorPicker.setDisabled(false);
+            if (bgTextInput) bgTextInput.setDisabled(false);
+        }
+    };
+
+    transparencySetting.addToggle(toggle => {
+        toggle.setValue(currentTransparent);
+        toggle.onChange(async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprCenterTransparent = val;
+            await plugin.saveSettings();
+            updateEmphasis(val);
+            refreshPreview();
+        });
+    });
+
+    const bgSwatch = colorSwatch(bgSetting.controlEl, {
+        value: currentBg,
+        ariaLabel: 'Background color',
+        onChange: async (val) => {
+            if (!plugin.settings.authorProgress) return;
+            const next = val || '#0d0d0f';
+            plugin.settings.authorProgress.aprBackgroundColor = next;
+            await plugin.saveSettings();
+            bgTextInput?.setValue(next);
+            refreshPreview();
+        }
+    });
+    bgColorPicker = bgSwatch;
+
+    bgSetting.addText(text => {
+        bgTextInput = text;
+        text.setPlaceholder('#0d0d0f').setValue(currentBg);
+        text.inputEl.classList.add('ert-input--hex');
+        text.onChange(async (val) => {
+            if (!val) return;
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprBackgroundColor = val;
+            await plugin.saveSettings();
+            bgColorPicker?.setValue(val);
+            refreshPreview();
+        });
+    });
+
+    updateEmphasis(currentTransparent);
+
+    const spokeColorSetting = new Setting(themeBody)
+        .setName('Spokes and borders')
+        .setDesc('Choose contrasting color or none. Controls all structural elements including scene borders and act division spokes.');
+    spokeColorSetting.settingEl.addClass('ert-elementBlock', 'ert-settingRow');
+    spokeColorSetting.controlEl.addClass(ERT_CLASSES.INLINE);
+
+    let spokeColorPickerRef: ColorSwatchHandle | undefined;
+    let spokeColorInputRef: TextComponent | undefined;
+
+    const isCustomMode = currentSpokeMode === 'custom';
+    const fallbackColor = '#ffffff';
+    const spokeControlRow = spokeColorSetting.controlEl;
+    const spokeColorPicker = colorSwatch(spokeControlRow, {
+        value: isCustomMode ? currentSpokeColor : fallbackColor,
+        ariaLabel: 'Spoke color',
+        onChange: async (val) => {
+            if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
+                if (!plugin.settings.authorProgress) return;
+                plugin.settings.authorProgress.aprSpokeColor = val || fallbackColor;
+                await plugin.saveSettings();
+                refreshPreview();
+                spokeColorInputRef?.setValue(val);
+            }
+        }
+    });
+    spokeColorPickerRef = spokeColorPicker;
+    spokeColorPicker.setDisabled(!isCustomMode);
+
+    const spokeColorInput = new TextComponent(spokeControlRow);
+    spokeColorInputRef = spokeColorInput;
+    spokeColorInput.inputEl.classList.add('ert-input--hex');
+    spokeColorInput.setPlaceholder(fallbackColor).setValue(isCustomMode ? currentSpokeColor : fallbackColor);
+    spokeColorInput.setDisabled(!isCustomMode);
+    spokeColorInput.onChange(async (val) => {
+        if (!val) return;
+        if (/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
+            if (!plugin.settings.authorProgress) return;
+            plugin.settings.authorProgress.aprSpokeColor = val;
+            await plugin.saveSettings();
+            refreshPreview();
+            spokeColorPickerRef?.setValue(val);
+        }
+    });
+
+    const spokeModeDropdown = new DropdownComponent(spokeControlRow);
+    spokeModeDropdown.addOption('dark', 'Light Strokes');
+    spokeModeDropdown.addOption('light', 'Dark Strokes');
+    spokeModeDropdown.addOption('none', 'No Strokes');
+    spokeModeDropdown.addOption('custom', 'Custom Color');
+    const currentValue = currentSpokeMode !== 'dark' ? currentSpokeMode : (currentTheme !== 'dark' ? currentTheme : 'dark');
+    spokeModeDropdown.setValue(currentValue);
+    spokeModeDropdown.onChange(async (val) => {
+        if (!plugin.settings.authorProgress) return;
+        const mode = (val as 'dark' | 'light' | 'none' | 'custom') || 'dark';
+        plugin.settings.authorProgress.aprTheme = mode === 'custom' ? 'dark' : (mode as 'dark' | 'light' | 'none');
+        plugin.settings.authorProgress.aprSpokeColorMode = mode;
+        await plugin.saveSettings();
+
+        const isCustom = mode === 'custom';
+        spokeColorPickerRef?.setDisabled(!isCustom);
+        spokeColorInputRef?.setDisabled(!isCustom);
+        if (isCustom && spokeColorInputRef) {
+            const current = plugin.settings.authorProgress.aprSpokeColor || fallbackColor;
+            spokeColorInputRef.setValue(current);
+            spokeColorPickerRef?.setValue(current);
+        } else if (spokeColorInputRef) {
+            spokeColorInputRef.setValue(fallbackColor);
+            spokeColorPickerRef?.setValue(fallbackColor);
+        }
+
+        refreshPreview();
     });
 
     // ─────────────────────────────────────────────────────────────────────────

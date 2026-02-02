@@ -113,12 +113,16 @@ export const SUBPLOT_OUTER_RADIUS_STANDARD = {
 
 
 // DRAG SCENE FEATURE //
+// Positioned just inside the Act labels (ACT_LABEL_RADIUS = 790) to avoid overlap
 
 /** Absolute radius for the outer tip of the drag tick (px) */
-export const DRAG_DROP_TICK_OUTER_RADIUS = 796;
+export const DRAG_DROP_TICK_OUTER_RADIUS = 782;
 
 /** Absolute radius for the drag arc line (px) */
-export const DRAG_DROP_ARC_RADIUS = 797;
+export const DRAG_DROP_ARC_RADIUS = 782;
+
+/** Length of the drag drop tick marker (px) */
+export const DRAG_DROP_TICK_LENGTH = 10;
 
 /** Where subplot rings end in Chronologue mode (smaller for time details) */
 export const SUBPLOT_OUTER_RADIUS_CHRONOLOGUE = 750;

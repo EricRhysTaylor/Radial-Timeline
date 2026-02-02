@@ -1646,7 +1646,7 @@
   width: 1px;
   height: 1px;
   opacity: 0;
-  pointer-events: none;
+  /* Do not use pointer-events: none — it prevents the native color picker from opening on programmatic click() */
 }
 
 .ert-ui.ert-scope--settings .ert-elementBlock.setting-item {
@@ -4300,6 +4300,7 @@
 }
 
 .ert-ui.ert-scope--modal .ert-release-notes-hero-badge {
+  width: fit-content;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -4779,6 +4780,12 @@
   background: var(--ert-pro-surface-2);
   border-radius: var(--ert-control-radius);
   border: 1px dashed var(--ert-pro-border);
+}
+
+/* Quick Start Template buttons: no dropshadow */
+.ert-ui.ert-scope--settings .ert-campaign-templates .ert-pillBtn,
+.ert-ui.ert-scope--settings .ert-campaign-templates .ert-pillBtn:hover:not(:disabled) {
+  box-shadow: none;
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-wrapper {

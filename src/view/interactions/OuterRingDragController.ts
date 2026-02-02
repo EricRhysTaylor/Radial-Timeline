@@ -1,7 +1,7 @@
 import { Notice, App } from 'obsidian';
 import { applySceneNumberUpdates, type SceneUpdate } from '../../services/SceneReorderService';
 import { DragConfirmModal } from '../../modals/DragConfirmModal';
-import { DRAG_DROP_ARC_RADIUS, DRAG_DROP_TICK_OUTER_RADIUS } from '../../renderer/layout/LayoutConstants';
+import { DRAG_DROP_ARC_RADIUS, DRAG_DROP_TICK_OUTER_RADIUS, DRAG_DROP_TICK_LENGTH } from '../../renderer/layout/LayoutConstants';
 
 export interface OuterRingViewAdapter {
     plugin: { app: App; settings: Record<string, unknown> };
@@ -315,9 +315,8 @@ export class OuterRingDragController {
     }
 
     private updateDropTick(startAngle: number, outerR: number, color?: string): void {
-        const tickLen = 18;
         const r2 = DRAG_DROP_TICK_OUTER_RADIUS;
-        const r1 = r2 - tickLen;
+        const r1 = r2 - DRAG_DROP_TICK_LENGTH;
         const x1 = r1 * Math.cos(startAngle);
         const y1 = r1 * Math.sin(startAngle);
         const x2 = r2 * Math.cos(startAngle);
