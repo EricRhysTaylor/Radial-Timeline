@@ -3,8 +3,8 @@
 
 /* Pro Target Dropdown */
 .rt-apr-pro-target .dropdown {
-  background: color-mix(in srgb, var(--rt-pro-color, #d946ef) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--rt-pro-color, #d946ef) 30%, transparent);
+  background: color-mix(in srgb, var(--ert-pro-accent-color) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ert-pro-accent-color) 30%, transparent);
   color: var(--text-normal);
   transition: all 0.2s ease;
   font-weight: 500;
@@ -12,8 +12,8 @@
 
 .rt-apr-pro-target .dropdown:hover,
 .rt-apr-pro-target .dropdown:focus {
-  border-color: var(--rt-pro-color, #d946ef);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--rt-pro-color, #d946ef) 20%, transparent);
+  border-color: var(--ert-pro-accent-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ert-pro-accent-color) 20%, transparent);
 }
 
 /* Legacy settings tokens */
@@ -182,41 +182,41 @@
   cursor: pointer;
 }
 
-.rt-runtime-count {
+.ert-runtime-count {
   padding: 12px;
   background: var(--background-secondary);
   border-radius: 6px;
   text-align: center;
 }
 
-.rt-runtime-count-text {
+.ert-runtime-count-text {
   font-size: 16px;
 }
 
-.rt-runtime-number {
+.ert-runtime-number {
   font-weight: 600;
   color: var(--rt-pro-color);
 }
 
-.rt-runtime-hint {
+.ert-runtime-hint {
   margin-top: 8px;
   font-size: 12px;
   color: var(--text-muted);
 }
 
-.rt-runtime-label {
+.ert-runtime-label {
   font-weight: 500;
   color: var(--text-normal);
 }
 
-.rt-runtime-running-total {
+.ert-runtime-running-total {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--background-modifier-border);
   font-size: 16px;
 }
 
-.rt-runtime-queue {
+.ert-runtime-queue {
   max-height: 200px;
   overflow-y: auto;
   margin-top: 12px;
@@ -232,52 +232,52 @@
 /* -------------------------------------------------------------------------- */
 
 /* Section spacing */
-.rt-runtime-section {
+.ert-runtime-section {
   margin-bottom: 16px;
 }
 
-.rt-runtime-section:last-of-type {
+.ert-runtime-section:last-of-type {
   margin-bottom: 12px;
 }
 
 /* Runtime sections use glass-card but without heavy dropshadow */
-.rt-glass-card.rt-runtime-section {
+.rt-glass-card.ert-runtime-section {
   box-shadow: none;
 }
 
-/* rt-runtime-section-header replaced by rt-section-title in base.css */
+/* ert-runtime-section-header replaced by rt-section-title in base.css */
 
-.rt-runtime-section-desc {
+.ert-runtime-section-desc {
   font-size: 12px;
   color: var(--text-muted);
   margin-bottom: 12px;
 }
 
-/* rt-runtime-scope-layout, rt-runtime-scope-info, rt-runtime-scope-controls, rt-runtime-scope-row
+/* ert-runtime-scope-layout, ert-runtime-scope-info, ert-runtime-scope-controls, ert-runtime-scope-row
    replaced by rt-row and rt-stack utilities in base.css */
 
-.rt-runtime-dropdown-container {
+.ert-runtime-dropdown-container {
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-width: 180px;
 }
 
-.rt-runtime-dropdown-container .dropdown {
+.ert-runtime-dropdown-container .dropdown {
   width: 100%;
 }
 
-.rt-runtime-dropdown-disabled {
+.ert-runtime-dropdown-disabled {
   opacity: 0.4;
   pointer-events: none;
 }
 
-.rt-runtime-dropdown-disabled .dropdown {
+.ert-runtime-dropdown-disabled .dropdown {
   cursor: not-allowed;
 }
 
 /* Current scene display */
-.rt-runtime-current-scene {
+.ert-runtime-current-scene {
   margin-top: 12px;
   padding: 10px 12px;
   background: var(--background-secondary);
@@ -287,59 +287,59 @@
   gap: 4px;
 }
 
-.rt-runtime-current-scene-muted {
+.ert-runtime-current-scene-muted {
   opacity: 0.4;
   pointer-events: none;
 }
 
-.rt-runtime-current-scene-name {
+.ert-runtime-current-scene-name {
   font-weight: 500;
   color: var(--text-normal);
 }
 
-.rt-runtime-current-scene-name.rt-runtime-no-scene {
+.ert-runtime-current-scene-name.ert-runtime-no-scene {
   color: var(--text-muted);
   font-style: italic;
 }
 
-/* rt-runtime-status-row replaced by rt-row rt-row-loose rt-row-wrap in base.css */
+/* ert-runtime-status-row replaced by rt-row rt-row-loose rt-row-wrap in base.css */
 
-.rt-runtime-status-checkbox {
+.ert-runtime-status-checkbox {
   display: flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
 }
 
-.rt-runtime-status-checkbox input[type="checkbox"] {
+.ert-runtime-status-checkbox input[type="checkbox"] {
   width: 16px;
   height: 16px;
   margin: 0;
 }
 
-.rt-runtime-status-checkbox label {
+.ert-runtime-status-checkbox label {
   font-size: 14px;
   color: var(--text-normal);
   cursor: pointer;
 }
 
-.rt-runtime-override-label {
+.ert-runtime-override-label {
   flex: 1;
 }
 
-.rt-runtime-override-label span {
+.ert-runtime-override-label span {
   font-weight: 500;
   color: var(--text-normal);
 }
 
-.rt-runtime-field-hint {
+.ert-runtime-field-hint {
   font-size: 12px;
   color: var(--text-muted);
   margin-top: 4px;
 }
 
 /* Accordion for settings */
-.rt-runtime-accordion-header {
+.ert-runtime-accordion-header {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -348,11 +348,11 @@
   user-select: none;
 }
 
-.rt-runtime-accordion-header:hover {
+.ert-runtime-accordion-header:hover {
   color: var(--rt-pro-color);
 }
 
-.rt-runtime-accordion-icon {
+.ert-runtime-accordion-icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -362,46 +362,46 @@
   transition: transform 0.15s ease;
 }
 
-.rt-runtime-accordion-icon svg {
+.ert-runtime-accordion-icon svg {
   width: 16px;
   height: 16px;
 }
 
-.rt-runtime-accordion-title {
+.ert-runtime-accordion-title {
   font-weight: 500;
   color: var(--text-normal);
 }
 
-.rt-runtime-accordion-hint {
+.ert-runtime-accordion-hint {
   font-size: 12px;
   color: var(--text-muted);
   margin-left: auto;
 }
 
-.rt-runtime-accordion-content {
+.ert-runtime-accordion-content {
   padding: 12px 0 0 28px;
   border-top: 1px solid var(--background-modifier-border);
   margin-top: 8px;
 }
 
 /* Settings display rows */
-.rt-runtime-setting-row {
+.ert-runtime-setting-row {
   display: flex;
   justify-content: space-between;
   padding: 6px 0;
   font-size: 13px;
 }
 
-.rt-runtime-setting-label {
+.ert-runtime-setting-label {
   color: var(--text-muted);
 }
 
-.rt-runtime-setting-value {
+.ert-runtime-setting-value {
   color: var(--text-normal);
   font-weight: 500;
 }
 
-.rt-runtime-setting-subheader {
+.ert-runtime-setting-subheader {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-muted);
@@ -412,7 +412,7 @@
   border-top: 1px solid var(--background-modifier-border);
 }
 
-.rt-runtime-settings-hint {
+.ert-runtime-settings-hint {
   font-size: 11px;
   color: var(--text-faint);
   margin-top: 12px;

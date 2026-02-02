@@ -23,6 +23,28 @@
   --ert-pro-gradient-primary: linear-gradient(135deg, #9333ea, #6366f1);
   --ert-pro-gradient-primary-hover: linear-gradient(135deg, #a855f7, #818cf8);
   --ert-social-gradient-primary: linear-gradient(135deg, #fbbf24, #d97706);
+  --ert-alert-info-color: var(--interactive-accent);
+  --ert-alert-warning-color: var(--text-warning, #f59e0b);
+  --ert-alert-critical-color: var(--text-error, #ef4444);
+  --ert-alert-info-bg: color-mix(in srgb, var(--ert-alert-info-color) 12%, transparent);
+  --ert-alert-warning-bg: color-mix(in srgb, var(--ert-alert-warning-color) 12%, transparent);
+  --ert-alert-critical-bg: color-mix(in srgb, var(--ert-alert-critical-color) 12%, transparent);
+  --ert-alert-info-border: color-mix(in srgb, var(--ert-alert-info-color) 35%, transparent);
+  --ert-alert-warning-border: color-mix(in srgb, var(--ert-alert-warning-color) 35%, transparent);
+  --ert-alert-critical-border: color-mix(in srgb, var(--ert-alert-critical-color) 35%, transparent);
+  --ert-alert-warning-pulse: color-mix(in srgb, var(--ert-alert-warning-color) 40%, transparent);
+  --ert-alert-critical-pulse: color-mix(in srgb, var(--ert-alert-critical-color) 50%, transparent);
+  --ert-alert-warning-pulse-strong: color-mix(in srgb, var(--ert-alert-warning-color) 60%, transparent);
+  --ert-alert-critical-pulse-strong: color-mix(in srgb, var(--ert-alert-critical-color) 70%, transparent);
+  --ert-shadow-soft: 0 6px 18px color-mix(in srgb, var(--background-modifier-border) 30%, transparent);
+  --ert-shadow-soft-tight: 0 1px 3px color-mix(in srgb, var(--background-modifier-border) 55%, transparent);
+  --ert-shadow-soft-subtle: 0 1px 2px color-mix(in srgb, var(--background-modifier-border) 45%, transparent);
+  --ert-shadow-ring-accent: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 15%, transparent);
+  --ert-shadow-ring-accent-strong: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 20%, transparent);
+  --ert-shadow-pro-glow: 0 2px 8px color-mix(in srgb, var(--ert-pro-accent-color) 30%, transparent);
+  --ert-shadow-pro-glow-strong: 0 4px 12px color-mix(in srgb, var(--ert-pro-accent-color) 50%, transparent);
+  --ert-shadow-pro-glow-subtle: 0 1px 4px color-mix(in srgb, var(--ert-pro-accent-color) 30%, transparent);
+  --ert-shadow-apr-glow: 0 0 15px color-mix(in srgb, var(--ert-alert-warning-color) 40%, transparent);
   --ert-surface-hero: color-mix(in srgb, var(--background-primary) 92%, var(--interactive-accent) 4%);
   --ert-border-hero: color-mix(in srgb, var(--background-modifier-border) 90%, transparent);
   --ert-shadow-hero: 0 8px 28px color-mix(in srgb, var(--background-modifier-border) 35%, transparent);
@@ -858,7 +880,7 @@
   font-weight: 700;
   font-size: 12px;
   line-height: 1.2;
-  box-shadow: var(--ert-badgePill-shadow, var(--shadow-s1, 0 6px 18px rgba(0, 0, 0, 0.08)));
+  box-shadow: var(--ert-badgePill-shadow, var(--shadow-s1, var(--ert-shadow-soft)));
 }
 
 .ert-ui .ert-badgePill--sm {
@@ -906,7 +928,7 @@
   background: var(--ert-social-gradient-primary);
   border: none;
   color: var(--ert-color-white);
-  box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
+  box-shadow: var(--ert-shadow-apr-glow);
 }
 
 .ert-ui.ert-scope--settings .ert-badgePill__rightIcon {
@@ -1086,7 +1108,7 @@
   top: 2px;
   left: 2px;
   transition: transform 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--ert-shadow-soft-tight);
 }
 
 .ert-ui.ert-scope--settings input[type="checkbox"].ert-toggle-input::after {
@@ -1849,7 +1871,7 @@
 .ert-ui.ert-scope--settings .ert-settings-tab-active {
   background: var(--background-primary);
   color: var(--text-normal);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--ert-shadow-soft-subtle);
 }
 
 .ert-ui.ert-scope--settings .ert-settings-tab:first-child.ert-settings-tab-active {
@@ -1912,7 +1934,7 @@
 
 .ert-ui.ert-scope--settings .ert-settings-search-container:focus-within {
   border-color: var(--interactive-accent);
-  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.15);
+  box-shadow: var(--ert-shadow-ring-accent);
 }
 
 .ert-ui.ert-scope--settings .ert-settings-search-icon {
@@ -2137,32 +2159,32 @@
 
 /* Severity: Info (blue) - static */
 .ert-ui.ert-scope--settings .ert-refactor-alert--info {
-  --alert-color: #3b82f6;
-  --alert-bg: rgba(59, 130, 246, 0.1);
+  --alert-color: var(--ert-alert-info-color);
+  --alert-bg: var(--ert-alert-info-bg);
 }
 
 /* Severity: Warning (orange) - pulsing */
 .ert-ui.ert-scope--settings .ert-refactor-alert--warning {
-  --alert-color: #f59e0b;
-  --alert-bg: rgba(245, 158, 11, 0.1);
+  --alert-color: var(--ert-alert-warning-color);
+  --alert-bg: var(--ert-alert-warning-bg);
   animation: ert-pulse-warning 2s ease-in-out infinite;
 }
 
 /* Severity: Critical (red) - faster pulsing */
 .ert-ui.ert-scope--settings .ert-refactor-alert--critical {
-  --alert-color: #ef4444;
-  --alert-bg: rgba(239, 68, 68, 0.1);
+  --alert-color: var(--ert-alert-critical-color);
+  --alert-bg: var(--ert-alert-critical-bg);
   animation: ert-pulse-critical 1.5s ease-in-out infinite;
 }
 
 @keyframes ert-pulse-warning {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
-  50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 var(--ert-alert-warning-pulse); }
+  50% { box-shadow: 0 0 0 6px transparent; }
 }
 
 @keyframes ert-pulse-critical {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
-  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 var(--ert-alert-critical-pulse); }
+  50% { box-shadow: 0 0 0 8px transparent; }
 }
 
 /* Update button - pulses with severity color */
@@ -2176,12 +2198,12 @@
 
 @keyframes ert-pulse-btn-warning {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); box-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+  50% { transform: scale(1.05); box-shadow: 0 0 8px var(--ert-alert-warning-pulse-strong); }
 }
 
 @keyframes ert-pulse-btn-critical {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.08); box-shadow: 0 0 10px rgba(239, 68, 68, 0.6); }
+  50% { transform: scale(1.08); box-shadow: 0 0 10px var(--ert-alert-critical-pulse-strong); }
 }
 
 .ert-ui.ert-scope--settings .ert-settings-separator {
@@ -2556,7 +2578,7 @@
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) input.ert-hex-input:focus,
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-color-grid-controls .ert-hex-input:focus {
   border-color: var(--interactive-accent);
-  box-shadow: 0 0 0 2px rgba(100, 180, 255, 0.2);
+  box-shadow: var(--ert-shadow-ring-accent-strong);
 }
 
 :is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .ert-color-grid-controls .setting-item {
@@ -3577,14 +3599,14 @@
 }
 
 .ert-ui.ert-scope--settings .ert-reorder-row--pro {
-  background: color-mix(in srgb, var(--rt-pro-color, #d946ef) 8%, var(--background-secondary));
-  border: 1px solid color-mix(in srgb, var(--rt-pro-color, #d946ef) 28%, transparent);
+  background: color-mix(in srgb, var(--ert-pro-accent-color) 8%, var(--background-secondary));
+  border: 1px solid color-mix(in srgb, var(--ert-pro-accent-color) 28%, transparent);
   border-radius: calc(var(--ert-control-radius) + (var(--ert-gap-xs) / 2));
   padding: calc(var(--ert-gap-xs) + 2px) var(--ert-gap-sm);
 }
 
 .ert-ui.ert-scope--settings .ert-reorder-row--pro .ert-drag-handle {
-  color: var(--rt-pro-color);
+  color: var(--ert-pro-accent-color);
 }
 
 .ert-ui.ert-scope--settings .ert-reorder-row--ghost {
@@ -3626,7 +3648,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--ert-gap-sm);
-  color: var(--rt-pro-color);
+  color: var(--ert-pro-accent-color);
 }
 
 .ert-ui.ert-scope--settings .ert-yaml-row {
@@ -3667,18 +3689,18 @@
 
 /* Severity-based row highlighting */
 .ert-ui.ert-scope--settings .ert-yaml-row--warning::before {
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: var(--ert-alert-warning-bg);
+  border: 1px solid var(--ert-alert-warning-border);
 }
 
 .ert-ui.ert-scope--settings .ert-yaml-row--critical::before {
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: var(--ert-alert-critical-bg);
+  border: 1px solid var(--ert-alert-critical-border);
 }
 
 .ert-ui.ert-scope--settings .ert-yaml-row--info::before {
-  background: rgba(59, 130, 246, 0.12);
-  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: var(--ert-alert-info-bg);
+  border: 1px solid var(--ert-alert-info-border);
 }
 
 /* Migrate button - replaces trash for migration rows */
@@ -3688,17 +3710,17 @@
 }
 
 .ert-ui.ert-scope--settings .ert-migrate-btn--warning {
-  color: #f59e0b;
+  color: var(--ert-alert-warning-color);
   animation: ert-pulse-migrate-warning 2s ease-in-out infinite;
 }
 
 .ert-ui.ert-scope--settings .ert-migrate-btn--critical {
-  color: #ef4444;
+  color: var(--ert-alert-critical-color);
   animation: ert-pulse-migrate-critical 1.5s ease-in-out infinite;
 }
 
 .ert-ui.ert-scope--settings .ert-migrate-btn--info {
-  color: #3b82f6;
+  color: var(--ert-alert-info-color);
 }
 
 @keyframes ert-pulse-migrate-warning {
@@ -5393,18 +5415,18 @@
   background: var(--ert-pro-gradient-primary);
   color: var(--ert-color-white);
   border: none;
-  box-shadow: 0 2px 8px rgba(147, 51, 234, 0.3);
+  box-shadow: var(--ert-shadow-pro-glow);
 }
 
 .ert-ui .ert-btn--primary-pro:hover:not(:disabled) {
   background: var(--ert-pro-gradient-primary-hover);
-  box-shadow: 0 4px 12px rgba(147, 51, 234, 0.5);
+  box-shadow: var(--ert-shadow-pro-glow-strong);
   transform: translateY(-1px);
 }
 
 .ert-ui .ert-btn--primary-pro:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 1px 4px rgba(147, 51, 234, 0.3);
+  box-shadow: var(--ert-shadow-pro-glow-subtle);
 }
 
 .ert-ui .ert-btn--primary-pro:disabled {
@@ -5423,7 +5445,7 @@
   color: var(--text-normal);
   border: 1px solid var(--ert-pro-accent-border);
   /* Pro accent tint */
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--ert-shadow-soft-subtle);
 }
 
 .ert-ui.ert-scope--settings .ert-btn--standard-pro:hover:not(:disabled),

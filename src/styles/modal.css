@@ -79,14 +79,14 @@
 }
 
 /* Runtime Estimator Modal sizing */
-.rt-runtime-modal-shell.modal {
+.ert-runtime-modal-shell.modal {
   width: 720px;
   max-width: 92vw;
   max-height: 92vh;
 }
 
 /* Pro badge styling - used in manuscript modal and runtime modal */
-.rt-runtime-modal-shell .ert-modal-badge {
+.ert-runtime-modal-shell .ert-modal-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -95,13 +95,13 @@
   color: var(--rt-pro-color, #d946ef);
 }
 
-.rt-runtime-modal-shell .ert-modal-badge-icon {
+.ert-runtime-modal-shell .ert-modal-badge-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-.rt-runtime-modal-shell .ert-modal-badge-icon svg {
+.ert-runtime-modal-shell .ert-modal-badge-icon svg {
   width: 14px;
   height: 14px;
   stroke: var(--rt-pro-color, #d946ef);
@@ -109,7 +109,7 @@
   fill: none;
 }
 
-.rt-runtime-mode-info {
+.ert-runtime-mode-info {
   display: inline-flex;
   align-items: center;
   gap: var(--ert-gap-xs);

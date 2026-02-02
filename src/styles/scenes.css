@@ -239,7 +239,7 @@
 }
 
 .rt-number-text {
-  fill: #000000;
+  fill: var(--rt-legacy-black);
   pointer-events: none;
   font-size: calc(16px * var(--rt-number-font-scale, 1));
 }
@@ -370,7 +370,7 @@
 
 /* Date and Duration tspans - small gray text */
 .rt-title-date-time tspan {
-  fill: #888888;
+  fill: var(--rt-legacy-gray-light);
   font-size: 16px;
   font-weight: 400;
 }
@@ -390,7 +390,7 @@
 /*Beats text styling*/
 .rt-title-text-secondary {
   font-size: calc(18px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
-  fill: #666666;
+  fill: var(--rt-legacy-gray);
   text-transform: uppercase;
   font-weight: normal;
 }
@@ -398,7 +398,7 @@
 /* Gossamer justification text - gray, like pulse analysis */
 .rt-gossamer-justification {
   font-size: calc(18px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
-  fill: #888888;
+  fill: var(--rt-legacy-gray-light);
   font-weight: normal;
   text-transform: none;
 }
@@ -463,13 +463,13 @@
 }
 
 .rt-number-text.rt-scene-is-open.rt-search-result {
-  fill: #000000;
+  fill: var(--rt-legacy-black);
 }
 
 /* Search result squares stay yellow unless muted via rt-non-selected */
 .rt-number-square.rt-search-result.rt-selected {
   fill: var(--rt-color-search);
-  stroke: #ff9500;
+  stroke: var(--rt-legacy-warning);
   stroke-width: 2px;
 }
 
@@ -654,11 +654,11 @@
 .rt-hover-metadata-line {
   pointer-events: none;
   /* Match synopsis body color */
-  color: #666666;
+  color: var(--rt-legacy-gray);
 }
 
 .rt-hover-metadata-icon-g {
-  stroke: #666666;
+  stroke: var(--rt-legacy-gray);
   fill: none;
 }
 
@@ -668,10 +668,10 @@
 }
 
 .rt-hover-metadata-icon svg {
-  color: #666666;
-  stroke: #666666;
+  color: var(--rt-legacy-gray);
+  stroke: var(--rt-legacy-gray);
 }
 
 .rt-hover-metadata-text {
-  fill: #666666;
+  fill: var(--rt-legacy-gray);
 }

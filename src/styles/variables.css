@@ -18,6 +18,10 @@
   /* Green  */
   --rt-pro-color-base: #d946ef;
   --rt-social-color-base: #ffd41d;
+  --rt-legacy-black: #000000;
+  --rt-legacy-gray: #666666;
+  --rt-legacy-gray-light: #888888;
+  --rt-legacy-warning: #ff9500;
 
   /* Runtime colours – the plugin overwrites these on load */
   --rt-publishStageColors-Zero: var(--rt-color-zero);
