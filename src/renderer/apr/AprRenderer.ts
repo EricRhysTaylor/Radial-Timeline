@@ -13,7 +13,7 @@ import { renderDefs } from '../components/Defs';
 import { getFillForScene } from '../utils/SceneFill';
 import { DEFAULT_SETTINGS } from '../../settings/defaults';
 import { renderAprBadges, renderAprBranding, renderAprCenterPercent } from './AprBranding';
-import { STAGE_ORDER } from '../../utils/constants';
+import { STAGE_ORDER, STATUS_COLORS } from '../../utils/constants';
 
 export interface AprRenderOptions {
     size: AprSize;
@@ -69,6 +69,7 @@ export interface AprRenderOptions {
     revealCampaignEnabled?: boolean;
     nextRevealAt?: number | string | Date;
     debugLabel?: string;
+    portableSvg?: boolean;  // When true, output standalone SVG without CSS vars (Figma/Illustrator safe)
 }
 
 export interface AprRenderResult {
@@ -86,6 +87,15 @@ type RingData = {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const cssVar = (name: string, fallback: string) => `var(${name}-override, var(${name}, ${fallback}))`;
+
+// Portable SVG helpers: bypass CSS vars for standalone exports (Figma, Illustrator, etc.)
+const resolveColor = (portable: boolean) =>
+    (name: string, fallback: string): string =>
+        portable ? fallback : cssVar(name, fallback);
+
+const resolveOpacity = (portable: boolean) =>
+    (varExpr: string, fallback: string): string =>
+        portable ? fallback : varExpr;
 
 export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): AprRenderResult {
     const {
@@ -126,8 +136,13 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         percentSymbolColor,
         theme = 'dark',
         spokeColor,
-        debugLabel
+        debugLabel,
+        portableSvg = false
     } = opts;
+
+    // Create bound color/opacity resolvers for portable vs CSS-var mode
+    const color = resolveColor(portableSvg);
+    const opacity = resolveOpacity(portableSvg);
 
     const layout = computeAprLayout(getAprPreset(size), { percent: progressPercent });
     const svgSize = layout.outerPx;
@@ -259,53 +274,62 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     }
 
     const svgStyleString = svgStyle.join('; ');
+    const svgStyleAttr = portableSvg ? '' : ` style="${svgStyleString}"`; // SAFE: inline style used for CSS variable surface in SVG (omitted in portable mode)
 
-    let svg = `<svg width="${svgSize}" height="${svgSize}" viewBox="-${half} -${half} ${svgSize} ${svgSize}" xmlns="http://www.w3.org/2000/svg" class="apr-svg apr-${size}" style="${svgStyleString}">`; // SAFE: inline style used for CSS variable surface in SVG
-    svg += `<rect x="-${half}" y="-${half}" width="${svgSize}" height="${svgSize}" fill="${cssVar('--apr-bg', bgFill)}" />`;
+    let svg = `<svg width="${svgSize}" height="${svgSize}" viewBox="-${half} -${half} ${svgSize} ${svgSize}" xmlns="http://www.w3.org/2000/svg" class="apr-svg apr-${size}"${svgStyleAttr}>`;
+    svg += `<rect x="-${half}" y="-${half}" width="${svgSize}" height="${svgSize}" fill="${color('--apr-bg', bgFill)}" />`;
 
-    // Publication-mode defs (plaid patterns etc.) + percent shadow filter
+    // Publication-mode defs (plaid patterns etc.) + optional filters
     // Use patternScale from preset for denser patterns at smaller sizes
-    const percentShadow = `
+    // Note: Filters are skipped in portable mode for Figma/Illustrator compatibility
+    const percentShadow = portableSvg ? '' : `
         <filter id="aprPercentShadow" x="-50%" y="-50%" width="200%" height="200%">
             <feDropShadow dx="0" dy="2" stdDeviation="2.2" flood-color="#000" flood-opacity="0.45"/>
         </filter>
     `;
-    const grayscaleFilter = grayscaleScenes ? `
+    const grayscaleFilter = (grayscaleScenes && !portableSvg) ? `
         <filter id="aprGrayscale" color-interpolation-filters="sRGB">
             <feColorMatrix type="saturate" values="0" />
         </filter>
     ` : '';
-    svg += `<defs>${renderDefs(stageColorMap, patternScale)}${percentShadow}${grayscaleFilter}</defs>`;
+    // Pass portable mode and resolved status colors to defs
+    const statusColorsResolved = portableSvg ? {
+        working: '#FF69B4',  // STATUS_COLORS.Working fallback
+        todo: '#cccccc'      // STATUS_COLORS.Todo fallback
+    } : undefined;
+    svg += `<defs>${renderDefs(stageColorMap, patternScale, portableSvg, statusColorsResolved)}${percentShadow}${grayscaleFilter}</defs>`;
 
     // ─────────────────────────────────────────────────────────────────────────
     // BAR-ONLY MODE (Teaser): Solid progress ring, no scene details
     // ─────────────────────────────────────────────────────────────────────────
     if (!showScenesFinal) {
-        svg += renderProgressRing(innerRadius, outerRadius, progressPercent, structural, stageColorMap, {
+        svg += renderProgressRing(innerRadius, outerRadius, progressPercent, structural, stageColorMap, color, opacity, {
             ...ringOptions,
             borderWidth: borderWidth
         });
     } else {
         // Normal mode: Draw rings with scene cells
-        const ringFilter = grayscaleScenes ? ' filter="url(#aprGrayscale)"' : '';
+        // Note: Grayscale filter skipped in portable mode for Figma compatibility
+        const ringFilter = (grayscaleScenes && !portableSvg) ? ' filter="url(#aprGrayscale)"' : '';
         svg += `<g class="apr-rings"${ringFilter}>`;
         ringsToRender.forEach(ring => {
-            svg += renderRing(ring, safeScenes, borderWidth, showStatusColors, showStageColors, grayCompletedScenes, stageColorMap, numActs, structural);
+            svg += renderRing(ring, safeScenes, borderWidth, showStatusColors, showStageColors, grayCompletedScenes, stageColorMap, numActs, structural, color, opacity, portableSvg);
         });
         svg += `</g>`;
 
         // Act spokes (only when scenes are shown)
         if (showActs) {
-            svg += renderActSpokes(numActs, innerRadius, outerRadius, actSpokeWidth, structural);
+            svg += renderActSpokes(numActs, innerRadius, outerRadius, actSpokeWidth, structural, color);
         }
     }
 
     // Center hole
     const centerStroke = centerStrokeWidth ? ` stroke-width="${centerStrokeWidth}"` : '';
-    svg += `<circle cx="0" cy="0" r="${innerRadius}" fill="${cssVar('--apr-center-fill', holeFill)}" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-opacity="var(--apr-struct-border-opacity, 0.35)"${centerStroke} />`;
+    const centerStrokeOpacity = opacity('var(--apr-struct-border-opacity, 0.35)', '0.35');
+    svg += `<circle cx="0" cy="0" r="${innerRadius}" fill="${color('--apr-center-fill', holeFill)}" stroke="${color('--apr-struct-border', structural.border)}" stroke-opacity="${centerStrokeOpacity}"${centerStroke} />`;
 
     if (centerMarkFinal !== 'none') {
-        svg += renderCenterMark(innerRadius, centerMarkFinal, progressColor);
+        svg += renderCenterMark(innerRadius, centerMarkFinal, progressColor, color);
     }
 
     // Center percent (optional)
@@ -319,7 +343,8 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
             percentNumberFontSize3Digit,
             percentSymbolFontFamily,
             percentSymbolFontWeight,
-            percentSymbolFontItalic
+            percentSymbolFontItalic,
+            portableSvg
         });
     }
 
@@ -340,7 +365,8 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
             authorNameFontFamily,
             authorNameFontWeight,
             authorNameFontItalic,
-            authorNameFontSize
+            authorNameFontSize,
+            portableSvg
         });
     }
 
@@ -355,7 +381,8 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
             rtBadgeFontFamily,
             rtBadgeFontWeight,
             rtBadgeFontItalic,
-            rtBadgeFontSize
+            rtBadgeFontSize,
+            portableSvg
         });
     }
 
@@ -383,7 +410,10 @@ function renderRing(
     grayCompletedScenes: boolean,
     stageColors: Record<string, string>,
     numActs: number,
-    structural: ReturnType<typeof resolveStructuralColors>
+    structural: ReturnType<typeof resolveStructuralColors>,
+    color: (name: string, fallback: string) => string,
+    opacity: (varExpr: string, fallback: string) => string,
+    portableSvg: boolean
 ): string {
     const ringScenes = ring.scenes;
     const actScenes: TimelineItem[][] = [];
@@ -407,7 +437,8 @@ function renderRing(
         if (scenesInAct.length === 0) {
             // full void arc for this act - use light gray void color
             const voidPath = sceneArcPath(ring.innerR, ring.outerR, actStart, actEnd);
-            svg += `<path d="${voidPath}" fill="${cssVar('--apr-scene-void', APR_COLORS.void)}" fill-opacity="var(--apr-scene-void-opacity, 0.85)" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
+            const voidOpacity = opacity('var(--apr-scene-void-opacity, 0.85)', '0.85');
+            svg += `<path d="${voidPath}" fill="${color('--apr-scene-void', APR_COLORS.void)}" fill-opacity="${voidOpacity}" stroke="${color('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
             continue;
         }
 
@@ -417,9 +448,9 @@ function renderRing(
             const pos = positions.get(idx);
             if (!pos) return;
             used += pos.endAngle - pos.startAngle;
-            const color = resolveSceneColor(scene, showStatusColors, showStageColors, grayCompletedScenes, stageColors);
+            const sceneColor = resolveSceneColor(scene, showStatusColors, showStageColors, grayCompletedScenes, stageColors, portableSvg);
             const path = sceneArcPath(ring.innerR, ring.outerR, pos.startAngle, pos.endAngle);
-            svg += `<path d="${path}" fill="${color}" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
+            svg += `<path d="${path}" fill="${sceneColor}" stroke="${color('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
         });
 
         // Void for remaining space in this act, if any - use light gray void color
@@ -428,18 +459,26 @@ function renderRing(
         if (remaining > 0.0001) {
             const voidStart = actEnd - remaining;
             const voidPath = sceneArcPath(ring.innerR, ring.outerR, voidStart, actEnd);
-            svg += `<path d="${voidPath}" fill="${cssVar('--apr-scene-void', APR_COLORS.void)}" fill-opacity="var(--apr-scene-void-opacity, 0.85)" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
+            const voidOpacity = opacity('var(--apr-scene-void-opacity, 0.85)', '0.85');
+            svg += `<path d="${voidPath}" fill="${color('--apr-scene-void', APR_COLORS.void)}" fill-opacity="${voidOpacity}" stroke="${color('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
         }
     }
 
     // Ring frames (inner/outer)
-    svg += `<circle r="${ring.outerR}" fill="none" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
-    svg += `<circle r="${ring.innerR}" fill="none" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
+    svg += `<circle r="${ring.outerR}" fill="none" stroke="${color('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
+    svg += `<circle r="${ring.innerR}" fill="none" stroke="${color('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
 
     return svg;
 }
 
-function renderActSpokes(numActs: number, innerR: number, outerR: number, spokeWidth: number, structural: ReturnType<typeof resolveStructuralColors>): string {
+function renderActSpokes(
+    numActs: number,
+    innerR: number,
+    outerR: number,
+    spokeWidth: number,
+    structural: ReturnType<typeof resolveStructuralColors>,
+    color: (name: string, fallback: string) => string
+): string {
     if (numActs <= 1) return '';
     let svg = `<g class="apr-act-spokes">`;
     for (let i = 0; i < numActs; i++) {
@@ -448,7 +487,7 @@ function renderActSpokes(numActs: number, innerR: number, outerR: number, spokeW
         const y1 = innerR * Math.sin(angle);
         const x2 = outerR * Math.cos(angle);
         const y2 = outerR * Math.sin(angle);
-        svg += `<line x1="${x1.toFixed(3)}" y1="${y1.toFixed(3)}" x2="${x2.toFixed(3)}" y2="${y2.toFixed(3)}" stroke="${cssVar('--apr-struct-act-spoke', structural.actSpoke)}" stroke-width="${spokeWidth}" />`;
+        svg += `<line x1="${x1.toFixed(3)}" y1="${y1.toFixed(3)}" x2="${x2.toFixed(3)}" y2="${y2.toFixed(3)}" stroke="${color('--apr-struct-act-spoke', structural.actSpoke)}" stroke-width="${spokeWidth}" />`;
     }
     svg += `</g>`;
     return svg;
@@ -462,16 +501,20 @@ function renderActSpokes(numActs: number, innerR: number, outerR: number, spokeW
  * @param showStageColors - Show Zero/Author/House/Press colors  
  * @param grayCompletedScenes - Gray out completed scenes (for SCENES stage)
  * @param stageColors - Color map from settings
+ * @param portableSvg - When true, return direct colors without CSS vars
  */
 function resolveSceneColor(
     scene: TimelineItem,
     showStatusColors: boolean,
     showStageColors: boolean,
     grayCompletedScenes: boolean,
-    stageColors: Record<string, string>
+    stageColors: Record<string, string>,
+    portableSvg: boolean
 ): string {
+    const color = resolveColor(portableSvg);
+
     // When no colors at all, use neutral gray
-    if (!showStatusColors && !showStageColors) return cssVar('--apr-scene-neutral', APR_COLORS.sceneNeutral);
+    if (!showStatusColors && !showStageColors) return color('--apr-scene-neutral', APR_COLORS.sceneNeutral);
 
     // Check if scene is "completed" (has a publish stage set)
     // Use bracket notation since 'Publish Stage' has a space
@@ -482,14 +525,15 @@ function resolveSceneColor(
 
     // SCENES stage: gray out completed scenes to hide publishing progress
     if (grayCompletedScenes && isCompleted) {
-        return cssVar('--apr-scene-neutral', APR_COLORS.sceneNeutral);
+        return color('--apr-scene-neutral', APR_COLORS.sceneNeutral);
     }
 
     // When only status colors (not stage colors), show active work but not publish stages
     if (showStatusColors && !showStageColors) {
         // For completed scenes, use neutral (we don't want to show Zero/Author/House/Press)
-        if (isCompleted) return cssVar('--apr-scene-neutral', APR_COLORS.sceneNeutral);
+        if (isCompleted) return color('--apr-scene-neutral', APR_COLORS.sceneNeutral);
         // For active work, use getFillForScene which respects status
+        // Note: getFillForScene may return pattern URLs which contain CSS vars - portable mode handles this in Defs.ts
         return getFillForScene(scene, stageColors);
     }
 
@@ -589,6 +633,8 @@ function renderProgressRing(
     progressPercent: number,
     structural: ReturnType<typeof resolveStructuralColors>,
     stageColors: Record<string, string>,
+    color: (name: string, fallback: string) => string,
+    opacity: (varExpr: string, fallback: string) => string,
     options?: {
         ghostColor?: string;
         ghostOpacity?: number;
@@ -609,7 +655,8 @@ function renderProgressRing(
 
     // Track (empty ring)
     let svg = `<g class="apr-progress-ring">`;
-    svg += `<circle cx="0" cy="0" r="${midR}" fill="none" stroke="${cssVar('--apr-progress-ghost-color', ghostColor)}" stroke-width="${ghostWidth}" stroke-opacity="${cssVar('--apr-progress-ghost-opacity', String(ghostOpacity))}" />`;
+    const ghostOpacityResolved = opacity('var(--apr-progress-ghost-opacity, ' + ghostOpacity + ')', String(ghostOpacity));
+    svg += `<circle cx="0" cy="0" r="${midR}" fill="none" stroke="${color('--apr-progress-ghost-color', ghostColor)}" stroke-width="${ghostWidth}" stroke-opacity="${ghostOpacityResolved}" />`;
 
     // Progress arc
     if (progressPercent > 0) {
@@ -617,7 +664,7 @@ function renderProgressRing(
 
         if (clampedPercent >= 100) {
             // Full circle
-            svg += `<circle cx="0" cy="0" r="${midR}" fill="none" stroke="${cssVar('--apr-progress-color', progressColor)}" stroke-width="${progressWidth}" />`;
+            svg += `<circle cx="0" cy="0" r="${midR}" fill="none" stroke="${color('--apr-progress-color', progressColor)}" stroke-width="${progressWidth}" />`;
         } else {
             // Arc from top (-90°) clockwise
             const angle = (clampedPercent / 100) * 2 * Math.PI;
@@ -631,14 +678,14 @@ function renderProgressRing(
 
             const largeArcFlag = angle > Math.PI ? 1 : 0;
 
-            svg += `<path d="M ${x1.toFixed(3)} ${y1.toFixed(3)} A ${midR} ${midR} 0 ${largeArcFlag} 1 ${x2.toFixed(3)} ${y2.toFixed(3)}" fill="none" stroke="${cssVar('--apr-progress-color', progressColor)}" stroke-width="${progressWidth}" stroke-linecap="round" />`;
+            svg += `<path d="M ${x1.toFixed(3)} ${y1.toFixed(3)} A ${midR} ${midR} 0 ${largeArcFlag} 1 ${x2.toFixed(3)} ${y2.toFixed(3)}" fill="none" stroke="${color('--apr-progress-color', progressColor)}" stroke-width="${progressWidth}" stroke-linecap="round" />`;
         }
     }
 
     // Outer and inner border circles
     if (showBorders) {
-        svg += `<circle cx="0" cy="0" r="${outerR}" fill="none" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-width="${borderStrokeWidth}" />`;
-        svg += `<circle cx="0" cy="0" r="${innerR}" fill="none" stroke="${cssVar('--apr-struct-border', structural.border)}" stroke-width="${borderStrokeWidth}" />`;
+        svg += `<circle cx="0" cy="0" r="${outerR}" fill="none" stroke="${color('--apr-struct-border', structural.border)}" stroke-width="${borderStrokeWidth}" />`;
+        svg += `<circle cx="0" cy="0" r="${innerR}" fill="none" stroke="${color('--apr-struct-border', structural.border)}" stroke-width="${borderStrokeWidth}" />`;
     }
 
     svg += `</g>`;
@@ -648,18 +695,19 @@ function renderProgressRing(
 function renderCenterMark(
     innerR: number,
     mode: 'dot' | 'plus',
-    color: string
+    markColor: string,
+    color: (name: string, fallback: string) => string
 ): string {
     if (mode === 'dot') {
         const markerRadius = Math.max(2, innerR * 0.1);
-        return `<circle cx="0" cy="0" r="${markerRadius}" fill="${cssVar('--apr-center-mark-color', color)}" fill-opacity="0.6" />`;
+        return `<circle cx="0" cy="0" r="${markerRadius}" fill="${color('--apr-center-mark-color', markColor)}" fill-opacity="0.6" />`;
     }
 
     const size = Math.max(6, innerR * 0.6);
     const half = size / 2;
     const strokeWidth = Math.max(1, innerR * 0.08);
     return `
-        <g class="apr-center-plus" stroke="${cssVar('--apr-center-mark-color', color)}" stroke-opacity="0.7" stroke-width="${strokeWidth}" stroke-linecap="round">
+        <g class="apr-center-plus" stroke="${color('--apr-center-mark-color', markColor)}" stroke-opacity="0.7" stroke-width="${strokeWidth}" stroke-linecap="round">
             <line x1="0" y1="${-half}" x2="0" y2="${half}" />
             <line x1="${-half}" y1="0" x2="${half}" y2="0" />
         </g>

@@ -99,8 +99,8 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     // ─────────────────────────────────────────────────────────────────────────
     // Section Header
     // ─────────────────────────────────────────────────────────────────────────
-    // Pro container wrapping all runtime controls
-    const proContainer = containerEl.createDiv({ cls: ERT_CLASSES.PANEL });
+    // Pro container wrapping all runtime controls (ert-stack so Profile, Rates, Session planning are distinct rows)
+    const proContainer = containerEl.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` });
     if (!hasProfessional) {
         proContainer.addClass('ert-pro-locked');
     }
@@ -154,7 +154,9 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         }
 
         const headerContainer = proContainer.createDiv({ cls: ERT_CLASSES.STACK });
-        const detailsContainer = proContainer.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+        const ratesRow = proContainer.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+        const sessionPlanningRow = proContainer.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+        const patternsRow = proContainer.createDiv({ cls: ERT_CLASSES.STACK });
 
         const getSelectedProfile = (): RuntimeRateProfile | undefined => {
             const currentProfiles = plugin.settings.runtimeRateProfiles || [];
@@ -178,7 +180,9 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
         const renderDetails = () => {
             const scrollState = captureScrollState();
-            detailsContainer.empty();
+            ratesRow.empty();
+            sessionPlanningRow.empty();
+            patternsRow.empty();
             const selectedProfile = getSelectedProfile();
             if (!selectedProfile) {
                 restoreScrollState(scrollState);
@@ -186,7 +190,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             }
 
             const contentType = selectedProfile.contentType || 'novel';
-            const ratesHeading = new Setting(detailsContainer)
+            const ratesHeading = new Setting(ratesRow)
                 .setName('Rates & timings')
                 .setHeading();
             const ratesIconName = contentType === 'screenplay' ? 'projector' : 'mic-vocal';
@@ -195,7 +199,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             applyErtHeaderLayout(ratesHeading);
 
             // Content Type Selection
-            addProRow(new Setting(detailsContainer))
+            addProRow(new Setting(ratesRow))
                 .setName('Content type')
                 .setDesc('Novel calculates all text at narration pace. Screenplay separates dialogue from action.')
                 .addDropdown((dropdown: DropdownComponent) => {
@@ -211,7 +215,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
 
             // Word Rates (content-type specific)
             if (contentType === 'screenplay') {
-                addProRow(new Setting(detailsContainer))
+                addProRow(new Setting(ratesRow))
                     .setName('Dialogue words per minute')
                     .setDesc('Reading speed for quoted dialogue.')
                     .addText((text: TextComponent) => {
@@ -231,7 +235,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                         });
                     });
 
-                addProRow(new Setting(detailsContainer))
+                addProRow(new Setting(ratesRow))
                     .setName('Action words per minute')
                     .setDesc('Reading speed for scene descriptions and action lines.')
                     .addText((text: TextComponent) => {
@@ -266,7 +270,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                 ];
 
                 for (const p of parentheticals) {
-                    addProRow(new Setting(detailsContainer))
+                    addProRow(new Setting(ratesRow))
                         .setName(p.label)
                         .setDesc(p.desc)
                         .addText((text: TextComponent) => {
@@ -301,7 +305,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                 }
             } else {
                 // Novel / Audiobook mode
-                addProRow(new Setting(detailsContainer))
+                addProRow(new Setting(ratesRow))
                     .setName('Narration words per minute')
                     .setDesc('Reading pace for all content (audiobook narration).')
                     .addText((text: TextComponent) => {
@@ -322,8 +326,8 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     });
             }
 
-            // Session planning (optional, per profile)
-            const sessionHeading = addProRow(new Setting(detailsContainer))
+            // Session planning (optional, per profile) — 3rd row in ert-panel stack
+            const sessionHeading = addProRow(new Setting(sessionPlanningRow))
                 .setName('Session planning (optional)')
                 .setDesc('Used in the Outline export: Index cards (JSON) summary to estimate writing hours and total sessions.')
                 .setHeading();
@@ -332,7 +336,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             applyErtHeaderLayout(sessionHeading);
             const session = selectedProfile.sessionPlanning || {};
 
-            addProRow(new Setting(detailsContainer))
+            addProRow(new Setting(sessionPlanningRow))
                 .setName('Drafting words per minute (optional)')
                 .setDesc('Your writing speed for session time estimates.')
                 .addText((text: TextComponent) => {
@@ -354,7 +358,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     });
                 });
 
-            addProRow(new Setting(detailsContainer))
+            addProRow(new Setting(sessionPlanningRow))
                 .setName('Daily minutes available (optional)')
                 .setDesc('For shooting schedule time estimates.')
                 .addText((text: TextComponent) => {
@@ -377,7 +381,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                 });
 
             // Explicit Duration Patterns (always shown when enabled)
-            const patternsInfo = detailsContainer.createDiv({
+            const patternsInfo = patternsRow.createDiv({
                 cls: `${ERT_CLASSES.STACK} ert-runtime-patterns`
             });
             patternsInfo.createEl('p', {

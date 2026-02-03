@@ -221,7 +221,9 @@ export class AuthorProgressService {
             rtBadgeFontFamily: settings.aprRtBadgeFontFamily,
             rtBadgeFontWeight: settings.aprRtBadgeFontWeight,
             rtBadgeFontItalic: settings.aprRtBadgeFontItalic,
-            rtBadgeFontSize: settings.aprRtBadgeFontSize
+            rtBadgeFontSize: settings.aprRtBadgeFontSize,
+            // Portable SVG mode: export standalone SVGs without CSS vars (Figma/Illustrator safe)
+            portableSvg: true
         });
 
         let finalSvg = svgString;
@@ -590,7 +592,9 @@ export class AuthorProgressService {
             rtBadgeFontFamily: settings.aprRtBadgeFontFamily,
             rtBadgeFontWeight: settings.aprRtBadgeFontWeight,
             rtBadgeFontItalic: settings.aprRtBadgeFontItalic,
-            rtBadgeFontSize: settings.aprRtBadgeFontSize
+            rtBadgeFontSize: settings.aprRtBadgeFontSize,
+            // Portable SVG mode: export standalone SVGs without CSS vars (Figma/Illustrator safe)
+            portableSvg: true
         });
 
         return {

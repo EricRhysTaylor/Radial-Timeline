@@ -11,6 +11,15 @@ import { getAprPreset, type AprSize } from './aprPresets';
 const cssVar = (name: string, fallback: string) => `var(${name}-override, var(${name}, ${fallback}))`;
 const italicAttr = (isItalic?: boolean) => (isItalic ? 'font-style="italic"' : ''); // SAFE: inline style used for SVG font-style attribute
 
+// Portable SVG helpers: bypass CSS vars for standalone exports (Figma, Illustrator, etc.)
+const resolveColor = (portable: boolean) =>
+    (name: string, fallback: string): string =>
+        portable ? fallback : cssVar(name, fallback);
+
+const resolveOpacity = (portable: boolean) =>
+    (varExpr: string, fallback: string): string =>
+        portable ? fallback : varExpr;
+
 export interface AprBrandingOptions {
     bookTitle: string;
     authorName?: string;
@@ -29,6 +38,8 @@ export interface AprBrandingOptions {
     authorNameFontWeight?: number;
     authorNameFontItalic?: boolean;
     authorNameFontSize?: number;
+    // Portable SVG mode
+    portableSvg?: boolean;
 }
 
 /**
@@ -41,8 +52,11 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const {
         bookTitle, authorName, authorUrl, size, bookAuthorColor, authorColor,
         bookTitleFontFamily = 'Inter', bookTitleFontWeight = 400, bookTitleFontItalic = false, bookTitleFontSize,
-        authorNameFontFamily = 'Inter', authorNameFontWeight = 400, authorNameFontItalic = false, authorNameFontSize
+        authorNameFontFamily = 'Inter', authorNameFontWeight = 400, authorNameFontItalic = false, authorNameFontSize,
+        portableSvg = false
     } = options;
+    
+    const color = resolveColor(portableSvg);
     const resolvedLayout = options.layout ?? computeAprLayout(getAprPreset(size), { percent: 0 });
     // Use the actual text radius for accurate circumference calculation
     const brandingRadius = resolvedLayout.branding.radius ?? resolvedLayout.ringOuterR;
@@ -159,8 +173,8 @@ export function renderAprBranding(options: AprBrandingOptions): string {
 
     // Construct the seamless text content
     let textContent = '';
-    const bookTspanStart = `<tspan fill="${cssVar('--apr-book-title-color', bookColor)}" font-family="${bookTitleFontFamily}" font-weight="${bookTitleFontWeight}" font-size="${bookTitleSize}" ${italicAttr(bookTitleFontItalic)}>`;
-    const authorTspanStart = `<tspan fill="${cssVar('--apr-author-color', authColor)}" font-family="${authorNameFontFamily}" font-weight="${authorNameFontWeight}" font-size="${authorNameSize}" ${italicAttr(authorNameFontItalic)}>`;
+    const bookTspanStart = `<tspan fill="${color('--apr-book-title-color', bookColor)}" font-family="${bookTitleFontFamily}" font-weight="${bookTitleFontWeight}" font-size="${bookTitleSize}" ${italicAttr(bookTitleFontItalic)}>`;
+    const authorTspanStart = `<tspan fill="${color('--apr-author-color', authColor)}" font-family="${authorNameFontFamily}" font-weight="${authorNameFontWeight}" font-size="${authorNameSize}" ${italicAttr(authorNameFontItalic)}>`;
     const endTspan = `</tspan>`;
 
     for (let i = 0; i < repeats; i += 1) {
@@ -206,6 +220,8 @@ export interface AprBadgeOptions {
     rtBadgeFontWeight?: number;
     rtBadgeFontItalic?: boolean;
     rtBadgeFontSize?: number;
+    // Portable SVG mode
+    portableSvg?: boolean;
 }
 
 export function renderAprBadges(options: AprBadgeOptions): string {
@@ -218,10 +234,14 @@ export function renderAprBadges(options: AprBadgeOptions): string {
         rtBadgeFontFamily = 'Inter',
         rtBadgeFontWeight = 700,
         rtBadgeFontItalic = false,
-        rtBadgeFontSize
+        rtBadgeFontSize,
+        portableSvg = false
     } = options;
 
     if (!showStageBadge && !showRtAttribution) return '';
+
+    const color = resolveColor(portableSvg);
+    const opacity = resolveOpacity(portableSvg);
 
     const resolvedLayout = options.layout ?? computeAprLayout(getAprPreset(size), { percent: 0 });
     if (!resolvedLayout.preset.enableText) return '';
@@ -254,8 +274,8 @@ export function renderAprBadges(options: AprBadgeOptions): string {
             font-weight="${rtBadgeFontWeight}"
             ${italicAttr(rtBadgeFontItalic)}
             letter-spacing="${stageLetterSpacing}"
-            fill="${cssVar('--apr-stage-badge-color', APR_TEXT_COLORS.primary)}"
-            opacity="var(--apr-stage-badge-opacity, 0.88)">
+            fill="${color('--apr-stage-badge-color', APR_TEXT_COLORS.primary)}"
+            opacity="${opacity('var(--apr-stage-badge-opacity, 0.88)', '0.88')}">
             ${stageText}
         </text>
     ` : '';
@@ -272,8 +292,8 @@ export function renderAprBadges(options: AprBadgeOptions): string {
             font-weight="${rtBadgeFontWeight}"
             ${italicAttr(rtBadgeFontItalic)}
             letter-spacing="${countdownLetterSpacing}"
-            fill="${cssVar('--apr-countdown-color', APR_TEXT_COLORS.primary)}"
-            opacity="var(--apr-countdown-opacity, 0.7)">
+            fill="${color('--apr-countdown-color', APR_TEXT_COLORS.primary)}"
+            opacity="${opacity('var(--apr-countdown-opacity, 0.7)', '0.7')}">
             ${revealCountdownDays}d
         </text>
     ` : '';
@@ -289,8 +309,8 @@ export function renderAprBadges(options: AprBadgeOptions): string {
                 font-size="${Math.max(6, Math.round(badgeSize * 0.75))}" 
                 font-weight="${rtBadgeFontWeight}"
                 ${italicAttr(rtBadgeFontItalic)}
-                fill="${cssVar('--apr-rt-attrib-color', APR_TEXT_COLORS.primary)}"
-                opacity="var(--apr-rt-attrib-opacity, 0.35)">
+                fill="${color('--apr-rt-attrib-color', APR_TEXT_COLORS.primary)}"
+                opacity="${opacity('var(--apr-rt-attrib-opacity, 0.35)', '0.35')}">
                 RT
             </text>
         </a>
@@ -335,6 +355,8 @@ export interface AprCenterPercentOptions {
     percentSymbolFontFamily?: string;
     percentSymbolFontWeight?: number;
     percentSymbolFontItalic?: boolean;
+    // Portable SVG mode
+    portableSvg?: boolean;
 }
 
 /**
@@ -348,6 +370,10 @@ export function renderAprCenterPercent(
     options?: Partial<AprCenterPercentOptions>
 ): string {
     if (!layout.centerLabel.enabled) return '';
+    
+    const portableSvg = options?.portableSvg ?? false;
+    const color = resolveColor(portableSvg);
+    
     // Fallback to Press stage green if colors not provided
     const defaultColor = '#6FB971';
     const numColor = numberColor || defaultColor;
@@ -384,7 +410,7 @@ export function renderAprCenterPercent(
                 font-weight="${percentSymbolFontWeight}" 
                 ${italicAttr(percentSymbolFontItalic)}
                 font-size="${percentPx}"
-                fill="${cssVar('--apr-percent-symbol-color', symColor)}"
+                fill="${color('--apr-percent-symbol-color', symColor)}"
                 fill-opacity="0.3">
                 %
             </text>
@@ -400,7 +426,7 @@ export function renderAprCenterPercent(
                 ${italicAttr(percentNumberFontItalic)}
                 font-size="${numberPx}" 
                 letter-spacing="${layout.centerLabel.letterSpacing}"
-                fill="${cssVar('--apr-percent-number-color', numColor)}">
+                fill="${color('--apr-percent-number-color', numColor)}">
                 ${numStr}
             </text>
         </g>
