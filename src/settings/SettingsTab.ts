@@ -23,7 +23,13 @@ import { renderProfessionalSection, isProfessionalActive } from './sections/Prof
 import { validateLocalModelAvailability } from '../api/localAiApi';
 import { FolderSuggest } from './FolderSuggest';
 import { ERT_CLASSES, ERT_DATA } from '../ui/classes';
-import { getActiveRefactorAlerts, applyAlertMigrations, type RefactorAlert } from './refactorAlerts';
+import {
+    getActiveRefactorAlerts,
+    getAllNotificationsForHistory,
+    isAlertDismissed,
+    applyAlertMigrations,
+    type RefactorAlert
+} from './refactorAlerts';
 
 export class RadialTimelineSettingsTab extends PluginSettingTab {
     plugin: RadialTimelinePlugin;
@@ -221,105 +227,213 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
     /**
      * Render refactor alerts at the top of Core settings.
-     * Shows dismissible alerts for YAML migrations and other refactoring notices.
+     * Shows a persistent notification panel that can be collapsed/expanded.
+     * Active alerts are shown with full interaction; dismissed alerts shown in history.
      */
     private renderRefactorAlerts(containerEl: HTMLElement): void {
         const activeAlerts = getActiveRefactorAlerts(this.plugin.settings);
-        if (activeAlerts.length === 0) return;
+        const historyAlerts = getAllNotificationsForHistory(this.plugin.settings);
+        const hasActive = activeAlerts.length > 0;
+        const hasHistory = historyAlerts.length > 0;
 
-        for (const alert of activeAlerts) {
-            const alertEl = containerEl.createDiv({
-                cls: ['ert-refactor-alert', `ert-refactor-alert--${alert.severity}`],
-                attr: { 'data-alert-id': alert.id }
+        // Don't render anything if no alerts exist at all
+        if (!hasActive && !hasHistory) return;
+
+        // Create the notification panel wrapper
+        const panelEl = containerEl.createDiv({
+            cls: ['ert-notification-panel', hasActive ? 'ert-notification-panel--active' : 'ert-notification-panel--muted']
+        });
+
+        if (hasActive) {
+            // Sort active alerts by severity (critical first, then warning, then info)
+            const sortedAlerts = [...activeAlerts].sort((a, b) => {
+                const severityOrder = { critical: 0, warning: 1, info: 2 };
+                return severityOrder[a.severity] - severityOrder[b.severity];
             });
 
-            // Left side: Icon + Content
-            const contentSide = alertEl.createDiv({ cls: 'ert-refactor-alert__content' });
+            // Render each active alert
+            for (const alert of sortedAlerts) {
+                this.renderActiveAlert(panelEl, alert);
+            }
 
-            const heading = contentSide.createDiv({ cls: 'ert-refactor-alert__heading' });
-            const iconWrapper = heading.createDiv({ cls: 'ert-refactor-alert__icon' });
-            setIcon(iconWrapper, alert.icon);
-            heading.createSpan({ text: alert.title, cls: 'ert-refactor-alert__title' });
+            // If there's also history, add a separator and collapsed history section
+            if (hasHistory) {
+                this.renderHistorySection(panelEl, historyAlerts, false);
+            }
+        } else {
+            // No active alerts - show collapsed stub with history
+            this.renderHistorySection(panelEl, historyAlerts, true);
+        }
+    }
 
-            const description = contentSide.createDiv({ cls: 'ert-refactor-alert__description' });
-            description.setText(alert.description);
+    /**
+     * Render a single active (actionable) alert
+     */
+    private renderActiveAlert(containerEl: HTMLElement, alert: RefactorAlert): void {
+        const alertEl = containerEl.createDiv({
+            cls: ['ert-refactor-alert', `ert-refactor-alert--${alert.severity}`],
+            attr: { 'data-alert-id': alert.id }
+        });
 
-            // Reassurance text inside alert - lowers friction for cautious users
+        // Left side: Icon + Content
+        const contentSide = alertEl.createDiv({ cls: 'ert-refactor-alert__content' });
+
+        const heading = contentSide.createDiv({ cls: 'ert-refactor-alert__heading' });
+        const iconWrapper = heading.createDiv({ cls: 'ert-refactor-alert__icon' });
+        setIcon(iconWrapper, alert.icon);
+        heading.createSpan({ text: alert.title, cls: 'ert-refactor-alert__title' });
+
+        const description = contentSide.createDiv({ cls: 'ert-refactor-alert__description' });
+        description.setText(alert.description);
+
+        // Reassurance text inside alert - only for migration alerts
+        if (alert.migrations?.length) {
             const reassurance = contentSide.createDiv({ cls: 'ert-refactor-alert__reassurance' });
             reassurance.setText('These updates help keep your YAML consistent with the latest features. You can review or dismiss any change.');
+        }
 
-            // Right side: Action buttons (stacked vertically)
-            const actionSide = alertEl.createDiv({ cls: 'ert-refactor-alert__actions' });
+        // Right side: Action buttons (stacked vertically)
+        const actionSide = alertEl.createDiv({ cls: 'ert-refactor-alert__actions' });
 
-            // Dismiss button (X)
-            const dismissBtn = actionSide.createEl('button', {
-                cls: 'ert-iconBtn ert-refactor-alert__btn--dismiss',
-                attr: { 'aria-label': 'Dismiss alert' }
+        // Dismiss button (X)
+        const dismissBtn = actionSide.createEl('button', {
+            cls: 'ert-iconBtn ert-refactor-alert__btn--dismiss',
+            attr: { 'aria-label': 'Dismiss alert' }
+        });
+        setIcon(dismissBtn, 'x');
+        this.plugin.registerDomEvent(dismissBtn, 'click', async () => {
+            if (!this.plugin.settings.dismissedAlerts) {
+                this.plugin.settings.dismissedAlerts = [];
+            }
+            this.plugin.settings.dismissedAlerts.push(alert.id);
+            await this.plugin.saveSettings();
+
+            // Re-render the entire alerts section
+            const panelParent = alertEl.closest('.ert-notification-panel')?.parentElement;
+            if (panelParent) {
+                panelParent.empty();
+                this.renderRefactorAlerts(panelParent);
+            }
+        });
+
+        // Auto Update button (↻) - only for migration alerts
+        if (alert.migrations?.length) {
+            const autoUpdateBtn = actionSide.createEl('button', {
+                cls: 'ert-iconBtn ert-refactor-alert__btn--update',
+                attr: { 'aria-label': 'Apply update automatically' }
             });
-            setIcon(dismissBtn, 'x');
-            this.plugin.registerDomEvent(dismissBtn, 'click', async () => {
+            setIcon(autoUpdateBtn, 'refresh-cw');
+            this.plugin.registerDomEvent(autoUpdateBtn, 'click', async () => {
+                const template = this.plugin.settings.sceneYamlTemplates?.advanced ?? '';
+                const updated = applyAlertMigrations(alert, template);
+
+                if (!this.plugin.settings.sceneYamlTemplates) {
+                    this.plugin.settings.sceneYamlTemplates = { base: '', advanced: '' };
+                }
+                this.plugin.settings.sceneYamlTemplates.advanced = updated;
+
                 if (!this.plugin.settings.dismissedAlerts) {
                     this.plugin.settings.dismissedAlerts = [];
                 }
                 this.plugin.settings.dismissedAlerts.push(alert.id);
+
                 await this.plugin.saveSettings();
-                alertEl.remove();
+
+                // Re-render the entire alerts section
+                const panelParent = alertEl.closest('.ert-notification-panel')?.parentElement;
+                if (panelParent) {
+                    panelParent.empty();
+                    this.renderRefactorAlerts(panelParent);
+                }
+                new (await import('obsidian')).Notice('Template updated successfully');
             });
 
-            // Auto Update button (↻)
-            if (alert.migrations?.length) {
-                const autoUpdateBtn = actionSide.createEl('button', {
-                    cls: 'ert-iconBtn ert-refactor-alert__btn--update',
-                    attr: { 'aria-label': 'Apply update automatically' }
-                });
-                setIcon(autoUpdateBtn, 'refresh-cw');
-                this.plugin.registerDomEvent(autoUpdateBtn, 'click', async () => {
-                    const template = this.plugin.settings.sceneYamlTemplates?.advanced ?? '';
-                    const updated = applyAlertMigrations(alert, template);
+            // View YAML button (↓)
+            const viewBtn = actionSide.createEl('button', {
+                cls: 'ert-iconBtn ert-refactor-alert__btn--view',
+                attr: { 'aria-label': 'View in YAML editor' }
+            });
+            setIcon(viewBtn, 'chevron-down');
+            this.plugin.registerDomEvent(viewBtn, 'click', async () => {
+                // Enable advanced YAML editor if not already
+                this.plugin.settings.enableAdvancedYamlEditor = true;
+                await this.plugin.saveSettings();
 
-                    if (!this.plugin.settings.sceneYamlTemplates) {
-                        this.plugin.settings.sceneYamlTemplates = { base: '', advanced: '' };
+                // Small delay to let the editor expand, then scroll to the migration row or advanced card
+                window.setTimeout(() => {
+                    // Try to scroll to the specific migration row first
+                    const migrationRow = document.querySelector('.ert-yaml-row--needs-migration');
+                    if (migrationRow) {
+                        migrationRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        return;
                     }
-                    this.plugin.settings.sceneYamlTemplates.advanced = updated;
-
-                    if (!this.plugin.settings.dismissedAlerts) {
-                        this.plugin.settings.dismissedAlerts = [];
+                    // Fallback: scroll to the advanced template card
+                    const advancedCard = document.querySelector('.ert-advanced-template-card');
+                    if (advancedCard) {
+                        advancedCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
-                    this.plugin.settings.dismissedAlerts.push(alert.id);
-
-                    await this.plugin.saveSettings();
-                    alertEl.remove();
-                    new (await import('obsidian')).Notice('Template updated successfully');
-                });
-
-                // View YAML button (↓)
-                const viewBtn = actionSide.createEl('button', {
-                    cls: 'ert-iconBtn ert-refactor-alert__btn--view',
-                    attr: { 'aria-label': 'View in YAML editor' }
-                });
-                setIcon(viewBtn, 'chevron-down');
-                this.plugin.registerDomEvent(viewBtn, 'click', async () => {
-                    // Enable advanced YAML editor if not already
-                    this.plugin.settings.enableAdvancedYamlEditor = true;
-                    await this.plugin.saveSettings();
-
-                    // Small delay to let the editor expand, then scroll to the migration row or advanced card
-                    window.setTimeout(() => {
-                        // Try to scroll to the specific migration row first
-                        const migrationRow = document.querySelector('.ert-yaml-row--needs-migration');
-                        if (migrationRow) {
-                            migrationRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            return;
-                        }
-                        // Fallback: scroll to the advanced template card
-                        const advancedCard = document.querySelector('.ert-advanced-template-card');
-                        if (advancedCard) {
-                            advancedCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }
-                    }, 100);
-                });
-            }
+                }, 100);
+            });
         }
+    }
+
+    /**
+     * Render the notification history section (collapsed or expanded)
+     */
+    private renderHistorySection(containerEl: HTMLElement, alerts: RefactorAlert[], startCollapsed: boolean): void {
+        const historyWrapper = containerEl.createDiv({
+            cls: ['ert-notification-history', startCollapsed ? 'ert-notification-history--collapsed' : '']
+        });
+
+        // Header row (always visible) - clickable to toggle
+        const headerRow = historyWrapper.createDiv({ cls: 'ert-notification-history__header' });
+
+        const toggleBtn = headerRow.createEl('button', {
+            cls: 'ert-iconBtn ert-notification-history__toggle',
+            attr: { 'aria-label': 'Toggle notification history' }
+        });
+        setIcon(toggleBtn, startCollapsed ? 'chevron-right' : 'chevron-down');
+
+        const headerText = headerRow.createSpan({
+            cls: 'ert-notification-history__label',
+            text: `${alerts.length} notification${alerts.length !== 1 ? 's' : ''} processed`
+        });
+
+        // Content area (collapsible)
+        const contentArea = historyWrapper.createDiv({ cls: 'ert-notification-history__content' });
+
+        // Render each history item
+        for (const alert of alerts) {
+            this.renderHistoryItem(contentArea, alert);
+        }
+
+        // Toggle behavior
+        const toggle = () => {
+            const isCollapsed = historyWrapper.hasClass('ert-notification-history--collapsed');
+            historyWrapper.toggleClass('ert-notification-history--collapsed', !isCollapsed);
+            setIcon(toggleBtn, isCollapsed ? 'chevron-down' : 'chevron-right');
+        };
+
+        this.plugin.registerDomEvent(toggleBtn, 'click', toggle);
+        this.plugin.registerDomEvent(headerText, 'click', toggle);
+    }
+
+    /**
+     * Render a single history item (dismissed notification with checkmark)
+     */
+    private renderHistoryItem(containerEl: HTMLElement, alert: RefactorAlert): void {
+        const itemEl = containerEl.createDiv({
+            cls: ['ert-notification-history__item', `ert-notification-history__item--${alert.severity}`]
+        });
+
+        // Checkmark icon
+        const checkIcon = itemEl.createDiv({ cls: 'ert-notification-history__check' });
+        setIcon(checkIcon, 'check-circle-2');
+
+        // Alert info
+        const infoEl = itemEl.createDiv({ cls: 'ert-notification-history__info' });
+        infoEl.createSpan({ text: alert.title, cls: 'ert-notification-history__title' });
+        infoEl.createSpan({ text: alert.description, cls: 'ert-notification-history__description' });
     }
 
     private renderSearchBox(containerEl: HTMLElement): HTMLInputElement {

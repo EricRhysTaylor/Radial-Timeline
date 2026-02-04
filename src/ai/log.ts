@@ -176,7 +176,7 @@ export function formatDuration(ms?: number | null): string {
 
 export function formatAiLogContent(
     envelope: AiLogEnvelope,
-    options?: { jsonSpacing?: number }
+    options?: { jsonSpacing?: number; metadataExtras?: string[] }
 ): string {
     const lines: string[] = [];
     const normalizeText = (value?: string | null) => value && value.trim() ? value : 'N/A';
@@ -213,6 +213,30 @@ export function formatAiLogContent(
             return JSON.stringify(String(value));
         }
     };
+    const resolveExpectedSchema = (payload: unknown): { source: string; schema: unknown } | null => {
+        if (!payload || typeof payload !== 'object') return null;
+        const data = payload as Record<string, unknown>;
+        const responseFormat = data.response_format ?? data.responseFormat;
+        if (responseFormat && typeof responseFormat === 'object') {
+            const format = responseFormat as Record<string, unknown>;
+            if (format.type === 'json_schema' && format.json_schema) {
+                return { source: 'response_format.json_schema', schema: format.json_schema };
+            }
+            return { source: 'response_format', schema: format };
+        }
+        const generationConfig = data.generationConfig;
+        if (generationConfig && typeof generationConfig === 'object') {
+            const config = generationConfig as Record<string, unknown>;
+            if (config.responseSchema) {
+                return { source: 'generationConfig.responseSchema', schema: config.responseSchema };
+            }
+            if (config.response_schema) {
+                return { source: 'generationConfig.response_schema', schema: config.response_schema };
+            }
+        }
+        return null;
+    };
+    const metadataExtras = options?.metadataExtras ?? [];
 
     lines.push(`# ${envelope.title}`, '');
 
@@ -231,27 +255,32 @@ export function formatAiLogContent(
     lines.push(`- Duration: ${formatDuration(envelope.metadata.durationMs)}`);
     lines.push(`- Status: ${envelope.metadata.status}`);
     lines.push(`- Token usage: ${formatUsage(envelope.metadata.tokenUsage)}`);
+    if (metadataExtras.length) {
+        lines.push(...metadataExtras);
+    }
     lines.push('');
 
-    lines.push('## Request');
-    lines.push('### System/developer prompt text');
+    lines.push('## Prompts');
+    lines.push('### System prompt');
     lines.push('```text');
     lines.push(normalizeText(envelope.request.systemPrompt));
     lines.push('```', '');
-    lines.push('### User prompt text');
+    lines.push('### User prompt');
     lines.push('```text');
     lines.push(normalizeText(envelope.request.userPrompt));
     lines.push('```', '');
-    lines.push('### Materials/Evidence text');
-    lines.push('```text');
-    lines.push(normalizeText(envelope.request.evidenceText));
-    lines.push('```', '');
-    lines.push('### API request payload JSON');
-    lines.push('```json');
-    lines.push(safeStringify(envelope.request.requestPayload));
-    lines.push('```', '');
 
-    lines.push('## Response');
+    lines.push('## Expected response schema');
+    const expectedSchema = resolveExpectedSchema(envelope.request.requestPayload);
+    if (expectedSchema) {
+        lines.push('```json');
+        lines.push(safeStringify(expectedSchema.schema));
+        lines.push('```', '');
+    } else {
+        lines.push('None.', '');
+    }
+
+    lines.push('## AI Response');
     lines.push('### Raw provider response JSON');
     lines.push('```json');
     lines.push(safeStringify(envelope.response.rawResponse));
@@ -265,14 +294,26 @@ export function formatAiLogContent(
     lines.push(safeStringify(envelope.response.parsedOutput));
     lines.push('```', '');
 
-    lines.push('## Notes');
+    if (envelope.derivedSummary && envelope.derivedSummary.trim()) {
+        lines.push('### Derived summary');
+        lines.push(envelope.derivedSummary.trim(), '');
+    }
+
+    lines.push('## Notes / normalization');
     lines.push(`- Sanitization steps: ${formatList(envelope.notes.sanitizationSteps)}`);
     lines.push(`- Retry attempts: ${formatRetries(envelope.notes.retryAttempts)}`);
     lines.push(`- Schema normalization warnings: ${formatList(envelope.notes.schemaWarnings)}`);
+    lines.push('');
 
-    if (envelope.derivedSummary && envelope.derivedSummary.trim()) {
-        lines.push('', '## DERIVED SUMMARY', envelope.derivedSummary.trim());
-    }
+    lines.push('## Materials / Evidence sent to AI');
+    lines.push('### API request payload JSON');
+    lines.push('```json');
+    lines.push(safeStringify(envelope.request.requestPayload));
+    lines.push('```', '');
+    lines.push('### Materials/Evidence text');
+    lines.push('```text');
+    lines.push(normalizeText(envelope.request.evidenceText));
+    lines.push('```');
 
     return lines.join('\n');
 }

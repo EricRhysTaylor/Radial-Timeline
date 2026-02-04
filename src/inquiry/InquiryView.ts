@@ -9151,43 +9151,9 @@ export class InquiryView extends ItemView {
             ...(normalizationNotes || [])
         ].filter(Boolean);
 
-        const logContent = formatAiLogContent({
-            title,
-            metadata: {
-                feature: 'Inquiry',
-                scopeTarget: `${scopeLabel} · ${target} · ${zoneLabel} · ${lensLabel}`,
-                provider: aiProvider,
-                modelRequested: aiModelRequested,
-                modelResolved: aiModelResolved,
-                modelNextRunOnly: aiModelNextRunOnly,
-                estimatedInputTokens: tokenEstimateInput,
-                tokenTier,
-                submittedAt,
-                returnedAt: completedAt,
-                durationMs,
-                status,
-                tokenUsage
-            },
-            request: {
-                systemPrompt: trace.systemPrompt,
-                userPrompt: trace.userPrompt,
-                evidenceText: trace.evidenceText,
-                requestPayload: sanitizedPayload
-            },
-            response: {
-                rawResponse: trace.response?.responseData ?? null,
-                assistantContent: trace.response?.content ?? '',
-                parsedOutput: this.normalizeLegacyResult(result)
-            },
-            notes: {
-                sanitizationSteps,
-                retryAttempts: trace.retryCount,
-                schemaWarnings
-            }
-        }, { jsonSpacing: 0 });
-
         const contextLines = [
-            '## Inquiry Context',
+            '',
+            '### Inquiry Context',
             `- Artifact ID: ${artifactId}`,
             `- Run ID: ${result.runId || 'unknown'}`,
             `- Plugin version: ${this.plugin.manifest.version}`,
@@ -9221,7 +9187,42 @@ export class InquiryView extends ItemView {
             }
         }
 
-        return `${logContent}\n\n${contextLines.join('\n')}\n`;
+        const logContent = formatAiLogContent({
+            title,
+            metadata: {
+                feature: 'Inquiry',
+                scopeTarget: `${scopeLabel} · ${target} · ${zoneLabel} · ${lensLabel}`,
+                provider: aiProvider,
+                modelRequested: aiModelRequested,
+                modelResolved: aiModelResolved,
+                modelNextRunOnly: aiModelNextRunOnly,
+                estimatedInputTokens: tokenEstimateInput,
+                tokenTier,
+                submittedAt,
+                returnedAt: completedAt,
+                durationMs,
+                status,
+                tokenUsage
+            },
+            request: {
+                systemPrompt: trace.systemPrompt,
+                userPrompt: trace.userPrompt,
+                evidenceText: trace.evidenceText,
+                requestPayload: sanitizedPayload
+            },
+            response: {
+                rawResponse: trace.response?.responseData ?? null,
+                assistantContent: trace.response?.content ?? '',
+                parsedOutput: this.normalizeLegacyResult(result)
+            },
+            notes: {
+                sanitizationSteps,
+                retryAttempts: trace.retryCount,
+                schemaWarnings
+            }
+        }, { jsonSpacing: 0, metadataExtras: contextLines });
+
+        return `${logContent}\n`;
     }
 
     private formatInquiryLogTitle(result: InquiryResult): string {

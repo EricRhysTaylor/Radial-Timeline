@@ -53,6 +53,13 @@ export const REFACTOR_ALERTS: RefactorAlert[] = [
                 tooltip: 'Renaming YAML field "Revision" to "Iteration" to avoid confusion and improve codebase stability.',
             }
         ]
+    },
+    {
+        id: 'subplot-to-publication-mode-rename',
+        severity: 'info',
+        icon: 'info',
+        title: 'Mode Renamed',
+        description: 'The "Subplot Mode" button has been renamed to "Publication" mode. Same great features, clearer name reflecting its use for publication-focused workflows.',
     }
 ];
 
@@ -87,7 +94,8 @@ function hasRemapperConflict(
 
 /**
  * Get active refactor alerts that need user attention
- * Filters out dismissed alerts and alerts with no pending migrations
+ * Filters out dismissed alerts and alerts with no pending migrations (for migration alerts)
+ * Info alerts without migrations are shown until dismissed
  */
 export function getActiveRefactorAlerts(settings: RadialTimelineSettings): RefactorAlert[] {
     const dismissed = settings.dismissedAlerts ?? [];
@@ -98,18 +106,21 @@ export function getActiveRefactorAlerts(settings: RadialTimelineSettings): Refac
         // Skip if already dismissed
         if (dismissed.includes(alert.id)) return false;
 
-        // Skip if no pending migrations in template
-        if (!alertHasPendingMigrations(alert, template)) return false;
+        // For alerts with migrations, skip if no pending migrations in template
+        if (alert.migrations?.length) {
+            if (!alertHasPendingMigrations(alert, template)) return false;
 
-        // Check for remapper conflicts (log warning but still show alert)
-        for (const migration of alert.migrations ?? []) {
-            if (hasRemapperConflict(migration, remappings)) {
-                console.warn(
-                    `[RefactorAlerts] Remapper conflict detected: user has mapping to "${migration.oldKey}". ` +
-                    `Consider updating the remapper after migrating.`
-                );
+            // Check for remapper conflicts (log warning but still show alert)
+            for (const migration of alert.migrations) {
+                if (hasRemapperConflict(migration, remappings)) {
+                    console.warn(
+                        `[RefactorAlerts] Remapper conflict detected: user has mapping to "${migration.oldKey}". ` +
+                        `Consider updating the remapper after migrating.`
+                    );
+                }
             }
         }
+        // Info alerts without migrations are always shown until dismissed
 
         return true;
     });
@@ -128,6 +139,36 @@ export function getActiveMigrations(settings: RadialTimelineSettings): FieldMigr
  */
 export function hasActiveAlerts(settings: RadialTimelineSettings): boolean {
     return getActiveRefactorAlerts(settings).length > 0;
+}
+
+/**
+ * Get all notifications for history view (including dismissed ones)
+ * Returns alerts sorted by severity (critical first, then warning, then info)
+ */
+export function getAllNotificationsForHistory(settings: RadialTimelineSettings): RefactorAlert[] {
+    const dismissed = settings.dismissedAlerts ?? [];
+    const template = settings.sceneYamlTemplates?.advanced ?? '';
+
+    // Filter alerts that have been dismissed OR have no pending migrations
+    // (i.e., they've been processed or were non-migration notices)
+    return REFACTOR_ALERTS.filter(alert => {
+        // For alerts with migrations, only show in history if dismissed or migrations complete
+        if (alert.migrations?.length) {
+            return dismissed.includes(alert.id) || !alertHasPendingMigrations(alert, template);
+        }
+        // For info notices without migrations, show in history if dismissed
+        return dismissed.includes(alert.id);
+    }).sort((a, b) => {
+        const severityOrder = { critical: 0, warning: 1, info: 2 };
+        return severityOrder[a.severity] - severityOrder[b.severity];
+    });
+}
+
+/**
+ * Check if an alert has been dismissed/viewed
+ */
+export function isAlertDismissed(alertId: string, settings: RadialTimelineSettings): boolean {
+    return (settings.dismissedAlerts ?? []).includes(alertId);
 }
 
 /**

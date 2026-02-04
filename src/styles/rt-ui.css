@@ -2206,6 +2206,140 @@
   50% { transform: scale(1.08); box-shadow: 0 0 10px var(--ert-alert-critical-pulse-strong); }
 }
 
+/* =============================================================================
+   NOTIFICATION PANEL (Container for alerts + history)
+   ============================================================================= */
+
+.ert-ui.ert-scope--settings .ert-notification-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-sm);
+}
+
+/* Muted state - when all alerts are dismissed */
+.ert-ui.ert-scope--settings .ert-notification-panel--muted {
+  opacity: 0.85;
+}
+
+/* =============================================================================
+   NOTIFICATION HISTORY (Collapsible section for dismissed alerts)
+   ============================================================================= */
+
+.ert-ui.ert-scope--settings .ert-notification-history {
+  border-radius: var(--ert-panel-radius);
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  overflow: hidden;
+}
+
+.ert-ui.ert-scope--settings .ert-notification-history__header {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  padding: var(--ert-gap-sm) var(--ert-gap-md);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.ert-ui.ert-scope--settings .ert-notification-history__header:hover {
+  background: var(--background-modifier-hover);
+}
+
+.ert-ui.ert-scope--settings .ert-notification-history__toggle.ert-iconBtn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.ert-ui.ert-scope--settings .ert-notification-history__toggle svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-notification-history__label {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.ert-ui.ert-scope--settings .ert-notification-history__content {
+  border-top: 1px solid var(--background-modifier-border);
+  padding: var(--ert-gap-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--settings .ert-notification-history--collapsed .ert-notification-history__content {
+  display: none;
+}
+
+/* History item - individual dismissed notification */
+.ert-ui.ert-scope--settings .ert-notification-history__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ert-gap-sm);
+  padding: var(--ert-gap-sm);
+  border-radius: 6px;
+  background: var(--background-primary);
+}
+
+.ert-ui.ert-scope--settings .ert-notification-history__check {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-success, #22c55e);
+}
+
+.ert-ui.ert-scope--settings .ert-notification-history__check svg {
+  width: 18px;
+  height: 18px;
+}
+
+.ert-ui.ert-scope--settings .ert-notification-history__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-notification-history__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--settings .ert-notification-history__description {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Severity-based left border accent for history items */
+.ert-ui.ert-scope--settings .ert-notification-history__item--info {
+  border-left: 3px solid var(--ert-alert-info-color);
+}
+
+.ert-ui.ert-scope--settings .ert-notification-history__item--warning {
+  border-left: 3px solid var(--ert-alert-warning-color);
+}
+
+.ert-ui.ert-scope--settings .ert-notification-history__item--critical {
+  border-left: 3px solid var(--ert-alert-critical-color);
+}
+
+/* =============================================================================
+   END NOTIFICATION PANEL
+   ============================================================================= */
+
 .ert-ui.ert-scope--settings .ert-settings-separator {
   margin: 1em 0 2em;
   border: none;
