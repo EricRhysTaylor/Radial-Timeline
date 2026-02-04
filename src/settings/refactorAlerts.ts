@@ -38,6 +38,8 @@ export interface RefactorAlert {
 // Alert Definitions
 // ============================================================================
 
+// Edit alert wording here (title/description). Settings notifications read from this list.
+// Severity: info (blue), warning (orange), critical (red).
 export const REFACTOR_ALERTS: RefactorAlert[] = [
     {
         id: 'yaml-revision-to-iteration-v6',
@@ -60,6 +62,13 @@ export const REFACTOR_ALERTS: RefactorAlert[] = [
         icon: 'info',
         title: 'Mode Renamed',
         description: 'The "Subplot Mode" button has been renamed to "Publication" mode. Same great features, clearer name reflecting its use for publication-focused workflows.',
+    },
+    {
+        id: 'change-type-pulse-update',
+        severity: 'info',
+        icon: 'info',
+        title: 'YAML Type Change: Pending Edits & New Synopsis Update',
+        description: '"Pending Edits" is no longer a boolean. It is now a string so it can act as both a yes/no flag and record the last AI API hit (timestamp and AI used). A new YAML field "Synopsis Update" works identically: string value with timestamp and AI used.',
     }
 ];
 

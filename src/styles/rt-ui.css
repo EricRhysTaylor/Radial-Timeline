@@ -23,7 +23,7 @@
   --ert-pro-gradient-primary: linear-gradient(135deg, #9333ea, #6366f1);
   --ert-pro-gradient-primary-hover: linear-gradient(135deg, #a855f7, #818cf8);
   --ert-social-gradient-primary: linear-gradient(135deg, #fbbf24, #d97706);
-  --ert-alert-info-color: var(--interactive-accent);
+  --ert-alert-info-color: #3b82f6;
   --ert-alert-warning-color: var(--text-warning, #f59e0b);
   --ert-alert-critical-color: var(--text-error, #ef4444);
   --ert-alert-info-bg: color-mix(in srgb, var(--ert-alert-info-color) 12%, transparent);
@@ -2295,7 +2295,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-success, #22c55e);
+  color: var(--text-muted);
 }
 
 .ert-ui.ert-scope--settings .ert-notification-history__check svg {
@@ -2314,7 +2314,7 @@
 .ert-ui.ert-scope--settings .ert-notification-history__title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-normal);
+  color: var(--text-muted);
 }
 
 .ert-ui.ert-scope--settings .ert-notification-history__description {
@@ -2325,15 +2325,15 @@
 
 /* Severity-based left border accent for history items */
 .ert-ui.ert-scope--settings .ert-notification-history__item--info {
-  border-left: 3px solid var(--ert-alert-info-color);
+  border-left: 3px solid var(--text-muted);
 }
 
 .ert-ui.ert-scope--settings .ert-notification-history__item--warning {
-  border-left: 3px solid var(--ert-alert-warning-color);
+  border-left: 3px solid var(--text-muted);
 }
 
 .ert-ui.ert-scope--settings .ert-notification-history__item--critical {
-  border-left: 3px solid var(--ert-alert-critical-color);
+  border-left: 3px solid var(--text-muted);
 }
 
 /* =============================================================================
