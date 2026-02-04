@@ -393,18 +393,24 @@ export function renderAprCenterPercent(
     const digitScale = Math.max(0.72, 1 - (digitCount - 1) * 0.14);
     const numberPx = Math.max(1, baseNumberPx * digitScale);
     const percentPx = Math.max(1, numberPx * 1.5);
-    const percentDy = percentPx * 0.1;
-    const numberDy = numberPx * 0.1;
+    
+    // For portable mode (Figma), use y offset instead of dominant-baseline
+    // Text baseline is at y=0, so we shift down by ~0.35em to center vertically
+    // For non-portable, use dominant-baseline for browser compatibility
+    const percentY = portableSvg ? (percentPx * 0.35) : 0;
+    const numberY = portableSvg ? (numberPx * 0.35) : 0;
+    const percentDy = portableSvg ? 0 : (percentPx * 0.1);
+    const numberDy = portableSvg ? 0 : (numberPx * 0.1);
+    const baselineAttrs = portableSvg ? '' : 'dominant-baseline="middle" alignment-baseline="middle"';
 
     // SAFE: inline style used for SVG attribute font-style in template string
     return `
         <g class="apr-center-percent" transform="translate(0 0)">
             <text 
                 x="0"
-                y="0"
+                y="${percentY}"
                 text-anchor="middle" 
-                dominant-baseline="middle"
-                alignment-baseline="middle"
+                ${baselineAttrs}
                 dy="${percentDy}"
                 font-family="${percentSymbolFontFamily}" 
                 font-weight="${percentSymbolFontWeight}" 
@@ -416,10 +422,9 @@ export function renderAprCenterPercent(
             </text>
             <text 
                 x="0"
-                y="0"
+                y="${numberY}"
                 text-anchor="middle" 
-                dominant-baseline="middle"
-                alignment-baseline="middle"
+                ${baselineAttrs}
                 dy="${numberDy}"
                 font-family="${percentNumberFontFamily}" 
                 font-weight="${percentNumberFontWeight}" 

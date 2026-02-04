@@ -533,12 +533,12 @@ function resolveSceneColor(
         // For completed scenes, use neutral (we don't want to show Zero/Author/House/Press)
         if (isCompleted) return color('--apr-scene-neutral', APR_COLORS.sceneNeutral);
         // For active work, use getFillForScene which respects status
-        // Note: getFillForScene may return pattern URLs which contain CSS vars - portable mode handles this in Defs.ts
-        return getFillForScene(scene, stageColors);
+        // Pass portableSvg to get direct hex colors instead of CSS vars
+        return getFillForScene(scene, stageColors, undefined, undefined, undefined, portableSvg);
     }
 
     // Full colors: use getFillForScene for everything
-    return getFillForScene(scene, stageColors);
+    return getFillForScene(scene, stageColors, undefined, undefined, undefined, portableSvg);
 }
 
 function sanitizeAuthorUrl(url?: string): string | undefined {
