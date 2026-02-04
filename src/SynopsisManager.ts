@@ -15,7 +15,9 @@ import {
   SUBPLOT_OUTER_RADIUS_MAINPLOT,
   SUBPLOT_OUTER_RADIUS_STANDARD,
   SUBPLOT_OUTER_RADIUS_CHRONOLOGUE,
-  SYNOPSIS_INSET
+  SYNOPSIS_INSET,
+  MAX_TEXT_WIDTH,
+  INNER_RADIUS
 } from './renderer/layout/LayoutConstants';
 import { adjustBeatLabelsAfterRender } from './renderer/dom/BeatLabelAdjuster';
 import { sortScenes, isBeatNote, shouldDisplayMissingWhenWarning } from './utils/sceneHelpers';
@@ -33,6 +35,8 @@ export default class SynopsisManager {
 
   /** Vertical offset for planetary time dashed border rect (higher = further up) */
   private static readonly PLANETARY_RECT_Y_OFFSET = 16;
+  private static readonly HOVER_SYNOPSIS_KEY = 'synopsis';
+  private static readonly HOVER_WRAP_PADDING = 6;
 
   constructor(plugin: RadialTimelinePlugin) {
     this.plugin = plugin;
@@ -40,6 +44,194 @@ export default class SynopsisManager {
 
   private getReadabilityScale(): number {
     return getReadabilityMultiplier(this.plugin.settings as any);
+  }
+
+  private getLineInnerRadius(svg: SVGSVGElement | null): number {
+    if (!svg) return INNER_RADIUS;
+    const attr = svg.getAttribute('data-line-inner-radius');
+    if (attr) {
+      const parsed = parseFloat(attr);
+      if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    }
+
+    // Fallback: derive from inner calendar spokes (lineInnerRadius - 5)
+    const spoke = svg.querySelector('.rt-inner-calendar-spoke') as SVGLineElement | null;
+    if (spoke) {
+      const x1 = Number(spoke.getAttribute('x1') || '0');
+      const y1 = Number(spoke.getAttribute('y1') || '0');
+      const innerSpokeStart = Math.hypot(x1, y1);
+      const derived = innerSpokeStart + 5;
+      if (Number.isFinite(derived) && derived > 0) return derived;
+    }
+
+    return INNER_RADIUS;
+  }
+
+  private measureTextWidthForWrap(textEl: SVGTextElement, text: string): number {
+    const prev = textEl.textContent ?? '';
+    textEl.textContent = text;
+    const width = this.measureTextWidth(textEl);
+    textEl.textContent = prev;
+    return width;
+  }
+
+  private splitTextIntoLinesByWidth(text: string, maxWidth: number, measure: (value: string) => number): string[] {
+    if (!text || typeof text !== 'string') return [''];
+    const trimmed = text.trim();
+    if (!trimmed) return [''];
+
+    const words = trimmed.split(/\s+/);
+    const lines: string[] = [];
+    let current = '';
+
+    for (const word of words) {
+      const next = current ? `${current} ${word}` : word;
+      if (current && measure(next) > maxWidth) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = next;
+      }
+    }
+
+    if (current) lines.push(current);
+    return lines.length > 0 ? lines : [trimmed];
+  }
+
+  private resetHoverSynopsisWrap(synopsis: Element): void {
+    const lineGroups = Array.from(synopsis.querySelectorAll('.rt-hover-metadata-line')) as SVGGElement[];
+    lineGroups.forEach(group => {
+      const key = (group.getAttribute('data-hover-key') || '').trim().toLowerCase();
+      if (key !== SynopsisManager.HOVER_SYNOPSIS_KEY) return;
+
+      const textEls = Array.from(group.querySelectorAll('.rt-hover-metadata-text')) as SVGTextElement[];
+      if (textEls.length === 0) return;
+
+      // Remove any previously wrapped continuation lines
+      textEls.slice(1).forEach(el => {
+        if (el.getAttribute('data-hover-wrap') === 'true') {
+          el.remove();
+        }
+      });
+
+      const primary = textEls[0];
+      const raw = primary.getAttribute('data-hover-raw');
+      if (raw !== null) {
+        primary.textContent = raw;
+      }
+    });
+  }
+
+  private applyHoverSynopsisWrap(params: {
+    textRows: SVGTextElement[][];
+    baseY: number;
+    radius: number;
+    isRightAligned: boolean;
+    isTopHalf: boolean;
+    fontScale: number;
+    pulseLineHeight: number;
+    lineInnerRadius: number;
+  }): boolean {
+    const {
+      textRows,
+      baseY,
+      radius,
+      isRightAligned,
+      isTopHalf,
+      fontScale,
+      pulseLineHeight,
+      lineInnerRadius
+    } = params;
+
+    let didWrap = false;
+    let yOffset = 0;
+    const titleLineHeight = 32 * fontScale;
+    const synopsisLineHeight = 22 * fontScale;
+    const scorePreGap = 46 * fontScale;
+    const defaultMaxWidth = MAX_TEXT_WIDTH * fontScale;
+
+    for (let rowIndex = 0; rowIndex < textRows.length; rowIndex++) {
+      const rowElements = textRows[rowIndex];
+      const primaryEl = rowElements[0];
+      if (!primaryEl) continue;
+
+      // Match row spacing logic used during layout
+      if (rowIndex > 0) {
+        const currentEl = rowElements[0];
+        const isGossamerLine = currentEl.classList.contains('rt-gossamer-score-line');
+        const isBeatsText = currentEl.classList.contains('pulse-text');
+        const prevEl = textRows[rowIndex - 1][0];
+        const isPrevLineSynopsis = prevEl.classList.contains('rt-title-text-secondary');
+        const isPrevLineBeats = prevEl.classList.contains('pulse-text');
+
+        if (rowIndex === 1) {
+          yOffset += titleLineHeight;
+        } else if (isGossamerLine && isPrevLineSynopsis) {
+          yOffset += scorePreGap;
+        } else if (isBeatsText || isPrevLineBeats) {
+          yOffset += pulseLineHeight;
+        } else {
+          yOffset += synopsisLineHeight;
+        }
+      }
+
+      const lineGroup = primaryEl.closest('.rt-hover-metadata-line') as SVGGElement | null;
+      const key = (lineGroup?.getAttribute('data-hover-key') || '').trim().toLowerCase();
+      if (key !== SynopsisManager.HOVER_SYNOPSIS_KEY) continue;
+
+      const raw = primaryEl.getAttribute('data-hover-raw') ?? primaryEl.textContent ?? '';
+      if (!raw.trim()) continue;
+
+      const anchorY = baseY + yOffset;
+      const radiusDiff = radius * radius - anchorY * anchorY;
+      if (radiusDiff <= 0) continue;
+
+      const circleX = Math.sqrt(radiusDiff);
+      const direction = isRightAligned ? 1 : -1;
+
+      let inset = 0;
+      if (isTopHalf) {
+        const style = window.getComputedStyle(primaryEl);
+        const fontSize = parseFloat(style.fontSize) || 16;
+        const ratio = rowIndex <= 1 ? 0.5 : SynopsisManager.TEXT_HEIGHT_INSET_RATIO;
+        inset = fontSize * ratio;
+      }
+
+      const hasHoverIcon = this.getHoverIconTotalOffset(primaryEl) > 0;
+      const extraRightInset = isRightAligned && hasHoverIcon ? 20 : 0;
+      const anchorAbsoluteX = (circleX - inset - extraRightInset) * direction;
+      const rightEdge = anchorAbsoluteX - SYNOPSIS_INSET;
+
+      let maxWidth = defaultMaxWidth;
+      if (isRightAligned) {
+        let boundaryX = 0;
+        if (lineInnerRadius > 0 && Math.abs(anchorY) < lineInnerRadius) {
+          const innerDiff = lineInnerRadius * lineInnerRadius - anchorY * anchorY;
+          if (innerDiff > 0) {
+            boundaryX = Math.sqrt(innerDiff);
+          }
+        }
+        maxWidth = rightEdge - boundaryX - SynopsisManager.HOVER_WRAP_PADDING;
+      }
+
+      if (!Number.isFinite(maxWidth) || maxWidth <= 0) {
+        continue;
+      }
+
+      const wrapped = this.splitTextIntoLinesByWidth(raw, maxWidth, value => this.measureTextWidthForWrap(primaryEl, value));
+      if (wrapped.length <= 1) continue;
+
+      primaryEl.textContent = wrapped[0];
+      for (let i = 1; i < wrapped.length; i++) {
+        const cont = primaryEl.cloneNode(false) as SVGTextElement;
+        cont.setAttribute('data-hover-wrap', 'true');
+        cont.textContent = wrapped[i];
+        lineGroup?.appendChild(cont);
+      }
+      didWrap = true;
+    }
+
+    return didWrap;
   }
 
   private parseHtmlSafely(html: string): DocumentFragment {
@@ -693,6 +885,7 @@ export default class SynopsisManager {
           // Create a group for this hover metadata line
           const lineGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
           lineGroup.setAttribute("class", "rt-hover-metadata-line");
+          lineGroup.setAttribute("data-hover-key", field.key);
           
           // Icon positioning
           const iconSize = 18 * fontScale;
@@ -733,6 +926,7 @@ export default class SynopsisManager {
           
           // Create the text element (key: value)
           const textEl = createText(textX, y, 'rt-info-text rt-title-text-secondary rt-hover-metadata-text', valueStr);
+          textEl.setAttribute('data-hover-raw', valueStr);
           const isTitleField = field.key.trim().toLowerCase() === 'title';
           if (isTitleField) {
             lineGroup.setAttribute('color', titleColor);
@@ -930,7 +1124,8 @@ export default class SynopsisManager {
     synopsis.setAttribute('opacity', '1');
     synopsis.setAttribute('pointer-events', 'all');
 
-    this.positionTextElements(synopsis, position.isRightAligned, position.isTopHalf, adjustedRadius, sceneId);
+    const lineInnerRadius = this.getLineInnerRadius(svg);
+    this.positionTextElements(synopsis, position.isRightAligned, position.isTopHalf, adjustedRadius, sceneId, lineInnerRadius);
   }
 
   /**
@@ -1038,20 +1233,44 @@ export default class SynopsisManager {
     isRightAligned: boolean,
     isTopHalf: boolean,
     radius: number,
-    sceneId: string
+    sceneId: string,
+    lineInnerRadius: number
   ): void {
-    // Find all text elements
-    const textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
+    const wrapMode = isRightAligned ? 'right' : 'left';
+    const prevWrapMode = (synopsis as SVGElement).getAttribute('data-hover-synopsis-wrap') || '';
+    const shouldRewrap = prevWrapMode !== wrapMode;
+
+    if (shouldRewrap) {
+      this.resetHoverSynopsisWrap(synopsis);
+    }
+
+    const buildTextRows = (elements: SVGTextElement[]): SVGTextElement[][] => {
+      const rows: SVGTextElement[][] = [];
+      elements.forEach((textEl) => {
+        if (textEl.getAttribute('data-metadata-block') === 'true' && rows.length > 0) {
+          rows[rows.length - 1].push(textEl);
+        } else {
+          rows.push([textEl]);
+        }
+      });
+      return rows;
+    };
+
+    const applyTextAnchors = (elements: SVGTextElement[]): void => {
+      const textAnchor = isRightAligned ? 'end' : 'start';
+      elements.forEach(textEl => {
+        if (textEl.getAttribute('data-metadata-block') === 'true') {
+          textEl.setAttribute('text-anchor', 'start');
+        } else {
+          textEl.setAttribute('text-anchor', textAnchor);
+        }
+      });
+    };
+
+    let textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
     if (textElements.length === 0) return;
 
-    const textAnchor = isRightAligned ? 'end' : 'start';
-    textElements.forEach(textEl => {
-      if (textEl.getAttribute('data-metadata-block') === 'true') {
-        textEl.setAttribute('text-anchor', 'start');
-      } else {
-        textEl.setAttribute('text-anchor', textAnchor);
-      }
-    });
+    applyTextAnchors(textElements);
 
     // Get the synopsis text group
     const synopsisTextGroup = synopsis.querySelector('.rt-synopsis-text');
@@ -1085,17 +1304,31 @@ export default class SynopsisManager {
     const baseX = parseFloat(translateMatch[1]);
     const baseY = parseFloat(translateMatch[2]);
 
-    // Separate text elements into rows (vertically stacked lines)
-    const textRows: SVGTextElement[][] = [];
+    let textRows = buildTextRows(textElements);
 
-    // Build rows, grouping metadata blocks with their preceding title rows
-    textElements.forEach((textEl) => {
-      if (textEl.getAttribute('data-metadata-block') === 'true' && textRows.length > 0) {
-        textRows[textRows.length - 1].push(textEl);
-      } else {
-        textRows.push([textEl]);
-      }
-    });
+    const didWrap = shouldRewrap
+      ? this.applyHoverSynopsisWrap({
+        textRows,
+        baseY,
+        radius,
+        isRightAligned,
+        isTopHalf,
+        fontScale,
+        pulseLineHeight,
+        lineInnerRadius
+      })
+      : false;
+
+    if (didWrap) {
+      textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
+      if (textElements.length === 0) return;
+      applyTextAnchors(textElements);
+      textRows = buildTextRows(textElements);
+    }
+
+    if (shouldRewrap) {
+      (synopsis as SVGElement).setAttribute('data-hover-synopsis-wrap', wrapMode);
+    }
 
     // Position each row using Pythagorean theorem relative to circle center
     let yOffset = 0;

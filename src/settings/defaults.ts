@@ -166,37 +166,37 @@ Synopsis: Short scene summary.                # Brief description of what happen
 Subplot: {{Subplot}}      # Single subplot (or use array format below for multiple)
 Character: {{Character}}  # Characters in the scene (use array format below for multiple)
 POV:                      # blank, first, you, third, omni, narrator, two, all, count
+Due: {{When}}             # Target completion date (YYYY-MM-DD). When setting Scene to Complete, change this to that day's date for better novel completion estimate
 Status: Todo              # Scene status (Todo/Working/Complete)
 Publish Stage: Zero       # Publication stage (Zero/Author/House/Press)
-Due: {{When}}             # Target completion date (YYYY-MM-DD). When setting Scene to Complete, change this to that day's date for better novel completion estimate
 Pending Edits:            # Notes for next revision (especially for zero draft mode)
 Pulse Update:             # AI-generated scene pulse analysis flag`,
         advanced: `Class: Scene
 Act: {{Act}}
 When: {{When}}
-Duration: 1 hours
+Duration: 1 hour                      # Free text duration (e.g., "45 minutes", "2 hours", "PT45M")
 Synopsis: Short scene summary.
 Subplot:
 {{SubplotList}}
 Character:
 {{CharacterList}}
+POV:                                  # blank, first, you, third, omni, narrator, two, all, count
 Place:
 {{PlaceList}}
+Due:                                  # Target completion date (YYYY-MM-DD).
 Status: Todo
 Publish Stage: Zero
-Due:                                  # Target completion date (YYYY-MM-DD).
 Pending Edits:
-Iteration:                            # Edit iteration count (suggest leaving blank until stage > Zero)
+Questions:                            # Analysis Block
+Reader Emotion:                       # Describe the intended reader emotion
+Internal: How do the characters change?
 Type:
 Shift:
-Questions:                            # Analysis Block
-Reader Emotion:
-Internal: How do the characters change?
-Total Time:                           # Tracked time spent writing scene
 Words:                                # Statistics
 Runtime:                              # Technical runtime (screenplay time / reading time, e.g., "2:30", "45s")
-Pulse Update: No
-Synopsis Update:`
+Iteration:                            # Edit iteration count (suggest leaving blank until stage > Zero)
+Synopsis Update:
+Pulse Update: No`
     },
     bookDesignerTemplates: [],
     backdropYamlTemplate: `Class: Backdrop                   # Backdrop events appear below the outer ring in Chronologue Mode

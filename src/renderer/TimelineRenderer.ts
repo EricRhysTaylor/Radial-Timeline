@@ -261,7 +261,7 @@ export function createTimelineSVG(
 
     // Create SVG root and expose the dominant publish-stage colour for CSS via a hidden <g> element
     let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" 
-                       xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg ${readabilityClass}" data-font-scale="${readabilityScale}" data-num-acts="${numActs}"
+                       xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg ${readabilityClass}" data-font-scale="${readabilityScale}" data-num-acts="${numActs}" data-line-inner-radius="${lineInnerRadius}"
                        preserveAspectRatio="xMidYMid meet">`;
 
 
