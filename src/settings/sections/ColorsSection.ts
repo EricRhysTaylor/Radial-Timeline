@@ -4,6 +4,7 @@ import type { PluginRendererFacade } from '../../utils/sceneHelpers';
 import { computeCacheableValues } from '../../renderer/utils/Precompute';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { colorSwatch, type ColorSwatchHandle } from '../../ui/ui';
+import { ERT_DATA } from '../../ui/classes';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 
 const SUBPLOT_LABEL_MAX_LENGTH = 16;
@@ -47,7 +48,8 @@ async function getTimelineSubplotOrder(plugin: RadialTimelinePlugin): Promise<st
 
 export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTimelinePlugin): void {
     // --- Publishing Stage Colors ---
-    const pubHeading = new Settings(containerEl)
+    const pubSection = containerEl.createDiv({ attr: { [ERT_DATA.SECTION]: 'colors-publish' } });
+    const pubHeading = new Settings(pubSection)
         .setName('Publishing stage colors')
         .setDesc('Used for completed scenes, stage matrix, act labels and more.')
         .setHeading();
@@ -55,7 +57,7 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
     addWikiLink(pubHeading, 'Settings#publishing-stage-colors');
     pubHeading.descEl?.addClass('ert-color-section-desc');
     applyErtHeaderLayout(pubHeading);
-    const stageGrid = containerEl.createDiv({ cls: 'ert-color-grid' });
+    const stageGrid = pubSection.createDiv({ cls: 'ert-color-grid' });
     const stages = Object.entries(plugin.settings.publishStageColors);
     stages.forEach(([stage, color]) => {
         const cell = stageGrid.createDiv({ cls: 'ert-color-grid-item' });
@@ -109,7 +111,8 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
     });
 
     // --- Subplot palette (16 colors) ---
-    const subplotHeading = new Settings(containerEl)
+    const subplotSection = containerEl.createDiv({ attr: { [ERT_DATA.SECTION]: 'colors-subplot' } });
+    const subplotHeading = new Settings(subplotSection)
         .setName('Subplot ring colors')
         .setDesc('Subplot ring colors used for rings 1 through 16 moving inward.')
         .setHeading();
@@ -117,7 +120,7 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
     addWikiLink(subplotHeading, 'Settings#subplot-ring-colors');
     subplotHeading.descEl?.addClass('ert-color-section-desc');
     applyErtHeaderLayout(subplotHeading);
-    const subplotGrid = containerEl.createDiv({ cls: 'ert-color-grid' });
+    const subplotGrid = subplotSection.createDiv({ cls: 'ert-color-grid' });
     const ensureArray = (arr: unknown): string[] => Array.isArray(arr) ? arr as string[] : [];
     const subplotColors = ensureArray(plugin.settings.subplotColors);
     const subplotLabels: HTMLDivElement[] = [];

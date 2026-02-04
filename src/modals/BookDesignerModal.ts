@@ -1,7 +1,7 @@
 import { App, Modal, Setting, Notice, normalizePath, ButtonComponent, TextAreaComponent, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { createBeatTemplateNotes } from '../utils/beatsTemplates';
-import { generateSceneContent, SceneCreationData } from '../utils/sceneGenerator';
+import { generateSceneContent, mergeTemplates, SceneCreationData } from '../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { parseDuration, parseDurationDetail } from '../utils/date';
 import { getCustomSystemFromSettings } from '../utils/beatsSystems';
@@ -1229,12 +1229,20 @@ export class BookDesignerModal extends Modal {
         if (subplotList.length === 0) subplotList.push('Main Plot');
 
         // Get template string
-        const templateKey = this.templateType;
         const userTemplates = this.plugin.settings.sceneYamlTemplates;
-        const templateString = userTemplates?.[templateKey];
-        if (!templateString) {
-            new Notice('Scene template not found in settings. Set a scene template before generating.');
+        const baseTemplate = userTemplates?.base;
+        if (!baseTemplate) {
+            new Notice('Base scene template not found in settings. Set a scene template before generating.');
             return;
+        }
+        
+        // For advanced template, merge base + advanced fields
+        let templateString: string;
+        if (this.templateType === 'advanced') {
+            const advancedFields = userTemplates?.advanced ?? '';
+            templateString = mergeTemplates(baseTemplate, advancedFields);
+        } else {
+            templateString = baseTemplate;
         }
 
         // Anchor generated scenes to today and advance each by time increment

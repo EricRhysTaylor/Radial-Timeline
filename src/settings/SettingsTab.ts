@@ -531,17 +531,18 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     }
 
     private addSearchMetadataToSettings(containerEl: HTMLElement): void {
-        // Only add search metadata to section headers, not individual settings
-        const sectionHeaders = containerEl.querySelectorAll('.ert-header');
-        sectionHeaders.forEach(header => {
-            const titleEl = header.querySelector('.ert-section-title');
+        // Use only the header at the start of each section (first .ert-header in the stack)
+        const sectionContainers = containerEl.querySelectorAll('[data-ert-section]');
+        sectionContainers.forEach(sectionEl => {
+            const section = sectionEl as HTMLElement;
+            const firstHeader = section.querySelector('.ert-header');
+            const titleEl = firstHeader?.querySelector('.ert-section-title');
             const titleText = titleEl?.textContent || '';
-            const searchTerms = this.getSearchTerms(titleText, 1);
-
-            // Store search text on the section container
-            const sectionContainer = header.closest('[data-ert-section]') as HTMLElement;
-            if (sectionContainer && !sectionContainer.dataset.rtSearchText) {
-                sectionContainer.dataset.rtSearchText = searchTerms.join(' ');
+            if (titleText) {
+                const terms = this.getSearchTerms(titleText, 1);
+                if (terms.length > 0) {
+                    section.dataset.rtSearchText = terms.join(' ');
+                }
             }
         });
     }
@@ -798,8 +799,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const povSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'pov' } });
         renderPovSection({ plugin: this.plugin, containerEl: povSection });
 
-        const beatsSection = searchableContent.createDiv({ cls: ERT_CLASSES.STACK, attr: { [ERT_DATA.SECTION]: 'beats' } });
-        renderTemplatesSection({ app: this.app, plugin: this.plugin, containerEl: beatsSection });
+        const beatsWrapper = searchableContent.createDiv({ cls: ERT_CLASSES.STACK });
+        renderTemplatesSection({ app: this.app, plugin: this.plugin, containerEl: beatsWrapper });
 
         const publicationSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'publication' } });
         const publicationStack = publicationSection.createDiv({ cls: ERT_CLASSES.STACK });
@@ -844,8 +845,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const configurationSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'configuration' } });
         renderConfigurationSection({ app: this.app, plugin: this.plugin, containerEl: configurationSection });
 
-        const colorsSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'colors' } });
-        renderColorsSection(colorsSection, this.plugin);
+        const colorsWrapper = searchableContent.createDiv();
+        renderColorsSection(colorsWrapper, this.plugin);
 
         const releaseNotesSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'release-notes' } });
         void renderReleaseNotesSection({ plugin: this.plugin, containerEl: releaseNotesSection });

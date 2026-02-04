@@ -9,7 +9,7 @@ import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import type { HoverMetadataField } from '../../types/settings';
 import { IconSuggest } from '../IconSuggest';
 import { parseActLabels, resolveActLabel } from '../../utils/acts';
-import { ERT_CLASSES } from '../../ui/classes';
+import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
 import { getActiveMigrations, REFACTOR_ALERTS, areAlertMigrationsComplete, type FieldMigration } from '../refactorAlerts';
 
 type TemplateEntryValue = string | string[];
@@ -24,9 +24,12 @@ export function renderStoryBeatsSection(params: {
 }): void {
     const { app, plugin, containerEl } = params;
     containerEl.classList.add(ERT_CLASSES.STACK);
-    const actsStack = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
-    const beatsStack = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
-    const yamlStack = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
+    const actsSection = containerEl.createDiv({ cls: ERT_CLASSES.STACK, attr: { [ERT_DATA.SECTION]: 'beats-acts' } });
+    const actsStack = actsSection.createDiv({ cls: ERT_CLASSES.STACK });
+    const beatsSection = containerEl.createDiv({ cls: ERT_CLASSES.STACK, attr: { [ERT_DATA.SECTION]: 'beats-story' } });
+    const beatsStack = beatsSection.createDiv({ cls: ERT_CLASSES.STACK });
+    const yamlSection = containerEl.createDiv({ cls: ERT_CLASSES.STACK, attr: { [ERT_DATA.SECTION]: 'beats-yaml' } });
+    const yamlStack = yamlSection.createDiv({ cls: ERT_CLASSES.STACK });
 
     // Acts Section (above beats)
     const actsHeading = new Settings(actsStack)
@@ -907,7 +910,7 @@ export function renderStoryBeatsSection(params: {
                     contentEl.empty();
 
                     modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
-                    contentEl.addClass('ert-modal-container');
+                    contentEl.addClass('ert-modal-container', 'ert-stack');
 
                     const header = contentEl.createDiv({ cls: 'ert-modal-header' });
                     header.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });

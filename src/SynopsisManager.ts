@@ -122,6 +122,150 @@ export default class SynopsisManager {
     });
   }
 
+  private resetMainSynopsisWrap(synopsis: Element): void {
+    const wrapped = Array.from(synopsis.querySelectorAll('[data-synopsis-wrap="true"]')) as SVGTextElement[];
+    wrapped.forEach(el => el.remove());
+
+    const lines = Array.from(synopsis.querySelectorAll('[data-synopsis-line="true"]')) as SVGTextElement[];
+    lines.forEach(line => {
+      const raw = line.getAttribute('data-synopsis-raw');
+      if (raw !== null) {
+        line.textContent = raw;
+      }
+    });
+  }
+
+  private applyMainSynopsisWrap(params: {
+    textRows: SVGTextElement[][];
+    baseY: number;
+    radius: number;
+    isRightAligned: boolean;
+    isTopHalf: boolean;
+    fontScale: number;
+    pulseLineHeight: number;
+    lineInnerRadius: number;
+  }): boolean {
+    const {
+      textRows,
+      baseY,
+      radius,
+      isRightAligned,
+      isTopHalf,
+      fontScale,
+      pulseLineHeight,
+      lineInnerRadius
+    } = params;
+
+    let didWrap = false;
+    let yOffset = 0;
+    let usedLines = 0;
+    const titleLineHeight = 32 * fontScale;
+    const synopsisLineHeight = 22 * fontScale;
+    const scorePreGap = 46 * fontScale;
+    const defaultMaxWidth = MAX_TEXT_WIDTH * fontScale;
+    const maxLines = (this.plugin.settings as any).synopsisHoverMaxLines ?? 5;
+
+    for (let rowIndex = 0; rowIndex < textRows.length; rowIndex++) {
+      const rowElements = textRows[rowIndex];
+      const primaryEl = rowElements[0];
+      if (!primaryEl) continue;
+
+      // Match row spacing logic used during layout
+      if (rowIndex > 0) {
+        const currentEl = rowElements[0];
+        const isGossamerLine = currentEl.classList.contains('rt-gossamer-score-line');
+        const isBeatsText = currentEl.classList.contains('pulse-text');
+        const prevEl = textRows[rowIndex - 1][0];
+        const isPrevLineSynopsis = prevEl.classList.contains('rt-title-text-secondary');
+        const isPrevLineBeats = prevEl.classList.contains('pulse-text');
+
+        if (rowIndex === 1) {
+          yOffset += titleLineHeight;
+        } else if (isGossamerLine && isPrevLineSynopsis) {
+          yOffset += scorePreGap;
+        } else if (isBeatsText || isPrevLineBeats) {
+          yOffset += pulseLineHeight;
+        } else {
+          yOffset += synopsisLineHeight;
+        }
+      }
+
+      if (primaryEl.getAttribute('data-synopsis-line') !== 'true') {
+        continue;
+      }
+
+      const raw = primaryEl.getAttribute('data-synopsis-raw') ?? primaryEl.textContent ?? '';
+      if (!raw.trim()) continue;
+
+      const anchorY = baseY + yOffset;
+      const radiusDiff = radius * radius - anchorY * anchorY;
+      if (radiusDiff <= 0) continue;
+
+      const circleX = Math.sqrt(radiusDiff);
+      const direction = isRightAligned ? 1 : -1;
+
+      let inset = 0;
+      if (isTopHalf) {
+        const style = window.getComputedStyle(primaryEl);
+        const fontSize = parseFloat(style.fontSize) || 16;
+        const ratio = rowIndex <= 1 ? 0.5 : SynopsisManager.TEXT_HEIGHT_INSET_RATIO;
+        inset = fontSize * ratio;
+      }
+
+      const anchorAbsoluteX = (circleX - inset) * direction;
+      const rightEdge = anchorAbsoluteX - SYNOPSIS_INSET;
+
+      let maxWidth = defaultMaxWidth;
+      if (isRightAligned) {
+        let boundaryX = 0;
+        if (lineInnerRadius > 0 && Math.abs(anchorY) < lineInnerRadius) {
+          const innerDiff = lineInnerRadius * lineInnerRadius - anchorY * anchorY;
+          if (innerDiff > 0) {
+            boundaryX = Math.sqrt(innerDiff);
+          }
+        }
+        maxWidth = rightEdge - boundaryX - SynopsisManager.HOVER_WRAP_PADDING;
+      }
+
+      if (!Number.isFinite(maxWidth) || maxWidth <= 0) {
+        continue;
+      }
+
+      let wrapped = this.splitTextIntoLinesByWidth(raw, maxWidth, value => this.measureTextWidthForWrap(primaryEl, value));
+      if (wrapped.length === 0) continue;
+
+      if (usedLines >= maxLines) {
+        primaryEl.remove();
+        continue;
+      }
+
+      const remaining = maxLines - usedLines;
+      if (wrapped.length > remaining) {
+        wrapped = wrapped.slice(0, remaining);
+        const lastIdx = wrapped.length - 1;
+        if (lastIdx >= 0 && !wrapped[lastIdx].endsWith('...')) {
+          wrapped[lastIdx] = `${wrapped[lastIdx]}...`;
+        }
+      }
+
+      primaryEl.textContent = wrapped[0];
+      const insertParent = primaryEl.parentNode;
+      let insertBefore = primaryEl.nextSibling;
+      for (let i = 1; i < wrapped.length; i++) {
+        const cont = primaryEl.cloneNode(false) as SVGTextElement;
+        cont.setAttribute('data-synopsis-wrap', 'true');
+        cont.textContent = wrapped[i];
+        insertParent?.insertBefore(cont, insertBefore);
+        insertBefore = cont.nextSibling;
+      }
+
+      usedLines += wrapped.length;
+      if (wrapped.length > 1) didWrap = true;
+    }
+
+    return didWrap;
+  }
+
   private applyHoverSynopsisWrap(params: {
     textRows: SVGTextElement[][];
     baseY: number;
@@ -766,6 +910,8 @@ export default class SynopsisManager {
           this.processContentWithTspans(lineContent, synopsisLineElement);
         } else {
           synopsisLineElement.textContent = lineContent;
+          synopsisLineElement.setAttribute('data-synopsis-line', 'true');
+          synopsisLineElement.setAttribute('data-synopsis-raw', lineContent);
         }
       }
 
@@ -1242,6 +1388,7 @@ export default class SynopsisManager {
 
     if (shouldRewrap) {
       this.resetHoverSynopsisWrap(synopsis);
+      this.resetMainSynopsisWrap(synopsis);
     }
 
     const buildTextRows = (elements: SVGTextElement[]): SVGTextElement[][] => {
@@ -1305,9 +1452,10 @@ export default class SynopsisManager {
     const baseY = parseFloat(translateMatch[2]);
 
     let textRows = buildTextRows(textElements);
+    let didWrap = false;
 
-    const didWrap = shouldRewrap
-      ? this.applyHoverSynopsisWrap({
+    if (shouldRewrap) {
+      const mainWrapped = this.applyMainSynopsisWrap({
         textRows,
         baseY,
         radius,
@@ -1316,14 +1464,32 @@ export default class SynopsisManager {
         fontScale,
         pulseLineHeight,
         lineInnerRadius
-      })
-      : false;
+      });
+      if (mainWrapped) {
+        textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
+        if (textElements.length === 0) return;
+        applyTextAnchors(textElements);
+        textRows = buildTextRows(textElements);
+        didWrap = true;
+      }
 
-    if (didWrap) {
-      textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
-      if (textElements.length === 0) return;
-      applyTextAnchors(textElements);
-      textRows = buildTextRows(textElements);
+      const hoverWrapped = this.applyHoverSynopsisWrap({
+        textRows,
+        baseY,
+        radius,
+        isRightAligned,
+        isTopHalf,
+        fontScale,
+        pulseLineHeight,
+        lineInnerRadius
+      });
+      if (hoverWrapped) {
+        textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
+        if (textElements.length === 0) return;
+        applyTextAnchors(textElements);
+        textRows = buildTextRows(textElements);
+        didWrap = true;
+      }
     }
 
     if (shouldRewrap) {

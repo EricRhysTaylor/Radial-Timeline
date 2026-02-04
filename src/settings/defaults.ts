@@ -170,33 +170,18 @@ Due: {{When}}             # Target completion date (YYYY-MM-DD). When setting Sc
 Status: Todo              # Scene status (Todo/Working/Complete)
 Publish Stage: Zero       # Publication stage (Zero/Author/House/Press)
 Pending Edits:            # Notes for next revision (especially for zero draft mode)
+Words:                    # Word count statistics
+Runtime:                  # Technical runtime (screenplay time / reading time, e.g., "2:30", "45s")
+Synopsis Update:          # AI-generated synopsis update flag
 Pulse Update:             # AI-generated scene pulse analysis flag`,
-        advanced: `Class: Scene
-Act: {{Act}}
-When: {{When}}
-Duration: 1 hour                      # Free text duration (e.g., "45 minutes", "2 hours", "PT45M")
-Synopsis: Short scene summary.
-Subplot:
-{{SubplotList}}
-Character:
-{{CharacterList}}
-POV:                                  # blank, first, you, third, omni, narrator, two, all, count
-Place:
+        advanced: `Place:
 {{PlaceList}}
-Due:                                  # Target completion date (YYYY-MM-DD).
-Status: Todo
-Publish Stage: Zero
-Pending Edits:
 Questions:                            # Analysis Block
 Reader Emotion:                       # Describe the intended reader emotion
 Internal: How do the characters change?
 Type:
 Shift:
-Words:                                # Statistics
-Runtime:                              # Technical runtime (screenplay time / reading time, e.g., "2:30", "45s")
-Iteration:                            # Edit iteration count (suggest leaving blank until stage > Zero)
-Synopsis Update:
-Pulse Update: No`
+Iteration:                            # Edit iteration count (suggest leaving blank until stage > Zero)`
     },
     bookDesignerTemplates: [],
     backdropYamlTemplate: `Class: Backdrop                   # Backdrop events appear below the outer ring in Chronologue Mode

@@ -2,6 +2,71 @@
  * Utility for generating scene content from templates
  */
 
+/**
+ * Merges the base template with advanced-only fields to create a complete advanced template.
+ * This eliminates duplication by keeping base fields in one place and advanced additions separate.
+ * 
+ * @param baseTemplate The base YAML template with all required fields
+ * @param advancedFields The advanced-only fields to merge in
+ * @returns A complete advanced template with all fields properly ordered
+ */
+export function mergeTemplates(baseTemplate: string, advancedFields: string): string {
+    const lines = baseTemplate.split('\n');
+    const advancedLines = advancedFields.split('\n');
+    
+    // Parse advanced fields into sections
+    // Place goes after POV, everything else goes after Pending Edits (before Words)
+    const placeLines: string[] = [];
+    const otherAdvancedLines: string[] = [];
+    
+    let inPlaceSection = false;
+    for (const line of advancedLines) {
+        if (line.startsWith('Place:')) {
+            inPlaceSection = true;
+            placeLines.push(line);
+        } else if (inPlaceSection && (line.startsWith('{{PlaceList}}') || line.startsWith('  -'))) {
+            placeLines.push(line);
+        } else if (line.trim()) {
+            inPlaceSection = false;
+            otherAdvancedLines.push(line);
+        }
+    }
+    
+    const result: string[] = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        
+        // Replace Subplot inline with list format
+        if (line.match(/^Subplot:\s*{{Subplot}}/)) {
+            result.push('Subplot:');
+            result.push('{{SubplotList}}');
+            continue;
+        }
+        
+        // Replace Character inline with list format
+        if (line.match(/^Character:\s*{{Character}}/)) {
+            result.push('Character:');
+            result.push('{{CharacterList}}');
+            continue;
+        }
+        
+        result.push(line);
+        
+        // Insert Place after POV
+        if (line.startsWith('POV:')) {
+            result.push(...placeLines);
+        }
+        
+        // Insert other advanced fields after Pending Edits but before Words
+        if (line.startsWith('Pending Edits:')) {
+            result.push(...otherAdvancedLines);
+        }
+    }
+    
+    return result.join('\n');
+}
+
 export interface SceneCreationData {
     act: number;
     when: string;
