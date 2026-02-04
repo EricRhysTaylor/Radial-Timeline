@@ -35,11 +35,13 @@ export function renderDefs(
       </pattern>`;
     
     // Todo pattern: crosshatch grid
+    // Use higher stroke opacity in portable mode for better Figma visibility
+    const todoStrokeOpacity = portableSvg ? '0.7' : '0.5';
     const todoPath = `
       <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="${todoSize}" height="${todoSize}" patternTransform="rotate(45)">
         <rect width="${todoSize}" height="${todoSize}" fill="${todoFill}" opacity="${plaidOpacity}"/>
-        <line x1="0" y1="0" x2="0" y2="${todoSize}" stroke="${color}" stroke-width="${strokeWidth}" stroke-opacity="0.5"/>
-        <line x1="0" y1="0" x2="${todoSize}" y2="0" stroke="${color}" stroke-width="${strokeWidth}" stroke-opacity="0.5"/>
+        <line x1="0" y1="0" x2="0" y2="${todoSize}" stroke="${color}" stroke-width="${strokeWidth}" stroke-opacity="${todoStrokeOpacity}"/>
+        <line x1="0" y1="0" x2="${todoSize}" y2="0" stroke="${color}" stroke-width="${strokeWidth}" stroke-opacity="${todoStrokeOpacity}"/>
       </pattern>`;
     
     return workingPath + todoPath;

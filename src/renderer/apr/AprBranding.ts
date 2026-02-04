@@ -395,10 +395,11 @@ export function renderAprCenterPercent(
     const percentPx = Math.max(1, numberPx * 1.5);
     
     // For portable mode (Figma), use y offset instead of dominant-baseline
-    // Text baseline is at y=0, so we shift down by ~0.35em to center vertically
+    // Text baseline is at y=0, so we shift down to center vertically
+    // % symbol needs larger offset (0.42) than number (0.38) due to glyph baseline differences
     // For non-portable, use dominant-baseline for browser compatibility
-    const percentY = portableSvg ? (percentPx * 0.35) : 0;
-    const numberY = portableSvg ? (numberPx * 0.35) : 0;
+    const percentY = portableSvg ? (percentPx * 0.42) : 0;
+    const numberY = portableSvg ? (numberPx * 0.38) : 0;
     const percentDy = portableSvg ? 0 : (percentPx * 0.1);
     const numberDy = portableSvg ? 0 : (numberPx * 0.1);
     const baselineAttrs = portableSvg ? '' : 'dominant-baseline="middle" alignment-baseline="middle"';
