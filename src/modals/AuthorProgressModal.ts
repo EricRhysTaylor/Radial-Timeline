@@ -568,8 +568,7 @@ export class AuthorProgressModal extends Modal {
         actionRow.createSpan({ text: '', cls: ERT_CLASSES.LABEL });
         const actionControl = actionRow.createDiv({ cls: ERT_CLASSES.CONTROL });
         const primaryButton = new ButtonComponent(actionControl)
-            .setButtonText('Publish Campaign')
-            .setCta();
+            .setButtonText('Publish Campaign');
         primaryButton.buttonEl.addClass('ert-btn', 'ert-btn--standard-pro');
         primaryButton.onClick(() => this.publish('dynamic'));
     }

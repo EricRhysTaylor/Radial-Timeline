@@ -387,28 +387,33 @@ export function renderAprCenterPercent(
     const percentSymbolFontItalic = options?.percentSymbolFontItalic ?? percentNumberFontItalic;
 
     const numStr = String(Math.round(percent));
-    const innerRadius = layout.ringInnerR;
     const digitCount = Math.max(1, numStr.length);
-    const baseNumberPx = innerRadius * 1.35;
-    const digitScale = Math.max(0.72, 1 - (digitCount - 1) * 0.14);
-    const numberPx = Math.max(1, baseNumberPx * digitScale);
-    const percentPx = Math.max(1, numberPx * 1.5);
-    
-    // For portable mode (Figma), use y offset instead of dominant-baseline
-    // Text baseline is at y=0, so we shift down to center vertically
-    // % symbol needs larger offset (0.42) than number (0.38) due to glyph baseline differences
-    // For non-portable, use dominant-baseline for browser compatibility
-    const percentY = portableSvg ? (percentPx * 0.42) : 0;
-    const numberY = portableSvg ? (numberPx * 0.38) : 0;
-    const percentDy = portableSvg ? 0 : (percentPx * 0.1);
-    const numberDy = portableSvg ? 0 : (numberPx * 0.1);
+    const sizeOverride = digitCount === 1
+        ? options?.percentNumberFontSize1Digit
+        : digitCount === 2
+            ? options?.percentNumberFontSize2Digit
+            : options?.percentNumberFontSize3Digit;
+    const baseNumberPx = layout.centerLabel.numberPx;
+    const numberPx = Math.max(1, sizeOverride ?? baseNumberPx);
+    const scaleRatio = baseNumberPx > 0 ? numberPx / baseNumberPx : 1;
+    const percentPx = Math.max(1, layout.centerLabel.percentPx * scaleRatio);
+    const centerDy = layout.centerLabel.dyPx * scaleRatio;
+    const percentDx = layout.centerLabel.percentDxPx * scaleRatio;
+    const percentBaselineShift = layout.centerLabel.percentBaselineShiftPx * scaleRatio;
+
+    // For portable mode (Figma), use explicit baseline offsets.
+    // For non-portable, rely on dominant-baseline for browser accuracy.
     const baselineAttrs = portableSvg ? '' : 'dominant-baseline="middle" alignment-baseline="middle"';
+    const numberY = portableSvg ? (centerDy + numberPx * 0.35) : centerDy;
+    const percentY = portableSvg ? (centerDy + percentPx * 0.35 - percentBaselineShift) : (centerDy - percentBaselineShift);
+    const percentDy = 0;
+    const numberDy = 0;
 
     // SAFE: inline style used for SVG attribute font-style in template string
     return `
         <g class="apr-center-percent" transform="translate(0 0)">
             <text 
-                x="0"
+                x="${percentDx}"
                 y="${percentY}"
                 text-anchor="middle" 
                 ${baselineAttrs}

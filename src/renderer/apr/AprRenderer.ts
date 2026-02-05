@@ -4,6 +4,7 @@
  */
 import type { TimelineItem } from '../../types';
 import { isBeatNote, sortScenes, sortByManuscriptOrder } from '../../utils/sceneHelpers';
+import { formatNumber } from '../../utils/svg';
 import { computePositions } from '../utils/SceneLayout';
 import { sceneArcPath } from '../components/SceneArcs';
 import { APR_COLORS, APR_TEXT_COLORS, APR_FIXED_STROKES } from './AprConstants';
@@ -13,7 +14,7 @@ import { renderDefs } from '../components/Defs';
 import { getFillForScene } from '../utils/SceneFill';
 import { DEFAULT_SETTINGS } from '../../settings/defaults';
 import { renderAprBadges, renderAprBranding, renderAprCenterPercent } from './AprBranding';
-import { STAGE_ORDER, STATUS_COLORS } from '../../utils/constants';
+import { STAGE_ORDER } from '../../utils/constants';
 
 export interface AprRenderOptions {
     size: AprSize;
@@ -87,6 +88,13 @@ type RingData = {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const cssVar = (name: string, fallback: string) => `var(${name}-override, var(${name}, ${fallback}))`;
+const TAU = Math.PI * 2;
+const FULL_CIRCLE_EPSILON = 0.0001;
+
+const PORTABLE_STATUS_COLORS = {
+    Working: '#FF69B4',
+    Todo: '#cccccc',
+} as const;
 
 // Portable SVG helpers: bypass CSS vars for standalone exports (Figma, Illustrator, etc.)
 const resolveColor = (portable: boolean) =>
@@ -96,6 +104,38 @@ const resolveColor = (portable: boolean) =>
 const resolveOpacity = (portable: boolean) =>
     (varExpr: string, fallback: string): string =>
         portable ? fallback : varExpr;
+
+function arcStrokePath(radius: number, startAngle: number, endAngle: number): string {
+    const span = Math.abs(endAngle - startAngle);
+    const isFullCircle = span >= (TAU - FULL_CIRCLE_EPSILON);
+    const r = formatNumber(radius);
+
+    if (isFullCircle) {
+        const midAngle = startAngle + (endAngle - startAngle) / 2;
+        const startX = formatNumber(radius * Math.cos(startAngle));
+        const startY = formatNumber(radius * Math.sin(startAngle));
+        const midX = formatNumber(radius * Math.cos(midAngle));
+        const midY = formatNumber(radius * Math.sin(midAngle));
+        return `M ${startX} ${startY} A ${r} ${r} 0 1 1 ${midX} ${midY} A ${r} ${r} 0 1 1 ${startX} ${startY}`;
+    }
+
+    const largeArc = span > Math.PI ? 1 : 0;
+    const startX = formatNumber(radius * Math.cos(startAngle));
+    const startY = formatNumber(radius * Math.sin(startAngle));
+    const endX = formatNumber(radius * Math.cos(endAngle));
+    const endY = formatNumber(radius * Math.sin(endAngle));
+    return `M ${startX} ${startY} A ${r} ${r} 0 ${largeArc} 1 ${endX} ${endY}`;
+}
+
+function resolvePublishStageKey(raw: unknown, stageColors: Record<string, string>): { key: string; fallback: string } {
+    const stageKeys = Object.keys(stageColors);
+    const fallback = stageKeys.includes('Zero') ? 'Zero' : (stageKeys[0] || 'Zero');
+    const candidate = Array.isArray(raw) ? raw[0] : raw;
+    const value = (candidate ?? fallback).toString().trim();
+    if (!value) return { key: fallback, fallback };
+    const match = stageKeys.find(stage => stage.toLowerCase() === value.toLowerCase());
+    return { key: match ?? fallback, fallback };
+}
 
 export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): AprRenderResult {
     const {
@@ -450,6 +490,27 @@ function renderRing(
             used += pos.endAngle - pos.startAngle;
             const sceneColor = resolveSceneColor(scene, showStatusColors, showStageColors, grayCompletedScenes, stageColors, portableSvg);
             const path = sceneArcPath(ring.innerR, ring.outerR, pos.startAngle, pos.endAngle);
+            const patternMatch = portableSvg ? sceneColor.match(/^url\(#plaid(Working|Todo)/) : null;
+            if (patternMatch) {
+                const statusKey = patternMatch[1] as keyof typeof PORTABLE_STATUS_COLORS;
+                const fillColor = PORTABLE_STATUS_COLORS[statusKey] ?? PORTABLE_STATUS_COLORS.Todo;
+                const stageInfo = resolvePublishStageKey(scene['Publish Stage'], stageColors);
+                const hatchColor = stageColors[stageInfo.key]
+                    || stageColors[stageInfo.fallback]
+                    || stageColors.Zero
+                    || '#888888';
+                svg += `<path d="${path}" fill="${fillColor}" stroke="${color('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
+
+                const thickness = ring.outerR - ring.innerR;
+                const hatchCount = Math.max(2, Math.min(6, Math.round(thickness / 12)));
+                const hatchStroke = Math.max(0.8, Math.min(2, borderWidth));
+                const dashAttr = statusKey === 'Todo' ? ` stroke-dasharray="${formatNumber(hatchStroke * 1.8)} ${formatNumber(hatchStroke * 2.6)}"` : '';
+                for (let i = 1; i <= hatchCount; i++) {
+                    const r = ring.innerR + (thickness * i) / (hatchCount + 1);
+                    svg += `<path d="${arcStrokePath(r, pos.startAngle, pos.endAngle)}" fill="none" stroke="${hatchColor}" stroke-width="${formatNumber(hatchStroke)}"${dashAttr} stroke-linecap="round" />`;
+                }
+                return;
+            }
             svg += `<path d="${path}" fill="${sceneColor}" stroke="${color('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
         });
 
