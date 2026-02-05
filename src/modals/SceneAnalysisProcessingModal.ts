@@ -90,6 +90,7 @@ export class SceneAnalysisProcessingModal extends Modal {
     private readonly taskType: 'pulse' | 'synopsis';
 
     private processedResults: Map<string, string> = new Map(); // Store results for synopsis apply phase
+    private hasPendingSynopsisResults: boolean = false; // Flag to indicate results are ready to apply
 
     private selectedMode: ProcessingMode = 'flagged';
     public isProcessing: boolean = false;
@@ -897,6 +898,19 @@ export class SceneAnalysisProcessingModal extends Modal {
         }
     }
 
+    /**
+     * Store synopsis results for the apply phase.
+     * Called from SynopsisCommands when processing completes.
+     * The modal will show Apply/Discard in the completion summary.
+     */
+    public setSynopsisResults(results: Map<string, string>): void {
+        this.processedResults = results;
+        this.hasPendingSynopsisResults = results.size > 0;
+    }
+
+    /**
+     * @deprecated Use setSynopsisResults instead - this clears the scene queue which disrupts UX
+     */
     public showApplyConfirmation(results: Map<string, string>): void {
         this.processedResults = results;
         const { contentEl, titleEl } = this;
@@ -1329,38 +1343,75 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         if (this.actionButtonContainer) {
             this.actionButtonContainer.empty();
-            if (remainingScenes > 0 && (this.resumeCommandId || this.subplotName)) {
+
+            // Synopsis mode with pending results: show Apply/Discard buttons
+            if (this.taskType === 'synopsis' && this.hasPendingSynopsisResults && this.processedResults.size > 0) {
+                // Add synopsis apply confirmation card above the buttons
+                contentEl.querySelectorAll('.rt-synopsis-apply-card').forEach(el => el.remove());
+                const applyCard = contentEl.createDiv({ cls: 'rt-glass-card rt-synopsis-apply-card' });
+                applyCard.createDiv({
+                    cls: 'rt-apply-message',
+                    text: `Processing complete. ${this.processedResults.size} scenes have new synopses ready to apply.`
+                });
+                const warning = applyCard.createDiv({ cls: 'rt-apply-warning' });
+                const warningIcon = warning.createSpan({ cls: 'rt-warning-icon' });
+                setIcon(warningIcon, 'alert-triangle');
+                warning.createSpan({ text: 'This will overwrite existing Synopsis fields in your frontmatter.' });
+
+                // Insert the card before the action buttons
+                this.actionButtonContainer.before(applyCard);
+
+                // Update hero subtitle to indicate review phase
+                if (this.heroStatusEl) {
+                    this.heroStatusEl.setText('Review and apply changes');
+                }
+
                 new ButtonComponent(this.actionButtonContainer)
-                    .setButtonText(`Resume (${remainingScenes} remaining)`)
+                    .setButtonText(`Apply ${this.processedResults.size} Changes`)
                     .setCta()
                     .onClick(async () => {
+                        await this.applyChanges();
                         this.close();
-
-                        if (this.subplotName) {
-                            const subplotName = this.subplotName;
-                            const isEntireSubplot = this.isEntireSubplot;
-                            window.setTimeout(async () => {
-                                const { processBySubplotNameWithModal, processEntireSubplotWithModal } = await import('../SceneAnalysisCommands');
-                                if (isEntireSubplot) {
-                                    await processEntireSubplotWithModal(this.plugin, this.plugin.app.vault, subplotName, true);
-                                } else {
-                                    await processBySubplotNameWithModal(this.plugin, this.plugin.app.vault, subplotName);
-                                }
-                            }, 100);
-                        } else if (this.resumeCommandId) {
-                            this.plugin.settings._isResuming = true;
-                            await this.plugin.saveSettings();
-                            window.setTimeout(() => {
-                                // @ts-ignore - accessing app commands
-                                this.app.commands.executeCommandById(this.resumeCommandId);
-                            }, 100);
-                        }
                     });
-            }
 
-            new ButtonComponent(this.actionButtonContainer)
-                .setButtonText('Close')
-                .onClick(() => this.close());
+                new ButtonComponent(this.actionButtonContainer)
+                    .setButtonText('Discard')
+                    .onClick(() => this.close());
+            } else {
+                // Standard completion: Resume and/or Close buttons
+                if (remainingScenes > 0 && (this.resumeCommandId || this.subplotName)) {
+                    new ButtonComponent(this.actionButtonContainer)
+                        .setButtonText(`Resume (${remainingScenes} remaining)`)
+                        .setCta()
+                        .onClick(async () => {
+                            this.close();
+
+                            if (this.subplotName) {
+                                const subplotName = this.subplotName;
+                                const isEntireSubplot = this.isEntireSubplot;
+                                window.setTimeout(async () => {
+                                    const { processBySubplotNameWithModal, processEntireSubplotWithModal } = await import('../SceneAnalysisCommands');
+                                    if (isEntireSubplot) {
+                                        await processEntireSubplotWithModal(this.plugin, this.plugin.app.vault, subplotName, true);
+                                    } else {
+                                        await processBySubplotNameWithModal(this.plugin, this.plugin.app.vault, subplotName);
+                                    }
+                                }, 100);
+                            } else if (this.resumeCommandId) {
+                                this.plugin.settings._isResuming = true;
+                                await this.plugin.saveSettings();
+                                window.setTimeout(() => {
+                                    // @ts-ignore - accessing app commands
+                                    this.app.commands.executeCommandById(this.resumeCommandId);
+                                }, 100);
+                            }
+                        });
+                }
+
+                new ButtonComponent(this.actionButtonContainer)
+                    .setButtonText('Close')
+                    .onClick(() => this.close());
+            }
         }
     }
 

@@ -46,9 +46,9 @@ export function buildSynopsisElement(
     const contentLines = [
         scene.title || '',
         ...(isBeatNote(scene) && scene.Description
-            ? splitAndTruncateLines(scene.Description, maxTextWidth, fontScale, maxLines)
+            ? [scene.Description]
             : scene.synopsis
-                ? splitAndTruncateLines(scene.synopsis, maxTextWidth, fontScale, maxLines)
+                ? [scene.synopsis]
                 : [])
     ];
 

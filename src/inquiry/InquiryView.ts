@@ -60,7 +60,7 @@ import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import type { InquirySourcesSettings } from '../types/settings';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
-import { InquiryCorpusResolver, InquiryCorpusSnapshot, InquiryCorpusItem } from './services/InquiryCorpusResolver';
+import { InquiryCorpusResolver, InquiryCorpusSnapshot, InquiryCorpusItem, InquirySceneItem } from './services/InquiryCorpusResolver';
 import { getModelDisplayName } from '../utils/modelResolver';
 import { addTooltipData, setupTooltipsFromDataAttributes } from '../utils/tooltip';
 import { splitIntoBalancedLinesOptimal } from '../utils/text';
@@ -238,6 +238,99 @@ type InquiryOmnibusPlan = {
     scope: InquiryScope;
     createIndex: boolean;
 };
+
+type InquiryPurgePreviewItem = {
+    label: string;
+    path: string;
+    lineCount: number;
+};
+
+class InquiryPurgeConfirmationModal extends Modal {
+    constructor(
+        app: App,
+        private totalScenes: number,
+        private affectedScenes: InquiryPurgePreviewItem[],
+        private scopeLabel: string,
+        private onConfirm: () => Promise<void>
+    ) {
+        super(app);
+    }
+
+    onOpen(): void {
+        const { contentEl, modalEl } = this;
+        contentEl.empty();
+
+        if (modalEl) {
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
+            modalEl.style.width = '520px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+        }
+
+        contentEl.addClass('ert-modal-container', 'ert-stack');
+
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'Inquiry' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Purge Action Items' });
+        header.createDiv({
+            cls: 'ert-modal-subtitle',
+            text: 'Removes Inquiry-generated action items from scene frontmatter.'
+        });
+
+        const panel = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-stack' });
+
+        const affectedCount = this.affectedScenes.length;
+        if (affectedCount === 0) {
+            panel.createDiv({
+                cls: 'ert-inquiry-purge-message',
+                text: `No Inquiry action items found in ${this.totalScenes} scene${this.totalScenes !== 1 ? 's' : ''} in ${this.scopeLabel}.`
+            });
+        } else {
+            panel.createDiv({
+                cls: 'ert-inquiry-purge-message',
+                text: `Found Inquiry action items in ${affectedCount} of ${this.totalScenes} scene${this.totalScenes !== 1 ? 's' : ''} in ${this.scopeLabel}:`
+            });
+
+            const listContainer = panel.createDiv({ cls: 'ert-inquiry-purge-list-container' });
+            const listEl = listContainer.createEl('ul', { cls: 'ert-inquiry-purge-list' });
+            this.affectedScenes.forEach(item => {
+                const li = listEl.createEl('li', { cls: 'ert-inquiry-purge-list-item' });
+                li.createSpan({ cls: 'ert-inquiry-purge-list-label', text: item.label });
+                li.createSpan({
+                    cls: 'ert-inquiry-purge-list-count',
+                    text: `${item.lineCount} item${item.lineCount !== 1 ? 's' : ''}`
+                });
+            });
+
+            panel.createDiv({
+                cls: 'ert-inquiry-purge-details',
+                text: 'User-written notes in Pending Edits are preserved.'
+            });
+            panel.createDiv({
+                cls: 'ert-inquiry-purge-warning',
+                text: 'This cannot be undone.'
+            });
+        }
+
+        const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        if (affectedCount > 0) {
+            new ButtonComponent(buttonRow)
+                .setButtonText(`Purge ${affectedCount} scene${affectedCount !== 1 ? 's' : ''}`)
+                .setWarning()
+                .onClick(async () => {
+                    this.close();
+                    await this.onConfirm();
+                });
+        }
+        new ButtonComponent(buttonRow)
+            .setButtonText(affectedCount > 0 ? 'Cancel' : 'Close')
+            .onClick(() => this.close());
+    }
+
+    onClose(): void {
+        this.contentEl.empty();
+    }
+}
 
 type InquiryOmnibusModalOptions = {
     initialScope: InquiryScope;
@@ -556,6 +649,7 @@ export class InquiryView extends ItemView {
     private briefingSaveButton?: HTMLButtonElement;
     private briefingClearButton?: HTMLButtonElement;
     private briefingResetButton?: HTMLButtonElement;
+    private briefingPurgeButton?: HTMLButtonElement;
     private briefingEmptyEl?: HTMLDivElement;
     private briefingPinned = false;
     private briefingHideTimer?: number;
@@ -1054,6 +1148,15 @@ export class InquiryView extends ItemView {
             this.balanceTooltipText('Resets live corpus overrides only.'),
             'top'
         );
+        this.briefingPurgeButton = this.briefingFooterEl.createEl('button', {
+            cls: 'ert-inquiry-briefing-purge',
+            text: 'Purge action items'
+        });
+        addTooltipData(
+            this.briefingPurgeButton,
+            this.balanceTooltipText('Removes Inquiry-generated action items from scene frontmatter. User notes are preserved.'),
+            'top'
+        );
         this.briefingFooterEl.createDiv({
             cls: 'ert-inquiry-briefing-note',
             text: 'Does not delete briefs.'
@@ -1065,6 +1168,10 @@ export class InquiryView extends ItemView {
         this.registerDomEvent(this.briefingResetButton, 'click', (event: MouseEvent) => {
             event.stopPropagation();
             this.handleBriefingResetCorpusClick();
+        });
+        this.registerDomEvent(this.briefingPurgeButton, 'click', (event: MouseEvent) => {
+            event.stopPropagation();
+            void this.handleBriefingPurgeClick();
         });
         this.registerDomEvent(panel, 'pointerenter', () => this.cancelBriefingHide());
         this.registerDomEvent(panel, 'pointerleave', () => this.scheduleBriefingHide());
@@ -1607,6 +1714,147 @@ export class InquiryView extends ItemView {
         }
         this.resetCorpusOverrides();
         this.notifyInteraction('Corpus overrides reset to settings; sessions, logs, and briefs untouched.');
+    }
+
+    private async handleBriefingPurgeClick(): Promise<void> {
+        if (this.state.isRunning) {
+            this.notifyInteraction('Inquiry running. Please wait.');
+            return;
+        }
+        if (!this.corpus) {
+            this.notifyInteraction('No corpus available.');
+            return;
+        }
+        const scenes = this.corpus.scenes ?? [];
+        if (!scenes.length) {
+            this.notifyInteraction('No scenes found in current scope.');
+            return;
+        }
+        const scopeLabel = this.state.scope === 'saga' ? 'saga' : `book "${this.getFocusBookLabel()}"`;
+        const affectedScenes = await this.scanForInquiryActionItems(scenes);
+        const modal = new InquiryPurgeConfirmationModal(
+            this.app,
+            scenes.length,
+            affectedScenes,
+            scopeLabel,
+            async () => {
+                const result = await this.purgeInquiryActionItems(scenes);
+                if (result.purgedCount > 0) {
+                    new Notice(`Purged Inquiry action items from ${result.purgedCount} scene${result.purgedCount !== 1 ? 's' : ''}.`);
+                } else {
+                    new Notice('No Inquiry action items found to purge.');
+                }
+            }
+        );
+        modal.open();
+    }
+
+    private async scanForInquiryActionItems(
+        scenes: InquirySceneItem[]
+    ): Promise<InquiryPurgePreviewItem[]> {
+        const targetField = this.resolveInquiryActionNotesFieldLabel();
+        const inquiryLinkToken = '[[Inquiry Brief —';
+        const isInquiryLine = (line: string): boolean => line.includes(inquiryLinkToken);
+        const results: InquiryPurgePreviewItem[] = [];
+
+        for (const scene of scenes) {
+            const filePath = scene.filePath;
+            if (!filePath) continue;
+            const file = this.app.vault.getAbstractFileByPath(filePath);
+            if (!file || !(file instanceof TFile)) continue;
+
+            try {
+                const cache = this.app.metadataCache.getFileCache(file);
+                const frontmatter = cache?.frontmatter;
+                if (!frontmatter) continue;
+
+                const rawValue = frontmatter[targetField];
+                if (rawValue === undefined || rawValue === null) continue;
+
+                let rawText = '';
+                if (typeof rawValue === 'string') {
+                    rawText = rawValue;
+                } else if (Array.isArray(rawValue)) {
+                    rawText = rawValue.map(entry => (typeof entry === 'string' ? entry : String(entry))).join('\n');
+                } else {
+                    rawText = String(rawValue);
+                }
+
+                if (!rawText.trim()) continue;
+
+                const lines = rawText.split(/\r?\n/);
+                const inquiryLines = lines.filter(line => isInquiryLine(line));
+                if (inquiryLines.length > 0) {
+                    results.push({
+                        label: scene.displayLabel,
+                        path: filePath,
+                        lineCount: inquiryLines.length
+                    });
+                }
+            } catch (error) {
+                console.warn('[Inquiry] Error scanning scene for action items:', filePath, error);
+            }
+        }
+
+        return results;
+    }
+
+    private async purgeInquiryActionItems(
+        scenes: InquirySceneItem[]
+    ): Promise<{ purgedCount: number; totalScenes: number }> {
+        const targetField = this.resolveInquiryActionNotesFieldLabel();
+        const inquiryLinkToken = '[[Inquiry Brief —';
+        const isInquiryLine = (line: string): boolean => line.includes(inquiryLinkToken);
+        let purgedCount = 0;
+
+        for (const scene of scenes) {
+            const filePath = scene.filePath;
+            if (!filePath) continue;
+            const file = this.app.vault.getAbstractFileByPath(filePath);
+            if (!file || !(file instanceof TFile)) continue;
+
+            try {
+                let hadInquiryLines = false;
+                await this.app.fileManager.processFrontMatter(file, (fm) => {
+                    const frontmatter = fm as Record<string, unknown>;
+                    const rawValue = frontmatter[targetField];
+                    if (rawValue === undefined || rawValue === null) return;
+
+                    let rawText = '';
+                    if (typeof rawValue === 'string') {
+                        rawText = rawValue;
+                    } else if (Array.isArray(rawValue)) {
+                        rawText = rawValue.map(entry => (typeof entry === 'string' ? entry : String(entry))).join('\n');
+                    } else {
+                        rawText = String(rawValue);
+                    }
+
+                    if (!rawText.trim()) return;
+
+                    const newline = rawText.includes('\r\n') ? '\r\n' : '\n';
+                    const lines = rawText.split(/\r?\n/);
+                    const filteredLines = lines.filter(line => !isInquiryLine(line));
+
+                    if (filteredLines.length < lines.length) {
+                        hadInquiryLines = true;
+                        const nextText = filteredLines.join(newline).trim();
+                        if (nextText) {
+                            frontmatter[targetField] = nextText;
+                        } else {
+                            delete frontmatter[targetField];
+                        }
+                    }
+                });
+
+                if (hadInquiryLines) {
+                    purgedCount++;
+                }
+            } catch (error) {
+                console.warn('[Inquiry] Error purging action items from scene:', filePath, error);
+            }
+        }
+
+        return { purgedCount, totalScenes: scenes.length };
     }
 
     private activateSession(session: InquirySession): void {
@@ -5027,6 +5275,9 @@ export class InquiryView extends ItemView {
         }
         if (this.briefingResetButton) {
             this.briefingResetButton.disabled = lockout || this.state.isRunning || !this.hasCorpusOverrides();
+        }
+        if (this.briefingPurgeButton) {
+            this.briefingPurgeButton.disabled = lockout || this.state.isRunning;
         }
         if (lockout) {
             this.hideBriefingPanel(true);

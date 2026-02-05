@@ -212,8 +212,9 @@ async function runSynopsisBatch(
         await new Promise(r => window.setTimeout(r, 100));
     }
 
-    // Processing finished. Now trigger the "Apply" phase UI in the modal.
-    if (!modal.isAborted() && results.size > 0 && modal.showApplyConfirmation) {
-        modal.showApplyConfirmation(results);
+    // Processing finished. Store results in modal for Apply phase.
+    // The modal will show Apply/Discard buttons in the completion summary (keeping queue visible).
+    if (!modal.isAborted() && results.size > 0) {
+        modal.setSynopsisResults(results);
     }
 }
