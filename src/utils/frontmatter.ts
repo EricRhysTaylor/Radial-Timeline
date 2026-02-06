@@ -95,7 +95,8 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>, customMapp
     'beatslastupdated': 'Pulse Last Updated',
     'pulselastupdated': 'Pulse Last Updated',
     'when': 'When',
-    'place': 'Place'
+    'place': 'Place',
+    'scope': 'Scope'
   };
 
   // Merge custom mappings
