@@ -26,6 +26,7 @@ export interface BookDesignerTemplate {
     characters: string[];
     generateBeats: boolean;
     assignments: BookDesignerSceneAssignment[];
+    targetPath?: string;
 }
 
 export type GlobalPovMode = 'off' | 'first' | 'second' | 'third' | 'omni' | 'objective';

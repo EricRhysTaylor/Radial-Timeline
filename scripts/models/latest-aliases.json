@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-02-05T14:39:37.794Z",
+  "checkedAt": "2026-02-06T17:22:27.567Z",
   "tokenLimits": {
     "gemini-pro-latest": 65536,
     "gemini-flash-latest": 65536
@@ -30,9 +30,9 @@
   },
   "anthropic": {
     "newestModel": {
-      "id": "claude-opus-4-5-20251101",
-      "displayName": "Claude Opus 4.5",
-      "createdAt": "2025-11-24T00:00:00Z"
+      "id": "claude-opus-4-6",
+      "displayName": "Claude Opus 4.6",
+      "createdAt": "2026-02-04T00:00:00Z"
     }
   }
 }

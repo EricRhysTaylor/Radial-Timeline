@@ -6,6 +6,7 @@ import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { parseDuration, parseDurationDetail } from '../utils/date';
 import { getCustomSystemFromSettings } from '../utils/beatsSystems';
 import type { BookDesignerTemplate, BookDesignerSceneAssignment } from '../types/settings';
+import { ModalFolderSuggest } from '../settings/FolderSuggest';
 
 const DEFAULT_SUBPLOTS = "Main Plot\nSubplot A\nSubplot B";
 const DEFAULT_CHARACTERS = "Hero\nAntagonist";
@@ -141,6 +142,7 @@ export class BookDesignerModal extends Modal {
     private character: string = DEFAULT_CHARACTERS;
     private templateType: 'base' | 'advanced';
     private generateBeats: boolean = false;
+    private targetPath: string = '';
 
     // Preview
     private previewHostEl: HTMLElement | null = null;
@@ -162,6 +164,7 @@ export class BookDesignerModal extends Modal {
     private timeIncrementInput: TextComponent | null = null;
     private scenesInput: TextComponent | null = null;
     private targetRangeInput: TextComponent | null = null;
+    private targetPathInput: TextComponent | null = null;
     private subplotsInput: TextAreaComponent | null = null;
     private characterInput: TextAreaComponent | null = null;
     private templateDropdown: HTMLSelectElement | null = null;
@@ -355,8 +358,8 @@ export class BookDesignerModal extends Modal {
 
     private updateHeroMeta(): void {
         if (this.heroLocationMeta) {
-            const sourcePath = this.plugin.settings.sourcePath || 'vault root';
-            this.heroLocationMeta.setText(`Location: ${sourcePath}`);
+            const displayPath = this.targetPath || 'vault root';
+            this.heroLocationMeta.setText(`Location: ${displayPath}`);
         }
 
         if (this.heroModeMeta) {
@@ -456,7 +459,8 @@ export class BookDesignerModal extends Modal {
             subplots: subplotList,
             characters,
             generateBeats: this.generateBeats,
-            assignments: assignments.map(a => ({ ...a }))
+            assignments: assignments.map(a => ({ ...a })),
+            targetPath: this.targetPath || undefined
         };
 
         const existing = this.getTemplateList();
@@ -489,6 +493,7 @@ export class BookDesignerModal extends Modal {
         this.subplots = template.subplots.join('\n') || 'Main Plot';
         this.character = template.characters.join('\n') || 'Hero';
         this.generateBeats = template.generateBeats;
+        this.targetPath = template.targetPath ?? this.plugin.settings.sourcePath;
 
         const subplotCount = Math.max(1, template.subplots.length || this.parseSubplots().length);
         const coerced = this.coerceAssignments(template.assignments, subplotCount, this.selectedActs);
@@ -508,6 +513,7 @@ export class BookDesignerModal extends Modal {
         if (this.timeIncrementInput) this.timeIncrementInput.setValue(this.timeIncrement);
         if (this.scenesInput) this.scenesInput.setValue(this.scenesToGenerate.toString());
         if (this.targetRangeInput) this.targetRangeInput.setValue(this.targetRangeMax.toString());
+        if (this.targetPathInput) this.targetPathInput.setValue(this.targetPath);
         if (this.subplotsInput) this.subplotsInput.setValue(this.subplots);
         if (this.characterInput) this.characterInput.setValue(this.character);
 
@@ -550,6 +556,7 @@ export class BookDesignerModal extends Modal {
         this.beatPills = [];
         this.heroLocationMeta = null;
         this.heroModeMeta = null;
+        this.targetPath = this.plugin.settings.sourcePath;
 
         // Use generic modal system + Book Designer specific class
         if (modalEl) {
@@ -563,7 +570,7 @@ export class BookDesignerModal extends Modal {
         contentEl.addClass('rt-manuscript-surface');
 
 
-        const sourcePath = this.plugin.settings.sourcePath || 'vault root';
+        const displayPath = this.targetPath || 'vault root';
         // Hero Header using generic modal system
         const hero = contentEl.createDiv({ cls: 'ert-modal-header' });
         hero.createSpan({ cls: 'ert-modal-badge', text: 'SETUP' });
@@ -572,7 +579,7 @@ export class BookDesignerModal extends Modal {
 
 
         const heroMeta = hero.createDiv({ cls: 'ert-modal-meta' });
-        this.heroLocationMeta = heroMeta.createSpan({ cls: 'ert-modal-meta-item', text: `Location: ${sourcePath}` });
+        this.heroLocationMeta = heroMeta.createSpan({ cls: 'ert-modal-meta-item', text: `Location: ${displayPath}` });
         this.heroModeMeta = heroMeta.createSpan({ cls: 'ert-modal-meta-item rt-meta-auto', text: 'Auto mode' });
         this.updateHeroMeta();
 
@@ -581,6 +588,27 @@ export class BookDesignerModal extends Modal {
         // SECTION 1: LOCATION & STRUCTURE
         const structCard = scrollContainer.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         structCard.createDiv({ cls: 'rt-sub-card-head', text: 'Location & Structure' });
+
+        // Target book folder
+        new Setting(structCard)
+            .setName('Target book folder')
+            .setDesc('Where scenes and beats will be created. Defaults to the global source path.')
+            .addText(text => {
+                this.targetPathInput = text;
+                text.setValue(this.targetPath)
+                    .setPlaceholder('vault root');
+                text.inputEl.addClass('rt-input-sm');
+                new ModalFolderSuggest(this.app, text.inputEl, (path: string) => {
+                    this.targetPath = path;
+                    text.setValue(path);
+                    this.updateHeroMeta();
+                });
+                text.inputEl.addEventListener('blur', () => {
+                    const raw = text.getValue().trim();
+                    this.targetPath = raw;
+                    this.updateHeroMeta();
+                });
+            });
 
         // Time Increment Setting
         new Setting(structCard)
@@ -1211,7 +1239,7 @@ export class BookDesignerModal extends Modal {
 
     async generateBook(): Promise<void> {
         const vault = this.plugin.app.vault;
-        const targetPath = this.plugin.settings.sourcePath;
+        const targetPath = this.targetPath;
         const targetFolder = targetPath ? normalizePath(targetPath.trim()) : '';
 
         // Ensure folder exists

@@ -63,4 +63,41 @@ export class FolderSuggest extends AbstractInputSuggest<TFolder> {
   }
 }
 
+/**
+ * ModalFolderSuggest provides folder autocomplete for use inside modals.
+ * Unlike FolderSuggest, it does NOT write to settings.sourcePath.
+ * Instead it invokes an onSelect callback with the chosen folder path,
+ * letting the caller store the value locally.
+ */
+export class ModalFolderSuggest extends AbstractInputSuggest<TFolder> {
+  private onChoose: (path: string) => void;
+  private inputRef: HTMLInputElement;
+
+  constructor(app: App, input: HTMLInputElement, onChoose: (path: string) => void) {
+    super(app, input);
+    this.inputRef = input;
+    this.onChoose = onChoose;
+  }
+
+  getSuggestions(query: string): TFolder[] {
+    const q = query?.toLowerCase() ?? '';
+    const folders = (this.app.vault as any).getAllFolders?.() as TFolder[] | undefined
+      ?? this.app.vault.getAllLoadedFiles().filter((f): f is TFolder => f instanceof TFolder);
+    if (!q) return folders;
+    return folders.filter(f => f.path.toLowerCase().includes(q));
+  }
+
+  renderSuggestion(folder: TFolder, el: HTMLElement): void {
+    el.setText(folder.path);
+  }
+
+  selectSuggestion(folder: TFolder, _evt: MouseEvent | KeyboardEvent): void {
+    const normalized = normalizePath(folder.path);
+    try { this.inputRef.value = normalized; } catch {}
+    this.onChoose(normalized);
+    try { this.close(); } catch {}
+    try { this.inputRef.focus(); } catch {}
+  }
+}
+
 
