@@ -231,7 +231,7 @@ export class SceneAnalysisProcessingModal extends Modal {
     private getProcessingSubtitle(): string {
         if (this.taskType === 'synopsis') {
             const maxLines = this.plugin.settings.synopsisHoverMaxLines ?? 5;
-            return `AI-generated scene synopses using settings below. Claude Sonnet recommended. Hover preview lines: ${maxLines} (Settings → Configuration)`;
+            return `AI-generated scene synopses using settings below. Claude Sonnet recommended. Hover preview minimum lines: ${maxLines} (Settings → Configuration)`;
         }
         if (this.subplotName) {
             return this.isEntireSubplot

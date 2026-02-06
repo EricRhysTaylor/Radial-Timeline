@@ -524,7 +524,7 @@ export function renderAiSection(params: {
             text.inputEl.rows = 6;
             text.inputEl.addClass('ert-textarea');
         });
-    customInstructionsSetting.settingEl.addClass('ert-setting-full-width-input', ERT_CLASSES.ROW);
+    customInstructionsSetting.settingEl.addClass('ert-setting-full-width-input');
 
     const bypassSetting = new Settings(localExtrasStack)
         .setName('Bypass scene hover metadata yaml writes')

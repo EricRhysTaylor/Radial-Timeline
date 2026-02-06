@@ -333,8 +333,8 @@ export const en: TranslationKeys = {
                 placeholder: 'Radial Timeline/Export',
             },
             synopsisMaxLines: {
-                name: 'Synopsis hover max lines',
-                desc: 'Maximum number of lines to display for synopsis text in the scene hover view. Longer synopses will be truncated with ellipsis.',
+                name: 'Synopsis hover minimum lines',
+                desc: 'Minimum number of synopsis lines to show in the hover view. The hover will extend if there is room, and truncate with ellipsis only when space runs out.',
                 placeholder: '5',
                 error: 'Please enter a valid number (1 or greater).',
             },

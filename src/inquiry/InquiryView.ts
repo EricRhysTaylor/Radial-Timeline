@@ -162,7 +162,7 @@ const CC_LABEL_HINT_SIZE = 7;
 const INQUIRY_NOTES_MAX = 5;
 const CC_RIGHT_MARGIN = 50;
 const CC_BOTTOM_MARGIN = 50;
-const INQUIRY_GUIDANCE_DOC_URL = 'https://github.com/EricRhysTaylor/Radial-Timeline/wiki';
+const INQUIRY_GUIDANCE_DOC_URL = 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Inquiry';
 const INQUIRY_HELP_TOOLTIP = 'How Inquiry Works';
 const INQUIRY_HELP_CONFIG_TOOLTIP = [
     'Inquiry is not configured yet.',

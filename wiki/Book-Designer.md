@@ -10,6 +10,11 @@ You can open the Book Designer in two ways:
 1.  **Command Palette**: Open the Command Palette (`Cmd/Ctrl + P`) and search for "Radial Timeline: Book designer".
 2.  **Welcome Screen**: If your timeline is empty, click the "Book Designer" button on the Radial Timeline Welcome Screen.
 
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/book-designer-modal.png" alt="Book Designer modal with preview donut chart" style="width: 550px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Book Designer — configure structure, subplots, and templates with live preview</div>
+</div>
+
 ## Workflow
 
 The Book Designer modal guides you through three key configuration sections:

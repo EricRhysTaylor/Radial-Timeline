@@ -69,6 +69,13 @@ export const REFACTOR_ALERTS: RefactorAlert[] = [
         icon: 'info',
         title: 'YAML Type Change: Pending Edits & New Synopsis Update',
         description: '"Pending Edits" is no longer a boolean. It is now a string so it can act as both a yes/no flag and record the last AI API hit (timestamp and AI used). A new YAML field "Synopsis Update" works identically: string value with timestamp and AI used.',
+    },
+    {
+        id: 'radial-timeline-folder-structure',
+        severity: 'info',
+        icon: 'folder-plus',
+        title: 'New Radial Timeline Folder',
+        description: 'A new Radial Timeline folder has been created in your Obsidian vault to organize files under the updated structure, including AI API logs, Inquiry Briefs, Social APR SVGs and campaigns, and other related assets.',
     }
 ];
 

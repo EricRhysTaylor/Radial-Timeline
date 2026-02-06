@@ -4,27 +4,28 @@
     *   [[How-to]]
     *   [[View Modes]]
     *   [[Book Designer]]
+    *   [[Commands]]
 *   **Modes**
-    *   [[Chronologue Mode]]
-    *   [[Gossamer Mode]]
     *   [[Narrative Mode]]
     *   [[Subplot Mode|Publication Mode]]
-*   **AI & Inquiry**
+    *   [[Chronologue Mode]]
+    *   [[Gossamer Mode]]
+*   **AI & Analysis**
     *   [[AI Analysis]]
-*   **Social & Pro**
-    *   [[Author Progress Report]]
+    *   [[Inquiry]]
+*   **Pro & Social**
     *   [[Signature]]
+    *   [[Author Progress Report]]
 *   **Reference**
+    *   [[YAML Frontmatter]]
     *   [[Advanced YAML]]
-    *   [[Commands]]
     *   [[Settings]]
+        *   [Core tab](Settings#core)
         *   [Pro tab](Settings#professional)
         *   [Inquiry tab](Settings#inquiry)
-        *   [Core tab](Settings#core)
         *   [Social Media tab](Settings#social-media)
-    *   [[YAML Frontmatter]]
 *   **Support & Legal**
-    *   [[Acknowledgments]]
     *   [[FAQ]]
+    *   [[Acknowledgments]]
     *   [[License]]
     *   [[Notice]]

@@ -76,14 +76,25 @@ This method automatically updates ordering for you.
 
 ### Manage Subplots in Bulk
 
-Need to rename or delete a subplot across dozens of scenes? Use the **`Subplot Manager`** command (command palette → “Radial Timeline: Open Subplot Manager”). The modal lets you:
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/subplot-manager.png" alt="Subplot Manager modal with rename and delete options" style="width: 450px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Subplot Manager — rename or delete subplots across all scenes</div>
+</div>
+
+Need to rename or delete a subplot across dozens of scenes? Use the **`Manage subplots`** command (command palette → "Radial Timeline: Manage subplots"). The modal lets you:
 
 * Rename a subplot and automatically update the frontmatter of every scene using it.
 * Delete a subplot and strip the tag from all scenes in one action.
 
-This is especially helpful after reorganizing your B/C plots—you no longer have to hunt through every note manually.
+This is especially helpful after reorganizing your B/C plots — you no longer have to hunt through every note manually.
 
 ### Search
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/search-results.png" alt="Search results with highlighted scene numbers on the timeline" style="width: 500px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Search — matching scenes highlighted in yellow across all subplot rings</div>
+</div>
+
 You can filter scenes by searching for text content across multiple fields. Search requires a minimum of **3 characters**.
 
 *   **Trigger**: Use the command palette (`Cmd/Ctrl + P`) → **Radial Timeline: Search timeline**.
@@ -110,4 +121,4 @@ You can filter scenes by searching for text content across multiple fields. Sear
 > **Note**: Status, Publish Stage, Due date, Pending Edits, and Gossamer scores are not included in search.
 
 ### Rotate the timeline
-In Narrative and Subplot modes you can use the **rotation toggle** (arrow icon near the outer ring) to rotate the timeline for easier reading. The rotation offset is **act-aware** (based on your configured **Act count**) and keeps scene number squares oriented correctly.
+In Narrative and Publication modes you can use the **rotation toggle** (arrow icon near the outer ring) to rotate the timeline for easier reading. The rotation offset is **act-aware** (based on your configured **Act count**) and keeps scene number squares oriented correctly.

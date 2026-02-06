@@ -79,6 +79,11 @@ Runtime Mode is a specialized sub-mode that replaces elapsed story time with **r
 - **Audiobook planning** — Estimate chapter and scene durations for narration
 - **Podcast structure** — Plan episode segments with time awareness
 
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/runtime-mode.png" alt="Chronologue Runtime Mode with blue wireframe duration arcs" style="width: 420px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Runtime Mode — blue wireframe with scene duration arcs</div>
+</div>
+
 **How to use:**
 1. Enable Runtime Estimation in **Settings -> Pro**
 2. Configure a runtime profile matching your content type (Novel or Screenplay)
@@ -111,7 +116,12 @@ For sci-fi and fantasy authors, Chronologue mode includes a **Planetary Time** s
     *   **Epoch Offset**: Shift the start date of your calendar relative to Earth's Unix Epoch (1970-01-01).
     *   **Custom Labels**: Define custom names for months and days of the week.
 *   **Synopsis Hover**: In Chronologue Mode, hover over a scene to see its date converted to your active planetary profile.
-*   **Calculator**: Use the command palette (`Cmd/Ctrl + P`) and search for **"Radial Timeline: Planetary time converter"** to open a calculator. Enter any Earth date/time to see the corresponding planetary date/time.
+*   **Calculator**: Use the command palette (`Cmd/Ctrl + P`) and search for **"Radial Timeline: Planetary time calculator"** to open a calculator. Enter any Earth date/time to see the corresponding planetary date/time.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/planetary-calculator.png" alt="Planetary Time calculator converting Earth dates to alien calendars" style="width: 400px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Planetary Time calculator — convert Earth dates to your world's calendar</div>
+</div>
 *   **Chronologue Mode**: A special Alt+Shift red-tinted wireframe view revealing the alien timeline and elapsed time between scenes (a mirror of the standard shift mode for your alien location).
 *   **Active profile**: The selected profile in Settings controls which calendar is used for hover and conversion outputs.
 

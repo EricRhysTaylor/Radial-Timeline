@@ -15,6 +15,25 @@ The settings interface is organized into four tabs:
 
 Use the tab bar at the top of the settings panel to switch between sections.
 
+<div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 20px 0;">
+  <div style="text-align: center;">
+    <img src="images/settings-core-tab.png" alt="Core settings tab" style="width: 220px; max-width: 100%; border-radius: 6px;" />
+    <div style="font-size: 0.8em; margin-top: 6px; color: #666;">Core tab</div>
+  </div>
+  <div style="text-align: center;">
+    <img src="images/settings-pro-tab.png" alt="Pro settings tab" style="width: 220px; max-width: 100%; border-radius: 6px;" />
+    <div style="font-size: 0.8em; margin-top: 6px; color: #666;">Pro tab</div>
+  </div>
+  <div style="text-align: center;">
+    <img src="images/settings-inquiry-tab.png" alt="Inquiry settings tab" style="width: 220px; max-width: 100%; border-radius: 6px;" />
+    <div style="font-size: 0.8em; margin-top: 6px; color: #666;">Inquiry tab</div>
+  </div>
+  <div style="text-align: center;">
+    <img src="images/settings-social-tab.png" alt="Social Media settings tab" style="width: 220px; max-width: 100%; border-radius: 6px;" />
+    <div style="font-size: 0.8em; margin-top: 6px; color: #666;">Social tab</div>
+  </div>
+</div>
+
 ## Pro Tab
 
 <a name="professional"></a>
@@ -77,10 +96,10 @@ Calculate screen time, audiobook duration, and manuscript length estimates.
 
 <a name="inquiry"></a>
 ### Inquiry
-Configure how Inquiry scans, stores, and annotates briefs.
+Configure how Inquiry scans, stores, and annotates briefs. See [[Inquiry]] for full feature documentation.
 
 **Artifacts & auto-save:**
-*   **Artifact folder**: Where Inquiry briefs are stored when auto-save is enabled (default `Radial Timeline/Inquiry/Artifacts`).
+*   **Artifact folder**: Where Inquiry briefs are stored when auto-save is enabled (default `Radial Timeline/Inquiry/Briefing`).
 *   **Embed JSON payload in Artifacts**: Includes the validated Inquiry JSON payload in the Artifact file.
 *   **Auto-save Inquiry briefs**: Save a brief automatically after each successful Inquiry run.
 
@@ -115,9 +134,8 @@ Configure how Inquiry scans, stores, and annotates briefs.
 ### General
 *   **Source path**: The root folder in your vault containing your manuscript scene files (e.g., `Book 1`). Leave blank to scan the entire vault.
 *   **Show source path as title**: When enabled, the timeline uses the source folder name as the central title. When disabled, it displays "Work in Progress".
-*   **AI output folder**: Storage location for AI logs and analysis files (default `Radial Timeline/AI Logs`).
-*   **Manuscript output folder**: Destination for manuscript exports (default `Radial Timeline/Manuscript`).
-*   **Outline output folder**: Destination for outline exports (default `Radial Timeline/Outline`).
+*   **Logs & generated files output folder**: Storage location for AI logs and local LLM reports (default `Radial Timeline/Logs`).
+*   **Export folder**: Destination for manuscript, outline, and cue card exports — Markdown, DOCX, PDF, beat sheets, and index cards (default `Radial Timeline/Export`).
 
 <a name="pov"></a>
 ### Point of view

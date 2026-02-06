@@ -44,16 +44,17 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
     <img src="images/subplot.jpeg" alt="Publication Mode: author status (Todo/Working/Overdue/Complete) and publish stage colors" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Publication Mode — schedule/status + publish stage progress</div>
   </div>
-  <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
   <div style="text-align: center;">
     <img src="images/chronologue.jpeg" alt="Chronologue Mode: scenes ordered by When/Duration with overlaps and adaptive time labeling" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode — chronological backbone with duration arcs, overlaps, and adaptive time scale</div>
   </div>
+</div>
+
+<div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
   <div style="text-align: center;">
     <img src="images/shift.jpeg" alt="Chronologue Shift mode: elapsed-time arc between selected scenes and infinity gap markers" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Shift — compare elapsed time between scenes and surface discontinuity gaps</div>
   </div>
-</div>
   <div style="text-align: center;">
     <img src="images/gossamer.jpeg" alt="Gossamer Mode: narrative momentum across story beats with scoring history and ideal ranges" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer Mode — momentum map across story beats</div>

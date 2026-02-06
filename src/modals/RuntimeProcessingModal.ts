@@ -370,7 +370,7 @@ export class RuntimeProcessingModal extends Modal {
         });
 
         const hint = this.settingsContent.createDiv({ cls: 'ert-runtime-settings-hint' });
-        hint.setText('Configure these values in Settings → Runtime Estimation');
+        hint.setText('Configure these values in Settings → Pro → Runtime Estimation');
     }
 
     private updateScopeVisibility(): void {

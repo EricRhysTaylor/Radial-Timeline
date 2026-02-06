@@ -10,6 +10,11 @@ Radial Timeline's Signature tier unlocks advanced capabilities designed for prof
 
 ## Runtime Estimation
 
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/runtime-estimator-modal.png" alt="Runtime Estimator modal with mode selection and progress" style="width: 500px; max-width: 100%; border-radius: 8px;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Runtime Estimator — select mode and scope for duration analysis</div>
+</div>
+
 *Estimate screen time, audiobook duration, and manuscript length with precision.*
 
 Runtime Estimation analyzes your scenes to calculate realistic duration estimates for different content types. Create multiple profiles for different projects or formats.

@@ -94,7 +94,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     metadataRefreshDebounceMs: 10000,
     discontinuityThreshold: undefined, // Default to auto-calculated (3x median gap or 30 days)
     enableSceneTitleAutoExpand: true, // Default: enabled to maintain current behavior
-    synopsisHoverMaxLines: 5, // Default: show up to 5 lines in hover synopsis
+    synopsisHoverMaxLines: 5, // Default: show at least 5 lines in hover synopsis
     enableHoverDebugLogging: false,
     sortByWhenDate: false, // Default: manuscript order (backward compatible)
     chronologueDurationCapSelection: 'auto',
