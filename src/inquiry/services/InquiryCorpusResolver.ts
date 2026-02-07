@@ -99,6 +99,13 @@ export class InquiryCorpusResolver {
                 const bookNumber = Number(match[1]);
                 this.addBookItem(bookMap, folder.path, bookNumber);
             });
+            folders.forEach(folder => {
+                if (folder.path.includes('/')) return;
+                if (bookMap.has(normalizePath(folder.path))) return;
+                if (this.isBookFolderByOutline(folder.path)) {
+                    this.addBookItem(bookMap, folder.path, undefined);
+                }
+            });
         }
 
         resolvedVaultRoots.forEach(root => {
@@ -110,7 +117,9 @@ export class InquiryCorpusResolver {
                 this.addBookItem(bookMap, candidate, bookNumber);
                 return;
             }
-            this.addBookItem(bookMap, root, undefined);
+            if (this.isBookFolderByOutline(root)) {
+                this.addBookItem(bookMap, root, undefined);
+            }
         });
 
         const list = Array.from(bookMap.values());
@@ -243,6 +252,21 @@ export class InquiryCorpusResolver {
         if (Array.isArray(value)) return value.length > 0;
         if (typeof value === 'string') return value.trim().length > 0;
         return !!value;
+    }
+
+    private isBookFolderByOutline(folderPath: string): boolean {
+        const prefix = `${folderPath}/`;
+        const files = this.vault.getMarkdownFiles();
+        return files.some(file => {
+            if (!file.path.startsWith(prefix)) return false;
+            const frontmatter = this.getFrontmatter(file);
+            if (!frontmatter) return false;
+            const classValues = this.extractClassValues(frontmatter);
+            if (!classValues.includes('outline')) return false;
+            const scope = frontmatter['Scope'];
+            if (typeof scope !== 'string') return false;
+            return scope.trim().toLowerCase() === 'book';
+        });
     }
 
     private clampLabelNumber(value: number): number {
