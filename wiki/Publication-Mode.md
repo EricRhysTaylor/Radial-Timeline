@@ -11,12 +11,12 @@ Publication Mode isolates each subplot into its own radial pass, removing the co
 ## Key Features
 
 *   **Single Thread Focus**: View one subplot at a time to analyze its specific arc and continuity.
-*   **Act Structure**: Like Narrative Mode, scenes are distributed across your configured act count (default 3). Each act spans \(360° / \text{Act Count}\).
+*   **Act Structure**: Like Narrative Mode, scenes are distributed across your configured act count (default 3). Each act spans an equal segment of the 360° circle.
 *   **Cleaner View**: Removes story beats to reduce visual noise while you focus on workflow.
 
 ## Workflow Visualization
 
-Unlike Narrative Mode, this view replaces subplot colors with your workflow status:
+Unlike Narrative Mode, this mode replaces subplot colors with your workflow status:
 
 1.  **Author Status**:
     *   **Todo**: Plaid pattern.
@@ -26,6 +26,6 @@ Unlike Narrative Mode, this view replaces subplot colors with your workflow stat
 
 2.  **Publishing Stage Colors**:
     *   Once a scene is "Complete", it displays the color of its current stage (Zero Draft, Author's Draft, House Edit, Press Ready).
-    *   These colors can be customized in [[Settings]].
+    *   These colors can be customized in [[Settings#publishing-stage-colors]].
 
 This mode effectively becomes your project management dashboard, highlighting what needs to be written, what is overdue, and what is ready for the next stage of editing.

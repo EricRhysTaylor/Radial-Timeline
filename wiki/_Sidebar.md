@@ -8,7 +8,7 @@
     *   [[Commands]]
 *   **Timeline Modes**
     *   [[Narrative Mode]]
-    *   [[Subplot Mode|Publication Mode]]
+    *   [[Publication Mode]]
     *   [[Chronologue Mode]]
     *   [[Gossamer Mode]]
 *   **AI & Analysis**

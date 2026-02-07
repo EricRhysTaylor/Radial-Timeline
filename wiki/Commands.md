@@ -24,6 +24,7 @@ Type "Radial Timeline" to filter the list.
 | **Manage subplots** | Opens the Subplot Manager to rename or delete subplots in bulk across all scene files. | [[How-to#manage-subplots-in-bulk]] |
 | **Book designer** | Opens the Book Designer to generate a manuscript template with acts, subplots, and beats. | [[Book Designer]] |
 | **Establish timeline order** | Opens the Timeline Repair wizard to fix chronological ordering, sync patterns, and repair frontmatter. | — |
+| **Planetary time calculator** | Opens the calculator for converting Earth dates to custom planetary calendars (requires planetary time enabled in settings). | [[Chronologue Mode#planetary-time]] |
 
 ### Scene Creation
 
@@ -62,7 +63,6 @@ Type "Radial Timeline" to filter the list.
 | :--- | :--- | :--- |
 | **Runtime estimator** | Opens the runtime estimation modal for screenplay, audiobook, or novel duration analysis. Requires Pro license. | [[Signature#runtime-estimation]] |
 | **Author progress report** | Opens the Author Progress Report modal for generating shareable progress graphics. | [[Author Progress Report]] |
-| **Planetary time calculator** | Opens the calculator for converting Earth dates to custom planetary calendars (requires planetary time enabled in settings). | [[Chronologue Mode#planetary-time]] |
 
 ## Conditional Commands
 

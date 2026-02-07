@@ -51,7 +51,7 @@ Always update both:
 In recent versions of Radial Timeline:
 
 - Switch to **Narrative Mode**
-- Drag the **numbered scene squares** on the outer ring (cursor becomes double arrow)
+- Drag a **scene** on the outer ring (cursor becomes double arrow)
 
 ![Drag scene start](images/drag.png)
 
