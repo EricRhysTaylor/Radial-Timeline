@@ -130,7 +130,7 @@ export class TimelineRepairModal extends Modal {
         // Header
         const header = this.contentEl.createDiv({ cls: 'ert-modal-header' });
         header.createSpan({ cls: 'ert-modal-badge', text: 'Timeline Wizard' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Establish timeline order' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Timeline order normalizer' });
         header.createDiv({
             cls: 'ert-modal-subtitle',
             text: 'Scaffold, infer, and refine When dates from narrative order. Fast and convenient. Reusable and adaptable.'
@@ -363,7 +363,7 @@ export class TimelineRepairModal extends Modal {
 
         // Header
         const header = this.contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: 'Establish Timeline Order Wizard' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'Timeline Order Wizard' });
         header.createDiv({ cls: 'ert-modal-title', text: 'Analyzing Timeline...' });
         const statusEl = header.createDiv({ cls: 'ert-modal-subtitle', text: 'Running Level 1: Pattern Sync...' });
 
@@ -454,7 +454,7 @@ export class TimelineRepairModal extends Modal {
 
         // Header
         const header = this.contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: 'Establish Timeline Order Wizard' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'Timeline Order Wizard' });
         header.createDiv({ cls: 'ert-modal-title', text: 'Review & Edit' });
         header.createDiv({
             cls: 'ert-modal-subtitle',

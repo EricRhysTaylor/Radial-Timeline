@@ -111,8 +111,8 @@ export class CommandRegistrar {
         });
 
         this.plugin.addCommand({
-            id: 'repair-timeline-order',
-            name: 'Establish timeline order',
+            id: 'timeline-order',
+            name: 'Timeline order',
             callback: () => {
                 new TimelineRepairModal(this.app, this.plugin).open();
             }
