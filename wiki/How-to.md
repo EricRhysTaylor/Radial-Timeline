@@ -63,7 +63,7 @@ In recent versions of Radial Timeline:
 
 This method automatically updates ordering for you.
 
-**Note:** Dragging is supported on the **outer ring only**. You can drag into an empty act — the target act can be created even if it has no scenes yet.
+**Note:** Dragging is supported on the **outer ring only**. You can drag into an empty act by dropping onto one of the empty **void** cells for that act.
 
 ---
 
