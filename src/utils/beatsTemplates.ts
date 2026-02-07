@@ -74,7 +74,8 @@ export async function createBeatTemplateNotes(
   vault: Vault,
   beatSystemName: string,
   sourcePath: string,
-  customSystem?: PlotSystemTemplate
+  customSystem?: PlotSystemTemplate,
+  options?: { actStartNumbers?: Map<number, number> }
 ): Promise<{ created: number; skipped: number; errors: string[] }> {
   let beatSystem = PLOT_SYSTEMS[beatSystemName];
   
@@ -116,12 +117,34 @@ export async function createBeatTemplateNotes(
   // Use the custom system name (if provided) for Beat Model frontmatter instead of generic "Custom"
   const beatModelName = beatSystem.name || beatSystemName;
 
+  const actStartNumbers = options?.actStartNumbers;
+  const useActAlignedNumbers = !!actStartNumbers && actStartNumbers.size > 0;
+  const actCounters = new Map<number, number>();
+
+  const resolveBeatNumber = (act: number, fallback: number): number => {
+    if (!useActAlignedNumbers) return fallback;
+    if (actStartNumbers?.has(act)) {
+      const start = actStartNumbers.get(act);
+      if (start !== undefined) {
+        const next = actCounters.get(act) ?? start;
+        actCounters.set(act, next + 1);
+        return next;
+      }
+    }
+    if (act === 1) {
+      const next = actCounters.get(act) ?? 1;
+      actCounters.set(act, next + 1);
+      return next;
+    }
+    return fallback;
+  };
+
   for (let i = 0; i < beatSystem.beats.length; i++) {
     const beatName = beatSystem.beats[i];
     const beatInfo = beatSystem.beatDetails[i];
-    const beatNumber = i + 1;
     // Use explicit act if available, otherwise calculate
     const act = beatInfo.act ? beatInfo.act : getBeatAct(i, beatSystem.beats.length);
+    const beatNumber = resolveBeatNumber(act, i + 1);
     
     // Use canonical title without "Act X:" prefix for filename
     const displayName = stripActPrefix(beatName);
@@ -150,4 +173,3 @@ export async function createBeatTemplateNotes(
 
   return { created, skipped, errors };
 }
-

@@ -1,5 +1,6 @@
 import { App, Notice, Setting as Settings, parseYaml, setIcon, setTooltip, Modal, ButtonComponent, getIconIds } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
+import type { TimelineItem } from '../../types';
 import { CreateBeatsTemplatesModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem, getCustomSystemFromSettings } from '../../utils/beatsSystems';
 import { createBeatTemplateNotes } from '../../utils/beatsTemplates';
@@ -8,9 +9,10 @@ import { renderMetadataSection } from './MetadataSection';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import type { HoverMetadataField } from '../../types/settings';
 import { IconSuggest } from '../IconSuggest';
-import { parseActLabels, resolveActLabel } from '../../utils/acts';
+import { clampActNumber, parseActLabels, resolveActLabel } from '../../utils/acts';
 import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
 import { getActiveMigrations, REFACTOR_ALERTS, areAlertMigrationsComplete, type FieldMigration } from '../refactorAlerts';
+import { getScenePrefixNumber } from '../../utils/text';
 
 type TemplateEntryValue = string | string[];
 type TemplateEntry = { key: string; value: TemplateEntryValue; required: boolean };
@@ -51,6 +53,64 @@ export function renderStoryBeatsSection(params: {
         const previewLabels = getActPreviewLabels();
         actsPreviewHeading.setText(`Preview (${previewLabels.length} acts)`);
         actsPreviewBody.setText(previewLabels.join(' · '));
+    };
+
+    type ActRange = { min: number; max: number };
+
+    const formatRangeValue = (value: number): string => {
+        if (Number.isInteger(value)) return String(value);
+        return String(value);
+    };
+
+    const formatRangeLabel = (range: ActRange): string => {
+        const min = formatRangeValue(range.min);
+        const max = formatRangeValue(range.max);
+        return min === max ? min : `${min}-${max}`;
+    };
+
+    const collectActRanges = async (allowFetch: boolean): Promise<Map<number, ActRange> | null> => {
+        let scenes: TimelineItem[] | undefined;
+        if (Array.isArray(plugin.lastSceneData)) {
+            scenes = plugin.lastSceneData;
+        } else if (allowFetch) {
+            try {
+                scenes = await plugin.getSceneData();
+            } catch {
+                return new Map();
+            }
+        } else {
+            return null;
+        }
+
+        const actCount = getActCount();
+        const ranges = new Map<number, ActRange>();
+
+        (scenes ?? []).forEach(scene => {
+            if (scene.itemType === 'Beat' || scene.itemType === 'Plot' || scene.itemType === 'Backdrop') return;
+            const numStr = getScenePrefixNumber(scene.title, scene.number);
+            if (!numStr) return;
+            const num = Number(numStr);
+            if (!Number.isFinite(num)) return;
+            const rawAct = Number(scene.actNumber ?? scene.act ?? 1);
+            const act = clampActNumber(rawAct, actCount);
+            const existing = ranges.get(act);
+            if (!existing) {
+                ranges.set(act, { min: num, max: num });
+            } else {
+                if (num < existing.min) existing.min = num;
+                if (num > existing.max) existing.max = num;
+            }
+        });
+
+        return ranges;
+    };
+
+    const buildActStartNumbers = (ranges: Map<number, ActRange>): Map<number, number> => {
+        const actStarts = new Map<number, number>();
+        ranges.forEach((range, act) => {
+            if (act > 1) actStarts.set(act, range.min);
+        });
+        return actStarts;
     };
 
     new Settings(actsStack)
@@ -131,7 +191,7 @@ export function renderStoryBeatsSection(params: {
     updateStoryStructureDescription(storyStructureInfo, plugin.settings.beatSystem || 'Custom');
 
     // --- Custom System Configuration (Dynamic Visibility) ---
-    const customConfigContainer = beatsStack.createDiv({ cls: 'ert-custom-beat-config' });
+    const customConfigContainer = beatsStack.createDiv({ cls: ['ert-custom-beat-config', ERT_CLASSES.STACK] });
 
     const renderCustomConfig = () => {
         customConfigContainer.empty();
@@ -182,9 +242,14 @@ export function renderStoryBeatsSection(params: {
             updateTemplateButton(templateSetting, 'Custom');
         };
 
-        const buildActLabels = (count: number): string[] => {
+        const buildActLabels = (count: number, ranges?: Map<number, ActRange>): string[] => {
             const labels = parseActLabels(plugin.settings, count);
-            return Array.from({ length: count }, (_, idx) => resolveActLabel(idx, labels));
+            return Array.from({ length: count }, (_, idx) => {
+                const baseLabel = resolveActLabel(idx, labels);
+                const range = ranges?.get(idx + 1);
+                if (!range) return baseLabel;
+                return `${baseLabel} (${formatRangeLabel(range)})`;
+            });
         };
 
         const clampAct = (val: number, maxActs: number) => {
@@ -192,13 +257,42 @@ export function renderStoryBeatsSection(params: {
             return Math.min(Math.max(1, n), maxActs);
         };
 
+        let actRanges = new Map<number, ActRange>();
+
+        const buildBeatNumbers = (beats: BeatRow[], maxActs: number, ranges: Map<number, ActRange>): number[] => {
+            if (!ranges || ranges.size === 0) {
+                return beats.map((_, idx) => idx + 1);
+            }
+            const actStarts = buildActStartNumbers(ranges);
+            const useActAligned = actStarts.size > 0;
+            if (!useActAligned) return beats.map((_, idx) => idx + 1);
+
+            const nextByAct = new Map<number, number>();
+            return beats.map((beatLine, index) => {
+                const actNum = clampAct(beatLine.act, maxActs);
+                const start = actStarts.get(actNum);
+                if (start !== undefined) {
+                    const next = nextByAct.get(actNum) ?? start;
+                    nextByAct.set(actNum, next + 1);
+                    return next;
+                }
+                if (actNum === 1) {
+                    const next = nextByAct.get(actNum) ?? 1;
+                    nextByAct.set(actNum, next + 1);
+                    return next;
+                }
+                return index + 1;
+            });
+        };
+
         const renderList = () => {
             listContainer.empty();
             const maxActs = getActCount();
-            const actLabels = buildActLabels(maxActs);
+            const actLabels = buildActLabels(maxActs, actRanges);
             const beats: BeatRow[] = (plugin.settings.customBeatSystemBeats || [])
                 .map(parseBeatRow)
                 .map(b => ({ ...b, act: clampAct(b.act, maxActs) }));
+            const beatNumbers = buildBeatNumbers(beats, maxActs, actRanges);
 
             beats.forEach((beatLine, index) => {
                 const row = listContainer.createDiv({ cls: 'ert-custom-beat-row' });
@@ -213,7 +307,8 @@ export function renderStoryBeatsSection(params: {
                 row.createDiv({ cls: 'ert-grid-spacer' });
 
                 // Index
-                row.createDiv({ text: `${index + 1}.`, cls: 'ert-beat-index' });
+                const beatNumber = beatNumbers[index] ?? (index + 1);
+                row.createDiv({ text: `${beatNumber}.`, cls: 'ert-beat-index' });
 
                 // Parse "Name [Act]"
                 let name = beatLine.name;
@@ -317,6 +412,12 @@ export function renderStoryBeatsSection(params: {
         };
 
         renderList();
+        void (async () => {
+            const ranges = await collectActRanges(true);
+            if (!ranges) return;
+            actRanges = ranges;
+            renderList();
+        })();
     };
     renderCustomConfig();
 
@@ -1091,6 +1192,9 @@ export function renderStoryBeatsSection(params: {
             new Notice(`Unknown story structure: ${storyStructureName}`);
             return;
         }
+
+        const actRanges = await collectActRanges(true);
+        const actStartNumbers = actRanges ? buildActStartNumbers(actRanges) : undefined;
         
         const modal = new CreateBeatsTemplatesModal(
             app,
@@ -1107,7 +1211,8 @@ export function renderStoryBeatsSection(params: {
                 app.vault,
                 storyStructureName,
                 sourcePath,
-                storyStructureName === 'Custom' ? storyStructure : undefined
+                storyStructureName === 'Custom' ? storyStructure : undefined,
+                { actStartNumbers }
             );
             if (errors.length > 0) {
                 new Notice(`Created ${created} notes. ${skipped} skipped. ${errors.length} errors. Check console.`);
