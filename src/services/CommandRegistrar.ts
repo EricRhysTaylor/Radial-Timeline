@@ -55,8 +55,8 @@ export class CommandRegistrar {
             },
         });
         this.plugin.addCommand({
-            id: 'run-inquiry-omnibus-pass',
-            name: 'Inquiry: Run Omnibus Pass',
+            id: 'inquiry-omnibus-pass',
+            name: 'Inquiry Omnibus Pass',
             callback: async () => {
                 await this.plugin.getInquiryService().runOmnibusPass();
             },
