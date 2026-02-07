@@ -1,6 +1,6 @@
 # Timeline Modes
 
-Radial Timeline has two **views**: the main **Timeline view** and the **[[Inquiry]]** view. Within the Timeline view, four **modes** let you examine your story from different structural perspectives. Switch modes using the keyboard shortcuts or the top-right navigation.
+Radial Timeline has two co-equal **[[Views]]**: the Timeline view and the Inquiry view. Within the Timeline view, four **modes** let you examine your story from different structural perspectives. Switch modes using the keyboard shortcuts or the top-right navigation.
 
 ### Narrative Mode (keyboard 1)
 Shows all scenes from all subplots on the outer ring with story beats and subplot color-coding. Structured around your configured **act count** (default 3) with scenes organized by act divisions (360° divided evenly across acts). This is your primary manuscript-order workspace showing **Narrative time** (reading order). Status/publishing overlays are hidden so subplot colors remain dominant.

@@ -1,6 +1,7 @@
 *   [[Home]]
 *   **Getting Started**
     *   [[Welcome]]
+    *   [[Views]]
     *   [[Core Workflows]]
     *   [[How-to]]
     *   [[Timeline Modes]]
@@ -11,9 +12,11 @@
     *   [[Publication Mode]]
     *   [[Chronologue Mode]]
     *   [[Gossamer Mode]]
-*   **AI & Analysis**
+*   **AI Features**
     *   [[AI Analysis]]
+    *   [[Gossamer Mode|Gossamer AI Evaluation]]
     *   [[Inquiry]]
+    *   [[Signature|Runtime Estimation]]
 *   **Pro & Social**
     *   [[Signature]]
     *   [[Author Progress Report]]
