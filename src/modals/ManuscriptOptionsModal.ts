@@ -65,6 +65,7 @@ export class ManuscriptOptionsModal extends Modal {
     private tocCard?: HTMLElement;
     private manuscriptOptionsCard?: HTMLElement;
     private outlineOptionsCard?: HTMLElement;
+    private wordCountCard?: HTMLElement;
     private templateWarningEl?: HTMLElement;
     private manuscriptPresetDescEl?: HTMLElement;
     private outlinePresetDescEl?: HTMLElement;
@@ -366,16 +367,16 @@ export class ManuscriptOptionsModal extends Modal {
         // ═══════════════════════════════════════════════════════════════════
         // WORD COUNT UPDATE
         // ═══════════════════════════════════════════════════════════════════
-        const wordCountCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        this.createSectionHeading(wordCountCard, t('manuscriptModal.wordCountHeading'), 'hash');
-        const wordCountRow = wordCountCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
+        this.wordCountCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        this.createSectionHeading(this.wordCountCard, t('manuscriptModal.wordCountHeading'), 'hash');
+        const wordCountRow = this.wordCountCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
         wordCountRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: t('manuscriptModal.wordCountToggle') });
         new ToggleComponent(wordCountRow)
             .setValue(this.updateWordCounts)
             .onChange((value) => {
                 this.updateWordCounts = value;
             });
-        wordCountCard.createDiv({
+        this.wordCountCard.createDiv({
             cls: 'rt-sub-card-note',
             text: t('manuscriptModal.wordCountNote')
         });
@@ -553,8 +554,8 @@ export class ManuscriptOptionsModal extends Modal {
     private syncExportUi(): void {
         this.tocCard?.toggleClass('rt-hidden', this.exportType !== 'manuscript');
         this.manuscriptOptionsCard?.toggleClass('rt-hidden', this.exportType !== 'manuscript');
-        const showOutlineCard = this.exportType === 'outline' || !this.isPro;
-        this.outlineOptionsCard?.toggleClass('rt-hidden', !showOutlineCard);
+        this.wordCountCard?.toggleClass('rt-hidden', this.exportType !== 'manuscript');
+        this.outlineOptionsCard?.toggleClass('rt-hidden', this.exportType !== 'outline');
         this.syncOutputFormatPills();
         this.updateTemplateWarning();
     }
