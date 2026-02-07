@@ -3,7 +3,7 @@
     *   [[Welcome]]
     *   [[Core Workflows]]
     *   [[How-to]]
-    *   [[View Modes|Timeline Modes]]
+    *   [[Timeline Modes]]
     *   [[Book Designer]]
     *   [[Commands]]
 *   **Timeline Modes**
