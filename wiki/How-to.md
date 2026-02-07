@@ -51,7 +51,7 @@ Always update both:
 In recent versions of Radial Timeline:
 
 - Switch to **Narrative Mode**
-- Drag a **scene** on the outer ring (cursor becomes double arrow)
+- Drag a **scene** or **beat note** on the **outer ring** (cursor becomes double arrow)
 
 ![Drag scene start](images/drag.png)
 
@@ -63,7 +63,7 @@ In recent versions of Radial Timeline:
 
 This method automatically updates ordering for you.
 
-**Note:** You can only drag a scene to another act if that act already contains at least one scene. To move a scene to an empty act, either create a new scene in that act first or manually update the `Act` field in the scene's YAML frontmatter.
+**Note:** Dragging is supported on the **outer ring only**. You can drag into an empty act — the target act can be created even if it has no scenes yet.
 
 ---
 

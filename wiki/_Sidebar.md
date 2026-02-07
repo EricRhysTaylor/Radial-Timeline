@@ -2,11 +2,9 @@
 *   **Getting Started**
     *   [[Welcome]]
     *   [[Views]]
-    *   [[Core-Workflows|Core Workflows]]
-    *   [[How-to]]
+    *   [[Onboarding-Fresh-Vault|Fresh Vault Onboarding]]
+    *   [[Onboarding-Existing-Vault|Existing Vault Onboarding]]
     *   [[Timeline-Modes|Timeline Modes]]
-    *   [[Book-Designer|Book Designer]]
-    *   [[Commands]]
 *   **Timeline Modes**
     *   [[Narrative-Mode|Narrative Mode]]
     *   [[Publication-Mode|Publication Mode]]
@@ -14,13 +12,17 @@
     *   [[Gossamer-Mode|Gossamer Mode]]
 *   **AI Features**
     *   [[AI-Analysis|AI Analysis]]
-    *   [[Gossamer-Mode|Gossamer AI Evaluation]]
+    *   [[Gossamer-Mode#ai-analysis|Gossamer AI Evaluation]]
     *   [[Inquiry]]
     *   [[Signature|Runtime Estimation]]
 *   **Pro & Social**
     *   [[Signature]]
     *   [[Author-Progress-Report|Author Progress Report]]
 *   **Reference**
+    *   [[Core-Workflows|Core Workflows]]
+    *   [[Book-Designer|Book Designer]]
+    *   [[How-to]]
+    *   [[Commands]]
     *   [[YAML-Frontmatter|YAML Frontmatter]]
     *   [[Advanced-YAML|Advanced YAML]]
     *   [[Settings]]

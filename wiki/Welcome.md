@@ -41,6 +41,8 @@ See [[Advanced-YAML#data-integrity--backups]] for additional recommendations.
 
 ## Next Steps
 
+*   **[[Onboarding-Fresh-Vault|Fresh Vault Onboarding]]** — Start from scratch with Book Designer and beats.
+*   **[[Onboarding-Existing-Vault|Existing Vault Onboarding]]** — Connect an existing manuscript to Radial Timeline.
 *   **[[Core Workflows]]** — Learn how to plan, write, and track your novel.
 *   **[[How-to]]** — Reorder scenes, manage subplots, search, and rotate the timeline.
 *   **[[YAML Frontmatter]]** — Understand the metadata that powers your timeline.

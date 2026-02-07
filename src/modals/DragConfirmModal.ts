@@ -8,11 +8,13 @@ export class DragConfirmModal extends Modal {
     private readonly summary: string[];
     private decision: boolean = false;
     private readonly accent?: string;
+    private readonly itemLabel: string; // 'scene' or 'beat'
 
-    constructor(app: App, summaryLines: string[], accent?: string) {
+    constructor(app: App, summaryLines: string[], accent?: string, itemLabel?: string) {
         super(app);
         this.summary = summaryLines;
         this.accent = accent;
+        this.itemLabel = itemLabel || 'scene';
     }
 
     onOpen(): void {
@@ -31,10 +33,11 @@ export class DragConfirmModal extends Modal {
             contentEl.style.setProperty('--rt-confirm-accent', this.accent);
         }
 
-        // Header
+        // Header — differentiates between scene and beat moves
+        const capitalLabel = this.itemLabel.charAt(0).toUpperCase() + this.itemLabel.slice(1);
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: 'Reorder' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Confirm reorder' });
+        header.createSpan({ cls: 'ert-modal-badge', text: `Reorder ${capitalLabel}` });
+        header.createDiv({ cls: 'ert-modal-title', text: `Confirm ${this.itemLabel} reorder` });
 
         const listDiv = contentEl.createDiv({ cls: 'rt-drag-confirm-list' });
 

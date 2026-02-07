@@ -1,3 +1,5 @@
+Core workflows are a reference for ongoing use. For first-time setup, see [[Onboarding-Fresh-Vault|Fresh Vault Onboarding]] or [[Onboarding-Existing-Vault|Existing Vault Onboarding]].
+
 ### Planning Your Novel
 *   **Act Structure**: Scenes are organized by act (default 3 acts, configurable in **Settings → Acts**). Acts come from the scene frontmatter `Act:` field.
 *   **Subplot Tracking**: Each ring represents a different subplot. Keep scenes in a single subplot or spread them across multiple subplots to capture common themes, topics, characters, etc.
@@ -43,4 +45,3 @@ Prevents edits to completed zero-draft scenes. Click completed scene → modal f
 </div>
 
 **Settings**: → Radial Timeline → Zero draft mode
-

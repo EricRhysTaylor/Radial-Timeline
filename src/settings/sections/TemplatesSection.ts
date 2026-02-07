@@ -294,7 +294,15 @@ export function renderStoryBeatsSection(params: {
                 .map(b => ({ ...b, act: clampAct(b.act, maxActs) }));
             const beatNumbers = buildBeatNumbers(beats, maxActs, actRanges);
 
+            let lastAct: number | null = null;
             beats.forEach((beatLine, index) => {
+                const currentAct = clampAct(beatLine.act, maxActs);
+                if (lastAct !== null && currentAct !== lastAct) {
+                    const divider = listContainer.createDiv({ cls: 'ert-custom-beat-divider' });
+                    divider.createDiv({ cls: 'ert-custom-beat-divider-label', text: actLabels[currentAct - 1] });
+                }
+                lastAct = currentAct;
+
                 const row = listContainer.createDiv({ cls: 'ert-custom-beat-row' });
                 row.draggable = true;
 
@@ -312,7 +320,7 @@ export function renderStoryBeatsSection(params: {
 
                 // Parse "Name [Act]"
                 let name = beatLine.name;
-                let act = clampAct(beatLine.act, maxActs).toString();
+                let act = currentAct.toString();
 
                 // Name input
                 const nameInput = row.createEl('input', { type: 'text', cls: 'ert-beat-name-input ert-input' });
@@ -371,6 +379,9 @@ export function renderStoryBeatsSection(params: {
                     const updated = [...beats];
                     const [moved] = updated.splice(from, 1);
                     updated.splice(index, 0, moved);
+                    const neighbor = updated[index + 1] ?? updated[index - 1];
+                    const nextAct = clampAct(neighbor?.act ?? moved.act ?? currentAct, maxActs);
+                    moved.act = nextAct;
                     saveBeats(updated);
                     renderList();
                 });
