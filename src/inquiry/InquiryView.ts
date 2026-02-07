@@ -30,7 +30,7 @@ import {
     InquirySeverity,
     InquiryZone
 } from './state';
-import type { InquiryClassConfig, InquiryMaterialMode, InquiryPromptConfig, InquiryPromptSlot } from '../types/settings';
+import type { InquiryClassConfig, InquiryMaterialMode, InquiryPromptConfig, InquiryPromptSlot, OmnibusProgressState } from '../types/settings';
 import { buildDefaultInquiryPromptConfig, getBuiltInPromptSeed, getCanonicalPromptText, normalizeInquiryPromptConfig } from './prompts';
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
 import { ensureInquiryContentLogFolder, ensureInquiryLogFolder } from './utils/logs';
@@ -237,6 +237,7 @@ type TokenTier = 'normal' | 'amber' | 'red';
 type InquiryOmnibusPlan = {
     scope: InquiryScope;
     createIndex: boolean;
+    resume?: boolean;
 };
 
 type InquiryPurgePreviewItem = {
@@ -340,6 +341,9 @@ type InquiryOmnibusModalOptions = {
     providerLabel: string;
     logsEnabled: boolean;
     runDisabledReason?: string | null;
+    priorProgress?: OmnibusProgressState;
+    resumeAvailable?: boolean;
+    resumeUnavailableReason?: string;
 };
 
 class InquiryOmnibusModal extends Modal {
@@ -347,6 +351,14 @@ class InquiryOmnibusModal extends Modal {
     private selectedScope: InquiryScope;
     private createIndex = true;
     private runDisabledReason?: string | null;
+    private isRunning = false;
+    private abortRequested = false;
+    private progressEl?: HTMLDivElement;
+    private progressTextEl?: HTMLDivElement;
+    private progressMicroEl?: HTMLDivElement;
+    private configPanel?: HTMLDivElement;
+    private actionsEl?: HTMLDivElement;
+    private resultEl?: HTMLDivElement;
 
     constructor(
         app: App,
@@ -376,7 +388,42 @@ class InquiryOmnibusModal extends Modal {
         header.createDiv({ cls: 'ert-modal-title', text: 'Run Omnibus Pass' });
         header.createDiv({ cls: 'ert-modal-subtitle', text: 'Runs all enabled Inquiry questions for the selected scope.' });
 
-        const panel = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-stack' });
+        this.configPanel = contentEl.createDiv({ cls: 'ert-omnibus-config-panel ert-stack' });
+        this.renderConfigPanel();
+
+        this.progressEl = contentEl.createDiv({ cls: 'ert-omnibus-progress-panel ert-stack is-hidden' });
+
+        this.resultEl = contentEl.createDiv({ cls: 'ert-omnibus-result-panel is-hidden' });
+
+        this.actionsEl = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        this.renderConfigActions();
+    }
+
+    private renderConfigPanel(): void {
+        if (!this.configPanel) return;
+        this.configPanel.empty();
+
+        // "How this run works" section
+        const howSection = this.configPanel.createDiv({ cls: 'ert-omnibus-how-section' });
+        howSection.createDiv({ cls: 'ert-omnibus-how-title', text: 'How this run works' });
+        const howList = howSection.createEl('ul', { cls: 'ert-omnibus-how-list' });
+        howList.createEl('li', { text: 'Load corpus once for the selected scope' });
+        howList.createEl('li', { text: 'Run questions sequentially against that shared context' });
+        howList.createEl('li', { text: 'Save results incrementally (Brief + Log per question)' });
+        howList.createEl('li', { text: 'Safe to stop: abort at any time; completed results remain saved' });
+
+        // Prior progress notice (resume info)
+        const prior = this.options.priorProgress;
+        if (prior) {
+            const resumeNote = this.configPanel.createDiv({ cls: 'ert-omnibus-resume-note' });
+            resumeNote.setText(`Last run stopped after question ${prior.completedQuestionIds.length} of ${prior.totalQuestions}.`);
+            if (this.options.resumeUnavailableReason) {
+                const configNote = resumeNote.createDiv({ cls: 'ert-field-note' });
+                configNote.setText(`Resume unavailable: ${this.options.resumeUnavailableReason}`);
+            }
+        }
+
+        const panel = this.configPanel.createDiv({ cls: 'ert-panel ert-panel--glass ert-stack' });
 
         const summaryGrid = panel.createDiv({ cls: 'ert-apr-status-grid ert-omnibus-summary-grid' });
         const summaryHeaderRow = summaryGrid.createDiv({ cls: 'ert-apr-status-row ert-apr-status-row--header' });
@@ -488,7 +535,7 @@ class InquiryOmnibusModal extends Modal {
         });
 
         if (this.runDisabledReason) {
-            const reason = contentEl.createDiv({ cls: 'ert-field-note' });
+            const reason = this.configPanel.createDiv({ cls: 'ert-field-note' });
             reason.setText(`Run disabled: ${this.runDisabledReason}`);
         }
 
@@ -496,12 +543,32 @@ class InquiryOmnibusModal extends Modal {
         const briefLabel = totalQuestions === 1 ? 'Brief' : 'Briefs';
         const logLabel = totalQuestions === 1 ? 'Log' : 'Logs';
         const logsDisabledNote = this.options.logsEnabled ? '' : ' Logs are disabled in settings.';
-        const volumeLine = contentEl.createDiv({ cls: 'ert-field-note' });
+        const volumeLine = this.configPanel.createDiv({ cls: 'ert-field-note' });
         volumeLine.setText(`This will generate ${totalQuestions} Inquiry ${briefLabel} and ${totalQuestions} ${logLabel}.${logsDisabledNote}`);
+    }
 
-        const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
-        const runButton = new ButtonComponent(actions)
-            .setButtonText('Run Omnibus')
+    private renderConfigActions(): void {
+        if (!this.actionsEl) return;
+        this.actionsEl.empty();
+
+        const prior = this.options.priorProgress;
+        if (prior && this.options.resumeAvailable) {
+            const resumeBtn = new ButtonComponent(this.actionsEl)
+                .setButtonText('Resume Omnibus')
+                .setCta();
+            if (this.runDisabledReason) {
+                resumeBtn.setDisabled(true);
+            }
+            resumeBtn.onClick(() => {
+                if (this.runDisabledReason) return;
+                this.resolveOnce({ scope: this.selectedScope, createIndex: this.createIndex, resume: true });
+                this.switchToRunning();
+            });
+            setTooltip(resumeBtn.buttonEl, 'Resends corpus and runs remaining questions.');
+        }
+
+        const runButton = new ButtonComponent(this.actionsEl)
+            .setButtonText(prior && this.options.resumeAvailable ? 'Restart Omnibus' : 'Run Omnibus')
             .setCta();
         if (this.runDisabledReason) {
             runButton.setDisabled(true);
@@ -509,15 +576,84 @@ class InquiryOmnibusModal extends Modal {
         runButton.onClick(() => {
             if (this.runDisabledReason) return;
             this.resolveOnce({ scope: this.selectedScope, createIndex: this.createIndex });
-            this.close();
+            this.switchToRunning();
         });
 
-        new ButtonComponent(actions)
+        new ButtonComponent(this.actionsEl)
             .setButtonText('Cancel')
             .onClick(() => {
                 this.resolveOnce(null);
                 this.close();
             });
+    }
+
+    /** Switch the modal into Running state. */
+    switchToRunning(): void {
+        this.isRunning = true;
+        this.setHidden(this.configPanel, true);
+        if (this.progressEl) {
+            this.setHidden(this.progressEl, false);
+            this.progressEl.empty();
+            this.progressEl.createDiv({ cls: 'ert-omnibus-progress-title', text: 'Running Omnibus Pass...' });
+            this.progressTextEl = this.progressEl.createDiv({ cls: 'ert-omnibus-progress-text' });
+            this.progressTextEl.setText('Preparing...');
+            this.progressMicroEl = this.progressEl.createDiv({ cls: 'ert-omnibus-progress-micro ert-field-note' });
+        }
+        if (this.actionsEl) {
+            this.actionsEl.empty();
+            new ButtonComponent(this.actionsEl)
+                .setButtonText('Abort Run')
+                .onClick(() => {
+                    this.abortRequested = true;
+                    if (this.progressMicroEl) {
+                        this.progressMicroEl.setText('Stopping after current question...');
+                    }
+                });
+        }
+    }
+
+    /** Update progress text from the running loop. */
+    updateProgress(current: number, total: number, zone: string, questionLabel: string, micro?: string): void {
+        if (this.progressTextEl) {
+            this.progressTextEl.setText(`Question ${current} of ${total}`);
+        }
+        if (this.progressMicroEl && !this.abortRequested) {
+            this.progressMicroEl.setText(micro ?? `${zone} \u00B7 ${questionLabel}`);
+        }
+    }
+
+    /** Show completion or abort message and provide a Close button. */
+    showResult(completed: number, total: number, aborted: boolean): void {
+        this.isRunning = false;
+        this.setHidden(this.progressEl, true);
+        if (this.resultEl) {
+            this.setHidden(this.resultEl, false);
+            this.resultEl.empty();
+            const briefLabel = completed === 1 ? 'Brief' : 'Briefs';
+            const logLabel = completed === 1 ? 'Log' : 'Logs';
+            if (aborted) {
+                this.resultEl.createDiv({
+                    cls: 'ert-omnibus-result-text',
+                    text: `Omnibus pass stopped. ${completed} of ${total} completed.`
+                });
+            } else {
+                this.resultEl.createDiv({
+                    cls: 'ert-omnibus-result-text',
+                    text: `Omnibus pass complete. ${completed} Inquiry ${briefLabel} and ${completed} ${logLabel} created.`
+                });
+            }
+        }
+        if (this.actionsEl) {
+            this.actionsEl.empty();
+            new ButtonComponent(this.actionsEl)
+                .setButtonText('Close')
+                .setCta()
+                .onClick(() => this.close());
+        }
+    }
+
+    isAbortRequested(): boolean {
+        return this.abortRequested;
     }
 
     onClose(): void {
@@ -528,6 +664,11 @@ class InquiryOmnibusModal extends Modal {
         if (this.didResolve) return;
         this.didResolve = true;
         this.onResolve(result);
+    }
+
+    private setHidden(el: HTMLElement | undefined, hidden: boolean): void {
+        if (!el) return;
+        el.classList.toggle('is-hidden', hidden);
     }
 }
 
@@ -664,6 +805,8 @@ export class InquiryView extends ItemView {
     private enginePanelMetaEl?: HTMLDivElement;
     private enginePanelHideTimer?: number;
     private pendingGuardQuestion?: InquiryQuestion;
+    private omnibusAbortRequested = false;
+    private activeOmnibusModal?: InquiryOmnibusModal;
     private minimapTicksEl?: SVGGElement;
     private minimapBaseline?: SVGLineElement;
     private minimapEndCapStart?: SVGRectElement;
@@ -4231,7 +4374,7 @@ export class InquiryView extends ItemView {
         isActive: boolean;
     } {
         if (mode === 'summary') {
-            return { label: 'Synopsis', short: 'SYN', icon: 'circle-dot', isActive: true };
+            return { label: 'Summary', short: 'SUM', icon: 'circle-dot', isActive: true };
         }
         if (mode === 'full') {
             return { label: 'Body', short: 'BODY', icon: 'disc', isActive: true };
@@ -4674,9 +4817,9 @@ export class InquiryView extends ItemView {
         const body = this.stripFrontmatter(content);
         const bodyWords = this.countWords(body);
         const frontmatter = this.getNormalizedFrontmatter(file) ?? {};
-        const synopsis = this.extractSynopsis(frontmatter);
-        const synopsisWords = this.countWords(synopsis);
-        const synopsisQuality = classifySynopsis(synopsis);
+        const summary = this.extractSummary(frontmatter);
+        const synopsisWords = this.countWords(summary);
+        const synopsisQuality = classifySynopsis(summary);
         this.ccWordCache.set(filePath, {
             mtime,
             bodyWords,
@@ -4754,7 +4897,7 @@ export class InquiryView extends ItemView {
         }
         if (isSynopsisCapable) {
             if (entry.mode === 'summary') {
-                conditions.push(`Tier: Synopsis ${tierLabel.toLowerCase()} (${wordLabel} words)`);
+                conditions.push(`Tier: Summary ${tierLabel.toLowerCase()} (${wordLabel} words)`);
             } else if (entry.mode === 'full') {
                 conditions.push(`Tier: Body ${tierLabel.toLowerCase()} (${wordLabel} words)`);
             } else {
@@ -5788,6 +5931,11 @@ export class InquiryView extends ItemView {
         const providerPlan = this.buildOmnibusProviderPlan();
         const runDisabledReason = this.getOmnibusRunDisabledReason(questions, providerPlan);
 
+        const priorProgress = this.plugin.settings.inquiryOmnibusProgress;
+        const resumeCheck = priorProgress
+            ? this.checkOmnibusResumeEligibility(priorProgress, questions, providerPlan)
+            : { available: false };
+
         const plan = await this.promptOmnibusPlan({
             initialScope: this.state.scope,
             bookLabel: this.getFocusBookLabel(),
@@ -5795,7 +5943,10 @@ export class InquiryView extends ItemView {
             providerSummary: providerPlan.summary,
             providerLabel: providerPlan.label,
             logsEnabled: this.plugin.settings.logApiInteractions ?? true,
-            runDisabledReason
+            runDisabledReason,
+            priorProgress: priorProgress ?? undefined,
+            resumeAvailable: resumeCheck.available,
+            resumeUnavailableReason: resumeCheck.reason
         });
         if (!plan) return;
 
@@ -5818,10 +5969,23 @@ export class InquiryView extends ItemView {
             return;
         }
 
-        const nextQuestions = this.getOmnibusQuestions();
+        let nextQuestions = this.getOmnibusQuestions();
         if (!nextQuestions.length) {
             new Notice('No enabled Inquiry questions found.');
             return;
+        }
+
+        // Filter to remaining questions if resuming
+        if (plan.resume && priorProgress) {
+            const completed = new Set(priorProgress.completedQuestionIds);
+            nextQuestions = nextQuestions.filter(q => !completed.has(q.id));
+            if (!nextQuestions.length) {
+                new Notice('All questions already completed. Nothing to resume.');
+                return;
+            }
+        } else {
+            // Fresh run: clear any prior progress
+            this.clearOmnibusProgress();
         }
 
         const nextProviderPlan = this.buildOmnibusProviderPlan();
@@ -5831,20 +5995,27 @@ export class InquiryView extends ItemView {
             return;
         }
 
+        this.omnibusAbortRequested = false;
+        const allQuestions = this.getOmnibusQuestions();
         const providerChoice = nextProviderPlan.choice;
-        if (!providerChoice.useOmnibus) {
-            await this.runOmnibusSequential(nextQuestions, providerChoice, plan.createIndex);
-            return;
+        try {
+            if (!providerChoice.useOmnibus) {
+                await this.runOmnibusSequential(nextQuestions, providerChoice, plan.createIndex, allQuestions.length);
+                return;
+            }
+            await this.runOmnibusCombined(nextQuestions, providerChoice, plan.createIndex, allQuestions.length);
+        } finally {
+            this.activeOmnibusModal = undefined;
         }
-
-        await this.runOmnibusCombined(nextQuestions, providerChoice, plan.createIndex);
     }
 
     private async runOmnibusCombined(
         questions: InquiryQuestion[],
         providerChoice: OmnibusProviderChoice,
-        createIndex: boolean
+        createIndex: boolean,
+        totalForProgress?: number
     ): Promise<void> {
+        const total = totalForProgress ?? questions.length;
         const focusLabel = this.getFocusLabel();
         const focusId = this.getFocusId();
         const focusSceneId = this.state.scope === 'book' ? this.state.focusSceneId : undefined;
@@ -5884,7 +6055,11 @@ export class InquiryView extends ItemView {
         this.setApiStatus('running');
         this.refreshUI();
 
+        const modal = this.activeOmnibusModal;
+        if (modal) modal.updateProgress(1, total, '', 'Combined run in progress...', 'Processing all questions in a single pass...');
+
         const briefPaths: string[] = [];
+        const completedIds: string[] = [];
         let lastSession: InquirySession | null = null;
         let lastResult: InquiryResult | null = null;
         let traceForLogs: InquiryRunTrace | null = null;
@@ -5899,6 +6074,12 @@ export class InquiryView extends ItemView {
                 const result = runOutput.results[i];
                 const question = questionsById.get(result.questionId) ?? questions[i];
                 if (!question) continue;
+
+                if (modal) {
+                    const zoneLabel = question.zone === 'setup' ? 'Setup' : question.zone === 'pressure' ? 'Pressure' : 'Payoff';
+                    modal.updateProgress(i + 1, total, zoneLabel, question.label, 'Writing brief/log...');
+                }
+
                 const questionManifest = this.buildCorpusManifest(question.id, {
                     modelId: providerChoice.modelId,
                     questionZone: question.zone
@@ -5931,6 +6112,7 @@ export class InquiryView extends ItemView {
                 if (persisted.briefPath) {
                     briefPaths.push(persisted.briefPath);
                 }
+                completedIds.push(question.id);
                 lastSession = persisted.session;
                 lastResult = persisted.normalized;
             }
@@ -5938,9 +6120,26 @@ export class InquiryView extends ItemView {
             const message = error instanceof Error ? error.message : String(error);
             new Notice(`Inquiry omnibus failed: ${message}`);
         } finally {
-            if (createIndex && briefPaths.length > 1) {
-                await this.saveOmnibusIndexNote(briefPaths, focusLabel);
+            const indexPath = (createIndex && briefPaths.length > 1)
+                ? await this.saveOmnibusIndexNote(briefPaths, focusLabel)
+                : undefined;
+            const allQuestionIds = this.getOmnibusQuestions().map(q => q.id);
+            const isComplete = completedIds.length >= questions.length;
+            if (isComplete) {
+                this.clearOmnibusProgress();
+            } else {
+                this.saveOmnibusProgress({
+                    totalQuestions: allQuestionIds.length,
+                    completedQuestionIds: this.mergeCompletedIds(completedIds),
+                    scope: this.state.scope,
+                    questionIds: allQuestionIds,
+                    useOmnibus: true,
+                    corpusSettingsFingerprint: this.buildCorpusSettingsFingerprint(),
+                    indexNotePath: indexPath ?? undefined,
+                    abortedAt: new Date().toISOString()
+                });
             }
+            if (modal) modal.showResult(completedIds.length, total, !isComplete);
             if (lastSession && lastResult) {
                 this.applySession({
                     result: lastResult,
@@ -5968,22 +6167,40 @@ export class InquiryView extends ItemView {
     private async runOmnibusSequential(
         questions: InquiryQuestion[],
         providerChoice: OmnibusProviderChoice,
-        createIndex: boolean
+        createIndex: boolean,
+        totalForProgress?: number
     ): Promise<void> {
+        const total = totalForProgress ?? questions.length;
         const focusLabel = this.getFocusLabel();
         const focusId = this.getFocusId();
         const focusSceneId = this.state.scope === 'book' ? this.state.focusSceneId : undefined;
         const focusBookId = this.state.focusBookId ?? this.corpus?.books?.[0]?.id;
         const briefPaths: string[] = [];
+        const completedIds: string[] = [];
         let lastSession: InquirySession | null = null;
         let lastResult: InquiryResult | null = null;
+        let aborted = false;
+
+        const modal = this.activeOmnibusModal;
 
         this.state.isRunning = true;
         this.setApiStatus('running');
         this.refreshUI();
 
         try {
-            for (const question of questions) {
+            for (let qi = 0; qi < questions.length; qi += 1) {
+                // Check abort before starting each question
+                if (this.omnibusAbortRequested || (modal && modal.isAbortRequested())) {
+                    aborted = true;
+                    break;
+                }
+
+                const question = questions[qi];
+                const questionIndex = qi + 1;
+                const zoneLabel = question.zone === 'setup' ? 'Setup' : question.zone === 'pressure' ? 'Pressure' : 'Payoff';
+
+                if (modal) modal.updateProgress(questionIndex, total, zoneLabel, question.label);
+
                 const manifest = this.buildCorpusManifest(question.id, {
                     modelId: providerChoice.modelId,
                     questionZone: question.zone
@@ -6021,6 +6238,9 @@ export class InquiryView extends ItemView {
                     const message = error instanceof Error ? error.message : String(error);
                     trace = await this.buildFallbackTrace(runnerInput, `Runner exception: ${message}`);
                 }
+
+                if (modal) modal.updateProgress(questionIndex, total, zoneLabel, question.label, 'Writing brief/log...');
+
                 const completedAt = new Date();
                 const persisted = await this.persistOmnibusResult({
                     question,
@@ -6036,13 +6256,31 @@ export class InquiryView extends ItemView {
                 if (persisted.briefPath) {
                     briefPaths.push(persisted.briefPath);
                 }
+                completedIds.push(question.id);
                 lastSession = persisted.session;
                 lastResult = persisted.normalized;
             }
         } finally {
-            if (createIndex && briefPaths.length > 1) {
-                await this.saveOmnibusIndexNote(briefPaths, focusLabel);
+            const indexPath = (createIndex && briefPaths.length > 1)
+                ? await this.saveOmnibusIndexNote(briefPaths, focusLabel)
+                : undefined;
+            const allQuestionIds = this.getOmnibusQuestions().map(q => q.id);
+            const isComplete = !aborted && completedIds.length >= questions.length;
+            if (isComplete) {
+                this.clearOmnibusProgress();
+            } else {
+                this.saveOmnibusProgress({
+                    totalQuestions: allQuestionIds.length,
+                    completedQuestionIds: this.mergeCompletedIds(completedIds),
+                    scope: this.state.scope,
+                    questionIds: allQuestionIds,
+                    useOmnibus: false,
+                    corpusSettingsFingerprint: this.buildCorpusSettingsFingerprint(),
+                    indexNotePath: indexPath ?? undefined,
+                    abortedAt: new Date().toISOString()
+                });
             }
+            if (modal) modal.showResult(completedIds.length, total, !isComplete);
             if (lastSession && lastResult) {
                 this.applySession({
                     result: lastResult,
@@ -6175,9 +6413,71 @@ export class InquiryView extends ItemView {
 
     private async promptOmnibusPlan(options: InquiryOmnibusModalOptions): Promise<InquiryOmnibusPlan | null> {
         return new Promise(resolve => {
-            const modal = new InquiryOmnibusModal(this.app, options, result => resolve(result));
+            const modal = new InquiryOmnibusModal(this.app, options, result => {
+                this.activeOmnibusModal = modal;
+                resolve(result);
+            });
             modal.open();
         });
+    }
+
+    private saveOmnibusProgress(progress: OmnibusProgressState): void {
+        this.plugin.settings.inquiryOmnibusProgress = progress;
+        void this.plugin.saveSettings();
+    }
+
+    private clearOmnibusProgress(): void {
+        this.plugin.settings.inquiryOmnibusProgress = undefined;
+        void this.plugin.saveSettings();
+    }
+
+    private mergeCompletedIds(newIds: string[]): string[] {
+        const prior = this.plugin.settings.inquiryOmnibusProgress;
+        if (!prior) return [...newIds];
+        const merged = new Set(prior.completedQuestionIds);
+        newIds.forEach(id => merged.add(id));
+        return [...merged];
+    }
+
+    private buildCorpusSettingsFingerprint(): string {
+        const sources = this.plugin.settings.inquirySources;
+        const classes = sources?.classes ?? [];
+        const parts = classes
+            .filter(c => c.enabled)
+            .map(c => `${c.className}:${c.bookScope}:${c.sagaScope}:${c.referenceScope}`)
+            .sort();
+        return parts.join('|');
+    }
+
+    private checkOmnibusResumeEligibility(
+        prior: OmnibusProgressState,
+        currentQuestions: InquiryQuestion[],
+        providerPlan: OmnibusProviderPlan
+    ): { available: boolean; reason?: string } {
+        if (prior.completedQuestionIds.length >= prior.totalQuestions) {
+            return { available: false, reason: 'Previous run already completed.' };
+        }
+        if (prior.scope !== this.state.scope) {
+            return { available: false, reason: 'Scope changed since last run.' };
+        }
+        const currentIds = currentQuestions.map(q => q.id).sort().join(',');
+        const priorIds = [...prior.questionIds].sort().join(',');
+        if (currentIds !== priorIds) {
+            return { available: false, reason: 'Question set changed since last run.' };
+        }
+        const currentFingerprint = this.buildCorpusSettingsFingerprint();
+        if (currentFingerprint !== prior.corpusSettingsFingerprint) {
+            return { available: false, reason: 'Corpus contribution settings changed.' };
+        }
+        if (providerPlan.choice && providerPlan.choice.useOmnibus !== prior.useOmnibus) {
+            // Allow sequential fallback from combined, but not the reverse
+            if (prior.useOmnibus && !providerPlan.choice.useOmnibus) {
+                // OK: falling back to sequential
+            } else {
+                return { available: false, reason: 'Provider strategy changed.' };
+            }
+        }
+        return { available: true };
     }
 
     private getOmnibusQuestions(): InquiryQuestion[] {
@@ -8444,15 +8744,15 @@ export class InquiryView extends ItemView {
         let fullCount = 0;
         let chars = 0;
         entries.forEach(entry => {
-            const synopsis = this.getEntrySynopsis(entry.path);
-            if (synopsis) {
+            const summary = this.getEntrySummary(entry.path);
+            if (summary) {
                 synopsisAvailable += 1;
             }
             const mode = this.normalizeEvidenceMode(entry.mode);
             if (mode === 'summary') {
-                if (!synopsis) return;
+                if (!summary) return;
                 synopsisUsed += 1;
-                chars += synopsis.length;
+                chars += summary.length;
                 return;
             }
             if (mode === 'full') {
@@ -8483,10 +8783,10 @@ export class InquiryView extends ItemView {
         entries.forEach(entry => {
             const mode = this.normalizeEvidenceMode(entry.mode);
             if (mode === 'summary') {
-                const synopsis = this.getEntrySynopsis(entry.path);
-                if (!synopsis) return;
+                const summary = this.getEntrySummary(entry.path);
+                if (!summary) return;
                 summaryCount += 1;
-                chars += synopsis.length;
+                chars += summary.length;
                 return;
             }
             if (mode === 'full') {
@@ -8532,19 +8832,19 @@ export class InquiryView extends ItemView {
         return size > 0 ? size : 0;
     }
 
-    private getEntrySynopsis(path: string): string {
+    private getEntrySummary(path: string): string {
         const file = this.app.vault.getAbstractFileByPath(path);
         if (!file || !this.isTFile(file)) return '';
         const frontmatter = this.getNormalizedFrontmatter(file);
         if (!frontmatter) return '';
-        return this.extractSynopsis(frontmatter);
+        return this.extractSummary(frontmatter);
     }
 
     private getEntryContentLength(entry: CorpusManifestEntry): number {
         const mode = this.normalizeEvidenceMode(entry.mode);
         if (mode === 'summary') {
-            const synopsis = this.getEntrySynopsis(entry.path);
-            return synopsis.length;
+            const summary = this.getEntrySummary(entry.path);
+            return summary.length;
         }
         if (mode === 'full') {
             return this.getEntryCharCount(entry.path);
@@ -8559,8 +8859,12 @@ export class InquiryView extends ItemView {
         return normalizeFrontmatterKeys(frontmatter, this.plugin.settings.frontmatterMappings);
     }
 
-    private extractSynopsis(frontmatter: Record<string, unknown>): string {
-        const raw = frontmatter['Synopsis'];
+    /**
+     * Extract longform Summary from frontmatter for Inquiry context.
+     * Reads exclusively from frontmatter["Summary"]. Synopsis is never used.
+     */
+    private extractSummary(frontmatter: Record<string, unknown>): string {
+        const raw = frontmatter['Summary'];
         if (Array.isArray(raw)) {
             return raw.map(value => String(value)).join('\n').trim();
         }
@@ -8589,7 +8893,7 @@ export class InquiryView extends ItemView {
             return `Scenes · ${stats.sceneFullTextCount} (Body)`;
         }
         if (stats.sceneSynopsisUsed > 0) {
-            return `Scenes · ${stats.sceneSynopsisUsed} (Synopsis)`;
+            return `Scenes · ${stats.sceneSynopsisUsed} (Summary)`;
         }
         return '';
     }
@@ -8602,7 +8906,7 @@ export class InquiryView extends ItemView {
             return `Outline · ${fullCount} (Body)`;
         }
         if (summaryCount > 0) {
-            return `Outline · ${summaryCount} (Synopsis)`;
+            return `Outline · ${summaryCount} (Summary)`;
         }
         return '';
     }
@@ -9177,7 +9481,7 @@ export class InquiryView extends ItemView {
                     .filter(mode => mode !== 'none')
             );
             if (modes.size === 1) {
-                return modes.has('summary') ? 'Synopsis' : 'Body';
+                return modes.has('summary') ? 'Summary' : 'Body';
             }
             if (modes.size > 1) {
                 return 'Mixed';
@@ -9282,7 +9586,7 @@ export class InquiryView extends ItemView {
                     suggestions.push('Reduce Context (disable Character / Place / Power).');
                 }
                 if (hasFullScenes || hasFullOutlines) {
-                    suggestions.push('Switch full materials to Synopsis.');
+                    suggestions.push('Switch full materials to Summary.');
                 }
                 suggestions.push('Switch to a larger-context model or reduce the corpus.');
             } else if (reasonLower === 'rate_limit') {

@@ -56,6 +56,7 @@ export function renderAiSection(params: {
                 plugin.settings.enableAiSceneAnalysis = value;
                 await plugin.saveSettings();
                 params.toggleAiSettingsVisibility(value);
+                plugin.setInquiryVisible(value);
                 plugin.refreshTimelineIfNeeded(null);
                 updateAiToggleWarning(value);
             }));

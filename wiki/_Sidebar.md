@@ -2,27 +2,27 @@
 *   **Getting Started**
     *   [[Welcome]]
     *   [[Views]]
-    *   [[Core Workflows]]
+    *   [[Core-Workflows|Core Workflows]]
     *   [[How-to]]
-    *   [[Timeline Modes]]
-    *   [[Book Designer]]
+    *   [[Timeline-Modes|Timeline Modes]]
+    *   [[Book-Designer|Book Designer]]
     *   [[Commands]]
 *   **Timeline Modes**
-    *   [[Narrative Mode]]
-    *   [[Publication Mode]]
-    *   [[Chronologue Mode]]
-    *   [[Gossamer Mode]]
+    *   [[Narrative-Mode|Narrative Mode]]
+    *   [[Publication-Mode|Publication Mode]]
+    *   [[Chronologue-Mode|Chronologue Mode]]
+    *   [[Gossamer-Mode|Gossamer Mode]]
 *   **AI Features**
-    *   [[AI Analysis]]
-    *   [[Gossamer Mode|Gossamer AI Evaluation]]
+    *   [[AI-Analysis|AI Analysis]]
+    *   [[Gossamer-Mode|Gossamer AI Evaluation]]
     *   [[Inquiry]]
     *   [[Signature|Runtime Estimation]]
 *   **Pro & Social**
     *   [[Signature]]
-    *   [[Author Progress Report]]
+    *   [[Author-Progress-Report|Author Progress Report]]
 *   **Reference**
-    *   [[YAML Frontmatter]]
-    *   [[Advanced YAML]]
+    *   [[YAML-Frontmatter|YAML Frontmatter]]
+    *   [[Advanced-YAML|Advanced YAML]]
     *   [[Settings]]
         *   [Core tab](Settings#core)
         *   [Pro tab](Settings#professional)

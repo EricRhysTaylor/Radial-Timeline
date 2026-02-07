@@ -247,11 +247,21 @@ export class InquiryCorpusResolver {
         return { allowAll, allowed };
     }
 
+    /**
+     * Returns true when frontmatter["Summary"] exists.
+     * Synopsis is not used by Inquiry.
+     * Legacy name kept for type compatibility with InquiryCorpusItem.hasSynopsis.
+     */
     private hasSynopsis(frontmatter: Record<string, unknown>): boolean {
-        const value = frontmatter['Synopsis'];
+        const value = frontmatter['Summary'];
         if (Array.isArray(value)) return value.length > 0;
         if (typeof value === 'string') return value.trim().length > 0;
         return !!value;
+    }
+
+    /** Alias for hasSynopsis — prefer in new code to prevent semantic drift. */
+    private hasSummary(frontmatter: Record<string, unknown>): boolean {
+        return this.hasSynopsis(frontmatter);
     }
 
     private isBookFolderByOutline(folderPath: string): boolean {

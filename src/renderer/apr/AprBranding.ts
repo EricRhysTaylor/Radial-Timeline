@@ -396,16 +396,18 @@ export function renderAprCenterPercent(
     const baseNumberPx = layout.centerLabel.numberPx;
     const numberPx = Math.max(1, sizeOverride ?? baseNumberPx);
     const scaleRatio = baseNumberPx > 0 ? numberPx / baseNumberPx : 1;
-    const percentPx = Math.max(1, layout.centerLabel.percentPx * scaleRatio);
+    // % symbol fills the inner circle — independent of number size overrides
+    const percentPx = Math.max(1, layout.centerLabel.percentPx);
     const centerDy = layout.centerLabel.dyPx * scaleRatio;
-    const percentDx = layout.centerLabel.percentDxPx * scaleRatio;
-    const percentBaselineShift = layout.centerLabel.percentBaselineShiftPx * scaleRatio;
+    const percentDx = layout.centerLabel.percentDxPx;
+    const percentBaselineShift = layout.centerLabel.percentBaselineShiftPx;
 
     // For portable mode (Figma), use explicit baseline offsets.
     // For non-portable, rely on dominant-baseline for browser accuracy.
     const baselineAttrs = portableSvg ? '' : 'dominant-baseline="middle" alignment-baseline="middle"';
-    const numberY = portableSvg ? (centerDy + numberPx * 0.35) : centerDy;
-    const percentY = portableSvg ? (centerDy + percentPx * 0.35 - percentBaselineShift) : (centerDy - percentBaselineShift);
+    const numberY = portableSvg ? (centerDy + numberPx * 0.34) : centerDy;
+    // % symbol is centered at origin, independent of number positioning
+    const percentY = portableSvg ? (percentPx * 0.34) : 0;
     const percentDy = 0;
     const numberDy = 0;
 

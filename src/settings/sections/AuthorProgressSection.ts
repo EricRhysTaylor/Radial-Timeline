@@ -175,11 +175,11 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         teaserSelectWrap = sizeSelectorControls.createDiv({ cls: ERT_CLASSES.SKIN_PRO });
         const teaserSelect = teaserSelectWrap.createEl('select', { cls: 'dropdown ert-input ert-input--lg' });
         const teaserOptions: { value: TeaserPreviewMode; label: string }[] = [
-            { value: 'auto', label: 'Teaser: Auto (Current Stage)' },
-            { value: 'bar', label: 'Teaser' },
-            { value: 'scenes', label: 'Scenes (B&W)' },
-            { value: 'colors', label: 'Colors' },
-            { value: 'full', label: 'Full (Subplots)' },
+            { value: 'auto', label: 'Auto (Current Stage)' },
+            { value: 'bar', label: 'Ring' },
+            { value: 'scenes', label: 'Scenes' },
+            { value: 'colors', label: 'Color' },
+            { value: 'full', label: 'Complete' },
         ];
         teaserOptions.forEach(opt => {
             teaserSelect.createEl('option', { value: opt.value, text: opt.label });

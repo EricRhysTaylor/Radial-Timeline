@@ -117,6 +117,24 @@ Configure how Inquiry scans, stores, and annotates briefs. See [[Inquiry]] for f
 *   **Inquiry scan folders**: Limit scans to specific vault paths; supports wildcards and `/` for vault root.
 *   **Class enablement & scope**: Toggle which classes are scanned and whether they apply to Book and/or Saga scopes.
 
+##### How Inquiry identifies books
+
+Inquiry uses two methods to identify which folders are books:
+
+1.  **Folder name**: Folders named `Book 1`, `Book 2`, etc. (case-insensitive) are automatically recognized as books.
+2.  **Outline metadata**: Any folder that contains an Outline file with `scope: book` in its YAML frontmatter is recognized as a book—regardless of the folder's name.
+
+The second method lets you name book folders however you like (e.g., *The Fellowship of the Ring*) as long as the folder contains an Outline note with the following frontmatter:
+
+```yaml
+---
+class: Outline
+scope: book
+---
+```
+
+The Outline file can be anywhere inside the book folder (including inside subfolders like `Plot/`). Folders that match neither method (such as `Characters/` or `Places/`) are excluded from the saga minimap.
+
 <a name="inquiry-prompts"></a>
 #### Inquiry prompts
 *   **Default prompts**: Built-in prompt slots for Setup, Pressure, and Payoff zones.

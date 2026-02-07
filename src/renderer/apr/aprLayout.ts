@@ -60,7 +60,7 @@ export const kCenterNumber = 0.24;
 export const kPercent = 0.5;
 
 export const CENTER_OPTICS = {
-    yShiftEm: 0.06,
+    yShiftEm: -0.04,
     percentDxEm: 0.08,
     percentBaselineShiftEm: 0.12,
 } as const;
@@ -122,15 +122,15 @@ export function computeAprLayout(preset: AprPreset, data: AprData = {}): AprLayo
     const centerNumberPx = preset.enableCenterLabel
         ? clampPx(baseCenterNumberPx * fitScale, 18, 120)
         : 0;
+    // % symbol sized to fill (and slightly overflow) the inner circle
     const centerPercentPx = preset.enableCenterLabel
-        ? clampPx(centerNumberPx * kPercent, 10, 64)
+        ? innerDiameter * 1.1
         : 0;
 
     const centerDyPx = preset.enableCenterLabel ? centerNumberPx * CENTER_OPTICS.yShiftEm : 0;
-    const percentDxPx = preset.enableCenterLabel ? centerNumberPx * CENTER_OPTICS.percentDxEm : 0;
-    const percentBaselineShiftPx = preset.enableCenterLabel
-        ? centerNumberPx * CENTER_OPTICS.percentBaselineShiftEm
-        : 0;
+    // % symbol centered — no horizontal offset or baseline shift
+    const percentDxPx = 0;
+    const percentBaselineShiftPx = 0;
 
     return {
         preset,

@@ -1527,6 +1527,87 @@
   --ert-badgePill-color: var(--text-normal);
 }
 
+/* Omnibus: "How this run works" section */
+.ert-ui.ert-scope--modal .ert-omnibus-how-section {
+  padding: var(--ert-gap-sm) var(--ert-gap-md);
+  background: color-mix(in srgb, var(--background-secondary) 60%, transparent);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--ert-radius-sm, 6px);
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-how-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-how-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-how-list li {
+  margin-bottom: 2px;
+}
+
+/* Omnibus: resume info note */
+.ert-ui.ert-scope--modal .ert-omnibus-resume-note {
+  padding: var(--ert-gap-sm) var(--ert-gap-md);
+  background: color-mix(in srgb, var(--ert-accent) 8%, var(--background-secondary));
+  border: 1px solid color-mix(in srgb, var(--ert-accent) 30%, var(--background-modifier-border));
+  border-radius: var(--ert-radius-sm, 6px);
+  font-size: 12px;
+  color: var(--text-normal);
+}
+
+/* Omnibus: running progress panel */
+.ert-ui.ert-scope--modal .ert-omnibus-progress-panel {
+  padding: var(--ert-gap-lg) var(--ert-gap-md);
+  text-align: center;
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-progress-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-normal);
+  margin-bottom: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-progress-text {
+  font-size: 0.85rem;
+  color: var(--text-normal);
+  margin-bottom: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-progress-micro {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Omnibus: result panel */
+.ert-ui.ert-scope--modal .ert-omnibus-result-panel {
+  padding: var(--ert-gap-lg) var(--ert-gap-md);
+  text-align: center;
+}
+
+.ert-ui.ert-scope--modal .ert-omnibus-result-text {
+  font-size: 0.85rem;
+  color: var(--text-normal);
+}
+
+/* Omnibus: config panel spacing */
+.ert-ui.ert-scope--modal .ert-omnibus-config-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-sm);
+}
+
 .ert-ui.ert-scope--modal .ert-apr-actions.ert-skin--pro.ert-panel--glass {
   --ert-panel-bg: var(--ert-pro-surface-bg);
   --ert-panel-border: var(--ert-pro-border);

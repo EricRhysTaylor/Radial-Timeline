@@ -66,14 +66,15 @@ Click zone segments or findings to drill into specific analysis results.
 
 1.  Open the Inquiry view (`Open Inquiry` command or click the Inquiry ribbon icon).
 2.  Select your **scope** (Book or Saga).
-3.  Choose a **zone** (Setup, Pressure, or Payoff).
-4.  Select a **question** from the prompt library.
-5.  Click **Run** to send the corpus to your configured AI provider.
-6.  Review findings in the results panel — each finding includes a headline, impact rating, confidence level, and scene citations.
+3.  Hover a **question** inside the desired zone (Setup, Pressure, or Payoff) to preview the prompt and payload details, including the token estimate.
+4.  Click the question's **number badge** to run that single question against your selected AI provider.
+5.  Review findings in the results panel — each finding includes a headline, impact rating, confidence level, and scene citations.
 
 ### Omnibus Pass
 
 The Omnibus Pass runs all enabled questions across all three zones in sequence. Use the `Inquiry Omnibus Pass` command or the Omnibus button in the Inquiry view.
+
+**Corpus overrides**: Any Corpus Manager overrides set in the Inquiry view are applied to the Omnibus run. If no overrides are active, the run falls back to the Inquiry Settings corpus configuration.
 
 ---
 

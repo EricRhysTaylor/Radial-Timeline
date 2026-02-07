@@ -1,28 +1,52 @@
 /*
- * AI Synopsis Prompt Builder
- * Generates factual, non-stylized scene synopses
+ * AI Summary & Synopsis Prompt Builders
+ * Summary = longform AI-generated scene analysis (≈200–300 words)
+ * Synopsis = concise, skimmable navigation text (1–3 sentences, max N lines)
  */
+
+const SUMMARY_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    "summary": {
+      type: "string",
+      description: "Factual longform summary of scene events (≈200–300 words)"
+    }
+  },
+  required: ["summary"]
+};
 
 const SYNOPSIS_JSON_SCHEMA = {
   type: "object",
   properties: {
     "synopsis": {
       type: "string",
-      description: "Factual summary of scene events (max 50-75 words)"
+      description: "Concise scene synopsis for navigation and hovers (1–3 sentences)"
     }
   },
   required: ["synopsis"]
 };
 
+export function getSummaryJsonSchema() {
+  return SUMMARY_JSON_SCHEMA;
+}
+
 export function getSynopsisJsonSchema() {
   return SYNOPSIS_JSON_SCHEMA;
+}
+
+export function getSummarySystemPrompt(): string {
+  return `You are a precise, neutral summarizer for fiction manuscripts. Your goal is to generate detailed, purely factual summaries of scene events for an analysis database. Do not critique, do not improve the prose, and do not use flowery language.`;
 }
 
 export function getSynopsisSystemPrompt(): string {
   return `You are a precise, neutral summarizer for fiction manuscripts. Your goal is to generate short, purely factual summaries of scene events for an outline database. Do not critique, do not improve the prose, and do not use flowery language.`;
 }
 
-export function buildSynopsisPrompt(
+/**
+ * Build a prompt for generating a longform Summary (≈200–300 words).
+ * This is the primary AI-generated artifact.
+ */
+export function buildSummaryPrompt(
   sceneBody: string,
   sceneNumber: string,
   targetWords: number = 300,
@@ -38,11 +62,11 @@ export function buildSynopsisPrompt(
     paragraphGuidance = '3-4 paragraphs';
   }
 
-  return `${instructions}Read the scene below and write a factual synopsis (summary of events).
+  return `${instructions}Read the scene below and write a factual summary of events.
 Return ONLY valid JSON matching this structure:
 
 {
-  "synopsis": "Character A does X, then Y happens..."
+  "summary": "Character A does X, then Y happens..."
 }
 
 Rules:
@@ -52,6 +76,37 @@ Rules:
 4. TONE: Neutral, objective, unadorned. No flowery prose.
 5. CONTENT: Do NOT include analysis, critique, or "The scene is about...". Just the events.
 6. FORMAT: Output ONLY valid JSON. No markdown fencing around the JSON.
+
+Scene ${sceneNumber}:
+${sceneBody || 'N/A'}
+`;
+}
+
+/**
+ * Build a prompt for generating a short Synopsis (1–3 sentences).
+ * Synopsis is concise, skimmable navigation text for hovers and outlines.
+ */
+export function buildSynopsisPrompt(
+  sceneBody: string,
+  sceneNumber: string,
+  maxLines: number = 3,
+  extraInstructions?: string
+): string {
+  let instructions = extraInstructions ? extraInstructions.trim() + '\n\n' : '';
+
+  return `${instructions}Read the scene below and write a concise synopsis (brief summary).
+Return ONLY valid JSON matching this structure:
+
+{
+  "synopsis": "One to three sentence synopsis of the scene."
+}
+
+Rules:
+1. FOCUS: Purely factual summary of the main event(s) in the scene.
+2. LENGTH: Maximum ${maxLines} lines. Aim for 1–3 sentences.
+3. TONE: Neutral, objective, concise. No flowery prose.
+4. CONTENT: Capture the key action or turning point. Do NOT include analysis or "The scene is about...".
+5. FORMAT: Output ONLY valid JSON. No markdown fencing around the JSON.
 
 Scene ${sceneNumber}:
 ${sceneBody || 'N/A'}

@@ -14,6 +14,11 @@ export class InquiryService {
     }
 
     async activateView(): Promise<void> {
+        if (!(this.plugin.settings.enableAiSceneAnalysis ?? true)) {
+            new Notice('Inquiry requires AI features to be enabled. Turn on "Enable AI LLM features" in settings.');
+            return;
+        }
+
         const leaves = this.app.workspace.getLeavesOfType(INQUIRY_VIEW_TYPE);
         if (leaves.length > 0) {
             this.app.workspace.revealLeaf(leaves[0]);
@@ -29,6 +34,10 @@ export class InquiryService {
     }
 
     async runOmnibusPass(): Promise<void> {
+        if (!(this.plugin.settings.enableAiSceneAnalysis ?? true)) {
+            new Notice('Inquiry requires AI features to be enabled. Turn on "Enable AI LLM features" in settings.');
+            return;
+        }
         await this.activateView();
         const view = this.getInquiryViews()[0];
         if (!view) {

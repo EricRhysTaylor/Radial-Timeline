@@ -134,6 +134,10 @@
   gap: 12px;
 }
 
+.rt-sub-card.rt-hidden {
+  display: none;
+}
+
 .rt-sub-card-head {
   display: flex;
   align-items: center;

@@ -273,6 +273,17 @@ export interface InquiryCorpusThresholds {
     substantiveMin: number;
 }
 
+export interface OmnibusProgressState {
+    totalQuestions: number;
+    completedQuestionIds: string[];
+    scope: InquiryScope;
+    questionIds: string[];
+    useOmnibus: boolean;
+    corpusSettingsFingerprint: string;
+    indexNotePath?: string;
+    abortedAt?: string;
+}
+
 export interface InquirySessionCacheRecord {
     sessions: {
         key: string;
@@ -313,6 +324,7 @@ export interface RadialTimelineSettings {
     inquiryCorpusHighlightLowSubstanceComplete?: boolean;
     inquiryActionNotesAutoPopulate?: boolean;
     inquiryActionNotesTargetField?: string;
+    inquiryOmnibusProgress?: OmnibusProgressState;
     actCount?: number;
     actLabelsRaw?: string;
     publishStageColors: {
@@ -367,9 +379,16 @@ export interface RadialTimelineSettings {
     _isResuming?: boolean;
     _resumingMode?: 'flagged' | 'unprocessed' | 'force-all';
     lastSeenReleaseNotesVersion?: string;
-    // Synopsis generation settings
-    synopsisTargetWords?: number; // Target word count for AI-generated synopses (default: 200)
-    synopsisWeakThreshold?: number; // Word count below which a synopsis is considered "weak" (default: 75)
+    // Synopsis generation settings (legacy names — now control Summary generation)
+    synopsisTargetWords?: number; // Target word count for AI-generated summaries (default: 200)
+    synopsisWeakThreshold?: number; // Word count below which a summary is considered "weak" (default: 75)
+
+    // Summary & Synopsis generation settings
+    alsoUpdateSynopsis?: boolean; // When running Summary refresh, also generate Synopsis (default: false)
+    synopsisGenerationMaxLines?: number; // Max lines for AI-generated Synopsis (default: 3)
+
+    // Internal AI update timestamps (per-scene, keyed by file path)
+    aiUpdateTimestamps?: Record<string, { synopsisUpdated?: string; summaryUpdated?: string }>
     cachedReleaseNotes?: EmbeddedReleaseNotesBundle | null;
     releaseNotesLastFetched?: string;
     enablePlanetaryTime?: boolean;

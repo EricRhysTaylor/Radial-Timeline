@@ -67,8 +67,8 @@ export const REFACTOR_ALERTS: RefactorAlert[] = [
         id: 'change-type-pulse-update',
         severity: 'info',
         icon: 'info',
-        title: 'YAML Type Change: Pending Edits & New Synopsis Update',
-        description: '"Pending Edits" is no longer a boolean. It is now a string so it can act as both a yes/no flag and record the last AI API hit (timestamp and AI used). A new YAML field "Synopsis Update" works identically: string value with timestamp and AI used.',
+        title: 'YAML Type Change: Pending Edits & Summary Update',
+        description: '"Pending Edits" is no longer a boolean. It is now a string so it can act as both a yes/no flag and record the last AI API hit (timestamp and AI used). The YAML field "Summary Update" (formerly "Synopsis Update") works identically: string value with timestamp and AI used.',
     },
     {
         id: 'radial-timeline-folder-structure',

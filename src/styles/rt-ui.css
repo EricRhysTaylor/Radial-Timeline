@@ -160,6 +160,11 @@
   display: none;
 }
 
+/* Global hidden utility for elements outside ert-ui scope (e.g. ribbon icons) */
+.side-dock-ribbon-action.ert-hidden {
+  display: none;
+}
+
 .ert-ui.ert-scope--settings .ert-metrics-sample {
   position: absolute;
   visibility: hidden;

@@ -23,6 +23,8 @@ import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { getRuntimeSettings } from '../utils/runtimeEstimator';
 
 export class CommandRegistrar {
+    private inquiryRibbonIcon: HTMLElement | null = null;
+
     constructor(private plugin: RadialTimelinePlugin, private app: App) { }
 
     registerAll(): void {
@@ -30,13 +32,24 @@ export class CommandRegistrar {
         this.registerCommands();
     }
 
+    /** Hide or show the Inquiry ribbon icon based on AI enabled state. */
+    setInquiryRibbonVisible(visible: boolean): void {
+        if (this.inquiryRibbonIcon) {
+            this.inquiryRibbonIcon.toggleClass('ert-hidden', !visible);
+        }
+    }
+
     private registerRibbon(): void {
         this.plugin.addRibbonIcon('shell', 'Radial timeline', () => {
             this.plugin.getTimelineService().activateView();
         });
-        this.plugin.addRibbonIcon('waves', 'Inquiry', () => {
+        this.inquiryRibbonIcon = this.plugin.addRibbonIcon('waves', 'Inquiry', () => {
             this.plugin.getInquiryService().activateView();
         });
+        // Hide Inquiry ribbon if AI is disabled on load
+        if (!(this.plugin.settings.enableAiSceneAnalysis ?? true)) {
+            this.inquiryRibbonIcon.toggleClass('ert-hidden', true);
+        }
     }
 
     private registerCommands(): void {

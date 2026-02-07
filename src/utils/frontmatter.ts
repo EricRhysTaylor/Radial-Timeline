@@ -38,6 +38,8 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>, customMapp
     'date': 'Date',
     'status': 'Status',
     'synopsis': 'Synopsis',
+    'summary': 'Summary',
+    'summaryupdate': 'Summary Update',
     'end': 'End',
     'description': 'Description',
     'range': 'Range',

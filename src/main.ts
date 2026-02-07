@@ -291,6 +291,18 @@ export default class RadialTimelinePlugin extends Plugin {
     public getTimelineService(): TimelineService { return this.timelineService; }
     public getInquiryService(): InquiryService { return this.inquiryService; }
 
+    /** Show or hide the Inquiry ribbon icon and close open Inquiry views when hiding. */
+    public setInquiryVisible(visible: boolean): void {
+        this.commandRegistrar.setInquiryRibbonVisible(visible);
+        if (!visible) {
+            // Close any open Inquiry leaves
+            const leaves = this.app.workspace.getLeavesOfType(INQUIRY_VIEW_TYPE);
+            for (const leaf of leaves) {
+                leaf.detach();
+            }
+        }
+    }
+
     public isSceneFile(path: string): boolean {
         return this.sceneHighlighter.isSceneFile(path);
     }

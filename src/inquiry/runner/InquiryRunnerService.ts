@@ -23,7 +23,7 @@ type EvidenceBlock = {
 type SceneSnapshot = {
     path: string;
     label: string;
-    synopsis: string;
+    summary: string;  // Longform Summary field (frontmatter["Summary"])
     sceneNumber?: number;
 };
 
@@ -241,8 +241,8 @@ export class InquiryRunnerService implements InquiryRunner {
             for (const scene of scenes) {
                 const mode = sceneModeByPath.get(scene.path) ?? 'none';
                 if (mode === 'summary') {
-                    if (!scene.synopsis) continue;
-                    blocks.push({ label: `Scene ${scene.label} synopsis`, content: scene.synopsis });
+                    if (!scene.summary) continue;
+                    blocks.push({ label: `Scene ${scene.label} summary`, content: scene.summary });
                     continue;
                 }
                 if (mode === 'full') {
@@ -271,8 +271,8 @@ export class InquiryRunnerService implements InquiryRunner {
             for (const scene of scenes) {
                 const mode = sceneModeByPath.get(scene.path) ?? 'none';
                 if (mode === 'summary') {
-                    if (!scene.synopsis) continue;
-                    blocks.push({ label: `Scene ${scene.label} synopsis`, content: scene.synopsis });
+                    if (!scene.summary) continue;
+                    blocks.push({ label: `Scene ${scene.label} summary`, content: scene.summary });
                     continue;
                 }
                 if (mode === 'full') {
@@ -290,6 +290,19 @@ export class InquiryRunnerService implements InquiryRunner {
             blocks.push({ label: 'Evidence', content: 'No evidence available for the selected scope.' });
         }
 
+        // Hard guard: Inquiry corpus must never include Synopsis-sourced content.
+        // Catches accidental reintroduction of Synopsis semantics in future changes.
+        if (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') {
+            for (const block of blocks) {
+                if (/\bsynopsis\b/i.test(block.label)) {
+                    console.warn(
+                        `[Inquiry guard] Evidence block label "${block.label}" contains "synopsis". ` +
+                        `Inquiry corpus must use Summary only. This may indicate a regression.`
+                    );
+                }
+            }
+        }
+
         return blocks;
     }
 
@@ -301,12 +314,12 @@ export class InquiryRunnerService implements InquiryRunner {
             if (!file || !('path' in file)) return;
             if (!this.isTFile(file)) return;
             const frontmatter = this.getFrontmatter(file);
-            const synopsis = this.extractSynopsis(frontmatter);
+            const summary = this.extractSummary(frontmatter);
             const sceneNumber = this.extractSceneNumber(frontmatter);
             scenes.push({
                 path: file.path,
                 label: '',
-                synopsis,
+                summary,
                 sceneNumber
             });
         });
@@ -335,9 +348,9 @@ export class InquiryRunnerService implements InquiryRunner {
                 ? this.buildBookOutlineLabel(entry.path, fallbackLabel)
                 : fallbackLabel;
             if (mode === 'summary') {
-                const synopsis = this.getSynopsisForPath(entry.path);
-                if (!synopsis) continue;
-                blocks.push({ label: `${baseLabel} summary`, content: synopsis });
+                const summary = this.getSummaryForPath(entry.path);
+                if (!summary) continue;
+                blocks.push({ label: `${baseLabel} summary`, content: summary });
                 continue;
             }
             const content = await this.readFileContent(entry.path);
@@ -354,9 +367,9 @@ export class InquiryRunnerService implements InquiryRunner {
             if (mode === 'none') continue;
             const baseLabel = this.buildReferenceLabel(entry);
             if (mode === 'summary') {
-                const synopsis = this.getSynopsisForPath(entry.path);
-                if (!synopsis) continue;
-                blocks.push({ label: `${baseLabel} summary`, content: synopsis });
+                const summary = this.getSummaryForPath(entry.path);
+                if (!summary) continue;
+                blocks.push({ label: `${baseLabel} summary`, content: summary });
                 continue;
             }
             const content = await this.readFileContent(entry.path);
@@ -407,12 +420,12 @@ export class InquiryRunnerService implements InquiryRunner {
         }
     }
 
-    private getSynopsisForPath(path: string): string | null {
+    private getSummaryForPath(path: string): string | null {
         const file = this.vault.getAbstractFileByPath(path);
         if (!file || !this.isTFile(file)) return null;
         const frontmatter = this.getFrontmatter(file);
-        const synopsis = this.extractSynopsis(frontmatter);
-        return synopsis ? synopsis : null;
+        const summary = this.extractSummary(frontmatter);
+        return summary ? summary : null;
     }
 
     private normalizeEntryMode(mode?: CorpusManifestEntry['mode']): 'none' | 'summary' | 'full' {
@@ -433,8 +446,8 @@ export class InquiryRunnerService implements InquiryRunner {
             'You are an editorial analysis engine.',
             'Scores are corpus-level diagnostics, not answer quality.',
             'Scope clarification:',
-            'Book: material = scenes in this book (synopsis-based unless configured otherwise).',
-            'Saga: material = books in saga (outlines + scene synopses unless configured otherwise).',
+            'Book: material = scenes in this book (summary-based unless configured otherwise).',
+            'Saga: material = books in saga (outlines + scene summaries unless configured otherwise).',
             'Return JSON only. No prose outside JSON.'
         ].join('\n');
         // Lens choice is UI-only; always request both flow + depth in the same response.
@@ -500,8 +513,8 @@ export class InquiryRunnerService implements InquiryRunner {
             'You are an editorial analysis engine.',
             'Scores are corpus-level diagnostics, not answer quality.',
             'Scope clarification:',
-            'Book: material = scenes in this book (synopsis-based unless configured otherwise).',
-            'Saga: material = books in saga (outlines + scene synopses unless configured otherwise).',
+            'Book: material = scenes in this book (summary-based unless configured otherwise).',
+            'Saga: material = books in saga (outlines + scene summaries unless configured otherwise).',
             'Return JSON only. No prose outside JSON.'
         ].join('\n');
 
@@ -1022,8 +1035,12 @@ export class InquiryRunnerService implements InquiryRunner {
         return normalizeFrontmatterKeys(frontmatter, this.frontmatterMappings);
     }
 
-    private extractSynopsis(frontmatter: Record<string, unknown>): string {
-        const raw = frontmatter['Synopsis'];
+    /**
+     * Extract longform Summary from frontmatter for Inquiry context.
+     * Reads exclusively from frontmatter["Summary"]. Synopsis is never used.
+     */
+    private extractSummary(frontmatter: Record<string, unknown>): string {
+        const raw = frontmatter['Summary'];
         if (Array.isArray(raw)) {
             return raw.map(value => String(value)).join('\n').trim();
         }

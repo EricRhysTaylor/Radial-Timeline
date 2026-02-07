@@ -89,7 +89,8 @@ export class SceneAnalysisProcessingModal extends Modal {
     private readonly isEntireSubplot?: boolean; // Track if this is "entire subplot" vs "flagged scenes"
     private readonly taskType: 'pulse' | 'synopsis';
 
-    private processedResults: Map<string, string> = new Map(); // Store results for synopsis apply phase
+    private processedResults: Map<string, string> = new Map(); // Store summary results for apply phase
+    private processedSynopsisResults: Map<string, string> = new Map(); // Store synopsis results for apply phase
     private hasPendingSynopsisResults: boolean = false; // Flag to indicate results are ready to apply
 
     private selectedMode: ProcessingMode = 'flagged';
@@ -205,7 +206,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     private getProcessingTitle(): string {
         if (this.taskType === 'synopsis') {
-            return 'Synopsis scene refresh';
+            return 'Synopsis & Summary Refresh';
         }
         if (this.subplotName) {
             return this.isEntireSubplot
@@ -221,17 +222,16 @@ export class SceneAnalysisProcessingModal extends Modal {
             case 'force-all': return 'Reprocessing every completed scene';
             case 'flagged': return 'Analyze flagged scenes in manuscript order';
             case 'synopsis-flagged': return 'Update flagged scenes';
-            case 'synopsis-missing-weak': return 'Update missing or weak synopses';
-            case 'synopsis-missing': return 'Update missing synopses only';
-            case 'synopsis-all': return 'Regenerate ALL synopses';
+            case 'synopsis-missing-weak': return 'Update missing, weak, or stale summaries';
+            case 'synopsis-missing': return 'Update missing summaries only';
+            case 'synopsis-all': return 'Regenerate ALL summaries';
             default: return mode;
         }
     }
 
     private getProcessingSubtitle(): string {
         if (this.taskType === 'synopsis') {
-            const maxLines = this.plugin.settings.synopsisHoverMaxLines ?? 5;
-            return `AI-generated scene synopses using settings below. Claude Sonnet recommended. Hover preview minimum lines: ${maxLines} (Settings → Configuration)`;
+            return 'AI-generated scene summaries using settings below. Claude Sonnet recommended.';
         }
         if (this.subplotName) {
             return this.isEntireSubplot
@@ -248,7 +248,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         // Use flat header style matching Book Designer (no border/background on header)
         const hero = parent.createDiv({ cls: 'ert-modal-header' });
         const modelLabel = this.getActiveModelDisplayName();
-        const badgeLabel = this.taskType === 'synopsis' ? 'AI Synopsis' : 'AI Pulse Run';
+        const badgeLabel = this.taskType === 'synopsis' ? 'AI Summary' : 'AI Pulse Run';
         const badgeText = modelLabel ? `${badgeLabel} · ${modelLabel}` : badgeLabel;
         hero.createSpan({ text: badgeText, cls: 'rt-scene-analysis-badge' });
         hero.createDiv({ text: this.getProcessingTitle(), cls: 'ert-modal-title' });
@@ -464,16 +464,16 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         this.renderProcessingHero(contentEl);
 
-        // Synopsis size controls (only for synopsis mode)
+        // Summary & Synopsis controls (only for synopsis/summary mode)
         if (this.taskType === 'synopsis') {
             const controlsCard = contentEl.createDiv({ cls: 'rt-glass-card rt-synopsis-controls' });
 
-            // Target Synopsis Length - Two column layout
+            // Target Summary Length - Two column layout
             const targetControl = controlsCard.createDiv({ cls: 'rt-synopsis-control rt-synopsis-control--row' });
             const targetInfo = targetControl.createDiv({ cls: 'rt-synopsis-control-info' });
-            targetInfo.createEl('label', { text: 'Target synopsis length', cls: 'rt-synopsis-control-label' });
+            targetInfo.createEl('label', { text: 'Target summary length', cls: 'rt-synopsis-control-label' });
             targetInfo.createDiv({
-                text: 'Used when generating or regenerating synopses.',
+                text: 'Word count target when generating or regenerating summaries.',
                 cls: 'rt-synopsis-control-help'
             });
             const targetInput = targetControl.createEl('input', {
@@ -505,10 +505,10 @@ export class SceneAnalysisProcessingModal extends Modal {
             // Horizontal rule separator
             controlsCard.createEl('hr', { cls: 'rt-synopsis-control-divider' });
 
-            // Weak Synopsis Threshold - Two column layout
+            // Weak Summary Threshold - Two column layout
             const thresholdControl = controlsCard.createDiv({ cls: 'rt-synopsis-control rt-synopsis-control--row' });
             const thresholdInfo = thresholdControl.createDiv({ cls: 'rt-synopsis-control-info' });
-            thresholdInfo.createEl('label', { text: 'Treat synopsis as weak if under', cls: 'rt-synopsis-control-label' });
+            thresholdInfo.createEl('label', { text: 'Treat summary as weak if under', cls: 'rt-synopsis-control-label' });
             thresholdInfo.createDiv({
                 text: 'Only used to decide which scenes are selected for update.',
                 cls: 'rt-synopsis-control-help'
@@ -543,6 +543,65 @@ export class SceneAnalysisProcessingModal extends Modal {
             // Warning for target < threshold
             const warningEl = controlsCard.createDiv({ cls: 'rt-synopsis-threshold-warning' });
             this.checkThresholdWarning(warningEl);
+
+            // Horizontal rule separator
+            controlsCard.createEl('hr', { cls: 'rt-synopsis-control-divider' });
+
+            // Also update Synopsis checkbox + max lines input
+            const synopsisControl = controlsCard.createDiv({ cls: 'rt-synopsis-control rt-synopsis-control--row' });
+            const synopsisInfo = synopsisControl.createDiv({ cls: 'rt-synopsis-control-info' });
+            const synopsisCheckboxRow = synopsisInfo.createDiv({ cls: 'rt-synopsis-checkbox-row' });
+            const synopsisCheckbox = synopsisCheckboxRow.createEl('input', {
+                type: 'checkbox',
+                cls: 'rt-synopsis-control-checkbox'
+            }) as HTMLInputElement;
+            synopsisCheckbox.checked = this.plugin.settings.alsoUpdateSynopsis ?? false;
+            synopsisCheckboxRow.createEl('label', {
+                text: 'Also update Synopsis',
+                cls: 'rt-synopsis-control-label'
+            });
+            synopsisInfo.createDiv({
+                text: 'Generate a short 1–3 sentence synopsis independently from scene content (not from Summary). Used for hovers and outlines.',
+                cls: 'rt-synopsis-control-help'
+            });
+
+            // Synopsis max lines input (appears next to checkbox in right column)
+            const synopsisMaxLinesInput = synopsisControl.createEl('input', {
+                type: 'number',
+                cls: 'rt-synopsis-control-input',
+                attr: { min: '1', max: '10', step: '1', placeholder: '3' }
+            }) as HTMLInputElement;
+            synopsisMaxLinesInput.value = String(this.plugin.settings.synopsisGenerationMaxLines ?? 3);
+
+            // Show/hide max lines input based on checkbox state
+            const updateSynopsisInputVisibility = () => {
+                synopsisMaxLinesInput.style.opacity = synopsisCheckbox.checked ? '1' : '0.4';
+                synopsisMaxLinesInput.disabled = !synopsisCheckbox.checked;
+            };
+            updateSynopsisInputVisibility();
+
+            synopsisCheckbox.addEventListener('change', () => {
+                this.plugin.settings.alsoUpdateSynopsis = synopsisCheckbox.checked;
+                this.plugin.saveSettings();
+                updateSynopsisInputVisibility();
+            });
+
+            const saveSynopsisMaxLines = () => {
+                const val = parseInt(synopsisMaxLinesInput.value, 10);
+                if (!isNaN(val) && val >= 1 && val <= 10) {
+                    this.plugin.settings.synopsisGenerationMaxLines = val;
+                    this.plugin.saveSettings();
+                }
+            };
+
+            synopsisMaxLinesInput.addEventListener('change', saveSynopsisMaxLines);
+            synopsisMaxLinesInput.addEventListener('blur', saveSynopsisMaxLines);
+            synopsisMaxLinesInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    saveSynopsisMaxLines();
+                    synopsisMaxLinesInput.blur();
+                }
+            });
         }
 
         // Mode selection
@@ -552,29 +611,29 @@ export class SceneAnalysisProcessingModal extends Modal {
             this.createModeOption(
                 modesSection,
                 'synopsis-flagged',
-                'Selected scenes (Synopsis Update: yes)',
-                'Processes scenes with Synopsis Update: yes in frontmatter.',
+                'Selected scenes (Summary Update: yes)',
+                'Processes scenes with Summary Update: yes in frontmatter.',
                 false
             );
             this.createModeOption(
                 modesSection,
                 'synopsis-missing',
                 'Missing only',
-                'Only processes scenes with absolutely no synopsis text.',
+                'Only processes scenes with absolutely no summary text.',
                 false
             );
             this.createModeOption(
                 modesSection,
                 'synopsis-missing-weak',
-                'Missing or weak (Recommended)',
-                `Processes scenes with no synopsis or under ${this.synopsisWeakThreshold} words.`,
+                'Missing, weak, or stale (Recommended)',
+                `Processes scenes with no summary, under ${this.synopsisWeakThreshold} words, or with a Due date newer than last AI update.`,
                 true
             );
             this.createModeOption(
                 modesSection,
                 'synopsis-all',
                 'Regenerate all (Warning)',
-                'Regenerates synopses for every scene. Existing synopses will be overwritten.',
+                'Regenerates summaries for every scene. Existing summaries will be overwritten.',
                 false
             );
         } else {
@@ -719,7 +778,7 @@ export class SceneAnalysisProcessingModal extends Modal {
      */
     private checkThresholdWarning(warningEl: HTMLElement): void {
         if (this.synopsisTargetWords < this.synopsisWeakThreshold) {
-            warningEl.textContent = `⚠️ Target size (${this.synopsisTargetWords}) is less than weak threshold (${this.synopsisWeakThreshold}). Newly generated synopses may be immediately classified as weak.`;
+            warningEl.textContent = `⚠️ Target size (${this.synopsisTargetWords}) is less than weak threshold (${this.synopsisWeakThreshold}). Newly generated summaries may be immediately classified as weak.`;
             warningEl.classList.add('is-visible');
         } else {
             warningEl.classList.remove('is-visible');
@@ -851,7 +910,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.renderQueueItems();
         this.queueNoteEl = rulerBlock.createDiv({ cls: 'rt-pulse-ruler-note' });
         if (this.taskType === 'synopsis') {
-            this.queueNoteEl.setText('Processing scenes to generate or update synopses based on scene content.');
+            this.queueNoteEl.setText('Processing scenes to generate or update summaries based on scene content.');
         } else {
             this.queueNoteEl.setText('Triplets animate as the AI advances - starts, endings, and missing scenes handled automatically.');
         }
@@ -888,24 +947,25 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.heroStatusEl.empty();
         const previewLine = this.heroStatusEl.createDiv({ cls: 'rt-synopsis-preview-line' });
 
-        // "Previous:" label inline
-        previewLine.createSpan({ cls: 'rt-synopsis-preview-label', text: 'Previous: ' });
+        // "Previous Summary:" label inline
+        previewLine.createSpan({ cls: 'rt-synopsis-preview-label', text: 'Previous Summary: ' });
 
-        // Old synopsis in italics (only show if there's a new synopsis, not during "Generating...")
+        // Old summary in italics (only show if there's a new summary, not during "Generating...")
         if (newSynopsis !== 'Generating...') {
             const oldText = previewLine.createSpan({ cls: 'rt-synopsis-preview-old' });
-            oldText.setText(oldSynopsis || '(No synopsis)');
+            oldText.setText(oldSynopsis || '(No summary)');
         }
     }
 
     /**
-     * Store synopsis results for the apply phase.
+     * Store summary (and optional synopsis) results for the apply phase.
      * Called from SynopsisCommands when processing completes.
      * The modal will show Apply/Discard in the completion summary.
      */
-    public setSynopsisResults(results: Map<string, string>): void {
-        this.processedResults = results;
-        this.hasPendingSynopsisResults = results.size > 0;
+    public setSynopsisResults(summaryResults: Map<string, string>, synopsisResults?: Map<string, string>): void {
+        this.processedResults = summaryResults;
+        this.processedSynopsisResults = synopsisResults ?? new Map();
+        this.hasPendingSynopsisResults = summaryResults.size > 0;
     }
 
     /**
@@ -923,12 +983,12 @@ export class SceneAnalysisProcessingModal extends Modal {
         });
 
         const card = contentEl.createDiv({ cls: 'rt-glass-card rt-apply-card' });
-        card.createDiv({ cls: 'rt-apply-message', text: `Processing complete. ${results.size} scenes have new synopses ready to apply.` });
+        card.createDiv({ cls: 'rt-apply-message', text: `Processing complete. ${results.size} scenes have new summaries ready to apply.` });
 
         const warning = card.createDiv({ cls: 'rt-apply-warning' });
         const warningIcon = warning.createSpan({ cls: 'rt-warning-icon' });
         setIcon(warningIcon, 'alert-triangle');
-        warning.createSpan({ text: 'This will overwrite existing Synopsis fields in your frontmatter.' });
+        warning.createSpan({ text: 'This will overwrite existing Summary fields in your frontmatter.' });
 
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
 
@@ -946,10 +1006,12 @@ export class SceneAnalysisProcessingModal extends Modal {
     }
 
     private async applyChanges(): Promise<void> {
-        const { processedResults } = this;
+        const { processedResults, processedSynopsisResults } = this;
         if (processedResults.size === 0) return;
 
-        const note = new Notice(`Applying ${processedResults.size} synopsis updates...`, 0);
+        const hasSynopsis = processedSynopsisResults.size > 0;
+        const label = hasSynopsis ? 'summary & synopsis' : 'summary';
+        const note = new Notice(`Applying ${processedResults.size} ${label} updates...`, 0);
         let updated = 0;
 
         try {
@@ -966,47 +1028,82 @@ export class SceneAnalysisProcessingModal extends Modal {
                 modelId = this.plugin.settings.localModelId || 'local-model';
             }
 
-            for (const [path, newSynopsis] of processedResults.entries()) {
+            const now = new Date();
+            const isoNow = now.toISOString();
+            const timestamp = now.toLocaleString(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            } as Intl.DateTimeFormatOptions);
+
+            // Ensure aiUpdateTimestamps map exists
+            if (!this.plugin.settings.aiUpdateTimestamps) {
+                this.plugin.settings.aiUpdateTimestamps = {};
+            }
+
+            for (const [path, newSummary] of processedResults.entries()) {
                 const file = this.plugin.app.vault.getAbstractFileByPath(path);
                 if (file && file instanceof TFile) {
                     await this.plugin.app.fileManager.processFrontMatter(file, (fm) => {
-                        fm['Synopsis'] = newSynopsis;
+                        // Write Summary (primary artifact)
+                        fm['Summary'] = newSummary;
 
-                        // Replace Synopsis Update flag with timestamp (single field pattern)
-                        // This is cleaner than Pulse's two-field approach
-                        const now = new Date();
-                        const timestamp = now.toLocaleString(undefined, {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: true
-                        } as Intl.DateTimeFormatOptions);
+                        // Write Synopsis if also generated
+                        const newSynopsis = processedSynopsisResults.get(path);
+                        if (newSynopsis) {
+                            fm['Synopsis'] = newSynopsis;
+                        }
 
-                        // Check all possible variations and replace with timestamp
-                        const synopsisUpdateKeys = ['Synopsis Update', 'SynopsisUpdate', 'synopsisupdate'];
+                        // Replace Summary Update / legacy Synopsis Update flag with timestamp
+                        const summaryUpdateKeys = ['Summary Update', 'SummaryUpdate', 'summaryupdate'];
+                        const legacyKeys = ['Synopsis Update', 'SynopsisUpdate', 'synopsisupdate'];
+
                         let updatedFlag = false;
-                        for (const key of synopsisUpdateKeys) {
+
+                        // Try Summary Update keys first
+                        for (const key of summaryUpdateKeys) {
                             if (key in fm) {
                                 fm[key] = `${timestamp} by ${modelId}`;
                                 updatedFlag = true;
-                                break; // Only update the first matching key
+                                break;
                             }
                         }
-                        // If no existing flag, create one
+
+                        // Fall back to legacy Synopsis Update keys (migrate to Summary Update)
                         if (!updatedFlag) {
-                            fm['Synopsis Update'] = `${timestamp} by ${modelId}`;
+                            for (const key of legacyKeys) {
+                                if (key in fm) {
+                                    delete fm[key];
+                                    fm['Summary Update'] = `${timestamp} by ${modelId}`;
+                                    updatedFlag = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Create new flag if none existed
+                        if (!updatedFlag) {
+                            fm['Summary Update'] = `${timestamp} by ${modelId}`;
                         }
                     });
+
+                    // Track internal AI update timestamps
+                    const sceneTimestamps = this.plugin.settings.aiUpdateTimestamps![path] ?? {};
+                    sceneTimestamps.summaryUpdated = isoNow;
+                    if (processedSynopsisResults.has(path)) {
+                        sceneTimestamps.synopsisUpdated = isoNow;
+                    }
+                    this.plugin.settings.aiUpdateTimestamps![path] = sceneTimestamps;
+
                     updated++;
                 }
             }
             new Notice(`Successfully updated ${updated} scenes.`);
 
-            // Trigger Hooks (Inquiry Rescan / Stats)
-            // Inquiry rescan is usually automatic on file modify, but we can trigger explicitly if needed.
-            // Stats update via settings save.
+            // Save settings (includes internal timestamps)
             await this.plugin.saveSettings();
 
         } catch (e) {
@@ -1349,14 +1446,19 @@ export class SceneAnalysisProcessingModal extends Modal {
                 // Add synopsis apply confirmation card above the buttons
                 contentEl.querySelectorAll('.rt-synopsis-apply-card').forEach(el => el.remove());
                 const applyCard = contentEl.createDiv({ cls: 'rt-glass-card rt-synopsis-apply-card' });
+                const hasSynopsisToo = this.processedSynopsisResults.size > 0;
+                const artifactLabel = hasSynopsisToo ? 'summaries and synopses' : 'summaries';
                 applyCard.createDiv({
                     cls: 'rt-apply-message',
-                    text: `Processing complete. ${this.processedResults.size} scenes have new synopses ready to apply.`
+                    text: `Processing complete. ${this.processedResults.size} scenes have new ${artifactLabel} ready to apply.`
                 });
                 const warning = applyCard.createDiv({ cls: 'rt-apply-warning' });
                 const warningIcon = warning.createSpan({ cls: 'rt-warning-icon' });
                 setIcon(warningIcon, 'alert-triangle');
-                warning.createSpan({ text: 'This will overwrite existing Synopsis fields in your frontmatter.' });
+                const warningText = hasSynopsisToo
+                    ? 'This will overwrite existing Summary and Synopsis fields in your frontmatter.'
+                    : 'This will overwrite existing Summary fields in your frontmatter.';
+                warning.createSpan({ text: warningText });
 
                 // Insert the card before the action buttons
                 this.actionButtonContainer.before(applyCard);

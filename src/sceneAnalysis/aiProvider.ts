@@ -279,10 +279,10 @@ export async function callAiProvider(
         let systemPrompt: string;
 
         if (commandContext === 'synopsis') {
-            // Use Synopsis-specific schema and system prompt
-            const { getSynopsisJsonSchema, getSynopsisSystemPrompt } = await import('../ai/prompts/synopsis');
-            jsonSchema = getSynopsisJsonSchema();
-            systemPrompt = getSynopsisSystemPrompt();
+            // Use Summary schema and system prompt (primary AI artifact)
+            const { getSummaryJsonSchema, getSummarySystemPrompt } = await import('../ai/prompts/synopsis');
+            jsonSchema = getSummaryJsonSchema();
+            systemPrompt = getSummarySystemPrompt();
         } else {
             // Default to Pulse Analysis schema for all other contexts
             jsonSchema = getSceneAnalysisJsonSchema();

@@ -1,20 +1,44 @@
 /*
  * Radial Timeline (tm) Plugin for Obsidian
- * Synopsis Command Helper
- * Handles logic for the "Refresh Scene Synopses" command
+ * Synopsis & Summary Command Helper
+ * Handles logic for the "Synopsis & Summary Refresh" command.
+ *
+ * Summary = longform AI-generated scene analysis (≈200–300 words) — primary artifact.
+ * Synopsis = concise, skimmable navigation text (1–3 sentences) — optional.
  */
 
 import { Vault, Notice, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { SceneAnalysisProcessingModal, type ProcessingMode, type SceneQueueItem } from '../modals/SceneAnalysisProcessingModal';
-import { getAllSceneData, compareScenesByOrder, getSynopsisUpdateFlag, hasProcessableContent } from './data';
-import { classifySynopsis, type SynopsisQuality } from './synopsisQuality';
-import { buildSynopsisPrompt } from '../ai/prompts/synopsis';
+import { getAllSceneData, compareScenesByOrder, getSummaryUpdateFlag, hasProcessableContent } from './data';
+import { classifySynopsis } from './synopsisQuality';
+import { buildSummaryPrompt, buildSynopsisPrompt } from '../ai/prompts/synopsis';
 import { createAiRunner } from './RequestRunner';
 import { callAiProvider } from './aiProvider';
 import type { SceneData } from './types';
 import { parseSceneTitle, decodeHtmlEntities } from '../utils/text';
 import { normalizeBooleanValue } from '../utils/sceneHelpers';
+
+/**
+ * Check freshness: is the scene's Due/Completed date newer than the last AI update timestamp?
+ */
+function isSummaryStale(scene: SceneData, plugin: RadialTimelinePlugin): boolean {
+    const timestamps = plugin.settings.aiUpdateTimestamps?.[scene.file.path];
+    if (!timestamps?.summaryUpdated) return true; // Never updated → stale
+
+    const lastUpdated = new Date(timestamps.summaryUpdated);
+    if (isNaN(lastUpdated.getTime())) return true;
+
+    // Check Due date
+    const dueRaw = scene.frontmatter.Due;
+    if (dueRaw) {
+        const dueDate = new Date(String(dueRaw));
+        if (!isNaN(dueDate.getTime()) && dueDate > lastUpdated) return true;
+    }
+
+    // Check Completed date (Status changing to Complete typically updates Due)
+    return false;
+}
 
 export async function calculateSynopsisSceneCount(
     plugin: RadialTimelinePlugin,
@@ -24,24 +48,22 @@ export async function calculateSynopsisSceneCount(
 ): Promise<number> {
     try {
         const allScenes = await getAllSceneData(plugin, vault);
-        // Only consider scenes visible in the current manuscript/timeline view (respects book scope if applicable)
-        // getAllSceneData respects the plugin's source/book settings.
-
-        // Get threshold from settings or parameter
         const threshold = weakThreshold ?? plugin.settings.synopsisWeakThreshold ?? 75;
 
-        const isSynopsisFlagged = (scene: SceneData) =>
-            normalizeBooleanValue(getSynopsisUpdateFlag(scene.frontmatter));
+        const isFlagged = (scene: SceneData) =>
+            normalizeBooleanValue(getSummaryUpdateFlag(scene.frontmatter));
 
         let count = 0;
         for (const scene of allScenes) {
-            const currentSynopsis = scene.frontmatter.Synopsis;
-            const quality = classifySynopsis(currentSynopsis, threshold);
+            // Scene selection now targets the Summary field
+            const currentSummary = scene.frontmatter.Summary;
+            const quality = classifySynopsis(currentSummary, threshold);
 
             if (mode === 'synopsis-flagged') {
-                if (isSynopsisFlagged(scene)) count++;
+                if (isFlagged(scene)) count++;
             } else if (mode === 'synopsis-missing-weak') {
-                if (quality === 'missing' || quality === 'weak') count++;
+                // Enhanced: missing, weak, OR stale (Due date > last AI update)
+                if (quality === 'missing' || quality === 'weak' || isSummaryStale(scene, plugin)) count++;
             } else if (mode === 'synopsis-missing') {
                 if (quality === 'missing') count++;
             } else if (mode === 'synopsis-all') {
@@ -89,13 +111,15 @@ async function runSynopsisBatch(
     // Get settings with fallbacks
     const threshold = weakThreshold ?? plugin.settings.synopsisWeakThreshold ?? 75;
     const target = targetWords ?? plugin.settings.synopsisTargetWords ?? 200;
+    const alsoUpdateSynopsis = plugin.settings.alsoUpdateSynopsis ?? false;
+    const synopsisMaxLines = plugin.settings.synopsisGenerationMaxLines ?? 3;
 
-    // Filter scenes based on mode
+    // Filter scenes based on mode — now targeting Summary field
     const scenesToProcess = allScenes.filter(scene => {
-        const quality = classifySynopsis(scene.frontmatter.Synopsis, threshold);
-        const isSynopsisFlagged = normalizeBooleanValue(getSynopsisUpdateFlag(scene.frontmatter));
-        if (mode === 'synopsis-flagged') return isSynopsisFlagged;
-        if (mode === 'synopsis-missing-weak') return quality === 'missing' || quality === 'weak';
+        const quality = classifySynopsis(scene.frontmatter.Summary, threshold);
+        const isFlagged = normalizeBooleanValue(getSummaryUpdateFlag(scene.frontmatter));
+        if (mode === 'synopsis-flagged') return isFlagged;
+        if (mode === 'synopsis-missing-weak') return quality === 'missing' || quality === 'weak' || isSummaryStale(scene, plugin);
         if (mode === 'synopsis-missing') return quality === 'missing';
         if (mode === 'synopsis-all') return true;
         return false;
@@ -121,79 +145,91 @@ async function runSynopsisBatch(
 
     if (modal.setProcessingQueue) modal.setProcessingQueue(queueItems);
 
-    // --- PREVIEW PHASE ---
-    // Instead of writing immediately, we store results in the modal state
-    // The modal handles the "Apply" phase after this function completes (or via callback)
-    // Actually, SceneAnalysisProcessingModal structure expects this function to be the "WORKER".
-    // To support Preview -> Apply, we will:
-    // 1. Collect all results here.
-    // 2. Pass them to the modal via a new method `setPreviewResults(map)`.
-    // 3. The modal then shows "Reference Apply" UI.
-
-    // BUT: The existing modal closes/finishes when this promise resolves. 
-    // We need to change the modal flow. 
-    // For now, let's run the AI generation.
-
     let processedCount = 0;
-    const results = new Map<string, string>(); // path -> newSynopsis
+    const summaryResults = new Map<string, string>(); // path -> newSummary
+    const synopsisResults = new Map<string, string>(); // path -> newSynopsis (only if checkbox enabled)
 
     for (const scene of scenesToProcess) {
         if (modal.isAborted()) break;
 
         const sceneName = scene.file.basename;
-        const currentSynopsis = (scene.frontmatter.Synopsis as string) || '';
+        const currentSummary = (scene.frontmatter.Summary as string) || '';
 
-        // Show current item info (including old synopsis for preview)
+        // Show current item info (including old summary for preview)
         if (modal.setSynopsisPreview) {
-            modal.setSynopsisPreview(currentSynopsis, 'Generating...');
+            modal.setSynopsisPreview(currentSummary, 'Generating...');
         }
 
-        // Build Prompt with target word count
-        const prompt = buildSynopsisPrompt(
+        // --- Step 1: Generate Summary (primary artifact) ---
+        const summaryPrompt = buildSummaryPrompt(
             scene.body,
             String(scene.sceneNumber || 'N/A'),
             target
         );
 
-        // Run AI
         const runAi = createAiRunner(plugin, vault, callAiProvider);
         if (modal.startSceneAnimation) {
-            // Use word count metric for estimation
             const words = typeof scene.frontmatter.Words === 'number' ? scene.frontmatter.Words : 500;
             modal.startSceneAnimation(words * 0.4, processedCount, scenesToProcess.length, sceneName);
         }
 
         try {
-            const result = await runAi(prompt, null, 'synopsis', sceneName, undefined);
+            const result = await runAi(summaryPrompt, null, 'synopsis', sceneName, undefined);
 
             if (result.result) {
                 // Parse JSON
-                let newSynopsis = '';
+                let newSummary = '';
                 try {
-                    // Simple JSON extraction if the model wraps it in md blocks
                     const jsonMatch = result.result.match(/\{[\s\S]*\}/);
                     const jsonStr = jsonMatch ? jsonMatch[0] : result.result;
                     const parsed = JSON.parse(jsonStr);
-                    newSynopsis = parsed.synopsis;
+                    newSummary = parsed.summary || parsed.synopsis || ''; // Accept either key
                 } catch (e) {
-                    console.error('Failed to parse synopsis JSON', e);
+                    console.error('Failed to parse summary JSON', e);
                     modal.addError(`JSON Parse Error: ${sceneName}`);
                     continue;
                 }
 
-                if (newSynopsis) {
-                    results.set(scene.file.path, newSynopsis);
+                if (newSummary) {
+                    summaryResults.set(scene.file.path, newSummary);
                     processedCount++;
 
                     // Update preview with final result
                     if (modal.setSynopsisPreview) {
-                        modal.setSynopsisPreview(currentSynopsis, newSynopsis);
+                        modal.setSynopsisPreview(currentSummary, newSummary);
                     }
                     if (modal.updateProgress) {
                         modal.updateProgress(processedCount, scenesToProcess.length, sceneName);
                     }
                     if (modal.markQueueStatus) {
                         modal.markQueueStatus(scene.file.path, 'success');
+                    }
+
+                    // --- Step 2: Generate Synopsis (optional, only if checkbox enabled) ---
+                    if (alsoUpdateSynopsis) {
+                        try {
+                            const synopsisPrompt = buildSynopsisPrompt(
+                                scene.body,
+                                String(scene.sceneNumber || 'N/A'),
+                                synopsisMaxLines
+                            );
+
+                            const synopsisResult = await runAi(synopsisPrompt, null, 'synopsis', `${sceneName} (synopsis)`, undefined);
+
+                            if (synopsisResult.result) {
+                                const synJsonMatch = synopsisResult.result.match(/\{[\s\S]*\}/);
+                                const synJsonStr = synJsonMatch ? synJsonMatch[0] : synopsisResult.result;
+                                const synParsed = JSON.parse(synJsonStr);
+                                const newSynopsis = synParsed.synopsis || '';
+                                if (newSynopsis) {
+                                    synopsisResults.set(scene.file.path, newSynopsis);
+                                }
+                            }
+                        } catch (synErr) {
+                            // Synopsis generation failure is non-fatal — Summary still succeeds
+                            console.warn(`Synopsis generation failed for ${sceneName}:`, synErr);
+                            modal.addWarning(`Synopsis generation failed for ${sceneName} (Summary was saved)`);
+                        }
                     }
                 } else {
                     modal.addError(`Empty result: ${sceneName}`);
@@ -213,8 +249,7 @@ async function runSynopsisBatch(
     }
 
     // Processing finished. Store results in modal for Apply phase.
-    // The modal will show Apply/Discard buttons in the completion summary (keeping queue visible).
-    if (!modal.isAborted() && results.size > 0) {
-        modal.setSynopsisResults(results);
+    if (!modal.isAborted() && summaryResults.size > 0) {
+        modal.setSynopsisResults(summaryResults, synopsisResults);
     }
 }

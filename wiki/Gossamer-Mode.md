@@ -2,10 +2,10 @@
 
 Gossamer Mode visualizes narrative momentum using story beat scores. Timeline grays out; momentum values display across story beats to show tension/excitement building.
 
-*   **Momentum Tracking**: Chart narrative momentum across story beats and over time with manual score entry.
+*   **Momentum Tracking**: Chart narrative momentum across story beats and over time with manual or AI-driven scoring.
 *   **Historical tracking**: Compare momentum scores across up to 30 iterations to track how your story evolves.
-*   **Ideal Range**: Based on `Range=0-20` yaml for each story beat creating an idealized story momentum shape.
-*   **Manual score entry**: Track momentum changes over time with suggested LLM prompt.
+*   **Ideal Range**: Based on `Range=0-20` yaml for each story beat creating an idealized story momentum shape (visual reference only).
+*   **Manual score entry**: Track momentum changes over time with manual updates (with or without external AI assistance).
 *   **Justification capture**: Each score line now records a brief justification so you know what the score was based on.
 *   **Normalize & repair**: Use the **Normalize Scores** button inside the modal to smooth outliers and automatically repair orphaned/out‑of‑sequence entries.
 
@@ -33,6 +33,14 @@ Gossamer Mode visualizes narrative momentum using story beat scores. Timeline gr
   <img src="images/gossamer-score-modal.png" alt="Gossamer score entry modal for manual momentum scoring" style="width: 500px; max-width: 100%; border-radius: 8px;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer score manager — manual momentum entry</div>
 </div>
+
+## Manual Entry
+
+Use **Gossamer score manager** to enter scores yourself. This is a manual workflow by design — you can score purely by your own judgment, or use an external AI tool to help draft scores and justifications, then paste those results into the modal.
+
+## AI Analysis
+
+Use **Gossamer analysis** to run the built-in AI evaluation of narrative momentum. This AI run intentionally **does not receive ideal range guidance** in its payload/instructions, so the result is a fresh take rather than a range‑constrained score.
 
 ## Story Beats Configuration
 

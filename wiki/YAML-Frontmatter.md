@@ -5,7 +5,8 @@ Class: Scene              # Type: Scene or Beat
 Act: 1                    # Which act (1-3)
 When:                     # Story chronology date (YYYY-MM-DD 12:34pm)
 Duration:                 # How long the scene lasts (e.g., "45 seconds", "45s", "45sec", "2 hours", "3days")
-Synopsis:                 # Brief description of what happens in this scene
+Synopsis:                 # Concise scene summary for hovers and outlines (1-3 sentences)
+Summary:                  # AI-generated longform scene analysis for inquiry and exports
 Subplot: Main Plot        # Single subplot (or use array format below for multiple)
 Character:                # Characters in the scene (use array format below for multiple)
 POV:                      # blank, first, you, third, omni, narrator, two, all, count
@@ -92,7 +93,7 @@ Total Time:
 Words:                                #Statistics
 Runtime:                              # Technical runtime (screenplay time / reading time, e.g., "2:30", "45s")
 Pulse Update: No
-Synopsis Update:
+Summary Update:
 ```
 
 **Tip for Advanced Methodologies (e.g., Dramatica):**

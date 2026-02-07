@@ -89,8 +89,11 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     enableAiSceneAnalysis: true,
     showFullTripletAnalysis: true,
     enableZeroDraftMode: false,
-    synopsisTargetWords: 200, // Target word count for generated synopses
-    synopsisWeakThreshold: 75, // Synopses under this word count are considered "weak"
+    synopsisTargetWords: 200, // Target word count for generated summaries (legacy name)
+    synopsisWeakThreshold: 75, // Summaries under this word count are considered "weak" (legacy name)
+    alsoUpdateSynopsis: false, // When running Summary refresh, also generate Synopsis
+    synopsisGenerationMaxLines: 3, // Max lines for AI-generated Synopsis
+    aiUpdateTimestamps: {}, // Internal AI update timestamps (per-scene)
     metadataRefreshDebounceMs: 10000,
     discontinuityThreshold: undefined, // Default to auto-calculated (3x median gap or 30 days)
     enableSceneTitleAutoExpand: true, // Default: enabled to maintain current behavior
@@ -162,7 +165,8 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
 Act: {{Act}}              # Which act (1..Act Count)
 When: {{When}}            # Story chronology date (YYYY-MM-DD 12:30pm)
 Duration: 1 hour         # How long the scene lasts (e.g., "45 seconds", "45s", "45sec", "2 hours", "3days")
-Synopsis: Short scene summary.                # Brief description of what happens in this scene
+Synopsis:                 # Concise scene summary for hovers and outlines (1-3 sentences)
+Summary:                  # AI-generated longform scene analysis for inquiry and exports
 Subplot: {{Subplot}}      # Single subplot (or use array format below for multiple)
 Character: {{Character}}  # Characters in the scene (use array format below for multiple)
 POV:                      # blank, first, you, third, omni, narrator, two, all, count
@@ -172,7 +176,7 @@ Publish Stage: Zero       # Publication stage (Zero/Author/House/Press)
 Pending Edits:            # Notes for next revision (especially for zero draft mode)
 Words:                    # Word count statistics
 Runtime:                  # Technical runtime (screenplay time / reading time, e.g., "2:30", "45s")
-Synopsis Update:          # AI-generated synopsis update flag
+Summary Update:           # AI-generated summary update flag
 Pulse Update:             # AI-generated scene pulse analysis flag`,
         advanced: `Place:
 {{PlaceList}}

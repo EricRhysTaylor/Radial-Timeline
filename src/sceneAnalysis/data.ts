@@ -64,11 +64,16 @@ export function getPulseUpdateFlag(fm: Record<string, unknown> | undefined): unk
 }
 
 /**
- * Get the Synopsis Update flag from frontmatter (separate from Pulse)
+ * Get the Summary Update flag from frontmatter (separate from Pulse).
+ * Checks Summary Update first, then falls back to legacy Synopsis Update for migration.
  */
-export function getSynopsisUpdateFlag(fm: Record<string, unknown> | undefined): unknown {
+export function getSummaryUpdateFlag(fm: Record<string, unknown> | undefined): unknown {
     if (!fm) return undefined;
     const keys = [
+        'Summary Update',
+        'SummaryUpdate',
+        'summaryupdate',
+        // Legacy fallback — scenes may still have Synopsis Update from before the rename
         'Synopsis Update',
         'SynopsisUpdate',
         'synopsisupdate'
@@ -80,6 +85,9 @@ export function getSynopsisUpdateFlag(fm: Record<string, unknown> | undefined): 
     }
     return undefined;
 }
+
+/** @deprecated Use getSummaryUpdateFlag instead */
+export const getSynopsisUpdateFlag = getSummaryUpdateFlag;
 
 function hasWordsContent(fm: Record<string, unknown>): boolean {
     const w1 = fm?.words as unknown;
