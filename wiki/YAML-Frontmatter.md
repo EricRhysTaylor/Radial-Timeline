@@ -56,7 +56,7 @@ Gossamer2 Justification:
 ### Backdrop
 
 ```yaml
-Class: Backdrop                   # Used for special context events that move the plot. Appears under All Scenes outer ring in Chronologue mode.
+Class: Backdrop                   # Used for special context events that move the plot. Appears as a dedicated ring in Chronologue mode. See also micro-backdrop rings for lighter-weight context.
 When:                             # Start Date time (YYYY-MM-DD HH:MM)
 End:                              # End Date time (YYYY-MM-DD HH:MM)
 Synopsis: What this special backdrop is and how it relates to the story.

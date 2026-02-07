@@ -1,6 +1,6 @@
 # Advanced YAML & Data Integrity
 
-The Advanced YAML editor lets you tailor the Advanced scene template while keeping required base keys intact. Add, remove, or reorder optional fields to match your workflow (e.g., Story Grid values, Dramatica signposts, Templater snippets).
+The Advanced YAML editor lets you tailor the Advanced scene template while keeping required base keys intact. Add, remove, or reorder optional fields to match your workflow (e.g., Story Grid values, Dramatica signposts).
 
 ## How it works
 
@@ -13,7 +13,6 @@ The Advanced YAML editor lets you tailor the Advanced scene template while keepi
 4. Click the rotate/restore icon to revert the Advanced template back to the shipped defaults.
 5. Book Designer and **Create advanced scene note** will use your customized Advanced template whenever you pick **Advanced**.
 
-Tip: Values support Templater syntax (e.g., `<% tp.date.now() %>`) if Templater is set to run on new files.
 
 ## Point of View
 

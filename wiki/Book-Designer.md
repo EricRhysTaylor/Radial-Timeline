@@ -51,12 +51,13 @@ The Book Designer uses one of two templates:
 2.  **Advanced**: A richer template with analysis fields, stats, and more.
 
 ### Adding Custom Properties
-To add your own properties (like `Draft Status`, `POV Character`, or Templater code) to generated scenes:
-1.  Go to **Settings > Scene YAML templates & remapping**.
+If your writing methodology uses fields beyond the built-in keys (e.g., Story Grid values, Dramatica signposts), you can add them to the Advanced template:
+1.  Go to **Settings → Scene YAML templates & remapping**.
 2.  Enable **Advanced YAML editor**.
 3.  Add your custom keys to the list.
-    *   *Tip:* You can use Templater syntax in the values (e.g., `<% tp.date.now() %>`). When the scene is created, if you have Templater configured to run on new files, these tags will be processed.
 4.  In the Book Designer, select **Advanced** as your template type.
+
+> **Note**: Radial Timeline already tracks draft status (`Status` and `Publish Stage`), point of view (`POV`), and many other metadata fields in the built-in templates. Only add custom keys for data that your methodology requires beyond what the plugin already provides. See [[YAML-Frontmatter]] for the full list of built-in fields.
 
 ## Custom Beat Systems
 
@@ -72,7 +73,7 @@ You can also create custom beat notes manually:
     Class: Beat
     Beat Model: Custom
     ```
-*   Radial Timeline will detect these notes and display them in the Gossamer view alongside your scenes based on settings. If the new manually created note doesn't match the beat model name in settings, it will not be recognized.
+*   Radial Timeline will detect these notes and display them in Gossamer mode alongside your scenes based on settings. If the new manually created note doesn't match the beat model name in settings, it will not be recognized.
 
 ## Advanced Metadata
 

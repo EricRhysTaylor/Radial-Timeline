@@ -12,7 +12,7 @@ Long days, stalled suns, tidal windows, and other cycles shape behavior without 
 
 1) Plan in Earth time for pacing, spacing, and overlaps. Authors born on earth and writing for Earthlings should use Earth time systems during development.
 2) Write/translate in prose using in-world terms (lunar cues, solar position, cultural markers).  
-3) Use the Backdrop ring (plus Chronologue Alt/Shift view) to track worldbuilding timing alongside the main timeline as a supplemental cross-reference. 
+3) Use the Backdrop ring and micro-backdrop rings (plus Chronologue Alt/Shift sub-modes) to track worldbuilding timing alongside the main timeline as a supplemental cross-reference. 
 
 Radial Timeline keeps structural work in intuitive Earth units while letting you surface alien time for storytelling.
 

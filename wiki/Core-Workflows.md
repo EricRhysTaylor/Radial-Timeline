@@ -2,7 +2,7 @@
 *   **Act Structure**: Scenes are organized by act (default 3 acts, configurable in **Settings → Acts**). Acts come from the scene frontmatter `Act:` field.
 *   **Subplot Tracking**: Each ring represents a different subplot. Keep scenes in a single subplot or spread them across multiple subplots to capture common themes, topics, characters, etc.
 *   **Story Beats**: Use story beat systems (Save the Cat, Hero's Journey, Story Grid, or Custom) to lay out the momentum scaffolding.
-*   **Backdrop**: Whether it's the sun setting for a half year (north or south pole) or a sun reigniting after centuries of dormancy in an exotic star system, mark major plot backdrop events using the special context ring placed below the outer ring.
+*   **Backdrop & Micro-backdrops**: Mark major plot backdrop events using the special context ring placed below the outer ring in Chronologue mode. For lighter-weight context — eras, seasons, or historical milestones — use **micro-backdrop rings** configured in Settings with a title, color, and date range.
 
 ### Creating Scenes
 

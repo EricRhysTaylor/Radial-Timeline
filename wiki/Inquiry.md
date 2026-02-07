@@ -1,6 +1,6 @@
 # Inquiry
 
-Inquiry is Radial Timeline's corpus-level analysis system. While [[AI Analysis|Scene Pulse Analysis]] evaluates individual scenes in triplets, Inquiry takes a higher-altitude view — scanning your entire manuscript (or multi-book saga) to surface structural signals, loose ends, continuity issues, and narrative gaps.
+Inquiry is Radial Timeline's second **view** — a dedicated visual interface for corpus-level story analysis. While the main Timeline view and its [[AI Analysis|Scene Pulse Analysis]] evaluate individual scenes in triplets, Inquiry takes a higher-altitude perspective — scanning your entire manuscript (or multi-book saga) to surface structural signals, loose ends, continuity issues, and narrative gaps.
 
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/inquiry-view.png" alt="The Inquiry visual interface with Flow and Depth rings" style="width: 500px; max-width: 100%; border-radius: 8px;" />

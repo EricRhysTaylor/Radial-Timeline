@@ -45,7 +45,7 @@ The Signature tier unlocks advanced capabilities for professional workflows. Dur
 **Pro features include:**
 *   **Runtime Estimation** — Screen time, audiobook duration, and manuscript length analysis with custom profiles
 *   **Pro Exports** — Manuscript generation via Pandoc for screenplay, podcast, and novel formats
-*   **Chronologue Runtime Mode** — Blue wireframe sub-mode showing scene runtime duration arcs
+*   **Chronologue Runtime sub-mode** — Blue wireframe sub-mode showing scene runtime duration arcs
 *   **Campaign Manager** — Manage multiple Author Progress Report campaigns with independent refresh schedules and Teaser Reveal settings
 *   **Teaser Reveal** — Progressive reveal system that automatically shows more timeline detail as your book progresses (Pro feature within Campaign Manager)
 
@@ -69,7 +69,7 @@ The Signature tier unlocks advanced capabilities for professional workflows. Dur
 ### Runtime estimation ✦ Pro
 Calculate screen time, audiobook duration, and manuscript length estimates.
 
-*   **Enable runtime estimation**: Activates runtime calculations for scenes and the Chronologue Runtime Mode.
+*   **Enable runtime estimation**: Activates runtime calculations for scenes and the Chronologue Runtime sub-mode.
 *   **Default runtime profile**: The profile used when no per-scene override is set.
 *   **Edit profile**: Manage multiple profiles with different settings for various project types.
 *   **Profile label**: Display name shown in pickers and the runtime modal.
@@ -87,10 +87,10 @@ Calculate screen time, audiobook duration, and manuscript length estimates.
 *   **Drafting words per minute**: Your writing speed for completion projections.
 *   **Daily minutes available**: For "45 min/day" style time estimates.
 
-*   **Runtime arc cap default**: Controls Chronologue Runtime Mode arc scaling. Lower values emphasize shorter scenes.
+*   **Runtime arc cap default**: Controls Chronologue Runtime sub-mode arc scaling. Lower values emphasize shorter scenes.
 
 > [!NOTE]
-> See [[Signature]] for full Pro feature documentation and [[Chronologue-Mode#runtime-mode-pro]] for the Runtime Mode visualization.
+> See [[Signature]] for full Pro feature documentation and [[Chronologue-Mode#runtime-mode-pro]] for the Runtime sub-mode visualization.
 
 ## Inquiry Tab
 
@@ -207,16 +207,19 @@ Target dates are validated to ensure proper stage ordering. Overdue dates are hi
 ### Chronologue mode settings
 Configure the time-based visualization of your story.
 *   **Chronologue duration arc cap**: Determines the maximum duration used for scaling the "duration arcs" (outer ring segments). Can be set to "Auto" or specific timeframes.
-*   **Discontinuity gap threshold**: Controls the sensitivity of the Shift Mode (Time gaps). When the gap between scenes exceeds this threshold, an infinity symbol appears. Default is auto-calculated (3x median gap).
+*   **Discontinuity gap threshold**: Controls the sensitivity of the Shift sub-mode (time gaps). When the gap between scenes exceeds this threshold, an infinity symbol appears. Default is auto-calculated (3x median gap).
 
 > [!NOTE]
 > Read more about [[Chronologue-Mode]].
 
 <a name="backdrop"></a>
-### Backdrop
-Configure the Chronologue backdrop ring and microrings.
+### Backdrop & Micro-backdrops
+Configure the Chronologue backdrop ring and micro-backdrop rings.
 *   **Show backdrop ring**: Display the backdrop ring in Chronologue mode. When disabled, the ring space is reclaimed for subplot rings.
-*   **Micro backdrops**: Create microrings with titles, colors, and date ranges to highlight context or epochs.
+*   **Micro backdrops**: Create micro-backdrop rings — thin colored ring segments with a title, color, and date range — to highlight eras, seasons, or historical milestones without creating full backdrop note files.
+
+> [!NOTE]
+> See [[Chronologue-Mode#backdrop-notes--micro-backdrop-rings]] for full details on both backdrop types.
 
 <a name="planetary-time"></a>
 ### Planetary Time
@@ -296,7 +299,7 @@ Generate shareable, spoiler-safe progress graphics for social media, crowdfundin
 <a name="social-media-publishing"></a>
 #### Publishing & Automation
 *   **Update Frequency**: How often to auto-update the live embed file. Options: Manual Only, Daily, Weekly, or Monthly. "Manual" requires clicking the update button in the Author Progress Report modal.
-*   **Refresh Alert Threshold**: Days before showing a refresh reminder in the timeline view (1-90 days, default 30). Only shown when Update Frequency is set to Manual.
+*   **Refresh Alert Threshold**: Days before showing a refresh reminder in the Timeline view (1-90 days, default 30). Only shown when Update Frequency is set to Manual.
 *   **Embed File Path**: Location for the "Live Embed" SVG file. Must end with `.svg`. Default: `Radial Timeline/Social/progress.svg`.
 
 **Campaign Manager** ✦ Pro:

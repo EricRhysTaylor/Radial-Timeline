@@ -25,21 +25,61 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     const body = container.createDiv({ cls: 'rt-welcome-body' });
 
-    // Intro Paragraph
-    const intro = body.createEl('p', { cls: 'rt-welcome-paragraph' });
-    intro.createSpan({ text: 'Radial Timeline is a visual map of your story in a concise radial format, revealing structure, status, and meta. It works in four focused modes, each answering a different creative question.' });
+    // Quick-start heading
+    body.createEl('p', {
+        cls: 'rt-welcome-paragraph',
+        text: 'Get started in a few steps:'
+    });
 
-    const modesList = body.createEl('ul', { cls: 'rt-welcome-list' });
-    const addMode = (label: string, description: string) => {
-        const li = modesList.createEl('li');
-        li.createEl('strong', { text: `${label}: ` });
-        li.createSpan({ text: description });
-    };
-    addMode('Narrative', 'Color coded subplots and All Scenes outer ring plus Story Beats.');
-    addMode('Subplot', 'Isolates individual subplots with a project-management focus.');
-    addMode('Chronologue', 'Shows how scenes unfold in time with shift, alt & RT submodes to reveal time gaps and elapsed time between scenes, alien planet parallel timelines and runtime estimation, respectively.');
-    addMode('Gossamer', 'Steps back to give you a birds-eye view of pacing and momentum.');
+    // Step 1: Source path
+    const step1 = body.createDiv({ cls: 'rt-welcome-step' });
+    step1.createEl('strong', { text: '1. Set your source path' });
+    const step1Text = step1.createEl('p', { cls: 'rt-welcome-paragraph' });
+    step1Text.createSpan({ text: 'Point Radial Timeline at the folder containing (or that will contain) your manuscript scene files. Go to ' });
+    step1Text.createEl('strong', { text: 'Settings \u2192 Core \u2192 General \u2192 Source path' });
+    step1Text.createSpan({ text: ', or the welcome screen will prompt you.' });
 
+    // Step 2: Create scenes
+    const step2 = body.createDiv({ cls: 'rt-welcome-step' });
+    step2.createEl('strong', { text: '2. Create scenes' });
+    const step2List = step2.createEl('ul', { cls: 'rt-welcome-list' });
+
+    const bookLi = step2List.createEl('li');
+    bookLi.createEl('strong', { text: 'Book Designer' });
+    bookLi.createSpan({ text: ' \u2014 Generate a complete manuscript scaffold with acts, subplots, characters, and optional beat notes in one click. This is the fastest way to see Radial Timeline in action.' });
+
+    const manualLi = step2List.createEl('li');
+    manualLi.createEl('strong', { text: 'Manual' });
+    manualLi.createSpan({ text: ' \u2014 Use the command palette (Cmd/Ctrl + P) \u2192 Radial Timeline: Create basic scene note or Create advanced scene note to add scenes one at a time.' });
+
+    // Step 3: Structure
+    const step3 = body.createDiv({ cls: 'rt-welcome-step' });
+    step3.createEl('strong', { text: '3. Set up your structure' });
+    const step3List = step3.createEl('ul', { cls: 'rt-welcome-list' });
+
+    const actsLi = step3List.createEl('li');
+    actsLi.createEl('strong', { text: 'Acts' });
+    actsLi.createSpan({ text: ' \u2014 Default is 3-act structure. Adjust in Settings \u2192 Core \u2192 Acts.' });
+
+    const beatsLi = step3List.createEl('li');
+    beatsLi.createEl('strong', { text: 'Story beats' });
+    beatsLi.createSpan({ text: ' \u2014 Activate a beat system (Save the Cat, Hero\u2019s Journey, Story Grid) or create your own custom system in Settings \u2192 Core \u2192 Story beats system.' });
+
+    // Step 4: Explore modes
+    const step4 = body.createDiv({ cls: 'rt-welcome-step' });
+    step4.createEl('strong', { text: '4. Explore modes' });
+    const step4Text = step4.createEl('p', { cls: 'rt-welcome-paragraph' });
+    step4Text.createSpan({ text: 'Switch between the three primary Timeline modes using keyboard shortcuts ' });
+    step4Text.createEl('strong', { text: '1' });
+    step4Text.createSpan({ text: ' (Narrative), ' });
+    step4Text.createEl('strong', { text: '2' });
+    step4Text.createSpan({ text: ' (Publication), and ' });
+    step4Text.createEl('strong', { text: '3' });
+    step4Text.createSpan({ text: ' (Chronologue) to see your story from different angles. Once you have a zero draft, try Gossamer mode (' });
+    step4Text.createEl('strong', { text: '4' });
+    step4Text.createSpan({ text: ') to map out the initial AI take on your momentum graph.' });
+
+    // Links
     const links = body.createEl('p', { cls: 'rt-welcome-links' });
 
     const makeLinkRow = (label: string, href: string) => {
@@ -47,14 +87,9 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
         row.createEl('a', { href, text: label });
     };
 
-    makeLinkRow('Learn more at the GitHub Wiki', 'https://github.com/EricRhysTaylor/radial-timeline/wiki');
-    makeLinkRow('Discussions group', 'https://github.com/EricRhysTaylor/Radial-Timeline/discussions');
+    makeLinkRow('Wiki \u2014 full documentation', 'https://github.com/EricRhysTaylor/radial-timeline/wiki');
+    makeLinkRow('Discussions', 'https://github.com/EricRhysTaylor/radial-timeline/discussions');
     makeLinkRow('Bug reports / feature requests', 'https://github.com/EricRhysTaylor/radial-timeline/issues');
-
-    const cta = body.createEl('p', {
-        cls: 'rt-welcome-paragraph',
-        text: 'Bug reporting & Get Help buttons in the bottom corners of the Radial Timeline view are always available. The Book Designer can help you begin by setting up a starter set of scenes.'
-    });
 
     // Backup Notice
     const backupNotice = body.createDiv({ cls: 'rt-welcome-backup-notice' });

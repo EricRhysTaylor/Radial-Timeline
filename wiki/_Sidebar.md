@@ -1,11 +1,12 @@
 *   [[Home]]
 *   **Getting Started**
+    *   [[Welcome]]
     *   [[Core Workflows]]
     *   [[How-to]]
-    *   [[View Modes]]
+    *   [[View Modes|Timeline Modes]]
     *   [[Book Designer]]
     *   [[Commands]]
-*   **Modes**
+*   **Timeline Modes**
     *   [[Narrative Mode]]
     *   [[Subplot Mode|Publication Mode]]
     *   [[Chronologue Mode]]

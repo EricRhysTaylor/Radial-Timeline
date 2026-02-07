@@ -74,14 +74,14 @@ Campaign Manager lets you manage multiple APR configurations for different platf
 
 ---
 
-## Chronologue Runtime Mode
+## Chronologue Runtime Sub-mode
 
 *Visualize scene duration in the chronological timeline.*
 
-Runtime Mode is a specialized sub-mode within Chronologue that replaces elapsed story time with runtime duration arcs. Toggle it using the **RT** button in Chronologue mode.
+The Runtime sub-mode is one of three sub-modes within Chronologue mode. It replaces elapsed story time with runtime duration arcs. Toggle it using the **RT** button in Chronologue mode.
 
 **Features:**
-- **Blue wireframe overlay** — Distinct from Shift mode (gray) and Alt mode (red)
+- **Blue wireframe overlay** — Distinct from the Shift sub-mode (gray) and Alt sub-mode (red)
 - **Duration arcs** — Arc length represents estimated runtime, not story elapsed time
 - **Runtime cap slider** — Adjust the maximum arc size to emphasize shorter or longer scenes
 - **Scene selection** — Click scenes to compare their runtime visually
@@ -89,10 +89,10 @@ Runtime Mode is a specialized sub-mode within Chronologue that replaces elapsed 
 **Usage:**
 1. Enable Runtime Estimation in Settings → Pro
 2. Switch to Chronologue mode (keyboard **3**)
-3. Click the **RT** button to enter Runtime Mode
+3. Click the **RT** button to enter the Runtime sub-mode
 4. Adjust the cap slider to tune visualization
 
-> **Mode details**: [[Chronologue-Mode#runtime-mode-pro]]
+> **Sub-mode details**: [[Chronologue-Mode#runtime-mode-pro]]
 
 ---
 
@@ -100,7 +100,7 @@ Runtime Mode is a specialized sub-mode within Chronologue that replaces elapsed 
 
 1. **Configure Runtime Estimation** — Go to Settings → Pro and enable Runtime Estimation. Create profiles for your content types.
 2. **Set up Pandoc** (optional) — If you want Pro Exports, configure your Pandoc path in Settings → Pro.
-3. **Explore Chronologue Runtime Mode** — Switch to Chronologue and click the RT button to visualize scene durations.
+3. **Explore the Chronologue Runtime sub-mode** — Switch to Chronologue and click the RT button to visualize scene durations.
 
 ---
 

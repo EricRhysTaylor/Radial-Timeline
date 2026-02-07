@@ -13,7 +13,7 @@ Radial Timeline™ transforms your manuscript into a live visual map where you c
 </a>
 
 ### What It Does
-Radial Timeline™ arranges your scenes by act, subplot, narrative or chronological order in a striking radial layout—revealing the structure, rhythm, and scope of your story. Each ring represents a subplot; hover interactions surface important details like scene synopsis and AI story pulses. Scenes highlight across subplots to show interrelationships. Multiple view modes dissect your novel like an X-ray.
+Radial Timeline™ arranges your scenes by act, subplot, narrative or chronological order in a striking radial layout—revealing the structure, rhythm, and scope of your story. Each ring represents a subplot; hover interactions surface important details like scene synopsis and AI story pulses. Scenes highlight across subplots to show interrelationships. Multiple modes dissect your novel like an X-ray.
 
 ### The 4 Critical Timelines
 Radial Timeline™ captures and visualizes all 4 critical timelines:
@@ -61,17 +61,8 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
   </div>
 </div>
 
-### Welcome Screen
-
-<div style="display: flex; justify-content: center; margin: 20px 0;">
-  <div style="text-align: center;">
-    <img src="images/welcome.png" alt="Radial Timeline welcome screen with quick-start guide" style="width: 640px; max-width: 100%; border-radius: 10px; box-shadow: 0 6px 14px rgba(0,0,0,0.12);" />
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Welcome screen — quick-start guide for new vaults</div>
-  </div>
-</div>
-
 ### Getting Started
 
-*   **Welcome Screen**: Opening Radial Timeline in an empty vault now greets you with a quick-start guide.
+*   **[[Welcome]]**: Opening Radial Timeline in an empty vault greets you with a quick-start guide.
 *   **[[Book Designer]]**: Instantly generate a manuscript template with acts, subplots, and beats.
 *   **[[Core Workflows]]**: Learn the basics of Radial Timeline.

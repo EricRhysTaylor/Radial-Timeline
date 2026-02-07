@@ -9,8 +9,8 @@ Gossamer Mode visualizes narrative momentum using story beat scores. Timeline gr
 *   **Justification capture**: Each score line now records a brief justification so you know what the score was based on.
 *   **Normalize & repair**: Use the **Normalize Scores** button inside the modal to smooth outliers and automatically repair orphaned/out‑of‑sequence entries.
 
-**Modes**: Gossamer mode (key **4**)
-**Command**: `Gossamer enter momentum scores`
+**Timeline mode**: Gossamer (key **4**)
+**Command**: `Gossamer score manager`
 **Settings**: `Story beats system`
 
 <div style="text-align: center; margin: 20px 0;">

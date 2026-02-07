@@ -19,8 +19,8 @@ Type "Radial Timeline" to filter the list.
 
 | Command | Description | Documentation |
 | :--- | :--- | :--- |
-| **Open** | Opens the main Radial Timeline view. | [[Home#getting-started]] |
-| **Search timeline** | Opens the search bar in the timeline view to filter scenes by text across multiple fields. | [[How-to#search]] |
+| **Open** | Opens the main Timeline view. | [[Home#getting-started]] |
+| **Search timeline** | Opens the search bar in the Timeline view to filter scenes by text across multiple fields. | [[How-to#search]] |
 | **Manage subplots** | Opens the Subplot Manager to rename or delete subplots in bulk across all scene files. | [[How-to#manage-subplots-in-bulk]] |
 | **Book designer** | Opens the Book Designer to generate a manuscript template with acts, subplots, and beats. | [[Book Designer]] |
 | **Establish timeline order** | Opens the Timeline Repair wizard to fix chronological ordering, sync patterns, and repair frontmatter. | — |
@@ -31,7 +31,7 @@ Type "Radial Timeline" to filter the list.
 | :--- | :--- | :--- |
 | **Create basic scene note** | Creates a new scene note using the **Base** scene YAML template. | [[Core Workflows#creating-scenes]] |
 | **Create advanced scene note** | Creates a new scene note using the **Advanced** scene YAML template (includes any Advanced YAML editor customizations). | [[Advanced-YAML]] |
-| **Create backdrop note** | Creates a new backdrop file for contextual events that impact the plot (used in Chronologue mode). | [[Chronologue Mode#backdrop-notes]] |
+| **Create backdrop note** | Creates a new backdrop file for contextual events that impact the plot. Appears as a dedicated ring in Chronologue mode (see also micro-backdrop rings for lighter-weight context). | [[Chronologue Mode#backdrop-notes]] |
 
 ### Export
 
@@ -47,13 +47,13 @@ Type "Radial Timeline" to filter the list.
 | **Scene pulse analysis (subplot order)** | Runs AI analysis on scenes within a selected subplot. Requires AI features enabled. | [[AI Analysis]] |
 | **Synopsis scene refresh** | Refreshes AI-generated synopses for scenes. Requires AI features enabled. | [[AI Analysis]] |
 | **Gossamer score manager** | Opens the score entry modal for manual Gossamer momentum scoring. | [[Gossamer Mode#manual-entry]] |
-| **Gossamer analysis** | Runs AI evaluation of story beat momentum for the Gossamer view. Requires AI features enabled. | [[Gossamer Mode#ai-analysis]] |
+| **Gossamer analysis** | Runs AI evaluation of story beat momentum for Gossamer mode. Requires AI features enabled. | [[Gossamer Mode#ai-analysis]] |
 
 ### Inquiry
 
 | Command | Description | Documentation |
 | :--- | :--- | :--- |
-| **Open Inquiry** | Opens the Inquiry view for corpus-level story analysis. | [[Inquiry]] |
+| **Open Inquiry** | Opens the Inquiry view — the second of two views in Radial Timeline — for corpus-level story analysis. | [[Inquiry]] |
 | **Inquiry: Run Omnibus Pass** | Runs all enabled Inquiry questions across configured scopes in a single batch. | [[Inquiry]] |
 
 ### Pro & Social
