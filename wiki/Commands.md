@@ -54,7 +54,7 @@ Type "Radial Timeline" to filter the list.
 | Command | Description | Documentation |
 | :--- | :--- | :--- |
 | **Open Inquiry** | Opens the Inquiry view — the second of two views in Radial Timeline — for corpus-level story analysis. | [[Inquiry]] |
-| **Inquiry: Run Omnibus Pass** | Runs all enabled Inquiry questions across configured scopes in a single batch. | [[Inquiry]] |
+| **Inquiry Omnibus Pass** | Runs all enabled Inquiry questions across configured scopes in a single batch. | [[Inquiry]] |
 
 ### Pro & Social
 

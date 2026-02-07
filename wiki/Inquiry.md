@@ -13,7 +13,7 @@ Inquiry sends your manuscript corpus to an AI provider and asks structured quest
 
 **Commands**:
 *   `Open Inquiry` — Opens the Inquiry view
-*   `Inquiry: Run Omnibus Pass` — Runs all enabled questions in a single batch
+*   `Inquiry Omnibus Pass` — Runs all enabled questions in a single batch
 
 **Settings**: [[Settings#inquiry]]
 
@@ -73,7 +73,7 @@ Click zone segments or findings to drill into specific analysis results.
 
 ### Omnibus Pass
 
-The Omnibus Pass runs all enabled questions across all three zones in sequence. Use the `Inquiry: Run Omnibus Pass` command or the Omnibus button in the Inquiry view.
+The Omnibus Pass runs all enabled questions across all three zones in sequence. Use the `Inquiry Omnibus Pass` command or the Omnibus button in the Inquiry view.
 
 ---
 
