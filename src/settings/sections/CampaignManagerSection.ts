@@ -249,19 +249,6 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
         cls: `${ERT_CLASSES.SECTION_DESC} ert-campaign-desc`
     });
 
-    new Setting(card)
-        .setName('Auto-update embed paths')
-        .setDesc('When size or schedule changes, update the default embed path if it still matches the default pattern.')
-        .addToggle(toggle => {
-            const current = plugin.settings.authorProgress?.autoUpdateEmbedPaths ?? false;
-            toggle.setValue(current);
-            toggle.onChange(async (val) => {
-                if (!plugin.settings.authorProgress) return;
-                plugin.settings.authorProgress.autoUpdateEmbedPaths = val;
-                await plugin.saveSettings();
-            });
-        });
-
     // ─────────────────────────────────────────────────────────────────────────
     // CAMPAIGN LIST
     // ─────────────────────────────────────────────────────────────────────────

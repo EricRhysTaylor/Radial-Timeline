@@ -54,10 +54,21 @@ Choose a preset structure:
 *   **Custom**: Define your own structure.
 
 ### 2. Custom Beat System
-When "Custom" is selected, a configuration area appears:
-*   **Name**: Give your system a name (e.g., "7 Point Structure").
-*   **Edit Beats**: Add beats, rename them, and assign them to specific Acts.
-*   **Reorder**: Drag and drop beats to change their order.
+When "Custom" is selected, the beat system editor appears:
+*   **Name**: Give your system a name (e.g., "7 Point Structure"). This is written to the `Beat Model` YAML field.
+*   **Add beats**: Type a name and click **+** to add a new beat. Assign each beat to an act using the dropdown.
+*   **Reorder**: Drag and drop beats to change their order within or across acts.
+*   **Rename**: Edit beat names inline. After renaming or reordering, use **Merge** to update existing files.
 
-### 3. Create Templates
-Click **Create template beat notes** to generate a set of notes in your source folder, one for each beat in your selected system. These notes come pre-populated with the correct YAML frontmatter (`Class: Beat`, `Beat Model`, `Range`, etc.) so they are immediately recognized by Gossamer Mode.
+Row colors show the sync status between your beat list and the actual note files:
+*   **Green** — beat note exists and is aligned.
+*   **Orange** — beat note exists but is misaligned (wrong number or act). Merge to fix.
+*   **Red** — duplicate title or multiple files match. Resolve manually.
+*   **No highlight** — new beat, no file yet.
+
+### 3. Create & Merge
+*   **Create**: Generates beat template notes in your source folder, one per beat. Notes come pre-populated with YAML frontmatter (`Class: Beat`, `Beat Model`, `Range`, etc.) so they are immediately recognized by Gossamer Mode. The button is disabled when all beats already have files, and shows how many new notes will be created.
+*   **Merge**: Appears when beats are misaligned. Renames and updates existing beat note files to match the current list order and act assignments. Use this after reordering or renaming beats.
+
+> [!NOTE]
+> Custom beat notes use the same YAML structure as preset systems. Custom per-beat YAML field editing is planned for a future revision.

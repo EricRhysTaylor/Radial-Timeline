@@ -1595,6 +1595,13 @@
   box-shadow: 0 0 0 calc(var(--ert-gap-xs) / 2) color-mix(in srgb, var(--text-success) 30%, transparent);
 }
 
+.ert-ui.ert-scope--modal input.ert-input--warning,
+.ert-ui.ert-scope--modal .ert-input--warning {
+  border-color: var(--ert-alert-warning-color);
+  background-color: color-mix(in srgb, var(--ert-alert-warning-color) 10%, transparent);
+  box-shadow: 0 0 0 calc(var(--ert-gap-xs) / 2) color-mix(in srgb, var(--ert-alert-warning-color) 30%, transparent);
+}
+
 .ert-ui.ert-scope--settings .ert-sliderValueLabel {
   display: inline-flex;
   align-items: center;

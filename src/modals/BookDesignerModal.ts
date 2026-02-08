@@ -1165,6 +1165,12 @@ export class BookDesignerModal extends Modal {
                 path.setAttr('data-act', `${assignment.act}`);
                 path.setAttr('data-scene', `${assignment.sceneNumber}`);
                 path.setAttr('data-subplot', `${subplotIndex}`);
+
+                // Native SVG tooltip on hover
+                const subplotLabel = subplotList[subplotIndex] || `Subplot ${subplotIndex + 1}`;
+                const title = path.createSvg('title');
+                title.textContent = `Scene ${assignment.sceneNumber} · Act ${assignment.act} · ${subplotLabel}\nDrag to move between acts and subplots`;
+
                 path.addEventListener('pointerdown', (evt: PointerEvent) => this.beginDrag(evt, assignment.sceneNumber, dims));
             });
         });

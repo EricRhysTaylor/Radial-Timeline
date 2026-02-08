@@ -447,6 +447,19 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         });
     });
 
+    new Setting(stylingBody)
+        .setName('Auto-update embed paths')
+        .setDesc('When size or schedule changes, update default and campaign embed paths if they still match the default pattern.')
+        .addToggle(toggle => {
+            const current = settings?.autoUpdateEmbedPaths ?? true;
+            toggle.setValue(current);
+            toggle.onChange(async (val) => {
+                if (!plugin.settings.authorProgress) return;
+                plugin.settings.authorProgress.autoUpdateEmbedPaths = val;
+                await plugin.saveSettings();
+            });
+        });
+
     // ─────────────────────────────────────────────────────────────────────────
     // UNIFIED TYPOGRAPHY & COLOR CONTROLS
     // Each element: Row 1 = Label + Text Input (if applicable) + Color + Hex
@@ -1426,7 +1439,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             .setName('Auto-update embed paths')
             .setDesc('When size or schedule changes, update the default embed path if it still matches the default pattern.')
             .addToggle(toggle => {
-                toggle.setValue(settings?.autoUpdateEmbedPaths ?? false);
+                toggle.setValue(settings?.autoUpdateEmbedPaths ?? true);
                 toggle.onChange(async (val) => {
                     if (!plugin.settings.authorProgress) return;
                     plugin.settings.authorProgress.autoUpdateEmbedPaths = val;

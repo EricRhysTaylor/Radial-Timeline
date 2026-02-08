@@ -178,8 +178,16 @@ Configure the high-level structure of your narrative ring.
 ### Story beats system
 Configure the structural pacing guide for your story.
 *   **Story beats system**: Select a preset structure (**Save The Cat**, **Hero's Journey**, **Story Grid**) or choose **Custom**.
-*   **Custom story beat system editor**: (Visible when "Custom" is selected) Define your own beat names and assign them to acts. Drag to reorder.
-*   **Create story beat template notes**: Generate empty beat notes in your source folder based on the selected system.
+*   **Custom story beat system editor**: (Visible when "Custom" is selected) Name your beat system, then add beats. Assign each beat to an act and drag to reorder. Row colors show sync status at a glance:
+    *   **Green** — beat note exists and is aligned (number and act match).
+    *   **Orange** — beat note exists but is misaligned (wrong number or act). Use **Merge** to fix.
+    *   **Red** — duplicate beat title or multiple files match. Resolve manually.
+    *   **No highlight** — new beat with no file yet. Use **Create** to generate it.
+*   **Create templates**: Generate beat template notes in your source folder. The button shows how many new notes will be created and is disabled when all beats already have files.
+*   **Merge beats**: (Appears when misaligned beats are detected) Renames and updates existing beat note files to match the current list order and act assignments. The button shows how many beats will be realigned.
+
+> [!NOTE]
+> Custom beat YAML fields use the same structure as preset systems (`Class: Beat`, `Act`, `Beat Model`, `Range`, etc.). Custom per-beat YAML field editing is planned for a future revision.
 
 > [!NOTE]
 > Learn more about using beats in [[Gossamer-Mode]].
@@ -318,7 +326,8 @@ Generate shareable, spoiler-safe progress graphics for social media, crowdfundin
 #### Publishing & Automation
 *   **Update Frequency**: How often to auto-update the live embed file. Options: Manual Only, Daily, Weekly, or Monthly. "Manual" requires clicking the update button in the Author Progress Report modal.
 *   **Refresh Alert Threshold**: Days before showing a refresh reminder in the Timeline view (1-90 days, default 30). Only shown when Update Frequency is set to Manual.
-*   **Embed File Path**: Location for the "Live Embed" SVG file. Must end with `.svg`. Default: `Radial Timeline/Social/progress.svg`.
+*   **Embed File Path**: Location for the "Live Embed" SVG file. Must end with `.svg`. Default: `Radial Timeline/Social/book/apr-default-manual-medium.svg`.
+*   **Auto-update embed paths**: When size or schedule changes, update default and campaign embed paths if they still match the default pattern.
 
 **Campaign Manager** ✦ Pro:
 Create multiple APR configurations for different platforms (Kickstarter, Patreon, Newsletter, Website) with independent refresh schedules.

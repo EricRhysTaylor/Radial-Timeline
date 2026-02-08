@@ -63,17 +63,22 @@ If your writing methodology uses fields beyond the built-in keys (e.g., Story Gr
 
 If you use a story structure not listed in the standard options (like 7 Point Story Structure):
 1.  Go to **Settings → Story beats system** and select **Custom**.
-2.  Define your **custom beat system name** and **beat list** in **Settings → Story beats system**.
+2.  Name your beat system and add beats in the **Custom story beat system editor**. Assign each beat to an act.
 3.  In the Book Designer, enable **Generate Beats** to automatically generate beat notes for your custom system.
+
+After generating beats, you can reorder or rename them in the editor. Row colors indicate sync status (green = aligned, orange = needs merge, red = duplicate). Use **Merge** to realign existing files after changes.
 
 You can also create custom beat notes manually:
 *   Create a new note for each major beat (e.g., "Pinch Point 1").
-*   Add the following frontmatter:
+*   Add the following frontmatter (replace `Custom` with your system name):
     ```yaml
     Class: Beat
-    Beat Model: Custom
+    Beat Model: Your System Name
     ```
-*   Radial Timeline will detect these notes and display them in Gossamer mode alongside your scenes based on settings. If the new manually created note doesn't match the beat model name in settings, it will not be recognized.
+*   Radial Timeline will detect these notes and display them in Gossamer mode. The `Beat Model` value must match the system name in settings to be recognized.
+
+> [!NOTE]
+> Custom beat notes use the same YAML structure as preset systems. Custom per-beat YAML field editing is planned for a future revision.
 
 ## Advanced Metadata
 

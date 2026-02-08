@@ -300,7 +300,7 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
         stalenessThresholdDays: 30,
         enableReminders: true,
         dynamicEmbedPath: 'Radial Timeline/Social/book/apr-default-manual-medium.svg',
-        autoUpdateEmbedPaths: false,
+        autoUpdateEmbedPaths: true,
 
         // Pro Feature: Campaign Manager (empty by default)
         campaigns: []

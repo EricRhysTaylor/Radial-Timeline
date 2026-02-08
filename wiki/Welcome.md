@@ -23,7 +23,7 @@ You have two paths:
 ### 3. Set up your structure
 
 *   **Acts** — Default is 3-act structure. Adjust in **Settings → Core → Acts**.
-*   **Story beats** — Activate a beat system (Save the Cat, Hero's Journey, Story Grid) or create your own custom system in **Settings → Core → Story beats system**.
+*   **Story beats** — Activate a beat system (Save the Cat, Hero's Journey, Story Grid) or create your own custom system in **Settings → Core → Story beats system**. Custom systems support naming, act assignment, drag-to-reorder, and merge-to-realign.
 
 ### 4. Explore modes
 Switch between the three primary Timeline modes using keyboard shortcuts **1** (Narrative), **2** (Publication), and **3** (Chronologue) to see your story from different angles. Once you have a zero draft, try Gossamer mode (**4**) to map out the initial AI take on your momentum graph.

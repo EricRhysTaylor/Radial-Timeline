@@ -45,7 +45,8 @@ export class AuthorProgressModal extends Modal {
             updateFrequency: 'manual',
             stalenessThresholdDays: 30,
             enableReminders: true,
-            dynamicEmbedPath: 'Radial Timeline/Social/book/apr-default-manual-medium.svg'
+            dynamicEmbedPath: 'Radial Timeline/Social/book/apr-default-manual-medium.svg',
+            autoUpdateEmbedPaths: true
         };
 
         // Initialize reveal options from settings
@@ -429,9 +430,32 @@ export class AuthorProgressModal extends Modal {
             pathInput.inputEl.removeClass('ert-input--error');
             pathInput.inputEl.removeClass('ert-input--success');
         };
+        const looksLikeDefaultPath = (path: string): boolean => {
+            if (!path?.trim()) return false;
+            const normalized = path.replace(/\\/g, '/');
+            return normalized.startsWith('Radial Timeline/Social/')
+                && normalized.includes('/apr-default-')
+                && normalized.toLowerCase().endsWith('.svg');
+        };
+        const applyWarningState = (pathValue: string) => {
+            const shouldWarnPath = settings?.autoUpdateEmbedPaths === false
+                && pathValue !== defaultPath
+                && looksLikeDefaultPath(pathValue);
+            if (shouldWarnPath) {
+                pathInput.inputEl.addClass('ert-input--warning');
+                pathInput.inputEl.setAttribute(
+                    'title',
+                    'Auto-update embed paths is off. Update this filename manually when size or schedule changes.'
+                );
+            } else {
+                pathInput.inputEl.removeClass('ert-input--warning');
+                pathInput.inputEl.removeAttribute('title');
+            }
+        };
         pathInput.setPlaceholder(defaultPath);
         pathInput.setValue(currentPath);
         pathInput.inputEl.addClass('ert-input--full');
+        applyWarningState(currentPath);
 
         const savePath = async () => {
             const val = pathInput.getValue().trim();
@@ -445,6 +469,7 @@ export class AuthorProgressModal extends Modal {
             await this.plugin.saveSettings();
             pathInput.inputEl.addClass('ert-input--success');
             window.setTimeout(() => pathInput.inputEl.removeClass('ert-input--success'), 900);
+            applyWarningState(val);
         };
 
         pathInput.inputEl.addEventListener('blur', () => { void savePath(); });
@@ -811,7 +836,8 @@ export class AuthorProgressModal extends Modal {
                 updateFrequency: 'manual',
                 stalenessThresholdDays: 30,
                 enableReminders: true,
-                dynamicEmbedPath: 'Radial Timeline/Social/book/apr-default-manual-medium.svg'
+                dynamicEmbedPath: 'Radial Timeline/Social/book/apr-default-manual-medium.svg',
+                autoUpdateEmbedPaths: true
             };
         }
         const settings = this.plugin.settings.authorProgress;

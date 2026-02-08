@@ -3,7 +3,7 @@ Core workflows are a reference for ongoing use. For first-time setup, see [[Onbo
 ### Planning Your Novel
 *   **Act Structure**: Scenes are organized by act (default 3 acts, configurable in **Settings → Acts**). Acts come from the scene frontmatter `Act:` field.
 *   **Subplot Tracking**: Each ring represents a different subplot. Keep scenes in a single subplot or spread them across multiple subplots to capture common themes, topics, characters, etc.
-*   **Story Beats**: Use story beat systems (Save the Cat, Hero's Journey, Story Grid, or Custom) to lay out the momentum scaffolding.
+*   **Story Beats**: Use story beat systems (Save the Cat, Hero's Journey, Story Grid, or Custom) to lay out the momentum scaffolding. Custom systems let you name beats, assign them to acts, reorder via drag-and-drop, and merge changes into existing files. See [[Settings#story-beats]].
 *   **Backdrop & Micro-backdrops**: Mark major plot backdrop events using the special context ring placed below the outer ring in Chronologue mode. For lighter-weight context — eras, seasons, or historical milestones — use **micro-backdrop rings** configured in Settings with a title, color, and date range.
 
 ### Creating Scenes

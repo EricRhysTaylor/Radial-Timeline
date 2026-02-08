@@ -30,8 +30,9 @@ See [[YAML-Frontmatter|YAML Frontmatter]] for the full schema.
 - Use Narrative mode drag and drop after each act has at least one scene.
 
 ## 4. Add story beats (optional but recommended)
-- Pick a system in Settings -> Core -> Story beats system.
-- Use **Create template beat notes** to generate beat notes.
+- Pick a system in Settings -> Core -> Story beats system, or select **Custom** to define your own.
+- For custom systems: name your system, add beats, assign to acts, and drag to reorder.
+- Use **Create** to generate beat template notes, or **Merge** to realign existing files after changes.
 - Switch to Gossamer mode to visualize momentum.
 
 ## 5. Verify with key features

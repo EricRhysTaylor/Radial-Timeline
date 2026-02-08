@@ -37,6 +37,7 @@ import { migrateSceneAnalysisFields } from './migrations/sceneAnalysis';
 import { SettingsService } from './services/SettingsService';
 import { DEFAULT_GEMINI_MODEL_ID } from './constants/aiDefaults';
 import { DEFAULT_SETTINGS } from './settings/defaults';
+import { isDefaultEmbedPath } from './utils/aprPaths';
 import { initVersionCheckService, getVersionCheckService } from './services/VersionCheckService';
 import { registerRuntimeCommands } from './RuntimeCommands';
 import { AuthorProgressService } from './services/AuthorProgressService';
@@ -340,6 +341,21 @@ export default class RadialTimelinePlugin extends Plugin {
         }
         if (this.settings.cachedReleaseNotes === undefined) {
             this.settings.cachedReleaseNotes = DEFAULT_SETTINGS.cachedReleaseNotes;
+        }
+        if (this.settings.authorProgress) {
+            const apr = this.settings.authorProgress;
+            if (apr.autoUpdateEmbedPaths === undefined) {
+                apr.autoUpdateEmbedPaths = true;
+            }
+            const hasPublished = !!apr.lastPublishedDate?.trim();
+            const hasCampaigns = (apr.campaigns ?? []).length > 0;
+            const isDefaultPath = isDefaultEmbedPath(apr.dynamicEmbedPath, {
+                bookTitle: apr.bookTitle,
+                updateFrequency: apr.updateFrequency
+            });
+            if (!hasPublished && !hasCampaigns && isDefaultPath && apr.autoUpdateEmbedPaths === false) {
+                apr.autoUpdateEmbedPaths = true;
+            }
         }
         if (this.settings.releaseNotesLastFetched !== undefined) {
             const parsed = Date.parse(this.settings.releaseNotesLastFetched);
