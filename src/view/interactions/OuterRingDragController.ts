@@ -859,7 +859,7 @@ export class OuterRingDragController {
         'M -10 0 L 10 0',         // horizontal line
         'M -6 -4 L -10 0 L -6 4', // left arrow
     ].join(' ');
-    private static readonly INDICATOR_OFFSET = 19; // px above the outer ring edge
+    private static readonly INDICATOR_OFFSET = 22; // px above the outer ring edge
 
     /**
      * Create the drag reorder indicator SVG element in the overlays layer.
