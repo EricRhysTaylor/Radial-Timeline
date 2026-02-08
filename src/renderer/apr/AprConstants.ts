@@ -104,6 +104,30 @@ export const APR_MOMENTUM_BAR = {
 } as const;
 
 // =============================================================================
+// HEADLESS PATTERN TUNING (portable SVG only — Figma/Illustrator safe)
+// =============================================================================
+
+/**
+ * Density & appearance controls for APR headless Todo and Working patterns.
+ * These are inline SVG <pattern> defs using pure geometry (no CSS vars).
+ * Adjust tileSize for density: smaller = denser. All values in px.
+ */
+export const APR_HEADLESS_PATTERNS = {
+    todo: {
+        tileSize: 8,          // Pattern tile size (px) — smaller = denser dots
+        dotRadius: 1.0,       // Radius of each dot
+        dotOpacity: 0.4,      // Dot opacity against gray fill
+        fill: '#cccccc',      // Gray base fill
+    },
+    working: {
+        tileSize: 14,         // Pattern tile size (px) — smaller = denser W's
+        fontSize: 8,          // Font size for the "W" glyph (px)
+        glyphOpacity: 0.35,   // W opacity against pink fill
+        fill: '#FF69B4',      // Pink base fill
+    },
+} as const;
+
+// =============================================================================
 // GEOMETRY HELPERS
 // =============================================================================
 

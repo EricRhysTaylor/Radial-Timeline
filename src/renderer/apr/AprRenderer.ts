@@ -7,7 +7,7 @@ import { isBeatNote, sortScenes, sortByManuscriptOrder } from '../../utils/scene
 import { formatNumber } from '../../utils/svg';
 import { computePositions } from '../utils/SceneLayout';
 import { sceneArcPath } from '../components/SceneArcs';
-import { APR_COLORS, APR_TEXT_COLORS, APR_FIXED_STROKES } from './AprConstants';
+import { APR_COLORS, APR_TEXT_COLORS, APR_FIXED_STROKES, APR_HEADLESS_PATTERNS } from './AprConstants';
 import { computeAprLayout } from './aprLayout';
 import { getAprPreset, type AprSize } from './aprPresets';
 import { renderDefs } from '../components/Defs';
@@ -88,14 +88,6 @@ type RingData = {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const cssVar = (name: string, fallback: string) => `var(${name}-override, var(${name}, ${fallback}))`;
-const TAU = Math.PI * 2;
-const FULL_CIRCLE_EPSILON = 0.0001;
-
-const PORTABLE_STATUS_COLORS = {
-    Working: '#FF69B4',
-    Todo: '#cccccc',
-} as const;
-
 // Portable SVG helpers: bypass CSS vars for standalone exports (Figma, Illustrator, etc.)
 const resolveColor = (portable: boolean) =>
     (name: string, fallback: string): string =>
@@ -105,28 +97,6 @@ const resolveOpacity = (portable: boolean) =>
     (varExpr: string, fallback: string): string =>
         portable ? fallback : varExpr;
 
-function arcStrokePath(radius: number, startAngle: number, endAngle: number): string {
-    const span = Math.abs(endAngle - startAngle);
-    const isFullCircle = span >= (TAU - FULL_CIRCLE_EPSILON);
-    const r = formatNumber(radius);
-
-    if (isFullCircle) {
-        const midAngle = startAngle + (endAngle - startAngle) / 2;
-        const startX = formatNumber(radius * Math.cos(startAngle));
-        const startY = formatNumber(radius * Math.sin(startAngle));
-        const midX = formatNumber(radius * Math.cos(midAngle));
-        const midY = formatNumber(radius * Math.sin(midAngle));
-        return `M ${startX} ${startY} A ${r} ${r} 0 1 1 ${midX} ${midY} A ${r} ${r} 0 1 1 ${startX} ${startY}`;
-    }
-
-    const largeArc = span > Math.PI ? 1 : 0;
-    const startX = formatNumber(radius * Math.cos(startAngle));
-    const startY = formatNumber(radius * Math.sin(startAngle));
-    const endX = formatNumber(radius * Math.cos(endAngle));
-    const endY = formatNumber(radius * Math.sin(endAngle));
-    return `M ${startX} ${startY} A ${r} ${r} 0 ${largeArc} 1 ${endX} ${endY}`;
-}
-
 function resolvePublishStageKey(raw: unknown, stageColors: Record<string, string>): { key: string; fallback: string } {
     const stageKeys = Object.keys(stageColors);
     const fallback = stageKeys.includes('Zero') ? 'Zero' : (stageKeys[0] || 'Zero');
@@ -135,6 +105,36 @@ function resolvePublishStageKey(raw: unknown, stageColors: Record<string, string
     if (!value) return { key: fallback, fallback };
     const match = stageKeys.find(stage => stage.toLowerCase() === value.toLowerCase());
     return { key: match ?? fallback, fallback };
+}
+
+/**
+ * Generate portable SVG <pattern> defs for headless mode (Figma/Illustrator safe).
+ * Todo = gray fill with small dots; Working = pink fill with "W" glyphs.
+ * Each pattern is generated per publish-stage so the dot/glyph color matches the stage.
+ * Density is tunable via APR_HEADLESS_PATTERNS in AprConstants.ts.
+ */
+function renderHeadlessPatternDefs(stageColors: Record<string, string>): string {
+    const todo = APR_HEADLESS_PATTERNS.todo;
+    const working = APR_HEADLESS_PATTERNS.working;
+    let defs = '';
+    for (const [stage, stageColor] of Object.entries(stageColors)) {
+        // Todo: gray base + small circle dots in stage color
+        const ts = todo.tileSize;
+        const half = formatNumber(ts / 2);
+        defs += `<pattern id="aprHeadlessTodo${stage}" patternUnits="userSpaceOnUse" width="${ts}" height="${ts}">` +
+            `<rect width="${ts}" height="${ts}" fill="${todo.fill}"/>` +
+            `<circle cx="${half}" cy="${half}" r="${formatNumber(todo.dotRadius)}" fill="${stageColor}" opacity="${todo.dotOpacity}"/>` +
+            `</pattern>`;
+        // Working: pink base + "W" glyph in stage color
+        const ws = working.tileSize;
+        const wx = formatNumber(ws / 2);
+        const wy = formatNumber(ws * 0.78);
+        defs += `<pattern id="aprHeadlessWorking${stage}" patternUnits="userSpaceOnUse" width="${ws}" height="${ws}">` +
+            `<rect width="${ws}" height="${ws}" fill="${working.fill}"/>` +
+            `<text x="${wx}" y="${wy}" text-anchor="middle" font-size="${working.fontSize}" font-family="sans-serif" font-weight="bold" fill="${stageColor}" opacity="${working.glyphOpacity}">W</text>` +
+            `</pattern>`;
+    }
+    return defs;
 }
 
 export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): AprRenderResult {
@@ -337,7 +337,9 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         working: '#FF69B4',  // STATUS_COLORS.Working fallback
         todo: '#cccccc'      // STATUS_COLORS.Todo fallback
     } : undefined;
-    svg += `<defs>${renderDefs(stageColorMap, patternScale, portableSvg, statusColorsResolved)}${percentShadow}${grayscaleFilter}</defs>`;
+    // Headless-only pattern defs for portable SVG (Todo dots + Working W glyphs)
+    const headlessPatterns = portableSvg ? renderHeadlessPatternDefs(stageColorMap) : '';
+    svg += `<defs>${renderDefs(stageColorMap, patternScale, portableSvg, statusColorsResolved)}${headlessPatterns}${percentShadow}${grayscaleFilter}</defs>`;
 
     // ─────────────────────────────────────────────────────────────────────────
     // BAR-ONLY MODE (Teaser): Solid progress ring, no scene details
@@ -490,25 +492,16 @@ function renderRing(
             used += pos.endAngle - pos.startAngle;
             const sceneColor = resolveSceneColor(scene, showStatusColors, showStageColors, grayCompletedScenes, stageColors, portableSvg);
             const path = sceneArcPath(ring.innerR, ring.outerR, pos.startAngle, pos.endAngle);
+            // Portable mode: replace plaid pattern refs with headless patterns (dots / W glyphs)
             const patternMatch = portableSvg ? sceneColor.match(/^url\(#plaid(Working|Todo)/) : null;
             if (patternMatch) {
-                const statusKey = patternMatch[1] as keyof typeof PORTABLE_STATUS_COLORS;
-                const fillColor = PORTABLE_STATUS_COLORS[statusKey] ?? PORTABLE_STATUS_COLORS.Todo;
+                const statusKey = patternMatch[1]; // 'Working' or 'Todo'
                 const stageInfo = resolvePublishStageKey(scene['Publish Stage'], stageColors);
-                const hatchColor = stageColors[stageInfo.key]
-                    || stageColors[stageInfo.fallback]
-                    || stageColors.Zero
-                    || '#888888';
-                svg += `<path d="${path}" fill="${fillColor}" stroke="${color('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
-
-                const thickness = ring.outerR - ring.innerR;
-                const hatchCount = Math.max(2, Math.min(6, Math.round(thickness / 12)));
-                const hatchStroke = Math.max(0.8, Math.min(2, borderWidth));
-                const dashAttr = statusKey === 'Todo' ? ` stroke-dasharray="${formatNumber(hatchStroke * 1.8)} ${formatNumber(hatchStroke * 2.6)}"` : '';
-                for (let i = 1; i <= hatchCount; i++) {
-                    const r = ring.innerR + (thickness * i) / (hatchCount + 1);
-                    svg += `<path d="${arcStrokePath(r, pos.startAngle, pos.endAngle)}" fill="none" stroke="${hatchColor}" stroke-width="${formatNumber(hatchStroke)}"${dashAttr} stroke-linecap="round" />`;
-                }
+                const stageKey = stageInfo.key;
+                const headlessFill = statusKey === 'Todo'
+                    ? `url(#aprHeadlessTodo${stageKey})`
+                    : `url(#aprHeadlessWorking${stageKey})`;
+                svg += `<path d="${path}" fill="${headlessFill}" stroke="${color('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;
                 return;
             }
             svg += `<path d="${path}" fill="${sceneColor}" stroke="${color('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;

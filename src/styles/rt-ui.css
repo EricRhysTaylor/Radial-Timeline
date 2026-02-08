@@ -24,12 +24,15 @@
   --ert-pro-gradient-primary-hover: linear-gradient(135deg, #a855f7, #818cf8);
   --ert-social-gradient-primary: linear-gradient(135deg, #fbbf24, #d97706);
   --ert-alert-info-color: #3b82f6;
+  --ert-alert-success-color: var(--text-success, #22c55e);
   --ert-alert-warning-color: var(--text-warning, #f59e0b);
   --ert-alert-critical-color: var(--text-error, #ef4444);
   --ert-alert-info-bg: color-mix(in srgb, var(--ert-alert-info-color) 12%, transparent);
+  --ert-alert-success-bg: color-mix(in srgb, var(--ert-alert-success-color) 10%, transparent);
   --ert-alert-warning-bg: color-mix(in srgb, var(--ert-alert-warning-color) 12%, transparent);
   --ert-alert-critical-bg: color-mix(in srgb, var(--ert-alert-critical-color) 12%, transparent);
   --ert-alert-info-border: color-mix(in srgb, var(--ert-alert-info-color) 35%, transparent);
+  --ert-alert-success-border: color-mix(in srgb, var(--ert-alert-success-color) 30%, transparent);
   --ert-alert-warning-border: color-mix(in srgb, var(--ert-alert-warning-color) 35%, transparent);
   --ert-alert-critical-border: color-mix(in srgb, var(--ert-alert-critical-color) 35%, transparent);
   --ert-alert-warning-pulse: color-mix(in srgb, var(--ert-alert-warning-color) 40%, transparent);
@@ -3711,35 +3714,38 @@
   opacity: 0.95;
 }
 
-/* Beat row mismatch highlights (mirrors YAML migration row pattern) */
-.ert-ui.ert-scope--settings .ert-custom-beat-row--existing {
+/* Beat row state highlights — mutually exclusive (synced / misaligned / duplicate) */
+.ert-ui.ert-scope--settings :is(.ert-custom-beat-row--synced, .ert-custom-beat-row--misaligned, .ert-custom-beat-row--duplicate) {
   position: relative;
 }
 
-.ert-ui.ert-scope--settings .ert-custom-beat-row--existing::before {
+.ert-ui.ert-scope--settings :is(.ert-custom-beat-row--synced, .ert-custom-beat-row--misaligned, .ert-custom-beat-row--duplicate) > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ert-ui.ert-scope--settings :is(.ert-custom-beat-row--synced, .ert-custom-beat-row--misaligned, .ert-custom-beat-row--duplicate)::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: calc(var(--ert-control-radius) + (var(--ert-gap-xs) / 2));
   pointer-events: none;
   z-index: 0;
-  background: var(--ert-alert-warning-bg);
-  border: 1px solid var(--ert-alert-warning-border);
+}
+
+.ert-ui.ert-scope--settings .ert-custom-beat-row--synced::before {
+  background: var(--ert-alert-success-bg);
+  border: 1px solid var(--ert-alert-success-border);
 }
 
 .ert-ui.ert-scope--settings .ert-custom-beat-row--misaligned::before {
-  background: var(--ert-alert-critical-bg);
-  border: 1px solid var(--ert-alert-critical-border);
+  background: var(--ert-alert-warning-bg);
+  border: 1px solid var(--ert-alert-warning-border);
 }
 
 .ert-ui.ert-scope--settings .ert-custom-beat-row--duplicate::before {
   background: var(--ert-alert-critical-bg);
   border: 1px solid var(--ert-alert-critical-border);
-}
-
-.ert-ui.ert-scope--settings .ert-custom-beat-row--existing > * {
-  position: relative;
-  z-index: 1;
 }
 
 .ert-ui.ert-scope--settings .ert-reorder-row {
@@ -5676,4 +5682,9 @@
 .ert-ui.ert-scope--modal .ert-apr-step.is-active .ert-apr-step-label {
   color: var(--text-normal);
   font-weight: 600;
+}
+
+/* Tooltip text balancing — avoids orphaned single words on the last line */
+.tooltip {
+  text-wrap: balance;
 }

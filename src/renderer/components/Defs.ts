@@ -34,34 +34,14 @@ export function renderDefs(
         </g>
       </pattern>`;
     
-    // Todo pattern: realistic tartan plaid with woven band structure
-    // Multiple overlapping horizontal + vertical stripes at varied widths/opacities
-    const ps = todoSize;           // tile size (10 * patternScale)
-    const sw = Math.max(0.3, strokeWidth * 0.6);  // thin accent line
-    const mw = Math.max(0.8, strokeWidth * 1.8);  // medium band
-    const bw = Math.max(1.2, strokeWidth * 3.0);  // broad band
+    // Todo pattern: crosshatch grid — the original plaid for the radial timeline
+    // Stable for months. APR headless patterns (AprRenderer portable mode) are separate.
+    const todoStrokeOpacity = portableSvg ? '0.7' : '0.5';
     const todoPath = `
-      <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="${ps}" height="${ps}">
-        <rect width="${ps}" height="${ps}" fill="${todoFill}" opacity="${plaidOpacity}"/>
-        <!-- Horizontal bands -->
-        <rect x="0" y="0" width="${ps}" height="${bw}" fill="${color}" opacity="0.18"/>
-        <rect x="0" y="${ps * 0.25}" width="${ps}" height="${mw}" fill="${color}" opacity="0.12"/>
-        <rect x="0" y="${ps * 0.5}" width="${ps}" height="${bw}" fill="${color}" opacity="0.18"/>
-        <rect x="0" y="${ps * 0.75}" width="${ps}" height="${mw}" fill="${color}" opacity="0.12"/>
-        <!-- Vertical bands -->
-        <rect x="0" y="0" width="${bw}" height="${ps}" fill="${color}" opacity="0.18"/>
-        <rect x="${ps * 0.25}" y="0" width="${mw}" height="${ps}" fill="${color}" opacity="0.12"/>
-        <rect x="${ps * 0.5}" y="0" width="${bw}" height="${ps}" fill="${color}" opacity="0.18"/>
-        <rect x="${ps * 0.75}" y="0" width="${mw}" height="${ps}" fill="${color}" opacity="0.12"/>
-        <!-- Thin accent lines for the woven thread look -->
-        <line x1="0" y1="${ps * 0.125}" x2="${ps}" y2="${ps * 0.125}" stroke="${color}" stroke-width="${sw}" opacity="0.35"/>
-        <line x1="0" y1="${ps * 0.375}" x2="${ps}" y2="${ps * 0.375}" stroke="${color}" stroke-width="${sw}" opacity="0.25"/>
-        <line x1="0" y1="${ps * 0.625}" x2="${ps}" y2="${ps * 0.625}" stroke="${color}" stroke-width="${sw}" opacity="0.35"/>
-        <line x1="0" y1="${ps * 0.875}" x2="${ps}" y2="${ps * 0.875}" stroke="${color}" stroke-width="${sw}" opacity="0.25"/>
-        <line x1="${ps * 0.125}" y1="0" x2="${ps * 0.125}" y2="${ps}" stroke="${color}" stroke-width="${sw}" opacity="0.35"/>
-        <line x1="${ps * 0.375}" y1="0" x2="${ps * 0.375}" y2="${ps}" stroke="${color}" stroke-width="${sw}" opacity="0.25"/>
-        <line x1="${ps * 0.625}" y1="0" x2="${ps * 0.625}" y2="${ps}" stroke="${color}" stroke-width="${sw}" opacity="0.35"/>
-        <line x1="${ps * 0.875}" y1="0" x2="${ps * 0.875}" y2="${ps}" stroke="${color}" stroke-width="${sw}" opacity="0.25"/>
+      <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="${todoSize}" height="${todoSize}" patternTransform="rotate(45)">
+        <rect width="${todoSize}" height="${todoSize}" fill="${todoFill}" opacity="${plaidOpacity}"/>
+        <line x1="0" y1="0" x2="0" y2="${todoSize}" stroke="${color}" stroke-width="${strokeWidth}" stroke-opacity="${todoStrokeOpacity}"/>
+        <line x1="0" y1="0" x2="${todoSize}" y2="0" stroke="${color}" stroke-width="${strokeWidth}" stroke-opacity="${todoStrokeOpacity}"/>
       </pattern>`;
     
     return workingPath + todoPath;

@@ -132,6 +132,21 @@ export class OuterRingDragController {
     }
 
     /**
+     * Return the current rotation offset in radians.
+     * When the timeline is rotated (via the rotation toggle), `#timeline-rotatable`
+     * is rotated by -360/numActs degrees.  Overlay elements (indicator, drop tick,
+     * drop arc) live outside that group, so their angle calculations must add this
+     * offset to match the visual positions of the rotated scene groups.
+     */
+    private getRotationOffsetRad(): number {
+        const rotated = this.svg.getAttribute('data-rotated') === 'true';
+        if (!rotated) return 0;
+        const numActs = parseInt(this.svg.getAttribute('data-num-acts') || '3', 10);
+        const angleDeg = numActs > 0 ? 360 / numActs : 120;
+        return -(angleDeg * Math.PI) / 180;
+    }
+
+    /**
      * Determine the outer ring index (the highest ring number among all scene groups).
      * Only the outer ring supports drag reorder; inner subplot rings are read-only.
      */
@@ -363,12 +378,14 @@ export class OuterRingDragController {
     }
 
     private updateDropTick(startAngle: number, outerR: number, color?: string): void {
+        // Apply rotation offset so the tick matches the visual scene positions
+        const angle = startAngle + this.getRotationOffsetRad();
         const r2 = DRAG_DROP_TICK_OUTER_RADIUS;
         const r1 = r2 - DRAG_DROP_TICK_LENGTH;
-        const x1 = r1 * Math.cos(startAngle);
-        const y1 = r1 * Math.sin(startAngle);
-        const x2 = r2 * Math.cos(startAngle);
-        const y2 = r2 * Math.sin(startAngle);
+        const x1 = r1 * Math.cos(angle);
+        const y1 = r1 * Math.sin(angle);
+        const x2 = r2 * Math.cos(angle);
+        const y2 = r2 * Math.sin(angle);
         const tick = this.ensureDropTick();
         tick.classList.remove('rt-hidden');
         tick.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
@@ -384,13 +401,16 @@ export class OuterRingDragController {
         arc.classList.remove('rt-hidden');
         const rArc = DRAG_DROP_ARC_RADIUS;
 
+        // Apply rotation offset so the arc matches the visual scene positions
+        const rotOffset = this.getRotationOffsetRad();
+
         const norm = (a: number) => {
             while (a < -Math.PI) a += Math.PI * 2;
             while (a > Math.PI) a -= Math.PI * 2;
             return a;
         };
-        const a0 = startAngle;
-        const a1 = endAngle;
+        const a0 = startAngle + rotOffset;
+        const a1 = endAngle + rotOffset;
         const delta = norm(a1 - a0);
         const largeArc = Math.abs(delta) > Math.PI ? 1 : 0;
         const sweep = delta >= 0 ? 1 : 0;
@@ -870,7 +890,9 @@ export class OuterRingDragController {
         const outerR = Number(group.getAttribute('data-outer-r') ?? '');
         if (!Number.isFinite(startAngle) || !Number.isFinite(endAngle) || !Number.isFinite(outerR)) return;
 
-        const centerAngle = (startAngle + endAngle) / 2;
+        // Apply rotation offset so the indicator matches the visual position
+        const rotOffset = this.getRotationOffsetRad();
+        const centerAngle = (startAngle + endAngle) / 2 + rotOffset;
         const r = outerR + OuterRingDragController.INDICATOR_OFFSET;
         const x = r * Math.cos(centerAngle);
         const y = r * Math.sin(centerAngle);

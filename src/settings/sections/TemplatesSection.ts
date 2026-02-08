@@ -283,6 +283,8 @@ export function renderStoryBeatsSection(params: {
     let existingBeatExpectedCount = 0;
     let existingBeatDuplicateCount = 0;
     let existingBeatMisalignedCount = 0;
+    let existingBeatSyncedCount = 0;
+    let existingBeatNewCount = 0;
     let existingBeatKey = '';
     let existingBeatReady = false;
     let refreshCustomBeatList: (() => void) | null = null;
@@ -294,8 +296,12 @@ export function renderStoryBeatsSection(params: {
         if (!allowFetch && existingBeatKey === nextKey && existingBeatReady) {
             return existingBeatLookup;
         }
-        const beats = await collectExistingBeatNotes(allowFetch, selectedSystem);
+        const [beats, ranges] = await Promise.all([
+            collectExistingBeatNotes(allowFetch, selectedSystem),
+            collectActRanges(allowFetch)
+        ]);
         if (beats === null) return null;
+        const resolvedRanges = ranges ?? new Map<number, ActRange>();
         const expectedNames = buildExpectedBeatNames(selectedSystem);
         const expectedKeys = new Set(expectedNames.map(name => normalizeBeatTitle(name)).filter(k => k.length > 0));
         const buildCounts = (lookup: Map<string, TimelineItem[]>, total: number) => {
@@ -311,7 +317,7 @@ export function renderStoryBeatsSection(params: {
                 ? (plugin.settings.customBeatSystemBeats || []).map(parseBeatRow).map(b => ({ ...b, act: clampBeatAct(b.act, maxActs) }))
                 : (expectedNames.map(name => ({ name, act: 1 })));
             let misaligned = 0;
-            const beatNumbers = buildBeatNumbers(expectedBeats, maxActs, new Map());
+            const beatNumbers = buildBeatNumbers(expectedBeats, maxActs, resolvedRanges);
             expectedBeats.forEach((beat, idx) => {
                 const key = normalizeBeatTitle(beat.name);
                 if (!key || !lookup.has(key)) return;
@@ -332,6 +338,8 @@ export function renderStoryBeatsSection(params: {
                 if (!hasAligned) misaligned++;
             });
             existingBeatMisalignedCount = misaligned;
+            existingBeatSyncedCount = Math.max(0, existingBeatMatchedCount - existingBeatMisalignedCount - existingBeatDuplicateCount);
+            existingBeatNewCount = Math.max(0, existingBeatExpectedCount - existingBeatMatchedCount);
         };
 
         const initialLookup = buildExistingBeatLookup(beats);
@@ -447,7 +455,7 @@ export function renderStoryBeatsSection(params: {
         
         new Settings(customConfigContainer)
             .setName('Custom story beat system editor')
-            .setDesc('The name of your custom beat system (e.g. "7 Point Structure"). Assigned to the "Beat Model" field in YAML. Drag to reorder beats.')
+            .setDesc('Name your beat system, then add beats below. Assign each beat to an act and drag to reorder. Use Create to generate template notes, or Merge to realign existing notes after reordering or renaming. The system name is written to the "Beat Model" YAML field.')
             .addText(text => text
                 .setPlaceholder('Custom')
                 .setValue(plugin.settings.customBeatSystemName || 'Custom')
@@ -611,62 +619,52 @@ export function renderStoryBeatsSection(params: {
                     const nameInput = row.createEl('input', { type: 'text', cls: 'ert-beat-name-input ert-input' });
                     nameInput.value = name;
                     nameInput.placeholder = 'Beat name';
+                    // Determine row state (mutually exclusive: new | synced | misaligned | duplicate)
                     const dupKey = normalizeBeatTitle(name);
+                    let rowState: 'new' | 'synced' | 'misaligned' | 'duplicate' = 'new';
                     const rowNotices: string[] = [];
+
+                    // Duplicate title in settings list takes highest priority
                     if (dupKey && duplicateKeys.has(dupKey)) {
-                        row.addClass('ert-custom-beat-row--duplicate');
-                        rowNotices.push('Duplicate beat title (ignores numeric prefix).');
+                        rowState = 'duplicate';
+                        rowNotices.push('Duplicate beat title. Rename one to resolve.');
                     }
+
+                    // Check for existing files
                     if (dupKey && existingBeatLookup.has(dupKey)) {
-                        row.addClass('ert-custom-beat-row--existing');
-                        rowNotices.push('Existing beat note found. Merge to realign.');
                         const matches = existingBeatLookup.get(dupKey) ?? [];
                         if (matches.length > 1) {
-                            row.addClass('ert-custom-beat-row--duplicate');
-                            rowNotices.push('Multiple existing beats share this title.');
-                        }
-                        const expectedNumber = beatNumber;
-                        let hasAligned = false;
-                        let hasMissingNumber = false;
-                        let hasActMismatch = false;
-                        let sampleExistingLabel = '';
-                        matches.forEach(existing => {
-                            const existingName = getBeatBasename(existing);
-                            const existingNumberStr = getScenePrefixNumber(existingName, existing.number);
+                            rowState = 'duplicate';
+                            rowNotices.push('Multiple files match this title.');
+                        } else if (rowState !== 'duplicate') {
+                            const match = matches[0];
+                            const existingName = getBeatBasename(match);
+                            const existingNumberStr = getScenePrefixNumber(existingName, match.number);
                             const existingNumber = existingNumberStr ? Number(existingNumberStr) : NaN;
-                            const existingActRaw = typeof existing.actNumber === 'number' ? existing.actNumber : Number(existing.act ?? actNumber);
+                            const existingActRaw = typeof match.actNumber === 'number'
+                                ? match.actNumber
+                                : Number(match.act ?? actNumber);
                             const existingAct = Number.isFinite(existingActRaw) ? existingActRaw : actNumber;
                             const missingNumber = !existingNumberStr || !Number.isFinite(existingNumber);
-                            if (missingNumber) {
-                                hasMissingNumber = true;
-                            }
-                            const numberAligned = !missingNumber && existingNumber === expectedNumber;
+                            const numberAligned = !missingNumber && existingNumber === beatNumber;
                             const actAligned = Number.isFinite(existingAct) ? existingAct === actNumber : true;
+
                             if (numberAligned && actAligned) {
-                                hasAligned = true;
-                            } else if (!actAligned) {
-                                hasActMismatch = true;
-                            }
-                            if (!sampleExistingLabel) {
-                                const labelNum = existingNumberStr ?? '?';
-                                sampleExistingLabel = `${labelNum}, Act ${existingAct}`;
-                            }
-                        });
-                        if (!hasAligned) {
-                            row.addClass('ert-custom-beat-row--misaligned');
-                            if (hasMissingNumber) {
-                                row.addClass('ert-custom-beat-row--missing-number');
-                                rowNotices.push('Missing prefix number in existing beat note.');
-                            }
-                            if (sampleExistingLabel && !hasMissingNumber) {
-                                rowNotices.push(`Misaligned vs existing note (${sampleExistingLabel}).`);
-                            } else if (!hasMissingNumber) {
-                                rowNotices.push('Misaligned vs existing beat notes.');
-                            }
-                            if (hasActMismatch && !rowNotices.some(t => t.includes('Act'))) {
-                                rowNotices.push(`Act mismatch (expected Act ${actNumber}).`);
+                                rowState = 'synced';
+                                rowNotices.push('Beat note aligned.');
+                            } else {
+                                rowState = 'misaligned';
+                                if (missingNumber) {
+                                    rowNotices.push(`Missing prefix number. Merge to assign #${beatNumber}.`);
+                                } else {
+                                    rowNotices.push(`Misaligned: file is #${existingNumberStr} Act ${existingAct}, expected #${beatNumber} Act ${actNumber}.`);
+                                }
                             }
                         }
+                    }
+
+                    if (rowState !== 'new') {
+                        row.addClass(`ert-custom-beat-row--${rowState}`);
                     }
                     if (rowNotices.length > 0) {
                         setTooltip(nameInput, rowNotices.join(' '));
@@ -1544,7 +1542,12 @@ export function renderStoryBeatsSection(params: {
             setting.settingEl.style.opacity = '1';
         }
 
-        if (createTemplatesButton) createTemplatesButton.setDisabled(!hasBeats);
+        // Default button states before async lookup
+        if (createTemplatesButton) {
+            createTemplatesButton.setDisabled(!hasBeats);
+            createTemplatesButton.setButtonText('Create templates');
+            createTemplatesButton.setTooltip('Creates story beat note templates in your source path');
+        }
         if (mergeTemplatesButton) {
             mergeTemplatesButton.setDisabled(true);
             mergeTemplatesButton.buttonEl.addClass('ert-hidden');
@@ -1554,30 +1557,70 @@ export function renderStoryBeatsSection(params: {
         void (async () => {
             const lookup = await refreshExistingBeatLookup(true, selectedSystem);
             if (!lookup) return;
-            if (existingBeatCount > 0) {
-                const matchedLabel = existingBeatExpectedCount > 0
-                    ? `${existingBeatMatchedCount}/${existingBeatExpectedCount}`
-                    : `${existingBeatCount}`;
-                const duplicateLabel = existingBeatDuplicateCount > 0
-                    ? ` (${existingBeatDuplicateCount} duplicate${existingBeatDuplicateCount > 1 ? 's' : ''})`
-                    : '';
-                const misalignedLabel = existingBeatMisalignedCount > 0
-                    ? ` ${existingBeatMisalignedCount} misaligned.`
-                    : '';
-                const warning = isCustom
-                    ? `Existing beat notes detected (${matchedLabel}${duplicateLabel}).${misalignedLabel} Create templates to generate a new set, or use Merge to realign existing notes. Beat notes are never deleted; remove old beats manually.`
-                    : `Existing beat notes detected (${matchedLabel}${duplicateLabel}).${misalignedLabel} Creating templates will generate additional notes. Beat notes are never deleted; remove old beats manually.`;
-                setting.setDesc(`${baseDesc} ${warning}`);
-                if (mergeTemplatesButton && isCustom) {
-                    mergeTemplatesButton.buttonEl.removeClass('ert-hidden');
-                    mergeTemplatesButton.setDisabled(false);
-                }
+
+            const synced = existingBeatSyncedCount;
+            const misaligned = existingBeatMisalignedCount;
+            const newBeats = existingBeatNewCount;
+            const duplicates = existingBeatDuplicateCount;
+            const allSynced = synced === existingBeatExpectedCount && misaligned === 0 && duplicates === 0;
+            const hasNew = newBeats > 0;
+            const hasMisaligned = misaligned > 0;
+            const hasDuplicates = duplicates > 0;
+
+            if (existingBeatMatchedCount === 0) {
+                // Scenario A: Fresh — no existing files
+                setting.setDesc(baseDesc);
                 if (createTemplatesButton) {
-                    createTemplatesButton.setTooltip('Creates a new set of beat notes. Existing beats remain.');
+                    createTemplatesButton.setDisabled(false);
+                    createTemplatesButton.setButtonText('Create templates');
+                    createTemplatesButton.setTooltip(`Create ${existingBeatExpectedCount} beat template notes`);
                 }
-            } else if (createTemplatesButton) {
-                createTemplatesButton.setTooltip('Creates story beat note templates in your source path');
+                return;
             }
+
+            // Build concise status description from non-zero counts
+            const parts: string[] = [];
+            if (synced > 0) parts.push(`${synced} synced`);
+            if (misaligned > 0) parts.push(`${misaligned} misaligned`);
+            if (newBeats > 0) parts.push(`${newBeats} new`);
+            if (duplicates > 0) parts.push(`${duplicates} duplicate${duplicates > 1 ? 's' : ''}`);
+            let statusDesc = parts.join(', ') + '.';
+
+            if (allSynced) {
+                // Scenario B: All synced — nothing to do
+                statusDesc = `All ${existingBeatExpectedCount} beat notes are synced.`;
+                if (createTemplatesButton) {
+                    createTemplatesButton.setDisabled(true);
+                    createTemplatesButton.setTooltip('All beats already have aligned files');
+                }
+            } else if (hasNew) {
+                // Scenario D: Has new beats to create
+                if (createTemplatesButton) {
+                    createTemplatesButton.setDisabled(false);
+                    createTemplatesButton.setButtonText(`Create ${newBeats} new`);
+                    createTemplatesButton.setTooltip(`Create template notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`);
+                }
+            } else {
+                // Scenario C: All matched, some misaligned — no new beats
+                if (createTemplatesButton) {
+                    createTemplatesButton.setDisabled(true);
+                    createTemplatesButton.setTooltip('All beats have files. Use Merge to fix alignment.');
+                }
+            }
+
+            // Merge button: show when misaligned beats exist (Custom only)
+            if (mergeTemplatesButton && isCustom && hasMisaligned) {
+                mergeTemplatesButton.buttonEl.removeClass('ert-hidden');
+                mergeTemplatesButton.setDisabled(false);
+                mergeTemplatesButton.setButtonText(`Merge ${misaligned} beat${misaligned > 1 ? 's' : ''}`);
+                mergeTemplatesButton.setTooltip(`Rename and realign ${misaligned} beat note${misaligned > 1 ? 's' : ''} to match this list`);
+            }
+
+            if (hasDuplicates) {
+                statusDesc += ` Resolve duplicate${duplicates > 1 ? 's' : ''} before merging.`;
+            }
+
+            setting.setDesc(`${baseDesc} ${statusDesc}`);
         })();
     }
 
@@ -1692,6 +1735,15 @@ export function renderStoryBeatsSection(params: {
         }
 
         existingBeatReady = false;
+        // Wait for Obsidian metadata cache to re-index after renames
+        await new Promise<void>(resolve => {
+            const timeout = window.setTimeout(resolve, 1500);
+            const ref = app.metadataCache.on('resolved', () => {
+                window.clearTimeout(timeout);
+                app.metadataCache.offref(ref);
+                resolve();
+            });
+        });
         updateTemplateButton(templateSetting, storyStructureName);
         void refreshExistingBeatLookup(true, storyStructureName).then(() => {
             refreshCustomBeatList?.();
@@ -1755,6 +1807,16 @@ export function renderStoryBeatsSection(params: {
                 new Notice(`✓ Successfully created ${created} Beat template notes!`);
             }
             existingBeatReady = false;
+            // Wait for Obsidian metadata cache to index newly created files
+            // before refreshing beat detection. Use 'resolved' event with timeout fallback.
+            await new Promise<void>(resolve => {
+                const timeout = window.setTimeout(resolve, 1500);
+                const ref = app.metadataCache.on('resolved', () => {
+                    window.clearTimeout(timeout);
+                    app.metadataCache.offref(ref);
+                    resolve();
+                });
+            });
             updateTemplateButton(templateSetting, storyStructureName);
             void refreshExistingBeatLookup(true, storyStructureName).then(() => {
                 refreshCustomBeatList?.();
