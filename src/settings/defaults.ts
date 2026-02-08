@@ -161,31 +161,30 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     enableCustomMetadataMapping: false,
     enableAdvancedYamlEditor: false,
     sceneYamlTemplates: {
-        base: `Class: Scene              # Type: Scene, Beat, Backdrop
-Act: {{Act}}              # Which act (1..Act Count)
-When: {{When}}            # Story chronology date (YYYY-MM-DD 12:30pm)
-Duration: 1 hour         # How long the scene lasts (e.g., "45 seconds", "45s", "45sec", "2 hours", "3days")
-Synopsis:                 # Concise scene summary for hovers and outlines (1-3 sentences)
-Summary:                  # AI-generated longform scene analysis for inquiry and exports
-Subplot: {{Subplot}}      # Single subplot (or use array format below for multiple)
-Character: {{Character}}  # Characters in the scene (use array format below for multiple)
-POV:                      # blank, first, you, third, omni, narrator, two, all, count
-Due: {{When}}             # Target completion date (YYYY-MM-DD). When setting Scene to Complete, change this to that day's date for better novel completion estimate
-Status: Todo              # Scene status (Todo/Working/Complete)
-Publish Stage: Zero       # Publication stage (Zero/Author/House/Press)
-Pending Edits:            # Notes for next revision (especially for zero draft mode)
-Words:                    # Word count statistics
-Runtime:                  # Technical runtime (screenplay time / reading time, e.g., "2:30", "45s")
-Summary Update:           # AI-generated summary update flag
-Pulse Update:             # AI-generated scene pulse analysis flag`,
+        base: `Class: Scene
+Act: {{Act}}
+When: {{When}}
+Duration: 1 hour
+Synopsis:
+Summary:
+Pending Edits:
+Subplot: {{Subplot}}
+Character: {{Character}}
+POV:
+Words:
+Runtime:
+Publish Stage: Zero
+Status: Todo
+Due: {{When}}
+Pulse Update:
+Summary Update:`,
         advanced: `Place:
-{{PlaceList}}
-Questions:                            # Analysis Block
-Reader Emotion:                       # Describe the intended reader emotion
-Internal: How do the characters change?
+Questions:
+Reader Emotion:
+Internal:
 Type:
 Shift:
-Iteration:                            # Edit iteration count (suggest leaving blank until stage > Zero)`
+Iteration:`
     },
     bookDesignerTemplates: [],
     backdropYamlTemplate: `Class: Backdrop                   # Backdrop events appear below the outer ring in Chronologue Mode

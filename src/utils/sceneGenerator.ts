@@ -71,25 +71,7 @@ export function mergeTemplates(baseTemplate: string, advancedFields: string): st
     const filteredAdvanced = filterAdvancedFields(advancedFields, baseFields);
     
     const lines = baseTemplate.split('\n');
-    const advancedLines = filteredAdvanced.split('\n');
-    
-    // Parse advanced fields into sections
-    // Place goes after POV, everything else goes after Pending Edits (before Words)
-    const placeLines: string[] = [];
-    const otherAdvancedLines: string[] = [];
-    
-    let inPlaceSection = false;
-    for (const line of advancedLines) {
-        if (line.startsWith('Place:')) {
-            inPlaceSection = true;
-            placeLines.push(line);
-        } else if (inPlaceSection && (line.startsWith('{{PlaceList}}') || line.startsWith('  -'))) {
-            placeLines.push(line);
-        } else if (line.trim()) {
-            inPlaceSection = false;
-            otherAdvancedLines.push(line);
-        }
-    }
+    const advancedLines = filteredAdvanced.split('\n').filter(l => l.trim());
     
     const result: string[] = [];
     
@@ -110,17 +92,12 @@ export function mergeTemplates(baseTemplate: string, advancedFields: string): st
             continue;
         }
         
+        // Insert all advanced fields after Due but before Pulse Update
+        if (line.startsWith('Pulse Update:')) {
+            result.push(...advancedLines);
+        }
+        
         result.push(line);
-        
-        // Insert Place after POV
-        if (line.startsWith('POV:')) {
-            result.push(...placeLines);
-        }
-        
-        // Insert other advanced fields after Pending Edits but before Words
-        if (line.startsWith('Pending Edits:')) {
-            result.push(...otherAdvancedLines);
-        }
     }
     
     return result.join('\n');

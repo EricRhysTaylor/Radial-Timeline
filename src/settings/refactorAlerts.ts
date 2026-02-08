@@ -41,21 +41,20 @@ export interface RefactorAlert {
 // Base template fields - these should NOT appear in the advanced template
 // Used to detect and clean up legacy "complete" advanced templates
 export const BASE_TEMPLATE_FIELDS = [
-    'Class', 'Act', 'When', 'Duration', 'Synopsis', 'Subplot', 'Character',
-    'POV', 'Due', 'Status', 'Publish Stage', 'Pending Edits', 'Words',
-    'Runtime', 'Synopsis Update', 'Pulse Update'
+    'Class', 'Act', 'When', 'Duration', 'Synopsis', 'Summary', 'Pending Edits',
+    'Subplot', 'Character', 'POV', 'Words', 'Runtime', 'Publish Stage',
+    'Status', 'Due', 'Summary Update', 'Pulse Update'
 ];
 
 // Edit alert wording here (title/description). Settings notifications read from this list.
 // Severity: info (blue), warning (orange), critical (red).
 export const REFACTOR_ALERTS: RefactorAlert[] = [
     {
-        id: 'advanced-template-cleanup-v7',
+        id: 'base-advanced-template-separation-v7',
         severity: 'info',
         icon: 'file-check',
-        title: 'Advanced YAML Template Cleaned',
-        description: 'Your advanced template was automatically updated to remove duplicate base fields. The base and advanced templates are now properly separated for easier maintenance.',
-        // No migrations array - auto-handled on settings load
+        title: 'Template Structure Updated',
+        description: 'Base and advanced YAML templates are now cleanly separated. The base template defines core fields; the advanced template adds optional fields. Commands and Book Designer now merge these automatically. Your templates have been updated to the latest structure.',
     },
     {
         id: 'yaml-revision-to-iteration-v6',
@@ -77,7 +76,7 @@ export const REFACTOR_ALERTS: RefactorAlert[] = [
         severity: 'info',
         icon: 'info',
         title: 'Mode Renamed',
-        description: 'The "Subplot Mode" button has been renamed to "Publication" mode. Same great features, clearer name reflecting its use for publication-focused workflows.',
+        description: 'The "Subplot Mode" button (SUBP) has been renamed to "Publication" (PUBL). Same great features, clearer name reflecting its use for publication-focused workflows.',
     },
     {
         id: 'change-type-pulse-update',
@@ -197,11 +196,6 @@ export function getActiveRefactorAlerts(settings: RadialTimelineSettings): Refac
         // Skip if already dismissed
         if (dismissed.includes(alert.id)) return false;
 
-        // Special handling for advanced template cleanup alert
-        if (alert.id === 'advanced-template-cleanup-v7') {
-            return advancedTemplateNeedsCleanup(template);
-        }
-
         // For alerts with migrations, skip if no pending migrations in template
         if (alert.migrations?.length) {
             if (!alertHasPendingMigrations(alert, template)) return false;
@@ -287,4 +281,31 @@ export function applyAlertMigrations(alert: RefactorAlert, template: string): st
 export function areAlertMigrationsComplete(alert: RefactorAlert, template: string): boolean {
     if (!alert.migrations?.length) return true;
     return !alert.migrations.some(m => template.includes(`${m.oldKey}:`));
+}
+
+/**
+ * Maximum number of notifications to keep in history
+ */
+const MAX_HISTORY_SIZE = 10;
+
+/**
+ * Dismiss an alert and auto-purge old alerts if history exceeds MAX_HISTORY_SIZE.
+ * Older alerts (at the start of the array) are removed first.
+ */
+export function dismissAlert(alertId: string, settings: RadialTimelineSettings): void {
+    if (!settings.dismissedAlerts) {
+        settings.dismissedAlerts = [];
+    }
+    
+    // Don't add duplicates
+    if (settings.dismissedAlerts.includes(alertId)) {
+        return;
+    }
+    
+    settings.dismissedAlerts.push(alertId);
+    
+    // Auto-purge oldest if over limit
+    while (settings.dismissedAlerts.length > MAX_HISTORY_SIZE) {
+        settings.dismissedAlerts.shift(); // Remove oldest (first in array)
+    }
 }

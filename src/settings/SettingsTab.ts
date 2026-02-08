@@ -30,8 +30,10 @@ import {
     applyAlertMigrations,
     cleanupAdvancedTemplate,
     advancedTemplateNeedsCleanup,
+    dismissAlert,
     type RefactorAlert
 } from './refactorAlerts';
+import { DEFAULT_SETTINGS } from './defaults';
 
 export class RadialTimelineSettingsTab extends PluginSettingTab {
     plugin: RadialTimelinePlugin;
@@ -106,35 +108,41 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     }
 
     /**
-     * Auto-migrate legacy advanced templates by removing base fields.
-     * This runs silently on settings display and shows a notice if cleanup occurred.
+     * Auto-migrate templates to latest structure.
+     * - Updates base template to current defaults (field order/names)
+     * - Cleans up advanced template by removing base fields
+     * Shows notification for user to dismiss after reading.
      */
     private autoMigrateAdvancedTemplate(): void {
-        const template = this.plugin.settings.sceneYamlTemplates?.advanced ?? '';
-        if (!template || !advancedTemplateNeedsCleanup(template)) return;
-
-        const cleaned = cleanupAdvancedTemplate(template);
+        const defaultBase = DEFAULT_SETTINGS.sceneYamlTemplates!.base;
+        const currentBase = this.plugin.settings.sceneYamlTemplates?.base ?? '';
+        const currentAdvanced = this.plugin.settings.sceneYamlTemplates?.advanced ?? '';
         
-        if (!this.plugin.settings.sceneYamlTemplates) {
-            this.plugin.settings.sceneYamlTemplates = { base: '', advanced: '' };
-        }
-        this.plugin.settings.sceneYamlTemplates.advanced = cleaned;
+        let needsSave = false;
         
-        // Mark the cleanup alert as dismissed since we auto-handled it
-        if (!this.plugin.settings.dismissedAlerts) {
-            this.plugin.settings.dismissedAlerts = [];
-        }
-        if (!this.plugin.settings.dismissedAlerts.includes('advanced-template-cleanup-v7')) {
-            this.plugin.settings.dismissedAlerts.push('advanced-template-cleanup-v7');
+        // Update base template to current defaults (ensures field order/names are current)
+        if (currentBase !== defaultBase) {
+            if (!this.plugin.settings.sceneYamlTemplates) {
+                this.plugin.settings.sceneYamlTemplates = { base: '', advanced: '' };
+            }
+            this.plugin.settings.sceneYamlTemplates.base = defaultBase;
+            needsSave = true;
         }
         
-        // Save asynchronously
-        void this.plugin.saveSettings();
+        // Clean up advanced template if it has legacy base fields
+        if (currentAdvanced && advancedTemplateNeedsCleanup(currentAdvanced)) {
+            const cleaned = cleanupAdvancedTemplate(currentAdvanced);
+            if (!this.plugin.settings.sceneYamlTemplates) {
+                this.plugin.settings.sceneYamlTemplates = { base: defaultBase, advanced: '' };
+            }
+            this.plugin.settings.sceneYamlTemplates.advanced = cleaned;
+            needsSave = true;
+        }
         
-        // Show notice
-        import('obsidian').then(({ Notice }) => {
-            new Notice('Advanced YAML template updated: duplicate base fields removed.');
-        });
+        if (needsSave) {
+            void this.plugin.saveSettings();
+            // Notification appears in the alerts panel - user can dismiss after reading
+        }
     }
 
     private scheduleKeyValidation(provider: 'anthropic' | 'gemini' | 'openai' | 'local') {
@@ -337,10 +345,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             });
             setIcon(dismissBtn, 'x');
             this.plugin.registerDomEvent(dismissBtn, 'click', async () => {
-                if (!this.plugin.settings.dismissedAlerts) {
-                    this.plugin.settings.dismissedAlerts = [];
-                }
-                this.plugin.settings.dismissedAlerts.push(alert.id);
+                dismissAlert(alert.id, this.plugin.settings);
                 await this.plugin.saveSettings();
 
                 // Re-render the entire alerts section
@@ -368,11 +373,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 }
                 this.plugin.settings.sceneYamlTemplates.advanced = updated;
 
-                if (!this.plugin.settings.dismissedAlerts) {
-                    this.plugin.settings.dismissedAlerts = [];
-                }
-                this.plugin.settings.dismissedAlerts.push(alert.id);
-
+                dismissAlert(alert.id, this.plugin.settings);
                 await this.plugin.saveSettings();
 
                 // Re-render the entire alerts section

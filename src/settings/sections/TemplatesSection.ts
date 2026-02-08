@@ -11,7 +11,7 @@ import type { HoverMetadataField } from '../../types/settings';
 import { IconSuggest } from '../IconSuggest';
 import { clampActNumber, parseActLabels, resolveActLabel } from '../../utils/acts';
 import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
-import { getActiveMigrations, REFACTOR_ALERTS, areAlertMigrationsComplete, type FieldMigration } from '../refactorAlerts';
+import { getActiveMigrations, REFACTOR_ALERTS, areAlertMigrationsComplete, dismissAlert, type FieldMigration } from '../refactorAlerts';
 import { getScenePrefixNumber } from '../../utils/text';
 import { filterBeatsBySystem } from '../../utils/gossamer';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
@@ -1227,12 +1227,7 @@ export function renderStoryBeatsSection(params: {
                         const alertObj = REFACTOR_ALERTS.find(a => a.id === migration.alertId);
                         if (alertObj && areAlertMigrationsComplete(alertObj, template)) {
                             // All migrations done - auto-dismiss the alert
-                            if (!plugin.settings.dismissedAlerts) {
-                                plugin.settings.dismissedAlerts = [];
-                            }
-                            if (!plugin.settings.dismissedAlerts.includes(migration.alertId)) {
-                                plugin.settings.dismissedAlerts.push(migration.alertId);
-                            }
+                            dismissAlert(migration.alertId, plugin.settings);
                             await plugin.saveSettings();
                             
                             // Remove the specific alert element from the DOM

@@ -13,7 +13,7 @@ import { PlanetaryTimeModal } from '../modals/PlanetaryTimeModal';
 import { BookDesignerModal } from '../modals/BookDesignerModal';
 import { TimelineRepairModal } from '../modals/TimelineRepairModal';
 import { AuthorProgressModal } from '../modals/AuthorProgressModal';
-import { generateSceneContent } from '../utils/sceneGenerator';
+import { generateSceneContent, mergeTemplates } from '../utils/sceneGenerator';
 import { sanitizeSourcePath, buildInitialSceneFilename, buildInitialBackdropFilename } from '../utils/sceneCreation';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { ensureManuscriptOutputFolder, ensureOutlineOutputFolder } from '../utils/aiOutput';
@@ -358,7 +358,8 @@ export class CommandRegistrar {
 
         try {
             const sanitizedPath = sanitizeSourcePath(sourcePath);
-            const filename = buildInitialSceneFilename();
+            const defaultName = type === 'advanced' ? 'Advanced Scene.md' : 'Basic Scene.md';
+            const filename = buildInitialSceneFilename(defaultName);
             const folder = this.app.vault.getAbstractFileByPath(sanitizedPath);
 
             if (!folder) {
@@ -369,9 +370,13 @@ export class CommandRegistrar {
 
             // Use basic or advanced template based on type
             const templates = this.plugin.settings.sceneYamlTemplates || DEFAULT_SETTINGS.sceneYamlTemplates;
+            const baseTemplate = templates?.base || DEFAULT_SETTINGS.sceneYamlTemplates!.base;
+            const advancedFields = templates?.advanced || DEFAULT_SETTINGS.sceneYamlTemplates!.advanced;
+            
+            // For advanced, merge base + advanced fields
             const template = type === 'advanced'
-                ? (templates?.advanced || DEFAULT_SETTINGS.sceneYamlTemplates!.advanced)
-                : (templates?.base || DEFAULT_SETTINGS.sceneYamlTemplates!.base);
+                ? mergeTemplates(baseTemplate, advancedFields)
+                : baseTemplate;
 
             // Generate content with default placeholder values
             const content = generateSceneContent(template, {
