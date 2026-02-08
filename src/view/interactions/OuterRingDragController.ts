@@ -84,11 +84,15 @@ export class OuterRingDragController {
     attach(): void {
         if (this.options.mode !== 'narrative') return;
         
-        // Register on scene AND beat groups in the outer ring
+        // Only outer ring scene/beat groups are draggable; inner subplot rings are read-only
+        const outerRing = this.getOuterRingIndex();
         const draggableGroups = Array.from(
             this.svg.querySelectorAll<SVGGElement>('.rt-scene-group[data-item-type="Scene"], .rt-scene-group[data-item-type="Beat"]')
-        );
+        ).filter(g => Number(g.getAttribute('data-ring') ?? -1) === outerRing);
         if (!draggableGroups.length) return;
+
+        // Mark outer ring groups so CSS can scope grab cursor to them only
+        draggableGroups.forEach(g => g.setAttribute('data-draggable', 'true'));
 
         // Create the tangent-aligned drag reorder indicator (move-horizontal arrows)
         this.createDragIndicator();
@@ -97,17 +101,17 @@ export class OuterRingDragController {
         this.view.registerDomEvent(window as unknown as HTMLElement, 'pointerup', (evt: PointerEvent) => this.onPointerUp(evt));
         
         draggableGroups.forEach(group => {
-            // Listen on the scene/beat path for pointer events
+            // Listen on the scene/beat path for pointer events (outer ring only)
             const scenePath = group.querySelector('.rt-scene-path');
             if (scenePath) {
                 this.view.registerDomEvent(scenePath as unknown as HTMLElement, 'pointerdown', (evt: PointerEvent) => this.startDrag(evt, group));
             }
         });
 
-        // Delegated hover for the drag indicator — show tangent arrows on scene/beat hover
+        // Delegated hover for the drag indicator — show tangent arrows on outer ring groups only
         this.view.registerDomEvent(this.svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
             if (this.dragging) return;
-            const group = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"], .rt-scene-group[data-item-type="Beat"]') as SVGGElement | null;
+            const group = (e.target as Element).closest('.rt-scene-group[data-draggable="true"]') as SVGGElement | null;
             if (group) this.showDragIndicator(group);
         });
         this.view.registerDomEvent(this.svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
@@ -125,6 +129,17 @@ export class OuterRingDragController {
         if (pluginAny?.log) {
             pluginAny.log(`Outer ring drag · ${msg}`, data);
         }
+    }
+
+    /**
+     * Determine the outer ring index (the highest ring number among all scene groups).
+     * Only the outer ring supports drag reorder; inner subplot rings are read-only.
+     */
+    private getOuterRingIndex(): number {
+        const allRings = Array.from(this.svg.querySelectorAll<SVGGElement>('.rt-scene-group'))
+            .map(g => Number(g.getAttribute('data-ring') ?? -1))
+            .filter(r => r >= 0);
+        return allRings.length > 0 ? Math.max(...allRings) : 0;
     }
 
     private cssEscape(value: string): string {
@@ -157,11 +172,8 @@ export class OuterRingDragController {
     private buildOuterRingOrder(): Array<{ sceneId: string; path: string; numberText: string; subplot: string; ring: number; itemType: 'Scene' | 'Beat' }> {
         const masterSubplotOrder = (this.view.plugin.settings as any).masterSubplotOrder as string[] || ['Main Plot'];
         
-        // Find the outer ring index (highest ring number used by scene groups)
-        const allRings = Array.from(this.svg.querySelectorAll<SVGGElement>('.rt-scene-group'))
-            .map(g => Number(g.getAttribute('data-ring') ?? -1))
-            .filter(r => r >= 0);
-        const outerRing = allRings.length > 0 ? Math.max(...allRings) : 0;
+        // Use shared helper for outer ring detection
+        const outerRing = this.getOuterRingIndex();
         
         // Get all scene AND beat groups on the outer ring, sorted by start angle (manuscript order)
         const outerGroups = Array.from(
@@ -827,7 +839,7 @@ export class OuterRingDragController {
         'M -10 0 L 10 0',         // horizontal line
         'M -6 -4 L -10 0 L -6 4', // left arrow
     ].join(' ');
-    private static readonly INDICATOR_OFFSET = 16; // px above the outer ring edge
+    private static readonly INDICATOR_OFFSET = 19; // px above the outer ring edge
 
     /**
      * Create the drag reorder indicator SVG element in the overlays layer.

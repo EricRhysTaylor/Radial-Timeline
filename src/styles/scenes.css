@@ -150,15 +150,13 @@
   fill-opacity: 0.65;
 }
 
-/* Narrative mode: grab cursor on scene/beat arcs to hint drag-to-reorder */
-.radial-timeline-svg[data-mode="narrative"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path,
-.radial-timeline-svg[data-mode="narrative"] .rt-scene-group[data-item-type="Beat"] .rt-scene-path {
+/* Narrative mode: grab cursor on outer ring scene/beat arcs only (inner subplot rings are read-only) */
+.radial-timeline-svg[data-mode="narrative"] .rt-scene-group[data-draggable="true"] .rt-scene-path {
   cursor: grab;
 }
 
-/* During drag: grabbing cursor on all scene/beat arcs */
-.radial-timeline-svg[data-mode="narrative"].rt-dragging-outer .rt-scene-group[data-item-type="Scene"] .rt-scene-path,
-.radial-timeline-svg[data-mode="narrative"].rt-dragging-outer .rt-scene-group[data-item-type="Beat"] .rt-scene-path {
+/* During drag: grabbing cursor on outer ring scene/beat arcs */
+.radial-timeline-svg[data-mode="narrative"].rt-dragging-outer .rt-scene-group[data-draggable="true"] .rt-scene-path {
   cursor: grabbing;
 }
 

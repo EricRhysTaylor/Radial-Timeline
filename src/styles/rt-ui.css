@@ -3711,6 +3711,37 @@
   opacity: 0.95;
 }
 
+/* Beat row mismatch highlights (mirrors YAML migration row pattern) */
+.ert-ui.ert-scope--settings .ert-custom-beat-row--existing {
+  position: relative;
+}
+
+.ert-ui.ert-scope--settings .ert-custom-beat-row--existing::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: calc(var(--ert-control-radius) + (var(--ert-gap-xs) / 2));
+  pointer-events: none;
+  z-index: 0;
+  background: var(--ert-alert-warning-bg);
+  border: 1px solid var(--ert-alert-warning-border);
+}
+
+.ert-ui.ert-scope--settings .ert-custom-beat-row--misaligned::before {
+  background: var(--ert-alert-critical-bg);
+  border: 1px solid var(--ert-alert-critical-border);
+}
+
+.ert-ui.ert-scope--settings .ert-custom-beat-row--duplicate::before {
+  background: var(--ert-alert-critical-bg);
+  border: 1px solid var(--ert-alert-critical-border);
+}
+
+.ert-ui.ert-scope--settings .ert-custom-beat-row--existing > * {
+  position: relative;
+  z-index: 1;
+}
+
 .ert-ui.ert-scope--settings .ert-reorder-row {
   display: grid;
   box-sizing: border-box;

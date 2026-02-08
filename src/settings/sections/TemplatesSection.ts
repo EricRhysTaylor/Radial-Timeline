@@ -187,12 +187,20 @@ export function renderStoryBeatsSection(params: {
         });
     };
 
+    const normalizeBeatModel = (value: unknown): string =>
+        String(value ?? '').trim().toLowerCase();
+
     const collectExistingBeatNotes = async (allowFetch: boolean, selectedSystem: string): Promise<TimelineItem[] | null> => {
         if (!allowFetch) return null;
         try {
             const scenes = await plugin.getSceneData({ filterBeatsBySystem: false });
             const beats = (scenes ?? []).filter(scene => scene.itemType === 'Beat' || scene.itemType === 'Plot');
-            return filterBeatsBySystem(beats, selectedSystem, plugin.settings.customBeatSystemName);
+            const expectedModel = selectedSystem === 'Custom'
+                ? (plugin.settings.customBeatSystemName || 'Custom')
+                : selectedSystem;
+            const expectedKey = normalizeBeatModel(expectedModel);
+            if (!expectedKey) return [];
+            return beats.filter(beat => normalizeBeatModel((beat as any)['Beat Model']) === expectedKey);
         } catch {
             return [];
         }
@@ -235,6 +243,7 @@ export function renderStoryBeatsSection(params: {
         const matches: TimelineItem[] = [];
         const customName = (plugin.settings.customBeatSystemName || 'Custom').trim();
         const expectedModel = selectedSystem === 'Custom' ? customName : selectedSystem;
+        const expectedModelKey = normalizeBeatModel(expectedModel);
 
         files.forEach(file => {
             const key = normalizeBeatTitle(file.basename);
@@ -248,7 +257,7 @@ export function renderStoryBeatsSection(params: {
             const beatModelValue = typeof normalized['Beat Model'] === 'string'
                 ? (normalized['Beat Model'] as string).trim()
                 : '';
-            if (!expectedModel || beatModelValue !== expectedModel) return;
+            if (!expectedModelKey || normalizeBeatModel(beatModelValue) !== expectedModelKey) return;
 
             const actValue = normalized['Act'];
             const actNumberRaw = actValue !== undefined && actValue !== null && actValue !== '' ? Number(actValue) : undefined;
@@ -273,6 +282,7 @@ export function renderStoryBeatsSection(params: {
     let existingBeatMatchedCount = 0;
     let existingBeatExpectedCount = 0;
     let existingBeatDuplicateCount = 0;
+    let existingBeatMisalignedCount = 0;
     let existingBeatKey = '';
     let existingBeatReady = false;
     let refreshCustomBeatList: (() => void) | null = null;
@@ -294,6 +304,34 @@ export function renderStoryBeatsSection(params: {
             existingBeatExpectedCount = expectedNames.length;
             existingBeatMatchedCount = Array.from(expectedKeys).filter(key => lookup.has(key)).length;
             existingBeatDuplicateCount = Array.from(expectedKeys).filter(key => (lookup.get(key)?.length ?? 0) > 1).length;
+
+            // Compute misaligned count: beats matched by name but wrong number or act
+            const maxActs = getActCount();
+            const expectedBeats: BeatRow[] = selectedSystem === 'Custom'
+                ? (plugin.settings.customBeatSystemBeats || []).map(parseBeatRow).map(b => ({ ...b, act: clampBeatAct(b.act, maxActs) }))
+                : (expectedNames.map(name => ({ name, act: 1 })));
+            let misaligned = 0;
+            const beatNumbers = buildBeatNumbers(expectedBeats, maxActs, new Map());
+            expectedBeats.forEach((beat, idx) => {
+                const key = normalizeBeatTitle(beat.name);
+                if (!key || !lookup.has(key)) return;
+                const matches = lookup.get(key) ?? [];
+                const expectedNumber = beatNumbers[idx] ?? (idx + 1);
+                const actNumber = clampBeatAct(beat.act, maxActs);
+                let hasAligned = false;
+                matches.forEach(existing => {
+                    const existingName = getBeatBasename(existing);
+                    const existingNumberStr = getScenePrefixNumber(existingName, existing.number);
+                    const existingNumber = existingNumberStr ? Number(existingNumberStr) : NaN;
+                    const existingActRaw = typeof existing.actNumber === 'number' ? existing.actNumber : Number(existing.act ?? actNumber);
+                    const existingAct = Number.isFinite(existingActRaw) ? existingActRaw : actNumber;
+                    const numberAligned = Number.isFinite(existingNumber) && existingNumber === expectedNumber;
+                    const actAligned = Number.isFinite(existingAct) ? existingAct === actNumber : true;
+                    if (numberAligned && actAligned) hasAligned = true;
+                });
+                if (!hasAligned) misaligned++;
+            });
+            existingBeatMisalignedCount = misaligned;
         };
 
         const initialLookup = buildExistingBeatLookup(beats);
@@ -325,7 +363,7 @@ export function renderStoryBeatsSection(params: {
 
     new Settings(actsStack)
         .setName('Act count')
-        .setDesc('Applies to Narrative, Subplot, and Gossamer modes. Scene and Beats YAML. (Minimum 3)')
+        .setDesc('Applies to Narrative, Publication, and Gossamer modes. Scene and Beats YAML. (Minimum 3)')
         .addText(text => {
             text.setPlaceholder('3');
             text.setValue(String(getActCount()));
@@ -1526,9 +1564,12 @@ export function renderStoryBeatsSection(params: {
                 const duplicateLabel = existingBeatDuplicateCount > 0
                     ? ` (${existingBeatDuplicateCount} duplicate${existingBeatDuplicateCount > 1 ? 's' : ''})`
                     : '';
+                const misalignedLabel = existingBeatMisalignedCount > 0
+                    ? ` ${existingBeatMisalignedCount} misaligned.`
+                    : '';
                 const warning = isCustom
-                    ? `Existing beat notes detected (${matchedLabel}${duplicateLabel}). Create templates to generate a new set, or use Merge to realign existing notes. Beat notes are never deleted; remove old beats manually.`
-                    : `Existing beat notes detected (${matchedLabel}${duplicateLabel}). Creating templates will generate additional notes. Beat notes are never deleted; remove old beats manually.`;
+                    ? `Existing beat notes detected (${matchedLabel}${duplicateLabel}).${misalignedLabel} Create templates to generate a new set, or use Merge to realign existing notes. Beat notes are never deleted; remove old beats manually.`
+                    : `Existing beat notes detected (${matchedLabel}${duplicateLabel}).${misalignedLabel} Creating templates will generate additional notes. Beat notes are never deleted; remove old beats manually.`;
                 setting.setDesc(`${baseDesc} ${warning}`);
                 if (mergeTemplatesButton && isCustom) {
                     mergeTemplatesButton.buttonEl.removeClass('ert-hidden');

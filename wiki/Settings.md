@@ -167,7 +167,7 @@ Control how narrative perspective is visualized.
 <a name="acts"></a>
 ### Acts
 Configure the high-level structure of your narrative ring.
-*   **Act count**: Sets the number of acts (Minimum 3). This divides the Narrative, Subplot, and Gossamer timeline rings.
+*   **Act count**: Sets the number of acts (Minimum 3). This divides the Narrative, Publication, and Gossamer timeline rings.
 *   **Act labels**: (Optional) Define custom names for your acts (e.g., "Part 1, Part 2, Part 3").
 *   **Show act labels**: Toggle to hide labels and show only act numbers.
 
