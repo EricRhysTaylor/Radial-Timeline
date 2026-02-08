@@ -23,6 +23,16 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     // Huge Welcome Title (custom styled block, not an H1)
     container.createDiv({ cls: 'rt-welcome-title', text: 'Welcome' });
 
+    // Book Designer button — prominent CTA right below the title
+    const topActions = container.createDiv({ cls: 'rt-welcome-actions' });
+    const bookBtn = new ButtonComponent(topActions)
+        .setButtonText('Book Designer')
+        .setCta()
+        .onClick(() => {
+            new BookDesignerModal(plugin.app, plugin).open();
+        });
+    bookBtn.buttonEl.classList.add('rt-welcome-book-btn');
+
     const body = container.createDiv({ cls: 'rt-welcome-body' });
 
     // Quick-start heading
@@ -33,7 +43,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     // Step 1: Source path
     const step1 = body.createDiv({ cls: 'rt-welcome-step' });
-    step1.createEl('strong', { text: '1. Set your source path' });
+    step1.createEl('h3', { cls: 'rt-welcome-step-title', text: '1. Set your source path' });
     const step1Text = step1.createEl('p', { cls: 'rt-welcome-paragraph' });
     step1Text.createSpan({ text: 'Point Radial Timeline at the folder containing (or that will contain) your manuscript scene files. Go to ' });
     step1Text.createEl('strong', { text: 'Settings \u2192 Core \u2192 General \u2192 Source path' });
@@ -41,7 +51,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     // Step 2: Create scenes
     const step2 = body.createDiv({ cls: 'rt-welcome-step' });
-    step2.createEl('strong', { text: '2. Create scenes' });
+    step2.createEl('h3', { cls: 'rt-welcome-step-title', text: '2. Create scenes' });
     const step2List = step2.createEl('ul', { cls: 'rt-welcome-list' });
 
     const bookLi = step2List.createEl('li');
@@ -54,7 +64,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     // Step 3: Structure
     const step3 = body.createDiv({ cls: 'rt-welcome-step' });
-    step3.createEl('strong', { text: '3. Set up your structure' });
+    step3.createEl('h3', { cls: 'rt-welcome-step-title', text: '3. Set up your structure' });
     const step3List = step3.createEl('ul', { cls: 'rt-welcome-list' });
 
     const actsLi = step3List.createEl('li');
@@ -67,7 +77,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     // Step 4: Explore modes
     const step4 = body.createDiv({ cls: 'rt-welcome-step' });
-    step4.createEl('strong', { text: '4. Explore modes' });
+    step4.createEl('h3', { cls: 'rt-welcome-step-title', text: '4. Explore modes' });
     const step4Text = step4.createEl('p', { cls: 'rt-welcome-paragraph' });
     step4Text.createSpan({ text: 'Switch between the three primary Timeline modes using keyboard shortcuts ' });
     step4Text.createEl('strong', { text: '1' });
@@ -80,7 +90,8 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     step4Text.createSpan({ text: ') to map out the initial AI take on your momentum graph.' });
 
     // Links
-    const links = body.createEl('p', { cls: 'rt-welcome-links' });
+    const linksWrapper = body.createDiv({ cls: 'rt-welcome-links-wrapper' });
+    const links = linksWrapper.createDiv({ cls: 'rt-welcome-links' });
 
     const makeLinkRow = (label: string, href: string) => {
         const row = links.createDiv({ cls: 'rt-welcome-link-row' });
@@ -109,15 +120,4 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     backupPara.createSpan({ text: ' or ' });
     backupPara.createEl('a', { text: 'Obsidian Git', href: 'https://obsidian.md/plugins?id=obsidian-git' });
 
-    // Button Container
-    const buttonContainer = container.createDiv({ cls: 'rt-welcome-actions' });
-
-    // Book Designer only
-    const bookBtn = new ButtonComponent(buttonContainer)
-        .setButtonText('Book Designer')
-        .setCta()
-        .onClick(() => {
-            new BookDesignerModal(plugin.app, plugin).open();
-        });
-    bookBtn.buttonEl.classList.add('rt-welcome-book-btn');
 }

@@ -424,7 +424,7 @@
 }
 
 .rt-book-designer-modal .rt-input-flash-error {
-    animation: rt-flash-error 0.5s ease-out;
+    animation: rt-flash-error 0.8s ease-out;
 }
 
 .rt-book-designer-modal .rt-input-flash-success {

@@ -1,4 +1,4 @@
-import { App, Notice, Setting as Settings, parseYaml, setIcon, setTooltip, Modal, ButtonComponent, getIconIds } from 'obsidian';
+import { App, Notice, Setting as Settings, parseYaml, setIcon, setTooltip, Modal, ButtonComponent, getIconIds, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
 import { CreateBeatsTemplatesModal } from '../../modals/CreateBeatsTemplatesModal';
@@ -13,9 +13,11 @@ import { clampActNumber, parseActLabels, resolveActLabel } from '../../utils/act
 import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
 import { getActiveMigrations, REFACTOR_ALERTS, areAlertMigrationsComplete, type FieldMigration } from '../refactorAlerts';
 import { getScenePrefixNumber } from '../../utils/text';
+import { filterBeatsBySystem } from '../../utils/gossamer';
 
 type TemplateEntryValue = string | string[];
 type TemplateEntry = { key: string; value: TemplateEntryValue; required: boolean };
+type BeatRow = { name: string; act: number };
 
 const DEFAULT_HOVER_ICON = 'align-vertical-space-around';
 
@@ -53,6 +55,50 @@ export function renderStoryBeatsSection(params: {
         const previewLabels = getActPreviewLabels();
         actsPreviewHeading.setText(`Preview (${previewLabels.length} acts)`);
         actsPreviewBody.setText(previewLabels.join(' · '));
+    };
+
+    const clampBeatAct = (val: number, maxActs: number) => {
+        const n = Number.isFinite(val) ? val : 1;
+        return Math.min(Math.max(1, n), maxActs);
+    };
+
+    const normalizeBeatTitle = (value: string): string => {
+        const trimmed = value.trim();
+        if (!trimmed) return '';
+        const withoutAct = trimmed.replace(/^Act\s*\d+\s*:\s*/i, '');
+        const withoutPrefix = withoutAct.replace(/^\d+(?:\.\d+)?\s*[.\-:)]?\s*/i, '');
+        return withoutPrefix.trim().toLowerCase();
+    };
+
+    const stripActPrefix = (name: string): string => {
+        const m = name.match(/^Act\s*\d+\s*:\s*(.+)$/i);
+        return m ? m[1].trim() : name.trim();
+    };
+
+    const sanitizeBeatName = (s: string) =>
+        s.replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
+
+    const buildBeatFilename = (beatNumber: number, name: string): string => {
+        const displayName = stripActPrefix(name);
+        const safeBeatName = sanitizeBeatName(displayName);
+        return `${beatNumber} ${safeBeatName}`.trim();
+    };
+
+    const parseBeatRow = (item: unknown): BeatRow => {
+        if (typeof item === 'object' && item !== null && (item as { name?: unknown }).name) {
+            const obj = item as { name?: unknown; act?: unknown };
+            const objName = typeof obj.name === 'string' ? obj.name : String(obj.name ?? '');
+            const objAct = typeof obj.act === 'number' ? obj.act : 1;
+            return { name: objName, act: objAct };
+        }
+        const raw = String(item ?? '').trim();
+        if (!raw) return { name: '', act: 1 };
+        const m = raw.match(/^(.*?)\[(\d+)\]$/);
+        if (m) {
+            const actNum = parseInt(m[2], 10);
+            return { name: m[1].trim(), act: !Number.isNaN(actNum) ? actNum : 1 };
+        }
+        return { name: raw, act: 1 };
     };
 
     type ActRange = { min: number; max: number };
@@ -111,6 +157,93 @@ export function renderStoryBeatsSection(params: {
             if (act > 1) actStarts.set(act, range.min);
         });
         return actStarts;
+    };
+
+    const buildBeatNumbers = (beats: BeatRow[], maxActs: number, ranges: Map<number, ActRange>): number[] => {
+        if (!ranges || ranges.size === 0) {
+            return beats.map((_, idx) => idx + 1);
+        }
+        const actStarts = buildActStartNumbers(ranges);
+        const useActAligned = actStarts.size > 0;
+        if (!useActAligned) return beats.map((_, idx) => idx + 1);
+
+        const nextByAct = new Map<number, number>();
+        return beats.map((beatLine, index) => {
+            const actNum = clampBeatAct(beatLine.act, maxActs);
+            const start = actStarts.get(actNum);
+            if (start !== undefined) {
+                const next = nextByAct.get(actNum) ?? start;
+                nextByAct.set(actNum, next + 1);
+                return next;
+            }
+            if (actNum === 1) {
+                const next = nextByAct.get(actNum) ?? 1;
+                nextByAct.set(actNum, next + 1);
+                return next;
+            }
+            return index + 1;
+        });
+    };
+
+    const collectExistingBeatNotes = async (allowFetch: boolean, selectedSystem: string): Promise<TimelineItem[] | null> => {
+        if (!allowFetch) return null;
+        try {
+            const scenes = await plugin.getSceneData({ filterBeatsBySystem: false });
+            const beats = (scenes ?? []).filter(scene => scene.itemType === 'Beat' || scene.itemType === 'Plot');
+            return filterBeatsBySystem(beats, selectedSystem, plugin.settings.customBeatSystemName);
+        } catch {
+            return [];
+        }
+    };
+
+    const buildExistingBeatLookup = (beats: TimelineItem[]): Map<string, TimelineItem[]> => {
+        const lookup = new Map<string, TimelineItem[]>();
+        beats.forEach(beat => {
+            const title = typeof beat.title === 'string' ? beat.title : '';
+            const key = normalizeBeatTitle(title);
+            if (!key) return;
+            const list = lookup.get(key) ?? [];
+            list.push(beat);
+            lookup.set(key, list);
+        });
+        return lookup;
+    };
+
+    const buildExpectedBeatNames = (selectedSystem: string): string[] => {
+        if (selectedSystem === 'Custom') {
+            return (plugin.settings.customBeatSystemBeats || [])
+                .map(parseBeatRow)
+                .map(b => b.name)
+                .filter(name => name.trim().length > 0);
+        }
+        const system = getPlotSystem(selectedSystem);
+        return system?.beats ?? [];
+    };
+
+    let existingBeatLookup = new Map<string, TimelineItem[]>();
+    let existingBeatCount = 0;
+    let existingBeatMatchedCount = 0;
+    let existingBeatExpectedCount = 0;
+    let existingBeatKey = '';
+    let existingBeatReady = false;
+    let refreshCustomBeatList: (() => void) | null = null;
+
+    const refreshExistingBeatLookup = async (allowFetch: boolean, selectedSystem: string): Promise<Map<string, TimelineItem[]> | null> => {
+        const nextKey = `${selectedSystem}|${plugin.settings.customBeatSystemName ?? ''}`;
+        if (existingBeatKey === nextKey && existingBeatReady) {
+            return existingBeatLookup;
+        }
+        const beats = await collectExistingBeatNotes(allowFetch, selectedSystem);
+        if (beats === null) return null;
+        existingBeatLookup = buildExistingBeatLookup(beats);
+        existingBeatCount = beats.length;
+        const expectedNames = buildExpectedBeatNames(selectedSystem);
+        const expectedKeys = new Set(expectedNames.map(name => normalizeBeatTitle(name)).filter(k => k.length > 0));
+        existingBeatExpectedCount = expectedNames.length;
+        existingBeatMatchedCount = Array.from(expectedKeys).filter(key => existingBeatLookup.has(key)).length;
+        existingBeatKey = nextKey;
+        existingBeatReady = true;
+        return existingBeatLookup;
     };
 
     new Settings(actsStack)
@@ -175,6 +308,7 @@ export function renderStoryBeatsSection(params: {
                 .onChange(async (value) => {
                     plugin.settings.beatSystem = value;
                     await plugin.saveSettings();
+                    existingBeatReady = false;
                     updateStoryStructureDescription(storyStructureInfo, value);
                     updateTemplateButton(templateSetting, value);
                     updateCustomInputsVisibility(value);
@@ -209,6 +343,7 @@ export function renderStoryBeatsSection(params: {
                 .onChange(async (value) => {
                     plugin.settings.customBeatSystemName = value;
                     await plugin.saveSettings();
+                    existingBeatReady = false;
                     updateTemplateButton(templateSetting, 'Custom');
                 }));
 
@@ -216,25 +351,6 @@ export function renderStoryBeatsSection(params: {
         const beatWrapper = customConfigContainer.createDiv({ cls: 'ert-custom-beat-wrapper' });
 
         const listContainer = beatWrapper.createDiv({ cls: 'ert-custom-beat-list' });
-
-        type BeatRow = { name: string; act: number };
-
-        const parseBeatRow = (item: unknown): BeatRow => {
-            if (typeof item === 'object' && item !== null && (item as { name?: unknown }).name) {
-                const obj = item as { name?: unknown; act?: unknown };
-                const objName = typeof obj.name === 'string' ? obj.name : String(obj.name ?? '');
-                const objAct = typeof obj.act === 'number' ? obj.act : 1;
-                return { name: objName, act: objAct };
-            }
-            const raw = String(item ?? '').trim();
-            if (!raw) return { name: '', act: 1 };
-            const m = raw.match(/^(.*?)\[(\d+)\]$/);
-            if (m) {
-                const actNum = parseInt(m[2], 10);
-                return { name: m[1].trim(), act: !Number.isNaN(actNum) ? actNum : 1 };
-            }
-            return { name: raw, act: 1 };
-        };
 
         const saveBeats = async (beats: BeatRow[]) => {
             plugin.settings.customBeatSystemBeats = beats;
@@ -252,38 +368,7 @@ export function renderStoryBeatsSection(params: {
             });
         };
 
-        const clampAct = (val: number, maxActs: number) => {
-            const n = Number.isFinite(val) ? val : 1;
-            return Math.min(Math.max(1, n), maxActs);
-        };
-
         let actRanges = new Map<number, ActRange>();
-
-        const buildBeatNumbers = (beats: BeatRow[], maxActs: number, ranges: Map<number, ActRange>): number[] => {
-            if (!ranges || ranges.size === 0) {
-                return beats.map((_, idx) => idx + 1);
-            }
-            const actStarts = buildActStartNumbers(ranges);
-            const useActAligned = actStarts.size > 0;
-            if (!useActAligned) return beats.map((_, idx) => idx + 1);
-
-            const nextByAct = new Map<number, number>();
-            return beats.map((beatLine, index) => {
-                const actNum = clampAct(beatLine.act, maxActs);
-                const start = actStarts.get(actNum);
-                if (start !== undefined) {
-                    const next = nextByAct.get(actNum) ?? start;
-                    nextByAct.set(actNum, next + 1);
-                    return next;
-                }
-                if (actNum === 1) {
-                    const next = nextByAct.get(actNum) ?? 1;
-                    nextByAct.set(actNum, next + 1);
-                    return next;
-                }
-                return index + 1;
-            });
-        };
 
         const renderList = () => {
             listContainer.empty();
@@ -291,12 +376,25 @@ export function renderStoryBeatsSection(params: {
             const actLabels = buildActLabels(maxActs, actRanges);
             const beats: BeatRow[] = (plugin.settings.customBeatSystemBeats || [])
                 .map(parseBeatRow)
-                .map(b => ({ ...b, act: clampAct(b.act, maxActs) }));
+                .map(b => ({ ...b, act: clampBeatAct(b.act, maxActs) }));
             const beatNumbers = buildBeatNumbers(beats, maxActs, actRanges);
+            const titleMap = new Map<string, number[]>();
+            beats.forEach((beatLine, idx) => {
+                const key = normalizeBeatTitle(beatLine.name);
+                if (!key) return;
+                const list = titleMap.get(key) ?? [];
+                list.push(idx);
+                titleMap.set(key, list);
+            });
+            const duplicateKeys = new Set(
+                Array.from(titleMap.entries())
+                    .filter(([, indices]) => indices.length > 1)
+                    .map(([key]) => key)
+            );
 
             let lastAct: number | null = null;
             beats.forEach((beatLine, index) => {
-                const currentAct = clampAct(beatLine.act, maxActs);
+                const currentAct = clampBeatAct(beatLine.act, maxActs);
                 if (lastAct !== null && currentAct !== lastAct) {
                     const divider = listContainer.createDiv({ cls: 'ert-custom-beat-divider' });
                     divider.createDiv({ cls: 'ert-custom-beat-divider-label', text: actLabels[currentAct - 1] });
@@ -326,6 +424,35 @@ export function renderStoryBeatsSection(params: {
                 const nameInput = row.createEl('input', { type: 'text', cls: 'ert-beat-name-input ert-input' });
                 nameInput.value = name;
                 nameInput.placeholder = 'Beat name';
+                const dupKey = normalizeBeatTitle(name);
+                const rowNotices: string[] = [];
+                if (dupKey && duplicateKeys.has(dupKey)) {
+                    row.addClass('ert-custom-beat-row--duplicate');
+                    rowNotices.push('Duplicate beat title (ignores numeric prefix).');
+                }
+                if (dupKey && existingBeatLookup.has(dupKey)) {
+                    row.addClass('ert-custom-beat-row--existing');
+                    rowNotices.push('Existing beat note found. Merge to realign.');
+                    const matches = existingBeatLookup.get(dupKey) ?? [];
+                    if (matches.length === 1) {
+                        const existing = matches[0];
+                        const existingNumberStr = getScenePrefixNumber(existing.title, existing.number);
+                        const existingNumber = existingNumberStr ? Number(existingNumberStr) : NaN;
+                        const existingActRaw = typeof existing.actNumber === 'number' ? existing.actNumber : Number(existing.act ?? currentAct);
+                        const existingAct = Number.isFinite(existingActRaw) ? existingActRaw : currentAct;
+                        const expectedNumber = beatNumber;
+                        const numberMismatch = Number.isFinite(existingNumber) && existingNumber !== expectedNumber;
+                        const actMismatch = Number.isFinite(existingAct) && existingAct !== currentAct;
+                        if (numberMismatch || actMismatch) {
+                            row.addClass('ert-custom-beat-row--misaligned');
+                            const existingNumLabel = Number.isFinite(existingNumber) ? existingNumberStr : '?';
+                            rowNotices.push(`Misaligned vs existing note (${existingNumLabel}, Act ${existingAct}).`);
+                        }
+                    }
+                }
+                if (rowNotices.length > 0) {
+                    setTooltip(nameInput, rowNotices.join(' '));
+                }
                 plugin.registerDomEvent(nameInput, 'change', () => {
                     const newName = nameInput.value.trim();
                     if (!newName) return;
@@ -345,7 +472,7 @@ export function renderStoryBeatsSection(params: {
                     act = actSelect.value;
                     const updated = [...beats];
                     const currentName = nameInput.value.trim() || name;
-                    const actNum = clampAct(parseInt(act, 10) || 1, maxActs);
+                    const actNum = clampBeatAct(parseInt(act, 10) || 1, maxActs);
                     updated[index] = { name: currentName, act: actNum };
                     saveBeats(updated);
                     renderList();
@@ -380,7 +507,7 @@ export function renderStoryBeatsSection(params: {
                     const [moved] = updated.splice(from, 1);
                     updated.splice(index, 0, moved);
                     const neighbor = updated[index + 1] ?? updated[index - 1];
-                    const nextAct = clampAct(neighbor?.act ?? moved.act ?? currentAct, maxActs);
+                    const nextAct = clampBeatAct(neighbor?.act ?? moved.act ?? currentAct, maxActs);
                     moved.act = nextAct;
                     saveBeats(updated);
                     renderList();
@@ -388,7 +515,7 @@ export function renderStoryBeatsSection(params: {
             });
 
             // Add row at bottom (single line, matches advanced YAML add row)
-            const defaultAct = beats.length > 0 ? clampAct(beats[beats.length - 1].act, maxActs) : 1;
+            const defaultAct = beats.length > 0 ? clampBeatAct(beats[beats.length - 1].act, maxActs) : 1;
             const addRow = listContainer.createDiv({ cls: 'ert-custom-beat-row ert-custom-beat-add-row' });
 
             addRow.createDiv({ cls: ['ert-drag-handle', 'ert-drag-placeholder'] });
@@ -407,7 +534,7 @@ export function renderStoryBeatsSection(params: {
 
             const commitAdd = () => {
                 const name = (addNameInput.value || 'New Beat').trim();
-                const act = clampAct(parseInt(addActSelect.value, 10) || defaultAct || 1, maxActs);
+                const act = clampBeatAct(parseInt(addActSelect.value, 10) || defaultAct || 1, maxActs);
                 const updated = [...beats, { name, act }];
                 saveBeats(updated);
                 renderList();
@@ -422,12 +549,21 @@ export function renderStoryBeatsSection(params: {
             });
         };
 
+        refreshCustomBeatList = renderList;
         renderList();
         void (async () => {
-            const ranges = await collectActRanges(true);
-            if (!ranges) return;
-            actRanges = ranges;
+            const [ranges, existing] = await Promise.all([
+                collectActRanges(true),
+                refreshExistingBeatLookup(true, plugin.settings.beatSystem || 'Custom')
+            ]);
+            if (ranges) {
+                actRanges = ranges;
+            }
+            if (existing) {
+                existingBeatLookup = existing;
+            }
             renderList();
+            updateTemplateButton(templateSetting, 'Custom');
         })();
     };
     renderCustomConfig();
@@ -439,15 +575,30 @@ export function renderStoryBeatsSection(params: {
     // --------------------------------------------------------
 
     // Create template beat note button
+    let createTemplatesButton: ButtonComponent | undefined;
+    let mergeTemplatesButton: ButtonComponent | undefined;
+
     const templateSetting = new Settings(beatsStack)
         .setName('Create story beat template notes')
         .setDesc('Generate template beat notes based on the selected story structure system including YAML frontmatter and body summary.')
-        .addButton(button => button
-            .setButtonText('Create templates')
-            .setTooltip('Creates story beat note templates in your source path')
-            .onClick(async () => {
-                await createBeatTemplates();
-            }));
+        .addButton(button => {
+            createTemplatesButton = button;
+            button
+                .setButtonText('Create templates')
+                .setTooltip('Creates story beat note templates in your source path')
+                .onClick(async () => {
+                    await createBeatTemplates();
+                });
+        })
+        .addButton(button => {
+            mergeTemplatesButton = button;
+            button
+                .setButtonText('Merge beats')
+                .setTooltip('Rename and realign existing beat notes to match this list')
+                .onClick(async () => {
+                    await mergeExistingBeatNotes();
+                });
+        });
 
     updateTemplateButton(templateSetting, plugin.settings.beatSystem || 'Custom');
 
@@ -1143,13 +1294,12 @@ export function renderStoryBeatsSection(params: {
 
     function updateTemplateButton(setting: Settings, selectedSystem: string): void {
         const isCustom = selectedSystem === 'Custom';
-        
-        // Dynamic name for custom system
         let displayName = selectedSystem;
+        let baseDesc = '';
+        let hasBeats = true;
+
         if (isCustom) {
             displayName = plugin.settings.customBeatSystemName || 'Custom';
-            
-            // Check if beats are defined
             const beats = (plugin.settings.customBeatSystemBeats || []).map((b: unknown) => {
                 if (typeof b === 'string') return b.trim();
                 if (typeof b === 'object' && b !== null && (b as { name?: unknown }).name) {
@@ -1157,30 +1307,175 @@ export function renderStoryBeatsSection(params: {
                 }
                 return '';
             });
-            const hasBeats = beats.some(b => b.length > 0);
-            
+            hasBeats = beats.some(b => b.length > 0);
+
             if (hasBeats) {
                 setting.setName(`Create story beat template notes for ${displayName}`);
-                setting.setDesc(`Generate ${beats.length} template beat notes for your custom system.`);
+                baseDesc = `Generate ${beats.length} template beat notes for your custom system.`;
+                setting.setDesc(baseDesc);
                 setting.settingEl.style.opacity = '1';
-                // Enable button
-                const btn = setting.controlEl.querySelector('button');
-                if (btn) btn.disabled = false;
             } else {
                 setting.setName('Create story beat template notes');
-                setting.setDesc('Define your custom beat list above to generate templates.');
+                baseDesc = 'Define your custom beat list above to generate templates.';
+                setting.setDesc(baseDesc);
                 setting.settingEl.style.opacity = '0.6';
-                // Disable button
-                const btn = setting.controlEl.querySelector('button');
-                if (btn) btn.disabled = true;
             }
         } else {
             setting.setName(`Create story beat template notes for ${selectedSystem}`);
-            setting.setDesc(`Generate ${selectedSystem} template beat notes including YAML frontmatter and body summary.`);
+            baseDesc = `Generate ${selectedSystem} template beat notes including YAML frontmatter and body summary.`;
+            setting.setDesc(baseDesc);
             setting.settingEl.style.opacity = '1';
-            const btn = setting.controlEl.querySelector('button');
-            if (btn) btn.disabled = false;
         }
+
+        if (createTemplatesButton) createTemplatesButton.setDisabled(!hasBeats);
+        if (mergeTemplatesButton) {
+            mergeTemplatesButton.setDisabled(true);
+            mergeTemplatesButton.buttonEl.addClass('ert-hidden');
+        }
+        if (!hasBeats) return;
+
+        void (async () => {
+            const lookup = await refreshExistingBeatLookup(true, selectedSystem);
+            if (!lookup) return;
+            if (existingBeatCount > 0) {
+                const warning = isCustom
+                    ? `Existing beat notes detected (${existingBeatCount}). Create templates to generate a new set, or use Merge to realign existing notes.`
+                    : `Existing beat notes detected (${existingBeatCount}). Creating templates will generate additional notes.`;
+                setting.setDesc(`${baseDesc} ${warning}`);
+                if (mergeTemplatesButton && isCustom) {
+                    mergeTemplatesButton.buttonEl.removeClass('ert-hidden');
+                    mergeTemplatesButton.setDisabled(false);
+                }
+                if (createTemplatesButton) {
+                    createTemplatesButton.setTooltip('Creates a new set of beat notes. Existing beats remain.');
+                }
+            } else if (createTemplatesButton) {
+                createTemplatesButton.setTooltip('Creates story beat note templates in your source path');
+            }
+        })();
+    }
+
+    async function mergeExistingBeatNotes(): Promise<void> {
+        const storyStructureName = plugin.settings.beatSystem || 'Custom';
+        if (storyStructureName !== 'Custom') {
+            new Notice('Merge is available for Custom beat systems only.');
+            return;
+        }
+
+        const maxActs = getActCount();
+        const beats: BeatRow[] = (plugin.settings.customBeatSystemBeats || [])
+            .map(parseBeatRow)
+            .map(b => ({ ...b, act: clampBeatAct(b.act, maxActs) }));
+        if (beats.length === 0) {
+            new Notice('No custom beats defined. Add beats in the list above.');
+            return;
+        }
+
+        const ranges = await collectActRanges(true);
+        const beatNumbers = buildBeatNumbers(beats, maxActs, ranges ?? new Map());
+        const existing = await collectExistingBeatNotes(true, storyStructureName);
+        if (!existing || existing.length === 0) {
+            new Notice('No existing beat notes found to merge.');
+            return;
+        }
+
+        const existingLookup = buildExistingBeatLookup(existing);
+        const customModelName = plugin.settings.customBeatSystemName || 'Custom';
+        const conflicts: string[] = [];
+        const duplicates: string[] = [];
+        const updates: Array<{ file: TFile; targetPath: string; act: number }> = [];
+        const duplicateKeys = new Set<string>();
+
+        const keyCounts = new Map<string, number>();
+        beats.forEach((beatLine) => {
+            const key = normalizeBeatTitle(beatLine.name);
+            if (!key) return;
+            keyCounts.set(key, (keyCounts.get(key) ?? 0) + 1);
+        });
+        keyCounts.forEach((count, key) => {
+            if (count > 1) duplicateKeys.add(key);
+        });
+
+        beats.forEach((beatLine, index) => {
+            const key = normalizeBeatTitle(beatLine.name);
+            if (!key) return;
+            if (duplicateKeys.has(key)) {
+                duplicates.push(beatLine.name);
+                return;
+            }
+            const matches = existingLookup.get(key);
+            if (!matches || matches.length === 0) return;
+            if (matches.length > 1) {
+                duplicates.push(beatLine.name);
+                return;
+            }
+            const match = matches[0];
+            if (!match.path) return;
+            const file = app.vault.getAbstractFileByPath(match.path);
+            if (!(file instanceof TFile)) return;
+
+            const beatNumber = beatNumbers[index] ?? (index + 1);
+            const targetBasename = buildBeatFilename(beatNumber, beatLine.name);
+            const parentPath = file.parent?.path ?? '';
+            const targetPath = parentPath
+                ? `${parentPath}/${targetBasename}.${file.extension}`
+                : `${targetBasename}.${file.extension}`;
+
+            if (targetPath !== file.path && app.vault.getAbstractFileByPath(targetPath)) {
+                conflicts.push(targetBasename);
+                return;
+            }
+
+            updates.push({ file, targetPath, act: beatLine.act });
+        });
+
+        if (updates.length === 0) {
+            const conflictHint = conflicts.length > 0 ? ` Conflicts: ${conflicts.length}.` : '';
+            const duplicateHint = duplicates.length > 0 ? ` Duplicates: ${duplicates.length}.` : '';
+            new Notice(`No beat notes could be merged.${conflictHint}${duplicateHint}`);
+            return;
+        }
+
+        for (const update of updates) {
+            await app.fileManager.processFrontMatter(update.file, (fm: Record<string, unknown>) => {
+                fm['Act'] = update.act;
+                fm['Beat Model'] = customModelName;
+                if (!fm['Class']) fm['Class'] = 'Beat';
+            });
+        }
+
+        const renameOps = updates
+            .filter(update => update.targetPath !== update.file.path)
+            .map((update, idx) => {
+                const parentPath = update.file.parent?.path ?? '';
+                const tempBasename = `zbeat-merge-${Date.now().toString(36)}-${idx}`;
+                const tempPath = parentPath
+                    ? `${parentPath}/${tempBasename}.${update.file.extension}`
+                    : `${tempBasename}.${update.file.extension}`;
+                return { file: update.file, tempPath, finalPath: update.targetPath };
+            });
+
+        for (const op of renameOps) {
+            await app.fileManager.renameFile(op.file, op.tempPath);
+        }
+        for (const op of renameOps) {
+            const file = app.vault.getAbstractFileByPath(op.tempPath);
+            if (file instanceof TFile) {
+                await app.fileManager.renameFile(file, op.finalPath);
+            }
+        }
+
+        existingBeatReady = false;
+        updateTemplateButton(templateSetting, storyStructureName);
+        void refreshExistingBeatLookup(true, storyStructureName).then(() => {
+            refreshCustomBeatList?.();
+        });
+
+        const renamedCount = renameOps.length;
+        const updatedCount = updates.length;
+        const conflictHint = conflicts.length > 0 ? ` ${conflicts.length} conflict${conflicts.length > 1 ? 's' : ''} skipped.` : '';
+        const duplicateHint = duplicates.length > 0 ? ` ${duplicates.length} duplicate title${duplicates.length > 1 ? 's' : ''} skipped.` : '';
+        new Notice(`Merged ${updatedCount} beat note${updatedCount > 1 ? 's' : ''} (${renamedCount} renamed).${conflictHint}${duplicateHint}`);
     }
 
     async function createBeatTemplates(): Promise<void> {
@@ -1233,6 +1528,11 @@ export function renderStoryBeatsSection(params: {
             } else {
                 new Notice(`✓ Successfully created ${created} Beat template notes!`);
             }
+            existingBeatReady = false;
+            updateTemplateButton(templateSetting, storyStructureName);
+            void refreshExistingBeatLookup(true, storyStructureName).then(() => {
+                refreshCustomBeatList?.();
+            });
         } catch (error) {
             console.error('[Beat Templates] Failed:', error);
             new Notice(`Failed to create story beat templates: ${error}`);
