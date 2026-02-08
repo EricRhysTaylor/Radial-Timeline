@@ -34,8 +34,14 @@ class SaveTemplateModal extends Modal {
     }
 
     onOpen(): void {
-        const { contentEl } = this;
+        const { contentEl, modalEl, titleEl } = this;
         contentEl.empty();
+        titleEl.setText('');
+
+        if (modalEl) {
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+        }
+
         contentEl.addClass('ert-modal-container', 'ert-stack');
         contentEl.addClass('rt-template-dialog');
 
@@ -101,8 +107,14 @@ class DeleteTemplateModal extends Modal {
     }
 
     onOpen(): void {
-        const { contentEl } = this;
+        const { contentEl, modalEl, titleEl } = this;
         contentEl.empty();
+        titleEl.setText('');
+
+        if (modalEl) {
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--sm');
+        }
+
         contentEl.addClass('ert-modal-container', 'ert-stack');
         contentEl.addClass('rt-template-dialog');
 

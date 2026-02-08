@@ -28,6 +28,8 @@ import {
     getAllNotificationsForHistory,
     isAlertDismissed,
     applyAlertMigrations,
+    cleanupAdvancedTemplate,
+    advancedTemplateNeedsCleanup,
     type RefactorAlert
 } from './refactorAlerts';
 
@@ -100,6 +102,38 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 el.classList.remove('ert-settings-visible');
                 el.classList.add('ert-settings-hidden');
             }
+        });
+    }
+
+    /**
+     * Auto-migrate legacy advanced templates by removing base fields.
+     * This runs silently on settings display and shows a notice if cleanup occurred.
+     */
+    private autoMigrateAdvancedTemplate(): void {
+        const template = this.plugin.settings.sceneYamlTemplates?.advanced ?? '';
+        if (!template || !advancedTemplateNeedsCleanup(template)) return;
+
+        const cleaned = cleanupAdvancedTemplate(template);
+        
+        if (!this.plugin.settings.sceneYamlTemplates) {
+            this.plugin.settings.sceneYamlTemplates = { base: '', advanced: '' };
+        }
+        this.plugin.settings.sceneYamlTemplates.advanced = cleaned;
+        
+        // Mark the cleanup alert as dismissed since we auto-handled it
+        if (!this.plugin.settings.dismissedAlerts) {
+            this.plugin.settings.dismissedAlerts = [];
+        }
+        if (!this.plugin.settings.dismissedAlerts.includes('advanced-template-cleanup-v7')) {
+            this.plugin.settings.dismissedAlerts.push('advanced-template-cleanup-v7');
+        }
+        
+        // Save asynchronously
+        void this.plugin.saveSettings();
+        
+        // Show notice
+        import('obsidian').then(({ Notice }) => {
+            new Notice('Advanced YAML template updated: duplicate base fields removed.');
         });
     }
 
@@ -286,8 +320,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const description = contentSide.createDiv({ cls: 'ert-refactor-alert__description' });
         description.setText(alert.description);
 
-        // Reassurance text inside alert - only for migration alerts
-        if (alert.migrations?.length) {
+        // Reassurance text inside alert - for migration and cleanup alerts
+        if (alert.migrations?.length || alert.id === 'advanced-template-cleanup-v7') {
             const reassurance = contentSide.createDiv({ cls: 'ert-refactor-alert__reassurance' });
             reassurance.setText('These updates help keep your YAML consistent with the latest features. You can review or dismiss any change.');
         }
@@ -295,28 +329,30 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Right side: Action buttons (stacked vertically)
         const actionSide = alertEl.createDiv({ cls: 'ert-refactor-alert__actions' });
 
-        // Dismiss button (X)
-        const dismissBtn = actionSide.createEl('button', {
-            cls: 'ert-iconBtn ert-refactor-alert__btn--dismiss',
-            attr: { 'aria-label': 'Dismiss alert' }
-        });
-        setIcon(dismissBtn, 'x');
-        this.plugin.registerDomEvent(dismissBtn, 'click', async () => {
-            if (!this.plugin.settings.dismissedAlerts) {
-                this.plugin.settings.dismissedAlerts = [];
-            }
-            this.plugin.settings.dismissedAlerts.push(alert.id);
-            await this.plugin.saveSettings();
+        // Dismiss button (X) - only for non-critical alerts
+        if (alert.severity !== 'critical') {
+            const dismissBtn = actionSide.createEl('button', {
+                cls: 'ert-iconBtn ert-refactor-alert__btn--dismiss',
+                attr: { 'aria-label': 'Dismiss alert' }
+            });
+            setIcon(dismissBtn, 'x');
+            this.plugin.registerDomEvent(dismissBtn, 'click', async () => {
+                if (!this.plugin.settings.dismissedAlerts) {
+                    this.plugin.settings.dismissedAlerts = [];
+                }
+                this.plugin.settings.dismissedAlerts.push(alert.id);
+                await this.plugin.saveSettings();
 
-            // Re-render the entire alerts section
-            const panelParent = alertEl.closest('.ert-notification-panel')?.parentElement;
-            if (panelParent) {
-                panelParent.empty();
-                this.renderRefactorAlerts(panelParent);
-            }
-        });
+                // Re-render the entire alerts section
+                const panelParent = alertEl.closest('.ert-notification-panel')?.parentElement;
+                if (panelParent) {
+                    panelParent.empty();
+                    this.renderRefactorAlerts(panelParent);
+                }
+            });
+        }
 
-        // Auto Update button (↻) - only for migration alerts
+        // Auto Update button - for migration alerts
         if (alert.migrations?.length) {
             const autoUpdateBtn = actionSide.createEl('button', {
                 cls: 'ert-iconBtn ert-refactor-alert__btn--update',
@@ -349,31 +385,33 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             });
 
             // View YAML button (↓)
-            const viewBtn = actionSide.createEl('button', {
-                cls: 'ert-iconBtn ert-refactor-alert__btn--view',
-                attr: { 'aria-label': 'View in YAML editor' }
-            });
-            setIcon(viewBtn, 'chevron-down');
-            this.plugin.registerDomEvent(viewBtn, 'click', async () => {
-                // Enable advanced YAML editor if not already
-                this.plugin.settings.enableAdvancedYamlEditor = true;
-                await this.plugin.saveSettings();
+            {
+                const viewBtn = actionSide.createEl('button', {
+                    cls: 'ert-iconBtn ert-refactor-alert__btn--view',
+                    attr: { 'aria-label': 'View in YAML editor' }
+                });
+                setIcon(viewBtn, 'chevron-down');
+                this.plugin.registerDomEvent(viewBtn, 'click', async () => {
+                    // Enable advanced YAML editor if not already
+                    this.plugin.settings.enableAdvancedYamlEditor = true;
+                    await this.plugin.saveSettings();
 
-                // Small delay to let the editor expand, then scroll to the migration row or advanced card
-                window.setTimeout(() => {
-                    // Try to scroll to the specific migration row first
-                    const migrationRow = document.querySelector('.ert-yaml-row--needs-migration');
-                    if (migrationRow) {
-                        migrationRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        return;
-                    }
-                    // Fallback: scroll to the advanced template card
-                    const advancedCard = document.querySelector('.ert-advanced-template-card');
-                    if (advancedCard) {
-                        advancedCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                }, 100);
-            });
+                    // Small delay to let the editor expand, then scroll to the migration row or advanced card
+                    window.setTimeout(() => {
+                        // Try to scroll to the specific migration row first
+                        const migrationRow = document.querySelector('.ert-yaml-row--needs-migration');
+                        if (migrationRow) {
+                            migrationRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            return;
+                        }
+                        // Fallback: scroll to the advanced template card
+                        const advancedCard = document.querySelector('.ert-advanced-template-card');
+                        if (advancedCard) {
+                            advancedCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }, 100);
+                });
+            }
         }
     }
 
@@ -679,6 +717,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         containerEl.empty();
         containerEl.addClass('ert-ui', 'ert-settings-root', 'ert-scope--settings');
         this._aiRelatedElements = [];
+
+        // Auto-migrate: Clean up legacy advanced template if needed
+        this.autoMigrateAdvancedTemplate();
 
         const tabBar = containerEl.createDiv({ cls: 'ert-settings-tab-bar' });
         const proTab = tabBar.createDiv({ cls: 'ert-settings-tab' });

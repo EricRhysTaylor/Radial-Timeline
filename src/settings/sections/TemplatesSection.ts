@@ -1057,7 +1057,9 @@ export function renderStoryBeatsSection(params: {
 
         const saveEntries = (nextEntries: TemplateEntry[]) => {
             workingEntries = nextEntries;
-            const yaml = buildYamlWithRequired(requiredOrder, requiredValues, nextEntries, advancedComments);
+            // Only save optional/advanced entries - base fields are now stored separately
+            // This prevents duplication and ensures clean separation between base and advanced templates
+            const yaml = buildYamlFromEntries(nextEntries, advancedComments);
             if (!plugin.settings.sceneYamlTemplates) plugin.settings.sceneYamlTemplates = { base: DEFAULT_SETTINGS.sceneYamlTemplates!.base, advanced: '' };
             plugin.settings.sceneYamlTemplates.advanced = yaml;
             void plugin.saveSettings();

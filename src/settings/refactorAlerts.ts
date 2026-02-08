@@ -38,9 +38,25 @@ export interface RefactorAlert {
 // Alert Definitions
 // ============================================================================
 
+// Base template fields - these should NOT appear in the advanced template
+// Used to detect and clean up legacy "complete" advanced templates
+export const BASE_TEMPLATE_FIELDS = [
+    'Class', 'Act', 'When', 'Duration', 'Synopsis', 'Subplot', 'Character',
+    'POV', 'Due', 'Status', 'Publish Stage', 'Pending Edits', 'Words',
+    'Runtime', 'Synopsis Update', 'Pulse Update'
+];
+
 // Edit alert wording here (title/description). Settings notifications read from this list.
 // Severity: info (blue), warning (orange), critical (red).
 export const REFACTOR_ALERTS: RefactorAlert[] = [
+    {
+        id: 'advanced-template-cleanup-v7',
+        severity: 'info',
+        icon: 'file-check',
+        title: 'Advanced YAML Template Cleaned',
+        description: 'Your advanced template was automatically updated to remove duplicate base fields. The base and advanced templates are now properly separated for easier maintenance.',
+        // No migrations array - auto-handled on settings load
+    },
     {
         id: 'yaml-revision-to-iteration-v6',
         severity: 'warning',
@@ -109,6 +125,65 @@ function hasRemapperConflict(
 }
 
 /**
+ * Check if the advanced template contains legacy base fields that should be removed.
+ * Returns the list of base fields found in the template.
+ */
+export function getLegacyBaseFieldsInAdvanced(advancedTemplate: string): string[] {
+    const found: string[] = [];
+    for (const field of BASE_TEMPLATE_FIELDS) {
+        // Match field at start of line followed by colon
+        const regex = new RegExp(`^${field}:`, 'm');
+        if (regex.test(advancedTemplate)) {
+            found.push(field);
+        }
+    }
+    return found;
+}
+
+/**
+ * Check if advanced template needs cleanup (has legacy base fields)
+ */
+export function advancedTemplateNeedsCleanup(advancedTemplate: string): boolean {
+    return getLegacyBaseFieldsInAdvanced(advancedTemplate).length > 0;
+}
+
+/**
+ * Remove legacy base fields from an advanced template.
+ * This handles the migration from "complete" advanced templates to "extra fields only".
+ */
+export function cleanupAdvancedTemplate(advancedTemplate: string): string {
+    const lines = advancedTemplate.split('\n');
+    const result: string[] = [];
+    let skipUntilNextField = false;
+    
+    for (const line of lines) {
+        // Check if this line starts a field
+        const fieldMatch = line.match(/^([A-Za-z][A-Za-z0-9 _'-]*):/);
+        
+        if (fieldMatch) {
+            const fieldName = fieldMatch[1].trim();
+            if (BASE_TEMPLATE_FIELDS.includes(fieldName)) {
+                // Skip this base field and any continuation lines
+                skipUntilNextField = true;
+                continue;
+            } else {
+                // This is an advanced-only field, keep it
+                skipUntilNextField = false;
+                result.push(line);
+            }
+        } else if (skipUntilNextField) {
+            // Skip continuation lines (indented list items, placeholders)
+            continue;
+        } else if (line.trim()) {
+            // Keep non-empty lines that aren't being skipped
+            result.push(line);
+        }
+    }
+    
+    return result.join('\n').trim();
+}
+
+/**
  * Get active refactor alerts that need user attention
  * Filters out dismissed alerts and alerts with no pending migrations (for migration alerts)
  * Info alerts without migrations are shown until dismissed
@@ -121,6 +196,11 @@ export function getActiveRefactorAlerts(settings: RadialTimelineSettings): Refac
     return REFACTOR_ALERTS.filter(alert => {
         // Skip if already dismissed
         if (dismissed.includes(alert.id)) return false;
+
+        // Special handling for advanced template cleanup alert
+        if (alert.id === 'advanced-template-cleanup-v7') {
+            return advancedTemplateNeedsCleanup(template);
+        }
 
         // For alerts with migrations, skip if no pending migrations in template
         if (alert.migrations?.length) {
