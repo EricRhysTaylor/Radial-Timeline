@@ -676,26 +676,42 @@ export class BookDesignerModal extends Modal {
                 text
                     .setValue(this.scenesToGenerate.toString())
                     .onChange(value => {
+                        // Live update for preview only — no clamping while typing
                         const parsed = parseInt(value);
                         if (!isNaN(parsed) && parsed > 0) {
                             this.scenesToGenerate = parsed;
-                            // If scenes exceed target, auto-adjust target to match
-                            if (this.scenesToGenerate > this.targetRangeMax) {
-                                this.targetRangeMax = this.scenesToGenerate;
-                                if (this.targetRangeInput) {
-                                    this.targetRangeInput.setValue(this.targetRangeMax.toString());
-                                    // Flash the target input red to indicate auto-correction
-                                    this.targetRangeInput.inputEl.removeClass('rt-input-flash-error');
-                                    void this.targetRangeInput.inputEl.offsetWidth; // reflow to restart animation
-                                    this.targetRangeInput.inputEl.addClass('rt-input-flash-error');
-                                }
-                            }
                             if (lengthSettingRef) this.updateTargetDesc(lengthSettingRef);
                             if (!this.isApplyingTemplate) this.resetManualLayout();
                             this.schedulePreviewUpdate();
                         }
                     });
                 text.inputEl.addClass('rt-input-xs');
+
+                // Validate scenes vs target on commit (blur / Enter)
+                const commitScenes = () => {
+                    const parsed = parseInt(text.getValue());
+                    if (isNaN(parsed) || parsed < 1) {
+                        this.scenesToGenerate = 1;
+                        text.setValue('1');
+                    }
+                    // If scenes exceed target, bump target up to match
+                    if (this.scenesToGenerate > this.targetRangeMax) {
+                        this.targetRangeMax = this.scenesToGenerate;
+                        if (this.targetRangeInput) {
+                            this.targetRangeInput.setValue(this.targetRangeMax.toString());
+                            // Flash the target input red to indicate auto-correction
+                            this.targetRangeInput.inputEl.removeClass('rt-input-flash-error');
+                            void this.targetRangeInput.inputEl.offsetWidth; // reflow to restart animation
+                            this.targetRangeInput.inputEl.addClass('rt-input-flash-error');
+                        }
+                        if (lengthSettingRef) this.updateTargetDesc(lengthSettingRef);
+                        this.schedulePreviewUpdate();
+                    }
+                };
+                text.inputEl.addEventListener('blur', commitScenes);
+                text.inputEl.addEventListener('keydown', (evt) => {
+                    if (evt.key === 'Enter') { evt.preventDefault(); commitScenes(); }
+                });
             });
         scenesSetting.settingEl.addClass('rt-manuscript-group-setting');
 
@@ -707,24 +723,39 @@ export class BookDesignerModal extends Modal {
                 text
                     .setValue(this.targetRangeMax.toString())
                     .onChange(value => {
+                        // Live update for preview only — no clamping while typing
                         const parsed = parseInt(value);
                         if (!isNaN(parsed) && parsed > 0) {
-                            // Clamp: target can never be less than scene count
-                            if (parsed < this.scenesToGenerate) {
-                                this.targetRangeMax = this.scenesToGenerate;
-                                text.setValue(this.targetRangeMax.toString());
-                                // Flash the input red to indicate auto-correction
-                                text.inputEl.removeClass('rt-input-flash-error');
-                                void text.inputEl.offsetWidth;
-                                text.inputEl.addClass('rt-input-flash-error');
-                            } else {
-                                this.targetRangeMax = parsed;
-                            }
+                            this.targetRangeMax = parsed;
                             if (lengthSettingRef) this.updateTargetDesc(lengthSettingRef);
                             this.schedulePreviewUpdate();
                         }
                     });
                 text.inputEl.addClass('rt-input-xs');
+
+                // Validate target vs scenes on commit (blur / Enter)
+                const commitTarget = () => {
+                    const parsed = parseInt(text.getValue());
+                    if (isNaN(parsed) || parsed < 1) {
+                        this.targetRangeMax = this.scenesToGenerate;
+                        text.setValue(this.targetRangeMax.toString());
+                    }
+                    // Clamp: target can never be less than scene count
+                    if (this.targetRangeMax < this.scenesToGenerate) {
+                        this.targetRangeMax = this.scenesToGenerate;
+                        text.setValue(this.targetRangeMax.toString());
+                        // Flash the input red to indicate auto-correction
+                        text.inputEl.removeClass('rt-input-flash-error');
+                        void text.inputEl.offsetWidth;
+                        text.inputEl.addClass('rt-input-flash-error');
+                    }
+                    if (lengthSettingRef) this.updateTargetDesc(lengthSettingRef);
+                    this.schedulePreviewUpdate();
+                };
+                text.inputEl.addEventListener('blur', commitTarget);
+                text.inputEl.addEventListener('keydown', (evt) => {
+                    if (evt.key === 'Enter') { evt.preventDefault(); commitTarget(); }
+                });
             });
         lengthSetting.settingEl.addClass('rt-manuscript-group-setting');
         lengthSettingRef = lengthSetting; // Assign ref

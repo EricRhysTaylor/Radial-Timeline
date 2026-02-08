@@ -73,6 +73,7 @@ export class OuterRingDragController {
     private originOuterR?: number;
     private dropArc: SVGPathElement | null = null;
     private sourcePath: string | null = null;
+    private dragIndicator: SVGGElement | null = null; // Tangent-aligned reorder indicator
 
     constructor(view: OuterRingViewAdapter, svg: SVGSVGElement, options: OuterRingDragOptions) {
         this.view = view;
@@ -89,6 +90,9 @@ export class OuterRingDragController {
         );
         if (!draggableGroups.length) return;
 
+        // Create the tangent-aligned drag reorder indicator (move-horizontal arrows)
+        this.createDragIndicator();
+
         this.view.registerDomEvent(window as unknown as HTMLElement, 'pointermove', (evt: PointerEvent) => this.onPointerMove(evt));
         this.view.registerDomEvent(window as unknown as HTMLElement, 'pointerup', (evt: PointerEvent) => this.onPointerUp(evt));
         
@@ -98,6 +102,20 @@ export class OuterRingDragController {
             if (scenePath) {
                 this.view.registerDomEvent(scenePath as unknown as HTMLElement, 'pointerdown', (evt: PointerEvent) => this.startDrag(evt, group));
             }
+        });
+
+        // Delegated hover for the drag indicator — show tangent arrows on scene/beat hover
+        this.view.registerDomEvent(this.svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
+            if (this.dragging) return;
+            const group = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"], .rt-scene-group[data-item-type="Beat"]') as SVGGElement | null;
+            if (group) this.showDragIndicator(group);
+        });
+        this.view.registerDomEvent(this.svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
+            const toEl = e.relatedTarget as Element | null;
+            const group = (e.target as Element).closest('.rt-scene-group') as SVGGElement | null;
+            // Only hide if leaving the scene group entirely
+            if (group && toEl && group.contains(toEl)) return;
+            this.hideDragIndicator();
         });
     }
 
@@ -407,6 +425,7 @@ export class OuterRingDragController {
         lastInteractionTime = Date.now(); // Mark start so click handler knows to skip
         this.svg.classList.add('rt-dragging-outer');
         this.sourceSceneGroup.classList.add('rt-drag-source');
+        this.hideDragIndicator(); // Hide tangent arrows during drag
         this.log('beginDrag', { sceneId: this.sourceSceneId, itemType: this.sourceItemType });
     }
 
@@ -798,6 +817,63 @@ export class OuterRingDragController {
         const outerR = Number(sceneGroup.getAttribute('data-outer-r') ?? '');
         this.originStartAngle = Number.isFinite(startAngle) ? startAngle : undefined;
         this.originOuterR = Number.isFinite(outerR) ? outerR : undefined;
+    }
+
+    // ── Drag reorder indicator (tangent-aligned move-horizontal arrows) ──
+
+    /** Lucide move-horizontal icon paths, centered on origin (offset by -12,-12 from 24×24 viewBox) */
+    private static readonly INDICATOR_ICON = [
+        'M 6 -4 L 10 0 L 6 4',   // right arrow (18-12=6, 8-12=-4, etc.)
+        'M -10 0 L 10 0',         // horizontal line
+        'M -6 -4 L -10 0 L -6 4', // left arrow
+    ].join(' ');
+    private static readonly INDICATOR_OFFSET = 16; // px above the outer ring edge
+
+    /**
+     * Create the drag reorder indicator SVG element in the overlays layer.
+     * Uses the Lucide move-horizontal icon, centered on its origin so rotate() works naturally.
+     */
+    private createDragIndicator(): void {
+        if (this.dragIndicator?.isConnected) return;
+        const ns = 'http://www.w3.org/2000/svg';
+        const g = document.createElementNS(ns, 'g');
+        g.classList.add('rt-drag-reorder-indicator');
+        const path = document.createElementNS(ns, 'path');
+        path.setAttribute('d', OuterRingDragController.INDICATOR_ICON);
+        g.appendChild(path);
+        const overlays = this.svg.querySelector<SVGGElement>('#rt-overlays');
+        if (overlays) overlays.appendChild(g); else this.svg.appendChild(g);
+        this.dragIndicator = g;
+    }
+
+    /**
+     * Position and show the drag indicator above the hovered scene/beat group.
+     * The icon is placed at the center angle of the arc, a few px above the outer ring,
+     * and rotated so its horizontal arrows are tangent to the ring.
+     */
+    private showDragIndicator(group: SVGGElement): void {
+        if (!this.dragIndicator || this.dragging) return;
+        const startAngle = Number(group.getAttribute('data-start-angle') ?? '');
+        const endAngle = Number(group.getAttribute('data-end-angle') ?? '');
+        const outerR = Number(group.getAttribute('data-outer-r') ?? '');
+        if (!Number.isFinite(startAngle) || !Number.isFinite(endAngle) || !Number.isFinite(outerR)) return;
+
+        const centerAngle = (startAngle + endAngle) / 2;
+        const r = outerR + OuterRingDragController.INDICATOR_OFFSET;
+        const x = r * Math.cos(centerAngle);
+        const y = r * Math.sin(centerAngle);
+        // Rotate so horizontal arrows align with the ring tangent at this angle
+        const rotDeg = (centerAngle * 180) / Math.PI + 90;
+
+        this.dragIndicator.setAttribute('transform', `translate(${x}, ${y}) rotate(${rotDeg})`);
+        this.dragIndicator.classList.add('rt-visible');
+    }
+
+    /** Hide the drag indicator */
+    private hideDragIndicator(): void {
+        if (this.dragIndicator) {
+            this.dragIndicator.classList.remove('rt-visible');
+        }
     }
 
     private resolveSubplotColorFromGroup(group: SVGGElement): string | undefined {
