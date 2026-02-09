@@ -1,4 +1,4 @@
-# Advanced YAML & Data Integrity
+# Advanced YAML
 
 The Advanced YAML editor lets you tailor the Advanced scene template while keeping required base keys intact. Add, remove, or reorder optional fields to match your workflow (e.g., Story Grid values, Dramatica signposts).
 
@@ -30,15 +30,3 @@ You can control how Point of View (POV) is displayed on the timeline in **Settin
 *   `pov: two` / `pov: all` (Mark multiple characters)
 
 See [[YAML-Frontmatter#pov-keywords]] for the full list of supported values.
-
-## Data Integrity & Backups
-
-When heavily customizing YAML keys or using advanced plugins, it is crucial to protect your work against data loss or corruption.
-
-**Recommendation:**
-Use a reliable backup solution.
-*   **Obsidian Sync**: Ensure "Plugin settings" and "Active core/community plugins" are checked in your Sync settings to back up your Radial Timeline configuration.
-*   **External Backups**: If using third-party sync (Dropbox, Drive), consider keeping a local backup or using the **Local File History** core plugin.
-
-**Mac/iCloud Users:**
-To prevent iCloud sync conflicts from corrupting plugin data, you can append `.nosync` to folder names (e.g., `radial-backups.nosync`) to exclude them from iCloud syncing while keeping them in your vault.

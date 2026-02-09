@@ -6,11 +6,12 @@
  * Professional License Settings Section
  */
 
-import { App, Setting, setIcon, normalizePath, Notice } from 'obsidian';
+import { App, Setting, setIcon, normalizePath, Notice, TFile, TFolder } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { ERT_CLASSES } from '../../ui/classes';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { execFile } from 'child_process'; // SAFE: Node child_process for system path scanning
+import { findLongformIndex, syncScenesToLongform } from '../../longform/LongformSyncService';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SYSTEM PATH SCANNING
@@ -869,6 +870,45 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
 
     const templates = plugin.settings.pandocTemplates || {};
 
+    /**
+     * Flash-validate a template path input.
+     * Checks whether any .tex file exists at the folder level of the entered path
+     * (shallow — does not recurse into sub-folders).
+     * Green flash = .tex found, Red flash = none found.
+     */
+    const flashValidateTexPath = (inputEl: HTMLInputElement, value: string) => {
+        // Clear any running animation so re-triggers restart cleanly
+        inputEl.removeClass('ert-input--flash-success', 'ert-input--flash-error');
+        // Force reflow so removing + re-adding the same class restarts the animation
+        void inputEl.offsetWidth;
+
+        if (!value || !value.trim()) return; // skip empty paths
+
+        const trimmed = normalizePath(value.trim());
+
+        // Derive the folder portion of the entered path
+        const lastSlash = trimmed.lastIndexOf('/');
+        const folderPath = lastSlash >= 0 ? trimmed.substring(0, lastSlash) : '';
+
+        // Resolve the folder inside the vault
+        const folder = folderPath
+            ? plugin.app.vault.getAbstractFileByPath(folderPath)
+            : plugin.app.vault.getRoot();
+
+        let hasTexFile = false;
+        if (folder && folder instanceof TFolder) {
+            hasTexFile = folder.children.some(
+                child => child instanceof TFile && child.extension === 'tex'
+            );
+        }
+
+        const cls = hasTexFile ? 'ert-input--flash-success' : 'ert-input--flash-error';
+        inputEl.addClass(cls);
+
+        // Remove the class after the animation completes (1.6s matches CSS)
+        setTimeout(() => { inputEl.removeClass(cls); }, 1700);
+    };
+
     const addTemplateSetting = (name: string, key: keyof typeof templates, placeholder: string) => {
         addProRow(new Setting(templateSubSection))
             .setName(name)
@@ -876,12 +916,23 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                 text.inputEl.addClass('ert-input--xl');
                 text.setPlaceholder(placeholder);
                 text.setValue(templates[key] || '');
-                plugin.registerDomEvent(text.inputEl, 'blur', async () => {
+
+                const saveAndValidate = async () => {
+                    const raw = text.getValue().trim();
                     plugin.settings.pandocTemplates = {
                         ...plugin.settings.pandocTemplates,
-                        [key]: text.getValue().trim()
+                        [key]: raw
                     };
                     await plugin.saveSettings();
+                    flashValidateTexPath(text.inputEl, raw);
+                };
+
+                plugin.registerDomEvent(text.inputEl, 'blur', saveAndValidate);
+                plugin.registerDomEvent(text.inputEl, 'keydown', (e: KeyboardEvent) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        saveAndValidate();
+                    }
                 });
             });
     };
@@ -914,6 +965,68 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                     new Notice(`Error generating samples: ${msg}`);
                     button.setDisabled(false);
                     button.setButtonText('Generate Samples');
+                }
+            });
+        });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // LONGFORM INTEGRATION
+    // ─────────────────────────────────────────────────────────────────────────
+    const longformSubSection = pandocPanel.createDiv({
+        cls: `${ERT_CLASSES.SECTION} ${ERT_CLASSES.SECTION_TIGHT}`
+    });
+    longformSubSection.createEl('h5', { text: 'Longform Integration', cls: ERT_CLASSES.SECTION_TITLE });
+
+    // Status indicator: shows whether a Longform index file is detected
+    const longformStatusSetting = addProRow(new Setting(longformSubSection))
+        .setName('Longform index')
+        .setDesc('Detects a Longform index file in your source path.');
+
+    const updateLongformStatus = () => {
+        const indexFile = findLongformIndex(plugin);
+        if (indexFile) {
+            longformStatusSetting.setDesc(`Detected: ${indexFile.path}`);
+        } else {
+            const sp = plugin.settings.sourcePath;
+            longformStatusSetting.setDesc(
+                sp ? `No Longform index file found in "${sp}".`
+                   : 'Set a source path first (General settings).'
+            );
+        }
+    };
+    updateLongformStatus();
+
+    // Sync button
+    addProRow(new Setting(longformSubSection))
+        .setName('Sync scene order')
+        .setDesc('Writes Radial Timeline\'s narrative scene order into the Longform index file\'s scenes array.')
+        .addButton(button => {
+            button.setButtonText('Sync to Longform');
+            button.setCta();
+            button.onClick(async () => {
+                button.setDisabled(true);
+                button.setButtonText('Syncing…');
+                try {
+                    const result = await syncScenesToLongform(plugin);
+                    if (result.success) {
+                        new Notice(result.message);
+                        // Flash the button green briefly
+                        button.buttonEl.addClass('ert-input--flash-success');
+                        setTimeout(() => button.buttonEl.removeClass('ert-input--flash-success'), 1700);
+                    } else {
+                        new Notice(result.message);
+                        button.buttonEl.addClass('ert-input--flash-error');
+                        setTimeout(() => button.buttonEl.removeClass('ert-input--flash-error'), 1700);
+                    }
+                    updateLongformStatus();
+                } catch (e) {
+                    const msg = (e as Error).message || String(e);
+                    new Notice(`Longform sync failed: ${msg}`);
+                    button.buttonEl.addClass('ert-input--flash-error');
+                    setTimeout(() => button.buttonEl.removeClass('ert-input--flash-error'), 1700);
+                } finally {
+                    button.setDisabled(false);
+                    button.setButtonText('Sync to Longform');
                 }
             });
         });

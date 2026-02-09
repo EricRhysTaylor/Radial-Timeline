@@ -4885,6 +4885,47 @@
   box-shadow: 0 0 0 calc(var(--ert-gap-xs) / 2) color-mix(in srgb, var(--text-success) 30%, transparent);
 }
 
+/* Template path validation flash animations */
+@keyframes ert-flash-success {
+  0%, 40% {
+    border-color: var(--text-success);
+    background-color: color-mix(in srgb, var(--text-success) 18%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--text-success) 30%, transparent);
+  }
+  100% {
+    border-color: var(--background-modifier-border);
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+@keyframes ert-flash-error {
+  0%, 40% {
+    border-color: var(--text-error);
+    background-color: color-mix(in srgb, var(--text-error) 18%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--text-error) 30%, transparent);
+  }
+  100% {
+    border-color: var(--background-modifier-border);
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+.ert-ui.ert-skin--pro input.ert-input--flash-success,
+.ert-ui .ert-skin--pro input.ert-input--flash-success,
+.ert-ui.ert-skin--pro .ert-input--flash-success,
+.ert-ui .ert-skin--pro .ert-input--flash-success {
+  animation: ert-flash-success 1.6s ease-out forwards;
+}
+
+.ert-ui.ert-skin--pro input.ert-input--flash-error,
+.ert-ui .ert-skin--pro input.ert-input--flash-error,
+.ert-ui.ert-skin--pro .ert-input--flash-error,
+.ert-ui .ert-skin--pro .ert-input--flash-error {
+  animation: ert-flash-error 1.6s ease-out forwards;
+}
+
 .ert-ui.ert-skin--pro .ert-card--hero,
 .ert-ui.ert-skin--pro .ert-section--hero,
 .ert-ui .ert-skin--pro .ert-card--hero,

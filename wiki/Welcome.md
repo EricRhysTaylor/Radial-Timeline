@@ -12,7 +12,7 @@ When you open Radial Timeline in an empty vault (or a vault with no scenes confi
 ## Get Started in a Few Steps
 
 ### 1. Set your source path
-Point Radial Timeline at the folder containing (or that will contain) your manuscript scene files. Go to **Settings → Core → General → Source path**, or the Welcome Screen will prompt you.
+Point Radial Timeline at the folder containing (or that will contain) your manuscript scene files. Go to **Settings → Core → General → Source path**.
 
 ### 2. Create scenes
 You have two paths:
@@ -36,8 +36,6 @@ Back up your Obsidian vault regularly to protect against data loss. Sync does no
 
 *   **[Obsidian Backup Guide](https://help.obsidian.md/backup)**
 *   **[Obsidian Sync](https://obsidian.md/sync)** or **[Obsidian Git](https://obsidian.md/plugins?id=obsidian-git)**
-
-See [[Advanced-YAML#data-integrity--backups]] for additional recommendations.
 
 ## Next Steps
 

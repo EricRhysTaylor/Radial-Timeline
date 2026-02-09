@@ -47,7 +47,6 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     const step1Text = step1.createEl('p', { cls: 'rt-welcome-paragraph' });
     step1Text.createSpan({ text: 'Point Radial Timeline at the folder containing (or that will contain) your manuscript scene files. Go to ' });
     step1Text.createEl('strong', { text: 'Settings \u2192 Core \u2192 General \u2192 Source path' });
-    step1Text.createSpan({ text: ', or the welcome screen will prompt you.' });
 
     // Step 2: Create scenes
     const step2 = body.createDiv({ cls: 'rt-welcome-step' });
