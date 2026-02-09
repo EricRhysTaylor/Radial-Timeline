@@ -765,9 +765,10 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
 
     // Settings
     let pandocPathInputEl: HTMLInputElement | null = null;
-    addProRow(new Setting(pandocPanel))
-        .setName('Pandoc binary path')
-        .setDesc('Optional: set a custom pandoc executable path. If blank, system PATH is used.')
+    const defaultDesc = 'Path to the Pandoc executable. Leave blank for system PATH, or auto-locate Pandoc and LaTeX on your system.';
+    const pandocSetting = addProRow(new Setting(pandocPanel))
+        .setName('Pandoc & LaTeX')
+        .setDesc(defaultDesc)
         .addText(text => {
             text.inputEl.addClass('ert-input--xl');
             text.setPlaceholder('/usr/local/bin/pandoc');
@@ -779,62 +780,57 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                 plugin.settings.pandocPath = normalizedPath;
                 await plugin.saveSettings();
             });
-        });
+        })
+        .addButton(button => {
+            button.setButtonText('Auto locate');
+            button.onClick(async () => {
+                button.setDisabled(true);
+                button.setButtonText('Locating…');
+                try {
+                    const scan = await scanSystemPaths();
+                    const msgs: string[] = [];
 
-    // Auto-detect Pandoc & LaTeX
-    const scanSetting = addProRow(new Setting(pandocPanel))
-        .setName('Auto-detect Pandoc & LaTeX')
-        .setDesc('Scan your system for Pandoc and LaTeX installations.');
-    scanSetting.addButton(button => {
-        button.setButtonText('Scan');
-        button.onClick(async () => {
-            button.setDisabled(true);
-            button.setButtonText('Scanning…');
-            try {
-                const scan = await scanSystemPaths();
-                const msgs: string[] = [];
-
-                if (scan.pandocPath) {
-                    msgs.push(`✓ Pandoc found at ${scan.pandocPath}`);
-                    // Auto-fill path if currently empty
-                    if (!plugin.settings.pandocPath) {
-                        plugin.settings.pandocPath = scan.pandocPath;
-                        await plugin.saveSettings();
-                        if (pandocPathInputEl) {
-                            pandocPathInputEl.value = scan.pandocPath;
-                            pandocPathInputEl.addClass('ert-setting-input-success');
-                            window.setTimeout(() => pandocPathInputEl?.removeClass('ert-setting-input-success'), 1200);
+                    if (scan.pandocPath) {
+                        msgs.push(`✓ Pandoc found at ${scan.pandocPath}`);
+                        // Auto-fill path if currently empty
+                        if (!plugin.settings.pandocPath) {
+                            plugin.settings.pandocPath = scan.pandocPath;
+                            await plugin.saveSettings();
+                            if (pandocPathInputEl) {
+                                pandocPathInputEl.value = scan.pandocPath;
+                                pandocPathInputEl.addClass('ert-setting-input-success');
+                                window.setTimeout(() => pandocPathInputEl?.removeClass('ert-setting-input-success'), 1200);
+                            }
                         }
+                    } else {
+                        msgs.push('⚠ Pandoc not found — install from pandoc.org');
                     }
-                } else {
-                    msgs.push('⚠ Pandoc not found — install from pandoc.org');
+
+                    if (scan.latexPath) {
+                        msgs.push(`✓ LaTeX found (${scan.latexEngine})`);
+                    } else {
+                        msgs.push('⚠ LaTeX not found — needed for PDF export');
+                    }
+
+                    pandocSetting.setDesc(msgs.join(' · '));
+                    new Notice(msgs.join('\n'));
+
+                    // Revert description after 8 seconds
+                    window.setTimeout(() => {
+                        pandocSetting.setDesc(defaultDesc);
+                    }, 8000);
+                } catch (e) {
+                    const msg = (e as Error).message || String(e);
+                    pandocSetting.setDesc(`Error: ${msg}`);
+                    window.setTimeout(() => {
+                        pandocSetting.setDesc(defaultDesc);
+                    }, 5000);
+                } finally {
+                    button.setDisabled(false);
+                    button.setButtonText('Auto locate');
                 }
-
-                if (scan.latexPath) {
-                    msgs.push(`✓ LaTeX found (${scan.latexEngine})`);
-                } else {
-                    msgs.push('⚠ LaTeX not found — needed for PDF export');
-                }
-
-                scanSetting.setDesc(msgs.join(' · '));
-                new Notice(msgs.join('\n'));
-
-                // Revert description after 8 seconds
-                window.setTimeout(() => {
-                    scanSetting.setDesc('Scan your system for Pandoc and LaTeX installations.');
-                }, 8000);
-            } catch (e) {
-                const msg = (e as Error).message || String(e);
-                scanSetting.setDesc(`Error scanning: ${msg}`);
-                window.setTimeout(() => {
-                    scanSetting.setDesc('Scan your system for Pandoc and LaTeX installations.');
-                }, 5000);
-            } finally {
-                button.setDisabled(false);
-                button.setButtonText('Scan');
-            }
+            });
         });
-    });
 
     addProRow(new Setting(pandocPanel))
         .setName('Enable fallback Pandoc')
