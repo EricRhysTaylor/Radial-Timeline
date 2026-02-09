@@ -5,7 +5,7 @@
 
 import type { TimelineItem } from '../../types';
 import { shouldRenderStoryBeats } from '../modules/ModeRenderingHelpers';
-import { isBeatNote, sortScenes, type PluginRendererFacade } from '../../utils/sceneHelpers';
+import { isBeatNote, isMatterNote, sortScenes, type PluginRendererFacade } from '../../utils/sceneHelpers';
 import {
     SVG_SIZE,
     INNER_RADIUS,
@@ -104,7 +104,7 @@ export function computeCacheableValues(
     if (sortByWhen) {
         scenesByActAndSubplot[0] = {};
         scenes.forEach(scene => {
-            if (scene.itemType === 'Backdrop') return;
+            if (scene.itemType === 'Backdrop' || isMatterNote(scene)) return;
             const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
             if (!scenesByActAndSubplot[0][subplot]) {
                 scenesByActAndSubplot[0][subplot] = [];
@@ -120,7 +120,7 @@ export function computeCacheableValues(
             scenesByActAndSubplot[act] = {};
         }
         scenes.forEach(scene => {
-            if (scene.itemType === 'Backdrop') return;
+            if (scene.itemType === 'Backdrop' || isMatterNote(scene)) return;
             const act = scene.actNumber !== undefined ? scene.actNumber - 1 : 0;
             const validAct = (act >= 0 && act < numActs) ? act : 0;
             const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';

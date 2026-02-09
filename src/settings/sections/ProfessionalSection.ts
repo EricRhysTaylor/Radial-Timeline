@@ -860,27 +860,23 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         });
 
     addProRow(new Setting(pandocPanel))
-        .setName('Enable fallback Pandoc')
-        .setDesc('Attempt a secondary bundled/portable pandoc path if the primary is missing.')
-        .addToggle(toggle => {
-            toggle.setValue(!!plugin.settings.pandocEnableFallback);
-            toggle.onChange(async (value) => {
-                plugin.settings.pandocEnableFallback = value;
-                await plugin.saveSettings();
-            });
-        });
-
-    addProRow(new Setting(pandocPanel))
-        .setName('Fallback Pandoc path')
-        .setDesc('Optional path to a portable/bundled pandoc binary.')
+        .setName('Pandoc fallback')
+        .setDesc('Optional path to a secondary bundled or portable Pandoc binary, used when the primary path is missing.')
         .addText(text => {
-            text.inputEl.addClass('ert-input--xl');
+            text.inputEl.addClass('ert-input--lg');
             text.setPlaceholder('/path/to/pandoc');
             text.setValue(plugin.settings.pandocFallbackPath || '');
             plugin.registerDomEvent(text.inputEl, 'blur', async () => {
                 const value = text.getValue().trim();
                 const normalizedPath = value ? normalizePath(value) : '';
                 plugin.settings.pandocFallbackPath = normalizedPath;
+                await plugin.saveSettings();
+            });
+        })
+        .addToggle(toggle => {
+            toggle.setValue(!!plugin.settings.pandocEnableFallback);
+            toggle.onChange(async (value) => {
+                plugin.settings.pandocEnableFallback = value;
                 await plugin.saveSettings();
             });
         });

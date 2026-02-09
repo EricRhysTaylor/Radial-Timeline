@@ -175,12 +175,17 @@
   font-size: 16px;
   line-height: 1.2;
   padding: 8px 16px;
+  box-sizing: border-box;
+}
+
+.rt-welcome-action-btn.mod-cta {
+  padding: 8px 16px;
 }
 
 .rt-welcome-button-icon {
   display: inline-flex;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   color: currentColor;
   opacity: 0.9;
 }
