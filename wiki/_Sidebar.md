@@ -2,8 +2,8 @@
 *   **Getting Started**
     *   [[Welcome]]
     *   [[Views]]
-    *   [[Onboarding-Fresh-Vault|Fresh Vault Onboarding]]
-    *   [[Onboarding-Existing-Vault|Existing Vault Onboarding]]
+    *   [[Fresh-Vault-Onboarding|Fresh Vault Onboarding]]
+    *   [[Existing-Vault-Onboarding|Existing Vault Onboarding]]
     *   [[Timeline-Modes|Timeline Modes]]
 *   **Timeline Modes**
     *   [[Narrative-Mode|Narrative Mode]]

@@ -1,4 +1,4 @@
-Core workflows are a reference for ongoing use. For first-time setup, see [[Onboarding-Fresh-Vault|Fresh Vault Onboarding]] or [[Onboarding-Existing-Vault|Existing Vault Onboarding]].
+Core workflows are a reference for ongoing use. For first-time setup, see [[Fresh-Vault-Onboarding|Fresh Vault Onboarding]] or [[Existing-Vault-Onboarding|Existing Vault Onboarding]].
 
 ### Planning Your Novel
 *   **Act Structure**: Scenes are organized by act (default 3 acts, configurable in **Settings → Acts**). Acts come from the scene frontmatter `Act:` field.

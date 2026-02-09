@@ -10,6 +10,7 @@ import { App, Setting, setIcon, normalizePath, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { ERT_CLASSES } from '../../ui/classes';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
+import { execFile } from 'child_process'; // SAFE: Node child_process for system path scanning
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SYSTEM PATH SCANNING
@@ -22,37 +23,173 @@ interface ScanResult {
 }
 
 /**
+ * Check if a file exists and is executable at the given absolute path.
+ */
+function fileExistsSync(absPath: string): boolean {
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const fs = require('fs') as typeof import('fs');
+        fs.accessSync(absPath, fs.constants.X_OK);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Build platform-specific known paths for Pandoc and LaTeX.
+ * macOS: Homebrew (Apple Silicon + Intel), MacTeX
+ * Windows: Default installer paths, Chocolatey, Scoop, MiKTeX, TeX Live
+ * Linux: Standard package-manager locations, TeX Live
+ */
+function getKnownPandocPaths(): string[] {
+    const isWin = process.platform === 'win32';
+    if (isWin) {
+        const localAppData = process.env.LOCALAPPDATA || 'C:\\Users\\Default\\AppData\\Local';
+        const appData = process.env.APPDATA || 'C:\\Users\\Default\\AppData\\Roaming';
+        const userProfile = process.env.USERPROFILE || 'C:\\Users\\Default';
+        return [
+            'C:\\Program Files\\Pandoc\\pandoc.exe',                       // Default installer
+            'C:\\Program Files (x86)\\Pandoc\\pandoc.exe',                 // 32-bit installer
+            `${localAppData}\\Pandoc\\pandoc.exe`,                         // User install
+            'C:\\ProgramData\\chocolatey\\bin\\pandoc.exe',                // Chocolatey
+            `${userProfile}\\scoop\\shims\\pandoc.exe`,                    // Scoop
+            `${userProfile}\\scoop\\apps\\pandoc\\current\\pandoc.exe`,    // Scoop direct
+        ];
+    }
+    // macOS + Linux
+    return [
+        '/opt/homebrew/bin/pandoc',        // Homebrew Apple Silicon
+        '/usr/local/bin/pandoc',           // Homebrew Intel / manual install
+        '/usr/bin/pandoc',                 // System / package-manager install
+        '/snap/bin/pandoc',                // Snap (Linux)
+    ];
+}
+
+function getKnownLatexPaths(): { engine: string; paths: string[] }[] {
+    const isWin = process.platform === 'win32';
+    if (isWin) {
+        const localAppData = process.env.LOCALAPPDATA || 'C:\\Users\\Default\\AppData\\Local';
+        // MiKTeX and TeX Live common install locations on Windows
+        const miktexBins = [
+            'C:\\Program Files\\MiKTeX\\miktex\\bin\\x64',
+            `${localAppData}\\Programs\\MiKTeX\\miktex\\bin\\x64`,
+            'C:\\miktex\\miktex\\bin\\x64',
+        ];
+        // TeX Live: year-based folders (check recent years)
+        const texliveBins: string[] = [];
+        for (let year = new Date().getFullYear(); year >= 2020; year--) {
+            texliveBins.push(`C:\\texlive\\${year}\\bin\\windows`);
+            texliveBins.push(`C:\\texlive\\${year}\\bin\\win32`);
+        }
+        const allWinBins = [...miktexBins, ...texliveBins];
+        return [
+            { engine: 'xelatex',  paths: allWinBins.map(b => `${b}\\xelatex.exe`) },
+            { engine: 'pdflatex', paths: allWinBins.map(b => `${b}\\pdflatex.exe`) },
+            { engine: 'lualatex', paths: allWinBins.map(b => `${b}\\lualatex.exe`) },
+        ];
+    }
+    // macOS + Linux
+    return [
+        { engine: 'xelatex',  paths: ['/Library/TeX/texbin/xelatex',  '/opt/homebrew/bin/xelatex',  '/usr/local/bin/xelatex',  '/usr/bin/xelatex']  },
+        { engine: 'pdflatex', paths: ['/Library/TeX/texbin/pdflatex', '/opt/homebrew/bin/pdflatex', '/usr/local/bin/pdflatex', '/usr/bin/pdflatex'] },
+        { engine: 'lualatex', paths: ['/Library/TeX/texbin/lualatex', '/opt/homebrew/bin/lualatex', '/usr/local/bin/lualatex', '/usr/bin/lualatex'] },
+    ];
+}
+
+/**
+ * Build an enriched PATH string for the fallback `which`/`where` lookup.
+ * Includes common binary directories for the current platform.
+ */
+function getEnrichedPath(): string {
+    const isWin = process.platform === 'win32';
+    const sep = isWin ? ';' : ':';
+    const existing = process.env.PATH || '';
+
+    if (isWin) {
+        const localAppData = process.env.LOCALAPPDATA || '';
+        const userProfile = process.env.USERPROFILE || '';
+        const extra = [
+            'C:\\Program Files\\Pandoc',
+            'C:\\Program Files (x86)\\Pandoc',
+            `${localAppData}\\Pandoc`,
+            'C:\\ProgramData\\chocolatey\\bin',
+            `${userProfile}\\scoop\\shims`,
+            'C:\\Program Files\\MiKTeX\\miktex\\bin\\x64',
+            `${localAppData}\\Programs\\MiKTeX\\miktex\\bin\\x64`,
+        ];
+        // Add recent TeX Live years
+        for (let year = new Date().getFullYear(); year >= 2020; year--) {
+            extra.push(`C:\\texlive\\${year}\\bin\\windows`);
+        }
+        return [...extra, existing].join(sep);
+    }
+
+    // macOS + Linux
+    return [
+        '/opt/homebrew/bin',
+        '/usr/local/bin',
+        '/Library/TeX/texbin',
+        '/usr/bin',
+        '/snap/bin',
+        existing
+    ].join(sep);
+}
+
+/**
  * Scan the system for Pandoc and LaTeX installations.
- * Uses `which` on macOS/Linux. Falls back gracefully on failure.
+ * Phase 1: probes well-known platform-specific paths directly (works in Electron's empty PATH).
+ * Phase 2: falls back to `which`/`where` with an enriched PATH if direct probing missed anything.
  */
 async function scanSystemPaths(): Promise<ScanResult> {
-    const { execFile } = await import('child_process');
     const result: ScanResult = { pandocPath: null, latexPath: null, latexEngine: null };
 
-    const whichCmd = process.platform === 'win32' ? 'where' : 'which';
+    // ── Phase 1: Direct path probing (reliable in Electron) ─────────────────
+    for (const p of getKnownPandocPaths()) {
+        if (fileExistsSync(p)) { result.pandocPath = p; break; }
+    }
 
-    // Scan for pandoc
-    await new Promise<void>((resolve) => {
-        execFile(whichCmd, ['pandoc'], { timeout: 5000 }, (error, stdout) => {
-            if (!error && stdout && stdout.trim()) {
-                result.pandocPath = stdout.trim().split('\n')[0];
-            }
-            resolve();
-        });
-    });
-
-    // Scan for LaTeX engines (prefer xelatex > pdflatex > lualatex)
-    for (const engine of ['xelatex', 'pdflatex', 'lualatex']) {
+    for (const { engine, paths } of getKnownLatexPaths()) {
         if (result.latexPath) break;
-        await new Promise<void>((resolve) => {
-            execFile(whichCmd, [engine], { timeout: 5000 }, (error, stdout) => {
-                if (!error && stdout && stdout.trim()) {
-                    result.latexPath = stdout.trim().split('\n')[0];
-                    result.latexEngine = engine;
-                }
-                resolve();
+        for (const p of paths) {
+            if (fileExistsSync(p)) {
+                result.latexPath = p;
+                result.latexEngine = engine;
+                break;
+            }
+        }
+    }
+
+    // ── Phase 2: Fallback `which`/`where` with enriched PATH ────────────────
+    if (!result.pandocPath || !result.latexPath) {
+        const env = { ...process.env, PATH: getEnrichedPath() };
+        const whichCmd = process.platform === 'win32' ? 'where' : 'which';
+
+        if (!result.pandocPath) {
+            await new Promise<void>((resolve) => {
+                execFile(whichCmd, ['pandoc'], { timeout: 5000, env }, (error, stdout) => {
+                    if (!error && stdout && stdout.trim()) {
+                        result.pandocPath = stdout.trim().split(/[\r\n]/)[0];
+                    }
+                    resolve();
+                });
             });
-        });
+        }
+
+        if (!result.latexPath) {
+            for (const engine of ['xelatex', 'pdflatex', 'lualatex']) {
+                if (result.latexPath) break;
+                await new Promise<void>((resolve) => {
+                    execFile(whichCmd, [engine], { timeout: 5000, env }, (error, stdout) => {
+                        if (!error && stdout && stdout.trim()) {
+                            result.latexPath = stdout.trim().split(/[\r\n]/)[0];
+                            result.latexEngine = engine;
+                        }
+                        resolve();
+                    });
+                });
+            }
+        }
     }
 
     return result;

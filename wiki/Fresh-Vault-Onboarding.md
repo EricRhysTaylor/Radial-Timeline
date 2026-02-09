@@ -9,7 +9,7 @@ Radial Timeline works well with a few common vault setups. Pick one and stick wi
 - Single vault with a dedicated Manuscript folder. Keeps research notes separate.
 - Multi-book vault with one folder per book. Best when you are planning a series.
 
-This page covers the fresh vault flow. If you already have scenes, jump to [[Onboarding-Existing-Vault|Existing Vault Onboarding]].
+This page covers the fresh vault flow. If you already have scenes, jump to [[Existing-Vault-Onboarding|Existing Vault Onboarding]].
 
 ## 1. Install and point the plugin
 1. Install Radial Timeline from Community Plugins.
@@ -38,6 +38,6 @@ This page covers the fresh vault flow. If you already have scenes, jump to [[Onb
 - Use Search to find scenes across metadata fields.
 
 ## 6. Optional next steps
-- Run **AI Analysis** for scene pulse feedback.
+- Run **AI Pulse Triplet Analysis** for scene pulse feedback.
 - Use **Inquiry** for corpus-level analysis.
 - Use **Manuscript export** when you are ready to share.
