@@ -160,6 +160,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     frontmatterMappings: {},
     enableCustomMetadataMapping: false,
     enableAdvancedYamlEditor: false,
+    enableBeatYamlEditor: false,
     sceneYamlTemplates: {
         base: `Class: Scene
 Act: {{Act}}

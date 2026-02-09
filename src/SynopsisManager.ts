@@ -6,6 +6,7 @@
 import type RadialTimelinePlugin from './main';
 import type { TimelineItem } from './types';
 import type { HoverMetadataField } from './types/settings';
+import { getBeatConfigForItem } from './utils/beatsTemplates';
 import { decodeHtmlEntities, parseSceneTitleComponents } from './utils/text';
 import { getPublishStageStyle, splitSynopsisLines, decodeContentLines, isOverdueAndIncomplete } from './synopsis/SynopsisData';
 import { createSynopsisContainer, createTextGroup, createText } from './synopsis/SynopsisView';
@@ -1130,7 +1131,7 @@ export default class SynopsisManager {
       // --- Custom Hover Metadata Fields ---
       const isBeatItem = scene.itemType === 'Beat' || scene.itemType === 'Plot';
       const hoverFieldSource = isBeatItem
-        ? (this.plugin.settings.beatHoverMetadataFields || [])
+        ? getBeatConfigForItem(this.plugin.settings, scene.rawFrontmatter?.['Beat Model'] as string | undefined).beatHoverMetadataFields
         : (this.plugin.settings.hoverMetadataFields || []);
       const enabledHoverFields = hoverFieldSource.filter((f: HoverMetadataField) => f.enabled);
       if (enabledHoverFields.length > 0) {

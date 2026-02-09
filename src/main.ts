@@ -37,6 +37,8 @@ import { migrateSceneAnalysisFields } from './migrations/sceneAnalysis';
 import { SettingsService } from './services/SettingsService';
 import { DEFAULT_GEMINI_MODEL_ID } from './constants/aiDefaults';
 import { DEFAULT_SETTINGS } from './settings/defaults';
+import { PLOT_SYSTEM_NAMES } from './utils/beatsSystems';
+import type { BeatSystemConfig } from './types/settings';
 import { isDefaultEmbedPath } from './utils/aprPaths';
 import { initVersionCheckService, getVersionCheckService } from './services/VersionCheckService';
 import { registerRuntimeCommands } from './RuntimeCommands';
@@ -401,7 +403,44 @@ export default class RadialTimelinePlugin extends Plugin {
             geminiModelId: this.settings.geminiModelId,
         });
 
-        if (before !== after || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated) {
+        // ─── Migrate legacy beat YAML/hover globals into per-system config map ───
+        let beatConfigMigrated = false;
+        if (!this.settings.beatSystemConfigs) {
+            const legacyAdvanced = this.settings.beatYamlTemplates?.advanced ?? '';
+            const legacyHover = this.settings.beatHoverMetadataFields ?? [];
+            // Only create configs if there is something to migrate
+            if (legacyAdvanced.trim() || legacyHover.length > 0) {
+                const seedConfig: BeatSystemConfig = {
+                    beatYamlAdvanced: legacyAdvanced,
+                    beatHoverMetadataFields: legacyHover.map(f => ({ ...f })),
+                };
+                const configs: Record<string, BeatSystemConfig> = {};
+                // Seed all built-in system slots
+                for (const name of PLOT_SYSTEM_NAMES) {
+                    configs[name] = {
+                        beatYamlAdvanced: seedConfig.beatYamlAdvanced,
+                        beatHoverMetadataFields: seedConfig.beatHoverMetadataFields.map(f => ({ ...f })),
+                    };
+                }
+                // Seed custom:default
+                configs['custom:default'] = {
+                    beatYamlAdvanced: seedConfig.beatYamlAdvanced,
+                    beatHoverMetadataFields: seedConfig.beatHoverMetadataFields.map(f => ({ ...f })),
+                };
+                // Seed any existing saved Pro systems
+                const saved = this.settings.savedBeatSystems ?? [];
+                for (const s of saved) {
+                    configs[`custom:${s.id}`] = {
+                        beatYamlAdvanced: s.beatYamlAdvanced ?? '',
+                        beatHoverMetadataFields: (s.beatHoverMetadataFields ?? []).map(f => ({ ...f })),
+                    };
+                }
+                this.settings.beatSystemConfigs = configs;
+                beatConfigMigrated = true;
+            }
+        }
+
+        if (before !== after || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated) {
             await this.saveSettings();
         }
     }

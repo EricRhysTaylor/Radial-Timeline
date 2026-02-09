@@ -29,6 +29,11 @@ export interface BookDesignerTemplate {
     targetPath?: string;
 }
 
+export interface BeatSystemConfig {
+    beatYamlAdvanced: string;
+    beatHoverMetadataFields: HoverMetadataField[];
+}
+
 export interface SavedBeatSystem {
     id: string;
     name: string;
@@ -416,7 +421,11 @@ export interface RadialTimelineSettings {
     chronologueBackdropMicroRings?: ChronologueBackdropMicroRing[];
     hoverMetadataFields?: HoverMetadataField[];
 
-    // Beat YAML Templates (mirrors sceneYamlTemplates)
+    enableBeatYamlEditor?: boolean;
+    // Per-system beat YAML + hover configs (keyed by system name or custom:<id>)
+    beatSystemConfigs?: Record<string, BeatSystemConfig>;
+    activeCustomBeatSystemId?: string;  // Which custom system is active (default: 'default')
+    // Legacy beat YAML fields — deprecated, migrated into beatSystemConfigs on load
     beatYamlTemplates?: {
         base: string;
         advanced: string;

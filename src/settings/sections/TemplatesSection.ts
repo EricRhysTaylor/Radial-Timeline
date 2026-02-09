@@ -3,7 +3,8 @@ import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
 import { CreateBeatsTemplatesModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem, getCustomSystemFromSettings } from '../../utils/beatsSystems';
-import { createBeatTemplateNotes, getMergedBeatYamlTemplate } from '../../utils/beatsTemplates';
+import { createBeatTemplateNotes, getMergedBeatYamlTemplate, getBeatConfigForSystem } from '../../utils/beatsTemplates';
+import type { BeatSystemConfig } from '../../types/settings';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { renderMetadataSection } from './MetadataSection';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
@@ -824,55 +825,65 @@ export function renderStoryBeatsSection(params: {
 
     updateTemplateButton(templateSetting, plugin.settings.beatSystem || 'Custom');
 
-    // ─── CUSTOM BEAT YAML FIELDS (Core) ───────────────────────────────
+    // ─── BEAT YAML EDITOR (Core) — mirrors Advanced YAML editor scaffold ──
     const beatYamlSection = beatsStack.createDiv({ cls: ERT_CLASSES.STACK });
-    const beatYamlHeading = new Settings(beatYamlSection)
-        .setName('Custom beat YAML fields')
-        .setHeading();
-    addHeadingIcon(beatYamlHeading, 'file-text');
-    applyErtHeaderLayout(beatYamlHeading);
-
-    let beatYamlEditorExpanded = false;
-    const beatYamlToggleBtn = beatYamlHeading.controlEl.createEl('button', {
+    const beatYamlSetting = new Settings(beatYamlSection)
+        .setName('Beat YAML editor')
+        .setDesc('Customize additional YAML keys for beat notes. Enable fields to show in beat hover synopsis.');
+    const beatYamlToggleBtn = beatYamlSetting.controlEl.createEl('button', {
         cls: ERT_CLASSES.ICON_BTN,
         attr: { type: 'button', 'aria-label': 'Show beat YAML editor' }
     });
     const refreshBeatYamlToggle = () => {
-        setIcon(beatYamlToggleBtn, beatYamlEditorExpanded ? 'chevron-down' : 'chevron-right');
-        setTooltip(beatYamlToggleBtn, beatYamlEditorExpanded ? 'Hide beat YAML editor' : 'Show beat YAML editor');
+        const expanded = plugin.settings.enableBeatYamlEditor ?? false;
+        setIcon(beatYamlToggleBtn, expanded ? 'chevron-down' : 'chevron-right');
+        setTooltip(beatYamlToggleBtn, expanded ? 'Hide beat YAML editor' : 'Show beat YAML editor');
+        beatYamlToggleBtn.setAttribute('aria-label', expanded ? 'Hide beat YAML editor' : 'Show beat YAML editor');
     };
     refreshBeatYamlToggle();
 
     const beatYamlContainer = beatYamlSection.createDiv({ cls: ['ert-panel', 'ert-advanced-template-card'] });
 
-    // Beat hover metadata helpers (parallel to scene hover meta helpers)
+    // ─── Per-system config helpers ─────────────────────────────────────
+    // Ensures the config slot for the active beat system exists and returns it (mutable reference).
+    const ensureBeatConfig = (): BeatSystemConfig => {
+        const system = plugin.settings.beatSystem ?? 'Save The Cat';
+        const key = system === 'Custom'
+            ? `custom:${plugin.settings.activeCustomBeatSystemId ?? 'default'}`
+            : system;
+        if (!plugin.settings.beatSystemConfigs) plugin.settings.beatSystemConfigs = {};
+        if (!plugin.settings.beatSystemConfigs[key]) {
+            plugin.settings.beatSystemConfigs[key] = { beatYamlAdvanced: '', beatHoverMetadataFields: [] };
+        }
+        return plugin.settings.beatSystemConfigs[key];
+    };
+
+    // Beat hover metadata helpers (operate on active system's config slot)
     const getBeatHoverMetadata = (key: string): HoverMetadataField | undefined => {
-        return plugin.settings.beatHoverMetadataFields?.find(f => f.key === key);
+        return getBeatConfigForSystem(plugin.settings).beatHoverMetadataFields.find(f => f.key === key);
     };
 
     const setBeatHoverMetadata = (key: string, icon: string, enabled: boolean) => {
-        if (!plugin.settings.beatHoverMetadataFields) {
-            plugin.settings.beatHoverMetadataFields = [];
-        }
-        const existing = plugin.settings.beatHoverMetadataFields.find(f => f.key === key);
+        const config = ensureBeatConfig();
+        const existing = config.beatHoverMetadataFields.find(f => f.key === key);
         if (existing) {
             existing.icon = icon;
             existing.enabled = enabled;
         } else {
-            plugin.settings.beatHoverMetadataFields.push({ key, label: key, icon, enabled });
+            config.beatHoverMetadataFields.push({ key, label: key, icon, enabled });
         }
         void plugin.saveSettings();
     };
 
     const removeBeatHoverMetadata = (key: string) => {
-        if (plugin.settings.beatHoverMetadataFields) {
-            plugin.settings.beatHoverMetadataFields = plugin.settings.beatHoverMetadataFields.filter(f => f.key !== key);
-            void plugin.saveSettings();
-        }
+        const config = ensureBeatConfig();
+        config.beatHoverMetadataFields = config.beatHoverMetadataFields.filter(f => f.key !== key);
+        void plugin.saveSettings();
     };
 
     const renameBeatHoverMetadataKey = (oldKey: string, newKey: string) => {
-        const existing = plugin.settings.beatHoverMetadataFields?.find(f => f.key === oldKey);
+        const config = ensureBeatConfig();
+        const existing = config.beatHoverMetadataFields.find(f => f.key === oldKey);
         if (existing) {
             existing.key = newKey;
             void plugin.saveSettings();
@@ -886,10 +897,11 @@ export function renderStoryBeatsSection(params: {
 
     const renderBeatYamlEditor = () => {
         beatYamlContainer.empty();
-        beatYamlContainer.toggleClass('ert-settings-hidden', !beatYamlEditorExpanded);
-        if (!beatYamlEditorExpanded) return;
+        const isExpanded = plugin.settings.enableBeatYamlEditor ?? false;
+        beatYamlContainer.toggleClass('ert-settings-hidden', !isExpanded);
+        if (!isExpanded) return;
 
-        const currentBeatAdvanced = plugin.settings.beatYamlTemplates?.advanced ?? '';
+        const currentBeatAdvanced = getBeatConfigForSystem(plugin.settings).beatYamlAdvanced;
         const beatAdvancedObj = safeParseYaml(currentBeatAdvanced);
 
         const beatOptionalOrder = extractKeysInOrder(currentBeatAdvanced).filter(k => !beatBaseKeys.includes(k));
@@ -905,10 +917,8 @@ export function renderStoryBeatsSection(params: {
         const saveBeatEntries = (nextEntries: TemplateEntry[]) => {
             beatWorkingEntries = nextEntries;
             const yaml = buildYamlFromEntries(nextEntries);
-            if (!plugin.settings.beatYamlTemplates) {
-                plugin.settings.beatYamlTemplates = { base: DEFAULT_SETTINGS.beatYamlTemplates!.base, advanced: '' };
-            }
-            plugin.settings.beatYamlTemplates.advanced = yaml;
+            const config = ensureBeatConfig();
+            config.beatYamlAdvanced = yaml;
             void plugin.saveSettings();
         };
 
@@ -916,8 +926,9 @@ export function renderStoryBeatsSection(params: {
             const data = next ?? beatWorkingEntries;
             beatWorkingEntries = data;
             beatYamlContainer.empty();
-            beatYamlContainer.toggleClass('ert-settings-hidden', !beatYamlEditorExpanded);
-            if (!beatYamlEditorExpanded) return;
+            const isExpanded = plugin.settings.enableBeatYamlEditor ?? false;
+            beatYamlContainer.toggleClass('ert-settings-hidden', !isExpanded);
+            if (!isExpanded) return;
 
             // Read-only base fields (collapsed summary)
             const baseCard = beatYamlContainer.createDiv({ cls: 'ert-template-base-summary' });
@@ -1205,11 +1216,9 @@ export function renderStoryBeatsSection(params: {
 
                 if (!confirmed) return;
 
-                if (!plugin.settings.beatYamlTemplates) {
-                    plugin.settings.beatYamlTemplates = { base: DEFAULT_SETTINGS.beatYamlTemplates!.base, advanced: '' };
-                }
-                plugin.settings.beatYamlTemplates.advanced = '';
-                plugin.settings.beatHoverMetadataFields = [];
+                const resetConfig = ensureBeatConfig();
+                resetConfig.beatYamlAdvanced = '';
+                resetConfig.beatHoverMetadataFields = [];
                 await plugin.saveSettings();
                 rerenderBeatYaml([]);
                 updateBeatHoverPreview?.();
@@ -1219,9 +1228,12 @@ export function renderStoryBeatsSection(params: {
         rerenderBeatYaml(beatEntries);
     };
 
-    beatYamlToggleBtn.addEventListener('click', () => {
-        beatYamlEditorExpanded = !beatYamlEditorExpanded;
+    // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
+    beatYamlToggleBtn.addEventListener('click', async () => {
+        const next = !(plugin.settings.enableBeatYamlEditor ?? false);
+        plugin.settings.enableBeatYamlEditor = next;
         refreshBeatYamlToggle();
+        await plugin.saveSettings();
         renderBeatYamlEditor();
         renderBeatHoverPreview();
     });
@@ -1238,12 +1250,14 @@ export function renderStoryBeatsSection(params: {
 
     const renderBeatHoverPreview = () => {
         beatHoverPreviewBody.empty();
-        const enabledFields = (plugin.settings.beatHoverMetadataFields || []).filter(f => f.enabled);
-        const currentBeatAdv = plugin.settings.beatYamlTemplates?.advanced ?? '';
+        const activeConfig = getBeatConfigForSystem(plugin.settings);
+        const enabledFields = activeConfig.beatHoverMetadataFields.filter(f => f.enabled);
+        const currentBeatAdv = activeConfig.beatYamlAdvanced;
         const templateObj = safeParseYaml(currentBeatAdv);
 
-        if (!beatYamlEditorExpanded || enabledFields.length === 0) {
-            beatHoverPreviewContainer.toggleClass('ert-settings-hidden', !beatYamlEditorExpanded);
+        const beatEditorVisible = plugin.settings.enableBeatYamlEditor ?? false;
+        if (!beatEditorVisible || enabledFields.length === 0) {
+            beatHoverPreviewContainer.toggleClass('ert-settings-hidden', !beatEditorVisible);
             beatHoverPreviewHeading.setText('Beat Hover Metadata Preview (none enabled)');
             beatHoverPreviewBody.createDiv({ text: 'Enable fields using the checkboxes above to show them in beat hover synopsis.', cls: 'ert-hover-preview-empty' });
             return;
@@ -1278,7 +1292,7 @@ export function renderStoryBeatsSection(params: {
     const savedTitleArea = savedHeaderRow.createDiv({ cls: 'ert-control' });
     const savedTitleRow = savedTitleArea.createEl('h4', { cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}` });
     const savedProPill = savedTitleRow.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}` });
-    setIcon(savedProPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), 'gem');
+    setIcon(savedProPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), 'signature');
     savedProPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
     savedTitleRow.createSpan({ text: ' Saved beat systems' });
 
@@ -1310,16 +1324,18 @@ export function renderStoryBeatsSection(params: {
                     if (!value) return;
                     const system = savedSystems.find(s => s.id === value);
                     if (!system) return;
-                    // Atomic load
+                    // Atomic load — write into custom:<id> config slot
                     plugin.settings.customBeatSystemName = system.name;
                     plugin.settings.customBeatSystemBeats = system.beats.map(b => ({ ...b }));
-                    if (!plugin.settings.beatYamlTemplates) {
-                        plugin.settings.beatYamlTemplates = { base: DEFAULT_SETTINGS.beatYamlTemplates!.base, advanced: '' };
-                    }
-                    plugin.settings.beatYamlTemplates.advanced = system.beatYamlAdvanced ?? '';
-                    plugin.settings.beatHoverMetadataFields = system.beatHoverMetadataFields
-                        ? system.beatHoverMetadataFields.map(f => ({ ...f }))
-                        : [];
+                    plugin.settings.activeCustomBeatSystemId = system.id;
+                    // Ensure config map exists and write per-system config
+                    if (!plugin.settings.beatSystemConfigs) plugin.settings.beatSystemConfigs = {};
+                    plugin.settings.beatSystemConfigs[`custom:${system.id}`] = {
+                        beatYamlAdvanced: system.beatYamlAdvanced ?? '',
+                        beatHoverMetadataFields: system.beatHoverMetadataFields
+                            ? system.beatHoverMetadataFields.map(f => ({ ...f }))
+                            : [],
+                    };
                     void plugin.saveSettings();
                     new Notice(`Loaded beat system "${system.name}".`);
                     // Full UI refresh — re-render the entire templates section
@@ -1328,34 +1344,76 @@ export function renderStoryBeatsSection(params: {
             });
         selectRow.settingEl.addClass('ert-saved-beat-select');
 
-        // Action buttons
-        const actionsRow = savedControlsContainer.createDiv({ cls: 'rt-template-actions' });
+        // Action buttons (right-aligned under dropdown)
+        const actionsRow = savedControlsContainer.createDiv({ cls: 'ert-inline-actions' });
+        actionsRow.style.justifyContent = 'flex-end';
 
-        // Save current
+        // Save current (with "Save As" name prompt)
         new ButtonComponent(actionsRow)
             .setButtonText('Save current system')
             .onClick(async () => {
-                const currentName = plugin.settings.customBeatSystemName || 'Custom';
                 const currentBeats = (plugin.settings.customBeatSystemBeats || []).map(b => ({ ...b }));
-                const currentAdvanced = plugin.settings.beatYamlTemplates?.advanced ?? '';
-                const currentHoverMeta = (plugin.settings.beatHoverMetadataFields || []).map(f => ({ ...f }));
-
                 if (currentBeats.length === 0) {
                     new Notice('No beats defined. Add beats before saving.');
                     return;
                 }
 
-                // Check if a system with this name already exists
+                // Read from the active custom config slot
+                const activeConfig = getBeatConfigForSystem(plugin.settings);
+
+                // "Save As" prompt — defaults to current custom name
+                const defaultName = plugin.settings.customBeatSystemName || 'Custom';
+                const saveName = await new Promise<string | null>((resolve) => {
+                    const modal = new Modal(app);
+                    const { modalEl, contentEl } = modal;
+                    modal.titleEl.setText('');
+                    contentEl.empty();
+                    modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+                    contentEl.addClass('ert-modal-container', 'ert-stack');
+                    const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+                    header.createSpan({ cls: 'ert-modal-badge', text: 'BEAT SYSTEM' });
+                    header.createDiv({ cls: 'ert-modal-title', text: 'Save beat system' });
+                    header.createDiv({ cls: 'ert-modal-subtitle', text: 'Enter a name for this beat system. Existing systems with the same name will be updated.' });
+                    const inputRow = contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                    const nameInput = inputRow.createEl('input', {
+                        type: 'text',
+                        cls: 'ert-input ert-input--md',
+                        attr: { placeholder: 'System name', value: defaultName }
+                    }) as HTMLInputElement;
+                    nameInput.value = defaultName;
+                    nameInput.style.width = '100%'; // SAFE: inline style used for modal input full-width
+                    const actionsDiv = contentEl.createDiv({ cls: ['ert-modal-actions', 'ert-inline-actions'] });
+                    new ButtonComponent(actionsDiv).setButtonText('Save').setCta().onClick(() => {
+                        const name = nameInput.value.trim();
+                        modal.close();
+                        resolve(name || null);
+                    });
+                    new ButtonComponent(actionsDiv).setButtonText('Cancel').onClick(() => { modal.close(); resolve(null); });
+                    nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const name = nameInput.value.trim(); modal.close(); resolve(name || null); } });
+                    modal.open();
+                    // Focus the input after modal opens
+                    setTimeout(() => nameInput.focus(), 50);
+                });
+
+                if (!saveName) return;
+
                 const existingSystems = plugin.settings.savedBeatSystems ?? [];
-                const existingIdx = existingSystems.findIndex(s => s.name === currentName);
+                const existingIdx = existingSystems.findIndex(s => s.name === saveName);
 
                 const newSystem: SavedBeatSystem = {
                     id: existingIdx >= 0 ? existingSystems[existingIdx].id : `${Date.now()}`,
-                    name: currentName,
+                    name: saveName,
                     beats: currentBeats,
-                    beatYamlAdvanced: currentAdvanced,
-                    beatHoverMetadataFields: currentHoverMeta,
+                    beatYamlAdvanced: activeConfig.beatYamlAdvanced,
+                    beatHoverMetadataFields: activeConfig.beatHoverMetadataFields.map(f => ({ ...f })),
                     createdAt: new Date().toISOString()
+                };
+
+                // Also write the config slot for this system
+                if (!plugin.settings.beatSystemConfigs) plugin.settings.beatSystemConfigs = {};
+                plugin.settings.beatSystemConfigs[`custom:${newSystem.id}`] = {
+                    beatYamlAdvanced: newSystem.beatYamlAdvanced ?? '',
+                    beatHoverMetadataFields: newSystem.beatHoverMetadataFields?.map(f => ({ ...f })) ?? [],
                 };
 
                 if (existingIdx >= 0) {
@@ -1364,8 +1422,10 @@ export function renderStoryBeatsSection(params: {
                     existingSystems.unshift(newSystem);
                 }
                 plugin.settings.savedBeatSystems = existingSystems;
+                plugin.settings.activeCustomBeatSystemId = newSystem.id;
+                plugin.settings.customBeatSystemName = saveName;
                 await plugin.saveSettings();
-                new Notice(`Beat system "${currentName}" ${existingIdx >= 0 ? 'updated' : 'saved'}.`);
+                new Notice(`Beat system "${saveName}" ${existingIdx >= 0 ? 'updated' : 'saved'}.`);
                 renderSavedBeatSystems();
             });
 
@@ -1394,6 +1454,14 @@ export function renderStoryBeatsSection(params: {
                 const footer = confirmModal.contentEl.createDiv({ cls: 'ert-modal-actions' });
                 new ButtonComponent(footer).setButtonText('Delete').setCta().onClick(async () => {
                     plugin.settings.savedBeatSystems = savedSystems.filter(s => s.id !== selectedId);
+                    // Clean up the config slot for this system
+                    if (plugin.settings.beatSystemConfigs) {
+                        delete plugin.settings.beatSystemConfigs[`custom:${selectedId}`];
+                    }
+                    // If the deleted system was active, fall back to custom:default
+                    if (plugin.settings.activeCustomBeatSystemId === selectedId) {
+                        plugin.settings.activeCustomBeatSystemId = 'default';
+                    }
                     await plugin.saveSettings();
                     confirmModal.close();
                     new Notice(`Deleted beat system "${system.name}".`);
@@ -1409,7 +1477,7 @@ export function renderStoryBeatsSection(params: {
 
     // Scene YAML Templates Section
     const yamlHeading = new Settings(yamlStack)
-        .setName('Remap  & advanced YAML templates')
+        .setName('Remap metadata & advanced scene YAML templates')
         .setHeading();
     addHeadingIcon(yamlHeading, 'form');
     addWikiLink(yamlHeading, 'Settings#yaml-templates');
@@ -1423,7 +1491,7 @@ export function renderStoryBeatsSection(params: {
 
     const advancedYamlSetting = new Settings(yamlStack)
         .setName('Advanced YAML editor')
-        .setDesc('Setup custom YAML keys for the advanced scene template. Enable fields to reveal in scene hover synopsis. Assign a perfect lucide icon. Reorder fields to match your preferred order.');
+        .setDesc('Setup custom scene YAML keys for the advanced YAML template. Enable fields to reveal in scene hover synopsis. Type any keyword to search for a perfect lucide icon. Reorder fields to match your preferred order.');
     const advancedToggleButton = advancedYamlSetting.controlEl.createEl('button', {
         cls: ERT_CLASSES.ICON_BTN,
         attr: {

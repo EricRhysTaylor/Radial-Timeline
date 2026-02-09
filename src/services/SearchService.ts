@@ -1,6 +1,7 @@
 import { App, Modal, Notice, TextComponent, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { getActivePlanetaryProfile, convertFromEarth } from '../utils/planetaryTime';
+import { getBeatConfigForItem } from '../utils/beatsTemplates';
 
 export class SearchService {
     private plugin: RadialTimelinePlugin;
@@ -140,11 +141,8 @@ export class SearchService {
         const planetaryProfile = getActivePlanetaryProfile(this.plugin.settings as any);
         
         this.plugin.getSceneData().then(scenes => {
-            // Get enabled hover metadata fields for search indexing (scene + beat lists)
+            // Get enabled hover metadata fields for search indexing
             const enabledSceneHoverKeys = (this.plugin.settings.hoverMetadataFields || [])
-                .filter(f => f.enabled)
-                .map(f => f.key);
-            const enabledBeatHoverKeys = (this.plugin.settings.beatHoverMetadataFields || [])
                 .filter(f => f.enabled)
                 .map(f => f.key);
             
@@ -164,9 +162,12 @@ export class SearchService {
                     scene["nextSceneAnalysis"]
                 ];
                 
-                // Add enabled custom hover metadata fields to search index (branch by item type)
+                // Add enabled custom hover metadata fields to search index (per-item for beats)
                 const isBeatItem = scene.itemType === 'Beat' || scene.itemType === 'Plot';
-                const enabledHoverFields = isBeatItem ? enabledBeatHoverKeys : enabledSceneHoverKeys;
+                const enabledHoverFields = isBeatItem
+                    ? getBeatConfigForItem(this.plugin.settings, scene.rawFrontmatter?.['Beat Model'] as string | undefined)
+                        .beatHoverMetadataFields.filter(f => f.enabled).map(f => f.key)
+                    : enabledSceneHoverKeys;
                 if (scene.rawFrontmatter && enabledHoverFields.length > 0) {
                     enabledHoverFields.forEach(key => {
                         const val = scene.rawFrontmatter?.[key];

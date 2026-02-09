@@ -3835,9 +3835,6 @@
 }
 
 /* Beat base-field read-only pill summary */
-.ert-ui.ert-scope--settings .ert-template-base-summary {
-  padding: var(--ert-pad-sm) 0;
-}
 .ert-ui.ert-scope--settings .ert-template-base-heading {
   font-size: var(--ert-control-font-size);
   color: var(--text-muted);

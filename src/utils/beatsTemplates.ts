@@ -2,8 +2,9 @@
  * Beat Template Note Creation
  */
 import { Vault, TFile, normalizePath } from 'obsidian';
-import { PLOT_SYSTEMS, PlotSystemTemplate, PlotBeatInfo } from './beatsSystems';
+import { PLOT_SYSTEMS, PLOT_SYSTEM_NAMES, PlotSystemTemplate, PlotBeatInfo } from './beatsSystems';
 import { mergeTemplates } from './sceneGenerator';
+import type { BeatSystemConfig, RadialTimelineSettings } from '../types/settings';
 
 /** Legacy beat base template — byte-for-byte matches the original hardcoded output. */
 const LEGACY_BEAT_BASE = `Class: Beat
@@ -13,6 +14,93 @@ Beat Model: {{BeatModel}}
 Range: {{Range}}
 When:
 Gossamer1:`;
+
+// ─── Per-system Beat Config Resolvers ────────────────────────────────
+
+/** Empty config used as safe default when no config exists for a system. */
+const EMPTY_BEAT_CONFIG: BeatSystemConfig = { beatYamlAdvanced: '', beatHoverMetadataFields: [] };
+
+/** Normalize a Beat Model string for case-insensitive matching. */
+function normalizeModelKey(s: string): string {
+  return s.trim().toLowerCase();
+}
+
+/**
+ * Resolve the BeatSystemConfig for the currently active system in settings.
+ * Used by: settings UI editor, note generation (getMergedBeatYamlTemplate).
+ * Optional systemKey overrides the active system (for editor previews).
+ */
+export function getBeatConfigForSystem(
+  settings: RadialTimelineSettings,
+  systemKey?: string
+): BeatSystemConfig {
+  const system = systemKey ?? settings.beatSystem ?? 'Save The Cat';
+  const key = system === 'Custom'
+    ? `custom:${settings.activeCustomBeatSystemId ?? 'default'}`
+    : system;
+  // Primary: per-system config map
+  if (settings.beatSystemConfigs?.[key]) return settings.beatSystemConfigs[key];
+  // Legacy fallback: global fields (pre-migration vaults)
+  return {
+    beatYamlAdvanced: settings.beatYamlTemplates?.advanced ?? '',
+    beatHoverMetadataFields: settings.beatHoverMetadataFields ?? [],
+  };
+}
+
+/**
+ * Resolve the BeatSystemConfig for a specific beat note by its Beat Model frontmatter value.
+ * Used by: SynopsisManager (hover), SearchService (indexing).
+ * Falls back through: exact built-in match → active custom → saved custom name match → empty.
+ */
+export function getBeatConfigForItem(
+  settings: RadialTimelineSettings,
+  beatModel: string | undefined
+): BeatSystemConfig {
+  const configs = settings.beatSystemConfigs;
+  if (!configs) {
+    // Legacy fallback: no migration yet, return global fields
+    return {
+      beatYamlAdvanced: settings.beatYamlTemplates?.advanced ?? '',
+      beatHoverMetadataFields: settings.beatHoverMetadataFields ?? [],
+    };
+  }
+  if (!beatModel) return EMPTY_BEAT_CONFIG;
+
+  // 1. Direct built-in match (exact key)
+  if (configs[beatModel]) return configs[beatModel];
+
+  // 2. Case-insensitive built-in match
+  const normalized = normalizeModelKey(beatModel);
+  for (const builtinName of PLOT_SYSTEM_NAMES) {
+    if (normalizeModelKey(builtinName) === normalized && configs[builtinName]) {
+      return configs[builtinName];
+    }
+  }
+
+  // 3. Active custom system (Beat Model stores the custom system name, not the key)
+  const activeCustomKey = `custom:${settings.activeCustomBeatSystemId ?? 'default'}`;
+  if (configs[activeCustomKey]) {
+    // Check if the custom system name matches the Beat Model
+    const customName = settings.customBeatSystemName ?? 'Custom';
+    if (normalizeModelKey(customName) === normalized) {
+      return configs[activeCustomKey];
+    }
+  }
+
+  // 4. Search all saved custom systems by name match
+  const saved = settings.savedBeatSystems?.find(
+    s => normalizeModelKey(s.name) === normalized
+  );
+  if (saved) {
+    const savedKey = `custom:${saved.id}`;
+    if (configs[savedKey]) return configs[savedKey];
+  }
+
+  // 5. Fallback: if active custom is a catch-all for unrecognized Beat Models
+  if (configs[activeCustomKey]) return configs[activeCustomKey];
+
+  return EMPTY_BEAT_CONFIG;
+}
 
 /**
  * Convert beatInfo.range to Range field value (0-100 scale).
@@ -39,11 +127,13 @@ function buildBeatBody(beatInfo: PlotBeatInfo): string {
 
 /**
  * Returns the merged beat YAML template string (base + advanced).
- * If settings have no beatYamlTemplates, falls back to the legacy base.
+ * Reads advanced YAML from the active system's config slot (per-system).
+ * Falls back to legacy globals for pre-migration vaults.
  */
-export function getMergedBeatYamlTemplate(settings: { beatYamlTemplates?: { base: string; advanced: string } }): string {
+export function getMergedBeatYamlTemplate(settings: RadialTimelineSettings): string {
   const base = settings.beatYamlTemplates?.base ?? LEGACY_BEAT_BASE;
-  const advanced = settings.beatYamlTemplates?.advanced ?? '';
+  const config = getBeatConfigForSystem(settings);
+  const advanced = config.beatYamlAdvanced;
   if (!advanced.trim()) return base;
   return mergeTemplates(base, advanced);
 }
