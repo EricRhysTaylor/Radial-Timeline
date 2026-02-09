@@ -29,7 +29,7 @@ Inquiry organizes its analysis into three narrative zones (Setup, Pressure, Payo
 
 The two views complement each other at different altitudes:
 
-*   **Timeline view** — Scene-level work: writing, ordering, tracking status, and running [[AI Analysis|Pulse Analysis]] on individual scenes.
+*   **Timeline view** — Scene-level work: writing, ordering, tracking status, and running [[AI-Pulse-Analysis|AI Pulse Triplet Analysis]] on individual scenes.
 *   **Inquiry view** — Manuscript-level analysis: evaluating how scenes, subplots, and books work together as a system.
 
 A typical workflow might be: draft and arrange scenes in the Timeline view, then open Inquiry to check the structural health of your manuscript. Findings from Inquiry can write action notes directly into your scene frontmatter, creating a feedback loop between the two views.

@@ -11,7 +11,7 @@
     *   [[Chronologue-Mode|Chronologue Mode]]
     *   [[Gossamer-Mode|Gossamer Mode]]
 *   **AI Features**
-    *   [[AI-Analysis|AI Analysis]]
+    *   [[AI-Pulse-Analysis|AI Pulse Triplet Analysis]]
     *   [[Gossamer-Mode#ai-analysis|Gossamer AI Evaluation]]
     *   [[Inquiry]]
     *   [[Signature|Runtime Estimation]]

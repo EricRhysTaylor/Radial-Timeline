@@ -36,6 +36,60 @@ When you're ready to read through your work or send it to an editor, use the **`
 5.  **Range**: Use the drag-bar slider to visually select a specific range of scenes to include (useful for generating a single act or particular range of scenes).
 6.  **Output**: A new file is created in the Export folder (default `Radial Timeline/Export`) containing the compiled text of all selected scenes.
 
+#### Export Options Reference
+
+The export modal offers two categories: **Manuscripts** (full scene content) and **Outlines** (YAML metadata only).
+
+| Type | Preset | Formats | Works Out of Box? | Setup Required |
+|------|--------|---------|-------------------|----------------|
+| Manuscript | **Novel** | MD, DOCX, PDF | ✅ Markdown | Pandoc for DOCX/PDF |
+| Manuscript | **Screenplay** | MD, DOCX, PDF | ⚠ Partial | Pre-formatted scenes + Pandoc + LaTeX template |
+| Manuscript | **Podcast** | MD, DOCX, PDF | ⚠ Partial | Pre-formatted scenes + Pandoc + LaTeX template |
+| Outline | **Beat Sheet** | MD | ✅ Yes | None |
+| Outline | **Episode Rundown** | MD | ✅ Yes | None |
+| Outline | **Shooting Schedule** | MD | ✅ Yes | None |
+| Outline | **Index Cards** | CSV, JSON | ✅ Yes | None |
+
+**Manuscript exports** read the full body content of your scene files — the actual prose, dialogue, or script. They strip YAML frontmatter and Obsidian comments, then assemble everything under scene headings with a table of contents. Markdown export works immediately. DOCX and PDF require [Pandoc](https://pandoc.org) (and LaTeX for PDF).
+
+**Outline exports** read only YAML metadata — `When`, `Subplot`, `Runtime`, `Words`, `Synopsis`. They never touch the body text. All outline formats work out of the box with no external tools.
+
+#### Scene Formatting Requirements
+
+**Novel preset:** Works with any prose. No special formatting needed — just write your scenes.
+
+**Screenplay preset:** Scenes must already use screenplay formatting conventions:
+```
+INT. COFFEE SHOP - DAY
+
+JANE enters, scans the room.
+
+                    MIKE
+          You must be Jane.
+```
+
+**Podcast preset:** Scenes must already use podcast script formatting:
+```
+[SEGMENT: INTRODUCTION - 0:00]
+
+HOST: Welcome back to the show.
+
+[SFX: Theme music fades]
+
+GUEST: Thanks for having me.
+```
+
+**All outline presets:** No body formatting required — they export structured metadata only.
+
+#### Setting Up Pandoc Export
+
+For DOCX or PDF output:
+
+1.  **Install Pandoc** — download from [pandoc.org](https://pandoc.org/installing.html)
+2.  **Install LaTeX** (for PDF) — [MacTeX](https://www.tug.org/mactex/) on macOS, [MiKTeX](https://miktex.org/) on Windows
+3.  **Auto-detect:** Go to **Settings → Professional → Export & Pandoc** and click **Scan** to find installations automatically
+4.  **Generate samples:** Click **Generate Samples** to create sample scene files and LaTeX templates in `Radial Timeline/Export/Templates/`. Template paths are auto-configured.
+
 ### Zero Draft Mode
 Prevents edits to completed zero-draft scenes. Click completed scene → modal for pending edits → save ideas for later revision. Keeps you progressing to new scenes instead of endlessly revising. See the **[Settings](Settings#zero-draft-mode)** for details.
 

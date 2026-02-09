@@ -6,10 +6,395 @@
  * Professional License Settings Section
  */
 
-import { App, Setting, setIcon, normalizePath } from 'obsidian';
+import { App, Setting, setIcon, normalizePath, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { ERT_CLASSES } from '../../ui/classes';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SYSTEM PATH SCANNING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface ScanResult {
+    pandocPath: string | null;
+    latexPath: string | null;
+    latexEngine: string | null;
+}
+
+/**
+ * Scan the system for Pandoc and LaTeX installations.
+ * Uses `which` on macOS/Linux. Falls back gracefully on failure.
+ */
+async function scanSystemPaths(): Promise<ScanResult> {
+    const { execFile } = await import('child_process');
+    const result: ScanResult = { pandocPath: null, latexPath: null, latexEngine: null };
+
+    const whichCmd = process.platform === 'win32' ? 'where' : 'which';
+
+    // Scan for pandoc
+    await new Promise<void>((resolve) => {
+        execFile(whichCmd, ['pandoc'], { timeout: 5000 }, (error, stdout) => {
+            if (!error && stdout && stdout.trim()) {
+                result.pandocPath = stdout.trim().split('\n')[0];
+            }
+            resolve();
+        });
+    });
+
+    // Scan for LaTeX engines (prefer xelatex > pdflatex > lualatex)
+    for (const engine of ['xelatex', 'pdflatex', 'lualatex']) {
+        if (result.latexPath) break;
+        await new Promise<void>((resolve) => {
+            execFile(whichCmd, [engine], { timeout: 5000 }, (error, stdout) => {
+                if (!error && stdout && stdout.trim()) {
+                    result.latexPath = stdout.trim().split('\n')[0];
+                    result.latexEngine = engine;
+                }
+                resolve();
+            });
+        });
+    }
+
+    return result;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SAMPLE TEMPLATE GENERATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Generate sample scene files and LaTeX templates in the user's vault.
+ * Skips files that already exist. Auto-configures template paths in settings.
+ */
+async function generateSampleTemplates(plugin: RadialTimelinePlugin): Promise<string[]> {
+    const vault = plugin.app.vault;
+    const baseFolder = plugin.settings.manuscriptOutputFolder || 'Radial Timeline/Export';
+    const templatesFolder = normalizePath(`${baseFolder}/Templates`);
+
+    // Ensure folders exist
+    for (const folder of [baseFolder, templatesFolder]) {
+        const normalized = normalizePath(folder);
+        if (!vault.getAbstractFileByPath(normalized)) {
+            await vault.createFolder(normalized);
+        }
+    }
+
+    const createdFiles: string[] = [];
+
+    // ── Sample Scene Files ──────────────────────────────────────────────────
+    const sampleScenes: { name: string; content: string }[] = [
+        {
+            name: 'Sample Screenplay Scene.md',
+            content: [
+                '---',
+                'Class: Scene',
+                'Act: 1',
+                'When: 2024-01-15',
+                'Duration: 1 hour',
+                'Synopsis: Jane meets detective Mike at a coffee shop to discuss the Henderson case.',
+                'Subplot: Main Plot',
+                'Character: JANE, MIKE',
+                'POV: Jane',
+                'Words:',
+                'Runtime: 3:00',
+                'Status: Working',
+                '---',
+                '',
+                'INT. COFFEE SHOP - DAY',
+                '',
+                'A bustling downtown coffee shop. Morning rush hour. JANE (30s, determined) sits at a corner table with her laptop open.',
+                '',
+                'MIKE (40s, world-weary detective) enters, scans the room, spots her.',
+                '',
+                '                    MIKE',
+                '          You Jane?',
+                '',
+                '                    JANE',
+                '              (without looking up)',
+                '          Depends who\'s asking.',
+                '',
+                'Mike slides into the seat across from her.',
+                '',
+                '                    MIKE',
+                '          I\'m the guy with answers.',
+                '',
+                '                    JANE',
+                '          Then you\'re exactly who I need.',
+                '',
+                'She closes the laptop, meets his eyes for the first time.',
+                '',
+                '                    JANE (CONT\'D)',
+                '          Tell me about the Henderson case.',
+                '',
+                'Mike\'s expression darkens.',
+                '',
+                '                    MIKE',
+                '          That\'s not a door you want to open.',
+                '',
+                '                    JANE',
+                '              (leaning forward)',
+                '          Try me.',
+                '',
+                'BEAT. Mike glances around, lowers his voice.',
+                '',
+                '                    MIKE',
+                '          Alright. But not here.',
+                '',
+                'He stands, drops a business card on the table.',
+                '',
+                '                    MIKE (CONT\'D)',
+                '          Warehouse district. Pier 9. Tomorrow',
+                '          at midnight.',
+                '',
+                'He walks out. Jane picks up the card, studies it.',
+                '',
+                'FADE OUT.'
+            ].join('\n')
+        },
+        {
+            name: 'Sample Podcast Scene.md',
+            content: [
+                '---',
+                'Class: Scene',
+                'Act: 1',
+                'When: 2024-01-15',
+                'Duration: 1 hour',
+                'Synopsis: Introduction and interview with Dr. Sarah Chen about AI and creativity.',
+                'Subplot: Main Plot',
+                'Character: HOST, GUEST',
+                'POV:',
+                'Words:',
+                'Runtime: 8:00',
+                'Status: Working',
+                '---',
+                '',
+                '[SEGMENT: INTRODUCTION - 0:00]',
+                '',
+                'HOST: Welcome back to The Deep Dive, where we explore the stories behind the headlines. I\'m your host, Alex Rivera.',
+                '',
+                '[SFX: Theme music fades]',
+                '',
+                'HOST: Today we\'re talking about the rise of artificial intelligence in creative industries. With me is Dr. Sarah Chen, author of "The Algorithmic Muse."',
+                '',
+                'GUEST: Thanks for having me, Alex.',
+                '',
+                'HOST: So, Sarah, let\'s start with the big question everyone\'s asking — can AI really be creative?',
+                '',
+                'GUEST: That\'s the million-dollar question, isn\'t it? But I think we\'re asking it wrong.',
+                '',
+                'HOST: How so?',
+                '',
+                'GUEST: Instead of asking "can AI be creative," we should ask "what kind of creativity are we talking about?"',
+                '',
+                '[TIMING: 2:30]',
+                '',
+                '[SEGMENT: MAIN DISCUSSION - 2:30]',
+                '',
+                'HOST: Walk us through that distinction.',
+                '',
+                'GUEST: Well, there\'s creativity as originality — making something genuinely new. And then there\'s creativity as craft — executing an idea with skill. AI excels at the second, but the first? That\'s still very much a human domain.',
+                '',
+                'HOST: Give us an example.',
+                '',
+                'GUEST: An AI can generate a sonnet in seconds. Technically perfect. But ask it to capture the feeling of watching your child leave for college? That emotional truth — that\'s where humans still reign supreme.',
+                '',
+                '[TIMING: 5:00]',
+                '',
+                '[SEGMENT: CLOSING - 5:00]',
+                '',
+                'HOST: We\'re almost out of time, but I have to ask — what keeps you up at night about AI and creativity?',
+                '',
+                'GUEST: That we\'ll mistake efficiency for artistry. That we\'ll prioritize the quick over the meaningful.',
+                '',
+                'HOST: A perfect note to end on. Dr. Sarah Chen, thank you.',
+                '',
+                'GUEST: Thank you, Alex.',
+                '',
+                '[SFX: Theme music]',
+                '',
+                'HOST: That\'s it for this episode. Join us next week when we explore the ethics of synthetic media. Until then, keep diving deep.',
+                '',
+                '[END]'
+            ].join('\n')
+        },
+        {
+            name: 'Sample Novel Scene.md',
+            content: [
+                '---',
+                'Class: Scene',
+                'Act: 1',
+                'When: 2024-01-15',
+                'Duration: 1 hour',
+                'Synopsis: Emma discovers a hidden key inside a hollowed-out book in the old library.',
+                'Subplot: Main Plot',
+                'Character: Emma, Thomas',
+                'POV: Emma',
+                'Words:',
+                'Runtime:',
+                'Status: Working',
+                '---',
+                '',
+                'The late afternoon sun filtered through the dusty windows of the old library, casting long shadows across the wooden floors. Emma ran her fingers along the spine of a leather-bound volume, feeling the familiar comfort of aged paper and binding glue.',
+                '',
+                '"You know you can\'t stay here forever," Thomas said from the doorway.',
+                '',
+                'She didn\'t turn around. "Watch me."',
+                '',
+                'He walked closer, his footsteps echoing in the empty reading room. "The demolition crew arrives Monday. This place will be rubble by Wednesday."',
+                '',
+                '"Then I have until Monday." Emma pulled the book from the shelf, opened it to reveal hollowed-out pages. Inside: a small brass key.',
+                '',
+                'Thomas leaned over her shoulder. "What is that?"',
+                '',
+                '"The reason they want this building torn down." She held the key up to the light, watching it glint. "The reason my grandfather died."',
+                '',
+                '"Emma—"',
+                '',
+                '"Don\'t." She closed the book, tucked it under her arm. "Don\'t tell me to let it go. Don\'t tell me it\'s not worth it."',
+                '',
+                'Thomas studied her face: the determined set of her jaw, the fire in her eyes that had been absent for so long. He sighed.',
+                '',
+                '"What do you need me to do?"',
+                '',
+                'She smiled for the first time in weeks. "Help me find what this key opens."',
+                '',
+                'Outside, the shadows grew longer. Somewhere in the building, old floorboards creaked. Emma and Thomas didn\'t notice. They were already lost in the hunt, following a trail of clues that would lead them into the heart of a decades-old conspiracy.',
+                '',
+                'The library held its secrets close, but not for much longer.'
+            ].join('\n')
+        }
+    ];
+
+    // ── LaTeX Templates ─────────────────────────────────────────────────────
+    const latexTemplates: { name: string; content: string }[] = [
+        {
+            name: 'screenplay_template.tex',
+            content: [
+                '% Pandoc LaTeX Template — Screenplay Format',
+                '% US industry standard: Courier 12pt, specific margins',
+                '\\documentclass[12pt,letterpaper]{article}',
+                '',
+                '\\usepackage[top=1in,bottom=1in,left=1.5in,right=1in]{geometry}',
+                '\\usepackage{fontspec}',
+                '\\usepackage{parskip}',
+                '',
+                '% Courier is the screenplay standard',
+                '\\setmainfont{Courier New}[',
+                '  BoldFont={Courier New Bold},',
+                '  ItalicFont={Courier New Italic}',
+                ']',
+                '',
+                '\\pagestyle{plain}',
+                '\\setlength{\\parindent}{0pt}',
+                '\\setlength{\\parskip}{12pt}',
+                '',
+                '% Disable hyphenation (screenplay convention)',
+                '\\hyphenpenalty=10000',
+                '\\exhyphenpenalty=10000',
+                '',
+                '\\begin{document}',
+                '',
+                '$body$',
+                '',
+                '\\end{document}'
+            ].join('\n')
+        },
+        {
+            name: 'podcast_template.tex',
+            content: [
+                '% Pandoc LaTeX Template — Podcast Script Format',
+                '% Clean sans-serif for audio production scripts',
+                '\\documentclass[11pt,letterpaper]{article}',
+                '',
+                '\\usepackage[top=1in,bottom=1in,left=1in,right=1in]{geometry}',
+                '\\usepackage{fontspec}',
+                '\\usepackage{parskip}',
+                '',
+                '% Clean sans-serif for readability',
+                '\\setmainfont{Helvetica Neue}[',
+                '  BoldFont={Helvetica Neue Bold},',
+                '  ItalicFont={Helvetica Neue Italic}',
+                ']',
+                '',
+                '\\pagestyle{plain}',
+                '\\setlength{\\parindent}{0pt}',
+                '\\setlength{\\parskip}{8pt}',
+                '',
+                '\\begin{document}',
+                '',
+                '$body$',
+                '',
+                '\\end{document}'
+            ].join('\n')
+        },
+        {
+            name: 'novel_template.tex',
+            content: [
+                '% Pandoc LaTeX Template — Novel Manuscript Format',
+                '% Traditional publishing format: Times 12pt, double-spaced',
+                '\\documentclass[12pt,letterpaper]{article}',
+                '',
+                '\\usepackage[top=1in,bottom=1in,left=1in,right=1in]{geometry}',
+                '\\usepackage{fontspec}',
+                '\\usepackage{setspace}',
+                '',
+                '% Times New Roman is the publishing standard',
+                '\\setmainfont{Times New Roman}[',
+                '  BoldFont={Times New Roman Bold},',
+                '  ItalicFont={Times New Roman Italic}',
+                ']',
+                '',
+                '% Double spacing (standard for manuscript submissions)',
+                '\\doublespacing',
+                '',
+                '% First line indent',
+                '\\setlength{\\parindent}{0.5in}',
+                '\\setlength{\\parskip}{0pt}',
+                '',
+                '% Page numbers top right',
+                '\\usepackage{fancyhdr}',
+                '\\pagestyle{fancy}',
+                '\\fancyhf{}',
+                '\\fancyhead[R]{\\thepage}',
+                '\\renewcommand{\\headrulewidth}{0pt}',
+                '',
+                '\\begin{document}',
+                '',
+                '$body$',
+                '',
+                '\\end{document}'
+            ].join('\n')
+        }
+    ];
+
+    // Create all files (skip existing)
+    for (const scene of sampleScenes) {
+        const filePath = normalizePath(`${templatesFolder}/${scene.name}`);
+        if (!vault.getAbstractFileByPath(filePath)) {
+            await vault.create(filePath, scene.content);
+            createdFiles.push(scene.name);
+        }
+    }
+
+    for (const template of latexTemplates) {
+        const filePath = normalizePath(`${templatesFolder}/${template.name}`);
+        if (!vault.getAbstractFileByPath(filePath)) {
+            await vault.create(filePath, template.content);
+            createdFiles.push(template.name);
+        }
+    }
+
+    // Auto-configure template paths in settings
+    plugin.settings.pandocTemplates = {
+        ...plugin.settings.pandocTemplates,
+        screenplay: normalizePath(`${templatesFolder}/screenplay_template.tex`),
+        podcast: normalizePath(`${templatesFolder}/podcast_template.tex`),
+        novel: normalizePath(`${templatesFolder}/novel_template.tex`)
+    };
+    await plugin.saveSettings();
+
+    return createdFiles;
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // OPEN BETA CONFIGURATION
@@ -241,6 +626,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     applyErtHeaderLayout(pandocHeading);
 
     // Settings
+    let pandocPathInputEl: HTMLInputElement | null = null;
     addProRow(new Setting(pandocPanel))
         .setName('Pandoc binary path')
         .setDesc('Optional: set a custom pandoc executable path. If blank, system PATH is used.')
@@ -248,6 +634,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             text.inputEl.addClass('ert-input--xl');
             text.setPlaceholder('/usr/local/bin/pandoc');
             text.setValue(plugin.settings.pandocPath || '');
+            pandocPathInputEl = text.inputEl;
             plugin.registerDomEvent(text.inputEl, 'blur', async () => {
                 const value = text.getValue().trim();
                 const normalizedPath = value ? normalizePath(value) : '';
@@ -255,6 +642,61 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                 await plugin.saveSettings();
             });
         });
+
+    // Auto-detect Pandoc & LaTeX
+    const scanSetting = addProRow(new Setting(pandocPanel))
+        .setName('Auto-detect Pandoc & LaTeX')
+        .setDesc('Scan your system for Pandoc and LaTeX installations.');
+    scanSetting.addButton(button => {
+        button.setButtonText('Scan');
+        button.onClick(async () => {
+            button.setDisabled(true);
+            button.setButtonText('Scanning…');
+            try {
+                const scan = await scanSystemPaths();
+                const msgs: string[] = [];
+
+                if (scan.pandocPath) {
+                    msgs.push(`✓ Pandoc found at ${scan.pandocPath}`);
+                    // Auto-fill path if currently empty
+                    if (!plugin.settings.pandocPath) {
+                        plugin.settings.pandocPath = scan.pandocPath;
+                        await plugin.saveSettings();
+                        if (pandocPathInputEl) {
+                            pandocPathInputEl.value = scan.pandocPath;
+                            pandocPathInputEl.addClass('ert-setting-input-success');
+                            window.setTimeout(() => pandocPathInputEl?.removeClass('ert-setting-input-success'), 1200);
+                        }
+                    }
+                } else {
+                    msgs.push('⚠ Pandoc not found — install from pandoc.org');
+                }
+
+                if (scan.latexPath) {
+                    msgs.push(`✓ LaTeX found (${scan.latexEngine})`);
+                } else {
+                    msgs.push('⚠ LaTeX not found — needed for PDF export');
+                }
+
+                scanSetting.setDesc(msgs.join(' · '));
+                new Notice(msgs.join('\n'));
+
+                // Revert description after 8 seconds
+                window.setTimeout(() => {
+                    scanSetting.setDesc('Scan your system for Pandoc and LaTeX installations.');
+                }, 8000);
+            } catch (e) {
+                const msg = (e as Error).message || String(e);
+                scanSetting.setDesc(`Error scanning: ${msg}`);
+                window.setTimeout(() => {
+                    scanSetting.setDesc('Scan your system for Pandoc and LaTeX installations.');
+                }, 5000);
+            } finally {
+                button.setDisabled(false);
+                button.setButtonText('Scan');
+            }
+        });
+    });
 
     addProRow(new Setting(pandocPanel))
         .setName('Enable fallback Pandoc')
@@ -310,6 +752,34 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     addTemplateSetting('Screenplay', 'screenplay', 'vault/path/to/screenplay_template.tex');
     addTemplateSetting('Podcast Script', 'podcast', 'vault/path/to/podcast_template.tex');
     addTemplateSetting('Novel Manuscript', 'novel', 'vault/path/to/novel_template.tex');
+
+    // Generate sample templates
+    addProRow(new Setting(templateSubSection))
+        .setName('Generate sample templates')
+        .setDesc('Creates sample screenplay, podcast, and novel scene files plus LaTeX templates in your vault. Auto-configures template paths.')
+        .addButton(button => {
+            button.setButtonText('Generate Samples');
+            button.setCta();
+            button.onClick(async () => {
+                button.setDisabled(true);
+                button.setButtonText('Generating…');
+                try {
+                    const created = await generateSampleTemplates(plugin);
+                    if (created.length > 0) {
+                        new Notice(`Created ${created.length} sample files in Export/Templates. Template paths configured.`);
+                    } else {
+                        new Notice('All sample files already exist. Template paths updated.');
+                    }
+                    // Re-render to reflect updated template paths
+                    rerender();
+                } catch (e) {
+                    const msg = (e as Error).message || String(e);
+                    new Notice(`Error generating samples: ${msg}`);
+                    button.setDisabled(false);
+                    button.setButtonText('Generate Samples');
+                }
+            });
+        });
 
     return section;
 }

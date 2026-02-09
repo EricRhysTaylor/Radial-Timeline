@@ -38,6 +38,6 @@ This page covers the fresh vault flow. If you already have scenes, jump to [[Onb
 - Use Search to find scenes across metadata fields.
 
 ## 6. Optional next steps
-- Run **AI Analysis** for scene pulse feedback.
+- Run **AI Pulse Triplet Analysis** for scene pulse feedback.
 - Use **Inquiry** for corpus-level analysis.
 - Use **Manuscript export** when you are ready to share.

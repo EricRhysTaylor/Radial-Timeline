@@ -110,7 +110,7 @@ You can filter scenes by searching for text content across multiple fields. Sear
 | POV | Point of view (first, third, omni, etc.) |
 | Duration | "2 hours", "45 minutes", "3 days" |
 | Date/Time | "Dec 28", "2025", "9am", "April", "Midnight" |
-| AI Pulse Analysis | Current, previous, and next scene analysis text |
+| AI Pulse Triplet Analysis | Current, previous, and next scene analysis text |
 | Planetary Time | Planet name and formatted local time (if enabled) |
 
 *   **Visuals**:

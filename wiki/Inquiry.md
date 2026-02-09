@@ -1,6 +1,6 @@
 # Inquiry
 
-Inquiry is one of two [[Views]] in Radial Timeline — a dedicated visual interface for corpus-level story analysis. While the Timeline view and its [[AI Analysis|Scene Pulse Analysis]] evaluate individual scenes in triplets, Inquiry takes a higher-altitude perspective — scanning your entire manuscript (or multi-book saga) and world building to surface structural signals, loose ends, continuity issues, inconsistent or conflicting characterization and more.
+Inquiry is one of two [[Views]] in Radial Timeline — a dedicated visual interface for corpus-level story analysis. While the Timeline view and its [[AI-Pulse-Analysis|AI Pulse Triplet Analysis]] evaluate individual scenes in triplets, Inquiry takes a higher-altitude perspective — scanning your entire manuscript (or multi-book saga) and world building to surface structural signals, loose ends, continuity issues, inconsistent or conflicting characterization and more.
 
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/inquiry-view.png" alt="The Inquiry visual interface with Flow and Depth rings" style="width: 500px; max-width: 100%; border-radius: 8px;" />
@@ -174,5 +174,5 @@ Configure sources in [[Settings#inquiry-sources]].
 *   Start with **Book** scope and a single question to calibrate before running an Omnibus Pass.
 *   Use **Summary** material mode for large manuscripts to reduce token usage while maintaining context.
 *   Review the **token estimate** indicator before running — amber and red tiers indicate high token consumption.
-*   Combine Inquiry findings with [[AI Analysis|Scene Pulse Analysis]] for both macro and micro-level feedback.
+*   Combine Inquiry findings with [[AI-Pulse-Analysis|AI Pulse Triplet Analysis]] for both macro and micro-level feedback.
 *   Inquiry works with all supported AI providers (Anthropic, OpenAI, Gemini, Local LLM).

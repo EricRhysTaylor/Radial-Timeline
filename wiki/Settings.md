@@ -278,7 +278,7 @@ Configure the AI assistant for narrative analysis.
 *   **Log AI interactions to file**: When enabled, saves detailed JSON logs for each AI request in the AI output folder.
 
 > [!NOTE]
-> Learn how to interpret the analysis in [[AI-Analysis]].
+> Learn how to interpret the analysis in [[AI-Pulse-Analysis|AI Pulse Triplet Analysis]].
 
 <a name="configuration"></a>
 ### Configuration
