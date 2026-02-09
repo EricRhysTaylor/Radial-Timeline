@@ -457,18 +457,31 @@ export function renderStoryBeatsSection(params: {
 
     const renderCustomConfig = () => {
         customConfigContainer.empty();
-        
-        new Settings(customConfigContainer)
-            .setName('Custom story beat system editor')
-            .setDesc('Name your beat system, then add beats below. Assign each beat to an act and drag to reorder. Use Create to generate template notes, or Merge to realign existing notes after reordering or renaming. The system name is written to the "Beat Model" YAML field.')
+
+        const proActive = isProfessionalActive(plugin);
+        const activeId = plugin.settings.activeCustomBeatSystemId ?? 'default';
+        const isProSystemLoaded = proActive && activeId !== 'default';
+
+        const nameSetting = new Settings(customConfigContainer)
+            .setName('Custom Beat Model label')
+            .setDesc(
+                isProSystemLoaded
+                    ? 'This system was loaded from the Pro beat systems manager. Rename it there using Save As.'
+                    : 'This label is written to the Beat Model frontmatter field. Core supports one custom beat system; Pro unlocks multiple named custom systems.'
+            )
             .addText(text => text
                 .setPlaceholder('Custom')
                 .setValue(plugin.settings.customBeatSystemName || 'Custom')
                 .then(t => {
                     t.inputEl.addClass('ert-input--md');
+                    if (isProSystemLoaded) {
+                        t.setDisabled(true);
+                        t.inputEl.setAttribute('title', 'Rename this system in the Pro beat systems manager');
+                    }
                     return t;
                 })
                 .onChange(async (value) => {
+                    if (isProSystemLoaded) return; // guard against programmatic calls
                     plugin.settings.customBeatSystemName = value;
                     await plugin.saveSettings();
                     existingBeatReady = false;
