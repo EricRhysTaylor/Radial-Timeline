@@ -1,10 +1,10 @@
 /*
  * Radial Timeline (tm) Plugin for Obsidian
- * Synopsis & Summary Command Helper
- * Handles logic for the "Synopsis & Summary Refresh" command.
+ * Summary Refresh Command Helper
+ * Handles logic for the "Summary refresh" command.
  *
- * Summary = longform AI-generated scene analysis (≈200–300 words) — primary artifact.
- * Synopsis = concise, skimmable navigation text (1–3 sentences) — optional.
+ * Summary = longform AI-generated scene analysis (≈200–300 words, configurable) — primary artifact for Inquiry corpus.
+ * Synopsis = concise, skimmable navigation text (1–3 sentences) — optional for scene hovers.
  */
 
 import { Vault, Notice, TFile } from 'obsidian';

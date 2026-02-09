@@ -72,8 +72,11 @@ export function mergeTemplates(baseTemplate: string, advancedFields: string): st
     
     const lines = baseTemplate.split('\n');
     const advancedLines = filteredAdvanced.split('\n').filter(l => l.trim());
+
+    if (advancedLines.length === 0) return baseTemplate;
     
     const result: string[] = [];
+    let inserted = false;
     
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
@@ -92,12 +95,19 @@ export function mergeTemplates(baseTemplate: string, advancedFields: string): st
             continue;
         }
         
-        // Insert all advanced fields after Due but before Pulse Update
+        // Insert all advanced fields after Due but before Pulse Update (scene templates)
         if (line.startsWith('Pulse Update:')) {
             result.push(...advancedLines);
+            inserted = true;
         }
         
         result.push(line);
+    }
+
+    // Generic fallback: if no known insertion point was found (e.g. beat templates),
+    // append advanced fields at the end of the base template.
+    if (!inserted) {
+        result.push(...advancedLines);
     }
     
     return result.join('\n');

@@ -1128,7 +1128,11 @@ export default class SynopsisManager {
       }
 
       // --- Custom Hover Metadata Fields ---
-      const enabledHoverFields = (this.plugin.settings.hoverMetadataFields || []).filter((f: HoverMetadataField) => f.enabled);
+      const isBeatItem = scene.itemType === 'Beat' || scene.itemType === 'Plot';
+      const hoverFieldSource = isBeatItem
+        ? (this.plugin.settings.beatHoverMetadataFields || [])
+        : (this.plugin.settings.hoverMetadataFields || []);
+      const enabledHoverFields = hoverFieldSource.filter((f: HoverMetadataField) => f.enabled);
       if (enabledHoverFields.length > 0) {
         const hoverMetaStartY = currentMetadataY;
         let hoverMetaLinesAdded = 0;

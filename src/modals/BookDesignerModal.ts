@@ -1,6 +1,6 @@
 import { App, Modal, Setting, Notice, normalizePath, ButtonComponent, TextAreaComponent, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { createBeatTemplateNotes } from '../utils/beatsTemplates';
+import { createBeatTemplateNotes, getMergedBeatYamlTemplate } from '../utils/beatsTemplates';
 import { generateSceneContent, mergeTemplates, SceneCreationData } from '../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { parseDuration, parseDurationDetail } from '../utils/date';
@@ -1474,13 +1474,14 @@ export class BookDesignerModal extends Modal {
         let beatsCreated = 0;
         if (this.generateBeats) {
             const beatSystem = this.plugin.settings.beatSystem || 'Custom';
+            const beatTemplate = getMergedBeatYamlTemplate(this.plugin.settings);
 
             // Handle Custom Dynamic System
             if (beatSystem === 'Custom') {
                 const customSystem = getCustomSystemFromSettings(this.plugin.settings);
                 if (customSystem.beats.length > 0) {
                     try {
-                        const result = await createBeatTemplateNotes(vault, 'Custom', targetFolder, customSystem);
+                        const result = await createBeatTemplateNotes(vault, 'Custom', targetFolder, customSystem, { beatTemplate });
                         beatsCreated = result.created;
                     } catch (e) {
                         new Notice(`Error creating custom beats: ${e}`);
@@ -1490,7 +1491,7 @@ export class BookDesignerModal extends Modal {
                 }
             } else {
                 try {
-                    const result = await createBeatTemplateNotes(vault, beatSystem, targetFolder);
+                    const result = await createBeatTemplateNotes(vault, beatSystem, targetFolder, undefined, { beatTemplate });
                     beatsCreated = result.created;
                 } catch (e) {
                     new Notice(`Error creating beats: ${e}`);

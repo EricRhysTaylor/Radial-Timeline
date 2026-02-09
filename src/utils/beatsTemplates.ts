@@ -3,6 +3,16 @@
  */
 import { Vault, TFile, normalizePath } from 'obsidian';
 import { PLOT_SYSTEMS, PlotSystemTemplate, PlotBeatInfo } from './beatsSystems';
+import { mergeTemplates } from './sceneGenerator';
+
+/** Legacy beat base template — byte-for-byte matches the original hardcoded output. */
+const LEGACY_BEAT_BASE = `Class: Beat
+Act: {{Act}}
+Description: {{Description}}
+Beat Model: {{BeatModel}}
+Range: {{Range}}
+When:
+Gossamer1:`;
 
 /**
  * Convert beatInfo.range to Range field value (0-100 scale).
@@ -15,17 +25,56 @@ function getRangeValue(beatInfo: PlotBeatInfo): string {
 }
 
 /**
- * Generate Beat note content with frontmatter and body
+ * Build the note body (description + optional placement). Shared by both paths.
+ */
+function buildBeatBody(beatInfo: PlotBeatInfo): string {
+  const bodyParts: string[] = [];
+  if (beatInfo.description) bodyParts.push(beatInfo.description);
+  if (beatInfo.placement) {
+    bodyParts.push('');
+    bodyParts.push(`**Manuscript Position:** ${beatInfo.placement}`);
+  }
+  return bodyParts.length > 0 ? '\n' + bodyParts.join('\n') + '\n' : '';
+}
+
+/**
+ * Returns the merged beat YAML template string (base + advanced).
+ * If settings have no beatYamlTemplates, falls back to the legacy base.
+ */
+export function getMergedBeatYamlTemplate(settings: { beatYamlTemplates?: { base: string; advanced: string } }): string {
+  const base = settings.beatYamlTemplates?.base ?? LEGACY_BEAT_BASE;
+  const advanced = settings.beatYamlTemplates?.advanced ?? '';
+  if (!advanced.trim()) return base;
+  return mergeTemplates(base, advanced);
+}
+
+/**
+ * Generate Beat note content with frontmatter and body.
+ * When a template string is provided, uses {{Placeholder}} substitution.
+ * When omitted, produces the exact legacy hardcoded output for backward compatibility.
  */
 function generatePlotNoteContent(
   beatInfo: PlotBeatInfo,
   act: number,
-  beatSystem: string
+  beatSystem: string,
+  template?: string
 ): string {
-  const rangeValue = getRangeValue(beatInfo);
   const yamlEscape = (s: string) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const desc = beatInfo.description ? `"${yamlEscape(beatInfo.description)}"` : '""';
-  
+  const rangeValue = getRangeValue(beatInfo);
+
+  if (template) {
+    // Template-based generation using {{Placeholder}} substitution
+    let content = template;
+    content = content.replace(/{{Act}}/g, act.toString());
+    content = content.replace(/{{Description}}/g, desc);
+    content = content.replace(/{{BeatModel}}/g, beatSystem);
+    content = content.replace(/{{Range}}/g, rangeValue);
+
+    return `---\n${content}\n---\n` + buildBeatBody(beatInfo);
+  }
+
+  // Legacy hardcoded output (backward compatibility)
   const frontmatter = [
     '---',
     'Class: Beat',
@@ -39,21 +88,7 @@ function generatePlotNoteContent(
     ''
   ].join('\n');
 
-  // Build the body with description and optional placement
-  const bodyParts: string[] = [];
-  
-  if (beatInfo.description) {
-    bodyParts.push(beatInfo.description);
-  }
-  
-  if (beatInfo.placement) {
-    bodyParts.push('');
-    bodyParts.push(`**Manuscript Position:** ${beatInfo.placement}`);
-  }
-  
-  const body = bodyParts.length > 0 ? '\n' + bodyParts.join('\n') + '\n' : '';
-  
-  return frontmatter + body;
+  return frontmatter + buildBeatBody(beatInfo);
 }
 
 /**
@@ -75,7 +110,7 @@ export async function createBeatTemplateNotes(
   beatSystemName: string,
   sourcePath: string,
   customSystem?: PlotSystemTemplate,
-  options?: { actStartNumbers?: Map<number, number> }
+  options?: { actStartNumbers?: Map<number, number>; beatTemplate?: string }
 ): Promise<{ created: number; skipped: number; errors: string[] }> {
   let beatSystem = PLOT_SYSTEMS[beatSystemName];
   
@@ -112,7 +147,7 @@ export async function createBeatTemplateNotes(
   };
 
   const sanitize = (s: string) =>
-    s.replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
+    s.replace(/[\\/:*?"<>|!.]+/g, '-').replace(/-+/g, '-').replace(/\s+/g, ' ').replace(/^-|-$/g, '').trim();
 
   // Use the custom system name (if provided) for Beat Model frontmatter instead of generic "Custom"
   const beatModelName = beatSystem.name || beatSystemName;
@@ -161,7 +196,7 @@ export async function createBeatTemplateNotes(
     }
 
     // Generate full note content with frontmatter and body
-    const content = generatePlotNoteContent(beatInfo, act, beatModelName);
+    const content = generatePlotNoteContent(beatInfo, act, beatModelName, options?.beatTemplate);
 
     try {
       await vault.create(normalizedPath, content);

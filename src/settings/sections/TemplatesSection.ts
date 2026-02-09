@@ -3,11 +3,12 @@ import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
 import { CreateBeatsTemplatesModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem, getCustomSystemFromSettings } from '../../utils/beatsSystems';
-import { createBeatTemplateNotes } from '../../utils/beatsTemplates';
+import { createBeatTemplateNotes, getMergedBeatYamlTemplate } from '../../utils/beatsTemplates';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { renderMetadataSection } from './MetadataSection';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
-import type { HoverMetadataField } from '../../types/settings';
+import type { HoverMetadataField, SavedBeatSystem } from '../../types/settings';
+import { isProfessionalActive } from './ProfessionalSection';
 import { IconSuggest } from '../IconSuggest';
 import { clampActNumber, parseActLabels, resolveActLabel } from '../../utils/acts';
 import { ERT_CLASSES, ERT_DATA } from '../../ui/classes';
@@ -69,7 +70,10 @@ export function renderStoryBeatsSection(params: {
         if (!trimmed) return '';
         const withoutAct = trimmed.replace(/^Act\s*\d+\s*:\s*/i, '');
         const withoutPrefix = withoutAct.replace(/^\d+(?:\.\d+)?\s*[.\-:)]?\s*/i, '');
-        return withoutPrefix.trim().toLowerCase();
+        // Strip punctuation that sanitizeBeatName would replace, so matching
+        // works regardless of whether we compare raw input or sanitised filename.
+        const noPunctuation = withoutPrefix.replace(/[\\/:*?"<>|!.]+/g, ' ');
+        return noPunctuation.replace(/\s+/g, ' ').trim().toLowerCase();
     };
 
     const stripActPrefix = (name: string): string => {
@@ -78,7 +82,7 @@ export function renderStoryBeatsSection(params: {
     };
 
     const sanitizeBeatName = (s: string) =>
-        s.replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
+        s.replace(/[\\/:*?"<>|!.]+/g, '-').replace(/-+/g, '-').replace(/\s+/g, ' ').replace(/^-|-$/g, '').trim();
 
     const buildBeatFilename = (beatNumber: number, name: string): string => {
         const displayName = stripActPrefix(name);
@@ -819,6 +823,478 @@ export function renderStoryBeatsSection(params: {
         });
 
     updateTemplateButton(templateSetting, plugin.settings.beatSystem || 'Custom');
+
+    // ─── CUSTOM BEAT YAML FIELDS (Core) ───────────────────────────────
+    const beatYamlSection = beatsStack.createDiv({ cls: ERT_CLASSES.STACK });
+    const beatYamlHeading = new Settings(beatYamlSection)
+        .setName('Custom beat YAML fields')
+        .setHeading();
+    addHeadingIcon(beatYamlHeading, 'file-text');
+    applyErtHeaderLayout(beatYamlHeading);
+
+    let beatYamlEditorExpanded = false;
+    const beatYamlToggleBtn = beatYamlHeading.controlEl.createEl('button', {
+        cls: ERT_CLASSES.ICON_BTN,
+        attr: { type: 'button', 'aria-label': 'Show beat YAML editor' }
+    });
+    const refreshBeatYamlToggle = () => {
+        setIcon(beatYamlToggleBtn, beatYamlEditorExpanded ? 'chevron-down' : 'chevron-right');
+        setTooltip(beatYamlToggleBtn, beatYamlEditorExpanded ? 'Hide beat YAML editor' : 'Show beat YAML editor');
+    };
+    refreshBeatYamlToggle();
+
+    const beatYamlContainer = beatYamlSection.createDiv({ cls: ['ert-panel', 'ert-advanced-template-card'] });
+
+    // Beat hover metadata helpers (parallel to scene hover meta helpers)
+    const getBeatHoverMetadata = (key: string): HoverMetadataField | undefined => {
+        return plugin.settings.beatHoverMetadataFields?.find(f => f.key === key);
+    };
+
+    const setBeatHoverMetadata = (key: string, icon: string, enabled: boolean) => {
+        if (!plugin.settings.beatHoverMetadataFields) {
+            plugin.settings.beatHoverMetadataFields = [];
+        }
+        const existing = plugin.settings.beatHoverMetadataFields.find(f => f.key === key);
+        if (existing) {
+            existing.icon = icon;
+            existing.enabled = enabled;
+        } else {
+            plugin.settings.beatHoverMetadataFields.push({ key, label: key, icon, enabled });
+        }
+        void plugin.saveSettings();
+    };
+
+    const removeBeatHoverMetadata = (key: string) => {
+        if (plugin.settings.beatHoverMetadataFields) {
+            plugin.settings.beatHoverMetadataFields = plugin.settings.beatHoverMetadataFields.filter(f => f.key !== key);
+            void plugin.saveSettings();
+        }
+    };
+
+    const renameBeatHoverMetadataKey = (oldKey: string, newKey: string) => {
+        const existing = plugin.settings.beatHoverMetadataFields?.find(f => f.key === oldKey);
+        if (existing) {
+            existing.key = newKey;
+            void plugin.saveSettings();
+        }
+    };
+
+    let updateBeatHoverPreview: (() => void) | undefined;
+
+    const beatBaseTemplate = DEFAULT_SETTINGS.beatYamlTemplates!.base;
+    const beatBaseKeys = extractKeysInOrder(beatBaseTemplate);
+
+    const renderBeatYamlEditor = () => {
+        beatYamlContainer.empty();
+        beatYamlContainer.toggleClass('ert-settings-hidden', !beatYamlEditorExpanded);
+        if (!beatYamlEditorExpanded) return;
+
+        const currentBeatAdvanced = plugin.settings.beatYamlTemplates?.advanced ?? '';
+        const beatAdvancedObj = safeParseYaml(currentBeatAdvanced);
+
+        const beatOptionalOrder = extractKeysInOrder(currentBeatAdvanced).filter(k => !beatBaseKeys.includes(k));
+        const beatEntries: TemplateEntry[] = beatOptionalOrder.map(key => ({
+            key,
+            value: beatAdvancedObj[key] ?? '',
+            required: false
+        }));
+
+        let beatWorkingEntries = beatEntries;
+        let beatDragIndex: number | null = null;
+
+        const saveBeatEntries = (nextEntries: TemplateEntry[]) => {
+            beatWorkingEntries = nextEntries;
+            const yaml = buildYamlFromEntries(nextEntries);
+            if (!plugin.settings.beatYamlTemplates) {
+                plugin.settings.beatYamlTemplates = { base: DEFAULT_SETTINGS.beatYamlTemplates!.base, advanced: '' };
+            }
+            plugin.settings.beatYamlTemplates.advanced = yaml;
+            void plugin.saveSettings();
+        };
+
+        const rerenderBeatYaml = (next?: TemplateEntry[]) => {
+            const data = next ?? beatWorkingEntries;
+            beatWorkingEntries = data;
+            beatYamlContainer.empty();
+            beatYamlContainer.toggleClass('ert-settings-hidden', !beatYamlEditorExpanded);
+            if (!beatYamlEditorExpanded) return;
+
+            // Read-only base fields (collapsed summary)
+            const baseCard = beatYamlContainer.createDiv({ cls: 'ert-template-base-summary' });
+            baseCard.createDiv({ cls: 'ert-template-base-heading', text: 'Base fields (read-only)' });
+            const basePills = baseCard.createDiv({ cls: 'ert-template-base-pills' });
+            beatBaseKeys.forEach(k => {
+                basePills.createSpan({ cls: 'ert-template-base-pill', text: k });
+            });
+
+            // Editable advanced entries
+            const listEl = beatYamlContainer.createDiv({ cls: ['ert-template-entries', 'ert-template-indent'] });
+
+            if (data.length > 0) {
+                listEl.createDiv({ cls: 'ert-template-section-label', text: 'Custom fields' });
+            }
+
+            const renderBeatEntryRow = (entry: TemplateEntry, idx: number, list: TemplateEntry[]) => {
+                const row = listEl.createDiv({ cls: ['ert-yaml-row', 'ert-yaml-row--hover-meta'] });
+
+                const hoverMeta = getBeatHoverMetadata(entry.key);
+                const currentIcon = hoverMeta?.icon ?? DEFAULT_HOVER_ICON;
+                const currentEnabled = hoverMeta?.enabled ?? false;
+
+                // Drag handle
+                const dragHandle = row.createDiv({ cls: 'ert-drag-handle' });
+                dragHandle.draggable = true;
+                setIcon(dragHandle, 'grip-vertical');
+                setTooltip(dragHandle, 'Drag to reorder');
+
+                row.createDiv({ cls: 'ert-grid-spacer' });
+
+                // Icon input
+                const iconWrapper = row.createDiv({ cls: 'ert-hover-icon-wrapper' });
+                const iconPreview = iconWrapper.createDiv({ cls: 'ert-hover-icon-preview' });
+                setIcon(iconPreview, currentIcon);
+                const iconInput = iconWrapper.createEl('input', {
+                    type: 'text',
+                    cls: 'ert-input ert-input--lg ert-icon-input',
+                    attr: { placeholder: 'Icon name...' }
+                });
+                iconInput.value = currentIcon;
+                setTooltip(iconInput, 'Lucide icon name for hover synopsis');
+
+                // Hover checkbox
+                const checkboxWrapper = row.createDiv({ cls: 'ert-hover-checkbox-wrapper' });
+                const checkbox = checkboxWrapper.createEl('input', {
+                    type: 'checkbox',
+                    cls: 'ert-hover-checkbox'
+                });
+                checkbox.checked = currentEnabled;
+                setTooltip(checkbox, 'Show in beat hover synopsis');
+
+                new IconSuggest(app, iconInput, (selectedIcon) => {
+                    iconInput.value = selectedIcon;
+                    iconPreview.empty();
+                    setIcon(iconPreview, selectedIcon);
+                    setBeatHoverMetadata(entry.key, selectedIcon, checkbox.checked);
+                    updateBeatHoverPreview?.();
+                });
+
+                iconInput.oninput = () => {
+                    const iconName = iconInput.value.trim();
+                    if (iconName && getIconIds().includes(iconName)) {
+                        iconPreview.empty();
+                        setIcon(iconPreview, iconName);
+                        setBeatHoverMetadata(entry.key, iconName, checkbox.checked);
+                        updateBeatHoverPreview?.();
+                    }
+                };
+
+                checkbox.onchange = () => {
+                    const iconName = iconInput.value.trim() || DEFAULT_HOVER_ICON;
+                    setBeatHoverMetadata(entry.key, iconName, checkbox.checked);
+                    updateBeatHoverPreview?.();
+                };
+
+                // Key input
+                const keyInput = row.createEl('input', { type: 'text', cls: 'ert-input ert-input--md' });
+                keyInput.value = entry.key;
+                keyInput.placeholder = 'Key';
+                keyInput.onchange = () => {
+                    const newKey = keyInput.value.trim();
+                    if (!newKey) { keyInput.value = entry.key; return; }
+                    if (beatBaseKeys.includes(newKey)) {
+                        new Notice(`"${newKey}" is a base beat field. Choose another name.`);
+                        keyInput.value = entry.key;
+                        return;
+                    }
+                    if (list.some((e, i) => i !== idx && e.key === newKey)) {
+                        new Notice(`Key "${newKey}" already exists.`);
+                        keyInput.value = entry.key;
+                        return;
+                    }
+                    renameBeatHoverMetadataKey(entry.key, newKey);
+                    const nextList = [...list];
+                    nextList[idx] = { ...entry, key: newKey };
+                    saveBeatEntries(nextList);
+                    rerenderBeatYaml(nextList);
+                    updateBeatHoverPreview?.();
+                };
+
+                // Value input
+                const value = entry.value;
+                const valInput = row.createEl('input', { type: 'text', cls: 'ert-input ert-input--md' });
+                if (Array.isArray(value)) {
+                    valInput.value = value.join(', ');
+                    valInput.placeholder = 'Comma-separated values';
+                    valInput.onchange = () => {
+                        const nextList = [...list];
+                        nextList[idx] = { ...entry, value: valInput.value.split(',').map(s => s.trim()).filter(Boolean) };
+                        saveBeatEntries(nextList);
+                        updateBeatHoverPreview?.();
+                    };
+                } else {
+                    valInput.value = typeof value === 'string' ? value : '';
+                    valInput.placeholder = 'Default value (optional)';
+                    valInput.onchange = () => {
+                        const nextList = [...list];
+                        nextList[idx] = { ...entry, value: valInput.value };
+                        saveBeatEntries(nextList);
+                        updateBeatHoverPreview?.();
+                    };
+                }
+
+                // Delete button
+                const delBtn = row.createEl('button', { cls: ERT_CLASSES.ICON_BTN, attr: { type: 'button', 'aria-label': 'Remove field' } });
+                setIcon(delBtn, 'trash-2');
+                setTooltip(delBtn, 'Remove field');
+                delBtn.onclick = () => {
+                    removeBeatHoverMetadata(entry.key);
+                    const nextList = list.filter((_, i) => i !== idx);
+                    saveBeatEntries(nextList);
+                    rerenderBeatYaml(nextList);
+                    updateBeatHoverPreview?.();
+                };
+
+                // Drag events
+                dragHandle.addEventListener('dragstart', (e) => {
+                    beatDragIndex = idx;
+                    row.addClass('ert-dragging');
+                    e.dataTransfer?.setData('text/plain', String(idx));
+                });
+                dragHandle.addEventListener('dragend', () => {
+                    beatDragIndex = null;
+                    row.removeClass('ert-dragging');
+                });
+                row.addEventListener('dragover', (e) => { e.preventDefault(); row.addClass('ert-drag-over'); });
+                row.addEventListener('dragleave', () => { row.removeClass('ert-drag-over'); });
+                row.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    row.removeClass('ert-drag-over');
+                    if (beatDragIndex === null || beatDragIndex === idx) return;
+                    const nextList = [...list];
+                    const [moved] = nextList.splice(beatDragIndex, 1);
+                    nextList.splice(idx, 0, moved);
+                    saveBeatEntries(nextList);
+                    rerenderBeatYaml(nextList);
+                    updateBeatHoverPreview?.();
+                });
+            };
+
+            data.forEach((entry, idx) => renderBeatEntryRow(entry, idx, data));
+
+            // Add new field row
+            const addRow = listEl.createDiv({ cls: 'ert-yaml-add-row' });
+            const addKeyInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--md', attr: { placeholder: 'New field key' } });
+            const addBtn = addRow.createEl('button', { cls: ERT_CLASSES.ICON_BTN, attr: { type: 'button', 'aria-label': 'Add field' } });
+            setIcon(addBtn, 'plus');
+            setTooltip(addBtn, 'Add custom beat YAML field');
+            const doAddBeatField = () => {
+                const newKey = addKeyInput.value.trim();
+                if (!newKey) return;
+                if (beatBaseKeys.includes(newKey)) {
+                    new Notice(`"${newKey}" is a base beat field.`);
+                    return;
+                }
+                if (data.some(e => e.key === newKey)) {
+                    new Notice(`"${newKey}" already exists.`);
+                    return;
+                }
+                const nextList = [...data, { key: newKey, value: '', required: false }];
+                saveBeatEntries(nextList);
+                rerenderBeatYaml(nextList);
+                updateBeatHoverPreview?.();
+            };
+            addBtn.onclick = doAddBeatField;
+            addKeyInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doAddBeatField(); } });
+        };
+
+        rerenderBeatYaml(beatEntries);
+    };
+
+    beatYamlToggleBtn.addEventListener('click', () => {
+        beatYamlEditorExpanded = !beatYamlEditorExpanded;
+        refreshBeatYamlToggle();
+        renderBeatYamlEditor();
+        renderBeatHoverPreview();
+    });
+
+    renderBeatYamlEditor();
+
+    // ─── BEAT HOVER METADATA PREVIEW (Core) ───────────────────────────
+    const beatHoverPreviewContainer = beatYamlSection.createDiv({
+        cls: ['ert-previewFrame', 'ert-previewFrame--center', 'ert-previewFrame--flush'],
+        attr: { 'data-preview': 'beat-metadata' }
+    });
+    const beatHoverPreviewHeading = beatHoverPreviewContainer.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Beat Hover Metadata Preview' });
+    const beatHoverPreviewBody = beatHoverPreviewContainer.createDiv({ cls: ['ert-hover-preview-body', 'ert-stack'] });
+
+    const renderBeatHoverPreview = () => {
+        beatHoverPreviewBody.empty();
+        const enabledFields = (plugin.settings.beatHoverMetadataFields || []).filter(f => f.enabled);
+        const currentBeatAdv = plugin.settings.beatYamlTemplates?.advanced ?? '';
+        const templateObj = safeParseYaml(currentBeatAdv);
+
+        if (!beatYamlEditorExpanded || enabledFields.length === 0) {
+            beatHoverPreviewContainer.toggleClass('ert-settings-hidden', !beatYamlEditorExpanded);
+            beatHoverPreviewHeading.setText('Beat Hover Metadata Preview (none enabled)');
+            beatHoverPreviewBody.createDiv({ text: 'Enable fields using the checkboxes above to show them in beat hover synopsis.', cls: 'ert-hover-preview-empty' });
+            return;
+        }
+        beatHoverPreviewContainer.removeClass('ert-settings-hidden');
+        beatHoverPreviewHeading.setText(`Beat Hover Metadata Preview (${enabledFields.length} field${enabledFields.length > 1 ? 's' : ''})`);
+
+        enabledFields.forEach(field => {
+            const lineEl = beatHoverPreviewBody.createDiv({ cls: 'ert-hover-preview-line' });
+            const iconEl = lineEl.createSpan({ cls: 'ert-hover-preview-icon' });
+            setIcon(iconEl, field.icon || DEFAULT_HOVER_ICON);
+            const value = templateObj[field.key];
+            const valueStr = Array.isArray(value) ? value.join(', ') : (value ?? '');
+            const displayText = valueStr ? `${field.key}: ${valueStr}` : field.key;
+            lineEl.createSpan({ text: displayText, cls: 'ert-hover-preview-text' });
+        });
+    };
+
+    updateBeatHoverPreview = renderBeatHoverPreview;
+    renderBeatHoverPreview();
+
+    // ─── SAVED BEAT SYSTEMS (Pro) ─────────────────────────────────────
+    const savedSystemsSection = beatsStack.createDiv({ cls: ERT_CLASSES.STACK });
+
+    const proActive = isProfessionalActive(plugin);
+
+    const savedHeading = new Settings(savedSystemsSection)
+        .setName('Saved beat systems')
+        .setDesc('Save and switch between multiple custom beat systems. Each system stores beats, custom YAML fields, and hover metadata.');
+    addHeadingIcon(savedHeading, 'library');
+    applyErtHeaderLayout(savedHeading);
+
+    // Pro badge
+    const savedBadge = savedHeading.nameEl.createSpan({ cls: 'ert-badgePill ert-badgePill--pro ert-badgePill--sm' });
+    const savedBadgeIcon = savedBadge.createSpan({ cls: 'ert-badgePill__icon' });
+    setIcon(savedBadgeIcon, 'gem');
+    savedBadge.createSpan({ cls: 'ert-badgePill__text', text: 'Pro' });
+
+    const savedControlsContainer = savedSystemsSection.createDiv({ cls: ['ert-panel', 'ert-saved-beat-systems'] });
+
+    const renderSavedBeatSystems = () => {
+        savedControlsContainer.empty();
+
+        if (!proActive) {
+            savedControlsContainer.addClass('ert-pro-locked');
+            savedControlsContainer.createDiv({ cls: 'ert-pro-locked-hint', text: 'Core includes 1 custom beat system.' });
+        } else {
+            savedControlsContainer.removeClass('ert-pro-locked');
+        }
+
+        const savedSystems: SavedBeatSystem[] = plugin.settings.savedBeatSystems ?? [];
+
+        // Dropdown
+        const selectRow = new Settings(savedControlsContainer)
+            .setName('Load a saved beat system')
+            .addDropdown(drop => {
+                drop.addOption('', savedSystems.length > 0 ? 'Select a system...' : '—');
+                savedSystems.forEach(s => {
+                    drop.addOption(s.id, `${s.name} (${s.beats.length} beats)`);
+                });
+                drop.onChange(value => {
+                    if (!value) return;
+                    const system = savedSystems.find(s => s.id === value);
+                    if (!system) return;
+                    // Atomic load
+                    plugin.settings.customBeatSystemName = system.name;
+                    plugin.settings.customBeatSystemBeats = system.beats.map(b => ({ ...b }));
+                    if (!plugin.settings.beatYamlTemplates) {
+                        plugin.settings.beatYamlTemplates = { base: DEFAULT_SETTINGS.beatYamlTemplates!.base, advanced: '' };
+                    }
+                    plugin.settings.beatYamlTemplates.advanced = system.beatYamlAdvanced ?? '';
+                    plugin.settings.beatHoverMetadataFields = system.beatHoverMetadataFields
+                        ? system.beatHoverMetadataFields.map(f => ({ ...f }))
+                        : [];
+                    void plugin.saveSettings();
+                    new Notice(`Loaded beat system "${system.name}".`);
+                    // Full UI refresh — re-render the entire templates section
+                    renderStoryBeatsSection({ app, plugin, containerEl });
+                });
+            });
+        selectRow.settingEl.addClass('ert-saved-beat-select');
+
+        // Action buttons
+        const actionsRow = savedControlsContainer.createDiv({ cls: 'rt-template-actions' });
+
+        // Save current
+        new ButtonComponent(actionsRow)
+            .setButtonText('Save current system')
+            .onClick(async () => {
+                const currentName = plugin.settings.customBeatSystemName || 'Custom';
+                const currentBeats = (plugin.settings.customBeatSystemBeats || []).map(b => ({ ...b }));
+                const currentAdvanced = plugin.settings.beatYamlTemplates?.advanced ?? '';
+                const currentHoverMeta = (plugin.settings.beatHoverMetadataFields || []).map(f => ({ ...f }));
+
+                if (currentBeats.length === 0) {
+                    new Notice('No beats defined. Add beats before saving.');
+                    return;
+                }
+
+                // Check if a system with this name already exists
+                const existingSystems = plugin.settings.savedBeatSystems ?? [];
+                const existingIdx = existingSystems.findIndex(s => s.name === currentName);
+
+                const newSystem: SavedBeatSystem = {
+                    id: existingIdx >= 0 ? existingSystems[existingIdx].id : `${Date.now()}`,
+                    name: currentName,
+                    beats: currentBeats,
+                    beatYamlAdvanced: currentAdvanced,
+                    beatHoverMetadataFields: currentHoverMeta,
+                    createdAt: new Date().toISOString()
+                };
+
+                if (existingIdx >= 0) {
+                    existingSystems[existingIdx] = newSystem;
+                } else {
+                    existingSystems.unshift(newSystem);
+                }
+                plugin.settings.savedBeatSystems = existingSystems;
+                await plugin.saveSettings();
+                new Notice(`Beat system "${currentName}" ${existingIdx >= 0 ? 'updated' : 'saved'}.`);
+                renderSavedBeatSystems();
+            });
+
+        // Delete selected
+        new ButtonComponent(actionsRow)
+            .setButtonText('Delete selected')
+            .setWarning()
+            .setDisabled(savedSystems.length === 0)
+            .onClick(async () => {
+                const selectEl = savedControlsContainer.querySelector('select') as HTMLSelectElement | null;
+                const selectedId = selectEl?.value;
+                if (!selectedId) {
+                    new Notice('Select a system to delete.');
+                    return;
+                }
+                const system = savedSystems.find(s => s.id === selectedId);
+                if (!system) return;
+                // Confirmation modal (mirrors Book Designer delete pattern)
+                const confirmModal = new Modal(app);
+                confirmModal.contentEl.empty();
+                confirmModal.contentEl.addClass('ert-modal-container', 'ert-stack');
+                const header = confirmModal.contentEl.createDiv({ cls: 'ert-modal-header' });
+                header.createSpan({ cls: 'ert-modal-badge', text: 'BEAT SYSTEM' });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Delete saved system' });
+                header.createDiv({ cls: 'ert-modal-subtitle', text: `Delete "${system.name}"? This cannot be undone.` });
+                const footer = confirmModal.contentEl.createDiv({ cls: 'ert-modal-actions' });
+                new ButtonComponent(footer).setButtonText('Delete').setCta().onClick(async () => {
+                    plugin.settings.savedBeatSystems = savedSystems.filter(s => s.id !== selectedId);
+                    await plugin.saveSettings();
+                    confirmModal.close();
+                    new Notice(`Deleted beat system "${system.name}".`);
+                    renderSavedBeatSystems();
+                });
+                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => confirmModal.close());
+                footer.querySelectorAll('button').forEach(btn => { (btn as HTMLElement).style.cursor = 'pointer'; });
+                confirmModal.open();
+            });
+    };
+
+    renderSavedBeatSystems();
 
     // Scene YAML Templates Section
     const yamlHeading = new Settings(yamlStack)
@@ -1791,12 +2267,13 @@ export function renderStoryBeatsSection(params: {
         if (!result.confirmed) return;
         try {
             const sourcePath = plugin.settings.sourcePath || '';
+            const beatTemplate = getMergedBeatYamlTemplate(plugin.settings);
             const { created, skipped, errors } = await createBeatTemplateNotes(
                 app.vault,
                 storyStructureName,
                 sourcePath,
                 storyStructureName === 'Custom' ? storyStructure : undefined,
-                { actStartNumbers }
+                { actStartNumbers, beatTemplate }
             );
             if (errors.length > 0) {
                 new Notice(`Created ${created} notes. ${skipped} skipped. ${errors.length} errors. Check console.`);

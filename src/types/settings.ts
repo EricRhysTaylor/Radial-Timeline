@@ -29,6 +29,15 @@ export interface BookDesignerTemplate {
     targetPath?: string;
 }
 
+export interface SavedBeatSystem {
+    id: string;
+    name: string;
+    beats: { name: string; act: number }[];
+    beatYamlAdvanced?: string;
+    beatHoverMetadataFields?: HoverMetadataField[];
+    createdAt: string;
+}
+
 export type GlobalPovMode = 'off' | 'first' | 'second' | 'third' | 'omni' | 'objective';
 export type ReadabilityScale = 'normal' | 'large';
 export type RuntimeContentType = 'novel' | 'screenplay' | 'audiobook';
@@ -406,6 +415,14 @@ export interface RadialTimelineSettings {
     showBackdropRing?: boolean;
     chronologueBackdropMicroRings?: ChronologueBackdropMicroRing[];
     hoverMetadataFields?: HoverMetadataField[];
+
+    // Beat YAML Templates (mirrors sceneYamlTemplates)
+    beatYamlTemplates?: {
+        base: string;
+        advanced: string;
+    };
+    beatHoverMetadataFields?: HoverMetadataField[];
+    savedBeatSystems?: SavedBeatSystem[];  // Pro: multiple custom beat systems
 
     // Professional License
     professionalLicenseKey?: string;

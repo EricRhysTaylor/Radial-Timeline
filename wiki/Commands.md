@@ -46,7 +46,7 @@ Type "Radial Timeline" to filter the list.
 | :--- | :--- | :--- |
 | **Scene pulse analysis (manuscript order)** | Runs AI analysis on all scenes sequentially in narrative order. Requires AI features enabled. | [[AI Analysis]] |
 | **Scene pulse analysis (subplot order)** | Runs AI analysis on scenes within a selected subplot. Requires AI features enabled. | [[AI Analysis]] |
-| **Synopsis & Summary Refresh** | Generates AI summaries (and optionally short synopses) for scenes. Requires AI features enabled. | [[AI Analysis]] |
+| **Summary refresh** | Generates AI summaries for Inquiry (target length set in settings, default ≈200–300 words) with optional Synopsis updates for hovers. Requires AI features enabled. | [[AI Analysis]] |
 | **Gossamer score manager** | Opens the score entry modal for manual Gossamer momentum scoring. | [[Gossamer-Mode#manual-entry|Gossamer Mode]] |
 | **Gossamer analysis** | Runs AI evaluation of story beat momentum for Gossamer mode. Requires AI features enabled. | [[Gossamer-Mode#ai-analysis|Gossamer Mode]] |
 
@@ -68,6 +68,6 @@ Type "Radial Timeline" to filter the list.
 
 Some commands only appear in the Command Palette when their required feature is enabled:
 
-*   **AI commands** (Scene pulse analysis, Synopsis & Summary Refresh, Gossamer analysis): Require **AI LLM features** to be enabled in Settings → Core → AI.
+*   **AI commands** (Scene pulse analysis, Summary refresh, Gossamer analysis): Require **AI LLM features** to be enabled in Settings → Core → AI.
 *   **Runtime estimator**: Requires **Pro license** to be active in Settings → Pro.
 *   **Planetary time calculator**: Requires **Planetary time** to be enabled in Settings → Core.

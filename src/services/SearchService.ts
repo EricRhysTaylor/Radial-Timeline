@@ -140,8 +140,11 @@ export class SearchService {
         const planetaryProfile = getActivePlanetaryProfile(this.plugin.settings as any);
         
         this.plugin.getSceneData().then(scenes => {
-            // Get enabled hover metadata fields for search indexing
-            const enabledHoverFields = (this.plugin.settings.hoverMetadataFields || [])
+            // Get enabled hover metadata fields for search indexing (scene + beat lists)
+            const enabledSceneHoverKeys = (this.plugin.settings.hoverMetadataFields || [])
+                .filter(f => f.enabled)
+                .map(f => f.key);
+            const enabledBeatHoverKeys = (this.plugin.settings.beatHoverMetadataFields || [])
                 .filter(f => f.enabled)
                 .map(f => f.key);
             
@@ -161,7 +164,9 @@ export class SearchService {
                     scene["nextSceneAnalysis"]
                 ];
                 
-                // Add enabled custom hover metadata fields to search index
+                // Add enabled custom hover metadata fields to search index (branch by item type)
+                const isBeatItem = scene.itemType === 'Beat' || scene.itemType === 'Plot';
+                const enabledHoverFields = isBeatItem ? enabledBeatHoverKeys : enabledSceneHoverKeys;
                 if (scene.rawFrontmatter && enabledHoverFields.length > 0) {
                     enabledHoverFields.forEach(key => {
                         const val = scene.rawFrontmatter?.[key];

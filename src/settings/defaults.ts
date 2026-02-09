@@ -186,6 +186,16 @@ Type:
 Shift:
 Iteration:`
     },
+    beatYamlTemplates: {
+        base: `Class: Beat
+Act: {{Act}}
+Description: {{Description}}
+Beat Model: {{BeatModel}}
+Range: {{Range}}
+When:
+Gossamer1:`,
+        advanced: ``
+    },
     bookDesignerTemplates: [],
     backdropYamlTemplate: `Class: Backdrop                   # Backdrop events appear below the outer ring in Chronologue Mode
 When: {{When}}                       # Start Date/Time (YYYY-MM-DD HH:MM)
