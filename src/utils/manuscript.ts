@@ -141,24 +141,30 @@ export async function getAllScenes(app: App, plugin: RadialTimelinePlugin): Prom
 
 /**
  * Fetch scene files in a specific order (ignores current mode when explicit order is provided)
+ * @param includeMatter - When true, also includes Frontmatter/Backmatter items (for manuscript export & Longform sync)
  */
 export async function getSceneFilesByOrder(
   app: App,
   plugin: RadialTimelinePlugin,
   order: ManuscriptOrder,
-  subplotFilter?: string
+  subplotFilter?: string,
+  includeMatter?: boolean
 ): Promise<ManuscriptSceneSelection> {
   const allScenes = await plugin.getSceneData();
 
   const uniquePaths = new Set<string>();
   const uniqueScenes = allScenes.filter((scene: TimelineItem) => {
-    // Filter by subplot if specified
-    if (subplotFilter && subplotFilter !== 'All Subplots') {
+    // Filter by subplot if specified (matter notes bypass subplot filter)
+    const isMatter = scene.itemType === 'Frontmatter' || scene.itemType === 'Backmatter';
+    if (!isMatter && subplotFilter && subplotFilter !== 'All Subplots') {
       const sceneSubplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
       if (sceneSubplot !== subplotFilter) return false;
     }
 
-    if (scene.itemType === 'Scene' && scene.path && !uniquePaths.has(scene.path)) {
+    const isAllowedType = scene.itemType === 'Scene'
+        || (includeMatter && isMatter);
+
+    if (isAllowedType && scene.path && !uniquePaths.has(scene.path)) {
       uniquePaths.add(scene.path);
       return true;
     }

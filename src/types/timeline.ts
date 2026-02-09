@@ -28,7 +28,7 @@ export interface TimelineItem {
     "Pulse Update"?: boolean | string;
     "Pulse Last Updated"?: string;
     "Beats Update"?: boolean | string; // legacy compatibility
-    itemType?: "Scene" | "Plot" | "Beat" | "Backdrop";
+    itemType?: "Scene" | "Plot" | "Beat" | "Backdrop" | "Frontmatter" | "Backmatter";
     Description?: string;
     "Beat Model"?: string;
     Range?: string;

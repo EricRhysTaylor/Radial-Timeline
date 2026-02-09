@@ -65,8 +65,8 @@ export async function syncScenesToLongform(plugin: RadialTimelinePlugin): Promis
         return { success: false, indexFile: null, sceneCount: 0, message: `No Longform index file found in "${sourcePath}".` };
     }
 
-    // Get scenes in narrative (prefix-number) order
-    const selection = await getSceneFilesByOrder(plugin.app, plugin, 'narrative');
+    // Get scenes in narrative (prefix-number) order, including front/back matter
+    const selection = await getSceneFilesByOrder(plugin.app, plugin, 'narrative', undefined, true);
 
     // Keep only scenes that live at the source path level and are not the index file
     const prefix = sourcePath.endsWith('/') ? sourcePath : sourcePath + '/';

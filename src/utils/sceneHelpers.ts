@@ -59,12 +59,20 @@ export function isSceneItem(item: TimelineItem | { itemType?: string }): boolean
 }
 
 /**
- * Check if item is NOT an actual scene (is Beat, Plot, or Backdrop)
+ * Check if item is a front-matter or back-matter note (Class: Frontmatter / Backmatter).
+ * These are included in manuscript export / Longform sync but excluded from timeline stats.
+ */
+export function isMatterNote(item: TimelineItem | { itemType?: string }): boolean {
+    return item.itemType === 'Frontmatter' || item.itemType === 'Backmatter';
+}
+
+/**
+ * Check if item is NOT an actual scene (is Beat, Plot, Backdrop, Frontmatter, or Backmatter)
  * Only scenes should be counted in grid statistics, runtime, etc.
  * Use this for filtering when you only want to process writable scene content.
  */
 export function isNonSceneItem(item: TimelineItem | { itemType?: string }): boolean {
-    return isBeatNote(item) || item.itemType === 'Backdrop';
+    return isBeatNote(item) || item.itemType === 'Backdrop' || isMatterNote(item);
 }
 
 /**

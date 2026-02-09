@@ -251,6 +251,17 @@ export class SceneDataService {
                         // No subplot assignment - rendered in special Backdrop Ring
                     });
 
+                } else if (metadata && (metadata.Class === "Frontmatter" || metadata.Class === "Backmatter")) {
+                    // Front-matter / back-matter notes – included in manuscript pipeline,
+                    // excluded from timeline stats via isNonSceneItem().
+                    scenes.push({
+                        date: '',
+                        path: file.path,
+                        title: file.basename,
+                        itemType: metadata.Class as "Frontmatter" | "Backmatter",
+                        rawFrontmatter: metadata
+                    });
+
                 } else if (metadata && isStoryBeat(metadata.Class)) {
                     // Defer processing of Plot/Beat items until after all scenes are collected
                     const actValue = metadata.Act;

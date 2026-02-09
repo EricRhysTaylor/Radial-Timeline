@@ -100,6 +100,38 @@ export class CommandRegistrar {
         });
 
         this.plugin.addCommand({
+            id: 'create-screenplay-scene-note',
+            name: 'Create screenplay scene note',
+            callback: async () => {
+                await this.createSceneNote('screenplay');
+            }
+        });
+
+        this.plugin.addCommand({
+            id: 'create-podcast-scene-note',
+            name: 'Create podcast scene note',
+            callback: async () => {
+                await this.createSceneNote('podcast');
+            }
+        });
+
+        this.plugin.addCommand({
+            id: 'create-frontmatter-note',
+            name: 'Create front matter note',
+            callback: async () => {
+                await this.createMatterNote('Frontmatter');
+            }
+        });
+
+        this.plugin.addCommand({
+            id: 'create-backmatter-note',
+            name: 'Create back matter note',
+            callback: async () => {
+                await this.createMatterNote('Backmatter');
+            }
+        });
+
+        this.plugin.addCommand({
             id: 'create-backdrop-note',
             name: 'Create backdrop note',
             callback: async () => {
@@ -180,7 +212,7 @@ export class CommandRegistrar {
         }
 
         try {
-            const scenes = await getSceneFilesByOrder(this.app, this.plugin, result.order);
+            const scenes = await getSceneFilesByOrder(this.app, this.plugin, result.order, undefined, true);
             const selection: ManuscriptSceneSelection = {
                 files: scenes.files,
                 titles: scenes.titles,
@@ -347,9 +379,9 @@ export class CommandRegistrar {
     }
 
     /**
-     * Create a new scene note with either basic or advanced YAML template.
+     * Create a new scene note with basic, advanced, screenplay, or podcast template.
      */
-    private async createSceneNote(type: 'base' | 'advanced'): Promise<void> {
+    private async createSceneNote(type: 'base' | 'advanced' | 'screenplay' | 'podcast'): Promise<void> {
         const sourcePath = this.plugin.settings.sourcePath || '';
         if (!sourcePath) {
             new Notice('Please set a source path in settings first.');
@@ -358,7 +390,14 @@ export class CommandRegistrar {
 
         try {
             const sanitizedPath = sanitizeSourcePath(sourcePath);
-            const defaultName = type === 'advanced' ? 'Advanced Scene.md' : 'Basic Scene.md';
+
+            const nameMap: Record<string, string> = {
+                base: 'Basic Scene.md',
+                advanced: 'Advanced Scene.md',
+                screenplay: 'Screenplay Scene.md',
+                podcast: 'Podcast Scene.md'
+            };
+            const defaultName = nameMap[type] || 'Basic Scene.md';
             const filename = buildInitialSceneFilename(defaultName);
             const folder = this.app.vault.getAbstractFileByPath(sanitizedPath);
 
@@ -378,29 +417,93 @@ export class CommandRegistrar {
                 ? mergeTemplates(baseTemplate, advancedFields)
                 : baseTemplate;
 
-            // Generate content with default placeholder values
+            // Default placeholder values — screenplay/podcast pre-fill Runtime
+            const today = new Date().toISOString().split('T')[0];
             const content = generateSceneContent(template, {
                 act: 1,
-                when: new Date().toISOString().split('T')[0],
+                when: today,
                 sceneNumber: 1,
                 subplots: ['Main Plot'],
-                character: 'Hero',
-                place: 'Unknown',
-                characterList: ['Hero'],
-                placeList: ['Unknown']
+                character: type === 'podcast' ? 'HOST' : 'Hero',
+                place: type === 'screenplay' ? 'INT. LOCATION' : 'Unknown',
+                characterList: type === 'podcast' ? ['HOST', 'GUEST'] : ['Hero'],
+                placeList: type === 'screenplay' ? ['INT. LOCATION'] : ['Unknown']
             });
 
             // Ensure the content has Class: Scene if not already present
-            const finalContent = ensureClassScene(content);
-            const fileContent = `---\n${finalContent}\n---\n\n`;
+            let finalContent = ensureClassScene(content);
+
+            // Pre-fill Runtime for screenplay/podcast
+            if (type === 'screenplay') {
+                finalContent = finalContent.replace(/^(Runtime:)\s*$/m, '$1 3:00');
+            } else if (type === 'podcast') {
+                finalContent = finalContent.replace(/^(Runtime:)\s*$/m, '$1 8:00');
+            }
+
+            // Build file content: YAML frontmatter + format-specific body scaffold
+            let body = '';
+            if (type === 'screenplay') {
+                body = SCREENPLAY_BODY_SCAFFOLD;
+            } else if (type === 'podcast') {
+                body = PODCAST_BODY_SCAFFOLD;
+            }
+
+            const fileContent = `---\n${finalContent}\n---\n\n${body}`;
 
             const newFile = await this.app.vault.create(path, fileContent);
             const leaf = this.app.workspace.getLeaf(true);
             await leaf.openFile(newFile);
-            new Notice(`Created ${type === 'advanced' ? 'advanced' : 'basic'} scene note: ${filename}`);
+
+            const labelMap: Record<string, string> = {
+                base: 'basic', advanced: 'advanced', screenplay: 'screenplay', podcast: 'podcast'
+            };
+            new Notice(`Created ${labelMap[type]} scene note: ${filename}`);
         } catch (error) {
             const msg = (error as any)?.message || String(error);
             new Notice('Failed to create scene note: ' + msg);
+        }
+    }
+
+    /**
+     * Create a new front-matter or back-matter note.
+     */
+    private async createMatterNote(classValue: 'Frontmatter' | 'Backmatter'): Promise<void> {
+        const sourcePath = this.plugin.settings.sourcePath || '';
+        if (!sourcePath) {
+            new Notice('Please set a source path in settings first.');
+            return;
+        }
+
+        try {
+            const sanitizedPath = sanitizeSourcePath(sourcePath);
+            const isFront = classValue === 'Frontmatter';
+            const defaultPrefix = isFront ? '0.1' : '200.1';
+            const defaultLabel = isFront ? 'Front Matter' : 'Back Matter';
+            const defaultName = `${defaultPrefix} ${defaultLabel}.md`;
+            const filename = buildInitialSceneFilename(defaultName);
+            const folder = this.app.vault.getAbstractFileByPath(sanitizedPath);
+
+            if (!folder) {
+                await this.app.vault.createFolder(sanitizedPath);
+            }
+
+            const filePath = `${sanitizedPath}/${filename}`;
+
+            const yaml = [
+                `Class: ${classValue}`,
+                'Act: 1',
+                'Status: Todo'
+            ].join('\n');
+
+            const fileContent = `---\n${yaml}\n---\n\n`;
+
+            const newFile = await this.app.vault.create(filePath, fileContent);
+            const leaf = this.app.workspace.getLeaf(true);
+            await leaf.openFile(newFile);
+            new Notice(`Created ${defaultLabel.toLowerCase()} note: ${filename}`);
+        } catch (error) {
+            const msg = (error as any)?.message || String(error);
+            new Notice(`Failed to create ${classValue.toLowerCase()} note: ${msg}`);
         }
     }
 
@@ -449,6 +552,43 @@ export class CommandRegistrar {
     }
 
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BODY SCAFFOLDS — appended after YAML frontmatter for format-specific scenes
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const SCREENPLAY_BODY_SCAFFOLD = [
+    'INT. LOCATION - DAY',
+    '',
+    'Action description.',
+    '',
+    '                    CHARACTER',
+    '          Dialogue here.',
+    '',
+    ''
+].join('\n');
+
+const PODCAST_BODY_SCAFFOLD = [
+    '[SEGMENT: INTRODUCTION - 0:00]',
+    '',
+    'HOST: Opening line.',
+    '',
+    '[SFX: Theme music]',
+    '',
+    '[SEGMENT: MAIN DISCUSSION - 2:00]',
+    '',
+    'HOST: Question or transition.',
+    '',
+    'GUEST: Response.',
+    '',
+    '[SEGMENT: CLOSING]',
+    '',
+    'HOST: Closing remarks.',
+    '',
+    '[END]',
+    '',
+    ''
+].join('\n');
 
 function ensureClassScene(template: string): string {
     const lines = template.split('\n');
