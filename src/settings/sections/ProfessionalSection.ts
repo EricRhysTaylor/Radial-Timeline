@@ -12,6 +12,8 @@ import { ERT_CLASSES } from '../../ui/classes';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { execFile } from 'child_process'; // SAFE: Node child_process for system path scanning
 import { findLongformIndex, syncScenesToLongform } from '../../longform/LongformSyncService';
+import { generateSceneContent } from '../../utils/sceneGenerator';
+import { DEFAULT_SETTINGS } from '../defaults';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SYSTEM PATH SCANNING
@@ -208,9 +210,10 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin): Promise<st
     const vault = plugin.app.vault;
     const baseFolder = plugin.settings.manuscriptOutputFolder || 'Radial Timeline/Export';
     const templatesFolder = normalizePath(`${baseFolder}/Templates`);
+    const pandocFolder = normalizePath(plugin.settings.pandocFolder || 'Pandoc');
 
     // Ensure folders exist
-    for (const folder of [baseFolder, templatesFolder]) {
+    for (const folder of [baseFolder, templatesFolder, pandocFolder]) {
         const normalized = normalizePath(folder);
         if (!vault.getAbstractFileByPath(normalized)) {
             await vault.createFolder(normalized);
@@ -219,187 +222,211 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin): Promise<st
 
     const createdFiles: string[] = [];
 
-    // ── Sample Scene Files ──────────────────────────────────────────────────
+    // ── Sample Scene Files (using canonical base YAML template) ────────────
+    // Get the canonical base template (single source of truth)
+    const templates = plugin.settings.sceneYamlTemplates || DEFAULT_SETTINGS.sceneYamlTemplates;
+    const baseTemplate = templates?.base || DEFAULT_SETTINGS.sceneYamlTemplates!.base;
+
+    // Helper: generate YAML frontmatter from the canonical template, then
+    // patch individual field values that differ per format.
+    const patchYaml = (yaml: string, overrides: Record<string, string>): string => {
+        let result = yaml;
+        for (const [field, value] of Object.entries(overrides)) {
+            // Replace "FieldName:" or "FieldName: <existing>" with "FieldName: <value>"
+            result = result.replace(
+                new RegExp(`^(${field}:).*$`, 'm'),
+                value ? `$1 ${value}` : `$1`
+            );
+        }
+        return result;
+    };
+
+    // Generate canonical YAML for each format, then patch format-specific defaults
+    const screenplayData = {
+        act: 1, when: '2024-01-15', sceneNumber: 1,
+        subplots: ['Main Plot'], character: 'JANE, MIKE', place: ''
+    };
+    const screenplayYaml = patchYaml(
+        generateSceneContent(baseTemplate, screenplayData),
+        {
+            Synopsis: 'Jane meets detective Mike at a coffee shop to discuss the Henderson case.',
+            POV: 'Jane',
+            Runtime: '3:00',
+            Status: 'Working'
+        }
+    );
+
+    const podcastData = {
+        act: 1, when: '2024-01-15', sceneNumber: 1,
+        subplots: ['Main Plot'], character: 'HOST, GUEST', place: ''
+    };
+    const podcastYaml = patchYaml(
+        generateSceneContent(baseTemplate, podcastData),
+        {
+            Synopsis: 'Introduction and interview with Dr. Sarah Chen about AI and creativity.',
+            Runtime: '8:00',
+            Status: 'Working'
+        }
+    );
+
+    const novelData = {
+        act: 1, when: '2024-01-15', sceneNumber: 1,
+        subplots: ['Main Plot'], character: 'Emma, Thomas', place: ''
+    };
+    const novelYaml = patchYaml(
+        generateSceneContent(baseTemplate, novelData),
+        {
+            Synopsis: 'Emma discovers a hidden key inside a hollowed-out book in the old library.',
+            POV: 'Emma',
+            Status: 'Working'
+        }
+    );
+
+    // Body text for each format (unchanged — only YAML generation was canonicalized)
+    const screenplayBody = [
+        'INT. COFFEE SHOP - DAY',
+        '',
+        'A bustling downtown coffee shop. Morning rush hour. JANE (30s, determined) sits at a corner table with her laptop open.',
+        '',
+        'MIKE (40s, world-weary detective) enters, scans the room, spots her.',
+        '',
+        '                    MIKE',
+        '          You Jane?',
+        '',
+        '                    JANE',
+        '              (without looking up)',
+        '          Depends who\'s asking.',
+        '',
+        'Mike slides into the seat across from her.',
+        '',
+        '                    MIKE',
+        '          I\'m the guy with answers.',
+        '',
+        '                    JANE',
+        '          Then you\'re exactly who I need.',
+        '',
+        'She closes the laptop, meets his eyes for the first time.',
+        '',
+        '                    JANE (CONT\'D)',
+        '          Tell me about the Henderson case.',
+        '',
+        'Mike\'s expression darkens.',
+        '',
+        '                    MIKE',
+        '          That\'s not a door you want to open.',
+        '',
+        '                    JANE',
+        '              (leaning forward)',
+        '          Try me.',
+        '',
+        'BEAT. Mike glances around, lowers his voice.',
+        '',
+        '                    MIKE',
+        '          Alright. But not here.',
+        '',
+        'He stands, drops a business card on the table.',
+        '',
+        '                    MIKE (CONT\'D)',
+        '          Warehouse district. Pier 9. Tomorrow',
+        '          at midnight.',
+        '',
+        'He walks out. Jane picks up the card, studies it.',
+        '',
+        'FADE OUT.'
+    ].join('\n');
+
+    const podcastBody = [
+        '[SEGMENT: INTRODUCTION - 0:00]',
+        '',
+        'HOST: Welcome back to The Deep Dive, where we explore the stories behind the headlines. I\'m your host, Alex Rivera.',
+        '',
+        '[SFX: Theme music fades]',
+        '',
+        'HOST: Today we\'re talking about the rise of artificial intelligence in creative industries. With me is Dr. Sarah Chen, author of "The Algorithmic Muse."',
+        '',
+        'GUEST: Thanks for having me, Alex.',
+        '',
+        'HOST: So, Sarah, let\'s start with the big question everyone\'s asking — can AI really be creative?',
+        '',
+        'GUEST: That\'s the million-dollar question, isn\'t it? But I think we\'re asking it wrong.',
+        '',
+        'HOST: How so?',
+        '',
+        'GUEST: Instead of asking "can AI be creative," we should ask "what kind of creativity are we talking about?"',
+        '',
+        '[TIMING: 2:30]',
+        '',
+        '[SEGMENT: MAIN DISCUSSION - 2:30]',
+        '',
+        'HOST: Walk us through that distinction.',
+        '',
+        'GUEST: Well, there\'s creativity as originality — making something genuinely new. And then there\'s creativity as craft — executing an idea with skill. AI excels at the second, but the first? That\'s still very much a human domain.',
+        '',
+        'HOST: Give us an example.',
+        '',
+        'GUEST: An AI can generate a sonnet in seconds. Technically perfect. But ask it to capture the feeling of watching your child leave for college? That emotional truth — that\'s where humans still reign supreme.',
+        '',
+        '[TIMING: 5:00]',
+        '',
+        '[SEGMENT: CLOSING - 5:00]',
+        '',
+        'HOST: We\'re almost out of time, but I have to ask — what keeps you up at night about AI and creativity?',
+        '',
+        'GUEST: That we\'ll mistake efficiency for artistry. That we\'ll prioritize the quick over the meaningful.',
+        '',
+        'HOST: A perfect note to end on. Dr. Sarah Chen, thank you.',
+        '',
+        'GUEST: Thank you, Alex.',
+        '',
+        '[SFX: Theme music]',
+        '',
+        'HOST: That\'s it for this episode. Join us next week when we explore the ethics of synthetic media. Until then, keep diving deep.',
+        '',
+        '[END]'
+    ].join('\n');
+
+    const novelBody = [
+        'The late afternoon sun filtered through the dusty windows of the old library, casting long shadows across the wooden floors. Emma ran her fingers along the spine of a leather-bound volume, feeling the familiar comfort of aged paper and binding glue.',
+        '',
+        '"You know you can\'t stay here forever," Thomas said from the doorway.',
+        '',
+        'She didn\'t turn around. "Watch me."',
+        '',
+        'He walked closer, his footsteps echoing in the empty reading room. "The demolition crew arrives Monday. This place will be rubble by Wednesday."',
+        '',
+        '"Then I have until Monday." Emma pulled the book from the shelf, opened it to reveal hollowed-out pages. Inside: a small brass key.',
+        '',
+        'Thomas leaned over her shoulder. "What is that?"',
+        '',
+        '"The reason they want this building torn down." She held the key up to the light, watching it glint. "The reason my grandfather died."',
+        '',
+        '"Emma—"',
+        '',
+        '"Don\'t." She closed the book, tucked it under her arm. "Don\'t tell me to let it go. Don\'t tell me it\'s not worth it."',
+        '',
+        'Thomas studied her face: the determined set of her jaw, the fire in her eyes that had been absent for so long. He sighed.',
+        '',
+        '"What do you need me to do?"',
+        '',
+        'She smiled for the first time in weeks. "Help me find what this key opens."',
+        '',
+        'Outside, the shadows grew longer. Somewhere in the building, old floorboards creaked. Emma and Thomas didn\'t notice. They were already lost in the hunt, following a trail of clues that would lead them into the heart of a decades-old conspiracy.',
+        '',
+        'The library held its secrets close, but not for much longer.'
+    ].join('\n');
+
     const sampleScenes: { name: string; content: string }[] = [
         {
             name: 'Sample Screenplay Scene.md',
-            content: [
-                '---',
-                'Class: Scene',
-                'Act: 1',
-                'When: 2024-01-15',
-                'Duration: 1 hour',
-                'Synopsis: Jane meets detective Mike at a coffee shop to discuss the Henderson case.',
-                'Subplot: Main Plot',
-                'Character: JANE, MIKE',
-                'POV: Jane',
-                'Words:',
-                'Runtime: 3:00',
-                'Status: Working',
-                '---',
-                '',
-                'INT. COFFEE SHOP - DAY',
-                '',
-                'A bustling downtown coffee shop. Morning rush hour. JANE (30s, determined) sits at a corner table with her laptop open.',
-                '',
-                'MIKE (40s, world-weary detective) enters, scans the room, spots her.',
-                '',
-                '                    MIKE',
-                '          You Jane?',
-                '',
-                '                    JANE',
-                '              (without looking up)',
-                '          Depends who\'s asking.',
-                '',
-                'Mike slides into the seat across from her.',
-                '',
-                '                    MIKE',
-                '          I\'m the guy with answers.',
-                '',
-                '                    JANE',
-                '          Then you\'re exactly who I need.',
-                '',
-                'She closes the laptop, meets his eyes for the first time.',
-                '',
-                '                    JANE (CONT\'D)',
-                '          Tell me about the Henderson case.',
-                '',
-                'Mike\'s expression darkens.',
-                '',
-                '                    MIKE',
-                '          That\'s not a door you want to open.',
-                '',
-                '                    JANE',
-                '              (leaning forward)',
-                '          Try me.',
-                '',
-                'BEAT. Mike glances around, lowers his voice.',
-                '',
-                '                    MIKE',
-                '          Alright. But not here.',
-                '',
-                'He stands, drops a business card on the table.',
-                '',
-                '                    MIKE (CONT\'D)',
-                '          Warehouse district. Pier 9. Tomorrow',
-                '          at midnight.',
-                '',
-                'He walks out. Jane picks up the card, studies it.',
-                '',
-                'FADE OUT.'
-            ].join('\n')
+            content: `---\n${screenplayYaml}\n---\n\n${screenplayBody}`
         },
         {
             name: 'Sample Podcast Scene.md',
-            content: [
-                '---',
-                'Class: Scene',
-                'Act: 1',
-                'When: 2024-01-15',
-                'Duration: 1 hour',
-                'Synopsis: Introduction and interview with Dr. Sarah Chen about AI and creativity.',
-                'Subplot: Main Plot',
-                'Character: HOST, GUEST',
-                'POV:',
-                'Words:',
-                'Runtime: 8:00',
-                'Status: Working',
-                '---',
-                '',
-                '[SEGMENT: INTRODUCTION - 0:00]',
-                '',
-                'HOST: Welcome back to The Deep Dive, where we explore the stories behind the headlines. I\'m your host, Alex Rivera.',
-                '',
-                '[SFX: Theme music fades]',
-                '',
-                'HOST: Today we\'re talking about the rise of artificial intelligence in creative industries. With me is Dr. Sarah Chen, author of "The Algorithmic Muse."',
-                '',
-                'GUEST: Thanks for having me, Alex.',
-                '',
-                'HOST: So, Sarah, let\'s start with the big question everyone\'s asking — can AI really be creative?',
-                '',
-                'GUEST: That\'s the million-dollar question, isn\'t it? But I think we\'re asking it wrong.',
-                '',
-                'HOST: How so?',
-                '',
-                'GUEST: Instead of asking "can AI be creative," we should ask "what kind of creativity are we talking about?"',
-                '',
-                '[TIMING: 2:30]',
-                '',
-                '[SEGMENT: MAIN DISCUSSION - 2:30]',
-                '',
-                'HOST: Walk us through that distinction.',
-                '',
-                'GUEST: Well, there\'s creativity as originality — making something genuinely new. And then there\'s creativity as craft — executing an idea with skill. AI excels at the second, but the first? That\'s still very much a human domain.',
-                '',
-                'HOST: Give us an example.',
-                '',
-                'GUEST: An AI can generate a sonnet in seconds. Technically perfect. But ask it to capture the feeling of watching your child leave for college? That emotional truth — that\'s where humans still reign supreme.',
-                '',
-                '[TIMING: 5:00]',
-                '',
-                '[SEGMENT: CLOSING - 5:00]',
-                '',
-                'HOST: We\'re almost out of time, but I have to ask — what keeps you up at night about AI and creativity?',
-                '',
-                'GUEST: That we\'ll mistake efficiency for artistry. That we\'ll prioritize the quick over the meaningful.',
-                '',
-                'HOST: A perfect note to end on. Dr. Sarah Chen, thank you.',
-                '',
-                'GUEST: Thank you, Alex.',
-                '',
-                '[SFX: Theme music]',
-                '',
-                'HOST: That\'s it for this episode. Join us next week when we explore the ethics of synthetic media. Until then, keep diving deep.',
-                '',
-                '[END]'
-            ].join('\n')
+            content: `---\n${podcastYaml}\n---\n\n${podcastBody}`
         },
         {
             name: 'Sample Novel Scene.md',
-            content: [
-                '---',
-                'Class: Scene',
-                'Act: 1',
-                'When: 2024-01-15',
-                'Duration: 1 hour',
-                'Synopsis: Emma discovers a hidden key inside a hollowed-out book in the old library.',
-                'Subplot: Main Plot',
-                'Character: Emma, Thomas',
-                'POV: Emma',
-                'Words:',
-                'Runtime:',
-                'Status: Working',
-                '---',
-                '',
-                'The late afternoon sun filtered through the dusty windows of the old library, casting long shadows across the wooden floors. Emma ran her fingers along the spine of a leather-bound volume, feeling the familiar comfort of aged paper and binding glue.',
-                '',
-                '"You know you can\'t stay here forever," Thomas said from the doorway.',
-                '',
-                'She didn\'t turn around. "Watch me."',
-                '',
-                'He walked closer, his footsteps echoing in the empty reading room. "The demolition crew arrives Monday. This place will be rubble by Wednesday."',
-                '',
-                '"Then I have until Monday." Emma pulled the book from the shelf, opened it to reveal hollowed-out pages. Inside: a small brass key.',
-                '',
-                'Thomas leaned over her shoulder. "What is that?"',
-                '',
-                '"The reason they want this building torn down." She held the key up to the light, watching it glint. "The reason my grandfather died."',
-                '',
-                '"Emma—"',
-                '',
-                '"Don\'t." She closed the book, tucked it under her arm. "Don\'t tell me to let it go. Don\'t tell me it\'s not worth it."',
-                '',
-                'Thomas studied her face: the determined set of her jaw, the fire in her eyes that had been absent for so long. He sighed.',
-                '',
-                '"What do you need me to do?"',
-                '',
-                'She smiled for the first time in weeks. "Help me find what this key opens."',
-                '',
-                'Outside, the shadows grew longer. Somewhere in the building, old floorboards creaked. Emma and Thomas didn\'t notice. They were already lost in the hunt, following a trail of clues that would lead them into the heart of a decades-old conspiracy.',
-                '',
-                'The library held its secrets close, but not for much longer.'
-            ].join('\n')
+            content: `---\n${novelYaml}\n---\n\n${novelBody}`
         }
     ];
 
@@ -515,19 +542,19 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin): Promise<st
     }
 
     for (const template of latexTemplates) {
-        const filePath = normalizePath(`${templatesFolder}/${template.name}`);
+        const filePath = normalizePath(`${pandocFolder}/${template.name}`);
         if (!vault.getAbstractFileByPath(filePath)) {
             await vault.create(filePath, template.content);
             createdFiles.push(template.name);
         }
     }
 
-    // Auto-configure template paths in settings
+    // Auto-configure template paths to point to Pandoc folder
     plugin.settings.pandocTemplates = {
         ...plugin.settings.pandocTemplates,
-        screenplay: normalizePath(`${templatesFolder}/screenplay_template.tex`),
-        podcast: normalizePath(`${templatesFolder}/podcast_template.tex`),
-        novel: normalizePath(`${templatesFolder}/novel_template.tex`)
+        screenplay: normalizePath(`${pandocFolder}/screenplay_template.tex`),
+        podcast: normalizePath(`${pandocFolder}/podcast_template.tex`),
+        novel: normalizePath(`${pandocFolder}/novel_template.tex`)
     };
     await plugin.saveSettings();
 
@@ -770,7 +797,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         .setName('Pandoc & LaTeX')
         .setDesc(defaultDesc)
         .addText(text => {
-            text.inputEl.addClass('ert-input--xl');
+            text.inputEl.addClass('ert-input--lg');
             text.setPlaceholder('/usr/local/bin/pandoc');
             text.setValue(plugin.settings.pandocPath || '');
             pandocPathInputEl = text.inputEl;
@@ -855,6 +882,43 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                 const normalizedPath = value ? normalizePath(value) : '';
                 plugin.settings.pandocFallbackPath = normalizedPath;
                 await plugin.saveSettings();
+            });
+        });
+
+    // ── Pandoc Folder ─────────────────────────────────────────────────────
+    addProRow(new Setting(pandocPanel))
+        .setName('Pandoc folder')
+        .setDesc('Vault folder for Pandoc LaTeX templates and compile scripts (e.g. .tex, .js).')
+        .addText(text => {
+            text.inputEl.addClass('ert-input--lg');
+            text.setPlaceholder('Pandoc');
+            text.setValue(plugin.settings.pandocFolder || 'Pandoc');
+
+            const saveAndValidateFolder = async () => {
+                const raw = text.getValue().trim();
+                const normalized = raw ? normalizePath(raw) : '';
+                plugin.settings.pandocFolder = normalized;
+                await plugin.saveSettings();
+
+                // Flash validate: check if folder exists in the vault
+                text.inputEl.removeClass('ert-input--flash-success', 'ert-input--flash-error');
+                void text.inputEl.offsetWidth;
+                if (normalized) {
+                    const folder = plugin.app.vault.getAbstractFileByPath(normalized);
+                    const cls = (folder && folder instanceof TFolder)
+                        ? 'ert-input--flash-success'
+                        : 'ert-input--flash-error';
+                    text.inputEl.addClass(cls);
+                    setTimeout(() => { text.inputEl.removeClass(cls); }, 1700);
+                }
+            };
+
+            plugin.registerDomEvent(text.inputEl, 'blur', saveAndValidateFolder);
+            plugin.registerDomEvent(text.inputEl, 'keydown', (e: KeyboardEvent) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveAndValidateFolder();
+                }
             });
         });
 
@@ -950,7 +1014,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                 try {
                     const created = await generateSampleTemplates(plugin);
                     if (created.length > 0) {
-                        new Notice(`Created ${created.length} sample files in Export/Templates. Template paths configured.`);
+                        new Notice(`Created ${created.length} sample files. Scenes → Export/Templates, LaTeX → ${plugin.settings.pandocFolder || 'Pandoc'}/. Template paths configured.`);
                     } else {
                         new Notice('All sample files already exist. Template paths updated.');
                     }

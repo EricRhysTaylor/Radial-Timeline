@@ -244,6 +244,7 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
     pandocPath: '',
     pandocEnableFallback: false,
     pandocFallbackPath: '',
+    pandocFolder: 'Pandoc',
     pandocTemplates: {
         screenplay: '',
         podcast: '',

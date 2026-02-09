@@ -13,6 +13,56 @@ interface WelcomeScreenParams {
     refreshTimeline: () => void;
 }
 
+const WELCOME_COPY = {
+    introLine1: 'Radial Timeline is a concise visualization system to organize and structure a scene-based story or creative work as a dynamic, ever-changing body of work. Try it for novels, sagas, screenplays, podcasts or YouTube scripts—fiction or non-fiction.',
+    introLine2: 'Get your feet wet by creating your first scene. See it appear in the timeline.',
+    actions: {
+        primary: 'Create your first scene',
+        secondary: 'Design a story framework',
+        tertiary: 'How scenes, structure, and the timeline work'
+    },
+    stepsHeading: 'Start in three steps:',
+    step1: {
+        title: '1. Create your first scene',
+        body: 'Start a scene so you have a place to write. Choose where your scenes live in your vault, then create your first scene note.',
+        note: '(This folder is called the Source path in Settings \u2192 Core \u2192 General.)'
+    },
+    step2: {
+        title: '2. Write prose immediately',
+        body: 'Open the scene and start writing. You can leave scene details blank until you need them.'
+    },
+    step3: {
+        title: '3. Shape the story structure',
+        bullets: [
+            {
+                title: 'Design the framework',
+                body: ' \u2014 Use Book Designer to set up acts, subplots, characters, and optional beats as a starting point.'
+            },
+            {
+                title: 'Refine structure later',
+                body: ' \u2014 Adjust acts and beats anytime in Settings \u2192 Core.'
+            }
+        ]
+    },
+    reorderNote: 'Scenes and beats can be conveniently dragged into a new order in Narrative mode.'
+} as const;
+
+const WELCOME_LINKS = {
+    scenesStructureTimeline: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Scenes-Structure-Timeline'
+} as const;
+
+const WELCOME_ICONS = {
+    primary: 'file-plus',
+    secondary: 'layers',
+    tertiary: 'info'
+} as const;
+
+const addButtonIcon = (buttonEl: HTMLButtonElement, iconName: string): void => {
+    const icon = buttonEl.createSpan({ cls: 'rt-welcome-button-icon' });
+    buttonEl.prepend(icon);
+    setIcon(icon, iconName);
+};
+
 export function renderWelcomeScreen({ container, plugin, refreshTimeline }: WelcomeScreenParams): void {
     container.addClass('rt-welcome-view');
 
@@ -23,70 +73,83 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     // Huge Welcome Title (custom styled block, not an H1)
     container.createDiv({ cls: 'rt-welcome-title', text: 'Welcome' });
 
-    // Book Designer button — prominent CTA right below the title
-    const topActions = container.createDiv({ cls: 'rt-welcome-actions' });
-    const bookBtn = new ButtonComponent(topActions)
-        .setButtonText('Book Designer')
+    const body = container.createDiv({ cls: 'rt-welcome-body' });
+
+    body.createEl('p', {
+        cls: 'rt-welcome-paragraph',
+        text: WELCOME_COPY.introLine1
+    });
+
+    body.createEl('p', {
+        cls: 'rt-welcome-paragraph',
+        text: WELCOME_COPY.introLine2
+    });
+
+    // Primary + secondary actions
+    const topActions = body.createDiv({ cls: 'rt-welcome-actions' });
+
+    const createSceneBtn = new ButtonComponent(topActions)
+        .setButtonText(WELCOME_COPY.actions.primary)
         .setCta()
+        .onClick(() => {
+            const commandManager = (plugin.app as unknown as { commands?: { executeCommandById?: (id: string) => void } }).commands;
+            commandManager?.executeCommandById?.('radial-timeline:create-basic-scene-note');
+        });
+    createSceneBtn.buttonEl.classList.add('rt-welcome-primary-btn', 'rt-welcome-action-btn');
+    addButtonIcon(createSceneBtn.buttonEl, WELCOME_ICONS.primary);
+
+    const frameworkBtn = new ButtonComponent(topActions)
+        .setButtonText(WELCOME_COPY.actions.secondary)
         .onClick(() => {
             new BookDesignerModal(plugin.app, plugin).open();
         });
-    bookBtn.buttonEl.classList.add('rt-welcome-book-btn');
+    frameworkBtn.buttonEl.classList.add('rt-welcome-action-btn');
+    addButtonIcon(frameworkBtn.buttonEl, WELCOME_ICONS.secondary);
 
-    const body = container.createDiv({ cls: 'rt-welcome-body' });
+    const learnBtn = new ButtonComponent(topActions)
+        .setButtonText(WELCOME_COPY.actions.tertiary)
+        .onClick(() => {
+            window.open(WELCOME_LINKS.scenesStructureTimeline, '_blank');
+        });
+    learnBtn.buttonEl.classList.add('rt-welcome-action-btn');
+    addButtonIcon(learnBtn.buttonEl, WELCOME_ICONS.tertiary);
 
     // Quick-start heading
     body.createEl('p', {
         cls: 'rt-welcome-paragraph',
-        text: 'Get started in a few steps:'
+        text: WELCOME_COPY.stepsHeading
     });
 
-    // Step 1: Source path
+    // Step 1: Create your first scene
     const step1 = body.createDiv({ cls: 'rt-welcome-step' });
-    step1.createEl('h3', { cls: 'rt-welcome-step-title', text: '1. Set your source path' });
+    step1.createEl('h3', { cls: 'rt-welcome-step-title', text: WELCOME_COPY.step1.title });
     const step1Text = step1.createEl('p', { cls: 'rt-welcome-paragraph' });
-    step1Text.createSpan({ text: 'Point Radial Timeline at the folder containing (or that will contain) your manuscript scene files. Go to ' });
-    step1Text.createEl('strong', { text: 'Settings \u2192 Core \u2192 General \u2192 Source path' });
+    step1Text.createSpan({ text: WELCOME_COPY.step1.body });
+    step1.createEl('p', { cls: 'rt-welcome-paragraph rt-welcome-footnote', text: WELCOME_COPY.step1.note });
 
-    // Step 2: Create scenes
+    // Step 2: Write prose immediately
     const step2 = body.createDiv({ cls: 'rt-welcome-step' });
-    step2.createEl('h3', { cls: 'rt-welcome-step-title', text: '2. Create scenes' });
-    const step2List = step2.createEl('ul', { cls: 'rt-welcome-list' });
+    step2.createEl('h3', { cls: 'rt-welcome-step-title', text: WELCOME_COPY.step2.title });
+    const step2Text = step2.createEl('p', { cls: 'rt-welcome-paragraph' });
+    step2Text.createSpan({ text: WELCOME_COPY.step2.body });
 
-    const bookLi = step2List.createEl('li');
-    bookLi.createEl('strong', { text: 'Book Designer' });
-    bookLi.createSpan({ text: ' \u2014 Generate a complete manuscript scaffold with acts, subplots, characters, and optional beat notes in one click. This is the fastest way to see Radial Timeline in action.' });
-
-    const manualLi = step2List.createEl('li');
-    manualLi.createEl('strong', { text: 'Manual' });
-    manualLi.createSpan({ text: ' \u2014 Use the command palette (Cmd/Ctrl + P) \u2192 Radial Timeline: Create basic scene note or Create advanced scene note to add scenes one at a time.' });
-
-    // Step 3: Structure
+    // Step 3: Story setup
     const step3 = body.createDiv({ cls: 'rt-welcome-step' });
-    step3.createEl('h3', { cls: 'rt-welcome-step-title', text: '3. Set up your structure' });
+    step3.createEl('h3', { cls: 'rt-welcome-step-title', text: WELCOME_COPY.step3.title });
     const step3List = step3.createEl('ul', { cls: 'rt-welcome-list' });
 
-    const actsLi = step3List.createEl('li');
-    actsLi.createEl('strong', { text: 'Acts' });
-    actsLi.createSpan({ text: ' \u2014 Default is 3-act structure. Adjust in Settings \u2192 Core \u2192 Acts.' });
+    const designerLi = step3List.createEl('li');
+    designerLi.createEl('strong', { text: WELCOME_COPY.step3.bullets[0].title });
+    designerLi.createSpan({ text: WELCOME_COPY.step3.bullets[0].body });
 
-    const beatsLi = step3List.createEl('li');
-    beatsLi.createEl('strong', { text: 'Story beats' });
-    beatsLi.createSpan({ text: ' \u2014 Activate a beat system (Save the Cat, Hero\u2019s Journey, Story Grid) or create your own custom system in Settings \u2192 Core \u2192 Story beats system.' });
+    const settingsLi = step3List.createEl('li');
+    settingsLi.createEl('strong', { text: WELCOME_COPY.step3.bullets[1].title });
+    settingsLi.createSpan({ text: WELCOME_COPY.step3.bullets[1].body });
 
-    // Step 4: Explore modes
-    const step4 = body.createDiv({ cls: 'rt-welcome-step' });
-    step4.createEl('h3', { cls: 'rt-welcome-step-title', text: '4. Explore modes' });
-    const step4Text = step4.createEl('p', { cls: 'rt-welcome-paragraph' });
-    step4Text.createSpan({ text: 'Switch between the three primary Timeline modes using keyboard shortcuts ' });
-    step4Text.createEl('strong', { text: '1' });
-    step4Text.createSpan({ text: ' (Narrative), ' });
-    step4Text.createEl('strong', { text: '2' });
-    step4Text.createSpan({ text: ' (Publication), and ' });
-    step4Text.createEl('strong', { text: '3' });
-    step4Text.createSpan({ text: ' (Chronologue) to see your story from different angles. Once you have a zero draft, try Gossamer mode (' });
-    step4Text.createEl('strong', { text: '4' });
-    step4Text.createSpan({ text: ') to map out the initial AI take on your momentum graph.' });
+    body.createEl('p', {
+        cls: 'rt-welcome-paragraph',
+        text: WELCOME_COPY.reorderNote
+    });
 
     // Links
     const linksWrapper = body.createDiv({ cls: 'rt-welcome-links-wrapper' });

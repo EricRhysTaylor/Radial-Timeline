@@ -1,6 +1,7 @@
 # Welcome Screen
 
-When you open Radial Timeline in an empty vault (or a vault with no scenes configured), a **Welcome Screen** greets you with a quick-start guide to get you writing fast.
+Radial Timeline is a writing system for visualizing, organizing, and structuring a narrative as a living manuscript.
+You’ll set up a bit of story structure early—this usually takes about five minutes.
 
 <div style="display: flex; justify-content: center; margin: 20px 0;">
   <div style="text-align: center;">
@@ -9,24 +10,32 @@ When you open Radial Timeline in an empty vault (or a vault with no scenes confi
   </div>
 </div>
 
-## Get Started in a Few Steps
+## Primary Action
 
-### 1. Set your source path
-Point Radial Timeline at the folder containing (or that will contain) your manuscript scene files. Go to **Settings → Core → General → Source path**.
+**Create your first scene** — Use the button on the welcome screen, or the command palette (`Cmd/Ctrl + P`) → **Radial Timeline: Create basic scene note**.
 
-### 2. Create scenes
-You have two paths:
+## Secondary Actions
 
-*   **[[Book Designer]]** — Generate a complete manuscript scaffold with acts, subplots, characters, and optional beat notes in one click. This is the fastest way to see Radial Timeline in action.
-*   **Manual** — Use the command palette (`Cmd/Ctrl + P`) → **Radial Timeline: Create basic scene note** or **Create advanced scene note** to add scenes one at a time.
+*   **Design a story framework** — Launch **[[Book-Designer|Book Designer]]** to set up acts, subplots, characters, and optional beats as a starting point.
+*   **How scenes, structure, and the timeline work** — Start with **[[Scenes-Structure-Timeline|Scenes, Structure, and the Timeline]]**.
 
-### 3. Set up your structure
+## First Session in Three Steps
 
-*   **Acts** — Default is 3-act structure. Adjust in **Settings → Core → Acts**.
-*   **Story beats** — Activate a beat system (Save the Cat, Hero's Journey, Story Grid) or create your own custom system in **Settings → Core → Story beats system**. Custom systems support naming, act assignment, drag-to-reorder, and merge-to-realign.
+### 1. Create your first scene
+Start a scene so you have a place to write. Choose where your scenes live in your vault, then create your first scene note.
 
-### 4. Explore modes
-Switch between the three primary Timeline modes using keyboard shortcuts **1** (Narrative), **2** (Publication), and **3** (Chronologue) to see your story from different angles. Once you have a zero draft, try Gossamer mode (**4**) to map out the initial AI take on your momentum graph.
+*(This folder is called the Source path in Settings → Core → General.)*
+
+### 2. Write prose immediately
+Open the scene and start writing. You can leave scene details blank until you need them.
+
+### 3. Shape the story structure
+Design the framework and refine it as you go.
+
+*   **Design the framework** — Use Book Designer to set up acts, subplots, characters, and optional beats as a starting point.
+*   **Refine structure later** — Adjust acts and beats anytime in **Settings → Core**.
+
+Scenes are reordered and explored visually in the timeline—file order stays stable while story order stays flexible.
 
 ---
 
@@ -37,11 +46,29 @@ Back up your Obsidian vault regularly to protect against data loss. Sync does no
 *   **[Obsidian Backup Guide](https://help.obsidian.md/backup)**
 *   **[Obsidian Sync](https://obsidian.md/sync)** or **[Obsidian Git](https://obsidian.md/plugins?id=obsidian-git)**
 
-## Next Steps
+## Documentation Tiers
 
+### Start Writing
+
+*   **[[Scenes-Structure-Timeline|Scenes, Structure, and the Timeline]]** — A short, friendly primer for fresh vaults.
 *   **[[Fresh-Vault-Onboarding|Fresh Vault Onboarding]]** — Start from scratch with Book Designer and beats.
 *   **[[Existing-Vault-Onboarding|Existing Vault Onboarding]]** — Connect an existing manuscript to Radial Timeline.
-*   **[[Core Workflows]]** — Learn how to plan, write, and track your novel.
-*   **[[How-to]]** — Reorder scenes, manage subplots, search, and rotate the timeline.
-*   **[[YAML Frontmatter]]** — Understand the metadata that powers your timeline.
-*   **[[Commands]]** — Full command palette reference.
+*   **[[Core-Workflows|Core Workflows]]** — Learn how to plan, write, and track your novel.
+
+### Story Setup
+
+*   **[[Book-Designer|Book Designer]]** — Build a structure quickly without hand-editing.
+*   **[[Settings]]** — Configure acts and story beats.
+*   **[[YAML-Frontmatter|Scene details (YAML)]]** — Add subplots, characters, and scene details.
+
+### Organization & Analysis
+
+*   **[[Timeline-Modes|Timeline Modes]]** — Narrative, Publication, Chronologue, and Gossamer views.
+*   **[[Inquiry]]** — Analyze scenes and themes with Inquiry tools.
+*   **[[Author-Progress-Report|Author Progress Report]]** — Track drafting and revision progress.
+
+### Advanced Customization
+
+*   **[[Advanced-YAML|Advanced YAML]]** — Full schemas and custom fields.
+*   **[[Commands]]** — Command palette reference.
+*   **[[AI-Analysis|AI Analysis]]** — Optional AI scene analysis workflows.

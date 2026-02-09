@@ -20,6 +20,7 @@
     *   [[Author-Progress-Report|Author Progress Report]]
 *   **Reference**
     *   [[Core-Workflows|Core Workflows]]
+    *   [[Scenes-Structure-Timeline|Scenes, Structure, and the Timeline]]
     *   [[Book-Designer|Book Designer]]
     *   [[How-to]]
     *   [[Commands]]

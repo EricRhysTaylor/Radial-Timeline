@@ -89,6 +89,11 @@
   width: 100%;
 }
 
+.rt-welcome-footnote {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
 .rt-welcome-step {
   width: 100%;
   text-align: left;
@@ -151,12 +156,42 @@
   position: relative;
   z-index: 1;
   margin-bottom: 24px;
+  width: 100%;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
-.rt-welcome-book-btn {
+.rt-welcome-action-btn {
+  flex: 1 1 0;
+  min-width: 220px;
+  max-width: 280px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  white-space: normal;
   font-size: 16px;
   line-height: 1.2;
   padding: 8px 16px;
+}
+
+.rt-welcome-button-icon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  color: currentColor;
+  opacity: 0.9;
+}
+
+.rt-welcome-button-icon svg {
+  width: 100%;
+  height: 100%;
+  stroke-width: 2;
+}
+
+.rt-welcome-primary-btn {
 }
 
 .rt-welcome-backup-notice {

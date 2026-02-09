@@ -457,6 +457,7 @@ export interface RadialTimelineSettings {
     pandocPath?: string;
     pandocEnableFallback?: boolean;
     pandocFallbackPath?: string;
+    pandocFolder?: string;  // Vault path for Pandoc templates and compile scripts
     pandocTemplates?: {
         screenplay?: string;
         podcast?: string;
