@@ -1042,9 +1042,9 @@ export function renderStoryBeatsSection(params: {
                     };
                 }
 
-                // Delete button
-                const delBtn = row.createEl('button', { cls: ERT_CLASSES.ICON_BTN, attr: { type: 'button', 'aria-label': 'Remove field' } });
-                setIcon(delBtn, 'trash-2');
+                // Delete button (matches scene: ert-iconBtn + trash icon)
+                const delBtn = row.createEl('button', { cls: 'ert-iconBtn', attr: { type: 'button', 'aria-label': 'Remove field' } });
+                setIcon(delBtn, 'trash');
                 setTooltip(delBtn, 'Remove field');
                 delBtn.onclick = () => {
                     removeBeatHoverMetadata(entry.key);
@@ -1054,21 +1054,21 @@ export function renderStoryBeatsSection(params: {
                     updateBeatHoverPreview?.();
                 };
 
-                // Drag events
-                dragHandle.addEventListener('dragstart', (e) => {
+                // Drag events (matches scene: is-dragging / ert-template-dragover + plugin.registerDomEvent)
+                plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
                     beatDragIndex = idx;
-                    row.addClass('ert-dragging');
+                    row.addClass('is-dragging');
                     e.dataTransfer?.setData('text/plain', String(idx));
                 });
-                dragHandle.addEventListener('dragend', () => {
+                plugin.registerDomEvent(dragHandle, 'dragend', () => {
                     beatDragIndex = null;
-                    row.removeClass('ert-dragging');
+                    row.removeClass('is-dragging');
                 });
-                row.addEventListener('dragover', (e) => { e.preventDefault(); row.addClass('ert-drag-over'); });
-                row.addEventListener('dragleave', () => { row.removeClass('ert-drag-over'); });
-                row.addEventListener('drop', (e) => {
+                plugin.registerDomEvent(row, 'dragover', (e) => { e.preventDefault(); row.addClass('ert-template-dragover'); });
+                plugin.registerDomEvent(row, 'dragleave', () => { row.removeClass('ert-template-dragover'); });
+                plugin.registerDomEvent(row, 'drop', (e) => {
                     e.preventDefault();
-                    row.removeClass('ert-drag-over');
+                    row.removeClass('ert-template-dragover');
                     if (beatDragIndex === null || beatDragIndex === idx) return;
                     const nextList = [...list];
                     const [moved] = nextList.splice(beatDragIndex, 1);
@@ -1081,12 +1081,63 @@ export function renderStoryBeatsSection(params: {
 
             data.forEach((entry, idx) => renderBeatEntryRow(entry, idx, data));
 
-            // Add new field row
-            const addRow = listEl.createDiv({ cls: 'ert-yaml-add-row' });
-            const addKeyInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--md', attr: { placeholder: 'New field key' } });
-            const addBtn = addRow.createEl('button', { cls: ERT_CLASSES.ICON_BTN, attr: { type: 'button', 'aria-label': 'Add field' } });
+            // Add new field row (matches scene add-row layout)
+            const addRow = listEl.createDiv({ cls: ['ert-yaml-row', 'ert-yaml-row--add', 'ert-yaml-row--hover-meta'] });
+
+            // 1. Drag placeholder (direct child)
+            addRow.createDiv({ cls: ['ert-drag-handle', 'ert-drag-placeholder'] });
+
+            // 2. Spacer (direct child)
+            addRow.createDiv({ cls: 'ert-grid-spacer' });
+
+            // 3. Icon input with preview for new entry
+            const addIconWrapper = addRow.createDiv({ cls: 'ert-hover-icon-wrapper' });
+            const addIconPreview = addIconWrapper.createDiv({ cls: 'ert-hover-icon-preview' });
+            setIcon(addIconPreview, DEFAULT_HOVER_ICON);
+            const addIconInput = addIconWrapper.createEl('input', {
+                type: 'text',
+                cls: 'ert-input ert-input--lg ert-icon-input',
+                attr: { placeholder: 'Icon name...' }
+            });
+            addIconInput.value = DEFAULT_HOVER_ICON;
+            setTooltip(addIconInput, 'Lucide icon name for beat hover synopsis');
+
+            new IconSuggest(app, addIconInput, (selectedIcon) => {
+                addIconInput.value = selectedIcon;
+                addIconPreview.empty();
+                setIcon(addIconPreview, selectedIcon);
+            });
+
+            addIconInput.oninput = () => {
+                const iconName = addIconInput.value.trim();
+                if (iconName && getIconIds().includes(iconName)) {
+                    addIconPreview.empty();
+                    setIcon(addIconPreview, iconName);
+                }
+            };
+
+            // 4. Checkbox for new entry (default unchecked)
+            const addCheckboxWrapper = addRow.createDiv({ cls: 'ert-hover-checkbox-wrapper' });
+            const addCheckbox = addCheckboxWrapper.createEl('input', {
+                type: 'checkbox',
+                cls: 'ert-hover-checkbox'
+            });
+            addCheckbox.checked = false;
+            setTooltip(addCheckbox, 'Show in beat hover synopsis');
+
+            // 5. Key input (direct child)
+            const addKeyInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--md', attr: { placeholder: 'New key' } });
+
+            // 6. Value input (direct child)
+            const addValInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--md', attr: { placeholder: 'Value' } }) as HTMLInputElement;
+
+            // 7. Buttons wrapper (holds add + revert)
+            const btnWrap = addRow.createDiv({ cls: ['ert-iconBtnGroup', 'ert-template-actions'] });
+
+            const addBtn = btnWrap.createEl('button', { cls: ['ert-iconBtn', 'ert-mod-cta'] });
             setIcon(addBtn, 'plus');
             setTooltip(addBtn, 'Add custom beat YAML field');
+
             const doAddBeatField = () => {
                 const newKey = addKeyInput.value.trim();
                 if (!newKey) return;
@@ -1098,13 +1149,71 @@ export function renderStoryBeatsSection(params: {
                     new Notice(`"${newKey}" already exists.`);
                     return;
                 }
-                const nextList = [...data, { key: newKey, value: '', required: false }];
+                // Save hover metadata for new key
+                const iconName = addIconInput.value.trim() || DEFAULT_HOVER_ICON;
+                if (addCheckbox.checked || iconName !== DEFAULT_HOVER_ICON) {
+                    setBeatHoverMetadata(newKey, iconName, addCheckbox.checked);
+                }
+                const nextList = [...data, { key: newKey, value: addValInput.value || '', required: false }];
                 saveBeatEntries(nextList);
                 rerenderBeatYaml(nextList);
                 updateBeatHoverPreview?.();
             };
             addBtn.onclick = doAddBeatField;
             addKeyInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doAddBeatField(); } });
+
+            const revertBtn = btnWrap.createEl('button', { cls: ['ert-iconBtn', 'ert-template-reset-btn'] });
+            setIcon(revertBtn, 'rotate-ccw');
+            setTooltip(revertBtn, 'Revert beat YAML to default');
+            revertBtn.onclick = async () => {
+                const confirmed = await new Promise<boolean>((resolve) => {
+                    const modal = new Modal(app);
+                    const { modalEl, contentEl } = modal;
+                    modal.titleEl.setText('');
+                    contentEl.empty();
+
+                    modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+                    contentEl.addClass('ert-modal-container', 'ert-stack');
+
+                    const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+                    header.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
+                    header.createDiv({ text: 'Reset beat YAML template', cls: 'ert-modal-title' });
+                    header.createDiv({ text: 'Resetting will delete all custom beat fields, lucide icons, and restore the default template.', cls: 'ert-modal-subtitle' });
+
+                    const body = contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                    body.createDiv({ text: 'Are you sure you want to reset? This cannot be undone.', cls: 'ert-purge-warning' });
+
+                    const actionsRow = contentEl.createDiv({ cls: ['ert-modal-actions', 'ert-inline-actions'] });
+
+                    new ButtonComponent(actionsRow)
+                        .setButtonText('Reset to default')
+                        .setWarning()
+                        .onClick(() => {
+                            modal.close();
+                            resolve(true);
+                        });
+
+                    new ButtonComponent(actionsRow)
+                        .setButtonText('Cancel')
+                        .onClick(() => {
+                            modal.close();
+                            resolve(false);
+                        });
+
+                    modal.open();
+                });
+
+                if (!confirmed) return;
+
+                if (!plugin.settings.beatYamlTemplates) {
+                    plugin.settings.beatYamlTemplates = { base: DEFAULT_SETTINGS.beatYamlTemplates!.base, advanced: '' };
+                }
+                plugin.settings.beatYamlTemplates.advanced = '';
+                plugin.settings.beatHoverMetadataFields = [];
+                await plugin.saveSettings();
+                rerenderBeatYaml([]);
+                updateBeatHoverPreview?.();
+            };
         };
 
         rerenderBeatYaml(beatEntries);
@@ -1156,33 +1265,35 @@ export function renderStoryBeatsSection(params: {
     updateBeatHoverPreview = renderBeatHoverPreview;
     renderBeatHoverPreview();
 
-    // ─── SAVED BEAT SYSTEMS (Pro) ─────────────────────────────────────
-    const savedSystemsSection = beatsStack.createDiv({ cls: ERT_CLASSES.STACK });
-
+    // ─── SAVED BEAT SYSTEMS (Pro) — Campaign Manager card scaffold ────
     const proActive = isProfessionalActive(plugin);
 
-    const savedHeading = new Settings(savedSystemsSection)
-        .setName('Saved beat systems')
-        .setDesc('Save and switch between multiple custom beat systems. Each system stores beats, custom YAML fields, and hover metadata.');
-    addHeadingIcon(savedHeading, 'library');
-    applyErtHeaderLayout(savedHeading);
+    const savedCard = beatsStack.createDiv({
+        cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ${ERT_CLASSES.SKIN_PRO} ert-saved-beat-systems`
+    });
+    if (!proActive) savedCard.addClass('ert-pro-locked');
 
-    // Pro badge
-    const savedBadge = savedHeading.nameEl.createSpan({ cls: 'ert-badgePill ert-badgePill--pro ert-badgePill--sm' });
-    const savedBadgeIcon = savedBadge.createSpan({ cls: 'ert-badgePill__icon' });
-    setIcon(savedBadgeIcon, 'gem');
-    savedBadge.createSpan({ cls: 'ert-badgePill__text', text: 'Pro' });
+    // Card header (Campaign Manager pattern)
+    const savedHeaderRow = savedCard.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
+    const savedTitleArea = savedHeaderRow.createDiv({ cls: 'ert-control' });
+    const savedTitleRow = savedTitleArea.createEl('h4', { cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}` });
+    const savedProPill = savedTitleRow.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}` });
+    setIcon(savedProPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), 'gem');
+    savedProPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
+    savedTitleRow.createSpan({ text: ' Saved beat systems' });
 
-    const savedControlsContainer = savedSystemsSection.createDiv({ cls: ['ert-panel', 'ert-saved-beat-systems'] });
+    savedCard.createEl('p', {
+        cls: ERT_CLASSES.SECTION_DESC,
+        text: 'Save and switch between multiple custom beat systems. Each system stores beats, custom YAML fields, and hover metadata.'
+    });
+
+    const savedControlsContainer = savedCard.createDiv({ cls: ERT_CLASSES.STACK });
 
     const renderSavedBeatSystems = () => {
         savedControlsContainer.empty();
 
         if (!proActive) {
-            savedControlsContainer.addClass('ert-pro-locked');
             savedControlsContainer.createDiv({ cls: 'ert-pro-locked-hint', text: 'Core includes 1 custom beat system.' });
-        } else {
-            savedControlsContainer.removeClass('ert-pro-locked');
         }
 
         const savedSystems: SavedBeatSystem[] = plugin.settings.savedBeatSystems ?? [];

@@ -3834,6 +3834,31 @@
   color: var(--ert-pro-accent-color);
 }
 
+/* Beat base-field read-only pill summary */
+.ert-ui.ert-scope--settings .ert-template-base-summary {
+  padding: var(--ert-pad-sm) 0;
+}
+.ert-ui.ert-scope--settings .ert-template-base-heading {
+  font-size: var(--ert-control-font-size);
+  color: var(--text-muted);
+  margin-bottom: var(--ert-gap-xs);
+}
+.ert-ui.ert-scope--settings .ert-template-base-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ert-gap-xs);
+}
+.ert-ui.ert-scope--settings .ert-template-base-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: var(--ert-pill-radius);
+  background: var(--ert-pill-bg);
+  border: 1px solid var(--ert-pill-border);
+  font-size: var(--ert-pill-font-size);
+  color: var(--text-muted);
+}
+
 .ert-ui.ert-scope--settings .ert-yaml-row {
   display: grid;
   box-sizing: border-box;
