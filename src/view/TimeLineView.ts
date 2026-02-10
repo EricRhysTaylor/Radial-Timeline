@@ -151,7 +151,7 @@ export class RadialTimelineView extends ItemView {
             wrapper.className = 'rt-book-switcher';
 
             const select = document.createElement('select');
-            select.className = 'rt-book-switcher__select dropdown';
+            select.className = 'rt-book-switcher__select';
             select.addEventListener('change', () => {
                 const nextId = select.value;
                 void this.plugin.setActiveBookId(nextId);

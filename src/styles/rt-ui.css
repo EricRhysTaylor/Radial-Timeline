@@ -5784,6 +5784,12 @@
   transition: border-color 0.15s ease;
 }
 
+/* Override generic .is-inactive muting — book cards must stay interactive */
+.rt-book-card.setting-item.is-inactive {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .rt-book-card.setting-item.is-active {
   border-color: color-mix(in srgb, var(--text-success) 50%, transparent);
 }
@@ -5812,12 +5818,16 @@
   color: var(--text-success);
 }
 
-/* Clickable info area to activate inactive book */
-.rt-book-card__info--clickable {
+/* Clickable row to activate inactive book */
+.rt-book-card--clickable {
   cursor: pointer;
 }
 
-.rt-book-card__info--clickable:hover .rt-book-card__status {
+.rt-book-card--clickable:hover {
+  border-color: color-mix(in srgb, var(--text-success) 40%, transparent);
+}
+
+.rt-book-card--clickable:hover .rt-book-card__status {
   color: var(--text-success);
 }
 

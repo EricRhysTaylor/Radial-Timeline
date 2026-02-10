@@ -203,16 +203,15 @@ export function renderGeneralSection(params: {
                 row.descEl.addClass('rt-book-card__stat--warn');
             }
 
-            // Activate: click anywhere on the info (left) side of the row
+            // Activate: click the row (title stopPropagation prevents conflict)
             if (!isActive) {
-                const infoEl = row.settingEl.querySelector('.setting-item-info') as HTMLElement | null;
-                if (infoEl) {
-                    infoEl.addClass('rt-book-card__info--clickable');
-                    infoEl.addEventListener('click', async () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
-                        await plugin.setActiveBookId(book.id);
-                        renderBooksManager();
-                    });
-                }
+                row.settingEl.addClass('rt-book-card--clickable');
+                row.settingEl.addEventListener('click', async () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
+                    await plugin.setActiveBookId(book.id);
+                    renderBooksManager();
+                });
+                // Prevent input/trash clicks from activating
+                row.controlEl.addEventListener('click', (e) => e.stopPropagation()); // SAFE: direct addEventListener; Settings lifecycle manages cleanup
             }
 
             // Controls: source folder input + trash
