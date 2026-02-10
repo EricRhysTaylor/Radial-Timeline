@@ -541,6 +541,48 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         }
 
+        // ─── Migrate legacy backdropYamlTemplate → backdropYamlTemplates ────
+        let backdropTemplateMigrated = false;
+        if (!this.settings.backdropYamlTemplates) {
+            const knownBaseKeys = ['Class', 'When', 'End', 'Synopsis'];
+            const legacyBackdropTemplate = this.settings.backdropYamlTemplate ?? '';
+            if (legacyBackdropTemplate.trim()) {
+                // Parse all keys from the legacy template
+                const allKeys: string[] = [];
+                for (const line of legacyBackdropTemplate.split('\n')) {
+                    const m = line.match(/^([A-Za-z0-9 _'-]+):/);
+                    if (m) {
+                        const k = m[1].trim();
+                        if (k && !allKeys.includes(k)) allKeys.push(k);
+                    }
+                }
+                // Base = known base keys in canonical order; Advanced = everything else in original order
+                const advancedKeys = allKeys.filter(k => !knownBaseKeys.includes(k));
+                if (advancedKeys.length > 0) {
+                    // Build advanced YAML string from extra keys (strip comments, use empty values)
+                    const advLines = advancedKeys.map(k => `${k}:`);
+                    this.settings.backdropYamlTemplates = {
+                        base: `Class: Backdrop\nWhen: {{When}}\nEnd: {{End}}\nSynopsis:`,
+                        advanced: advLines.join('\n'),
+                    };
+                } else {
+                    this.settings.backdropYamlTemplates = {
+                        base: `Class: Backdrop\nWhen: {{When}}\nEnd: {{End}}\nSynopsis:`,
+                        advanced: '',
+                    };
+                }
+                backdropTemplateMigrated = true;
+            }
+        }
+        if (this.settings.backdropHoverMetadataFields === undefined) {
+            this.settings.backdropHoverMetadataFields = [];
+            backdropTemplateMigrated = true;
+        }
+        if (this.settings.enableBackdropYamlEditor === undefined) {
+            this.settings.enableBackdropYamlEditor = false;
+            backdropTemplateMigrated = true;
+        }
+
         // ─── Migrate legacy pandocTemplates → pandocLayouts ─────────────────
         let pandocLayoutsMigrated = false;
         const legacyTemplates = this.settings.pandocTemplates;
@@ -567,7 +609,7 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         }
 
-        if (before !== after || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated || pandocLayoutsMigrated || booksMigrated) {
+        if (before !== after || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated || backdropTemplateMigrated || pandocLayoutsMigrated || booksMigrated) {
             await this.saveSettings();
         }
     }

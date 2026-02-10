@@ -1130,9 +1130,12 @@ export default class SynopsisManager {
 
       // --- Custom Hover Metadata Fields ---
       const isBeatItem = scene.itemType === 'Beat' || scene.itemType === 'Plot';
+      const isBackdropItem = scene.itemType === 'Backdrop';
       const hoverFieldSource = isBeatItem
         ? getBeatConfigForItem(this.plugin.settings, scene.rawFrontmatter?.['Beat Model'] as string | undefined).beatHoverMetadataFields
-        : (this.plugin.settings.hoverMetadataFields || []);
+        : isBackdropItem
+          ? (this.plugin.settings.backdropHoverMetadataFields || [])
+          : (this.plugin.settings.hoverMetadataFields || []);
       const enabledHoverFields = hoverFieldSource.filter((f: HoverMetadataField) => f.enabled);
       if (enabledHoverFields.length > 0) {
         const hoverMetaStartY = currentMetadataY;

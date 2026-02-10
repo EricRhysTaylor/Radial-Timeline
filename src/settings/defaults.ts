@@ -204,6 +204,15 @@ Gossamer1:`,
 When: {{When}}                       # Start Date/Time (YYYY-MM-DD HH:MM)
 End: {{End}}                         # End Date/Time (YYYY-MM-DD HH:MM)
 Synopsis: What this backdrop represents and how it shapes the story.`,
+    backdropYamlTemplates: {
+        base: `Class: Backdrop
+When: {{When}}
+End: {{End}}
+Synopsis:`,
+        advanced: ``
+    },
+    enableBackdropYamlEditor: false,
+    backdropHoverMetadataFields: [],
     showBackdropRing: true,
     chronologueBackdropMicroRings: [
         { title: '', range: '', color: '#EFBDEB' }

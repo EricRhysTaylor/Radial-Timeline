@@ -18,6 +18,16 @@ import { getScenePrefixNumber } from '../../utils/text';
 import { filterBeatsBySystem } from '../../utils/gossamer';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { isStoryBeat } from '../../utils/sceneHelpers';
+import { openOrRevealFile } from '../../utils/fileUtils';
+import {
+    type NoteType,
+    extractKeysInOrder as sharedExtractKeysInOrder,
+    safeParseYaml as sharedSafeParseYaml,
+    getCustomKeys,
+    getCustomDefaults,
+} from '../../utils/yamlTemplateNormalize';
+import { runYamlAudit, collectFilesForAudit, formatAuditReport, type YamlAuditResult, type NoteAuditEntry } from '../../utils/yamlAudit';
+import { runYamlBackfill, type BackfillResult } from '../../utils/yamlBackfill';
 
 type TemplateEntryValue = string | string[];
 type TemplateEntry = { key: string; value: TemplateEntryValue; required: boolean };
@@ -2153,6 +2163,711 @@ export function renderStoryBeatsSection(params: {
     };
     onAdvancedToggle = refreshVisibility;
     refreshVisibility();
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // BACKDROP YAML EDITOR
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const backdropYamlSection = yamlStack.createDiv({ cls: ERT_CLASSES.STACK });
+
+    const backdropYamlHeading = new Settings(backdropYamlSection)
+        .setName('Backdrop YAML editor')
+        .setDesc('Customize additional YAML keys for backdrop notes. Enable fields to show in backdrop hover synopsis.');
+    const backdropYamlToggleBtn = backdropYamlHeading.controlEl.createEl('button', {
+        cls: ERT_CLASSES.ICON_BTN,
+        attr: { type: 'button', 'aria-label': 'Show backdrop YAML editor' }
+    });
+    const refreshBackdropYamlToggle = () => {
+        const expanded = plugin.settings.enableBackdropYamlEditor ?? false;
+        setIcon(backdropYamlToggleBtn, expanded ? 'chevron-down' : 'chevron-right');
+        setTooltip(backdropYamlToggleBtn, expanded ? 'Hide backdrop YAML editor' : 'Show backdrop YAML editor');
+        backdropYamlToggleBtn.setAttribute('aria-label', expanded ? 'Hide backdrop YAML editor' : 'Show backdrop YAML editor');
+    };
+    refreshBackdropYamlToggle();
+
+    const backdropYamlContainer = backdropYamlSection.createDiv({ cls: ['ert-panel', 'ert-advanced-template-card'] });
+
+    // ─── Backdrop hover metadata helpers ─────────────────────────────────
+    const getBackdropHoverMetadata = (key: string): HoverMetadataField | undefined => {
+        return (plugin.settings.backdropHoverMetadataFields ?? []).find(f => f.key === key);
+    };
+
+    const setBackdropHoverMetadata = (key: string, icon: string, enabled: boolean) => {
+        if (!plugin.settings.backdropHoverMetadataFields) {
+            plugin.settings.backdropHoverMetadataFields = [];
+        }
+        const existing = plugin.settings.backdropHoverMetadataFields.find(f => f.key === key);
+        if (existing) {
+            existing.icon = icon;
+            existing.enabled = enabled;
+        } else {
+            plugin.settings.backdropHoverMetadataFields.push({ key, label: key, icon, enabled });
+        }
+        void plugin.saveSettings();
+    };
+
+    const removeBackdropHoverMetadata = (key: string) => {
+        if (plugin.settings.backdropHoverMetadataFields) {
+            plugin.settings.backdropHoverMetadataFields = plugin.settings.backdropHoverMetadataFields.filter(f => f.key !== key);
+            void plugin.saveSettings();
+        }
+    };
+
+    const renameBackdropHoverMetadataKey = (oldKey: string, newKey: string) => {
+        const existing = plugin.settings.backdropHoverMetadataFields?.find(f => f.key === oldKey);
+        if (existing) {
+            existing.key = newKey;
+            void plugin.saveSettings();
+        }
+    };
+
+    let updateBackdropHoverPreview: (() => void) | undefined;
+
+    const backdropBaseTemplate = plugin.settings.backdropYamlTemplates?.base
+        ?? DEFAULT_SETTINGS.backdropYamlTemplates?.base
+        ?? 'Class: Backdrop\nWhen:\nEnd:\nSynopsis:';
+    const backdropBaseKeys = extractKeysInOrder(backdropBaseTemplate);
+
+    const renderBackdropYamlEditor = () => {
+        backdropYamlContainer.empty();
+        const isExpanded = plugin.settings.enableBackdropYamlEditor ?? false;
+        backdropYamlContainer.toggleClass('ert-settings-hidden', !isExpanded);
+        if (!isExpanded) return;
+
+        const currentBackdropAdvanced = plugin.settings.backdropYamlTemplates?.advanced ?? '';
+        const backdropAdvancedObj = safeParseYaml(currentBackdropAdvanced);
+
+        const backdropOptionalOrder = extractKeysInOrder(currentBackdropAdvanced).filter(k => !backdropBaseKeys.includes(k));
+        const backdropEntries: TemplateEntry[] = backdropOptionalOrder.map(key => ({
+            key,
+            value: backdropAdvancedObj[key] ?? '',
+            required: false
+        }));
+
+        let backdropWorkingEntries = backdropEntries;
+        let backdropDragIndex: number | null = null;
+
+        const saveBackdropEntries = (nextEntries: TemplateEntry[]) => {
+            backdropWorkingEntries = nextEntries;
+            const yaml = buildYamlFromEntries(nextEntries);
+            if (!plugin.settings.backdropYamlTemplates) {
+                plugin.settings.backdropYamlTemplates = {
+                    base: backdropBaseTemplate,
+                    advanced: '',
+                };
+            }
+            plugin.settings.backdropYamlTemplates.advanced = yaml;
+            void plugin.saveSettings();
+        };
+
+        const rerenderBackdropYaml = (next?: TemplateEntry[]) => {
+            const data = next ?? backdropWorkingEntries;
+            backdropWorkingEntries = data;
+            backdropYamlContainer.empty();
+            const isExpanded = plugin.settings.enableBackdropYamlEditor ?? false;
+            backdropYamlContainer.toggleClass('ert-settings-hidden', !isExpanded);
+            if (!isExpanded) return;
+
+            // Read-only base fields (collapsed summary)
+            const baseCard = backdropYamlContainer.createDiv({ cls: 'ert-template-base-summary' });
+            baseCard.createDiv({ cls: 'ert-template-base-heading', text: 'Base fields (read-only)' });
+            const basePills = baseCard.createDiv({ cls: 'ert-template-base-pills' });
+            backdropBaseKeys.forEach(k => {
+                basePills.createSpan({ cls: 'ert-template-base-pill', text: k });
+            });
+
+            // Editable advanced entries
+            const listEl = backdropYamlContainer.createDiv({ cls: ['ert-template-entries', 'ert-template-indent'] });
+
+            if (data.length > 0) {
+                listEl.createDiv({ cls: 'ert-template-section-label', text: 'Custom fields' });
+            }
+
+            const renderBackdropEntryRow = (entry: TemplateEntry, idx: number, list: TemplateEntry[]) => {
+                const row = listEl.createDiv({ cls: ['ert-yaml-row', 'ert-yaml-row--hover-meta'] });
+
+                const hoverMeta = getBackdropHoverMetadata(entry.key);
+                const currentIcon = hoverMeta?.icon ?? DEFAULT_HOVER_ICON;
+                const currentEnabled = hoverMeta?.enabled ?? false;
+
+                // Drag handle
+                const dragHandle = row.createDiv({ cls: 'ert-drag-handle' });
+                dragHandle.draggable = true;
+                setIcon(dragHandle, 'grip-vertical');
+                setTooltip(dragHandle, 'Drag to reorder');
+
+                row.createDiv({ cls: 'ert-grid-spacer' });
+
+                // Icon input
+                const iconWrapper = row.createDiv({ cls: 'ert-hover-icon-wrapper' });
+                const iconPreview = iconWrapper.createDiv({ cls: 'ert-hover-icon-preview' });
+                setIcon(iconPreview, currentIcon);
+                const iconInput = iconWrapper.createEl('input', {
+                    type: 'text',
+                    cls: 'ert-input ert-input--lg ert-icon-input',
+                    attr: { placeholder: 'Icon name...' }
+                });
+                iconInput.value = currentIcon;
+                setTooltip(iconInput, 'Lucide icon name for hover synopsis');
+
+                // Hover checkbox
+                const checkboxWrapper = row.createDiv({ cls: 'ert-hover-checkbox-wrapper' });
+                const checkbox = checkboxWrapper.createEl('input', {
+                    type: 'checkbox',
+                    cls: 'ert-hover-checkbox'
+                });
+                checkbox.checked = currentEnabled;
+                setTooltip(checkbox, 'Show in backdrop hover synopsis');
+
+                new IconSuggest(app, iconInput, (selectedIcon) => {
+                    iconInput.value = selectedIcon;
+                    setIcon(iconPreview, selectedIcon);
+                    setBackdropHoverMetadata(entry.key, selectedIcon, checkbox.checked);
+                    updateBackdropHoverPreview?.();
+                });
+
+                // SAFE: Settings sections are standalone functions without Component lifecycle
+                iconInput.addEventListener('blur', () => {
+                    const val = iconInput.value.trim() || DEFAULT_HOVER_ICON;
+                    setIcon(iconPreview, val);
+                    setBackdropHoverMetadata(entry.key, val, checkbox.checked);
+                    updateBackdropHoverPreview?.();
+                });
+
+                checkbox.addEventListener('change', () => {
+                    setBackdropHoverMetadata(entry.key, iconInput.value.trim() || DEFAULT_HOVER_ICON, checkbox.checked);
+                    updateBackdropHoverPreview?.();
+                });
+
+                // Key input
+                const keyInput = row.createEl('input', {
+                    type: 'text',
+                    cls: 'ert-input ert-input--lg',
+                    attr: { placeholder: 'Key name...' }
+                });
+                keyInput.value = entry.key;
+
+                // Value input
+                const valInput = row.createEl('input', {
+                    type: 'text',
+                    cls: 'ert-input ert-input--lg',
+                    attr: { placeholder: 'Default value...' }
+                });
+                valInput.value = Array.isArray(entry.value) ? entry.value.join(', ') : (entry.value ?? '');
+
+                // Delete button
+                const delBtn = row.createEl('button', { cls: ERT_CLASSES.ICON_BTN });
+                setIcon(delBtn, 'trash');
+                setTooltip(delBtn, 'Remove field');
+                delBtn.addEventListener('click', () => {
+                    removeBackdropHoverMetadata(entry.key);
+                    const next = list.filter((_, i) => i !== idx);
+                    saveBackdropEntries(next);
+                    rerenderBackdropYaml(next);
+                    updateBackdropHoverPreview?.();
+                });
+
+                // Key rename
+                keyInput.addEventListener('blur', () => {
+                    const newKey = keyInput.value.trim();
+                    if (!newKey || newKey === entry.key) return;
+                    if (backdropBaseKeys.includes(newKey)) {
+                        new Notice(`"${newKey}" is a base field and cannot be used as a custom key.`);
+                        keyInput.value = entry.key;
+                        return;
+                    }
+                    renameBackdropHoverMetadataKey(entry.key, newKey);
+                    const next = list.map((e, i) => i === idx ? { ...e, key: newKey } : e);
+                    saveBackdropEntries(next);
+                    rerenderBackdropYaml(next);
+                });
+
+                // Value change
+                valInput.addEventListener('blur', () => {
+                    const newVal = valInput.value;
+                    const next = list.map((e, i) => i === idx ? { ...e, value: newVal } : e);
+                    saveBackdropEntries(next);
+                });
+
+                // Drag events
+                dragHandle.addEventListener('dragstart', (e) => {
+                    backdropDragIndex = idx;
+                    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+                    row.classList.add('ert-drag-active');
+                });
+                row.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+                });
+                row.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    if (backdropDragIndex === null || backdropDragIndex === idx) return;
+                    const next = [...list];
+                    const [moved] = next.splice(backdropDragIndex, 1);
+                    next.splice(idx, 0, moved);
+                    backdropDragIndex = null;
+                    saveBackdropEntries(next);
+                    rerenderBackdropYaml(next);
+                });
+                dragHandle.addEventListener('dragend', () => {
+                    backdropDragIndex = null;
+                    row.classList.remove('ert-drag-active');
+                });
+            };
+
+            data.forEach((entry, idx) => renderBackdropEntryRow(entry, idx, data));
+
+            // Add new field button
+            const addRow = listEl.createDiv({ cls: 'ert-yaml-row ert-yaml-row--add' });
+            const addBtn = addRow.createEl('button', {
+                cls: `${ERT_CLASSES.ICON_BTN} ert-add-field-btn`,
+                attr: { type: 'button' }
+            });
+            setIcon(addBtn, 'plus');
+            setTooltip(addBtn, 'Add custom field');
+            addBtn.addEventListener('click', () => {
+                const next = [...data, { key: '', value: '', required: false }];
+                saveBackdropEntries(next);
+                rerenderBackdropYaml(next);
+            });
+
+            // Reset to default
+            const resetRow = listEl.createDiv({ cls: 'ert-yaml-row ert-yaml-row--reset' });
+            const resetBtn = resetRow.createEl('button', {
+                cls: `${ERT_CLASSES.ICON_BTN} ert-reset-btn`,
+                text: 'Reset to default',
+                attr: { type: 'button' }
+            });
+            setTooltip(resetBtn, 'Clear all custom backdrop fields');
+            resetBtn.addEventListener('click', async () => {
+                if (!plugin.settings.backdropYamlTemplates) {
+                    plugin.settings.backdropYamlTemplates = { base: backdropBaseTemplate, advanced: '' };
+                }
+                plugin.settings.backdropYamlTemplates.advanced = '';
+                plugin.settings.backdropHoverMetadataFields = [];
+                await plugin.saveSettings();
+                rerenderBackdropYaml([]);
+                updateBackdropHoverPreview?.();
+            });
+        };
+
+        rerenderBackdropYaml(backdropEntries);
+    };
+
+    // SAFE: Settings sections are standalone functions without Component lifecycle
+    backdropYamlToggleBtn.addEventListener('click', async () => {
+        const next = !(plugin.settings.enableBackdropYamlEditor ?? false);
+        plugin.settings.enableBackdropYamlEditor = next;
+        refreshBackdropYamlToggle();
+        await plugin.saveSettings();
+        renderBackdropYamlEditor();
+        renderBackdropHoverPreview();
+    });
+
+    renderBackdropYamlEditor();
+
+    // ─── BACKDROP HOVER METADATA PREVIEW ─────────────────────────────────
+    const backdropHoverPreviewContainer = backdropYamlSection.createDiv({
+        cls: ['ert-previewFrame', 'ert-previewFrame--center', 'ert-previewFrame--flush'],
+        attr: { 'data-preview': 'backdrop-metadata' }
+    });
+    const backdropHoverPreviewHeading = backdropHoverPreviewContainer.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Backdrop Hover Metadata Preview' });
+    const backdropHoverPreviewBody = backdropHoverPreviewContainer.createDiv({ cls: ['ert-hover-preview-body', 'ert-stack'] });
+
+    const renderBackdropHoverPreview = () => {
+        backdropHoverPreviewBody.empty();
+        const enabledFields = (plugin.settings.backdropHoverMetadataFields ?? []).filter(f => f.enabled);
+        const currentBackdropAdv = plugin.settings.backdropYamlTemplates?.advanced ?? '';
+        const templateObj = safeParseYaml(currentBackdropAdv);
+
+        const backdropEditorVisible = plugin.settings.enableBackdropYamlEditor ?? false;
+        if (!backdropEditorVisible || enabledFields.length === 0) {
+            backdropHoverPreviewContainer.toggleClass('ert-settings-hidden', !backdropEditorVisible);
+            backdropHoverPreviewHeading.setText('Backdrop Hover Metadata Preview (none enabled)');
+            backdropHoverPreviewBody.createDiv({ text: 'Enable fields using the checkboxes above to show them in backdrop hover synopsis.', cls: 'ert-hover-preview-empty' });
+            return;
+        }
+        backdropHoverPreviewContainer.removeClass('ert-settings-hidden');
+        backdropHoverPreviewHeading.setText(`Backdrop Hover Metadata Preview (${enabledFields.length} field${enabledFields.length > 1 ? 's' : ''})`);
+
+        enabledFields.forEach(field => {
+            const lineEl = backdropHoverPreviewBody.createDiv({ cls: 'ert-hover-preview-line' });
+            const iconEl = lineEl.createSpan({ cls: 'ert-hover-preview-icon' });
+            setIcon(iconEl, field.icon || DEFAULT_HOVER_ICON);
+            const value = templateObj[field.key];
+            const valueStr = Array.isArray(value) ? value.join(', ') : (value ?? '');
+            const displayText = valueStr ? `${field.key}: ${valueStr}` : field.key;
+            lineEl.createSpan({ text: displayText, cls: 'ert-hover-preview-text' });
+        });
+    };
+
+    updateBackdropHoverPreview = renderBackdropHoverPreview;
+    renderBackdropHoverPreview();
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // YAML AUDIT + BACKFILL PANELS (Beat / Scene / Backdrop)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const AUDIT_PAGE_SIZE = 5;
+    const AUDIT_OPEN_ALL_MAX = 25;
+
+    /**
+     * Renders a reusable YAML Audit + Backfill panel inside the given container.
+     * Used by all three editor sections (Beat, Scene, Backdrop).
+     */
+    function renderAuditPanel(
+        parentEl: HTMLElement,
+        noteType: NoteType,
+        beatSystemKey?: string
+    ): void {
+        const panelEl = parentEl.createDiv({ cls: ['ert-panel', 'ert-audit-panel', 'ert-stack'] });
+
+        let auditResult: YamlAuditResult | null = null;
+
+        const resultsEl = panelEl.createDiv({ cls: 'ert-audit-results ert-stack' });
+
+        // ─── Run Audit button ────────────────────────────────────────────
+        const actionRow = panelEl.createDiv({ cls: 'ert-audit-actions' });
+        const runBtn = actionRow.createEl('button', {
+            cls: 'ert-mod-cta',
+            text: 'Run YAML audit',
+            attr: { type: 'button' }
+        });
+        setTooltip(runBtn, `Scan all ${noteType.toLowerCase()} notes for YAML schema drift`);
+
+        const copyBtn = actionRow.createEl('button', {
+            cls: ERT_CLASSES.ICON_BTN,
+            attr: { type: 'button', 'aria-label': 'Copy audit report' }
+        });
+        setIcon(copyBtn, 'clipboard-copy');
+        setTooltip(copyBtn, 'Copy audit report to clipboard');
+        copyBtn.classList.add('ert-settings-hidden');
+        copyBtn.addEventListener('click', () => {
+            if (!auditResult) return;
+            const report = formatAuditReport(auditResult, noteType);
+            navigator.clipboard.writeText(report).then(() => {
+                new Notice('Audit report copied to clipboard.');
+            });
+        });
+
+        const backfillBtn = actionRow.createEl('button', {
+            text: 'Insert missing fields',
+            attr: { type: 'button' }
+        });
+        setTooltip(backfillBtn, 'Add missing custom fields to existing notes');
+        backfillBtn.classList.add('ert-settings-hidden');
+
+        // ─── Render audit results ────────────────────────────────────────
+        const renderResults = () => {
+            resultsEl.empty();
+            if (!auditResult) return;
+
+            const s = auditResult.summary;
+
+            // Summary line
+            const summaryEl = resultsEl.createDiv({ cls: 'ert-audit-summary' });
+            summaryEl.createSpan({ text: `${s.totalNotes} ${noteType.toLowerCase()} note${s.totalNotes !== 1 ? 's' : ''} scanned` });
+            if (s.unreadNotes > 0) {
+                summaryEl.createSpan({ text: ` · ${s.unreadNotes} unread (stale cache)`, cls: 'ert-audit-summary-warn' });
+            }
+
+            // Summary chips
+            const chipsEl = resultsEl.createDiv({ cls: 'ert-audit-chips' });
+
+            interface ChipConfig {
+                label: string;
+                count: number;
+                kind: 'missing' | 'extra' | 'drift';
+                entries: NoteAuditEntry[];
+            }
+
+            const chips: ChipConfig[] = [
+                {
+                    label: 'Missing fields',
+                    count: s.notesWithMissing,
+                    kind: 'missing',
+                    entries: auditResult.notes.filter(n => n.missingFields.length > 0),
+                },
+                {
+                    label: 'Extra keys',
+                    count: s.notesWithExtra,
+                    kind: 'extra',
+                    entries: auditResult.notes.filter(n => n.extraKeys.length > 0),
+                },
+                {
+                    label: 'Order drift',
+                    count: s.notesWithDrift,
+                    kind: 'drift',
+                    entries: auditResult.notes.filter(n => n.orderDrift),
+                },
+            ];
+
+            if (s.clean === s.totalNotes && s.unreadNotes === 0) {
+                chipsEl.createDiv({
+                    text: `All ${s.totalNotes} notes match the template.`,
+                    cls: 'ert-audit-clean'
+                });
+                return;
+            }
+
+            let expandedKind: string | null = null;
+            const detailsEl = resultsEl.createDiv({ cls: 'ert-audit-details' });
+
+            const renderChips = () => {
+                chipsEl.empty();
+                for (const chip of chips) {
+                    if (chip.count === 0) continue;
+                    const chipBtn = chipsEl.createEl('button', {
+                        cls: `ert-chip ert-audit-chip ert-audit-chip--${chip.kind}${expandedKind === chip.kind ? ' is-active' : ''}`,
+                        text: `${chip.count} ${chip.label.toLowerCase()}`,
+                        attr: { type: 'button' }
+                    });
+                    chipBtn.addEventListener('click', () => {
+                        expandedKind = expandedKind === chip.kind ? null : chip.kind;
+                        renderChips();
+                        renderDetails();
+                    });
+                }
+                if (s.clean > 0) {
+                    chipsEl.createSpan({ text: `${s.clean} clean`, cls: 'ert-chip ert-audit-chip ert-audit-chip--clean' });
+                }
+            };
+
+            const renderDetails = () => {
+                detailsEl.empty();
+                if (!expandedKind) return;
+
+                const activeChip = chips.find(c => c.kind === expandedKind);
+                if (!activeChip || activeChip.entries.length === 0) return;
+
+                let page = 0;
+                const renderPage = () => {
+                    detailsEl.empty();
+                    const total = activeChip.entries.length;
+                    const start = page * AUDIT_PAGE_SIZE;
+                    const end = Math.min(start + AUDIT_PAGE_SIZE, total);
+                    const pageEntries = activeChip.entries.slice(start, end);
+
+                    // Pagination label: "Showing 1–5 of 78"
+                    const paginationLabel = detailsEl.createDiv({ cls: 'ert-audit-pagination-label' });
+                    paginationLabel.setText(`Showing ${start + 1}–${end} of ${total}`);
+
+                    for (const entry of pageEntries) {
+                        const rowEl = detailsEl.createDiv({ cls: 'ert-audit-row' });
+
+                        // Clickable file name
+                        const linkEl = rowEl.createEl('a', {
+                            text: entry.file.basename,
+                            cls: 'ert-audit-file-link',
+                            attr: { href: '#' }
+                        });
+                        linkEl.addEventListener('click', async (e) => {
+                            e.preventDefault();
+                            await openOrRevealFile(app, entry.file, false);
+                            if (entry.missingFields.length > 0) {
+                                new Notice(`Missing fields: ${entry.missingFields.join(', ')}`);
+                            }
+                        });
+
+                        // Inline reason
+                        const reasonText = activeChip.kind === 'missing'
+                            ? `missing: ${entry.missingFields.join(', ')}`
+                            : activeChip.kind === 'extra'
+                                ? `extra: ${entry.extraKeys.join(', ')}`
+                                : 'field order differs from template';
+                        const reasonStr = reasonText.length > 60 ? reasonText.slice(0, 59) + '…' : reasonText;
+                        rowEl.createSpan({ text: ` — ${reasonStr}`, cls: 'ert-audit-reason' });
+                    }
+
+                    // Pagination controls
+                    const navEl = detailsEl.createDiv({ cls: 'ert-audit-pagination' });
+                    if (page > 0) {
+                        const prevBtn = navEl.createEl('button', {
+                            text: '← Previous',
+                            cls: ERT_CLASSES.ICON_BTN,
+                            attr: { type: 'button' }
+                        });
+                        prevBtn.addEventListener('click', () => { page--; renderPage(); });
+                    }
+                    if (end < total) {
+                        const nextBtn = navEl.createEl('button', {
+                            text: `Show next ${Math.min(AUDIT_PAGE_SIZE, total - end)} →`,
+                            cls: ERT_CLASSES.ICON_BTN,
+                            attr: { type: 'button' }
+                        });
+                        nextBtn.addEventListener('click', () => { page++; renderPage(); });
+                    }
+                    if (total <= AUDIT_OPEN_ALL_MAX && total > 1) {
+                        const openAllBtn = navEl.createEl('button', {
+                            text: `Open all ${total}`,
+                            cls: ERT_CLASSES.ICON_BTN,
+                            attr: { type: 'button' }
+                        });
+                        openAllBtn.addEventListener('click', async () => {
+                            for (const e of activeChip.entries) {
+                                await openOrRevealFile(app, e.file, true);
+                            }
+                        });
+                    }
+                };
+
+                renderPage();
+            };
+
+            renderChips();
+        };
+
+        // ─── Run Audit action ────────────────────────────────────────────
+        runBtn.addEventListener('click', () => {
+            const files = collectFilesForAudit(app, noteType, plugin.settings, beatSystemKey);
+            if (files.length === 0) {
+                new Notice(`No ${noteType.toLowerCase()} notes found in the vault.`);
+                return;
+            }
+            auditResult = runYamlAudit({
+                app,
+                settings: plugin.settings,
+                noteType,
+                files,
+                beatSystemKey,
+            });
+            copyBtn.classList.remove('ert-settings-hidden');
+
+            if (auditResult.summary.notesWithMissing > 0) {
+                backfillBtn.classList.remove('ert-settings-hidden');
+            } else {
+                backfillBtn.classList.add('ert-settings-hidden');
+            }
+
+            renderResults();
+        });
+
+        // ─── Backfill action ─────────────────────────────────────────────
+        backfillBtn.addEventListener('click', async () => {
+            if (!auditResult || auditResult.summary.notesWithMissing === 0) return;
+
+            const defaults = getCustomDefaults(noteType, plugin.settings, beatSystemKey);
+            const targetFiles = auditResult.notes
+                .filter(n => n.missingFields.length > 0)
+                .map(n => n.file);
+
+            // Compute which fields actually need inserting (intersection)
+            const allMissingKeys = new Set<string>();
+            for (const n of auditResult.notes) {
+                for (const k of n.missingFields) allMissingKeys.add(k);
+            }
+            const fieldsToInsert: Record<string, string | string[]> = {};
+            for (const k of allMissingKeys) {
+                fieldsToInsert[k] = defaults[k] ?? '';
+            }
+
+            // Confirmation modal
+            const confirmed = await new Promise<boolean>((resolve) => {
+                const modal = new Modal(app);
+                modal.titleEl.setText(`Insert missing fields into ${targetFiles.length} ${noteType.toLowerCase()} note${targetFiles.length !== 1 ? 's' : ''}`);
+
+                const bodyEl = modal.contentEl.createDiv({ cls: 'ert-stack' });
+                bodyEl.createDiv({ text: 'The following fields will be added (existing values are never overwritten):' });
+
+                const fieldListEl = bodyEl.createEl('ul');
+                for (const [key, val] of Object.entries(fieldsToInsert)) {
+                    const valStr = Array.isArray(val) ? val.join(', ') : val;
+                    fieldListEl.createEl('li', { text: valStr ? `${key}: ${valStr}` : `${key}: (empty)` });
+                }
+
+                const btnRow = modal.contentEl.createDiv({ cls: 'ert-audit-actions' });
+                const insertBtn = btnRow.createEl('button', {
+                    cls: 'ert-mod-cta',
+                    text: 'Insert',
+                    attr: { type: 'button' }
+                });
+                const cancelBtn = btnRow.createEl('button', {
+                    text: 'Cancel',
+                    attr: { type: 'button' }
+                });
+
+                insertBtn.addEventListener('click', () => { modal.close(); resolve(true); });
+                cancelBtn.addEventListener('click', () => { modal.close(); resolve(false); });
+                modal.onClose = () => resolve(false);
+                modal.open();
+            });
+
+            if (!confirmed) return;
+
+            // Run backfill
+            const result: BackfillResult = await runYamlBackfill({
+                app,
+                files: targetFiles,
+                fieldsToInsert,
+                onProgress: (cur, total, name) => {
+                    if (cur % 10 === 0 || cur === total) {
+                        // Only log progress for larger batches
+                    }
+                },
+            });
+
+            const parts: string[] = [];
+            if (result.updated > 0) parts.push(`Updated ${result.updated} note${result.updated !== 1 ? 's' : ''}`);
+            if (result.skipped > 0) parts.push(`${result.skipped} already had all fields`);
+            if (result.failed > 0) parts.push(`${result.failed} failed`);
+            new Notice(parts.join(', ') || 'No changes made.');
+
+            // Re-run audit to refresh results
+            const files = collectFilesForAudit(app, noteType, plugin.settings, beatSystemKey);
+            auditResult = runYamlAudit({
+                app,
+                settings: plugin.settings,
+                noteType,
+                files,
+                beatSystemKey,
+            });
+
+            if (auditResult.summary.notesWithMissing === 0) {
+                backfillBtn.classList.add('ert-settings-hidden');
+            }
+            renderResults();
+        });
+    }
+
+    // ─── Place audit panels inside each editor section ───────────────────
+
+    // Beat audit panel (inside beat YAML section, after hover preview)
+    const beatAuditContainer = beatYamlSection.createDiv({ cls: ERT_CLASSES.STACK });
+    const renderBeatAuditVisibility = () => {
+        const visible = plugin.settings.enableBeatYamlEditor ?? false;
+        beatAuditContainer.toggleClass('ert-settings-hidden', !visible);
+    };
+    renderBeatAuditVisibility();
+    const origBeatToggle = beatYamlToggleBtn.onclick;
+    // Re-wire beat toggle to also control audit visibility
+    beatYamlToggleBtn.addEventListener('click', () => { renderBeatAuditVisibility(); });
+    renderAuditPanel(
+        beatAuditContainer,
+        'Beat',
+        plugin.settings.beatSystem === 'Custom'
+            ? `custom:${plugin.settings.activeCustomBeatSystemId ?? 'default'}`
+            : plugin.settings.beatSystem ?? 'Save The Cat'
+    );
+
+    // Scene audit panel (inside scene YAML section, after hover preview)
+    const sceneAuditContainer = yamlStack.createDiv({ cls: ERT_CLASSES.STACK });
+    const renderSceneAuditVisibility = () => {
+        const visible = plugin.settings.enableAdvancedYamlEditor ?? false;
+        sceneAuditContainer.toggleClass('ert-settings-hidden', !visible);
+    };
+    renderSceneAuditVisibility();
+    advancedToggleButton.addEventListener('click', () => { renderSceneAuditVisibility(); });
+    renderAuditPanel(sceneAuditContainer, 'Scene');
+
+    // Backdrop audit panel (inside backdrop YAML section, after hover preview)
+    const backdropAuditContainer = backdropYamlSection.createDiv({ cls: ERT_CLASSES.STACK });
+    const renderBackdropAuditVisibility = () => {
+        const visible = plugin.settings.enableBackdropYamlEditor ?? false;
+        backdropAuditContainer.toggleClass('ert-settings-hidden', !visible);
+    };
+    renderBackdropAuditVisibility();
+    backdropYamlToggleBtn.addEventListener('click', () => { renderBackdropAuditVisibility(); });
+    renderAuditPanel(backdropAuditContainer, 'Backdrop');
 
     function updateStoryStructureDescription(container: HTMLElement, selectedSystem: string): void {
         const descriptions: Record<string, string> = {

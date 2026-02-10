@@ -247,7 +247,8 @@ export class SceneDataService {
                         synopsis: metadata.Synopsis as string | undefined, // For hover
                         Duration: duration,
                         End: metadata.End as string | undefined,
-                        itemType: "Backdrop"
+                        itemType: "Backdrop",
+                        rawFrontmatter: metadata
                         // No subplot assignment - rendered in special Backdrop Ring
                     });
 

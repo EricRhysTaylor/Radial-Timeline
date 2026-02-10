@@ -436,7 +436,14 @@ export interface RadialTimelineSettings {
         advanced: string;
     };
     bookDesignerTemplates?: BookDesignerTemplate[];
+    /** @deprecated Use backdropYamlTemplates instead. Kept for migration. */
     backdropYamlTemplate?: string;
+    backdropYamlTemplates?: {
+        base: string;
+        advanced: string;
+    };
+    enableBackdropYamlEditor?: boolean;
+    backdropHoverMetadataFields?: HoverMetadataField[];
     showBackdropRing?: boolean;
     chronologueBackdropMicroRings?: ChronologueBackdropMicroRing[];
     hoverMetadataFields?: HoverMetadataField[];

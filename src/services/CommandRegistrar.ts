@@ -582,10 +582,15 @@ export class CommandRegistrar {
 
             const path = `${sanitizedPath}/${filename}`;
 
-            // Use backdrop template
-            const template = this.plugin.settings.backdropYamlTemplate
-                || DEFAULT_SETTINGS.backdropYamlTemplate
-                || `Class: Backdrop\nWhen: {{When}}\nEnd: {{End}}\nSynopsis: `;
+            // Build backdrop template from base + advanced
+            const backdropTemplates = this.plugin.settings.backdropYamlTemplates
+                ?? DEFAULT_SETTINGS.backdropYamlTemplates;
+            const backdropBase = backdropTemplates?.base
+                ?? 'Class: Backdrop\nWhen: {{When}}\nEnd: {{End}}\nSynopsis:';
+            const backdropAdvanced = backdropTemplates?.advanced ?? '';
+            const template = backdropAdvanced.trim()
+                ? mergeTemplates(backdropBase, backdropAdvanced)
+                : backdropBase;
 
             // Replace placeholders for backdrop
             const today = new Date().toISOString().split('T')[0];
