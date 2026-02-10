@@ -2564,11 +2564,29 @@ export function renderStoryBeatsSection(params: {
 
             const s = auditResult.summary;
 
+            // Schema health label — instant emotional feedback
+            const healthLevel = s.notesWithMissing > 0
+                ? 'needs-attention'
+                : (s.notesWithExtra > 0 || s.notesWithDrift > 0)
+                    ? 'mixed'
+                    : 'clean';
+            const healthLabels: Record<string, string> = {
+                'clean': 'Clean',
+                'mixed': 'Mixed',
+                'needs-attention': 'Needs attention',
+            };
+            const healthEl = resultsEl.createDiv({ cls: `ert-audit-health ert-audit-health--${healthLevel}` });
+            healthEl.createSpan({ text: 'Schema health: ' });
+            healthEl.createSpan({ text: healthLabels[healthLevel], cls: 'ert-audit-health-value' });
+
             // Summary line
             const summaryEl = resultsEl.createDiv({ cls: 'ert-audit-summary' });
             summaryEl.createSpan({ text: `${s.totalNotes} ${noteType.toLowerCase()} note${s.totalNotes !== 1 ? 's' : ''} scanned` });
+
+            // Unread/stale-cache warning — actionable guidance
             if (s.unreadNotes > 0) {
-                summaryEl.createSpan({ text: ` · ${s.unreadNotes} unread (stale cache)`, cls: 'ert-audit-summary-warn' });
+                const unreadEl = resultsEl.createDiv({ cls: 'ert-audit-unread-warn' });
+                unreadEl.createSpan({ text: `${s.unreadNotes} note${s.unreadNotes !== 1 ? 's' : ''} not yet indexed — rerun audit after Obsidian finishes indexing.` });
             }
 
             // Summary chips
@@ -2684,7 +2702,7 @@ export function renderStoryBeatsSection(params: {
                     if (page > 0) {
                         const prevBtn = navEl.createEl('button', {
                             text: '← Previous',
-                            cls: ERT_CLASSES.ICON_BTN,
+                            cls: 'ert-audit-nav-btn',
                             attr: { type: 'button' }
                         });
                         prevBtn.addEventListener('click', () => { page--; renderPage(); });
@@ -2692,7 +2710,7 @@ export function renderStoryBeatsSection(params: {
                     if (end < total) {
                         const nextBtn = navEl.createEl('button', {
                             text: `Show next ${Math.min(AUDIT_PAGE_SIZE, total - end)} →`,
-                            cls: ERT_CLASSES.ICON_BTN,
+                            cls: 'ert-audit-nav-btn',
                             attr: { type: 'button' }
                         });
                         nextBtn.addEventListener('click', () => { page++; renderPage(); });
@@ -2700,7 +2718,7 @@ export function renderStoryBeatsSection(params: {
                     if (total <= AUDIT_OPEN_ALL_MAX && total > 1) {
                         const openAllBtn = navEl.createEl('button', {
                             text: `Open all ${total}`,
-                            cls: ERT_CLASSES.ICON_BTN,
+                            cls: 'ert-audit-nav-btn',
                             attr: { type: 'button' }
                         });
                         openAllBtn.addEventListener('click', async () => {
@@ -2731,6 +2749,18 @@ export function renderStoryBeatsSection(params: {
                 files,
                 beatSystemKey,
             });
+
+            // Telemetry: lightweight audit event for future usage analytics
+            console.debug('[YamlAudit] yaml_audit_run', {
+                noteType,
+                totalNotes: auditResult.summary.totalNotes,
+                missing: auditResult.summary.notesWithMissing,
+                extra: auditResult.summary.notesWithExtra,
+                drift: auditResult.summary.notesWithDrift,
+                unread: auditResult.summary.unreadNotes,
+                clean: auditResult.summary.clean,
+            });
+
             copyBtn.classList.remove('ert-settings-hidden');
 
             if (auditResult.summary.notesWithMissing > 0) {
@@ -2804,6 +2834,15 @@ export function renderStoryBeatsSection(params: {
                         // Only log progress for larger batches
                     }
                 },
+            });
+
+            // Telemetry: lightweight backfill event for future usage analytics
+            console.debug('[YamlAudit] yaml_backfill_execute', {
+                noteType,
+                updated: result.updated,
+                skipped: result.skipped,
+                failed: result.failed,
+                fieldsInserted: Object.keys(fieldsToInsert),
             });
 
             const parts: string[] = [];

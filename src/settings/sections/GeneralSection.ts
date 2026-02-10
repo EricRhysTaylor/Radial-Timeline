@@ -80,7 +80,7 @@ export function renderGeneralSection(params: {
     // --- Books Manager ---
     const booksHeading = new ObsidianSetting(containerEl)
         .setName('Books')
-        .setDesc('The active book drives the timeline title and exports.')
+        .setDesc('The active book drives the timeline view, title and exports.')
         .setHeading();
     addHeadingIcon(booksHeading, 'library-big');
     applyErtHeaderLayout(booksHeading);

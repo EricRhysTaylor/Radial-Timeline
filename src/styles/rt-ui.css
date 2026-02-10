@@ -5099,10 +5099,14 @@
 
 .ert-ui.ert-scope--settings .ert-campaign-name--clickable {
   cursor: pointer;
+  text-decoration: underline dashed;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-name--clickable:hover {
-  text-decoration: underline;
+  text-decoration-style: solid;
+  text-decoration-color: currentColor;
 }
 
 .ert-ui.ert-scope--settings .ert-campaign-name--clickable:focus-visible {
@@ -5848,10 +5852,14 @@
 
 .ert-book-name--clickable {
   cursor: pointer;
+  text-decoration: underline dashed;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
 }
 
 .ert-book-name--clickable:hover {
-  text-decoration: underline;
+  text-decoration-style: solid;
+  text-decoration-color: currentColor;
 }
 
 .ert-book-name--clickable:focus-visible {
@@ -5876,13 +5884,40 @@
   flex-wrap: wrap;
 }
 
+.ert-ui.ert-scope--settings .ert-audit-health {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 2px 0;
+}
+
+.ert-ui.ert-scope--settings .ert-audit-health--clean {
+  color: var(--text-success);
+}
+
+.ert-ui.ert-scope--settings .ert-audit-health--mixed {
+  color: var(--text-warning);
+}
+
+.ert-ui.ert-scope--settings .ert-audit-health--needs-attention {
+  color: var(--text-error);
+}
+
+.ert-ui.ert-scope--settings .ert-audit-health-value {
+  font-weight: 700;
+}
+
 .ert-ui.ert-scope--settings .ert-audit-summary {
   font-size: 13px;
   color: var(--text-muted);
 }
 
-.ert-ui.ert-scope--settings .ert-audit-summary-warn {
+.ert-ui.ert-scope--settings .ert-audit-unread-warn {
+  font-size: 12px;
   color: var(--text-warning);
+  padding: 4px var(--ert-gap-sm);
+  background: color-mix(in srgb, var(--text-warning) 8%, var(--background-secondary) 88%);
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--text-warning) 20%, transparent);
 }
 
 .ert-ui.ert-scope--settings .ert-audit-chips {
@@ -5982,4 +6017,12 @@
   align-items: center;
   gap: var(--ert-gap-sm);
   padding-top: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--settings .ert-audit-nav-btn {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: var(--ert-control-radius);
+  cursor: pointer;
+  white-space: nowrap;
 }

@@ -194,9 +194,7 @@ Iteration:`
 Act: {{Act}}
 Description: {{Description}}
 Beat Model: {{BeatModel}}
-Range: {{Range}}
-When:
-Gossamer1:`,
+Range: {{Range}}`,
         advanced: ``
     },
     bookDesignerTemplates: [],

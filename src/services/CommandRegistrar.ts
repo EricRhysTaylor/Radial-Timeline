@@ -543,11 +543,7 @@ export class CommandRegistrar {
 
             const filePath = `${sanitizedPath}/${filename}`;
 
-            const yaml = [
-                `Class: ${classValue}`,
-                'Act: 1',
-                'Status: Todo'
-            ].join('\n');
+            const yaml = `Class: ${classValue}`;
 
             const fileContent = `---\n${yaml}\n---\n\n`;
 

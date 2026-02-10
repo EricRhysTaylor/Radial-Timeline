@@ -6,14 +6,12 @@ import { PLOT_SYSTEMS, PLOT_SYSTEM_NAMES, PlotSystemTemplate, PlotBeatInfo } fro
 import { mergeTemplates } from './sceneGenerator';
 import type { BeatSystemConfig, RadialTimelineSettings } from '../types/settings';
 
-/** Legacy beat base template — byte-for-byte matches the original hardcoded output. */
+/** Legacy beat base template — canonical beat fields only (Gossamer fields are injected dynamically). */
 const LEGACY_BEAT_BASE = `Class: Beat
 Act: {{Act}}
 Description: {{Description}}
 Beat Model: {{BeatModel}}
-Range: {{Range}}
-When:
-Gossamer1:`;
+Range: {{Range}}`;
 
 // ─── Per-system Beat Config Resolvers ────────────────────────────────
 
@@ -172,8 +170,6 @@ function generatePlotNoteContent(
     `Description: ${desc}`,
     `Beat Model: ${beatSystem}`,
     rangeValue ? `Range: ${rangeValue}` : 'Range:',
-    'When:',
-    'Gossamer1:',
     '---',
     ''
   ].join('\n');
