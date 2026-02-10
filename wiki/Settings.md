@@ -162,7 +162,7 @@ Control how narrative perspective is visualized.
 *   **Scene level YAML overrides**: You can override the global default on a per-scene basis using the `POV` YAML key.
 
 > [!NOTE]
-> See [[Advanced-YAML#point-of-view]] for configuration details and supported keywords.
+> See [[YAML-Frontmatter#pov-keywords]] for configuration details and supported keywords.
 
 <a name="acts"></a>
 ### Acts
@@ -201,7 +201,7 @@ Manage how Radial Timeline reads and writes metadata.
 *   **Advanced YAML editor**: Enable this to customize the advanced scene template, add optional fields, and control hover metadata icons/order.
 
 > [!NOTE]
-> *   For template customization: [[Advanced-YAML]]
+> *   For template customization: [[YAML-Frontmatter#advanced-yaml-editor]]
 > *   For a full list of keys: [[YAML-Frontmatter]]
 
 <a name="publication"></a>

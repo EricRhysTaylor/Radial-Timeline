@@ -4,16 +4,7 @@ Radial Timeline registers two co-equal **views** in Obsidian, each with its own 
 
 ## Timeline View
 
-The Timeline view is the primary visual workspace. It renders your manuscript as a radial layout and supports four **modes** that each answer a different creative question:
-
-| Mode | Key | Focus |
-| :--- | :--- | :--- |
-| **Narrative** | `1` | Manuscript reading order — subplot colors, story beats, scene reordering |
-| **Publication** | `2` | Writing status and revision stages — Todo/Working/Overdue, publish-stage colors |
-| **Chronologue** | `3` | Story-world chronology — when events happen, elapsed time, duration arcs |
-| **Gossamer** | `4` | Narrative momentum — story beat scores, pacing, tension mapping |
-
-Chronologue mode also provides three **sub-modes** (Shift, Alt, Runtime) for deeper temporal analysis. See [[Timeline Modes]] for full details.
+The Timeline view is the primary visual workspace. It renders your manuscript as a radial layout and supports four **modes** that each answer a different creative question. See the overview below and [[Timeline Modes]] for full details.
 
 **Open**: Command palette → **Radial Timeline: Open**, or click the shell icon in the ribbon.
 
@@ -24,6 +15,17 @@ The Inquiry view is a dedicated analysis workspace for corpus-level story evalua
 Inquiry organizes its analysis into three narrative zones (Setup, Pressure, Payoff) and produces two complementary scores — **Flow** (narrative momentum) and **Depth** (thematic substance) — visualized in a radial glyph. See [[Inquiry]] for full details.
 
 **Open**: Command palette → **Radial Timeline: Open Inquiry**, or click the waves icon in the ribbon.
+
+## Timeline Modes (Overview)
+
+| Mode | Key | Focus |
+| :--- | :--- | :--- |
+| **Narrative** | `1` | Manuscript reading order — subplot colors, story beats, scene reordering |
+| **Publication** | `2` | Writing status and revision stages — Todo/Working/Overdue, publish-stage colors |
+| **Chronologue** | `3` | Story-world chronology — when events happen, elapsed time, duration arcs |
+| **Gossamer** | `4` | Narrative momentum — story beat scores, pacing, tension mapping |
+
+Chronologue mode also provides three **sub-modes** (Shift, Alt, Runtime) for deeper temporal analysis. See [[Timeline Modes]] for full details.
 
 ## Working with Both Views
 

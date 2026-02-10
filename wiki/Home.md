@@ -66,5 +66,6 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
 *   **[[Welcome]]**: Opening Radial Timeline in an empty vault greets you with a quick-start guide.
 *   **[[Fresh-Vault-Onboarding|Fresh Vault Onboarding]]**: Start from scratch with Book Designer and beats.
 *   **[[Existing-Vault-Onboarding|Existing Vault Onboarding]]**: Connect an existing manuscript to Radial Timeline.
+*   **[[Migrating-from-Other-Apps|Migrating from Scrivener & Other Apps]]**: How Obsidian’s markdown workflow differs from traditional writing tools.
 *   **[[Book Designer]]**: Instantly generate a manuscript template with acts, subplots, and beats.
 *   **[[Core Workflows]]**: Learn the basics of Radial Timeline.

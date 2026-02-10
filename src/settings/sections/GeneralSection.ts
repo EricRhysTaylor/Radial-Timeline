@@ -217,7 +217,7 @@ export function renderGeneralSection(params: {
             // Controls: source folder input + trash
             row.addText(text => {
                 text.setPlaceholder('Source folder').setValue(book.sourceFolder || '');
-                text.inputEl.addClass('ert-input--lg');
+                text.inputEl.addClass('ert-input--xl');
 
                 const inputEl = text.inputEl;
                 const resetState = () => {

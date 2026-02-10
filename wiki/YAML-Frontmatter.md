@@ -1,4 +1,8 @@
-### Minimal Scene (Required Fields)
+# Scene YAML (Basic + Advanced)
+
+This page covers scene metadata (basic and advanced), beat notes, and backdrop notes. Radial Timeline reads metadata from **Obsidian properties** (YAML frontmatter) at the top of each note. If you prefer to keep things light, you can start with only the minimal fields and fill the rest later.
+
+## Minimal Scene (Required Fields)
 
 ```yaml
 Class: Scene              # Type: Scene or Beat
@@ -23,48 +27,30 @@ Subplot:
   - Main Plot
   - Subplot 1
 Character:
-  - "[[Protagonist]]"       #Obsidian wikilink format to click through to a note
+  - "Protagonist"
   - "Mentor"
-  - Child One                #No link
+  - "Child One"
 Place:
-  - "[[Castle]]"            #Obsidian wikilink
+  - "Castle"
   - "Forest"
-  - Planet Nine
+  - "Planet Nine"
 ```
 
-**POV keywords**:
+Obsidian links are supported in properties. Use the double-bracket wikilink format inside quotes if you want a field to link to a note.
+
+## POV Keywords
+
 *   `pov: first` — first listed character gets a `¹` marker.
 *   `pov: second` / `pov: you` — inserts `You²` ahead of the cast.
 *   `pov: omni` — shows `Omni³` to signal an omniscient narrator.
 *   `pov: objective` — shows `Narrator°` for camera-eye scenes.
 *   `pov: two`, `pov: 4`, `pov: count`, `pov: all` — highlight multiple carriers.
 
-### Standard Beat
+You can control how POV is displayed in **Settings → Point of view**.
 
-```yaml
-Class: Beat                   # Formerly Plot, Deprecated
-Act: 1
-When:                         # Optional: Story timeline date for chronological positioning (YYYY-MM-DD HH:MM)
-Description: The first impression of your story. A snapshot before the journey begins.
-Beat Model: Save The Cat
-Range: 0-20
-Gossamer1: 12                 # First run (oldest) - Up to 30 evaluation passes
-Gossamer1 Justification: 
-Gossamer2: 21                 # Second run (most recent in this example)
-Gossamer2 Justification: 
-```
+## Advanced Scene Template
 
-### Backdrop
-
-```yaml
-Class: Backdrop                   # Used for special context events that move the plot. Appears as a dedicated ring in Chronologue mode. See also micro-backdrop rings for lighter-weight context.
-When:                             # Start Date time (YYYY-MM-DD HH:MM)
-End:                              # End Date time (YYYY-MM-DD HH:MM)
-Synopsis: What this special backdrop is and how it relates to the story.
-
-```
-
-### Advanced Scene YAML
+The Advanced scene template adds optional fields for deeper workflows (Story Grid, Dramatica, custom analysis, and more). This template is **customizable**.
 
 ```yaml
 Class: Scene
@@ -76,42 +62,78 @@ Subplot:
   - Subplot 1
   - Subplot 2
 Character:
-  - "[[Character 1]]"
+  - "Character 1"
 Place:
-  - "[[Earth]]"
+  - "Earth"
 Status: Todo
 Publish Stage: Zero
 Due:
 Pending Edits:
 Iteration:                            # Edit iteration count (deprecated: was "Revision")
-Type:                                 #Story Grid: Scene type (Inciting Incident, Progressive Complication, Crisis, Climax, Resolution)
-Shift:                                #Story Grid: Value shift (e.g. Life to Death, Hope to Despair)
-Questions:                            #Analysis Block
+Type:                                 # Story Grid: Scene type (Inciting Incident, Progressive Complication, Crisis, Climax, Resolution)
+Shift:                                # Story Grid: Value shift (e.g. Life to Death, Hope to Despair)
+Questions:                            # Analysis Block
 Reader Emotion:
 Internal: How do the characters change?
 Total Time:
-Words:                                #Statistics
+Words:                                # Statistics
 Runtime:                              # Technical runtime (screenplay time / reading time, e.g., "2:30", "45s")
 Pulse Update: No
 Summary Update:
 ```
 
-**Tip for Advanced Methodologies (e.g., Dramatica):**
-You can customize this template in **Settings > Scene YAML templates & remapping** to include specific fields for your system. For example, a Dramatica user might add:
+### Advanced YAML Editor
+
+The Advanced YAML editor lets you tailor the Advanced scene template while keeping required base keys intact. Add, remove, or reorder optional fields to match your workflow.
+
+*   Enable **Settings → Scene YAML templates & remapping → Advanced YAML editor**.
+*   Required base keys stay locked and auto-included in order.
+*   Optional keys can be drag-reordered, renamed, deleted, or added.
+*   Use the restore icon to revert to the shipped defaults.
+
+## Beat Notes (YAML)
+
 ```yaml
-dramatica:
-  MC: 1
-  OS: 2
+Class: Beat                   # Formerly Plot, Deprecated
+Act: 1
+When:                         # Optional: Story timeline date for chronological positioning (YYYY-MM-DD HH:MM)
+Description: The first impression of your story. A snapshot before the journey begins.
+Beat Model: Save The Cat
+Range: 0-20
+Gossamer1: 12                 # First run (oldest) - Up to 30 evaluation passes
+Gossamer1 Justification:
+Gossamer2: 21                 # Second run (most recent in this example)
+Gossamer2 Justification:
 ```
 
+Beat notes have their own **Beat YAML editor** in **Settings → Story beats system**. Use it to add custom keys and choose which fields appear in beat hovers. Beat YAML is stored per beat system.
 
-### Custom Metadata Mapping
+## Backdrop Notes (YAML)
+
+```yaml
+Class: Backdrop                   # Used for special context events that move the plot. Appears as a dedicated ring in Chronologue mode. See also micro-backdrop rings for lighter-weight context.
+When:                             # Start Date time (YYYY-MM-DD HH:MM)
+End:                              # End Date time (YYYY-MM-DD HH:MM)
+Synopsis: What this special backdrop is and how it relates to the story.
+```
+
+Backdrop note YAML is **not customizable at this time**.
+
+## YAML Managers in Settings
+
+*   **Advanced YAML editor**: Customize the Advanced scene template (optional fields and hover metadata).
+*   **Beat YAML editor**: Customize beat note fields and beat hover metadata.
+*   **Custom Metadata Mapping**: Map your existing keys to Radial Timeline keys without rewriting your files.
+
+See [[Settings#yaml-templates]] and [[Settings#story-beats]] for configuration details.
+
+## Custom Metadata Mapping
 
 If your vault already uses different frontmatter keys for scene metadata, you can map them to Radial Timeline's system keys in **Settings → Custom Metadata Mapping**.
 
 Example: If you use `Timeline: 2024-01-01` instead of `When: 2024-01-01`, create a mapping from `Timeline` to `When`.
 
-### Backwards Compatibility
+## Backwards Compatibility
 
 The plugin automatically recognizes legacy field names, so you don't need to update existing scene notes when field names change:
 

@@ -1,10 +1,11 @@
 *   [[Home]]
-*   **Getting Started**
+*   **Quick Start**
     *   [[Welcome]]
     *   [[Views]]
     *   [[Fresh-Vault-Onboarding|Fresh Vault Onboarding]]
     *   [[Existing-Vault-Onboarding|Existing Vault Onboarding]]
-    *   [[Timeline-Modes|Timeline Modes]]
+    *   [[Migrating-from-Other-Apps|Migrating from Scrivener & Other Apps]]
+    *   [[Commands]]
 *   **Timeline Modes**
     *   [[Narrative-Mode|Narrative Mode]]
     *   [[Publication-Mode|Publication Mode]]
@@ -23,9 +24,7 @@
     *   [[Scenes-Structure-Timeline|Scenes, Structure, and the Timeline]]
     *   [[Book-Designer|Book Designer]]
     *   [[How-to]]
-    *   [[Commands]]
-    *   [[YAML-Frontmatter|YAML Frontmatter]]
-    *   [[Advanced-YAML|Advanced YAML]]
+    *   [[YAML-Frontmatter|Scene YAML (Basic + Advanced)]]
     *   [[Settings]]
         *   [Core tab](Settings#core)
         *   [Pro tab](Settings#professional)

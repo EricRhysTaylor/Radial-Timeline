@@ -11,6 +11,8 @@ Radial Timeline works well with a few common vault setups. Pick one and stick wi
 
 This page covers the fresh vault flow. If you already have scenes, jump to [[Existing-Vault-Onboarding|Existing Vault Onboarding]].
 
+> **YAML (friendly definition)**: YAML does not refer to camels. It stands for **Yet Another Markup Language**. It is human-readable, designed to help, and gives you full control over the information you track in each note (scene, beat, backdrop, etc). It can feel intimidating at first, but most writers get comfortable quickly and appreciate the power it provides.
+
 ## 1. Install and point the plugin
 1. Install Radial Timeline from Community Plugins.
 2. Open Settings -> Community Plugins -> Radial Timeline.

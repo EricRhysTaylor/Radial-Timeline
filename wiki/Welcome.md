@@ -51,6 +51,7 @@ Back up your Obsidian vault regularly to protect against data loss. Sync does no
 ### Start Writing
 
 *   **[[Scenes-Structure-Timeline|Scenes, Structure, and the Timeline]]** — A short, friendly primer for fresh vaults.
+*   **[[Migrating-from-Other-Apps|Migrating from Scrivener & Other Apps]]** — How Obsidian’s markdown workflow differs from conventional writing tools.
 *   **[[Fresh-Vault-Onboarding|Fresh Vault Onboarding]]** — Start from scratch with Book Designer and beats.
 *   **[[Existing-Vault-Onboarding|Existing Vault Onboarding]]** — Connect an existing manuscript to Radial Timeline.
 *   **[[Core-Workflows|Core Workflows]]** — Learn how to plan, write, and track your novel.
@@ -69,6 +70,6 @@ Back up your Obsidian vault regularly to protect against data loss. Sync does no
 
 ### Advanced Customization
 
-*   **[[Advanced-YAML|Advanced YAML]]** — Full schemas and custom fields.
+*   **[[YAML-Frontmatter|Scene YAML (Basic + Advanced)]]** — Full schemas and custom fields.
 *   **[[Commands]]** — Command palette reference.
 *   **[[AI-Analysis|AI Analysis]]** — Optional AI scene analysis workflows.
