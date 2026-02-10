@@ -5760,10 +5760,92 @@
 }
 
 /* Books settings */
-.rt-books-list {
-  margin-bottom: 12px;
+
+/* "+" add-book button in heading (ert-iconBtn ert-mod-cta base) */
+.rt-books-add-btn--pulse {
+  animation: rt-books-add-pulse 2s ease-in-out infinite;
 }
 
-.rt-books-active {
-  margin-top: 8px;
+@keyframes rt-books-add-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--text-success) 40%, transparent); }
+  50% { box-shadow: 0 0 0 6px transparent; }
+}
+
+.rt-books-panel {
+  gap: 8px;
+}
+
+/* Book card: single-row Setting with bordered card look */
+.rt-book-card.setting-item {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m, 8px);
+  padding: 8px 12px;
+  background: var(--background-primary);
+  transition: border-color 0.15s ease;
+}
+
+.rt-book-card.setting-item.is-active {
+  border-color: color-mix(in srgb, var(--text-success) 50%, transparent);
+}
+
+/* Name column: status icon + title stacked above desc */
+.rt-book-card__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rt-book-card__status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-faint);
+}
+
+.rt-book-card__status svg {
+  width: 16px;
+  height: 16px;
+}
+
+.rt-book-card__status--active {
+  color: var(--text-success);
+}
+
+/* Clickable info area to activate inactive book */
+.rt-book-card__info--clickable {
+  cursor: pointer;
+}
+
+.rt-book-card__info--clickable:hover .rt-book-card__status {
+  color: var(--text-success);
+}
+
+.rt-book-card__stat--warn {
+  color: var(--text-faint);
+}
+
+.rt-book-card__trash.is-disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* Book title: clickable rename link */
+.ert-book-name {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.ert-book-name--clickable {
+  cursor: pointer;
+}
+
+.ert-book-name--clickable:hover {
+  text-decoration: underline;
+}
+
+.ert-book-name--clickable:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--interactive-accent) 45%, transparent);
+  outline-offset: 2px;
+  border-radius: 4px;
 }

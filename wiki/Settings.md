@@ -185,9 +185,11 @@ Configure the structural pacing guide for your story.
     *   **No highlight** — new beat with no file yet. Use **Create** to generate it.
 *   **Create templates**: Generate beat template notes in your source folder. The button shows how many new notes will be created and is disabled when all beats already have files.
 *   **Merge beats**: (Appears when misaligned beats are detected) Renames and updates existing beat note files to match the current list order and act assignments. The button shows how many beats will be realigned.
+*   **Beat YAML editor**: Customize additional YAML keys for beat notes and choose which fields appear in the beat hover synopsis. Stored per beat system.
+*   **Saved beat systems ✦ Pro**: Save and switch between multiple custom beat systems (unlimited beat sets). Each system stores its beat list, Beat YAML editor fields, and hover metadata selections. Core includes a single custom beat system.
 
 > [!NOTE]
-> Custom beat YAML fields use the same structure as preset systems (`Class: Beat`, `Act`, `Beat Model`, `Range`, etc.). Custom per-beat YAML field editing is planned for a future revision.
+> Custom beat YAML fields use the same structure as preset systems (`Class: Beat`, `Act`, `Beat Model`, `Range`, etc.). Use the Beat YAML editor to extend this with your own fields.
 
 > [!NOTE]
 > Learn more about using beats in [[Gossamer-Mode]].

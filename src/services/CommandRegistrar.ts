@@ -213,6 +213,18 @@ export class CommandRegistrar {
             return;
         }
 
+        // ── Source-folder guardrail (applies to MD, DOCX, and PDF) ───────
+        const ctx = getActiveBookExportContext(this.plugin);
+        const folder = ctx.sourceFolder.trim();
+        if (!folder || !this.app.vault.getAbstractFileByPath(folder)) {
+            const activeBook = getActiveBook(this.plugin.settings);
+            if (activeBook) {
+                console.warn(`[RT Export] Source folder missing or invalid for book "${activeBook.title}" (id=${activeBook.id}), folder="${folder}"`);
+            }
+            new Notice('Active book has no valid source folder. Open Settings → General → Books.');
+            return;
+        }
+
         try {
             const scenes = await getSceneFilesByOrder(this.app, this.plugin, result.order, undefined, true);
             const selection: ManuscriptSceneSelection = {
@@ -308,7 +320,6 @@ export class CommandRegistrar {
                 new Notice(`Manuscript exported to ${path}`);
             } else {
                 // Pandoc export (Pro) — layout-aware pipeline
-                const ctx = getActiveBookExportContext(this.plugin);
 
                 // Resolve the layout
                 const layout = getLayoutById(this.plugin, result.selectedLayoutId);

@@ -59,6 +59,8 @@ When "Custom" is selected, the beat system editor appears:
 *   **Add beats**: Type a name and click **+** to add a new beat. Assign each beat to an act using the dropdown.
 *   **Reorder**: Drag and drop beats to change their order within or across acts.
 *   **Rename**: Edit beat names inline. After renaming or reordering, use **Merge** to update existing files.
+*   **Beat YAML editor**: Customize additional YAML keys for beat notes and select which fields appear in beat hover metadata (stored per system).
+*   **Saved beat systems ✦ Pro**: Save and switch between multiple custom beat systems (unlimited beat sets). Each system stores beats plus Beat YAML editor fields and hover metadata.
 
 Row colors show the sync status between your beat list and the actual note files:
 *   **Green** — beat note exists and is aligned.
@@ -71,4 +73,4 @@ Row colors show the sync status between your beat list and the actual note files
 *   **Merge**: Appears when beats are misaligned. Renames and updates existing beat note files to match the current list order and act assignments. Use this after reordering or renaming beats.
 
 > [!NOTE]
-> Custom beat notes use the same YAML structure as preset systems. Custom per-beat YAML field editing is planned for a future revision.
+> Custom beat notes use the same YAML structure as preset systems. Use the Beat YAML editor to extend this with your own fields.

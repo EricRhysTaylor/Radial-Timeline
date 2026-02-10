@@ -26,6 +26,7 @@ export interface TranslationKeys {
                 desc: string;
                 placeholder: string;
             };
+            /** @deprecated Kept for structural compat; not rendered in UI. */
             showTitle: {
                 name: string;
                 desc: string;
@@ -142,6 +143,7 @@ export interface TranslationKeys {
             act2: string;
             act3: string;
         };
+        /** @deprecated Kept for structural compat; use DEFAULT_BOOK_TITLE instead. */
         workInProgress: string;
     };
     common: {
@@ -278,8 +280,8 @@ export const en: TranslationKeys = {
             },
             /** @deprecated Legacy toggle — book title is now set via Book Profiles. */
             showTitle: {
-                name: 'Show source path as title',
-                desc: 'Legacy setting. Book title is now managed via Book Profiles in General settings.',
+                name: 'Legacy: source path title (deprecated)',
+                desc: 'This setting is no longer used. Book title is managed via Book Profiles in General settings.',
             },
         },
         pov: {

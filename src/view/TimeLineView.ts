@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 // --- Imports and constants added for standalone module ---
-import { ItemView, WorkspaceLeaf, MarkdownView, TFile, TAbstractFile, Notice, normalizePath } from 'obsidian';
+import { ItemView, WorkspaceLeaf, MarkdownView, TFile, TAbstractFile, Notice, normalizePath, setIcon } from 'obsidian';
 import RadialTimelinePlugin from '../main';
 import { escapeRegExp } from '../utils/regex';
 import type { TimelineItem } from '../types';
@@ -151,21 +151,22 @@ export class RadialTimelineView extends ItemView {
             wrapper.className = 'rt-book-switcher';
 
             const select = document.createElement('select');
-            select.className = 'rt-book-switcher__select';
+            select.className = 'rt-book-switcher__select dropdown';
             select.addEventListener('change', () => {
                 const nextId = select.value;
                 void this.plugin.setActiveBookId(nextId);
             });
 
             const manageBtn = document.createElement('button');
-            manageBtn.className = 'rt-book-switcher__manage';
+            manageBtn.className = 'rt-book-switcher__manage clickable-icon';
             manageBtn.type = 'button';
-            manageBtn.textContent = 'Manage books…';
+            manageBtn.setAttribute('aria-label', 'Manage books');
+            setIcon(manageBtn, 'settings');
             manageBtn.addEventListener('click', () => {
                 if (this.plugin.settingsTab) {
                     this.plugin.settingsTab.setActiveTab('core');
                 }
-                const setting = (this.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting;
+                const setting = (this.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting; // SAFE: any type used for Obsidian internal API
                 if (setting) {
                     setting.open();
                     setting.openTabById('radial-timeline');

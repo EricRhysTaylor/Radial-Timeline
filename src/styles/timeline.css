@@ -997,23 +997,46 @@
 .rt-book-switcher {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-left: auto;
-  padding-right: 8px;
+  gap: 4px;
+  padding-right: 4px;
 }
 
 .rt-book-switcher__select {
-  max-width: 220px;
-}
-
-.rt-book-switcher__manage {
-  background: transparent;
-  border: none;
-  padding: 4px 6px;
-  cursor: pointer;
+  max-width: 180px;
+  font-size: var(--font-ui-smaller);
+  height: 24px;
+  padding: 0 20px 0 6px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--background-modifier-border);
+  background: var(--interactive-normal);
   color: var(--text-muted);
 }
 
-.rt-book-switcher__manage:hover {
+.rt-book-switcher__select:hover {
+  color: var(--text-normal);
+  border-color: var(--interactive-accent);
+}
+
+.rt-book-switcher__select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.rt-book-switcher__manage.clickable-icon {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.rt-book-switcher__manage.clickable-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.rt-book-switcher__manage.clickable-icon:hover {
   color: var(--text-normal);
 }

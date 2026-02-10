@@ -89,7 +89,7 @@ export interface BookProfile {
     title: string;
     sourceFolder: string;
     fileStem?: string;
-    lastUsedPandocLayoutByPreset?: Record<string, string>;
+    lastUsedPandocLayoutByPreset?: Partial<Record<'novel' | 'screenplay' | 'podcast', string>>;
 }
 
 export type AuthorProgressPublishTarget = 'folder' | 'github_pages' | 'note';

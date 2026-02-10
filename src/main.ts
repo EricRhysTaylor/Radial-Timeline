@@ -21,7 +21,7 @@ import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 import { parseWhenField } from './utils/date';
 import { normalizeBooleanValue } from './utils/sceneHelpers';
 import { cleanupTooltipAnchors } from './utils/tooltip';
-import type { RadialTimelineSettings, TimelineItem, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry } from './types';
+import type { RadialTimelineSettings, TimelineItem, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, BookProfile } from './types';
 import { ReleaseNotesService } from './services/ReleaseNotesService';
 import { CommandRegistrar } from './services/CommandRegistrar';
 import { HoverHighlighter } from './services/HoverHighlighter';
@@ -417,7 +417,16 @@ export default class RadialTimelinePlugin extends Plugin {
             // ─── Migrate global lastUsedPandocLayoutByPreset into active book ───
             const globalLayoutPrefs = this.settings.lastUsedPandocLayoutByPreset;
             if (active && globalLayoutPrefs && Object.keys(globalLayoutPrefs).length > 0 && !active.lastUsedPandocLayoutByPreset) {
-                active.lastUsedPandocLayoutByPreset = { ...globalLayoutPrefs };
+                const validPresets = new Set(['novel', 'screenplay', 'podcast']);
+                const filtered: Record<string, string> = {};
+                for (const [key, val] of Object.entries(globalLayoutPrefs)) {
+                    if (validPresets.has(key) && typeof val === 'string') {
+                        filtered[key] = val;
+                    }
+                }
+                if (Object.keys(filtered).length > 0) {
+                    active.lastUsedPandocLayoutByPreset = filtered as BookProfile['lastUsedPandocLayoutByPreset'];
+                }
                 this.settings.lastUsedPandocLayoutByPreset = {};
                 booksMigrated = true;
             }

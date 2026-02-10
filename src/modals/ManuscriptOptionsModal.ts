@@ -151,9 +151,20 @@ export class ManuscriptOptionsModal extends Modal {
             text: t('manuscriptModal.description')
         });
         const bookTitle = getActiveBookTitle(this.plugin.settings, DEFAULT_BOOK_TITLE);
-        hero.createDiv({
+        const bookContextRow = hero.createDiv({ cls: 'ert-modal-meta' });
+        bookContextRow.createSpan({ cls: 'ert-modal-meta-item', text: `Exporting: ${bookTitle}` });
+        const manageBooksLink = bookContextRow.createEl('a', {
             cls: 'ert-modal-meta-item',
-            text: `Exporting: ${bookTitle}`
+            text: 'Manage books\u2026',
+            attr: { href: '#' }
+        });
+        manageBooksLink.addEventListener('click', (e) => { // SAFE: direct addEventListener; Modal lifecycle manages cleanup
+            e.preventDefault();
+            this.close();
+            // @ts-ignore - Obsidian API
+            this.app.setting.open();
+            // @ts-ignore - Obsidian API
+            this.app.setting.openTabById('radial-timeline');
         });
         this.heroMetaEl = hero.createDiv({ cls: 'ert-modal-meta' });
         this.renderHeroMeta([t('manuscriptModal.heroLoading')]);

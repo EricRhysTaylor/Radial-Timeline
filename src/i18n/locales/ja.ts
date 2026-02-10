@@ -33,8 +33,8 @@ export const ja: DeepPartial<TranslationKeys> = {
             },
             /** @deprecated Legacy toggle — book title is now set via Book Profiles. */
             showTitle: {
-                name: 'ソースパスをタイトルとして表示',
-                desc: 'レガシー設定。書籍タイトルは一般設定のブックプロファイルで管理されています。',
+                name: 'レガシー：ソースパスタイトル（非推奨）',
+                desc: 'この設定は使用されなくなりました。書籍タイトルは一般設定のブックプロファイルで管理されています。',
             },
         },
         pov: {
