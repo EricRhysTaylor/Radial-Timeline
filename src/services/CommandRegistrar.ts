@@ -17,8 +17,10 @@ import { generateSceneContent, mergeTemplates } from '../utils/sceneGenerator';
 import { sanitizeSourcePath, buildInitialSceneFilename, buildInitialBackdropFilename } from '../utils/sceneCreation';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { ensureManuscriptOutputFolder, ensureOutlineOutputFolder } from '../utils/aiOutput';
-import { buildExportFilename, buildOutlineExport, getExportFormatExtension, getTemplateForPreset, getVaultAbsolutePath, resolveTemplatePath, runPandocOnContent, writeTextFile } from '../utils/exportFormats';
+import { buildExportFilename, buildPrecursorFilename, buildOutlineExport, getExportFormatExtension, getLayoutById, getTemplateForPreset, getVaultAbsolutePath, resolveTemplatePath, runPandocOnContent, validatePandocLayout, writeTextFile } from '../utils/exportFormats';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
+import { getActiveBookExportContext } from '../utils/exportContext';
+import { getActiveBook } from '../utils/books';
 
 import { getRuntimeSettings } from '../utils/runtimeEstimator';
 
@@ -305,27 +307,57 @@ export class CommandRegistrar {
                 await this.app.vault.create(path, assembled.text);
                 new Notice(`Manuscript exported to ${path}`);
             } else {
-                // Pandoc export (Pro)
-                // We need to write a temp markdown file, then run pandoc
-                const outputFolder = await ensureManuscriptOutputFolder(this.plugin); // Normalized relative path
+                // Pandoc export (Pro) — layout-aware pipeline
+                const ctx = getActiveBookExportContext(this.plugin);
+
+                // Resolve the layout
+                const layout = getLayoutById(this.plugin, result.selectedLayoutId);
+                if (!layout) {
+                    new Notice('No Pandoc layout selected. Configure layouts in Pro settings.');
+                    return;
+                }
+
+                // Hard-guard: validate template file exists before calling Pandoc
+                const layoutValidation = validatePandocLayout(this.plugin, layout);
+                if (!layoutValidation.valid) {
+                    new Notice(`Layout "${layout.name}" is invalid: ${layoutValidation.error}`);
+                    return;
+                }
+
+                const outputFolder = await ensureManuscriptOutputFolder(this.plugin);
                 const absoluteOutputFolder = getVaultAbsolutePath(this.plugin, outputFolder);
 
-                // If getVaultAbsolutePath returns null (mobile/sandbox), we can't run Pandoc
                 if (!absoluteOutputFolder) {
                     new Notice('Pandoc export not supported in this environment.');
                     return;
                 }
 
-                const outputPath = `${absoluteOutputFolder}/${filename}`;
-
-                // Resolve template path to absolute path for Pandoc
-                let templatePath: string | undefined = undefined;
-                if (result.manuscriptPreset) {
-                    const templateVaultPath = getTemplateForPreset(this.plugin, result.manuscriptPreset);
-                    if (templateVaultPath) {
-                        templatePath = resolveTemplatePath(this.plugin, templateVaultPath);
+                // Save compiled precursor .md alongside output
+                const precursorName = buildPrecursorFilename(ctx.fileStem, result.manuscriptPreset || 'novel');
+                const precursorPath = `${outputFolder}/${precursorName}`;
+                try {
+                    await this.app.vault.create(precursorPath, assembled.text);
+                } catch {
+                    // If file already exists, silently overwrite via modify
+                    const existing = this.app.vault.getAbstractFileByPath(precursorPath);
+                    if (existing instanceof TFile) {
+                        await this.app.vault.modify(existing, assembled.text);
                     }
                 }
+
+                // Build book-titled output filename
+                const pandocFilename = buildExportFilename({
+                    exportType: 'manuscript',
+                    order: result.order,
+                    subplotFilter: result.subplot,
+                    manuscriptPreset: result.manuscriptPreset,
+                    extension,
+                    fileStem: ctx.fileStem
+                });
+                const outputPath = `${absoluteOutputFolder}/${pandocFilename}`;
+
+                // Resolve template path to absolute for Pandoc
+                const templatePath = resolveTemplatePath(this.plugin, layout.path);
 
                 new Notice('Running Pandoc...');
                 try {
@@ -337,7 +369,18 @@ export class CommandRegistrar {
                         enableFallback: this.plugin.settings.pandocEnableFallback,
                         fallbackPath: this.plugin.settings.pandocFallbackPath
                     });
-                    new Notice(`Export successful: ${filename}`);
+
+                    // Persist last-used layout per preset on the active book
+                    const activeBook = getActiveBook(this.plugin.settings);
+                    if (activeBook) {
+                        if (!activeBook.lastUsedPandocLayoutByPreset) {
+                            activeBook.lastUsedPandocLayoutByPreset = {};
+                        }
+                        activeBook.lastUsedPandocLayoutByPreset[result.manuscriptPreset || 'novel'] = layout.id;
+                    }
+                    await this.plugin.saveSettings();
+
+                    new Notice(`Export successful: ${pandocFilename}`);
                 } catch (e) {
                     const msg = (e as any)?.message || String(e);
                     new Notice(`Pandoc failed: ${msg}`);

@@ -13,6 +13,7 @@ import { getAprPreset, type AprSize } from './aprPresets';
 import { renderDefs } from '../components/Defs';
 import { getFillForScene } from '../utils/SceneFill';
 import { DEFAULT_SETTINGS } from '../../settings/defaults';
+import { DEFAULT_BOOK_TITLE } from '../../utils/books';
 import { renderAprBadges, renderAprBranding, renderAprCenterPercent } from './AprBranding';
 import { STAGE_ORDER } from '../../utils/constants';
 
@@ -393,7 +394,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     if (showBrandingFinal) {
         // Branding on the perimeter (sanitize placeholder/dummy URLs)
         svg += renderAprBranding({
-            bookTitle: bookTitle || 'Working Title',
+            bookTitle: bookTitle || DEFAULT_BOOK_TITLE,
             authorName,
             authorUrl: sanitizeAuthorUrl(authorUrl),
             size,

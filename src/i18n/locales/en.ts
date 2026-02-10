@@ -276,9 +276,10 @@ export const en: TranslationKeys = {
                 desc: 'Specify the root folder containing your manuscript scene files.',
                 placeholder: 'Example: Manuscript/Scenes',
             },
+            /** @deprecated Legacy toggle — book title is now set via Book Profiles. */
             showTitle: {
                 name: 'Show source path as title',
-                desc: 'Display the source folder name as the title of your work. When off, displays "Work in Progress" instead.',
+                desc: 'Legacy setting. Book title is now managed via Book Profiles in General settings.',
             },
         },
         pov: {
@@ -392,7 +393,8 @@ export const en: TranslationKeys = {
             act2: 'ACT II',
             act3: 'ACT III',
         },
-        workInProgress: 'Work in Progress',
+        /** @deprecated No longer used — book title comes from Book Profiles. */
+        workInProgress: 'Untitled Manuscript',
     },
     common: {
         yes: 'Yes',

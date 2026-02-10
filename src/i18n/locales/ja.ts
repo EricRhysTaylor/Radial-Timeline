@@ -31,9 +31,10 @@ export const ja: DeepPartial<TranslationKeys> = {
                 desc: '原稿シーンファイルを含むルートフォルダを指定します。',
                 placeholder: '例: 原稿/シーン',
             },
+            /** @deprecated Legacy toggle — book title is now set via Book Profiles. */
             showTitle: {
                 name: 'ソースパスをタイトルとして表示',
-                desc: 'ソースフォルダ名を作品のタイトルとして表示します。オフの場合、「進行中の作品」と表示されます。',
+                desc: 'レガシー設定。書籍タイトルは一般設定のブックプロファイルで管理されています。',
             },
         },
         pov: {
@@ -112,7 +113,8 @@ export const ja: DeepPartial<TranslationKeys> = {
             act2: '第二幕',
             act3: '第三幕',
         },
-        workInProgress: '進行中の作品',
+        /** @deprecated No longer used — book title comes from Book Profiles. */
+        workInProgress: '無題の原稿',
     },
     common: {
         yes: 'はい',

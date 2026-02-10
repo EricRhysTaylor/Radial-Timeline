@@ -992,3 +992,28 @@
 .rt-runtime-display .rt-runtime-total {
   fill: rgba(60, 160, 220, 0.9);
 }
+
+/* Book switcher (timeline header) */
+.rt-book-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding-right: 8px;
+}
+
+.rt-book-switcher__select {
+  max-width: 220px;
+}
+
+.rt-book-switcher__manage {
+  background: transparent;
+  border: none;
+  padding: 4px 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.rt-book-switcher__manage:hover {
+  color: var(--text-normal);
+}

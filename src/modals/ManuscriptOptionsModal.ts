@@ -5,8 +5,10 @@ import { App, ButtonComponent, DropdownComponent, Modal, Notice, setIcon, Toggle
 import type RadialTimelinePlugin from '../main';
 import { getSceneFilesByOrder, ManuscriptOrder, TocMode } from '../utils/manuscript';
 import { t } from '../i18n';
-import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, presetRequiresTemplate, validateTemplateForPreset } from '../utils/exportFormats';
+import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, presetRequiresTemplate, validateTemplateForPreset, getLayoutsForPreset, validatePandocLayout } from '../utils/exportFormats';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
+import type { PandocLayoutTemplate } from '../types';
+import { getActiveBook, getActiveBookTitle, DEFAULT_BOOK_TITLE } from '../utils/books';
 
 export interface ManuscriptModalResult {
     order: ManuscriptOrder;
@@ -20,6 +22,7 @@ export interface ManuscriptModalResult {
     outputFormat: ExportFormat;
     updateWordCounts?: boolean;
     includeSynopsis?: boolean;
+    selectedLayoutId?: string;
 }
 
 type DragHandle = 'start' | 'end' | null;
@@ -67,6 +70,8 @@ export class ManuscriptOptionsModal extends Modal {
     private outlineOptionsCard?: HTMLElement;
     private wordCountCard?: HTMLElement;
     private templateWarningEl?: HTMLElement;
+    private layoutContainerEl?: HTMLElement;
+    private selectedLayoutId?: string;
     private manuscriptPresetDescEl?: HTMLElement;
     private outlinePresetDescEl?: HTMLElement;
     private manuscriptPreviewToggle?: HTMLElement;
@@ -144,6 +149,11 @@ export class ManuscriptOptionsModal extends Modal {
         hero.createDiv({
             cls: 'ert-modal-subtitle',
             text: t('manuscriptModal.description')
+        });
+        const bookTitle = getActiveBookTitle(this.plugin.settings, DEFAULT_BOOK_TITLE);
+        hero.createDiv({
+            cls: 'ert-modal-meta-item',
+            text: `Exporting: ${bookTitle}`
         });
         this.heroMetaEl = hero.createDiv({ cls: 'ert-modal-meta' });
         this.renderHeroMeta([t('manuscriptModal.heroLoading')]);
@@ -233,6 +243,7 @@ export class ManuscriptOptionsModal extends Modal {
                     return;
                 }
                 this.manuscriptPreset = preset;
+                this.updateLayoutPicker();
                 this.updateTemplateWarning();
                 this.updateManuscriptPresetDescription();
                 this.updateManuscriptPreview();
@@ -265,6 +276,10 @@ export class ManuscriptOptionsModal extends Modal {
         this.createOutputFormatPill(formatRow, t('manuscriptModal.formatMarkdown'), 'markdown');
         this.createOutputFormatPill(formatRow, t('manuscriptModal.formatDocx'), 'docx', !this.isPro, 'both', true);
         this.createOutputFormatPill(formatRow, t('manuscriptModal.formatPdf'), 'pdf', !this.isPro, 'both', true);
+
+        // Layout picker (visible only for PDF/DOCX)
+        this.layoutContainerEl = this.manuscriptOptionsCard.createDiv({ cls: 'rt-manuscript-layout-picker' });
+        this.updateLayoutPicker();
 
         // Template validation warning
         this.templateWarningEl = this.manuscriptOptionsCard.createDiv({ cls: 'rt-manuscript-template-warning' });
@@ -524,6 +539,7 @@ export class ManuscriptOptionsModal extends Modal {
             pill.classList.add('rt-is-active');
             this.outputFormat = format;
             this.normalizeOutputFormatForOutline();
+            this.updateLayoutPicker();
             this.updateTemplateWarning();
         });
     }
@@ -557,7 +573,72 @@ export class ManuscriptOptionsModal extends Modal {
         this.wordCountCard?.toggleClass('rt-hidden', this.exportType !== 'manuscript');
         this.outlineOptionsCard?.toggleClass('rt-hidden', this.exportType !== 'outline');
         this.syncOutputFormatPills();
+        this.updateLayoutPicker();
         this.updateTemplateWarning();
+    }
+
+    /**
+     * Render or hide the Pandoc layout picker.
+     * Visible only when outputFormat is PDF or DOCX and exportType is manuscript.
+     */
+    private updateLayoutPicker(): void {
+        if (!this.layoutContainerEl) return;
+        this.layoutContainerEl.empty();
+
+        const isPandoc = this.exportType === 'manuscript' && (this.outputFormat === 'pdf' || this.outputFormat === 'docx');
+        if (!isPandoc) {
+            this.layoutContainerEl.addClass('rt-hidden');
+            this.selectedLayoutId = undefined;
+            return;
+        }
+        this.layoutContainerEl.removeClass('rt-hidden');
+
+        const layouts = getLayoutsForPreset(this.plugin, this.manuscriptPreset);
+        const activeBook = getActiveBook(this.plugin.settings);
+        const lastUsed = (activeBook?.lastUsedPandocLayoutByPreset || {})[this.manuscriptPreset];
+
+        if (layouts.length === 0) {
+            // Empty state
+            const emptyRow = this.layoutContainerEl.createDiv({ cls: 'rt-manuscript-layout-empty' });
+            emptyRow.createSpan({ text: `No layouts for ${this.manuscriptPreset}. ` });
+            const link = emptyRow.createEl('a', {
+                text: 'Manage layouts\u2026',
+                attr: { href: '#', style: 'text-decoration: underline;' }
+            });
+            link.addEventListener('click', (e) => { // SAFE: direct addEventListener; Modal lifecycle manages cleanup
+                e.preventDefault();
+                this.close();
+                // @ts-ignore - Obsidian API
+                this.app.setting.open();
+                // @ts-ignore - Obsidian API
+                this.app.setting.openTabById('radial-timeline');
+            });
+            this.selectedLayoutId = undefined;
+        } else if (layouts.length === 1) {
+            // Single layout — static text
+            this.createSectionHeading(this.layoutContainerEl, 'Layout', 'layout-template');
+            this.layoutContainerEl.createDiv({
+                cls: 'rt-sub-card-note',
+                text: layouts[0].name
+            });
+            this.selectedLayoutId = layouts[0].id;
+        } else {
+            // Multiple layouts — dropdown
+            this.createSectionHeading(this.layoutContainerEl, 'Layout', 'layout-template');
+            const ddContainer = this.layoutContainerEl.createDiv({ cls: 'rt-manuscript-input-container' });
+            const dd = new DropdownComponent(ddContainer);
+            for (const l of layouts) {
+                dd.addOption(l.id, l.name);
+            }
+            // Default: last-used or first
+            const defaultId = lastUsed && layouts.some(l => l.id === lastUsed) ? lastUsed : layouts[0].id;
+            dd.setValue(defaultId);
+            this.selectedLayoutId = defaultId;
+            dd.onChange((val) => {
+                this.selectedLayoutId = val;
+                this.updateTemplateWarning();
+            });
+        }
     }
 
     /**
@@ -578,54 +659,38 @@ export class ManuscriptOptionsModal extends Modal {
             return; // No template needed for markdown
         }
 
-        const requiresTemplate = presetRequiresTemplate(this.manuscriptPreset, this.outputFormat);
-        if (!requiresTemplate) {
-            return; // Novel can use Pandoc defaults
+        // ── Layout-aware validation ──────────────────────────────────
+        const layouts = getLayoutsForPreset(this.plugin, this.manuscriptPreset);
+
+        if (layouts.length === 0) {
+            // No layouts for this preset — the layout picker already shows the empty state
+            return;
         }
 
-        const validation = validateTemplateForPreset(this.plugin, this.manuscriptPreset);
+        // Find the selected layout
+        const selectedLayout = this.selectedLayoutId
+            ? layouts.find(l => l.id === this.selectedLayoutId)
+            : layouts[0];
 
-        if (!validation.configured) {
-            // No template configured
+        if (!selectedLayout) return;
+
+        const validation = validatePandocLayout(this.plugin, selectedLayout);
+
+        if (!validation.valid) {
             this.templateWarningEl.addClass('rt-warning-error');
             const icon = this.templateWarningEl.createSpan({ cls: 'rt-warning-icon' });
             setIcon(icon, 'alert-triangle');
             const text = this.templateWarningEl.createSpan({ cls: 'rt-warning-text' });
-            text.createSpan({ text: t('manuscriptModal.templateNotConfigured') });
-            text.createSpan({ text: ' ' });
-            const link = text.createEl('a', { 
-                text: t('manuscriptModal.configureInSettings'),
-                attr: { href: '#', style: 'text-decoration: underline;' }
-            });
-            link.onClickEvent((e) => {
-                e.preventDefault();
-                this.close();
-                // Open settings - user will need to navigate to Pro section manually
-                // @ts-ignore - Obsidian API
-                this.app.setting.open();
-                // @ts-ignore - Obsidian API
-                this.app.setting.openTabById('radial-timeline');
-            });
+            text.createSpan({ text: validation.error || 'Template file not found.' });
             return;
         }
 
-        if (!validation.exists) {
-            // Template configured but file doesn't exist
-            this.templateWarningEl.addClass('rt-warning-error');
-            const icon = this.templateWarningEl.createSpan({ cls: 'rt-warning-icon' });
-            setIcon(icon, 'alert-triangle');
-            const text = this.templateWarningEl.createSpan({ cls: 'rt-warning-text' });
-            text.createSpan({ text: t('manuscriptModal.templateNotFound', { path: validation.path || '' }) });
-            return;
-        }
-
-        // Template exists - show success indicator
+        // Template exists — show success indicator
         this.templateWarningEl.addClass('rt-warning-info');
         const icon = this.templateWarningEl.createSpan({ cls: 'rt-warning-icon' });
         setIcon(icon, 'check-circle-2');
         const text = this.templateWarningEl.createSpan({ cls: 'rt-warning-text' });
-        const pathDisplay = validation.path || '';
-        text.createSpan({ text: t('manuscriptModal.templateFound', { path: pathDisplay }) });
+        text.createSpan({ text: `Layout ready: ${selectedLayout.name}` });
     }
 
     /**
@@ -1000,7 +1065,8 @@ HOST: Let's start with Sarah's story...`
                 outlinePreset: this.outlinePreset,
                 outputFormat: this.outputFormat,
                 updateWordCounts: this.updateWordCounts,
-                includeSynopsis: this.includeSynopsis
+                includeSynopsis: this.includeSynopsis,
+                selectedLayoutId: this.selectedLayoutId
             });
             this.close();
         } catch (err) {

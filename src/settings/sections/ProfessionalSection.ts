@@ -14,6 +14,8 @@ import { execFile } from 'child_process'; // SAFE: Node child_process for system
 import { findLongformIndex, syncScenesToLongform } from '../../longform/LongformSyncService';
 import { generateSceneContent } from '../../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../defaults';
+import { validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
+import type { PandocLayoutTemplate } from '../../types';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SYSTEM PATH SCANNING
@@ -549,13 +551,20 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin): Promise<st
         }
     }
 
-    // Auto-configure template paths to point to Pandoc folder
-    plugin.settings.pandocTemplates = {
-        ...plugin.settings.pandocTemplates,
-        screenplay: normalizePath(`${pandocFolder}/screenplay_template.tex`),
-        podcast: normalizePath(`${pandocFolder}/podcast_template.tex`),
-        novel: normalizePath(`${pandocFolder}/novel_template.tex`)
-    };
+    // Auto-register generated .tex files as bundled pandoc layouts
+    const existingLayouts = plugin.settings.pandocLayouts || [];
+    const existingIds = new Set(existingLayouts.map(l => l.id));
+    const sampleLayouts: PandocLayoutTemplate[] = [
+        { id: 'bundled-screenplay', name: 'Screenplay', preset: 'screenplay', path: normalizePath(`${pandocFolder}/screenplay_template.tex`), bundled: true },
+        { id: 'bundled-podcast', name: 'Podcast Script', preset: 'podcast', path: normalizePath(`${pandocFolder}/podcast_template.tex`), bundled: true },
+        { id: 'bundled-novel', name: 'Novel Manuscript', preset: 'novel', path: normalizePath(`${pandocFolder}/novel_template.tex`), bundled: true },
+    ];
+    for (const layout of sampleLayouts) {
+        if (!existingIds.has(layout.id)) {
+            existingLayouts.push(layout);
+        }
+    }
+    plugin.settings.pandocLayouts = existingLayouts;
     await plugin.saveSettings();
 
     return createdFiles;
@@ -918,112 +927,167 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             });
         });
 
-    // Templates Subsection
-    const templateSubSection = pandocPanel.createDiv({
+    // ── Layout Registry Subsection ──────────────────────────────────────────
+    const layoutSubSection = pandocPanel.createDiv({
         cls: `${ERT_CLASSES.SECTION} ${ERT_CLASSES.SECTION_TIGHT}`
     });
-    templateSubSection.createEl('h5', { text: 'Pandoc Templates (Optional)', cls: ERT_CLASSES.SECTION_TITLE });
+    layoutSubSection.createEl('h5', { text: 'Pandoc Layouts', cls: ERT_CLASSES.SECTION_TITLE });
 
-    const templates = plugin.settings.pandocTemplates || {};
+    const presetLabels: Record<string, string> = { novel: 'Novel', screenplay: 'Screenplay', podcast: 'Podcast' };
 
-    /**
-     * Flash-validate a template path input.
-     * Checks whether any .tex file exists at the folder level of the entered path
-     * (shallow — does not recurse into sub-folders).
-     * Green flash = .tex found, Red flash = none found.
-     */
-    const flashValidateTexPath = (inputEl: HTMLInputElement, value: string) => {
-        // Clear any running animation so re-triggers restart cleanly
+    /** Flash-validate a layout path input using the centralized helper. */
+    const flashValidateLayoutPath = (inputEl: HTMLInputElement, layout: PandocLayoutTemplate) => {
         inputEl.removeClass('ert-input--flash-success', 'ert-input--flash-error');
-        // Force reflow so removing + re-adding the same class restarts the animation
-        void inputEl.offsetWidth;
+        void inputEl.offsetWidth; // force reflow
+        if (!layout.path.trim()) return;
+        const result = validatePandocLayout(plugin, layout);
+        const cls = result.valid ? 'ert-input--flash-success' : 'ert-input--flash-error';
+        inputEl.addClass(cls);
+        setTimeout(() => inputEl.removeClass(cls), 1700);
+    };
 
-        if (!value || !value.trim()) return; // skip empty paths
+    /** Render one row per existing layout. */
+    const renderLayoutRows = () => {
+        // Clear previous rows (keep header)
+        const existingRows = layoutSubSection.querySelectorAll('.ert-layout-row');
+        existingRows.forEach(el => el.remove());
 
-        const trimmed = normalizePath(value.trim());
+        const layouts = plugin.settings.pandocLayouts || [];
 
-        // Derive the folder portion of the entered path
-        const lastSlash = trimmed.lastIndexOf('/');
-        const folderPath = lastSlash >= 0 ? trimmed.substring(0, lastSlash) : '';
-
-        // Resolve the folder inside the vault
-        const folder = folderPath
-            ? plugin.app.vault.getAbstractFileByPath(folderPath)
-            : plugin.app.vault.getRoot();
-
-        let hasTexFile = false;
-        if (folder && folder instanceof TFolder) {
-            hasTexFile = folder.children.some(
-                child => child instanceof TFile && child.extension === 'tex'
-            );
+        if (layouts.length === 0) {
+            const emptyEl = layoutSubSection.createDiv({ cls: 'ert-layout-row setting-item' });
+            emptyEl.createSpan({ text: 'No layouts configured. Add one below or generate samples.', cls: 'setting-item-description' });
         }
 
-        const cls = hasTexFile ? 'ert-input--flash-success' : 'ert-input--flash-error';
-        inputEl.addClass(cls);
+        for (const layout of layouts) {
+            const row = layoutSubSection.createDiv({ cls: 'ert-layout-row' });
 
-        // Remove the class after the animation completes (1.6s matches CSS)
-        setTimeout(() => { inputEl.removeClass(cls); }, 1700);
-    };
+            const s = addProRow(new Setting(row))
+                .setName(layout.name)
+                .setDesc(`${presetLabels[layout.preset] || layout.preset} · ${layout.path || '(no path)'}`)
+                .addText(text => {
+                    text.inputEl.addClass('ert-input--lg');
+                    text.setPlaceholder('path/to/template.tex');
+                    text.setValue(layout.path);
 
-    const addTemplateSetting = (name: string, key: keyof typeof templates, placeholder: string) => {
-        addProRow(new Setting(templateSubSection))
-            .setName(name)
-            .addText(text => {
-                text.inputEl.addClass('ert-input--xl');
-                text.setPlaceholder(placeholder);
-                text.setValue(templates[key] || '');
-
-                const saveAndValidate = async () => {
-                    const raw = text.getValue().trim();
-                    plugin.settings.pandocTemplates = {
-                        ...plugin.settings.pandocTemplates,
-                        [key]: raw
+                    const saveAndValidate = async () => {
+                        layout.path = text.getValue().trim();
+                        await plugin.saveSettings();
+                        flashValidateLayoutPath(text.inputEl, layout);
+                        // Update description to show new path
+                        s.setDesc(`${presetLabels[layout.preset] || layout.preset} · ${layout.path || '(no path)'}`);
                     };
-                    await plugin.saveSettings();
-                    flashValidateTexPath(text.inputEl, raw);
-                };
 
-                plugin.registerDomEvent(text.inputEl, 'blur', saveAndValidate);
-                plugin.registerDomEvent(text.inputEl, 'keydown', (e: KeyboardEvent) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        saveAndValidate();
-                    }
+                    // SAFE: direct addEventListener; Modal/Settings lifecycle manages cleanup
+                    text.inputEl.addEventListener('blur', saveAndValidate);
+                    text.inputEl.addEventListener('keydown', (e: KeyboardEvent) => {
+                        if (e.key === 'Enter') { e.preventDefault(); saveAndValidate(); }
+                    });
+                })
+                .addExtraButton(btn => {
+                    btn.setIcon('trash');
+                    btn.setTooltip('Remove layout');
+                    btn.onClick(async () => {
+                        plugin.settings.pandocLayouts = (plugin.settings.pandocLayouts || []).filter(l => l.id !== layout.id);
+                        await plugin.saveSettings();
+                        renderLayoutRows();
+                    });
                 });
-            });
+        }
     };
 
-    addTemplateSetting('Screenplay', 'screenplay', 'vault/path/to/screenplay_template.tex');
-    addTemplateSetting('Podcast Script', 'podcast', 'vault/path/to/podcast_template.tex');
-    addTemplateSetting('Novel Manuscript', 'novel', 'vault/path/to/novel_template.tex');
+    renderLayoutRows();
 
-    // Generate sample templates
-    addProRow(new Setting(templateSubSection))
-        .setName('Generate sample templates')
-        .setDesc('Creates sample screenplay, podcast, and novel scene files plus LaTeX templates in your vault. Auto-configures template paths.')
-        .addButton(button => {
-            button.setButtonText('Generate Samples');
-            button.setCta();
-            button.onClick(async () => {
-                button.setDisabled(true);
-                button.setButtonText('Generating…');
-                try {
-                    const created = await generateSampleTemplates(plugin);
-                    if (created.length > 0) {
-                        new Notice(`Created ${created.length} sample files. Scenes → Export/Templates, LaTeX → ${plugin.settings.pandocFolder || 'Pandoc'}/. Template paths configured.`);
-                    } else {
-                        new Notice('All sample files already exist. Template paths updated.');
-                    }
-                    // Re-render to reflect updated template paths
-                    rerender();
-                } catch (e) {
-                    const msg = (e as Error).message || String(e);
-                    new Notice(`Error generating samples: ${msg}`);
-                    button.setDisabled(false);
-                    button.setButtonText('Generate Samples');
-                }
-            });
+    // ── Add Layout inline form ───────────────────────────────────────────────
+    let addFormVisible = false;
+    const addFormContainer = layoutSubSection.createDiv({ cls: 'ert-layout-add-form rt-hidden' });
+
+    let newName = '';
+    let newPreset: 'novel' | 'screenplay' | 'podcast' = 'novel';
+    let newPath = '';
+
+    const addFormSetting = addProRow(new Setting(addFormContainer))
+        .setName('New layout');
+
+    addFormSetting.addText(text => {
+        text.setPlaceholder('Layout name');
+        text.inputEl.addClass('ert-input--md');
+        text.onChange(v => { newName = v; });
+    });
+    addFormSetting.addDropdown(dd => {
+        dd.addOption('novel', 'Novel');
+        dd.addOption('screenplay', 'Screenplay');
+        dd.addOption('podcast', 'Podcast');
+        dd.onChange(v => { newPreset = v as typeof newPreset; });
+    });
+    addFormSetting.addText(text => {
+        text.setPlaceholder('path/to/template.tex');
+        text.inputEl.addClass('ert-input--lg');
+        text.onChange(v => { newPath = v; });
+    });
+    addFormSetting.addExtraButton(btn => {
+        btn.setIcon('checkmark');
+        btn.setTooltip('Confirm');
+        btn.onClick(async () => {
+            const trimName = newName.trim();
+            if (!trimName) { new Notice('Layout name is required.'); return; }
+            const id = `${slugifyToFileStem(trimName).toLowerCase()}-${newPreset}`;
+            const existing = (plugin.settings.pandocLayouts || []);
+            if (existing.some(l => l.id === id)) {
+                new Notice('A layout with this name and preset already exists.');
+                return;
+            }
+            existing.push({ id, name: trimName, preset: newPreset, path: newPath.trim(), bundled: false });
+            plugin.settings.pandocLayouts = existing;
+            await plugin.saveSettings();
+            // Reset form
+            newName = ''; newPreset = 'novel'; newPath = '';
+            addFormContainer.addClass('rt-hidden');
+            addFormVisible = false;
+            renderLayoutRows();
         });
+    });
+    addFormSetting.addExtraButton(btn => {
+        btn.setIcon('cross');
+        btn.setTooltip('Cancel');
+        btn.onClick(() => {
+            addFormContainer.addClass('rt-hidden');
+            addFormVisible = false;
+        });
+    });
+
+    // Add Layout + Generate Samples buttons row
+    const layoutActionsSetting = addProRow(new Setting(layoutSubSection));
+    layoutActionsSetting.addButton(button => {
+        button.setButtonText('Add Layout');
+        button.onClick(() => {
+            addFormVisible = !addFormVisible;
+            addFormContainer.toggleClass('rt-hidden', !addFormVisible);
+        });
+    });
+    layoutActionsSetting.addButton(button => {
+        button.setButtonText('Generate Samples');
+        button.setCta();
+        button.onClick(async () => {
+            button.setDisabled(true);
+            button.setButtonText('Generating…');
+            try {
+                const created = await generateSampleTemplates(plugin);
+                if (created.length > 0) {
+                    new Notice(`Created ${created.length} sample files. Scenes → Export/Templates, LaTeX → ${plugin.settings.pandocFolder || 'Pandoc'}/. Layouts registered.`);
+                } else {
+                    new Notice('All sample files already exist. Layouts updated.');
+                }
+                renderLayoutRows();
+            } catch (e) {
+                const msg = (e as Error).message || String(e);
+                new Notice(`Error generating samples: ${msg}`);
+            } finally {
+                button.setDisabled(false);
+                button.setButtonText('Generate Samples');
+            }
+        });
+    });
 
     // ─────────────────────────────────────────────────────────────────────────
     // LONGFORM INTEGRATION

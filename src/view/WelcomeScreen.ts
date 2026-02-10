@@ -25,7 +25,7 @@ const WELCOME_COPY = {
     step1: {
         title: '1. Create your first scene',
         body: 'Start a scene so you have a place to write. Choose where your scenes live in your vault, then create your first scene note.',
-        note: '(This folder is called the Source path in Settings \u2192 Core \u2192 General.)'
+        note: '(Set the active book folder in Settings \u2192 Core \u2192 General \u2192 Books.)'
     },
     step2: {
         title: '2. Write prose immediately',

@@ -5,6 +5,7 @@ import { TFile, Vault, App } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
 import { getScenePrefixNumber } from './text';
+import { getActiveBookExportContext } from './exportContext';
 
 export interface SceneContent {
   title: string;
@@ -89,8 +90,8 @@ export function estimateTokens(wordCount: number): number {
  * @returns Object with array of TFile objects and sort order description
  */
 export async function getSortedSceneFiles(plugin: RadialTimelinePlugin): Promise<{ files: TFile[], sortOrder: string }> {
-  // Get all scenes
-  const allScenes = await plugin.getSceneData();
+  const exportContext = getActiveBookExportContext(plugin);
+  const allScenes = await plugin.getSceneData({ sourcePath: exportContext.sourceFolder });
   
   // Deduplicate by path
   const uniquePaths = new Set<string>();
@@ -135,7 +136,8 @@ import { parseRuntimeField } from './runtimeEstimator';
  * Get all valid scenes from the timeline (wrapper for getting timeline items directly)
  */
 export async function getAllScenes(app: App, plugin: RadialTimelinePlugin): Promise<TimelineItem[]> {
-    const data = await plugin.getSceneData();
+    const exportContext = getActiveBookExportContext(plugin);
+    const data = await plugin.getSceneData({ sourcePath: exportContext.sourceFolder });
     return data.filter(s => s.itemType === 'Scene' || !s.itemType);
 }
 
@@ -150,7 +152,8 @@ export async function getSceneFilesByOrder(
   subplotFilter?: string,
   includeMatter?: boolean
 ): Promise<ManuscriptSceneSelection> {
-  const allScenes = await plugin.getSceneData();
+  const exportContext = getActiveBookExportContext(plugin);
+  const allScenes = await plugin.getSceneData({ sourcePath: exportContext.sourceFolder });
 
   const uniquePaths = new Set<string>();
   const uniqueScenes = allScenes.filter((scene: TimelineItem) => {

@@ -4,6 +4,7 @@
 
 import { normalizePath, FileSystemAdapter, Vault, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
+import type { PandocLayoutTemplate } from '../types';
 import type { ManuscriptSceneSelection, ManuscriptOrder } from './manuscript';
 import * as fs from 'fs'; // SAFE: Node fs required for Pandoc temp files
 import * as os from 'os'; // SAFE: Node os required for temp directory resolution
@@ -14,6 +15,76 @@ export type ExportType = 'manuscript' | 'outline';
 export type ManuscriptPreset = 'screenplay' | 'podcast' | 'novel';
 export type OutlinePreset = 'beat-sheet' | 'episode-rundown' | 'shooting-schedule' | 'index-cards-csv' | 'index-cards-json';
 export type ExportFormat = 'markdown' | 'docx' | 'pdf' | 'csv' | 'json';
+
+// ════════════════════════════════════════════════════════════════════════════
+// Pandoc Layout Helpers
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Strip/replace unsafe filename characters and collapse whitespace to hyphens.
+ * Produces a clean stem suitable for PDF/DOCX filenames.
+ */
+export function slugifyToFileStem(title: string): string {
+    return title
+        .replace(/[/\\:*?"<>|]+/g, '')   // strip forbidden chars
+        .replace(/\s+/g, '-')            // spaces -> hyphens
+        .replace(/-{2,}/g, '-')          // collapse runs
+        .replace(/^-|-$/g, '')           // trim leading/trailing hyphens
+        || 'Manuscript';                  // fallback
+}
+
+/** Look up a layout by its unique ID. */
+export function getLayoutById(plugin: RadialTimelinePlugin, id: string | undefined): PandocLayoutTemplate | undefined {
+    if (!id) return undefined;
+    return (plugin.settings.pandocLayouts || []).find(l => l.id === id);
+}
+
+/** Return all layouts scoped to a given preset. */
+export function getLayoutsForPreset(plugin: RadialTimelinePlugin, preset: ManuscriptPreset): PandocLayoutTemplate[] {
+    return (plugin.settings.pandocLayouts || []).filter(l => l.preset === preset);
+}
+
+/**
+ * Validate that a layout's .tex file exists.
+ * Used by both Pro Settings (flash validation) and the export runner (hard-guard).
+ */
+export function validatePandocLayout(
+    plugin: RadialTimelinePlugin,
+    layout: PandocLayoutTemplate
+): { valid: boolean; error?: string } {
+    if (!layout.path || !layout.path.trim()) {
+        return { valid: false, error: 'No template path configured.' };
+    }
+    const trimmed = layout.path.trim();
+
+    // Absolute path: check via Node fs
+    if (path.isAbsolute(trimmed)) {
+        try {
+            fs.accessSync(trimmed, fs.constants.R_OK);
+            return { valid: true };
+        } catch {
+            return { valid: false, error: `File not found: ${trimmed}` };
+        }
+    }
+
+    // Vault-relative path
+    const file = plugin.app.vault.getAbstractFileByPath(trimmed);
+    if (file instanceof TFile) {
+        return { valid: true };
+    }
+    return { valid: false, error: `File not found in vault: ${trimmed}` };
+}
+
+/**
+ * Build the precursor compiled-markdown filename.
+ * Pattern: {stem}__compiled__{preset}__{YYYY-MM-DD_HH-mm}.md
+ */
+export function buildPrecursorFilename(fileStem: string, preset: ManuscriptPreset): string {
+    const now = new Date();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
+    return `${fileStem}__compiled__${preset}__${ts}.md`;
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // Export Filename Acronyms
@@ -80,6 +151,8 @@ export interface ExportFilenameOptions {
     manuscriptPreset?: ManuscriptPreset;
     outlinePreset?: OutlinePreset;
     extension: string;
+    /** When set and format is PDF/DOCX, filename becomes {fileStem}.{ext}. */
+    fileStem?: string;
 }
 
 /**
@@ -90,6 +163,8 @@ export interface ExportFilenameOptions {
  *   - "Pandoc Scrn Sub-Chro Jan 12 @ 3.32PM.docx"
  *   - "Outline BtSh RevN Jan 12 @ 3.32PM.md"
  *   - "Outline IdxC Sub-RevC Jan 12 @ 3.32PM.csv"
+ *
+ * When `fileStem` is provided and the format is PDF/DOCX, uses `{fileStem}.{ext}` instead.
  */
 export function buildExportFilename(options: ExportFilenameOptions): string {
     const timestamp = generateFriendlyTimestamp();
@@ -97,6 +172,16 @@ export function buildExportFilename(options: ExportFilenameOptions): string {
     const hasSubplotFilter = options.subplotFilter && options.subplotFilter !== 'All Subplots';
     const orderPart = hasSubplotFilter ? `Sub-${orderAcronym}` : orderAcronym;
     const isPandocExport = options.exportType === 'manuscript' && (options.extension === 'docx' || options.extension === 'pdf');
+
+    // Book-titled filename for Pandoc exports when fileStem is available.
+    // Append timestamp when stem is the default fallback to prevent overwrites.
+    if (isPandocExport && options.fileStem) {
+        const isDefault = options.fileStem === 'Manuscript' || options.fileStem === 'Untitled-Manuscript';
+        if (isDefault) {
+            return `${options.fileStem} ${timestamp}.${options.extension}`;
+        }
+        return `${options.fileStem}.${options.extension}`;
+    }
     
     if (options.exportType === 'outline') {
         const presetAcronym = getOutlinePresetAcronym(options.outlinePreset || 'beat-sheet');

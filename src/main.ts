@@ -40,6 +40,7 @@ import { DEFAULT_SETTINGS } from './settings/defaults';
 import { PLOT_SYSTEM_NAMES } from './utils/beatsSystems';
 import type { BeatSystemConfig } from './types/settings';
 import { isDefaultEmbedPath } from './utils/aprPaths';
+import { DEFAULT_BOOK_TITLE, createBookId, deriveBookTitleFromSourcePath, getActiveBook, normalizeBookProfile } from './utils/books';
 import { initVersionCheckService, getVersionCheckService } from './services/VersionCheckService';
 import { registerRuntimeCommands } from './RuntimeCommands';
 import { AuthorProgressService } from './services/AuthorProgressService';
@@ -148,6 +149,44 @@ export default class RadialTimelinePlugin extends Plugin {
         if (provider === 'anthropic') return this.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
         if (provider === 'gemini') return this.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
         return this.settings.openaiModelId || 'gpt-5.1-chat-latest';
+    }
+
+    public getActiveBook() {
+        return getActiveBook(this.settings);
+    }
+
+    public getActiveBookTitle(): string {
+        const active = getActiveBook(this.settings);
+        return active?.title?.trim() || DEFAULT_BOOK_TITLE;
+    }
+
+    private syncLegacySourcePathFromActiveBook(): void {
+        const active = getActiveBook(this.settings);
+        this.settings.sourcePath = active?.sourceFolder?.trim() || '';
+    }
+
+    public updateTimelineBookHeaders(): void {
+        this.getTimelineViews().forEach(view => {
+            if ((view as any).syncBookHeader) {
+                (view as any).syncBookHeader();
+            }
+        });
+    }
+
+    public async setActiveBookId(bookId: string): Promise<void> {
+        if (!bookId || this.settings.activeBookId === bookId) return;
+        this.settings.activeBookId = bookId;
+        this.syncLegacySourcePathFromActiveBook();
+        await this.saveSettings();
+        this.refreshTimelineIfNeeded(null);
+        this.updateTimelineBookHeaders();
+    }
+
+    public async persistBookSettings(): Promise<void> {
+        this.syncLegacySourcePathFromActiveBook();
+        await this.saveSettings();
+        this.refreshTimelineIfNeeded(null);
+        this.updateTimelineBookHeaders();
     }
 
     /**
@@ -331,6 +370,59 @@ export default class RadialTimelinePlugin extends Plugin {
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 
+        let booksMigrated = false;
+        const settingsAny = this.settings as unknown as Record<string, unknown>;
+        const hasBooks = Array.isArray(this.settings.books) && this.settings.books.length > 0;
+
+        if (!hasBooks) {
+            const legacySourcePath = (this.settings.sourcePath || '').trim();
+            const legacyTitle = typeof settingsAny.bookTitle === 'string' ? (settingsAny.bookTitle as string).trim() : '';
+            const derivedTitle = this.settings.showSourcePathAsTitle !== false
+                ? deriveBookTitleFromSourcePath(legacySourcePath)
+                : null;
+            const title = legacyTitle || derivedTitle || DEFAULT_BOOK_TITLE;
+
+            this.settings.books = [
+                normalizeBookProfile({
+                    id: createBookId(),
+                    title,
+                    sourceFolder: legacySourcePath
+                })
+            ];
+            this.settings.activeBookId = this.settings.books[0].id;
+            booksMigrated = true;
+        } else {
+            const normalized = this.settings.books.map(b => normalizeBookProfile(b));
+            if (JSON.stringify(normalized) !== JSON.stringify(this.settings.books)) {
+                this.settings.books = normalized;
+                booksMigrated = true;
+            }
+            const activeExists = this.settings.activeBookId
+                ? this.settings.books.some(b => b.id === this.settings.activeBookId)
+                : false;
+            if (!activeExists) {
+                this.settings.activeBookId = this.settings.books[0].id;
+                booksMigrated = true;
+            }
+        }
+
+        if (this.settings.books.length > 0) {
+            const active = getActiveBook(this.settings);
+            const activeSource = active?.sourceFolder?.trim() || '';
+            if (this.settings.sourcePath !== activeSource) {
+                this.settings.sourcePath = activeSource;
+                booksMigrated = true;
+            }
+
+            // ─── Migrate global lastUsedPandocLayoutByPreset into active book ───
+            const globalLayoutPrefs = this.settings.lastUsedPandocLayoutByPreset;
+            if (active && globalLayoutPrefs && Object.keys(globalLayoutPrefs).length > 0 && !active.lastUsedPandocLayoutByPreset) {
+                active.lastUsedPandocLayoutByPreset = { ...globalLayoutPrefs };
+                this.settings.lastUsedPandocLayoutByPreset = {};
+                booksMigrated = true;
+            }
+        }
+
         // Ensure defaults
         if (!this.settings.anthropicModelId) this.settings.anthropicModelId = DEFAULT_SETTINGS.anthropicModelId;
         if (!this.settings.openaiModelId) this.settings.openaiModelId = DEFAULT_SETTINGS.openaiModelId;
@@ -440,12 +532,39 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         }
 
-        if (before !== after || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated) {
+        // ─── Migrate legacy pandocTemplates → pandocLayouts ─────────────────
+        let pandocLayoutsMigrated = false;
+        const legacyTemplates = this.settings.pandocTemplates;
+        if (legacyTemplates && (!this.settings.pandocLayouts || this.settings.pandocLayouts.length === 0)) {
+            const migrated: import('./types').PandocLayoutTemplate[] = [];
+            const presets = ['screenplay', 'podcast', 'novel'] as const;
+            const nameMap: Record<string, string> = { screenplay: 'Screenplay Template', podcast: 'Podcast Template', novel: 'Novel Template' };
+            for (const preset of presets) {
+                const p = legacyTemplates[preset];
+                if (p && p.trim()) {
+                    migrated.push({
+                        id: `${preset}-migrated`,
+                        name: nameMap[preset],
+                        preset,
+                        path: p.trim(),
+                        bundled: false
+                    });
+                }
+            }
+            if (migrated.length > 0) {
+                this.settings.pandocLayouts = migrated;
+                this.settings.pandocTemplates = undefined;
+                pandocLayoutsMigrated = true;
+            }
+        }
+
+        if (before !== after || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated || pandocLayoutsMigrated || booksMigrated) {
             await this.saveSettings();
         }
     }
 
     async saveSettings() {
+        this.syncLegacySourcePathFromActiveBook();
         await this.saveData(this.settings);
     }
 

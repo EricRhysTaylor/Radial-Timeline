@@ -5758,3 +5758,12 @@
 .tooltip {
   text-wrap: balance;
 }
+
+/* Books settings */
+.rt-books-list {
+  margin-bottom: 12px;
+}
+
+.rt-books-active {
+  margin-top: 8px;
+}

@@ -10,12 +10,14 @@ import {
     BOOK_TITLE_POS_X,
     BOOK_TITLE_POS_Y
 } from '../../renderer/layout/LayoutConstants';
+import { DEFAULT_BOOK_TITLE, getActiveBookTitle } from '../../utils/books';
+import type { RadialTimelineSettings } from '../../types';
 
 interface ModeToggleView {
     currentMode?: string;
     getModeManager?: () => ModeManager | undefined;
     plugin: {
-        settings: { currentMode?: string; sourcePath?: string; showSourcePathAsTitle?: boolean };
+        settings: RadialTimelineSettings;
         saveSettings: () => Promise<void>;
         refreshTimelineIfNeeded: (file: unknown) => void;
     };
@@ -132,18 +134,7 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
         grid.appendChild(optionGroup);
     });
 
-    // Determine book title based on setting
-    const showSourcePathAsTitle = view.plugin.settings.showSourcePathAsTitle !== false;
-    let bookTitle = 'Work in Progress';
-    if (showSourcePathAsTitle) {
-        const sourcePath = view.plugin.settings.sourcePath || '';
-        if (sourcePath) {
-            const parts = sourcePath.split('/').filter(p => p.length > 0);
-            bookTitle = parts.length > 0 ? parts[parts.length - 1] : 'Work in Progress';
-        }
-    }
-    // Convert to title case
-    bookTitle = bookTitle.replace(/\b\w/g, c => c.toUpperCase());
+    const bookTitle = getActiveBookTitle(view.plugin.settings, DEFAULT_BOOK_TITLE);
 
     // Add book title text above the mode title (10px higher)
     if (bookTitle) {

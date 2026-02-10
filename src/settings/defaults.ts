@@ -9,8 +9,10 @@ import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
 import { buildDefaultInquiryPromptConfig } from '../inquiry/prompts';
 
 export const DEFAULT_SETTINGS: RadialTimelineSettings = {
+    books: [],
+    activeBookId: undefined,
     sourcePath: '',
-    showSourcePathAsTitle: true, // Default: show source path as title of the work
+    showSourcePathAsTitle: true, // @deprecated Legacy — book title from BookProfile after migration
     validFolderPaths: [], // Default empty array for folder path history
     aiOutputFolder: 'Radial Timeline/Logs',
     manuscriptOutputFolder: 'Radial Timeline/Export',
@@ -245,6 +247,8 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
     pandocEnableFallback: false,
     pandocFallbackPath: '',
     pandocFolder: 'Pandoc',
+    pandocLayouts: [],
+    lastUsedPandocLayoutByPreset: {},
     pandocTemplates: {
         screenplay: '',
         podcast: '',

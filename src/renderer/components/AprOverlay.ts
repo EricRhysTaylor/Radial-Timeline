@@ -1,5 +1,6 @@
 import { SVG_SIZE, INNER_RADIUS, APR_BRANDING_RADIUS, APR_BRANDING_FONT_SIZE } from '../layout/LayoutConstants';
 import { escapeXml } from '../../utils/svg';
+import { DEFAULT_BOOK_TITLE } from '../../utils/books';
 
 export function renderAprOverlay(params: {
     progressPercent: number;
@@ -34,7 +35,7 @@ export function renderAprOverlay(params: {
 
     // Build repeating title text - escape for XML safety
     const separator = ' ~ ';
-    const safeTitle = escapeXml(bookTitle.toUpperCase()) || 'WORKING TITLE';
+    const safeTitle = escapeXml(bookTitle.toUpperCase()) || DEFAULT_BOOK_TITLE.toUpperCase();
     const safeAuthor = authorName ? escapeXml(authorName.toUpperCase()) : '';
     const titleSegment = safeAuthor 
         ? `${safeTitle}${separator}${safeAuthor}`

@@ -4,6 +4,8 @@ import type RadialTimelinePlugin from '../../main';
 import { t } from '../../i18n';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { resolveAiLogFolder, countAiLogFiles } from '../../ai/log';
+import { ModalFolderSuggest } from '../FolderSuggest';
+import { DEFAULT_BOOK_TITLE, createBookId, normalizeBookProfile } from '../../utils/books';
 
 export function renderGeneralSection(params: {
     app: App;
@@ -12,108 +14,203 @@ export function renderGeneralSection(params: {
     containerEl: HTMLElement;
     addAiRelatedElement?: (el: HTMLElement) => void;
 }): void {
-    const { app, plugin, attachFolderSuggest, containerEl } = params;
+    const { app, plugin, containerEl } = params;
 
-    // --- Source Path with Autocomplete ---
-    const sourcePathSetting = new ObsidianSetting(containerEl)
-        .setName('Source path')
-        .setDesc('Specify the root folder containing your manuscript scene files.');
-
-    let textInput: TextComponent;
-    sourcePathSetting.addText(text => {
-        textInput = text;
-        text
-            .setPlaceholder('Example: Book 1')
-            .setValue(plugin.settings.sourcePath);
-        text.inputEl.addClass('ert-input--xl');
-
-        attachFolderSuggest(text);
-
-        text.onChange(() => {
-            text.inputEl.removeClass('ert-setting-input-success');
-            text.inputEl.removeClass('ert-setting-input-error');
-        });
-
-        // Treat Enter like blur so validation runs once when user confirms
-        plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
-            if (evt.key === 'Enter') {
-                evt.preventDefault();
-                text.inputEl.blur();
-            }
-        });
-
-        const handleBlur = async () => {
-            const value = text.getValue();
-            const trimmed = value.trim();
-            const normalizedValue = trimmed ? normalizePath(trimmed) : '';
-
-            if (trimmed) {
-                const isValid = await plugin.validateAndRememberPath(normalizedValue);
-                if (isValid) {
-                    plugin.settings.sourcePath = normalizedValue;
-                    await plugin.saveSettings();
-                    text.inputEl.addClass('ert-setting-input-success');
-                    window.setTimeout(() => {
-                        text.inputEl.removeClass('ert-setting-input-success');
-                    }, 1000);
-                } else {
-                    text.inputEl.addClass('ert-setting-input-error');
-                    window.setTimeout(() => {
-                        text.inputEl.removeClass('ert-setting-input-error');
-                    }, 2000);
-                }
-            } else {
-                // Clear the source path, hide suggestions, and refresh the timeline immediately
-                plugin.settings.sourcePath = normalizedValue;
-                await plugin.saveSettings();
-                plugin.refreshTimelineIfNeeded(null);
-
-                const suggestions = text.inputEl
-                    .closest('.setting-item')
-                    ?.querySelector('.source-path-suggestions');
-                suggestions?.classList.add('hidden');
-
-                text.inputEl.addClass('ert-setting-input-success');
-                window.setTimeout(() => {
-                    text.inputEl.removeClass('ert-setting-input-success');
-                }, 1000);
-            }
-        };
-
-        plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
+    // --- Books Manager ---
+    const booksHeading = containerEl.createEl('h3', { text: 'Books' });
+    booksHeading.addClass('ert-header2');
+    containerEl.createEl('p', {
+        cls: 'ert-field-note',
+        text: 'Manage multiple manuscripts. The active book drives the timeline title and exports.'
     });
 
-    // --- Show Source Path as Title ---
-    const isShowingSourcePath = plugin.settings.showSourcePathAsTitle !== false;
+    const booksList = containerEl.createDiv({ cls: 'rt-books-list' });
+    const activeBookPanel = containerEl.createDiv({ cls: 'rt-books-active' });
 
-    const getFolderTitle = () => {
-        const sourcePath = plugin.settings.sourcePath;
-        if (!sourcePath) return 'Work in Progress';
-        // Get the last segment of the path
-        const segments = sourcePath.split('/').filter(s => s.length > 0);
-        return segments.length > 0 ? segments[segments.length - 1] : 'Work in Progress';
-    };
-
-    const getDescText = (enabled: boolean) => {
-        const title = enabled ? getFolderTitle() : 'Work in Progress';
-        return `Currently showing "${title}" as the title.`;
-    };
-
-    const titleToggleSetting = new ObsidianSetting(containerEl)
-        .setName('Show source path as title')
-        .setDesc(getDescText(isShowingSourcePath));
-
-    titleToggleSetting.addToggle(toggle => {
-        toggle
-            .setValue(isShowingSourcePath)
-            .onChange(async (value) => {
-                plugin.settings.showSourcePathAsTitle = value;
-                await plugin.saveSettings();
-                plugin.refreshTimelineIfNeeded(null);
-                // Update description to reflect new state
-                titleToggleSetting.setDesc(getDescText(value));
+    const ensureBooks = async () => {
+        if (!Array.isArray(plugin.settings.books) || plugin.settings.books.length === 0) {
+            const legacySource = plugin.settings.sourcePath || '';
+            const book = normalizeBookProfile({
+                id: createBookId(),
+                title: DEFAULT_BOOK_TITLE,
+                sourceFolder: legacySource
             });
-    });
+            plugin.settings.books = [book];
+            plugin.settings.activeBookId = book.id;
+            await plugin.persistBookSettings();
+        }
+    };
+
+    const renderBooksManager = () => {
+        booksList.empty();
+        activeBookPanel.empty();
+
+        const books = plugin.settings.books || [];
+        const activeId = plugin.settings.activeBookId;
+
+        if (books.length === 0) {
+            booksList.createDiv({ cls: 'ert-field-note', text: 'No books configured yet.' });
+        } else {
+            books.forEach(book => {
+                const isActive = book.id === activeId;
+                const label = book.title?.trim() || DEFAULT_BOOK_TITLE;
+                const desc = book.sourceFolder?.trim()
+                    ? `Folder: ${book.sourceFolder}`
+                    : 'No source folder set.';
+
+                const row = new ObsidianSetting(booksList)
+                    .setName(label)
+                    .setDesc(desc);
+
+                row.addExtraButton(button => {
+                    button.setIcon(isActive ? 'check-circle' : 'circle');
+                    button.setTooltip(isActive ? 'Active book' : 'Set as active book');
+                    if (isActive) {
+                        button.setDisabled(true);
+                    } else {
+                        button.onClick(async () => {
+                            await plugin.setActiveBookId(book.id);
+                            renderBooksManager();
+                        });
+                    }
+                });
+
+                row.addExtraButton(button => {
+                    button.setIcon('trash-2');
+                    button.setTooltip('Remove book');
+                    if (books.length <= 1) {
+                        button.setDisabled(true);
+                        return;
+                    }
+                    button.onClick(async () => {
+                        plugin.settings.books = books.filter(b => b.id !== book.id);
+                        if (book.id === plugin.settings.activeBookId) {
+                            plugin.settings.activeBookId = plugin.settings.books[0]?.id;
+                        }
+                        await plugin.persistBookSettings();
+                        renderBooksManager();
+                    });
+                });
+            });
+        }
+
+        const addBookRow = new ObsidianSetting(booksList)
+            .setName('Add book')
+            .setDesc('Create another manuscript profile.');
+        addBookRow.addButton(button => {
+            button.setButtonText('Add');
+            button.onClick(async () => {
+                const next = normalizeBookProfile({
+                    id: createBookId(),
+                    title: DEFAULT_BOOK_TITLE,
+                    sourceFolder: ''
+                });
+                plugin.settings.books = [...(plugin.settings.books || []), next];
+                plugin.settings.activeBookId = next.id;
+                await plugin.persistBookSettings();
+                renderBooksManager();
+            });
+        });
+
+        const activeBook = plugin.getActiveBook();
+        if (!activeBook) return;
+
+        const activeTitleSetting = new ObsidianSetting(activeBookPanel)
+            .setName('Active book title')
+            .setDesc('Displayed in the timeline header and mode selector.');
+        activeTitleSetting.addText(text => {
+            text.setPlaceholder(DEFAULT_BOOK_TITLE).setValue(activeBook.title || '');
+            text.inputEl.addClass('ert-input--full');
+            const commitTitle = async () => {
+                const value = text.getValue().trim();
+                activeBook.title = value || DEFAULT_BOOK_TITLE;
+                await plugin.persistBookSettings();
+                renderBooksManager();
+            };
+            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { void commitTitle(); });
+        });
+
+        const sourceSetting = new ObsidianSetting(activeBookPanel)
+            .setName('Active book folder')
+            .setDesc('Root folder containing scene files for this book.');
+
+        sourceSetting.addText(text => {
+            text.setPlaceholder('Example: Book 1').setValue(activeBook.sourceFolder || '');
+            text.inputEl.addClass('ert-input--xl');
+
+            const inputEl = text.inputEl;
+            const resetState = () => {
+                inputEl.removeClass('ert-setting-input-success');
+                inputEl.removeClass('ert-setting-input-error');
+            };
+
+            const handleBlur = async (overrideValue?: string) => {
+                resetState();
+                const raw = (overrideValue ?? text.getValue()).trim();
+                const normalizedValue = raw ? normalizePath(raw) : '';
+
+                if (raw) {
+                    const isValid = await plugin.validateAndRememberPath(normalizedValue);
+                    if (isValid) {
+                        activeBook.sourceFolder = normalizedValue;
+                        await plugin.persistBookSettings();
+                        inputEl.addClass('ert-setting-input-success');
+                        window.setTimeout(() => inputEl.removeClass('ert-setting-input-success'), 1000);
+                    } else {
+                        inputEl.addClass('ert-setting-input-error');
+                        window.setTimeout(() => inputEl.removeClass('ert-setting-input-error'), 2000);
+                    }
+                } else {
+                    activeBook.sourceFolder = '';
+                    await plugin.persistBookSettings();
+                    inputEl.addClass('ert-setting-input-success');
+                    window.setTimeout(() => inputEl.removeClass('ert-setting-input-success'), 1000);
+                }
+            };
+
+            new ModalFolderSuggest(app, inputEl, (path) => {
+                text.setValue(path);
+                void handleBlur(path);
+            });
+
+            plugin.registerDomEvent(inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    inputEl.blur();
+                }
+            });
+
+            plugin.registerDomEvent(inputEl, 'blur', () => { void handleBlur(); });
+        });
+
+        const fileStemSetting = new ObsidianSetting(activeBookPanel)
+            .setName('File stem (advanced)')
+            .setDesc('Optional filename base for exports. Leave blank to use the book title.');
+        fileStemSetting.addText(text => {
+            text.setPlaceholder('Optional').setValue(activeBook.fileStem || '');
+            text.inputEl.addClass('ert-input--full');
+            const commitStem = async () => {
+                const trimmed = text.getValue().trim();
+                activeBook.fileStem = trimmed.length > 0 ? trimmed : undefined;
+                await plugin.persistBookSettings();
+            };
+            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { void commitStem(); });
+        });
+    };
+
+    void ensureBooks().then(renderBooksManager);
 
     // --- Export Folder ---
     const manuscriptSetting = new ObsidianSetting(containerEl)

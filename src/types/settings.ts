@@ -84,6 +84,14 @@ export interface HoverMetadataField {
     enabled: boolean;      // Show in hover synopsis
 }
 
+export interface BookProfile {
+    id: string;
+    title: string;
+    sourceFolder: string;
+    fileStem?: string;
+    lastUsedPandocLayoutByPreset?: Record<string, string>;
+}
+
 export type AuthorProgressPublishTarget = 'folder' | 'github_pages' | 'note';
 export type AuthorProgressFrequency = 'manual' | 'daily' | 'weekly' | 'monthly';
 
@@ -317,8 +325,20 @@ export interface InquirySessionCacheRecord {
     max: number;
 }
 
+/** A Pandoc LaTeX layout template scoped to a manuscript preset. */
+export interface PandocLayoutTemplate {
+    id: string;                // unique, e.g. "ajfinn-novel"
+    name: string;              // display name, e.g. "AJFINN Classic"
+    preset: 'novel' | 'screenplay' | 'podcast';
+    path: string;              // vault-relative or absolute path to .tex file
+    bundled?: boolean;         // true for RT-generated sample templates
+}
+
 export interface RadialTimelineSettings {
+    books: BookProfile[];
+    activeBookId?: string;
     sourcePath: string;
+    /** @deprecated Legacy toggle. Book title now comes from BookProfile. Kept for migration. */
     showSourcePathAsTitle?: boolean;
     validFolderPaths: string[];
     validProjectPaths?: string[];  // Autocomplete history for Social Project Path field
@@ -458,6 +478,11 @@ export interface RadialTimelineSettings {
     pandocEnableFallback?: boolean;
     pandocFallbackPath?: string;
     pandocFolder?: string;  // Vault path for Pandoc templates and compile scripts
+    pandocLayouts?: PandocLayoutTemplate[];
+    /** @deprecated Migrated to BookProfile.lastUsedPandocLayoutByPreset. Kept for one migration cycle. */
+    lastUsedPandocLayoutByPreset?: Record<string, string>;
+
+    /** @deprecated Migrated to pandocLayouts on load. Kept for one release cycle. */
     pandocTemplates?: {
         screenplay?: string;
         podcast?: string;

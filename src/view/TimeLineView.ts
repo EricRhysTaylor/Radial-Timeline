@@ -28,6 +28,8 @@ import {
 } from '../renderer/ChangeDetection';
 import { clearFontMetricsCaches } from '../renderer/utils/FontMetricsCache';
 import { AuthorProgressModal } from '../modals/AuthorProgressModal';
+import { isMatterNote } from '../utils/sceneHelpers';
+import { DEFAULT_BOOK_TITLE, getActiveBookTitle } from '../utils/books';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
@@ -56,6 +58,11 @@ export class RadialTimelineView extends ItemView {
     
     // Set of open scene paths (for tracking open files)
     openScenePaths: Set<string> = new Set<string>();
+
+    // Book switcher UI
+    private bookSwitcherEl?: HTMLElement;
+    private bookSwitcherSelect?: HTMLSelectElement;
+    private bookSwitcherManageBtn?: HTMLButtonElement;
     
     // Store rotation state to persist across timeline refreshes
     private rotationState: boolean = false;
@@ -126,23 +133,98 @@ export class RadialTimelineView extends ItemView {
     }
     
     getDisplayText(): string {
-        // Use source path folder name if enabled in settings
-        if (this.plugin.settings.showSourcePathAsTitle !== false) {
-            const sourcePath = this.plugin.settings.sourcePath || '';
-            if (sourcePath) {
-                const parts = sourcePath.split('/').filter(p => p.length > 0);
-                if (parts.length > 0) {
-                    return `Radial Timeline: ${parts[parts.length - 1]}`;
-                }
-            }
-        }
-        
-        // When toggle is off, show "Work in Progress" to protect the real title
-        return 'Radial Timeline: Work in Progress';
+        const title = getActiveBookTitle(this.plugin.settings, DEFAULT_BOOK_TITLE);
+        return `Radial Timeline: ${title}`;
     }
     
     getIcon(): string {
         return "shell";
+    }
+
+    private ensureBookSwitcher(): void {
+        const headerEl = this.containerEl.querySelector('.view-header') as HTMLElement | null;
+        if (!headerEl) return;
+
+        if (!this.bookSwitcherEl) {
+            const actionsEl = headerEl.querySelector('.view-actions');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'rt-book-switcher';
+
+            const select = document.createElement('select');
+            select.className = 'rt-book-switcher__select';
+            select.addEventListener('change', () => {
+                const nextId = select.value;
+                void this.plugin.setActiveBookId(nextId);
+            });
+
+            const manageBtn = document.createElement('button');
+            manageBtn.className = 'rt-book-switcher__manage';
+            manageBtn.type = 'button';
+            manageBtn.textContent = 'Manage books…';
+            manageBtn.addEventListener('click', () => {
+                if (this.plugin.settingsTab) {
+                    this.plugin.settingsTab.setActiveTab('core');
+                }
+                const setting = (this.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting;
+                if (setting) {
+                    setting.open();
+                    setting.openTabById('radial-timeline');
+                }
+            });
+
+            wrapper.appendChild(select);
+            wrapper.appendChild(manageBtn);
+
+            if (actionsEl && actionsEl.parentElement) {
+                actionsEl.parentElement.insertBefore(wrapper, actionsEl);
+            } else {
+                headerEl.appendChild(wrapper);
+            }
+
+            this.bookSwitcherEl = wrapper;
+            this.bookSwitcherSelect = select;
+            this.bookSwitcherManageBtn = manageBtn;
+        }
+
+        this.updateBookSwitcherOptions();
+    }
+
+    private updateBookSwitcherOptions(): void {
+        if (!this.bookSwitcherSelect) return;
+        const select = this.bookSwitcherSelect;
+        while (select.firstChild) {
+            select.removeChild(select.firstChild);
+        }
+
+        const books = this.plugin.settings.books || [];
+        books.forEach(book => {
+            const option = document.createElement('option');
+            option.value = book.id;
+            option.textContent = book.title?.trim() || DEFAULT_BOOK_TITLE;
+            select.appendChild(option);
+        });
+
+        if (books.length > 0) {
+            select.value = this.plugin.settings.activeBookId || books[0].id;
+        }
+
+        select.toggleAttribute('disabled', books.length <= 1);
+    }
+
+    private updateViewTitle(): void {
+        const titleText = this.getDisplayText();
+        const headerTitle = this.containerEl.querySelector('.view-header-title') as HTMLElement | null;
+        if (headerTitle) headerTitle.textContent = titleText;
+
+        const tabTitle = this.containerEl
+            .closest('.workspace-leaf')
+            ?.querySelector('.workspace-tab-header-inner-title') as HTMLElement | null;
+        if (tabTitle) tabTitle.textContent = titleText;
+    }
+
+    public syncBookHeader(): void {
+        this.ensureBookSwitcher();
+        this.updateViewTitle();
     }
 
     // --- Helpers for number-square orientation/position (shared across modes) ---
@@ -297,13 +379,14 @@ export class RadialTimelineView extends ItemView {
         this.plugin.getSceneData()
             .then(async (sceneData) => {
                 const dataLoadTime = performance.now() - perfStart;
+                const timelineSceneData = sceneData.filter(item => !isMatterNote(item));
 
                 // If in Gossamer mode, the change might be a score update. We must
                 // rebuild the run data here to ensure the renderer gets the latest scores.
                 if (this._currentMode === 'gossamer') {
                     const { buildAllGossamerRuns } = await import('../utils/gossamer');
                     const selectedBeatModel = this.plugin.settings.beatSystem?.trim() || undefined;
-                    const allRuns = buildAllGossamerRuns(sceneData as any, selectedBeatModel);
+                    const allRuns = buildAllGossamerRuns(timelineSceneData as any, selectedBeatModel);
         
                     // Update the plugin's stored run data so the renderer can access it
                     (this.plugin as any)._gossamerLastRun = allRuns.current;
@@ -312,13 +395,13 @@ export class RadialTimelineView extends ItemView {
                     (this.plugin as any)._gossamerHasAnyScores = allRuns.hasAnyScores;
                 }
                 
-                this.sceneData = sceneData;
+                this.sceneData = timelineSceneData;
                 // Expose last scene data on plugin for selective services that need it
-                this.plugin.lastSceneData = sceneData;
+                this.plugin.lastSceneData = timelineSceneData;
                 
                 // Create snapshot of current state
                 const currentSnapshot = createSnapshot(
-                    sceneData,
+                    timelineSceneData,
                     this.plugin.openScenePaths,
                     this.plugin.searchActive,
                     this.plugin.searchResults,
@@ -433,6 +516,7 @@ export class RadialTimelineView extends ItemView {
     
     async onOpen(): Promise<void> {
         this.contentEl.addClass('radial-timeline-view');
+        this.syncBookHeader();
         await this.plugin.maybeShowReleaseNotesModal();
         
         // Note: Workspace events (file-open, layout-change, active-leaf-change, quick-preview)

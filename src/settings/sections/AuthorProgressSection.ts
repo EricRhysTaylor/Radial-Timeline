@@ -8,6 +8,7 @@ import { getAllScenes } from '../../utils/manuscript';
 import { createAprSVG } from '../../renderer/apr/AprRenderer';
 import { getTeaserRevealLevel, getTeaserThresholds, teaserLevelToRevealOptions } from '../../renderer/apr/AprConstants';
 import { getPresetPalettes, generatePaletteFromColor } from '../../utils/aprPaletteGenerator';
+import { DEFAULT_BOOK_TITLE } from '../../utils/books';
 import { AprPaletteModal } from '../../modals/AprPaletteModal';
 import { renderCampaignManagerSection } from './CampaignManagerSection';
 import { isProfessionalActive } from './ProfessionalSection';
@@ -954,7 +955,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         desc: 'Outer ring book title text. This color is used for the palette seed color.',
         dataTypo: 'title',
         text: {
-            placeholder: 'Working Title',
+            placeholder: DEFAULT_BOOK_TITLE,
             value: settings?.bookTitle || '',
             onChange: async (val) => {
                 await setAprSetting('bookTitle', val as AuthorProgressSettings['bookTitle']);
@@ -1821,7 +1822,7 @@ async function renderHeroPreview(
         const { svgString, width, height } = createAprSVG(scenes, {
             size: size,
             progressPercent: displayPercent,
-            bookTitle: aprSettings?.bookTitle || 'Working Title',
+            bookTitle: aprSettings?.bookTitle || DEFAULT_BOOK_TITLE,
             authorName: aprSettings?.authorName || '',
             authorUrl: aprSettings?.authorUrl || '',
             showScenes,
