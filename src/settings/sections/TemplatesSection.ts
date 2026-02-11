@@ -59,9 +59,9 @@ const BEAT_SYSTEM_COPY: Record<string, { title: string; description: string; exa
         examples: 'Examples: The Silence of the Lambs, Pride and Prejudice.'
     },
     'Custom': {
-        title: 'Custom beat system',
-        description: 'Build your own beat structure and create beat notes in your vault.',
-        examples: 'Perfect for projects that do not follow a traditional story structure.'
+        title: 'Custom system',
+        description: 'Design your own structural framework for this manuscript. Define the beats that matter to your story — whether they follow a classic arc or track genre-specific progression.\n\nCustom systems can represent tropes, thematic turns, investigative milestones, historical phases, or any structural rhythm you want to measure. Gossamer measures momentum across the structure you create.',
+        examples: 'Examples: Romance trope ladder, Mystery clue escalation, Expedition log phases, Political campaign timeline.'
     }
 };
 
@@ -413,6 +413,7 @@ export function renderStoryBeatsSection(params: {
     let existingBeatReady = false;
     let refreshCustomBeatList: (() => void) | null = null;
     let refreshCustomBeats: ((allowFetch: boolean) => void) | null = null;
+    let refreshHealthIcon: (() => void) | null = null;
     let customBeatsObserver: IntersectionObserver | null = null;
 
     const refreshExistingBeatLookup = async (allowFetch: boolean, selectedSystem: string): Promise<Map<string, TimelineItem[]> | null> => {
@@ -564,14 +565,13 @@ export function renderStoryBeatsSection(params: {
     const templatePreviewMeta = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-meta' });
     const templateActGrid = templatePreviewContainer.createDiv({ cls: 'ert-beat-act-grid' });
 
-    // ── Stage switcher for Custom workflow (4-stage) ──────────────────
+    // ── Stage switcher for Custom workflow (3-stage) ──────────────────
     // Local state only — not persisted. Controls which section is visible
     // inside the Custom tab panel.
-    // 1) design   — beat list editor + system name
-    // 2) generate — beat note creation + beat-note health
-    // 3) fields   — YAML editor, hover metadata, schema audit
-    // 4) pro      — saved beat systems manager (Pro-locked for Core)
-    type CustomStage = 'design' | 'generate' | 'fields' | 'pro';
+    // 1) design — beat list editor + system name + beat-note health/actions
+    // 2) fields — YAML editor, hover metadata, schema audit
+    // 3) pro    — saved beat systems manager (Pro-locked for Core)
+    type CustomStage = 'design' | 'fields' | 'pro';
     let currentCustomStage: CustomStage = 'design';
 
     const stageSwitcher = beatSystemCard.createDiv({
@@ -587,8 +587,15 @@ export function renderStoryBeatsSection(params: {
 
         // ── Custom system header (mirrors built-in template preview header) ──
         const customSystemName = plugin.settings.customBeatSystemName || 'Custom beats';
-        const headerRow = customConfigContainer.createDiv({ cls: 'ert-beat-template-preview' });
+        const copy = BEAT_SYSTEM_COPY['Custom'];
+        const headerRow = customConfigContainer.createDiv({ cls: ['ert-beat-template-preview', ERT_CLASSES.STACK] });
         const titleEl = headerRow.createDiv({ cls: 'ert-beat-template-title' });
+
+        // Health status icon — mirrors Book card check pattern.
+        // Starts neutral; updates after async beat-note lookup.
+        const healthIcon = titleEl.createDiv({ cls: 'ert-beat-health-icon' });
+        setIcon(healthIcon, 'circle-dashed');
+
         const nameLink = titleEl.createSpan({
             text: customSystemName,
             cls: 'ert-book-name ert-book-name--clickable'
@@ -596,10 +603,13 @@ export function renderStoryBeatsSection(params: {
         nameLink.setAttr('role', 'button');
         nameLink.setAttr('tabindex', '0');
         nameLink.setAttr('aria-label', `Rename "${customSystemName}"`);
-        headerRow.createDiv({
-            cls: 'ert-beat-template-desc',
-            text: 'This name is written into your beat notes as Beat Model.'
+        // Multi-paragraph description — split on \n\n to create separate <p> elements
+        copy.description.split('\n\n').forEach(para => {
+            headerRow.createDiv({ cls: 'ert-beat-template-desc', text: para });
         });
+        if (copy.examples) {
+            headerRow.createDiv({ cls: 'ert-beat-template-examples', text: copy.examples });
+        }
         const openSystemRename = () => {
             new SystemRenameModal(app, customSystemName, async (newName) => {
                 const trimmed = newName.trim();
@@ -617,6 +627,43 @@ export function renderStoryBeatsSection(params: {
             if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSystemRename(); }
         });
 
+        // Update health icon from current beat-note audit counters.
+        // Called immediately (from cached state) and again after async lookup.
+        const updateHealthIcon = () => {
+            if (!existingBeatReady) {
+                // No audit run yet — neutral
+                healthIcon.className = 'ert-beat-health-icon';
+                setIcon(healthIcon, 'circle-dashed');
+                return;
+            }
+            const hasDups = existingBeatDuplicateCount > 0;
+            const hasMisaligned = existingBeatMisalignedCount > 0;
+            const hasMissing = existingBeatNewCount > 0;
+            const allGood = existingBeatSyncedCount === existingBeatExpectedCount
+                && !hasMisaligned && !hasDups;
+
+            if (hasDups) {
+                healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--critical';
+                setIcon(healthIcon, 'alert-circle');
+            } else if (hasMisaligned) {
+                healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--warning';
+                setIcon(healthIcon, 'alert-triangle');
+            } else if (hasMissing) {
+                healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--warning';
+                setIcon(healthIcon, 'alert-triangle');
+            } else if (allGood) {
+                healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--success';
+                setIcon(healthIcon, 'check-circle');
+            } else {
+                healthIcon.className = 'ert-beat-health-icon';
+                setIcon(healthIcon, 'circle-dashed');
+            }
+        };
+        updateHealthIcon();
+
+        // Expose so updateTemplateButton can refresh the icon after async lookup
+        refreshHealthIcon = updateHealthIcon;
+
         // Beat List Editor (draggable rows with Name + Act)
         const beatWrapper = customConfigContainer.createDiv({ cls: 'ert-custom-beat-wrapper' });
 
@@ -626,7 +673,7 @@ export function renderStoryBeatsSection(params: {
             plugin.settings.customBeatSystemBeats = beats;
             await plugin.saveSettings();
             updateTemplateButton(templateSetting, 'Custom');
-            // Re-render stage switcher so Generate gate updates
+            // Re-render stage switcher after beat list changes
             renderStageSwitcher();
         };
 
@@ -804,7 +851,7 @@ export function renderStoryBeatsSection(params: {
                             } else {
                                 rowState = 'misaligned';
                                 if (missingNumber) {
-                                    rowNotices.push(`Missing prefix number. Merge to assign #${beatNumber}.`);
+                                    rowNotices.push(`Missing prefix number. Repair to assign #${beatNumber}.`);
                                 } else {
                                     rowNotices.push(`Misaligned: file is #${existingNumberStr} Act ${existingAct}, expected #${beatNumber} Act ${actNumber}.`);
                                 }
@@ -1056,12 +1103,6 @@ export function renderStoryBeatsSection(params: {
         });
     };
 
-    // Generate stage helper (visible only in custom Generate stage)
-    const generateHelper = beatSystemCard.createDiv({
-        cls: 'ert-generate-helper ert-settings-hidden',
-        text: 'Create beat note files in your vault from the custom system you built.'
-    });
-
     // Create template beat note button
     let createTemplatesButton: ButtonComponent | undefined;
     let mergeTemplatesButton: ButtonComponent | undefined;
@@ -1081,8 +1122,8 @@ export function renderStoryBeatsSection(params: {
         .addButton(button => {
             mergeTemplatesButton = button;
             button
-                .setButtonText('Merge beats')
-                .setTooltip('Rename and realign existing beat notes to match this list')
+                .setButtonText('Repair beat notes')
+                .setTooltip('Fix misaligned beat notes to match this list')
                 .onClick(async () => {
                     await mergeExistingBeatNotes();
                 });
@@ -1096,78 +1137,51 @@ export function renderStoryBeatsSection(params: {
     const proTemplatesContainer = beatSystemCard.createDiv({ cls: ERT_CLASSES.STACK });
 
     // ── Stage switcher rendering + visibility ───────────────────────────
-    /** Returns true when the custom beat list has at least 1 named beat. */
-    const hasCustomBeats = (): boolean => {
-        const beats = plugin.settings.customBeatSystemBeats ?? [];
-        return beats.some((b: unknown) => {
-            if (typeof b === 'string') return b.trim().length > 0;
-            if (typeof b === 'object' && b !== null) return String((b as { name?: unknown }).name ?? '').trim().length > 0;
-            return false;
-        });
-    };
-
-    /** Returns true when Fields stage has content to show. */
-    const hasFieldsContent = (): boolean => {
-        return (plugin.settings.enableBeatYamlEditor ?? false) || true;
-        // Fields stage always available — toggle controls expand/collapse within it.
-    };
-
     const renderStageSwitcher = () => {
         stageSwitcher.empty();
-        const beatsExist = hasCustomBeats();
 
-        // Stage 1: Design
-        const designBtn = stageSwitcher.createEl('button', {
-            cls: `ert-stage-btn${currentCustomStage === 'design' ? ' is-active' : ''}`,
-            attr: { type: 'button', role: 'tab', 'aria-selected': currentCustomStage === 'design' ? 'true' : 'false' }
-        });
-        setIcon(designBtn.createSpan({ cls: 'ert-stage-btn-icon' }), 'pencil-ruler');
-        designBtn.appendText('Design');
-        designBtn.addEventListener('click', () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
-            if (currentCustomStage === 'design') return;
-            currentCustomStage = 'design';
-            renderStageSwitcher();
-            updateStageVisibility();
-        });
-
-        // Stage 2: Generate (disabled when 0 beats)
-        const genDisabled = !beatsExist;
-        const genBtn = stageSwitcher.createEl('button', {
-            cls: `ert-stage-btn${currentCustomStage === 'generate' ? ' is-active' : ''}${genDisabled ? ' is-disabled' : ''}`,
-            attr: { type: 'button', role: 'tab', 'aria-selected': currentCustomStage === 'generate' ? 'true' : 'false', ...(genDisabled ? { disabled: 'true' } : {}) }
-        });
-        setIcon(genBtn.createSpan({ cls: 'ert-stage-btn-icon' }), 'file-plus');
-        genBtn.appendText('Generate');
-        if (!genDisabled) {
-            genBtn.addEventListener('click', () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
-                if (currentCustomStage === 'generate') return;
-                currentCustomStage = 'generate';
-                renderStageSwitcher();
-                updateStageVisibility();
+        // Helper: create a numbered stage button
+        const makeStageBtn = (
+            id: CustomStage,
+            stepNum: number,
+            label: string,
+            disabled = false
+        ): HTMLButtonElement => {
+            const btn = stageSwitcher.createEl('button', {
+                cls: `ert-stage-btn${currentCustomStage === id ? ' is-active' : ''}${disabled ? ' is-disabled' : ''}`,
+                attr: {
+                    type: 'button',
+                    role: 'tab',
+                    'aria-selected': currentCustomStage === id ? 'true' : 'false',
+                    ...(disabled ? { disabled: 'true' } : {})
+                }
             });
-        }
+            btn.createSpan({ cls: 'ert-stage-btn-step', text: `${stepNum}.` });
+            btn.appendText(` ${label}`);
+            if (!disabled) {
+                btn.addEventListener('click', () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
+                    if (currentCustomStage === id) return;
+                    currentCustomStage = id;
+                    renderStageSwitcher();
+                    updateStageVisibility();
+                });
+            }
+            return btn;
+        };
 
-        // Stage 3: Fields
-        const fieldsBtn = stageSwitcher.createEl('button', {
-            cls: `ert-stage-btn${currentCustomStage === 'fields' ? ' is-active' : ''}`,
-            attr: { type: 'button', role: 'tab', 'aria-selected': currentCustomStage === 'fields' ? 'true' : 'false' }
-        });
-        setIcon(fieldsBtn.createSpan({ cls: 'ert-stage-btn-icon' }), 'columns-3');
-        fieldsBtn.appendText('Fields');
-        fieldsBtn.addEventListener('click', () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
-            if (currentCustomStage === 'fields') return;
-            currentCustomStage = 'fields';
-            renderStageSwitcher();
-            updateStageVisibility();
-        });
+        // Stage 1: Design (beat list + health + create/merge actions)
+        makeStageBtn('design', 1, 'Design');
 
-        // Stage 4: PRO Templates (always visible; content Pro-locked for Core)
+        // Stage 2: Fields (YAML editor, hover metadata, schema audit)
+        makeStageBtn('fields', 2, 'Fields');
+
+        // Stage 3: PRO Templates (always visible; content Pro-locked for Core)
         const proBtn = stageSwitcher.createEl('button', {
-            cls: `ert-stage-btn ert-stage-btn--pro${currentCustomStage === 'pro' ? ' is-active' : ''}`,
+            cls: `ert-stage-btn ert-stage-btn--pro ${ERT_CLASSES.SKIN_PRO}${currentCustomStage === 'pro' ? ' is-active' : ''}`,
             attr: { type: 'button', role: 'tab', 'aria-selected': currentCustomStage === 'pro' ? 'true' : 'false' }
         });
-        // Reuse the existing PRO pill pattern inside the button
-        const proPill = proBtn.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM} ${ERT_CLASSES.SKIN_PRO}` });
+        // PRO pill inherits gradient from the ert-skin--pro ancestor (the button itself)
+        const proPill = proBtn.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}` });
         setIcon(proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), 'signature');
         proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
         proBtn.appendText(' Templates');
@@ -1180,7 +1194,7 @@ export function renderStoryBeatsSection(params: {
     };
 
     /**
-     * Shows/hides the four stage panels based on currentCustomStage.
+     * Shows/hides stage panels based on currentCustomStage.
      * In template mode all stages are hidden and the switcher disappears.
      */
     const updateStageVisibility = () => {
@@ -1194,17 +1208,15 @@ export function renderStoryBeatsSection(params: {
         if (!isCustom) {
             // Template mode: show preview + template button, hide custom stuff
             customConfigContainer.toggleClass('ert-settings-hidden', true);
-            generateHelper.toggleClass('ert-settings-hidden', true);
             templateSetting.settingEl.toggleClass('ert-settings-hidden', false);
             fieldsContainer.toggleClass('ert-settings-hidden', true);
             proTemplatesContainer.toggleClass('ert-settings-hidden', true);
             return;
         }
 
-        // Custom mode: gate on current stage
+        // Custom mode: Design shows beat list + health/actions
         customConfigContainer.toggleClass('ert-settings-hidden', currentCustomStage !== 'design');
-        generateHelper.toggleClass('ert-settings-hidden', currentCustomStage !== 'generate');
-        templateSetting.settingEl.toggleClass('ert-settings-hidden', currentCustomStage !== 'generate');
+        templateSetting.settingEl.toggleClass('ert-settings-hidden', currentCustomStage !== 'design');
         fieldsContainer.toggleClass('ert-settings-hidden', currentCustomStage !== 'fields');
         proTemplatesContainer.toggleClass('ert-settings-hidden', currentCustomStage !== 'pro');
 
@@ -3318,7 +3330,7 @@ export function renderStoryBeatsSection(params: {
                 setting.settingEl.style.opacity = '1';
             } else {
                 setting.setName('Beat notes');
-                baseDesc = 'Define your custom beat list in the Build stage first.';
+                baseDesc = 'Add at least one beat above to create beat notes.';
                 setting.setDesc(baseDesc);
                 setting.settingEl.style.opacity = '0.6';
             }
@@ -3379,7 +3391,7 @@ export function renderStoryBeatsSection(params: {
             const parts: string[] = [];
             if (synced > 0) parts.push(`${synced} ${isTemplateMode ? 'ok' : 'synced'}`);
             if (misaligned > 0) parts.push(`${misaligned} misaligned`);
-            if (newBeats > 0) parts.push(`${newBeats} ${isTemplateMode ? 'missing' : 'new'}`);
+            if (newBeats > 0) parts.push(`${newBeats} missing`);
             if (duplicates > 0) parts.push(`${duplicates} duplicate${duplicates > 1 ? 's' : ''}`);
             let statusDesc = parts.join(', ') + '.';
 
@@ -3398,15 +3410,15 @@ export function renderStoryBeatsSection(params: {
                         createTemplatesButton.setButtonText(`Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`);
                         createTemplatesButton.setTooltip(`Create missing beat notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`);
                     } else {
-                        createTemplatesButton.setButtonText(`Create ${newBeats} new beat note${newBeats > 1 ? 's' : ''}`);
-                        createTemplatesButton.setTooltip(`Create beat notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`);
+                        createTemplatesButton.setButtonText(`Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`);
+                        createTemplatesButton.setTooltip(`Create missing beat notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`);
                     }
                 }
             } else {
                 // Scenario C: All matched, some misaligned — no new beats
                 if (createTemplatesButton) {
                     createTemplatesButton.setDisabled(true);
-                    createTemplatesButton.setTooltip('All beats have files. Use Merge to fix alignment.');
+                    createTemplatesButton.setTooltip('All beats have files. Use Repair to fix alignment.');
                 }
             }
 
@@ -3414,8 +3426,8 @@ export function renderStoryBeatsSection(params: {
             if (mergeTemplatesButton && isCustom && hasMisaligned) {
                 mergeTemplatesButton.buttonEl.removeClass('ert-hidden');
                 mergeTemplatesButton.setDisabled(false);
-                mergeTemplatesButton.setButtonText(`Merge ${misaligned} beat${misaligned > 1 ? 's' : ''}`);
-                mergeTemplatesButton.setTooltip(`Rename and realign ${misaligned} beat note${misaligned > 1 ? 's' : ''} to match this list`);
+                mergeTemplatesButton.setButtonText(`Repair ${misaligned} beat note${misaligned > 1 ? 's' : ''}`);
+                mergeTemplatesButton.setTooltip(`Fix ${misaligned} misaligned beat note${misaligned > 1 ? 's' : ''} to match this list`);
             }
 
             if (hasDuplicates) {
@@ -3423,6 +3435,9 @@ export function renderStoryBeatsSection(params: {
             }
 
             setting.setDesc(`${baseDesc} ${statusDesc}`);
+
+            // Refresh the health icon in the Design header
+            refreshHealthIcon?.();
         })();
     }
 

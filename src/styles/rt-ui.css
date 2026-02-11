@@ -2090,6 +2090,15 @@
   height: 13px;
 }
 
+/* ── Step number inside stage buttons ────────────────────────────── */
+.ert-ui.ert-scope--settings .ert-stage-btn-step {
+  opacity: 0.55;
+  font-weight: 600;
+}
+.ert-ui.ert-scope--settings button.ert-stage-btn.is-active .ert-stage-btn-step {
+  opacity: 0.85;
+}
+
 /* ── PRO stage button — pill sits inline with the label ──────────── */
 .ert-ui.ert-scope--settings button.ert-stage-btn--pro {
   gap: 3px;
@@ -2098,10 +2107,37 @@
   vertical-align: middle;
   margin: 0;
 }
-/* When active, ensure pill text stays readable on accent background */
+/* Override active accent BG so the Pro gradient pill stays readable */
+.ert-ui.ert-scope--settings button.ert-stage-btn--pro.is-active,
+.ert-ui.ert-scope--settings button.ert-stage-btn--pro.is-active:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
 .ert-ui.ert-scope--settings button.ert-stage-btn--pro.is-active .ert-badgePill,
 .ert-ui.ert-scope--settings button.ert-stage-btn--pro.is-active:hover .ert-badgePill {
   filter: brightness(1.15);
+}
+
+/* ── Beat health status icon (in Custom system header) ───────────── */
+.ert-ui.ert-scope--settings .ert-beat-health-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-faint);
+}
+.ert-ui.ert-scope--settings .ert-beat-health-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.ert-ui.ert-scope--settings .ert-beat-health-icon--success {
+  color: var(--text-success);
+}
+.ert-ui.ert-scope--settings .ert-beat-health-icon--warning {
+  color: var(--color-yellow);
+}
+.ert-ui.ert-scope--settings .ert-beat-health-icon--critical {
+  color: var(--color-red);
 }
 
 /* ── Click-to-rename system name link ────────────────────────────── */
@@ -2117,12 +2153,6 @@
   color: var(--text-accent-hover);
 }
 
-/* ── Generate stage helper text ────────────────────────────────────── */
-.ert-ui.ert-scope--settings .ert-generate-helper {
-  font-size: 13px;
-  color: var(--text-muted);
-  line-height: 1.5;
-}
 
 .ert-ui.ert-scope--settings .ert-beat-template-preview {
   padding: var(--ert-gap-sm);
@@ -2132,6 +2162,9 @@
 }
 
 .ert-ui.ert-scope--settings .ert-beat-template-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: var(--text-normal);
   font-size: 15px;
   font-weight: 600;
