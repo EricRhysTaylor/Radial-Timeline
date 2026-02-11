@@ -43,6 +43,7 @@ export class GossamerScoreModal extends Modal {
   private plugin: RadialTimelinePlugin;
   private plotBeats: TimelineItem[];
   private entries: BeatScoreEntry[] = [];
+  // Internal name retained for local state continuity; controls inclusion of Beat Purpose text.
   private includeBeatDescriptions = false;
 
   constructor(
@@ -615,7 +616,7 @@ export class GossamerScoreModal extends Modal {
       lines.push('');
 
       const missingRangeBeats: string[] = [];
-      const missingDescriptionBeats: string[] = [];
+      const missingPurposeBeats: string[] = [];
 
       this.entries.forEach((entry, index) => {
         const metadataParts: string[] = [];
@@ -630,7 +631,7 @@ export class GossamerScoreModal extends Modal {
           if (entry.description && entry.description.trim().length > 0) {
             lines.push(`   ${entry.description.trim()}`);
           } else {
-            missingDescriptionBeats.push(entry.beatTitle);
+            missingPurposeBeats.push(entry.beatTitle);
           }
         }
         lines.push('');
@@ -677,8 +678,8 @@ export class GossamerScoreModal extends Modal {
       if (missingRangeBeats.length > 0) {
         this.showMetadataWarning('Range', missingRangeBeats);
       }
-      if (this.includeBeatDescriptions && missingDescriptionBeats.length > 0) {
-        this.showMetadataWarning('Purpose', missingDescriptionBeats);
+      if (this.includeBeatDescriptions && missingPurposeBeats.length > 0) {
+        this.showMetadataWarning('Purpose', missingPurposeBeats);
       }
     } catch (error) {
       console.error('[Gossamer] Failed to copy template:', error);

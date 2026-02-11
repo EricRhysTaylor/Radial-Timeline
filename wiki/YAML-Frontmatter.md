@@ -5,12 +5,12 @@ This page covers scene metadata (basic and advanced), beat notes, and backdrop n
 ## Minimal Scene (Required Fields)
 
 ```yaml
-Class: Scene              # Type: Scene or Beat
+Class: Scene              # Type: Scene
 Act: 1                    # Which act (1-3)
 When:                     # Story chronology date (YYYY-MM-DD 12:34pm)
 Duration:                 # How long the scene lasts (e.g., "45 seconds", "45s", "45sec", "2 hours", "3days")
-Synopsis:                 # Concise scene summary for hovers and outlines (1-3 sentences)
-Summary:                  # AI-generated longform scene analysis for inquiry and exports
+Synopsis:                 # Concise present-tense snapshot for hovers/outlines (1-3 sentences)
+Summary:                  # Longform scene expansion (events, emotional turns, subtext, outcome)
 Subplot: Main Plot        # Single subplot (or use array format below for multiple)
 Character:                # Characters in the scene (use array format below for multiple)
 POV:                      # blank, first, you, third, omni, narrator, two, all, count
@@ -96,8 +96,7 @@ The Advanced YAML editor lets you tailor the Advanced scene template while keepi
 ```yaml
 Class: Beat                   # Formerly Plot, Deprecated
 Act: 1
-When:                         # Optional: Story timeline date for chronological positioning (YYYY-MM-DD HH:MM)
-Description: The first impression of your story. A snapshot before the journey begins.
+Purpose: Why this beat exists in the structure (1-2 sentences, avoid retelling scene events).
 Beat Model: Save The Cat
 Range: 0-20
 Gossamer1: 12                 # First run (oldest) - Up to 30 evaluation passes
@@ -105,6 +104,8 @@ Gossamer1 Justification:
 Gossamer2: 21                 # Second run (most recent in this example)
 Gossamer2 Justification:
 ```
+
+> **Beat semantics**: Beats are structural, not temporal. `When` is supported as a legacy read field but is excluded from new writes and beat editor defaults.
 
 Beat notes have their own **Beat YAML editor** in **Settings → Story beats system**. Use it to add custom keys and choose which fields appear in beat hovers. Beat YAML is stored per beat system.
 
@@ -114,10 +115,10 @@ Beat notes have their own **Beat YAML editor** in **Settings → Story beats sys
 Class: Backdrop                   # Used for special context events that move the plot. Appears as a dedicated ring in Chronologue mode. See also micro-backdrop rings for lighter-weight context.
 When:                             # Start Date time (YYYY-MM-DD HH:MM)
 End:                              # End Date time (YYYY-MM-DD HH:MM)
-Synopsis: What this special backdrop is and how it relates to the story.
+Context: Static world context this backdrop represents (no scene-level unfolding).
 ```
 
-Backdrop note YAML is **not customizable at this time**.
+Backdrop notes can be extended using the **Backdrop YAML editor** in Settings.
 
 ## YAML Managers in Settings
 
@@ -140,5 +141,9 @@ The plugin automatically recognizes legacy field names, so you don't need to upd
 | Current Name | Legacy Names (still work) |
 |--------------|---------------------------|
 | `Iteration:` | `Revision:`, `Iterations:` |
+| `Purpose:` | `Description:` |
+| `Context:` | `Synopsis:` (Backdrop only) |
+
+`When:` on Beat notes is also read for compatibility, but new writes use the structural schema (`Purpose`).
 
 Existing notes with old field names will continue to work. Only new notes created from templates will use the current field names.

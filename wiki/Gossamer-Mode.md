@@ -69,7 +69,7 @@ Row colors show the sync status between your beat list and the actual note files
 *   **No highlight** — new beat, no file yet.
 
 ### 3. Create & Merge
-*   **Create**: Generates beat template notes in your source folder, one per beat. Notes come pre-populated with YAML frontmatter (`Class: Beat`, `Beat Model`, `Range`, etc.) so they are immediately recognized by Gossamer Mode. The button is disabled when all beats already have files, and shows how many new notes will be created.
+*   **Create**: Generates beat template notes in your source folder, one per beat. Notes come pre-populated with YAML frontmatter (`Class: Beat`, `Purpose`, `Beat Model`, `Range`, etc.) so they are immediately recognized by Gossamer Mode. The button is disabled when all beats already have files, and shows how many new notes will be created.
 *   **Merge**: Appears when beats are misaligned. Renames and updates existing beat note files to match the current list order and act assignments. Use this after reordering or renaming beats.
 
 > [!NOTE]

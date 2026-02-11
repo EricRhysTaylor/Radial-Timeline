@@ -73,6 +73,7 @@ You can also create custom beat notes manually:
 *   Add the following frontmatter (replace `Custom` with your system name):
     ```yaml
     Class: Beat
+    Purpose: Why this beat exists in the structure.
     Beat Model: Your System Name
     ```
 *   Radial Timeline will detect these notes and display them in Gossamer mode. The `Beat Model` value must match the system name in settings to be recognized.

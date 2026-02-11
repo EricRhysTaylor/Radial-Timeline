@@ -1103,11 +1103,13 @@ export function renderStoryBeatsSection(params: {
         });
     };
 
-    // Create template beat note button
+    // Create template beat note button — wrapped in a container for reliable stage gating.
+    // The wrapper is toggled by updateStageVisibility so async Setting updates can't leak.
+    const designActionsContainer = beatSystemCard.createDiv();
     let createTemplatesButton: ButtonComponent | undefined;
     let mergeTemplatesButton: ButtonComponent | undefined;
 
-    const templateSetting = new Settings(beatSystemCard)
+    const templateSetting = new Settings(designActionsContainer)
         .setName('Beat notes')
         .setDesc('Create beat note files in your vault based on the selected story structure system.')
         .addButton(button => {
@@ -1208,7 +1210,7 @@ export function renderStoryBeatsSection(params: {
         if (!isCustom) {
             // Template mode: show preview + template button, hide custom stuff
             customConfigContainer.toggleClass('ert-settings-hidden', true);
-            templateSetting.settingEl.toggleClass('ert-settings-hidden', false);
+            designActionsContainer.toggleClass('ert-settings-hidden', false);
             fieldsContainer.toggleClass('ert-settings-hidden', true);
             proTemplatesContainer.toggleClass('ert-settings-hidden', true);
             return;
@@ -1216,7 +1218,7 @@ export function renderStoryBeatsSection(params: {
 
         // Custom mode: Design shows beat list + health/actions
         customConfigContainer.toggleClass('ert-settings-hidden', currentCustomStage !== 'design');
-        templateSetting.settingEl.toggleClass('ert-settings-hidden', currentCustomStage !== 'design');
+        designActionsContainer.toggleClass('ert-settings-hidden', currentCustomStage !== 'design');
         fieldsContainer.toggleClass('ert-settings-hidden', currentCustomStage !== 'fields');
         proTemplatesContainer.toggleClass('ert-settings-hidden', currentCustomStage !== 'pro');
 
@@ -1332,6 +1334,7 @@ export function renderStoryBeatsSection(params: {
 
     const beatBaseTemplate = DEFAULT_SETTINGS.beatYamlTemplates!.base;
     const beatBaseKeys = extractKeysInOrder(beatBaseTemplate);
+    // Legacy keys remain readable in existing notes, but are blocked from new beat writes.
     const beatDisallowedNewWriteKeys = new Set(['When', 'Description']);
 
     const renderBeatYamlEditor = () => {
@@ -1340,6 +1343,7 @@ export function renderStoryBeatsSection(params: {
         const currentBeatAdvanced = getBeatConfigForSystem(plugin.settings).beatYamlAdvanced;
         const beatAdvancedObj = safeParseYaml(currentBeatAdvanced);
 
+        // Keep legacy `When` out of editor rows; Beat is structural-first.
         const legacyHiddenBeatKeys = new Set(['When']);
         const beatOptionalOrder = extractKeysInOrder(currentBeatAdvanced).filter(
             k => !beatBaseKeys.includes(k) && !legacyHiddenBeatKeys.has(k)
@@ -2638,6 +2642,7 @@ export function renderStoryBeatsSection(params: {
         ?? DEFAULT_SETTINGS.backdropYamlTemplates?.base
         ?? 'Class: Backdrop\nWhen:\nEnd:\nContext:';
     const backdropBaseKeys = extractKeysInOrder(backdropBaseTemplate);
+    // `Synopsis` is legacy for Backdrop and should not be written by new templates.
     const backdropDisallowedNewWriteKeys = new Set(['Synopsis']);
 
     const renderBackdropYamlEditor = () => {

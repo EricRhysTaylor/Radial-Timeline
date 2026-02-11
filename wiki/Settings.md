@@ -189,7 +189,7 @@ Configure the structural pacing guide for your story.
 *   **Saved beat systems ✦ Pro**: Save and switch between multiple custom beat systems (unlimited beat sets). Each system stores its beat list, Beat YAML editor fields, and hover metadata selections. Core includes a single custom beat system.
 
 > [!NOTE]
-> Custom beat YAML fields use the same structure as preset systems (`Class: Beat`, `Act`, `Beat Model`, `Range`, etc.). Use the Beat YAML editor to extend this with your own fields.
+> Custom beat YAML fields use the same structure as preset systems (`Class: Beat`, `Act`, `Purpose`, `Beat Model`, `Range`, etc.). Use the Beat YAML editor to extend this with your own fields.
 
 > [!NOTE]
 > Learn more about using beats in [[Gossamer-Mode]].
