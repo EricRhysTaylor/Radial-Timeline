@@ -60,7 +60,7 @@ const BEAT_SYSTEM_COPY: Record<string, { title: string; description: string; exa
     },
     'Custom': {
         title: 'Custom beat system',
-        description: 'Uses any story beat note you create manually via the custom story beat system editor.',
+        description: 'Build your own beat structure and create beat notes in your vault.',
         examples: 'Perfect for projects that do not follow a traditional story structure.'
     }
 };
@@ -511,7 +511,7 @@ export function renderStoryBeatsSection(params: {
 
     const stageSwitcher = beatSystemCard.createDiv({
         cls: 'ert-stage-switcher ert-settings-hidden',
-        attr: { role: 'tablist', 'aria-label': 'Custom workflow stage' }
+        attr: { role: 'tablist' }
     });
 
     // --- Custom System Configuration (Dynamic Visibility) ---
@@ -525,21 +525,17 @@ export function renderStoryBeatsSection(params: {
         const isProSystemLoaded = proActive && activeId !== 'default';
 
         const nameSetting = new Settings(customConfigContainer)
-            .setName('Custom Beat Model label')
+            .setName('Custom beat system name')
             .setDesc(
                 isProSystemLoaded
-                    ? 'This system was loaded from the Pro beat systems manager. Rename it there using Save As.'
-                    : 'This label is written to the Beat Model frontmatter field. Core supports one custom beat system; Pro unlocks multiple named custom systems.'
+                    ? 'This name is written into your beat notes as Beat Model. Loaded from Pro saved system — renaming here updates the active system name.'
+                    : 'This name is written into your beat notes as Beat Model.'
             )
             .addText(text => text
                 .setPlaceholder('Custom')
                 .setValue(plugin.settings.customBeatSystemName || 'Custom')
                 .then(t => {
                     t.inputEl.addClass('ert-input--md');
-                    if (isProSystemLoaded) {
-                        t.setDisabled(true);
-                        t.inputEl.setAttribute('title', 'Rename this system in the Pro beat systems manager');
-                    }
                     return t;
                 })
                 .onChange(async (value) => {
@@ -1000,13 +996,13 @@ export function renderStoryBeatsSection(params: {
     let mergeTemplatesButton: ButtonComponent | undefined;
 
     const templateSetting = new Settings(beatSystemCard)
-        .setName('Create story beat template notes')
+        .setName('Beat notes')
         .setDesc('Create beat note files in your vault based on the selected story structure system.')
         .addButton(button => {
             createTemplatesButton = button;
             button
-                .setButtonText('Create templates')
-                .setTooltip('Creates story beat note templates in your source path')
+                .setButtonText('Create beat notes')
+                .setTooltip('Create beat note files in your source path')
                 .onClick(async () => {
                     await createBeatTemplates();
                 });
@@ -1065,7 +1061,7 @@ export function renderStoryBeatsSection(params: {
                     type: 'button',
                     role: 'tab',
                     'aria-selected': isActive ? 'true' : 'false',
-                    ...(isGenerateDisabled ? { disabled: 'true', title: 'Add at least 1 beat to generate notes' } : {})
+                    ...(isGenerateDisabled ? { disabled: 'true' } : {})
                 }
             });
             const iconEl = btn.createSpan({ cls: 'ert-stage-btn-icon' });
@@ -1146,7 +1142,7 @@ export function renderStoryBeatsSection(params: {
             // Custom tab gets a lucide icon (14px, inherits currentColor)
             if (isCustomTab) {
                 const iconEl = btn.createSpan({ cls: 'ert-mini-tab-icon' });
-                setIcon(iconEl, 'wrench');
+                setIcon(iconEl, 'pencil-ruler');
             }
             btn.appendText(option.label);
 
@@ -1429,16 +1425,11 @@ export function renderStoryBeatsSection(params: {
 
             data.forEach((entry, idx) => renderBeatEntryRow(entry, idx, data));
 
-            // Add new field row (matches scene add-row layout)
-            const addRow = listEl.createDiv({ cls: ['ert-yaml-row', 'ert-yaml-row--add', 'ert-yaml-row--hover-meta'] });
+            // Add new field row — no drag handle or spacer; those waste space
+            // on the add row where nothing is draggable.
+            const addRow = listEl.createDiv({ cls: ['ert-yaml-row', 'ert-yaml-row--add', 'ert-yaml-row--add-beat'] });
 
-            // 1. Drag placeholder (direct child)
-            addRow.createDiv({ cls: ['ert-drag-handle', 'ert-drag-placeholder'] });
-
-            // 2. Spacer (direct child)
-            addRow.createDiv({ cls: 'ert-grid-spacer' });
-
-            // 3. Icon input with preview for new entry
+            // 1. Icon input with preview for new entry
             const addIconWrapper = addRow.createDiv({ cls: 'ert-hover-icon-wrapper' });
             const addIconPreview = addIconWrapper.createDiv({ cls: 'ert-hover-icon-preview' });
             setIcon(addIconPreview, DEFAULT_HOVER_ICON);
@@ -1464,7 +1455,7 @@ export function renderStoryBeatsSection(params: {
                 }
             };
 
-            // 4. Checkbox for new entry (default unchecked)
+            // 2. Checkbox for new entry (default unchecked)
             const addCheckboxWrapper = addRow.createDiv({ cls: 'ert-hover-checkbox-wrapper' });
             const addCheckbox = addCheckboxWrapper.createEl('input', {
                 type: 'checkbox',
@@ -1473,13 +1464,13 @@ export function renderStoryBeatsSection(params: {
             addCheckbox.checked = false;
             setTooltip(addCheckbox, 'Show in beat hover synopsis');
 
-            // 5. Key input (direct child)
+            // 3. Key input
             const addKeyInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--md', attr: { placeholder: 'New key' } });
 
-            // 6. Value input (direct child)
+            // 4. Value input
             const addValInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--md', attr: { placeholder: 'Value' } }) as HTMLInputElement;
 
-            // 7. Buttons wrapper (holds add + revert)
+            // 5. Buttons wrapper (holds add + revert)
             const btnWrap = addRow.createDiv({ cls: ['ert-iconBtnGroup', 'ert-template-actions'] });
 
             const addBtn = btnWrap.createEl('button', { cls: ['ert-iconBtn', 'ert-mod-cta'] });
@@ -1628,8 +1619,9 @@ export function renderStoryBeatsSection(params: {
     });
     if (!proActive) savedCard.addClass('ert-pro-locked');
 
-    // Card header (Campaign Manager pattern)
-    const savedHeaderRow = savedCard.createDiv({ cls: ERT_CLASSES.PANEL_HEADER });
+    // Card header — ert-skin--pro scoped to header only so the Pro pill
+    // picks up its gradient without painting the whole card purple.
+    const savedHeaderRow = savedCard.createDiv({ cls: `${ERT_CLASSES.PANEL_HEADER} ${ERT_CLASSES.SKIN_PRO}` });
     const savedTitleArea = savedHeaderRow.createDiv({ cls: 'ert-control' });
     const savedTitleRow = savedTitleArea.createEl('h4', { cls: `${ERT_CLASSES.SECTION_TITLE} ${ERT_CLASSES.INLINE}` });
     const savedProPill = savedTitleRow.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}` });
@@ -1639,7 +1631,7 @@ export function renderStoryBeatsSection(params: {
 
     savedCard.createEl('p', {
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Save and switch between multiple custom beat systems. Each system stores beats, custom YAML fields, and hover metadata.'
+        text: 'Save and switch between multiple systems. Each saved system stores beats, custom YAML fields, and hover metadata. Core: one active system. Pro: many saved systems.'
     });
 
     const savedControlsContainer = savedCard.createDiv({ cls: ERT_CLASSES.STACK });
@@ -3217,18 +3209,18 @@ export function renderStoryBeatsSection(params: {
             hasBeats = beats.some(b => b.length > 0);
 
             if (hasBeats) {
-                setting.setName(`Create story beat template notes for ${displayName}`);
-                baseDesc = `Generate ${beats.length} template beat notes for your custom system.`;
+                setting.setName(`Beat notes in your vault for ${displayName}`);
+                baseDesc = `Create ${beats.length} beat note files for your custom system.`;
                 setting.setDesc(baseDesc);
                 setting.settingEl.style.opacity = '1';
             } else {
-                setting.setName('Create story beat template notes');
-                baseDesc = 'Define your custom beat list above to generate templates.';
+                setting.setName('Beat notes');
+                baseDesc = 'Define your custom beat list in the Build stage first.';
                 setting.setDesc(baseDesc);
                 setting.settingEl.style.opacity = '0.6';
             }
         } else {
-            setting.setName(`Create story beat template notes for ${selectedSystem}`);
+            setting.setName(`Beat notes in your vault for ${selectedSystem}`);
             baseDesc = `Create ${selectedSystem} beat note files in your vault matching this system's structure.`;
             setting.setDesc(baseDesc);
             setting.settingEl.style.opacity = '1';
@@ -3241,8 +3233,8 @@ export function renderStoryBeatsSection(params: {
                 createTemplatesButton.setButtonText('Create missing beat notes');
                 createTemplatesButton.setTooltip('Create missing beat notes in your source path');
             } else {
-                createTemplatesButton.setButtonText('Create templates');
-                createTemplatesButton.setTooltip('Creates story beat note templates in your source path');
+                createTemplatesButton.setButtonText('Create beat notes');
+                createTemplatesButton.setTooltip('Create beat note files in your source path');
             }
         }
         if (mergeTemplatesButton) {
@@ -3273,8 +3265,8 @@ export function renderStoryBeatsSection(params: {
                         createTemplatesButton.setButtonText('Create missing beat notes');
                         createTemplatesButton.setTooltip(`Create ${existingBeatExpectedCount} missing beat notes`);
                     } else {
-                        createTemplatesButton.setButtonText('Create templates');
-                        createTemplatesButton.setTooltip(`Create ${existingBeatExpectedCount} beat template notes`);
+                        createTemplatesButton.setButtonText('Create beat notes');
+                        createTemplatesButton.setTooltip(`Create ${existingBeatExpectedCount} beat note files`);
                     }
                 }
                 return;
@@ -3303,8 +3295,8 @@ export function renderStoryBeatsSection(params: {
                         createTemplatesButton.setButtonText(`Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`);
                         createTemplatesButton.setTooltip(`Create missing beat notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`);
                     } else {
-                        createTemplatesButton.setButtonText(`Create ${newBeats} new`);
-                        createTemplatesButton.setTooltip(`Create template notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`);
+                        createTemplatesButton.setButtonText(`Create ${newBeats} new beat note${newBeats > 1 ? 's' : ''}`);
+                        createTemplatesButton.setTooltip(`Create beat notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`);
                     }
                 }
             } else {

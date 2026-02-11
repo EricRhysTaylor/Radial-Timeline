@@ -2061,12 +2061,15 @@
   border-right: none;
 }
 
-.ert-ui.ert-scope--settings button.ert-stage-btn:hover:not(.is-disabled) {
+/* Hover only applies to inactive, non-disabled buttons */
+.ert-ui.ert-scope--settings button.ert-stage-btn:hover:not(.is-disabled):not(.is-active) {
   color: var(--text-normal);
   background: color-mix(in srgb, var(--background-secondary) 40%, var(--background-primary) 60%);
 }
 
-.ert-ui.ert-scope--settings button.ert-stage-btn.is-active {
+/* Active state locks on — not overridden by :hover */
+.ert-ui.ert-scope--settings button.ert-stage-btn.is-active,
+.ert-ui.ert-scope--settings button.ert-stage-btn.is-active:hover {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   font-weight: 600;
@@ -4122,6 +4125,11 @@
   background: var(--background-primary);
   border-style: dashed;
   opacity: 0.95;
+}
+
+/* Beat YAML add row — no drag handle or spacer, so 5 columns instead of 7 */
+.ert-ui.ert-scope--settings .ert-yaml-row--add-beat {
+  grid-template-columns: auto auto 1fr 1fr auto;
 }
 
 /* Migration-needed row highlight */

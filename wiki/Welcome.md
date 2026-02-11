@@ -11,13 +11,13 @@ Radial Timeline is a writing system that transforms how you visualize, organize,
 
 ## Getting Started
 
-The fastest way to begin is to **create your first scene**. Use the button on the welcome screen or open the command palette (`Cmd/Ctrl + P`) and select **Radial Timeline: Create basic scene note**. This gives you a place to write immediately—no elaborate setup required.
+The fastest way to begin is to **create your first scene** using the command palette (`Cmd/Ctrl + P`) and selecting **Radial Timeline: Create basic scene note**. This gives you a place to write immediately—no elaborate setup required.
 
-If you prefer to establish a framework first, the **[[Book-Designer|Book Designer]]** helps you sketch out acts, subplots, characters, and optional beats in just a few minutes. Either approach works; the system adapts to your creative process rather than forcing a single workflow.
+If you prefer to establish a framework first, use the **[[Book-Designer|Book Designer]]** button on the welcome screen. Book Designer lets you specify the number of template scenes, dummy scenes, and the anticipated last scene of your story, along with optional subplots, characters, and time increments for each scene. This creates a framework model for your book and demonstrates Radial Timeline's capabilities out of the box. You can then delete scenes or start filling them in at your leisure.
 
-Once you have a scene, open it and start writing. Scene details—like character tags, subplot markers, or structural beats—can stay blank until you need them. Your files stay where you put them in your vault, while the timeline shows you the story order you define.
+Once you have a scene, open it and start writing. Scene details—like the characters in the scene, subplot assignments, or structural beats—can stay blank until you're ready to add them.
 
-As your manuscript grows, you'll refine the structure in **Settings → Core** or return to Book Designer whenever inspiration strikes. The framework evolves with your story, not against it.
+As your manuscript grows, you'll add new scenes, view them in the Radial Timeline, and reorganize them as needed. The timeline is where you do most things, including reordering scenes. You can create new scenes from scratch or duplicate existing ones to build out your story.
 
 ---
 
