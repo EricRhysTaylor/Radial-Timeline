@@ -1,9 +1,9 @@
 /*
  * Manuscript Assembly Utilities
  */
-import { TFile, Vault, App } from 'obsidian';
+import { TFile, Vault, App, getFrontMatterInfo, parseYaml } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import type { TimelineItem } from '../types';
+import type { TimelineItem, BookMeta } from '../types';
 import { getScenePrefixNumber } from './text';
 import { getActiveBookExportContext } from './exportContext';
 
@@ -65,6 +65,88 @@ export function extractBodyText(content: string): string {
   text = stripObsidianComments(text);
   return text.trim();
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// Semantic Matter Helpers
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Extract matter metadata from raw file content by parsing its YAML frontmatter.
+ * Returns null if the file is not a Frontmatter/Backmatter note or has no Matter: block.
+ */
+function extractMatterMeta(content: string): { role?: string; usesBookMeta?: boolean } | null {
+    try {
+        const fmInfo = getFrontMatterInfo(content);
+        const fmText = (fmInfo as { frontmatter?: string }).frontmatter;
+        if (!fmText) return null;
+
+        const yaml = parseYaml(fmText);
+        if (!yaml) return null;
+
+        // Only process Frontmatter/Backmatter class notes
+        const classVal = yaml.Class || yaml.class;
+        if (classVal !== 'Frontmatter' && classVal !== 'Backmatter') return null;
+
+        // Look for nested Matter: block
+        const matter = yaml.Matter || yaml.matter;
+        if (!matter || typeof matter !== 'object') return null;
+
+        return {
+            role: typeof matter.role === 'string' ? matter.role : undefined,
+            usesBookMeta: typeof matter.usesBookMeta === 'boolean' ? matter.usesBookMeta : undefined,
+        };
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Render a semantic copyright page from BookMeta and body text.
+ * Produces raw LaTeX for Pandoc PDF/DOCX export.
+ *
+ * This is the first wedge: hardcoded layout that proves
+ * an author can edit YAML instead of LaTeX and still get a correct page.
+ */
+function renderCopyrightPage(bookMeta: BookMeta, bodyText: string): string {
+    const year = bookMeta.rights?.year ?? new Date().getFullYear();
+    const holder = bookMeta.rights?.copyright_holder ?? bookMeta.author ?? '';
+
+    const parts: string[] = [];
+    parts.push('\\begin{center}');
+    parts.push('\\vspace*{\\fill}');
+    parts.push('');
+
+    if (bodyText.trim()) {
+        parts.push(bodyText.trim());
+        parts.push('');
+        parts.push('\\vspace{0.4cm}');
+        parts.push('');
+    }
+
+    parts.push(`Copyright \\textcopyright{} ${year} ${holder}`);
+
+    if (bookMeta.publisher?.name) {
+        parts.push('');
+        parts.push('\\vspace{0.3cm}');
+        parts.push('');
+        parts.push(bookMeta.publisher.name);
+    }
+
+    if (bookMeta.identifiers?.isbn_paperback) {
+        parts.push('');
+        parts.push('\\vspace{0.3cm}');
+        parts.push('');
+        parts.push(`ISBN: ${bookMeta.identifiers.isbn_paperback}`);
+    }
+
+    parts.push('');
+    parts.push('\\vfill');
+    parts.push('\\end{center}');
+
+    return parts.join('\n');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 
 /**
  * Count words in text
@@ -324,7 +406,8 @@ export async function assembleManuscript(
   progressCallback?: (sceneIndex: number, sceneTitle: string, totalScenes: number) => void,
   useObsidianLinks = false,
   sortOrder?: string,
-  includeToc: boolean = true
+  includeToc: boolean = true,
+  bookMeta?: BookMeta | null
 ): Promise<AssembledManuscript> {
   const scenes: SceneContent[] = [];
   const textParts: string[] = [];
@@ -341,14 +424,33 @@ export async function assembleManuscript(
 
     try {
       const content = await vault.read(file);
-      const bodyText = extractBodyText(content);
-      const wordCount = countWords(bodyText);
 
-      scenes.push({ title, bodyText, wordCount });
-      totalWords += wordCount;
+      // ── Semantic matter role intercept ────────────────────────────────
+      // If this file is a matter note with a semantic role, render via
+      // the appropriate template instead of the default heading + body.
+      const matterMeta = extractMatterMeta(content);
 
-      // Format: ## 44 Michi Updates Rel Newlan (markdown heading for TOC)
-      textParts.push(`## ${title}\n\n${bodyText}\n\n`);
+      if (matterMeta?.role === 'copyright' && matterMeta?.usesBookMeta && bookMeta) {
+        const bodyText = extractBodyText(content);
+        const rendered = renderCopyrightPage(bookMeta, bodyText);
+        const wordCount = countWords(bodyText);
+
+        scenes.push({ title, bodyText: rendered, wordCount });
+        totalWords += wordCount;
+
+        // No ## heading for copyright page — it's a layout-only page
+        textParts.push(`${rendered}\n\n`);
+      } else {
+        // ── Normal rendering path ──────────────────────────────────────
+        const bodyText = extractBodyText(content);
+        const wordCount = countWords(bodyText);
+
+        scenes.push({ title, bodyText, wordCount });
+        totalWords += wordCount;
+
+        // Format: ## 44 Michi Updates Rel Newlan (markdown heading for TOC)
+        textParts.push(`## ${title}\n\n${bodyText}\n\n`);
+      }
     } catch (error) {
       console.error(`Error reading scene file ${file.path}:`, error);
       // Add placeholder for failed scene

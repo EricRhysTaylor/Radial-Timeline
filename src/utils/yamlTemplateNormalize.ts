@@ -192,11 +192,11 @@ export function getExcludeKeyPredicate(noteType: NoteType): (key: string) => boo
     switch (noteType) {
         case 'Beat':
             return (key: string) => {
-                // Gossamer dynamic fields: Gossamer1, GossamerStage1, etc.
-                if (/^Gossamer\d+$/i.test(key)) return true;
-                if (/^GossamerStage\d+$/i.test(key)) return true;
-                // Legacy Gossamer fields
-                if (['GossamerLocation', 'GossamerNote', 'GossamerRuns', 'GossamerLatestRun'].includes(key)) return true;
+                // All Gossamer-injected fields: Gossamer1, GossamerStage1,
+                // Gossamer1 Justification, Gossamer Last Updated, etc.
+                if (/^Gossamer/i.test(key)) return true;
+                // Legacy base field (removed from template but may exist in older notes)
+                if (key === 'When') return true;
                 // Obsidian-internal keys
                 if (key === 'position' || key === 'cssclasses' || key === 'tags' || key === 'aliases') return true;
                 return false;

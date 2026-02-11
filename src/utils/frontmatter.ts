@@ -98,7 +98,13 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>, customMapp
     'pulselastupdated': 'Pulse Last Updated',
     'when': 'When',
     'place': 'Place',
-    'scope': 'Scope'
+    'scope': 'Scope',
+    // BookMeta & Matter keys
+    'matter': 'Matter',
+    'book': 'Book',
+    'rights': 'Rights',
+    'identifiers': 'Identifiers',
+    'publisher': 'Publisher'
   };
 
   // Merge custom mappings

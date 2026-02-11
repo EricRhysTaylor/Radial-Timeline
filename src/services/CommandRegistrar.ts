@@ -287,13 +287,16 @@ export class CommandRegistrar {
             }
 
             // Manuscript assembly
+            // Pass BookMeta so semantic matter roles (e.g. copyright) can be rendered
+            const bookMeta = this.plugin.getBookMeta();
             const assembled = await assembleManuscript(
                 slicedFiles,
                 this.app.vault,
                 undefined,
                 false,
                 filteredSelection.sortOrder,
-                result.tocMode !== 'none'
+                result.tocMode !== 'none',
+                bookMeta
             );
 
             // Update word counts if requested

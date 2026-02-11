@@ -67,6 +67,15 @@ export function isMatterNote(item: TimelineItem | { itemType?: string }): boolea
 }
 
 /**
+ * Check if item is a BookMeta note (Class: BookMeta).
+ * BookMeta notes are NOT included in the timeline or manuscript — they are
+ * metadata-only containers parsed during getSceneData() and used during export.
+ */
+export function isBookMetaNote(item: TimelineItem | { itemType?: string }): boolean {
+    return item.itemType === 'BookMeta';
+}
+
+/**
  * Check if item is NOT an actual scene (is Beat, Plot, Backdrop, Frontmatter, or Backmatter)
  * Only scenes should be counted in grid statistics, runtime, etc.
  * Use this for filtering when you only want to process writable scene content.

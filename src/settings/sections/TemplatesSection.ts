@@ -32,8 +32,36 @@ import { runYamlBackfill, type BackfillResult } from '../../utils/yamlBackfill';
 type TemplateEntryValue = string | string[];
 type TemplateEntry = { key: string; value: TemplateEntryValue; required: boolean };
 type BeatRow = { name: string; act: number };
+type BeatSystemMode = 'template' | 'custom';
+type TemplateSystemId = 'save_the_cat' | 'heros_journey' | 'story_grid';
 
 const DEFAULT_HOVER_ICON = 'align-vertical-space-around';
+const TEMPLATE_SYSTEMS: Array<{ id: TemplateSystemId; label: string; systemName: string; tooltip: string }> = [
+    { id: 'save_the_cat', label: 'STC', systemName: 'Save The Cat', tooltip: 'Save The Cat' },
+    { id: 'heros_journey', label: 'Hero', systemName: 'Hero\'s Journey', tooltip: 'Hero\'s Journey' },
+    { id: 'story_grid', label: 'Story Grid', systemName: 'Story Grid', tooltip: 'Story Grid' },
+];
+const CUSTOM_SYSTEM_OPTION = { id: 'custom' as const, label: 'Custom', systemName: 'Custom', tooltip: 'Custom' };
+
+const resolveTemplateSystemId = (system?: string): TemplateSystemId | null => {
+    switch ((system ?? '').trim()) {
+        case 'Save The Cat':
+            return 'save_the_cat';
+        case 'Hero\'s Journey':
+            return 'heros_journey';
+        case 'Story Grid':
+            return 'story_grid';
+        default:
+            return null;
+    }
+};
+
+const deriveBeatSystemMode = (system?: string): { mode: BeatSystemMode; templateSystemId: TemplateSystemId | null } => {
+    const templateSystemId = resolveTemplateSystemId(system);
+    return templateSystemId
+        ? { mode: 'template', templateSystemId }
+        : { mode: 'custom', templateSystemId: null };
+};
 
 export function renderStoryBeatsSection(params: {
     app: App;
@@ -434,25 +462,36 @@ export function renderStoryBeatsSection(params: {
     applyErtHeaderLayout(beatsHeading);
 
     const beatSystemSetting = new Settings(beatsStack)
-        .setName('Available system templates')
-        .setDesc('Select the story structure model for your manuscript. This will establish the story beat system and can be used to create beat notes and graph scores using Gossamer mode manually or automatically using AI.')
-        .addDropdown(dropdown => {
-            dropdown
-                .addOption('Save The Cat', 'Save The Cat (15 beats)')
-                .addOption('Hero\'s Journey', 'Hero\'s Journey (12 beats)')
-                .addOption('Story Grid', 'Story Grid (5 Commandments)')                    
-                .addOption('Custom', 'Custom (User defined beat structure)')
-                .setValue(plugin.settings.beatSystem || 'Custom')
-                .onChange(async (value) => {
-                    plugin.settings.beatSystem = value;
-                    await plugin.saveSettings();
-                    existingBeatReady = false;
-                    updateStoryStructureDescription(storyStructureInfo, value);
-                    updateTemplateButton(templateSetting, value);
-                    updateCustomInputsVisibility(value);
-                });
-            dropdown.selectEl.classList.add('ert-setting-dropdown', 'ert-setting-dropdown--wide');
+        .setName('Beat system')
+        .setDesc('Select the story structure model for your manuscript. This will establish the story beat system and can be used to create beat notes and graph scores using Gossamer mode manually or automatically using AI.');
+    const beatSystemControls = beatSystemSetting.controlEl.createDiv({ cls: 'ert-inline-actions' });
+    const beatSystemOptions = [...TEMPLATE_SYSTEMS, CUSTOM_SYSTEM_OPTION];
+
+    const renderBeatSystemSelector = () => {
+        beatSystemControls.empty();
+        const { mode, templateSystemId } = deriveBeatSystemMode(plugin.settings.beatSystem);
+        const activeId = mode === 'custom' ? CUSTOM_SYSTEM_OPTION.id : templateSystemId;
+        beatSystemOptions.forEach((option) => {
+            const isActive = option.id === activeId;
+            const btn = beatSystemControls.createEl('button', {
+                cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_STANDARD} ${isActive ? ERT_CLASSES.IS_ACTIVE : ''}`,
+                text: option.label,
+                attr: { type: 'button', 'aria-pressed': isActive ? 'true' : 'false' }
+            });
+            setTooltip(btn, option.tooltip);
+            btn.addEventListener('click', async () => {
+                if (option.systemName === (plugin.settings.beatSystem || 'Custom')) return;
+                plugin.settings.beatSystem = option.systemName;
+                await plugin.saveSettings();
+                existingBeatReady = false;
+                updateStoryStructureDescription(storyStructureInfo, option.systemName);
+                updateTemplateButton(templateSetting, option.systemName);
+                updateCustomInputsVisibility(option.systemName);
+                updateCustomToolsVisibility(option.systemName);
+                renderBeatSystemSelector();
+            });
         });
+    };
     beatSystemSetting.settingEl.addClass('ert-setting-two-row');
 
     // Story structure explanation
@@ -461,6 +500,7 @@ export function renderStoryBeatsSection(params: {
     });
     
     updateStoryStructureDescription(storyStructureInfo, plugin.settings.beatSystem || 'Custom');
+    renderBeatSystemSelector();
 
     // --- Custom System Configuration (Dynamic Visibility) ---
     const customConfigContainer = beatsStack.createDiv({ cls: ['ert-custom-beat-config', ERT_CLASSES.STACK] });
@@ -848,8 +888,18 @@ export function renderStoryBeatsSection(params: {
 
     updateTemplateButton(templateSetting, plugin.settings.beatSystem || 'Custom');
 
+    const customToolsContainer = beatsStack.createDiv({ cls: ERT_CLASSES.STACK });
+    const updateCustomToolsVisibility = (system: string) => {
+        const { mode } = deriveBeatSystemMode(system);
+        customToolsContainer.toggleClass('ert-settings-hidden', mode !== 'custom');
+        if (typeof __RT_DEV__ !== 'undefined' && __RT_DEV__ && mode === 'template') {
+            const hidden = customToolsContainer.hasClass('ert-settings-hidden');
+            console.assert(hidden, '[StoryBeats] Template mode should hide custom-only tools.');
+        }
+    };
+
     // ─── BEAT YAML EDITOR (Core) — mirrors Advanced YAML editor scaffold ──
-    const beatYamlSection = beatsStack.createDiv({ cls: ERT_CLASSES.STACK });
+    const beatYamlSection = customToolsContainer.createDiv({ cls: ERT_CLASSES.STACK });
     const beatYamlSetting = new Settings(beatYamlSection)
         .setName('Beat YAML editor')
         .setDesc('Customize additional YAML keys for beat notes. Enable fields to show in beat hover synopsis.');
@@ -1305,7 +1355,7 @@ export function renderStoryBeatsSection(params: {
     // ─── SAVED BEAT SYSTEMS (Pro) — Campaign Manager card scaffold ────
     const proActive = isProfessionalActive(plugin);
 
-    const savedCard = beatsStack.createDiv({
+    const savedCard = customToolsContainer.createDiv({
         cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ${ERT_CLASSES.SKIN_PRO} ert-saved-beat-systems`
     });
     if (!proActive) savedCard.addClass('ert-pro-locked');
@@ -1497,6 +1547,7 @@ export function renderStoryBeatsSection(params: {
     };
 
     renderSavedBeatSystems();
+    updateCustomToolsVisibility(plugin.settings.beatSystem || 'Custom');
 
     // Scene YAML Templates Section
     const yamlHeading = new Settings(yamlStack)
@@ -2520,223 +2571,53 @@ export function renderStoryBeatsSection(params: {
         noteType: NoteType,
         beatSystemKey?: string
     ): void {
-        const panelEl = parentEl.createDiv({ cls: ['ert-panel', 'ert-audit-panel', 'ert-stack'] });
-
         let auditResult: YamlAuditResult | null = null;
 
-        const resultsEl = panelEl.createDiv({ cls: 'ert-audit-results ert-stack' });
+        // ─── Header row: two-column Setting layout (title+desc left, audit button right) ──
+        const auditSetting = new Settings(parentEl)
+            .setName('YAML audit')
+            .setDesc(`Scan ${noteType.toLowerCase()} notes for schema drift — missing fields, extra keys, and ordering issues.`);
 
-        // ─── Run Audit button ────────────────────────────────────────────
-        const actionRow = panelEl.createDiv({ cls: 'ert-audit-actions' });
-        const runBtn = actionRow.createEl('button', {
-            cls: 'ert-mod-cta',
-            text: 'Run YAML audit',
-            attr: { type: 'button' }
-        });
-        setTooltip(runBtn, `Scan all ${noteType.toLowerCase()} notes for YAML schema drift`);
-
-        const copyBtn = actionRow.createEl('button', {
-            cls: ERT_CLASSES.ICON_BTN,
-            attr: { type: 'button', 'aria-label': 'Copy audit report' }
-        });
-        setIcon(copyBtn, 'clipboard-copy');
-        setTooltip(copyBtn, 'Copy audit report to clipboard');
-        copyBtn.classList.add('ert-settings-hidden');
-        copyBtn.addEventListener('click', () => {
-            if (!auditResult) return;
-            const report = formatAuditReport(auditResult, noteType);
-            navigator.clipboard.writeText(report).then(() => {
-                new Notice('Audit report copied to clipboard.');
-            });
-        });
-
-        const backfillBtn = actionRow.createEl('button', {
-            text: 'Insert missing fields',
-            attr: { type: 'button' }
-        });
-        setTooltip(backfillBtn, 'Add missing custom fields to existing notes');
-        backfillBtn.classList.add('ert-settings-hidden');
-
-        // ─── Render audit results ────────────────────────────────────────
-        const renderResults = () => {
-            resultsEl.empty();
-            if (!auditResult) return;
-
-            const s = auditResult.summary;
-
-            // Schema health label — instant emotional feedback
-            const healthLevel = s.notesWithMissing > 0
-                ? 'needs-attention'
-                : (s.notesWithExtra > 0 || s.notesWithDrift > 0)
-                    ? 'mixed'
-                    : 'clean';
-            const healthLabels: Record<string, string> = {
-                'clean': 'Clean',
-                'mixed': 'Mixed',
-                'needs-attention': 'Needs attention',
-            };
-            const healthEl = resultsEl.createDiv({ cls: `ert-audit-health ert-audit-health--${healthLevel}` });
-            healthEl.createSpan({ text: 'Schema health: ' });
-            healthEl.createSpan({ text: healthLabels[healthLevel], cls: 'ert-audit-health-value' });
-
-            // Summary line
-            const summaryEl = resultsEl.createDiv({ cls: 'ert-audit-summary' });
-            summaryEl.createSpan({ text: `${s.totalNotes} ${noteType.toLowerCase()} note${s.totalNotes !== 1 ? 's' : ''} scanned` });
-
-            // Unread/stale-cache warning — actionable guidance
-            if (s.unreadNotes > 0) {
-                const unreadEl = resultsEl.createDiv({ cls: 'ert-audit-unread-warn' });
-                unreadEl.createSpan({ text: `${s.unreadNotes} note${s.unreadNotes !== 1 ? 's' : ''} not yet indexed — rerun audit after Obsidian finishes indexing.` });
-            }
-
-            // Summary chips
-            const chipsEl = resultsEl.createDiv({ cls: 'ert-audit-chips' });
-
-            interface ChipConfig {
-                label: string;
-                count: number;
-                kind: 'missing' | 'extra' | 'drift';
-                entries: NoteAuditEntry[];
-            }
-
-            const chips: ChipConfig[] = [
-                {
-                    label: 'Missing fields',
-                    count: s.notesWithMissing,
-                    kind: 'missing',
-                    entries: auditResult.notes.filter(n => n.missingFields.length > 0),
-                },
-                {
-                    label: 'Extra keys',
-                    count: s.notesWithExtra,
-                    kind: 'extra',
-                    entries: auditResult.notes.filter(n => n.extraKeys.length > 0),
-                },
-                {
-                    label: 'Order drift',
-                    count: s.notesWithDrift,
-                    kind: 'drift',
-                    entries: auditResult.notes.filter(n => n.orderDrift),
-                },
-            ];
-
-            if (s.clean === s.totalNotes && s.unreadNotes === 0) {
-                chipsEl.createDiv({
-                    text: `All ${s.totalNotes} notes match the template.`,
-                    cls: 'ert-audit-clean'
+        // Copy button (hidden until audit runs)
+        let copyBtn: HTMLButtonElement | undefined;
+        auditSetting.addButton(button => {
+            button
+                .setIcon('clipboard-copy')
+                .setTooltip('Copy audit report to clipboard')
+                .onClick(() => {
+                    if (!auditResult) return;
+                    const report = formatAuditReport(auditResult, noteType);
+                    navigator.clipboard.writeText(report).then(() => {
+                        new Notice('Audit report copied to clipboard.');
+                    });
                 });
-                return;
-            }
+            copyBtn = button.buttonEl;
+            copyBtn.classList.add('ert-settings-hidden');
+        });
 
-            let expandedKind: string | null = null;
-            const detailsEl = resultsEl.createDiv({ cls: 'ert-audit-details' });
+        // Insert missing button (hidden until audit finds missing fields)
+        let backfillBtn: HTMLButtonElement | undefined;
+        auditSetting.addButton(button => {
+            button
+                .setButtonText('Insert missing')
+                .setTooltip('Add missing custom fields to existing notes')
+                .onClick(() => void handleBackfill());
+            backfillBtn = button.buttonEl;
+            backfillBtn.classList.add('ert-settings-hidden');
+        });
 
-            const renderChips = () => {
-                chipsEl.empty();
-                for (const chip of chips) {
-                    if (chip.count === 0) continue;
-                    const chipBtn = chipsEl.createEl('button', {
-                        cls: `ert-chip ert-audit-chip ert-audit-chip--${chip.kind}${expandedKind === chip.kind ? ' is-active' : ''}`,
-                        text: `${chip.count} ${chip.label.toLowerCase()}`,
-                        attr: { type: 'button' }
-                    });
-                    chipBtn.addEventListener('click', () => {
-                        expandedKind = expandedKind === chip.kind ? null : chip.kind;
-                        renderChips();
-                        renderDetails();
-                    });
-                }
-                if (s.clean > 0) {
-                    chipsEl.createSpan({ text: `${s.clean} clean`, cls: 'ert-chip ert-audit-chip ert-audit-chip--clean' });
-                }
-            };
+        // Run audit button
+        auditSetting.addButton(button => {
+            button
+                .setButtonText('Run audit')
+                .setTooltip(`Scan all ${noteType.toLowerCase()} notes for YAML schema drift`)
+                .onClick(() => runAudit());
+        });
 
-            const renderDetails = () => {
-                detailsEl.empty();
-                if (!expandedKind) return;
+        // ─── Results row: appears below header after audit runs ──────────
+        const resultsEl = parentEl.createDiv({ cls: 'ert-audit-results-row ert-settings-hidden' });
 
-                const activeChip = chips.find(c => c.kind === expandedKind);
-                if (!activeChip || activeChip.entries.length === 0) return;
-
-                let page = 0;
-                const renderPage = () => {
-                    detailsEl.empty();
-                    const total = activeChip.entries.length;
-                    const start = page * AUDIT_PAGE_SIZE;
-                    const end = Math.min(start + AUDIT_PAGE_SIZE, total);
-                    const pageEntries = activeChip.entries.slice(start, end);
-
-                    // Pagination label: "Showing 1–5 of 78"
-                    const paginationLabel = detailsEl.createDiv({ cls: 'ert-audit-pagination-label' });
-                    paginationLabel.setText(`Showing ${start + 1}–${end} of ${total}`);
-
-                    for (const entry of pageEntries) {
-                        const rowEl = detailsEl.createDiv({ cls: 'ert-audit-row' });
-
-                        // Clickable file name
-                        const linkEl = rowEl.createEl('a', {
-                            text: entry.file.basename,
-                            cls: 'ert-audit-file-link',
-                            attr: { href: '#' }
-                        });
-                        linkEl.addEventListener('click', async (e) => {
-                            e.preventDefault();
-                            await openOrRevealFile(app, entry.file, false);
-                            if (entry.missingFields.length > 0) {
-                                new Notice(`Missing fields: ${entry.missingFields.join(', ')}`);
-                            }
-                        });
-
-                        // Inline reason
-                        const reasonText = activeChip.kind === 'missing'
-                            ? `missing: ${entry.missingFields.join(', ')}`
-                            : activeChip.kind === 'extra'
-                                ? `extra: ${entry.extraKeys.join(', ')}`
-                                : 'field order differs from template';
-                        const reasonStr = reasonText.length > 60 ? reasonText.slice(0, 59) + '…' : reasonText;
-                        rowEl.createSpan({ text: ` — ${reasonStr}`, cls: 'ert-audit-reason' });
-                    }
-
-                    // Pagination controls
-                    const navEl = detailsEl.createDiv({ cls: 'ert-audit-pagination' });
-                    if (page > 0) {
-                        const prevBtn = navEl.createEl('button', {
-                            text: '← Previous',
-                            cls: 'ert-audit-nav-btn',
-                            attr: { type: 'button' }
-                        });
-                        prevBtn.addEventListener('click', () => { page--; renderPage(); });
-                    }
-                    if (end < total) {
-                        const nextBtn = navEl.createEl('button', {
-                            text: `Show next ${Math.min(AUDIT_PAGE_SIZE, total - end)} →`,
-                            cls: 'ert-audit-nav-btn',
-                            attr: { type: 'button' }
-                        });
-                        nextBtn.addEventListener('click', () => { page++; renderPage(); });
-                    }
-                    if (total <= AUDIT_OPEN_ALL_MAX && total > 1) {
-                        const openAllBtn = navEl.createEl('button', {
-                            text: `Open all ${total}`,
-                            cls: 'ert-audit-nav-btn',
-                            attr: { type: 'button' }
-                        });
-                        openAllBtn.addEventListener('click', async () => {
-                            for (const e of activeChip.entries) {
-                                await openOrRevealFile(app, e.file, true);
-                            }
-                        });
-                    }
-                };
-
-                renderPage();
-            };
-
-            renderChips();
-        };
-
-        // ─── Run Audit action ────────────────────────────────────────────
-        runBtn.addEventListener('click', () => {
+        const runAudit = () => {
             const files = collectFilesForAudit(app, noteType, plugin.settings, beatSystemKey);
             if (files.length === 0) {
                 new Notice(`No ${noteType.toLowerCase()} notes found in the vault.`);
@@ -2750,7 +2631,6 @@ export function renderStoryBeatsSection(params: {
                 beatSystemKey,
             });
 
-            // Telemetry: lightweight audit event for future usage analytics
             console.debug('[YamlAudit] yaml_audit_run', {
                 noteType,
                 totalNotes: auditResult.summary.totalNotes,
@@ -2761,19 +2641,180 @@ export function renderStoryBeatsSection(params: {
                 clean: auditResult.summary.clean,
             });
 
-            copyBtn.classList.remove('ert-settings-hidden');
-
+            copyBtn?.classList.remove('ert-settings-hidden');
             if (auditResult.summary.notesWithMissing > 0) {
-                backfillBtn.classList.remove('ert-settings-hidden');
+                backfillBtn?.classList.remove('ert-settings-hidden');
             } else {
-                backfillBtn.classList.add('ert-settings-hidden');
+                backfillBtn?.classList.add('ert-settings-hidden');
             }
 
             renderResults();
-        });
+        };
+
+        // ─── Render results ──────────────────────────────────────────────
+        const renderResults = () => {
+            resultsEl.empty();
+            resultsEl.classList.remove('ert-settings-hidden');
+            if (!auditResult) return;
+
+            const s = auditResult.summary;
+
+            // Schema health + summary in one line
+            const healthLevel = s.notesWithMissing > 0
+                ? 'needs-attention'
+                : (s.notesWithExtra > 0 || s.notesWithDrift > 0)
+                    ? 'mixed'
+                    : 'clean';
+            const healthLabels: Record<string, string> = {
+                'clean': 'Clean',
+                'mixed': 'Mixed',
+                'needs-attention': 'Needs attention',
+            };
+            const headerEl = resultsEl.createDiv({ cls: 'ert-audit-result-header' });
+            const healthEl = headerEl.createSpan({ cls: `ert-audit-health ert-audit-health--${healthLevel}` });
+            healthEl.textContent = `Schema health: ${healthLabels[healthLevel]}`;
+            headerEl.createSpan({ text: ` · ${s.totalNotes} note${s.totalNotes !== 1 ? 's' : ''} scanned`, cls: 'ert-audit-summary' });
+
+            // Unread warning
+            if (s.unreadNotes > 0) {
+                const unreadEl = resultsEl.createDiv({ cls: 'ert-audit-unread-warn' });
+                unreadEl.textContent = `${s.unreadNotes} note${s.unreadNotes !== 1 ? 's' : ''} not yet indexed — rerun audit after Obsidian finishes indexing.`;
+            }
+
+            // All clean — early return
+            if (s.clean === s.totalNotes && s.unreadNotes === 0) {
+                resultsEl.createDiv({
+                    text: `All ${s.totalNotes} notes match the template.`,
+                    cls: 'ert-audit-clean'
+                });
+                return;
+            }
+
+            // Collect all entries across all categories for a flat display
+            interface ChipConfig {
+                label: string;
+                count: number;
+                kind: 'missing' | 'extra' | 'drift';
+                entries: NoteAuditEntry[];
+            }
+
+            const chips: ChipConfig[] = [
+                { label: 'Missing fields', count: s.notesWithMissing, kind: 'missing',
+                  entries: auditResult.notes.filter(n => n.missingFields.length > 0) },
+                { label: 'Extra keys', count: s.notesWithExtra, kind: 'extra',
+                  entries: auditResult.notes.filter(n => n.extraKeys.length > 0) },
+                { label: 'Order drift', count: s.notesWithDrift, kind: 'drift',
+                  entries: auditResult.notes.filter(n => n.orderDrift) },
+            ];
+
+            // Category chips row (clickable to filter)
+            let activeKind: string | null = chips.find(c => c.count > 0)?.kind ?? null;
+            const chipsEl = resultsEl.createDiv({ cls: 'ert-audit-chips' });
+
+            const detailsEl = resultsEl.createDiv({ cls: 'ert-audit-details' });
+
+            const renderChips = () => {
+                chipsEl.empty();
+                for (const chip of chips) {
+                    if (chip.count === 0) continue;
+                    const chipBtn = chipsEl.createEl('button', {
+                        cls: `ert-chip ert-audit-chip ert-audit-chip--${chip.kind}${activeKind === chip.kind ? ' is-active' : ''}`,
+                        text: `${chip.count} ${chip.label.toLowerCase()}`,
+                        attr: { type: 'button' }
+                    });
+                    chipBtn.addEventListener('click', () => {
+                        activeKind = activeKind === chip.kind ? null : chip.kind;
+                        renderChips();
+                        renderNoteList();
+                    });
+                }
+                if (s.clean > 0) {
+                    chipsEl.createSpan({ text: `${s.clean} clean`, cls: 'ert-chip ert-audit-chip ert-audit-chip--clean' });
+                }
+            };
+
+            // Note pills — flat list across the row, wrapping, up to 5 per page
+            let page = 0;
+
+            const renderNoteList = () => {
+                detailsEl.empty();
+                if (!activeKind) return;
+
+                const activeChip = chips.find(c => c.kind === activeKind);
+                if (!activeChip || activeChip.entries.length === 0) return;
+
+                const total = activeChip.entries.length;
+                const start = page * AUDIT_PAGE_SIZE;
+                const end = Math.min(start + AUDIT_PAGE_SIZE, total);
+                const pageEntries = activeChip.entries.slice(start, end);
+
+                // Note pills in a flowing row
+                const pillsEl = detailsEl.createDiv({ cls: 'ert-audit-note-pills' });
+                for (const entry of pageEntries) {
+                    const reason = activeChip.kind === 'missing'
+                        ? entry.missingFields.join(', ')
+                        : activeChip.kind === 'extra'
+                            ? entry.extraKeys.join(', ')
+                            : 'order drift';
+                    const reasonShort = reason.length > 40 ? reason.slice(0, 39) + '…' : reason;
+
+                    const pillEl = pillsEl.createEl('button', {
+                        cls: `ert-audit-note-pill ert-audit-note-pill--${activeChip.kind}`,
+                        attr: { type: 'button' }
+                    });
+                    pillEl.createSpan({ text: entry.file.basename, cls: 'ert-audit-note-pill-name' });
+                    pillEl.createSpan({ text: ` — ${reasonShort}`, cls: 'ert-audit-note-pill-reason' });
+                    setTooltip(pillEl, `${entry.file.basename}: ${reason}`);
+
+                    pillEl.addEventListener('click', async () => {
+                        await openOrRevealFile(app, entry.file, false);
+                        if (entry.missingFields.length > 0) {
+                            new Notice(`Missing fields: ${entry.missingFields.join(', ')}`);
+                        }
+                    });
+                }
+
+                // Pagination + Open all row
+                const navEl = detailsEl.createDiv({ cls: 'ert-audit-pagination' });
+                const paginationLabel = navEl.createSpan({ cls: 'ert-audit-pagination-label' });
+                paginationLabel.textContent = `${start + 1}–${end} of ${total}`;
+
+                if (page > 0) {
+                    const prevBtn = navEl.createEl('button', {
+                        text: '← Prev',
+                        cls: 'ert-audit-nav-btn',
+                        attr: { type: 'button' }
+                    });
+                    prevBtn.addEventListener('click', () => { page--; renderNoteList(); });
+                }
+                if (end < total) {
+                    const nextBtn = navEl.createEl('button', {
+                        text: `Next ${Math.min(AUDIT_PAGE_SIZE, total - end)} →`,
+                        cls: 'ert-audit-nav-btn',
+                        attr: { type: 'button' }
+                    });
+                    nextBtn.addEventListener('click', () => { page++; renderNoteList(); });
+                }
+                if (total <= AUDIT_OPEN_ALL_MAX && total > 1) {
+                    const openAllBtn = navEl.createEl('button', {
+                        text: `Open all ${total}`,
+                        cls: 'ert-audit-nav-btn',
+                        attr: { type: 'button' }
+                    });
+                    openAllBtn.addEventListener('click', async () => {
+                        for (const e of activeChip.entries) {
+                            await openOrRevealFile(app, e.file, true);
+                        }
+                    });
+                }
+            };
+
+            renderChips();
+            renderNoteList();
+        };
 
         // ─── Backfill action ─────────────────────────────────────────────
-        backfillBtn.addEventListener('click', async () => {
+        const handleBackfill = async () => {
             if (!auditResult || auditResult.summary.notesWithMissing === 0) return;
 
             const defaults = getCustomDefaults(noteType, plugin.settings, beatSystemKey);
@@ -2781,7 +2822,6 @@ export function renderStoryBeatsSection(params: {
                 .filter(n => n.missingFields.length > 0)
                 .map(n => n.file);
 
-            // Compute which fields actually need inserting (intersection)
             const allMissingKeys = new Set<string>();
             for (const n of auditResult.notes) {
                 for (const k of n.missingFields) allMissingKeys.add(k);
@@ -2824,19 +2864,12 @@ export function renderStoryBeatsSection(params: {
 
             if (!confirmed) return;
 
-            // Run backfill
             const result: BackfillResult = await runYamlBackfill({
                 app,
                 files: targetFiles,
                 fieldsToInsert,
-                onProgress: (cur, total, name) => {
-                    if (cur % 10 === 0 || cur === total) {
-                        // Only log progress for larger batches
-                    }
-                },
             });
 
-            // Telemetry: lightweight backfill event for future usage analytics
             console.debug('[YamlAudit] yaml_backfill_execute', {
                 noteType,
                 updated: result.updated,
@@ -2851,21 +2884,9 @@ export function renderStoryBeatsSection(params: {
             if (result.failed > 0) parts.push(`${result.failed} failed`);
             new Notice(parts.join(', ') || 'No changes made.');
 
-            // Re-run audit to refresh results
-            const files = collectFilesForAudit(app, noteType, plugin.settings, beatSystemKey);
-            auditResult = runYamlAudit({
-                app,
-                settings: plugin.settings,
-                noteType,
-                files,
-                beatSystemKey,
-            });
-
-            if (auditResult.summary.notesWithMissing === 0) {
-                backfillBtn.classList.add('ert-settings-hidden');
-            }
-            renderResults();
-        });
+            // Re-run audit to refresh
+            runAudit();
+        };
     }
 
     // ─── Place audit panels inside each editor section ───────────────────
@@ -2931,6 +2952,7 @@ export function renderStoryBeatsSection(params: {
 
     function updateTemplateButton(setting: Settings, selectedSystem: string): void {
         const isCustom = selectedSystem === 'Custom';
+        const isTemplateMode = !isCustom;
         let displayName = selectedSystem;
         let baseDesc = '';
         let hasBeats = true;
@@ -2967,8 +2989,13 @@ export function renderStoryBeatsSection(params: {
         // Default button states before async lookup
         if (createTemplatesButton) {
             createTemplatesButton.setDisabled(!hasBeats);
-            createTemplatesButton.setButtonText('Create templates');
-            createTemplatesButton.setTooltip('Creates story beat note templates in your source path');
+            if (isTemplateMode) {
+                createTemplatesButton.setButtonText('Create missing beat notes');
+                createTemplatesButton.setTooltip('Create missing beat notes in your source path');
+            } else {
+                createTemplatesButton.setButtonText('Create templates');
+                createTemplatesButton.setTooltip('Creates story beat note templates in your source path');
+            }
         }
         if (mergeTemplatesButton) {
             mergeTemplatesButton.setDisabled(true);
@@ -2994,23 +3021,28 @@ export function renderStoryBeatsSection(params: {
                 setting.setDesc(baseDesc);
                 if (createTemplatesButton) {
                     createTemplatesButton.setDisabled(false);
-                    createTemplatesButton.setButtonText('Create templates');
-                    createTemplatesButton.setTooltip(`Create ${existingBeatExpectedCount} beat template notes`);
+                    if (isTemplateMode) {
+                        createTemplatesButton.setButtonText('Create missing beat notes');
+                        createTemplatesButton.setTooltip(`Create ${existingBeatExpectedCount} missing beat notes`);
+                    } else {
+                        createTemplatesButton.setButtonText('Create templates');
+                        createTemplatesButton.setTooltip(`Create ${existingBeatExpectedCount} beat template notes`);
+                    }
                 }
                 return;
             }
 
             // Build concise status description from non-zero counts
             const parts: string[] = [];
-            if (synced > 0) parts.push(`${synced} synced`);
+            if (synced > 0) parts.push(`${synced} ${isTemplateMode ? 'ok' : 'synced'}`);
             if (misaligned > 0) parts.push(`${misaligned} misaligned`);
-            if (newBeats > 0) parts.push(`${newBeats} new`);
+            if (newBeats > 0) parts.push(`${newBeats} ${isTemplateMode ? 'missing' : 'new'}`);
             if (duplicates > 0) parts.push(`${duplicates} duplicate${duplicates > 1 ? 's' : ''}`);
             let statusDesc = parts.join(', ') + '.';
 
             if (allSynced) {
                 // Scenario B: All synced — nothing to do
-                statusDesc = `All ${existingBeatExpectedCount} beat notes are synced.`;
+                statusDesc = `All ${existingBeatExpectedCount} beat notes are ${isTemplateMode ? 'ok' : 'synced'}.`;
                 if (createTemplatesButton) {
                     createTemplatesButton.setDisabled(true);
                     createTemplatesButton.setTooltip('All beats already have aligned files');
@@ -3019,8 +3051,13 @@ export function renderStoryBeatsSection(params: {
                 // Scenario D: Has new beats to create
                 if (createTemplatesButton) {
                     createTemplatesButton.setDisabled(false);
-                    createTemplatesButton.setButtonText(`Create ${newBeats} new`);
-                    createTemplatesButton.setTooltip(`Create template notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`);
+                    if (isTemplateMode) {
+                        createTemplatesButton.setButtonText(`Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`);
+                        createTemplatesButton.setTooltip(`Create missing beat notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`);
+                    } else {
+                        createTemplatesButton.setButtonText(`Create ${newBeats} new`);
+                        createTemplatesButton.setTooltip(`Create template notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`);
+                    }
                 }
             } else {
                 // Scenario C: All matched, some misaligned — no new beats

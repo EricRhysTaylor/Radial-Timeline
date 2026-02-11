@@ -21,7 +21,7 @@ import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 import { parseWhenField } from './utils/date';
 import { normalizeBooleanValue } from './utils/sceneHelpers';
 import { cleanupTooltipAnchors } from './utils/tooltip';
-import type { RadialTimelineSettings, TimelineItem, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, BookProfile } from './types';
+import type { RadialTimelineSettings, TimelineItem, BookMeta, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, BookProfile } from './types';
 import { ReleaseNotesService } from './services/ReleaseNotesService';
 import { CommandRegistrar } from './services/CommandRegistrar';
 import { HoverHighlighter } from './services/HoverHighlighter';
@@ -365,6 +365,14 @@ export default class RadialTimelinePlugin extends Plugin {
 
     async getSceneData(options?: GetSceneDataOptions): Promise<TimelineItem[]> {
         return this.sceneDataService.getSceneData(options);
+    }
+
+    /**
+     * Get the BookMeta for the active manuscript.
+     * Populated during getSceneData() — returns null if no BookMeta note exists.
+     */
+    getBookMeta(): BookMeta | null {
+        return this.sceneDataService.getBookMeta();
     }
 
     async loadSettings() {

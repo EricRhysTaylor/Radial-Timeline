@@ -2,6 +2,49 @@
  * Shared timeline data types
  */
 
+/**
+ * Central metadata for a book/manuscript.
+ * Exactly one BookMeta note per manuscript.
+ * Parsed from a note with Class: BookMeta.
+ * Ignored by Timeline — used only during export.
+ */
+export interface BookMeta {
+    /** Book title */
+    title: string;
+    /** Author name */
+    author: string;
+    /** Copyright and rights info */
+    rights?: {
+        copyright_holder: string;
+        year: number;
+    };
+    /** Book identifiers */
+    identifiers?: {
+        isbn_paperback?: string;
+    };
+    /** Publisher info */
+    publisher?: {
+        name?: string;
+    };
+    /** Path to the BookMeta note in the vault */
+    sourcePath?: string;
+}
+
+/**
+ * Metadata extracted from a Matter note's nested Matter: YAML block.
+ * Used to drive role-based rendering during export.
+ */
+export interface MatterMeta {
+    /** front or back */
+    side?: string;
+    /** Semantic role: copyright, title-page, dedication, etc. */
+    role?: string;
+    /** Sort order within its side */
+    order?: number;
+    /** Whether this matter note should pull data from BookMeta */
+    usesBookMeta?: boolean;
+}
+
 export interface TimelineItem {
     title?: string;
     date: string;
@@ -28,7 +71,7 @@ export interface TimelineItem {
     "Pulse Update"?: boolean | string;
     "Pulse Last Updated"?: string;
     "Beats Update"?: boolean | string; // legacy compatibility
-    itemType?: "Scene" | "Plot" | "Beat" | "Backdrop" | "Frontmatter" | "Backmatter";
+    itemType?: "Scene" | "Plot" | "Beat" | "Backdrop" | "Frontmatter" | "Backmatter" | "BookMeta";
     Description?: string;
     "Beat Model"?: string;
     Range?: string;
@@ -96,6 +139,8 @@ export interface TimelineItem {
     GossamerStage29?: string;
     GossamerStage30?: string;
     End?: string;
+    /** Parsed Matter: nested block for semantic matter notes */
+    matterMeta?: MatterMeta;
     /** Raw frontmatter data for custom field access */
     rawFrontmatter?: Record<string, unknown>;
 }

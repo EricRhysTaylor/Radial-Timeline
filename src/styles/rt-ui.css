@@ -5872,22 +5872,31 @@
    YAML Audit + Backfill Panel
    ═══════════════════════════════════════════════════════════════════════ */
 
-.ert-ui.ert-scope--settings .ert-audit-panel {
-  padding: var(--ert-pad-md);
+/* --- Results row (appears below the Setting header after audit runs) --- */
+.ert-ui.ert-scope--settings .ert-audit-results-row {
+  display: flex;
+  flex-direction: column;
   gap: var(--ert-gap-sm);
+  padding: var(--ert-pad-sm) var(--ert-pad-md);
+  margin-top: calc(-1 * var(--ert-gap-xs));
+  border-top: 1px dashed var(--background-modifier-border);
 }
 
-.ert-ui.ert-scope--settings .ert-audit-actions {
+.ert-ui.ert-scope--settings .ert-audit-results-row.ert-settings-hidden {
+  display: none;
+}
+
+/* --- Health + summary header line --- */
+.ert-ui.ert-scope--settings .ert-audit-result-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--ert-gap-sm);
   flex-wrap: wrap;
 }
 
 .ert-ui.ert-scope--settings .ert-audit-health {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  padding: 2px 0;
 }
 
 .ert-ui.ert-scope--settings .ert-audit-health--clean {
@@ -5902,12 +5911,8 @@
   color: var(--text-error);
 }
 
-.ert-ui.ert-scope--settings .ert-audit-health-value {
-  font-weight: 700;
-}
-
 .ert-ui.ert-scope--settings .ert-audit-summary {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
@@ -5920,6 +5925,7 @@
   border: 1px solid color-mix(in srgb, var(--text-warning) 20%, transparent);
 }
 
+/* --- Category chips --- */
 .ert-ui.ert-scope--settings .ert-audit-chips {
   display: flex;
   align-items: center;
@@ -5965,58 +5971,79 @@
   padding: var(--ert-gap-xs) 0;
 }
 
+/* --- Note pills (flowing row) --- */
+.ert-ui.ert-scope--settings .ert-audit-note-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ert-ui.ert-scope--settings .ert-audit-note-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+  max-width: 340px;
+  overflow: hidden;
+}
+
+.ert-ui.ert-scope--settings .ert-audit-note-pill:hover {
+  border-color: var(--text-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-accent) 20%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-audit-note-pill--missing {
+  border-color: color-mix(in srgb, var(--text-error) 30%, var(--background-modifier-border));
+}
+
+.ert-ui.ert-scope--settings .ert-audit-note-pill--extra {
+  border-color: color-mix(in srgb, var(--text-warning) 30%, var(--background-modifier-border));
+}
+
+.ert-ui.ert-scope--settings .ert-audit-note-pill--drift {
+  border-color: color-mix(in srgb, var(--text-faint) 40%, var(--background-modifier-border));
+}
+
+.ert-ui.ert-scope--settings .ert-audit-note-pill-name {
+  font-weight: 600;
+  color: var(--text-accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.ert-ui.ert-scope--settings .ert-audit-note-pill-reason {
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Details container --- */
 .ert-ui.ert-scope--settings .ert-audit-details {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--ert-gap-sm);
+}
+
+/* --- Pagination --- */
+.ert-ui.ert-scope--settings .ert-audit-pagination {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  padding-top: 2px;
 }
 
 .ert-ui.ert-scope--settings .ert-audit-pagination-label {
   font-size: 11px;
   color: var(--text-faint);
-  padding: 2px 0;
-}
-
-.ert-ui.ert-scope--settings .ert-audit-row {
-  display: flex;
-  align-items: baseline;
-  gap: var(--ert-gap-xs);
-  padding: 3px var(--ert-gap-xs);
-  border-radius: 4px;
-  font-size: 13px;
-}
-
-.ert-ui.ert-scope--settings .ert-audit-row:hover {
-  background: color-mix(in srgb, var(--background-secondary) 60%, transparent);
-}
-
-.ert-ui.ert-scope--settings .ert-audit-file-link {
-  color: var(--text-accent);
-  text-decoration: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 220px;
-  flex-shrink: 0;
-}
-
-.ert-ui.ert-scope--settings .ert-audit-file-link:hover {
-  text-decoration: underline;
-}
-
-.ert-ui.ert-scope--settings .ert-audit-reason {
-  color: var(--text-muted);
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ert-ui.ert-scope--settings .ert-audit-pagination {
-  display: flex;
-  align-items: center;
-  gap: var(--ert-gap-sm);
-  padding-top: var(--ert-gap-xs);
 }
 
 .ert-ui.ert-scope--settings .ert-audit-nav-btn {
@@ -6025,4 +6052,12 @@
   border-radius: var(--ert-control-radius);
   cursor: pointer;
   white-space: nowrap;
+}
+
+/* --- Backfill confirmation modal actions --- */
+.ert-ui.ert-scope--settings .ert-audit-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  flex-wrap: wrap;
 }

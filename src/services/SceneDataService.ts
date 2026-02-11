@@ -12,7 +12,7 @@
  */
 
 import { App, TFile } from 'obsidian';
-import type { TimelineItem, RadialTimelineSettings } from '../types';
+import type { TimelineItem, RadialTimelineSettings, BookMeta, MatterMeta } from '../types';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { parseWhenField } from '../utils/date';
 import { normalizeBooleanValue, isStoryBeat } from '../utils/sceneHelpers';
@@ -50,10 +50,20 @@ function getPulseUpdateFromMetadata(metadata: Record<string, unknown> | undefine
 export class SceneDataService {
     private app: App;
     private settings: RadialTimelineSettings;
+    /** Central BookMeta for the active manuscript (exactly one per book). */
+    private _bookMeta: BookMeta | null = null;
 
     constructor(app: App, settings: RadialTimelineSettings) {
         this.app = app;
         this.settings = settings;
+    }
+
+    /**
+     * Get the BookMeta for the active manuscript.
+     * Populated during getSceneData() — returns null if no BookMeta note exists.
+     */
+    getBookMeta(): BookMeta | null {
+        return this._bookMeta;
     }
 
     /**
@@ -82,6 +92,8 @@ export class SceneDataService {
 
         const scenes: TimelineItem[] = [];
         const plotsToProcess: Array<{ file: TFile, metadata: Record<string, unknown>, validActNumber: number }> = [];
+        // Reset BookMeta — will be populated if a BookMeta note is found
+        this._bookMeta = null;
 
         for (const file of files) {
             try {
@@ -252,14 +264,53 @@ export class SceneDataService {
                         // No subplot assignment - rendered in special Backdrop Ring
                     });
 
+                } else if (metadata && metadata.Class === "BookMeta") {
+                    // BookMeta note — central metadata source for the manuscript.
+                    // Exactly one per book. Parsed and stored, NOT added to scenes array.
+                    // Ignored by Timeline — used only during export.
+                    const book = metadata.Book as Record<string, unknown> | undefined;
+                    const rights = metadata.Rights as Record<string, unknown> | undefined;
+                    const identifiers = metadata.Identifiers as Record<string, unknown> | undefined;
+                    const publisher = metadata.Publisher as Record<string, unknown> | undefined;
+
+                    this._bookMeta = {
+                        title: (book?.title as string) ?? '',
+                        author: (book?.author as string) ?? '',
+                        rights: rights ? {
+                            copyright_holder: (rights.copyright_holder as string) ?? '',
+                            year: (rights.year as number) ?? new Date().getFullYear()
+                        } : undefined,
+                        identifiers: identifiers ? {
+                            isbn_paperback: (identifiers.isbn_paperback as string) ?? ''
+                        } : undefined,
+                        publisher: publisher ? {
+                            name: (publisher.name as string) ?? ''
+                        } : undefined,
+                        sourcePath: file.path
+                    };
+
                 } else if (metadata && (metadata.Class === "Frontmatter" || metadata.Class === "Backmatter")) {
                     // Front-matter / back-matter notes – included in manuscript pipeline,
                     // excluded from timeline stats via isNonSceneItem().
+
+                    // Parse nested Matter: block for semantic role metadata
+                    let matterMeta: MatterMeta | undefined;
+                    const matterBlock = metadata.Matter as Record<string, unknown> | undefined;
+                    if (matterBlock && typeof matterBlock === 'object') {
+                        matterMeta = {
+                            side: matterBlock.side as string | undefined,
+                            role: matterBlock.role as string | undefined,
+                            order: typeof matterBlock.order === 'number' ? matterBlock.order : undefined,
+                            usesBookMeta: typeof matterBlock.usesBookMeta === 'boolean' ? matterBlock.usesBookMeta : undefined
+                        };
+                    }
+
                     scenes.push({
                         date: '',
                         path: file.path,
                         title: file.basename,
                         itemType: metadata.Class as "Frontmatter" | "Backmatter",
+                        matterMeta,
                         rawFrontmatter: metadata
                     });
 
