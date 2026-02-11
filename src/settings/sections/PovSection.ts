@@ -5,6 +5,7 @@ import { resolveScenePov } from '../../utils/pov';
 import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
+import { IMPACT_FULL } from '../SettingImpact';
 
 const POV_LABELS: Record<string, string> = {
     '0': '°',
@@ -54,8 +55,7 @@ export function renderPovSection(params: {
                 const next = (value as GlobalPovMode) || 'off';
                 plugin.settings.globalPovMode = next;
                 await plugin.saveSettings();
-                const debounce = plugin.settings.metadataRefreshDebounceMs ?? 10000;
-                plugin.refreshTimelineIfNeeded(null, debounce);
+                plugin.onSettingChanged(IMPACT_FULL); // Tier 3: POV superscripts baked into SVG synopsis
             });
         });
 

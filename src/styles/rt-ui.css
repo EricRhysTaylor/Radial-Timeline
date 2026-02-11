@@ -1927,46 +1927,84 @@
   transition: opacity 0.15s ease;
 }
 
-.ert-ui.ert-scope--settings .ert-mini-tabs {
+/* ── Beat-system wrapper (tabs + panel as one unit) ──────────────────── */
+.ert-ui.ert-scope--settings .ert-beat-system-wrapper {
   display: flex;
-  gap: var(--ert-gap-xs);
-  padding: var(--ert-gap-xs);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 10px;
-  background: var(--background-secondary);
+  flex-direction: column;
 }
 
-.ert-ui.ert-scope--settings .ert-mini-tab {
-  flex: 1;
-  padding: calc(var(--ert-gap-xs) + 2px) var(--ert-gap-md);
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: transparent;
+/* ── Mini-tabs (Story beats tab bar) ─────────────────────────────────── */
+.ert-ui.ert-scope--settings .ert-mini-tabs {
+  display: flex;
+  gap: 0;
+  align-items: flex-end;
+  border-bottom: 0;
+  /* Overlap the panel top border by 1px so active tab merges seamlessly */
+  margin-bottom: -1px;
+  position: relative;
+  z-index: 2;
+}
+
+/* Base tab — inactive state: sits "behind" the panel */
+.ert-ui.ert-scope--settings button.ert-mini-tab:not(.ert-pillBtn):not(.ert-iconBtn):not(.ert-swatch) {
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: none;
+  text-shadow: none;
+  background-image: none;
+  padding: calc(var(--ert-gap-xs) + 1px) var(--ert-gap-md);
+  border-radius: 0;
+  border: 1px solid var(--background-modifier-border);
+  /* Bottom border keeps inactive tabs looking "behind" the panel */
+  border-bottom-color: var(--background-modifier-border);
+  /* Slightly darker than active to recede visually */
+  background: color-mix(in srgb, var(--background-secondary) 70%, var(--background-primary) 30%);
   color: var(--text-muted);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   text-align: center;
+  margin-bottom: 0;
+  position: relative;
 }
 
-.ert-ui.ert-scope--settings .ert-mini-tab:hover {
+/* Hover — inactive tabs lighten slightly */
+.ert-ui.ert-scope--settings button.ert-mini-tab:not(.ert-pillBtn):not(.ert-iconBtn):not(.ert-swatch):hover {
   color: var(--text-normal);
-  background: var(--background-modifier-hover);
+  background: color-mix(in srgb, var(--background-secondary) 55%, var(--background-primary) 45%);
 }
 
-.ert-ui.ert-scope--settings .ert-mini-tab.is-active {
-  border-color: color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
+/* Active tab — "in front" of the panel with matching background */
+.ert-ui.ert-scope--settings button.ert-mini-tab:not(.ert-pillBtn):not(.ert-iconBtn):not(.ert-swatch).is-active {
+  border-color: var(--background-modifier-border);
+  /* Remove bottom border so the tab opens into the panel */
+  border-bottom-color: transparent;
   background: var(--background-primary);
   color: var(--text-normal);
   font-weight: 600;
+  z-index: 3;
 }
 
-.ert-ui.ert-scope--settings .ert-mini-tab--custom.is-active {
+/* Custom tab active — tinted accent background */
+.ert-ui.ert-scope--settings button.ert-mini-tab:not(.ert-pillBtn):not(.ert-iconBtn):not(.ert-swatch).ert-mini-tab--custom.is-active {
   background: color-mix(in srgb, var(--background-primary) 92%, var(--ert-accent) 8%);
   border-color: color-mix(in srgb, var(--ert-accent) 30%, var(--background-modifier-border));
+  border-bottom-color: transparent;
+}
+
+/* Collapse border between adjacent tabs (no double border) */
+.ert-ui.ert-scope--settings button.ert-mini-tab:not(.ert-pillBtn):not(.ert-iconBtn):not(.ert-swatch) + button.ert-mini-tab:not(.ert-pillBtn):not(.ert-iconBtn):not(.ert-swatch) {
+  margin-left: -1px;
+}
+
+/* Panel directly beneath tabs — square off top-left so first tab sits flush */
+.ert-ui.ert-scope--settings .ert-mini-tabs + .ert-beat-system-card {
+  border-top-left-radius: 0;
 }
 
 .ert-ui.ert-scope--settings .ert-beat-system-card {
+  --ert-panel-bg: var(--background-primary);
+  --ert-panel-border: var(--background-modifier-border);
   --ert-panel-shadow: none;
   --ert-panel-backdrop: none;
 }
@@ -1974,6 +2012,165 @@
 .ert-ui.ert-scope--settings .ert-beat-system-card.ert-beat-system-card--custom {
   --ert-panel-bg: color-mix(in srgb, var(--background-primary) 92%, var(--ert-accent) 8%);
   --ert-panel-border: color-mix(in srgb, var(--ert-accent) 25%, var(--background-modifier-border));
+}
+
+/* ── Custom tab icon (lucide, 14px, inherits color) ────────────────── */
+.ert-ui.ert-scope--settings .ert-mini-tab-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.ert-ui.ert-scope--settings .ert-mini-tab-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── Stage switcher (segmented control inside Custom panel) ────────── */
+.ert-ui.ert-scope--settings .ert-stage-switcher {
+  display: inline-flex;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--ert-control-radius);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--background-secondary) 60%, var(--background-primary) 40%);
+}
+
+.ert-ui.ert-scope--settings button.ert-stage-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  border: none;
+  border-right: 1px solid var(--background-modifier-border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  box-shadow: none;
+  text-shadow: none;
+  background-image: none;
+  margin: 0;
+}
+
+.ert-ui.ert-scope--settings button.ert-stage-btn:last-child {
+  border-right: none;
+}
+
+.ert-ui.ert-scope--settings button.ert-stage-btn:hover:not(.is-disabled) {
+  color: var(--text-normal);
+  background: color-mix(in srgb, var(--background-secondary) 40%, var(--background-primary) 60%);
+}
+
+.ert-ui.ert-scope--settings button.ert-stage-btn.is-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-weight: 600;
+}
+
+.ert-ui.ert-scope--settings button.ert-stage-btn.is-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ert-ui.ert-scope--settings .ert-stage-btn-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ert-ui.ert-scope--settings .ert-stage-btn-icon svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* ── Generate stage helper text ────────────────────────────────────── */
+.ert-ui.ert-scope--settings .ert-generate-helper {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-template-preview {
+  padding: var(--ert-gap-sm);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--background-secondary) 82%, var(--background-primary) 18%);
+}
+
+.ert-ui.ert-scope--settings .ert-beat-template-title {
+  color: var(--text-normal);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-template-desc {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-template-examples {
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-template-meta {
+  color: var(--text-faint);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-act-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-beat-act-column {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: var(--ert-gap-sm);
+  background: color-mix(in srgb, var(--background-primary) 92%, var(--background-secondary) 8%);
+}
+
+.ert-ui.ert-scope--settings .ert-beat-act-header {
+  color: var(--text-normal);
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--settings .ert-beat-act-list {
+  display: grid;
+  gap: 2px;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-act-item {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-act-empty {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .ert-ui.ert-scope--settings .ert-beat-act-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .ert-ui.ert-scope--settings .ert-beat-act-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .ert-ui.ert-scope--settings .ert-settings-visible:not(.setting-item):not(.ert-stack) {

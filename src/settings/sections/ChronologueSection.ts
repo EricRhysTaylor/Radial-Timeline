@@ -4,6 +4,7 @@ import type { TimelineItem } from '../../types';
 import { parseDurationDetail, formatDurationSelectionLabel, calculateAutoDiscontinuityThreshold } from '../../utils/date';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
+import { IMPACT_FULL } from '../SettingImpact';
 
 interface DurationCapOption {
     key: string;
@@ -124,7 +125,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
         dropdown.onChange(async (value) => {
             plugin.settings.chronologueDurationCapSelection = value;
             await plugin.saveSettings();
-            plugin.refreshTimelineIfNeeded(null); // Uses default debounce delay
+            plugin.onSettingChanged(IMPACT_FULL); // Tier 3: structural layout change (duration arcs)
         });
         // Set fixed width for dropdown (override CSS with important)
         dropdown.selectEl.style.setProperty('width', '250px', 'important');
@@ -241,7 +242,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
                 // Empty = use auto calculation
                 plugin.settings.discontinuityThreshold = undefined;
                 await plugin.saveSettings();
-                plugin.refreshTimelineIfNeeded(null);
+                plugin.onSettingChanged(IMPACT_FULL); // Tier 3: structural layout change (shift mode gaps)
                 return;
             }
 
@@ -257,7 +258,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
             plugin.settings.discontinuityThreshold = trimmed;
             text.inputEl.addClass('ert-setting-input-success');
             await plugin.saveSettings();
-            plugin.refreshTimelineIfNeeded(null);
+            plugin.onSettingChanged(IMPACT_FULL); // Tier 3: structural layout change (shift mode gaps)
 
             // Clear success state after a moment
             window.setTimeout(() => {
@@ -282,7 +283,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
         .onClick(async () => {
             plugin.settings.discontinuityThreshold = undefined;
             await plugin.saveSettings();
-            plugin.refreshTimelineIfNeeded(null);
+            plugin.onSettingChanged(IMPACT_FULL); // Tier 3: structural layout change (shift mode gaps)
             if (discontinuityText) {
                 discontinuityText.setValue('');
                 discontinuityText.inputEl.removeClass('ert-setting-input-error');

@@ -42,6 +42,28 @@ const TEMPLATE_SYSTEMS: Array<{ id: TemplateSystemId; label: string; systemName:
     { id: 'story_grid', label: 'Story Grid', systemName: 'Story Grid' },
 ];
 const CUSTOM_SYSTEM_OPTION = { id: 'custom' as const, label: 'Custom', systemName: 'Custom' };
+const BEAT_SYSTEM_COPY: Record<string, { title: string; description: string; examples?: string }> = {
+    'Save The Cat': {
+        title: 'Save the Cat',
+        description: 'Commercial fiction, screenplays, and genre stories. Emphasizes clear emotional beats and audience engagement.',
+        examples: 'Examples: The Hunger Games, The Martian, The Fault in Our Stars.'
+    },
+    'Hero\'s Journey': {
+        title: 'Hero\'s Journey',
+        description: 'Mythic, adventure, and transformation stories. Focuses on the protagonist\'s arc through trials and self-discovery.',
+        examples: 'Examples: The Odyssey, The Hobbit, Harry Potter and the Sorcerer\'s Stone.'
+    },
+    'Story Grid': {
+        title: 'Story Grid',
+        description: 'Scene-driven structure built around the 5 Commandments: Inciting Incident, Progressive Complications, Crisis, Climax, Resolution.',
+        examples: 'Examples: The Silence of the Lambs, Pride and Prejudice.'
+    },
+    'Custom': {
+        title: 'Custom beat system',
+        description: 'Uses any story beat note you create manually via the custom story beat system editor.',
+        examples: 'Perfect for projects that do not follow a traditional story structure.'
+    }
+};
 
 const resolveTemplateSystemId = (system?: string): TemplateSystemId | null => {
     switch ((system ?? '').trim()) {
@@ -461,19 +483,36 @@ export function renderStoryBeatsSection(params: {
     addWikiLink(beatsHeading, 'Settings#story-beats');
     applyErtHeaderLayout(beatsHeading);
 
-    const beatSystemSetting = new Settings(beatsStack)
-        .setName('Beat system')
-        .setDesc('Select the story structure model for your manuscript. This will establish the story beat system and can be used to create beat notes and graph scores using Gossamer mode manually or automatically using AI.');
-    const beatSystemTabs = beatSystemSetting.controlEl.createDiv({ cls: 'ert-mini-tabs' });
-    const beatSystemOptions = [...TEMPLATE_SYSTEMS, CUSTOM_SYSTEM_OPTION];
-    beatSystemSetting.settingEl.addClass('ert-setting-two-row');
+    // Wrapper keeps tabs + panel as a single stack item (no stack gap between them)
+    const beatSystemWrapper = beatsStack.createDiv({ cls: 'ert-beat-system-wrapper' });
 
-    const beatSystemCard = beatsStack.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-beat-system-card` });
-    const templatePreviewContainer = beatSystemCard.createDiv({
-        cls: ['ert-previewFrame', 'ert-previewFrame--center', 'ert-previewFrame--flush', 'ert-beat-template-preview']
+    const beatSystemTabs = beatSystemWrapper.createDiv({
+        cls: 'ert-mini-tabs',
+        attr: { role: 'tablist' }
     });
-    const templatePreviewHeading = templatePreviewContainer.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Preview' });
-    const templatePreviewBody = templatePreviewContainer.createDiv({ cls: 'ert-planetary-preview-body' });
+    const beatSystemOptions = [...TEMPLATE_SYSTEMS, CUSTOM_SYSTEM_OPTION];
+
+    const beatSystemCard = beatSystemWrapper.createDiv({
+        cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-beat-system-card`,
+        attr: { id: 'ert-beat-system-panel', role: 'tabpanel' }
+    });
+    const templatePreviewContainer = beatSystemCard.createDiv({ cls: ['ert-beat-template-preview', ERT_CLASSES.STACK] });
+    const templatePreviewTitle = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-title' });
+    const templatePreviewDesc = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-desc' });
+    const templatePreviewExamples = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-examples' });
+    const templatePreviewMeta = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-meta' });
+    const templateActGrid = templatePreviewContainer.createDiv({ cls: 'ert-beat-act-grid' });
+
+    // ── Stage switcher for Custom workflow (Build / Generate / Advanced) ──
+    // Local state only — not persisted. Controls which section is visible
+    // inside the Custom tab panel.
+    type CustomStage = 'build' | 'generate' | 'advanced';
+    let currentCustomStage: CustomStage = 'build';
+
+    const stageSwitcher = beatSystemCard.createDiv({
+        cls: 'ert-stage-switcher ert-settings-hidden',
+        attr: { role: 'tablist', 'aria-label': 'Custom workflow stage' }
+    });
 
     // --- Custom System Configuration (Dynamic Visibility) ---
     const customConfigContainer = beatSystemCard.createDiv({ cls: ['ert-custom-beat-config', ERT_CLASSES.STACK] });
@@ -520,6 +559,8 @@ export function renderStoryBeatsSection(params: {
             plugin.settings.customBeatSystemBeats = beats;
             await plugin.saveSettings();
             updateTemplateButton(templateSetting, 'Custom');
+            // Re-render stage switcher so Generate gate updates
+            renderStageSwitcher();
         };
 
         const buildActLabels = (count: number, ranges?: Map<number, ActRange>): string[] => {
@@ -812,12 +853,7 @@ export function renderStoryBeatsSection(params: {
     };
     renderCustomConfig();
 
-    const updateCustomInputsVisibility = (system: string) => {
-        customConfigContainer.toggleClass('ert-settings-hidden', system !== 'Custom');
-        if (system === 'Custom') {
-            refreshCustomBeats?.(true);
-        }
-    };
+    // IntersectionObserver for lazy-refresh of custom beats when visible
     if (customBeatsObserver as IntersectionObserver | null) {
         customBeatsObserver!.disconnect();
         customBeatsObserver = null;
@@ -832,20 +868,132 @@ export function renderStoryBeatsSection(params: {
     }
     // --------------------------------------------------------
 
+    type ActGridColumn = { label: string; beats: string[]; rank: number; isNumericAct: boolean };
+
+    const getBeatSystemCopy = (system: string) => {
+        return BEAT_SYSTEM_COPY[system] ?? {
+            title: system,
+            description: 'Select a beat system to configure template notes and story beat behavior.'
+        };
+    };
+
+    const inferActForIndex = (index: number, total: number): number => {
+        if (total <= 0) return 1;
+        const position = index / total;
+        if (position < 0.33) return 1;
+        if (position < 0.67) return 2;
+        return 3;
+    };
+
+    const buildTemplateActColumns = (system: string): { columns: ActGridColumn[]; totalBeats: number } => {
+        const template = getPlotSystem(system);
+        if (!template) return { columns: [], totalBeats: 0 };
+
+        const beats = template.beats ?? [];
+        const details = template.beatDetails ?? [];
+        const grouped = new Map<string, ActGridColumn>();
+        const other: string[] = [];
+        const total = beats.length;
+
+        beats.forEach((beatName, index) => {
+            const detail = details[index] as { act?: unknown } | undefined;
+            const rawAct = detail?.act;
+            const cleanedBeat = stripActPrefix(beatName);
+
+            if (typeof rawAct === 'number' && Number.isFinite(rawAct)) {
+                const actNum = Math.max(1, Math.round(rawAct));
+                const key = `act:${actNum}`;
+                if (!grouped.has(key)) {
+                    grouped.set(key, { label: `Act ${actNum}`, beats: [], rank: actNum, isNumericAct: true });
+                }
+                grouped.get(key)!.beats.push(cleanedBeat);
+                return;
+            }
+
+            if (typeof rawAct === 'string' && rawAct.trim()) {
+                const trimmed = rawAct.trim();
+                const parsedAct = Number(trimmed);
+                if (Number.isFinite(parsedAct) && parsedAct > 0) {
+                    const actNum = Math.round(parsedAct);
+                    const key = `act:${actNum}`;
+                    if (!grouped.has(key)) {
+                        grouped.set(key, { label: `Act ${actNum}`, beats: [], rank: actNum, isNumericAct: true });
+                    }
+                    grouped.get(key)!.beats.push(cleanedBeat);
+                } else {
+                    const key = `label:${trimmed.toLowerCase()}`;
+                    if (!grouped.has(key)) {
+                        grouped.set(key, { label: trimmed, beats: [], rank: Number.MAX_SAFE_INTEGER - 1, isNumericAct: false });
+                    }
+                    grouped.get(key)!.beats.push(cleanedBeat);
+                }
+                return;
+            }
+
+            if (rawAct === undefined || rawAct === null || rawAct === '') {
+                const inferred = inferActForIndex(index, total);
+                const key = `act:${inferred}`;
+                if (!grouped.has(key)) {
+                    grouped.set(key, { label: `Act ${inferred}`, beats: [], rank: inferred, isNumericAct: true });
+                }
+                grouped.get(key)!.beats.push(cleanedBeat);
+                return;
+            }
+
+            other.push(cleanedBeat);
+        });
+
+        const columns = Array.from(grouped.values()).sort((a, b) => {
+            if (a.rank !== b.rank) return a.rank - b.rank;
+            return a.label.localeCompare(b.label);
+        });
+
+        if (other.length > 0) {
+            columns.push({ label: 'Other', beats: other, rank: Number.MAX_SAFE_INTEGER, isNumericAct: false });
+        }
+
+        return { columns, totalBeats: total };
+    };
+
     const renderTemplatePreview = (system: string) => {
         const { mode } = deriveBeatSystemMode(system);
         templatePreviewContainer.toggleClass('ert-settings-hidden', mode !== 'template');
         if (mode !== 'template') return;
-        const template = getPlotSystem(system);
-        if (!template) {
-            templatePreviewHeading.setText('Preview');
-            templatePreviewBody.setText('No template found.');
+
+        const copy = getBeatSystemCopy(system);
+        const { columns, totalBeats } = buildTemplateActColumns(system);
+
+        templatePreviewTitle.setText(copy.title);
+        templatePreviewDesc.setText(copy.description);
+        templatePreviewExamples.setText(copy.examples ?? '');
+        templatePreviewExamples.toggleClass('ert-settings-hidden', !copy.examples);
+        templatePreviewMeta.setText(`${totalBeats} beats · ${columns.length} acts`);
+
+        templateActGrid.empty();
+        if (columns.length === 0) {
+            templateActGrid.createDiv({ cls: 'ert-beat-act-empty', text: 'No template beats found for this system.' });
             return;
         }
-        const count = template.beatCount || template.beats.length;
-        templatePreviewHeading.setText(`Preview (${count} beats)`);
-        templatePreviewBody.setText(template.beats.join(' · '));
+
+        columns.forEach((column) => {
+            const colEl = templateActGrid.createDiv({ cls: 'ert-beat-act-column' });
+            const count = column.beats.length;
+            const headerText = column.isNumericAct
+                ? `${column.label} (${count})`
+                : `${column.label}${count > 0 ? ` (${count})` : ''}`;
+            colEl.createDiv({ cls: 'ert-beat-act-header', text: headerText });
+            const listEl = colEl.createDiv({ cls: 'ert-beat-act-list' });
+            column.beats.forEach((beat, beatIdx) => {
+                listEl.createDiv({ cls: 'ert-beat-act-item', text: `${beatIdx + 1}. ${beat}` });
+            });
+        });
     };
+
+    // Generate stage helper (visible only in custom Generate stage)
+    const generateHelper = beatSystemCard.createDiv({
+        cls: 'ert-generate-helper ert-settings-hidden',
+        text: 'Create beat note files in your vault from the custom system you built.'
+    });
 
     // Create template beat note button
     let createTemplatesButton: ButtonComponent | undefined;
@@ -853,7 +1001,7 @@ export function renderStoryBeatsSection(params: {
 
     const templateSetting = new Settings(beatSystemCard)
         .setName('Create story beat template notes')
-        .setDesc('Generate template beat notes based on the selected story structure system including YAML frontmatter and body summary.')
+        .setDesc('Create beat note files in your vault based on the selected story structure system.')
         .addButton(button => {
             createTemplatesButton = button;
             button
@@ -876,12 +1024,95 @@ export function renderStoryBeatsSection(params: {
     updateTemplateButton(templateSetting, plugin.settings.beatSystem || 'Custom');
 
     const customToolsContainer = beatSystemCard.createDiv({ cls: ERT_CLASSES.STACK });
-    const updateCustomToolsVisibility = (system: string) => {
+
+    // ── Stage switcher rendering + visibility ───────────────────────────
+    // Stage definitions: icon + label pairs for the segmented control.
+    const CUSTOM_STAGES: Array<{ id: CustomStage; label: string; icon: string }> = [
+        { id: 'build', label: 'Build', icon: 'hammer' },
+        { id: 'generate', label: 'Generate', icon: 'file-plus' },
+        { id: 'advanced', label: 'Advanced', icon: 'settings-2' },
+    ];
+
+    /** Returns true when the custom beat list has at least 1 named beat. */
+    const hasCustomBeats = (): boolean => {
+        const beats = plugin.settings.customBeatSystemBeats ?? [];
+        return beats.some((b: unknown) => {
+            if (typeof b === 'string') return b.trim().length > 0;
+            if (typeof b === 'object' && b !== null) return String((b as { name?: unknown }).name ?? '').trim().length > 0;
+            return false;
+        });
+    };
+
+    /** Returns true when at least one Advanced-stage section would be visible. */
+    const hasAdvancedContent = (): boolean => {
+        // Advanced is available if YAML editor is enabled OR Pro is active (saved systems)
+        return (plugin.settings.enableBeatYamlEditor ?? false) || isProfessionalActive(plugin);
+    };
+
+    const renderStageSwitcher = () => {
+        stageSwitcher.empty();
+        const beatsExist = hasCustomBeats();
+        CUSTOM_STAGES.forEach((stage) => {
+            const isActive = stage.id === currentCustomStage;
+            // Gate: Generate disabled when 0 beats
+            const isGenerateDisabled = stage.id === 'generate' && !beatsExist;
+            // Gate: Advanced hidden entirely when no advanced content available
+            if (stage.id === 'advanced' && !hasAdvancedContent()) return;
+
+            const btn = stageSwitcher.createEl('button', {
+                cls: `ert-stage-btn${isActive ? ' is-active' : ''}${isGenerateDisabled ? ' is-disabled' : ''}`,
+                attr: {
+                    type: 'button',
+                    role: 'tab',
+                    'aria-selected': isActive ? 'true' : 'false',
+                    ...(isGenerateDisabled ? { disabled: 'true', title: 'Add at least 1 beat to generate notes' } : {})
+                }
+            });
+            const iconEl = btn.createSpan({ cls: 'ert-stage-btn-icon' });
+            setIcon(iconEl, stage.icon);
+            btn.appendText(stage.label);
+
+            if (!isGenerateDisabled) {
+                btn.addEventListener('click', () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
+                    if (isActive) return;
+                    currentCustomStage = stage.id;
+                    renderStageSwitcher();
+                    updateStageVisibility();
+                });
+            }
+        });
+    };
+
+    /**
+     * Shows/hides the three stage panels based on currentCustomStage.
+     * In template mode all stages are hidden and the switcher disappears.
+     */
+    const updateStageVisibility = () => {
+        const system = plugin.settings.beatSystem || 'Custom';
         const { mode } = deriveBeatSystemMode(system);
-        customToolsContainer.toggleClass('ert-settings-hidden', mode !== 'custom');
-        if (typeof __RT_DEV__ !== 'undefined' && __RT_DEV__ && mode === 'template') {
-            const hidden = customToolsContainer.hasClass('ert-settings-hidden');
-            console.assert(hidden, '[StoryBeats] Template mode should hide custom-only tools.');
+        const isCustom = mode === 'custom';
+
+        // Stage switcher only in custom mode
+        stageSwitcher.toggleClass('ert-settings-hidden', !isCustom);
+
+        if (!isCustom) {
+            // Template mode: existing behavior — show preview + template button, hide custom stuff
+            customConfigContainer.toggleClass('ert-settings-hidden', true);
+            generateHelper.toggleClass('ert-settings-hidden', true);
+            templateSetting.settingEl.toggleClass('ert-settings-hidden', false);
+            customToolsContainer.toggleClass('ert-settings-hidden', true);
+            return;
+        }
+
+        // Custom mode: gate on current stage
+        customConfigContainer.toggleClass('ert-settings-hidden', currentCustomStage !== 'build');
+        generateHelper.toggleClass('ert-settings-hidden', currentCustomStage !== 'generate');
+        templateSetting.settingEl.toggleClass('ert-settings-hidden', currentCustomStage !== 'generate');
+        customToolsContainer.toggleClass('ert-settings-hidden', currentCustomStage !== 'advanced');
+
+        // Re-trigger custom data refresh when switching to Build
+        if (currentCustomStage === 'build') {
+            refreshCustomBeats?.(true);
         }
     };
 
@@ -889,8 +1120,12 @@ export function renderStoryBeatsSection(params: {
         const { mode } = deriveBeatSystemMode(system);
         beatSystemCard.toggleClass('ert-beat-system-card--custom', mode === 'custom');
         renderTemplatePreview(system);
-        updateCustomInputsVisibility(system);
-        updateCustomToolsVisibility(system);
+        // Reset to Build stage when switching to Custom mode
+        if (mode === 'custom' && currentCustomStage !== 'build') {
+            currentCustomStage = 'build';
+        }
+        renderStageSwitcher();
+        updateStageVisibility();
     };
 
     const renderBeatSystemTabs = () => {
@@ -901,10 +1136,21 @@ export function renderStoryBeatsSection(params: {
             const isCustomTab = option.systemName === 'Custom';
             const btn = beatSystemTabs.createEl('button', {
                 cls: `ert-mini-tab${isCustomTab ? ' ert-mini-tab--custom' : ''}${isActive ? ` ${ERT_CLASSES.IS_ACTIVE}` : ''}`,
-                text: option.label,
-                attr: { type: 'button', 'aria-pressed': isActive ? 'true' : 'false' }
+                attr: {
+                    type: 'button',
+                    role: 'tab',
+                    'aria-selected': isActive ? 'true' : 'false',
+                    'aria-controls': 'ert-beat-system-panel'
+                }
             });
-            btn.addEventListener('click', async () => {
+            // Custom tab gets a lucide icon (14px, inherits currentColor)
+            if (isCustomTab) {
+                const iconEl = btn.createSpan({ cls: 'ert-mini-tab-icon' });
+                setIcon(iconEl, 'wrench');
+            }
+            btn.appendText(option.label);
+
+            btn.addEventListener('click', async () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
                 if (isActive) return;
                 plugin.settings.beatSystem = option.systemName;
                 await plugin.saveSettings();
@@ -1327,6 +1573,8 @@ export function renderStoryBeatsSection(params: {
         await plugin.saveSettings();
         renderBeatYamlEditor();
         renderBeatHoverPreview();
+        // Re-render stage switcher so Advanced gate updates
+        renderStageSwitcher();
     });
 
     renderBeatYamlEditor();
@@ -1373,8 +1621,10 @@ export function renderStoryBeatsSection(params: {
     // ─── SAVED BEAT SYSTEMS (Pro) — Campaign Manager card scaffold ────
     const proActive = isProfessionalActive(plugin);
 
+    // Pro saved systems: normal panel styling (no purple container gradient).
+    // The Pro pill on the heading communicates premium status.
     const savedCard = customToolsContainer.createDiv({
-        cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ${ERT_CLASSES.SKIN_PRO} ert-saved-beat-systems`
+        cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-saved-beat-systems`
     });
     if (!proActive) savedCard.addClass('ert-pro-locked');
 
@@ -2979,7 +3229,7 @@ export function renderStoryBeatsSection(params: {
             }
         } else {
             setting.setName(`Create story beat template notes for ${selectedSystem}`);
-            baseDesc = `Generate ${selectedSystem} template beat notes including YAML frontmatter and body summary.`;
+            baseDesc = `Create ${selectedSystem} beat note files in your vault matching this system's structure.`;
             setting.setDesc(baseDesc);
             setting.settingEl.style.opacity = '1';
         }

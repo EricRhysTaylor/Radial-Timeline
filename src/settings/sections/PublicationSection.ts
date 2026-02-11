@@ -7,6 +7,7 @@ import { getAllScenes } from '../../utils/manuscript';
 import type { CompletionEstimate } from '../../services/TimelineMetricsService';
 import { STAGE_ORDER } from '../../utils/constants';
 import { ERT_CLASSES } from '../../ui/classes';
+import { IMPACT_FULL } from '../SettingImpact';
 
 type Stage = typeof STAGE_ORDER[number];
 type Quote = { text: string; author: string };
@@ -828,7 +829,7 @@ export function renderPublicationSection(params: {
                         text.inputEl.removeClass('ert-setting-input-error');
                         text.inputEl.removeClass('ert-setting-input-overdue');
                         await plugin.saveSettings();
-                        plugin.refreshTimelineIfNeeded(null);
+                        plugin.onSettingChanged(IMPACT_FULL); // Tier 3: target date tick marks on timeline
                         // Update icon color
                         const icon = setting.nameEl.querySelector('.ert-target-tick-icon');
                         if (icon) {
@@ -869,7 +870,7 @@ export function renderPublicationSection(params: {
                     }
 
                     await plugin.saveSettings();
-                    plugin.refreshTimelineIfNeeded(null);
+                    plugin.onSettingChanged(IMPACT_FULL); // Tier 3: target date tick marks on timeline
                 };
 
                 plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
@@ -922,7 +923,7 @@ export function renderPublicationSection(params: {
             .onChange(async (value) => {
                 plugin.settings.showCompletionEstimate = value;
                 await plugin.saveSettings();
-                plugin.refreshTimelineIfNeeded(null);
+                plugin.onSettingChanged(IMPACT_FULL); // Tier 3: estimate dot on timeline
             }));
 
     // Add estimate icon (line with dot at end, like the estimated completion tick)
@@ -960,7 +961,7 @@ export function renderPublicationSection(params: {
                 plugin.settings.completionEstimateWindowDays = clamped;
                 text.setValue(String(clamped));
                 await plugin.saveSettings();
-                plugin.refreshTimelineIfNeeded(null);
+                plugin.onSettingChanged(IMPACT_FULL); // Tier 3: estimate calculation affects timeline
             };
 
             plugin.registerDomEvent(text.inputEl, 'blur', () => {

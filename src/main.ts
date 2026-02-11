@@ -634,6 +634,28 @@ export default class RadialTimelinePlugin extends Plugin {
 
     // Remove redundant parseSceneTitle method - use the one from utils/text.ts instead
 
+    // ── Settings-aware refresh (tiered impact model) ─────────────────
+    // Settings UI calls this instead of refreshTimelineIfNeeded(null) so
+    // that only settings with a real visual effect trigger a render.
+    //
+    //   Tier 1 ("none")       — no-op; just save.
+    //   Tier 2 ("selective")  — selective DOM-mutation path (no container.empty()).
+    //   Tier 3 ("full")       — full SVG rebuild (same as the legacy path).
+
+    onSettingChanged(impact: import('./settings/SettingImpact').SettingImpact): void {
+        if (impact.kind === 'none') return;
+
+        if (impact.kind === 'selective') {
+            // Route through the batched scheduler so rapid changes are coalesced.
+            // Debounce 50 ms — fast enough to feel live, slow enough to batch.
+            this.timelineService.scheduleRender(impact.changeTypes, 50);
+            return;
+        }
+
+        // impact.kind === 'full' — debounce 100 ms to avoid flicker cascades
+        this.refreshTimelineIfNeeded(null, 100);
+    }
+
     // Method to refresh the timeline if the active view exists (with debouncing)
     refreshTimelineIfNeeded(file: TAbstractFile | null | undefined, delayMs?: number) {
         // For settings changes (file=null), use 0ms delay for immediate feedback

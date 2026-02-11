@@ -261,6 +261,10 @@
   margin: 0;
   background-color: transparent;
   font-family: var(--font-interface), "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  /* Compositor stabilization: keeps the timeline in its own compositing layer
+     so that DOM mutations during re-renders don't cause z-index flicker when
+     Obsidian's settings modal is open. */
+  contain: layout style paint;
 }
 
 /* Loading and Error Messages (Consolidated) */

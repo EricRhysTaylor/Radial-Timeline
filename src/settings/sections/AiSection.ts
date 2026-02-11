@@ -10,6 +10,7 @@ import { AiContextModal } from '../AiContextModal';
 import { resolveAiLogFolder } from '../../ai/log';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
+import { IMPACT_NONE, IMPACT_FULL } from '../SettingImpact';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
 
@@ -57,7 +58,7 @@ export function renderAiSection(params: {
                 await plugin.saveSettings();
                 params.toggleAiSettingsVisibility(value);
                 plugin.setInquiryVisible(value);
-                plugin.refreshTimelineIfNeeded(null);
+                plugin.onSettingChanged(IMPACT_FULL); // Tier 3: changes number square colors + AI pulse elements
                 updateAiToggleWarning(value);
             }));
 
@@ -110,7 +111,7 @@ export function renderAiSection(params: {
             .onChange(async (value) => {
                 plugin.settings.showFullTripletAnalysis = value;
                 await plugin.saveSettings();
-                plugin.refreshTimelineIfNeeded(null);
+                // Tier 1: triplet display is read at hover time, no SVG change needed
             }));
     params.addAiRelatedElement(tripletDisplaySetting.settingEl);
 

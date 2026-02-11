@@ -4,6 +4,7 @@ import { clearFontMetricsCaches } from '../../renderer/utils/FontMetricsCache';
 import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
+import { IMPACT_FULL, IMPACT_DOMINANT_SUBPLOT } from '../SettingImpact';
 
 export function renderConfigurationSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { app, plugin, containerEl } = params;
@@ -44,7 +45,7 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
                 }
                 plugin.settings.synopsisHoverMaxLines = n;
                 await plugin.saveSettings();
-                plugin.refreshTimelineIfNeeded(null);
+                plugin.onSettingChanged(IMPACT_FULL); // Tier 3: synopsis line count baked into SVG at render time
             };
 
             plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
@@ -73,7 +74,7 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
                 plugin.settings.readabilityScale = value as any;
                 await plugin.saveSettings();
                 clearFontMetricsCaches(); // Clear cached measurements for new scale
-                plugin.refreshTimelineIfNeeded(null);
+                plugin.onSettingChanged(IMPACT_FULL); // Tier 3: font sizes/spacing change across entire timeline
             });
             drop.selectEl.addClass('ert-setting-dropdown');
         });
@@ -121,8 +122,8 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
                 plugin.settings.dominantSubplots = {};
                 await plugin.saveSettings();
 
-                // Refresh timeline using debounced method
-                plugin.refreshTimelineIfNeeded(null);
+                // Tier 2: selective DOM update for scene colors only
+                plugin.onSettingChanged(IMPACT_DOMINANT_SUBPLOT);
 
                 if (count > 0) {
                     new Notice(t('settings.configuration.resetSubplotColors.clearedNotice', { count: String(count) }));

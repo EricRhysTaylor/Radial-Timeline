@@ -447,6 +447,12 @@ export class RadialTimelineView extends ItemView {
                         updated = true;
                     }
 
+                    // Handle dominant subplot changes (scene colors only)
+                    if (changeResult.changeTypes.has(ChangeType.DOMINANT_SUBPLOT)) {
+                        const scenes = this.sceneData || [];
+                        updated = this.rendererService.updateSceneColorsDOM(container, this.plugin, scenes) || updated;
+                    }
+
                     // Handle gossamer changes
                     if (changeResult.changeTypes.has(ChangeType.GOSSAMER)) {
                         updated = this.rendererService.updateGossamerLayer(this as any) || updated;

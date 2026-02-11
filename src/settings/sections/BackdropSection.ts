@@ -5,6 +5,7 @@ import { DEFAULT_SETTINGS } from '../defaults';
 import { ERT_CLASSES } from '../../ui/classes';
 import { colorSwatch, type ColorSwatchHandle } from '../../ui/ui';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
+import { IMPACT_FULL } from '../SettingImpact';
 
 type MicroBackdropConfig = {
     title: string;
@@ -35,7 +36,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
             .onChange(async (value) => {
                 plugin.settings.showBackdropRing = value;
                 await plugin.saveSettings();
-                plugin.refreshTimelineIfNeeded(null);
+                plugin.onSettingChanged(IMPACT_FULL); // Tier 3: structural layout change
                 renderMicroBackdrops();
             }));
 
@@ -51,7 +52,7 @@ export function renderBackdropSection(params: { app: App; plugin: RadialTimeline
     const saveMicroBackdrops = async (next: MicroBackdropConfig[]) => {
         plugin.settings.chronologueBackdropMicroRings = next;
         await plugin.saveSettings();
-        plugin.refreshTimelineIfNeeded(null);
+        plugin.onSettingChanged(IMPACT_FULL); // Tier 3: structural layout change
     };
 
     const updateMicroBackdrop = async (index: number, patch: Partial<MicroBackdropConfig>) => {
