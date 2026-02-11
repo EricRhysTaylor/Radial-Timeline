@@ -2090,6 +2090,33 @@
   height: 13px;
 }
 
+/* ── PRO stage button — pill sits inline with the label ──────────── */
+.ert-ui.ert-scope--settings button.ert-stage-btn--pro {
+  gap: 3px;
+}
+.ert-ui.ert-scope--settings button.ert-stage-btn--pro .ert-badgePill {
+  vertical-align: middle;
+  margin: 0;
+}
+/* When active, ensure pill text stays readable on accent background */
+.ert-ui.ert-scope--settings button.ert-stage-btn--pro.is-active .ert-badgePill,
+.ert-ui.ert-scope--settings button.ert-stage-btn--pro.is-active:hover .ert-badgePill {
+  filter: brightness(1.15);
+}
+
+/* ── Click-to-rename system name link ────────────────────────────── */
+.ert-ui.ert-scope--settings .ert-book-name--clickable {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  color: var(--text-accent);
+}
+.ert-ui.ert-scope--settings .ert-book-name--clickable:hover {
+  text-decoration-style: solid;
+  color: var(--text-accent-hover);
+}
+
 /* ── Generate stage helper text ────────────────────────────────────── */
 .ert-ui.ert-scope--settings .ert-generate-helper {
   font-size: 13px;

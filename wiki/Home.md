@@ -46,7 +46,7 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
   </div>
   <div style="text-align: center;">
     <img src="images/chronologue.jpeg" alt="Chronologue Mode: scenes ordered by When/Duration with overlaps and adaptive time labeling" style="width: 300px; max-width: 100%; border-radius: 8px;" />
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode — chronological backbone with duration arcs, overlaps, and adaptive time scale</div>
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode — story chronology with duration arcs and overlaps plus adaptive time scale</div>
   </div>
 </div>
 

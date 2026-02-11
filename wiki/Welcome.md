@@ -11,23 +11,21 @@ Radial Timeline is a writing system that transforms how you visualize, organize,
 
 ## Getting Started
 
-The fastest way to begin is to **create your first scene** using the command palette (`Cmd/Ctrl + P`) and selecting **Radial Timeline: Create basic scene note**. This gives you a place to write immediately—no elaborate setup required.
+If you have a new empty vault, click the Radial Timeline icon in the Obsidian command palette or use the command palette (`Cmd/Ctrl + P`) to select **Radial Timeline: Open**. The welcome screen will appear. Once you've read this, you can click the **[[Book-Designer|Book Designer]]** button on the welcome screen. Book Designer lets you specify the number of scenes and scope by setting the last scene of your story, along with optional example subplots, characters, and time increments for each scene. This creates a framework model for your book and demonstrates Radial Timeline's capabilities out of the box. Use the Preview timeline and manually move scenes to customize it. Generate notes and see how it looks in the Radial Timeline. If you want to start over, just delete the files in the Obsidian File View and start over. It's fast and easy.
 
-If you prefer to establish a framework first, use the **[[Book-Designer|Book Designer]]** button on the welcome screen. Book Designer lets you specify the number of template scenes, dummy scenes, and the anticipated last scene of your story, along with optional subplots, characters, and time increments for each scene. This creates a framework model for your book and demonstrates Radial Timeline's capabilities out of the box. You can then delete scenes or start filling them in at your leisure.
+Or you can **create your first scene** using the command palette (`Cmd/Ctrl + P`) and selecting **Radial Timeline: Create basic scene note**. This gives you a place to write immediately. Scene details—like the characters in the scene, subplot assignments can stay blank until you're ready to add them.
 
-Once you have a scene, open it and start writing. Scene details—like the characters in the scene, subplot assignments, or structural beats—can stay blank until you're ready to add them.
-
-As your manuscript grows, you'll add new scenes, view them in the Radial Timeline, and reorganize them as needed. The timeline is where you do most things, including reordering scenes. You can create new scenes from scratch or duplicate existing ones to build out your story.
+As your manuscript grows, you'll add new scenes, view them in the Radial Timeline, and reorganize them as needed. The timeline is where you do most things, including reordering scenes and beats. You can create new scenes from scratch or duplicate existing ones to build out your story.
 
 ---
 
 ## Protecting Your Work
 
-Your manuscript deserves protection. Back up your Obsidian vault regularly—sync alone won't guard against all forms of data loss. Obsidian provides a [comprehensive backup guide](https://help.obsidian.md/backup), and services like [Obsidian Sync](https://obsidian.md/sync) or the [Obsidian Git plugin](https://obsidian.md/plugins?id=obsidian-git) make this seamless.
+Your manuscript deserves protection. Back up your Obsidian vault regularly. Sync is a great feature, but keep in mind it won't guard against all forms of data loss. Obsidian provides a [comprehensive backup guide](https://help.obsidian.md/backup), and services like [Obsidian Sync](https://obsidian.md/sync) or the [Obsidian Git plugin](https://obsidian.md/plugins?id=obsidian-git) make this seamless.
 
 ## Exploring the Documentation
 
-The wiki organizes resources by how you work, not by feature lists. **[[Scenes-Structure-Timeline|Scenes, Structure, and the Timeline]]** offers a gentle primer if you're starting fresh. Writers migrating from Scrivener or similar tools will find **[[Migrating-from-Other-Apps|Migrating from Other Apps]]** helpful for understanding Obsidian's markdown-based workflow.
+This wiki is designed to explain all operations of the Radial Timeline plugin for the Obsidian note-taking app. **[[Scenes-Structure-Timeline|Scenes, Structure, and the Timeline]]** offers a gentle primer if you're starting fresh. Writers migrating from Scrivener or similar tools will find **[[Migrating-from-Other-Apps|Migrating from Other Apps]]** helpful for understanding Obsidian's markdown-based workflow.
 
 For hands-on guidance, **[[Fresh-Vault-Onboarding|Fresh Vault Onboarding]]** walks you through building a new manuscript with Book Designer and structural beats, while **[[Existing-Vault-Onboarding|Existing Vault Onboarding]]** shows how to connect notes you've already written. Once you're comfortable, **[[Core-Workflows|Core Workflows]]** reveals techniques for planning, drafting, and tracking progress across your novel.
 
