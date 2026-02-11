@@ -1927,6 +1927,55 @@
   transition: opacity 0.15s ease;
 }
 
+.ert-ui.ert-scope--settings .ert-mini-tabs {
+  display: flex;
+  gap: var(--ert-gap-xs);
+  padding: var(--ert-gap-xs);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: var(--background-secondary);
+}
+
+.ert-ui.ert-scope--settings .ert-mini-tab {
+  flex: 1;
+  padding: calc(var(--ert-gap-xs) + 2px) var(--ert-gap-md);
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+}
+
+.ert-ui.ert-scope--settings .ert-mini-tab:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.ert-ui.ert-scope--settings .ert-mini-tab.is-active {
+  border-color: color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-weight: 600;
+}
+
+.ert-ui.ert-scope--settings .ert-mini-tab--custom.is-active {
+  background: color-mix(in srgb, var(--background-primary) 92%, var(--ert-accent) 8%);
+  border-color: color-mix(in srgb, var(--ert-accent) 30%, var(--background-modifier-border));
+}
+
+.ert-ui.ert-scope--settings .ert-beat-system-card {
+  --ert-panel-shadow: none;
+  --ert-panel-backdrop: none;
+}
+
+.ert-ui.ert-scope--settings .ert-beat-system-card.ert-beat-system-card--custom {
+  --ert-panel-bg: color-mix(in srgb, var(--background-primary) 92%, var(--ert-accent) 8%);
+  --ert-panel-border: color-mix(in srgb, var(--ert-accent) 25%, var(--background-modifier-border));
+}
+
 .ert-ui.ert-scope--settings .ert-settings-visible:not(.setting-item):not(.ert-stack) {
   display: block;
 }

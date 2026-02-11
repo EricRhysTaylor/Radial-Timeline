@@ -36,12 +36,12 @@ type BeatSystemMode = 'template' | 'custom';
 type TemplateSystemId = 'save_the_cat' | 'heros_journey' | 'story_grid';
 
 const DEFAULT_HOVER_ICON = 'align-vertical-space-around';
-const TEMPLATE_SYSTEMS: Array<{ id: TemplateSystemId; label: string; systemName: string; tooltip: string }> = [
-    { id: 'save_the_cat', label: 'STC', systemName: 'Save The Cat', tooltip: 'Save The Cat' },
-    { id: 'heros_journey', label: 'Hero', systemName: 'Hero\'s Journey', tooltip: 'Hero\'s Journey' },
-    { id: 'story_grid', label: 'Story Grid', systemName: 'Story Grid', tooltip: 'Story Grid' },
+const TEMPLATE_SYSTEMS: Array<{ id: TemplateSystemId; label: string; systemName: string }> = [
+    { id: 'save_the_cat', label: 'Save the Cat', systemName: 'Save The Cat' },
+    { id: 'heros_journey', label: 'Hero\'s Journey', systemName: 'Hero\'s Journey' },
+    { id: 'story_grid', label: 'Story Grid', systemName: 'Story Grid' },
 ];
-const CUSTOM_SYSTEM_OPTION = { id: 'custom' as const, label: 'Custom', systemName: 'Custom', tooltip: 'Custom' };
+const CUSTOM_SYSTEM_OPTION = { id: 'custom' as const, label: 'Custom', systemName: 'Custom' };
 
 const resolveTemplateSystemId = (system?: string): TemplateSystemId | null => {
     switch ((system ?? '').trim()) {
@@ -464,46 +464,19 @@ export function renderStoryBeatsSection(params: {
     const beatSystemSetting = new Settings(beatsStack)
         .setName('Beat system')
         .setDesc('Select the story structure model for your manuscript. This will establish the story beat system and can be used to create beat notes and graph scores using Gossamer mode manually or automatically using AI.');
-    const beatSystemControls = beatSystemSetting.controlEl.createDiv({ cls: 'ert-inline-actions' });
+    const beatSystemTabs = beatSystemSetting.controlEl.createDiv({ cls: 'ert-mini-tabs' });
     const beatSystemOptions = [...TEMPLATE_SYSTEMS, CUSTOM_SYSTEM_OPTION];
-
-    const renderBeatSystemSelector = () => {
-        beatSystemControls.empty();
-        const { mode, templateSystemId } = deriveBeatSystemMode(plugin.settings.beatSystem);
-        const activeId = mode === 'custom' ? CUSTOM_SYSTEM_OPTION.id : templateSystemId;
-        beatSystemOptions.forEach((option) => {
-            const isActive = option.id === activeId;
-            const btn = beatSystemControls.createEl('button', {
-                cls: `${ERT_CLASSES.PILL_BTN} ${ERT_CLASSES.PILL_BTN_STANDARD} ${isActive ? ERT_CLASSES.IS_ACTIVE : ''}`,
-                text: option.label,
-                attr: { type: 'button', 'aria-pressed': isActive ? 'true' : 'false' }
-            });
-            setTooltip(btn, option.tooltip);
-            btn.addEventListener('click', async () => {
-                if (option.systemName === (plugin.settings.beatSystem || 'Custom')) return;
-                plugin.settings.beatSystem = option.systemName;
-                await plugin.saveSettings();
-                existingBeatReady = false;
-                updateStoryStructureDescription(storyStructureInfo, option.systemName);
-                updateTemplateButton(templateSetting, option.systemName);
-                updateCustomInputsVisibility(option.systemName);
-                updateCustomToolsVisibility(option.systemName);
-                renderBeatSystemSelector();
-            });
-        });
-    };
     beatSystemSetting.settingEl.addClass('ert-setting-two-row');
 
-    // Story structure explanation
-    const storyStructureInfo = beatSystemSetting.settingEl.createDiv({
-        cls: 'ert-story-structure-info setting-item-description'
+    const beatSystemCard = beatsStack.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-beat-system-card` });
+    const templatePreviewContainer = beatSystemCard.createDiv({
+        cls: ['ert-previewFrame', 'ert-previewFrame--center', 'ert-previewFrame--flush', 'ert-beat-template-preview']
     });
-    
-    updateStoryStructureDescription(storyStructureInfo, plugin.settings.beatSystem || 'Custom');
-    renderBeatSystemSelector();
+    const templatePreviewHeading = templatePreviewContainer.createDiv({ cls: 'ert-planetary-preview-heading', text: 'Preview' });
+    const templatePreviewBody = templatePreviewContainer.createDiv({ cls: 'ert-planetary-preview-body' });
 
     // --- Custom System Configuration (Dynamic Visibility) ---
-    const customConfigContainer = beatsStack.createDiv({ cls: ['ert-custom-beat-config', ERT_CLASSES.STACK] });
+    const customConfigContainer = beatSystemCard.createDiv({ cls: ['ert-custom-beat-config', ERT_CLASSES.STACK] });
 
     const renderCustomConfig = () => {
         customConfigContainer.empty();
@@ -845,7 +818,6 @@ export function renderStoryBeatsSection(params: {
             refreshCustomBeats?.(true);
         }
     };
-    updateCustomInputsVisibility(plugin.settings.beatSystem || 'Custom');
     if (customBeatsObserver as IntersectionObserver | null) {
         customBeatsObserver!.disconnect();
         customBeatsObserver = null;
@@ -860,11 +832,26 @@ export function renderStoryBeatsSection(params: {
     }
     // --------------------------------------------------------
 
+    const renderTemplatePreview = (system: string) => {
+        const { mode } = deriveBeatSystemMode(system);
+        templatePreviewContainer.toggleClass('ert-settings-hidden', mode !== 'template');
+        if (mode !== 'template') return;
+        const template = getPlotSystem(system);
+        if (!template) {
+            templatePreviewHeading.setText('Preview');
+            templatePreviewBody.setText('No template found.');
+            return;
+        }
+        const count = template.beatCount || template.beats.length;
+        templatePreviewHeading.setText(`Preview (${count} beats)`);
+        templatePreviewBody.setText(template.beats.join(' · '));
+    };
+
     // Create template beat note button
     let createTemplatesButton: ButtonComponent | undefined;
     let mergeTemplatesButton: ButtonComponent | undefined;
 
-    const templateSetting = new Settings(beatsStack)
+    const templateSetting = new Settings(beatSystemCard)
         .setName('Create story beat template notes')
         .setDesc('Generate template beat notes based on the selected story structure system including YAML frontmatter and body summary.')
         .addButton(button => {
@@ -888,7 +875,7 @@ export function renderStoryBeatsSection(params: {
 
     updateTemplateButton(templateSetting, plugin.settings.beatSystem || 'Custom');
 
-    const customToolsContainer = beatsStack.createDiv({ cls: ERT_CLASSES.STACK });
+    const customToolsContainer = beatSystemCard.createDiv({ cls: ERT_CLASSES.STACK });
     const updateCustomToolsVisibility = (system: string) => {
         const { mode } = deriveBeatSystemMode(system);
         customToolsContainer.toggleClass('ert-settings-hidden', mode !== 'custom');
@@ -896,6 +883,37 @@ export function renderStoryBeatsSection(params: {
             const hidden = customToolsContainer.hasClass('ert-settings-hidden');
             console.assert(hidden, '[StoryBeats] Template mode should hide custom-only tools.');
         }
+    };
+
+    const updateBeatSystemCard = (system: string) => {
+        const { mode } = deriveBeatSystemMode(system);
+        beatSystemCard.toggleClass('ert-beat-system-card--custom', mode === 'custom');
+        renderTemplatePreview(system);
+        updateCustomInputsVisibility(system);
+        updateCustomToolsVisibility(system);
+    };
+
+    const renderBeatSystemTabs = () => {
+        beatSystemTabs.empty();
+        const activeSystem = plugin.settings.beatSystem || 'Custom';
+        beatSystemOptions.forEach((option) => {
+            const isActive = option.systemName === activeSystem;
+            const isCustomTab = option.systemName === 'Custom';
+            const btn = beatSystemTabs.createEl('button', {
+                cls: `ert-mini-tab${isCustomTab ? ' ert-mini-tab--custom' : ''}${isActive ? ` ${ERT_CLASSES.IS_ACTIVE}` : ''}`,
+                text: option.label,
+                attr: { type: 'button', 'aria-pressed': isActive ? 'true' : 'false' }
+            });
+            btn.addEventListener('click', async () => {
+                if (isActive) return;
+                plugin.settings.beatSystem = option.systemName;
+                await plugin.saveSettings();
+                existingBeatReady = false;
+                updateTemplateButton(templateSetting, option.systemName);
+                updateBeatSystemCard(option.systemName);
+                renderBeatSystemTabs();
+            });
+        });
     };
 
     // ─── BEAT YAML EDITOR (Core) — mirrors Advanced YAML editor scaffold ──
@@ -1547,7 +1565,8 @@ export function renderStoryBeatsSection(params: {
     };
 
     renderSavedBeatSystems();
-    updateCustomToolsVisibility(plugin.settings.beatSystem || 'Custom');
+    updateBeatSystemCard(plugin.settings.beatSystem || 'Custom');
+    renderBeatSystemTabs();
 
     // Scene YAML Templates Section
     const yamlHeading = new Settings(yamlStack)
@@ -2928,27 +2947,6 @@ export function renderStoryBeatsSection(params: {
     renderBackdropAuditVisibility();
     backdropYamlToggleBtn.addEventListener('click', () => { renderBackdropAuditVisibility(); });
     renderAuditPanel(backdropAuditContainer, 'Backdrop');
-
-    function updateStoryStructureDescription(container: HTMLElement, selectedSystem: string): void {
-        const descriptions: Record<string, string> = {
-            'Save The Cat': 'Commercial fiction, screenplays, and genre stories. Emphasizes clear emotional beats and audience engagement. <i>The Hunger Games</i>, <i>The Martian</i>, <i>The Fault in Our Stars</i>.',
-            'Hero\'s Journey': 'Mythic, adventure, and transformation stories. Focuses on the protagonist\'s arc through trials and self-discovery. <i>The Odyssey</i>, <i>The Hobbit</i>, <i>Harry Potter and the Sorcerer\'s Stone</i>.',
-            'Story Grid': 'Scene-driven structure built around the 5 Commandments: Inciting Incident, Progressive Complications, Crisis, Climax, Resolution. Useful per-scene and at the global level. <i>The Silence of the Lambs</i>, <i>Pride and Prejudice</i>.',
-            'Custom': 'Uses any story beat note you create manually or below via the custom story beat system editor. Perfect for when you don\'t follow a traditional story structure.'
-        };
-
-        container.empty();
-        for (const [system, desc] of Object.entries(descriptions)) {
-            const isSelected = system === selectedSystem;
-            const lineDiv = container.createDiv();
-            if (isSelected) {
-                lineDiv.classList.add('ert-story-structure-selected');
-            }
-            const boldSpan = lineDiv.createEl('b');
-            boldSpan.textContent = system;
-            lineDiv.createSpan().innerHTML = `: ${desc}`; // SAFE: innerHTML used for displaying HTML tags in hardcoded descriptions
-        }
-    }
 
     function updateTemplateButton(setting: Settings, selectedSystem: string): void {
         const isCustom = selectedSystem === 'Custom';
