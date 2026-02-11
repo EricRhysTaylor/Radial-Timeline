@@ -54,7 +54,13 @@ export interface TimelineItem {
     pov?: string;
     place?: string;
     number?: number;
+    /**
+     * Scene narrative unit fields:
+     * - Synopsis: concise present-tense snapshot (1-3 sentences).
+     * - Summary: extended scene write-up (emotion/subtext/outcome allowed).
+     */
     synopsis?: string;
+    Summary?: string;
     when?: Date;
     actNumber?: number;
     Character?: string[];
@@ -72,7 +78,12 @@ export interface TimelineItem {
     "Pulse Last Updated"?: string;
     "Beats Update"?: boolean | string; // legacy compatibility
     itemType?: "Scene" | "Plot" | "Beat" | "Backdrop" | "Frontmatter" | "Backmatter" | "BookMeta";
+    /** Beat structural function ("Why this beat exists"). Preferred key: Purpose. */
+    Purpose?: string;
+    /** @deprecated Legacy beat field. Read for compatibility; new writes should use Purpose. */
     Description?: string;
+    /** Backdrop world-layer context. Preferred key: Context. */
+    Context?: string;
     "Beat Model"?: string;
     Range?: string;
     "Suggest Placement"?: string;

@@ -192,7 +192,7 @@ Iteration:`
     beatYamlTemplates: {
         base: `Class: Beat
 Act: {{Act}}
-Description: {{Description}}
+Purpose: {{Purpose}}
 Beat Model: {{BeatModel}}
 Range: {{Range}}`,
         advanced: ``
@@ -201,12 +201,12 @@ Range: {{Range}}`,
     backdropYamlTemplate: `Class: Backdrop                   # Backdrop events appear below the outer ring in Chronologue Mode
 When: {{When}}                       # Start Date/Time (YYYY-MM-DD HH:MM)
 End: {{End}}                         # End Date/Time (YYYY-MM-DD HH:MM)
-Synopsis: What this backdrop represents and how it shapes the story.`,
+Context: Static world context that shapes the story.`,
     backdropYamlTemplates: {
         base: `Class: Backdrop
 When: {{When}}
 End: {{End}}
-Synopsis:`,
+Context:`,
         advanced: ``
     },
     enableBackdropYamlEditor: false,

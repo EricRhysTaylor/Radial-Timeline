@@ -24,6 +24,7 @@ export interface NoteAuditEntry {
     missingFields: string[];
     extraKeys: string[];
     orderDrift: boolean;
+    semanticWarnings: string[];
     /** Short human-readable reason string (capped length). */
     reason: string;
 }
@@ -36,6 +37,7 @@ export interface YamlAuditSummary {
     notesWithExtra: number;
     /** Only counted when missingFields.length === 0 for a note. */
     notesWithDrift: number;
+    notesWithWarnings: number;
     clean: number;
 }
 
@@ -51,6 +53,121 @@ export interface YamlAuditResult {
 /** Cap a reason string to a maximum length, appending "…" when truncated. */
 function capReason(text: string, maxLen = 80): string {
     return text.length <= maxLen ? text : text.slice(0, maxLen - 1) + '…';
+}
+
+const SCENE_SYNOPSIS_SOFT_CHAR_LIMIT = 500;
+const SCENE_SYNOPSIS_SOFT_SENTENCE_LIMIT = 3;
+const BEAT_PURPOSE_SOFT_MAX_LINES = 3;
+const BACKDROP_SCENE_TITLE_MAX_MATCHES = 3;
+
+function getStringField(fm: Record<string, unknown>, key: string): string | undefined {
+    const value = fm[key];
+    if (typeof value !== 'string') return undefined;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function splitMeaningfulLines(value: string): string[] {
+    return value
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(Boolean);
+}
+
+function countSentences(value: string): number {
+    const matches = value.match(/[.!?](?:\s|$)/g);
+    return matches ? matches.length : 1;
+}
+
+function stripSceneNumberPrefix(title: string): string {
+    return title.replace(/^\d+(?:\.\d+)?\s+/, '').trim();
+}
+
+function collectSceneTitleIndex(app: App, settings: RadialTimelineSettings): string[] {
+    const mappings = settings.enableCustomMetadataMapping ? settings.frontmatterMappings : undefined;
+    const titles = new Set<string>();
+
+    for (const file of app.vault.getMarkdownFiles()) {
+        const cache = app.metadataCache.getFileCache(file);
+        if (!cache?.frontmatter) continue;
+        const fm = mappings ? normalizeFrontmatterKeys(cache.frontmatter, mappings) : cache.frontmatter;
+        if (fm.Class !== 'Scene') continue;
+
+        const candidates = [file.basename, stripSceneNumberPrefix(file.basename)];
+        if (typeof fm.Title === 'string' && fm.Title.trim().length > 0) {
+            candidates.push(fm.Title.trim());
+        }
+
+        for (const raw of candidates) {
+            const normalized = raw.trim().toLowerCase();
+            if (normalized.length >= 8) titles.add(normalized);
+        }
+    }
+
+    return [...titles];
+}
+
+function buildSemanticWarnings(
+    noteType: NoteType,
+    fm: Record<string, unknown>,
+    sceneTitleIndex: string[]
+): string[] {
+    const warnings: string[] = [];
+
+    if (noteType === 'Scene') {
+        const synopsis = getStringField(fm, 'Synopsis');
+        if (synopsis) {
+            if (synopsis.length > SCENE_SYNOPSIS_SOFT_CHAR_LIMIT) {
+                warnings.push(`Scene Synopsis is ${synopsis.length} chars (soft limit ≈${SCENE_SYNOPSIS_SOFT_CHAR_LIMIT}).`);
+            } else {
+                const sentenceCount = countSentences(synopsis);
+                if (sentenceCount > SCENE_SYNOPSIS_SOFT_SENTENCE_LIMIT) {
+                    warnings.push(`Scene Synopsis has ${sentenceCount} sentences (target is 1-${SCENE_SYNOPSIS_SOFT_SENTENCE_LIMIT}).`);
+                }
+            }
+        }
+        return warnings;
+    }
+
+    if (noteType === 'Beat') {
+        const purpose = getStringField(fm, 'Purpose') ?? getStringField(fm, 'Description');
+        if (getStringField(fm, 'Description') && !getStringField(fm, 'Purpose')) {
+            warnings.push('Legacy "Description" detected; migrate to "Purpose" (non-destructive, optional cleanup).');
+        }
+        if (fm.When !== undefined && fm.When !== null && String(fm.When).trim() !== '') {
+            warnings.push('Legacy "When" detected on Beat; retained for read compatibility, optional removal recommended.');
+        }
+        if (purpose) {
+            const purposeLines = splitMeaningfulLines(purpose).length;
+            if (purposeLines > BEAT_PURPOSE_SOFT_MAX_LINES) {
+                warnings.push(`Beat Purpose spans ${purposeLines} lines (likely drifting into scene retell).`);
+            }
+        }
+        return warnings;
+    }
+
+    if (noteType === 'Backdrop') {
+        const context = getStringField(fm, 'Context') ?? getStringField(fm, 'Synopsis');
+        if (getStringField(fm, 'Synopsis') && !getStringField(fm, 'Context')) {
+            warnings.push('Legacy "Synopsis" detected; migrate to "Context" (non-destructive, optional cleanup).');
+        }
+        if (context && sceneTitleIndex.length > 0) {
+            const lower = context.toLowerCase();
+            const matched: string[] = [];
+            for (const sceneTitle of sceneTitleIndex) {
+                if (lower.includes(sceneTitle)) {
+                    matched.push(sceneTitle);
+                    if (matched.length >= BACKDROP_SCENE_TITLE_MAX_MATCHES) break;
+                }
+            }
+            if (matched.length > 0) {
+                warnings.push(`Backdrop Context references likely scene title(s): ${matched.join(', ')}.`);
+            }
+        }
+        return warnings;
+    }
+
+    return warnings;
 }
 
 /**
@@ -102,6 +219,7 @@ export function runYamlAudit(options: YamlAuditOptions): YamlAuditResult {
     const excludeKey = getExcludeKeyPredicate(noteType);
 
     const mappings = settings.enableCustomMetadataMapping ? settings.frontmatterMappings : undefined;
+    const sceneTitleIndex = noteType === 'Backdrop' ? collectSceneTitleIndex(app, settings) : [];
 
     const notes: NoteAuditEntry[] = [];
     const unreadFiles: TFile[] = [];
@@ -133,6 +251,7 @@ export function runYamlAudit(options: YamlAuditOptions): YamlAuditResult {
         const orderDrift = missingFields.length === 0
             ? hasOrderDrift(noteKeys, canonicalOrder)
             : false;
+        const semanticWarnings = buildSemanticWarnings(noteType, fm, sceneTitleIndex);
 
         // Build concise reason string
         const reasons: string[] = [];
@@ -145,8 +264,11 @@ export function runYamlAudit(options: YamlAuditOptions): YamlAuditResult {
         if (orderDrift) {
             reasons.push('field order differs from template');
         }
+        if (semanticWarnings.length > 0) {
+            reasons.push(`warnings: ${semanticWarnings.join(' | ')}`);
+        }
 
-        if (missingFields.length === 0 && extraKeys.length === 0 && !orderDrift) {
+        if (missingFields.length === 0 && extraKeys.length === 0 && !orderDrift && semanticWarnings.length === 0) {
             // Clean note — don't add to results
             continue;
         }
@@ -156,6 +278,7 @@ export function runYamlAudit(options: YamlAuditOptions): YamlAuditResult {
             missingFields,
             extraKeys,
             orderDrift,
+            semanticWarnings,
             reason: capReason(reasons.join(' | ')),
         });
     }
@@ -163,6 +286,7 @@ export function runYamlAudit(options: YamlAuditOptions): YamlAuditResult {
     const notesWithMissing = notes.filter(n => n.missingFields.length > 0).length;
     const notesWithExtra = notes.filter(n => n.extraKeys.length > 0).length;
     const notesWithDrift = notes.filter(n => n.orderDrift).length;
+    const notesWithWarnings = notes.filter(n => n.semanticWarnings.length > 0).length;
 
     return {
         notes,
@@ -173,6 +297,7 @@ export function runYamlAudit(options: YamlAuditOptions): YamlAuditResult {
             notesWithMissing,
             notesWithExtra,
             notesWithDrift,
+            notesWithWarnings,
             clean: files.length - notes.length - unreadFiles.length,
         },
     };
@@ -234,6 +359,7 @@ export function formatAuditReport(result: YamlAuditResult, noteType: NoteType): 
     lines.push(`Missing fields:  ${s.notesWithMissing} note(s)`);
     lines.push(`Extra keys:      ${s.notesWithExtra} note(s)`);
     lines.push(`Order drift:     ${s.notesWithDrift} note(s)`);
+    lines.push(`Warnings:        ${s.notesWithWarnings} note(s)`);
     if (s.unreadNotes > 0) {
         lines.push(`Unread (stale):  ${s.unreadNotes} note(s)`);
     }
@@ -243,6 +369,9 @@ export function formatAuditReport(result: YamlAuditResult, noteType: NoteType): 
         lines.push('Details:');
         for (const entry of result.notes) {
             lines.push(`  ${entry.file.basename}  —  ${entry.reason}`);
+            if (entry.semanticWarnings.length > 0) {
+                lines.push(`    warnings: ${entry.semanticWarnings.join(' | ')}`);
+            }
         }
     }
 

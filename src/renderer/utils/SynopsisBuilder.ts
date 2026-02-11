@@ -32,21 +32,21 @@ export function buildSynopsisElement(
     const fontScale = getReadabilityMultiplier(plugin.settings as any);
     const maxLines = (plugin.settings as any).synopsisHoverMaxLines ?? DEFAULT_SYNOPSIS_MAX_LINES;
 
-    // For Backdrop items, only show Title and Synopsis/Description
+    // For Backdrop items, only show Title and world context text
     if (scene.itemType === 'Backdrop') {
         const lines = [scene.title || 'Untitled'];
-        if (scene.synopsis) {
-            lines.push(...splitAndTruncateLines(scene.synopsis, maxTextWidth, fontScale, maxLines));
-        } else if (scene.Description) {
-            lines.push(...splitAndTruncateLines(scene.Description, maxTextWidth, fontScale, maxLines));
+        const backdropContext = scene.Context ?? scene.synopsis ?? scene.Description;
+        if (backdropContext) {
+            lines.push(...splitAndTruncateLines(backdropContext, maxTextWidth, fontScale, maxLines));
         }
         return plugin.synopsisManager.generateElement(scene, lines, sceneId, subplotIndexResolver);
     }
 
+    const beatPurpose = scene.Purpose ?? scene.Description;
     const contentLines = [
         scene.title || '',
-        ...(isBeatNote(scene) && scene.Description
-            ? [scene.Description]
+        ...(isBeatNote(scene) && beatPurpose
+            ? [beatPurpose]
             : scene.synopsis
                 ? [scene.synopsis]
                 : [])

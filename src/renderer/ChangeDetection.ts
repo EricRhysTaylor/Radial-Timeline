@@ -110,7 +110,9 @@ export function createSnapshot(
                 s.synopsis || '',
                 // Pending Edits affects number square color (gray)
                 s.pendingEdits || '',
-                s.Description || '',
+                s.Purpose || '',
+                s.Context || '',
+                s.Description || '', // legacy fallback
                 stringifyPovForHash(s.pov),
                 // Range field (rendered in Gossamer mode)
                 s.Range || '',

@@ -3,7 +3,8 @@ import type RadialTimelinePlugin from '../../main';
 
 const CANONICAL_KEYS = [
     'Class', 'When', 'Subplot', 'Act', 'Duration', 'Character', 'POV', 'Place', 'Synopsis', 
-    'Status', 'Publish Stage', 'Due', 'Pending Edits', 'Beat Model', 'Range', 'Description', 'Scope'
+    'Summary', 'Status', 'Publish Stage', 'Due', 'Pending Edits', 'Beat Model', 'Range',
+    'Purpose', 'Context', 'Description', 'Scope'
 ].sort();
 
 const ALL_CANONICAL_KEYS = CANONICAL_KEYS;

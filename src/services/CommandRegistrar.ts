@@ -585,8 +585,30 @@ export class CommandRegistrar {
             const backdropTemplates = this.plugin.settings.backdropYamlTemplates
                 ?? DEFAULT_SETTINGS.backdropYamlTemplates;
             const backdropBase = backdropTemplates?.base
-                ?? 'Class: Backdrop\nWhen: {{When}}\nEnd: {{End}}\nSynopsis:';
-            const backdropAdvanced = backdropTemplates?.advanced ?? '';
+                ?? 'Class: Backdrop\nWhen: {{When}}\nEnd: {{End}}\nContext:';
+            const backdropAdvancedRaw = backdropTemplates?.advanced ?? '';
+            // Keep stored legacy fields intact, but avoid writing deprecated keys in new notes.
+            const backdropAdvanced = (() => {
+                const lines = backdropAdvancedRaw.split('\n');
+                const result: string[] = [];
+                let skipUntilNextField = false;
+                for (const line of lines) {
+                    const fieldMatch = line.match(/^([A-Za-z][A-Za-z0-9 _'-]*):/);
+                    if (fieldMatch) {
+                        const fieldName = fieldMatch[1].trim();
+                        if (fieldName === 'Synopsis') {
+                            skipUntilNextField = true;
+                            continue;
+                        }
+                        skipUntilNextField = false;
+                        result.push(line);
+                        continue;
+                    }
+                    if (skipUntilNextField) continue;
+                    result.push(line);
+                }
+                return result.join('\n');
+            })();
             const template = backdropAdvanced.trim()
                 ? mergeTemplates(backdropBase, backdropAdvanced)
                 : backdropBase;

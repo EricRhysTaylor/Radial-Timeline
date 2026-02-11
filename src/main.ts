@@ -512,6 +512,22 @@ export default class RadialTimelinePlugin extends Plugin {
             geminiModelId: this.settings.geminiModelId,
         });
 
+        // ─── Schema alignment (Scene/Beat/Backdrop ontology) ───────────────
+        let schemaOntologyMigrated = false;
+        const beatBaseTemplate = this.settings.beatYamlTemplates?.base;
+        if (typeof beatBaseTemplate === 'string' && beatBaseTemplate.includes('Description:')) {
+            if (!this.settings.beatYamlTemplates) {
+                this.settings.beatYamlTemplates = { ...DEFAULT_SETTINGS.beatYamlTemplates! };
+            } else {
+                this.settings.beatYamlTemplates.base = beatBaseTemplate.replace(/^Description:/gm, 'Purpose:');
+            }
+            schemaOntologyMigrated = true;
+            console.debug('[SchemaMigration]', {
+                event: 'beat_base_template_description_to_purpose',
+                action: 'updated beat base template to write Purpose',
+            });
+        }
+
         // ─── Migrate legacy beat YAML/hover globals into per-system config map ───
         let beatConfigMigrated = false;
         if (!this.settings.beatSystemConfigs) {
@@ -552,7 +568,7 @@ export default class RadialTimelinePlugin extends Plugin {
         // ─── Migrate legacy backdropYamlTemplate → backdropYamlTemplates ────
         let backdropTemplateMigrated = false;
         if (!this.settings.backdropYamlTemplates) {
-            const knownBaseKeys = ['Class', 'When', 'End', 'Synopsis'];
+            const knownBaseKeys = ['Class', 'When', 'End', 'Context', 'Synopsis'];
             const legacyBackdropTemplate = this.settings.backdropYamlTemplate ?? '';
             if (legacyBackdropTemplate.trim()) {
                 // Parse all keys from the legacy template
@@ -570,17 +586,30 @@ export default class RadialTimelinePlugin extends Plugin {
                     // Build advanced YAML string from extra keys (strip comments, use empty values)
                     const advLines = advancedKeys.map(k => `${k}:`);
                     this.settings.backdropYamlTemplates = {
-                        base: `Class: Backdrop\nWhen: {{When}}\nEnd: {{End}}\nSynopsis:`,
+                        base: `Class: Backdrop\nWhen: {{When}}\nEnd: {{End}}\nContext:`,
                         advanced: advLines.join('\n'),
                     };
                 } else {
                     this.settings.backdropYamlTemplates = {
-                        base: `Class: Backdrop\nWhen: {{When}}\nEnd: {{End}}\nSynopsis:`,
+                        base: `Class: Backdrop\nWhen: {{When}}\nEnd: {{End}}\nContext:`,
                         advanced: '',
                     };
                 }
                 backdropTemplateMigrated = true;
+                console.debug('[SchemaMigration]', {
+                    event: 'backdrop_template_initialized_with_context',
+                    action: 'legacy backdrop template migrated to Context base key'
+                });
             }
+        }
+        if (this.settings.backdropYamlTemplates?.base?.includes('Synopsis:')) {
+            this.settings.backdropYamlTemplates.base = this.settings.backdropYamlTemplates.base.replace(/^Synopsis:/gm, 'Context:');
+            backdropTemplateMigrated = true;
+            schemaOntologyMigrated = true;
+            console.debug('[SchemaMigration]', {
+                event: 'backdrop_base_template_synopsis_to_context',
+                action: 'updated backdrop base template to write Context',
+            });
         }
         if (this.settings.backdropHoverMetadataFields === undefined) {
             this.settings.backdropHoverMetadataFields = [];
@@ -617,7 +646,7 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         }
 
-        if (before !== after || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated || backdropTemplateMigrated || pandocLayoutsMigrated || booksMigrated) {
+        if (before !== after || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated || backdropTemplateMigrated || pandocLayoutsMigrated || booksMigrated || schemaOntologyMigrated) {
             await this.saveSettings();
         }
     }

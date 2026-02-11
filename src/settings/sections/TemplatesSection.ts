@@ -1272,23 +1272,13 @@ export function renderStoryBeatsSection(params: {
         });
     };
 
-    // ─── BEAT YAML EDITOR (Core) — mirrors Advanced YAML editor scaffold ──
-    // Lives in Fields stage (stage 3), not Advanced/Pro.
+    // ─── BEAT YAML EDITOR (Core) — always visible in Fields stage ──────
     const beatYamlSection = fieldsContainer.createDiv({ cls: ERT_CLASSES.STACK });
     const beatYamlSetting = new Settings(beatYamlSection)
-        .setName('Beat YAML editor')
-        .setDesc('Customize additional YAML keys for beat notes. Enable fields to show in beat hover synopsis.');
-    const beatYamlToggleBtn = beatYamlSetting.controlEl.createEl('button', {
-        cls: ERT_CLASSES.ICON_BTN,
-        attr: { type: 'button', 'aria-label': 'Show beat YAML editor' }
-    });
-    const refreshBeatYamlToggle = () => {
-        const expanded = plugin.settings.enableBeatYamlEditor ?? false;
-        setIcon(beatYamlToggleBtn, expanded ? 'chevron-down' : 'chevron-right');
-        setTooltip(beatYamlToggleBtn, expanded ? 'Hide beat YAML editor' : 'Show beat YAML editor');
-        beatYamlToggleBtn.setAttribute('aria-label', expanded ? 'Hide beat YAML editor' : 'Show beat YAML editor');
-    };
-    refreshBeatYamlToggle();
+        .setName('Beat fields')
+        .setDesc('Customize additional YAML keys for beat notes. Enable fields to show in beat hover synopsis. Use the audit below to check fields across existing beat notes.');
+    // Force editor enabled so Fields content is always visible
+    plugin.settings.enableBeatYamlEditor = true;
 
     const beatYamlContainer = beatYamlSection.createDiv({ cls: ['ert-panel', 'ert-advanced-template-card'] });
 
@@ -1342,17 +1332,18 @@ export function renderStoryBeatsSection(params: {
 
     const beatBaseTemplate = DEFAULT_SETTINGS.beatYamlTemplates!.base;
     const beatBaseKeys = extractKeysInOrder(beatBaseTemplate);
+    const beatDisallowedNewWriteKeys = new Set(['When', 'Description']);
 
     const renderBeatYamlEditor = () => {
         beatYamlContainer.empty();
-        const isExpanded = plugin.settings.enableBeatYamlEditor ?? false;
-        beatYamlContainer.toggleClass('ert-settings-hidden', !isExpanded);
-        if (!isExpanded) return;
 
         const currentBeatAdvanced = getBeatConfigForSystem(plugin.settings).beatYamlAdvanced;
         const beatAdvancedObj = safeParseYaml(currentBeatAdvanced);
 
-        const beatOptionalOrder = extractKeysInOrder(currentBeatAdvanced).filter(k => !beatBaseKeys.includes(k));
+        const legacyHiddenBeatKeys = new Set(['When']);
+        const beatOptionalOrder = extractKeysInOrder(currentBeatAdvanced).filter(
+            k => !beatBaseKeys.includes(k) && !legacyHiddenBeatKeys.has(k)
+        );
         const beatEntries: TemplateEntry[] = beatOptionalOrder.map(key => ({
             key,
             value: beatAdvancedObj[key] ?? '',
@@ -1374,9 +1365,6 @@ export function renderStoryBeatsSection(params: {
             const data = next ?? beatWorkingEntries;
             beatWorkingEntries = data;
             beatYamlContainer.empty();
-            const isExpanded = plugin.settings.enableBeatYamlEditor ?? false;
-            beatYamlContainer.toggleClass('ert-settings-hidden', !isExpanded);
-            if (!isExpanded) return;
 
             // Read-only base fields (collapsed summary)
             const baseCard = beatYamlContainer.createDiv({ cls: 'ert-template-base-summary' });
@@ -1462,6 +1450,11 @@ export function renderStoryBeatsSection(params: {
                     if (!newKey) { keyInput.value = entry.key; return; }
                     if (beatBaseKeys.includes(newKey)) {
                         new Notice(`"${newKey}" is a base beat field. Choose another name.`);
+                        keyInput.value = entry.key;
+                        return;
+                    }
+                    if (beatDisallowedNewWriteKeys.has(newKey)) {
+                        new Notice(`"${newKey}" is a legacy beat key. Use "Purpose" instead.`);
                         keyInput.value = entry.key;
                         return;
                     }
@@ -1599,6 +1592,10 @@ export function renderStoryBeatsSection(params: {
                     new Notice(`"${newKey}" is a base beat field.`);
                     return;
                 }
+                if (beatDisallowedNewWriteKeys.has(newKey)) {
+                    new Notice(`"${newKey}" is a legacy beat key. Use "Purpose" instead.`);
+                    return;
+                }
                 if (data.some(e => e.key === newKey)) {
                     new Notice(`"${newKey}" already exists.`);
                     return;
@@ -1671,18 +1668,6 @@ export function renderStoryBeatsSection(params: {
         rerenderBeatYaml(beatEntries);
     };
 
-    // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
-    beatYamlToggleBtn.addEventListener('click', async () => {
-        const next = !(plugin.settings.enableBeatYamlEditor ?? false);
-        plugin.settings.enableBeatYamlEditor = next;
-        refreshBeatYamlToggle();
-        await plugin.saveSettings();
-        renderBeatYamlEditor();
-        renderBeatHoverPreview();
-        // Re-render stage switcher (Fields content may have changed)
-        renderStageSwitcher();
-    });
-
     renderBeatYamlEditor();
 
     // ─── BEAT HOVER METADATA PREVIEW (Core) ───────────────────────────
@@ -1700,9 +1685,8 @@ export function renderStoryBeatsSection(params: {
         const currentBeatAdv = activeConfig.beatYamlAdvanced;
         const templateObj = safeParseYaml(currentBeatAdv);
 
-        const beatEditorVisible = plugin.settings.enableBeatYamlEditor ?? false;
-        if (!beatEditorVisible || enabledFields.length === 0) {
-            beatHoverPreviewContainer.toggleClass('ert-settings-hidden', !beatEditorVisible);
+        if (enabledFields.length === 0) {
+            beatHoverPreviewContainer.removeClass('ert-settings-hidden');
             beatHoverPreviewHeading.setText('Beat Hover Metadata Preview (none enabled)');
             beatHoverPreviewBody.createDiv({ text: 'Enable fields using the checkboxes above to show them in beat hover synopsis.', cls: 'ert-hover-preview-empty' });
             return;
@@ -2652,8 +2636,9 @@ export function renderStoryBeatsSection(params: {
 
     const backdropBaseTemplate = plugin.settings.backdropYamlTemplates?.base
         ?? DEFAULT_SETTINGS.backdropYamlTemplates?.base
-        ?? 'Class: Backdrop\nWhen:\nEnd:\nSynopsis:';
+        ?? 'Class: Backdrop\nWhen:\nEnd:\nContext:';
     const backdropBaseKeys = extractKeysInOrder(backdropBaseTemplate);
+    const backdropDisallowedNewWriteKeys = new Set(['Synopsis']);
 
     const renderBackdropYamlEditor = () => {
         backdropYamlContainer.empty();
@@ -2800,6 +2785,11 @@ export function renderStoryBeatsSection(params: {
                     if (!newKey || newKey === entry.key) return;
                     if (backdropBaseKeys.includes(newKey)) {
                         new Notice(`"${newKey}" is a base field and cannot be used as a custom key.`);
+                        keyInput.value = entry.key;
+                        return;
+                    }
+                    if (backdropDisallowedNewWriteKeys.has(newKey)) {
+                        new Notice(`"${newKey}" is a legacy backdrop key. Use "Context" instead.`);
                         keyInput.value = entry.key;
                         return;
                     }
@@ -3013,6 +3003,7 @@ export function renderStoryBeatsSection(params: {
                 missing: auditResult.summary.notesWithMissing,
                 extra: auditResult.summary.notesWithExtra,
                 drift: auditResult.summary.notesWithDrift,
+                warnings: auditResult.summary.notesWithWarnings,
                 unread: auditResult.summary.unreadNotes,
                 clean: auditResult.summary.clean,
             });
@@ -3038,7 +3029,7 @@ export function renderStoryBeatsSection(params: {
             // Schema health + summary in one line
             const healthLevel = s.notesWithMissing > 0
                 ? 'needs-attention'
-                : (s.notesWithExtra > 0 || s.notesWithDrift > 0)
+                : (s.notesWithExtra > 0 || s.notesWithDrift > 0 || s.notesWithWarnings > 0)
                     ? 'mixed'
                     : 'clean';
             const healthLabels: Record<string, string> = {
@@ -3058,7 +3049,7 @@ export function renderStoryBeatsSection(params: {
             }
 
             // All clean — early return
-            if (s.clean === s.totalNotes && s.unreadNotes === 0) {
+            if (s.clean === s.totalNotes && s.unreadNotes === 0 && s.notesWithWarnings === 0) {
                 resultsEl.createDiv({
                     text: `All ${s.totalNotes} notes match the template.`,
                     cls: 'ert-audit-clean'
@@ -3070,7 +3061,7 @@ export function renderStoryBeatsSection(params: {
             interface ChipConfig {
                 label: string;
                 count: number;
-                kind: 'missing' | 'extra' | 'drift';
+                kind: 'missing' | 'extra' | 'drift' | 'warning';
                 entries: NoteAuditEntry[];
             }
 
@@ -3081,6 +3072,8 @@ export function renderStoryBeatsSection(params: {
                   entries: auditResult.notes.filter(n => n.extraKeys.length > 0) },
                 { label: 'Order drift', count: s.notesWithDrift, kind: 'drift',
                   entries: auditResult.notes.filter(n => n.orderDrift) },
+                { label: 'Warnings', count: s.notesWithWarnings, kind: 'warning',
+                  entries: auditResult.notes.filter(n => n.semanticWarnings.length > 0) },
             ];
 
             // Category chips row (clickable to filter)
@@ -3131,7 +3124,9 @@ export function renderStoryBeatsSection(params: {
                         ? entry.missingFields.join(', ')
                         : activeChip.kind === 'extra'
                             ? entry.extraKeys.join(', ')
-                            : 'order drift';
+                            : activeChip.kind === 'warning'
+                                ? entry.semanticWarnings.join(' | ')
+                                : 'order drift';
                     const reasonShort = reason.length > 40 ? reason.slice(0, 39) + '…' : reason;
 
                     const pillEl = pillsEl.createEl('button', {
@@ -3146,6 +3141,8 @@ export function renderStoryBeatsSection(params: {
                         await openOrRevealFile(app, entry.file, false);
                         if (entry.missingFields.length > 0) {
                             new Notice(`Missing fields: ${entry.missingFields.join(', ')}`);
+                        } else if (entry.semanticWarnings.length > 0) {
+                            new Notice(`Warnings: ${entry.semanticWarnings.join(' | ')}`);
                         }
                     });
                 }
@@ -3269,14 +3266,6 @@ export function renderStoryBeatsSection(params: {
 
     // Beat audit panel (inside beat YAML section, after hover preview)
     const beatAuditContainer = beatYamlSection.createDiv({ cls: ERT_CLASSES.STACK });
-    const renderBeatAuditVisibility = () => {
-        const visible = plugin.settings.enableBeatYamlEditor ?? false;
-        beatAuditContainer.toggleClass('ert-settings-hidden', !visible);
-    };
-    renderBeatAuditVisibility();
-    const origBeatToggle = beatYamlToggleBtn.onclick;
-    // Re-wire beat toggle to also control audit visibility
-    beatYamlToggleBtn.addEventListener('click', () => { renderBeatAuditVisibility(); });
     renderAuditPanel(
         beatAuditContainer,
         'Beat',

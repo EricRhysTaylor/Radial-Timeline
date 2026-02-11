@@ -52,6 +52,8 @@ export class SceneDataService {
     private settings: RadialTimelineSettings;
     /** Central BookMeta for the active manuscript (exactly one per book). */
     private _bookMeta: BookMeta | null = null;
+    /** Tracks one-time migration notices to avoid repetitive console spam. */
+    private migrationDebugNotices = new Set<string>();
 
     constructor(app: App, settings: RadialTimelineSettings) {
         this.app = app;
@@ -71,6 +73,12 @@ export class SceneDataService {
      */
     updateSettings(settings: RadialTimelineSettings): void {
         this.settings = settings;
+    }
+
+    private logMigrationDebugOnce(key: string, payload: Record<string, unknown>): void {
+        if (this.migrationDebugNotices.has(key)) return;
+        this.migrationDebugNotices.add(key);
+        console.debug('[SchemaMigration]', payload);
     }
 
     /**
@@ -197,6 +205,7 @@ export class SceneDataService {
                             place: metadata.Place as string | undefined,
                             Character: characterList,
                             synopsis: metadata.Synopsis as string | undefined,
+                            Summary: metadata.Summary as string | undefined,
                             status: metadata.Status as string | string[] | undefined,
                             "Publish Stage": metadata["Publish Stage"] as string | undefined,
                             due: metadata.Due as string | undefined,
@@ -251,12 +260,29 @@ export class SceneDataService {
 
                     const isoDate = when ? when.toISOString().split('T')[0] : '';
 
+                    const contextValue = typeof metadata.Context === 'string'
+                        ? metadata.Context
+                        : undefined;
+                    const legacySynopsisValue = typeof metadata.Synopsis === 'string'
+                        ? metadata.Synopsis
+                        : undefined;
+                    const backdropContext = contextValue ?? legacySynopsisValue;
+                    if (!contextValue && legacySynopsisValue) {
+                        this.logMigrationDebugOnce(`backdrop-synopsis-to-context:${file.path}`, {
+                            event: 'backdrop_legacy_synopsis_read',
+                            path: file.path,
+                            action: 'using Synopsis as Context for compatibility',
+                            writePolicy: 'new writes should use Context'
+                        });
+                    }
+
                     scenes.push({
                         date: isoDate,
                         when: when,
                         path: file.path,
                         title: file.basename, // Use filename as title, as requested
-                        synopsis: metadata.Synopsis as string | undefined, // For hover
+                        synopsis: backdropContext, // Backdrop hover context
+                        Context: backdropContext,
                         Duration: duration,
                         End: metadata.End as string | undefined,
                         itemType: "Backdrop",
@@ -387,6 +413,27 @@ export class SceneDataService {
 
             // Get beat system from metadata or plugin settings
             const beatModel = (metadata["Beat Model"] || this.settings.beatSystem || "") as string;
+            const purpose = (() => {
+                if (typeof metadata.Purpose === 'string') return metadata.Purpose;
+                if (typeof metadata.Description === 'string') {
+                    this.logMigrationDebugOnce(`beat-description-to-purpose:${file.path}`, {
+                        event: 'beat_legacy_description_read',
+                        path: file.path,
+                        action: 'using Description as Purpose for compatibility',
+                        writePolicy: 'new writes should use Purpose'
+                    });
+                    return metadata.Description;
+                }
+                return undefined;
+            })();
+            if (metadata.When !== undefined && metadata.When !== null && String(metadata.When).trim() !== '') {
+                this.logMigrationDebugOnce(`beat-legacy-when:${file.path}`, {
+                    event: 'beat_legacy_when_read',
+                    path: file.path,
+                    action: 'preserved legacy When for read/sort compatibility',
+                    writePolicy: 'new beat writes should avoid When'
+                });
+            }
 
             // Beats appear only once in the outermost ring - not duplicated per subplot
             filteredScenes.push({
@@ -398,6 +445,7 @@ export class SceneDataService {
                 act: String(validActNumber),
                 actNumber: validActNumber,
                 synopsis: metadata.Synopsis as string | undefined,
+                Purpose: purpose,
                 Description: metadata.Description as string | undefined,
                 "Beat Model": beatModel,
                 Range: metadata.Range as string | undefined,

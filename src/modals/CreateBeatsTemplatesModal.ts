@@ -56,7 +56,7 @@ export class CreateBeatsTemplatesModal extends Modal {
     exampleCode.textContent = `---
 Class: Beat
 Act: 1
-Description: [Beat description]
+Purpose: [Beat purpose]
 Beat Model: ${this.beatSystem}
 Range: [Ideal momentum range]
 Gossamer1:
@@ -108,4 +108,3 @@ Gossamer1:
     }
   }
 }
-

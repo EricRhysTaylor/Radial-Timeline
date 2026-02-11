@@ -27,7 +27,7 @@ interface BeatScoreEntry {
   scoresToDelete: Set<number>; // Track which Gossamer fields to delete (1, 2, 3, etc.)
   scoreDisplayEl?: HTMLElement; // Reference to the scores display element
   range?: string; // Ideal range from beat note (e.g., "0-20", "60-70")
-  description?: string; // Beat description from YAML
+  description?: string; // Beat purpose from YAML (legacy Description supported)
   beatPath?: string;
 }
 
@@ -461,7 +461,7 @@ export class GossamerScoreModal extends Modal {
     toggleInput.addEventListener('change', () => {
       this.includeBeatDescriptions = toggleInput.checked;
     });
-    toggleLabel.createSpan({ text: 'Include beat descriptions when copying template' });
+    toggleLabel.createSpan({ text: 'Include beat purposes when copying template' });
 
     const normalizeBtn = new ButtonComponent(bottomActions)
       .setButtonText('Normalize history')
@@ -493,7 +493,7 @@ export class GossamerScoreModal extends Modal {
     // Tooltips with centered bubble arrow (bottom placement)
     tooltipForComponent(pasteBtn, 'Paste scores from clipboard', 'bottom');
     tooltipForComponent(copyBtn, 'Copy beat names for AI prompts', 'bottom');
-    tooltip(toggleLabel, 'Include beat descriptions when copying template', 'bottom');
+    tooltip(toggleLabel, 'Include beat purposes when copying template', 'bottom');
     tooltipForComponent(normalizeBtn, 'Cleanup score history gaps', 'bottom');
     tooltipForComponent(saveBtn, 'Save new scores and deletions', 'bottom');
     tooltipForComponent(deleteBtn, 'Delete all scores for these beats', 'bottom');
@@ -533,7 +533,9 @@ export class GossamerScoreModal extends Modal {
         if (typeof fm.Range === 'string') {
           entry.range = fm.Range;
         }
-        if (typeof fm.Description === 'string') {
+        if (typeof fm.Purpose === 'string') {
+          entry.description = fm.Purpose;
+        } else if (typeof fm.Description === 'string') {
           entry.description = fm.Description;
         } else if (typeof fm.description === 'string') {
           entry.description = fm.description;
@@ -608,8 +610,8 @@ export class GossamerScoreModal extends Modal {
 
       lines.push('## Story Beats Template Guidance');
       lines.push(this.includeBeatDescriptions
-        ? 'Descriptions are pulled directly from each beat note\'s Description field.'
-        : 'Update each beat note\'s Range and Description fields to customize this list. Toggle above to include descriptions.');
+        ? 'Purposes are pulled directly from each beat note\'s Purpose field (legacy Description supported).'
+        : 'Update each beat note\'s Range and Purpose fields to customize this list. Toggle above to include purposes.');
       lines.push('');
 
       const missingRangeBeats: string[] = [];
@@ -676,7 +678,7 @@ export class GossamerScoreModal extends Modal {
         this.showMetadataWarning('Range', missingRangeBeats);
       }
       if (this.includeBeatDescriptions && missingDescriptionBeats.length > 0) {
-        this.showMetadataWarning('Description', missingDescriptionBeats);
+        this.showMetadataWarning('Purpose', missingDescriptionBeats);
       }
     } catch (error) {
       console.error('[Gossamer] Failed to copy template:', error);

@@ -10,6 +10,9 @@ export function anonymizeTimeline(scenes: TimelineItem[]): TimelineItem[] {
         // Remove sensitive text
         delete clean.title;
         delete clean.synopsis;
+        delete clean.Summary;
+        delete clean.Purpose;
+        delete clean.Context;
         delete clean.Description;
         delete clean.Character;
         delete clean.place;

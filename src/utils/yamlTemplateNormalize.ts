@@ -95,7 +95,7 @@ export function getBaseKeys(noteType: NoteType, settings: RadialTimelineSettings
             return extractKeysInOrder(
                 settings.backdropYamlTemplates?.base
                     ?? DEFAULT_SETTINGS.backdropYamlTemplates?.base
-                    ?? 'Class: Backdrop\nWhen:\nEnd:\nSynopsis:'
+                    ?? 'Class: Backdrop\nWhen:\nEnd:\nContext:'
             );
     }
 }
@@ -119,11 +119,15 @@ export function getCustomKeys(
         }
         case 'Beat': {
             const config = getBeatConfigForSystem(settings, beatSystemKey);
-            return extractKeysInOrder(config.beatYamlAdvanced).filter(k => !baseKeys.includes(k));
+            return extractKeysInOrder(config.beatYamlAdvanced).filter(k =>
+                !baseKeys.includes(k) && k !== 'When' && k !== 'Description'
+            );
         }
         case 'Backdrop': {
             const adv = settings.backdropYamlTemplates?.advanced ?? '';
-            return extractKeysInOrder(adv).filter(k => !baseKeys.includes(k));
+            return extractKeysInOrder(adv).filter(k =>
+                !baseKeys.includes(k) && k !== 'Synopsis'
+            );
         }
     }
 }
@@ -197,6 +201,8 @@ export function getExcludeKeyPredicate(noteType: NoteType): (key: string) => boo
                 if (/^Gossamer/i.test(key)) return true;
                 // Legacy base field (removed from template but may exist in older notes)
                 if (key === 'When') return true;
+                // Legacy beat narrative field (renamed to Purpose)
+                if (key === 'Description') return true;
                 // Obsidian-internal keys
                 if (key === 'position' || key === 'cssclasses' || key === 'tags' || key === 'aliases') return true;
                 return false;
@@ -217,6 +223,8 @@ export function getExcludeKeyPredicate(noteType: NoteType): (key: string) => boo
             };
         case 'Backdrop':
             return (key: string) => {
+                // Legacy backdrop narrative field (renamed to Context)
+                if (key === 'Synopsis') return true;
                 // Obsidian-internal keys
                 if (key === 'position' || key === 'cssclasses' || key === 'tags' || key === 'aliases') return true;
                 return false;

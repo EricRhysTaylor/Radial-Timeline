@@ -6274,6 +6274,15 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-faint) 15%, transparent);
 }
 
+.ert-ui.ert-scope--settings .ert-audit-chip--warning {
+  --ert-chip-bg: color-mix(in srgb, var(--text-warning) 10%, var(--background-secondary) 80%);
+}
+
+.ert-ui.ert-scope--settings .ert-audit-chip--warning.is-active {
+  border-color: var(--text-warning);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-warning) 15%, transparent);
+}
+
 .ert-ui.ert-scope--settings .ert-audit-chip--clean {
   --ert-chip-bg: color-mix(in srgb, var(--text-success) 12%, var(--background-secondary) 80%);
   cursor: default;
@@ -6322,6 +6331,10 @@
 
 .ert-ui.ert-scope--settings .ert-audit-note-pill--drift {
   border-color: color-mix(in srgb, var(--text-faint) 40%, var(--background-modifier-border));
+}
+
+.ert-ui.ert-scope--settings .ert-audit-note-pill--warning {
+  border-color: color-mix(in srgb, var(--text-warning) 32%, var(--background-modifier-border));
 }
 
 .ert-ui.ert-scope--settings .ert-audit-note-pill-name {

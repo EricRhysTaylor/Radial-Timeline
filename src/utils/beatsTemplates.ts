@@ -9,7 +9,7 @@ import type { BeatSystemConfig, RadialTimelineSettings } from '../types/settings
 /** Legacy beat base template — canonical beat fields only (Gossamer fields are injected dynamically). */
 const LEGACY_BEAT_BASE = `Class: Beat
 Act: {{Act}}
-Description: {{Description}}
+Purpose: {{Purpose}}
 Beat Model: {{BeatModel}}
 Range: {{Range}}`;
 
@@ -17,6 +17,7 @@ Range: {{Range}}`;
 
 /** Empty config used as safe default when no config exists for a system. */
 const EMPTY_BEAT_CONFIG: BeatSystemConfig = { beatYamlAdvanced: '', beatHoverMetadataFields: [] };
+const DISALLOWED_BEAT_WRITE_FIELDS = new Set(['Description', 'When']);
 
 /** Normalize a Beat Model string for case-insensitive matching. */
 function normalizeModelKey(s: string): string {
@@ -129,11 +130,36 @@ function buildBeatBody(beatInfo: PlotBeatInfo): string {
  * Falls back to legacy globals for pre-migration vaults.
  */
 export function getMergedBeatYamlTemplate(settings: RadialTimelineSettings): string {
-  const base = settings.beatYamlTemplates?.base ?? LEGACY_BEAT_BASE;
+  const configuredBase = settings.beatYamlTemplates?.base ?? LEGACY_BEAT_BASE;
+  const base = configuredBase.replace(/^Description:/gm, 'Purpose:');
   const config = getBeatConfigForSystem(settings);
-  const advanced = config.beatYamlAdvanced;
+  const advanced = sanitizeBeatAdvancedForWrite(config.beatYamlAdvanced);
   if (!advanced.trim()) return base;
   return mergeTemplates(base, advanced);
+}
+
+function sanitizeBeatAdvancedForWrite(advancedTemplate: string): string {
+  const lines = (advancedTemplate || '').split('\n');
+  const result: string[] = [];
+  let skipUntilNextField = false;
+
+  for (const line of lines) {
+    const fieldMatch = line.match(/^([A-Za-z][A-Za-z0-9 _'-]*):/);
+    if (fieldMatch) {
+      const fieldName = fieldMatch[1].trim();
+      if (DISALLOWED_BEAT_WRITE_FIELDS.has(fieldName)) {
+        skipUntilNextField = true;
+        continue;
+      }
+      skipUntilNextField = false;
+      result.push(line);
+      continue;
+    }
+    if (skipUntilNextField) continue;
+    result.push(line);
+  }
+
+  return result.join('\n');
 }
 
 /**
@@ -148,14 +174,16 @@ function generatePlotNoteContent(
   template?: string
 ): string {
   const yamlEscape = (s: string) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-  const desc = beatInfo.description ? `"${yamlEscape(beatInfo.description)}"` : '""';
+  const purpose = beatInfo.description ? `"${yamlEscape(beatInfo.description)}"` : '""';
   const rangeValue = getRangeValue(beatInfo);
 
   if (template) {
     // Template-based generation using {{Placeholder}} substitution
     let content = template;
     content = content.replace(/{{Act}}/g, act.toString());
-    content = content.replace(/{{Description}}/g, desc);
+    // Support both placeholder names for backwards compatibility.
+    content = content.replace(/{{Purpose}}/g, purpose);
+    content = content.replace(/{{Description}}/g, purpose);
     content = content.replace(/{{BeatModel}}/g, beatSystem);
     content = content.replace(/{{Range}}/g, rangeValue);
 
@@ -167,7 +195,7 @@ function generatePlotNoteContent(
     '---',
     'Class: Beat',
     `Act: ${act}`,
-    `Description: ${desc}`,
+    `Purpose: ${purpose}`,
     `Beat Model: ${beatSystem}`,
     rangeValue ? `Range: ${rangeValue}` : 'Range:',
     '---',
