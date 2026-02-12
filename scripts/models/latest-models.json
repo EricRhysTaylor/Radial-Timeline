@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-02-11T17:43:33.139Z",
+  "generatedAt": "2026-02-12T19:58:15.571Z",
   "summary": {
     "anthropic": 10,
-    "openai": 115,
+    "openai": 114,
     "gemini": 45
   },
   "anthropic": [
@@ -307,11 +307,6 @@
       "id": "gpt-4o-realtime-preview-2025-06-03",
       "owned_by": "system",
       "created": 1748907838
-    },
-    {
-      "id": "codex-mini-latest",
-      "owned_by": "system",
-      "created": 1746673257
     },
     {
       "id": "gpt-image-1",

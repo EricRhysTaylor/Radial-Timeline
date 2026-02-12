@@ -258,7 +258,7 @@ export function renderStoryBeatsSection(params: {
         const ranges = new Map<number, ActRange>();
 
         (scenes ?? []).forEach(scene => {
-            if (scene.itemType === 'Beat' || scene.itemType === 'Plot' || scene.itemType === 'Backdrop') return;
+            if (scene.itemType !== 'Scene') return;
             const numStr = getScenePrefixNumber(scene.title, scene.number);
             if (!numStr) return;
             const num = Number(numStr);
@@ -574,7 +574,7 @@ export function renderStoryBeatsSection(params: {
     // inside the Custom tab panel.
     // 1) design — beat list editor + system name + beat-note health/actions
     // 2) fields — YAML editor, hover metadata, schema audit
-    // 3) pro    — saved beat systems manager (Pro-locked for Core)
+    // 3) pro    — saved beat systems manager (Pro Sets, Pro-locked for Core)
     type CustomStage = 'design' | 'fields' | 'pro';
     let currentCustomStage: CustomStage = 'design';
 
@@ -1139,7 +1139,7 @@ export function renderStoryBeatsSection(params: {
 
     // Stage 3: Fields (YAML editor, hover metadata, schema audit)
     const fieldsContainer = beatSystemCard.createDiv({ cls: ERT_CLASSES.STACK });
-    // Stage 4: PRO Templates (saved beat systems manager)
+    // Stage 3: PRO Sets (saved beat systems manager)
     const proTemplatesContainer = beatSystemCard.createDiv({ cls: ERT_CLASSES.STACK });
 
     // ── Stage switcher rendering + visibility ───────────────────────────
@@ -1181,7 +1181,7 @@ export function renderStoryBeatsSection(params: {
         // Stage 2: Fields (YAML editor, hover metadata, schema audit)
         makeStageBtn('fields', 2, 'Fields');
 
-        // Stage 3: PRO Templates (always visible; content Pro-locked for Core)
+        // Stage 3: PRO Sets (always visible; content Pro-locked for Core)
         const proBtn = stageSwitcher.createEl('button', {
             cls: `ert-stage-btn ert-stage-btn--pro ${ERT_CLASSES.SKIN_PRO}${currentCustomStage === 'pro' ? ' is-active' : ''}`,
             attr: { type: 'button', role: 'tab', 'aria-selected': currentCustomStage === 'pro' ? 'true' : 'false' }
@@ -1190,7 +1190,7 @@ export function renderStoryBeatsSection(params: {
         const proPill = proBtn.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}` });
         setIcon(proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), 'signature');
         proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
-        proBtn.appendText(' Templates');
+        proBtn.appendText(' Sets');
         proBtn.addEventListener('click', () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
             if (currentCustomStage === 'pro') return;
             currentCustomStage = 'pro';
@@ -1282,7 +1282,7 @@ export function renderStoryBeatsSection(params: {
     const beatYamlSection = fieldsContainer.createDiv({ cls: ERT_CLASSES.STACK });
     const beatYamlSetting = new Settings(beatYamlSection)
         .setName('Beat fields')
-        .setDesc('Customize additional YAML keys for beat notes. Enable fields to show in beat hover synopsis. Use the audit below to check fields across existing beat notes.');
+        .setDesc('Customize additional YAML keys for custom beat notes. Enable fields to show in beat hover info. Use the audit below to check conformity of fields across existing beat notes.');
     // Force editor enabled so Fields content is always visible
     plugin.settings.enableBeatYamlEditor = true;
 
@@ -1338,8 +1338,8 @@ export function renderStoryBeatsSection(params: {
 
     const beatBaseTemplate = DEFAULT_SETTINGS.beatYamlTemplates!.base;
     const beatBaseKeys = extractKeysInOrder(beatBaseTemplate);
-    // Legacy keys remain readable in existing notes, but are blocked from new beat writes.
-    const beatDisallowedNewWriteKeys = new Set(['When', 'Description']);
+    // Keys that are blocked from new beat writes (legacy or inapplicable).
+    const beatDisallowedNewWriteKeys = new Set(['Description']);
 
     const renderBeatYamlEditor = () => {
         beatYamlContainer.empty();
@@ -1347,10 +1347,8 @@ export function renderStoryBeatsSection(params: {
         const currentBeatAdvanced = getBeatConfigForSystem(plugin.settings).beatYamlAdvanced;
         const beatAdvancedObj = safeParseYaml(currentBeatAdvanced);
 
-        // Keep legacy `When` out of editor rows; Beat is structural-first.
-        const legacyHiddenBeatKeys = new Set(['When']);
         const beatOptionalOrder = extractKeysInOrder(currentBeatAdvanced).filter(
-            k => !beatBaseKeys.includes(k) && !legacyHiddenBeatKeys.has(k)
+            k => !beatBaseKeys.includes(k)
         );
         const beatEntries: TemplateEntry[] = beatOptionalOrder.map(key => ({
             key,
@@ -1719,7 +1717,7 @@ export function renderStoryBeatsSection(params: {
     // ─── SAVED BEAT SYSTEMS (Pro) — Campaign Manager card scaffold ────
     const proActive = isProfessionalActive(plugin);
 
-    // Pro saved systems: lives in PRO Templates stage (stage 4).
+    // Pro saved systems: lives in PRO Sets stage (stage 3).
     // Normal panel styling; Pro pill on heading communicates premium status.
     const savedCard = proTemplatesContainer.createDiv({
         cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-saved-beat-systems`
@@ -1738,10 +1736,53 @@ export function renderStoryBeatsSection(params: {
 
     savedCard.createEl('p', {
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Save and switch between multiple systems. Each saved system stores beats, custom YAML fields, and hover metadata. Core: one active system. Pro: many saved systems.'
+        text: 'Save and switch between multiple beat systems. Each set stores beats, custom YAML fields, and hover metadata. Core: one active system. Pro: many saved sets.'
     });
 
     const savedControlsContainer = savedCard.createDiv({ cls: ERT_CLASSES.STACK });
+
+    /** Check whether the active custom system has unsaved changes vs its saved copy. */
+    const hasUnsavedChanges = (): boolean => {
+        const savedSystems: SavedBeatSystem[] = plugin.settings.savedBeatSystems ?? [];
+        const activeId = plugin.settings.activeCustomBeatSystemId ?? 'default';
+        const saved = savedSystems.find(s => s.id === activeId);
+        if (!saved) return false; // Never saved — nothing to compare against
+        const currentName = plugin.settings.customBeatSystemName || 'Custom';
+        if (currentName !== saved.name) return true;
+        const currentBeats = plugin.settings.customBeatSystemBeats ?? [];
+        if (currentBeats.length !== saved.beats.length) return true;
+        for (let i = 0; i < currentBeats.length; i++) {
+            const cb = currentBeats[i];
+            const sb = saved.beats[i];
+            const cName = typeof cb === 'string' ? cb : (cb as BeatRow).name;
+            const sName = typeof sb === 'string' ? sb : (sb as BeatRow).name;
+            const cAct = typeof cb === 'string' ? 1 : (cb as BeatRow).act;
+            const sAct = typeof sb === 'string' ? 1 : (sb as BeatRow).act;
+            if (cName !== sName || cAct !== sAct) return true;
+        }
+        const activeConfig = getBeatConfigForSystem(plugin.settings);
+        if ((activeConfig.beatYamlAdvanced || '') !== (saved.beatYamlAdvanced || '')) return true;
+        return false;
+    };
+
+    /** Apply a saved system as the active system and refresh UI. */
+    const applyLoadedSystem = (system: SavedBeatSystem) => {
+        plugin.settings.customBeatSystemName = system.name;
+        plugin.settings.customBeatSystemBeats = system.beats.map(b => ({ ...b }));
+        plugin.settings.activeCustomBeatSystemId = system.id;
+        // Ensure config map exists and write per-system config
+        if (!plugin.settings.beatSystemConfigs) plugin.settings.beatSystemConfigs = {};
+        plugin.settings.beatSystemConfigs[`custom:${system.id}`] = {
+            beatYamlAdvanced: system.beatYamlAdvanced ?? '',
+            beatHoverMetadataFields: system.beatHoverMetadataFields
+                ? system.beatHoverMetadataFields.map(f => ({ ...f }))
+                : [],
+        };
+        void plugin.saveSettings();
+        new Notice(`Loaded beat system "${system.name}".`);
+        // Full UI refresh — re-render the entire templates section
+        renderStoryBeatsSection({ app, plugin, containerEl });
+    };
 
     const renderSavedBeatSystems = () => {
         savedControlsContainer.empty();
@@ -1751,6 +1792,8 @@ export function renderStoryBeatsSection(params: {
         }
 
         const savedSystems: SavedBeatSystem[] = plugin.settings.savedBeatSystems ?? [];
+        const activeId = plugin.settings.activeCustomBeatSystemId ?? 'default';
+        const unsaved = hasUnsavedChanges();
 
         // Dropdown
         const selectRow = new Settings(savedControlsContainer)
@@ -1760,29 +1803,56 @@ export function renderStoryBeatsSection(params: {
                 savedSystems.forEach(s => {
                     drop.addOption(s.id, `${s.name} (${s.beats.length} beats)`);
                 });
+
+                // Auto-select the currently active system if it exists in saved
+                const activeMatch = savedSystems.find(s => s.id === activeId);
+                if (activeMatch) {
+                    drop.setValue(activeMatch.id);
+                }
+
                 drop.onChange(value => {
                     if (!value) return;
                     const system = savedSystems.find(s => s.id === value);
                     if (!system) return;
-                    // Atomic load — write into custom:<id> config slot
-                    plugin.settings.customBeatSystemName = system.name;
-                    plugin.settings.customBeatSystemBeats = system.beats.map(b => ({ ...b }));
-                    plugin.settings.activeCustomBeatSystemId = system.id;
-                    // Ensure config map exists and write per-system config
-                    if (!plugin.settings.beatSystemConfigs) plugin.settings.beatSystemConfigs = {};
-                    plugin.settings.beatSystemConfigs[`custom:${system.id}`] = {
-                        beatYamlAdvanced: system.beatYamlAdvanced ?? '',
-                        beatHoverMetadataFields: system.beatHoverMetadataFields
-                            ? system.beatHoverMetadataFields.map(f => ({ ...f }))
-                            : [],
-                    };
-                    void plugin.saveSettings();
-                    new Notice(`Loaded beat system "${system.name}".`);
-                    // Full UI refresh — re-render the entire templates section
-                    renderStoryBeatsSection({ app, plugin, containerEl });
+
+                    // Warn if there are unsaved changes before loading
+                    if (hasUnsavedChanges()) {
+                        const confirmModal = new Modal(app);
+                        const { contentEl } = confirmModal;
+                        contentEl.empty();
+                        contentEl.addClass('ert-modal-container', 'ert-stack');
+                        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+                        header.createSpan({ cls: 'ert-modal-badge', text: 'BEAT SYSTEM' });
+                        header.createDiv({ cls: 'ert-modal-title', text: 'Unsaved changes' });
+                        header.createDiv({ cls: 'ert-modal-subtitle', text: `Your current system has changes that haven't been saved. Loading "${system.name}" will replace them.` });
+                        const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
+                        new ButtonComponent(footer).setButtonText('Load anyway').setCta().onClick(() => {
+                            confirmModal.close();
+                            applyLoadedSystem(system);
+                        });
+                        new ButtonComponent(footer).setButtonText('Cancel').onClick(() => {
+                            confirmModal.close();
+                            // Reset dropdown to the previously selected value
+                            const prevMatch = savedSystems.find(s => s.id === activeId);
+                            const selEl = selectRow.settingEl.querySelector('select');
+                            if (selEl) selEl.value = prevMatch ? prevMatch.id : '';
+                        });
+                        footer.querySelectorAll('button').forEach(btn => { (btn as HTMLElement).style.cursor = 'pointer'; });
+                        confirmModal.open();
+                        return;
+                    }
+
+                    applyLoadedSystem(system);
                 });
             });
         selectRow.settingEl.addClass('ert-saved-beat-select');
+
+        // Show unsaved warning on dropdown
+        if (unsaved) {
+            const selectEl = selectRow.settingEl.querySelector('select');
+            if (selectEl) selectEl.classList.add('ert-dropdown--unsaved');
+            selectRow.settingEl.createDiv({ cls: 'ert-unsaved-hint', text: 'Unsaved changes — save your current system before switching.' });
+        }
 
         // Action buttons (right-aligned under dropdown)
         const actionsRow = savedControlsContainer.createDiv({ cls: 'ert-inline-actions' });

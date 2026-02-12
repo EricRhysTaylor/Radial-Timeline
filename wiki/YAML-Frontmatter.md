@@ -105,7 +105,7 @@ Gossamer2: 21                 # Second run (most recent in this example)
 Gossamer2 Justification:
 ```
 
-> **Beat semantics**: Beats are structural, not temporal. `When` is supported as a legacy read field but is excluded from new writes and beat editor defaults.
+> **Beat semantics**: Beats are structural, not temporal. They do not use the `When` field — ordering comes from Act assignment and filename prefix.
 
 Beat notes have their own **Beat YAML editor** in **Settings → Story beats system**. Use it to add custom keys and choose which fields appear in beat hovers. Beat YAML is stored per beat system.
 
@@ -144,6 +144,6 @@ The plugin automatically recognizes legacy field names, so you don't need to upd
 | `Purpose:` | `Description:` |
 | `Context:` | `Synopsis:` (Backdrop only) |
 
-`When:` on Beat notes is also read for compatibility, but new writes use the structural schema (`Purpose`).
+Beat notes do not use `When:` — they are ordered structurally by Act and filename prefix.
 
 Existing notes with old field names will continue to work. Only new notes created from templates will use the current field names.

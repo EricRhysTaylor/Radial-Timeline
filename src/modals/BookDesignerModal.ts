@@ -183,6 +183,7 @@ export class BookDesignerModal extends Modal {
     private actCheckboxes: HTMLInputElement[] = [];
     private templateTypePills: HTMLElement[] = [];
     private beatPills: HTMLElement[] = [];
+    private beatsExistInFolder: boolean = false;
     private deleteTemplateBtn: ButtonComponent | null = null;
 
     constructor(app: App, plugin: RadialTimelinePlugin) {
@@ -202,6 +203,36 @@ export class BookDesignerModal extends Modal {
         const unique = Array.from(new Set(this.selectedActs)).filter(a => a >= 1 && a <= maxActs);
         if (unique.length > 0) return unique.sort((a, b) => a - b);
         return [1, 2, 3].filter(a => a <= maxActs);
+    }
+
+    /** Check if beat notes already exist in the target folder and update the Yes pill. */
+    private refreshBeatExistsWarning(): void {
+        const folder = this.targetPath ? normalizePath(this.targetPath.trim()) : '';
+        const exists = this.app.vault.getMarkdownFiles().some(f => {
+            if (folder && !f.path.startsWith(folder + '/')) return false;
+            if (!folder && f.path.includes('/')) return false;
+            const cache = this.app.metadataCache.getFileCache(f);
+            const cls = cache?.frontmatter?.['Class'] ?? cache?.frontmatter?.['class'] ?? '';
+            return String(cls).toLowerCase() === 'beat';
+        });
+        this.beatsExistInFolder = exists;
+
+        // Update the "Yes" pill visual state
+        const yesPill = this.beatPills.find(p => p.dataset.generateBeats === 'true');
+        if (!yesPill) return;
+        yesPill.toggleClass('rt-manuscript-pill--warn', exists);
+        if (exists) {
+            yesPill.setAttribute('aria-label', 'Beat notes already exist in this folder');
+        } else {
+            yesPill.removeAttribute('aria-label');
+        }
+        // If beats exist and Yes was selected, switch to No
+        if (exists && this.generateBeats) {
+            this.generateBeats = false;
+            this.beatPills.forEach(p => p.removeClass('rt-is-active'));
+            const noPill = this.beatPills.find(p => p.dataset.generateBeats === 'false');
+            noPill?.addClass('rt-is-active');
+        }
     }
 
     private resetManualLayout(): void {
@@ -614,11 +645,13 @@ export class BookDesignerModal extends Modal {
                     this.targetPath = path;
                     text.setValue(path);
                     this.updateHeroMeta();
+                    this.refreshBeatExistsWarning();
                 });
                 text.inputEl.addEventListener('blur', () => {
                     const raw = text.getValue().trim();
                     this.targetPath = raw;
                     this.updateHeroMeta();
+                    this.refreshBeatExistsWarning();
                 });
             });
 
@@ -919,11 +952,14 @@ export class BookDesignerModal extends Modal {
             pill.setAttr('data-generate-beats', String(opt.val));
             this.beatPills.push(pill);
             pill.onclick = () => {
+                // Block selecting Yes when beats already exist
+                if (opt.val && this.beatsExistInFolder) return;
                 beatPills.querySelectorAll('.rt-manuscript-pill').forEach(p => p.removeClass('rt-is-active'));
                 pill.addClass('rt-is-active');
                 this.generateBeats = opt.val;
             };
         });
+        this.refreshBeatExistsWarning();
 
         // Template load/save
         const templateCard = extraCard.createDiv({ cls: 'rt-manuscript-card-block rt-manuscript-group-block rt-layout-templates-card' });
@@ -1018,7 +1054,7 @@ export class BookDesignerModal extends Modal {
         }
 
         const suffix = scenes > 3 ? '...' : '';
-        setting.setDesc(`Scenes will be numbered: ${examples.join(', ')}${suffix} based on ${scenes} scenes across ${max} units.`);
+        setting.setDesc(`Scenes will be numbered: ${examples.join(', ')}${suffix} based on ${scenes} scenes across ${max} units. Used in the Author Progress Report (APR) Zero stage.`);
     }
 
     onClose(): void {
@@ -1077,8 +1113,8 @@ export class BookDesignerModal extends Modal {
         const totalActs = this.getMaxActs();
         const assignments = this.getWorkingAssignments();
 
-        const size = 260;
-        const outerR = 116;
+        const size = 300;
+        const outerR = 136;
         const innerR = 52; // empty inner core
         const cx = size / 2;
         const cy = size / 2;

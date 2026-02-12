@@ -134,9 +134,6 @@ function buildSemanticWarnings(
         if (getStringField(fm, 'Description') && !getStringField(fm, 'Purpose')) {
             warnings.push('Legacy "Description" detected; migrate to "Purpose" (non-destructive, optional cleanup).');
         }
-        if (fm.When !== undefined && fm.When !== null && String(fm.When).trim() !== '') {
-            warnings.push('Legacy "When" detected on Beat; retained for read compatibility, optional removal recommended.');
-        }
         if (purpose) {
             const purposeLines = splitMeaningfulLines(purpose).length;
             if (purposeLines > BEAT_PURPOSE_SOFT_MAX_LINES) {
@@ -318,6 +315,23 @@ export function collectFilesForAudit(
     const files = app.vault.getMarkdownFiles();
     const mappings = settings.enableCustomMetadataMapping ? settings.frontmatterMappings : undefined;
 
+    // Resolve Beat Model name for custom systems.
+    // beatSystemKey may be in internal format 'custom:<id>' but frontmatter stores
+    // the human-readable system name (e.g. 'Custom beats').
+    let beatModelFilter: string | undefined;
+    if (beatSystemKey && noteType === 'Beat') {
+        if (beatSystemKey.startsWith('custom:')) {
+            const customId = beatSystemKey.slice('custom:'.length);
+            // Check saved systems first for the matching id
+            const saved = settings.savedBeatSystems?.find(s => s.id === customId);
+            beatModelFilter = saved?.name
+                ?? settings.customBeatSystemName
+                ?? 'Custom';
+        } else {
+            beatModelFilter = beatSystemKey;
+        }
+    }
+
     return files.filter(file => {
         const cache = app.metadataCache.getFileCache(file);
         if (!cache?.frontmatter) return false;
@@ -330,9 +344,9 @@ export function collectFilesForAudit(
                 return fm.Class === 'Scene';
             case 'Beat':
                 if (fm.Class !== 'Beat' && fm.Class !== 'Plot') return false;
-                if (beatSystemKey) {
+                if (beatModelFilter) {
                     const model = fm['Beat Model'];
-                    return model === beatSystemKey;
+                    return model === beatModelFilter;
                 }
                 return true;
             case 'Backdrop':

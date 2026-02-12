@@ -2176,6 +2176,17 @@
   line-height: 1.4;
 }
 
+/* ── Unsaved changes dropdown warning ────────────────────────────── */
+.ert-ui.ert-scope--settings .ert-saved-beat-systems select.ert-dropdown--unsaved {
+  border-color: var(--color-red);
+  box-shadow: 0 0 0 1px var(--color-red);
+}
+.ert-ui.ert-scope--settings .ert-unsaved-hint {
+  color: var(--text-error);
+  font-size: 0.82em;
+  margin-top: 4px;
+}
+
 .ert-ui.ert-scope--settings .ert-beat-template-examples {
   color: var(--text-faint);
   font-size: 12px;

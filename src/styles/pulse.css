@@ -322,6 +322,21 @@
   transform: none;
 }
 
+/* Warning pill — beats already exist */
+.rt-manuscript-pill.rt-manuscript-pill--warn {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: rgba(220, 60, 60, 0.4);
+  background: rgba(220, 60, 60, 0.08);
+  color: rgba(220, 100, 100, 0.85);
+}
+
+.rt-manuscript-pill.rt-manuscript-pill--warn:hover {
+  transform: none;
+  border-color: rgba(220, 60, 60, 0.4);
+  background: rgba(220, 60, 60, 0.08);
+}
+
 /* Pro dropdown options (for Core users - shows magenta hint) */
 .rt-dropdown-pro-option {
   color: #d946ef;

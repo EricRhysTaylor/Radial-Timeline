@@ -393,23 +393,8 @@ export class SceneDataService {
         }
 
         for (const { file, metadata, validActNumber } of beatsToProcess) {
-            const whenStr = metadata.When;
-            let when: Date | undefined;
-
-            if (typeof whenStr === 'string') {
-                const parsed = parseWhenField(whenStr);
-                if (parsed) {
-                    when = parsed;
-                }
-            } else if (whenStr instanceof Date) {
-                when = whenStr;
-            }
-
-            // For beats, When is optional - use manuscript order if not provided
-            // Determine date key: if When exists, use it; otherwise use a placeholder for manuscript ordering
-            const dateKey = when && !isNaN(when.getTime())
-                ? when.toISOString().split('T')[0]
-                : ''; // Empty string for beats without When (will be ordered by act/filename)
+            // Beats are structural, not temporal — no When field support.
+            const dateKey = '';
 
             // Get beat system from metadata or plugin settings
             const beatModel = (metadata["Beat Model"] || this.settings.beatSystem || "") as string;
@@ -426,19 +411,11 @@ export class SceneDataService {
                 }
                 return undefined;
             })();
-            if (metadata.When !== undefined && metadata.When !== null && String(metadata.When).trim() !== '') {
-                this.logMigrationDebugOnce(`beat-legacy-when:${file.path}`, {
-                    event: 'beat_legacy_when_read',
-                    path: file.path,
-                    action: 'preserved legacy When for read/sort compatibility',
-                    writePolicy: 'new beat writes should avoid When'
-                });
-            }
 
             // Beats appear only once in the outermost ring - not duplicated per subplot
             filteredScenes.push({
                 date: dateKey,
-                when: when,
+                when: undefined,
                 path: file.path,
                 title: metadata.Title as string | undefined ?? file.basename,
                 subplot: "Main Plot", // Beats always use Main Plot for outermost ring

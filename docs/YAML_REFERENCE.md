@@ -139,10 +139,7 @@ Gossamer1: 12                 # Latest gossamer score
 ---
 ```
 
-> **Note**: Beat notes can be ordered two ways:
-> - **Manuscript order** (default): Uses Act field and filename prefix (e.g., `01 Opening Image.md`)
-> - **Chronological order**: Add `When` field to position beats at specific story timeline dates
-> - Enable "Sort by When date" (Settings → Configuration) to position beats chronologically alongside scenes
+> **Note**: Beat notes are ordered structurally by Act and filename prefix (e.g., `01 Opening Image.md`). Beats do not use the `When` field — they are not temporal.
 
 ### Beat with Historical Gossamer Tracking
 
@@ -150,8 +147,7 @@ Gossamer1: 12                 # Latest gossamer score
 ---
 Class: Beat
 Act: 1
-When: 2026-01-15 08:00        # Story timeline position
-Description: The first impression of your story. A snapshot of the protagonist's life before the journey begins.
+Purpose: The first impression of your story. A snapshot of the protagonist's life before the journey begins.
 Beat Model: Save The Cat
 Range: 0-10
 Gossamer1: 4     # First run (oldest)
@@ -183,7 +179,7 @@ The story act this scene or beat belongs to.
 ### When
 **Optional** | Type: Date
 
-The in-world date when the scene OR beat takes place in your fictional timeline.
+The in-world date when the scene takes place in your fictional timeline. Not used by Beat notes.
 
 Supported formats (month and day can be single or double digit):
 - `2024-03-15` or `2024-3-15` (simple date)
@@ -209,8 +205,7 @@ When: July 2045       # Month name + year → Jul 1, 2045 @ 12:00 PM
 
 **Usage:**
 - **Scenes**: Used by Chronologue Mode and "Sort by When date" to arrange scenes chronologically
-- **Beats**: When added to beat notes, allows story beats to be positioned at specific points in the timeline when using chronological sorting
-- **Sorting**: Enable "Sort by When date" (Settings → Configuration) to position both scenes and beats across the full 360° circle based on their `When` dates
+- **Sorting**: Enable "Sort by When date" (Settings → Configuration) to arrange scenes chronologically across the full 360° circle
 
 > **Note**: Red “Missing When” alerts only appear once a scene’s `Status` moves to `Working` or `Complete`, so you can outline Todo scenes without warnings. Additionally, hovering over a scene with a missing date will show the dates of the previous and next scenes in narrative order to provide helpful context for placement.
 

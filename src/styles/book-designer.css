@@ -320,7 +320,7 @@
     flex-direction: column;
     gap: 8px;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
     height: 100%;
 }
 
@@ -349,7 +349,7 @@
 }
 
 .rt-manuscript-surface .rt-manuscript-preview-svg {
-    height: 290px;
+    height: 330px;
     max-width: none;
     max-height: none;
     aspect-ratio: 1 / 1;

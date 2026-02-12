@@ -17,7 +17,7 @@ Range: {{Range}}`;
 
 /** Empty config used as safe default when no config exists for a system. */
 const EMPTY_BEAT_CONFIG: BeatSystemConfig = { beatYamlAdvanced: '', beatHoverMetadataFields: [] };
-const DISALLOWED_BEAT_WRITE_FIELDS = new Set(['Description', 'When']);
+const DISALLOWED_BEAT_WRITE_FIELDS = new Set(['Description']);
 
 /** Normalize a Beat Model string for case-insensitive matching. */
 function normalizeModelKey(s: string): string {
