@@ -14,7 +14,7 @@ interface WelcomeScreenParams {
 }
 
 const WELCOME_COPY = {
-    introLine1: 'Radial Timeline is a concise visualization system to organize and structure a scene-based story or creative work as a dynamic, ever-changing body of work. Try it for novels, sagas, screenplays, podcasts or YouTube scripts—fiction or non-fiction.',
+    introLine1: 'Radial Timeline is a concise visualization system to organize and structure a scene-based story or creative work. Try it for novels, sagas, screenplays, podcasts or YouTube scripts—fiction or non-fiction.',
     introLine2: 'Get your feet wet by creating your first scene. See it appear in the timeline.',
     actions: {
         primary: 'Create your first scene',
@@ -23,24 +23,24 @@ const WELCOME_COPY = {
     },
     stepsHeading: 'Start in three steps:',
     step1: {
-        title: '1. Create your first scene',
-        body: 'Start a scene so you have a place to write. Choose where your scenes live in your vault, then create your first scene note.',
+        title: '1. Set the active book folder',
+        body: 'Choose where your scenes live in your vault',
         note: '(Set the active book folder in Settings \u2192 Core \u2192 General \u2192 Books.)'
     },
     step2: {
         title: '2. Write prose immediately',
-        body: 'Open the scene and start writing. You can leave scene details blank until you need them.'
+        body: 'Open the scene and start writing. You can leave scene details blank until you need them. As you write and the story unfolds, add characters, subplots, and other details to the note frontmatter so you can see it in the timeline.'
     },
     step3: {
         title: '3. Shape the story structure',
         bullets: [
             {
-                title: 'Design the framework',
+                title: 'Design a framework',
                 body: ' \u2014 Use Book Designer to set up acts, subplots, characters, and optional beats as a starting point.'
             },
             {
                 title: 'Refine structure later',
-                body: ' \u2014 Adjust acts and beats anytime in Settings \u2192 Core.'
+                body: ' \u2014 A the number of acts, the beat notes and system and more anytime in Settings.'
             }
         ]
     },

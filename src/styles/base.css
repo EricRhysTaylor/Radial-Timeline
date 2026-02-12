@@ -184,6 +184,11 @@
 
 .rt-welcome-button-icon {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 20px;
+  min-width: 20px;
+  min-height: 20px;
   width: 20px;
   height: 20px;
   color: currentColor;
@@ -193,7 +198,7 @@
 .rt-welcome-button-icon svg {
   width: 100%;
   height: 100%;
-  stroke-width: 2;
+  stroke-width: 2.2;
 }
 
 .rt-welcome-primary-btn {
