@@ -274,6 +274,174 @@ export function getPlotSystem(name: string): PlotSystemTemplate | null {
   return PLOT_SYSTEMS[name] || null;
 }
 
+// ─── Built-in Pro Beat Sets ──────────────────────────────────────────
+// Pre-built beat systems available to Pro users in the Pro Sets tab.
+// Each includes beats, custom YAML fields, and hover metadata.
+
+export interface ProBeatSet {
+  id: string;
+  name: string;
+  description: string;
+  beats: { name: string; act: number }[];
+  beatYamlAdvanced: string;
+  beatHoverMetadataFields: { key: string; label: string; icon: string; enabled: boolean }[];
+}
+
+export const PRO_BEAT_SETS: ProBeatSet[] = [
+  {
+    id: 'pro:podcast-narrative',
+    name: 'Podcast Narrative',
+    description: 'Narrative podcasts, investigative episodes, audio essays. Momentum: early spike → dip → steady climb → late reveal → reflective landing.',
+    beats: [
+      // Act 1 — Hook & Context
+      { name: 'Cold Open', act: 1 },
+      { name: 'Framing Question', act: 1 },
+      { name: 'Context Setup', act: 1 },
+      { name: 'Personal Anchor', act: 1 },
+      // Act 2 — Investigation
+      { name: 'First Lead', act: 2 },
+      { name: 'Complication', act: 2 },
+      { name: 'Deep Dive', act: 2 },
+      { name: 'Midpoint Revelation', act: 2 },
+      { name: 'Escalation', act: 2 },
+      { name: 'Major Obstacle', act: 2 },
+      // Act 3 — Resolution
+      { name: 'Turning Point', act: 3 },
+      { name: 'Climax Insight', act: 3 },
+      { name: 'Consequence', act: 3 },
+      { name: 'Reflection', act: 3 },
+      { name: 'Closing Resonance', act: 3 },
+    ],
+    beatYamlAdvanced: `Segment Type:\nEmotional Intensity:\nInformation Density:\nCliffhanger:`,
+    beatHoverMetadataFields: [
+      { key: 'Segment Type', label: 'Segment', icon: 'radio', enabled: true },
+      { key: 'Emotional Intensity', label: 'Intensity', icon: 'activity', enabled: true },
+      { key: 'Information Density', label: 'Density', icon: 'layers', enabled: false },
+      { key: 'Cliffhanger', label: 'Cliffhanger', icon: 'alert-triangle', enabled: false },
+    ],
+  },
+  {
+    id: 'pro:youtube-explainer',
+    name: 'YouTube Explainer',
+    description: 'Educational YouTube, thought leadership. Momentum: hook spike → explanatory plateau → acceleration → surprise → reward.',
+    beats: [
+      // Act 1 — Capture Attention
+      { name: 'Cold Hook', act: 1 },
+      { name: 'Promise of Value', act: 1 },
+      { name: 'Stakes', act: 1 },
+      // Act 2 — Build Understanding
+      { name: 'Core Concept', act: 2 },
+      { name: 'Example', act: 2 },
+      { name: 'Counterexample', act: 2 },
+      { name: 'Deep Insight', act: 2 },
+      { name: 'Escalation Example', act: 2 },
+      // Act 3 — Resolution & Reward
+      { name: 'Unexpected Twist', act: 3 },
+      { name: 'Synthesis', act: 3 },
+      { name: 'Practical Takeaway', act: 3 },
+      { name: 'Call to Action', act: 3 },
+    ],
+    beatYamlAdvanced: `Segment Type:\nAudience Value:\nEnergy Level:\nRetention Risk:`,
+    beatHoverMetadataFields: [
+      { key: 'Segment Type', label: 'Segment', icon: 'video', enabled: true },
+      { key: 'Audience Value', label: 'Value', icon: 'lightbulb', enabled: true },
+      { key: 'Energy Level', label: 'Energy', icon: 'activity', enabled: false },
+      { key: 'Retention Risk', label: 'Retention', icon: 'eye', enabled: false },
+    ],
+  },
+  {
+    id: 'pro:historical-narrative',
+    name: 'Historical Narrative',
+    description: 'Historical books, memoir, biography. Momentum: slow rise → crisis compression → reflective descent.',
+    beats: [
+      // Act 1 — Conditions
+      { name: 'Historical Context', act: 1 },
+      { name: 'Character Introduction', act: 1 },
+      { name: 'Inciting Circumstance', act: 1 },
+      { name: 'Early Friction', act: 1 },
+      // Act 2 — Escalation
+      { name: 'Rising Pressure', act: 2 },
+      { name: 'Political/Social Shift', act: 2 },
+      { name: 'Midpoint Event', act: 2 },
+      { name: 'Moral Complication', act: 2 },
+      { name: 'Crisis', act: 2 },
+      // Act 3 — Aftermath
+      { name: 'Consequence', act: 3 },
+      { name: 'Fallout', act: 3 },
+      { name: 'Resolution', act: 3 },
+      { name: 'Legacy', act: 3 },
+      { name: 'Reflection', act: 3 },
+    ],
+    beatYamlAdvanced: `Historical Force:\nPrimary Actor:\nConflict Type:\nTension Level:\nDocumented Source:`,
+    beatHoverMetadataFields: [
+      { key: 'Historical Force', label: 'Force', icon: 'landmark', enabled: true },
+      { key: 'Primary Actor', label: 'Actor', icon: 'user', enabled: true },
+      { key: 'Conflict Type', label: 'Conflict', icon: 'swords', enabled: true },
+      { key: 'Tension Level', label: 'Tension', icon: 'activity', enabled: false },
+      { key: 'Documented Source', label: 'Source', icon: 'book-open', enabled: false },
+    ],
+  },
+  {
+    id: 'pro:romance-tropes',
+    name: 'Romance Tropes',
+    description: 'Romance novels tracking emotional beats. Momentum: attraction rise → rupture → emotional valley → surge → payoff.',
+    beats: [
+      // Act 1 — Attraction
+      { name: 'Meet Cute', act: 1 },
+      { name: 'Spark', act: 1 },
+      { name: 'Growing Interest', act: 1 },
+      // Act 2 — Complication
+      { name: 'First Obstacle', act: 2 },
+      { name: 'Deepening Bond', act: 2 },
+      { name: 'Midpoint Commitment', act: 2 },
+      { name: 'External Threat', act: 2 },
+      { name: 'Breakup / Betrayal', act: 2 },
+      // Act 3 — Reunion
+      { name: 'Self-Realization', act: 3 },
+      { name: 'Grand Gesture', act: 3 },
+      { name: 'Emotional Reunion', act: 3 },
+      { name: 'Commitment', act: 3 },
+    ],
+    beatYamlAdvanced: `Relationship Stage:\nEmotional Intensity:\nChemistry Level:\nConflict Source:`,
+    beatHoverMetadataFields: [
+      { key: 'Relationship Stage', label: 'Stage', icon: 'heart', enabled: true },
+      { key: 'Emotional Intensity', label: 'Intensity', icon: 'activity', enabled: true },
+      { key: 'Chemistry Level', label: 'Chemistry', icon: 'flame', enabled: false },
+      { key: 'Conflict Source', label: 'Conflict', icon: 'shield', enabled: false },
+    ],
+  },
+  {
+    id: 'pro:thriller-escalation',
+    name: 'Thriller Escalation',
+    description: 'Thriller and suspense fiction. Momentum: steady escalation → compressed second half → explosive climax.',
+    beats: [
+      // Act 1 — Threat Emerges
+      { name: 'Ordinary World', act: 1 },
+      { name: 'Threat Signal', act: 1 },
+      { name: 'Denial', act: 1 },
+      { name: 'First Attack', act: 1 },
+      // Act 2 — Escalation
+      { name: 'Pursuit', act: 2 },
+      { name: 'Revelation', act: 2 },
+      { name: 'Midpoint Disaster', act: 2 },
+      { name: 'Increased Stakes', act: 2 },
+      { name: 'False Victory', act: 2 },
+      { name: 'Catastrophic Setback', act: 2 },
+      // Act 3 — Confrontation
+      { name: 'Final Pursuit', act: 3 },
+      { name: 'Showdown', act: 3 },
+      { name: 'Aftermath', act: 3 },
+    ],
+    beatYamlAdvanced: `Threat Level:\nDanger Type:\nStakes Escalation:\nCasualties:`,
+    beatHoverMetadataFields: [
+      { key: 'Threat Level', label: 'Threat', icon: 'alert-triangle', enabled: true },
+      { key: 'Danger Type', label: 'Danger', icon: 'zap', enabled: true },
+      { key: 'Stakes Escalation', label: 'Stakes', icon: 'trending-up', enabled: false },
+      { key: 'Casualties', label: 'Casualties', icon: 'skull', enabled: false },
+    ],
+  },
+];
+
 /**
  * Shared helper to construct the custom system object from settings.
  * Accepts any object that matches the minimal settings shape needed.

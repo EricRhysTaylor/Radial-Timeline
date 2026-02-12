@@ -2187,6 +2187,79 @@
   margin-top: 4px;
 }
 
+/* ── Set preview card (Pro Sets panel) ──────────────────────────── */
+.ert-ui.ert-scope--settings .ert-set-preview {
+  padding: 12px 14px;
+  border-radius: var(--radius-s);
+  background: var(--background-modifier-form-field);
+  border: 1px solid var(--background-modifier-border);
+}
+.ert-ui.ert-scope--settings .ert-set-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.ert-ui.ert-scope--settings .ert-set-preview-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-normal);
+}
+.ert-ui.ert-scope--settings .ert-set-preview-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: var(--radius-s);
+  line-height: 1.4;
+}
+.ert-ui.ert-scope--settings .ert-set-preview-tag .svg-icon {
+  width: 10px;
+  height: 10px;
+}
+.ert-ui.ert-scope--settings .ert-set-preview-tag--starter {
+  background: color-mix(in srgb, var(--interactive-accent) 15%, transparent);
+  color: var(--interactive-accent);
+}
+.ert-ui.ert-scope--settings .ert-set-preview-tag--saved {
+  background: color-mix(in srgb, var(--text-muted) 15%, transparent);
+  color: var(--text-muted);
+}
+.ert-ui.ert-scope--settings .ert-set-preview-desc {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+.ert-ui.ert-scope--settings .ert-set-preview-meta {
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* ── Action row end-aligned ─────────────────────────────────────── */
+.ert-ui.ert-scope--settings .ert-inline-actions--end {
+  justify-content: flex-end;
+}
+
+/* ── Textarea (edit modal) ──────────────────────────────────────── */
+.ert-ui .ert-textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+/* ── Field label (edit modal) ───────────────────────────────────── */
+.ert-ui .ert-field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-normal);
+  margin-bottom: 2px;
+}
+
 .ert-ui.ert-scope--settings .ert-beat-template-examples {
   color: var(--text-faint);
   font-size: 12px;

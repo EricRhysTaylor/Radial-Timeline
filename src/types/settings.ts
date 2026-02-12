@@ -37,6 +37,7 @@ export interface BeatSystemConfig {
 export interface SavedBeatSystem {
     id: string;
     name: string;
+    description?: string;
     beats: { name: string; act: number }[];
     beatYamlAdvanced?: string;
     beatHoverMetadataFields?: HoverMetadataField[];
@@ -406,6 +407,7 @@ export interface RadialTimelineSettings {
     activeAiContextTemplateId?: string;
     beatSystem?: string;
     customBeatSystemName?: string;
+    customBeatSystemDescription?: string;
     customBeatSystemBeats?: { name: string; act: number }[];
     dominantSubplots?: Record<string, string>;
     globalPovMode?: GlobalPovMode;
