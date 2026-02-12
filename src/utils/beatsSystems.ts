@@ -289,9 +289,9 @@ export interface ProBeatSet {
 
 export const PRO_BEAT_SETS: ProBeatSet[] = [
   {
-    id: 'pro:podcast-narrative',
-    name: 'Podcast Narrative',
-    description: 'Narrative podcasts, investigative episodes, audio essays. Momentum: early spike → dip → steady climb → late reveal → reflective landing.',
+    id: 'starter:podcast_narrative',
+    name: 'Podcast Narrative Arc',
+    description: 'Design narrative tension for audio storytelling.\n\nThis structure is built for documentary and narrative podcast episodes where the hook must land fast and revelations unfold deliberately. Instead of focusing on character transformation alone, it tracks investigation, escalation, and emotional resonance across segments.\n\nUse this system to measure how curiosity builds, where tension peaks, and whether your final reflection lands with weight.\n\nBest for: narrative podcasts, investigative journalism, audio essays\nMomentum profile: Early spike → steady climb → late revelation → reflective close',
     beats: [
       // Act 1 — Hook & Context
       { name: 'Cold Open', act: 1 },
@@ -321,9 +321,9 @@ export const PRO_BEAT_SETS: ProBeatSet[] = [
     ],
   },
   {
-    id: 'pro:youtube-explainer',
-    name: 'YouTube Explainer',
-    description: 'Educational YouTube, thought leadership. Momentum: hook spike → explanatory plateau → acceleration → surprise → reward.',
+    id: 'starter:youtube_explainer',
+    name: 'YouTube Explainer Arc',
+    description: 'Optimize clarity, escalation, and retention.\n\nDesigned for educational and thought-leadership content, this structure emphasizes value delivery, progressive insight, and strategic surprise. It mirrors how high-performing explainer videos sustain attention: hook hard, deepen understanding, escalate examples, then reward the viewer.\n\nGossamer reveals where energy dips, where complexity spikes, and whether your twist earns its payoff.\n\nBest for: educational YouTube, commentary, business explainers\nMomentum profile: Hook → clarity plateau → acceleration → twist → payoff',
     beats: [
       // Act 1 — Capture Attention
       { name: 'Cold Hook', act: 1 },
@@ -350,9 +350,9 @@ export const PRO_BEAT_SETS: ProBeatSet[] = [
     ],
   },
   {
-    id: 'pro:historical-narrative',
-    name: 'Historical Narrative',
-    description: 'Historical books, memoir, biography. Momentum: slow rise → crisis compression → reflective descent.',
+    id: 'starter:historical_narrative',
+    name: 'Historical Narrative Arc',
+    description: 'Shape real events into compelling narrative flow.\n\nHistorical and biographical writing often resists conventional three-act fiction models. This framework focuses on forces, pressure, crisis, and consequence — allowing you to track tension across political, cultural, or personal change.\n\nUse it to see whether escalation builds naturally and whether aftermath and legacy receive the structural weight they deserve.\n\nBest for: biography, memoir, historical nonfiction\nMomentum profile: Gradual rise → crisis compression → reflective descent',
     beats: [
       // Act 1 — Conditions
       { name: 'Historical Context', act: 1 },
@@ -382,9 +382,9 @@ export const PRO_BEAT_SETS: ProBeatSet[] = [
     ],
   },
   {
-    id: 'pro:romance-tropes',
-    name: 'Romance Tropes',
-    description: 'Romance novels tracking emotional beats. Momentum: attraction rise → rupture → emotional valley → surge → payoff.',
+    id: 'starter:romance_tropes',
+    name: 'Romance Tropes Ladder',
+    description: 'Track emotional escalation with precision.\n\nRomance thrives on rhythm — attraction, complication, rupture, reunion. This system is built around emotional beats rather than plot mechanics, allowing you to measure chemistry, conflict, and payoff across the relationship arc.\n\nGossamer highlights emotional valleys and surges, revealing whether the breakup lands hard enough and whether the reunion feels earned.\n\nBest for: contemporary romance, rom-com, genre romance\nMomentum profile: Emotional rise → rupture → valley → surge → commitment',
     beats: [
       // Act 1 — Attraction
       { name: 'Meet Cute', act: 1 },
@@ -411,9 +411,9 @@ export const PRO_BEAT_SETS: ProBeatSet[] = [
     ],
   },
   {
-    id: 'pro:thriller-escalation',
-    name: 'Thriller Escalation',
-    description: 'Thriller and suspense fiction. Momentum: steady escalation → compressed second half → explosive climax.',
+    id: 'starter:thriller_escalation',
+    name: 'Thriller Escalation Ladder',
+    description: 'Engineer sustained tension and explosive payoff.\n\nThrillers demand relentless escalation. This structure focuses on threat signals, rising stakes, false victories, and catastrophic setbacks, ensuring momentum compounds rather than plateaus.\n\nUse it to visualize where danger intensifies, where stakes peak too early, or where the final confrontation needs more compression.\n\nBest for: thriller, suspense, action, crime\nMomentum profile: Steady escalation → compressed second half → explosive climax',
     beats: [
       // Act 1 — Threat Emerges
       { name: 'Ordinary World', act: 1 },

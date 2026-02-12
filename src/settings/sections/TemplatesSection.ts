@@ -629,6 +629,8 @@ export function renderStoryBeatsSection(params: {
         if (starterActive) {
             // Starter set: plain text title, not clickable/renameable
             titleEl.createSpan({ text: customSystemName, cls: 'ert-book-name' });
+            const originTag = titleEl.createSpan({ text: 'Starter set', cls: 'ert-set-origin-tag ert-set-origin-tag--starter' });
+            setTooltip(originTag, 'Save a copy to edit.');
         } else {
             // User system: clickable to edit details
             const nameLink = titleEl.createSpan({
@@ -657,16 +659,34 @@ export function renderStoryBeatsSection(params: {
             });
         }
 
-        // Show user description if set, otherwise fall back to generic Custom copy
-        if (customSystemDesc) {
+        // ── Description: context-aware ───────────────────────────────
+        if (starterActive) {
+            // Starter set — show its marketing description + meta line
+            const starterSet = PRO_BEAT_SETS.find(ps => ps.id === (plugin.settings.activeCustomBeatSystemId ?? 'default'));
+            if (starterSet?.description) {
+                const descEl = headerRow.createDiv({ cls: 'ert-beat-template-desc' });
+                descEl.style.whiteSpace = 'pre-line'; // SAFE: inline style for pre-line (no CSS class needed for one-off)
+                descEl.setText(starterSet.description);
+            }
+            const actSet = new Set((plugin.settings.customBeatSystemBeats ?? []).map(b => b.act));
+            const beatCount = (plugin.settings.customBeatSystemBeats ?? []).length;
+            if (beatCount > 0) {
+                headerRow.createDiv({
+                    cls: 'ert-beat-template-examples',
+                    text: `${beatCount} beats · ${actSet.size} act${actSet.size !== 1 ? 's' : ''}`
+                });
+            }
+        } else if (customSystemDesc) {
+            // User-owned with custom description
             headerRow.createDiv({ cls: 'ert-beat-template-desc', text: customSystemDesc });
         } else {
+            // Core default — boilerplate + examples
             copy.description.split('\n\n').forEach(para => {
                 headerRow.createDiv({ cls: 'ert-beat-template-desc', text: para });
             });
-        }
-        if (!customSystemDesc && copy.examples) {
-            headerRow.createDiv({ cls: 'ert-beat-template-examples', text: copy.examples });
+            if (copy.examples) {
+                headerRow.createDiv({ cls: 'ert-beat-template-examples', text: copy.examples });
+            }
         }
 
         // Update health icon from current beat-note audit counters.
@@ -1774,7 +1794,7 @@ export function renderStoryBeatsSection(params: {
 
     savedCard.createEl('p', {
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Load starter sets or save your own. Each set stores beats, custom YAML fields, and hover metadata. Core: one active system. Pro: many saved sets.'
+        text: 'Starter sets are curated starting points. Saved sets are your own versions you can edit and delete. Core: one active system. Pro: many saved sets.'
     });
 
     const savedControlsContainer = savedCard.createDiv({ cls: ERT_CLASSES.STACK });
@@ -1805,19 +1825,36 @@ export function renderStoryBeatsSection(params: {
 
     /** Apply a saved or built-in system as the active system and refresh UI. */
     const applyLoadedSystem = (system: { id: string; name: string; description?: string; beats: { name: string; act: number }[]; beatYamlAdvanced?: string; beatHoverMetadataFields?: { key: string; label: string; icon: string; enabled: boolean }[] }) => {
+        // 1. Guarantee we're on the Custom system (config resolution depends on this)
+        plugin.settings.beatSystem = 'Custom';
+        // 2. Activate this set's id so config resolves to custom:<id>
+        plugin.settings.activeCustomBeatSystemId = system.id;
+        // 3. Write beats/name/description
         plugin.settings.customBeatSystemName = system.name;
         plugin.settings.customBeatSystemDescription = system.description ?? '';
         plugin.settings.customBeatSystemBeats = system.beats.map(b => ({ ...b }));
-        plugin.settings.activeCustomBeatSystemId = system.id;
-        // Ensure config map exists and write per-system config
+        // 4. Write per-system YAML/hover config into the correct slot
+        const configKey = `custom:${system.id}`;
         if (!plugin.settings.beatSystemConfigs) plugin.settings.beatSystemConfigs = {};
-        plugin.settings.beatSystemConfigs[`custom:${system.id}`] = {
+        plugin.settings.beatSystemConfigs[configKey] = {
             beatYamlAdvanced: system.beatYamlAdvanced ?? '',
             beatHoverMetadataFields: system.beatHoverMetadataFields
                 ? system.beatHoverMetadataFields.map(f => ({ ...f }))
                 : [],
         };
-        // Switch to Design stage so the user sees the loaded beats immediately
+
+        // DEV: prove config activation is correct
+        if (process.env.NODE_ENV !== 'production') {
+            const slot = plugin.settings.beatSystemConfigs[configKey];
+            console.debug('[loadSet]', {
+                activeCustomBeatSystemId: system.id,
+                configSlotExists: !!slot,
+                yamlLength: slot?.beatYamlAdvanced?.length ?? 0,
+                hoverFieldCount: slot?.beatHoverMetadataFields?.length ?? 0,
+            });
+        }
+
+        // 5. Switch to Design stage so the user sees the loaded beats immediately
         currentCustomStage = 'design';
         void plugin.saveSettings();
         new Notice(`Loaded "${system.name}" into Custom.`);
@@ -1905,7 +1942,30 @@ export function renderStoryBeatsSection(params: {
             if (selectedEntry.builtIn) setIcon(tag, 'star');
 
             if (selectedEntry.description) {
-                previewEl.createDiv({ cls: 'ert-set-preview-desc', text: selectedEntry.description });
+                const descEl = previewEl.createDiv({ cls: 'ert-set-preview-desc ert-set-preview-desc--clamped' });
+                descEl.setText(selectedEntry.description);
+                // "Show more / less" toggle for long descriptions
+                const toggleEl = previewEl.createEl('button', {
+                    cls: 'ert-set-preview-toggle',
+                    text: 'Show more',
+                    attr: { type: 'button' }
+                });
+                toggleEl.addEventListener('click', () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
+                    // Preserve scroll position to prevent jump in Obsidian settings pane
+                    const scrollParent = previewEl.closest('.vertical-tab-content') as HTMLElement | null;
+                    const scrollTop = scrollParent?.scrollTop ?? 0;
+                    const expanded = descEl.classList.toggle('ert-set-preview-desc--expanded');
+                    descEl.classList.toggle('ert-set-preview-desc--clamped', !expanded);
+                    toggleEl.setText(expanded ? 'Show less' : 'Show more');
+                    if (scrollParent) scrollParent.scrollTop = scrollTop;
+                    toggleEl.focus();
+                });
+                // Hide toggle if content fits within the clamp
+                requestAnimationFrame(() => {
+                    if (descEl.scrollHeight <= descEl.clientHeight + 2) {
+                        toggleEl.addClass('ert-settings-hidden');
+                    }
+                });
             }
 
             // Count unique acts
@@ -1920,6 +1980,93 @@ export function renderStoryBeatsSection(params: {
         // ── Action buttons ───────────────────────────────────────────
         const actionsRow = savedControlsContainer.createDiv({ cls: 'ert-inline-actions ert-inline-actions--end' });
 
+        // ── Shared: save-as-copy modal + persistence ─────────────────
+        const saveSetModal = async (opts: { isCopy: boolean }): Promise<void> => {
+            const currentBeats = (plugin.settings.customBeatSystemBeats || []).map(b => ({ ...b }));
+            if (currentBeats.length === 0) {
+                new Notice('No beats defined. Add beats before saving.');
+                return;
+            }
+            const activeConfig = getBeatConfigForSystem(plugin.settings);
+            const currentName = plugin.settings.customBeatSystemName || 'Custom';
+            const defaultName = opts.isCopy ? `${currentName} (Copy)` : currentName;
+            const modalTitle = opts.isCopy ? 'Save a copy' : 'Save set';
+            const modalSubtitle = opts.isCopy
+                ? 'Create an editable copy of this starter set. The original stays unchanged.'
+                : 'Enter a name for this set. Existing sets with the same name will be updated.';
+
+            const saveName = await new Promise<string | null>((resolve) => {
+                const modal = new Modal(app);
+                const { modalEl, contentEl } = modal;
+                modal.titleEl.setText('');
+                contentEl.empty();
+                modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+                contentEl.addClass('ert-modal-container', 'ert-stack');
+                const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+                header.createSpan({ cls: 'ert-modal-badge', text: 'BEAT SYSTEM' });
+                header.createDiv({ cls: 'ert-modal-title', text: modalTitle });
+                header.createDiv({ cls: 'ert-modal-subtitle', text: modalSubtitle });
+                const inputRow = contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                const nameInput = inputRow.createEl('input', {
+                    type: 'text',
+                    cls: 'ert-input ert-input--full',
+                    attr: { placeholder: 'Set name' }
+                }) as HTMLInputElement;
+                nameInput.value = defaultName;
+                const actionsDiv = contentEl.createDiv({ cls: ['ert-modal-actions', 'ert-inline-actions'] });
+                new ButtonComponent(actionsDiv).setButtonText('Save').setCta().onClick(() => {
+                    const name = nameInput.value.trim();
+                    modal.close();
+                    resolve(name || null);
+                });
+                new ButtonComponent(actionsDiv).setButtonText('Cancel').onClick(() => { modal.close(); resolve(null); });
+                nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const name = nameInput.value.trim(); modal.close(); resolve(name || null); } });
+                modal.open();
+                setTimeout(() => nameInput.focus(), 50);
+            });
+
+            if (!saveName) return;
+
+            const existingSystems = plugin.settings.savedBeatSystems ?? [];
+            // Copies never overwrite; regular save can update same-name entry
+            const existingIdx = opts.isCopy ? -1 : existingSystems.findIndex(s => s.name === saveName);
+
+            const newSystem: SavedBeatSystem = {
+                id: existingIdx >= 0 ? existingSystems[existingIdx].id : `${Date.now()}`,
+                name: saveName,
+                description: plugin.settings.customBeatSystemDescription ?? '',
+                beats: currentBeats,
+                beatYamlAdvanced: activeConfig.beatYamlAdvanced,
+                beatHoverMetadataFields: activeConfig.beatHoverMetadataFields.map(f => ({ ...f })),
+                createdAt: new Date().toISOString()
+            };
+
+            if (!plugin.settings.beatSystemConfigs) plugin.settings.beatSystemConfigs = {};
+            plugin.settings.beatSystemConfigs[`custom:${newSystem.id}`] = {
+                beatYamlAdvanced: newSystem.beatYamlAdvanced ?? '',
+                beatHoverMetadataFields: newSystem.beatHoverMetadataFields?.map(f => ({ ...f })) ?? [],
+            };
+
+            if (existingIdx >= 0) {
+                existingSystems[existingIdx] = newSystem;
+            } else {
+                existingSystems.unshift(newSystem);
+            }
+            plugin.settings.savedBeatSystems = existingSystems;
+            plugin.settings.activeCustomBeatSystemId = newSystem.id;
+            plugin.settings.customBeatSystemName = saveName;
+            await plugin.saveSettings();
+            const verb = opts.isCopy ? 'copied' : (existingIdx >= 0 ? 'updated' : 'saved');
+            new Notice(`Set "${saveName}" ${verb}.`);
+            // If copy, switch to Design so user sees their new editable system
+            if (opts.isCopy) {
+                currentCustomStage = 'design';
+                renderStoryBeatsSection({ app, plugin, containerEl });
+            } else {
+                renderSavedBeatSystems();
+            }
+        };
+
         // Load set CTA
         let loadBtn: ButtonComponent;
         const loadSetAction = () => {
@@ -1929,7 +2076,6 @@ export function renderStoryBeatsSection(params: {
             const currentHasBeats = (plugin.settings.customBeatSystemBeats ?? []).length > 0;
 
             if (currentHasBeats) {
-                // Confirm replace
                 const confirmModal = new Modal(app);
                 const { modalEl, contentEl } = confirmModal;
                 confirmModal.titleEl.setText('');
@@ -1957,86 +2103,16 @@ export function renderStoryBeatsSection(params: {
             .setDisabled(!selectedEntry)
             .onClick(loadSetAction);
 
-        // Save current
-        new ButtonComponent(actionsRow)
-            .setButtonText('Save current system')
-            .onClick(async () => {
-                const currentBeats = (plugin.settings.customBeatSystemBeats || []).map(b => ({ ...b }));
-                if (currentBeats.length === 0) {
-                    new Notice('No beats defined. Add beats before saving.');
-                    return;
-                }
+        // Save a copy (starter) / Save set (user-owned)
+        let saveBtn: ButtonComponent;
+        saveBtn = new ButtonComponent(actionsRow)
+            .setButtonText(isStarterSetActive() ? 'Save a copy' : 'Save set')
+            .onClick(() => { void saveSetModal({ isCopy: isStarterSetActive() }); });
 
-                const activeConfig = getBeatConfigForSystem(plugin.settings);
-                const defaultName = plugin.settings.customBeatSystemName || 'Custom';
-                const saveName = await new Promise<string | null>((resolve) => {
-                    const modal = new Modal(app);
-                    const { modalEl, contentEl } = modal;
-                    modal.titleEl.setText('');
-                    contentEl.empty();
-                    modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
-                    contentEl.addClass('ert-modal-container', 'ert-stack');
-                    const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-                    header.createSpan({ cls: 'ert-modal-badge', text: 'BEAT SYSTEM' });
-                    header.createDiv({ cls: 'ert-modal-title', text: 'Save beat system' });
-                    header.createDiv({ cls: 'ert-modal-subtitle', text: 'Enter a name for this beat system. Existing systems with the same name will be updated.' });
-                    const inputRow = contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
-                    const nameInput = inputRow.createEl('input', {
-                        type: 'text',
-                        cls: 'ert-input ert-input--full',
-                        attr: { placeholder: 'System name' }
-                    }) as HTMLInputElement;
-                    nameInput.value = defaultName;
-                    const actionsDiv = contentEl.createDiv({ cls: ['ert-modal-actions', 'ert-inline-actions'] });
-                    new ButtonComponent(actionsDiv).setButtonText('Save').setCta().onClick(() => {
-                        const name = nameInput.value.trim();
-                        modal.close();
-                        resolve(name || null);
-                    });
-                    new ButtonComponent(actionsDiv).setButtonText('Cancel').onClick(() => { modal.close(); resolve(null); });
-                    nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const name = nameInput.value.trim(); modal.close(); resolve(name || null); } });
-                    modal.open();
-                    setTimeout(() => nameInput.focus(), 50);
-                });
-
-                if (!saveName) return;
-
-                const existingSystems = plugin.settings.savedBeatSystems ?? [];
-                const existingIdx = existingSystems.findIndex(s => s.name === saveName);
-
-                const newSystem: SavedBeatSystem = {
-                    id: existingIdx >= 0 ? existingSystems[existingIdx].id : `${Date.now()}`,
-                    name: saveName,
-                    description: plugin.settings.customBeatSystemDescription ?? '',
-                    beats: currentBeats,
-                    beatYamlAdvanced: activeConfig.beatYamlAdvanced,
-                    beatHoverMetadataFields: activeConfig.beatHoverMetadataFields.map(f => ({ ...f })),
-                    createdAt: new Date().toISOString()
-                };
-
-                if (!plugin.settings.beatSystemConfigs) plugin.settings.beatSystemConfigs = {};
-                plugin.settings.beatSystemConfigs[`custom:${newSystem.id}`] = {
-                    beatYamlAdvanced: newSystem.beatYamlAdvanced ?? '',
-                    beatHoverMetadataFields: newSystem.beatHoverMetadataFields?.map(f => ({ ...f })) ?? [],
-                };
-
-                if (existingIdx >= 0) {
-                    existingSystems[existingIdx] = newSystem;
-                } else {
-                    existingSystems.unshift(newSystem);
-                }
-                plugin.settings.savedBeatSystems = existingSystems;
-                plugin.settings.activeCustomBeatSystemId = newSystem.id;
-                plugin.settings.customBeatSystemName = saveName;
-                await plugin.saveSettings();
-                new Notice(`Beat system "${saveName}" ${existingIdx >= 0 ? 'updated' : 'saved'}.`);
-                renderSavedBeatSystems();
-            });
-
-        // Delete selected — hidden when starter set is selected
+        // Delete set — hidden when starter set is selected
         let deleteBtn: ButtonComponent;
         deleteBtn = new ButtonComponent(actionsRow)
-            .setButtonText('Delete')
+            .setButtonText('Delete set')
             .onClick(async () => {
                 if (!selectedEntry || selectedEntry.builtIn) return;
                 const system = savedSystems.find(s => s.id === selectedEntry!.id);
@@ -2048,7 +2124,7 @@ export function renderStoryBeatsSection(params: {
                 confirmModal.contentEl.addClass('ert-modal-container', 'ert-stack');
                 const header = confirmModal.contentEl.createDiv({ cls: 'ert-modal-header' });
                 header.createSpan({ cls: 'ert-modal-badge', text: 'BEAT SYSTEM' });
-                header.createDiv({ cls: 'ert-modal-title', text: 'Delete saved system' });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Delete set' });
                 header.createDiv({ cls: 'ert-modal-subtitle', text: `Delete "${system.name}"? This cannot be undone.` });
                 const footer = confirmModal.contentEl.createDiv({ cls: 'ert-modal-actions' });
                 new ButtonComponent(footer).setButtonText('Delete').setWarning().onClick(async () => {
@@ -2061,7 +2137,7 @@ export function renderStoryBeatsSection(params: {
                     }
                     await plugin.saveSettings();
                     confirmModal.close();
-                    new Notice(`Deleted beat system "${system.name}".`);
+                    new Notice(`Deleted set "${system.name}".`);
                     renderSavedBeatSystems();
                 });
                 new ButtonComponent(footer).setButtonText('Cancel').onClick(() => confirmModal.close());
@@ -2070,6 +2146,9 @@ export function renderStoryBeatsSection(params: {
 
         const updateActionButtons = () => {
             loadBtn.setDisabled(!selectedEntry);
+            // Save button adapts label based on what's active
+            const starterNow = isStarterSetActive();
+            saveBtn.setButtonText(starterNow ? 'Save a copy' : 'Save set');
             // Hide delete for starter sets, show for saved
             const isStarter = selectedEntry?.builtIn ?? true;
             deleteBtn.buttonEl.toggleClass('ert-settings-hidden', isStarter || !selectedEntry);

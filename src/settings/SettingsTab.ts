@@ -706,9 +706,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             subtitle: 'The Radial Timeline is designed to empower you, the author, to greater productivity and accountability. Using core settings, configure the Radial Timeline to reflect your manuscript’s structure and writing style. Search surfaces any matching section instantly.',
             kicker: 'Core Highlights:',
             features: [
-                { icon: 'layout-grid', text: 'Story structure — manage scenes,beats, templates, and advanced YAML fields.' },
+                { icon: 'layout-grid', text: 'Story structure — manage scenes, beats, templates, and advanced YAML fields.' },
                 { icon: 'orbit', text: 'Chronologue & time — align chronologue, backdrop, and planetary clocks' },
-                { icon: 'book-open-text', text: 'Publishing setup — configure manuscript formats, metadata, runtime estimation, and release prep' },
+                { icon: 'book-open-text', text: 'Publishing setup — set stage due dates, configure manuscript formats, and work with LONGFORM and PANDOC.' },
             ]
         });
     }
