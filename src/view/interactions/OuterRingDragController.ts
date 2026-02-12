@@ -184,7 +184,7 @@ export class OuterRingDragController {
      * Reads directly from .rt-scene-group elements sorted by data-start-angle (manuscript order).
      * Number text is extracted from the file path basename prefix (e.g., "03 Scene Title.md" → "03").
      */
-    private buildOuterRingOrder(): Array<{ sceneId: string; path: string; numberText: string; subplot: string; ring: number; itemType: 'Scene' | 'Beat' }> {
+    private buildOuterRingOrder(): Array<{ sceneId: string; path: string; numberText: string; subplot: string; ring: number; itemType: 'Scene' | 'Beat'; startAngle: number }> {
         const masterSubplotOrder = (this.view.plugin.settings as any).masterSubplotOrder as string[] || ['Main Plot'];
         
         // Use shared helper for outer ring detection
@@ -220,8 +220,18 @@ export class OuterRingDragController {
             const subplotIdx = Number(group.getAttribute('data-subplot-index') ?? 0);
             const subplot = masterSubplotOrder[subplotIdx] || 'Main Plot';
             const ring = Number(group.getAttribute('data-ring') ?? 0);
-            return { sceneId, path, numberText, subplot, ring, itemType };
+            const startAngle = Number(group.getAttribute('data-start-angle') ?? 0);
+            return { sceneId, path, numberText, subplot, ring, itemType, startAngle };
         }).filter(entry => entry.sceneId && entry.path);
+    }
+
+    private findInsertionIndexByAngle(
+        entries: Array<{ startAngle: number }>,
+        targetStartAngle: number
+    ): number {
+        if (!Number.isFinite(targetStartAngle)) return entries.length;
+        const index = entries.findIndex(entry => entry.startAngle >= targetStartAngle);
+        return index === -1 ? entries.length : index;
     }
 
     private clearHighlight(): void {
@@ -624,9 +634,32 @@ export class OuterRingDragController {
         const actChanged = targetActNumber !== sourceActNumber;
 
         const sourceOriginalNumber = order[fromIdx]?.numberText ?? '';
-        const sourceType = this.sourceItemType;
+        const movedEntry = order[fromIdx];
+        const sourceType = movedEntry.itemType;
         const sourceLabel = sourceType === 'Beat' ? 'beat' : 'scene';
         const targetSubplotName = this.getSubplotNameFromRing(target.ring);
+
+        // Build the post-drop sequence by inserting the moved item at the void-cell angle.
+        // This keeps numbering aligned with neighboring beats/scenes in manuscript order.
+        const reordered = [...order];
+        const [moved] = reordered.splice(fromIdx, 1);
+        const insertionIndex = this.findInsertionIndexByAngle(reordered, target.startAngle);
+        reordered.splice(insertionIndex, 0, moved);
+
+        const updates: SceneUpdate[] = [];
+        const nextNumberByPath = new Map<string, string>();
+        reordered.forEach((entry, idx) => {
+            const { suffix } = this.splitNumberParts(entry.numberText);
+            const nextNumber = `${idx + 1}${suffix}`;
+            nextNumberByPath.set(entry.path, nextNumber);
+            if (nextNumber !== entry.numberText) {
+                updates.push({ path: entry.path, newNumber: nextNumber });
+            }
+        });
+
+        // Safety fallback: if a dragged scene has no numeric prefix, force a valid sequence number.
+        const sourceNextNumber = nextNumberByPath.get(this.sourcePath) || '1';
+        const sourceDisplayNumber = sourceOriginalNumber || sourceNextNumber;
         
         // Get current subplots for the item
         const currentSubplots = await this.getSceneSubplots(this.sourcePath);
@@ -668,13 +701,19 @@ export class OuterRingDragController {
             }
         }
         
-        // Build update (only include actNumber if it changed)
-        const updates: SceneUpdate[] = [{
-            path: this.sourcePath,
-            newNumber: sourceOriginalNumber,
-            actNumber: actChanged ? targetActNumber : undefined,
-            subplots: newSubplots
-        }];
+        // Merge act/subplot updates onto the moved item's renumber update.
+        const movedUpdate = updates.find(update => update.path === this.sourcePath);
+        if (movedUpdate) {
+            if (actChanged) movedUpdate.actNumber = targetActNumber;
+            if (newSubplots !== undefined) movedUpdate.subplots = newSubplots;
+        } else if (actChanged || newSubplots !== undefined) {
+            updates.push({
+                path: this.sourcePath,
+                newNumber: sourceNextNumber,
+                actNumber: actChanged ? targetActNumber : undefined,
+                subplots: newSubplots
+            });
+        }
 
         // Build descriptive summary message
         const summaryLines: string[] = [];
@@ -682,11 +721,12 @@ export class OuterRingDragController {
             const locationDesc = target.isOuterRing 
                 ? `Act ${targetActNumber}` 
                 : `Act ${targetActNumber}, "${targetSubplotName}"`;
-            summaryLines.push(`Move ${sourceLabel} ${sourceOriginalNumber} to ${locationDesc}.`);
+            summaryLines.push(`Move ${sourceLabel} ${sourceDisplayNumber} to ${locationDesc}.`);
         } else {
-            summaryLines.push(`Move ${sourceLabel} ${sourceOriginalNumber} to "${targetSubplotName}".`);
+            summaryLines.push(`Move ${sourceLabel} ${sourceDisplayNumber} to "${targetSubplotName}".`);
         }
         summaryLines.push(subplotChangeDesc);
+        summaryLines.push(`Will renumber ${updates.length} item(s).`);
 
         this.confirming = true;
         let confirmed = false;
@@ -706,9 +746,14 @@ export class OuterRingDragController {
             return;
         }
 
+        if (updates.length === 0) {
+            this.resetState();
+            return;
+        }
+
         const noticeText = target.isOuterRing 
-            ? `Moved ${sourceLabel} ${sourceOriginalNumber} → Act ${targetActNumber}`
-            : `Moved ${sourceLabel} ${sourceOriginalNumber} → Act ${targetActNumber}, "${targetSubplotName}"`;
+            ? `Moved ${sourceLabel} ${sourceDisplayNumber} → Act ${targetActNumber}`
+            : `Moved ${sourceLabel} ${sourceDisplayNumber} → Act ${targetActNumber}, "${targetSubplotName}"`;
         this.log('apply void cell drop', { targetAct: targetActNumber, ring: target.ring, subplot: targetSubplotName, path: this.sourcePath, itemType: sourceType });
         await applySceneNumberUpdates(this.view.plugin.app, updates);
         new Notice(noticeText, 2000);

@@ -1470,36 +1470,51 @@ export class BookDesignerModal extends Modal {
             }
         }
 
-        // Generate Beats
+        // Generate Beats — guard against duplicate creation
         let beatsCreated = 0;
+        let beatsSkippedDuplicate = false;
         if (this.generateBeats) {
-            const beatSystem = this.plugin.settings.beatSystem || 'Custom';
-            const beatTemplate = getMergedBeatYamlTemplate(this.plugin.settings);
+            // Check if beat notes already exist in the target folder
+            const existingBeatFiles = vault.getMarkdownFiles().filter(f => {
+                if (!f.path.startsWith(targetFolder + '/') && f.path !== targetFolder) return false;
+                const cache = this.app.metadataCache.getFileCache(f);
+                const cls = cache?.frontmatter?.['Class'] ?? cache?.frontmatter?.['class'] ?? '';
+                return String(cls).toLowerCase() === 'beat';
+            });
 
-            // Handle Custom Dynamic System
-            if (beatSystem === 'Custom') {
-                const customSystem = getCustomSystemFromSettings(this.plugin.settings);
-                if (customSystem.beats.length > 0) {
-                    try {
-                        const result = await createBeatTemplateNotes(vault, 'Custom', targetFolder, customSystem, { beatTemplate });
-                        beatsCreated = result.created;
-                    } catch (e) {
-                        new Notice(`Error creating custom beats: ${e}`);
+            if (existingBeatFiles.length > 0) {
+                new Notice(`Beat notes already exist in this folder (${existingBeatFiles.length} found). Use the beat manager in settings to repair or resync.`);
+                beatsSkippedDuplicate = true;
+            } else {
+                const beatSystem = this.plugin.settings.beatSystem || 'Custom';
+                const beatTemplate = getMergedBeatYamlTemplate(this.plugin.settings);
+
+                // Handle Custom Dynamic System
+                if (beatSystem === 'Custom') {
+                    const customSystem = getCustomSystemFromSettings(this.plugin.settings);
+                    if (customSystem.beats.length > 0) {
+                        try {
+                            const result = await createBeatTemplateNotes(vault, 'Custom', targetFolder, customSystem, { beatTemplate });
+                            beatsCreated = result.created;
+                        } catch (e) {
+                            new Notice(`Error creating custom beats: ${e}`);
+                        }
+                    } else {
+                        // No custom beats defined, skip
                     }
                 } else {
-                    // No custom beats defined, skip
-                }
-            } else {
-                try {
-                    const result = await createBeatTemplateNotes(vault, beatSystem, targetFolder, undefined, { beatTemplate });
-                    beatsCreated = result.created;
-                } catch (e) {
-                    new Notice(`Error creating beats: ${e}`);
+                    try {
+                        const result = await createBeatTemplateNotes(vault, beatSystem, targetFolder, undefined, { beatTemplate });
+                        beatsCreated = result.created;
+                    } catch (e) {
+                        new Notice(`Error creating beats: ${e}`);
+                    }
                 }
             }
         }
 
         const skippedInfo = skippedScenes > 0 ? ` (skipped ${skippedScenes} existing)` : '';
-        new Notice(`Book created! ${createdScenes} scenes${skippedInfo}, ${beatsCreated} beat notes.`);
+        const beatInfo = beatsSkippedDuplicate ? ' (beats already exist)' : `, ${beatsCreated} beat notes`;
+        new Notice(`Book created! ${createdScenes} scenes${skippedInfo}${beatInfo}.`);
     }
 }

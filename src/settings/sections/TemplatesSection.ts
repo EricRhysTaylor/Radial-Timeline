@@ -3,7 +3,7 @@ import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
 import { CreateBeatsTemplatesModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem, getCustomSystemFromSettings } from '../../utils/beatsSystems';
-import { createBeatTemplateNotes, getMergedBeatYamlTemplate, getBeatConfigForSystem } from '../../utils/beatsTemplates';
+import { createBeatTemplateNotes, getMergedBeatYamlTemplate, getBeatConfigForSystem, spreadBeatsAcrossScenes } from '../../utils/beatsTemplates';
 import type { BeatSystemConfig } from '../../types/settings';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { renderMetadataSection } from './MetadataSection';
@@ -227,7 +227,7 @@ export function renderStoryBeatsSection(params: {
         return { name: raw, act: 1 };
     };
 
-    type ActRange = { min: number; max: number };
+    type ActRange = { min: number; max: number; sceneNumbers: number[] };
 
     const formatRangeValue = (value: number): string => {
         if (Number.isInteger(value)) return String(value);
@@ -267,48 +267,52 @@ export function renderStoryBeatsSection(params: {
             const act = clampActNumber(rawAct, actCount);
             const existing = ranges.get(act);
             if (!existing) {
-                ranges.set(act, { min: num, max: num });
+                ranges.set(act, { min: num, max: num, sceneNumbers: [num] });
             } else {
                 if (num < existing.min) existing.min = num;
                 if (num > existing.max) existing.max = num;
+                existing.sceneNumbers.push(num);
             }
         });
 
-        return ranges;
-    };
-
-    const buildActStartNumbers = (ranges: Map<number, ActRange>): Map<number, number> => {
-        const actStarts = new Map<number, number>();
-        ranges.forEach((range, act) => {
-            if (act > 1) actStarts.set(act, range.min);
+        // Sort and deduplicate scene numbers per act
+        ranges.forEach(range => {
+            range.sceneNumbers = [...new Set(range.sceneNumbers)].sort((a, b) => a - b);
         });
-        return actStarts;
+
+        return ranges;
     };
 
     const buildBeatNumbers = (beats: BeatRow[], maxActs: number, ranges: Map<number, ActRange>): number[] => {
         if (!ranges || ranges.size === 0) {
             return beats.map((_, idx) => idx + 1);
         }
-        const actStarts = buildActStartNumbers(ranges);
-        const useActAligned = actStarts.size > 0;
-        if (!useActAligned) return beats.map((_, idx) => idx + 1);
-
-        const nextByAct = new Map<number, number>();
-        return beats.map((beatLine, index) => {
+        // Group beats by act
+        const beatsByAct = new Map<number, number[]>(); // act -> original indices
+        beats.forEach((beatLine, index) => {
             const actNum = clampBeatAct(beatLine.act, maxActs);
-            const start = actStarts.get(actNum);
-            if (start !== undefined) {
-                const next = nextByAct.get(actNum) ?? start;
-                nextByAct.set(actNum, next + 1);
-                return next;
-            }
-            if (actNum === 1) {
-                const next = nextByAct.get(actNum) ?? 1;
-                nextByAct.set(actNum, next + 1);
-                return next;
-            }
-            return index + 1;
+            const list = beatsByAct.get(actNum) ?? [];
+            list.push(index);
+            beatsByAct.set(actNum, list);
         });
+
+        const result = new Array<number>(beats.length);
+
+        beatsByAct.forEach((indices, actNum) => {
+            const range = ranges.get(actNum);
+            const sceneNums = range?.sceneNumbers ?? [];
+            const spread = spreadBeatsAcrossScenes(indices.length, sceneNums);
+            indices.forEach((originalIdx, i) => {
+                result[originalIdx] = spread[i];
+            });
+        });
+
+        // Fill any undefined (shouldn't happen, but safety fallback)
+        result.forEach((val, idx) => {
+            if (val === undefined) result[idx] = idx + 1;
+        });
+
+        return result;
     };
 
     const normalizeBeatModel = (value: unknown): string =>
@@ -3425,7 +3429,7 @@ export function renderStoryBeatsSection(params: {
             }
 
             if (hasDuplicates) {
-                statusDesc += ` Resolve duplicate${duplicates > 1 ? 's' : ''} before merging.`;
+                statusDesc += ` Resolve duplicate${duplicates > 1 ? 's' : ''} before merging. Manual resolution is required.`;
             }
 
             setting.setDesc(`${baseDesc} ${statusDesc}`);
@@ -3589,7 +3593,10 @@ export function renderStoryBeatsSection(params: {
         }
 
         const actRanges = await collectActRanges(true);
-        const actStartNumbers = actRanges ? buildActStartNumbers(actRanges) : undefined;
+        const actSceneNumbers = new Map<number, number[]>();
+        actRanges?.forEach((range, act) => {
+            actSceneNumbers.set(act, range.sceneNumbers);
+        });
         
         const modal = new CreateBeatsTemplatesModal(
             app,
@@ -3608,7 +3615,7 @@ export function renderStoryBeatsSection(params: {
                 storyStructureName,
                 sourcePath,
                 storyStructureName === 'Custom' ? storyStructure : undefined,
-                { actStartNumbers, beatTemplate }
+                { actSceneNumbers: actSceneNumbers.size > 0 ? actSceneNumbers : undefined, beatTemplate }
             );
             if (errors.length > 0) {
                 new Notice(`Created ${created} notes. ${skipped} skipped. ${errors.length} errors. Check console.`);

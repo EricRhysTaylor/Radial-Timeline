@@ -449,8 +449,8 @@ export class CommandRegistrar {
             const sanitizedPath = sanitizeSourcePath(sourcePath);
 
             const nameMap: Record<string, string> = {
-                base: 'Basic Scene.md',
-                advanced: 'Advanced Scene.md',
+                base: '1 Basic Scene.md',
+                advanced: '1 Advanced Scene.md',
                 screenplay: 'Screenplay Scene.md',
                 podcast: 'Podcast Scene.md'
             };

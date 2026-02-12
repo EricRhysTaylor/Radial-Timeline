@@ -217,6 +217,42 @@ function getBeatAct(beatIndex: number, totalBeats: number): number {
 }
 
 /**
+ * Spread N beats evenly across M scene positions, returning the chosen scene numbers.
+ * - 0 beats: returns []
+ * - 1 beat: picks the first scene number
+ * - N beats, N <= M: picks evenly spaced scene numbers using index interpolation
+ * - N > M: assigns scenes first, then interpolates extras between last scene and max+1
+ * - fallback (no scene data): sequential from 1
+ */
+export function spreadBeatsAcrossScenes(
+  beatCount: number,
+  sceneNumbers: number[]
+): number[] {
+  if (beatCount === 0) return [];
+  const M = sceneNumbers.length;
+  if (M === 0) {
+    // Fallback: sequential from 1
+    return Array.from({ length: beatCount }, (_, i) => i + 1);
+  }
+  if (beatCount === 1) return [sceneNumbers[0]];
+  if (beatCount <= M) {
+    // Pick evenly spaced indices across the scene array
+    return Array.from({ length: beatCount }, (_, i) => {
+      const idx = Math.round(i * (M - 1) / (beatCount - 1));
+      return sceneNumbers[idx];
+    });
+  }
+  // More beats than scenes: assign scenes first, then interpolate extras
+  const result = [...sceneNumbers];
+  const lastScene = sceneNumbers[M - 1];
+  const extra = beatCount - M;
+  for (let i = 1; i <= extra; i++) {
+    result.push(lastScene + i);
+  }
+  return result;
+}
+
+/**
  * Create Beat template notes for a given beat system
  */
 export async function createBeatTemplateNotes(
@@ -224,7 +260,7 @@ export async function createBeatTemplateNotes(
   beatSystemName: string,
   sourcePath: string,
   customSystem?: PlotSystemTemplate,
-  options?: { actStartNumbers?: Map<number, number>; beatTemplate?: string }
+  options?: { actSceneNumbers?: Map<number, number[]>; beatTemplate?: string }
 ): Promise<{ created: number; skipped: number; errors: string[] }> {
   let beatSystem = PLOT_SYSTEMS[beatSystemName];
   
@@ -266,34 +302,36 @@ export async function createBeatTemplateNotes(
   // Use the custom system name (if provided) for Beat Model frontmatter instead of generic "Custom"
   const beatModelName = beatSystem.name || beatSystemName;
 
-  const actStartNumbers = options?.actStartNumbers;
-  const useActAlignedNumbers = !!actStartNumbers && actStartNumbers.size > 0;
-  const actCounters = new Map<number, number>();
+  // Pre-compute beat numbers per act using scene-aligned spread
+  const actSceneNumbers = options?.actSceneNumbers;
+  const beatsByAct = new Map<number, number[]>(); // act -> beat indices
+  for (let i = 0; i < beatSystem.beats.length; i++) {
+    const beatInfo = beatSystem.beatDetails[i];
+    const act = beatInfo.act ? beatInfo.act : getBeatAct(i, beatSystem.beats.length);
+    const list = beatsByAct.get(act) ?? [];
+    list.push(i);
+    beatsByAct.set(act, list);
+  }
 
-  const resolveBeatNumber = (act: number, fallback: number): number => {
-    if (!useActAlignedNumbers) return fallback;
-    if (actStartNumbers?.has(act)) {
-      const start = actStartNumbers.get(act);
-      if (start !== undefined) {
-        const next = actCounters.get(act) ?? start;
-        actCounters.set(act, next + 1);
-        return next;
-      }
-    }
-    if (act === 1) {
-      const next = actCounters.get(act) ?? 1;
-      actCounters.set(act, next + 1);
-      return next;
-    }
-    return fallback;
-  };
+  const beatNumberByIndex = new Array<number>(beatSystem.beats.length);
+  beatsByAct.forEach((indices, actNum) => {
+    const sceneNums = actSceneNumbers?.get(actNum) ?? [];
+    const spread = spreadBeatsAcrossScenes(indices.length, sceneNums);
+    indices.forEach((beatIdx, i) => {
+      beatNumberByIndex[beatIdx] = spread[i];
+    });
+  });
+  // Fallback for any undefined
+  beatNumberByIndex.forEach((val, idx) => {
+    if (val === undefined) beatNumberByIndex[idx] = idx + 1;
+  });
 
   for (let i = 0; i < beatSystem.beats.length; i++) {
     const beatName = beatSystem.beats[i];
     const beatInfo = beatSystem.beatDetails[i];
     // Use explicit act if available, otherwise calculate
     const act = beatInfo.act ? beatInfo.act : getBeatAct(i, beatSystem.beats.length);
-    const beatNumber = resolveBeatNumber(act, i + 1);
+    const beatNumber = beatNumberByIndex[i];
     
     // Use canonical title without "Act X:" prefix for filename
     const displayName = stripActPrefix(beatName);
