@@ -33,6 +33,18 @@ export interface BackfillResult {
     errors: { file: TFile; error: string }[];
 }
 
+export interface FillEmptyValuesResult {
+    /** Notes where at least one empty key received a default value. */
+    updated: number;
+    /** Total number of fields filled across all notes. */
+    filledFields: number;
+    /** Notes where no eligible empty keys were found. */
+    skipped: number;
+    /** Notes where processFrontMatter threw. */
+    failed: number;
+    errors: { file: TFile; error: string }[];
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────
 
 /**
@@ -45,6 +57,13 @@ function normalizeDefault(value: FieldEntryValue | undefined | null): string | s
     if (value === undefined || value === null) return '';
     if (Array.isArray(value)) return value;
     return value;
+}
+
+function isTrulyEmpty(value: unknown): boolean {
+    if (value === undefined || value === null) return true;
+    if (typeof value === 'string') return value.trim().length === 0;
+    if (Array.isArray(value)) return value.length === 0;
+    return false;
 }
 
 // ─── Main backfill function ─────────────────────────────────────────────
@@ -95,6 +114,79 @@ export async function runYamlBackfill(options: BackfillOptions): Promise<Backfil
 
             if (didInsert) {
                 result.updated++;
+            } else {
+                result.skipped++;
+            }
+        } catch (error) {
+            result.failed++;
+            result.errors.push({
+                file,
+                error: error instanceof Error ? error.message : String(error),
+            });
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Fill empty existing frontmatter keys with defaults.
+ *
+ * Safety guarantees:
+ * - Never creates missing keys
+ * - Never overwrites non-empty values
+ * - Never deletes keys
+ */
+export async function runYamlFillEmptyValues(options: BackfillOptions): Promise<FillEmptyValuesResult> {
+    const { app, files, fieldsToInsert, onProgress, abortSignal } = options;
+    const keysToConsider = Object.keys(fieldsToInsert);
+
+    if (keysToConsider.length === 0) {
+        return { updated: 0, filledFields: 0, skipped: files.length, failed: 0, errors: [] };
+    }
+
+    const result: FillEmptyValuesResult = {
+        updated: 0,
+        filledFields: 0,
+        skipped: 0,
+        failed: 0,
+        errors: [],
+    };
+
+    for (let i = 0; i < files.length; i++) {
+        if (abortSignal?.aborted) break;
+
+        const file = files[i];
+        onProgress?.(i + 1, files.length, file.basename);
+
+        try {
+            let fileFilledCount = 0;
+
+            await app.fileManager.processFrontMatter(file, (fm) => {
+                const fmObj = fm as Record<string, unknown>;
+
+                for (const key of keysToConsider) {
+                    // Only mutate keys that already exist and are truly empty
+                    if (!(key in fmObj)) continue;
+                    if (!isTrulyEmpty(fmObj[key])) continue;
+
+                    const defaultValue = normalizeDefault(fieldsToInsert[key]);
+                    // Skip no-op defaults (empty string or empty list)
+                    if (
+                        (typeof defaultValue === 'string' && defaultValue.trim().length === 0)
+                        || (Array.isArray(defaultValue) && defaultValue.length === 0)
+                    ) {
+                        continue;
+                    }
+
+                    fmObj[key] = defaultValue;
+                    fileFilledCount++;
+                }
+            });
+
+            if (fileFilledCount > 0) {
+                result.updated++;
+                result.filledFields += fileFilledCount;
             } else {
                 result.skipped++;
             }

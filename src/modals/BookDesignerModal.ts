@@ -160,6 +160,7 @@ export class BookDesignerModal extends Modal {
     private previewHostEl: HTMLElement | null = null;
     private previewUpdateRaf: number | null = null;
     private previewStatusEl: HTMLElement | null = null;
+    private subplotLegendEl: HTMLElement | null = null;
     private heroLocationMeta: HTMLElement | null = null;
     private heroModeMeta: HTMLElement | null = null;
 
@@ -874,6 +875,8 @@ export class BookDesignerModal extends Modal {
                 });
             });
         subplotsSetting.settingEl.addClass('rt-manuscript-group-setting');
+        this.subplotLegendEl = subplotsSetting.settingEl.createDiv({ cls: 'rt-subplot-color-legend' });
+        this.updateSubplotColorLegend();
 
         const characterSetting = new Setting(leftCol)
             .setName('Characters')
@@ -1070,6 +1073,7 @@ export class BookDesignerModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
         this.previewHostEl = null;
+        this.subplotLegendEl = null;
         this.heroLocationMeta = null;
         this.heroModeMeta = null;
         if (this.previewUpdateRaf !== null) {
@@ -1095,6 +1099,20 @@ export class BookDesignerModal extends Modal {
         return list.length > 0 ? list : ['Main Plot'];
     }
 
+    private updateSubplotColorLegend(): void {
+        const legendEl = this.subplotLegendEl;
+        if (!legendEl) return;
+        legendEl.empty();
+        const subplotList = this.parseSubplots();
+        const total = subplotList.length;
+        subplotList.forEach((name, index) => {
+            const row = legendEl.createDiv({ cls: 'rt-subplot-color-row' });
+            const swatch = row.createSpan({ cls: 'rt-subplot-color-swatch' });
+            swatch.style.setProperty('--rt-subplot-swatch-color', this.subplotColor(index, total));
+            row.createSpan({ cls: 'rt-subplot-color-label', text: name });
+        });
+    }
+
     private getActsListSorted(): number[] {
         const maxActs = this.getMaxActs();
         const acts = (this.selectedActs.length > 0 ? [...this.selectedActs] : [1])
@@ -1116,6 +1134,7 @@ export class BookDesignerModal extends Modal {
     private renderPreview(): void {
         if (!this.previewHostEl) return;
         this.previewHostEl.empty();
+        this.updateSubplotColorLegend();
 
         const subplotList = this.parseSubplots();
         const actsList = this.getActsListSorted();

@@ -1,4 +1,4 @@
-import { App, Notice, Setting as Settings, parseYaml, setIcon, setTooltip, Modal, ButtonComponent, getIconIds, TFile } from 'obsidian';
+import { App, Notice, Setting as Settings, parseYaml, setIcon, setTooltip, Modal, ButtonComponent, getIconIds, TFile, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
 import { CreateBeatSetModal } from '../../modals/CreateBeatsTemplatesModal';
@@ -27,7 +27,7 @@ import {
     getCustomDefaults,
 } from '../../utils/yamlTemplateNormalize';
 import { runYamlAudit, collectFilesForAudit, formatAuditReport, type YamlAuditResult, type NoteAuditEntry } from '../../utils/yamlAudit';
-import { runYamlBackfill, type BackfillResult } from '../../utils/yamlBackfill';
+import { runYamlBackfill, runYamlFillEmptyValues, type BackfillResult } from '../../utils/yamlBackfill';
 
 type FieldEntryValue = string | string[];
 type FieldEntry = { key: string; value: FieldEntryValue; required: boolean };
@@ -216,6 +216,12 @@ const dirtyState = {
         this._listeners.forEach((fn: () => void) => fn());
     }
 };
+
+/**
+ * Session-local registry of custom set ids that have been explicitly saved.
+ * Used to gate safe auto-fill actions to "official" schema commits.
+ */
+const savedCustomSetIds = new Set<string>();
 
 export function renderStoryBeatsSection(params: {
     app: App;
@@ -2313,6 +2319,7 @@ export function renderStoryBeatsSection(params: {
             await plugin.saveSettings();
             // Re-capture baseline so the saved state becomes the new "clean" reference
             captureSetBaseline(newSystem.id);
+            savedCustomSetIds.add(newSystem.id);
             const verb = opts.isCopy ? 'copied' : (existingIdx >= 0 ? 'updated' : 'saved');
             new Notice(`Set "${saveName}" ${verb}.`);
             // Targeted refresh — no full re-render needed
@@ -2399,6 +2406,7 @@ export function renderStoryBeatsSection(params: {
                     if (plugin.settings.beatSystemConfigs) {
                         delete plugin.settings.beatSystemConfigs[`custom:${system.id}`];
                     }
+                    savedCustomSetIds.delete(system.id);
                     if (wasActive) {
                         // Reset to a clean blank custom system
                         plugin.settings.activeCustomBeatSystemId = 'default';
@@ -3477,6 +3485,95 @@ export function renderStoryBeatsSection(params: {
         beatSystemKey?: string
     ): void {
         let auditResult: YamlAuditResult | null = null;
+        type FillEmptyPlan = {
+            files: TFile[];
+            fieldsToInsert: Record<string, string | string[]>;
+            filledFields: number;
+            touchedKeys: string[];
+            sourcePath: string;
+        };
+        let fillEmptyPlan: FillEmptyPlan | null = null;
+
+        const isCustomBeatAudit = noteType === 'Beat'
+            && plugin.settings.beatSystem === 'Custom'
+            && !!beatSystemKey
+            && beatSystemKey.startsWith('custom:');
+        const isCustomBeatSetOfficial = (): boolean => {
+            if (!isCustomBeatAudit) return false;
+            const activeId = plugin.settings.activeCustomBeatSystemId ?? 'default';
+            if (activeId === 'default') return false;
+            if (!savedCustomSetIds.has(activeId)) return false;
+            if (isSetDirty()) return false;
+            return true;
+        };
+        const getScopedBookFiles = (files: TFile[]): { sourcePath: string; files: TFile[] } => {
+            const sourcePath = normalizePath((plugin.settings.sourcePath || '').trim());
+            if (!sourcePath) return { sourcePath: '', files: [] };
+            const prefix = sourcePath.endsWith('/') ? sourcePath : `${sourcePath}/`;
+            return {
+                sourcePath,
+                files: files.filter(file => file.path === sourcePath || file.path.startsWith(prefix))
+            };
+        };
+        const isEmptyValue = (value: unknown): boolean => {
+            if (value === undefined || value === null) return true;
+            if (typeof value === 'string') return value.trim().length === 0;
+            if (Array.isArray(value)) return value.length === 0;
+            return false;
+        };
+        const hasDefaultValue = (value: string | string[]): boolean => {
+            if (Array.isArray(value)) return value.length > 0;
+            return value.trim().length > 0;
+        };
+        const buildFillEmptyPlan = (files: TFile[]): FillEmptyPlan | null => {
+            if (!isCustomBeatSetOfficial()) return null;
+
+            const { sourcePath, files: scopedFiles } = getScopedBookFiles(files);
+            if (!sourcePath || scopedFiles.length === 0) return null;
+
+            const customKeys = getCustomKeys('Beat', plugin.settings, beatSystemKey);
+            if (customKeys.length === 0) return null;
+            const defaults = getCustomDefaults('Beat', plugin.settings, beatSystemKey);
+
+            const fieldsToInsert: Record<string, string | string[]> = {};
+            customKeys.forEach((key) => {
+                const value = defaults[key] ?? '';
+                if (hasDefaultValue(value)) {
+                    fieldsToInsert[key] = value;
+                }
+            });
+            const keys = Object.keys(fieldsToInsert);
+            if (keys.length === 0) return null;
+
+            const candidateFiles: TFile[] = [];
+            const touchedKeySet = new Set<string>();
+            let filledFields = 0;
+
+            for (const file of scopedFiles) {
+                const cache = app.metadataCache.getFileCache(file);
+                if (!cache?.frontmatter) continue;
+                const fm = cache.frontmatter as Record<string, unknown>;
+
+                let fileHasCandidate = false;
+                for (const key of keys) {
+                    if (!(key in fm)) continue;
+                    if (!isEmptyValue(fm[key])) continue;
+                    fileHasCandidate = true;
+                    filledFields++;
+                    touchedKeySet.add(key);
+                }
+                if (fileHasCandidate) candidateFiles.push(file);
+            }
+
+            if (candidateFiles.length === 0 || filledFields === 0) return null;
+            return {
+                files: candidateFiles,
+                fieldsToInsert,
+                filledFields,
+                touchedKeys: [...touchedKeySet].sort(),
+                sourcePath,
+            };
+        };
 
         // ─── Header row: two-column Setting layout (title+desc left, audit button right) ──
         const auditSetting = new Settings(parentEl)
@@ -3509,6 +3606,15 @@ export function renderStoryBeatsSection(params: {
                 .onClick(() => void handleBackfill());
             backfillBtn = button.buttonEl;
             backfillBtn.classList.add('ert-settings-hidden');
+        });
+        let fillEmptyBtn: HTMLButtonElement | undefined;
+        auditSetting.addButton(button => {
+            button
+                .setButtonText('Fill empty values')
+                .setTooltip('Fill empty existing custom beat fields in the active book folder')
+                .onClick(() => void handleFillEmptyValues());
+            fillEmptyBtn = button.buttonEl;
+            fillEmptyBtn.classList.add('ert-settings-hidden');
         });
 
         // Run audit button — disabled when no notes of this type exist
@@ -3563,10 +3669,22 @@ export function renderStoryBeatsSection(params: {
             });
 
             copyBtn?.classList.remove('ert-settings-hidden');
-            if (auditResult.summary.notesWithMissing > 0) {
+            const allowInsertMissing = !isCustomBeatAudit;
+            if (allowInsertMissing && auditResult.summary.notesWithMissing > 0) {
                 backfillBtn?.classList.remove('ert-settings-hidden');
             } else {
                 backfillBtn?.classList.add('ert-settings-hidden');
+            }
+
+            fillEmptyPlan = buildFillEmptyPlan(files);
+            if (fillEmptyPlan) {
+                fillEmptyBtn?.classList.remove('ert-settings-hidden');
+                fillEmptyBtn?.setAttribute(
+                    'aria-label',
+                    `Fill ${fillEmptyPlan.filledFields} empty value${fillEmptyPlan.filledFields !== 1 ? 's' : ''} in ${fillEmptyPlan.files.length} note${fillEmptyPlan.files.length !== 1 ? 's' : ''}`
+                );
+            } else {
+                fillEmptyBtn?.classList.add('ert-settings-hidden');
             }
 
             renderResults();
@@ -3812,6 +3930,81 @@ export function renderStoryBeatsSection(params: {
             new Notice(parts.join(', ') || 'No changes made.');
 
             // Re-run audit to refresh
+            runAudit();
+        };
+
+        const handleFillEmptyValues = async () => {
+            if (!isCustomBeatAudit) {
+                new Notice('Fill empty values is available for Custom beat systems only.');
+                return;
+            }
+            if (!isCustomBeatSetOfficial()) {
+                new Notice('Save the active custom set before filling empty values.');
+                return;
+            }
+            if (!fillEmptyPlan) {
+                new Notice('No empty custom beat fields with defaults found in the active book folder.');
+                return;
+            }
+
+            const confirmed = await new Promise<boolean>((resolve) => {
+                const modal = new Modal(app);
+                modal.titleEl.setText(`Fill ${fillEmptyPlan!.filledFields} empty value${fillEmptyPlan!.filledFields !== 1 ? 's' : ''} in ${fillEmptyPlan!.files.length} beat note${fillEmptyPlan!.files.length !== 1 ? 's' : ''}`);
+
+                const bodyEl = modal.contentEl.createDiv({ cls: 'ert-stack' });
+                bodyEl.createDiv({ text: `Scope: ${fillEmptyPlan!.sourcePath}` });
+                bodyEl.createDiv({ text: 'Only existing empty keys are filled. No keys are added, removed, or overwritten.' });
+
+                const fieldListEl = bodyEl.createEl('ul');
+                fillEmptyPlan!.touchedKeys.forEach((key) => {
+                    const val = fillEmptyPlan!.fieldsToInsert[key];
+                    const valStr = Array.isArray(val) ? val.join(', ') : val;
+                    fieldListEl.createEl('li', { text: `${key}: ${valStr}` });
+                });
+
+                const btnRow = modal.contentEl.createDiv({ cls: 'ert-audit-actions' });
+                const fillBtn = btnRow.createEl('button', {
+                    cls: 'ert-mod-cta',
+                    text: 'Fill',
+                    attr: { type: 'button' }
+                });
+                const cancelBtn = btnRow.createEl('button', {
+                    text: 'Cancel',
+                    attr: { type: 'button' }
+                });
+
+                fillBtn.addEventListener('click', () => { modal.close(); resolve(true); });
+                cancelBtn.addEventListener('click', () => { modal.close(); resolve(false); });
+                modal.onClose = () => resolve(false);
+                modal.open();
+            });
+
+            if (!confirmed) return;
+
+            const result = await runYamlFillEmptyValues({
+                app,
+                files: fillEmptyPlan.files,
+                fieldsToInsert: fillEmptyPlan.fieldsToInsert,
+            });
+
+            console.debug('[YamlAudit] yaml_fill_empty_execute', {
+                noteType,
+                beatSystemKey,
+                sourcePath: fillEmptyPlan.sourcePath,
+                updated: result.updated,
+                filledFields: result.filledFields,
+                skipped: result.skipped,
+                failed: result.failed,
+                keys: fillEmptyPlan.touchedKeys,
+            });
+
+            const parts: string[] = [];
+            if (result.updated > 0) parts.push(`Updated ${result.updated} note${result.updated !== 1 ? 's' : ''}`);
+            if (result.filledFields > 0) parts.push(`Filled ${result.filledFields} value${result.filledFields !== 1 ? 's' : ''}`);
+            if (result.skipped > 0) parts.push(`${result.skipped} unchanged`);
+            if (result.failed > 0) parts.push(`${result.failed} failed`);
+            new Notice(parts.join(', ') || 'No changes made.');
+
             runAudit();
         };
     }
