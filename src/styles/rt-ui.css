@@ -2265,7 +2265,7 @@
 /* ── Starter-dirty notice (PRO Sets) ────────────────────────────── */
 .ert-ui.ert-scope--settings .ert-starter-dirty-notice {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
   padding: 8px 12px;
   border-radius: var(--radius-s);
@@ -2304,7 +2304,7 @@
   border-color: color-mix(in srgb, var(--color-yellow) 40%, transparent);
 }
 
-/* ── Starter origin tag (Design header) ─────────────────────────── */
+/* ── Set origin tag (Design header) ──────────────────────────────── */
 .ert-ui.ert-scope--settings .ert-set-origin-tag {
   display: inline-flex;
   align-items: center;
@@ -2320,14 +2320,18 @@
   background: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
   color: var(--interactive-accent);
 }
+.ert-ui.ert-scope--settings .ert-set-origin-tag--saved {
+  background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+  color: var(--text-muted);
+}
 .ert-ui.ert-scope--settings .ert-set-origin-tag--modified {
   background: color-mix(in srgb, var(--color-yellow) 15%, transparent);
   color: var(--color-yellow);
 }
 
-/* ── Health icon modified state ─────────────────────────────────── */
+/* ── Health icon modified state (distinct from --warning) ───────── */
 .ert-ui.ert-scope--settings .ert-beat-health-icon--modified {
-  color: var(--color-yellow);
+  color: var(--color-orange);
 }
 
 /* ── Action row end-aligned ─────────────────────────────────────── */
