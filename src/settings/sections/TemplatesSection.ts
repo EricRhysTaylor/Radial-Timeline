@@ -162,12 +162,18 @@ const deriveBeatSystemMode = (system?: string): { mode: BeatSystemMode; template
         : { mode: 'custom', templateSystemId: null };
 };
 
+// ── Starter baseline snapshot (module-level, survives re-renders) ─────
+// Used to detect when a loaded starter set has been modified.
+let _starterBaselineHash = '';
+let _starterBaselineId = '';
+
 export function renderStoryBeatsSection(params: {
     app: App;
     plugin: RadialTimelinePlugin;
     containerEl: HTMLElement;
 }): void {
     const { app, plugin, containerEl } = params;
+    containerEl.empty();
     containerEl.classList.add(ERT_CLASSES.STACK);
     const actsSection = containerEl.createDiv({ cls: ERT_CLASSES.STACK, attr: { [ERT_DATA.SECTION]: 'beats-acts' } });
     const actsStack = actsSection.createDiv({ cls: ERT_CLASSES.STACK });
@@ -436,7 +442,39 @@ export function renderStoryBeatsSection(params: {
     let refreshCustomBeatList: (() => void) | null = null;
     let refreshCustomBeats: ((allowFetch: boolean) => void) | null = null;
     let refreshHealthIcon: (() => void) | null = null;
+    let refreshStarterDirtyState: (() => void) | null = null;
+    let refreshProSetsDirtyUI: (() => void) | null = null;
     let customBeatsObserver: IntersectionObserver | null = null;
+
+    /** Produce a lightweight hash string from the current custom beat state. */
+    const snapshotHash = (): string => {
+        const beats = (plugin.settings.customBeatSystemBeats ?? []).map(b => `${b.name}|${b.act}`).join(';');
+        const configKey = `custom:${plugin.settings.activeCustomBeatSystemId ?? 'default'}`;
+        const cfg = plugin.settings.beatSystemConfigs?.[configKey];
+        const yaml = cfg?.beatYamlAdvanced ?? '';
+        const hover = (cfg?.beatHoverMetadataFields ?? []).map(f => `${f.key}:${f.enabled}`).join(';');
+        return `${beats}##${yaml}##${hover}`;
+    };
+
+    /** Capture the current state as the starter baseline. */
+    const captureStarterBaseline = (starterId: string) => {
+        _starterBaselineId = starterId;
+        _starterBaselineHash = snapshotHash();
+    };
+
+    /** Clear starter baseline (after save-copy, load different set, etc.). */
+    const clearStarterBaseline = () => {
+        _starterBaselineId = '';
+        _starterBaselineHash = '';
+    };
+
+    /** Returns true if a starter set is active AND has been modified. */
+    const isStarterDirty = (): boolean => {
+        if (!_starterBaselineId) return false;
+        const activeId = plugin.settings.activeCustomBeatSystemId ?? 'default';
+        if (activeId !== _starterBaselineId) return false;
+        return snapshotHash() !== _starterBaselineHash;
+    };
 
     const refreshExistingBeatLookup = async (allowFetch: boolean, selectedSystem: string): Promise<Map<string, TimelineItem[]> | null> => {
         const nextKey = `${selectedSystem}|${plugin.settings.customBeatSystemName ?? ''}`;
@@ -626,11 +664,14 @@ export function renderStoryBeatsSection(params: {
         const healthIcon = titleEl.createDiv({ cls: 'ert-beat-health-icon' });
         setIcon(healthIcon, 'circle-dashed');
 
+        // Reference for dirty-state refresh
+        let originTagEl: HTMLElement | null = null;
+
         if (starterActive) {
             // Starter set: plain text title, not clickable/renameable
             titleEl.createSpan({ text: customSystemName, cls: 'ert-book-name' });
-            const originTag = titleEl.createSpan({ text: 'Starter set', cls: 'ert-set-origin-tag ert-set-origin-tag--starter' });
-            setTooltip(originTag, 'Save a copy to edit.');
+            originTagEl = titleEl.createSpan({ text: 'Starter set', cls: 'ert-set-origin-tag ert-set-origin-tag--starter' });
+            setTooltip(originTagEl, 'Save a copy to edit.');
         } else {
             // User system: clickable to edit details
             const nameLink = titleEl.createSpan({
@@ -726,6 +767,34 @@ export function renderStoryBeatsSection(params: {
         // Expose so updateTemplateButton can refresh the icon after async lookup
         refreshHealthIcon = updateHealthIcon;
 
+        // ── Starter dirty state refresh ──────────────────────────────
+        // Updates Design header (health icon + origin tag) when starter is modified.
+        const updateStarterDirtyUI = () => {
+            if (!starterActive) return;
+            const dirty = isStarterDirty();
+            // Health icon: orange when dirty, neutral when clean
+            if (dirty) {
+                healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--modified';
+                setIcon(healthIcon, 'circle-alert');
+            } else if (!existingBeatReady) {
+                healthIcon.className = 'ert-beat-health-icon';
+                setIcon(healthIcon, 'circle-dashed');
+            }
+            // Origin tag: orange "Modified" when dirty, accent "Starter set" when clean
+            if (originTagEl) {
+                originTagEl.setText(dirty ? 'Modified' : 'Starter set');
+                originTagEl.classList.toggle('ert-set-origin-tag--modified', dirty);
+                originTagEl.classList.toggle('ert-set-origin-tag--starter', !dirty);
+                setTooltip(originTagEl, dirty
+                    ? 'Starter set has been changed. Save a copy to keep your version.'
+                    : 'Save a copy to edit.');
+            }
+            // Also refresh the Pro Sets panel dirty notice
+            refreshProSetsDirtyUI?.();
+        };
+        refreshStarterDirtyState = updateStarterDirtyUI;
+        updateStarterDirtyUI();
+
         // Beat List Editor (draggable rows with Name + Act)
         const beatWrapper = customConfigContainer.createDiv({ cls: 'ert-custom-beat-wrapper' });
 
@@ -737,6 +806,7 @@ export function renderStoryBeatsSection(params: {
             updateTemplateButton(templateSetting, 'Custom');
             // Re-render stage switcher after beat list changes
             renderStageSwitcher();
+            refreshStarterDirtyState?.();
         };
 
         const buildActLabels = (count: number, ranges?: Map<number, ActRange>): string[] => {
@@ -1375,12 +1445,14 @@ export function renderStoryBeatsSection(params: {
             config.beatHoverMetadataFields.push({ key, label: key, icon, enabled });
         }
         void plugin.saveSettings();
+        refreshStarterDirtyState?.();
     };
 
     const removeBeatHoverMetadata = (key: string) => {
         const config = ensureBeatConfig();
         config.beatHoverMetadataFields = config.beatHoverMetadataFields.filter(f => f.key !== key);
         void plugin.saveSettings();
+        refreshStarterDirtyState?.();
     };
 
     const renameBeatHoverMetadataKey = (oldKey: string, newKey: string) => {
@@ -1423,6 +1495,7 @@ export function renderStoryBeatsSection(params: {
             const config = ensureBeatConfig();
             config.beatYamlAdvanced = yaml;
             void plugin.saveSettings();
+            refreshStarterDirtyState?.();
         };
 
         const rerenderBeatYaml = (next?: TemplateEntry[]) => {
@@ -1794,7 +1867,7 @@ export function renderStoryBeatsSection(params: {
 
     savedCard.createEl('p', {
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Starter sets are curated starting points. Saved sets are your own versions you can edit and delete. Core: one active system. Pro: many saved sets.'
+        text: 'Starter sets are curated starting points. Saved sets are your own versions you can edit and delete. Core: one custom set. Pro: unlimited custom sets and five bonus starter sets.'
     });
 
     const savedControlsContainer = savedCard.createDiv({ cls: ERT_CLASSES.STACK });
@@ -1843,6 +1916,13 @@ export function renderStoryBeatsSection(params: {
                 : [],
         };
 
+        // 5. Starter baseline: capture if starter, clear otherwise
+        if (PRO_BEAT_SETS.some(ps => ps.id === system.id)) {
+            captureStarterBaseline(system.id);
+        } else {
+            clearStarterBaseline();
+        }
+
         // DEV: prove config activation is correct
         if (process.env.NODE_ENV !== 'production') {
             const slot = plugin.settings.beatSystemConfigs[configKey];
@@ -1854,7 +1934,7 @@ export function renderStoryBeatsSection(params: {
             });
         }
 
-        // 5. Switch to Design stage so the user sees the loaded beats immediately
+        // 6. Switch to Design stage so the user sees the loaded beats immediately
         currentCustomStage = 'design';
         void plugin.saveSettings();
         new Notice(`Loaded "${system.name}" into Custom.`);
@@ -1922,8 +2002,37 @@ export function renderStoryBeatsSection(params: {
             selectRow.settingEl.createDiv({ cls: 'ert-unsaved-hint', text: 'Unsaved changes — save your current system before switching.' });
         }
 
+        // ── Starter-dirty notice ──────────────────────────────────────
+        const dirtyNoticeEl = savedControlsContainer.createDiv({ cls: 'ert-starter-dirty-notice ert-settings-hidden' });
+
         // ── Preview card ─────────────────────────────────────────────
         const previewEl = savedControlsContainer.createDiv({ cls: 'ert-set-preview ert-settings-hidden' });
+
+        // Re-render dirty notice + preview accent dynamically
+        const updateProSetsDirtyNotice = () => {
+            const dirty = isStarterDirty();
+            // Dirty notice
+            dirtyNoticeEl.empty();
+            if (dirty) {
+                dirtyNoticeEl.removeClass('ert-settings-hidden');
+                const iconEl = dirtyNoticeEl.createSpan({ cls: 'ert-starter-dirty-icon' });
+                setIcon(iconEl, 'alert-triangle');
+                dirtyNoticeEl.appendText('Modified — Starter set changed. ');
+                const copyLink = dirtyNoticeEl.createEl('button', {
+                    cls: 'ert-starter-dirty-link',
+                    text: 'Save a copy',
+                    attr: { type: 'button' }
+                });
+                copyLink.appendText(' to keep your version.');
+                copyLink.addEventListener('click', () => { void saveSetModal({ isCopy: true }); }); // SAFE: direct addEventListener; Settings lifecycle manages cleanup
+            } else {
+                dirtyNoticeEl.addClass('ert-settings-hidden');
+            }
+            // Preview card dirty accent
+            previewEl.classList.toggle('ert-set-preview--dirty', dirty);
+        };
+        refreshProSetsDirtyUI = updateProSetsDirtyNotice;
+        updateProSetsDirtyNotice();
 
         const renderPreviewCard = () => {
             previewEl.empty();
@@ -2056,6 +2165,8 @@ export function renderStoryBeatsSection(params: {
             plugin.settings.activeCustomBeatSystemId = newSystem.id;
             plugin.settings.customBeatSystemName = saveName;
             await plugin.saveSettings();
+            // Saving (especially copy) makes this a user-owned set — clear starter baseline
+            clearStarterBaseline();
             const verb = opts.isCopy ? 'copied' : (existingIdx >= 0 ? 'updated' : 'saved');
             new Notice(`Set "${saveName}" ${verb}.`);
             // If copy, switch to Design so user sees their new editable system
@@ -3224,13 +3335,22 @@ export function renderStoryBeatsSection(params: {
             backfillBtn.classList.add('ert-settings-hidden');
         });
 
-        // Run audit button
+        // Run audit button — disabled when no notes of this type exist
+        let auditBtn: ButtonComponent | undefined;
         auditSetting.addButton(button => {
+            auditBtn = button;
             button
                 .setButtonText('Run audit')
                 .setTooltip(`Scan all ${noteType.toLowerCase()} notes for YAML schema drift`)
                 .onClick(() => runAudit());
         });
+
+        // Pre-check: if zero notes exist, mute the audit button with guidance
+        const preCheckFiles = collectFilesForAudit(app, noteType, plugin.settings, beatSystemKey);
+        if (preCheckFiles.length === 0 && auditBtn) {
+            auditBtn.setDisabled(true);
+            auditBtn.setTooltip(`No ${noteType.toLowerCase()} notes found. Create beat notes first.`);
+        }
 
         // ─── Results row: appears below header after audit runs ──────────
         const resultsEl = parentEl.createDiv({ cls: 'ert-audit-results-row ert-settings-hidden' });
