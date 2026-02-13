@@ -593,6 +593,9 @@ export class RadialTimelineView extends ItemView {
                     console.error('[Gossamer] Failed to initialize on load:', e);
                     // Fallback to narrative mode if initialization fails
                     this._currentMode = 'narrative';
+                    this.plugin.settings.currentMode = 'narrative';
+                    try { await this.plugin.saveSettings(); } catch { /* best effort */ }
+                    new Notice('Gossamer mode could not load. Returning to Narrative mode.', 6000);
                 }
             }
         }

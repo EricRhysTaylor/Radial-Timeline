@@ -324,7 +324,7 @@ export function renderCampaignManagerSection({ app, plugin, containerEl, onCampa
     // QUICK TEMPLATES
     // ─────────────────────────────────────────────────────────────────────────
     const templatesSection = card.createDiv({ cls: 'ert-campaign-templates' });
-    templatesSection.createEl('h5', { text: 'Quick Start Templates', cls: 'ert-kicker' });
+    templatesSection.createEl('h5', { text: 'Campaign Presets', cls: 'ert-kicker' });
 
     const templateRow = templatesSection.createDiv({ cls: ERT_CLASSES.INLINE });
 

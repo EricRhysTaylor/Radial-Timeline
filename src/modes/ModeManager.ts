@@ -54,60 +54,70 @@ export class ModeManager {
             return;
         }
 
-        // Guard: ensure prerequisites before exiting current mode
-        if (newMode === TimelineMode.GOSSAMER) {
-            const scenes = await this.plugin.getSceneData();
-            const beatNotes = scenes.filter((s: { itemType?: string }) => s.itemType === 'Beat' || s.itemType === 'Plot');
-            
-            if (beatNotes.length === 0) {
-                const selectedSystem = this.plugin.settings.beatSystem?.trim() || '';
-                const systemHint = selectedSystem
-                    ? ` No "${selectedSystem}" beat notes found. Ensure beat notes have "Class: Beat" and "Beat Model: ${selectedSystem}" in frontmatter.`
-                    : ' Create notes with frontmatter "Class: Beat".';
-                new Notice(`Cannot enter Gossamer mode.${systemHint}`, 8000);
-                return; // Stay in the current mode without triggering lifecycle changes
-            }
-        }
-        
-        const currentModeDefinition = getModeDefinition(currentMode);
-        const newModeDefinition = getModeDefinition(newMode);
-        
-        // Execute exit lifecycle hook for current mode
-        if (currentModeDefinition.onExit) {
-            await currentModeDefinition.onExit(this.view);
-        }
-        
-        // Update view's current mode
-        this.view.currentMode = newMode;
-        
-        // Persist to settings
-        this.plugin.settings.currentMode = newMode;
-        await this.plugin.saveSettings();
-        
-        // Execute enter lifecycle hook for new mode
-        // If it throws, revert the mode change
-        if (newModeDefinition.onEnter) {
-            try {
-                await newModeDefinition.onEnter(this.view);
-            } catch (error) {
-                // Mode entry failed, revert to previous mode
-                console.error(`[ModeManager] Failed to enter ${newMode}:`, error);
-                this.view.currentMode = currentMode;
-                this.plugin.settings.currentMode = currentMode;
-                await this.plugin.saveSettings();
+        try {
+            // Guard: ensure prerequisites before exiting current mode
+            if (newMode === TimelineMode.GOSSAMER) {
+                const scenes = await this.plugin.getSceneData();
+                const beatNotes = scenes.filter((s: { itemType?: string }) => s.itemType === 'Beat' || s.itemType === 'Plot');
                 
-                // Show a fallback notice if the error didn't already produce one
-                const msg = error instanceof Error ? error.message : String(error);
-                if (!msg.includes('Cannot enter Gossamer')) {
-                    new Notice(`Could not switch to ${newMode} mode. ${msg}`, 6000);
+                if (beatNotes.length === 0) {
+                    const selectedSystem = this.plugin.settings.beatSystem?.trim() || '';
+                    const systemHint = selectedSystem
+                        ? `No "${selectedSystem}" beat notes found. Ensure beat notes have "Class: Beat" and "Beat Model: ${selectedSystem}" in frontmatter.`
+                        : 'No story beats found. Create notes with frontmatter "Class: Beat".';
+                    new Notice(`Cannot enter Gossamer mode. ${systemHint}`, 8000);
+                    return; // Stay in the current mode without triggering lifecycle changes
                 }
-                
-                return;
             }
+            
+            const currentModeDefinition = getModeDefinition(currentMode);
+            const newModeDefinition = getModeDefinition(newMode);
+            
+            // Execute exit lifecycle hook for current mode
+            if (currentModeDefinition.onExit) {
+                await currentModeDefinition.onExit(this.view);
+            }
+            
+            // Update view's current mode
+            this.view.currentMode = newMode;
+            
+            // Persist to settings
+            this.plugin.settings.currentMode = newMode;
+            await this.plugin.saveSettings();
+            
+            // Execute enter lifecycle hook for new mode
+            // If it throws, revert the mode change
+            if (newModeDefinition.onEnter) {
+                try {
+                    await newModeDefinition.onEnter(this.view);
+                } catch (error) {
+                    // Mode entry failed, revert to previous mode
+                    console.error(`[ModeManager] Failed to enter ${newMode}:`, error);
+                    this.view.currentMode = currentMode;
+                    this.plugin.settings.currentMode = currentMode;
+                    await this.plugin.saveSettings();
+                    
+                    // Show a notice — the onEnter hook may have already shown one
+                    const msg = error instanceof Error ? error.message : String(error);
+                    if (!msg.includes('Cannot enter Gossamer')) {
+                        new Notice(`Could not switch to ${newMode} mode. ${msg}`, 6000);
+                    }
+                    
+                    return;
+                }
+            }
+            
+            // Refresh the timeline to show the new mode
+            await this.refreshTimeline();
+        } catch (error) {
+            // Catch-all: guard or lifecycle threw unexpectedly
+            console.error(`[ModeManager] Unexpected error switching to ${newMode}:`, error);
+            // Ensure mode is reverted
+            this.view.currentMode = currentMode;
+            this.plugin.settings.currentMode = currentMode;
+            try { await this.plugin.saveSettings(); } catch { /* best effort */ }
+            new Notice(`Could not enter ${newMode} mode. Check the developer console for details.`, 6000);
         }
-        
-        // Refresh the timeline to show the new mode
-        await this.refreshTimeline();
     }
     
     /**

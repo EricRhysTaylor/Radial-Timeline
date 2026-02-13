@@ -528,15 +528,43 @@ export default class RadialTimelinePlugin extends Plugin {
             });
         }
 
+        // ─── Strip When/Definition from all beat templates (base, advanced, per-system configs) ──
+        const stripWhenDefinition = (yaml: string): string =>
+            yaml.split('\n').filter(line => !/^(When|Definition)\s*:/i.test(line.trim())).join('\n');
+
+        if (this.settings.beatYamlTemplates?.base) {
+            const stripped = stripWhenDefinition(this.settings.beatYamlTemplates.base);
+            if (stripped !== this.settings.beatYamlTemplates.base) {
+                this.settings.beatYamlTemplates.base = stripped;
+                schemaOntologyMigrated = true;
+                console.debug('[SchemaMigration]', {
+                    event: 'beat_base_template_stripped',
+                    action: 'removed When/Definition from beat base template',
+                });
+            }
+        }
+        if (this.settings.beatYamlTemplates?.advanced) {
+            const stripped = stripWhenDefinition(this.settings.beatYamlTemplates.advanced);
+            if (stripped !== this.settings.beatYamlTemplates.advanced) {
+                this.settings.beatYamlTemplates.advanced = stripped;
+                schemaOntologyMigrated = true;
+                console.debug('[SchemaMigration]', {
+                    event: 'beat_advanced_template_stripped',
+                    action: 'removed When/Definition from beat advanced template',
+                });
+            }
+        }
+
         // ─── Migrate legacy beat YAML/hover globals into per-system config map ───
         let beatConfigMigrated = false;
         if (!this.settings.beatSystemConfigs) {
-            const legacyAdvanced = this.settings.beatYamlTemplates?.advanced ?? '';
+            const legacyAdvancedRaw = this.settings.beatYamlTemplates?.advanced ?? '';
+            const legacyAdvancedBuiltIn = stripWhenDefinition(legacyAdvancedRaw);
             const legacyHover = this.settings.beatHoverMetadataFields ?? [];
             // Only create configs if there is something to migrate
-            if (legacyAdvanced.trim() || legacyHover.length > 0) {
+            if (legacyAdvancedRaw.trim() || legacyHover.length > 0) {
                 const seedConfig: BeatSystemConfig = {
-                    beatYamlAdvanced: legacyAdvanced,
+                    beatYamlAdvanced: legacyAdvancedBuiltIn,
                     beatHoverMetadataFields: legacyHover.map(f => ({ ...f })),
                 };
                 const configs: Record<string, BeatSystemConfig> = {};
@@ -549,7 +577,7 @@ export default class RadialTimelinePlugin extends Plugin {
                 }
                 // Seed custom:default
                 configs['custom:default'] = {
-                    beatYamlAdvanced: seedConfig.beatYamlAdvanced,
+                    beatYamlAdvanced: legacyAdvancedRaw,
                     beatHoverMetadataFields: seedConfig.beatHoverMetadataFields.map(f => ({ ...f })),
                 };
                 // Seed any existing saved Pro systems
@@ -562,6 +590,20 @@ export default class RadialTimelinePlugin extends Plugin {
                 }
                 this.settings.beatSystemConfigs = configs;
                 beatConfigMigrated = true;
+            }
+        }
+
+        // Strip leaked keys from built-in per-system slots only; preserve custom/saved payloads.
+        if (this.settings.beatSystemConfigs) {
+            for (const key of PLOT_SYSTEM_NAMES) {
+                const cfg = this.settings.beatSystemConfigs[key];
+                if (cfg?.beatYamlAdvanced) {
+                    const stripped = stripWhenDefinition(cfg.beatYamlAdvanced);
+                    if (stripped !== cfg.beatYamlAdvanced) {
+                        cfg.beatYamlAdvanced = stripped;
+                        schemaOntologyMigrated = true;
+                    }
+                }
             }
         }
 

@@ -1515,27 +1515,36 @@ export function renderStoryBeatsSection(params: {
 
     const beatYamlContainer = beatYamlSection.createDiv({ cls: ['ert-panel', 'ert-advanced-template-card'] });
 
-    // ─── Per-system config helpers ─────────────────────────────────────
-    // Ensures the config slot for the active beat system exists and returns it (mutable reference).
-    const ensureBeatConfig = (): BeatSystemConfig => {
-        const system = plugin.settings.beatSystem ?? 'Save The Cat';
-        const key = system === 'Custom'
-            ? `custom:${plugin.settings.activeCustomBeatSystemId ?? 'default'}`
-            : system;
+    // ─── Custom-only beat-fields config helpers ────────────────────────
+    // Fields manager is scoped to Custom systems only; never write built-in slots here.
+    const getActiveCustomConfigKey = (): string => `custom:${plugin.settings.activeCustomBeatSystemId ?? 'default'}`;
+    const ensureCustomBeatConfig = (): BeatSystemConfig => {
+        const key = getActiveCustomConfigKey();
         if (!plugin.settings.beatSystemConfigs) plugin.settings.beatSystemConfigs = {};
         if (!plugin.settings.beatSystemConfigs[key]) {
             plugin.settings.beatSystemConfigs[key] = { beatYamlAdvanced: '', beatHoverMetadataFields: [] };
         }
         return plugin.settings.beatSystemConfigs[key];
     };
+    const canEditCustomBeatFields = (): boolean => {
+        if (plugin.settings.beatSystem === 'Custom') return true;
+        if (process.env.NODE_ENV !== 'production') {
+            console.warn('[BeatFields] Refusing field edit outside Custom system', {
+                beatSystem: plugin.settings.beatSystem,
+                activeCustomBeatSystemId: plugin.settings.activeCustomBeatSystemId ?? 'default',
+            });
+        }
+        return false;
+    };
 
     // Beat hover metadata helpers (operate on active system's config slot)
     const getBeatHoverMetadata = (key: string): HoverMetadataField | undefined => {
-        return getBeatConfigForSystem(plugin.settings).beatHoverMetadataFields.find(f => f.key === key);
+        return ensureCustomBeatConfig().beatHoverMetadataFields.find(f => f.key === key);
     };
 
     const setBeatHoverMetadata = (key: string, icon: string, enabled: boolean) => {
-        const config = ensureBeatConfig();
+        if (!canEditCustomBeatFields()) return;
+        const config = ensureCustomBeatConfig();
         const existing = config.beatHoverMetadataFields.find(f => f.key === key);
         if (existing) {
             existing.icon = icon;
@@ -1548,14 +1557,16 @@ export function renderStoryBeatsSection(params: {
     };
 
     const removeBeatHoverMetadata = (key: string) => {
-        const config = ensureBeatConfig();
+        if (!canEditCustomBeatFields()) return;
+        const config = ensureCustomBeatConfig();
         config.beatHoverMetadataFields = config.beatHoverMetadataFields.filter(f => f.key !== key);
         void plugin.saveSettings();
         dirtyState.notify();
     };
 
     const renameBeatHoverMetadataKey = (oldKey: string, newKey: string) => {
-        const config = ensureBeatConfig();
+        if (!canEditCustomBeatFields()) return;
+        const config = ensureCustomBeatConfig();
         const existing = config.beatHoverMetadataFields.find(f => f.key === oldKey);
         if (existing) {
             existing.key = newKey;
@@ -1573,7 +1584,7 @@ export function renderStoryBeatsSection(params: {
     const renderBeatYamlEditor = () => {
         beatYamlContainer.empty();
 
-        const currentBeatAdvanced = getBeatConfigForSystem(plugin.settings).beatYamlAdvanced;
+        const currentBeatAdvanced = ensureCustomBeatConfig().beatYamlAdvanced;
         const beatAdvancedObj = safeParseYaml(currentBeatAdvanced);
 
         const beatOptionalOrder = extractKeysInOrder(currentBeatAdvanced).filter(
@@ -1589,9 +1600,10 @@ export function renderStoryBeatsSection(params: {
         let beatDragIndex: number | null = null;
 
         const saveBeatEntries = (nextEntries: TemplateEntry[]) => {
+            if (!canEditCustomBeatFields()) return;
             beatWorkingEntries = nextEntries;
             const yaml = buildYamlFromEntries(nextEntries);
-            const config = ensureBeatConfig();
+            const config = ensureCustomBeatConfig();
             config.beatYamlAdvanced = yaml;
             void plugin.saveSettings();
             dirtyState.notify();
@@ -1822,6 +1834,7 @@ export function renderStoryBeatsSection(params: {
             setTooltip(addBtn, 'Add custom beat YAML field');
 
             const doAddBeatField = () => {
+                if (!canEditCustomBeatFields()) return;
                 const newKey = addKeyInput.value.trim();
                 if (!newKey) return;
                 if (beatBaseKeys.includes(newKey)) {
@@ -1864,8 +1877,8 @@ export function renderStoryBeatsSection(params: {
 
                     const header = contentEl.createDiv({ cls: 'ert-modal-header' });
                     header.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
-                    header.createDiv({ text: 'Reset beat YAML template', cls: 'ert-modal-title' });
-                    header.createDiv({ text: 'Resetting will delete all custom beat fields, lucide icons, and restore the default template.', cls: 'ert-modal-subtitle' });
+                    header.createDiv({ text: 'Reset beat YAML set', cls: 'ert-modal-title' });
+                    header.createDiv({ text: 'Resetting will delete all custom beat fields, lucide icons, and restore the default set.', cls: 'ert-modal-subtitle' });
 
                     const body = contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
                     body.createDiv({ text: 'Are you sure you want to reset? This cannot be undone.', cls: 'ert-purge-warning' });
@@ -1892,7 +1905,8 @@ export function renderStoryBeatsSection(params: {
 
                 if (!confirmed) return;
 
-                const resetConfig = ensureBeatConfig();
+                if (!canEditCustomBeatFields()) return;
+                const resetConfig = ensureCustomBeatConfig();
                 resetConfig.beatYamlAdvanced = '';
                 resetConfig.beatHoverMetadataFields = [];
                 await plugin.saveSettings();
@@ -1917,7 +1931,7 @@ export function renderStoryBeatsSection(params: {
 
     const renderBeatHoverPreview = () => {
         beatHoverPreviewBody.empty();
-        const activeConfig = getBeatConfigForSystem(plugin.settings);
+        const activeConfig = ensureCustomBeatConfig();
         const enabledFields = activeConfig.beatHoverMetadataFields.filter(f => f.enabled);
         const currentBeatAdv = activeConfig.beatYamlAdvanced;
         const templateObj = safeParseYaml(currentBeatAdv);
@@ -2433,7 +2447,7 @@ export function renderStoryBeatsSection(params: {
 
     // Scene YAML Templates Section
     const yamlHeading = new Settings(yamlStack)
-        .setName('Remap metadata & advanced scene YAML templates')
+        .setName('Remap metadata & advanced scene YAML sets')
         .setHeading();
     addHeadingIcon(yamlHeading, 'form');
     addWikiLink(yamlHeading, 'Settings#yaml-templates');
@@ -2990,7 +3004,7 @@ export function renderStoryBeatsSection(params: {
 
             const revertBtn = btnWrap.createEl('button', { cls: ['ert-iconBtn', 'ert-template-reset-btn'] });
             setIcon(revertBtn, 'rotate-ccw');
-            setTooltip(revertBtn, 'Revert to original template');
+            setTooltip(revertBtn, 'Revert to original set');
             revertBtn.onclick = async () => {
                 const confirmed = await new Promise<boolean>((resolve) => {
                     const modal = new Modal(app);
@@ -3003,8 +3017,8 @@ export function renderStoryBeatsSection(params: {
 
                     const header = contentEl.createDiv({ cls: 'ert-modal-header' });
                     header.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
-                    header.createDiv({ text: 'Reset advanced YAML template', cls: 'ert-modal-title' });
-                    header.createDiv({ text: 'Resetting will delete all renamed and custom fields, lucide icons, and restore the default template.', cls: 'ert-modal-subtitle' });
+                    header.createDiv({ text: 'Reset advanced YAML set', cls: 'ert-modal-title' });
+                    header.createDiv({ text: 'Resetting will delete all renamed and custom fields, lucide icons, and restore the default set.', cls: 'ert-modal-subtitle' });
 
                     const body = contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
                     body.createDiv({ text: 'Are you sure you want to reset? This cannot be undone.', cls: 'ert-purge-warning' });
@@ -3464,7 +3478,7 @@ export function renderStoryBeatsSection(params: {
 
         // ─── Header row: two-column Setting layout (title+desc left, audit button right) ──
         const auditSetting = new Settings(parentEl)
-            .setName('YAML audit')
+            .setName('Validate beat properties')
             .setDesc(`Scan ${noteType.toLowerCase()} notes for schema drift — missing fields, extra keys, and ordering issues.`);
 
         // Copy button (hidden until audit runs)
@@ -4146,7 +4160,7 @@ export function renderStoryBeatsSection(params: {
             } else if (created === 0 && skipped > 0) {
                 new Notice(`All ${skipped} Beat notes already exist. No new notes created.`);
             } else {
-                new Notice(`✓ Successfully created ${created} Beat template notes!`);
+                new Notice(`✓ Successfully created ${created} Beat set notes!`);
             }
             existingBeatReady = false;
             // Wait for Obsidian metadata cache to index newly created files
@@ -4165,7 +4179,7 @@ export function renderStoryBeatsSection(params: {
             });
         } catch (error) {
             console.error('[Beat Templates] Failed:', error);
-            new Notice(`Failed to create story beat templates: ${error}`);
+            new Notice(`Failed to create story beat sets: ${error}`);
         }
     }
 }

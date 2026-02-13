@@ -31,8 +31,7 @@ function buildModeOptions() {
         id: mode.id,
         label: mode.name,
         acronym: mode.ui.acronym || mode.name.substring(0, 4).toUpperCase(),
-        order: mode.ui.order,
-        tooltip: mode.ui.tooltip || mode.name
+        order: mode.ui.order
     }));
 }
 
@@ -128,11 +127,6 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
         numberLabel.setAttribute('dominant-baseline', 'middle');
         numberLabel.textContent = String(index + 1);
 
-        // Add SVG <title> element for native tooltip on hover
-        const titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-        titleEl.textContent = mode.tooltip;
-        innerGroup.appendChild(titleEl);
-
         innerGroup.appendChild(path);
         innerGroup.appendChild(text);
         innerGroup.appendChild(numberLabel);
@@ -205,10 +199,15 @@ async function switchToMode(view: ModeToggleView, modeId: string, modeSelector: 
             }
         }
     } catch (error) {
-        // Revert UI on unhandled error
+        // Revert UI on unhandled error and notify user
         const fallbackMode = modeManager?.getCurrentMode?.() ?? view.plugin.settings.currentMode ?? 'narrative';
         updateModeSelectorState(modeSelector, fallbackMode);
         console.error(`[ModeToggle] Failed to switch to ${modeId}:`, error);
+        // Import Notice dynamically to avoid circular deps
+        try {
+            const { Notice } = await import('obsidian');
+            new Notice(`Could not switch to ${modeId} mode. Check the developer console for details.`, 6000);
+        } catch { /* Notice import failed — console.error above is the fallback */ }
     }
 }
 

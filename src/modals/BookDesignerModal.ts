@@ -46,13 +46,13 @@ class SaveTemplateModal extends Modal {
         contentEl.addClass('rt-template-dialog');
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: 'TEMPLATE' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Save layout template' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'SCENE SET' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Save Scene Layout' });
         header.createDiv({ cls: 'ert-modal-subtitle', text: 'Name this layout so you can reuse it later.' });
 
         const form = contentEl.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         const nameSetting = new Setting(form)
-            .setName('Template name')
+            .setName('Layout name')
             .setDesc('Choose a short, unique name.')
             .addText(text => {
                 this.nameInput = text;
@@ -119,8 +119,8 @@ class DeleteTemplateModal extends Modal {
         contentEl.addClass('rt-template-dialog');
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        header.createSpan({ cls: 'ert-modal-badge', text: 'TEMPLATE' });
-        header.createDiv({ cls: 'ert-modal-title', text: 'Delete template' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'SCENE SET' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Delete layout' });
         header.createDiv({ cls: 'ert-modal-subtitle', text: `Delete "${this.templateName}"? This cannot be undone.` });
 
         const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
@@ -479,7 +479,7 @@ export class BookDesignerModal extends Modal {
             await this.saveTemplate(tpl.name, selectedId);
             return;
         }
-        const defaultName = `Layout ${this.templateType === 'base' ? 'Basic' : 'Advanced'} ${new Date().toLocaleDateString()}`;
+        const defaultName = `Scene Layout ${this.templateType === 'base' ? 'Basic' : 'Advanced'} ${new Date().toLocaleDateString()}`;
         new SaveTemplateModal(this.app, (name) => {
             void this.saveTemplate(name);
         }, defaultName).open();
@@ -909,18 +909,18 @@ export class BookDesignerModal extends Modal {
 
         // SECTION 3: TEMPLATES & EXTRAS
         const extraCard = scrollContainer.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        extraCard.createDiv({ cls: 'rt-sub-card-head', text: 'Templates & Extras' });
+        extraCard.createDiv({ cls: 'rt-sub-card-head', text: 'Scene Sets & Extras' });
 
         const extraRow = extraCard.createDiv({ cls: 'rt-manuscript-duo-row' });
 
         // Template Selection (Pills)
         const templSetting = extraRow.createDiv({ cls: 'rt-manuscript-setting-row rt-manuscript-card-block' });
-        templSetting.createDiv({ cls: 'rt-manuscript-setting-label', text: 'Scene template' });
+        templSetting.createDiv({ cls: 'rt-manuscript-setting-label', text: 'Scene set' });
         const templPills = templSetting.createDiv({ cls: 'rt-manuscript-pill-row' });
 
         const options: { id: 'base' | 'advanced', label: string }[] = [
-            { id: 'base', label: 'Base (Minimal)' },
-            { id: 'advanced', label: 'Advanced' }
+            { id: 'base', label: 'Base Scene Set' },
+            { id: 'advanced', label: 'Advanced Scene Set' }
         ];
 
         options.forEach(opt => {
@@ -964,7 +964,7 @@ export class BookDesignerModal extends Modal {
         // Template load/save
         const templateCard = extraCard.createDiv({ cls: 'rt-manuscript-card-block rt-manuscript-group-block rt-layout-templates-card' });
         const templateSetting = new Setting(templateCard)
-            .setName('Layout templates')
+            .setName('Scene Layouts')
             .setDesc('Select a saved layout (acts, subplots, assignments, metadata).')
             .addDropdown(drop => {
                 this.templateDropdown = drop.selectEl;
@@ -984,7 +984,7 @@ export class BookDesignerModal extends Modal {
         const templateActions = templateCard.createDiv({ cls: 'rt-template-actions' });
 
         new ButtonComponent(templateActions)
-            .setButtonText('Save / Update template')
+            .setButtonText('Save Scene Set')
             .onClick(() => {
                 void this.saveOrUpdateTemplate();
             });
@@ -997,7 +997,7 @@ export class BookDesignerModal extends Modal {
             });
 
         this.deleteTemplateBtn = new ButtonComponent(templateActions)
-            .setButtonText('Delete template')
+            .setButtonText('Delete layout')
             .setDisabled(true)
             .setWarning()
             .onClick(() => {
@@ -1029,6 +1029,15 @@ export class BookDesignerModal extends Modal {
         // Add cursor pointer to footer buttons
         footer.querySelectorAll('button').forEach(btn => {
             btn.style.cursor = 'pointer';
+        });
+
+        // Prevent AbstractInputSuggest from firing on modal open:
+        // Obsidian auto-focuses the first focusable element (the folder input),
+        // which triggers the suggestion dropdown. Defocus it after render.
+        requestAnimationFrame(() => {
+            if (this.targetPathInput) {
+                this.targetPathInput.inputEl.blur();
+            }
         });
     }
 
@@ -1360,7 +1369,7 @@ export class BookDesignerModal extends Modal {
         const userTemplates = this.plugin.settings.sceneYamlTemplates;
         const baseTemplate = userTemplates?.base;
         if (!baseTemplate) {
-            new Notice('Base scene template not found in settings. Set a scene template before generating.');
+            new Notice('Base scene set not found in settings. Set a scene set before generating.');
             return;
         }
         
@@ -1386,6 +1395,9 @@ export class BookDesignerModal extends Modal {
         // Ensure we don't divide by zero if user sets range < count
         const rangeMax = Math.max(this.targetRangeMax, this.scenesToGenerate);
         const assignments = this.getWorkingAssignments();
+
+        // Collect scene numbers per act for beat distribution
+        const actSceneNumbers = new Map<number, number[]>();
 
         // Distribution Logic:
         // We want to distribute 'scenesToGenerate' items across 'rangeMax' slots.
@@ -1459,6 +1471,11 @@ export class BookDesignerModal extends Modal {
             const subplotIndex = Math.min(Math.max(assignment.subplotIndex, 0), subplotList.length - 1);
             const assignedSubplots = [subplotList[subplotIndex] ?? subplotList[0]];
 
+            // Track scene numbers per act for beat distribution
+            const actList = actSceneNumbers.get(act) ?? [];
+            actList.push(sceneNum);
+            actSceneNumbers.set(act, actList);
+
             // Process characters: inline YAML (string for 1, array for >1)
             const characterList = this.character.split('\n').map(c => c.trim()).filter(c => c.length > 0);
             const yamlEscapeDoubleQuoted = (value: string) => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
@@ -1530,7 +1547,7 @@ export class BookDesignerModal extends Modal {
                     const customSystem = getCustomSystemFromSettings(this.plugin.settings);
                     if (customSystem.beats.length > 0) {
                         try {
-                            const result = await createBeatTemplateNotes(vault, 'Custom', targetFolder, customSystem, { beatTemplate });
+                            const result = await createBeatTemplateNotes(vault, 'Custom', targetFolder, customSystem, { beatTemplate, actSceneNumbers });
                             beatsCreated = result.created;
                         } catch (e) {
                             new Notice(`Error creating custom beats: ${e}`);
@@ -1540,7 +1557,7 @@ export class BookDesignerModal extends Modal {
                     }
                 } else {
                     try {
-                        const result = await createBeatTemplateNotes(vault, beatSystem, targetFolder, undefined, { beatTemplate });
+                        const result = await createBeatTemplateNotes(vault, beatSystem, targetFolder, undefined, { beatTemplate, actSceneNumbers });
                         beatsCreated = result.created;
                     } catch (e) {
                         new Notice(`Error creating beats: ${e}`);

@@ -44,7 +44,7 @@ export class CreateBeatsTemplatesModal extends Modal {
     // Header
     const header = contentEl.createDiv({ cls: 'ert-modal-header' });
     header.createSpan({ cls: 'ert-modal-badge', text: 'Setup' });
-    header.createDiv({ cls: 'ert-modal-title', text: 'Create beat template notes' });
+    header.createDiv({ cls: 'ert-modal-title', text: 'Create beat set notes' });
     header.createDiv({ cls: 'ert-modal-subtitle', text: `This will create ${this.beatCount} beat notes for "${this.beatSystem}".` });
 
     // Info card with example
