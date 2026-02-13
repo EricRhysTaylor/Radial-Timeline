@@ -7,7 +7,7 @@ Radial Timeline works well with a few common vault setups. Pick one and stick wi
 
 - Existing manuscript folder inside a larger vault.
 - Multi-book vault with one folder per book plus shared worldbuilding.
-- Multiple vaults, one per project, with shared templates.
+- Multiple vaults, one per project, with shared sets.
 
 This page covers the existing vault flow. If you are starting fresh, see [[Fresh-Vault-Onboarding|Fresh Vault Onboarding]].
 
@@ -32,7 +32,7 @@ See [[YAML-Frontmatter|YAML Frontmatter]] for the full schema.
 ## 4. Add story beats (optional but recommended)
 - Pick a system in Settings -> Core -> Story beats system, or select **Custom** to define your own.
 - For custom systems: name your system, add beats, assign to acts, and drag to reorder.
-- Use **Create** to generate beat template notes, or **Merge** to realign existing files after changes.
+- Use **Create** to generate beat set notes, or **Merge** to realign existing files after changes.
 - Switch to Gossamer mode to visualize momentum.
 
 ## 5. Verify with key features

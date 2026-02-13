@@ -2329,9 +2329,9 @@
   color: var(--color-yellow);
 }
 
-/* ── Health icon modified state (distinct from --warning) ───────── */
+/* ── Health icon modified state (matches modified origin tag) ───── */
 .ert-ui.ert-scope--settings .ert-beat-health-icon--modified {
-  color: var(--color-orange);
+  color: var(--color-yellow);
 }
 
 /* ── Action row end-aligned ─────────────────────────────────────── */

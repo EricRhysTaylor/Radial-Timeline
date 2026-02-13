@@ -9,7 +9,7 @@
  * - Normalizes undefined/null defaults to '' to prevent `key: null` writes
  */
 import type { App, TFile } from 'obsidian';
-import type { TemplateEntryValue } from './yamlTemplateNormalize';
+import type { FieldEntryValue } from './yamlTemplateNormalize';
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -18,7 +18,7 @@ export interface BackfillOptions {
     /** Pre-filtered target files (only notes that need backfill). */
     files: TFile[];
     /** Keys to insert → default values from template.  */
-    fieldsToInsert: Record<string, TemplateEntryValue>;
+    fieldsToInsert: Record<string, FieldEntryValue>;
     onProgress?: (current: number, total: number, filename: string) => void;
     abortSignal?: AbortSignal;
 }
@@ -41,7 +41,7 @@ export interface BackfillResult {
  * - Arrays are preserved (empty arrays stay empty).
  * - Strings are preserved.
  */
-function normalizeDefault(value: TemplateEntryValue | undefined | null): string | string[] {
+function normalizeDefault(value: FieldEntryValue | undefined | null): string | string[] {
     if (value === undefined || value === null) return '';
     if (Array.isArray(value)) return value;
     return value;

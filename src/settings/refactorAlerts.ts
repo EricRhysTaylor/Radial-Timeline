@@ -40,7 +40,7 @@ export interface RefactorAlert {
 
 // Base template fields - these should NOT appear in the advanced template
 // Used to detect and clean up legacy "complete" advanced templates
-export const BASE_TEMPLATE_FIELDS = [
+export const BASE_BEAT_FIELDS = [
     'Class', 'Act', 'When', 'Duration', 'Synopsis', 'Summary', 'Pending Edits',
     'Subplot', 'Character', 'POV', 'Words', 'Runtime', 'Publish Stage',
     'Status', 'Due', 'Summary Update', 'Pulse Update'
@@ -53,15 +53,15 @@ export const REFACTOR_ALERTS: RefactorAlert[] = [
         id: 'base-advanced-template-separation-v7',
         severity: 'info',
         icon: 'file-check',
-        title: 'Template Structure Updated',
-        description: 'Base and advanced YAML templates are now cleanly separated. The base template defines core fields; the advanced template adds optional fields. Commands and Book Designer now merge these automatically. Your templates have been updated to the latest structure.',
+        title: 'YAML Structure Updated',
+        description: 'Base and property YAML sets are now cleanly separated. The base set defines core fields; the properties set adds optional fields. Commands and Book Designer now merge these automatically. Your field sets have been updated to the latest structure.',
     },
     {
         id: 'yaml-revision-to-iteration-v6',
         severity: 'warning',
         icon: 'alert-triangle',
-        title: 'YAML Template Update Required',
-        description: 'The "Revision" field has been renamed to "Iteration". Update your Advanced YAML template. Existing notes with "Revision:" will continue to work.',
+        title: 'YAML Field Update Required',
+        description: 'The "Revision" field has been renamed to "Iteration". Update your YAML properties. Existing notes with "Revision:" will continue to work.',
         migrations: [
             {
                 alertId: 'yaml-revision-to-iteration-v6',
@@ -129,7 +129,7 @@ function hasRemapperConflict(
  */
 export function getLegacyBaseFieldsInAdvanced(advancedTemplate: string): string[] {
     const found: string[] = [];
-    for (const field of BASE_TEMPLATE_FIELDS) {
+    for (const field of BASE_BEAT_FIELDS) {
         // Match field at start of line followed by colon
         const regex = new RegExp(`^${field}:`, 'm');
         if (regex.test(advancedTemplate)) {
@@ -161,7 +161,7 @@ export function cleanupAdvancedTemplate(advancedTemplate: string): string {
         
         if (fieldMatch) {
             const fieldName = fieldMatch[1].trim();
-            if (BASE_TEMPLATE_FIELDS.includes(fieldName)) {
+            if (BASE_BEAT_FIELDS.includes(fieldName)) {
                 // Skip this base field and any continuation lines
                 skipUntilNextField = true;
                 continue;

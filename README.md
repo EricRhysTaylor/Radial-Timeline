@@ -57,13 +57,20 @@
 
 ## Docs (How-to & setup)
 
-If you want the “how-to” details (setup, templates, YAML, reordering, advanced options), they live in the wiki:
+If you want the “how-to” details (setup, sets, properties, reordering, advanced options), they live in the wiki:
 
 - [Wiki Home](https://github.com/EricRhysTaylor/Radial-Timeline/wiki)
 - [How-to](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/How-to)
 - [Settings](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Settings)
 - [Commands](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Commands)
 - [YAML Frontmatter](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/YAML-Frontmatter)
+
+## Sets, Properties, and Templates
+
+- **Sets** define the structural fields used in your notes.
+- **Properties** are custom metadata fields added to notes.
+- **Presets** are starter configurations for campaigns or workflows.
+- **Templates** are used only for export formatting (e.g., Pandoc).
 
 <br>
 <a href="https://youtu.be/7noTSFaj8Eo" target="_blank" rel="noopener">

@@ -1,6 +1,6 @@
 # Book Designer
 
-The **Book Designer** is a powerful setup utility that generates a complete manuscript skeleton tailored to your specifications. It creates scene files with pre-configured YAML frontmatter, distributes them across acts and subplots, and can even generate story beat templates.
+The **Book Designer** is a powerful setup utility that generates a complete manuscript skeleton tailored to your specifications. It creates scene files with pre-configured properties, distributes them across acts and subplots, and can even generate story beat sets.
 
 This tool is perfect for starting a new project or rapidly prototyping a story structure.
 
@@ -12,7 +12,7 @@ You can open the Book Designer in two ways:
 
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/book-designer-modal.png" alt="Book Designer modal with preview donut chart" style="width: 550px; max-width: 100%; border-radius: 8px;" />
-  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Book Designer — configure structure, subplots, and templates with live preview</div>
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Book Designer — configure structure, subplots, and sets with live preview</div>
 </div>
 
 ## Workflow
@@ -29,8 +29,8 @@ The Book Designer modal guides you through three key configuration sections:
 *   **Subplots**: Enter your subplots, one per line. Scenes will be assigned to these subplots in a round-robin fashion. Each scene will belong to only one subplot.
 *   **Characters**: Enter your main characters, one per line. These will be added to the YAML frontmatter of the generated scenes.
 
-### 3. Templates & Extras
-*   **Scene template**: Choose between 'Base' (minimal) and 'Advanced' YAML templates. These templates are defined in the Radial Timeline settings. Note, the Advanced YAML can be customized.
+### 3. Scene Sets & Extras
+*   **Scene set**: Choose between **Base Scene Set** (minimal) and **Advanced Scene Set**. These sets are defined in the Radial Timeline settings. The Advanced Scene Set can be customized.
 *   **Generate Beats**: Optionally generate beat sheet files based on your selected beat system (e.g., Save the Cat, configured in Settings).
 
 ## Visual Preview
@@ -44,20 +44,20 @@ Once configured, click **Create Book**. The plugin will:
 
 You'll see a notification confirming the number of scenes and files created. Your Radial Timeline will immediately update to display your new story structure.
 
-## Customizing Templates
+## Customizing Scene Sets
 
-The Book Designer uses one of two templates:
-1.  **Base**: A minimal template with only the essential fields required for Radial Timeline.
-2.  **Advanced**: A richer template with analysis fields, stats, and more.
+The Book Designer uses one of two scene sets:
+1.  **Base Scene Set**: A minimal set with only the essential fields required for Radial Timeline.
+2.  **Advanced Scene Set**: A richer set with analysis fields, stats, and more.
 
 ### Adding Custom Properties
-If your writing methodology uses fields beyond the built-in keys (e.g., Story Grid values, Dramatica signposts), you can add them to the Advanced template:
-1.  Go to **Settings → Scene YAML templates & remapping**.
-2.  Enable **Advanced YAML editor**.
+If your writing methodology uses fields beyond the built-in keys (e.g., Story Grid values, Dramatica signposts), you can add them to the Advanced Scene Set:
+1.  Go to **Settings → Scene sets & remapping**.
+2.  Enable **Scene properties editor**.
 3.  Add your custom keys to the list.
-4.  In the Book Designer, select **Advanced** as your template type.
+4.  In the Book Designer, select **Advanced** as your scene set type.
 
-> **Note**: Radial Timeline already tracks draft status (`Status` and `Publish Stage`), point of view (`POV`), and many other metadata fields in the built-in templates. Only add custom keys for data that your methodology requires beyond what the plugin already provides. See [[YAML-Frontmatter]] for the full list of built-in fields.
+> **Note**: Radial Timeline already tracks draft status (`Status` and `Publish Stage`), point of view (`POV`), and many other metadata fields in the built-in sets. Only add custom keys for data that your methodology requires beyond what the plugin already provides. See [[YAML-Frontmatter]] for the full list of built-in fields.
 
 ## Custom Beat Systems
 
@@ -79,13 +79,13 @@ You can also create custom beat notes manually:
 *   Radial Timeline will detect these notes and display them in Gossamer mode. The `Beat Model` value must match the system name in settings to be recognized.
 
 > [!NOTE]
-> Custom beat notes use the same YAML structure as preset systems. Use the **Beat YAML editor** in Settings → Story beats system to add your own beat-specific fields and hover metadata. Pro also lets you save unlimited custom beat systems (beat sets).
+> Custom beat notes use the same properties structure as preset systems. Use the **Beat properties editor** in Settings → Story beats system to add your own beat-specific fields and hover metadata. Pro also lets you save unlimited custom beat systems (saved sets).
 
 ## Advanced Metadata
 
-Some writing methodologies rely on tracking complex properties rather than just linear beats. You can accommodate this using the **Advanced Template**:
+Some writing methodologies rely on tracking complex properties rather than just linear beats. You can accommodate this using the **Advanced Scene Set**:
 
-1.  Go to **Settings > Scene YAML templates & remapping**.
-2.  Enable **Advanced YAML editor**.
+1.  Go to **Settings > Scene sets & remapping**.
+2.  Enable **Scene properties editor**.
 3.  Add custom keys for your methodology.
 4.  When you generate or edit scenes, these properties will be preserved, allowing you to use the plugin's timeline to visualize your story while maintaining your specific data structure in the notes.

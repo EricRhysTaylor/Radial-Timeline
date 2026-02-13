@@ -1,30 +1,30 @@
 /*
- * Create Beats Templates Modal - Confirmation dialog
+ * Create Beat Set Modal - Confirmation dialog
  */
 import { Modal, App, ButtonComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 
-export interface CreateBeatsTemplatesResult {
+export interface CreateBeatSetResult {
   confirmed: boolean;
 }
 
-export class CreateBeatsTemplatesModal extends Modal {
+export class CreateBeatSetModal extends Modal {
   private plugin: RadialTimelinePlugin;
   private beatSystem: string;
   private beatCount: number;
-  private resolve: ((result: CreateBeatsTemplatesResult) => void) | null = null;
+  private resolve: ((result: CreateBeatSetResult) => void) | null = null;
 
   constructor(app: App, plugin: RadialTimelinePlugin, beatSystem: string, beatCount: number) {
     super(app);
     this.plugin = plugin;
-    
+
     // If it's the dynamic custom system, show the user's custom name
     if (beatSystem === 'Custom' && this.plugin.settings.customBeatSystemName) {
         this.beatSystem = this.plugin.settings.customBeatSystemName;
     } else {
         this.beatSystem = beatSystem;
     }
-    
+
     this.beatCount = beatCount;
   }
 
@@ -32,7 +32,7 @@ export class CreateBeatsTemplatesModal extends Modal {
     const { contentEl, modalEl, titleEl } = this;
     contentEl.empty();
     titleEl.setText('');
-    
+
     if (modalEl) {
       modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
       modalEl.style.width = '620px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
@@ -50,7 +50,7 @@ export class CreateBeatsTemplatesModal extends Modal {
     // Info card with example
     const card = contentEl.createDiv({ cls: 'rt-glass-card' });
 
-    card.createDiv({ cls: 'rt-sub-card-note', text: 'Each beat note will have the following YAML structure:' });
+    card.createDiv({ cls: 'rt-sub-card-note', text: 'Each beat note will have the following property structure (shown in YAML format):' });
 
     const exampleCode = card.createEl('pre', { cls: 'rt-code-block' });
     exampleCode.textContent = `---
@@ -63,10 +63,10 @@ Gossamer1:
 ---`;
 
     const sourcePath = this.plugin.settings.sourcePath.trim();
-    const locationText = sourcePath 
+    const locationText = sourcePath
       ? `Notes will be created in: ${sourcePath}/`
       : 'Notes will be created in the vault root (no source path set)';
-    
+
     card.createDiv({ cls: 'rt-sub-card-note', text: locationText });
 
     // Buttons
@@ -92,7 +92,7 @@ Gossamer1:
       });
   }
 
-  waitForConfirmation(): Promise<CreateBeatsTemplatesResult> {
+  waitForConfirmation(): Promise<CreateBeatSetResult> {
     return new Promise((resolve) => {
       this.resolve = resolve;
     });
@@ -101,10 +101,18 @@ Gossamer1:
   onClose(): void {
     const { contentEl } = this;
     contentEl.empty();
-    
+
     // If modal is closed without decision, resolve with cancel
     if (this.resolve) {
       this.resolve({ confirmed: false });
     }
   }
 }
+
+// ─── Deprecated aliases (remove after v5.2) ─────────────────────────
+
+/** @deprecated Use CreateBeatSetResult */
+export type CreateBeatsTemplatesResult = CreateBeatSetResult;
+
+/** @deprecated Use CreateBeatSetModal */
+export const CreateBeatsTemplatesModal = CreateBeatSetModal;

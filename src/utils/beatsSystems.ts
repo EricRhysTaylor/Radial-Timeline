@@ -1,5 +1,5 @@
 /*
- * Plot System Templates for Gossamer Scoring
+ * Plot System Presets for Gossamer Scoring
  */
 
 export interface PlotBeatInfo {
@@ -10,14 +10,14 @@ export interface PlotBeatInfo {
   act?: number;       // Explicit act assignment (1, 2, 3)
 }
 
-export interface PlotSystemTemplate {
+export interface PlotSystemPreset {
   name: string;
   beatCount: number;
   beats: string[];
   beatDetails: PlotBeatInfo[];
 }
 
-export const PLOT_SYSTEMS: Record<string, PlotSystemTemplate> = {
+export const PLOT_SYSTEMS: Record<string, PlotSystemPreset> = {
   "Save The Cat": {
     name: "Save The Cat",
     beatCount: 15,
@@ -270,7 +270,7 @@ export const PLOT_SYSTEMS: Record<string, PlotSystemTemplate> = {
 
 export const PLOT_SYSTEM_NAMES = Object.keys(PLOT_SYSTEMS);
 
-export function getPlotSystem(name: string): PlotSystemTemplate | null {
+export function getPlotSystem(name: string): PlotSystemPreset | null {
   return PLOT_SYSTEMS[name] || null;
 }
 
@@ -446,10 +446,10 @@ export const PRO_BEAT_SETS: ProBeatSet[] = [
  * Shared helper to construct the custom system object from settings.
  * Accepts any object that matches the minimal settings shape needed.
  */
-export function getCustomSystemFromSettings(settings: { customBeatSystemName?: string; customBeatSystemBeats?: { name: string; act: number }[] }): PlotSystemTemplate {
+export function getCustomSystemFromSettings(settings: { customBeatSystemName?: string; customBeatSystemBeats?: { name: string; act: number }[] }): PlotSystemPreset {
     const name = settings.customBeatSystemName || 'Custom';
     const beatObjs = settings.customBeatSystemBeats || [];
-    
+
     const beats = beatObjs.map(b => b.name).filter(n => n.trim().length > 0);
     const beatDetails = beatObjs
         .filter(b => b.name.trim().length > 0)
@@ -467,4 +467,9 @@ export function getCustomSystemFromSettings(settings: { customBeatSystemName?: s
         beatCount: beats.length
     };
 }
+
+// ─── Deprecated aliases (remove after v5.2) ─────────────────────────
+
+/** @deprecated Use PlotSystemPreset */
+export type PlotSystemTemplate = PlotSystemPreset;
 

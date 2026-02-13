@@ -1,8 +1,12 @@
 /*
- * Beat Template Note Creation
+ * Beat Set Note Creation
+ *
+ * NOTE: Legacy "template" terminology retained as deprecated aliases
+ * at the bottom of this file for backward compatibility.
+ * Scheduled for removal after v5.2.
  */
 import { Vault, TFile, normalizePath } from 'obsidian';
-import { PLOT_SYSTEMS, PLOT_SYSTEM_NAMES, PlotSystemTemplate, PlotBeatInfo } from './beatsSystems';
+import { PLOT_SYSTEMS, PLOT_SYSTEM_NAMES, PlotSystemPreset, PlotBeatInfo } from './beatsSystems';
 import { mergeTemplates } from './sceneGenerator';
 import type { BeatSystemConfig, RadialTimelineSettings } from '../types/settings';
 
@@ -26,7 +30,7 @@ function normalizeModelKey(s: string): string {
 
 /**
  * Resolve the BeatSystemConfig for the currently active system in settings.
- * Used by: settings UI editor, note generation (getMergedBeatYamlTemplate).
+ * Used by: settings UI editor, note generation (getMergedBeatYaml).
  * Optional systemKey overrides the active system (for editor previews).
  */
 export function getBeatConfigForSystem(
@@ -125,11 +129,11 @@ function buildBeatBody(beatInfo: PlotBeatInfo): string {
 }
 
 /**
- * Returns the merged beat YAML template string (base + advanced).
- * Reads advanced YAML from the active system's config slot (per-system).
+ * Returns the merged beat YAML string (base + properties).
+ * Reads properties YAML from the active system's config slot (per-system).
  * Falls back to legacy globals for pre-migration vaults.
  */
-export function getMergedBeatYamlTemplate(settings: RadialTimelineSettings): string {
+export function getMergedBeatYaml(settings: RadialTimelineSettings): string {
   const configuredBase = settings.beatYamlTemplates?.base ?? LEGACY_BEAT_BASE;
   const base = configuredBase.replace(/^Description:/gm, 'Purpose:');
   const config = getBeatConfigForSystem(settings);
@@ -253,13 +257,13 @@ export function spreadBeatsAcrossScenes(
 }
 
 /**
- * Create Beat template notes for a given beat system
+ * Create beat set notes for a given beat system.
  */
-export async function createBeatTemplateNotes(
+export async function createBeatNotesFromSet(
   vault: Vault,
   beatSystemName: string,
   sourcePath: string,
-  customSystem?: PlotSystemTemplate,
+  customSystem?: PlotSystemPreset,
   options?: { actSceneNumbers?: Map<number, number[]>; beatTemplate?: string }
 ): Promise<{ created: number; skipped: number; errors: string[] }> {
   let beatSystem = PLOT_SYSTEMS[beatSystemName];
@@ -360,3 +364,11 @@ export async function createBeatTemplateNotes(
 
   return { created, skipped, errors };
 }
+
+// ─── Deprecated aliases (remove after v5.2) ─────────────────────────
+
+/** @deprecated Use getMergedBeatYaml */
+export const getMergedBeatYamlTemplate = getMergedBeatYaml;
+
+/** @deprecated Use createBeatNotesFromSet */
+export const createBeatTemplateNotes = createBeatNotesFromSet;

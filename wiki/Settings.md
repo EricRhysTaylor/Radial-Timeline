@@ -183,25 +183,25 @@ Configure the structural pacing guide for your story.
     *   **Orange** — beat note exists but is misaligned (wrong number or act). Use **Merge** to fix.
     *   **Red** — duplicate beat title or multiple files match. Resolve manually.
     *   **No highlight** — new beat with no file yet. Use **Create** to generate it.
-*   **Create templates**: Generate beat template notes in your source folder. The button shows how many new notes will be created and is disabled when all beats already have files.
+*   **Create sets**: Generate beat set notes in your source folder. The button shows how many new notes will be created and is disabled when all beats already have files.
 *   **Merge beats**: (Appears when misaligned beats are detected) Renames and updates existing beat note files to match the current list order and act assignments. The button shows how many beats will be realigned.
-*   **Beat YAML editor**: Customize additional YAML keys for beat notes and choose which fields appear in the beat hover synopsis. Stored per beat system.
-*   **Saved beat systems ✦ Pro**: Save and switch between multiple custom beat systems (unlimited beat sets). Each system stores its beat list, Beat YAML editor fields, and hover metadata selections. Core includes a single custom beat system.
+*   **Beat properties editor**: Customize additional beat properties and choose which fields appear in the beat hover synopsis. Stored per beat system.
+*   **Saved sets ✦ Pro**: Save and switch between multiple custom beat systems (unlimited beat sets). Each system stores its beat list, Beat properties editor fields, and hover metadata selections. Core includes a single custom beat system.
 
 > [!NOTE]
-> Custom beat YAML fields use the same structure as preset systems (`Class: Beat`, `Act`, `Purpose`, `Beat Model`, `Range`, etc.). Use the Beat YAML editor to extend this with your own fields.
+> Custom beat properties use the same structure as preset systems (`Class: Beat`, `Act`, `Purpose`, `Beat Model`, `Range`, etc.). Use the Beat properties editor to extend this with your own fields.
 
 > [!NOTE]
 > Learn more about using beats in [[Gossamer-Mode]].
 
 <a name="yaml-templates"></a>
-### Scene YAML templates & remapping
+### Scene sets & remapping
 Manage how Radial Timeline reads and writes metadata.
 *   **Custom Metadata Mapping**: Map existing frontmatter keys in your vault (e.g., `story_date`) to the system keys (e.g., `When`) without changing your files.
-*   **Advanced YAML editor**: Enable this to customize the advanced scene template, add optional fields, and control hover metadata icons/order.
+*   **Scene properties editor**: Enable this to customize the Advanced Scene Set, add optional fields, and control hover metadata icons/order.
 
 > [!NOTE]
-> *   For template customization: [[YAML-Frontmatter#advanced-yaml-editor]]
+> *   For scene set customization: [[YAML-Frontmatter#advanced-yaml-editor]]
 > *   For a full list of keys: [[YAML-Frontmatter]]
 
 <a name="publication"></a>
@@ -334,7 +334,7 @@ Generate shareable, spoiler-safe progress graphics for social media, crowdfundin
 **Campaign Manager** ✦ Pro:
 Create multiple APR configurations for different platforms (Kickstarter, Patreon, Newsletter, Website) with independent refresh schedules.
 
-*   **Quick Start Templates**: One-click setup for common platforms:
+*   **Campaign Presets**: One-click setup for common platforms:
     *   Kickstarter (7-day refresh reminders)
     *   Patreon (14-day refresh reminders)
     *   Newsletter (14-day refresh reminders)

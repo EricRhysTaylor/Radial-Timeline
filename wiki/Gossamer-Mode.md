@@ -59,8 +59,8 @@ When "Custom" is selected, the beat system editor appears:
 *   **Add beats**: Type a name and click **+** to add a new beat. Assign each beat to an act using the dropdown.
 *   **Reorder**: Drag and drop beats to change their order within or across acts.
 *   **Rename**: Edit beat names inline. After renaming or reordering, use **Merge** to update existing files.
-*   **Beat YAML editor**: Customize additional YAML keys for beat notes and select which fields appear in beat hover metadata (stored per system).
-*   **Saved beat systems ✦ Pro**: Save and switch between multiple custom beat systems (unlimited beat sets). Each system stores beats plus Beat YAML editor fields and hover metadata.
+*   **Beat properties editor**: Customize additional beat properties and select which fields appear in beat hover metadata (stored per system).
+*   **Saved sets ✦ Pro**: Save and switch between multiple custom beat systems (unlimited beat sets). Each system stores beats plus Beat properties editor fields and hover metadata.
 
 Row colors show the sync status between your beat list and the actual note files:
 *   **Green** — beat note exists and is aligned.
@@ -69,8 +69,8 @@ Row colors show the sync status between your beat list and the actual note files
 *   **No highlight** — new beat, no file yet.
 
 ### 3. Create & Merge
-*   **Create**: Generates beat template notes in your source folder, one per beat. Notes come pre-populated with YAML frontmatter (`Class: Beat`, `Purpose`, `Beat Model`, `Range`, etc.) so they are immediately recognized by Gossamer Mode. The button is disabled when all beats already have files, and shows how many new notes will be created.
+*   **Create**: Generates beat set notes in your source folder, one per beat. Notes come pre-populated with properties (`Class: Beat`, `Purpose`, `Beat Model`, `Range`, etc.) so they are immediately recognized by Gossamer Mode. The button is disabled when all beats already have files, and shows how many new notes will be created.
 *   **Merge**: Appears when beats are misaligned. Renames and updates existing beat note files to match the current list order and act assignments. Use this after reordering or renaming beats.
 
 > [!NOTE]
-> Custom beat notes use the same YAML structure as preset systems. Use the Beat YAML editor to extend this with your own fields.
+> Custom beat notes use the same properties structure as preset systems. Use the Beat properties editor to extend this with your own fields.

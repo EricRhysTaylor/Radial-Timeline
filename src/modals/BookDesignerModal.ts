@@ -1,6 +1,6 @@
 import { App, Modal, Setting, Notice, normalizePath, ButtonComponent, TextAreaComponent, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { createBeatTemplateNotes, getMergedBeatYamlTemplate } from '../utils/beatsTemplates';
+import { createBeatNotesFromSet, getMergedBeatYaml } from '../utils/beatsTemplates';
 import { generateSceneContent, mergeTemplates, SceneCreationData } from '../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { parseDuration, parseDurationDetail } from '../utils/date';
@@ -1540,14 +1540,14 @@ export class BookDesignerModal extends Modal {
                 beatsSkippedDuplicate = true;
             } else {
                 const beatSystem = this.plugin.settings.beatSystem || 'Custom';
-                const beatTemplate = getMergedBeatYamlTemplate(this.plugin.settings);
+                const beatTemplate = getMergedBeatYaml(this.plugin.settings);
 
                 // Handle Custom Dynamic System
                 if (beatSystem === 'Custom') {
                     const customSystem = getCustomSystemFromSettings(this.plugin.settings);
                     if (customSystem.beats.length > 0) {
                         try {
-                            const result = await createBeatTemplateNotes(vault, 'Custom', targetFolder, customSystem, { beatTemplate, actSceneNumbers });
+                            const result = await createBeatNotesFromSet(vault, 'Custom', targetFolder, customSystem, { beatTemplate, actSceneNumbers });
                             beatsCreated = result.created;
                         } catch (e) {
                             new Notice(`Error creating custom beats: ${e}`);
@@ -1557,7 +1557,7 @@ export class BookDesignerModal extends Modal {
                     }
                 } else {
                     try {
-                        const result = await createBeatTemplateNotes(vault, beatSystem, targetFolder, undefined, { beatTemplate, actSceneNumbers });
+                        const result = await createBeatNotesFromSet(vault, beatSystem, targetFolder, undefined, { beatTemplate, actSceneNumbers });
                         beatsCreated = result.created;
                     } catch (e) {
                         new Notice(`Error creating beats: ${e}`);

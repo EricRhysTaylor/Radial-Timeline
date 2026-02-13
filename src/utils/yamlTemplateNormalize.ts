@@ -1,7 +1,7 @@
 /**
  * Shared YAML template parsing utilities.
  *
- * Extracted from TemplatesSection.ts so that the YAML Audit, Backfill,
+ * Extracted from BeatPropertiesSection.ts so that the YAML Audit, Backfill,
  * and all three editor UIs (Scene / Beat / Backdrop) share one source of truth.
  */
 import { parseYaml } from 'obsidian';
@@ -11,7 +11,9 @@ import { DEFAULT_SETTINGS } from '../settings/defaults';
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
-export type TemplateEntryValue = string | string[];
+export type FieldEntryValue = string | string[];
+/** @deprecated Use FieldEntryValue */
+export type TemplateEntryValue = FieldEntryValue;
 
 export type NoteType = 'Scene' | 'Beat' | 'Backdrop';
 

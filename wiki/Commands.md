@@ -22,7 +22,7 @@ Type "Radial Timeline" to filter the list.
 | **Open** | Opens the main Timeline view. | [[Home#getting-started]] |
 | **Search timeline** | Opens the search bar in the Timeline view to filter scenes by text across multiple fields. | [[How-to#search]] |
 | **Manage subplots** | Opens the Subplot Manager to rename or delete subplots in bulk across all scene files. | [[How-to#manage-subplots-in-bulk]] |
-| **Book designer** | Opens the Book Designer to generate a manuscript template with acts, subplots, and beats. | [[Book Designer]] |
+| **Book designer** | Opens the Book Designer to generate a manuscript set with acts, subplots, and beats. | [[Book Designer]] |
 | **Timeline order** | Opens the Timeline Repair wizard to fix chronological ordering, sync patterns, and repair frontmatter. | — |
 | **Planetary time calculator** | Opens the calculator for converting Earth dates to custom planetary calendars (requires planetary time enabled in settings). | [[Chronologue Mode#planetary-time]] |
 
@@ -30,8 +30,8 @@ Type "Radial Timeline" to filter the list.
 
 | Command | Description | Documentation |
 | :--- | :--- | :--- |
-| **Create basic scene note** | Creates a new scene note using the **Base** scene YAML template. | [[Core Workflows#creating-scenes]] |
-| **Create advanced scene note** | Creates a new scene note using the **Advanced** scene YAML template (includes any Advanced YAML editor customizations). | [[YAML-Frontmatter#advanced-scene-template]] |
+| **Create basic scene note** | Creates a new scene note using the **Base Scene Set**. | [[Core Workflows#creating-scenes]] |
+| **Create advanced scene note** | Creates a new scene note using the **Advanced Scene Set** (includes any Scene properties editor customizations). | [[YAML-Frontmatter#advanced-scene-template]] |
 | **Create backdrop note** | Creates a new backdrop file for contextual events that impact the plot. Appears as a dedicated ring in Chronologue mode (see also micro-backdrop rings for lighter-weight context). | [[Chronologue Mode#backdrop-notes]] |
 
 ### Export

@@ -522,7 +522,7 @@ Example custom fields:
 
 1. **Start minimal**: Begin with just `Class`, `Act`, `Status`, and `Subplot`
 2. **Add fields gradually**: Introduce more fields as your workflow develops
-3. **Use templates**: Create scene/beat templates with your preferred fields
+3. **Use sets**: Create scene and beat sets with your preferred fields
 4. **Link liberally**: Use wiki links for characters, places, and cross-references
 5. **AI beats**: Set `Pulse Update: Yes` to include in analysis runs
 6. **Manual line breaks**: Use `[br]` in AI beat text to control hover display wrapping
@@ -533,4 +533,4 @@ Example custom fields:
 
 YAML supports inline comments using `#`. While the examples in this reference include comments to explain each field, be aware that **Obsidian may strip comments** when you reorder or edit frontmatter fields through its UI.
 
-For this reason, the plugin's built-in templates do not include comments. Use this reference document to understand what each field means rather than relying on inline comments in your scene notes.
+For this reason, the plugin's built-in sets do not include comments. Use this reference document to understand what each field means rather than relying on inline comments in your scene notes.

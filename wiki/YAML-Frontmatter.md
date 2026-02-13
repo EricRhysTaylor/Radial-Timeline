@@ -48,9 +48,10 @@ Obsidian links are supported in properties. Use the double-bracket wikilink form
 
 You can control how POV is displayed in **Settings → Point of view**.
 
-## Advanced Scene Template
+<a name="advanced-scene-template"></a>
+## Advanced Scene Set
 
-The Advanced scene template adds optional fields for deeper workflows (Story Grid, Dramatica, custom analysis, and more). This template is **customizable**.
+The Advanced Scene Set adds optional fields for deeper workflows (Story Grid, Dramatica, custom analysis, and more). This set is **customizable**.
 
 ```yaml
 Class: Scene
@@ -82,11 +83,12 @@ Pulse Update: No
 Summary Update:
 ```
 
-### Advanced YAML Editor
+<a name="advanced-yaml-editor"></a>
+### Scene Properties Editor
 
-The Advanced YAML editor lets you tailor the Advanced scene template while keeping required base keys intact. Add, remove, or reorder optional fields to match your workflow.
+The Scene properties editor lets you tailor the Advanced Scene Set while keeping required base keys intact. Add, remove, or reorder optional fields to match your workflow.
 
-*   Enable **Settings → Scene YAML templates & remapping → Advanced YAML editor**.
+*   Enable **Settings → Scene sets & remapping → Scene properties editor**.
 *   Required base keys stay locked and auto-included in order.
 *   Optional keys can be drag-reordered, renamed, deleted, or added.
 *   Use the restore icon to revert to the shipped defaults.
@@ -107,7 +109,7 @@ Gossamer2 Justification:
 
 > **Beat semantics**: Beats are structural, not temporal. They do not use the `When` field — ordering comes from Act assignment and filename prefix.
 
-Beat notes have their own **Beat YAML editor** in **Settings → Story beats system**. Use it to add custom keys and choose which fields appear in beat hovers. Beat YAML is stored per beat system.
+Beat notes have their own **Beat properties editor** in **Settings → Story beats system**. Use it to add custom keys and choose which fields appear in beat hovers. Beat properties are stored per beat system.
 
 ## Backdrop Notes (YAML)
 
@@ -118,12 +120,12 @@ End:                              # End Date time (YYYY-MM-DD HH:MM)
 Context: Static world context this backdrop represents (no scene-level unfolding).
 ```
 
-Backdrop notes can be extended using the **Backdrop YAML editor** in Settings.
+Backdrop notes can be extended using the **Backdrop properties editor** in Settings.
 
 ## YAML Managers in Settings
 
-*   **Advanced YAML editor**: Customize the Advanced scene template (optional fields and hover metadata).
-*   **Beat YAML editor**: Customize beat note fields and beat hover metadata.
+*   **Scene properties editor**: Customize the Advanced Scene Set (optional fields and hover metadata).
+*   **Beat properties editor**: Customize beat note fields and beat hover metadata.
 *   **Custom Metadata Mapping**: Map your existing keys to Radial Timeline keys without rewriting your files.
 
 See [[Settings#yaml-templates]] and [[Settings#story-beats]] for configuration details.
@@ -146,4 +148,4 @@ The plugin automatically recognizes legacy field names, so you don't need to upd
 
 Beat notes do not use `When:` — they are ordered structurally by Act and filename prefix.
 
-Existing notes with old field names will continue to work. Only new notes created from templates will use the current field names.
+Existing notes with old field names will continue to work. Only new notes created from sets will use the current field names.

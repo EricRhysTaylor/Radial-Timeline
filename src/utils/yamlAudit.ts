@@ -366,7 +366,7 @@ export function formatAuditReport(result: YamlAuditResult, noteType: NoteType): 
     const lines: string[] = [];
     const s = result.summary;
 
-    lines.push(`Beat Properties Report — ${noteType} Notes`);
+    lines.push(`${noteType} Properties Report`);
     lines.push(`${'─'.repeat(48)}`);
     lines.push(`Total notes:     ${s.totalNotes}`);
     lines.push(`Clean:           ${s.clean}`);

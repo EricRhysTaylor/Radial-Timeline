@@ -26,7 +26,7 @@ This page covers the fresh vault flow. If you already have scenes, jump to [[Onb
 ## 3. Choose a beats system (or skip for now)
 - Pick Save the Cat, Hero's Journey, Story Grid, or Custom in Settings -> Core -> Story beats system.
 - For Custom: name your system, add beats, assign to acts, and drag to reorder.
-- If you skipped beats in Book Designer, use **Create** to generate beat template notes later. Use **Merge** to realign files after reordering or renaming.
+- If you skipped beats in Book Designer, use **Create** to generate beat set notes later. Use **Merge** to realign files after reordering or renaming.
 
 ## 4. Orient to the key modes
 - Narrative (1). Manuscript order and subplot structure.

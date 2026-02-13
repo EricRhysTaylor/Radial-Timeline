@@ -1,9 +1,9 @@
 import { App, Notice, Setting as Settings, parseYaml, setIcon, setTooltip, Modal, ButtonComponent, getIconIds, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
-import { CreateBeatsTemplatesModal } from '../../modals/CreateBeatsTemplatesModal';
+import { CreateBeatSetModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem, getCustomSystemFromSettings, PRO_BEAT_SETS } from '../../utils/beatsSystems';
-import { createBeatTemplateNotes, getMergedBeatYamlTemplate, getBeatConfigForSystem, spreadBeatsAcrossScenes } from '../../utils/beatsTemplates';
+import { createBeatNotesFromSet, getMergedBeatYaml, getBeatConfigForSystem, spreadBeatsAcrossScenes } from '../../utils/beatsTemplates';
 import type { BeatSystemConfig } from '../../types/settings';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { renderMetadataSection } from './MetadataSection';
@@ -29,14 +29,14 @@ import {
 import { runYamlAudit, collectFilesForAudit, formatAuditReport, type YamlAuditResult, type NoteAuditEntry } from '../../utils/yamlAudit';
 import { runYamlBackfill, type BackfillResult } from '../../utils/yamlBackfill';
 
-type TemplateEntryValue = string | string[];
-type TemplateEntry = { key: string; value: TemplateEntryValue; required: boolean };
+type FieldEntryValue = string | string[];
+type FieldEntry = { key: string; value: FieldEntryValue; required: boolean };
 type BeatRow = { name: string; act: number };
-type BeatSystemMode = 'template' | 'custom';
-type TemplateSystemId = 'save_the_cat' | 'heros_journey' | 'story_grid';
+type BeatSystemMode = 'builtin' | 'custom';
+type BuiltinBeatSetId = 'save_the_cat' | 'heros_journey' | 'story_grid';
 
 const DEFAULT_HOVER_ICON = 'align-vertical-space-around';
-const TEMPLATE_SYSTEMS: Array<{ id: TemplateSystemId; label: string; systemName: string }> = [
+const BEAT_PRESETS: Array<{ id: BuiltinBeatSetId; label: string; systemName: string }> = [
     { id: 'save_the_cat', label: 'Save the Cat', systemName: 'Save The Cat' },
     { id: 'heros_journey', label: 'Hero\'s Journey', systemName: 'Hero\'s Journey' },
     { id: 'story_grid', label: 'Story Grid', systemName: 'Story Grid' },
@@ -142,7 +142,7 @@ class SystemEditModal extends Modal {
     onClose() { this.contentEl.empty(); }
 }
 
-const resolveTemplateSystemId = (system?: string): TemplateSystemId | null => {
+const resolveBuiltinBeatSetId = (system?: string): BuiltinBeatSetId | null => {
     switch ((system ?? '').trim()) {
         case 'Save The Cat':
             return 'save_the_cat';
@@ -155,11 +155,11 @@ const resolveTemplateSystemId = (system?: string): TemplateSystemId | null => {
     }
 };
 
-const deriveBeatSystemMode = (system?: string): { mode: BeatSystemMode; templateSystemId: TemplateSystemId | null } => {
-    const templateSystemId = resolveTemplateSystemId(system);
-    return templateSystemId
-        ? { mode: 'template', templateSystemId }
-        : { mode: 'custom', templateSystemId: null };
+const deriveBeatSystemMode = (system?: string): { mode: BeatSystemMode; builtinSetId: BuiltinBeatSetId | null } => {
+    const builtinSetId = resolveBuiltinBeatSetId(system);
+    return builtinSetId
+        ? { mode: 'builtin', builtinSetId }
+        : { mode: 'custom', builtinSetId: null };
 };
 
 // ── Module-level UI state (survives re-renders within the same plugin session) ──
@@ -487,6 +487,7 @@ export function renderStoryBeatsSection(params: {
     let existingBeatMisalignedCount = 0;
     let existingBeatSyncedCount = 0;
     let existingBeatNewCount = 0;
+    let existingBeatStatsSystem = '';
     let existingBeatKey = '';
     let existingBeatReady = false;
     let refreshCustomBeatList: (() => void) | null = null;
@@ -539,6 +540,7 @@ export function renderStoryBeatsSection(params: {
         const buildCounts = (lookup: Map<string, TimelineItem[]>, total: number) => {
             existingBeatLookup = lookup;
             existingBeatCount = total;
+            existingBeatStatsSystem = selectedSystem;
             existingBeatExpectedCount = expectedNames.length;
             existingBeatMatchedCount = Array.from(expectedKeys).filter(key => lookup.has(key)).length;
             existingBeatDuplicateCount = Array.from(expectedKeys).filter(key => (lookup.get(key)?.length ?? 0) > 1).length;
@@ -615,7 +617,7 @@ export function renderStoryBeatsSection(params: {
 
     new Settings(actsStack)
         .setName('Act count')
-        .setDesc('Applies to Narrative, Publication, and Gossamer modes. Scene and Beats YAML. (Minimum 3)')
+        .setDesc('Applies to Narrative, Publication, and Gossamer modes. Scene and Beat properties. (Minimum 3)')
         .addText(text => {
             text.setPlaceholder('3');
             text.setValue(String(getActCount()));
@@ -671,7 +673,7 @@ export function renderStoryBeatsSection(params: {
         cls: 'ert-mini-tabs',
         attr: { role: 'tablist' }
     });
-    const beatSystemOptions = [...TEMPLATE_SYSTEMS, CUSTOM_SYSTEM_OPTION];
+    const beatSystemOptions = [...BEAT_PRESETS, CUSTOM_SYSTEM_OPTION];
 
     const beatSystemCard = beatSystemWrapper.createDiv({
         cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-beat-system-card`,
@@ -809,7 +811,7 @@ export function renderStoryBeatsSection(params: {
         // Update health icon from current beat-note audit counters.
         // Called immediately (from cached state) and again after async lookup.
         const updateHealthIcon = () => {
-            if (!existingBeatReady) {
+            if (!existingBeatReady || existingBeatStatsSystem !== 'Custom') {
                 // No audit run yet — neutral
                 healthIcon.className = 'ert-beat-health-icon';
                 setIcon(healthIcon, 'circle-dashed');
@@ -1216,7 +1218,7 @@ export function renderStoryBeatsSection(params: {
     const getBeatSystemCopy = (system: string) => {
         return BEAT_SYSTEM_COPY[system] ?? {
             title: system,
-            description: 'Select a beat system to configure template notes and story beat behavior.'
+            description: 'Select a beat system to configure set notes and story beat behavior.'
         };
     };
 
@@ -1300,8 +1302,8 @@ export function renderStoryBeatsSection(params: {
 
     const renderTemplatePreview = (system: string) => {
         const { mode } = deriveBeatSystemMode(system);
-        templatePreviewContainer.toggleClass('ert-settings-hidden', mode !== 'template');
-        if (mode !== 'template') return;
+        templatePreviewContainer.toggleClass('ert-settings-hidden', mode !== 'builtin');
+        if (mode !== 'builtin') return;
 
         const copy = getBeatSystemCopy(system);
         const { columns, totalBeats } = buildTemplateActColumns(system);
@@ -1314,7 +1316,7 @@ export function renderStoryBeatsSection(params: {
 
         templateActGrid.empty();
         if (columns.length === 0) {
-            templateActGrid.createDiv({ cls: 'ert-beat-act-empty', text: 'No template beats found for this system.' });
+            templateActGrid.createDiv({ cls: 'ert-beat-act-empty', text: 'No beats found for this set.' });
             return;
         }
 
@@ -1509,7 +1511,7 @@ export function renderStoryBeatsSection(params: {
     const beatYamlSection = fieldsContainer.createDiv({ cls: ERT_CLASSES.STACK });
     const beatYamlSetting = new Settings(beatYamlSection)
         .setName('Beat fields')
-        .setDesc('Customize additional YAML keys for custom beat notes. Enable fields to show in beat hover info. Use the audit below to check conformity of fields across existing beat notes.');
+        .setDesc('Customize additional properties for custom beat notes. Enable fields to show in beat hover info. Use the audit below to check conformity across existing beat notes.');
     // Force editor enabled so Fields content is always visible
     plugin.settings.enableBeatYamlEditor = true;
 
@@ -1590,7 +1592,7 @@ export function renderStoryBeatsSection(params: {
         const beatOptionalOrder = extractKeysInOrder(currentBeatAdvanced).filter(
             k => !beatBaseKeys.includes(k)
         );
-        const beatEntries: TemplateEntry[] = beatOptionalOrder.map(key => ({
+        const beatEntries: FieldEntry[] = beatOptionalOrder.map(key => ({
             key,
             value: beatAdvancedObj[key] ?? '',
             required: false
@@ -1599,7 +1601,7 @@ export function renderStoryBeatsSection(params: {
         let beatWorkingEntries = beatEntries;
         let beatDragIndex: number | null = null;
 
-        const saveBeatEntries = (nextEntries: TemplateEntry[]) => {
+        const saveBeatEntries = (nextEntries: FieldEntry[]) => {
             if (!canEditCustomBeatFields()) return;
             beatWorkingEntries = nextEntries;
             const yaml = buildYamlFromEntries(nextEntries);
@@ -1609,7 +1611,7 @@ export function renderStoryBeatsSection(params: {
             dirtyState.notify();
         };
 
-        const rerenderBeatYaml = (next?: TemplateEntry[]) => {
+        const rerenderBeatYaml = (next?: FieldEntry[]) => {
             const data = next ?? beatWorkingEntries;
             beatWorkingEntries = data;
             beatYamlContainer.empty();
@@ -1629,7 +1631,7 @@ export function renderStoryBeatsSection(params: {
                 listEl.createDiv({ cls: 'ert-template-section-label', text: 'Custom fields' });
             }
 
-            const renderBeatEntryRow = (entry: TemplateEntry, idx: number, list: TemplateEntry[]) => {
+            const renderBeatEntryRow = (entry: FieldEntry, idx: number, list: FieldEntry[]) => {
                 const row = listEl.createDiv({ cls: ['ert-yaml-row', 'ert-yaml-row--hover-meta'] });
 
                 const hoverMeta = getBeatHoverMetadata(entry.key);
@@ -1831,7 +1833,7 @@ export function renderStoryBeatsSection(params: {
 
             const addBtn = btnWrap.createEl('button', { cls: ['ert-iconBtn', 'ert-mod-cta'] });
             setIcon(addBtn, 'plus');
-            setTooltip(addBtn, 'Add custom beat YAML field');
+            setTooltip(addBtn, 'Add custom beat property');
 
             const doAddBeatField = () => {
                 if (!canEditCustomBeatFields()) return;
@@ -1864,7 +1866,7 @@ export function renderStoryBeatsSection(params: {
 
             const revertBtn = btnWrap.createEl('button', { cls: ['ert-iconBtn', 'ert-template-reset-btn'] });
             setIcon(revertBtn, 'rotate-ccw');
-            setTooltip(revertBtn, 'Revert beat YAML to default');
+            setTooltip(revertBtn, 'Revert beat properties to default');
             revertBtn.onclick = async () => {
                 const confirmed = await new Promise<boolean>((resolve) => {
                     const modal = new Modal(app);
@@ -1877,8 +1879,8 @@ export function renderStoryBeatsSection(params: {
 
                     const header = contentEl.createDiv({ cls: 'ert-modal-header' });
                     header.createSpan({ text: 'Warning', cls: 'ert-modal-badge' });
-                    header.createDiv({ text: 'Reset beat YAML set', cls: 'ert-modal-title' });
-                    header.createDiv({ text: 'Resetting will delete all custom beat fields, lucide icons, and restore the default set.', cls: 'ert-modal-subtitle' });
+                    header.createDiv({ text: 'Reset beat properties', cls: 'ert-modal-title' });
+                    header.createDiv({ text: 'Resetting will delete all custom beat properties, lucide icons, and restore the defaults.', cls: 'ert-modal-subtitle' });
 
                     const body = contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
                     body.createDiv({ text: 'Are you sure you want to reset? This cannot be undone.', cls: 'ert-purge-warning' });
@@ -2461,7 +2463,7 @@ export function renderStoryBeatsSection(params: {
 
     const advancedYamlSetting = new Settings(yamlStack)
         .setName('Advanced YAML editor')
-        .setDesc('Setup custom scene YAML keys for the advanced YAML template. Enable fields to reveal in scene hover synopsis. Type any keyword to search for a perfect lucide icon. Reorder fields to match your preferred order.');
+        .setDesc('Set up custom scene YAML keys for the advanced YAML set. Enable fields to reveal in scene hover synopsis. Type any keyword to search for a perfect lucide icon. Reorder fields to match your preferred order.');
     const advancedToggleButton = advancedYamlSetting.controlEl.createEl('button', {
         cls: ERT_CLASSES.ICON_BTN,
         attr: {
@@ -2570,7 +2572,7 @@ export function renderStoryBeatsSection(params: {
         const defaultObj = safeParseYaml(defaultTemplate);
         const currentObj = safeParseYaml(currentTemplate);
 
-        const requiredValues: Record<string, TemplateEntryValue> = {};
+        const requiredValues: Record<string, FieldEntryValue> = {};
         requiredOrder.forEach((key) => {
             requiredValues[key] = currentObj[key] ?? defaultObj[key] ?? '';
         });
@@ -2584,7 +2586,7 @@ export function renderStoryBeatsSection(params: {
             extractKeysInOrder(defaultTemplate).filter(k => !requiredOrder.includes(k))
         );
 
-        const entries: TemplateEntry[] = optionalOrder.map((key) => {
+        const entries: FieldEntry[] = optionalOrder.map((key) => {
             const value = currentObj[key] ?? defaultObj[key] ?? '';
             return { key, value, required: false };
         });
@@ -2678,7 +2680,7 @@ export function renderStoryBeatsSection(params: {
             applyIcon();
         };
 
-        const saveEntries = (nextEntries: TemplateEntry[]) => {
+        const saveEntries = (nextEntries: FieldEntry[]) => {
             workingEntries = nextEntries;
             // Only save optional/advanced entries - base fields are now stored separately
             // This prevents duplication and ensures clean separation between base and advanced templates
@@ -2688,7 +2690,7 @@ export function renderStoryBeatsSection(params: {
             void plugin.saveSettings();
         };
 
-        const rerender = (next?: TemplateEntry[]) => {
+        const rerender = (next?: FieldEntry[]) => {
             const data = next ?? workingEntries;
             workingEntries = data;
             advancedContainer.empty();
@@ -2700,7 +2702,7 @@ export function renderStoryBeatsSection(params: {
             // Get active migrations for highlighting rows that need updates
             const activeMigrations = getActiveMigrations(plugin.settings);
 
-            const renderEntryRow = (entry: TemplateEntry, idx: number, list: TemplateEntry[]) => {
+            const renderEntryRow = (entry: FieldEntry, idx: number, list: FieldEntry[]) => {
                 // Check if this entry needs migration
                 const migration = activeMigrations.find(m => m.oldKey === entry.key);
                 const alert = migration ? REFACTOR_ALERTS.find(a => a.id === migration.alertId) : undefined;
@@ -2984,7 +2986,7 @@ export function renderStoryBeatsSection(params: {
                 const k = (keyInput.value || '').trim();
                 if (!k) return;
                 if (requiredOrder.includes(k)) {
-                    new Notice(`"${k}" is required and already present via the base template.`);
+                    new Notice(`"${k}" is required and already present in the base set.`);
                     return;
                 }
                 if (data.some(e => e.key === k)) {
@@ -3187,7 +3189,7 @@ export function renderStoryBeatsSection(params: {
         const backdropAdvancedObj = safeParseYaml(currentBackdropAdvanced);
 
         const backdropOptionalOrder = extractKeysInOrder(currentBackdropAdvanced).filter(k => !backdropBaseKeys.includes(k));
-        const backdropEntries: TemplateEntry[] = backdropOptionalOrder.map(key => ({
+        const backdropEntries: FieldEntry[] = backdropOptionalOrder.map(key => ({
             key,
             value: backdropAdvancedObj[key] ?? '',
             required: false
@@ -3196,7 +3198,7 @@ export function renderStoryBeatsSection(params: {
         let backdropWorkingEntries = backdropEntries;
         let backdropDragIndex: number | null = null;
 
-        const saveBackdropEntries = (nextEntries: TemplateEntry[]) => {
+        const saveBackdropEntries = (nextEntries: FieldEntry[]) => {
             backdropWorkingEntries = nextEntries;
             const yaml = buildYamlFromEntries(nextEntries);
             if (!plugin.settings.backdropYamlTemplates) {
@@ -3209,7 +3211,7 @@ export function renderStoryBeatsSection(params: {
             void plugin.saveSettings();
         };
 
-        const rerenderBackdropYaml = (next?: TemplateEntry[]) => {
+        const rerenderBackdropYaml = (next?: FieldEntry[]) => {
             const data = next ?? backdropWorkingEntries;
             backdropWorkingEntries = data;
             backdropYamlContainer.empty();
@@ -3232,7 +3234,7 @@ export function renderStoryBeatsSection(params: {
                 listEl.createDiv({ cls: 'ert-template-section-label', text: 'Custom fields' });
             }
 
-            const renderBackdropEntryRow = (entry: TemplateEntry, idx: number, list: TemplateEntry[]) => {
+            const renderBackdropEntryRow = (entry: FieldEntry, idx: number, list: FieldEntry[]) => {
                 const row = listEl.createDiv({ cls: ['ert-yaml-row', 'ert-yaml-row--hover-meta'] });
 
                 const hoverMeta = getBackdropHoverMetadata(entry.key);
@@ -3478,7 +3480,7 @@ export function renderStoryBeatsSection(params: {
 
         // ─── Header row: two-column Setting layout (title+desc left, audit button right) ──
         const auditSetting = new Settings(parentEl)
-            .setName('Validate beat properties')
+            .setName(`Validate ${noteType.toLowerCase()} properties`)
             .setDesc(`Scan ${noteType.toLowerCase()} notes for schema drift — missing fields, extra keys, and ordering issues.`);
 
         // Copy button (hidden until audit runs)
@@ -3532,6 +3534,12 @@ export function renderStoryBeatsSection(params: {
         const runAudit = () => {
             const files = collectFilesForAudit(app, noteType, plugin.settings, beatSystemKey);
             if (files.length === 0) {
+                resultsEl.empty();
+                resultsEl.classList.remove('ert-settings-hidden');
+                resultsEl.createDiv({
+                    text: `No ${noteType.toLowerCase()} notes found in the vault yet.`,
+                    cls: 'ert-audit-clean'
+                });
                 new Notice(`No ${noteType.toLowerCase()} notes found in the vault.`);
                 return;
             }
@@ -3597,7 +3605,7 @@ export function renderStoryBeatsSection(params: {
             // All clean — early return
             if (s.clean === s.totalNotes && s.unreadNotes === 0 && s.notesWithWarnings === 0) {
                 resultsEl.createDiv({
-                    text: `All ${s.totalNotes} notes match the template.`,
+                    text: `All ${s.totalNotes} notes are up to date with this set.`,
                     cls: 'ert-audit-clean'
                 });
                 return;
@@ -3896,6 +3904,8 @@ export function renderStoryBeatsSection(params: {
         void (async () => {
             const lookup = await refreshExistingBeatLookup(true, selectedSystem);
             if (!lookup) return;
+            const activeSystem = plugin.settings.beatSystem || 'Custom';
+            if (selectedSystem !== activeSystem) return;
 
             const synced = existingBeatSyncedCount;
             const misaligned = existingBeatMisalignedCount;
@@ -4135,7 +4145,7 @@ export function renderStoryBeatsSection(params: {
             actSceneNumbers.set(act, range.sceneNumbers);
         });
         
-        const modal = new CreateBeatsTemplatesModal(
+        const modal = new CreateBeatSetModal(
             app,
             plugin,
             storyStructureName,
@@ -4146,8 +4156,8 @@ export function renderStoryBeatsSection(params: {
         if (!result.confirmed) return;
         try {
             const sourcePath = plugin.settings.sourcePath || '';
-            const beatTemplate = getMergedBeatYamlTemplate(plugin.settings);
-            const { created, skipped, errors } = await createBeatTemplateNotes(
+            const beatTemplate = getMergedBeatYaml(plugin.settings);
+            const { created, skipped, errors } = await createBeatNotesFromSet(
                 app.vault,
                 storyStructureName,
                 sourcePath,
@@ -4197,11 +4207,11 @@ function extractKeysInOrder(template: string): string[] {
     return keys;
 }
 
-function safeParseYaml(template: string): Record<string, TemplateEntryValue> {
+function safeParseYaml(template: string): Record<string, FieldEntryValue> {
     try {
         const parsed = parseYaml(template);
         if (!parsed || typeof parsed !== 'object') return {};
-        const entries: Record<string, TemplateEntryValue> = {};
+        const entries: Record<string, FieldEntryValue> = {};
         Object.entries(parsed as Record<string, unknown>).forEach(([key, value]) => {
             if (Array.isArray(value)) {
                 entries[key] = value.map((v) => String(v));
@@ -4228,7 +4238,7 @@ function mergeOrders(primary: string[], secondary: string[]): string[] {
     return result;
 }
 
-function buildYamlFromEntries(entries: TemplateEntry[], commentMap?: Record<string, string>): string {
+function buildYamlFromEntries(entries: FieldEntry[], commentMap?: Record<string, string>): string {
     const lines: string[] = [];
     entries.forEach(entry => {
         const comment = commentMap?.[entry.key];
@@ -4247,11 +4257,11 @@ function buildYamlFromEntries(entries: TemplateEntry[], commentMap?: Record<stri
 
 function buildYamlWithRequired(
     requiredOrder: string[],
-    requiredValues: Record<string, TemplateEntryValue>,
-    optionalEntries: TemplateEntry[],
+    requiredValues: Record<string, FieldEntryValue>,
+    optionalEntries: FieldEntry[],
     commentMap?: Record<string, string>
 ): string {
-    const combined: TemplateEntry[] = [
+    const combined: FieldEntry[] = [
         ...requiredOrder.map(key => ({
             key,
             value: requiredValues[key] ?? '',
@@ -4262,7 +4272,7 @@ function buildYamlWithRequired(
     return buildYamlFromEntries(combined, commentMap);
 }
 
-function entriesFromTemplate(template: string, requiredOrder: string[]): TemplateEntry[] {
+function entriesFromTemplate(template: string, requiredOrder: string[]): FieldEntry[] {
     const order = mergeOrders(extractKeysInOrder(template), requiredOrder);
     const obj = safeParseYaml(template);
     return order.map(key => ({
@@ -4272,5 +4282,5 @@ function entriesFromTemplate(template: string, requiredOrder: string[]): Templat
     }));
 }
 
-// Alias for backward compatibility
-export { renderStoryBeatsSection as renderTemplatesSection };
+// Primary export
+export { renderStoryBeatsSection as renderBeatPropertiesSection };

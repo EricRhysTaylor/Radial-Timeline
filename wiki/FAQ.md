@@ -54,8 +54,8 @@ The Snowflake Method gets you from idea to scene list. Radial Timeline takes tha
 
 **A:** Yes! While Dramatica is complex and focuses on arguments (Throughlines) rather than linear beats, you can use Radial Timeline to visualize your scenes and track your data.
 
-1.  **Beats System**: Set **Settings > Story beats system** to **"Custom"**. Name your system (e.g., "Dramatica Signposts"), add your beats, and assign them to acts. Use **Create** to generate beat template notes, or manually create notes with `Class: Beat` and `Beat Model: Your System Name`.
-2.  **Advanced Metadata**: Use the **Advanced YAML editor** (in Settings) to add Dramatica-specific keys to your scene templates. See [[YAML-Frontmatter#advanced-yaml-editor]]. For example, you can add fields like:
+1.  **Beats System**: Set **Settings > Story beats system** to **"Custom"**. Name your system (e.g., "Dramatica Signposts"), add your beats, and assign them to acts. Use **Create** to generate beat set notes, or manually create notes with `Class: Beat` and `Beat Model: Your System Name`.
+2.  **Advanced Metadata**: Use the **Scene properties editor** (in Settings) to add Dramatica-specific keys to your Scene Set. See [[YAML-Frontmatter#advanced-yaml-editor]]. For example, you can add fields like:
     ```yaml
     dramatica:
       MC: Universe
