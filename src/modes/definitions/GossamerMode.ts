@@ -44,7 +44,7 @@ export const GOSSAMER_MODE: ModeDefinition = {
     
     ui: {
         acronym: 'GOSS',
-        tooltip: 'Switch to Gossamer mode',
+        tooltip: 'Gossamer mode — momentum analysis (requires beat notes)',
         showInToggleButton: true, // Show in mode toggle button
         order: 3
     },
@@ -59,8 +59,11 @@ export const GOSSAMER_MODE: ModeDefinition = {
         const beatNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
         
         if (beatNotes.length === 0) {
-            // No beats found, cannot enter Gossamer mode
-            new Notice('Cannot enter Gossamer mode: No story beats found. Create notes with frontmatter "Class: Beat" (or "Class: Plot" for backward compatibility).');
+            const selectedSystem = plugin.settings.beatSystem?.trim() || '';
+            const systemHint = selectedSystem
+                ? `No "${selectedSystem}" beat notes found in your vault. Create beat notes with "Class: Beat" and "Beat Model: ${selectedSystem}" in frontmatter.`
+                : 'No story beats found. Create notes with frontmatter "Class: Beat".';
+            new Notice(`Cannot enter Gossamer mode. ${systemHint}`, 8000);
             throw new Error('Cannot enter Gossamer mode: No story beats found');
         }
         
@@ -72,8 +75,10 @@ export const GOSSAMER_MODE: ModeDefinition = {
         const allRuns = buildAllGossamerRuns(scenes as any, selectedBeatModel);
         
         if (allRuns.current.beats.length === 0) {
-            const systemMsg = selectedBeatModel ? ` with Beat Model: ${selectedBeatModel}` : '';
-            new Notice(`Cannot enter Gossamer mode: No story beat notes found${systemMsg}. Create notes with Class: Beat (or Class: Plot for backward compatibility).`);
+            const systemHint = selectedBeatModel
+                ? `No beat notes found matching "${selectedBeatModel}". Check that your beat notes have "Beat Model: ${selectedBeatModel}" in frontmatter.`
+                : 'No story beat notes could be matched. Ensure notes have "Class: Beat" in frontmatter.';
+            new Notice(`Cannot enter Gossamer mode. ${systemHint}`, 8000);
             throw new Error(`Cannot enter Gossamer mode: No beats found for system: ${selectedBeatModel}`);
         }
         

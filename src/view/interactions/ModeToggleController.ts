@@ -31,7 +31,8 @@ function buildModeOptions() {
         id: mode.id,
         label: mode.name,
         acronym: mode.ui.acronym || mode.name.substring(0, 4).toUpperCase(),
-        order: mode.ui.order
+        order: mode.ui.order,
+        tooltip: mode.ui.tooltip || mode.name
     }));
 }
 
@@ -127,6 +128,11 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
         numberLabel.setAttribute('dominant-baseline', 'middle');
         numberLabel.textContent = String(index + 1);
 
+        // Add SVG <title> element for native tooltip on hover
+        const titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+        titleEl.textContent = mode.tooltip;
+        innerGroup.appendChild(titleEl);
+
         innerGroup.appendChild(path);
         innerGroup.appendChild(text);
         innerGroup.appendChild(numberLabel);
@@ -173,30 +179,36 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
  */
 async function switchToMode(view: ModeToggleView, modeId: string, modeSelector: SVGGElement): Promise<void> {
     const modeManager = view.getModeManager?.();
-    const previousMode = modeManager?.getCurrentMode?.() ?? view.plugin.settings.currentMode;
 
     // Update UI immediately for instant visual feedback
     updateModeSelectorState(modeSelector, modeId);
 
-    if (modeManager) {
-        await modeManager.switchMode(modeId as TimelineMode as any);
-        // Re-sync UI to the actual active mode (guarded switches may no-op)
-        const finalMode = modeManager.getCurrentMode();
-        if (finalMode !== modeId) {
-            updateModeSelectorState(modeSelector, finalMode);
-        }
-    } else {
-        // Fallback: try direct refresh first, then debounced
-        view.plugin.settings.currentMode = modeId;
-        await view.plugin.saveSettings();
-        resetGossamerModeState();
-
-        // Use direct refresh if available (bypasses 400ms debounce)
-        if (typeof (view as any).refreshTimeline === 'function') {
-            (view as any).refreshTimeline();
+    try {
+        if (modeManager) {
+            await modeManager.switchMode(modeId as TimelineMode as any);
+            // Re-sync UI to the actual active mode (guarded switches may no-op)
+            const finalMode = modeManager.getCurrentMode();
+            if (finalMode !== modeId) {
+                updateModeSelectorState(modeSelector, finalMode);
+            }
         } else {
-            view.plugin.refreshTimelineIfNeeded(null);
+            // Fallback: try direct refresh first, then debounced
+            view.plugin.settings.currentMode = modeId;
+            await view.plugin.saveSettings();
+            resetGossamerModeState();
+
+            // Use direct refresh if available (bypasses 400ms debounce)
+            if (typeof (view as any).refreshTimeline === 'function') {
+                (view as any).refreshTimeline();
+            } else {
+                view.plugin.refreshTimelineIfNeeded(null);
+            }
         }
+    } catch (error) {
+        // Revert UI on unhandled error
+        const fallbackMode = modeManager?.getCurrentMode?.() ?? view.plugin.settings.currentMode ?? 'narrative';
+        updateModeSelectorState(modeSelector, fallbackMode);
+        console.error(`[ModeToggle] Failed to switch to ${modeId}:`, error);
     }
 }
 

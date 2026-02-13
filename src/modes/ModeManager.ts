@@ -60,7 +60,11 @@ export class ModeManager {
             const beatNotes = scenes.filter((s: { itemType?: string }) => s.itemType === 'Beat' || s.itemType === 'Plot');
             
             if (beatNotes.length === 0) {
-                new Notice('Cannot enter Gossamer mode: No story beats found. Create notes with frontmatter "Class: Beat".');
+                const selectedSystem = this.plugin.settings.beatSystem?.trim() || '';
+                const systemHint = selectedSystem
+                    ? ` No "${selectedSystem}" beat notes found. Ensure beat notes have "Class: Beat" and "Beat Model: ${selectedSystem}" in frontmatter.`
+                    : ' Create notes with frontmatter "Class: Beat".';
+                new Notice(`Cannot enter Gossamer mode.${systemHint}`, 8000);
                 return; // Stay in the current mode without triggering lifecycle changes
             }
         }
@@ -92,7 +96,12 @@ export class ModeManager {
                 this.plugin.settings.currentMode = currentMode;
                 await this.plugin.saveSettings();
                 
-                // Don't refresh - stay in the current mode's state
+                // Show a fallback notice if the error didn't already produce one
+                const msg = error instanceof Error ? error.message : String(error);
+                if (!msg.includes('Cannot enter Gossamer')) {
+                    new Notice(`Could not switch to ${newMode} mode. ${msg}`, 6000);
+                }
+                
                 return;
             }
         }

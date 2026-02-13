@@ -395,10 +395,14 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     // ALWAYS rebuild run from fresh scene data (reads latest Gossamer1 scores from YAML)
     const scenes = await plugin.getSceneData();
     
-    // Check if there are any story beat notes (Beat only)
-    const beatNotes = scenes.filter(s => s.itemType === 'Beat');
+    // Check if there are any story beat notes (Beat or legacy Plot)
+    const beatNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
     if (beatNotes.length === 0) {
-      new Notice('Cannot enter Gossamer mode: No story beats found. Create notes with frontmatter "Class: Beat".');
+      const selectedSystem = plugin.settings.beatSystem?.trim() || '';
+      const systemHint = selectedSystem
+        ? `No "${selectedSystem}" beat notes found. Ensure beat notes have "Class: Beat" and "Beat Model: ${selectedSystem}" in frontmatter.`
+        : 'No story beats found. Create notes with frontmatter "Class: Beat".';
+      new Notice(`Cannot enter Gossamer mode. ${systemHint}`, 8000);
       return;
     }
     
@@ -409,8 +413,10 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     const allRuns = buildAllGossamerRuns(scenes as unknown as { itemType?: string; [key: string]: unknown }[], selectedBeatModel);
     
     if (allRuns.current.beats.length === 0) {
-      const systemMsg = selectedBeatModel ? ` with Beat Model: ${selectedBeatModel}` : '';
-      new Notice(`Cannot enter Gossamer mode: No story beat notes found${systemMsg}. Create notes with Class: Beat (or Class: Plot for backward compatibility).`);
+      const systemHint = selectedBeatModel
+        ? `No beat notes found matching "${selectedBeatModel}". Check that your beat notes have "Beat Model: ${selectedBeatModel}" in frontmatter.`
+        : 'No story beat notes could be matched.';
+      new Notice(`Cannot enter Gossamer mode. ${systemHint}`, 8000);
       return;
     }
     

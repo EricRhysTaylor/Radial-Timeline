@@ -286,7 +286,7 @@ export class RendererService {
         const publishStageColorByBeat = new Map<string, string>();
         if (scenes.length > 0) {
             scenes.forEach(s => {
-                if (s.itemType !== 'Plot' || !s.title) return;
+                if (!isBeatNote(s) || !s.title) return; // Modern 'Beat' + legacy 'Plot'
                 const titleWithoutNumber = (s.title || '').replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
                 if (s.path) beatPathByName.set(titleWithoutNumber, s.path);
                 const publishStage = (s as any)['Publish Stage'] || 'Zero'; // SAFE: any type used for dynamic frontmatter access
