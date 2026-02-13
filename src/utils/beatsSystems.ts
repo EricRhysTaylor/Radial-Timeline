@@ -283,7 +283,7 @@ export interface ProBeatSet {
   id: string;
   name: string;
   description: string;
-  beats: { name: string; act: number }[];
+  beats: { name: string; act: number; purpose?: string }[];
   beatYamlAdvanced: string;
   beatHoverMetadataFields: { key: string; label: string; icon: string; enabled: boolean }[];
 }
@@ -295,23 +295,23 @@ export const PRO_BEAT_SETS: ProBeatSet[] = [
     description: 'Design narrative tension for audio storytelling.\n\nThis structure is built for documentary and narrative podcast episodes where the hook must land fast and revelations unfold deliberately. Instead of focusing on character transformation alone, it tracks investigation, escalation, and emotional resonance across segments. Use this system to measure how curiosity builds, where tension peaks, and whether your final reflection lands with weight.\n\nBest for: narrative podcasts, investigative journalism, audio essays\nMomentum profile: Early spike → steady climb → late revelation → reflective close',
     beats: [
       // Act 1 — Hook & Context
-      { name: 'Cold Open', act: 1 },
-      { name: 'Framing Question', act: 1 },
-      { name: 'Context Setup', act: 1 },
-      { name: 'Personal Anchor', act: 1 },
+      { name: 'Cold Open', act: 1, purpose: 'A vivid moment hooks curiosity and promises a payoff worth staying for.' },
+      { name: 'Framing Question', act: 1, purpose: 'The episode states the core mystery or argument in human terms.' },
+      { name: 'Context Setup', act: 1, purpose: 'Background arrives only as needed to make the stakes legible.' },
+      { name: 'Personal Anchor', act: 1, purpose: 'A voice, character, or lived moment makes the story intimate and specific.' },
       // Act 2 — Investigation
-      { name: 'First Lead', act: 2 },
-      { name: 'Complication', act: 2 },
-      { name: 'Deep Dive', act: 2 },
-      { name: 'Midpoint Revelation', act: 2 },
-      { name: 'Escalation', act: 2 },
-      { name: 'Major Obstacle', act: 2 },
+      { name: 'First Lead', act: 2, purpose: 'The investigation begins with a concrete clue or first thread.' },
+      { name: 'Complication', act: 2, purpose: 'A contradiction appears and the simple version of the story breaks.' },
+      { name: 'Deep Dive', act: 2, purpose: 'Evidence and interviews expand the world and tighten the problem.' },
+      { name: 'Midpoint Revelation', act: 2, purpose: 'A key fact flips the audience\'s understanding and raises stakes.' },
+      { name: 'Escalation', act: 2, purpose: 'Consequences intensify; pressure builds on people and systems involved.' },
+      { name: 'Major Obstacle', act: 2, purpose: 'Access is blocked, sources go quiet, or truth becomes harder to pin down.' },
       // Act 3 — Resolution
-      { name: 'Turning Point', act: 3 },
-      { name: 'Climax Insight', act: 3 },
-      { name: 'Consequence', act: 3 },
-      { name: 'Reflection', act: 3 },
-      { name: 'Closing Resonance', act: 3 },
+      { name: 'Turning Point', act: 3, purpose: 'A new approach opens the path toward resolution.' },
+      { name: 'Climax Insight', act: 3, purpose: 'The episode delivers the central explanation, discovery, or reckoning.' },
+      { name: 'Consequence', act: 3, purpose: 'What changes for the subjects and why it matters now.' },
+      { name: 'Reflection', act: 3, purpose: 'The host interprets meaning without preaching; ambiguity is handled honestly.' },
+      { name: 'Closing Resonance', act: 3, purpose: 'A final line or image lands the emotional echo and closes the loop.' },
     ],
     beatYamlAdvanced: `Segment Type:\nEmotional Intensity:\nInformation Density:\nCliffhanger:`,
     beatHoverMetadataFields: [
@@ -327,20 +327,20 @@ export const PRO_BEAT_SETS: ProBeatSet[] = [
     description: 'Optimize clarity, escalation, and retention.\n\nDesigned for educational and thought-leadership content, this structure emphasizes value delivery, progressive insight, and strategic surprise. It mirrors how high-performing explainer videos sustain attention: hook hard, deepen understanding, escalate examples, then reward the viewer. Gossamer reveals where energy dips, where complexity spikes, and whether your twist earns its payoff.\n\nBest for: educational YouTube, commentary, business explainers\nMomentum profile: Hook → clarity plateau → acceleration → twist → payoff',
     beats: [
       // Act 1 — Capture Attention
-      { name: 'Cold Hook', act: 1 },
-      { name: 'Promise of Value', act: 1 },
-      { name: 'Stakes', act: 1 },
+      { name: 'Cold Hook', act: 1, purpose: 'A bold claim, surprising image, or urgent question earns attention immediately.' },
+      { name: 'Promise of Value', act: 1, purpose: 'The video states what the viewer will learn or gain by the end.' },
+      { name: 'Stakes', act: 1, purpose: 'The "why it matters" lands with clear consequences or payoff.' },
       // Act 2 — Build Understanding
-      { name: 'Core Concept', act: 2 },
-      { name: 'Example', act: 2 },
-      { name: 'Counterexample', act: 2 },
-      { name: 'Deep Insight', act: 2 },
-      { name: 'Escalation Example', act: 2 },
+      { name: 'Core Concept', act: 2, purpose: 'The main idea is defined simply, with one clean example.' },
+      { name: 'Example', act: 2, purpose: 'A concrete case shows the concept working in the real world.' },
+      { name: 'Counterexample', act: 2, purpose: 'A failure case reveals nuance and prevents oversimplification.' },
+      { name: 'Deep Insight', act: 2, purpose: 'The hidden mechanism clicks; the viewer feels smarter.' },
+      { name: 'Escalation Example', act: 2, purpose: 'A higher-stakes application tests the idea under pressure.' },
       // Act 3 — Resolution & Reward
-      { name: 'Unexpected Twist', act: 3 },
-      { name: 'Synthesis', act: 3 },
-      { name: 'Practical Takeaway', act: 3 },
-      { name: 'Call to Action', act: 3 },
+      { name: 'Unexpected Twist', act: 3, purpose: 'A surprising constraint, tradeoff, or reversal keeps attention and reframes.' },
+      { name: 'Synthesis', act: 3, purpose: 'The key points connect into one clear mental model.' },
+      { name: 'Practical Takeaway', act: 3, purpose: 'The viewer gets steps, rules of thumb, or actions they can use.' },
+      { name: 'Call to Action', act: 3, purpose: 'The video closes with a clean next step and a satisfying final note.' },
     ],
     beatYamlAdvanced: `Segment Type:\nAudience Value:\nEnergy Level:\nRetention Risk:`,
     beatHoverMetadataFields: [
@@ -356,22 +356,22 @@ export const PRO_BEAT_SETS: ProBeatSet[] = [
     description: 'Shape real events into compelling narrative flow.\n\nHistorical and biographical writing often resists conventional three-act fiction models. This framework focuses on forces, pressure, crisis, and consequence — allowing you to track tension across political, cultural, or personal change. Use it to see whether escalation builds naturally and whether aftermath and legacy receive the structural weight they deserve.\n\nBest for: biography, memoir, historical nonfiction\nMomentum profile: Gradual rise → crisis compression → reflective descent',
     beats: [
       // Act 1 — Conditions
-      { name: 'Historical Context', act: 1 },
-      { name: 'Character Introduction', act: 1 },
-      { name: 'Inciting Circumstance', act: 1 },
-      { name: 'Early Friction', act: 1 },
+      { name: 'Historical Context', act: 1, purpose: 'The era and forces are established so later choices make sense.' },
+      { name: 'Character Introduction', act: 1, purpose: 'The central figure enters with desire, limitation, and social position.' },
+      { name: 'Inciting Circumstance', act: 1, purpose: 'A pressure point triggers change and sets the narrative in motion.' },
+      { name: 'Early Friction', act: 1, purpose: 'Resistance appears; the cost of action becomes visible.' },
       // Act 2 — Escalation
-      { name: 'Rising Pressure', act: 2 },
-      { name: 'Political - Social Shift', act: 2 },
-      { name: 'Midpoint Event', act: 2 },
-      { name: 'Moral Complication', act: 2 },
-      { name: 'Crisis', act: 2 },
+      { name: 'Rising Pressure', act: 2, purpose: 'Systems tighten; events narrow the range of possible choices.' },
+      { name: 'Political - Social Shift', act: 2, purpose: 'A larger change reshapes the landscape and reframes priorities.' },
+      { name: 'Midpoint Event', act: 2, purpose: 'A defining incident alters trajectory and raises stakes.' },
+      { name: 'Moral Complication', act: 2, purpose: 'Tradeoffs emerge; values collide with survival or ambition.' },
+      { name: 'Crisis', act: 2, purpose: 'A breaking point forces irreversible action or loss.' },
       // Act 3 — Aftermath
-      { name: 'Consequence', act: 3 },
-      { name: 'Fallout', act: 3 },
-      { name: 'Resolution', act: 3 },
-      { name: 'Legacy', act: 3 },
-      { name: 'Reflection', act: 3 },
+      { name: 'Consequence', act: 3, purpose: 'Immediate fallout lands on individuals, institutions, and public memory.' },
+      { name: 'Fallout', act: 3, purpose: 'Secondary effects spread; the situation stabilizes or fractures further.' },
+      { name: 'Resolution', act: 3, purpose: 'The main arc reaches closure in outcome, not necessarily justice.' },
+      { name: 'Legacy', act: 3, purpose: 'The long tail appears: how the event or person is absorbed into history.' },
+      { name: 'Reflection', act: 3, purpose: 'The narrative ends with meaning, context, and a final frame.' },
     ],
     beatYamlAdvanced: `Historical Force:\nPrimary Actor:\nConflict Type:\nTension Level:\nDocumented Source:`,
     beatHoverMetadataFields: [
@@ -388,20 +388,20 @@ export const PRO_BEAT_SETS: ProBeatSet[] = [
     description: 'Track emotional escalation with precision.\n\nRomance thrives on rhythm — attraction, complication, rupture, reunion. This system is built around emotional beats rather than plot mechanics, allowing you to measure chemistry, conflict, and payoff across the relationship arc. Gossamer highlights emotional valleys and surges, revealing whether the breakup lands hard enough and whether the reunion feels earned.\n\nBest for: contemporary romance, rom-com, genre romance\nMomentum profile: Emotional rise → rupture → valley → surge → commitment',
     beats: [
       // Act 1 — Attraction
-      { name: 'Meet Cute', act: 1 },
-      { name: 'Spark', act: 1 },
-      { name: 'Growing Interest', act: 1 },
+      { name: 'Meet Cute', act: 1, purpose: 'The leads collide in a memorable way that sets the tone and hints at the core incompatibility or spark.' },
+      { name: 'Spark', act: 1, purpose: 'Attraction shows up through a small moment of vulnerability, humor, or competence that makes the connection real.' },
+      { name: 'Growing Interest', act: 1, purpose: 'The leads choose proximity; the relationship shifts from accidental to intentional.' },
       // Act 2 — Complication
-      { name: 'First Obstacle', act: 2 },
-      { name: 'Deepening Bond', act: 2 },
-      { name: 'Midpoint Commitment', act: 2 },
-      { name: 'External Threat', act: 2 },
-      { name: 'Breakup - Betrayal', act: 2 },
+      { name: 'First Obstacle', act: 2, purpose: 'A person, belief, or circumstance blocks progress and forces the leads to reveal what they fear.' },
+      { name: 'Deepening Bond', act: 2, purpose: 'Shared time creates intimacy; the leads start trusting each other with something that matters.' },
+      { name: 'Midpoint Commitment', act: 2, purpose: 'The relationship crosses a line (emotional or physical) that raises the stakes and makes retreat costly.' },
+      { name: 'External Threat', act: 2, purpose: 'Outside pressure challenges the bond and exposes conflicting needs or loyalties.' },
+      { name: 'Breakup - Betrayal', act: 2, purpose: 'A rupture happens; trust breaks, and the leads believe the relationship cannot survive.' },
       // Act 3 — Reunion
-      { name: 'Self-Realization', act: 3 },
-      { name: 'Grand Gesture', act: 3 },
-      { name: 'Emotional Reunion', act: 3 },
-      { name: 'Commitment', act: 3 },
+      { name: 'Self-Realization', act: 3, purpose: 'At least one lead names the real problem and owns their part in the breakup.' },
+      { name: 'Grand Gesture', act: 3, purpose: 'A decisive action proves change and communicates value, not just desire.' },
+      { name: 'Emotional Reunion', act: 3, purpose: 'The leads choose each other with clear terms; the relationship becomes mutual.' },
+      { name: 'Commitment', act: 3, purpose: 'The story lands on a stable promise: a public choice, a plan, or a shared future.' },
     ],
     beatYamlAdvanced: `Relationship Stage:\nEmotional Intensity:\nChemistry Level:\nConflict Source:`,
     beatHoverMetadataFields: [
@@ -417,21 +417,21 @@ export const PRO_BEAT_SETS: ProBeatSet[] = [
     description: 'Engineer sustained tension and explosive payoff.\n\nThrillers demand relentless escalation. This structure focuses on threat signals, rising stakes, false victories, and catastrophic setbacks, ensuring momentum compounds rather than plateaus. Use it to visualize where danger intensifies, where stakes peak too early, or where the final confrontation needs more compression.\n\nBest for: thriller, suspense, action, crime\nMomentum profile: Steady escalation → compressed second half → explosive climax',
     beats: [
       // Act 1 — Threat Emerges
-      { name: 'Ordinary World', act: 1 },
-      { name: 'Threat Signal', act: 1 },
-      { name: 'Denial', act: 1 },
-      { name: 'First Attack', act: 1 },
+      { name: 'Ordinary World', act: 1, purpose: 'Normal life establishes what can be lost and what the protagonist avoids facing.' },
+      { name: 'Threat Signal', act: 1, purpose: 'A small anomaly signals danger and forces the protagonist to pay attention.' },
+      { name: 'Denial', act: 1, purpose: 'The protagonist rationalizes the threat, delaying action and raising the eventual cost.' },
+      { name: 'First Attack', act: 1, purpose: 'The threat turns real; safety is breached and the rules of the world change.' },
       // Act 2 — Escalation
-      { name: 'Pursuit', act: 2 },
-      { name: 'Revelation', act: 2 },
-      { name: 'Midpoint Disaster', act: 2 },
-      { name: 'Increased Stakes', act: 2 },
-      { name: 'False Victory', act: 2 },
-      { name: 'Catastrophic Setback', act: 2 },
+      { name: 'Pursuit', act: 2, purpose: 'The protagonist investigates or runs; the threat responds and pressure increases.' },
+      { name: 'Revelation', act: 2, purpose: 'A key truth reframes what is happening and points to a more dangerous enemy or system.' },
+      { name: 'Midpoint Disaster', act: 2, purpose: 'A major loss or failure removes a safety net and forces a new strategy.' },
+      { name: 'Increased Stakes', act: 2, purpose: 'The threat expands; more people, places, or values become vulnerable.' },
+      { name: 'False Victory', act: 2, purpose: 'The protagonist wins a battle and believes they are ahead, briefly.' },
+      { name: 'Catastrophic Setback', act: 2, purpose: 'The threat counters hard; the protagonist\'s plan collapses and consequences hit.' },
       // Act 3 — Confrontation
-      { name: 'Final Pursuit', act: 3 },
-      { name: 'Showdown', act: 3 },
-      { name: 'Aftermath', act: 3 },
+      { name: 'Final Pursuit', act: 3, purpose: 'The protagonist commits to a last push with no clean exit.' },
+      { name: 'Showdown', act: 3, purpose: 'Confrontation resolves the central threat through sacrifice, ingenuity, or exposed truth.' },
+      { name: 'Aftermath', act: 3, purpose: 'The new status quo lands; the cost is visible and the final echo lingers.' },
     ],
     beatYamlAdvanced: `Threat Level:\nDanger Type:\nStakes Escalation:\nCasualties:`,
     beatHoverMetadataFields: [
@@ -447,7 +447,7 @@ export const PRO_BEAT_SETS: ProBeatSet[] = [
  * Shared helper to construct the custom system object from settings.
  * Accepts any object that matches the minimal settings shape needed.
  */
-export function getCustomSystemFromSettings(settings: { customBeatSystemName?: string; customBeatSystemBeats?: { name: string; act: number }[] }): PlotSystemPreset {
+export function getCustomSystemFromSettings(settings: { customBeatSystemName?: string; customBeatSystemBeats?: { name: string; act: number; purpose?: string }[] }): PlotSystemPreset {
     const name = normalizeBeatSetNameInput(settings.customBeatSystemName ?? '', 'Custom');
     const beatObjs = settings.customBeatSystemBeats || [];
 
@@ -459,7 +459,7 @@ export function getCustomSystemFromSettings(settings: { customBeatSystemName?: s
         .filter(b => b.name.length > 0)
         .map(b => ({
             name: b.name,
-            description: '',
+            description: typeof b.purpose === 'string' ? b.purpose.trim() : '',
             range: '',
             act: b.act
         }));

@@ -38,7 +38,7 @@ export interface SavedBeatSystem {
     id: string;
     name: string;
     description?: string;
-    beats: { name: string; act: number }[];
+    beats: { name: string; act: number; purpose?: string }[];
     beatYamlAdvanced?: string;
     beatHoverMetadataFields?: HoverMetadataField[];
     createdAt: string;
@@ -408,7 +408,7 @@ export interface RadialTimelineSettings {
     beatSystem?: string;
     customBeatSystemName?: string;
     customBeatSystemDescription?: string;
-    customBeatSystemBeats?: { name: string; act: number }[];
+    customBeatSystemBeats?: { name: string; act: number; purpose?: string }[];
     dominantSubplots?: Record<string, string>;
     globalPovMode?: GlobalPovMode;
     readabilityScale?: ReadabilityScale;

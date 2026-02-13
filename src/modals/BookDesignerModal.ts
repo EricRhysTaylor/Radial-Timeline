@@ -875,8 +875,6 @@ export class BookDesignerModal extends Modal {
                 });
             });
         subplotsSetting.settingEl.addClass('rt-manuscript-group-setting');
-        this.subplotLegendEl = subplotsSetting.settingEl.createDiv({ cls: 'rt-subplot-color-legend' });
-        this.updateSubplotColorLegend();
 
         const characterSetting = new Setting(leftCol)
             .setName('Characters')
@@ -906,6 +904,7 @@ export class BookDesignerModal extends Modal {
         previewHeader.createDiv({ cls: 'rt-manuscript-preview-title', text: 'Preview' });
         this.previewStatusEl = previewHeader.createDiv({ cls: 'rt-manuscript-preview-status', text: 'Auto distribution' });
         this.previewHostEl = previewCol.createDiv({ cls: 'rt-manuscript-preview-host' });
+        this.subplotLegendEl = previewCol.createDiv({ cls: 'rt-subplot-color-legend rt-subplot-color-legend--preview' });
         this.updateDistributionStatus();
         this.schedulePreviewUpdate();
 
@@ -940,11 +939,14 @@ export class BookDesignerModal extends Modal {
         });
 
         // Generate Beats Toggle (Pills)
-        const beatSystem = this.plugin.settings.beatSystem || 'Custom';
-        const beatLabel = beatSystem === 'Custom' ? 'custom beats' : `${beatSystem} beats`;
-
         const beatSetting = extraRow.createDiv({ cls: 'rt-manuscript-setting-row rt-manuscript-card-block' });
-        beatSetting.createDiv({ cls: 'rt-manuscript-setting-label', text: `Generate ${beatLabel}` });
+        const activeBeatSetTitle = this.getActiveBeatSetTitle();
+        const shortBeatSetTitle = this.truncateLabel(activeBeatSetTitle);
+        const beatLabelEl = beatSetting.createDiv({
+            cls: 'rt-manuscript-setting-label',
+            text: `Generate ${shortBeatSetTitle} beats`
+        });
+        beatLabelEl.setAttribute('title', `Generate ${activeBeatSetTitle} beats`);
         const beatPills = beatSetting.createDiv({ cls: 'rt-manuscript-pill-row' });
 
         const beatOptions = [{ val: false, label: 'No' }, { val: true, label: 'Yes' }];
@@ -1120,6 +1122,21 @@ export class BookDesignerModal extends Modal {
             .sort((a, b) => a - b);
         // Dedupe
         return Array.from(new Set(acts));
+    }
+
+    private getActiveBeatSetTitle(): string {
+        const beatSystem = (this.plugin.settings.beatSystem || 'Custom').trim();
+        if (beatSystem === 'Custom') {
+            const customName = (this.plugin.settings.customBeatSystemName || '').replace(/\s+/g, ' ').trim();
+            return customName.length > 0 ? customName : 'Custom';
+        }
+        return beatSystem.length > 0 ? beatSystem : 'Custom';
+    }
+
+    private truncateLabel(text: string, maxLength = 22): string {
+        const normalized = text.replace(/\s+/g, ' ').trim();
+        if (normalized.length <= maxLength) return normalized;
+        return `${normalized.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
     }
 
     private subplotColor(index: number, total: number): string {

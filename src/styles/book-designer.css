@@ -156,20 +156,22 @@
 
 .rt-book-designer-modal .rt-subplot-color-legend {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-top: 8px;
-    padding: 8px;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 6px;
-    background: color-mix(in srgb, var(--background-secondary) 85%, transparent);
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+    align-items: center;
 }
 
 .rt-book-designer-modal .rt-subplot-color-row {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 8px;
-    min-height: 18px;
+    min-height: 22px;
+    max-width: 100%;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--background-modifier-border) 88%, transparent);
+    background: color-mix(in srgb, var(--background-secondary) 92%, transparent);
 }
 
 .rt-book-designer-modal .rt-subplot-color-swatch {
@@ -186,6 +188,7 @@
     color: var(--text-muted);
     line-height: 1.3;
     overflow-wrap: anywhere;
+    white-space: normal;
 }
 
 /* --- Grid System --- */

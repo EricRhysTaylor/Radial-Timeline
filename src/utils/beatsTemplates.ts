@@ -6,7 +6,7 @@
  * Scheduled for removal after v5.2.
  */
 import { Vault, TFile, normalizePath } from 'obsidian';
-import { PLOT_SYSTEMS, PLOT_SYSTEM_NAMES, PlotSystemPreset, PlotBeatInfo } from './beatsSystems';
+import { PLOT_SYSTEMS, PLOT_SYSTEM_NAMES, PRO_BEAT_SETS, PlotSystemPreset, PlotBeatInfo } from './beatsSystems';
 import { mergeTemplates } from './sceneGenerator';
 import type { BeatSystemConfig, RadialTimelineSettings } from '../types/settings';
 import { normalizeBeatSetNameInput, sanitizeBeatFilenameSegment, toBeatModelMatchKey } from './beatsInputNormalize';
@@ -38,12 +38,15 @@ export function getBeatConfigForSystem(
   settings: RadialTimelineSettings,
   systemKey?: string
 ): BeatSystemConfig {
-  const system = systemKey ?? settings.beatSystem ?? 'Save The Cat';
+  const system = (systemKey ?? settings.beatSystem ?? 'Save The Cat').trim();
+  const isCustomScoped = system === 'Custom' || system.startsWith('custom:');
   const key = system === 'Custom'
     ? `custom:${settings.activeCustomBeatSystemId ?? 'default'}`
     : system;
   // Primary: per-system config map
   if (settings.beatSystemConfigs?.[key]) return settings.beatSystemConfigs[key];
+  // Custom systems must read only from per-set config slots.
+  if (isCustomScoped) return EMPTY_BEAT_CONFIG;
   // Legacy fallback: global fields (pre-migration vaults)
   return {
     beatYamlAdvanced: settings.beatYamlTemplates?.advanced ?? '',
@@ -61,20 +64,24 @@ export function getBeatConfigForItem(
   beatModel: string | undefined
 ): BeatSystemConfig {
   const configs = settings.beatSystemConfigs;
+  if (!beatModel) return EMPTY_BEAT_CONFIG;
+  const normalized = normalizeModelKey(beatModel);
+  const isBuiltinModel = PLOT_SYSTEM_NAMES.some(name => normalizeModelKey(name) === normalized);
+
   if (!configs) {
-    // Legacy fallback: no migration yet, return global fields
+    // Custom beat models do not fall back to legacy globals.
+    if (!isBuiltinModel) return EMPTY_BEAT_CONFIG;
+    // Legacy fallback: built-ins only (pre-migration vaults)
     return {
       beatYamlAdvanced: settings.beatYamlTemplates?.advanced ?? '',
       beatHoverMetadataFields: settings.beatHoverMetadataFields ?? [],
     };
   }
-  if (!beatModel) return EMPTY_BEAT_CONFIG;
 
   // 1. Direct built-in match (exact key)
   if (configs[beatModel]) return configs[beatModel];
 
   // 2. Case-insensitive built-in match
-  const normalized = normalizeModelKey(beatModel);
   for (const builtinName of PLOT_SYSTEM_NAMES) {
     if (normalizeModelKey(builtinName) === normalized && configs[builtinName]) {
       return configs[builtinName];
@@ -100,8 +107,22 @@ export function getBeatConfigForItem(
     if (configs[savedKey]) return configs[savedKey];
   }
 
-  // 5. Fallback: if active custom is a catch-all for unrecognized Beat Models
-  if (configs[activeCustomKey]) return configs[activeCustomKey];
+  // 5. Starter custom systems by name (maps to custom:<starter-id>)
+  const starter = PRO_BEAT_SETS.find(
+    s => normalizeModelKey(s.name) === normalized
+  );
+  if (starter) {
+    const starterKey = `custom:${starter.id}`;
+    if (configs[starterKey]) return configs[starterKey];
+  }
+
+  // 6. Legacy fallback: built-ins only (custom systems stay slot-scoped)
+  if (isBuiltinModel) {
+    return {
+      beatYamlAdvanced: settings.beatYamlTemplates?.advanced ?? '',
+      beatHoverMetadataFields: settings.beatHoverMetadataFields ?? [],
+    };
+  }
 
   return EMPTY_BEAT_CONFIG;
 }

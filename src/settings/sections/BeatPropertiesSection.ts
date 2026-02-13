@@ -42,7 +42,7 @@ import { runYamlBackfill, runYamlFillEmptyValues, type BackfillResult } from '..
 
 type FieldEntryValue = string | string[];
 type FieldEntry = { key: string; value: FieldEntryValue; required: boolean };
-type BeatRow = { name: string; act: number };
+type BeatRow = { name: string; act: number; purpose?: string };
 type BeatSystemMode = 'builtin' | 'custom';
 type BuiltinBeatSetId = 'save_the_cat' | 'heros_journey' | 'story_grid';
 
@@ -296,10 +296,11 @@ export function renderStoryBeatsSection(params: {
 
     const parseBeatRow = (item: unknown): BeatRow => {
         if (typeof item === 'object' && item !== null && (item as { name?: unknown }).name) {
-            const obj = item as { name?: unknown; act?: unknown };
+            const obj = item as { name?: unknown; act?: unknown; purpose?: unknown };
             const objName = normalizeBeatNameInput(typeof obj.name === 'string' ? obj.name : String(obj.name ?? ''), '');
             const objAct = typeof obj.act === 'number' ? obj.act : 1;
-            return { name: objName, act: objAct };
+            const objPurpose = typeof obj.purpose === 'string' ? obj.purpose.trim() : '';
+            return { name: objName, act: objAct, purpose: objPurpose || undefined };
         }
         const raw = normalizeBeatNameInput(String(item ?? ''), '');
         if (!raw) return { name: '', act: 1 };
@@ -570,7 +571,7 @@ export function renderStoryBeatsSection(params: {
 
     /** Produce a lightweight hash string from the current custom beat state. */
     const snapshotHash = (): string => {
-        const beats = (plugin.settings.customBeatSystemBeats ?? []).map(b => `${b.name}|${b.act}`).join(';');
+        const beats = (plugin.settings.customBeatSystemBeats ?? []).map(b => `${b.name}|${b.act}|${(b as { purpose?: string }).purpose ?? ''}`).join(';');
         const configKey = `custom:${plugin.settings.activeCustomBeatSystemId ?? 'default'}`;
         const cfg = plugin.settings.beatSystemConfigs?.[configKey];
         const yaml = cfg?.beatYamlAdvanced ?? '';
@@ -1639,6 +1640,11 @@ export function renderStoryBeatsSection(params: {
     };
 
     // Beat hover metadata helpers (operate on active system's config slot)
+    const refreshBeatHoverInViews = () => {
+        const timelineViews = plugin.getTimelineViews();
+        timelineViews.forEach(view => view.refreshTimeline());
+    };
+
     const getBeatHoverMetadata = (key: string): HoverMetadataField | undefined => {
         return ensureCustomBeatConfig().beatHoverMetadataFields.find(f => f.key === key);
     };
@@ -1653,6 +1659,7 @@ export function renderStoryBeatsSection(params: {
         } else {
             config.beatHoverMetadataFields.push({ key, label: key, icon, enabled });
         }
+        refreshBeatHoverInViews();
         void plugin.saveSettings();
         dirtyState.notify();
     };
@@ -1661,6 +1668,7 @@ export function renderStoryBeatsSection(params: {
         if (!canEditCustomBeatFields()) return;
         const config = ensureCustomBeatConfig();
         config.beatHoverMetadataFields = config.beatHoverMetadataFields.filter(f => f.key !== key);
+        refreshBeatHoverInViews();
         void plugin.saveSettings();
         dirtyState.notify();
     };
@@ -1671,6 +1679,7 @@ export function renderStoryBeatsSection(params: {
         const existing = config.beatHoverMetadataFields.find(f => f.key === oldKey);
         if (existing) {
             existing.key = newKey;
+            refreshBeatHoverInViews();
             void plugin.saveSettings();
         }
     };
@@ -2061,8 +2070,11 @@ export function renderStoryBeatsSection(params: {
 
         enabledFields.forEach(field => {
             const lineEl = beatHoverPreviewBody.createDiv({ cls: 'ert-hover-preview-line' });
-            const iconEl = lineEl.createSpan({ cls: 'ert-hover-preview-icon' });
-            setIcon(iconEl, field.icon || DEFAULT_HOVER_ICON);
+            const iconName = typeof field.icon === 'string' ? field.icon.trim() : '';
+            if (iconName) {
+                const iconEl = lineEl.createSpan({ cls: 'ert-hover-preview-icon' });
+                setIcon(iconEl, iconName);
+            }
             const value = templateObj[field.key];
             const valueStr = Array.isArray(value) ? value.join(', ') : (value ?? '');
             const displayText = valueStr ? `${field.key}: ${valueStr}` : field.key;
@@ -2104,7 +2116,7 @@ export function renderStoryBeatsSection(params: {
     // Both dirty indicators (dropdown warning + dirty notice) now use the same baseline.
 
     /** Apply a saved or built-in system as the active system and refresh UI. */
-    const applyLoadedSystem = (system: { id: string; name: string; description?: string; beats: { name: string; act: number }[]; beatYamlAdvanced?: string; beatHoverMetadataFields?: { key: string; label: string; icon: string; enabled: boolean }[] }) => {
+    const applyLoadedSystem = (system: { id: string; name: string; description?: string; beats: { name: string; act: number; purpose?: string }[]; beatYamlAdvanced?: string; beatHoverMetadataFields?: { key: string; label: string; icon: string; enabled: boolean }[] }) => {
         // 1. Guarantee we're on the Custom system (config resolution depends on this)
         plugin.settings.beatSystem = 'Custom';
         // 2. Activate this set's id so config resolves to custom:<id>
@@ -2115,6 +2127,7 @@ export function renderStoryBeatsSection(params: {
         plugin.settings.customBeatSystemBeats = system.beats.map(b => ({
             ...b,
             name: normalizeBeatNameInput(b.name),
+            purpose: typeof b.purpose === 'string' ? b.purpose.trim() : undefined,
         }));
         // 4. Write per-system YAML/hover config into the correct slot
         const configKey = `custom:${system.id}`;

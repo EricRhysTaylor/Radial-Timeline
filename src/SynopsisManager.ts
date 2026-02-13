@@ -1189,10 +1189,12 @@ export default class SynopsisManager {
           // Icon positioning
           const iconSize = 18 * fontScale;
           const iconGap = 6 * fontScale;
-          const textX = iconSize + iconGap; // Offset for icon + gap
+          const iconName = typeof field.icon === 'string' ? field.icon.trim() : '';
+          const iconSvg = iconName ? getIcon(iconName) : null;
+          const hasIcon = !!iconSvg;
+          const textX = hasIcon ? (iconSize + iconGap) : 0; // No icon fallback = no offset
           
           // Get the Lucide icon SVG
-          const iconSvg = getIcon(field.icon || 'align-vertical-space-around');
           if (iconSvg) {
             // Native SVG approach: Extract paths and transform
             const iconG = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -1233,8 +1235,8 @@ export default class SynopsisManager {
             lineGroup.setAttribute('color', titleColor);
             textEl.style.fill = titleColor;
           }
-          textEl.setAttribute('data-hover-icon-size', String(iconSize));
-          textEl.setAttribute('data-hover-icon-gap', String(iconGap));
+          textEl.setAttribute('data-hover-icon-size', String(hasIcon ? iconSize : 0));
+          textEl.setAttribute('data-hover-icon-gap', String(hasIcon ? iconGap : 0));
           lineGroup.appendChild(textEl);
           
           synopsisTextGroup.appendChild(lineGroup);
