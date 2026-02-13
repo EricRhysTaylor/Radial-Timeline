@@ -2027,6 +2027,11 @@
   height: 14px;
 }
 
+.ert-ui.ert-scope--settings .ert-mini-tab-icon.ert-beat-health-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
 /* ── Stage switcher (segmented control inside Custom panel) ────────── */
 .ert-ui.ert-scope--settings .ert-stage-switcher {
   display: inline-flex;
@@ -6482,7 +6487,7 @@
 
 .ert-ui.ert-scope--settings .ert-audit-note-pill {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: 4px;
   padding: 4px 10px;
   border-radius: 16px;
@@ -6514,6 +6519,7 @@
 
 .ert-ui.ert-scope--settings .ert-audit-note-pill--warning {
   border-color: color-mix(in srgb, var(--text-warning) 32%, var(--background-modifier-border));
+  align-items: center;
 }
 
 .ert-ui.ert-scope--settings .ert-audit-note-pill-name {

@@ -30,6 +30,7 @@ import { clearFontMetricsCaches } from '../renderer/utils/FontMetricsCache';
 import { AuthorProgressModal } from '../modals/AuthorProgressModal';
 import { isMatterNote } from '../utils/sceneHelpers';
 import { DEFAULT_BOOK_TITLE, getActiveBookTitle } from '../utils/books';
+import { resolveSelectedBeatModel } from '../utils/beatsInputNormalize';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
@@ -386,7 +387,7 @@ export class RadialTimelineView extends ItemView {
                 // rebuild the run data here to ensure the renderer gets the latest scores.
                 if (this._currentMode === 'gossamer') {
                     const { buildAllGossamerRuns } = await import('../utils/gossamer');
-                    const selectedBeatModel = this.plugin.settings.beatSystem?.trim() || undefined;
+                    const selectedBeatModel = resolveSelectedBeatModel(this.plugin.settings.beatSystem, this.plugin.settings.customBeatSystemName);
                     const allRuns = buildAllGossamerRuns(timelineSceneData as any, selectedBeatModel);
         
                     // Update the plugin's stored run data so the renderer can access it

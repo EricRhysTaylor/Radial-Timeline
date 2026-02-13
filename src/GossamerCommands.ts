@@ -22,6 +22,7 @@ import {
   sanitizeLogPayload
 } from './ai/log';
 import { ensureGossamerContentLogFolder, resolveGossamerContentLogFolder } from './inquiry/utils/logs';
+import { resolveSelectedBeatModel } from './utils/beatsInputNormalize';
 const resolveGeminiModelId = (plugin?: RadialTimelinePlugin): string =>
   plugin?.settings?.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
 
@@ -398,7 +399,7 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     // Check if there are any story beat notes (Beat or legacy Plot)
     const beatNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
     if (beatNotes.length === 0) {
-      const selectedSystem = plugin.settings.beatSystem?.trim() || '';
+      const selectedSystem = resolveSelectedBeatModel(plugin.settings.beatSystem, plugin.settings.customBeatSystemName) ?? '';
       const systemHint = selectedSystem
         ? `No "${selectedSystem}" beat notes found. Ensure beat notes have "Class: Beat" and "Beat Model: ${selectedSystem}" in frontmatter.`
         : 'No story beats found. Create notes with frontmatter "Class: Beat".';
@@ -407,7 +408,7 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     }
     
     // Use beat system from settings if explicitly set (not empty)
-    const selectedBeatModel = plugin.settings.beatSystem?.trim() || undefined;
+    const selectedBeatModel = resolveSelectedBeatModel(plugin.settings.beatSystem, plugin.settings.customBeatSystemName);
     
     // Build all runs (Gossamer1-30) with min/max band
     const allRuns = buildAllGossamerRuns(scenes as unknown as { itemType?: string; [key: string]: unknown }[], selectedBeatModel);

@@ -16,6 +16,7 @@ import {
 } from './yamlTemplateNormalize';
 import type { RadialTimelineSettings } from '../types/settings';
 import { normalizeFrontmatterKeys } from './frontmatter';
+import { normalizeBeatSetNameInput, toBeatModelMatchKey } from './beatsInputNormalize';
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -324,11 +325,12 @@ export function collectFilesForAudit(
             const customId = beatSystemKey.slice('custom:'.length);
             // Check saved systems first for the matching id
             const saved = settings.savedBeatSystems?.find(s => s.id === customId);
-            beatModelFilter = saved?.name
-                ?? settings.customBeatSystemName
-                ?? 'Custom';
+            beatModelFilter = normalizeBeatSetNameInput(
+                saved?.name ?? settings.customBeatSystemName ?? '',
+                'Custom'
+            );
         } else {
-            beatModelFilter = beatSystemKey;
+            beatModelFilter = normalizeBeatSetNameInput(beatSystemKey, '');
         }
     }
 
@@ -346,7 +348,7 @@ export function collectFilesForAudit(
                 if (fm.Class !== 'Beat' && fm.Class !== 'Plot') return false;
                 if (beatModelFilter) {
                     const model = fm['Beat Model'];
-                    return model === beatModelFilter;
+                    return toBeatModelMatchKey(String(model ?? '')) === toBeatModelMatchKey(beatModelFilter);
                 }
                 return true;
             case 'Backdrop':

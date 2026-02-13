@@ -5,9 +5,10 @@ import { Modal, App, ButtonComponent, Notice, TextComponent, TFile } from 'obsid
 import { tooltip, tooltipForComponent } from '../utils/tooltip';
 import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
-import { normalizeBeatName, normalizeGossamerHistory } from '../utils/gossamer';
+import { filterBeatsBySystem, normalizeBeatName, normalizeGossamerHistory } from '../utils/gossamer';
 import { parseScoresFromClipboard } from '../GossamerCommands';
 import { getPlotSystem } from '../utils/beatsSystems';
+import { normalizeBeatSetNameInput, resolveSelectedBeatModel } from '../utils/beatsInputNormalize';
 
 interface ScoreHistoryItem {
   index: number;
@@ -212,37 +213,30 @@ export class GossamerScoreModal extends Modal {
     contentEl.addClass('ert-modal-container', 'ert-stack', 'rt-gossamer-score-modal');
 
     // Use settings as source of truth for beat system
-    const settingsSystem = this.plugin.settings.beatSystem || 'Save The Cat';
+    const settingsSystem = normalizeBeatSetNameInput(this.plugin.settings.beatSystem || '', 'Save The Cat');
+    const beatModelLabel = resolveSelectedBeatModel(settingsSystem, this.plugin.settings.customBeatSystemName) ?? settingsSystem;
     
     // ... filtering logic ...
 
     // Filter beats based on settings (same logic as main.ts getSceneData)
     // Need to read Beat Model from metadata cache since it's not on Scene object
-    const filteredBeats = this.plotBeats.filter(beat => {
-      if (!beat.path) return false;
-
+    const beatsWithModel = this.plotBeats.map((beat) => {
+      if (!beat.path) {
+        return { beat, "Beat Model": undefined as string | undefined };
+      }
       const file = this.plugin.app.vault.getAbstractFileByPath(beat.path);
-      if (!file) return false;
-
+      if (!file) {
+        return { beat, "Beat Model": undefined as string | undefined };
+      }
       const cache = this.plugin.app.metadataCache.getFileCache(file as any);
       const fm = cache?.frontmatter;
-      const beatModel = fm?.["Beat Model"] as string | undefined;
-
-      if (settingsSystem === 'Custom') {
-        // For Custom, only show beats WITHOUT recognized Beat Models
-        // OR beats that match the custom system name if defined
-        const customName = this.plugin.settings.customBeatSystemName;
-        if (customName && beatModel === customName) {
-            return true;
-        }
-
-        const recognizedSystems = ['Save The Cat', 'Hero\'s Journey', 'Story Grid'];
-        return !beatModel || !recognizedSystems.includes(beatModel);
-      } else {
-        // For specific systems, only show beats that match the selected system
-        return beatModel === settingsSystem;
-      }
+      return { beat, "Beat Model": fm?.["Beat Model"] as string | undefined };
     });
+    const filteredBeats = filterBeatsBySystem(
+      beatsWithModel,
+      settingsSystem,
+      this.plugin.settings.customBeatSystemName
+    ).map(entry => entry.beat);
 
     // Use filtered beats for entry building
     this.plotBeats = filteredBeats;
@@ -251,8 +245,9 @@ export class GossamerScoreModal extends Modal {
     
     // Support Custom Dynamic System Template
     if (settingsSystem === 'Custom' && this.plugin.settings.customBeatSystemName && this.plugin.settings.customBeatSystemBeats?.length) {
+        const customName = normalizeBeatSetNameInput(this.plugin.settings.customBeatSystemName, 'Custom');
         plotSystemTemplate = {
-            name: this.plugin.settings.customBeatSystemName,
+            name: customName,
             // Persisted beats are objects ({ name, act }); template expects names
             beats: this.plugin.settings.customBeatSystemBeats.map(b => b.name),
             beatDetails: this.plugin.settings.customBeatSystemBeats.map(b => ({ name: b.name, description: '', range: '' })),
@@ -271,7 +266,7 @@ export class GossamerScoreModal extends Modal {
     // Title with plot system name rendered in hero card
     const headerEl = contentEl.createDiv({ cls: 'ert-modal-header' });
     headerEl.createSpan({ text: 'Gossamer momentum', cls: 'ert-modal-badge' });
-    headerEl.createDiv({ text: `${settingsSystem} beat system`, cls: 'ert-modal-title' });
+    headerEl.createDiv({ text: `${beatModelLabel} beat system`, cls: 'ert-modal-title' });
     const heroSubtitle = headerEl.createDiv({ cls: 'ert-modal-subtitle' });
     heroSubtitle.setText('Enter momentum scores (0-100) for each beat. Previous scores will be saved as history.');
     const heroMeta = headerEl.createDiv({ cls: 'ert-modal-meta' });
@@ -282,12 +277,12 @@ export class GossamerScoreModal extends Modal {
       const noBeatsWarning = contentEl.createEl('div', {
         text: settingsSystem === 'Custom'
           ? `⚠️ No custom story beats found. Create notes with "Class: Beat" without "Beat Model" field, or change beat system in Settings.`
-          : `⚠️ No story beats found with "Beat Model: ${settingsSystem}". Check your beat notes have the correct Beat Model field, or change beat system in Settings.`
+          : `⚠️ No story beats found with "Beat Model: ${beatModelLabel}". Check your beat notes have the correct Beat Model field, or change beat system in Settings.`
       });
       noBeatsWarning.addClass('rt-gossamer-warning');
     } else if (countMismatch && plotSystemTemplate) {
       const warningEl = contentEl.createEl('div', {
-        text: `⚠️ Expected ${plotSystemTemplate.beatCount} beats for ${settingsSystem}, but found ${actualCount} story beats with matching Beat Model. Check your vault.`
+        text: `⚠️ Expected ${plotSystemTemplate.beatCount} beats for ${beatModelLabel}, but found ${actualCount} story beats with matching Beat Model. Check your vault.`
       });
       warningEl.addClass('rt-gossamer-warning');
     }
@@ -820,8 +815,9 @@ export class GossamerScoreModal extends Modal {
     for (const [beatTitle, gossamerNums] of deletions) {
       // Find Plot note by title (same logic as saveGossamerScores)
       let file = null;
+      const targetKey = normalizeBeatName(beatTitle);
       for (const f of files) {
-        if (f.basename === beatTitle || f.basename === beatTitle.replace(/^\d+\s+/, '')) {
+        if (normalizeBeatName(f.basename) === targetKey) {
           const cache = this.plugin.app.metadataCache.getFileCache(f);
           const fm = cache?.frontmatter;
           if (fm && (fm.Class === 'Beat' || fm.Class === 'Plot')) {

@@ -1,6 +1,7 @@
 /*
  * Plot System Presets for Gossamer Scoring
  */
+import { normalizeBeatNameInput, normalizeBeatSetNameInput } from './beatsInputNormalize';
 
 export interface PlotBeatInfo {
   name: string;
@@ -361,7 +362,7 @@ export const PRO_BEAT_SETS: ProBeatSet[] = [
       { name: 'Early Friction', act: 1 },
       // Act 2 — Escalation
       { name: 'Rising Pressure', act: 2 },
-      { name: 'Political/Social Shift', act: 2 },
+      { name: 'Political - Social Shift', act: 2 },
       { name: 'Midpoint Event', act: 2 },
       { name: 'Moral Complication', act: 2 },
       { name: 'Crisis', act: 2 },
@@ -395,7 +396,7 @@ export const PRO_BEAT_SETS: ProBeatSet[] = [
       { name: 'Deepening Bond', act: 2 },
       { name: 'Midpoint Commitment', act: 2 },
       { name: 'External Threat', act: 2 },
-      { name: 'Breakup / Betrayal', act: 2 },
+      { name: 'Breakup - Betrayal', act: 2 },
       // Act 3 — Reunion
       { name: 'Self-Realization', act: 3 },
       { name: 'Grand Gesture', act: 3 },
@@ -447,12 +448,15 @@ export const PRO_BEAT_SETS: ProBeatSet[] = [
  * Accepts any object that matches the minimal settings shape needed.
  */
 export function getCustomSystemFromSettings(settings: { customBeatSystemName?: string; customBeatSystemBeats?: { name: string; act: number }[] }): PlotSystemPreset {
-    const name = settings.customBeatSystemName || 'Custom';
+    const name = normalizeBeatSetNameInput(settings.customBeatSystemName ?? '', 'Custom');
     const beatObjs = settings.customBeatSystemBeats || [];
 
-    const beats = beatObjs.map(b => b.name).filter(n => n.trim().length > 0);
+    const beats = beatObjs
+        .map((b) => normalizeBeatNameInput(b.name, ''))
+        .filter(n => n.length > 0);
     const beatDetails = beatObjs
-        .filter(b => b.name.trim().length > 0)
+        .map((b) => ({ ...b, name: normalizeBeatNameInput(b.name, '') }))
+        .filter(b => b.name.length > 0)
         .map(b => ({
             name: b.name,
             description: '',
@@ -472,4 +476,3 @@ export function getCustomSystemFromSettings(settings: { customBeatSystemName?: s
 
 /** @deprecated Use PlotSystemPreset */
 export type PlotSystemTemplate = PlotSystemPreset;
-

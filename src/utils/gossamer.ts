@@ -4,6 +4,7 @@
 
 import { parseRange, isScoreInRange } from './rangeValidation';
 import { STAGE_ORDER } from './constants';
+import { normalizeBeatSetNameInput, toBeatMatchKey, toBeatModelMatchKey } from './beatsInputNormalize';
 
 export type GossamerBeatStatus = 'present' | 'outlineOnly' | 'missing';
 
@@ -29,6 +30,12 @@ export interface GossamerRun {
     label?: string;
   };
 }
+
+const BUILTIN_BEAT_MODEL_KEYS = new Set<string>([
+  toBeatModelMatchKey('Save The Cat'),
+  toBeatModelMatchKey("Hero's Journey"),
+  toBeatModelMatchKey('Story Grid'),
+]);
 
 /**
  * Detects the dominant publish stage for a Gossamer run based on scene completion.
@@ -98,49 +105,42 @@ export function filterBeatsBySystem<T>(
   selectedBeatSystem?: string,
   customBeatSystemName?: string
 ): T[] {
-  if (!selectedBeatSystem || selectedBeatSystem.trim() === '') {
+  const system = normalizeBeatSetNameInput(selectedBeatSystem ?? '', '');
+  if (!system) {
     return beats; // No filtering if no system selected
   }
 
-  const system = selectedBeatSystem.trim();
+  const selectedKey = toBeatModelMatchKey(system);
 
-  if (system === 'Custom') {
+  if (selectedKey === 'custom') {
     // If a custom name is defined in settings, we should include beats that match it
-    if (customBeatSystemName && customBeatSystemName.trim() !== '') {
-        const customName = customBeatSystemName.trim();
-        // Also include beats with generic 'Custom' model or no model, but exclude standard ones.
-        const builtInSystems = ['save the cat', 'savethecat', "hero's journey", 'herosjourney', 'story grid', 'storygrid'];
-        
-        return beats.filter(b => {
-          const beatModel = (b as any)["Beat Model"];
-          if (!beatModel || typeof beatModel !== 'string') return true; 
-          
-          const normalizedModel = beatModel.toLowerCase().replace(/\s+/g, '').replace(/'/g, '');
-          
-          // Match custom name specifically
-          if (beatModel === customName) return true;
-          
-          // OR Match legacy custom logic (not built-in)
-          return !builtInSystems.includes(normalizedModel);
-        });
-    }
+    const customKey = toBeatModelMatchKey(normalizeBeatSetNameInput(customBeatSystemName ?? '', ''));
 
     // Default Custom: exclude beats that belong to built-in systems
-    const builtInSystems = ['save the cat', 'savethecat', "hero's journey", 'herosjourney', 'story grid', 'storygrid'];
     return beats.filter(b => {
       const beatModel = (b as any)["Beat Model"]; // SAFE: dynamic field access for Beat Model filtering
       if (!beatModel || typeof beatModel !== 'string') return true; // Include beats with no Beat Model
-      const normalizedModel = beatModel.toLowerCase().replace(/\s+/g, '').replace(/'/g, '');
-      return !builtInSystems.includes(normalizedModel);
+      const modelKey = toBeatModelMatchKey(beatModel);
+      if (!modelKey) return true;
+      if (customKey) {
+        // When a named custom set is active, keep scope tight to that set (+legacy generic Custom).
+        return modelKey === customKey || modelKey === 'custom';
+      }
+      if (modelKey === 'custom') return true; // Legacy generic custom model
+      return !BUILTIN_BEAT_MODEL_KEYS.has(modelKey);
     });
   } else {
     // For specific system: only include beats matching that system
-    const normalizedSelected = selectedBeatSystem.toLowerCase().replace(/\s+/g, '').replace(/'/g, '');
+    const selectedLooksCustom = !BUILTIN_BEAT_MODEL_KEYS.has(selectedKey) && selectedKey !== 'custom';
     return beats.filter(b => {
       const beatModel = (b as any)["Beat Model"]; // SAFE: dynamic field access for Beat Model filtering
       if (!beatModel || typeof beatModel !== 'string') return false;
-      const normalizedModel = beatModel.toLowerCase().replace(/\s+/g, '').replace(/'/g, '');
-      return normalizedModel === normalizedSelected;
+      const modelKey = toBeatModelMatchKey(beatModel);
+      if (selectedLooksCustom) {
+        // Support legacy notes still marked as generic "Custom".
+        return modelKey === selectedKey || modelKey === 'custom';
+      }
+      return modelKey === selectedKey;
     });
   }
 }
@@ -164,13 +164,8 @@ export const DefaultGossamerMomentum: { beat: string; score: number; notes: stri
 ];
 
 export function normalizeBeatName(name: string): string {
-  // Strip percentage annotations (e.g., "5%", "1-10%", "20%") and extra whitespace
-  // Then normalize for fuzzy matching (remove hyphens, spaces, lowercase)
-  return (name || '')
-    .replace(/\s*\d+(?:\s*-\s*\d+)?\s*%?\s*$/i, '') // Remove trailing percentages like " 5%", " 1-10%", " 20", " 75 - 80%"
-    .trim()
-    .toLowerCase()
-    .replace(/[-\s]/g, ''); // Remove hyphens and spaces for fuzzy matching (e.g., "set-up" → "setup", "dark night of the soul" → "darknightofthesoul")
+  // Strip score/range suffixes, then normalize via shared beat matcher.
+  return toBeatMatchKey((name || '').replace(/\s*\d+(?:\s*-\s*\d+)?\s*%?\s*$/i, '')).replace(/\s+/g, '');
 }
 
 /**
@@ -223,7 +218,7 @@ export function buildRunFromGossamerField(
   // Filter Beat notes by Beat Model only if explicitly specified and not empty
   let plotNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
   
-  if (selectedBeatModel && selectedBeatModel.trim() !== '' && plotNotes.some(p => p["Beat Model"])) {
+  if (toBeatModelMatchKey(selectedBeatModel ?? '') && plotNotes.some(p => p["Beat Model"])) {
     plotNotes = filterBeatsBySystem(plotNotes, selectedBeatModel);
   }
   
@@ -354,7 +349,7 @@ export function buildRunFromDefault(scenes?: { itemType?: string; subplot?: stri
   // We need to construct a "Virtual" run composed of the latest scores
   // First, let's reuse the logic to filter and sort notes
   let plotNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
-  if (selectedBeatModel && selectedBeatModel.trim() !== '' && plotNotes.some(p => p["Beat Model"])) {
+  if (toBeatModelMatchKey(selectedBeatModel ?? '') && plotNotes.some(p => p["Beat Model"])) {
     plotNotes = filterBeatsBySystem(plotNotes, selectedBeatModel);
   }
   
@@ -580,7 +575,7 @@ export function extractBeatOrder(scenes: { itemType?: string; subplot?: string; 
   let plotBeats = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
   
   // Use centralized filtering helper (single source of truth)
-  if (selectedBeatModel && selectedBeatModel.trim() !== '' && plotBeats.some(p => p["Beat Model"])) {
+  if (toBeatModelMatchKey(selectedBeatModel ?? '') && plotBeats.some(p => p["Beat Model"])) {
     plotBeats = filterBeatsBySystem(plotBeats, selectedBeatModel);
   }
   

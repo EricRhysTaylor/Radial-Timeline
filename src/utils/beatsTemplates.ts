@@ -9,6 +9,7 @@ import { Vault, TFile, normalizePath } from 'obsidian';
 import { PLOT_SYSTEMS, PLOT_SYSTEM_NAMES, PlotSystemPreset, PlotBeatInfo } from './beatsSystems';
 import { mergeTemplates } from './sceneGenerator';
 import type { BeatSystemConfig, RadialTimelineSettings } from '../types/settings';
+import { normalizeBeatSetNameInput, sanitizeBeatFilenameSegment, toBeatModelMatchKey } from './beatsInputNormalize';
 
 /** Legacy beat base template — canonical beat fields only (Gossamer fields are injected dynamically). */
 const LEGACY_BEAT_BASE = `Class: Beat
@@ -25,7 +26,7 @@ const DISALLOWED_BEAT_WRITE_FIELDS = new Set(['Description']);
 
 /** Normalize a Beat Model string for case-insensitive matching. */
 function normalizeModelKey(s: string): string {
-  return s.trim().toLowerCase();
+  return toBeatModelMatchKey(s);
 }
 
 /**
@@ -84,7 +85,7 @@ export function getBeatConfigForItem(
   const activeCustomKey = `custom:${settings.activeCustomBeatSystemId ?? 'default'}`;
   if (configs[activeCustomKey]) {
     // Check if the custom system name matches the Beat Model
-    const customName = settings.customBeatSystemName ?? 'Custom';
+    const customName = normalizeBeatSetNameInput(settings.customBeatSystemName ?? '', 'Custom');
     if (normalizeModelKey(customName) === normalized) {
       return configs[activeCustomKey];
     }
@@ -300,11 +301,8 @@ export async function createBeatNotesFromSet(
     return m ? m[1].trim() : name.trim();
   };
 
-  const sanitize = (s: string) =>
-    s.replace(/[\\/:*?"<>|!.]+/g, '-').replace(/-+/g, '-').replace(/\s+/g, ' ').replace(/^-|-$/g, '').trim();
-
   // Use the custom system name (if provided) for Beat Model frontmatter instead of generic "Custom"
-  const beatModelName = beatSystem.name || beatSystemName;
+  const beatModelName = normalizeBeatSetNameInput(beatSystem.name || beatSystemName, beatSystemName || 'Custom');
 
   // Pre-compute beat numbers per act using scene-aligned spread
   const actSceneNumbers = options?.actSceneNumbers;
@@ -339,7 +337,7 @@ export async function createBeatNotesFromSet(
     
     // Use canonical title without "Act X:" prefix for filename
     const displayName = stripActPrefix(beatName);
-    const safeBeatName = sanitize(displayName);
+    const safeBeatName = sanitizeBeatFilenameSegment(displayName);
     const filename = `${beatNumber} ${safeBeatName}.md`;
     const filePath = targetFolder ? `${targetFolder}/${filename}` : filename;
     const normalizedPath = normalizePath(filePath);

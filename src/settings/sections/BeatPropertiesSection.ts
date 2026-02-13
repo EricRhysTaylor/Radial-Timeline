@@ -20,6 +20,17 @@ import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { isStoryBeat } from '../../utils/sceneHelpers';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import {
+    hasBeatReadableText,
+    normalizeBeatFieldKeyInput,
+    normalizeBeatFieldListValueInput,
+    normalizeBeatFieldValueInput,
+    normalizeBeatNameInput,
+    normalizeBeatSetNameInput,
+    sanitizeBeatFilenameSegment,
+    toBeatMatchKey,
+    toBeatModelMatchKey,
+} from '../../utils/beatsInputNormalize';
+import {
     type NoteType,
     extractKeysInOrder as sharedExtractKeysInOrder,
     safeParseYaml as sharedSafeParseYaml,
@@ -122,9 +133,9 @@ class SystemEditModal extends Modal {
 
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
         const save = async () => {
-            const name = nameInput.value.trim();
-            if (!name) {
-                new Notice('Please enter a system name.');
+            const name = normalizeBeatSetNameInput(nameInput.value, '');
+            if (!name || !hasBeatReadableText(name)) {
+                new Notice('Please enter a system name with letters or numbers.');
                 return;
             }
             const shouldClose = await this.onSubmit(name, descInput.value.trim());
@@ -222,6 +233,7 @@ const dirtyState = {
  * Used to gate safe auto-fill actions to "official" schema commits.
  */
 const savedCustomSetIds = new Set<string>();
+let _unsubTopBeatTabsDirty: (() => void) | null = null;
 
 export function renderStoryBeatsSection(params: {
     app: App;
@@ -229,6 +241,8 @@ export function renderStoryBeatsSection(params: {
     containerEl: HTMLElement;
 }): void {
     const { app, plugin, containerEl } = params;
+    _unsubTopBeatTabsDirty?.();
+    _unsubTopBeatTabsDirty = null;
     containerEl.empty();
     containerEl.classList.add(ERT_CLASSES.STACK);
     const actsSection = containerEl.createDiv({ cls: ERT_CLASSES.STACK, attr: { [ERT_DATA.SECTION]: 'beats-acts' } });
@@ -266,14 +280,7 @@ export function renderStoryBeatsSection(params: {
     };
 
     const normalizeBeatTitle = (value: string): string => {
-        const trimmed = value.trim();
-        if (!trimmed) return '';
-        const withoutAct = trimmed.replace(/^Act\s*\d+\s*:\s*/i, '');
-        const withoutPrefix = withoutAct.replace(/^\d+(?:\.\d+)?\s*[.\-:)]?\s*/i, '');
-        // Strip punctuation that sanitizeBeatName would replace, so matching
-        // works regardless of whether we compare raw input or sanitised filename.
-        const noPunctuation = withoutPrefix.replace(/[\\/:*?"<>|!.]+/g, ' ');
-        return noPunctuation.replace(/\s+/g, ' ').trim().toLowerCase();
+        return toBeatMatchKey(value);
     };
 
     const stripActPrefix = (name: string): string => {
@@ -281,28 +288,25 @@ export function renderStoryBeatsSection(params: {
         return m ? m[1].trim() : name.trim();
     };
 
-    const sanitizeBeatName = (s: string) =>
-        s.replace(/[\\/:*?"<>|!.]+/g, '-').replace(/-+/g, '-').replace(/\s+/g, ' ').replace(/^-|-$/g, '').trim();
-
     const buildBeatFilename = (beatNumber: number, name: string): string => {
         const displayName = stripActPrefix(name);
-        const safeBeatName = sanitizeBeatName(displayName);
+        const safeBeatName = sanitizeBeatFilenameSegment(displayName);
         return `${beatNumber} ${safeBeatName}`.trim();
     };
 
     const parseBeatRow = (item: unknown): BeatRow => {
         if (typeof item === 'object' && item !== null && (item as { name?: unknown }).name) {
             const obj = item as { name?: unknown; act?: unknown };
-            const objName = typeof obj.name === 'string' ? obj.name : String(obj.name ?? '');
+            const objName = normalizeBeatNameInput(typeof obj.name === 'string' ? obj.name : String(obj.name ?? ''), '');
             const objAct = typeof obj.act === 'number' ? obj.act : 1;
             return { name: objName, act: objAct };
         }
-        const raw = String(item ?? '').trim();
+        const raw = normalizeBeatNameInput(String(item ?? ''), '');
         if (!raw) return { name: '', act: 1 };
         const m = raw.match(/^(.*?)\[(\d+)\]$/);
         if (m) {
             const actNum = parseInt(m[2], 10);
-            return { name: m[1].trim(), act: !Number.isNaN(actNum) ? actNum : 1 };
+            return { name: normalizeBeatNameInput(m[1], ''), act: !Number.isNaN(actNum) ? actNum : 1 };
         }
         return { name: raw, act: 1 };
     };
@@ -396,7 +400,7 @@ export function renderStoryBeatsSection(params: {
     };
 
     const normalizeBeatModel = (value: unknown): string =>
-        String(value ?? '').trim().toLowerCase();
+        toBeatModelMatchKey(String(value ?? ''));
 
     const collectExistingBeatNotes = async (allowFetch: boolean, selectedSystem: string): Promise<TimelineItem[] | null> => {
         if (!allowFetch) return null;
@@ -404,7 +408,7 @@ export function renderStoryBeatsSection(params: {
             const scenes = await plugin.getSceneData({ filterBeatsBySystem: false });
             const beats = (scenes ?? []).filter(scene => scene.itemType === 'Beat' || scene.itemType === 'Plot');
             const expectedModel = selectedSystem === 'Custom'
-                ? (plugin.settings.customBeatSystemName || 'Custom')
+                ? normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom')
                 : selectedSystem;
             const expectedKey = normalizeBeatModel(expectedModel);
             if (!expectedKey) return [];
@@ -439,7 +443,7 @@ export function renderStoryBeatsSection(params: {
             return (plugin.settings.customBeatSystemBeats || [])
                 .map(parseBeatRow)
                 .map(b => b.name)
-                .filter(name => name.trim().length > 0);
+                .filter(name => name.length > 0);
         }
         const system = getPlotSystem(selectedSystem);
         return system?.beats ?? [];
@@ -449,7 +453,7 @@ export function renderStoryBeatsSection(params: {
         if (expectedKeys.size === 0) return [];
         const files = app.vault.getMarkdownFiles();
         const matches: TimelineItem[] = [];
-        const customName = (plugin.settings.customBeatSystemName || 'Custom').trim();
+        const customName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom');
         const expectedModel = selectedSystem === 'Custom' ? customName : selectedSystem;
         const expectedModelKey = normalizeBeatModel(expectedModel);
 
@@ -463,7 +467,7 @@ export function renderStoryBeatsSection(params: {
             const classValue = normalized['Class'];
             if (classValue && !isStoryBeat(classValue)) return;
             const beatModelValue = typeof normalized['Beat Model'] === 'string'
-                ? (normalized['Beat Model'] as string).trim()
+                ? (normalized['Beat Model'] as string)
                 : '';
             if (!expectedModelKey || normalizeBeatModel(beatModelValue) !== expectedModelKey) return;
 
@@ -504,6 +508,66 @@ export function renderStoryBeatsSection(params: {
     let _unsubDesignDirty: (() => void) | null = null;
     let _unsubProSetsDirty: (() => void) | null = null;
 
+    const getCustomTabLabel = (): string => {
+        const named = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', '');
+        return named.length > 0 ? named : 'Custom';
+    };
+
+    const getCustomTabStatus = (): { icon: string; statusClass: string; tooltip: string } => {
+        if (isSetDirty()) {
+            return {
+                icon: 'circle-alert',
+                statusClass: 'ert-beat-health-icon--modified',
+                tooltip: 'Custom set has unsaved changes.'
+            };
+        }
+        if (!existingBeatReady || existingBeatStatsSystem !== 'Custom') {
+            return {
+                icon: 'circle-dashed',
+                statusClass: '',
+                tooltip: 'Custom beat note status not yet checked.'
+            };
+        }
+        const hasDups = existingBeatDuplicateCount > 0;
+        const hasMisaligned = existingBeatMisalignedCount > 0;
+        const hasMissing = existingBeatNewCount > 0;
+        const allGood = existingBeatSyncedCount === existingBeatExpectedCount
+            && !hasMisaligned && !hasDups;
+        if (hasDups) {
+            return {
+                icon: 'alert-circle',
+                statusClass: 'ert-beat-health-icon--critical',
+                tooltip: `${existingBeatDuplicateCount} duplicate beat note${existingBeatDuplicateCount !== 1 ? 's' : ''} found.`
+            };
+        }
+        if (hasMisaligned) {
+            return {
+                icon: 'alert-triangle',
+                statusClass: 'ert-beat-health-icon--warning',
+                tooltip: `${existingBeatMisalignedCount} beat note${existingBeatMisalignedCount !== 1 ? 's' : ''} need repair.`
+            };
+        }
+        if (hasMissing) {
+            return {
+                icon: 'alert-triangle',
+                statusClass: 'ert-beat-health-icon--warning',
+                tooltip: `${existingBeatNewCount} beat note${existingBeatNewCount !== 1 ? 's' : ''} not yet created.`
+            };
+        }
+        if (allGood) {
+            return {
+                icon: 'check-circle',
+                statusClass: 'ert-beat-health-icon--success',
+                tooltip: 'All beat notes are up to date.'
+            };
+        }
+        return {
+            icon: 'circle-dashed',
+            statusClass: '',
+            tooltip: 'Custom beat note status not yet checked.'
+        };
+    };
+
     /** Produce a lightweight hash string from the current custom beat state. */
     const snapshotHash = (): string => {
         const beats = (plugin.settings.customBeatSystemBeats ?? []).map(b => `${b.name}|${b.act}`).join(';');
@@ -531,7 +595,7 @@ export function renderStoryBeatsSection(params: {
     };
 
     const refreshExistingBeatLookup = async (allowFetch: boolean, selectedSystem: string): Promise<Map<string, TimelineItem[]> | null> => {
-        const nextKey = `${selectedSystem}|${plugin.settings.customBeatSystemName ?? ''}`;
+        const nextKey = `${selectedSystem}|${normalizeBeatSetNameInput(plugin.settings.customBeatSystemName ?? '', '')}`;
         if (!allowFetch && existingBeatKey === nextKey && existingBeatReady) {
             return existingBeatLookup;
         }
@@ -720,7 +784,7 @@ export function renderStoryBeatsSection(params: {
         customConfigContainer.empty();
 
         // ── Custom system header (mirrors built-in template preview header) ──
-        const customSystemName = plugin.settings.customBeatSystemName || 'Custom beats';
+        const customSystemName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom beats');
         const customSystemDesc = plugin.settings.customBeatSystemDescription || '';
         const copy = BEAT_SYSTEM_COPY['Custom'];
         const starterActive = isStarterSetActive();
@@ -761,9 +825,12 @@ export function renderStoryBeatsSection(params: {
             nameLink.setAttr('aria-label', `Edit "${customSystemName}"`);
             const openSystemEdit = () => {
                 new SystemEditModal(app, customSystemName, customSystemDesc, async (newName, newDesc) => {
-                    const trimmed = newName.trim();
-                    if (!trimmed) return false;
-                    plugin.settings.customBeatSystemName = trimmed;
+                    const normalizedName = normalizeBeatSetNameInput(newName, '');
+                    if (!normalizedName || !hasBeatReadableText(normalizedName)) {
+                        new Notice('System name must include letters or numbers.');
+                        return false;
+                    }
+                    plugin.settings.customBeatSystemName = normalizedName;
                     plugin.settings.customBeatSystemDescription = newDesc;
                     await plugin.saveSettings();
                     existingBeatReady = false;
@@ -906,7 +973,15 @@ export function renderStoryBeatsSection(params: {
         const listContainer = beatWrapper.createDiv({ cls: 'ert-custom-beat-list' });
 
         const saveBeats = async (beats: BeatRow[]) => {
-            plugin.settings.customBeatSystemBeats = beats;
+            const normalized = beats.map((beat) => ({
+                ...beat,
+                name: normalizeBeatNameInput(beat.name, ''),
+            }));
+            if (normalized.some(beat => !hasBeatReadableText(beat.name))) {
+                new Notice('Beat names must include letters or numbers.');
+                return;
+            }
+            plugin.settings.customBeatSystemBeats = normalized;
             await plugin.saveSettings();
             updateTemplateButton(templateSetting, 'Custom');
             // Re-render stage switcher after beat list changes
@@ -1103,8 +1178,13 @@ export function renderStoryBeatsSection(params: {
                         setTooltip(nameInput, rowNotices.join(' '));
                     }
                     plugin.registerDomEvent(nameInput, 'change', () => {
-                        const newName = nameInput.value.trim();
-                        if (!newName) return;
+                        const newName = normalizeBeatNameInput(nameInput.value, '');
+                        if (!newName || !hasBeatReadableText(newName)) {
+                            new Notice('Beat name must include letters or numbers.');
+                            nameInput.value = name;
+                            return;
+                        }
+                        nameInput.value = newName;
                         const updated = [...orderedBeats];
                         updated[index] = { name: newName, act: parseInt(act, 10) || 1 };
                         saveBeats(updated);
@@ -1120,7 +1200,11 @@ export function renderStoryBeatsSection(params: {
                     plugin.registerDomEvent(actSelect, 'change', () => {
                         act = actSelect.value;
                         const updated = [...orderedBeats];
-                        const currentName = nameInput.value.trim() || name;
+                        const currentName = normalizeBeatNameInput(nameInput.value, name);
+                        if (!hasBeatReadableText(currentName)) {
+                            new Notice('Beat name must include letters or numbers.');
+                            return;
+                        }
                         const actNum = clampBeatAct(parseInt(act, 10) || 1, maxActs);
                         updated[index] = { name: currentName, act: actNum };
                         saveBeats(updated);
@@ -1181,7 +1265,11 @@ export function renderStoryBeatsSection(params: {
             setIcon(addBtn, 'plus');
 
             const commitAdd = () => {
-                const name = (addNameInput.value || 'New Beat').trim();
+                const name = normalizeBeatNameInput(addNameInput.value || 'New Beat', 'New Beat');
+                if (!hasBeatReadableText(name)) {
+                    new Notice('Beat name must include letters or numbers.');
+                    return;
+                }
                 const act = clampBeatAct(parseInt(addActSelect.value, 10) || defaultAct || 1, maxActs);
                 const updated = [...orderedBeats, { name, act }];
                 saveBeats(updated);
@@ -1479,12 +1567,13 @@ export function renderStoryBeatsSection(params: {
         updateStageVisibility();
     };
 
-    const renderBeatSystemTabs = () => {
+    function renderBeatSystemTabs(): void {
         beatSystemTabs.empty();
         const activeSystem = plugin.settings.beatSystem || 'Custom';
         beatSystemOptions.forEach((option) => {
             const isActive = option.systemName === activeSystem;
             const isCustomTab = option.systemName === 'Custom';
+            const tabLabel = isCustomTab ? getCustomTabLabel() : option.label;
             const btn = beatSystemTabs.createEl('button', {
                 cls: `ert-mini-tab${isCustomTab ? ' ert-mini-tab--custom' : ''}${isActive ? ` ${ERT_CLASSES.IS_ACTIVE}` : ''}`,
                 attr: {
@@ -1494,12 +1583,16 @@ export function renderStoryBeatsSection(params: {
                     'aria-controls': 'ert-beat-system-panel'
                 }
             });
-            // Custom tab gets a lucide icon (14px, inherits currentColor)
+            // Custom tab gets a live status icon + active set name.
             if (isCustomTab) {
-                const iconEl = btn.createSpan({ cls: 'ert-mini-tab-icon' });
-                setIcon(iconEl, 'pencil-ruler');
+                const status = getCustomTabStatus();
+                const iconClass = `ert-mini-tab-icon ert-beat-health-icon${status.statusClass ? ` ${status.statusClass}` : ''}`;
+                const iconEl = btn.createSpan({ cls: iconClass });
+                setIcon(iconEl, status.icon);
+                setTooltip(iconEl, status.tooltip);
+                setTooltip(btn, `Custom set: ${tabLabel}. ${status.tooltip}`);
             }
-            btn.appendText(option.label);
+            btn.appendText(tabLabel);
 
             btn.addEventListener('click', async () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
                 if (isActive) return;
@@ -1511,7 +1604,7 @@ export function renderStoryBeatsSection(params: {
                 renderBeatSystemTabs();
             });
         });
-    };
+    }
 
     // ─── BEAT YAML EDITOR (Core) — always visible in Fields stage ──────
     const beatYamlSection = fieldsContainer.createDiv({ cls: ERT_CLASSES.STACK });
@@ -1702,8 +1795,13 @@ export function renderStoryBeatsSection(params: {
                 keyInput.value = entry.key;
                 keyInput.placeholder = 'Key';
                 keyInput.onchange = () => {
-                    const newKey = keyInput.value.trim();
-                    if (!newKey) { keyInput.value = entry.key; return; }
+                    const newKey = normalizeBeatFieldKeyInput(keyInput.value);
+                    if (!newKey || !hasBeatReadableText(newKey)) {
+                        keyInput.value = entry.key;
+                        new Notice('Field key must include letters or numbers.');
+                        return;
+                    }
+                    keyInput.value = newKey;
                     if (beatBaseKeys.includes(newKey)) {
                         new Notice(`"${newKey}" is a base beat field. Choose another name.`);
                         keyInput.value = entry.key;
@@ -1734,8 +1832,9 @@ export function renderStoryBeatsSection(params: {
                     valInput.value = value.join(', ');
                     valInput.placeholder = 'Comma-separated values';
                     valInput.onchange = () => {
+                        valInput.value = normalizeBeatFieldListValueInput(valInput.value).join(', ');
                         const nextList = [...list];
-                        nextList[idx] = { ...entry, value: valInput.value.split(',').map(s => s.trim()).filter(Boolean) };
+                        nextList[idx] = { ...entry, value: normalizeBeatFieldListValueInput(valInput.value) };
                         saveBeatEntries(nextList);
                         updateBeatHoverPreview?.();
                     };
@@ -1743,8 +1842,9 @@ export function renderStoryBeatsSection(params: {
                     valInput.value = typeof value === 'string' ? value : '';
                     valInput.placeholder = 'Default value (optional)';
                     valInput.onchange = () => {
+                        valInput.value = normalizeBeatFieldValueInput(valInput.value);
                         const nextList = [...list];
-                        nextList[idx] = { ...entry, value: valInput.value };
+                        nextList[idx] = { ...entry, value: normalizeBeatFieldValueInput(valInput.value) };
                         saveBeatEntries(nextList);
                         updateBeatHoverPreview?.();
                     };
@@ -1843,8 +1943,12 @@ export function renderStoryBeatsSection(params: {
 
             const doAddBeatField = () => {
                 if (!canEditCustomBeatFields()) return;
-                const newKey = addKeyInput.value.trim();
-                if (!newKey) return;
+                const newKey = normalizeBeatFieldKeyInput(addKeyInput.value);
+                if (!newKey || !hasBeatReadableText(newKey)) {
+                    new Notice('Field key must include letters or numbers.');
+                    return;
+                }
+                addKeyInput.value = newKey;
                 if (beatBaseKeys.includes(newKey)) {
                     new Notice(`"${newKey}" is a base beat field.`);
                     return;
@@ -1862,7 +1966,9 @@ export function renderStoryBeatsSection(params: {
                 if (addCheckbox.checked || iconName !== DEFAULT_HOVER_ICON) {
                     setBeatHoverMetadata(newKey, iconName, addCheckbox.checked);
                 }
-                const nextList = [...data, { key: newKey, value: addValInput.value || '', required: false }];
+                const normalizedValue = normalizeBeatFieldValueInput(addValInput.value || '');
+                addValInput.value = normalizedValue;
+                const nextList = [...data, { key: newKey, value: normalizedValue, required: false }];
                 saveBeatEntries(nextList);
                 rerenderBeatYaml(nextList);
                 updateBeatHoverPreview?.();
@@ -2004,9 +2110,12 @@ export function renderStoryBeatsSection(params: {
         // 2. Activate this set's id so config resolves to custom:<id>
         plugin.settings.activeCustomBeatSystemId = system.id;
         // 3. Write beats/name/description
-        plugin.settings.customBeatSystemName = system.name;
+        plugin.settings.customBeatSystemName = normalizeBeatSetNameInput(system.name);
         plugin.settings.customBeatSystemDescription = system.description ?? '';
-        plugin.settings.customBeatSystemBeats = system.beats.map(b => ({ ...b }));
+        plugin.settings.customBeatSystemBeats = system.beats.map(b => ({
+            ...b,
+            name: normalizeBeatNameInput(b.name),
+        }));
         // 4. Write per-system YAML/hover config into the correct slot
         const configKey = `custom:${system.id}`;
         if (!plugin.settings.beatSystemConfigs) plugin.settings.beatSystemConfigs = {};
@@ -2243,13 +2352,18 @@ export function renderStoryBeatsSection(params: {
 
         // ── Shared: save-as-copy modal + persistence ─────────────────
         const saveSetModal = async (opts: { isCopy: boolean }): Promise<void> => {
-            const currentBeats = (plugin.settings.customBeatSystemBeats || []).map(b => ({ ...b }));
+            const currentBeats = (plugin.settings.customBeatSystemBeats || [])
+                .map(b => ({ ...b, name: normalizeBeatNameInput(b.name, '') }));
+            if (currentBeats.some(b => !hasBeatReadableText(b.name))) {
+                new Notice('Beat names must include letters or numbers before saving a set.');
+                return;
+            }
             if (currentBeats.length === 0) {
                 new Notice('No beats defined. Add beats before saving.');
                 return;
             }
             const activeConfig = getBeatConfigForSystem(plugin.settings);
-            const currentName = plugin.settings.customBeatSystemName || 'Custom';
+            const currentName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom');
             const defaultName = opts.isCopy ? `${currentName} (Copy)` : currentName;
             const modalTitle = opts.isCopy ? 'Save a copy' : 'Save set';
             const modalSubtitle = opts.isCopy
@@ -2276,12 +2390,27 @@ export function renderStoryBeatsSection(params: {
                 nameInput.value = defaultName;
                 const actionsDiv = contentEl.createDiv({ cls: ['ert-modal-actions', 'ert-inline-actions'] });
                 new ButtonComponent(actionsDiv).setButtonText('Save').setCta().onClick(() => {
-                    const name = nameInput.value.trim();
+                    const name = normalizeBeatSetNameInput(nameInput.value, '');
+                    if (!name || !hasBeatReadableText(name)) {
+                        new Notice('Set name must include letters or numbers.');
+                        return;
+                    }
                     modal.close();
-                    resolve(name || null);
+                    resolve(name);
                 });
                 new ButtonComponent(actionsDiv).setButtonText('Cancel').onClick(() => { modal.close(); resolve(null); });
-                nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const name = nameInput.value.trim(); modal.close(); resolve(name || null); } });
+                nameInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const name = normalizeBeatSetNameInput(nameInput.value, '');
+                        if (!name || !hasBeatReadableText(name)) {
+                            new Notice('Set name must include letters or numbers.');
+                            return;
+                        }
+                        modal.close();
+                        resolve(name);
+                    }
+                });
                 modal.open();
                 setTimeout(() => nameInput.focus(), 50);
             });
@@ -2344,7 +2473,7 @@ export function renderStoryBeatsSection(params: {
         const loadSetAction = () => {
             if (!selectedEntry) return;
             const entry = selectedEntry;
-            const currentName = plugin.settings.customBeatSystemName || 'Custom beats';
+            const currentName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom beats');
             const currentHasBeats = (plugin.settings.customBeatSystemBeats ?? []).length > 0;
 
             if (isSetDirty()) {
@@ -2454,6 +2583,9 @@ export function renderStoryBeatsSection(params: {
     renderSavedBeatSystems();
     updateBeatSystemCard(plugin.settings.beatSystem || 'Custom');
     renderBeatSystemTabs();
+    _unsubTopBeatTabsDirty = dirtyState.subscribe(() => {
+        renderBeatSystemTabs();
+    });
 
     // Scene YAML Templates Section
     const yamlHeading = new Settings(yamlStack)
@@ -3487,6 +3619,7 @@ export function renderStoryBeatsSection(params: {
         let auditResult: YamlAuditResult | null = null;
         type FillEmptyPlan = {
             files: TFile[];
+            entries: Array<{ file: TFile; emptyKeys: string[] }>;
             fieldsToInsert: Record<string, string | string[]>;
             filledFields: number;
             touchedKeys: string[];
@@ -3546,6 +3679,7 @@ export function renderStoryBeatsSection(params: {
             if (keys.length === 0) return null;
 
             const candidateFiles: TFile[] = [];
+            const entries: Array<{ file: TFile; emptyKeys: string[] }> = [];
             const touchedKeySet = new Set<string>();
             let filledFields = 0;
 
@@ -3555,19 +3689,25 @@ export function renderStoryBeatsSection(params: {
                 const fm = cache.frontmatter as Record<string, unknown>;
 
                 let fileHasCandidate = false;
+                const fileEmptyKeys: string[] = [];
                 for (const key of keys) {
                     if (!(key in fm)) continue;
                     if (!isEmptyValue(fm[key])) continue;
                     fileHasCandidate = true;
                     filledFields++;
                     touchedKeySet.add(key);
+                    fileEmptyKeys.push(key);
                 }
-                if (fileHasCandidate) candidateFiles.push(file);
+                if (fileHasCandidate) {
+                    candidateFiles.push(file);
+                    entries.push({ file, emptyKeys: fileEmptyKeys });
+                }
             }
 
             if (candidateFiles.length === 0 || filledFields === 0) return null;
             return {
                 files: candidateFiles,
+                entries,
                 fieldsToInsert,
                 filledFields,
                 touchedKeys: [...touchedKeySet].sort(),
@@ -3578,7 +3718,11 @@ export function renderStoryBeatsSection(params: {
         // ─── Header row: two-column Setting layout (title+desc left, audit button right) ──
         const auditSetting = new Settings(parentEl)
             .setName(`Validate ${noteType.toLowerCase()} properties`)
-            .setDesc(`Scan ${noteType.toLowerCase()} notes for schema drift — missing fields, extra keys, and ordering issues.`);
+            .setDesc(
+                isCustomBeatAudit
+                    ? 'Scan beat notes for schema drift and empty custom-field values.'
+                    : `Scan ${noteType.toLowerCase()} notes for schema drift — missing fields, extra keys, and ordering issues.`
+            );
 
         // Copy button (hidden until audit runs)
         let copyBtn: HTMLButtonElement | undefined;
@@ -3697,9 +3841,25 @@ export function renderStoryBeatsSection(params: {
             if (!auditResult) return;
 
             const s = auditResult.summary;
+            const emptyValueNotes = fillEmptyPlan?.entries.length ?? 0;
+            const emptyValueFields = fillEmptyPlan?.filledFields ?? 0;
+            const schemaIssuePaths = new Set(
+                auditResult.notes
+                    .filter(n =>
+                        n.missingFields.length > 0
+                        || n.extraKeys.length > 0
+                        || n.orderDrift
+                        || n.semanticWarnings.length > 0
+                    )
+                    .map(n => n.file.path)
+            );
+            const emptyOnlyCount = fillEmptyPlan
+                ? fillEmptyPlan.entries.filter(entry => !schemaIssuePaths.has(entry.file.path)).length
+                : 0;
+            const effectiveClean = Math.max(0, s.clean - emptyOnlyCount);
 
             // Schema health + summary in one line
-            const healthLevel = s.notesWithMissing > 0
+            const healthLevel = (s.notesWithMissing > 0 || emptyValueNotes > 0)
                 ? 'needs-attention'
                 : (s.notesWithExtra > 0 || s.notesWithDrift > 0 || s.notesWithWarnings > 0)
                     ? 'mixed'
@@ -3720,8 +3880,29 @@ export function renderStoryBeatsSection(params: {
                 unreadEl.textContent = `${s.unreadNotes} note${s.unreadNotes !== 1 ? 's' : ''} not yet indexed — rerun audit after Obsidian finishes indexing.`;
             }
 
+            if (emptyValueNotes > 0) {
+                const emptyEl = resultsEl.createDiv({ cls: 'ert-audit-unread-warn' });
+                emptyEl.textContent = `${emptyValueNotes} note${emptyValueNotes !== 1 ? 's' : ''} have ${emptyValueFields} empty custom field value${emptyValueFields !== 1 ? 's' : ''}.`;
+
+                const emptyDetails = resultsEl.createDiv({ cls: 'ert-audit-note-pills' });
+                for (const entry of fillEmptyPlan!.entries.slice(0, AUDIT_OPEN_ALL_MAX)) {
+                    const keys = entry.emptyKeys.join(', ');
+                    const pillEl = emptyDetails.createEl('button', {
+                        cls: 'ert-audit-note-pill ert-audit-note-pill--warning',
+                        attr: { type: 'button' }
+                    });
+                    pillEl.createSpan({ text: entry.file.basename, cls: 'ert-audit-note-pill-name' });
+                    pillEl.createSpan({ text: ` — empty: ${keys}`, cls: 'ert-audit-note-pill-reason' });
+                    setTooltip(pillEl, `${entry.file.basename}: empty values in ${keys}`);
+                    pillEl.addEventListener('click', async () => {
+                        await openOrRevealFile(app, entry.file, false);
+                        new Notice(`Empty values: ${keys}`);
+                    });
+                }
+            }
+
             // All clean — early return
-            if (s.clean === s.totalNotes && s.unreadNotes === 0 && s.notesWithWarnings === 0) {
+            if (s.clean === s.totalNotes && s.unreadNotes === 0 && s.notesWithWarnings === 0 && emptyValueNotes === 0) {
                 resultsEl.createDiv({
                     text: `All ${s.totalNotes} notes are up to date with this set.`,
                     cls: 'ert-audit-clean'
@@ -3769,8 +3950,8 @@ export function renderStoryBeatsSection(params: {
                         renderNoteList();
                     });
                 }
-                if (s.clean > 0) {
-                    chipsEl.createSpan({ text: `${s.clean} clean`, cls: 'ert-chip ert-audit-chip ert-audit-chip--clean' });
+                if (effectiveClean > 0) {
+                    chipsEl.createSpan({ text: `${effectiveClean} clean`, cls: 'ert-chip ert-audit-chip ert-audit-chip--clean' });
                 }
             };
 
@@ -4049,11 +4230,11 @@ export function renderStoryBeatsSection(params: {
         let hasBeats = true;
 
         if (isCustom) {
-            displayName = plugin.settings.customBeatSystemName || 'Custom';
+            displayName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom');
             const beats = (plugin.settings.customBeatSystemBeats || []).map((b: unknown) => {
-                if (typeof b === 'string') return b.trim();
+                if (typeof b === 'string') return normalizeBeatNameInput(b, '');
                 if (typeof b === 'object' && b !== null && (b as { name?: unknown }).name) {
-                    return String((b as { name: unknown }).name).trim();
+                    return normalizeBeatNameInput(String((b as { name: unknown }).name), '');
                 }
                 return '';
             });
@@ -4176,6 +4357,8 @@ export function renderStoryBeatsSection(params: {
 
             // Refresh the health icon in the Design header
             refreshHealthIcon?.();
+            // Keep top-level Custom tab status icon/label in sync.
+            renderBeatSystemTabs();
         })();
     }
 
@@ -4204,7 +4387,7 @@ export function renderStoryBeatsSection(params: {
         }
 
         const existingLookup = buildExistingBeatLookup(existing);
-        const customModelName = plugin.settings.customBeatSystemName || 'Custom';
+        const customModelName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom');
         const conflicts: string[] = [];
         const duplicates: string[] = [];
         const updates: Array<{ file: TFile; targetPath: string; act: number }> = [];
