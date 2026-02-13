@@ -547,7 +547,19 @@ export function renderStoryBeatsSection(params: {
             const maxActs = getActCount();
             const expectedBeats: BeatRow[] = selectedSystem === 'Custom'
                 ? (plugin.settings.customBeatSystemBeats || []).map(parseBeatRow).map(b => ({ ...b, act: clampBeatAct(b.act, maxActs) }))
-                : (expectedNames.map(name => ({ name, act: 1 })));
+                : (() => {
+                    // Built-in templates: derive act from beatDetails[].act or infer from position
+                    const system = getPlotSystem(selectedSystem);
+                    const details = system?.beatDetails ?? [];
+                    const total = expectedNames.length;
+                    return expectedNames.map((name, idx) => {
+                        const detailAct = (details[idx] as { act?: number } | undefined)?.act;
+                        const act = typeof detailAct === 'number' && Number.isFinite(detailAct)
+                            ? detailAct
+                            : inferActForIndex(idx, total);
+                        return { name, act };
+                    });
+                })();
             let misaligned = 0;
             const beatNumbers = buildBeatNumbers(expectedBeats, maxActs, resolvedRanges);
             expectedBeats.forEach((beat, idx) => {
@@ -1306,6 +1318,7 @@ export function renderStoryBeatsSection(params: {
             return;
         }
 
+        let runningBeatIdx = 0;
         columns.forEach((column) => {
             const colEl = templateActGrid.createDiv({ cls: 'ert-beat-act-column' });
             const count = column.beats.length;
@@ -1314,8 +1327,9 @@ export function renderStoryBeatsSection(params: {
                 : `${column.label}${count > 0 ? ` (${count})` : ''}`;
             colEl.createDiv({ cls: 'ert-beat-act-header', text: headerText });
             const listEl = colEl.createDiv({ cls: 'ert-beat-act-list' });
-            column.beats.forEach((beat, beatIdx) => {
-                listEl.createDiv({ cls: 'ert-beat-act-item', text: `${beatIdx + 1}. ${beat}` });
+            column.beats.forEach((beat) => {
+                runningBeatIdx++;
+                listEl.createDiv({ cls: 'ert-beat-act-item', text: `${runningBeatIdx}. ${beat}` });
             });
         });
     };
@@ -2310,7 +2324,8 @@ export function renderStoryBeatsSection(params: {
             const currentName = plugin.settings.customBeatSystemName || 'Custom beats';
             const currentHasBeats = (plugin.settings.customBeatSystemBeats ?? []).length > 0;
 
-            if (currentHasBeats) {
+            if (isSetDirty()) {
+                // Only confirm if the current set has unsaved modifications
                 const confirmModal = new Modal(app);
                 const { modalEl, contentEl } = confirmModal;
                 confirmModal.titleEl.setText('');
@@ -2319,10 +2334,10 @@ export function renderStoryBeatsSection(params: {
                 contentEl.addClass('ert-modal-container', 'ert-stack');
                 const header = contentEl.createDiv({ cls: 'ert-modal-header' });
                 header.createSpan({ cls: 'ert-modal-badge', text: 'BEAT SYSTEM' });
-                header.createDiv({ cls: 'ert-modal-title', text: 'Replace current system' });
-                header.createDiv({ cls: 'ert-modal-subtitle', text: `Replace "${currentName}" with "${entry.name}"? This will overwrite your current beats and fields.` });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Unsaved changes' });
+                header.createDiv({ cls: 'ert-modal-subtitle', text: `"${currentName}" has unsaved changes. Loading "${entry.name}" will discard them.` });
                 const footer = contentEl.createDiv({ cls: 'ert-modal-actions' });
-                new ButtonComponent(footer).setButtonText('Replace').setCta().onClick(() => {
+                new ButtonComponent(footer).setButtonText('Discard & load').setWarning().onClick(() => {
                     confirmModal.close();
                     applyLoadedSystem(entry);
                 });
@@ -2363,17 +2378,38 @@ export function renderStoryBeatsSection(params: {
                 header.createDiv({ cls: 'ert-modal-subtitle', text: `Delete "${system.name}"? This cannot be undone.` });
                 const footer = confirmModal.contentEl.createDiv({ cls: 'ert-modal-actions' });
                 new ButtonComponent(footer).setButtonText('Delete').setWarning().onClick(async () => {
+                    const wasActive = plugin.settings.activeCustomBeatSystemId === system.id;
                     plugin.settings.savedBeatSystems = savedSystems.filter(s => s.id !== system.id);
                     if (plugin.settings.beatSystemConfigs) {
                         delete plugin.settings.beatSystemConfigs[`custom:${system.id}`];
                     }
-                    if (plugin.settings.activeCustomBeatSystemId === system.id) {
+                    if (wasActive) {
+                        // Reset to a clean blank custom system
                         plugin.settings.activeCustomBeatSystemId = 'default';
+                        plugin.settings.customBeatSystemName = '';
+                        plugin.settings.customBeatSystemDescription = '';
+                        plugin.settings.customBeatSystemBeats = [];
+                        // Ensure default config slot is clean
+                        if (!plugin.settings.beatSystemConfigs) plugin.settings.beatSystemConfigs = {};
+                        plugin.settings.beatSystemConfigs['custom:default'] = {
+                            beatYamlAdvanced: '',
+                            beatHoverMetadataFields: [],
+                        };
+                        // Clear dirty baseline — the set no longer exists
+                        clearSetBaseline();
                     }
                     await plugin.saveSettings();
                     confirmModal.close();
                     new Notice(`Deleted set "${system.name}".`);
+                    // Reset audit state since beats were cleared
+                    existingBeatReady = false;
+                    // Refresh all affected UI
+                    renderCustomConfig();
+                    renderBeatYamlEditor();
+                    updateBeatHoverPreview?.();
                     renderSavedBeatSystems();
+                    renderStageSwitcher();
+                    updateStageVisibility();
                 });
                 new ButtonComponent(footer).setButtonText('Cancel').onClick(() => confirmModal.close());
                 confirmModal.open();
