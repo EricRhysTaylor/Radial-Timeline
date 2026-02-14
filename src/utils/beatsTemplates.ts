@@ -23,6 +23,7 @@ Range: {{Range}}`;
 /** Empty config used as safe default when no config exists for a system. */
 const EMPTY_BEAT_CONFIG: BeatSystemConfig = { beatYamlAdvanced: '', beatHoverMetadataFields: [] };
 const DISALLOWED_BEAT_WRITE_FIELDS = new Set(['Description']);
+let warnedMissingBeatModelResolution = false;
 
 /** Normalize a Beat Model string for case-insensitive matching. */
 function normalizeModelKey(s: string): string {
@@ -64,8 +65,15 @@ export function getBeatConfigForItem(
   beatModel: string | undefined
 ): BeatSystemConfig {
   const configs = settings.beatSystemConfigs;
-  if (!beatModel) return EMPTY_BEAT_CONFIG;
-  const normalized = normalizeModelKey(beatModel);
+  const beatModelValue = (beatModel ?? '').trim();
+  const normalized = normalizeModelKey(beatModelValue);
+  if (!normalized) {
+    if (process.env.NODE_ENV !== 'production' && !warnedMissingBeatModelResolution) {
+      warnedMissingBeatModelResolution = true;
+      console.warn('[BeatHover] Attempted beat hover config resolution with missing Beat Model.');
+    }
+    return EMPTY_BEAT_CONFIG;
+  }
   const isBuiltinModel = PLOT_SYSTEM_NAMES.some(name => normalizeModelKey(name) === normalized);
 
   if (!configs) {
@@ -79,7 +87,7 @@ export function getBeatConfigForItem(
   }
 
   // 1. Direct built-in match (exact key)
-  if (configs[beatModel]) return configs[beatModel];
+  if (configs[beatModelValue]) return configs[beatModelValue];
 
   // 2. Case-insensitive built-in match
   for (const builtinName of PLOT_SYSTEM_NAMES) {
@@ -324,6 +332,13 @@ export async function createBeatNotesFromSet(
 
   // Use the custom system name (if provided) for Beat Model frontmatter instead of generic "Custom"
   const beatModelName = normalizeBeatSetNameInput(beatSystem.name || beatSystemName, beatSystemName || 'Custom');
+  if (!beatModelName.trim()) {
+    const message = `[BeatTemplates] Missing Beat Model while creating beats for "${beatSystemName}".`;
+    console.warn(message);
+    if (process.env.NODE_ENV !== 'production') {
+      throw new Error(message);
+    }
+  }
 
   // Pre-compute beat numbers per act using scene-aligned spread
   const actSceneNumbers = options?.actSceneNumbers;
@@ -372,6 +387,15 @@ export async function createBeatNotesFromSet(
 
     // Generate full note content with frontmatter and body
     const content = generatePlotNoteContent(beatInfo, act, beatModelName, options?.beatTemplate);
+    const beatModelMatch = content.match(/^Beat Model\s*:\s*(.+)$/m);
+    const hasBeatModel = !!beatModelMatch && beatModelMatch[1].trim().length > 0;
+    if (!hasBeatModel) {
+      const message = `[BeatTemplates] Generated beat note without Beat Model: ${filename}`;
+      console.warn(message);
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(message);
+      }
+    }
 
     try {
       await vault.create(normalizedPath, content);

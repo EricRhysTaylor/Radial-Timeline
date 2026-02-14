@@ -34,7 +34,7 @@ export interface ManuscriptSceneSelection {
   runtimes: (number | null)[];
   wordCounts: (number | null)[];
 }
- 
+
 export type TocMode = 'markdown' | 'plain' | 'none';
 
 /**
@@ -75,29 +75,29 @@ export function extractBodyText(content: string): string {
  * Returns null if the file is not a Frontmatter/Backmatter note or has no Matter: block.
  */
 function extractMatterMeta(content: string): { role?: string; usesBookMeta?: boolean } | null {
-    try {
-        const fmInfo = getFrontMatterInfo(content);
-        const fmText = (fmInfo as { frontmatter?: string }).frontmatter;
-        if (!fmText) return null;
+  try {
+    const fmInfo = getFrontMatterInfo(content);
+    const fmText = (fmInfo as { frontmatter?: string }).frontmatter;
+    if (!fmText) return null;
 
-        const yaml = parseYaml(fmText);
-        if (!yaml) return null;
+    const yaml = parseYaml(fmText);
+    if (!yaml) return null;
 
-        // Only process Frontmatter/Backmatter class notes
-        const classVal = yaml.Class || yaml.class;
-        if (classVal !== 'Frontmatter' && classVal !== 'Backmatter') return null;
+    // Only process Frontmatter/Backmatter class notes
+    const classVal = yaml.Class || yaml.class;
+    if (classVal !== 'Frontmatter' && classVal !== 'Backmatter') return null;
 
-        // Look for nested Matter: block
-        const matter = yaml.Matter || yaml.matter;
-        if (!matter || typeof matter !== 'object') return null;
+    // Look for nested Matter: block
+    const matter = yaml.Matter || yaml.matter;
+    if (!matter || typeof matter !== 'object') return null;
 
-        return {
-            role: typeof matter.role === 'string' ? matter.role : undefined,
-            usesBookMeta: typeof matter.usesBookMeta === 'boolean' ? matter.usesBookMeta : undefined,
-        };
-    } catch {
-        return null;
-    }
+    return {
+      role: typeof matter.role === 'string' ? matter.role : undefined,
+      usesBookMeta: typeof matter.usesBookMeta === 'boolean' ? matter.usesBookMeta : undefined,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -108,42 +108,43 @@ function extractMatterMeta(content: string): { role?: string; usesBookMeta?: boo
  * an author can edit YAML instead of LaTeX and still get a correct page.
  */
 function renderCopyrightPage(bookMeta: BookMeta, bodyText: string): string {
-    const year = bookMeta.rights?.year ?? new Date().getFullYear();
-    const holder = bookMeta.rights?.copyright_holder ?? bookMeta.author ?? '';
+  const year = bookMeta.rights?.year;
+  const yearStr = year ? year.toString() : '[YEAR_MISSING]';
+  const holder = bookMeta.rights?.copyright_holder ?? bookMeta.author ?? '';
 
-    const parts: string[] = [];
-    parts.push('\\begin{center}');
-    parts.push('\\vspace*{\\fill}');
+  const parts: string[] = [];
+  parts.push('\\begin{center}');
+  parts.push('\\vspace*{\\fill}');
+  parts.push('');
+
+  if (bodyText.trim()) {
+    parts.push(bodyText.trim());
     parts.push('');
-
-    if (bodyText.trim()) {
-        parts.push(bodyText.trim());
-        parts.push('');
-        parts.push('\\vspace{0.4cm}');
-        parts.push('');
-    }
-
-    parts.push(`Copyright \\textcopyright{} ${year} ${holder}`);
-
-    if (bookMeta.publisher?.name) {
-        parts.push('');
-        parts.push('\\vspace{0.3cm}');
-        parts.push('');
-        parts.push(bookMeta.publisher.name);
-    }
-
-    if (bookMeta.identifiers?.isbn_paperback) {
-        parts.push('');
-        parts.push('\\vspace{0.3cm}');
-        parts.push('');
-        parts.push(`ISBN: ${bookMeta.identifiers.isbn_paperback}`);
-    }
-
+    parts.push('\\vspace{0.4cm}');
     parts.push('');
-    parts.push('\\vfill');
-    parts.push('\\end{center}');
+  }
 
-    return parts.join('\n');
+  parts.push(`Copyright \\textcopyright{} ${yearStr} ${holder}`);
+
+  if (bookMeta.publisher?.name) {
+    parts.push('');
+    parts.push('\\vspace{0.3cm}');
+    parts.push('');
+    parts.push(bookMeta.publisher.name);
+  }
+
+  if (bookMeta.identifiers?.isbn_paperback) {
+    parts.push('');
+    parts.push('\\vspace{0.3cm}');
+    parts.push('');
+    parts.push(`ISBN: ${bookMeta.identifiers.isbn_paperback}`);
+  }
+
+  parts.push('');
+  parts.push('\\vfill');
+  parts.push('\\end{center}');
+
+  return parts.join('\n');
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -174,7 +175,7 @@ export function estimateTokens(wordCount: number): number {
 export async function getSortedSceneFiles(plugin: RadialTimelinePlugin): Promise<{ files: TFile[], sortOrder: string }> {
   const exportContext = getActiveBookExportContext(plugin);
   const allScenes = await plugin.getSceneData({ sourcePath: exportContext.sourceFolder });
-  
+
   // Deduplicate by path
   const uniquePaths = new Set<string>();
   const uniqueScenes = allScenes.filter(s => {
@@ -184,23 +185,23 @@ export async function getSortedSceneFiles(plugin: RadialTimelinePlugin): Promise
     }
     return false;
   });
-  
+
   // Sort scenes using the same logic as the timeline view
   // Check current mode and sorting settings
   const currentMode = (plugin.settings as any).currentMode || 'narrative';
   const isChronologueMode = currentMode === 'chronologue';
   const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
   const forceChronological = isChronologueMode;
-  
+
   // Import and use the same sortScenes function that the timeline uses
   const { sortScenes } = await import('./sceneHelpers');
   const sortedScenes = sortScenes(uniqueScenes, sortByWhen, forceChronological);
-  
+
   // Convert to TFile objects
   const sceneFiles = sortedScenes
     .map(s => plugin.app.vault.getAbstractFileByPath(s.path!))
     .filter((f): f is TFile => f instanceof TFile);
-  
+
   // Determine sort order description
   let sortOrder: string;
   if (isChronologueMode) {
@@ -208,7 +209,7 @@ export async function getSortedSceneFiles(plugin: RadialTimelinePlugin): Promise
   } else {
     sortOrder = 'Narrative (by scene title/number)';
   }
-  
+
   return { files: sceneFiles, sortOrder };
 }
 
@@ -218,9 +219,9 @@ import { parseRuntimeField } from './runtimeEstimator';
  * Get all valid scenes from the timeline (wrapper for getting timeline items directly)
  */
 export async function getAllScenes(app: App, plugin: RadialTimelinePlugin): Promise<TimelineItem[]> {
-    const exportContext = getActiveBookExportContext(plugin);
-    const data = await plugin.getSceneData({ sourcePath: exportContext.sourceFolder });
-    return data.filter(s => s.itemType === 'Scene' || !s.itemType);
+  const exportContext = getActiveBookExportContext(plugin);
+  const data = await plugin.getSceneData({ sourcePath: exportContext.sourceFolder });
+  return data.filter(s => s.itemType === 'Scene' || !s.itemType);
 }
 
 /**
@@ -247,7 +248,7 @@ export async function getSceneFilesByOrder(
     }
 
     const isAllowedType = scene.itemType === 'Scene'
-        || (includeMatter && isMatter);
+      || (includeMatter && isMatter);
 
     if (isAllowedType && scene.path && !uniquePaths.has(scene.path)) {
       uniquePaths.add(scene.path);
@@ -488,7 +489,7 @@ export async function updateSceneWordCounts(
   for (let i = 0; i < sceneFiles.length; i++) {
     const file = sceneFiles[i];
     const scene = scenes[i];
-    
+
     if (!file || !scene) continue;
 
     try {

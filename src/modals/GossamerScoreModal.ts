@@ -276,7 +276,7 @@ export class GossamerScoreModal extends Modal {
     if (actualCount === 0) {
       const noBeatsWarning = contentEl.createEl('div', {
         text: settingsSystem === 'Custom'
-          ? `⚠️ No custom story beats found. Create notes with "Class: Beat" without "Beat Model" field, or change beat system in Settings.`
+          ? `⚠️ No custom story beats found. Create notes with "Class: Beat" and "Beat Model: ${beatModelLabel}", or change beat system in Settings.`
           : `⚠️ No story beats found with "Beat Model: ${beatModelLabel}". Check your beat notes have the correct Beat Model field, or change beat system in Settings.`
       });
       noBeatsWarning.addClass('rt-gossamer-warning');

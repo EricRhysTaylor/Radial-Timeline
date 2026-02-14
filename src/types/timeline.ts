@@ -10,13 +10,13 @@
  */
 export interface BookMeta {
     /** Book title */
-    title: string;
+    title?: string;
     /** Author name */
-    author: string;
+    author?: string;
     /** Copyright and rights info */
     rights?: {
-        copyright_holder: string;
-        year: number;
+        copyright_holder?: string;
+        year?: number;
     };
     /** Book identifiers */
     identifiers?: {
@@ -85,6 +85,8 @@ export interface TimelineItem {
     /** Backdrop world-layer context. Preferred key: Context. */
     Context?: string;
     "Beat Model"?: string;
+    /** Beat note is missing required Beat Model frontmatter value. */
+    missingBeatModel?: boolean;
     Range?: string;
     "Suggest Placement"?: string;
     missingWhen?: boolean;

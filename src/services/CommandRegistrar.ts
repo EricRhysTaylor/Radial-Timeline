@@ -289,6 +289,11 @@ export class CommandRegistrar {
             // Manuscript assembly
             // Pass BookMeta so semantic matter roles (e.g. copyright) can be rendered
             const bookMeta = this.plugin.getBookMeta();
+
+            if (bookMeta) {
+                if (!bookMeta.title) new Notice('Warning: BookMeta is missing "Title"');
+                if (bookMeta.rights && !bookMeta.rights.year) new Notice('Warning: BookMeta is missing "Rights: Year"');
+            }
             const assembled = await assembleManuscript(
                 slicedFiles,
                 this.app.vault,
@@ -468,7 +473,7 @@ export class CommandRegistrar {
             const templates = this.plugin.settings.sceneYamlTemplates || DEFAULT_SETTINGS.sceneYamlTemplates;
             const baseTemplate = templates?.base || DEFAULT_SETTINGS.sceneYamlTemplates!.base;
             const advancedFields = templates?.advanced || DEFAULT_SETTINGS.sceneYamlTemplates!.advanced;
-            
+
             // For advanced, merge base + advanced fields
             const template = type === 'advanced'
                 ? mergeTemplates(baseTemplate, advancedFields)

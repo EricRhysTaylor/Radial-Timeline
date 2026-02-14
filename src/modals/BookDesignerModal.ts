@@ -1068,7 +1068,7 @@ export class BookDesignerModal extends Modal {
         }
 
         const suffix = scenes > 3 ? '...' : '';
-        setting.setDesc(`Scenes will be numbered: ${examples.join(', ')}${suffix} based on ${scenes} scenes across ${max} units. Used in the Author Progress Report (APR) Zero stage.`);
+        setting.setDesc(`Scenes will be numbered: ${examples.join(', ')}${suffix} based on ${scenes} scenes across ${max} units.`);
     }
 
     onClose(): void {

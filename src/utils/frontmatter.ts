@@ -29,6 +29,7 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>, customMapp
     'beatmodel': 'Beat Model',
     'beatsupdate': 'Pulse Update',
     'pulseupdate': 'Pulse Update',
+    'reviewupdate': 'Pulse Update',
     'publishstage': 'Publish Stage',
     'scenenumber': 'Scene Number',
     'subplot': 'Subplot',

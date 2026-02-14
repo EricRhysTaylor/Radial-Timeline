@@ -1,6 +1,6 @@
 /* Template Dialog - Simple modals for save/delete/confirm actions */
 .rt-template-dialog {
-  --ert-group-gap: calc(var(--ert-gap-md) + var(--ert-gap-sm));
+  --ert-group-gap: var(--ert-gap-sm);
 }
 
 .rt-template-dialog .rt-glass-card.rt-sub-card {

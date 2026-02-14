@@ -548,18 +548,9 @@ export class RadialTimelineView extends ItemView {
                 
                 if (!isScene && !isBeatOrPlot) return;
                 
-                // Performance optimization: Only refresh if the change is relevant to the current mode
-                // Gossamer mode only cares about Beat/Plot notes, other modes care about Scene notes
-                const isGossamerMode = this._currentMode === 'gossamer';
-                if (isGossamerMode && !isBeatOrPlot) {
-                    // In gossamer mode but a scene note changed - ignore it
-                    return;
-                }
-                if (!isGossamerMode && isBeatOrPlot && !isScene) {
-                    // Not in gossamer mode and only a beat note changed (no scenes) - ignore it
-                    // Note: Some beat notes might also be scenes, so we check both
-                    return;
-                }
+                // Beat note frontmatter can affect timeline hover in multiple modes.
+                // Always refresh on Scene or Beat/Plot frontmatter change so note values
+                // remain the source of truth over settings defaults.
                 
                 // Check if this is a frontmatter change
                 const fileId = file.path;

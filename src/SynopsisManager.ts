@@ -1131,8 +1131,24 @@ export default class SynopsisManager {
       // --- Custom Hover Metadata Fields ---
       const isBeatItem = scene.itemType === 'Beat' || scene.itemType === 'Plot';
       const isBackdropItem = scene.itemType === 'Backdrop';
+      const beatModelForHover = (() => {
+        const raw = scene.rawFrontmatter?.['Beat Model'];
+        if (typeof raw === 'string' && raw.trim().length > 0) return raw;
+        const normalized = scene['Beat Model'];
+        if (typeof normalized === 'string' && normalized.trim().length > 0) return normalized;
+        return undefined;
+      })();
+      const readFrontmatterFieldValue = (fm: Record<string, unknown> | undefined, key: string): unknown => {
+        if (!fm) return undefined;
+        if (Object.prototype.hasOwnProperty.call(fm, key)) return fm[key];
+        const target = key.toLowerCase().replace(/[\s_-]/g, '');
+        for (const [fmKey, value] of Object.entries(fm)) {
+          if (fmKey.toLowerCase().replace(/[\s_-]/g, '') === target) return value;
+        }
+        return undefined;
+      };
       const hoverFieldSource = isBeatItem
-        ? getBeatConfigForItem(this.plugin.settings, scene.rawFrontmatter?.['Beat Model'] as string | undefined).beatHoverMetadataFields
+        ? getBeatConfigForItem(this.plugin.settings, beatModelForHover).beatHoverMetadataFields
         : isBackdropItem
           ? (this.plugin.settings.backdropHoverMetadataFields || [])
           : (this.plugin.settings.hoverMetadataFields || []);
@@ -1143,7 +1159,7 @@ export default class SynopsisManager {
 
         enabledHoverFields.forEach((field: HoverMetadataField) => {
           // Check if the scene has this key in its raw frontmatter
-          const sceneValue = scene.rawFrontmatter?.[field.key];
+          const sceneValue = readFrontmatterFieldValue(scene.rawFrontmatter as Record<string, unknown> | undefined, field.key);
           
           // Skip if value is undefined, null, empty string, or empty array
           if (sceneValue === undefined || sceneValue === null) return;

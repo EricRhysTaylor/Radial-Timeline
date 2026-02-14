@@ -234,6 +234,7 @@ const dirtyState = {
  */
 const savedCustomSetIds = new Set<string>();
 let _unsubTopBeatTabsDirty: (() => void) | null = null;
+let _unsubCustomSaveBarDirty: (() => void) | null = null;
 
 export function renderStoryBeatsSection(params: {
     app: App;
@@ -243,6 +244,8 @@ export function renderStoryBeatsSection(params: {
     const { app, plugin, containerEl } = params;
     _unsubTopBeatTabsDirty?.();
     _unsubTopBeatTabsDirty = null;
+    _unsubCustomSaveBarDirty?.();
+    _unsubCustomSaveBarDirty = null;
     containerEl.empty();
     containerEl.classList.add(ERT_CLASSES.STACK);
     const actsSection = containerEl.createDiv({ cls: ERT_CLASSES.STACK, attr: { [ERT_DATA.SECTION]: 'beats-acts' } });
@@ -490,6 +493,45 @@ export function renderStoryBeatsSection(params: {
         return matches;
     };
 
+    const collectBeatNotesMissingModelByExpectedNames = (expectedKeys: Set<string>): TimelineItem[] => {
+        if (expectedKeys.size === 0) return [];
+        const files = app.vault.getMarkdownFiles();
+        const matches: TimelineItem[] = [];
+
+        files.forEach(file => {
+            const key = normalizeBeatTitle(file.basename);
+            if (!expectedKeys.has(key)) return;
+
+            const cache = app.metadataCache.getFileCache(file);
+            const fm = (cache?.frontmatter ?? {}) as Record<string, unknown>;
+            const normalized = normalizeFrontmatterKeys(fm, plugin.settings.frontmatterMappings);
+            const classValue = normalized['Class'];
+            if (!classValue || !isStoryBeat(classValue)) return;
+
+            const beatModelValue = typeof normalized['Beat Model'] === 'string'
+                ? (normalized['Beat Model'] as string).trim()
+                : '';
+            if (beatModelValue.length > 0) return;
+
+            const actValue = normalized['Act'];
+            const actNumberRaw = actValue !== undefined && actValue !== null && actValue !== '' ? Number(actValue) : undefined;
+            const actNumber = Number.isFinite(actNumberRaw) ? actNumberRaw : undefined;
+
+            matches.push({
+                title: (normalized['Title'] as string | undefined) ?? file.basename,
+                path: file.path,
+                date: '',
+                actNumber,
+                act: actNumber ? String(actNumber) : undefined,
+                itemType: 'Beat',
+                missingBeatModel: true,
+                rawFrontmatter: normalized
+            });
+        });
+
+        return matches;
+    };
+
     let existingBeatLookup = new Map<string, TimelineItem[]>();
     let existingBeatCount = 0;
     let existingBeatMatchedCount = 0;
@@ -498,6 +540,7 @@ export function renderStoryBeatsSection(params: {
     let existingBeatMisalignedCount = 0;
     let existingBeatSyncedCount = 0;
     let existingBeatNewCount = 0;
+    let existingBeatMissingModelCount = 0;
     let existingBeatStatsSystem = '';
     let existingBeatKey = '';
     let existingBeatReady = false;
@@ -532,8 +575,9 @@ export function renderStoryBeatsSection(params: {
         const hasDups = existingBeatDuplicateCount > 0;
         const hasMisaligned = existingBeatMisalignedCount > 0;
         const hasMissing = existingBeatNewCount > 0;
+        const hasMissingModel = existingBeatMissingModelCount > 0;
         const allGood = existingBeatSyncedCount === existingBeatExpectedCount
-            && !hasMisaligned && !hasDups;
+            && !hasMisaligned && !hasDups && !hasMissingModel;
         if (hasDups) {
             return {
                 icon: 'alert-circle',
@@ -546,6 +590,13 @@ export function renderStoryBeatsSection(params: {
                 icon: 'alert-triangle',
                 statusClass: 'ert-beat-health-icon--warning',
                 tooltip: `${existingBeatMisalignedCount} beat note${existingBeatMisalignedCount !== 1 ? 's' : ''} need repair.`
+            };
+        }
+        if (hasMissingModel) {
+            return {
+                icon: 'alert-triangle',
+                statusClass: 'ert-beat-health-icon--warning',
+                tooltip: `Missing Beat Model (${existingBeatMissingModelCount}) found.`
             };
         }
         if (hasMissing) {
@@ -608,6 +659,8 @@ export function renderStoryBeatsSection(params: {
         const resolvedRanges = ranges ?? new Map<number, ActRange>();
         const expectedNames = buildExpectedBeatNames(selectedSystem);
         const expectedKeys = new Set(expectedNames.map(name => normalizeBeatTitle(name)).filter(k => k.length > 0));
+        const missingModelCandidates = collectBeatNotesMissingModelByExpectedNames(expectedKeys);
+        const missingModelLookup = buildExistingBeatLookup(missingModelCandidates);
         const buildCounts = (lookup: Map<string, TimelineItem[]>, total: number) => {
             existingBeatLookup = lookup;
             existingBeatCount = total;
@@ -615,6 +668,7 @@ export function renderStoryBeatsSection(params: {
             existingBeatExpectedCount = expectedNames.length;
             existingBeatMatchedCount = Array.from(expectedKeys).filter(key => lookup.has(key)).length;
             existingBeatDuplicateCount = Array.from(expectedKeys).filter(key => (lookup.get(key)?.length ?? 0) > 1).length;
+            existingBeatMissingModelCount = missingModelCandidates.length;
 
             // Compute misaligned count: beats matched by name but wrong number or act
             const maxActs = getActCount();
@@ -656,7 +710,8 @@ export function renderStoryBeatsSection(params: {
             });
             existingBeatMisalignedCount = misaligned;
             existingBeatSyncedCount = Math.max(0, existingBeatMatchedCount - existingBeatMisalignedCount - existingBeatDuplicateCount);
-            existingBeatNewCount = Math.max(0, existingBeatExpectedCount - existingBeatMatchedCount);
+            const missingModelMatchedCount = Array.from(expectedKeys).filter(key => missingModelLookup.has(key)).length;
+            existingBeatNewCount = Math.max(0, existingBeatExpectedCount - existingBeatMatchedCount - missingModelMatchedCount);
         };
 
         const initialLookup = buildExistingBeatLookup(beats);
@@ -794,8 +849,8 @@ export function renderStoryBeatsSection(params: {
         const savedSetActive = !starterActive && savedSystems.some(s => s.id === activeId);
         const hasSetOrigin = starterActive || savedSetActive; // loaded from any set
 
-        // Ensure baseline exists when settings opens with a set already active
-        if (hasSetOrigin && !dirtyState.baselineId) {
+        // Ensure baseline exists for whichever custom set is active (starter, saved, or default).
+        if (!dirtyState.baselineId || dirtyState.baselineId !== activeId) {
             captureSetBaseline(activeId);
         }
 
@@ -895,8 +950,9 @@ export function renderStoryBeatsSection(params: {
             const hasDups = existingBeatDuplicateCount > 0;
             const hasMisaligned = existingBeatMisalignedCount > 0;
             const hasMissing = existingBeatNewCount > 0;
+            const hasMissingModel = existingBeatMissingModelCount > 0;
             const allGood = existingBeatSyncedCount === existingBeatExpectedCount
-                && !hasMisaligned && !hasDups;
+                && !hasMisaligned && !hasDups && !hasMissingModel;
 
             if (hasDups) {
                 healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--critical';
@@ -906,6 +962,10 @@ export function renderStoryBeatsSection(params: {
                 healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--warning';
                 setIcon(healthIcon, 'alert-triangle');
                 setTooltip(healthIcon, `${existingBeatMisalignedCount} beat note${existingBeatMisalignedCount !== 1 ? 's' : ''} need repair.`);
+            } else if (hasMissingModel) {
+                healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--warning';
+                setIcon(healthIcon, 'alert-triangle');
+                setTooltip(healthIcon, `Missing Beat Model (${existingBeatMissingModelCount}) found.`);
             } else if (hasMissing) {
                 healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--warning';
                 setIcon(healthIcon, 'alert-triangle');
@@ -1465,6 +1525,44 @@ export function renderStoryBeatsSection(params: {
     const fieldsContainer = beatSystemCard.createDiv({ cls: ERT_CLASSES.STACK });
     // Stage 3: PRO Sets (saved beat systems manager)
     const proTemplatesContainer = beatSystemCard.createDiv({ cls: ERT_CLASSES.STACK });
+    let saveSetModalHandler: ((opts: { isCopy: boolean }) => Promise<void>) | null = null;
+
+    // Shared save footer for Custom workflow (Design / Fields / Pro Sets).
+    const saveBar = beatSystemCard.createDiv({ cls: 'ert-custom-savebar ert-settings-hidden' });
+    const saveBarStatus = saveBar.createDiv({ cls: 'ert-custom-savebar-status' });
+    const saveBarStatusIcon = saveBarStatus.createSpan({ cls: 'ert-custom-savebar-status-icon' });
+    const saveBarStatusText = saveBarStatus.createSpan({ cls: 'ert-custom-savebar-status-text' });
+    const saveBarActions = saveBar.createDiv({ cls: 'ert-custom-savebar-actions' });
+    const saveBarButton = new ButtonComponent(saveBarActions)
+        .setButtonText('Save')
+        .onClick(() => {
+            void (async () => {
+                if ((plugin.settings.beatSystem || 'Custom') !== 'Custom') return;
+                const proActiveNow = isProfessionalActive(plugin);
+                if (proActiveNow && saveSetModalHandler) {
+                    await saveSetModalHandler({ isCopy: isStarterSetActive() });
+                    return;
+                }
+
+                const activeId = plugin.settings.activeCustomBeatSystemId ?? 'default';
+                await plugin.saveSettings();
+                captureSetBaseline(activeId);
+                dirtyState.notify();
+                renderBeatSystemTabs();
+                new Notice('Custom set saved.');
+            })();
+        });
+    const updateSaveBar = () => {
+        const isCustom = (plugin.settings.beatSystem || 'Custom') === 'Custom';
+        saveBar.toggleClass('ert-settings-hidden', !isCustom);
+        if (!isCustom) return;
+        const dirty = isSetDirty();
+        saveBar.toggleClass('ert-custom-savebar--dirty', dirty);
+        setIcon(saveBarStatusIcon, dirty ? 'alert-triangle' : 'check-circle');
+        saveBarStatusText.setText(dirty ? 'Modified — save changes to keep this set state.' : 'Saved');
+        saveBarButton.setButtonText(dirty ? 'Save changes' : 'Save');
+        saveBarButton.buttonEl.toggleClass('ert-custom-savebar-btn--dirty', dirty);
+    };
 
     // ── Stage switcher rendering + visibility ───────────────────────────
     const renderStageSwitcher = () => {
@@ -1541,6 +1639,7 @@ export function renderStoryBeatsSection(params: {
             designActionsContainer.toggleClass('ert-settings-hidden', false);
             fieldsContainer.toggleClass('ert-settings-hidden', true);
             proTemplatesContainer.toggleClass('ert-settings-hidden', true);
+            updateSaveBar();
             return;
         }
 
@@ -1554,6 +1653,7 @@ export function renderStoryBeatsSection(params: {
         if (_currentCustomStage === 'design') {
             refreshCustomBeats?.(true);
         }
+        updateSaveBar();
     };
 
     const updateBeatSystemCard = (system: string) => {
@@ -2107,7 +2207,7 @@ export function renderStoryBeatsSection(params: {
 
     savedCard.createEl('p', {
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Starter sets are curated starting points. Saved sets are your own versions you can edit and delete. Core: one custom set. Pro: unlimited custom sets and five bonus starter sets.'
+        text: 'Blank custom is always available as a reset. Starter sets are curated starting points. Saved sets are your own versions you can edit and delete. Core: one custom set. Pro: unlimited custom sets and five bonus starter sets.'
     });
 
     const savedControlsContainer = savedCard.createDiv({ cls: ERT_CLASSES.STACK });
@@ -2168,9 +2268,19 @@ export function renderStoryBeatsSection(params: {
         renderSavedBeatSystems();       // Pro Sets tab (dropdown, preview, dirty)
         updateBeatSystemCard('Custom'); // Main tabs + stage switcher + visibility
         renderBeatSystemTabs();         // Ensure Custom tab is visually active
+        updateSaveBar();
     };
 
-    type LoadableEntry = { id: string; name: string; description?: string; beats: { name: string; act: number }[]; beatYamlAdvanced?: string; beatHoverMetadataFields?: { key: string; label: string; icon: string; enabled: boolean }[]; builtIn: boolean };
+    type LoadableEntry = {
+        id: string;
+        name: string;
+        description?: string;
+        beats: { name: string; act: number }[];
+        beatYamlAdvanced?: string;
+        beatHoverMetadataFields?: { key: string; label: string; icon: string; enabled: boolean }[];
+        builtIn: boolean;
+        isDefault?: boolean;
+    };
 
     const renderSavedBeatSystems = () => {
         // Unsubscribe previous Pro Sets dirty listener before clearing DOM
@@ -2188,6 +2298,16 @@ export function renderStoryBeatsSection(params: {
 
         // Build unified lookup of all loadable systems (built-in Pro + user-saved)
         const allLoadable = new Map<string, LoadableEntry>();
+        allLoadable.set('default', {
+            id: 'default',
+            name: 'Custom',
+            description: 'Blank custom set (reset to zero).',
+            beats: [],
+            beatYamlAdvanced: '',
+            beatHoverMetadataFields: [],
+            builtIn: true,
+            isDefault: true
+        });
         PRO_BEAT_SETS.forEach(ps => allLoadable.set(ps.id, { ...ps, builtIn: true }));
         savedSystems.forEach(s => allLoadable.set(s.id, { ...s, builtIn: false }));
 
@@ -2201,8 +2321,11 @@ export function renderStoryBeatsSection(params: {
             .setName('Select a set')
             .addDropdown(drop => {
                 dropdownRef = drop;
-                const hasAny = PRO_BEAT_SETS.length > 0 || savedSystems.length > 0;
+                const hasAny = true;
                 drop.addOption('', hasAny ? 'Select a set...' : '—');
+
+                // Always-first reset option
+                drop.addOption('default', '↺ Blank custom (reset)');
 
                 // Built-in Pro sets first
                 if (PRO_BEAT_SETS.length > 0) {
@@ -2319,10 +2442,14 @@ export function renderStoryBeatsSection(params: {
             const titleRow = previewEl.createDiv({ cls: 'ert-set-preview-header' });
             titleRow.createSpan({ text: selectedEntry.name, cls: 'ert-set-preview-title' });
             const tag = titleRow.createSpan({
-                text: selectedEntry.builtIn ? 'Starter' : 'Saved',
+                text: selectedEntry.isDefault ? 'Core default' : (selectedEntry.builtIn ? 'Starter' : 'Saved'),
                 cls: `ert-set-preview-tag ${selectedEntry.builtIn ? 'ert-set-preview-tag--starter' : 'ert-set-preview-tag--saved'}`
             });
-            if (selectedEntry.builtIn) setIcon(tag, 'star');
+            if (selectedEntry.isDefault) {
+                setIcon(tag, 'rotate-ccw');
+            } else if (selectedEntry.builtIn) {
+                setIcon(tag, 'star');
+            }
 
             if (selectedEntry.description) {
                 const descEl = previewEl.createDiv({ cls: 'ert-set-preview-desc ert-set-preview-desc--clamped' });
@@ -2480,6 +2607,7 @@ export function renderStoryBeatsSection(params: {
                 renderSavedBeatSystems();
             }
         };
+        saveSetModalHandler = saveSetModal;
 
         // Load set CTA
         let loadBtn: ButtonComponent;
@@ -2596,6 +2724,8 @@ export function renderStoryBeatsSection(params: {
     renderSavedBeatSystems();
     updateBeatSystemCard(plugin.settings.beatSystem || 'Custom');
     renderBeatSystemTabs();
+    updateSaveBar();
+    _unsubCustomSaveBarDirty = dirtyState.subscribe(updateSaveBar);
     _unsubTopBeatTabsDirty = dirtyState.subscribe(() => {
         renderBeatSystemTabs();
     });
@@ -3640,12 +3770,21 @@ export function renderStoryBeatsSection(params: {
         };
         let fillEmptyPlan: FillEmptyPlan | null = null;
 
-        const isCustomBeatAudit = noteType === 'Beat'
-            && plugin.settings.beatSystem === 'Custom'
-            && !!beatSystemKey
-            && beatSystemKey.startsWith('custom:');
+        const resolveBeatAuditSystemKey = (): string | undefined => {
+            if (noteType !== 'Beat') return beatSystemKey;
+            return plugin.settings.beatSystem === 'Custom'
+                ? `custom:${plugin.settings.activeCustomBeatSystemId ?? 'default'}`
+                : (plugin.settings.beatSystem ?? 'Save The Cat');
+        };
+        const isCustomBeatAudit = (): boolean => {
+            const activeBeatSystemKey = resolveBeatAuditSystemKey();
+            return noteType === 'Beat'
+                && plugin.settings.beatSystem === 'Custom'
+                && !!activeBeatSystemKey
+                && activeBeatSystemKey.startsWith('custom:');
+        };
         const isCustomBeatSetOfficial = (): boolean => {
-            if (!isCustomBeatAudit) return false;
+            if (!isCustomBeatAudit()) return false;
             const activeId = plugin.settings.activeCustomBeatSystemId ?? 'default';
             if (activeId === 'default') return false;
             if (!savedCustomSetIds.has(activeId)) return false;
@@ -3671,15 +3810,15 @@ export function renderStoryBeatsSection(params: {
             if (Array.isArray(value)) return value.length > 0;
             return value.trim().length > 0;
         };
-        const buildFillEmptyPlan = (files: TFile[]): FillEmptyPlan | null => {
+        const buildFillEmptyPlan = (files: TFile[], activeBeatSystemKey?: string): FillEmptyPlan | null => {
             if (!isCustomBeatSetOfficial()) return null;
 
             const { sourcePath, files: scopedFiles } = getScopedBookFiles(files);
             if (!sourcePath || scopedFiles.length === 0) return null;
 
-            const customKeys = getCustomKeys('Beat', plugin.settings, beatSystemKey);
+            const customKeys = getCustomKeys('Beat', plugin.settings, activeBeatSystemKey);
             if (customKeys.length === 0) return null;
-            const defaults = getCustomDefaults('Beat', plugin.settings, beatSystemKey);
+            const defaults = getCustomDefaults('Beat', plugin.settings, activeBeatSystemKey);
 
             const fieldsToInsert: Record<string, string | string[]> = {};
             customKeys.forEach((key) => {
@@ -3732,7 +3871,7 @@ export function renderStoryBeatsSection(params: {
         const auditSetting = new Settings(parentEl)
             .setName(`Validate ${noteType.toLowerCase()} properties`)
             .setDesc(
-                isCustomBeatAudit
+                isCustomBeatAudit()
                     ? 'Scan beat notes for schema drift and empty custom-field values.'
                     : `Scan ${noteType.toLowerCase()} notes for schema drift — missing fields, extra keys, and ordering issues.`
             );
@@ -3785,7 +3924,7 @@ export function renderStoryBeatsSection(params: {
         });
 
         // Pre-check: if zero notes exist, mute the audit button with guidance
-        const preCheckFiles = collectFilesForAudit(app, noteType, plugin.settings, beatSystemKey);
+        const preCheckFiles = collectFilesForAudit(app, noteType, plugin.settings, resolveBeatAuditSystemKey());
         if (preCheckFiles.length === 0 && auditBtn) {
             auditBtn.setDisabled(true);
             auditBtn.setTooltip(`No ${noteType.toLowerCase()} notes found. Create beat notes first.`);
@@ -3795,7 +3934,8 @@ export function renderStoryBeatsSection(params: {
         const resultsEl = parentEl.createDiv({ cls: 'ert-audit-results-row ert-settings-hidden' });
 
         const runAudit = () => {
-            const files = collectFilesForAudit(app, noteType, plugin.settings, beatSystemKey);
+            const activeBeatSystemKey = resolveBeatAuditSystemKey();
+            const files = collectFilesForAudit(app, noteType, plugin.settings, activeBeatSystemKey);
             if (files.length === 0) {
                 resultsEl.empty();
                 resultsEl.classList.remove('ert-settings-hidden');
@@ -3811,7 +3951,7 @@ export function renderStoryBeatsSection(params: {
                 settings: plugin.settings,
                 noteType,
                 files,
-                beatSystemKey,
+                beatSystemKey: activeBeatSystemKey,
             });
 
             console.debug('[YamlAudit] yaml_audit_run', {
@@ -3826,14 +3966,14 @@ export function renderStoryBeatsSection(params: {
             });
 
             copyBtn?.classList.remove('ert-settings-hidden');
-            const allowInsertMissing = !isCustomBeatAudit;
+            const allowInsertMissing = !isCustomBeatAudit();
             if (allowInsertMissing && auditResult.summary.notesWithMissing > 0) {
                 backfillBtn?.classList.remove('ert-settings-hidden');
             } else {
                 backfillBtn?.classList.add('ert-settings-hidden');
             }
 
-            fillEmptyPlan = buildFillEmptyPlan(files);
+            fillEmptyPlan = buildFillEmptyPlan(files, activeBeatSystemKey);
             if (fillEmptyPlan) {
                 fillEmptyBtn?.classList.remove('ert-settings-hidden');
                 fillEmptyBtn?.setAttribute(
@@ -4056,7 +4196,7 @@ export function renderStoryBeatsSection(params: {
         const handleBackfill = async () => {
             if (!auditResult || auditResult.summary.notesWithMissing === 0) return;
 
-            const defaults = getCustomDefaults(noteType, plugin.settings, beatSystemKey);
+            const defaults = getCustomDefaults(noteType, plugin.settings, resolveBeatAuditSystemKey());
             const targetFiles = auditResult.notes
                 .filter(n => n.missingFields.length > 0)
                 .map(n => n.file);
@@ -4128,7 +4268,7 @@ export function renderStoryBeatsSection(params: {
         };
 
         const handleFillEmptyValues = async () => {
-            if (!isCustomBeatAudit) {
+            if (!isCustomBeatAudit()) {
                 new Notice('Fill empty values is available for Custom beat systems only.');
                 return;
             }
@@ -4183,7 +4323,7 @@ export function renderStoryBeatsSection(params: {
 
             console.debug('[YamlAudit] yaml_fill_empty_execute', {
                 noteType,
-                beatSystemKey,
+                beatSystemKey: resolveBeatAuditSystemKey(),
                 sourcePath: fillEmptyPlan.sourcePath,
                 updated: result.updated,
                 filledFields: result.filledFields,
@@ -4298,12 +4438,14 @@ export function renderStoryBeatsSection(params: {
             const misaligned = existingBeatMisalignedCount;
             const newBeats = existingBeatNewCount;
             const duplicates = existingBeatDuplicateCount;
-            const allSynced = synced === existingBeatExpectedCount && misaligned === 0 && duplicates === 0;
+            const missingModel = existingBeatMissingModelCount;
+            const allSynced = synced === existingBeatExpectedCount && misaligned === 0 && duplicates === 0 && missingModel === 0;
             const hasNew = newBeats > 0;
             const hasMisaligned = misaligned > 0;
             const hasDuplicates = duplicates > 0;
+            const hasMissingModel = missingModel > 0;
 
-            if (existingBeatMatchedCount === 0) {
+            if (existingBeatMatchedCount === 0 && !hasMissingModel) {
                 // Scenario A: Fresh — no existing files
                 setting.setDesc(baseDesc);
                 if (createTemplatesButton) {
@@ -4325,6 +4467,7 @@ export function renderStoryBeatsSection(params: {
             if (misaligned > 0) parts.push(`${misaligned} misaligned`);
             if (newBeats > 0) parts.push(`${newBeats} missing`);
             if (duplicates > 0) parts.push(`${duplicates} duplicate${duplicates > 1 ? 's' : ''}`);
+            if (missingModel > 0) parts.push(`Missing Beat Model (${missingModel})`);
             let statusDesc = parts.join(', ') + '.';
 
             if (allSynced) {
@@ -4350,16 +4493,22 @@ export function renderStoryBeatsSection(params: {
                 // Scenario C: All matched, some misaligned — no new beats
                 if (createTemplatesButton) {
                     createTemplatesButton.setDisabled(true);
-                    createTemplatesButton.setTooltip('All beats have files. Use Repair to fix alignment.');
+                    createTemplatesButton.setTooltip(hasMissingModel
+                        ? 'All beats have files. Use Repair to set missing Beat Model values.'
+                        : 'All beats have files. Use Repair to fix alignment.');
                 }
             }
 
-            // Merge button: show when misaligned beats exist (Custom only)
-            if (mergeTemplatesButton && isCustom && hasMisaligned) {
+            // Merge button: show when misaligned beats or missing Beat Model values exist (Custom only)
+            if (mergeTemplatesButton && isCustom && (hasMisaligned || hasMissingModel)) {
                 mergeTemplatesButton.buttonEl.removeClass('ert-hidden');
                 mergeTemplatesButton.setDisabled(false);
-                mergeTemplatesButton.setButtonText(`Repair ${misaligned} beat note${misaligned > 1 ? 's' : ''}`);
-                mergeTemplatesButton.setTooltip(`Fix ${misaligned} misaligned beat note${misaligned > 1 ? 's' : ''} to match this list`);
+                const repairCount = misaligned + missingModel;
+                mergeTemplatesButton.setButtonText(`Repair ${repairCount} beat note${repairCount > 1 ? 's' : ''}`);
+                const repairBits: string[] = [];
+                if (misaligned > 0) repairBits.push(`${misaligned} misaligned`);
+                if (missingModel > 0) repairBits.push(`${missingModel} missing Beat Model`);
+                mergeTemplatesButton.setTooltip(`Fix ${repairBits.join(' and ')} beat note${repairCount > 1 ? 's' : ''} to match this list`);
             }
 
             if (hasDuplicates) {
@@ -4393,17 +4542,23 @@ export function renderStoryBeatsSection(params: {
 
         const ranges = await collectActRanges(true);
         const beatNumbers = buildBeatNumbers(beats, maxActs, ranges ?? new Map());
+        const expectedKeys = new Set(beats.map(b => normalizeBeatTitle(b.name)).filter(k => k.length > 0));
         const existing = await collectExistingBeatNotes(true, storyStructureName);
-        if (!existing || existing.length === 0) {
+        const existingMatched = existing ?? [];
+        const missingModelCandidates = collectBeatNotesMissingModelByExpectedNames(expectedKeys);
+        if (existingMatched.length === 0 && missingModelCandidates.length === 0) {
             new Notice('No existing beat notes found to merge.');
             return;
         }
 
-        const existingLookup = buildExistingBeatLookup(existing);
-        const customModelName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom');
+        const existingLookup = buildExistingBeatLookup(existingMatched);
+        const missingModelLookup = buildExistingBeatLookup(missingModelCandidates);
+        const customModelName = storyStructureName === 'Custom'
+            ? normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom')
+            : storyStructureName;
         const conflicts: string[] = [];
         const duplicates: string[] = [];
-        const updates: Array<{ file: TFile; targetPath: string; act: number }> = [];
+        const updates: Array<{ file: TFile; targetPath: string; act: number; needsBeatModelFix: boolean }> = [];
         const duplicateKeys = new Set<string>();
 
         const keyCounts = new Map<string, number>();
@@ -4423,7 +4578,14 @@ export function renderStoryBeatsSection(params: {
                 duplicates.push(beatLine.name);
                 return;
             }
-            const matches = existingLookup.get(key);
+            let matches = existingLookup.get(key);
+            let needsBeatModelFix = false;
+            if (!matches || matches.length === 0) {
+                const missingMatches = missingModelLookup.get(key);
+                if (!missingMatches || missingMatches.length === 0) return;
+                matches = missingMatches;
+                needsBeatModelFix = true;
+            }
             if (!matches || matches.length === 0) return;
             if (matches.length > 1) {
                 duplicates.push(beatLine.name);
@@ -4446,7 +4608,7 @@ export function renderStoryBeatsSection(params: {
                 return;
             }
 
-            updates.push({ file, targetPath, act: beatLine.act });
+            updates.push({ file, targetPath, act: beatLine.act, needsBeatModelFix });
         });
 
         if (updates.length === 0) {
@@ -4502,9 +4664,11 @@ export function renderStoryBeatsSection(params: {
 
         const renamedCount = renameOps.length;
         const updatedCount = updates.length;
+        const modelFixedCount = updates.filter(update => update.needsBeatModelFix).length;
         const conflictHint = conflicts.length > 0 ? ` ${conflicts.length} conflict${conflicts.length > 1 ? 's' : ''} skipped.` : '';
         const duplicateHint = duplicates.length > 0 ? ` ${duplicates.length} duplicate title${duplicates.length > 1 ? 's' : ''} skipped.` : '';
-        new Notice(`Merged ${updatedCount} beat note${updatedCount > 1 ? 's' : ''} (${renamedCount} renamed).${conflictHint}${duplicateHint}`);
+        const modelHint = modelFixedCount > 0 ? ` Set Beat Model on ${modelFixedCount} note${modelFixedCount > 1 ? 's' : ''}.` : '';
+        new Notice(`Merged ${updatedCount} beat note${updatedCount > 1 ? 's' : ''} (${renamedCount} renamed).${modelHint}${conflictHint}${duplicateHint}`);
     }
 
     async function createBeatTemplates(): Promise<void> {

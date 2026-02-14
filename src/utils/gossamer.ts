@@ -119,9 +119,9 @@ export function filterBeatsBySystem<T>(
     // Default Custom: exclude beats that belong to built-in systems
     return beats.filter(b => {
       const beatModel = (b as any)["Beat Model"]; // SAFE: dynamic field access for Beat Model filtering
-      if (!beatModel || typeof beatModel !== 'string') return true; // Include beats with no Beat Model
+      if (!beatModel || typeof beatModel !== 'string') return false; // Missing Beat Model is invalid for Beat notes
       const modelKey = toBeatModelMatchKey(beatModel);
-      if (!modelKey) return true;
+      if (!modelKey) return false;
       if (customKey) {
         // When a named custom set is active, keep scope tight to that set (+legacy generic Custom).
         return modelKey === customKey || modelKey === 'custom';
@@ -218,7 +218,7 @@ export function buildRunFromGossamerField(
   // Filter Beat notes by Beat Model only if explicitly specified and not empty
   let plotNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
   
-  if (toBeatModelMatchKey(selectedBeatModel ?? '') && plotNotes.some(p => p["Beat Model"])) {
+  if (toBeatModelMatchKey(selectedBeatModel ?? '')) {
     plotNotes = filterBeatsBySystem(plotNotes, selectedBeatModel);
   }
   
@@ -349,7 +349,7 @@ export function buildRunFromDefault(scenes?: { itemType?: string; subplot?: stri
   // We need to construct a "Virtual" run composed of the latest scores
   // First, let's reuse the logic to filter and sort notes
   let plotNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
-  if (toBeatModelMatchKey(selectedBeatModel ?? '') && plotNotes.some(p => p["Beat Model"])) {
+  if (toBeatModelMatchKey(selectedBeatModel ?? '')) {
     plotNotes = filterBeatsBySystem(plotNotes, selectedBeatModel);
   }
   
@@ -575,7 +575,7 @@ export function extractBeatOrder(scenes: { itemType?: string; subplot?: string; 
   let plotBeats = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
   
   // Use centralized filtering helper (single source of truth)
-  if (toBeatModelMatchKey(selectedBeatModel ?? '') && plotBeats.some(p => p["Beat Model"])) {
+  if (toBeatModelMatchKey(selectedBeatModel ?? '')) {
     plotBeats = filterBeatsBySystem(plotBeats, selectedBeatModel);
   }
   

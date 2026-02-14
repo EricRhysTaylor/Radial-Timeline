@@ -25,27 +25,7 @@ export interface GetSceneDataOptions {
     sourcePath?: string;  // Override the default source path (used for Social APR project targeting)
 }
 
-const PULSE_FLAG_METADATA_KEYS = [
-    'Pulse Update',
-    'PulseUpdate',
-    'pulseupdate',
-    'Beats Update',
-    'BeatsUpdate',
-    'beatsupdate',
-    'Review Update',
-    'ReviewUpdate',
-    'reviewupdate'
-];
-
-function getPulseUpdateFromMetadata(metadata: Record<string, unknown> | undefined): unknown {
-    if (!metadata) return undefined;
-    for (const key of PULSE_FLAG_METADATA_KEYS) {
-        if (Object.prototype.hasOwnProperty.call(metadata, key)) {
-            return metadata[key];
-        }
-    }
-    return undefined;
-}
+// [PULSE_FLAG_METADATA_KEYS and helper removed - normalization handles this]
 
 export class SceneDataService {
     private app: App;
@@ -54,10 +34,26 @@ export class SceneDataService {
     private _bookMeta: BookMeta | null = null;
     /** Tracks one-time migration notices to avoid repetitive console spam. */
     private migrationDebugNotices = new Set<string>();
+    /** Tracks usage of compatibility fallbacks for metrics. */
+    private migrationCounters = new Map<string, number>();
 
     constructor(app: App, settings: RadialTimelineSettings) {
         this.app = app;
         this.settings = settings;
+    }
+
+    private trackCompatUsage(id: string, file: string, message?: string): void {
+        this.migrationCounters.set(id, (this.migrationCounters.get(id) ?? 0) + 1);
+        if (message) {
+            // Uniquely identify this warning by ID + file path
+            const warningKey = `${id}:${file}`;
+            this.logMigrationDebugOnce(warningKey, {
+                event: 'compat_fallback',
+                path: file,
+                msg: message,
+                fallbackId: id
+            });
+        }
     }
 
     /**
@@ -102,6 +98,8 @@ export class SceneDataService {
         const plotsToProcess: Array<{ file: TFile, metadata: Record<string, unknown>, validActNumber: number }> = [];
         // Reset BookMeta — will be populated if a BookMeta note is found
         this._bookMeta = null;
+        // Reset metrics for this run
+        this.migrationCounters.clear();
 
         for (const file of files) {
             try {
@@ -154,8 +152,30 @@ export class SceneDataService {
                             ? String(durationValue)
                             : undefined;
 
-                        const pulseUpdate = getPulseUpdateFromMetadata(metadata);
-                        const pulseLastUpdated = metadata["Pulse Last Updated"] ?? metadata["Beats Last Updated"];
+                        const pulseUpdate = metadata["Pulse Update"];
+                        const pulseLastUpdated = metadata["Pulse Last Updated"];
+
+                        // Compat: Check for legacy keys (metrics only)
+                        if (rawMetadata) {
+                            // F005: Beats/Review update legacy flags
+                            if ('Beats Update' in rawMetadata || 'beatsupdate' in rawMetadata) {
+                                this.trackCompatUsage('Beats Update->Pulse Update', file.path, 'Using legacy field "Beats Update". Consider renaming to "Pulse Update".');
+                            }
+                            if ('Review Update' in rawMetadata || 'reviewupdate' in rawMetadata) {
+                                this.trackCompatUsage('Review Update->Pulse Update', file.path, 'Using legacy field "Review Update". Consider renaming to "Pulse Update".');
+                            }
+                            if ('Beats Last Updated' in rawMetadata || 'beatslastupdated' in rawMetadata) {
+                                this.trackCompatUsage('Beats Last Updated->Pulse Last Updated', file.path, 'Using legacy field "Beats Last Updated". Consider renaming to "Pulse Last Updated".');
+                            }
+                            // F013: iterations -> Iteration
+                            if ('iterations' in rawMetadata || 'revision' in rawMetadata) {
+                                this.trackCompatUsage('iterations->Iteration', file.path, 'Using legacy field "iterations/revision". Consider renaming to "Iteration".');
+                            }
+                            // Runtime Profile (already removed, but tracking presence for awareness)
+                            if ('runtimeProfile' in rawMetadata) {
+                                this.trackCompatUsage('runtimeProfile->Runtime Profile', file.path, 'Using legacy camelCase "runtimeProfile". Rename to "Runtime Profile".');
+                            }
+                        }
 
                         // Parse Character field and strip Obsidian wiki links [[...]]
                         const rawCharacter = metadata.Character;
@@ -186,7 +206,7 @@ export class SceneDataService {
                             }
                         }
 
-                        const runtimeProfileRaw = metadata["Runtime Profile"] ?? metadata["RuntimeProfile"] ?? metadata["runtimeProfile"];
+                        const runtimeProfileRaw = metadata["Runtime Profile"] ?? metadata["RuntimeProfile"];
                         const runtimeProfile = runtimeProfileRaw !== undefined && runtimeProfileRaw !== null
                             ? String(runtimeProfileRaw).trim()
                             : undefined;
@@ -268,12 +288,7 @@ export class SceneDataService {
                         : undefined;
                     const backdropContext = contextValue ?? legacySynopsisValue;
                     if (!contextValue && legacySynopsisValue) {
-                        this.logMigrationDebugOnce(`backdrop-synopsis-to-context:${file.path}`, {
-                            event: 'backdrop_legacy_synopsis_read',
-                            path: file.path,
-                            action: 'using Synopsis as Context for compatibility',
-                            writePolicy: 'new writes should use Context'
-                        });
+                        this.trackCompatUsage('Backdrop.Synopsis->Context', file.path, 'Using legacy field "Synopsis" for backdrop Context. Consider renaming to "Context".');
                     }
 
                     scenes.push({
@@ -300,20 +315,35 @@ export class SceneDataService {
                     const publisher = metadata.Publisher as Record<string, unknown> | undefined;
 
                     this._bookMeta = {
-                        title: (book?.title as string) ?? '',
-                        author: (book?.author as string) ?? '',
+                        title: (book?.title as string) || undefined,
+                        author: (book?.author as string) || undefined,
                         rights: rights ? {
-                            copyright_holder: (rights.copyright_holder as string) ?? '',
-                            year: (rights.year as number) ?? new Date().getFullYear()
+                            copyright_holder: (rights.copyright_holder as string) || undefined,
+                            year: (rights.year as number) ?? undefined
                         } : undefined,
                         identifiers: identifiers ? {
-                            isbn_paperback: (identifiers.isbn_paperback as string) ?? ''
+                            isbn_paperback: (identifiers.isbn_paperback as string) || undefined
                         } : undefined,
                         publisher: publisher ? {
-                            name: (publisher.name as string) ?? ''
+                            name: (publisher.name as string) || undefined
                         } : undefined,
                         sourcePath: file.path
                     };
+
+                    if (!this._bookMeta.title) {
+                        this.logMigrationDebugOnce('book-meta-missing-title', {
+                            event: 'book_meta_missing_title',
+                            path: file.path,
+                            action: 'BookMeta is missing required "title" field'
+                        });
+                    }
+                    if (this._bookMeta.rights && !this._bookMeta.rights.year) {
+                        this.logMigrationDebugOnce('book-meta-missing-year', {
+                            event: 'book_meta_missing_year',
+                            path: file.path,
+                            action: 'BookMeta is missing required "rights.year" field'
+                        });
+                    }
 
                 } else if (metadata && (metadata.Class === "Frontmatter" || metadata.Class === "Backmatter")) {
                     // Front-matter / back-matter notes – included in manuscript pipeline,
@@ -396,17 +426,16 @@ export class SceneDataService {
             // Beats are structural, not temporal — no When field support.
             const dateKey = '';
 
-            // Get beat system from metadata or plugin settings
-            const beatModel = (metadata["Beat Model"] || this.settings.beatSystem || "") as string;
+            // Beat Model is required for Beat notes; do not silently infer when missing.
+            const beatModelRaw = typeof metadata["Beat Model"] === 'string'
+                ? String(metadata["Beat Model"]).trim()
+                : '';
+            const beatModel = beatModelRaw.length > 0 ? beatModelRaw : undefined;
+            const missingBeatModel = !beatModel;
             const purpose = (() => {
                 if (typeof metadata.Purpose === 'string') return metadata.Purpose;
                 if (typeof metadata.Description === 'string') {
-                    this.logMigrationDebugOnce(`beat-description-to-purpose:${file.path}`, {
-                        event: 'beat_legacy_description_read',
-                        path: file.path,
-                        action: 'using Description as Purpose for compatibility',
-                        writePolicy: 'new writes should use Purpose'
-                    });
+                    this.trackCompatUsage('Beat.Description->Purpose', file.path, 'Using legacy field "Description" for beat Purpose. Consider renaming to "Purpose".');
                     return metadata.Description;
                 }
                 return undefined;
@@ -425,6 +454,7 @@ export class SceneDataService {
                 Purpose: purpose,
                 Description: metadata.Description as string | undefined,
                 "Beat Model": beatModel,
+                missingBeatModel,
                 Range: metadata.Range as string | undefined,
                 "Suggest Placement": metadata["Suggest Placement"] as string | undefined,
                 itemType: "Beat", // Modern standard - renderer should use isBeatNote() helper
@@ -437,6 +467,14 @@ export class SceneDataService {
                 "Publish Stage": metadata["Publish Stage"] as string | undefined,
                 // Raw frontmatter for accessing Gossamer Justification and other dynamic fields
                 rawFrontmatter: metadata
+            });
+        }
+
+        if (this.migrationCounters.size > 0) {
+            // Log summary only once per session to avoid spam
+            this.logMigrationDebugOnce('compat-metrics-summary', {
+                event: 'compat_metrics_summary',
+                counters: Object.fromEntries(this.migrationCounters)
             });
         }
 

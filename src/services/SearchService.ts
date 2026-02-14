@@ -139,6 +139,15 @@ export class SearchService {
 
         // Get active planetary profile for planetary line search
         const planetaryProfile = getActivePlanetaryProfile(this.plugin.settings as any);
+        const readFrontmatterFieldValue = (fm: Record<string, unknown> | undefined, key: string): unknown => {
+            if (!fm) return undefined;
+            if (Object.prototype.hasOwnProperty.call(fm, key)) return fm[key];
+            const target = key.toLowerCase().replace(/[\s_-]/g, '');
+            for (const [fmKey, value] of Object.entries(fm)) {
+                if (fmKey.toLowerCase().replace(/[\s_-]/g, '') === target) return value;
+            }
+            return undefined;
+        };
         
         this.plugin.getSceneData().then(scenes => {
             // Get enabled hover metadata fields for search indexing
@@ -164,13 +173,20 @@ export class SearchService {
                 
                 // Add enabled custom hover metadata fields to search index (per-item for beats)
                 const isBeatItem = scene.itemType === 'Beat' || scene.itemType === 'Plot';
+                const beatModelForHover = (() => {
+                    const raw = scene.rawFrontmatter?.['Beat Model'];
+                    if (typeof raw === 'string' && raw.trim().length > 0) return raw;
+                    const normalized = scene['Beat Model'];
+                    if (typeof normalized === 'string' && normalized.trim().length > 0) return normalized;
+                    return undefined;
+                })();
                 const enabledHoverFields = isBeatItem
-                    ? getBeatConfigForItem(this.plugin.settings, scene.rawFrontmatter?.['Beat Model'] as string | undefined)
+                    ? getBeatConfigForItem(this.plugin.settings, beatModelForHover)
                         .beatHoverMetadataFields.filter(f => f.enabled).map(f => f.key)
                     : enabledSceneHoverKeys;
                 if (scene.rawFrontmatter && enabledHoverFields.length > 0) {
                     enabledHoverFields.forEach(key => {
-                        const val = scene.rawFrontmatter?.[key];
+                        const val = readFrontmatterFieldValue(scene.rawFrontmatter as Record<string, unknown>, key);
                         if (val !== undefined && val !== null) {
                             if (Array.isArray(val)) {
                                 val.forEach(item => textFields.push(String(item)));
