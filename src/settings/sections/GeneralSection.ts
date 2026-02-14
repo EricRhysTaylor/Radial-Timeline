@@ -6,6 +6,14 @@ import { DEFAULT_SETTINGS } from '../defaults';
 import { resolveAiLogFolder, countAiLogFiles } from '../../ai/log';
 import { ModalFolderSuggest } from '../FolderSuggest';
 import { DEFAULT_BOOK_TITLE, createBookId, normalizeBookProfile } from '../../utils/books';
+import {
+    copyFolderRecursive,
+    getDraftDisplayTitle,
+    isFolderPathMissingOrRoot,
+    isValidBookSourceFolder,
+    resolveDraftTarget,
+    suggestNextDraftLabel
+} from '../../utils/draftBook';
 import { ERT_CLASSES } from '../../ui/classes';
 import { addHeadingIcon, applyErtHeaderLayout } from '../wikiLink';
 
@@ -66,6 +74,109 @@ class BookRenameModal extends Modal {
     }
 
     onClose() { this.contentEl.empty(); }
+}
+
+class CreateDraftModal extends Modal {
+    private defaultName: string;
+    private resolvePreviewPath: (draftName: string) => string;
+    private switchToNewDraft = false;
+    private onSubmit: (result: { draftName: string; switchToNewDraft: boolean }) => Promise<boolean>;
+
+    constructor(
+        app: App,
+        defaultName: string,
+        resolvePreviewPath: (draftName: string) => string,
+        onSubmit: (result: { draftName: string; switchToNewDraft: boolean }) => Promise<boolean>
+    ) {
+        super(app);
+        this.defaultName = defaultName;
+        this.resolvePreviewPath = resolvePreviewPath;
+        this.onSubmit = onSubmit;
+    }
+
+    onOpen() {
+        const { contentEl, modalEl } = this;
+        contentEl.empty();
+
+        if (modalEl) {
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
+            modalEl.style.width = '420px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '92vw';
+        }
+        contentEl.addClass('ert-modal-container', 'ert-stack');
+
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'Draft' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Create draft' });
+        header.createDiv({ cls: 'ert-modal-subtitle', text: 'Optional draft name.' });
+
+        const form = contentEl.createDiv({ cls: 'ert-stack' });
+        let draftName = this.defaultName;
+        const preview = form.createDiv({ cls: 'setting-item-description' });
+
+        const updatePreview = () => {
+            try {
+                const resolved = this.resolvePreviewPath(draftName.trim());
+                preview.setText(`Destination: ${resolved}`);
+            } catch {
+                preview.setText('Destination: unavailable');
+            }
+        };
+
+        const nameSetting = new ObsidianSetting(form)
+            .setName('Draft name')
+            .setDesc('Leave as-is or enter a custom suffix.')
+            .addText(text => {
+                text.setValue(this.defaultName);
+                text.inputEl.addClass('ert-input--full');
+                text.inputEl.focus();
+                text.inputEl.addEventListener('keydown', (evt: KeyboardEvent) => {
+                    if (evt.key === 'Enter') {
+                        evt.preventDefault();
+                        void save();
+                    }
+                });
+                text.onChange(value => {
+                    draftName = value;
+                    updatePreview();
+                });
+            });
+        nameSetting.settingEl.addClass('ert-setting-full-width-input');
+        updatePreview();
+
+        new ObsidianSetting(form)
+            .setName('Switch to new draft')
+            .setDesc('Make the copied draft active after creation.')
+            .addToggle(toggle => {
+                toggle.setValue(false);
+                toggle.onChange(value => {
+                    this.switchToNewDraft = value;
+                });
+            });
+
+        const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        const save = async () => {
+            const shouldClose = await this.onSubmit({
+                draftName: draftName.trim(),
+                switchToNewDraft: this.switchToNewDraft
+            });
+            if (shouldClose) this.close();
+        };
+
+        new ButtonComponent(actions)
+            .setButtonText('Create draft')
+            .setCta()
+            .onClick(() => {
+                void save();
+            });
+        new ButtonComponent(actions)
+            .setButtonText('Cancel')
+            .onClick(() => this.close());
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
 }
 
 export function renderGeneralSection(params: {
@@ -215,6 +326,78 @@ export function renderGeneralSection(params: {
             }
 
             // Controls: source folder input + trash
+            let creatingDraft = false;
+            let draftButtonRef: ButtonComponent | null = null;
+            const setDraftButtonState = (isBusy: boolean) => {
+                creatingDraft = isBusy;
+                if (!draftButtonRef) return;
+                draftButtonRef.setDisabled(isBusy);
+                draftButtonRef.setButtonText(isBusy ? 'Creating…' : 'Create draft');
+            };
+
+            row.addButton(button => {
+                draftButtonRef = button;
+                button.setButtonText('Create draft');
+                button.setTooltip('Copy this book folder into a sibling draft folder');
+                button.onClick(() => {
+                    if (creatingDraft) return;
+
+                    const sourceFolder = (book.sourceFolder || '').trim();
+                    if (isFolderPathMissingOrRoot(sourceFolder)) {
+                        new Notice('Draft requires a book folder (vault root is not supported).');
+                        return;
+                    }
+
+                    const normalizedSource = normalizePath(sourceFolder);
+                    const sourceAbstract = app.vault.getAbstractFileByPath(normalizedSource);
+                    if (!isValidBookSourceFolder(sourceAbstract)) {
+                        new Notice(`Source folder not found: ${normalizedSource}`);
+                        return;
+                    }
+
+                    const suggestedDraftName = suggestNextDraftLabel(app.vault, normalizedSource);
+                    new CreateDraftModal(
+                        app,
+                        suggestedDraftName,
+                        (candidateDraftName) => resolveDraftTarget(app.vault, normalizedSource, candidateDraftName).destinationPath,
+                        async ({ draftName, switchToNewDraft }) => {
+                        if (creatingDraft) return false;
+                        setDraftButtonState(true);
+
+                        try {
+                            const { destinationPath, draftLabel } = resolveDraftTarget(app.vault, normalizedSource, draftName);
+                            await copyFolderRecursive(app.vault, normalizedSource, destinationPath);
+
+                            const cloneBase = {
+                                ...book,
+                                lastUsedPandocLayoutByPreset: undefined
+                            };
+                            const newBook = normalizeBookProfile({
+                                ...cloneBase,
+                                id: createBookId(),
+                                title: getDraftDisplayTitle(label, draftLabel),
+                                sourceFolder: destinationPath
+                            });
+
+                            plugin.settings.books = [...(plugin.settings.books || []), newBook];
+                            if (switchToNewDraft) {
+                                plugin.settings.activeBookId = newBook.id;
+                            }
+                            await plugin.persistBookSettings();
+                            renderBooksManager();
+                            new Notice(`Draft created: ${destinationPath}`);
+                            return true;
+                        } catch (error) {
+                            const msg = error instanceof Error ? error.message : String(error);
+                            new Notice(`Draft creation failed: ${msg}`);
+                            return false;
+                        } finally {
+                            setDraftButtonState(false);
+                        }
+                    }).open();
+                });
+            });
+
             row.addText(text => {
                 text.setPlaceholder('Source folder').setValue(book.sourceFolder || '');
                 text.inputEl.addClass('ert-input--xl');

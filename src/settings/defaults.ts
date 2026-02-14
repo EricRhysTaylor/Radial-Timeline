@@ -298,16 +298,9 @@ Context:`,
         aprAuthorNameFontItalic: false,
         aprAuthorNameFontSize: undefined, // Uses preset default
 
-        aprPercentNumberFontFamily: 'Inter',
-        aprPercentNumberFontWeight: 800,
-        aprPercentNumberFontItalic: false,
         aprPercentNumberFontSize1Digit: undefined, // Uses preset default
         aprPercentNumberFontSize2Digit: undefined, // Uses preset default
         aprPercentNumberFontSize3Digit: undefined, // Uses preset default
-
-        aprPercentSymbolFontFamily: 'Inter',
-        aprPercentSymbolFontWeight: 800,
-        aprPercentSymbolFontItalic: false,
 
         aprRtBadgeFontFamily: 'Inter',
         aprRtBadgeFontWeight: 700,

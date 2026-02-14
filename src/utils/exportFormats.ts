@@ -6,6 +6,7 @@ import { normalizePath, FileSystemAdapter, Vault, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { PandocLayoutTemplate } from '../types';
 import type { ManuscriptSceneSelection, ManuscriptOrder } from './manuscript';
+import { execFile } from 'child_process'; // SAFE: Node child_process for Pandoc subprocess
 import * as fs from 'fs'; // SAFE: Node fs required for Pandoc temp files
 import * as os from 'os'; // SAFE: Node os required for temp directory resolution
 import * as path from 'path'; // SAFE: Node path required for temp/absolute paths
@@ -76,14 +77,32 @@ export function validatePandocLayout(
 }
 
 /**
- * Build the precursor compiled-markdown filename.
- * Pattern: {stem}__compiled__{preset}__{YYYY-MM-DD_HH-mm}.md
+ * Convert slugified stem to readable form (hyphens → spaces) for filenames.
  */
-export function buildPrecursorFilename(fileStem: string, preset: ManuscriptPreset): string {
-    const now = new Date();
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
-    return `${fileStem}__compiled__${preset}__${ts}.md`;
+export function stemToReadable(stem: string): string {
+    return stem.replace(/-+/g, ' ').trim() || 'Manuscript';
+}
+
+/**
+ * Build the precursor compiled-markdown filename.
+ * Pattern: "Manuscript {Preset} {Order} {Timestamp}.md" or "{ReadableStem} {Preset} {Order} {Timestamp}.md"
+ * Example: "Working Title Novl Narr Feb 14 @ 11.51AM.md"
+ */
+export function buildPrecursorFilename(
+    fileStem: string,
+    preset: ManuscriptPreset,
+    order: ManuscriptOrder,
+    subplotFilter?: string
+): string {
+    const presetAcronym = getManuscriptPresetAcronym(preset);
+    const orderAcronym = getOrderAcronym(order);
+    const hasSubplotFilter = subplotFilter && subplotFilter !== 'All Subplots';
+    const orderPart = hasSubplotFilter ? `Sub-${orderAcronym}` : orderAcronym;
+    const timestamp = generateFriendlyTimestamp();
+    const readableStem = stemToReadable(fileStem);
+    const isDefault = fileStem === 'Manuscript' || fileStem === 'Untitled-Manuscript';
+    const prefix = isDefault ? 'Manuscript' : readableStem;
+    return `${prefix} ${presetAcronym} ${orderPart} ${timestamp}.md`;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -157,14 +176,12 @@ export interface ExportFilenameOptions {
 
 /**
  * Build export filename with acronyms
- * Pattern: "[Category] [Preset] [Sub-][Order] [Timestamp].[ext]"
+ * Pattern: "[Category/Title] [Preset] [Sub-][Order] [Timestamp].[ext]"
  * Examples:
  *   - "Manuscript Novl Narr Jan 12 @ 3.32PM.md"
- *   - "Pandoc Scrn Sub-Chro Jan 12 @ 3.32PM.docx"
+ *   - "Working Title Novl Narr Feb 14 @ 11.51AM.docx"
  *   - "Outline BtSh RevN Jan 12 @ 3.32PM.md"
  *   - "Outline IdxC Sub-RevC Jan 12 @ 3.32PM.csv"
- *
- * When `fileStem` is provided and the format is PDF/DOCX, uses `{fileStem}.{ext}` instead.
  */
 export function buildExportFilename(options: ExportFilenameOptions): string {
     const timestamp = generateFriendlyTimestamp();
@@ -173,14 +190,13 @@ export function buildExportFilename(options: ExportFilenameOptions): string {
     const orderPart = hasSubplotFilter ? `Sub-${orderAcronym}` : orderAcronym;
     const isPandocExport = options.exportType === 'manuscript' && (options.extension === 'docx' || options.extension === 'pdf');
 
-    // Book-titled filename for Pandoc exports when fileStem is available.
-    // Append timestamp when stem is the default fallback to prevent overwrites.
+    // Book-titled filename for Pandoc exports: readable format with preset, order, timestamp.
+    // Example: "Working Title Novl Narr Feb 14 @ 11.51AM.docx"
     if (isPandocExport && options.fileStem) {
+        const presetAcronym = getManuscriptPresetAcronym(options.manuscriptPreset || 'novel');
         const isDefault = options.fileStem === 'Manuscript' || options.fileStem === 'Untitled-Manuscript';
-        if (isDefault) {
-            return `${options.fileStem} ${timestamp}.${options.extension}`;
-        }
-        return `${options.fileStem}.${options.extension}`;
+        const prefix = isDefault ? 'Manuscript' : stemToReadable(options.fileStem);
+        return `${prefix} ${presetAcronym} ${orderPart} ${timestamp}.${options.extension}`;
     }
     
     if (options.exportType === 'outline') {
@@ -242,7 +258,6 @@ export async function runPandocOnContent(
         args.push('--template', options.templatePath.trim());
     }
 
-    const { execFile } = await import('child_process');
     await new Promise<void>((resolve, reject) => {
         execFile(binary, args, { cwd: options.workingDir }, (error, _stdout, stderr) => {
             if (error) {

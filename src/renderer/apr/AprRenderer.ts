@@ -52,15 +52,9 @@ export interface AprRenderOptions {
     authorNameFontWeight?: number;
     authorNameFontItalic?: boolean;
     authorNameFontSize?: number;
-    percentNumberFontFamily?: string;
-    percentNumberFontWeight?: number;
-    percentNumberFontItalic?: boolean;
     percentNumberFontSize1Digit?: number;
     percentNumberFontSize2Digit?: number;
     percentNumberFontSize3Digit?: number;
-    percentSymbolFontFamily?: string;
-    percentSymbolFontWeight?: number;
-    percentSymbolFontItalic?: boolean;
     rtBadgeFontFamily?: string;
     rtBadgeFontWeight?: number;
     rtBadgeFontItalic?: boolean;
@@ -155,9 +149,7 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         // Typography options
         bookTitleFontFamily, bookTitleFontWeight, bookTitleFontItalic, bookTitleFontSize,
         authorNameFontFamily, authorNameFontWeight, authorNameFontItalic, authorNameFontSize,
-        percentNumberFontFamily, percentNumberFontWeight, percentNumberFontItalic,
         percentNumberFontSize1Digit, percentNumberFontSize2Digit, percentNumberFontSize3Digit,
-        percentSymbolFontFamily, percentSymbolFontWeight, percentSymbolFontItalic,
         rtBadgeFontFamily, rtBadgeFontWeight, rtBadgeFontItalic, rtBadgeFontSize,
         publishStageLabel,
         showRtAttribution,
@@ -391,15 +383,9 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     // Center percent (optional)
     if (showProgressPercentFinal) {
         svg += renderAprCenterPercent(progressPercent, layout, percentNumberColorResolved, percentSymbolColorResolved, {
-            percentNumberFontFamily,
-            percentNumberFontWeight,
-            percentNumberFontItalic,
             percentNumberFontSize1Digit,
             percentNumberFontSize2Digit,
             percentNumberFontSize3Digit,
-            percentSymbolFontFamily,
-            percentSymbolFontWeight,
-            percentSymbolFontItalic,
             portableSvg
         });
     }

@@ -3,7 +3,7 @@
  * Summary Refresh Command Helper
  * Handles logic for the "Summary refresh" command.
  *
- * Summary = longform AI-generated scene analysis (≈200–300 words, configurable) — primary artifact for Inquiry corpus.
+ * Summary = extended AI-generated scene analysis (≈200–300 words, configurable) — primary artifact for Inquiry corpus.
  * Synopsis = concise, skimmable navigation text (1–3 sentences) — optional for scene hovers.
  */
 

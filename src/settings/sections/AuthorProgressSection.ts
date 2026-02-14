@@ -759,7 +759,7 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             setPickerRef?: (picker: ColorSwatchHandle) => void;
             setTextRef?: (text: TextComponent) => void;
         };
-        typography: TypographyControlOptions;
+        typography?: TypographyControlOptions;
     };
 
     const buildTypographyControls = (
@@ -835,7 +835,9 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         infoEl?.classList.add('ert-elementBlock__left');
 
         const controlGroup = block.controlEl.createDiv({ cls: 'ert-controlGroup' });
-        const rowPrimary = controlGroup.createDiv({ cls: 'ert-typography-controls' });
+        const rowPrimary = (opts.text || opts.typography)
+            ? controlGroup.createDiv({ cls: 'ert-typography-controls' })
+            : null;
         const rowSecondary = controlGroup.createDiv({ cls: 'ert-typography-controls' });
 
         let isSyncing = false;
@@ -844,30 +846,33 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         let autoButton: HTMLButtonElement | null = null;
 
         const normalizeHex = (val: string): string => val.trim().toLowerCase();
-        const defaultFont = opts.typography.fontDefault ?? 'Inter';
-        const defaultWeight = opts.typography.weightDefault;
-        const defaultItalic = opts.typography.italicDefault ?? false;
+        const defaultFont = opts.typography?.fontDefault ?? 'Inter';
+        const defaultWeight = opts.typography?.weightDefault ?? 400;
+        const defaultItalic = opts.typography?.italicDefault ?? false;
 
         const updateAutoState = (): void => {
             const currentColor = normalizeHex((settings?.[opts.color.key] as string | undefined) ?? opts.color.fallback);
             const defaultColor = normalizeHex(opts.color.fallback);
-            const currentFont = (settings?.[opts.typography.familyKey] as string | undefined) ?? defaultFont;
-            const currentWeight = (settings?.[opts.typography.weightKey] as number | undefined) ?? defaultWeight;
-            const currentItalic = (settings?.[opts.typography.italicKey] as boolean | undefined) ?? defaultItalic;
-            const isSizeAuto = opts.typography.sizeKeys?.length
-                ? opts.typography.sizeKeys.every(key => settings?.[key] === undefined)
-                : true;
-            const isAuto = currentColor === defaultColor
-                && currentFont === defaultFont
-                && currentWeight === defaultWeight
-                && currentItalic === defaultItalic
-                && isSizeAuto;
+            const typographyAuto = (() => {
+                if (!opts.typography) return true;
+                const currentFont = (settings?.[opts.typography.familyKey] as string | undefined) ?? defaultFont;
+                const currentWeight = (settings?.[opts.typography.weightKey] as number | undefined) ?? defaultWeight;
+                const currentItalic = (settings?.[opts.typography.italicKey] as boolean | undefined) ?? defaultItalic;
+                const isSizeAuto = opts.typography.sizeKeys?.length
+                    ? opts.typography.sizeKeys.every(key => settings?.[key] === undefined)
+                    : true;
+                return currentFont === defaultFont
+                    && currentWeight === defaultWeight
+                    && currentItalic === defaultItalic
+                    && isSizeAuto;
+            })();
+            const isAuto = currentColor === defaultColor && typographyAuto;
             if (autoButton) {
                 autoButton.classList.toggle('is-active', isAuto);
             }
         };
 
-        if (opts.text) {
+        if (opts.text && rowPrimary) {
             const textConfig = opts.text;
             const textInput = new TextComponent(rowPrimary);
             textInput.setPlaceholder(textConfig.placeholder);
@@ -913,27 +918,35 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
         autoButton = rowSecondary.createEl('button', { text: 'Auto', cls: 'ert-chip ert-typography-auto' });
         autoButton.type = 'button';
 
-        const typographyRefs = buildTypographyControls(rowPrimary, opts.typography, updateAutoState, isSyncingCheck);
+        const typographyRefs = (opts.typography && rowPrimary)
+            ? buildTypographyControls(rowPrimary, opts.typography, updateAutoState, isSyncingCheck)
+            : null;
 
         // SAFE: Settings sections are standalone functions without Component lifecycle; Obsidian manages settings tab cleanup
         autoButton.addEventListener('click', async () => {
             if (!plugin.settings.authorProgress) return;
             const updates: Partial<AuthorProgressSettings> = {
-                [opts.color.key]: opts.color.fallback,
-                [opts.typography.familyKey]: defaultFont,
-                [opts.typography.weightKey]: defaultWeight,
-                [opts.typography.italicKey]: defaultItalic
+                [opts.color.key]: opts.color.fallback
             };
-            opts.typography.sizeKeys?.forEach((key) => {
-                updates[key] = undefined;
-            });
+            if (opts.typography) {
+                Object.assign(updates, {
+                    [opts.typography.familyKey]: defaultFont,
+                    [opts.typography.weightKey]: defaultWeight,
+                    [opts.typography.italicKey]: defaultItalic
+                } as Partial<AuthorProgressSettings>);
+                opts.typography.sizeKeys?.forEach((key) => {
+                    updates[key] = undefined;
+                });
+            }
             await setAprSettings(updates);
             isSyncing = true;
             colorPicker.setValue(opts.color.fallback);
             colorText.setValue(opts.color.fallback);
-            typographyRefs.setFontValue(defaultFont);
-            typographyRefs.setStyleValue(defaultWeight, defaultItalic);
-            typographyRefs.sizeInputs.forEach(input => input.setValue(''));
+            if (typographyRefs) {
+                typographyRefs.setFontValue(defaultFont);
+                typographyRefs.setStyleValue(defaultWeight, defaultItalic);
+                typographyRefs.sizeInputs.forEach(input => input.setValue(''));
+            }
             opts.color.onAfterChange?.(opts.color.fallback);
             isSyncing = false;
             updateAutoState();
@@ -1042,12 +1055,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             setTextRef: (text) => {
                 percentSymbolTextRef = text;
             }
-        },
-        typography: {
-            familyKey: 'aprPercentSymbolFontFamily',
-            weightKey: 'aprPercentSymbolFontWeight',
-            italicKey: 'aprPercentSymbolFontItalic',
-            weightDefault: 800
         }
     });
 
@@ -1071,19 +1078,6 @@ export function renderAuthorProgressSection({ app, plugin, containerEl }: Author
             setTextRef: (text) => {
                 percentNumberTextRef = text;
             }
-        },
-        typography: {
-            familyKey: 'aprPercentNumberFontFamily',
-            weightKey: 'aprPercentNumberFontWeight',
-            italicKey: 'aprPercentNumberFontItalic',
-            sizeKeys: [
-                'aprPercentNumberFontSize1Digit',
-                'aprPercentNumberFontSize2Digit',
-                'aprPercentNumberFontSize3Digit'
-            ],
-            sizePlaceholders: ['1d', '2d', '3d'],
-            showSizeControls: false,
-            weightDefault: 800
         }
     });
 
@@ -1859,19 +1853,14 @@ async function renderHeroPreview(
             authorNameFontWeight: aprSettings?.aprAuthorNameFontWeight,
             authorNameFontItalic: aprSettings?.aprAuthorNameFontItalic,
             authorNameFontSize: aprSettings?.aprAuthorNameFontSize,
-            percentNumberFontFamily: aprSettings?.aprPercentNumberFontFamily,
-            percentNumberFontWeight: aprSettings?.aprPercentNumberFontWeight,
-            percentNumberFontItalic: aprSettings?.aprPercentNumberFontItalic,
             percentNumberFontSize1Digit: aprSettings?.aprPercentNumberFontSize1Digit,
             percentNumberFontSize2Digit: aprSettings?.aprPercentNumberFontSize2Digit,
             percentNumberFontSize3Digit: aprSettings?.aprPercentNumberFontSize3Digit,
-            percentSymbolFontFamily: aprSettings?.aprPercentSymbolFontFamily,
-            percentSymbolFontWeight: aprSettings?.aprPercentSymbolFontWeight,
-            percentSymbolFontItalic: aprSettings?.aprPercentSymbolFontItalic,
             rtBadgeFontFamily: aprSettings?.aprRtBadgeFontFamily,
             rtBadgeFontWeight: aprSettings?.aprRtBadgeFontWeight,
             rtBadgeFontItalic: aprSettings?.aprRtBadgeFontItalic,
-            rtBadgeFontSize: aprSettings?.aprRtBadgeFontSize
+            rtBadgeFontSize: aprSettings?.aprRtBadgeFontSize,
+            portableSvg: true
         });
 
         container.empty();

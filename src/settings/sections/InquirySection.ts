@@ -532,11 +532,11 @@ export function renderInquirySection(params: SectionParams): void {
     };
 
     const renderClassTable = (configs: InquiryClassConfig[], counts: Record<string, number>) => {
-        classTableWrap.empty();
-
-        const buildRow = (extraClasses: string[] = []) => {
-            return classTableWrap.createDiv({ cls: ['ert-controlGroup__row', ...extraClasses] });
-        };
+        // Build into a temporary container then replace in one go to avoid empty-then-rebuild flicker.
+        const container = document.createElement('div');
+        container.className = classTableWrap.className;
+        const buildRow = (extraClasses: string[] = []) =>
+            container.createDiv({ cls: ['ert-controlGroup__row', ...extraClasses] });
 
         const header = buildRow(['ert-controlGroup__row--header']);
         header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Enabled' });
@@ -653,6 +653,8 @@ export function renderInquirySection(params: SectionParams): void {
 
             nameCell.setAttribute('title', config.className);
         });
+
+        classTableWrap.replaceChildren(...Array.from(container.children));
     };
 
     const resolvePresetContribution = (preset: InquirySourcesPreset, className: string): InquiryMaterialMode => {
@@ -714,33 +716,36 @@ export function renderInquirySection(params: SectionParams): void {
         participatingClasses: Set<string>
     ) => {
         resolvedHeading.setText(`Resolved Folders (${total})`);
-        resolvedList.empty();
+        // Build into a temporary container then replace in one go to avoid empty-then-rebuild flicker.
+        const container = document.createElement('div');
+        container.className = resolvedList.className;
 
         if (!roots.length) {
-            const emptyRow = resolvedList.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
+            const emptyRow = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
             emptyRow.createDiv({
                 cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--faint'],
                 text: 'No scan folders set. Add /Book */ or / to begin.'
             });
-            return;
+        } else {
+            roots.forEach(root => {
+                const classCounts = rootClassCounts[root] || {};
+                const parts: string[] = [];
+                participatingClasses.forEach(className => {
+                    const count = classCounts[className] || 0;
+                    if (!count) return;
+                    const label = formatClassCountLabel(className, count);
+                    parts.push(`${count} ${label}`);
+                });
+                const suffix = parts.length ? `[${parts.join(', ')}]` : '[0]';
+                const row = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
+                row.createDiv({
+                    cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--mono', 'ert-controlGroup__cell--meta'],
+                    text: `${root} ${suffix}`
+                });
+            });
         }
 
-        roots.forEach(root => {
-            const classCounts = rootClassCounts[root] || {};
-            const parts: string[] = [];
-            participatingClasses.forEach(className => {
-                const count = classCounts[className] || 0;
-                if (!count) return;
-                const label = formatClassCountLabel(className, count);
-                parts.push(`${count} ${label}`);
-            });
-            const suffix = parts.length ? `[${parts.join(', ')}]` : '[0]';
-            const row = resolvedList.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
-            row.createDiv({
-                cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--mono', 'ert-controlGroup__cell--meta'],
-                text: `${root} ${suffix}`
-            });
-        });
+        resolvedList.replaceChildren(...Array.from(container.children));
     };
 
     const applyScanRoots = (nextRoots: string[]) => {

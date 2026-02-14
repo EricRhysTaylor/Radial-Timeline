@@ -60,7 +60,7 @@ export function isSceneItem(item: TimelineItem | { itemType?: string }): boolean
 
 /**
  * Check if item is a front-matter or back-matter note (Class: Frontmatter / Backmatter).
- * These are included in manuscript export / Longform sync but excluded from timeline stats.
+ * These are included in manuscript export but excluded from timeline stats.
  */
 export function isMatterNote(item: TimelineItem | { itemType?: string }): boolean {
     return item.itemType === 'Frontmatter' || item.itemType === 'Backmatter';

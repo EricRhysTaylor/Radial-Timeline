@@ -708,7 +708,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             features: [
                 { icon: 'layout-grid', text: 'Story structure — manage scenes, beats, templates, and advanced YAML fields.' },
                 { icon: 'orbit', text: 'Chronologue & time — align chronologue, backdrop, and planetary clocks' },
-                { icon: 'book-open-text', text: 'Publishing setup — set stage due dates, configure manuscript formats, and work with LONGFORM and PANDOC.' },
+                { icon: 'book-open-text', text: 'Publishing setup — set stage due dates, configure manuscript formats, and work with PANDOC.' },
             ]
         });
     }
@@ -769,12 +769,25 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         updateTabState();
 
         const isProActive = isProfessionalActive(this.plugin);
+        // Re-render only the Pro tab when toggling Pro or blurring license key (avoids full settings flicker).
+        const refreshProSectionOnly = () => {
+            proContent.empty();
+            const isPro = isProfessionalActive(this.plugin);
+            const stack = renderProfessionalSection({
+                app: this.app,
+                plugin: this.plugin,
+                containerEl: proContent,
+                renderHero: isPro ? (target) => this.renderProHero(target) : undefined,
+                onProToggle: refreshProSectionOnly
+            });
+            renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: stack });
+        };
         const proStack = renderProfessionalSection({
             app: this.app,
             plugin: this.plugin,
             containerEl: proContent,
             renderHero: isProActive ? (target) => this.renderProHero(target) : undefined,
-            onProToggle: () => this.display()
+            onProToggle: refreshProSectionOnly
         });
         renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: proStack });
 

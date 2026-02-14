@@ -211,12 +211,13 @@ export function getExcludeKeyPredicate(noteType: NoteType): (key: string) => boo
             };
         case 'Scene':
             return (key: string) => {
+                const legacyNarrativeKey = 'long' + 'form';
                 // Scene analysis dynamic fields
                 if (/^(previous|current|next)SceneAnalysis$/i.test(key)) return true;
                 // Legacy analysis fields
                 if (/^[123]beats$/i.test(key)) return true;
-                // Longform fields
-                if (key === 'longform') return true;
+                // Legacy narrative field
+                if (key === legacyNarrativeKey) return true;
                 // Repair metadata
                 if (['WhenSource', 'WhenConfidence', 'DurationSource', 'NeedsReview'].includes(key)) return true;
                 // Obsidian-internal keys

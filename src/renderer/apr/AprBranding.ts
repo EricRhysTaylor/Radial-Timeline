@@ -4,7 +4,7 @@
  * Renders the repeating book title/author text around the outer edge.
  */
 
-import { APR_TEXT_COLORS, APR_BRANDING_TUNING } from './AprConstants';
+import { APR_TEXT_COLORS, APR_BRANDING_TUNING, APR_CENTER_METRIC } from './AprConstants';
 import { computeAprLayout, type AprLayoutSpec } from './aprLayout';
 import { getAprPreset, type AprSize } from './aprPresets';
 
@@ -427,17 +427,9 @@ function getStageBadgeText(layout: AprLayoutSpec, stageLabel?: string): string {
  * Options for center percent rendering
  */
 export interface AprCenterPercentOptions {
-    // Percent Number font settings
-    percentNumberFontFamily?: string;
-    percentNumberFontWeight?: number;
-    percentNumberFontItalic?: boolean;
     percentNumberFontSize1Digit?: number;
     percentNumberFontSize2Digit?: number;
     percentNumberFontSize3Digit?: number;
-    // Percent Symbol font settings
-    percentSymbolFontFamily?: string;
-    percentSymbolFontWeight?: number;
-    percentSymbolFontItalic?: boolean;
     // Portable SVG mode
     portableSvg?: boolean;
 }
@@ -453,88 +445,74 @@ export function renderAprCenterPercent(
     options?: Partial<AprCenterPercentOptions>
 ): string {
     if (!layout.centerLabel.enabled) return '';
-    
+
     const portableSvg = options?.portableSvg ?? false;
     const color = resolveColor(portableSvg);
-    
+
     // Fallback to Press stage green if colors not provided
     const defaultColor = '#6FB971';
     const numColor = numberColor || defaultColor;
     const symColor = symbolColor || defaultColor;
 
-    const percentNumberFontFamily = options?.percentNumberFontFamily || 'Inter';
-    const percentNumberFontWeight = options?.percentNumberFontWeight ?? 800;
-    const percentNumberFontItalic = options?.percentNumberFontItalic ?? false;
-    const percentSymbolFontFamily = options?.percentSymbolFontFamily || percentNumberFontFamily;
-    const percentSymbolFontWeight = options?.percentSymbolFontWeight ?? percentNumberFontWeight;
-    const percentSymbolFontItalic = options?.percentSymbolFontItalic ?? percentNumberFontItalic;
-
-    const numStr = String(Math.round(percent));
-    const digitCount = Math.max(1, numStr.length);
-    const sizeOverride = digitCount === 1
+    const valueText = String(Math.round(percent));
+    const digitMatches = valueText.match(/\d/g);
+    const digitCount = digitMatches ? digitMatches.length : 1;
+    const digits: 1 | 2 | 3 = digitCount <= 1 ? 1 : digitCount === 2 ? 2 : 3;
+    const sizeOverride = digits === 1
         ? options?.percentNumberFontSize1Digit
-        : digitCount === 2
+        : digits === 2
             ? options?.percentNumberFontSize2Digit
             : options?.percentNumberFontSize3Digit;
     const baseNumberPx = layout.centerLabel.numberPx;
     const numberPx = Math.max(1, sizeOverride ?? baseNumberPx);
     const scaleRatio = baseNumberPx > 0 ? numberPx / baseNumberPx : 1;
-    // % symbol fills the inner circle — independent of number size overrides
     const percentPx = Math.max(1, layout.centerLabel.percentPx);
     const centerDy = layout.centerLabel.dyPx * scaleRatio;
-    const percentDx = layout.centerLabel.percentDxPx;
+    const numberWidthPx = numberPx * APR_CENTER_METRIC.digitWidthEm * digits;
+    const percentGapPx = numberPx * APR_CENTER_METRIC.percentGapEm;
+    const numberX = APR_CENTER_METRIC.numberOpticalNudgeByDigitsPx[digits];
+    const percentX = numberX + (numberWidthPx / 2) + percentGapPx;
+    const fontFamily = APR_CENTER_METRIC.fontFamily;
+    const numberY = resolvePortableBaselineY(
+        centerDy + APR_CENTER_METRIC.numberDyPx,
+        valueText,
+        fontFamily,
+        APR_CENTER_METRIC.numberWeight,
+        false,
+        numberPx
+    );
+    const percentY = resolvePortableBaselineY(
+        APR_CENTER_METRIC.percentDyPx + layout.centerLabel.percentBaselineShiftPx + APR_CENTER_METRIC.percentBaselineShiftPx,
+        '%',
+        fontFamily,
+        APR_CENTER_METRIC.percentWeight,
+        false,
+        percentPx
+    );
 
-    // For portable mode (Figma), use explicit baseline offsets.
-    // For non-portable, rely on dominant-baseline for browser accuracy.
-    const baselineAttrs = portableSvg ? '' : 'dominant-baseline="middle" alignment-baseline="middle"';
-    // Portable exports use explicit baseline math (metric-aware when available).
-    // We intentionally ignore centerDy here because dy tuning was made for browser
-    // dominant-baseline behavior and can sit high in Figma/headless outputs.
-    const numberY = portableSvg
-        ? resolvePortableBaselineY(
-            0,
-            numStr,
-            percentNumberFontFamily,
-            percentNumberFontWeight,
-            percentNumberFontItalic,
-            numberPx
-        )
-        : centerDy;
-    // % symbol is centered at origin, independent of number positioning
-    const percentY = portableSvg ? (percentPx * 0.34) : 0;
-    const percentDy = 0;
-    const numberDy = 0;
-
-    // SAFE: inline style used for SVG attribute font-style in template string
     return `
         <g class="apr-center-percent" transform="translate(0 0)">
             <text 
-                x="${percentDx}"
+                x="${percentX}"
                 y="${percentY}"
-                text-anchor="middle" 
-                ${baselineAttrs}
-                dy="${percentDy}"
-                font-family="${percentSymbolFontFamily}" 
-                font-weight="${percentSymbolFontWeight}" 
-                ${italicAttr(percentSymbolFontItalic)}
+                text-anchor="middle"
+                font-family="${fontFamily}"
+                font-weight="${APR_CENTER_METRIC.percentWeight}"
                 font-size="${percentPx}"
                 fill="${color('--apr-percent-symbol-color', symColor)}"
                 fill-opacity="0.3">
                 %
             </text>
             <text 
-                x="0"
+                x="${numberX}"
                 y="${numberY}"
-                text-anchor="middle" 
-                ${baselineAttrs}
-                dy="${numberDy}"
-                font-family="${percentNumberFontFamily}" 
-                font-weight="${percentNumberFontWeight}" 
-                ${italicAttr(percentNumberFontItalic)}
-                font-size="${numberPx}" 
+                text-anchor="middle"
+                font-family="${fontFamily}"
+                font-weight="${APR_CENTER_METRIC.numberWeight}"
+                font-size="${numberPx}"
                 letter-spacing="${layout.centerLabel.letterSpacing}"
                 fill="${color('--apr-percent-number-color', numColor)}">
-                ${numStr}
+                ${valueText}
             </text>
         </g>
     `;

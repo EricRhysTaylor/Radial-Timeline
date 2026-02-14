@@ -133,16 +133,9 @@ export interface AuthorProgressSettings {
     aprAuthorNameFontItalic?: boolean; // Italic for author name (default: false)
     aprAuthorNameFontSize?: number;    // Font size for author name (default: from preset)
 
-    aprPercentNumberFontFamily?: string;  // Font family for center percent number (default: 'Inter')
-    aprPercentNumberFontWeight?: number;   // Font weight for center percent number (default: 800)
-    aprPercentNumberFontItalic?: boolean;  // Italic for center percent number (default: false)
     aprPercentNumberFontSize1Digit?: number;  // Font size for single-digit (default: from preset)
     aprPercentNumberFontSize2Digit?: number;  // Font size for double-digit (default: from preset)
     aprPercentNumberFontSize3Digit?: number;  // Font size for triple-digit (default: from preset)
-
-    aprPercentSymbolFontFamily?: string;  // Font family for % symbol (default: 'Inter')
-    aprPercentSymbolFontWeight?: number;  // Font weight for % symbol (default: 800)
-    aprPercentSymbolFontItalic?: boolean; // Italic for % symbol (default: false)
 
     aprRtBadgeFontFamily?: string;  // Font family for stage badge / RT mark (default: 'Inter')
     aprRtBadgeFontWeight?: number;  // Font weight for stage badge / RT mark (default: 700)

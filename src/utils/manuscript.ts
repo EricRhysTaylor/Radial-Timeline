@@ -226,7 +226,7 @@ export async function getAllScenes(app: App, plugin: RadialTimelinePlugin): Prom
 
 /**
  * Fetch scene files in a specific order (ignores current mode when explicit order is provided)
- * @param includeMatter - When true, also includes Frontmatter/Backmatter items (for manuscript export & Longform sync)
+ * @param includeMatter - When true, also includes Frontmatter/Backmatter items for manuscript export
  */
 export async function getSceneFilesByOrder(
   app: App,

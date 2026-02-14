@@ -1337,7 +1337,8 @@ async function renderTeaserStagesPreviews(
                 publishStageLabel,
                 showRtAttribution,
                 revealCampaignEnabled,
-                nextRevealAt
+                nextRevealAt,
+                portableSvg: true
             });
 
             svgContainer.innerHTML = svgString; // SAFE: innerHTML used for SVG preview injection

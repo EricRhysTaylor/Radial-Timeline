@@ -68,11 +68,10 @@ export class FileTrackingService {
         });
 
         this.plugin.registerEvent(this.plugin.app.workspace.on('layout-change', () => {
-            // Avoid refreshing while an Obsidian modal is open (prevents flicker behind dialogs).
-            if (this.isModalOpen()) {
-                // Try once shortly after the modal likely closes.
+            // Avoid refreshing while a modal or the plugin settings tab is open (prevents flicker).
+            if (this.isModalOpen() || this.isSettingsTabOpen()) {
                 window.setTimeout(() => {
-                    if (!this.isModalOpen()) {
+                    if (!this.isModalOpen() && !this.isSettingsTabOpen()) {
                         this.updateOpenFilesTracking();
                         this.plugin.refreshTimelineIfNeeded(null);
                     }
@@ -137,6 +136,18 @@ export class FileTrackingService {
             if (modal) return true;
             
             return false;
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * Detect if the Radial Timeline settings tab is currently open.
+     * Skips layout-change-driven refresh while the user is in settings to avoid panel flicker.
+     */
+    private isSettingsTabOpen(): boolean {
+        try {
+            return document.body.querySelector('.ert-settings-root') != null;
         } catch {
             return false;
         }

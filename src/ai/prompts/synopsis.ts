@@ -1,6 +1,6 @@
 /*
  * AI Summary & Synopsis Prompt Builders
- * Summary = longform AI-generated scene analysis (≈200–300 words)
+ * Summary = extended AI-generated scene analysis (≈200–300 words)
  * Synopsis = concise, skimmable navigation text (1–3 sentences, max N lines)
  */
 
@@ -9,7 +9,7 @@ const SUMMARY_JSON_SCHEMA = {
   properties: {
     "summary": {
       type: "string",
-      description: "Factual longform summary of scene events (≈200–300 words)"
+      description: "Factual extended summary of scene events (≈200–300 words)"
     }
   },
   required: ["summary"]
@@ -43,7 +43,7 @@ export function getSynopsisSystemPrompt(): string {
 }
 
 /**
- * Build a prompt for generating a longform Summary (≈200–300 words).
+ * Build a prompt for generating an extended Summary (≈200–300 words).
  * This is the primary AI-generated artifact.
  */
 export function buildSummaryPrompt(

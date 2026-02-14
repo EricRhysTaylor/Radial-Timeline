@@ -8860,7 +8860,7 @@ export class InquiryView extends ItemView {
     }
 
     /**
-     * Extract longform Summary from frontmatter for Inquiry context.
+     * Extract extended Summary from frontmatter for Inquiry context.
      * Reads exclusively from frontmatter["Summary"]. Synopsis is never used.
      */
     private extractSummary(frontmatter: Record<string, unknown>): string {

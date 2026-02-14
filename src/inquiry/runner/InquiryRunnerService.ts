@@ -23,7 +23,7 @@ type EvidenceBlock = {
 type SceneSnapshot = {
     path: string;
     label: string;
-    summary: string;  // Longform Summary field (frontmatter["Summary"])
+    summary: string;  // Extended Summary field (frontmatter["Summary"])
     sceneNumber?: number;
 };
 
@@ -1036,7 +1036,7 @@ export class InquiryRunnerService implements InquiryRunner {
     }
 
     /**
-     * Extract longform Summary from frontmatter for Inquiry context.
+     * Extract extended Summary from frontmatter for Inquiry context.
      * Reads exclusively from frontmatter["Summary"]. Synopsis is never used.
      */
     private extractSummary(frontmatter: Record<string, unknown>): string {

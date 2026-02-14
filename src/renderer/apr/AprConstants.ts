@@ -104,6 +104,26 @@ export const APR_MOMENTUM_BAR = {
 } as const;
 
 // =============================================================================
+// CENTER METRIC TYPOGRAPHY (fixed, non-configurable)
+// =============================================================================
+
+export const APR_CENTER_METRIC = {
+    fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+    numberWeight: 700 as const,   // Bold
+    percentWeight: 900 as const,  // Black
+    numberDyPx: 0,
+    percentDyPx: 0,
+    percentBaselineShiftPx: 0,
+    digitWidthEm: 0.56,
+    percentGapEm: 0.10,
+    numberOpticalNudgeByDigitsPx: {
+        1: 0,
+        2: 0,
+        3: 0
+    } as Record<1 | 2 | 3, number>,
+} as const;
+
+// =============================================================================
 // HEADLESS PATTERN TUNING (portable SVG — Figma / Illustrator safe)
 // =============================================================================
 // Figma does not support patternTransform, so the real plaid patterns from

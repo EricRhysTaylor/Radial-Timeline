@@ -11,7 +11,6 @@ import type RadialTimelinePlugin from '../../main';
 import { ERT_CLASSES } from '../../ui/classes';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { execFile } from 'child_process'; // SAFE: Node child_process for system path scanning
-import { findLongformIndex, getLongformSourcePath, syncScenesToLongform } from '../../longform/LongformSyncService';
 import { generateSceneContent } from '../../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
@@ -1088,69 +1087,6 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             }
         });
     });
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // LONGFORM INTEGRATION
-    // ─────────────────────────────────────────────────────────────────────────
-    const longformSubSection = pandocPanel.createDiv({
-        cls: `${ERT_CLASSES.SECTION} ${ERT_CLASSES.SECTION_TIGHT}`
-    });
-    longformSubSection.createEl('h5', { text: 'Longform Integration', cls: ERT_CLASSES.SECTION_TITLE });
-
-    // Status indicator: shows whether a Longform index file is detected
-    const longformStatusSetting = addProRow(new Setting(longformSubSection))
-        .setName('Longform index')
-        .setDesc('Detects a Longform index in the active book folder or one level of subfolders (default Longform project layout).');
-
-    const updateLongformStatus = () => {
-        const indexFile = findLongformIndex(plugin);
-        const sourcePath = getLongformSourcePath(plugin);
-        if (indexFile) {
-            longformStatusSetting.setDesc(`Detected: ${indexFile.path}`);
-        } else {
-            longformStatusSetting.setDesc(
-                sourcePath
-                    ? `No Longform index file found in "${sourcePath}" or its subfolders.`
-                    : 'Set an active book folder first (Settings → General → Books).'
-            );
-        }
-    };
-    updateLongformStatus();
-
-    // Sync button
-    addProRow(new Setting(longformSubSection))
-        .setName('Sync scene order')
-        .setDesc('Writes Radial Timeline\'s narrative scene order into the Longform index file\'s scenes array.')
-        .addButton(button => {
-            button.setButtonText('Sync to Longform');
-            button.setCta();
-            button.onClick(async () => {
-                button.setDisabled(true);
-                button.setButtonText('Syncing…');
-                try {
-                    const result = await syncScenesToLongform(plugin);
-                    if (result.success) {
-                        new Notice(result.message);
-                        // Flash the button green briefly
-                        button.buttonEl.addClass('ert-input--flash-success');
-                        setTimeout(() => button.buttonEl.removeClass('ert-input--flash-success'), 1700);
-                    } else {
-                        new Notice(result.message);
-                        button.buttonEl.addClass('ert-input--flash-error');
-                        setTimeout(() => button.buttonEl.removeClass('ert-input--flash-error'), 1700);
-                    }
-                    updateLongformStatus();
-                } catch (e) {
-                    const msg = (e as Error).message || String(e);
-                    new Notice(`Longform sync failed: ${msg}`);
-                    button.buttonEl.addClass('ert-input--flash-error');
-                    setTimeout(() => button.buttonEl.removeClass('ert-input--flash-error'), 1700);
-                } finally {
-                    button.setDisabled(false);
-                    button.setButtonText('Sync to Longform');
-                }
-            });
-        });
 
     return section;
 }

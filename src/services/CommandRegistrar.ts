@@ -352,7 +352,12 @@ export class CommandRegistrar {
                 }
 
                 // Save compiled precursor .md alongside output
-                const precursorName = buildPrecursorFilename(ctx.fileStem, result.manuscriptPreset || 'novel');
+                const precursorName = buildPrecursorFilename(
+                    ctx.fileStem,
+                    result.manuscriptPreset || 'novel',
+                    result.order,
+                    result.subplot
+                );
                 const precursorPath = `${outputFolder}/${precursorName}`;
                 try {
                     await this.app.vault.create(precursorPath, assembled.text);
