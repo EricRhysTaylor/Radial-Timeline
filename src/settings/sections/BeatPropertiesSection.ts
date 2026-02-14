@@ -234,7 +234,7 @@ const dirtyState = {
  */
 const savedCustomSetIds = new Set<string>();
 let _unsubTopBeatTabsDirty: (() => void) | null = null;
-let _unsubCustomSaveBarDirty: (() => void) | null = null;
+let _unsubBeatAuditDirty: (() => void) | null = null;
 
 export function renderStoryBeatsSection(params: {
     app: App;
@@ -244,8 +244,8 @@ export function renderStoryBeatsSection(params: {
     const { app, plugin, containerEl } = params;
     _unsubTopBeatTabsDirty?.();
     _unsubTopBeatTabsDirty = null;
-    _unsubCustomSaveBarDirty?.();
-    _unsubCustomSaveBarDirty = null;
+    _unsubBeatAuditDirty?.();
+    _unsubBeatAuditDirty = null;
     containerEl.empty();
     containerEl.classList.add(ERT_CLASSES.STACK);
     const actsSection = containerEl.createDiv({ cls: ERT_CLASSES.STACK, attr: { [ERT_DATA.SECTION]: 'beats-acts' } });
@@ -401,6 +401,15 @@ export function renderStoryBeatsSection(params: {
         });
 
         return result;
+    };
+
+    const orderBeatsByAct = (beats: BeatRow[], maxActs: number): BeatRow[] => {
+        const beatsByAct: BeatRow[][] = Array.from({ length: maxActs }, () => []);
+        beats.forEach((beatLine) => {
+            const actNum = clampBeatAct(beatLine.act, maxActs);
+            beatsByAct[actNum - 1].push({ ...beatLine, act: actNum });
+        });
+        return beatsByAct.flat();
     };
 
     const normalizeBeatModel = (value: unknown): string =>
@@ -582,7 +591,7 @@ export function renderStoryBeatsSection(params: {
             return {
                 icon: 'alert-circle',
                 statusClass: 'ert-beat-health-icon--critical',
-                tooltip: `${existingBeatDuplicateCount} duplicate beat note${existingBeatDuplicateCount !== 1 ? 's' : ''} found.`
+                tooltip: `${existingBeatDuplicateCount} duplicate beat note${existingBeatDuplicateCount !== 1 ? 's' : ''} found. Manually delete duplicate notes to resolve.`
             };
         }
         if (hasMisaligned) {
@@ -673,7 +682,12 @@ export function renderStoryBeatsSection(params: {
             // Compute misaligned count: beats matched by name but wrong number or act
             const maxActs = getActCount();
             const expectedBeats: BeatRow[] = selectedSystem === 'Custom'
-                ? (plugin.settings.customBeatSystemBeats || []).map(parseBeatRow).map(b => ({ ...b, act: clampBeatAct(b.act, maxActs) }))
+                ? orderBeatsByAct(
+                    (plugin.settings.customBeatSystemBeats || [])
+                        .map(parseBeatRow)
+                        .map(b => ({ ...b, act: clampBeatAct(b.act, maxActs) })),
+                    maxActs
+                )
                 : (() => {
                     // Built-in templates: derive act from beatDetails[].act or infer from position
                     const system = getPlotSystem(selectedSystem);
@@ -957,7 +971,7 @@ export function renderStoryBeatsSection(params: {
             if (hasDups) {
                 healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--critical';
                 setIcon(healthIcon, 'alert-circle');
-                setTooltip(healthIcon, `${existingBeatDuplicateCount} duplicate beat note${existingBeatDuplicateCount !== 1 ? 's' : ''} found.`);
+                setTooltip(healthIcon, `${existingBeatDuplicateCount} duplicate beat note${existingBeatDuplicateCount !== 1 ? 's' : ''} found. Manually delete duplicate notes to resolve.`);
             } else if (hasMisaligned) {
                 healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--warning';
                 setIcon(healthIcon, 'alert-triangle');
@@ -1034,15 +1048,17 @@ export function renderStoryBeatsSection(params: {
         const listContainer = beatWrapper.createDiv({ cls: 'ert-custom-beat-list' });
 
         const saveBeats = async (beats: BeatRow[]) => {
+            const maxActs = getActCount();
             const normalized = beats.map((beat) => ({
                 ...beat,
                 name: normalizeBeatNameInput(beat.name, ''),
+                act: clampBeatAct(beat.act, maxActs),
             }));
             if (normalized.some(beat => !hasBeatReadableText(beat.name))) {
                 new Notice('Beat names must include letters or numbers.');
                 return;
             }
-            plugin.settings.customBeatSystemBeats = normalized;
+            plugin.settings.customBeatSystemBeats = orderBeatsByAct(normalized, maxActs);
             await plugin.saveSettings();
             updateTemplateButton(templateSetting, 'Custom');
             // Re-render stage switcher after beat list changes
@@ -1196,7 +1212,7 @@ export function renderStoryBeatsSection(params: {
                     // Duplicate title in settings list takes highest priority
                     if (dupKey && duplicateKeys.has(dupKey)) {
                         rowState = 'duplicate';
-                        rowNotices.push('Duplicate beat title. Rename one to resolve.');
+                        rowNotices.push('Duplicate beat title. Manually delete duplicate beat notes (or rename one title) to resolve.');
                     }
 
                     // Check for existing files
@@ -1204,7 +1220,7 @@ export function renderStoryBeatsSection(params: {
                         const matches = existingBeatLookup.get(dupKey) ?? [];
                         if (matches.length > 1) {
                             rowState = 'duplicate';
-                            rowNotices.push('Multiple files match this title.');
+                            rowNotices.push('Multiple beat notes match this title. Manually delete duplicate beat notes to resolve.');
                         } else if (rowState !== 'duplicate') {
                             const match = matches[0];
                             const existingName = getBeatBasename(match);
@@ -1496,6 +1512,52 @@ export function renderStoryBeatsSection(params: {
     const designActionsContainer = beatSystemCard.createDiv();
     let createTemplatesButton: ButtonComponent | undefined;
     let mergeTemplatesButton: ButtonComponent | undefined;
+    let refreshBeatAuditPrimaryAction: (() => void) | null = null;
+    let primaryDesignAction: (() => Promise<void>) = async () => { await createBeatTemplates(); };
+    const saveCurrentCustomSet = async (context: 'design' | 'fields' | 'generic' = 'generic'): Promise<void> => {
+        if ((plugin.settings.beatSystem || 'Custom') !== 'Custom') return;
+        const activeId = plugin.settings.activeCustomBeatSystemId ?? 'default';
+
+        // Regular Save never prompts rename/save-as.
+        // If active set is a saved Pro set, update that set in place.
+        const activeConfig = getBeatConfigForSystem(plugin.settings);
+        const currentName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom');
+        const currentDescription = plugin.settings.customBeatSystemDescription ?? '';
+        const currentBeats = (plugin.settings.customBeatSystemBeats || [])
+            .map(b => ({
+                ...b,
+                name: normalizeBeatNameInput(b.name, ''),
+                purpose: typeof (b as { purpose?: unknown }).purpose === 'string'
+                    ? String((b as { purpose?: unknown }).purpose).trim()
+                    : undefined,
+            }))
+            .filter(b => hasBeatReadableText(b.name));
+
+        const savedSystems = plugin.settings.savedBeatSystems ?? [];
+        const existingIdx = savedSystems.findIndex(s => s.id === activeId);
+        if (existingIdx >= 0) {
+            savedSystems[existingIdx] = {
+                ...savedSystems[existingIdx],
+                name: currentName,
+                description: currentDescription,
+                beats: currentBeats,
+                beatYamlAdvanced: activeConfig.beatYamlAdvanced,
+                beatHoverMetadataFields: activeConfig.beatHoverMetadataFields.map(f => ({ ...f })),
+            };
+            plugin.settings.savedBeatSystems = savedSystems;
+            savedCustomSetIds.add(activeId);
+        }
+
+        await plugin.saveSettings();
+        captureSetBaseline(activeId);
+        dirtyState.notify();
+        renderBeatSystemTabs();
+        updateTemplateButton(templateSetting, plugin.settings.beatSystem || 'Custom');
+        refreshBeatAuditPrimaryAction?.();
+        if (context === 'fields') {
+            new Notice('Set saved. You can run the audit now.');
+        }
+    };
 
     const templateSetting = new Settings(designActionsContainer)
         .setName('Beat notes')
@@ -1505,9 +1567,7 @@ export function renderStoryBeatsSection(params: {
             button
                 .setButtonText('Create beat notes')
                 .setTooltip('Create beat note files in your source path')
-                .onClick(async () => {
-                    await createBeatTemplates();
-                });
+                .onClick(() => { void primaryDesignAction(); });
         })
         .addButton(button => {
             mergeTemplatesButton = button;
@@ -1525,44 +1585,6 @@ export function renderStoryBeatsSection(params: {
     const fieldsContainer = beatSystemCard.createDiv({ cls: ERT_CLASSES.STACK });
     // Stage 3: PRO Sets (saved beat systems manager)
     const proTemplatesContainer = beatSystemCard.createDiv({ cls: ERT_CLASSES.STACK });
-    let saveSetModalHandler: ((opts: { isCopy: boolean }) => Promise<void>) | null = null;
-
-    // Shared save footer for Custom workflow (Design / Fields / Pro Sets).
-    const saveBar = beatSystemCard.createDiv({ cls: 'ert-custom-savebar ert-settings-hidden' });
-    const saveBarStatus = saveBar.createDiv({ cls: 'ert-custom-savebar-status' });
-    const saveBarStatusIcon = saveBarStatus.createSpan({ cls: 'ert-custom-savebar-status-icon' });
-    const saveBarStatusText = saveBarStatus.createSpan({ cls: 'ert-custom-savebar-status-text' });
-    const saveBarActions = saveBar.createDiv({ cls: 'ert-custom-savebar-actions' });
-    const saveBarButton = new ButtonComponent(saveBarActions)
-        .setButtonText('Save')
-        .onClick(() => {
-            void (async () => {
-                if ((plugin.settings.beatSystem || 'Custom') !== 'Custom') return;
-                const proActiveNow = isProfessionalActive(plugin);
-                if (proActiveNow && saveSetModalHandler) {
-                    await saveSetModalHandler({ isCopy: isStarterSetActive() });
-                    return;
-                }
-
-                const activeId = plugin.settings.activeCustomBeatSystemId ?? 'default';
-                await plugin.saveSettings();
-                captureSetBaseline(activeId);
-                dirtyState.notify();
-                renderBeatSystemTabs();
-                new Notice('Custom set saved.');
-            })();
-        });
-    const updateSaveBar = () => {
-        const isCustom = (plugin.settings.beatSystem || 'Custom') === 'Custom';
-        saveBar.toggleClass('ert-settings-hidden', !isCustom);
-        if (!isCustom) return;
-        const dirty = isSetDirty();
-        saveBar.toggleClass('ert-custom-savebar--dirty', dirty);
-        setIcon(saveBarStatusIcon, dirty ? 'alert-triangle' : 'check-circle');
-        saveBarStatusText.setText(dirty ? 'Modified — save changes to keep this set state.' : 'Saved');
-        saveBarButton.setButtonText(dirty ? 'Save changes' : 'Save');
-        saveBarButton.buttonEl.toggleClass('ert-custom-savebar-btn--dirty', dirty);
-    };
 
     // ── Stage switcher rendering + visibility ───────────────────────────
     const renderStageSwitcher = () => {
@@ -1639,7 +1661,6 @@ export function renderStoryBeatsSection(params: {
             designActionsContainer.toggleClass('ert-settings-hidden', false);
             fieldsContainer.toggleClass('ert-settings-hidden', true);
             proTemplatesContainer.toggleClass('ert-settings-hidden', true);
-            updateSaveBar();
             return;
         }
 
@@ -1653,7 +1674,6 @@ export function renderStoryBeatsSection(params: {
         if (_currentCustomStage === 'design') {
             refreshCustomBeats?.(true);
         }
-        updateSaveBar();
     };
 
     const updateBeatSystemCard = (system: string) => {
@@ -2268,7 +2288,6 @@ export function renderStoryBeatsSection(params: {
         renderSavedBeatSystems();       // Pro Sets tab (dropdown, preview, dirty)
         updateBeatSystemCard('Custom'); // Main tabs + stage switcher + visibility
         renderBeatSystemTabs();         // Ensure Custom tab is visually active
-        updateSaveBar();
     };
 
     type LoadableEntry = {
@@ -2420,7 +2439,7 @@ export function renderStoryBeatsSection(params: {
                         attr: { type: 'button' }
                     });
                     saveLink.appendText(' to update.');
-                    saveLink.addEventListener('click', () => { void saveSetModal({ isCopy: false }); }); // SAFE: direct addEventListener; Settings lifecycle manages cleanup
+                    saveLink.addEventListener('click', () => { void saveCurrentCustomSet('generic'); }); // SAFE: direct addEventListener; Settings lifecycle manages cleanup
                 }
             } else {
                 notice.addClass('ert-settings-hidden');
@@ -2607,8 +2626,6 @@ export function renderStoryBeatsSection(params: {
                 renderSavedBeatSystems();
             }
         };
-        saveSetModalHandler = saveSetModal;
-
         // Load set CTA
         let loadBtn: ButtonComponent;
         const loadSetAction = () => {
@@ -2650,7 +2667,13 @@ export function renderStoryBeatsSection(params: {
         let saveBtn: ButtonComponent;
         saveBtn = new ButtonComponent(actionsRow)
             .setButtonText(isStarterSetActive() ? 'Save a copy' : 'Save set')
-            .onClick(() => { void saveSetModal({ isCopy: isStarterSetActive() }); });
+            .onClick(() => {
+                if (isStarterSetActive()) {
+                    void saveSetModal({ isCopy: true });
+                    return;
+                }
+                void saveCurrentCustomSet('generic');
+            });
 
         // Delete set — hidden when starter set is selected
         let deleteBtn: ButtonComponent;
@@ -2724,8 +2747,6 @@ export function renderStoryBeatsSection(params: {
     renderSavedBeatSystems();
     updateBeatSystemCard(plugin.settings.beatSystem || 'Custom');
     renderBeatSystemTabs();
-    updateSaveBar();
-    _unsubCustomSaveBarDirty = dirtyState.subscribe(updateSaveBar);
     _unsubTopBeatTabsDirty = dirtyState.subscribe(() => {
         renderBeatSystemTabs();
     });
@@ -3915,19 +3936,43 @@ export function renderStoryBeatsSection(params: {
 
         // Run audit button — disabled when no notes of this type exist
         let auditBtn: ButtonComponent | undefined;
+        let auditPrimaryAction: (() => void) | null = null;
+        const updateAuditPrimaryAction = () => {
+            if (!auditBtn) return;
+            const isBeatFieldsStage = noteType === 'Beat' && plugin.settings.beatSystem === 'Custom';
+            if (isBeatFieldsStage && isSetDirty()) {
+                auditBtn.setDisabled(false);
+                auditBtn.setButtonText('Save changes');
+                auditBtn.setTooltip('Save changes before running beat audit');
+                auditPrimaryAction = () => { void saveCurrentCustomSet('fields'); };
+                return;
+            }
+            const activeBeatSystemKey = resolveBeatAuditSystemKey();
+            const preCheckFiles = collectFilesForAudit(app, noteType, plugin.settings, activeBeatSystemKey);
+            if (preCheckFiles.length === 0) {
+                auditBtn.setDisabled(true);
+                auditBtn.setButtonText('Run audit');
+                auditBtn.setTooltip(`No ${noteType.toLowerCase()} notes found. Create beat notes first.`);
+            } else {
+                auditBtn.setDisabled(false);
+                auditBtn.setButtonText('Run audit');
+                auditBtn.setTooltip(`Scan all ${noteType.toLowerCase()} notes for YAML schema drift`);
+            }
+            auditPrimaryAction = () => runAudit();
+        };
         auditSetting.addButton(button => {
             auditBtn = button;
             button
                 .setButtonText('Run audit')
                 .setTooltip(`Scan all ${noteType.toLowerCase()} notes for YAML schema drift`)
-                .onClick(() => runAudit());
+                .onClick(() => auditPrimaryAction?.());
         });
 
-        // Pre-check: if zero notes exist, mute the audit button with guidance
-        const preCheckFiles = collectFilesForAudit(app, noteType, plugin.settings, resolveBeatAuditSystemKey());
-        if (preCheckFiles.length === 0 && auditBtn) {
-            auditBtn.setDisabled(true);
-            auditBtn.setTooltip(`No ${noteType.toLowerCase()} notes found. Create beat notes first.`);
+        updateAuditPrimaryAction();
+        if (noteType === 'Beat') {
+            refreshBeatAuditPrimaryAction = updateAuditPrimaryAction;
+            _unsubBeatAuditDirty?.();
+            _unsubBeatAuditDirty = dirtyState.subscribe(updateAuditPrimaryAction);
         }
 
         // ─── Results row: appears below header after audit runs ──────────
@@ -3985,6 +4030,7 @@ export function renderStoryBeatsSection(params: {
             }
 
             renderResults();
+            updateAuditPrimaryAction();
         };
 
         // ─── Render results ──────────────────────────────────────────────
@@ -4378,9 +4424,22 @@ export function renderStoryBeatsSection(params: {
     function updateTemplateButton(setting: Settings, selectedSystem: string): void {
         const isCustom = selectedSystem === 'Custom';
         const isTemplateMode = !isCustom;
+        const isDirtyCustom = isCustom && isSetDirty();
         let displayName = selectedSystem;
         let baseDesc = '';
         let hasBeats = true;
+        const setPrimaryDesignButton = (
+            text: string,
+            tooltip: string,
+            disabled: boolean,
+            action: () => Promise<void>
+        ) => {
+            primaryDesignAction = action;
+            if (!createTemplatesButton) return;
+            createTemplatesButton.setButtonText(text);
+            createTemplatesButton.setTooltip(tooltip);
+            createTemplatesButton.setDisabled(disabled);
+        };
 
         if (isCustom) {
             displayName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom');
@@ -4412,19 +4471,35 @@ export function renderStoryBeatsSection(params: {
         }
 
         // Default button states before async lookup
-        if (createTemplatesButton) {
-            createTemplatesButton.setDisabled(!hasBeats);
-            if (isTemplateMode) {
-                createTemplatesButton.setButtonText('Create missing beat notes');
-                createTemplatesButton.setTooltip('Create missing beat notes in your source path');
-            } else {
-                createTemplatesButton.setButtonText('Create beat notes');
-                createTemplatesButton.setTooltip('Create beat note files in your source path');
-            }
+        if (isDirtyCustom) {
+            setPrimaryDesignButton(
+                'Save changes',
+                'Save this set before creating or repairing beat notes',
+                false,
+                async () => { await saveCurrentCustomSet('design'); }
+            );
+        } else if (isTemplateMode) {
+            setPrimaryDesignButton(
+                'Create missing beat notes',
+                'Create missing beat notes in your source path',
+                !hasBeats,
+                async () => { await createBeatTemplates(); }
+            );
+        } else {
+            setPrimaryDesignButton(
+                'Create beat notes',
+                'Create beat note files in your source path',
+                !hasBeats,
+                async () => { await createBeatTemplates(); }
+            );
         }
         if (mergeTemplatesButton) {
             mergeTemplatesButton.setDisabled(true);
             mergeTemplatesButton.buttonEl.addClass('ert-hidden');
+        }
+        if (isDirtyCustom) {
+            setting.setDesc(`${baseDesc} Save changes before creating or repairing beat notes.`);
+            return;
         }
         if (!hasBeats) return;
 
@@ -4449,13 +4524,20 @@ export function renderStoryBeatsSection(params: {
                 // Scenario A: Fresh — no existing files
                 setting.setDesc(baseDesc);
                 if (createTemplatesButton) {
-                    createTemplatesButton.setDisabled(false);
                     if (isTemplateMode) {
-                        createTemplatesButton.setButtonText('Create missing beat notes');
-                        createTemplatesButton.setTooltip(`Create ${existingBeatExpectedCount} missing beat notes`);
+                        setPrimaryDesignButton(
+                            'Create missing beat notes',
+                            `Create ${existingBeatExpectedCount} missing beat notes`,
+                            false,
+                            async () => { await createBeatTemplates(); }
+                        );
                     } else {
-                        createTemplatesButton.setButtonText('Create beat notes');
-                        createTemplatesButton.setTooltip(`Create ${existingBeatExpectedCount} beat note files`);
+                        setPrimaryDesignButton(
+                            'Create beat notes',
+                            `Create ${existingBeatExpectedCount} beat note files`,
+                            false,
+                            async () => { await createBeatTemplates(); }
+                        );
                     }
                 }
                 return;
@@ -4474,28 +4556,43 @@ export function renderStoryBeatsSection(params: {
                 // Scenario B: All synced — nothing to do
                 statusDesc = `All ${existingBeatExpectedCount} beat notes are ${isTemplateMode ? 'ok' : 'synced'}.`;
                 if (createTemplatesButton) {
-                    createTemplatesButton.setDisabled(true);
-                    createTemplatesButton.setTooltip('All beats already have aligned files');
+                    setPrimaryDesignButton(
+                        createTemplatesButton.buttonEl.textContent || 'Create beat notes',
+                        'All beats already have aligned files',
+                        true,
+                        async () => { await createBeatTemplates(); }
+                    );
                 }
             } else if (hasNew) {
                 // Scenario D: Has new beats to create
                 if (createTemplatesButton) {
-                    createTemplatesButton.setDisabled(false);
                     if (isTemplateMode) {
-                        createTemplatesButton.setButtonText(`Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`);
-                        createTemplatesButton.setTooltip(`Create missing beat notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`);
+                        setPrimaryDesignButton(
+                            `Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`,
+                            `Create missing beat notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`,
+                            false,
+                            async () => { await createBeatTemplates(); }
+                        );
                     } else {
-                        createTemplatesButton.setButtonText(`Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`);
-                        createTemplatesButton.setTooltip(`Create missing beat notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`);
+                        setPrimaryDesignButton(
+                            `Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`,
+                            `Create missing beat notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`,
+                            false,
+                            async () => { await createBeatTemplates(); }
+                        );
                     }
                 }
             } else {
                 // Scenario C: All matched, some misaligned — no new beats
                 if (createTemplatesButton) {
-                    createTemplatesButton.setDisabled(true);
-                    createTemplatesButton.setTooltip(hasMissingModel
-                        ? 'All beats have files. Use Repair to set missing Beat Model values.'
-                        : 'All beats have files. Use Repair to fix alignment.');
+                    setPrimaryDesignButton(
+                        createTemplatesButton.buttonEl.textContent || 'Create beat notes',
+                        hasMissingModel
+                            ? 'All beats have files. Use Repair to set missing Beat Model values.'
+                            : 'All beats have files. Use Repair to fix alignment.',
+                        true,
+                        async () => { await createBeatTemplates(); }
+                    );
                 }
             }
 
@@ -4512,7 +4609,7 @@ export function renderStoryBeatsSection(params: {
             }
 
             if (hasDuplicates) {
-                statusDesc += ` Resolve duplicate${duplicates > 1 ? 's' : ''} before merging. Manual resolution is required.`;
+                statusDesc += ` Resolve duplicate${duplicates > 1 ? 's' : ''} before merging. Manually delete duplicate beat notes.`;
             }
 
             setting.setDesc(`${baseDesc} ${statusDesc}`);
@@ -4532,9 +4629,12 @@ export function renderStoryBeatsSection(params: {
         }
 
         const maxActs = getActCount();
-        const beats: BeatRow[] = (plugin.settings.customBeatSystemBeats || [])
-            .map(parseBeatRow)
-            .map(b => ({ ...b, act: clampBeatAct(b.act, maxActs) }));
+        const beats: BeatRow[] = orderBeatsByAct(
+            (plugin.settings.customBeatSystemBeats || [])
+                .map(parseBeatRow)
+                .map(b => ({ ...b, act: clampBeatAct(b.act, maxActs) })),
+            maxActs
+        );
         if (beats.length === 0) {
             new Notice('No custom beats defined. Add beats in the list above.');
             return;
@@ -4613,7 +4713,7 @@ export function renderStoryBeatsSection(params: {
 
         if (updates.length === 0) {
             const conflictHint = conflicts.length > 0 ? ` Conflicts: ${conflicts.length}.` : '';
-            const duplicateHint = duplicates.length > 0 ? ` Duplicates: ${duplicates.length}.` : '';
+            const duplicateHint = duplicates.length > 0 ? ` Duplicates: ${duplicates.length}. Manually delete duplicate beat notes.` : '';
             new Notice(`No beat notes could be merged.${conflictHint}${duplicateHint}`);
             return;
         }
@@ -4666,7 +4766,7 @@ export function renderStoryBeatsSection(params: {
         const updatedCount = updates.length;
         const modelFixedCount = updates.filter(update => update.needsBeatModelFix).length;
         const conflictHint = conflicts.length > 0 ? ` ${conflicts.length} conflict${conflicts.length > 1 ? 's' : ''} skipped.` : '';
-        const duplicateHint = duplicates.length > 0 ? ` ${duplicates.length} duplicate title${duplicates.length > 1 ? 's' : ''} skipped.` : '';
+        const duplicateHint = duplicates.length > 0 ? ` ${duplicates.length} duplicate title${duplicates.length > 1 ? 's' : ''} skipped (manually delete duplicate beat notes).` : '';
         const modelHint = modelFixedCount > 0 ? ` Set Beat Model on ${modelFixedCount} note${modelFixedCount > 1 ? 's' : ''}.` : '';
         new Notice(`Merged ${updatedCount} beat note${updatedCount > 1 ? 's' : ''} (${renamedCount} renamed).${modelHint}${conflictHint}${duplicateHint}`);
     }
@@ -4710,7 +4810,7 @@ export function renderStoryBeatsSection(params: {
         try {
             const sourcePath = plugin.settings.sourcePath || '';
             const beatTemplate = getMergedBeatYaml(plugin.settings);
-            const { created, skipped, errors } = await createBeatNotesFromSet(
+            const { created, skipped, errors, createdPaths } = await createBeatNotesFromSet(
                 app.vault,
                 storyStructureName,
                 sourcePath,
@@ -4726,16 +4826,26 @@ export function renderStoryBeatsSection(params: {
                 new Notice(`✓ Successfully created ${created} Beat set notes!`);
             }
             existingBeatReady = false;
-            // Wait for Obsidian metadata cache to index newly created files
-            // before refreshing beat detection. Use 'resolved' event with timeout fallback.
-            await new Promise<void>(resolve => {
-                const timeout = window.setTimeout(resolve, 1500);
-                const ref = app.metadataCache.on('resolved', () => {
-                    window.clearTimeout(timeout);
-                    app.metadataCache.offref(ref);
-                    resolve();
-                });
-            });
+            // Wait until metadata cache is ready for all newly created beat files.
+            // This prevents partial row-state updates (e.g., 2/3 rows recognized).
+            const waitForCreatedBeatCaches = async (paths: string[], timeoutMs = 5000): Promise<void> => {
+                if (paths.length === 0) return;
+                const start = Date.now();
+                const pending = new Set(paths);
+                while (pending.size > 0 && (Date.now() - start) < timeoutMs) {
+                    for (const path of [...pending]) {
+                        const file = app.vault.getAbstractFileByPath(path);
+                        if (!(file instanceof TFile)) continue;
+                        const cache = app.metadataCache.getFileCache(file);
+                        if (cache?.frontmatter) {
+                            pending.delete(path);
+                        }
+                    }
+                    if (pending.size === 0) break;
+                    await new Promise(resolve => window.setTimeout(resolve, 120));
+                }
+            };
+            await waitForCreatedBeatCaches(createdPaths);
             updateTemplateButton(templateSetting, storyStructureName);
             void refreshExistingBeatLookup(true, storyStructureName).then(() => {
                 refreshCustomBeatList?.();

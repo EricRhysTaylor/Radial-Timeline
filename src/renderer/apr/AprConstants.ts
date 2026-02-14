@@ -104,26 +104,28 @@ export const APR_MOMENTUM_BAR = {
 } as const;
 
 // =============================================================================
-// HEADLESS PATTERN TUNING (portable SVG only — Figma/Illustrator safe)
+// HEADLESS PATTERN TUNING (portable SVG — Figma / Illustrator safe)
 // =============================================================================
+// Figma does not support patternTransform, so the real plaid patterns from
+// Defs.ts (which use rotate(45) / rotate(-20)) render empty. These headless
+// patterns draw the same crosshatch and wavy geometry directly in the tile
+// without any transform attribute. All values in px.
 
-/**
- * Density & appearance controls for APR headless Todo and Working patterns.
- * These are inline SVG <pattern> defs using pure geometry (no CSS vars).
- * Adjust tileSize for density: smaller = denser. All values in px.
- */
 export const APR_HEADLESS_PATTERNS = {
+    /** Todo: gray base + 45° crosshatch diagonals in stage color */
     todo: {
-        tileSize: 8,          // Pattern tile size (px) — smaller = denser dots
-        dotRadius: 1.0,       // Radius of each dot
-        dotOpacity: 0.4,      // Dot opacity against gray fill
-        fill: '#cccccc',      // Gray base fill
+        tileSize: 8,              // Tile side (px) — smaller = denser hatching
+        strokeWidth: 0.8,         // Diagonal line weight
+        strokeOpacity: 0.6,       // Diagonal opacity against gray fill
+        fill: '#cccccc',          // Gray base fill
     },
+    /** Working: pink base + horizontal sine wave in stage color */
     working: {
-        tileSize: 14,         // Pattern tile size (px) — smaller = denser W's
-        fontSize: 8,          // Font size for the "W" glyph (px)
-        glyphOpacity: 0.35,   // W opacity against pink fill
-        fill: '#FF69B4',      // Pink base fill
+        tileW: 12,                // Tile width (px)
+        tileH: 8,                 // Tile height (px)
+        strokeWidth: 0.8,         // Wave stroke weight
+        strokeOpacity: 0.45,      // Wave opacity against pink fill
+        fill: '#FF69B4',          // Pink base fill
     },
 } as const;
 

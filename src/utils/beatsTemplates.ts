@@ -295,7 +295,7 @@ export async function createBeatNotesFromSet(
   sourcePath: string,
   customSystem?: PlotSystemPreset,
   options?: { actSceneNumbers?: Map<number, number[]>; beatTemplate?: string }
-): Promise<{ created: number; skipped: number; errors: string[] }> {
+): Promise<{ created: number; skipped: number; errors: string[]; createdPaths: string[] }> {
   let beatSystem = PLOT_SYSTEMS[beatSystemName];
   
   if (beatSystemName === 'Custom' && customSystem) {
@@ -309,6 +309,7 @@ export async function createBeatNotesFromSet(
   let created = 0;
   let skipped = 0;
   const errors: string[] = [];
+  const createdPaths: string[] = [];
 
   // Normalize source path
   const targetFolder = sourcePath.trim() ? normalizePath(sourcePath.trim()) : '';
@@ -352,14 +353,30 @@ export async function createBeatNotesFromSet(
   }
 
   const beatNumberByIndex = new Array<number>(beatSystem.beats.length);
-  beatsByAct.forEach((indices, actNum) => {
+  let nextFallbackNumber = 1;
+  const sortedActs = [...beatsByAct.keys()].sort((a, b) => a - b);
+  sortedActs.forEach((actNum) => {
+    const indices = beatsByAct.get(actNum) ?? [];
     const sceneNums = actSceneNumbers?.get(actNum) ?? [];
-    const spread = spreadBeatsAcrossScenes(indices.length, sceneNums);
+    if (sceneNums.length > 0) {
+      const spread = spreadBeatsAcrossScenes(indices.length, sceneNums);
+      indices.forEach((beatIdx, i) => {
+        beatNumberByIndex[beatIdx] = spread[i];
+      });
+      const spreadMax = Math.max(...spread);
+      if (Number.isFinite(spreadMax)) {
+        nextFallbackNumber = Math.max(nextFallbackNumber, spreadMax + 1);
+      }
+      return;
+    }
+
+    // No scene range for this act: keep numbering globally monotonic.
     indices.forEach((beatIdx, i) => {
-      beatNumberByIndex[beatIdx] = spread[i];
+      beatNumberByIndex[beatIdx] = nextFallbackNumber + i;
     });
+    nextFallbackNumber += indices.length;
   });
-  // Fallback for any undefined
+  // Final safety fallback for any undefined index.
   beatNumberByIndex.forEach((val, idx) => {
     if (val === undefined) beatNumberByIndex[idx] = idx + 1;
   });
@@ -400,12 +417,13 @@ export async function createBeatNotesFromSet(
     try {
       await vault.create(normalizedPath, content);
       created++;
+      createdPaths.push(normalizedPath);
     } catch (error) {
       errors.push(`Failed to create "${filename}": ${error}`);
     }
   }
 
-  return { created, skipped, errors };
+  return { created, skipped, errors, createdPaths };
 }
 
 // ─── Deprecated aliases (remove after v5.2) ─────────────────────────

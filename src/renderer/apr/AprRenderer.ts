@@ -4,7 +4,6 @@
  */
 import type { TimelineItem } from '../../types';
 import { isBeatNote, sortScenes, sortByManuscriptOrder } from '../../utils/sceneHelpers';
-import { formatNumber } from '../../utils/svg';
 import { computePositions } from '../utils/SceneLayout';
 import { sceneArcPath } from '../components/SceneArcs';
 import { APR_COLORS, APR_TEXT_COLORS, APR_FIXED_STROKES, APR_HEADLESS_PATTERNS } from './AprConstants';
@@ -98,41 +97,53 @@ const resolveOpacity = (portable: boolean) =>
     (varExpr: string, fallback: string): string =>
         portable ? fallback : varExpr;
 
-function resolvePublishStageKey(raw: unknown, stageColors: Record<string, string>): { key: string; fallback: string } {
+/**
+ * Resolve a scene's publish-stage key to a known stage in stageColors.
+ * Falls back to 'Zero' (or first key) when the value is missing or unknown.
+ */
+function resolvePublishStageKey(raw: unknown, stageColors: Record<string, string>): string {
     const stageKeys = Object.keys(stageColors);
     const fallback = stageKeys.includes('Zero') ? 'Zero' : (stageKeys[0] || 'Zero');
     const candidate = Array.isArray(raw) ? raw[0] : raw;
-    const value = (candidate ?? fallback).toString().trim();
-    if (!value) return { key: fallback, fallback };
-    const match = stageKeys.find(stage => stage.toLowerCase() === value.toLowerCase());
-    return { key: match ?? fallback, fallback };
+    const value = (candidate ?? '').toString().trim();
+    if (!value) return fallback;
+    return stageKeys.find(s => s.toLowerCase() === value.toLowerCase()) ?? fallback;
 }
 
 /**
- * Generate portable SVG <pattern> defs for headless mode (Figma/Illustrator safe).
- * Todo = gray fill with small dots; Working = pink fill with "W" glyphs.
- * Each pattern is generated per publish-stage so the dot/glyph color matches the stage.
- * Density is tunable via APR_HEADLESS_PATTERNS in AprConstants.ts.
+ * Generate Figma-safe SVG <pattern> defs for portable mode.
+ *
+ * Figma does not support patternTransform, so the real plaid patterns from
+ * Defs.ts (rotate(45) crosshatch, rotate(-20) wavy) render as empty fills.
+ * These patterns draw equivalent geometry directly in the tile:
+ *   Todo    — gray base + 45° crosshatch diagonals (\ and /)
+ *   Working — pink base + horizontal sine wave
+ *
+ * No patternTransform. No <text>. No CSS vars. Pure geometry.
+ * Tunable via APR_HEADLESS_PATTERNS in AprConstants.ts.
  */
 function renderHeadlessPatternDefs(stageColors: Record<string, string>): string {
     const todo = APR_HEADLESS_PATTERNS.todo;
     const working = APR_HEADLESS_PATTERNS.working;
     let defs = '';
     for (const [stage, stageColor] of Object.entries(stageColors)) {
-        // Todo: gray base + small circle dots in stage color
+        // ── Todo: gray base + 45° crosshatch (diagonal lines, no patternTransform) ──
         const ts = todo.tileSize;
-        const half = formatNumber(ts / 2);
         defs += `<pattern id="aprHeadlessTodo${stage}" patternUnits="userSpaceOnUse" width="${ts}" height="${ts}">` +
             `<rect width="${ts}" height="${ts}" fill="${todo.fill}"/>` +
-            `<circle cx="${half}" cy="${half}" r="${formatNumber(todo.dotRadius)}" fill="${stageColor}" opacity="${todo.dotOpacity}"/>` +
+            `<path d="M0,0 l${ts},${ts} M0,${ts} l${ts},-${ts}" ` +
+                `stroke="${stageColor}" stroke-width="${todo.strokeWidth}" stroke-opacity="${todo.strokeOpacity}" fill="none"/>` +
             `</pattern>`;
-        // Working: pink base + "W" glyph in stage color
-        const ws = working.tileSize;
-        const wx = formatNumber(ws / 2);
-        const wy = formatNumber(ws * 0.78);
-        defs += `<pattern id="aprHeadlessWorking${stage}" patternUnits="userSpaceOnUse" width="${ws}" height="${ws}">` +
-            `<rect width="${ws}" height="${ws}" fill="${working.fill}"/>` +
-            `<text x="${wx}" y="${wy}" text-anchor="middle" font-size="${working.fontSize}" font-family="sans-serif" font-weight="bold" fill="${stageColor}" opacity="${working.glyphOpacity}">W</text>` +
+
+        // ── Working: pink base + horizontal sine wave (no patternTransform) ──
+        const ww = working.tileW;
+        const wh = working.tileH;
+        const mid = wh / 2;
+        // Quadratic bezier wave: one full period per tile width, seamless horizontal tiling
+        defs += `<pattern id="aprHeadlessWorking${stage}" patternUnits="userSpaceOnUse" width="${ww}" height="${wh}">` +
+            `<rect width="${ww}" height="${wh}" fill="${working.fill}"/>` +
+            `<path d="M0,${mid} Q${ww / 4},0 ${ww / 2},${mid} Q${ww * 3 / 4},${wh} ${ww},${mid}" ` +
+                `stroke="${stageColor}" stroke-width="${working.strokeWidth}" stroke-opacity="${working.strokeOpacity}" fill="none"/>` +
             `</pattern>`;
     }
     return defs;
@@ -338,7 +349,9 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         working: '#FF69B4',  // STATUS_COLORS.Working fallback
         todo: '#cccccc'      // STATUS_COLORS.Todo fallback
     } : undefined;
-    // Headless-only pattern defs for portable SVG (Todo dots + Working W glyphs)
+    // renderDefs() provides the standard plaid patterns (CSS-mode or portable hex colors).
+    // In portable mode we also emit Figma-safe headless patterns that use direct geometry
+    // (no patternTransform) so Todo crosshatch and Working waves render in Figma/Illustrator.
     const headlessPatterns = portableSvg ? renderHeadlessPatternDefs(stageColorMap) : '';
     svg += `<defs>${renderDefs(stageColorMap, patternScale, portableSvg, statusColorsResolved)}${headlessPatterns}${percentShadow}${grayscaleFilter}</defs>`;
 
@@ -493,13 +506,12 @@ function renderRing(
             used += pos.endAngle - pos.startAngle;
             const sceneColor = resolveSceneColor(scene, showStatusColors, showStageColors, grayCompletedScenes, stageColors, portableSvg);
             const path = sceneArcPath(ring.innerR, ring.outerR, pos.startAngle, pos.endAngle);
-            // Portable mode: replace plaid pattern refs with headless patterns (dots / W glyphs)
+            // Portable mode: swap plaid pattern refs → Figma-safe headless patterns
+            // (real plaid defs use patternTransform which Figma ignores).
             const patternMatch = portableSvg ? sceneColor.match(/^url\(#plaid(Working|Todo)/) : null;
             if (patternMatch) {
-                const statusKey = patternMatch[1]; // 'Working' or 'Todo'
-                const stageInfo = resolvePublishStageKey(scene['Publish Stage'], stageColors);
-                const stageKey = stageInfo.key;
-                const headlessFill = statusKey === 'Todo'
+                const stageKey = resolvePublishStageKey(scene['Publish Stage'], stageColors);
+                const headlessFill = patternMatch[1] === 'Todo'
                     ? `url(#aprHeadlessTodo${stageKey})`
                     : `url(#aprHeadlessWorking${stageKey})`;
                 svg += `<path d="${path}" fill="${headlessFill}" stroke="${color('--apr-struct-border', structural.border)}" stroke-width="${borderWidth}" />`;

@@ -2123,57 +2123,6 @@
   filter: brightness(1.15);
 }
 
-/* ── Custom save bar (shared across Design / Fields / Pro Sets) ───── */
-.ert-ui.ert-scope--settings .ert-custom-savebar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--ert-control-radius);
-  background: color-mix(in srgb, var(--background-secondary) 72%, var(--background-primary) 28%);
-}
-.ert-ui.ert-scope--settings .ert-custom-savebar-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-.ert-ui.ert-scope--settings .ert-custom-savebar-status-icon {
-  display: inline-flex;
-  align-items: center;
-  color: var(--text-success);
-}
-.ert-ui.ert-scope--settings .ert-custom-savebar-status-icon .svg-icon {
-  width: 14px;
-  height: 14px;
-}
-.ert-ui.ert-scope--settings .ert-custom-savebar-status-text {
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.4;
-}
-.ert-ui.ert-scope--settings .ert-custom-savebar-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.ert-ui.ert-scope--settings .ert-custom-savebar--dirty {
-  border-color: color-mix(in srgb, var(--color-yellow) 42%, var(--background-modifier-border));
-  background: color-mix(in srgb, var(--color-yellow) 8%, var(--background-secondary));
-}
-.ert-ui.ert-scope--settings .ert-custom-savebar--dirty .ert-custom-savebar-status-icon {
-  color: var(--color-yellow);
-}
-.ert-ui.ert-scope--settings .ert-custom-savebar--dirty .ert-custom-savebar-status-text {
-  color: var(--text-normal);
-}
-.ert-ui.ert-scope--settings .ert-custom-savebar-btn--dirty {
-  border-color: color-mix(in srgb, var(--color-yellow) 50%, var(--background-modifier-border));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-yellow) 20%, transparent);
-}
-
 /* ── Beat health status icon (in Custom system header) ───────────── */
 .ert-ui.ert-scope--settings .ert-beat-health-icon {
   display: inline-flex;

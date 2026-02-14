@@ -20,6 +20,89 @@ const resolveOpacity = (portable: boolean) =>
     (varExpr: string, fallback: string): string =>
         portable ? fallback : varExpr;
 
+const APR_CENTER_BASELINE_FALLBACK_EM = 0.38;
+const APR_CENTER_OPTICAL_SHIFT_EM = 0.06;
+
+type TextBoxMetrics = {
+    ascent: number;
+    descent: number;
+};
+
+let aprMetricsCanvas: HTMLCanvasElement | null | undefined;
+
+function getAprMetricsContext(): CanvasRenderingContext2D | null {
+    if (typeof document === 'undefined') return null;
+    if (aprMetricsCanvas === undefined) {
+        aprMetricsCanvas = document.createElement('canvas');
+    }
+    return aprMetricsCanvas?.getContext('2d') ?? null;
+}
+
+function quoteFontFamily(fontFamily: string): string {
+    const trimmed = fontFamily.trim();
+    if (!trimmed) return 'sans-serif';
+    return trimmed
+        .split(',')
+        .map(part => part.trim())
+        .filter(Boolean)
+        .map(part => {
+            if (part.startsWith('"') || part.startsWith("'")) return part;
+            return /\s/.test(part) ? `"${part}"` : part;
+        })
+        .join(', ');
+}
+
+function measureTextBoxMetrics(
+    sample: string,
+    fontFamily: string,
+    fontWeight: number,
+    fontItalic: boolean,
+    fontSize: number
+): TextBoxMetrics | null {
+    const ctx = getAprMetricsContext();
+    if (!ctx) return null;
+
+    const family = quoteFontFamily(fontFamily);
+    ctx.font = `${fontItalic ? 'italic' : 'normal'} ${fontWeight} ${fontSize}px ${family}, sans-serif`;
+
+    const metrics = ctx.measureText(sample || '0');
+    const actualAscent = Number(metrics.actualBoundingBoxAscent ?? 0);
+    const actualDescent = Number(metrics.actualBoundingBoxDescent ?? 0);
+    if (actualAscent > 0 || actualDescent > 0) {
+        return {
+            ascent: actualAscent,
+            descent: actualDescent
+        };
+    }
+
+    const emAscent = Number((metrics as TextMetrics & { emHeightAscent?: number }).emHeightAscent ?? 0);
+    const emDescent = Number((metrics as TextMetrics & { emHeightDescent?: number }).emHeightDescent ?? 0);
+    if (emAscent > 0 || emDescent > 0) {
+        return {
+            ascent: emAscent,
+            descent: emDescent
+        };
+    }
+
+    return null;
+}
+
+function resolvePortableBaselineY(
+    centerY: number,
+    text: string,
+    fontFamily: string,
+    fontWeight: number,
+    fontItalic: boolean,
+    fontSize: number
+): number {
+    const measured = measureTextBoxMetrics(text, fontFamily, fontWeight, fontItalic, fontSize);
+    if (measured) {
+        const geometricOffset = (measured.ascent - measured.descent) / 2;
+        return centerY + geometricOffset + (fontSize * APR_CENTER_OPTICAL_SHIFT_EM);
+    }
+    return centerY + (fontSize * APR_CENTER_BASELINE_FALLBACK_EM);
+}
+
 export interface AprBrandingOptions {
     bookTitle: string;
     authorName?: string;
@@ -400,12 +483,23 @@ export function renderAprCenterPercent(
     const percentPx = Math.max(1, layout.centerLabel.percentPx);
     const centerDy = layout.centerLabel.dyPx * scaleRatio;
     const percentDx = layout.centerLabel.percentDxPx;
-    const percentBaselineShift = layout.centerLabel.percentBaselineShiftPx;
 
     // For portable mode (Figma), use explicit baseline offsets.
     // For non-portable, rely on dominant-baseline for browser accuracy.
     const baselineAttrs = portableSvg ? '' : 'dominant-baseline="middle" alignment-baseline="middle"';
-    const numberY = portableSvg ? (centerDy + numberPx * 0.34) : centerDy;
+    // Portable exports use explicit baseline math (metric-aware when available).
+    // We intentionally ignore centerDy here because dy tuning was made for browser
+    // dominant-baseline behavior and can sit high in Figma/headless outputs.
+    const numberY = portableSvg
+        ? resolvePortableBaselineY(
+            0,
+            numStr,
+            percentNumberFontFamily,
+            percentNumberFontWeight,
+            percentNumberFontItalic,
+            numberPx
+        )
+        : centerDy;
     // % symbol is centered at origin, independent of number positioning
     const percentY = portableSvg ? (percentPx * 0.34) : 0;
     const percentDy = 0;
