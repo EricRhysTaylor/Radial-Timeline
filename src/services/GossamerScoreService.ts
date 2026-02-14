@@ -3,6 +3,7 @@ import type RadialTimelinePlugin from '../main';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { isStoryBeat } from '../utils/sceneHelpers';
 import { appendGossamerScore, detectDominantStage } from '../utils/gossamer';
+import { isPathInFolderScope } from '../utils/pathScope';
 
 export class GossamerScoreService {
     constructor(private app: App, private plugin: RadialTimelinePlugin) {}
@@ -11,7 +12,7 @@ export class GossamerScoreService {
         const sourcePath = this.plugin.settings.sourcePath || '';
         const allFiles = this.app.vault.getMarkdownFiles();
         const files = sourcePath
-            ? allFiles.filter(f => f.path.startsWith(sourcePath))
+            ? allFiles.filter(f => isPathInFolderScope(f.path, sourcePath))
             : allFiles;
 
         // Detect dominant stage from current scene data

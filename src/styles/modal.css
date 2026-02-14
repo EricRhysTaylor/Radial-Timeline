@@ -2076,6 +2076,19 @@
   gap: 16px;
 }
 
+/* Three-column row: checkbox | text block | numeric input */
+.ert-synopsis-control--three-col {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 14px;
+}
+
+.ert-synopsis-control-checkbox {
+  margin: 0;
+  align-self: center;
+}
+
 .rt-synopsis-control-info {
   display: flex;
   flex-direction: column;
@@ -2137,4 +2150,16 @@
 
 .rt-synopsis-threshold-warning.is-visible {
   display: block;
+}
+
+@media (max-width: 700px) {
+  .ert-synopsis-control--three-col {
+    grid-template-columns: auto minmax(0, 1fr);
+    row-gap: 10px;
+  }
+
+  .ert-synopsis-control--three-col .rt-synopsis-control-input {
+    grid-column: 2;
+    justify-self: end;
+  }
 }

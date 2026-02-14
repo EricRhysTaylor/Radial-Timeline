@@ -7,6 +7,7 @@
 import { App, TFile, Notice } from 'obsidian';
 import { SceneDataService } from './SceneDataService';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
+import { isPathInFolderScope } from '../utils/pathScope';
 
 export interface SubplotStats {
     name: string;
@@ -243,8 +244,7 @@ export class SubplotManagementService {
         const sourcePath = settings?.sourcePath || "";
 
         const files = this.app.vault.getMarkdownFiles().filter((file: TFile) => {
-            if (sourcePath && !file.path.startsWith(sourcePath)) return false;
-            return true;
+            return isPathInFolderScope(file.path, sourcePath);
         });
 
         const sceneFiles: TFile[] = [];

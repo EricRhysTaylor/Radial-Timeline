@@ -19,6 +19,7 @@ import { normalizeBooleanValue, isStoryBeat } from '../utils/sceneHelpers';
 import { stripWikiLinks } from '../utils/text';
 import { filterBeatsBySystem } from '../utils/gossamer';
 import { clampActNumber, getConfiguredActCount } from '../utils/acts';
+import { isPathInFolderScope } from '../utils/pathScope';
 
 export interface GetSceneDataOptions {
     filterBeatsBySystem?: boolean;
@@ -88,10 +89,7 @@ export class SceneDataService {
         // Find markdown files in vault that match the filters
         const files = this.app.vault.getMarkdownFiles().filter((file: TFile) => {
             // If sourcePath is empty, include all files, otherwise only include files in the sourcePath
-            if (sourcePath) {
-                return file.path.startsWith(sourcePath);
-            }
-            return true;
+            return isPathInFolderScope(file.path, sourcePath || '');
         });
 
         const scenes: TimelineItem[] = [];

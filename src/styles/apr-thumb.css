@@ -69,13 +69,13 @@
   cursor: pointer;
 }
 
-.apr-svg .apr-stage-badge__text {
+.apr-svg:not(.apr-portable) .apr-stage-badge__text {
   fill: var(--apr-stage-badge-color-override, var(--apr-stage-badge-color));
   opacity: var(--apr-stage-badge-opacity, 0.88);
   letter-spacing: var(--apr-stage-letter-spacing, 0.06em);
 }
 
-.apr-svg .apr-reveal-countdown {
+.apr-svg:not(.apr-portable) .apr-reveal-countdown {
   fill: var(--apr-countdown-color-override, var(--apr-countdown-color));
   opacity: var(--apr-countdown-opacity, 0.7);
   letter-spacing: var(--apr-badge-letter-spacing, 0.08em);
@@ -85,13 +85,13 @@
   text-decoration: none;
 }
 
-.apr-svg .apr-rt-attribution text {
+.apr-svg:not(.apr-portable) .apr-rt-attribution text {
   fill: var(--apr-rt-attrib-color-override, var(--apr-rt-attrib-color, var(--apr-engine-color)));
   opacity: var(--apr-rt-attrib-opacity, 0.35);
   transition: fill 0.2s ease, opacity 0.2s ease;
 }
 
-.apr-svg .apr-rt-attribution:hover text {
+.apr-svg:not(.apr-portable) .apr-rt-attribution:hover text {
   fill: var(--rt-social-color, #ffd41d);
   opacity: 1;
 }

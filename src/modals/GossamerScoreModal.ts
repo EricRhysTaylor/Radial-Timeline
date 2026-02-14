@@ -9,6 +9,7 @@ import { filterBeatsBySystem, normalizeBeatName, normalizeGossamerHistory } from
 import { parseScoresFromClipboard } from '../GossamerCommands';
 import { getPlotSystem } from '../utils/beatsSystems';
 import { normalizeBeatSetNameInput, resolveSelectedBeatModel } from '../utils/beatsInputNormalize';
+import { isPathInFolderScope } from '../utils/pathScope';
 
 interface ScoreHistoryItem {
   index: number;
@@ -809,7 +810,7 @@ export class GossamerScoreModal extends Modal {
     const sourcePath = this.plugin.settings.sourcePath || '';
     const allFiles = this.plugin.app.vault.getMarkdownFiles();
     const files = sourcePath
-      ? allFiles.filter(f => f.path.startsWith(sourcePath))
+      ? allFiles.filter(f => isPathInFolderScope(f.path, sourcePath))
       : allFiles;
 
     for (const [beatTitle, gossamerNums] of deletions) {
@@ -852,7 +853,7 @@ export class GossamerScoreModal extends Modal {
     const sourcePath = this.plugin.settings.sourcePath || '';
     const allFiles = this.plugin.app.vault.getMarkdownFiles();
     const files = sourcePath
-      ? allFiles.filter(f => f.path.startsWith(sourcePath))
+      ? allFiles.filter(f => isPathInFolderScope(f.path, sourcePath))
       : allFiles;
 
     let hasAnyScores = false;

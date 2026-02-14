@@ -4515,13 +4515,57 @@ export function renderStoryBeatsSection(params: {
             const activeSystem = plugin.settings.beatSystem || 'Custom';
             if (selectedSystem !== activeSystem) return;
 
+            const newBeats = existingBeatNewCount;
+            const hasNew = newBeats > 0;
+
+            // ── Template mode (built-in systems): simplified status ──────
+            // Built-in systems (Save The Cat, StoryGrid, Hero's Journey) only
+            // offer "create". Once beats exist the author owns their placement
+            // — alignment, numbering, and duplicates are not surfaced because
+            // no repair tooling is provided for these read-only definitions.
+            if (isTemplateMode) {
+                const foundCount = existingBeatMatchedCount;
+                const expectedCount = existingBeatExpectedCount;
+
+                if (foundCount === 0) {
+                    // No beat notes found yet
+                    setting.setDesc(baseDesc);
+                    setPrimaryDesignButton(
+                        'Create missing beat notes',
+                        `Create ${expectedCount} beat notes for ${selectedSystem}`,
+                        false,
+                        async () => { await createBeatTemplates(); }
+                    );
+                } else if (hasNew) {
+                    // Some exist, some missing
+                    const statusDesc = `${foundCount} of ${expectedCount} beat notes found.`;
+                    setting.setDesc(`${baseDesc} ${statusDesc}`);
+                    setPrimaryDesignButton(
+                        `Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`,
+                        `Create the remaining ${newBeats} beat note${newBeats > 1 ? 's' : ''} for ${selectedSystem}`,
+                        false,
+                        async () => { await createBeatTemplates(); }
+                    );
+                } else {
+                    // All beat notes exist
+                    const statusDesc = `All ${expectedCount} beat notes created.`;
+                    setting.setDesc(`${baseDesc} ${statusDesc}`);
+                    setPrimaryDesignButton(
+                        'Create missing beat notes',
+                        'All beat notes already exist',
+                        true,
+                        async () => { await createBeatTemplates(); }
+                    );
+                }
+                return;
+            }
+
+            // ── Custom mode: full health analysis ────────────────────────
             const synced = existingBeatSyncedCount;
             const misaligned = existingBeatMisalignedCount;
-            const newBeats = existingBeatNewCount;
             const duplicates = existingBeatDuplicateCount;
             const missingModel = existingBeatMissingModelCount;
             const allSynced = synced === existingBeatExpectedCount && misaligned === 0 && duplicates === 0 && missingModel === 0;
-            const hasNew = newBeats > 0;
             const hasMisaligned = misaligned > 0;
             const hasDuplicates = duplicates > 0;
             const hasMissingModel = missingModel > 0;
@@ -4529,29 +4573,18 @@ export function renderStoryBeatsSection(params: {
             if (existingBeatMatchedCount === 0 && !hasMissingModel) {
                 // Scenario A: Fresh — no existing files
                 setting.setDesc(baseDesc);
-                if (createTemplatesButton) {
-                    if (isTemplateMode) {
-                        setPrimaryDesignButton(
-                            'Create missing beat notes',
-                            `Create ${existingBeatExpectedCount} missing beat notes`,
-                            false,
-                            async () => { await createBeatTemplates(); }
-                        );
-                    } else {
-                        setPrimaryDesignButton(
-                            'Create beat notes',
-                            `Create ${existingBeatExpectedCount} beat note files`,
-                            false,
-                            async () => { await createBeatTemplates(); }
-                        );
-                    }
-                }
+                setPrimaryDesignButton(
+                    'Create beat notes',
+                    `Create ${existingBeatExpectedCount} beat note files`,
+                    false,
+                    async () => { await createBeatTemplates(); }
+                );
                 return;
             }
 
             // Build concise status description from non-zero counts
             const parts: string[] = [];
-            if (synced > 0) parts.push(`${synced} ${isTemplateMode ? 'ok' : 'synced'}`);
+            if (synced > 0) parts.push(`${synced} synced`);
             if (misaligned > 0) parts.push(`${misaligned} misaligned`);
             if (newBeats > 0) parts.push(`${newBeats} missing`);
             if (duplicates > 0) parts.push(`${duplicates} duplicate${duplicates > 1 ? 's' : ''}`);
@@ -4560,7 +4593,7 @@ export function renderStoryBeatsSection(params: {
 
             if (allSynced) {
                 // Scenario B: All synced — nothing to do
-                statusDesc = `All ${existingBeatExpectedCount} beat notes are ${isTemplateMode ? 'ok' : 'synced'}.`;
+                statusDesc = `All ${existingBeatExpectedCount} beat notes are synced.`;
                 if (createTemplatesButton) {
                     setPrimaryDesignButton(
                         createTemplatesButton.buttonEl.textContent || 'Create beat notes',
@@ -4572,21 +4605,12 @@ export function renderStoryBeatsSection(params: {
             } else if (hasNew) {
                 // Scenario D: Has new beats to create
                 if (createTemplatesButton) {
-                    if (isTemplateMode) {
-                        setPrimaryDesignButton(
-                            `Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`,
-                            `Create missing beat notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`,
-                            false,
-                            async () => { await createBeatTemplates(); }
-                        );
-                    } else {
-                        setPrimaryDesignButton(
-                            `Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`,
-                            `Create missing beat notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`,
-                            false,
-                            async () => { await createBeatTemplates(); }
-                        );
-                    }
+                    setPrimaryDesignButton(
+                        `Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`,
+                        `Create missing beat notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`,
+                        false,
+                        async () => { await createBeatTemplates(); }
+                    );
                 }
             } else {
                 // Scenario C: All matched, some misaligned — no new beats

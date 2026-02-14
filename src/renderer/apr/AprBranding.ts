@@ -20,8 +20,18 @@ const resolveOpacity = (portable: boolean) =>
     (varExpr: string, fallback: string): string =>
         portable ? fallback : varExpr;
 
-const APR_CENTER_BASELINE_FALLBACK_EM = 0.38;
-const APR_CENTER_OPTICAL_SHIFT_EM = 0.06;
+const escapeXmlAttr = (value: string): string =>
+    value
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+const escapeXmlText = (value: string): string =>
+    value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 
 type TextBoxMetrics = {
     ascent: number;
@@ -98,9 +108,9 @@ function resolvePortableBaselineY(
     const measured = measureTextBoxMetrics(text, fontFamily, fontWeight, fontItalic, fontSize);
     if (measured) {
         const geometricOffset = (measured.ascent - measured.descent) / 2;
-        return centerY + geometricOffset + (fontSize * APR_CENTER_OPTICAL_SHIFT_EM);
+        return centerY + geometricOffset + (fontSize * APR_CENTER_METRIC.baselineOpticalShiftEm);
     }
-    return centerY + (fontSize * APR_CENTER_BASELINE_FALLBACK_EM);
+    return centerY + (fontSize * APR_CENTER_METRIC.baselineFallbackEm);
 }
 
 export interface AprBrandingOptions {
@@ -157,6 +167,9 @@ export function renderAprBranding(options: AprBrandingOptions): string {
     const separator = ' ~ ';
     const bookTitleUpper = bookTitle.toUpperCase();
     const authorNameUpper = authorName?.toUpperCase() || '';
+    const bookTitleEscaped = escapeXmlText(bookTitleUpper);
+    const authorNameEscaped = escapeXmlText(authorNameUpper);
+    const separatorEscaped = escapeXmlText(separator);
 
     // Calculate exact circumference
     const circumference = 2 * Math.PI * brandingRadius;
@@ -256,29 +269,29 @@ export function renderAprBranding(options: AprBrandingOptions): string {
 
     // Construct the seamless text content
     let textContent = '';
-    const bookTspanStart = `<tspan fill="${color('--apr-book-title-color', bookColor)}" font-family="${bookTitleFontFamily}" font-weight="${bookTitleFontWeight}" font-size="${bookTitleSize}" ${italicAttr(bookTitleFontItalic)}>`;
-    const authorTspanStart = `<tspan fill="${color('--apr-author-color', authColor)}" font-family="${authorNameFontFamily}" font-weight="${authorNameFontWeight}" font-size="${authorNameSize}" ${italicAttr(authorNameFontItalic)}>`;
+    const bookTspanStart = `<tspan fill="${color('--apr-book-title-color', bookColor)}" font-family="${escapeXmlAttr(bookTitleFontFamily)}" font-weight="${bookTitleFontWeight}" font-size="${bookTitleSize}" ${italicAttr(bookTitleFontItalic)}>`;
+    const authorTspanStart = `<tspan fill="${color('--apr-author-color', authColor)}" font-family="${escapeXmlAttr(authorNameFontFamily)}" font-weight="${authorNameFontWeight}" font-size="${authorNameSize}" ${italicAttr(authorNameFontItalic)}>`;
     const endTspan = `</tspan>`;
 
     for (let i = 0; i < repeats; i += 1) {
-        textContent += `${bookTspanStart}${bookTitleUpper}${endTspan}`;
-        textContent += `${bookTspanStart}${separator}${endTspan}`;
+        textContent += `${bookTspanStart}${bookTitleEscaped}${endTspan}`;
+        textContent += `${bookTspanStart}${separatorEscaped}${endTspan}`;
         if (hasAuthor) {
-            textContent += `${authorTspanStart}${authorNameUpper}${endTspan}`;
-            textContent += `${bookTspanStart}${separator}${endTspan}`;
+            textContent += `${authorTspanStart}${authorNameEscaped}${endTspan}`;
+            textContent += `${bookTspanStart}${separatorEscaped}${endTspan}`;
         }
     }
 
     // Build the SVG text element - IMPORTANT: minimize whitespace since xml:space="preserve"
     // causes all whitespace to be rendered as actual space characters on the path
-    const brandingText = `<text font-family="${bookTitleFontFamily}" font-size="${avgFontSize}" font-weight="${bookTitleFontWeight}" ${italicAttr(bookTitleFontItalic)} letter-spacing="${adjustedLetterSpacing}" xml:space="preserve"><textPath href="#${circlePathId}" startOffset="${startOffset}">${textContent}</textPath></text>`;
+    const brandingText = `<text font-family="${escapeXmlAttr(bookTitleFontFamily)}" font-size="${avgFontSize}" font-weight="${bookTitleFontWeight}" ${italicAttr(bookTitleFontItalic)} letter-spacing="${adjustedLetterSpacing}" xml:space="preserve"><textPath href="#${circlePathId}" startOffset="${startOffset}">${textContent}</textPath></text>`;
 
 
 
     // Large clickable hotspot covering the entire timeline for author URL
     // Place it behind everything but in front of background
     const timelineHotspot = authorUrl?.trim() ? `
-        <a href="${authorUrl}" target="_blank" rel="noopener" class="apr-timeline-hotspot">
+        <a href="${escapeXmlAttr(authorUrl)}" target="_blank" rel="noopener" class="apr-timeline-hotspot">
             <circle cx="0" cy="0" r="${brandingRadius}" fill="transparent" />
         </a>
     ` : '';
@@ -303,6 +316,9 @@ export interface AprBadgeOptions {
     rtBadgeFontWeight?: number;
     rtBadgeFontItalic?: boolean;
     rtBadgeFontSize?: number;
+    badgeColor?: string;
+    countdownColor?: string;
+    rtAttributionColor?: string;
     // Portable SVG mode
     portableSvg?: boolean;
 }
@@ -318,6 +334,9 @@ export function renderAprBadges(options: AprBadgeOptions): string {
         rtBadgeFontWeight = 700,
         rtBadgeFontItalic = false,
         rtBadgeFontSize,
+        badgeColor,
+        countdownColor,
+        rtAttributionColor,
         portableSvg = false
     } = options;
 
@@ -332,6 +351,7 @@ export function renderAprBadges(options: AprBadgeOptions): string {
     const half = resolvedLayout.outerPx / 2;
     const badgeSize = rtBadgeFontSize ?? resolvedLayout.badge.fontSize;
     const stageText = getStageBadgeText(resolvedLayout, stageLabel);
+    const stageTextEscaped = escapeXmlText(stageText);
     const stageLetterSpacing = resolvedLayout.badge.letterSpacing;
     const countdownLetterSpacing = resolvedLayout.badge.countdownLetterSpacing;
 
@@ -344,6 +364,13 @@ export function renderAprBadges(options: AprBadgeOptions): string {
     const countdownGap = Math.max(4, Math.round(badgeSize * 0.35));
     const countdownFontSize = Math.max(6, Math.round(badgeSize * 0.7));
     const countdownX = stageX - stageLabelWidth - countdownGap;
+    const stageFill = color('--apr-stage-badge-color', badgeColor || APR_TEXT_COLORS.primary);
+    const stageOpacity = opacity('var(--apr-stage-badge-opacity, 0.88)', '0.88');
+    const countdownFill = color('--apr-countdown-color', countdownColor || badgeColor || APR_TEXT_COLORS.primary);
+    const countdownOpacity = opacity('var(--apr-countdown-opacity, 0.7)', '0.7');
+    const rtFill = color('--apr-rt-attrib-color', rtAttributionColor || badgeColor || APR_TEXT_COLORS.primary);
+    const rtOpacity = opacity('var(--apr-rt-attrib-opacity, 0.35)', '0.35');
+    const badgeFontFamilyEscaped = escapeXmlAttr(rtBadgeFontFamily);
 
     const stageBadge = showStageBadge ? `
         <text 
@@ -352,14 +379,14 @@ export function renderAprBadges(options: AprBadgeOptions): string {
             y="${stageY.toFixed(2)}" 
             text-anchor="end" 
             dominant-baseline="text-after-edge"
-            font-family="${rtBadgeFontFamily}" 
+            font-family="${badgeFontFamilyEscaped}" 
             font-size="${badgeSize}" 
             font-weight="${rtBadgeFontWeight}"
             ${italicAttr(rtBadgeFontItalic)}
             letter-spacing="${stageLetterSpacing}"
-            fill="${color('--apr-stage-badge-color', APR_TEXT_COLORS.primary)}"
-            opacity="${opacity('var(--apr-stage-badge-opacity, 0.88)', '0.88')}">
-            ${stageText}
+            fill="${stageFill}"
+            opacity="${stageOpacity}">
+            ${stageTextEscaped}
         </text>
     ` : '';
 
@@ -370,13 +397,13 @@ export function renderAprBadges(options: AprBadgeOptions): string {
             y="${stageY.toFixed(2)}"
             text-anchor="end"
             dominant-baseline="text-after-edge"
-            font-family="${rtBadgeFontFamily}"
+            font-family="${badgeFontFamilyEscaped}"
             font-size="${countdownFontSize}"
             font-weight="${rtBadgeFontWeight}"
             ${italicAttr(rtBadgeFontItalic)}
             letter-spacing="${countdownLetterSpacing}"
-            fill="${color('--apr-countdown-color', APR_TEXT_COLORS.primary)}"
-            opacity="${opacity('var(--apr-countdown-opacity, 0.7)', '0.7')}">
+            fill="${countdownFill}"
+            opacity="${countdownOpacity}">
             ${revealCountdownDays}d
         </text>
     ` : '';
@@ -388,12 +415,12 @@ export function renderAprBadges(options: AprBadgeOptions): string {
                 y="${(half - stageEdgeInset).toFixed(2)}" 
                 text-anchor="start" 
                 dominant-baseline="text-after-edge"
-                font-family="${rtBadgeFontFamily}" 
+                font-family="${badgeFontFamilyEscaped}" 
                 font-size="${Math.max(6, Math.round(badgeSize * 0.75))}" 
                 font-weight="${rtBadgeFontWeight}"
                 ${italicAttr(rtBadgeFontItalic)}
-                fill="${color('--apr-rt-attrib-color', APR_TEXT_COLORS.primary)}"
-                opacity="${opacity('var(--apr-rt-attrib-opacity, 0.35)', '0.35')}">
+                fill="${rtFill}"
+                opacity="${rtOpacity}">
                 RT
             </text>
         </a>
@@ -466,13 +493,15 @@ export function renderAprCenterPercent(
     const baseNumberPx = layout.centerLabel.numberPx;
     const numberPx = Math.max(1, sizeOverride ?? baseNumberPx);
     const scaleRatio = baseNumberPx > 0 ? numberPx / baseNumberPx : 1;
-    const percentPx = Math.max(1, layout.centerLabel.percentPx);
+    const percentPx = Math.max(1, layout.centerLabel.percentPx * APR_CENTER_METRIC.percentSizeScale);
     const centerDy = layout.centerLabel.dyPx * scaleRatio;
     const numberWidthPx = numberPx * APR_CENTER_METRIC.digitWidthEm * digits;
     const percentGapPx = numberPx * APR_CENTER_METRIC.percentGapEm;
     const numberX = APR_CENTER_METRIC.numberOpticalNudgeByDigitsPx[digits];
-    const percentX = numberX + (numberWidthPx / 2) + percentGapPx;
+    const percentOffsetPx = ((numberWidthPx / 2) + percentGapPx) * APR_CENTER_METRIC.percentAnchorFactor;
+    const percentX = numberX + percentOffsetPx;
     const fontFamily = APR_CENTER_METRIC.fontFamily;
+    const fontFamilyEscaped = escapeXmlAttr(fontFamily);
     const numberY = resolvePortableBaselineY(
         centerDy + APR_CENTER_METRIC.numberDyPx,
         valueText,
@@ -496,7 +525,7 @@ export function renderAprCenterPercent(
                 x="${percentX}"
                 y="${percentY}"
                 text-anchor="middle"
-                font-family="${fontFamily}"
+                font-family="${fontFamilyEscaped}"
                 font-weight="${APR_CENTER_METRIC.percentWeight}"
                 font-size="${percentPx}"
                 fill="${color('--apr-percent-symbol-color', symColor)}"
@@ -507,7 +536,7 @@ export function renderAprCenterPercent(
                 x="${numberX}"
                 y="${numberY}"
                 text-anchor="middle"
-                font-family="${fontFamily}"
+                font-family="${fontFamilyEscaped}"
                 font-weight="${APR_CENTER_METRIC.numberWeight}"
                 font-size="${numberPx}"
                 letter-spacing="${layout.centerLabel.letterSpacing}"

@@ -548,17 +548,19 @@ export class SceneAnalysisProcessingModal extends Modal {
             controlsCard.createEl('hr', { cls: 'rt-synopsis-control-divider' });
 
             // Also update Synopsis checkbox + max lines input
-            const synopsisControl = controlsCard.createDiv({ cls: 'rt-synopsis-control rt-synopsis-control--row' });
-            const synopsisInfo = synopsisControl.createDiv({ cls: 'rt-synopsis-control-info' });
-            const synopsisCheckboxRow = synopsisInfo.createDiv({ cls: 'rt-synopsis-checkbox-row' });
-            const synopsisCheckbox = synopsisCheckboxRow.createEl('input', {
+            const synopsisControl = controlsCard.createDiv({ cls: 'rt-synopsis-control rt-synopsis-control--row ert-synopsis-control--three-col' });
+            const synopsisCheckboxId = `rt-synopsis-update-toggle-${Date.now()}`;
+            const synopsisCheckbox = synopsisControl.createEl('input', {
                 type: 'checkbox',
-                cls: 'rt-synopsis-control-checkbox'
+                cls: 'ert-synopsis-control-checkbox',
+                attr: { id: synopsisCheckboxId }
             }) as HTMLInputElement;
             synopsisCheckbox.checked = this.plugin.settings.alsoUpdateSynopsis ?? false;
-            synopsisCheckboxRow.createEl('label', {
+            const synopsisInfo = synopsisControl.createDiv({ cls: 'rt-synopsis-control-info' });
+            synopsisInfo.createEl('label', {
                 text: 'Also update Synopsis',
-                cls: 'rt-synopsis-control-label'
+                cls: 'rt-synopsis-control-label',
+                attr: { for: synopsisCheckboxId }
             });
             synopsisInfo.createDiv({
                 text: 'Generate a short 1–3 sentence synopsis independently from scene content (not from Summary). Used for scene hovers and outlines.',

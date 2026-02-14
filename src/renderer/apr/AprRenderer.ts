@@ -91,6 +91,17 @@ const resolveOpacity = (portable: boolean) =>
     (varExpr: string, fallback: string): string =>
         portable ? fallback : varExpr;
 
+const normalizeOptionalColor = (value?: string): string | undefined => {
+    const trimmed = value?.trim();
+    return trimmed ? trimmed : undefined;
+};
+
+const escapeXmlText = (value: string): string =>
+    value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
 /**
  * Resolve a scene's publish-stage key to a known stage in stageColors.
  * Falls back to 'Zero' (or first key) when the value is missing or unknown.
@@ -211,7 +222,9 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const centerMarkFinal = layout.centerLabel.enabled ? centerMark : 'none';
 
     const stageInfo = resolveStageLabel(publishStageLabel);
-    const stageBadgeColor = stageColorLookup[stageInfo.key] ?? stageColorMap.Press ?? '#6FB971';
+    const stageBadgeColor = normalizeOptionalColor(stageColorLookup[stageInfo.key])
+        ?? normalizeOptionalColor(stageColorMap.Press)
+        ?? '#6FB971';
     const revealCountdownDays = resolveRevealCountdownDays(revealCampaignEnabled, nextRevealAt);
     const showRtAttributionFinal = (showRtAttribution ?? true) && layout.preset.enableText && !isThumb;
     const structuralBorderColor = isThumb ? stageBadgeColor : structural.border;
@@ -275,13 +288,21 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         });
     }
 
-    const bgFill = (transparentCenter || backgroundColor === 'transparent') ? 'none' : (backgroundColor ?? structural.background);
-    const holeFill = transparentCenter ? 'none' : (backgroundColor ?? structural.centerHole);
-    const bookTitleColorResolved = bookAuthorColor ?? stageColorMap.Press ?? '#6FB971';
-    const authorColorResolved = authorColor ?? bookTitleColorResolved;
-    const engineColorResolved = engineColor ?? APR_TEXT_COLORS.primary;
-    const percentNumberColorResolved = percentNumberColor ?? bookTitleColorResolved;
-    const percentSymbolColorResolved = percentSymbolColor ?? bookTitleColorResolved;
+    const backgroundColorResolved = normalizeOptionalColor(backgroundColor);
+    const bookAuthorColorResolved = normalizeOptionalColor(bookAuthorColor);
+    const authorColorResolvedInput = normalizeOptionalColor(authorColor);
+    const engineColorResolvedInput = normalizeOptionalColor(engineColor);
+    const percentNumberColorResolvedInput = normalizeOptionalColor(percentNumberColor);
+    const percentSymbolColorResolvedInput = normalizeOptionalColor(percentSymbolColor);
+    const pressStageColor = normalizeOptionalColor(stageColorMap.Press) ?? '#6FB971';
+    const bgFill = (transparentCenter || backgroundColorResolved === 'transparent') ? 'none' : (backgroundColorResolved ?? structural.background);
+    const holeFill = transparentCenter ? 'none' : (backgroundColorResolved ?? structural.centerHole);
+    const bookTitleColorResolved = bookAuthorColorResolved ?? pressStageColor;
+    const authorColorResolved = authorColorResolvedInput ?? bookTitleColorResolved;
+    const engineColorResolved = engineColorResolvedInput ?? APR_TEXT_COLORS.primary;
+    const stageBadgeColorResolved = stageBadgeColor;
+    const percentNumberColorResolved = percentNumberColorResolvedInput ?? bookTitleColorResolved;
+    const percentSymbolColorResolved = percentSymbolColorResolvedInput ?? bookTitleColorResolved;
     const ringOptions = !showScenesFinal && isThumb
         ? {
             ghostColor: stageColorMap.Press || '#22c55e',
@@ -305,8 +326,8 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
         `--apr-engine-color: ${engineColorResolved}`,
         `--apr-percent-number-color: ${percentNumberColorResolved}`,
         `--apr-percent-symbol-color: ${percentSymbolColorResolved}`,
-        `--apr-stage-badge-color: ${stageBadgeColor}`,
-        `--apr-countdown-color: ${stageBadgeColor}`,
+        `--apr-stage-badge-color: ${stageBadgeColorResolved}`,
+        `--apr-countdown-color: ${stageBadgeColorResolved}`,
         `--apr-rt-attrib-color: ${engineColorResolved}`,
         `--apr-progress-color: ${progressColor}`,
         `--apr-progress-ghost-color: ${progressGhostColor}`,
@@ -320,7 +341,8 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
     const svgStyleString = svgStyle.join('; ');
     const svgStyleAttr = portableSvg ? '' : ` style="${svgStyleString}"`; // SAFE: inline style used for CSS variable surface in SVG (omitted in portable mode)
 
-    let svg = `<svg width="${svgSize}" height="${svgSize}" viewBox="-${half} -${half} ${svgSize} ${svgSize}" xmlns="http://www.w3.org/2000/svg" class="apr-svg apr-${size}"${svgStyleAttr}>`;
+    const portableClass = portableSvg ? ' apr-portable' : '';
+    let svg = `<svg width="${svgSize}" height="${svgSize}" viewBox="-${half} -${half} ${svgSize} ${svgSize}" xmlns="http://www.w3.org/2000/svg" class="apr-svg apr-${size}${portableClass}"${svgStyleAttr}>`;
     svg += `<rect x="-${half}" y="-${half}" width="${svgSize}" height="${svgSize}" fill="${color('--apr-bg', bgFill)}" />`;
 
     // Publication-mode defs (plaid patterns etc.) + optional filters
@@ -424,12 +446,15 @@ export function createAprSVG(scenes: TimelineItem[], opts: AprRenderOptions): Ap
             rtBadgeFontWeight,
             rtBadgeFontItalic,
             rtBadgeFontSize,
+            badgeColor: stageBadgeColorResolved,
+            countdownColor: stageBadgeColorResolved,
+            rtAttributionColor: engineColorResolved,
             portableSvg
         });
     }
 
     if (debugLabel && !isThumb) {
-        svg += `<text x="${half - 10}" y="${half - 10}" text-anchor="end" font-family="sans-serif" font-size="10" fill="#ef4444" font-weight="bold">${debugLabel}</text>`;
+        svg += `<text x="${half - 10}" y="${half - 10}" text-anchor="end" font-family="sans-serif" font-size="10" fill="#ef4444" font-weight="bold">${escapeXmlText(debugLabel)}</text>`;
     }
 
     svg += `</svg>`;
