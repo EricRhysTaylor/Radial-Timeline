@@ -2339,6 +2339,34 @@
   color: var(--color-yellow);
 }
 
+/* Save changes call-to-action when set is modified (matches modified icon tone). */
+.ert-ui.ert-scope--settings .ert-save-changes-btn--attention {
+  color: var(--color-yellow);
+  border-color: color-mix(in srgb, var(--color-yellow) 45%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--color-yellow) 14%, var(--background-secondary));
+  animation: ert-save-changes-pulse 1.9s ease-in-out infinite;
+}
+
+.ert-ui.ert-scope--settings .ert-save-changes-btn--attention:hover {
+  background: color-mix(in srgb, var(--color-yellow) 20%, var(--background-secondary));
+  border-color: color-mix(in srgb, var(--color-yellow) 60%, var(--background-modifier-border));
+}
+
+@keyframes ert-save-changes-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-yellow) 38%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ert-ui.ert-scope--settings .ert-save-changes-btn--attention {
+    animation: none;
+  }
+}
+
 /* ── Action row end-aligned ─────────────────────────────────────── */
 .ert-ui.ert-scope--settings .ert-inline-actions--end {
   justify-content: flex-end;

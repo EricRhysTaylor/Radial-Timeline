@@ -135,7 +135,7 @@ export function computeGridData(scenes: TimelineItem[]): GridDataResult {
             bucket = 'Todo';
         }
         gridCounts[stageKey][bucket] += 1;
-        
+
         // Track scene name for tooltip (include scene number prefix)
         const rawTitle = scene.title || scene.path?.split('/').pop()?.replace('.md', '') || 'Unknown';
         const baseTitle = rawTitle.replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
@@ -180,6 +180,13 @@ export function computeGridData(scenes: TimelineItem[]): GridDataResult {
                 totalRuntimeSeconds += seconds;
             }
         }
+    });
+
+    // Sort scene names naturally (numeric awareness) so tooltips show 1, 2, 3...
+    Object.values(gridSceneNames).forEach(statusMap => {
+        Object.values(statusMap).forEach(namesList => {
+            namesList.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        });
     });
 
     return {

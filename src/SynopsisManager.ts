@@ -731,7 +731,7 @@ export default class SynopsisManager {
   generateElement(scene: TimelineItem, contentLines: string[], sceneId: string, subplotIndexResolver?: (name: string) => number): SVGGElement {
     const { stageClass, titleColor: defaultTitleColor } = getPublishStageStyle(scene["Publish Stage"], this.plugin.settings.publishStageColors);
     const fontScale = this.getReadabilityScale();
-    
+
     // Determine beat-specific Gossamer stage color (latest Gossamer run), fallback to publish stage color
     const stageColors = this.plugin.settings.publishStageColors || { Zero: '#9370DB', Author: '#4169E1', House: '#228B22', Press: '#FF8C00' };
     let beatStageColor: string | null = null;
@@ -979,7 +979,7 @@ export default class SynopsisManager {
 
         // Extract the content between the tags from the original line (before decoding)
         const gossamerContent = contentLines[i].replace(/<gossamer>/g, '').replace(/<\/gossamer>/g, '');
-        
+
         // Create tspan for score (bold, colored)
         const gossamerTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
         gossamerTspan.classList.add('rt-scene-title-bold');
@@ -1009,19 +1009,19 @@ export default class SynopsisManager {
         const pulseContent = contentLines[i]
           .replace(/<gossamer-pulse[^>]*>/g, '')
           .replace(/<\/gossamer-pulse>/g, '');
-        
+
         // Check for " — " separator (em dash)
         const dashIndex = pulseContent.indexOf(' — ');
         if (dashIndex !== -1) {
           const scorePart = pulseContent.substring(0, dashIndex);
           const justificationPart = pulseContent.substring(dashIndex + 3);
-          
+
           // Score tspan (grade styling, beat-stage color)
           const scoreTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
           scoreTspan.classList.add('gossamer-grade');
           scoreTspan.textContent = scorePart;
           synopsisLineElement.appendChild(scoreTspan);
-          
+
           // Em dash + justification (same grade styling to keep line consistent)
           const justificationTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
           justificationTspan.classList.add('gossamer-grade');
@@ -1042,7 +1042,7 @@ export default class SynopsisManager {
         if (beatStageColor) {
           synopsisLineElement.style.setProperty('--rt-gossamer-stage-color', beatStageColor);
         }
-        
+
         // Extract content between tags
         const contContent = contentLines[i].replace(/<gossamer-pulse-cont>/g, '').replace(/<\/gossamer-pulse-cont>/g, '');
         synopsisLineElement.textContent = contContent;
@@ -1160,48 +1160,48 @@ export default class SynopsisManager {
         enabledHoverFields.forEach((field: HoverMetadataField) => {
           // Check if the scene has this key in its raw frontmatter
           const sceneValue = readFrontmatterFieldValue(scene.rawFrontmatter as Record<string, unknown> | undefined, field.key);
-          
+
           // Skip if value is undefined, null, empty string, or empty array
           if (sceneValue === undefined || sceneValue === null) return;
           if (sceneValue === '') return;
           if (Array.isArray(sceneValue) && sceneValue.length === 0) return;
-          
+
           const y = hoverMetaStartY + (hoverMetaLinesAdded * metadataLineHeight);
-          
+
           // Format the value for display
           const formatValue = (val: unknown): string => {
             if (val === null || val === undefined) return '';
-            
+
             // Handle arrays (e.g., Place: ["[[Earth]]", "[[Place/Diego]]"])
             if (Array.isArray(val)) {
               return val.map(item => formatValue(item)).join(', ');
             }
-            
+
             let str = String(val);
-            
+
             // Strip wiki link brackets: [[Link]] -> Link, [[Path/Name]] -> Name
             str = str.replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g, (_match, link) => {
               // Get the display name (last part of path)
               const parts = link.split('/');
               return parts[parts.length - 1];
             });
-            
+
             // Handle Date objects
             if (val instanceof Date && !isNaN(val.getTime())) {
               return this.formatDateForDisplay(val);
             }
-            
+
             return str.trim();
           };
-          
+
           const valueStr = formatValue(sceneValue);
           if (!valueStr) return; // Skip if formatted value is empty
-          
+
           // Create a group for this advanced YAML line
           const lineGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
           lineGroup.setAttribute("class", "rt-hover-metadata-line");
           lineGroup.setAttribute("data-hover-key", field.key);
-          
+
           // Icon positioning
           const iconSize = 18 * fontScale;
           const iconGap = 6 * fontScale;
@@ -1209,7 +1209,7 @@ export default class SynopsisManager {
           const iconSvg = iconName ? getIcon(iconName) : null;
           const hasIcon = !!iconSvg;
           const textX = hasIcon ? (iconSize + iconGap) : 0; // No icon fallback = no offset
-          
+
           // Get the Lucide icon SVG
           if (iconSvg) {
             // Native SVG approach: Extract paths and transform
@@ -1219,16 +1219,16 @@ export default class SynopsisManager {
             iconG.setAttribute("stroke-linecap", "round");
             iconG.setAttribute("stroke-linejoin", "round");
             iconG.setAttribute("fill", "none");
-            
+
             // Calculate scale: Lucide icons are 24x24
             const scale = iconSize / 24;
-            
+
             // Position: y is baseline, so we move up by iconSize (roughly) to align bottom
-            // Fine-tuned: y - iconSize * 0.85 aligns the visual bottom of the icon with the text baseline
-            const iconY = y - (iconSize * 0.85);
+            // Fine-tuned: y - iconSize * 0.70 aligns the visual bottom of the icon with the text baseline (moved down from 0.85)
+            const iconY = y - (iconSize * 0.70);
 
             iconG.setAttribute("transform", `translate(0, ${iconY}) scale(${scale})`);
-            
+
             // Copy all child nodes (paths, circles, etc.) from the Lucide SVG
             Array.from(iconSvg.childNodes).forEach(node => {
               // Skip non-element nodes if any
@@ -1240,7 +1240,7 @@ export default class SynopsisManager {
 
             lineGroup.appendChild(iconG);
           }
-          
+
           // Create the text element (advanced YAML value)
           const textEl = createText(textX, y, 'rt-info-text rt-title-text-secondary rt-hover-metadata-text', valueStr);
           textEl.setAttribute('data-hover-raw', valueStr);
@@ -1254,7 +1254,7 @@ export default class SynopsisManager {
           textEl.setAttribute('data-hover-icon-size', String(hasIcon ? iconSize : 0));
           textEl.setAttribute('data-hover-icon-gap', String(hasIcon ? iconGap : 0));
           lineGroup.appendChild(textEl);
-          
+
           synopsisTextGroup.appendChild(lineGroup);
           hoverMetaLinesAdded++;
         });

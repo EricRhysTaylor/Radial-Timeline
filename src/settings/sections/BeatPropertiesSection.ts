@@ -3944,9 +3944,11 @@ export function renderStoryBeatsSection(params: {
                 auditBtn.setDisabled(false);
                 auditBtn.setButtonText('Save changes');
                 auditBtn.setTooltip('Save changes before running beat audit');
+                auditBtn.buttonEl.classList.add('ert-save-changes-btn--attention');
                 auditPrimaryAction = () => { void saveCurrentCustomSet('fields'); };
                 return;
             }
+            auditBtn.buttonEl.classList.remove('ert-save-changes-btn--attention');
             const activeBeatSystemKey = resolveBeatAuditSystemKey();
             const preCheckFiles = collectFilesForAudit(app, noteType, plugin.settings, activeBeatSystemKey);
             if (preCheckFiles.length === 0) {
@@ -4439,6 +4441,10 @@ export function renderStoryBeatsSection(params: {
             createTemplatesButton.setButtonText(text);
             createTemplatesButton.setTooltip(tooltip);
             createTemplatesButton.setDisabled(disabled);
+            createTemplatesButton.buttonEl.classList.toggle(
+                'ert-save-changes-btn--attention',
+                text === 'Save changes' && !disabled
+            );
         };
 
         if (isCustom) {
