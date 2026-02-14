@@ -5,7 +5,8 @@
  * prefix-number narrative ordering.  One-directional: RT → Longform.
  *
  * The index file is discovered automatically inside the configured source path
- * by scanning for any markdown file whose frontmatter contains a `longform` key.
+ * (book folder): first at top level, then in direct subfolders, to support
+ * Longform's default "Create Longform Project" behavior (index inside a named subfolder).
  */
 
 import { TFile, TFolder, parseYaml, stringifyYaml } from 'obsidian';
@@ -17,24 +18,49 @@ import type { LongformSyncResult } from './types';
 // INDEX FILE DISCOVERY
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/** Effective book root for Longform: active book's source folder or legacy source path. */
+export function getLongformSourcePath(plugin: RadialTimelinePlugin): string {
+    const active = plugin.getActiveBook();
+    const fromBook = active?.sourceFolder?.trim();
+    if (fromBook) return fromBook;
+    return (plugin.settings.sourcePath || '').trim();
+}
+
 /**
- * Find the Longform index file inside the current source path.
- * Scans only the top level of the folder (no recursion) for any `.md` file
- * whose cached frontmatter contains a `longform` key.
+ * Scan a folder's direct children for a single .md file with longform frontmatter.
+ */
+function findIndexInFolder(plugin: RadialTimelinePlugin, folder: TFolder): TFile | null {
+    for (const child of folder.children) {
+        if (child instanceof TFile && child.extension === 'md') {
+            const cache = plugin.app.metadataCache.getFileCache(child);
+            if (cache?.frontmatter?.longform) return child;
+        }
+    }
+    return null;
+}
+
+/**
+ * Find the Longform index file inside the current book/source path.
+ * Looks at the top level first, then one level down (direct subfolders), so
+ * the default Longform "Create Longform Project" layout (index inside a subfolder)
+ * is supported without requiring the user to move the index to the book root.
  */
 export function findLongformIndex(plugin: RadialTimelinePlugin): TFile | null {
-    const sourcePath = plugin.settings.sourcePath;
+    const sourcePath = getLongformSourcePath(plugin);
     if (!sourcePath) return null;
 
     const folder = plugin.app.vault.getAbstractFileByPath(sourcePath);
     if (!(folder instanceof TFolder)) return null;
 
+    // 1) Top level (same folder as book)
+    const atTop = findIndexInFolder(plugin, folder);
+    if (atTop) return atTop;
+
+    // 2) One level down: each direct subfolder (default Longform project layout)
     for (const child of folder.children) {
-        if (child instanceof TFile && child.extension === 'md') {
-            const cache = plugin.app.metadataCache.getFileCache(child);
-            if (cache?.frontmatter?.longform) {
-                return child;
-            }
+        if (child instanceof TFolder) {
+            const inSub = findIndexInFolder(plugin, child);
+            if (inSub) return inSub;
         }
     }
     return null;
@@ -82,21 +108,21 @@ function buildScenesYaml(sceneNames: string[]): string {
  * YAML-special characters.
  */
 export async function syncScenesToLongform(plugin: RadialTimelinePlugin): Promise<LongformSyncResult> {
-    const sourcePath = plugin.settings.sourcePath;
+    const sourcePath = getLongformSourcePath(plugin);
     if (!sourcePath) {
-        return { success: false, indexFile: null, sceneCount: 0, message: 'No source path configured in Radial Timeline settings.' };
+        return { success: false, indexFile: null, sceneCount: 0, message: 'No source path configured. Set an active book folder in Settings → General → Books.' };
     }
 
-    // Locate the Longform index file
+    // Locate the Longform index file (book folder or one level of subfolders)
     const indexFile = findLongformIndex(plugin);
     if (!indexFile) {
-        return { success: false, indexFile: null, sceneCount: 0, message: `No Longform index file found in "${sourcePath}".` };
+        return { success: false, indexFile: null, sceneCount: 0, message: `No Longform index file found in "${sourcePath}" or its subfolders.` };
     }
 
     // Get scenes in narrative (prefix-number) order, including front/back matter
     const selection = await getSceneFilesByOrder(plugin.app, plugin, 'narrative', undefined, true);
 
-    // Keep only scenes that live at the source path level and are not the index file
+    // Keep only scenes that live under the book root and are not the index file
     const prefix = sourcePath.endsWith('/') ? sourcePath : sourcePath + '/';
     const sceneNames = selection.files
         .filter(f => f.path.startsWith(prefix) && f.path !== indexFile.path)

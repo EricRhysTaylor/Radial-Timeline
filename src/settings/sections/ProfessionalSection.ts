@@ -11,7 +11,7 @@ import type RadialTimelinePlugin from '../../main';
 import { ERT_CLASSES } from '../../ui/classes';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { execFile } from 'child_process'; // SAFE: Node child_process for system path scanning
-import { findLongformIndex, syncScenesToLongform } from '../../longform/LongformSyncService';
+import { findLongformIndex, getLongformSourcePath, syncScenesToLongform } from '../../longform/LongformSyncService';
 import { generateSceneContent } from '../../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
@@ -1100,17 +1100,18 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     // Status indicator: shows whether a Longform index file is detected
     const longformStatusSetting = addProRow(new Setting(longformSubSection))
         .setName('Longform index')
-        .setDesc('Detects a Longform index file in your source path.');
+        .setDesc('Detects a Longform index in the active book folder or one level of subfolders (default Longform project layout).');
 
     const updateLongformStatus = () => {
         const indexFile = findLongformIndex(plugin);
+        const sourcePath = getLongformSourcePath(plugin);
         if (indexFile) {
             longformStatusSetting.setDesc(`Detected: ${indexFile.path}`);
         } else {
-            const sp = plugin.settings.sourcePath;
             longformStatusSetting.setDesc(
-                sp ? `No Longform index file found in "${sp}".`
-                   : 'Set a source path first (General settings).'
+                sourcePath
+                    ? `No Longform index file found in "${sourcePath}" or its subfolders.`
+                    : 'Set an active book folder first (Settings → General → Books).'
             );
         }
     };
