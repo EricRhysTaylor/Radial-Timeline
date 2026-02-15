@@ -15,7 +15,7 @@ import { formatRuntimeValue, RuntimeSettings } from './runtimeEstimator';
 export type ExportType = 'manuscript' | 'outline';
 export type ManuscriptPreset = 'screenplay' | 'podcast' | 'novel';
 export type OutlinePreset = 'beat-sheet' | 'episode-rundown' | 'shooting-schedule' | 'index-cards-csv' | 'index-cards-json';
-export type ExportFormat = 'markdown' | 'docx' | 'pdf' | 'csv' | 'json';
+export type ExportFormat = 'markdown' | 'pdf' | 'csv' | 'json';
 
 // ════════════════════════════════════════════════════════════════════════════
 // Pandoc Layout Helpers
@@ -23,7 +23,7 @@ export type ExportFormat = 'markdown' | 'docx' | 'pdf' | 'csv' | 'json';
 
 /**
  * Strip/replace unsafe filename characters and collapse whitespace to hyphens.
- * Produces a clean stem suitable for PDF/DOCX filenames.
+ * Produces a clean stem suitable for PDF filenames.
  */
 export function slugifyToFileStem(title: string): string {
     return title
@@ -170,7 +170,7 @@ export interface ExportFilenameOptions {
     manuscriptPreset?: ManuscriptPreset;
     outlinePreset?: OutlinePreset;
     extension: string;
-    /** When set and format is PDF/DOCX, filename becomes {fileStem}.{ext}. */
+    /** When set and format is PDF, filename becomes {fileStem}.{ext}. */
     fileStem?: string;
 }
 
@@ -179,7 +179,7 @@ export interface ExportFilenameOptions {
  * Pattern: "[Category/Title] [Preset] [Sub-][Order] [Timestamp].[ext]"
  * Examples:
  *   - "Manuscript Novl Narr Jan 12 @ 3.32PM.md"
- *   - "Working Title Novl Narr Feb 14 @ 11.51AM.docx"
+ *   - "Working Title Novl Narr Feb 14 @ 11.51AM.pdf"
  *   - "Outline BtSh RevN Jan 12 @ 3.32PM.md"
  *   - "Outline IdxC Sub-RevC Jan 12 @ 3.32PM.csv"
  */
@@ -188,10 +188,10 @@ export function buildExportFilename(options: ExportFilenameOptions): string {
     const orderAcronym = getOrderAcronym(options.order);
     const hasSubplotFilter = options.subplotFilter && options.subplotFilter !== 'All Subplots';
     const orderPart = hasSubplotFilter ? `Sub-${orderAcronym}` : orderAcronym;
-    const isPandocExport = options.exportType === 'manuscript' && (options.extension === 'docx' || options.extension === 'pdf');
+    const isPandocExport = options.exportType === 'manuscript' && options.extension === 'pdf';
 
     // Book-titled filename for Pandoc exports: readable format with preset, order, timestamp.
-    // Example: "Working Title Novl Narr Feb 14 @ 11.51AM.docx"
+    // Example: "Working Title Novl Narr Feb 14 @ 11.51AM.pdf"
     if (isPandocExport && options.fileStem) {
         const presetAcronym = getManuscriptPresetAcronym(options.manuscriptPreset || 'novel');
         const isDefault = options.fileStem === 'Manuscript' || options.fileStem === 'Untitled-Manuscript';
@@ -210,7 +210,7 @@ export function buildExportFilename(options: ExportFilenameOptions): string {
 }
 
 export interface PandocOptions {
-    targetFormat: 'docx' | 'pdf';
+    targetFormat: 'pdf';
     pandocPath?: string;
     enableFallback?: boolean;
     fallbackPath?: string;
@@ -527,7 +527,7 @@ export function validateTemplateForPreset(
 }
 
 /**
- * Check if a preset requires a template for DOCX/PDF export
+ * Check if a preset requires a template for PDF export
  */
 export function presetRequiresTemplate(preset: ManuscriptPreset, format: ExportFormat): boolean {
     if (format === 'markdown') return false; // Markdown never needs templates
@@ -536,8 +536,6 @@ export function presetRequiresTemplate(preset: ManuscriptPreset, format: ExportF
 
 export function getExportFormatExtension(format: ExportFormat): string {
     switch (format) {
-        case 'docx':
-            return 'docx';
         case 'pdf':
             return 'pdf';
         case 'csv':

@@ -13,7 +13,7 @@ The Manuscript Export Modal needs better context, icons, previews, and template 
 - **Outline Preset**: `layout-list` (Beat sheet) / `tv` (Episode rundown) / `clipboard-list` (Shooting schedule) / `sticky-note` (Index cards)
 - **Scene Ordering**: `arrow-down` (Narrative) / `arrow-up` (Reverse) / `calendar` (Chronological) / `calendar-clock` (Reverse chrono)
 - **Table of Contents**: `list-ordered` / `list` / `x` (none)
-- **Output Format**: `file-text` (Markdown) / `file-type` (DOCX) / `file-text` (PDF) / `table` (CSV) / `code` (JSON)
+- **Output Format**: `file-text` (Markdown) / `file-text` (PDF) / `table` (CSV) / `code` (JSON)
 - **Word Count Update**: `hash`
 - **Subplot Filter**: `filter`
 - **Scene Range**: `sliders-horizontal`
@@ -41,8 +41,8 @@ Add icons next to preset names in dropdowns (like Book Designer modal does):
 
 **Recommended:**
 - **Novel**: "Traditional book manuscript format. Scenes become chapters/sections. For publishing, editing, or sharing."
-- **Screenplay**: "Industry-standard screenplay format (slug lines, dialogue, action). Requires Pandoc template for DOCX/PDF. Best for film/TV scripts."
-- **Podcast**: "Audio script format with host/guest cues, timing, and segments. Requires Pandoc template for DOCX/PDF. Best for podcast episodes."
+- **Screenplay**: "Industry-standard screenplay format (slug lines, dialogue, action). Requires Pandoc template for PDF. Best for film/TV scripts."
+- **Podcast**: "Audio script format with host/guest cues, timing, and segments. Requires Pandoc template for PDF. Best for podcast episodes."
 
 ### Outline Presets (Need Better Context)
 
@@ -69,8 +69,6 @@ Add icons next to preset names in dropdowns (like Book Designer modal does):
 ### Output Formats (Add Tooltips/Descriptions)
 
 **Markdown**: "Obsidian-compatible `.md` files. Always available, no setup required."
-
-**DOCX**: "Microsoft Word format. Requires Pandoc installed. Uses template if configured in Settings → Pro."
 
 **PDF**: "Portable document format. Requires Pandoc + LaTeX installed. Uses template if configured in Settings → Pro."
 
@@ -109,7 +107,6 @@ Add icons next to preset names in dropdowns (like Book Designer modal does):
 4. **Output Format Info Panel** (Medium Priority)
    - Show requirements/status:
    - Markdown: ✅ "Always available"
-   - DOCX: ⚠️ "Requires Pandoc" + template status
    - PDF: ⚠️ "Requires Pandoc + LaTeX" + template status
    - **Location**: Small info box below format pills
 
@@ -248,11 +245,9 @@ For complex settings, add "Learn more" links:
 ```
 ┌─────────────────────────────────────────┐
 │ Output format  [info icon]              │
-│ [Markdown] [DOCX] [PDF]                 │
+│ [Markdown] [PDF]                        │
 │                                          │
 │ 📄 Markdown: Always available           │
-│ ⚠️ DOCX: Requires Pandoc                │
-│    Template: screenplay-hollywood.tex   │
 │ ⚠️ PDF: Requires Pandoc + LaTeX         │
 └─────────────────────────────────────────┘
 ```
@@ -292,7 +287,6 @@ manuscriptModal: {
   
   // Format descriptions
   formatMarkdownDesc: "Obsidian-compatible .md files...",
-  formatDocxDesc: "Microsoft Word format. Requires Pandoc...",
   formatPdfDesc: "Portable document format. Requires Pandoc + LaTeX...",
   
   // Help text
@@ -314,7 +308,7 @@ manuscriptModal: {
 Create `docs/PANDOC_TEMPLATES.md`:
 
 ### What are Pandoc Templates?
-Pandoc templates control how your manuscript looks in DOCX/PDF formats. They're LaTeX files (for PDF) or reference DOCX files.
+Pandoc templates control how your manuscript looks in PDF format. They're LaTeX files for Pandoc rendering.
 
 ### Creating Templates
 

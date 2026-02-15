@@ -6,7 +6,7 @@
  * Professional License Settings Section
  */
 
-import { App, Setting, setIcon, normalizePath, Notice, TFile, TFolder } from 'obsidian';
+import { App, Setting, setIcon, normalizePath, Notice, TFile, TFolder, Modal, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { ERT_CLASSES } from '../../ui/classes';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
@@ -203,11 +203,96 @@ async function scanSystemPaths(): Promise<ScanResult> {
 // SAMPLE TEMPLATE GENERATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
+type MatterSampleLane = 'guided' | 'advanced';
+
+class MatterSampleLaneModal extends Modal {
+    private selected: MatterSampleLane = 'guided';
+    private readonly onPick: (lane: MatterSampleLane | null) => void;
+    private resolved = false;
+
+    constructor(app: App, onPick: (lane: MatterSampleLane | null) => void) {
+        super(app);
+        this.onPick = onPick;
+    }
+
+    onOpen(): void {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.addClass('ert-stack');
+
+        contentEl.createEl('h3', { text: 'Choose Matter Sample Lane' });
+        contentEl.createDiv({ text: 'Generate one coherent Matter workflow pack.' });
+
+        const makeOption = (lane: MatterSampleLane, title: string, desc: string) => {
+            const row = contentEl.createDiv({ cls: 'setting-item' });
+            const info = row.createDiv({ cls: 'setting-item-info' });
+            const nameRow = info.createDiv({ cls: 'setting-item-name' });
+            const radio = nameRow.createEl('input', {
+                type: 'radio',
+                attr: { name: 'rt-matter-lane', value: lane }
+            });
+            radio.checked = this.selected === lane;
+            nameRow.createSpan({ text: ` ${title}` });
+            info.createDiv({ cls: 'setting-item-description', text: desc });
+            row.onClickEvent(() => {
+                this.selected = lane;
+                const radios = contentEl.querySelectorAll('input[name="rt-matter-lane"]');
+                radios.forEach((el) => {
+                    const input = el as HTMLInputElement;
+                    input.checked = input.value === lane;
+                });
+            });
+        };
+
+        makeOption(
+            'guided',
+            'Guided Matter (Recommended)',
+            'Edit one BookMeta file; layout handled by templates.'
+        );
+        makeOption(
+            'advanced',
+            'Advanced Matter (LaTeX Bodies)',
+            'Write LaTeX directly in matter notes.'
+        );
+
+        const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        new ButtonComponent(actions)
+            .setButtonText('Generate')
+            .setCta()
+            .onClick(() => {
+                this.resolved = true;
+                this.close();
+                this.onPick(this.selected);
+            });
+        new ButtonComponent(actions)
+            .setButtonText('Cancel')
+            .onClick(() => {
+                this.resolved = true;
+                this.close();
+                this.onPick(null);
+            });
+    }
+
+    onClose(): void {
+        if (!this.resolved) {
+            this.resolved = true;
+            this.onPick(null);
+        }
+        this.contentEl.empty();
+    }
+}
+
+async function chooseMatterSampleLane(app: App): Promise<MatterSampleLane | null> {
+    return new Promise((resolve) => {
+        new MatterSampleLaneModal(app, resolve).open();
+    });
+}
+
 /**
  * Generate sample scene files and LaTeX templates in the user's vault.
  * Skips files that already exist. Auto-configures template paths in settings.
  */
-async function generateSampleTemplates(plugin: RadialTimelinePlugin): Promise<string[]> {
+async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane: MatterSampleLane): Promise<string[]> {
     const vault = plugin.app.vault;
     const baseFolder = plugin.settings.manuscriptOutputFolder || 'Radial Timeline/Export';
     const templatesFolder = normalizePath(`${baseFolder}/Templates`);
@@ -431,6 +516,277 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin): Promise<st
         }
     ];
 
+    const currentYear = new Date().getFullYear();
+    const bookMetaSample = {
+        name: '000 BookMeta.md',
+        content: [
+            '---',
+            'Class: BookMeta',
+            'Book:',
+            '  title: "Your Title"',
+            '  author: "Author Name"',
+            'Rights:',
+            '  copyright_holder: "Author Name"',
+            `  year: ${currentYear}`,
+            'Identifiers:',
+            '  isbn_paperback: "000-0-00-000000-0"',
+            'Publisher:',
+            '  name: "Publisher Name"',
+            'Production:',
+            '  imprint: "Imprint Name"',
+            '  edition: "1"',
+            '  print_location: "City, Country"',
+            '---',
+            ''
+        ].join('\n')
+    };
+
+    const guidedMatterComment = [
+        '<!--',
+        'Guided Matter Page',
+        'This page is rendered using BookMeta + the selected Pandoc template.',
+        'You usually do NOT need to write LaTeX here.',
+        'Add plain text below only if this page needs custom prose (e.g., disclaimer, dedication).',
+        '-->'
+    ];
+
+    const advancedMatterComment = [
+        '<!--',
+        'Advanced Matter Page',
+        'This page uses raw LaTeX in the body.',
+        'Radial Timeline will pass this through without escaping.',
+        'BookMeta is optional in this workflow.',
+        '-->'
+    ];
+
+    const guidedMatterSamples: { name: string; content: string }[] = [
+        {
+            name: '0.2 Title Page (Semantic).md',
+            content: [
+                '---',
+                'Class: Matter',
+                'Matter:',
+                '  side: front',
+                '  role: title-page',
+                '  usesBookMeta: true',
+                '  bodyMode: plain',
+                '---',
+                '',
+                ...guidedMatterComment,
+                '',
+            ].join('\n')
+        },
+        {
+            name: '0.3 Copyright (Semantic).md',
+            content: [
+                '---',
+                'Class: Matter',
+                'Matter:',
+                '  side: front',
+                '  role: copyright',
+                '  usesBookMeta: true',
+                '  bodyMode: plain',
+                '---',
+                '',
+                ...guidedMatterComment,
+                '',
+                'Rights notice and legal disclaimer text can be written here in plain language.',
+            ].join('\n')
+        },
+        {
+            name: '0.4 Dedication (Semantic).md',
+            content: [
+                '---',
+                'Class: Matter',
+                'Matter:',
+                '  side: front',
+                '  role: dedication',
+                '  usesBookMeta: false',
+                '  bodyMode: plain',
+                '---',
+                '',
+                ...guidedMatterComment,
+                '',
+                'For the ones who stayed.',
+            ].join('\n')
+        },
+        {
+            name: '0.5 Epigraph (Semantic).md',
+            content: [
+                '---',
+                'Class: Matter',
+                'Matter:',
+                '  side: front',
+                '  role: epigraph',
+                '  usesBookMeta: false',
+                '  bodyMode: plain',
+                '---',
+                '',
+                ...guidedMatterComment,
+                '',
+                '"Your quote here."',
+            ].join('\n')
+        },
+        {
+            name: '200.1 Acknowledgments (Semantic).md',
+            content: [
+                '---',
+                'Class: Matter',
+                'Matter:',
+                '  side: back',
+                '  role: acknowledgments',
+                '  usesBookMeta: false',
+                '  bodyMode: plain',
+                '---',
+                '',
+                ...guidedMatterComment,
+                '',
+                'Thank you to everyone who helped shape this manuscript.',
+            ].join('\n')
+        },
+        {
+            name: '200.2 About the Author (Semantic).md',
+            content: [
+                '---',
+                'Class: Matter',
+                'Matter:',
+                '  side: back',
+                '  role: about-author',
+                '  usesBookMeta: true',
+                '  bodyMode: plain',
+                '---',
+                '',
+                ...guidedMatterComment,
+                '',
+                'Author bio goes here.',
+            ].join('\n')
+        }
+    ];
+
+    const advancedMatterSamples: { name: string; content: string }[] = [
+        {
+            name: '0.2 Title Page (Body LaTeX).md',
+            content: [
+                '---',
+                'Class: Matter',
+                'Matter:',
+                '  side: front',
+                '  role: title-page',
+                '  usesBookMeta: false',
+                '  bodyMode: latex',
+                '---',
+                '',
+                ...advancedMatterComment,
+                '',
+                '\\begin{center}',
+                '\\vspace*{\\fill}',
+                '{\\Huge Your Title}\\\\[1em]',
+                '{\\Large Author Name}',
+                '\\vspace*{\\fill}',
+                '\\end{center}',
+            ].join('\n')
+        },
+        {
+            name: '0.3 Copyright (Body LaTeX).md',
+            content: [
+                '---',
+                'Class: Matter',
+                'Matter:',
+                '  side: front',
+                '  role: copyright',
+                '  usesBookMeta: false',
+                '  bodyMode: latex',
+                '---',
+                '',
+                ...advancedMatterComment,
+                '',
+                '\\begin{center}',
+                '\\vspace*{\\fill}',
+                'Copyright \\textcopyright{} 2026 Author Name',
+                '\\vspace*{\\fill}',
+                '\\end{center}',
+            ].join('\n')
+        },
+        {
+            name: '0.4 Dedication (Body LaTeX).md',
+            content: [
+                '---',
+                'Class: Matter',
+                'Matter:',
+                '  side: front',
+                '  role: dedication',
+                '  usesBookMeta: false',
+                '  bodyMode: latex',
+                '---',
+                '',
+                ...advancedMatterComment,
+                '',
+                '\\begin{center}',
+                '\\vspace*{\\fill}',
+                'For the ones who stayed.',
+                '\\vspace*{\\fill}',
+                '\\end{center}',
+            ].join('\n')
+        },
+        {
+            name: '0.5 Epigraph (Body LaTeX).md',
+            content: [
+                '---',
+                'Class: Matter',
+                'Matter:',
+                '  side: front',
+                '  role: epigraph',
+                '  usesBookMeta: false',
+                '  bodyMode: latex',
+                '---',
+                '',
+                ...advancedMatterComment,
+                '',
+                '\\begin{flushright}',
+                '\\emph{"Your quote here."}',
+                '\\end{flushright}',
+            ].join('\n')
+        },
+        {
+            name: '200.1 Acknowledgments (Body LaTeX).md',
+            content: [
+                '---',
+                'Class: Matter',
+                'Matter:',
+                '  side: back',
+                '  role: acknowledgments',
+                '  usesBookMeta: false',
+                '  bodyMode: latex',
+                '---',
+                '',
+                ...advancedMatterComment,
+                '',
+                '\\section*{Acknowledgments}',
+                'Thank you to everyone who helped shape this manuscript.',
+            ].join('\n')
+        },
+        {
+            name: '200.2 About the Author (Body LaTeX).md',
+            content: [
+                '---',
+                'Class: Matter',
+                'Matter:',
+                '  side: back',
+                '  role: about-author',
+                '  usesBookMeta: false',
+                '  bodyMode: latex',
+                '---',
+                '',
+                ...advancedMatterComment,
+                '',
+                '\\section*{About the Author}',
+                'Author bio goes here.',
+            ].join('\n')
+        }
+    ];
+
+    const matterSamples = matterLane === 'guided' ? guidedMatterSamples : advancedMatterSamples;
+
     // ── LaTeX Templates ─────────────────────────────────────────────────────
     const latexTemplates: { name: string; content: string }[] = [
         {
@@ -539,6 +895,22 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin): Promise<st
         if (!vault.getAbstractFileByPath(filePath)) {
             await vault.create(filePath, scene.content);
             createdFiles.push(scene.name);
+        }
+    }
+
+    if (matterLane === 'guided') {
+        const bookMetaPath = normalizePath(`${templatesFolder}/${bookMetaSample.name}`);
+        if (!vault.getAbstractFileByPath(bookMetaPath)) {
+            await vault.create(bookMetaPath, bookMetaSample.content);
+            createdFiles.push(bookMetaSample.name);
+        }
+    }
+
+    for (const matter of matterSamples) {
+        const filePath = normalizePath(`${templatesFolder}/${matter.name}`);
+        if (!vault.getAbstractFileByPath(filePath)) {
+            await vault.create(filePath, matter.content);
+            createdFiles.push(matter.name);
         }
     }
 
@@ -1068,12 +1440,15 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         button.setButtonText('Generate Samples');
         button.setCta();
         button.onClick(async () => {
+            const lane = await chooseMatterSampleLane(plugin.app);
+            if (!lane) return;
             button.setDisabled(true);
             button.setButtonText('Generating…');
             try {
-                const created = await generateSampleTemplates(plugin);
+                const created = await generateSampleTemplates(plugin, lane);
                 if (created.length > 0) {
-                    new Notice(`Created ${created.length} sample files. Scenes → Export/Templates, LaTeX → ${plugin.settings.pandocFolder || 'Pandoc'}/. Layouts registered.`);
+                    const laneLabel = lane === 'guided' ? 'guided' : 'advanced';
+                    new Notice(`Created ${created.length} ${laneLabel} sample files. Scenes → Export/Templates, LaTeX → ${plugin.settings.pandocFolder || 'Pandoc'}/. Layouts registered.`);
                 } else {
                     new Notice('All sample files already exist. Layouts updated.');
                 }

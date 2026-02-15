@@ -186,7 +186,6 @@ export interface TranslationKeys {
         outlineShootingScheduleDesc: string;
         outlineIndexCardsDesc: string;
         formatMarkdown: string;
-        formatDocx: string;
         formatPdf: string;
         formatCsv: string;
         formatJson: string;
@@ -327,7 +326,7 @@ export const en: TranslationKeys = {
             },
             manuscriptOutputFolder: {
                 name: 'Export folder',
-                desc: 'Folder where manuscript, outline, and cue card exports (Markdown, DOCX, PDF, beat sheets, index cards) are saved. Default: Radial Timeline/Export.',
+                desc: 'Folder where manuscript, outline, and cue card exports (Markdown, PDF, beat sheets, index cards) are saved. Default: Radial Timeline/Export.',
                 placeholder: 'Radial Timeline/Export',
             },
             outlineOutputFolder: {
@@ -431,14 +430,13 @@ export const en: TranslationKeys = {
         presetPodcast: 'Podcast script (Pandoc template)',
         presetNovel: 'Novel manuscript',
         presetNovelDesc: 'Traditional book manuscript format. Scenes become chapters/sections. Works with any prose content — no special formatting needed. For publishing, editing, or sharing.',
-        presetScreenplayDesc: 'Industry-standard screenplay format (slug lines, dialogue, action). Requires Pandoc template for DOCX/PDF. ⚠ Scenes must already be written in screenplay format (INT./EXT. slug lines, CHARACTER names in caps, dialogue blocks). Best for film/TV scripts.',
-        presetPodcastDesc: 'Audio script format with host/guest cues, timing, and segments. Requires Pandoc template for DOCX/PDF. ⚠ Scenes must already be written in podcast script format ([SEGMENT] headers, HOST:/GUEST: speaker cues). Best for podcast episodes.',
+        presetScreenplayDesc: 'Industry-standard screenplay format (slug lines, dialogue, action). Requires Pandoc template for PDF. ⚠ Scenes must already be written in screenplay format (INT./EXT. slug lines, CHARACTER names in caps, dialogue blocks). Best for film/TV scripts.',
+        presetPodcastDesc: 'Audio script format with host/guest cues, timing, and segments. Requires Pandoc template for PDF. ⚠ Scenes must already be written in podcast script format ([SEGMENT] headers, HOST:/GUEST: speaker cues). Best for podcast episodes.',
         outlineBeatSheetDesc: 'Blake Snyder\'s Save the Cat structure. Simple numbered list of scenes. Works from YAML metadata only — no scene body formatting required. Best for story structure planning.',
         outlineEpisodeRundownDesc: 'TV-style scene list with timing. Each scene numbered with runtime. Works from YAML metadata only — no scene body formatting required. Best for episodic content planning.',
         outlineShootingScheduleDesc: 'Production-ready table with scenes, locations, timing, subplots. Works from YAML metadata only — no scene body formatting required. Includes session planning estimates if configured. Best for film/TV production.',
         outlineIndexCardsDesc: 'Scene metadata as structured data (CSV/JSON). Works from YAML metadata only — no scene body formatting required. Includes runtime, word counts, synopsis. Best for external tools, scripts, or databases.',
         formatMarkdown: 'Markdown',
-        formatDocx: 'DOCX',
         formatPdf: 'PDF',
         formatCsv: 'CSV',
         formatJson: 'JSON',
@@ -471,7 +469,7 @@ export const en: TranslationKeys = {
         actionCreate: 'Manuscript generate',
         actionCancel: 'Cancel',
         emptyNotice: 'No scenes available to assemble.',
-        templateNotConfigured: '⚠️ Template not configured. DOCX/PDF will use Pandoc defaults (may not match screenplay/podcast format).',
+        templateNotConfigured: '⚠️ Template not configured. PDF will use Pandoc defaults (may not match screenplay/podcast format).',
         templateNotFound: '⚠️ Template file not found: {{path}}. Export may fail or use defaults.',
         templateFound: '✅ Template configured: {{path}}',
         configureInSettings: 'Configure in Settings → Pro',

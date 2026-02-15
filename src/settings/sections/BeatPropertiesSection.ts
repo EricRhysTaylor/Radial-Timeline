@@ -701,24 +701,18 @@ export function renderStoryBeatsSection(params: {
                         return { name, act };
                     });
                 })();
+            // Misaligned = matched by name but wrong Act. Prefix numbers are NOT audited (see Beat-Audit-Heal spec).
             let misaligned = 0;
-            const beatNumbers = buildBeatNumbers(expectedBeats, maxActs, resolvedRanges);
-            expectedBeats.forEach((beat, idx) => {
+            expectedBeats.forEach((beat) => {
                 const key = normalizeBeatTitle(beat.name);
                 if (!key || !lookup.has(key)) return;
                 const matches = lookup.get(key) ?? [];
-                const expectedNumber = beatNumbers[idx] ?? (idx + 1);
                 const actNumber = clampBeatAct(beat.act, maxActs);
                 let hasAligned = false;
                 matches.forEach(existing => {
-                    const existingName = getBeatBasename(existing);
-                    const existingNumberStr = getScenePrefixNumber(existingName, existing.number);
-                    const existingNumber = existingNumberStr ? Number(existingNumberStr) : NaN;
                     const existingActRaw = typeof existing.actNumber === 'number' ? existing.actNumber : Number(existing.act ?? actNumber);
                     const existingAct = Number.isFinite(existingActRaw) ? existingActRaw : actNumber;
-                    const numberAligned = Number.isFinite(existingNumber) && existingNumber === expectedNumber;
-                    const actAligned = Number.isFinite(existingAct) ? existingAct === actNumber : true;
-                    if (numberAligned && actAligned) hasAligned = true;
+                    if (existingAct === actNumber) hasAligned = true;
                 });
                 if (!hasAligned) misaligned++;
             });
@@ -975,7 +969,7 @@ export function renderStoryBeatsSection(params: {
             } else if (hasMisaligned) {
                 healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--warning';
                 setIcon(healthIcon, 'alert-triangle');
-                setTooltip(healthIcon, `${existingBeatMisalignedCount} beat note${existingBeatMisalignedCount !== 1 ? 's' : ''} need repair.`);
+                setTooltip(healthIcon, `${existingBeatMisalignedCount} beat note${existingBeatMisalignedCount !== 1 ? 's' : ''} have wrong Act. Use Repair to update frontmatter.`);
             } else if (hasMissingModel) {
                 healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--warning';
                 setIcon(healthIcon, 'alert-triangle');
@@ -1223,27 +1217,18 @@ export function renderStoryBeatsSection(params: {
                             rowNotices.push('Multiple beat notes match this title. Manually delete duplicate beat notes to resolve.');
                         } else if (rowState !== 'duplicate') {
                             const match = matches[0];
-                            const existingName = getBeatBasename(match);
-                            const existingNumberStr = getScenePrefixNumber(existingName, match.number);
-                            const existingNumber = existingNumberStr ? Number(existingNumberStr) : NaN;
                             const existingActRaw = typeof match.actNumber === 'number'
                                 ? match.actNumber
                                 : Number(match.act ?? actNumber);
                             const existingAct = Number.isFinite(existingActRaw) ? existingActRaw : actNumber;
-                            const missingNumber = !existingNumberStr || !Number.isFinite(existingNumber);
-                            const numberAligned = !missingNumber && existingNumber === beatNumber;
-                            const actAligned = Number.isFinite(existingAct) ? existingAct === actNumber : true;
+                            const actAligned = existingAct === actNumber;
 
-                            if (numberAligned && actAligned) {
+                            if (actAligned) {
                                 rowState = 'synced';
-                                rowNotices.push('Beat note aligned.');
+                                rowNotices.push('Beat note aligned (Act matches). Prefix numbers are cosmetic.');
                             } else {
                                 rowState = 'misaligned';
-                                if (missingNumber) {
-                                    rowNotices.push(`Missing prefix number. Repair to assign #${beatNumber}.`);
-                                } else {
-                                    rowNotices.push(`Misaligned: file is #${existingNumberStr} Act ${existingAct}, expected #${beatNumber} Act ${actNumber}.`);
-                                }
+                                rowNotices.push(`Wrong Act: file has Act ${existingAct}, expected Act ${actNumber}. Use Repair to fix.`);
                             }
                         }
                     }
@@ -1573,7 +1558,7 @@ export function renderStoryBeatsSection(params: {
             mergeTemplatesButton = button;
             button
                 .setButtonText('Repair beat notes')
-                .setTooltip('Fix misaligned beat notes to match this list')
+                .setTooltip('Update Act and Beat Model in frontmatter for misaligned beat notes. Prefix numbers are not changed.')
                 .onClick(async () => {
                     await mergeExistingBeatNotes();
                 });
@@ -4619,7 +4604,7 @@ export function renderStoryBeatsSection(params: {
                         createTemplatesButton.buttonEl.textContent || 'Create beat notes',
                         hasMissingModel
                             ? 'All beats have files. Use Repair to set missing Beat Model values.'
-                            : 'All beats have files. Use Repair to fix alignment.',
+                            : 'All beats have files. Use Repair to fix Act and Beat Model.',
                         true,
                         async () => { await createBeatTemplates(); }
                     );
@@ -4635,7 +4620,7 @@ export function renderStoryBeatsSection(params: {
                 const repairBits: string[] = [];
                 if (misaligned > 0) repairBits.push(`${misaligned} misaligned`);
                 if (missingModel > 0) repairBits.push(`${missingModel} missing Beat Model`);
-                mergeTemplatesButton.setTooltip(`Fix ${repairBits.join(' and ')} beat note${repairCount > 1 ? 's' : ''} to match this list`);
+                mergeTemplatesButton.setTooltip(`Update Act and Beat Model for ${repairBits.join(' and ')} beat note${repairCount > 1 ? 's' : ''}. Prefix numbers are not changed.`);
             }
 
             if (hasDuplicates) {
@@ -4670,8 +4655,6 @@ export function renderStoryBeatsSection(params: {
             return;
         }
 
-        const ranges = await collectActRanges(true);
-        const beatNumbers = buildBeatNumbers(beats, maxActs, ranges ?? new Map());
         const expectedKeys = new Set(beats.map(b => normalizeBeatTitle(b.name)).filter(k => k.length > 0));
         const existing = await collectExistingBeatNotes(true, storyStructureName);
         const existingMatched = existing ?? [];
@@ -4701,7 +4684,7 @@ export function renderStoryBeatsSection(params: {
             if (count > 1) duplicateKeys.add(key);
         });
 
-        beats.forEach((beatLine, index) => {
+        beats.forEach((beatLine) => {
             const key = normalizeBeatTitle(beatLine.name);
             if (!key) return;
             if (duplicateKeys.has(key)) {
@@ -4726,19 +4709,8 @@ export function renderStoryBeatsSection(params: {
             const file = app.vault.getAbstractFileByPath(match.path);
             if (!(file instanceof TFile)) return;
 
-            const beatNumber = beatNumbers[index] ?? (index + 1);
-            const targetBasename = buildBeatFilename(beatNumber, beatLine.name);
-            const parentPath = file.parent?.path ?? '';
-            const targetPath = parentPath
-                ? `${parentPath}/${targetBasename}.${file.extension}`
-                : `${targetBasename}.${file.extension}`;
-
-            if (targetPath !== file.path && app.vault.getAbstractFileByPath(targetPath)) {
-                conflicts.push(targetBasename);
-                return;
-            }
-
-            updates.push({ file, targetPath, act: beatLine.act, needsBeatModelFix });
+            // Repair updates frontmatter only; no file renames (prefix numbers are not healed).
+            updates.push({ file, targetPath: file.path, act: beatLine.act, needsBeatModelFix });
         });
 
         if (updates.length === 0) {
@@ -4792,13 +4764,12 @@ export function renderStoryBeatsSection(params: {
             refreshCustomBeatList?.();
         });
 
-        const renamedCount = renameOps.length;
         const updatedCount = updates.length;
         const modelFixedCount = updates.filter(update => update.needsBeatModelFix).length;
         const conflictHint = conflicts.length > 0 ? ` ${conflicts.length} conflict${conflicts.length > 1 ? 's' : ''} skipped.` : '';
         const duplicateHint = duplicates.length > 0 ? ` ${duplicates.length} duplicate title${duplicates.length > 1 ? 's' : ''} skipped (manually delete duplicate beat notes).` : '';
         const modelHint = modelFixedCount > 0 ? ` Set Beat Model on ${modelFixedCount} note${modelFixedCount > 1 ? 's' : ''}.` : '';
-        new Notice(`Merged ${updatedCount} beat note${updatedCount > 1 ? 's' : ''} (${renamedCount} renamed).${modelHint}${conflictHint}${duplicateHint}`);
+        new Notice(`Repaired ${updatedCount} beat note${updatedCount > 1 ? 's' : ''} (Act, Beat Model).${modelHint}${conflictHint}${duplicateHint}`);
     }
 
     async function createBeatTemplates(): Promise<void> {

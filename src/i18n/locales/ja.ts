@@ -80,7 +80,7 @@ export const ja: DeepPartial<TranslationKeys> = {
             },
             manuscriptOutputFolder: {
                 name: 'エクスポートフォルダ',
-                desc: '原稿/アウトラインのエクスポート（Markdown、DOCX、PDF、ビートシート、インデックスカード）を保存するフォルダです。デフォルト: Radial Timeline/Export。',
+                desc: '原稿/アウトラインのエクスポート（Markdown、PDF、ビートシート、インデックスカード）を保存するフォルダです。デフォルト: Radial Timeline/Export。',
                 placeholder: 'Radial Timeline/Export',
             },
             outlineOutputFolder: {

@@ -153,7 +153,7 @@ The Outline file can be anywhere inside the book folder (including inside subfol
 *   **Source path**: The root folder in your vault containing your manuscript scene files (e.g., `Book 1`). Leave blank to scan the entire vault.
 *   **Show source path as title**: When enabled, the timeline uses the source folder name as the central title. When disabled, it displays "Work in Progress".
 *   **Logs & generated files output folder**: Storage location for AI logs and local LLM reports (default `Radial Timeline/Logs`).
-*   **Export folder**: Destination for manuscript, outline, and cue card exports — Markdown, DOCX, PDF, beat sheets, and index cards (default `Radial Timeline/Export`).
+*   **Export folder**: Destination for manuscript, outline, and cue card exports — Markdown, PDF, beat sheets, and index cards (default `Radial Timeline/Export`).
 
 <a name="pov"></a>
 ### Point of view
@@ -179,12 +179,12 @@ Configure the high-level structure of your narrative ring.
 Configure the structural pacing guide for your story.
 *   **Story beats system**: Select a preset structure (**Save The Cat**, **Hero's Journey**, **Story Grid**) or choose **Custom**.
 *   **Custom story beat system editor**: (Visible when "Custom" is selected) Name your beat system, then add beats. Assign each beat to an act and drag to reorder. Row colors show sync status at a glance:
-    *   **Green** — beat note exists and is aligned (number and act match).
-    *   **Orange** — beat note exists but is misaligned (wrong number or act). Use **Merge** to fix.
+    *   **Green** — beat note exists and Act matches.
+    *   **Orange** — beat note exists but Act is wrong. Use **Repair** to update frontmatter.
     *   **Red** — duplicate beat title or multiple files match. Resolve manually.
     *   **No highlight** — new beat with no file yet. Use **Create** to generate it.
 *   **Create sets**: Generate beat set notes in your source folder. The button shows how many new notes will be created and is disabled when all beats already have files.
-*   **Merge beats**: (Appears when misaligned beats are detected) Renames and updates existing beat note files to match the current list order and act assignments. The button shows how many beats will be realigned.
+*   **Repair beat notes**: (Appears when misaligned beats or missing Beat Model are detected) Updates frontmatter (Act, Beat Model, Class) only. Does not rename files. See [[Beat-Audit-Heal]] for details.
 *   **Beat properties editor**: Customize additional beat properties and choose which fields appear in the beat hover synopsis. Stored per beat system.
 *   **Saved sets ✦ Pro**: Save and switch between multiple custom beat systems (unlimited beat sets). Each system stores its beat list, Beat properties editor fields, and hover metadata selections. Core includes a single custom beat system.
 

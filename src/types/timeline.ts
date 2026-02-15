@@ -39,10 +39,12 @@ export interface MatterMeta {
     side?: string;
     /** Semantic role: copyright, title-page, dedication, etc. */
     role?: string;
-    /** Sort order within its side */
-    order?: number;
     /** Whether this matter note should pull data from BookMeta */
     usesBookMeta?: boolean;
+    /** Matter body handling mode for semantic renderers. */
+    bodyMode?: 'latex' | 'plain' | 'auto';
+    /** @deprecated Matter ordering now uses filename prefixes only (0.* / 200.*). */
+    order?: number;
 }
 
 export interface TimelineItem {

@@ -341,7 +341,7 @@ export function renderGeneralSection(params: {
                 button.buttonEl.addClass('ert-iconBtn');
                 button.buttonEl.setAttr('aria-label', 'Create draft');
                 setIcon(button.buttonEl, 'book-dashed');
-                button.setTooltip('Create a sibling draft copy of this book folder. Keeps all files unchanged and auto-increments the draft name if needed.');
+                button.setTooltip('Create a sibling draft copy of this book folder. Keeps all files unchanged. Adds new Book profile with a unique name.');
                 button.onClick(() => {
                     if (creatingDraft) return;
 

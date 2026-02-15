@@ -42,15 +42,15 @@ The export modal offers two categories: **Manuscripts** (full scene content) and
 
 | Type | Preset | Formats | Works Out of Box? | Setup Required |
 |------|--------|---------|-------------------|----------------|
-| Manuscript | **Novel** | MD, DOCX, PDF | ✅ Markdown | Pandoc for DOCX/PDF |
-| Manuscript | **Screenplay** | MD, DOCX, PDF | ⚠ Partial | Pre-formatted scenes + Pandoc + LaTeX template |
-| Manuscript | **Podcast** | MD, DOCX, PDF | ⚠ Partial | Pre-formatted scenes + Pandoc + LaTeX template |
+| Manuscript | **Novel** | MD, PDF | ✅ Markdown | Pandoc for PDF |
+| Manuscript | **Screenplay** | MD, PDF | ⚠ Partial | Pre-formatted scenes + Pandoc + LaTeX template |
+| Manuscript | **Podcast** | MD, PDF | ⚠ Partial | Pre-formatted scenes + Pandoc + LaTeX template |
 | Outline | **Beat Sheet** | MD | ✅ Yes | None |
 | Outline | **Episode Rundown** | MD | ✅ Yes | None |
 | Outline | **Shooting Schedule** | MD | ✅ Yes | None |
 | Outline | **Index Cards** | CSV, JSON | ✅ Yes | None |
 
-**Manuscript exports** read the full body content of your scene files — the actual prose, dialogue, or script. They strip YAML frontmatter and Obsidian comments, then assemble everything under scene headings with a table of contents. Markdown export works immediately. DOCX and PDF require [Pandoc](https://pandoc.org) (and LaTeX for PDF).
+**Manuscript exports** read the full body content of your scene files — the actual prose, dialogue, or script. They strip YAML frontmatter and Obsidian comments, then assemble everything under scene headings with a table of contents. Markdown export works immediately. PDF requires [Pandoc](https://pandoc.org) (and LaTeX for PDF).
 
 **Outline exports** read only YAML metadata — `When`, `Subplot`, `Runtime`, `Words`, `Synopsis`. They never touch the body text. All outline formats work out of the box with no external tools.
 
@@ -83,7 +83,7 @@ GUEST: Thanks for having me.
 
 #### Setting Up Pandoc Export
 
-For DOCX or PDF output:
+For PDF output:
 
 1.  **Install Pandoc** — download from [pandoc.org](https://pandoc.org/installing.html)
 2.  **Install LaTeX** (for PDF) — [MacTeX](https://www.tug.org/mactex/) on macOS, [MiKTeX](https://miktex.org/) on Windows

@@ -3,7 +3,7 @@
  */
 import { TFile, Vault, App, getFrontMatterInfo, parseYaml } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import type { TimelineItem, BookMeta } from '../types';
+import type { TimelineItem, BookMeta, MatterMeta } from '../types';
 import { getScenePrefixNumber } from './text';
 import { getActiveBookExportContext } from './exportContext';
 
@@ -28,14 +28,30 @@ export interface ManuscriptSceneSelection {
   sortOrder: string;
   titles: string[];
   whenDates: (string | null)[];
+  acts: (number | null)[];
   sceneNumbers: number[];
   subplots: string[];
   synopses: (string | null)[];
   runtimes: (number | null)[];
   wordCounts: (number | null)[];
+  matterMetaByPath?: Map<string, MatterMeta>;
 }
 
 export type TocMode = 'markdown' | 'plain' | 'none';
+type MatterBodyMode = 'latex' | 'plain' | 'auto';
+type EffectiveBodyMode = 'latex' | 'plain';
+let matterOrderIgnoredWarned = false;
+
+function isDevMode(): boolean {
+  return typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
+}
+
+function warnMatterOrderIgnoredOnce(): void {
+  if (isDevMode() && !matterOrderIgnoredWarned) {
+    matterOrderIgnoredWarned = true;
+    console.warn('Matter.order is ignored; ordering uses filename prefixes.');
+  }
+}
 
 /**
  * Strip YAML frontmatter from file content
@@ -57,12 +73,17 @@ function stripObsidianComments(content: string): string {
   return content;
 }
 
+function stripHtmlComments(content: string): string {
+  return content.replace(/<!--[\s\S]*?-->/g, '');
+}
+
 /**
  * Extract clean body text from file content
  */
 export function extractBodyText(content: string): string {
   let text = stripYamlFrontmatter(content);
   text = stripObsidianComments(text);
+  text = stripHtmlComments(text);
   return text.trim();
 }
 
@@ -72,9 +93,18 @@ export function extractBodyText(content: string): string {
 
 /**
  * Extract matter metadata from raw file content by parsing its YAML frontmatter.
- * Returns null if the file is not a Frontmatter/Backmatter note or has no Matter: block.
+ * Returns null if the file is not a Frontmatter/Backmatter/Matter note or has no Matter: block.
  */
-function extractMatterMeta(content: string): { role?: string; usesBookMeta?: boolean } | null {
+function normalizeMatterBodyMode(value: unknown): MatterBodyMode {
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'latex') return 'latex';
+    if (normalized === 'plain') return 'plain';
+  }
+  return 'auto';
+}
+
+function extractMatterMeta(content: string): MatterMeta | null {
   try {
     const fmInfo = getFrontMatterInfo(content);
     const fmText = (fmInfo as { frontmatter?: string }).frontmatter;
@@ -83,61 +113,88 @@ function extractMatterMeta(content: string): { role?: string; usesBookMeta?: boo
     const yaml = parseYaml(fmText);
     if (!yaml) return null;
 
-    // Only process Frontmatter/Backmatter class notes
-    const classVal = yaml.Class || yaml.class;
-    if (classVal !== 'Frontmatter' && classVal !== 'Backmatter') return null;
+    // Only process Frontmatter/Backmatter/Matter class notes
+    const classValRaw = yaml.Class || yaml.class;
+    const classVal = typeof classValRaw === 'string' ? classValRaw.trim().toLowerCase() : '';
+    if (classVal !== 'frontmatter' && classVal !== 'backmatter' && classVal !== 'matter') return null;
 
-    // Look for nested Matter: block
+    // Look for nested Matter: block (optional)
     const matter = yaml.Matter || yaml.matter;
-    if (!matter || typeof matter !== 'object') return null;
+    const matterBlock = matter && typeof matter === 'object'
+      ? matter as Record<string, unknown>
+      : undefined;
+    if (matterBlock?.order !== undefined) {
+      warnMatterOrderIgnoredOnce();
+    }
+
+    const defaultSide = classVal === 'backmatter' ? 'back' : classVal === 'frontmatter' ? 'front' : undefined;
 
     return {
-      role: typeof matter.role === 'string' ? matter.role : undefined,
-      usesBookMeta: typeof matter.usesBookMeta === 'boolean' ? matter.usesBookMeta : undefined,
+      side: typeof matterBlock?.side === 'string' ? matterBlock.side : defaultSide,
+      role: typeof matterBlock?.role === 'string' ? matterBlock.role : undefined,
+      usesBookMeta: typeof matterBlock?.usesBookMeta === 'boolean' ? matterBlock.usesBookMeta : undefined,
+      bodyMode: normalizeMatterBodyMode(matterBlock?.bodyMode),
     };
   } catch {
     return null;
   }
 }
 
+function escapeLatex(value: string): string {
+  return value
+    .replace(/\\/g, '\\textbackslash{}')
+    .replace(/([{}$&#_%])/g, '\\$1')
+    .replace(/\^/g, '\\textasciicircum{}')
+    .replace(/~/g, '\\textasciitilde{}');
+}
+
+function resolveEffectiveBodyMode(bodyText: string, declared: MatterBodyMode = 'auto'): EffectiveBodyMode {
+  if (declared === 'latex' || declared === 'plain') return declared;
+  const latexSignature = /\\begin\{|\\vspace|\\textcopyright|\\newpage|\\thispagestyle|\\chapter\*?|\\centering|\\[A-Za-z]+(?:\*|\b)/;
+  return latexSignature.test(bodyText) ? 'latex' : 'plain';
+}
+
 /**
  * Render a semantic copyright page from BookMeta and body text.
- * Produces raw LaTeX for Pandoc PDF/DOCX export.
+ * Produces raw LaTeX for Pandoc PDF export.
  *
  * This is the first wedge: hardcoded layout that proves
  * an author can edit YAML instead of LaTeX and still get a correct page.
  */
-function renderCopyrightPage(bookMeta: BookMeta, bodyText: string): string {
+function renderCopyrightPage(bookMeta: BookMeta, bodyText: string, bodyMode: EffectiveBodyMode): string {
   const year = bookMeta.rights?.year;
-  const yearStr = year ? year.toString() : '[YEAR_MISSING]';
-  const holder = bookMeta.rights?.copyright_holder ?? bookMeta.author ?? '';
+  const yearStr = year ? year.toString() : '[YEAR MISSING]';
+  const holder = escapeLatex(bookMeta.rights?.copyright_holder ?? bookMeta.author ?? '');
+  const processedBody = bodyMode === 'latex'
+    ? bodyText.trim()
+    : escapeLatex(bodyText.trim());
 
   const parts: string[] = [];
   parts.push('\\begin{center}');
   parts.push('\\vspace*{\\fill}');
   parts.push('');
 
-  if (bodyText.trim()) {
-    parts.push(bodyText.trim());
+  if (processedBody) {
+    parts.push(processedBody);
     parts.push('');
     parts.push('\\vspace{0.4cm}');
     parts.push('');
   }
 
-  parts.push(`Copyright \\textcopyright{} ${yearStr} ${holder}`);
+  parts.push(`Copyright \\textcopyright{} ${yearStr} ${holder}`.trimEnd());
 
   if (bookMeta.publisher?.name) {
     parts.push('');
     parts.push('\\vspace{0.3cm}');
     parts.push('');
-    parts.push(bookMeta.publisher.name);
+    parts.push(escapeLatex(bookMeta.publisher.name));
   }
 
   if (bookMeta.identifiers?.isbn_paperback) {
     parts.push('');
     parts.push('\\vspace{0.3cm}');
     parts.push('');
-    parts.push(`ISBN: ${bookMeta.identifiers.isbn_paperback}`);
+    parts.push(`ISBN: ${escapeLatex(bookMeta.identifiers.isbn_paperback)}`);
   }
 
   parts.push('');
@@ -257,7 +314,7 @@ export async function getSceneFilesByOrder(
     return false;
   });
 
-  const { sortScenes, sortScenesChronologically } = await import('./sceneHelpers');
+  const { sortScenes, sortScenesChronologically, extractPosition } = await import('./sceneHelpers');
   let sortedScenes: TimelineItem[];
   let sortOrder: string;
 
@@ -279,23 +336,65 @@ export async function getSceneFilesByOrder(
     }
   }
 
+  const isMatterItem = (scene: TimelineItem): boolean =>
+    scene.itemType === 'Frontmatter' || scene.itemType === 'Backmatter';
+
+  const normalizeMatterSide = (scene: TimelineItem): 'front' | 'back' => {
+    const title = (scene.title || '').trim();
+    if (/^200(?:\.|$)/.test(title)) return 'back';
+    if (/^0(?:\.|$)/.test(title)) return 'front';
+
+    if (scene.itemType === 'Backmatter') return 'back';
+    if (scene.itemType === 'Frontmatter') return 'front';
+
+    const rawSide = scene.matterMeta?.side;
+    if (typeof rawSide === 'string') {
+      const normalized = rawSide.trim().toLowerCase();
+      if (normalized === 'back' || normalized === 'backmatter') return 'back';
+      if (normalized === 'front' || normalized === 'frontmatter') return 'front';
+    }
+    return 'front';
+  };
+
+  const compareMatterItems = (a: TimelineItem, b: TimelineItem): number => {
+    const posDiff = extractPosition(a) - extractPosition(b);
+    if (posDiff !== 0) return posDiff;
+    return (a.title || '').localeCompare(b.title || '');
+  };
+
+  const orderedItems = (() => {
+    if (!includeMatter) return sortedScenes;
+
+    const frontMatter = sortedScenes
+      .filter(s => isMatterItem(s) && normalizeMatterSide(s) === 'front')
+      .sort(compareMatterItems);
+    const backMatter = sortedScenes
+      .filter(s => isMatterItem(s) && normalizeMatterSide(s) === 'back')
+      .sort(compareMatterItems);
+    const sceneItems = sortedScenes.filter(s => !isMatterItem(s));
+    return [...frontMatter, ...sceneItems, ...backMatter];
+  })();
+
   const synopses: (string | null)[] = [];
   const runtimes: (number | null)[] = [];
   const wordCounts: (number | null)[] = [];
+  const matterMetaByPath = new Map<string, MatterMeta>();
 
   const files: TFile[] = [];
   const titles: string[] = [];
   const whenDates: (string | null)[] = [];
+  const acts: (number | null)[] = [];
   const sceneNumbers: number[] = [];
   const subplots: string[] = [];
 
-  for (const scene of sortedScenes) {
+  for (const scene of orderedItems) {
     if (!scene.path) continue;
     const file = app.vault.getAbstractFileByPath(scene.path);
     if (!(file instanceof TFile)) continue;
     files.push(file);
     titles.push(file.basename);
     whenDates.push(scene.when ? formatWhenDate(scene.when) : null);
+    acts.push(parseActNumber(scene.actNumber ?? scene.act));
     const numStr = getScenePrefixNumber(scene.title, scene.number);
     sceneNumbers.push(numStr ? parseInt(numStr, 10) || 0 : 0);
     const sceneSubplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
@@ -320,13 +419,68 @@ export async function getSceneFilesByOrder(
     } else {
       wordCounts.push(null);
     }
+
+    if (isMatterItem(scene) && scene.path) {
+      if (scene.matterMeta?.order !== undefined) {
+        warnMatterOrderIgnoredOnce();
+      }
+      const normalizedSide: 'front' | 'back' = normalizeMatterSide(scene);
+      matterMetaByPath.set(scene.path, {
+        ...(scene.matterMeta || {}),
+        side: normalizedSide,
+        bodyMode: normalizeMatterBodyMode(scene.matterMeta?.bodyMode)
+      });
+    }
   }
 
-  return { files, sortOrder, titles, whenDates, sceneNumbers, subplots, synopses, runtimes, wordCounts };
+  return {
+    files,
+    sortOrder,
+    titles,
+    whenDates,
+    acts,
+    sceneNumbers,
+    subplots,
+    synopses,
+    runtimes,
+    wordCounts,
+    matterMetaByPath
+  };
 }
 
 function formatWhenDate(date: Date): string {
   return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function parseActNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    return Math.floor(value);
+  }
+
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const numericMatch = trimmed.match(/\d+/);
+  if (numericMatch) {
+    const parsed = parseInt(numericMatch[0], 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }
+
+  const normalizedRoman = trimmed.toUpperCase().replace(/^ACT\s+/i, '');
+  const romanMap: Record<string, number> = {
+    I: 1,
+    II: 2,
+    III: 3,
+    IV: 4,
+    V: 5,
+    VI: 6,
+    VII: 7,
+    VIII: 8,
+    IX: 9,
+    X: 10
+  };
+  return romanMap[normalizedRoman] ?? null;
 }
 
 /**
@@ -408,11 +562,36 @@ export async function assembleManuscript(
   useObsidianLinks = false,
   sortOrder?: string,
   includeToc: boolean = true,
-  bookMeta?: BookMeta | null
+  bookMeta?: BookMeta | null,
+  matterMetaByPath?: Map<string, MatterMeta>
 ): Promise<AssembledManuscript> {
   const scenes: SceneContent[] = [];
   const textParts: string[] = [];
   let totalWords = 0;
+  const matterDiagnostics: Array<{
+    filePath: string;
+    side: 'front' | 'back';
+    prefix: number | null;
+    declaredBodyMode: MatterBodyMode;
+    effectiveBodyMode: EffectiveBodyMode;
+    bodyModeResolution: 'explicit' | 'auto-detected';
+  }> = [];
+
+  const inferMatterSide = (title: string, meta?: MatterMeta): 'front' | 'back' => {
+    const trimmed = title.trim();
+    if (/^200(?:\.|$)/.test(trimmed)) return 'back';
+    if (/^0(?:\.|$)/.test(trimmed)) return 'front';
+    const side = (meta?.side || '').toString().trim().toLowerCase();
+    if (side === 'back' || side === 'backmatter') return 'back';
+    return 'front';
+  };
+
+  const extractPrefix = (title: string): number | null => {
+    const match = title.trim().match(/^(\d+(?:\.\d+)?)/);
+    if (!match) return null;
+    const parsed = Number(match[1]);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
 
   for (let i = 0; i < sceneFiles.length; i++) {
     const file = sceneFiles[i];
@@ -429,11 +608,26 @@ export async function assembleManuscript(
       // ── Semantic matter role intercept ────────────────────────────────
       // If this file is a matter note with a semantic role, render via
       // the appropriate template instead of the default heading + body.
-      const matterMeta = extractMatterMeta(content);
+      const matterMeta = (file.path && matterMetaByPath?.get(file.path)) || extractMatterMeta(content);
+      const isMatterNote = !!matterMeta;
+      const bodyText = extractBodyText(content);
+      const declaredMode = normalizeMatterBodyMode(matterMeta?.bodyMode);
+      const chosenBodyMode = resolveEffectiveBodyMode(bodyText, declaredMode);
+
+      if (isMatterNote) {
+        const bodyModeResolution: 'explicit' | 'auto-detected' = declaredMode === 'auto' ? 'auto-detected' : 'explicit';
+        matterDiagnostics.push({
+          filePath: file.path,
+          side: inferMatterSide(title, matterMeta || undefined),
+          prefix: extractPrefix(title),
+          declaredBodyMode: declaredMode,
+          effectiveBodyMode: chosenBodyMode,
+          bodyModeResolution
+        });
+      }
 
       if (matterMeta?.role === 'copyright' && matterMeta?.usesBookMeta && bookMeta) {
-        const bodyText = extractBodyText(content);
-        const rendered = renderCopyrightPage(bookMeta, bodyText);
+        const rendered = renderCopyrightPage(bookMeta, bodyText, chosenBodyMode);
         const wordCount = countWords(bodyText);
 
         scenes.push({ title, bodyText: rendered, wordCount });
@@ -441,9 +635,13 @@ export async function assembleManuscript(
 
         // No ## heading for copyright page — it's a layout-only page
         textParts.push(`${rendered}\n\n`);
+      } else if (isMatterNote && chosenBodyMode === 'latex') {
+        const wordCount = countWords(bodyText);
+        scenes.push({ title, bodyText, wordCount });
+        totalWords += wordCount;
+        textParts.push(`${bodyText}\n\n`);
       } else {
         // ── Normal rendering path ──────────────────────────────────────
-        const bodyText = extractBodyText(content);
         const wordCount = countWords(bodyText);
 
         scenes.push({ title, bodyText, wordCount });
@@ -457,6 +655,19 @@ export async function assembleManuscript(
       // Add placeholder for failed scene
       textParts.push(`## ${title}\n\n[Error reading scene]\n\n`);
     }
+  }
+
+  if (isDevMode() && matterDiagnostics.length > 0) {
+    const ordered = matterDiagnostics.map((entry, index) => ({
+      prefixOrderIndex: index + 1,
+      ...entry
+    }));
+    console.info('[Matter Export Diagnostic]', {
+      front: ordered.filter(entry => entry.side === 'front'),
+      back: ordered.filter(entry => entry.side === 'back'),
+      bookMetaPath: bookMeta?.sourcePath || null,
+      totalMatter: ordered.length
+    });
   }
 
   // Generate TOC and prepend to manuscript

@@ -354,6 +354,53 @@
   color: var(--text-normal);
 }
 
+.ert-manuscript-scope-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ert-manuscript-scope-input {
+  min-width: 220px;
+}
+
+.ert-manuscript-rule-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ert-manuscript-advanced {
+  margin-top: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 8px 12px 12px;
+}
+
+.ert-manuscript-advanced > summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.ert-manuscript-advanced-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.ert-manuscript-output-status {
+  margin-top: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .rt-manuscript-range-shell {
   display: flex;
   flex-direction: column;
