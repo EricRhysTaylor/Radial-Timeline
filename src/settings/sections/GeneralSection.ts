@@ -332,13 +332,16 @@ export function renderGeneralSection(params: {
                 creatingDraft = isBusy;
                 if (!draftButtonRef) return;
                 draftButtonRef.setDisabled(isBusy);
-                draftButtonRef.setButtonText(isBusy ? 'Creating…' : 'Create draft');
+                setIcon(draftButtonRef.buttonEl, isBusy ? 'loader-2' : 'book-dashed');
             };
 
             row.addButton(button => {
                 draftButtonRef = button;
-                button.setButtonText('Create draft');
-                button.setTooltip('Copy this book folder into a sibling draft folder');
+                button.buttonEl.empty();
+                button.buttonEl.addClass('ert-iconBtn');
+                button.buttonEl.setAttr('aria-label', 'Create draft');
+                setIcon(button.buttonEl, 'book-dashed');
+                button.setTooltip('Create a sibling draft copy of this book folder. Keeps all files unchanged and auto-increments the draft name if needed.');
                 button.onClick(() => {
                     if (creatingDraft) return;
 
