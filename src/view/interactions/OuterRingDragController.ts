@@ -1,5 +1,5 @@
 import { Notice, App } from 'obsidian';
-import { applySceneNumberUpdates, type SceneUpdate } from '../../services/SceneReorderService';
+import { applySceneNumberUpdates, buildRippleRenamePlan, type SceneUpdate } from '../../services/SceneReorderService';
 import { DragConfirmModal } from '../../modals/DragConfirmModal';
 import { DRAG_DROP_ARC_RADIUS, DRAG_DROP_TICK_OUTER_RADIUS, DRAG_DROP_TICK_LENGTH } from '../../renderer/layout/LayoutConstants';
 
@@ -608,6 +608,7 @@ export class OuterRingDragController {
         this.log('apply updates', { count: updates.length, from: fromIdx, to: toIdx, itemType: sourceType, subplot: subplotChanged ? targetSubplot : undefined });
         await applySceneNumberUpdates(this.view.plugin.app, updates);
         new Notice(`Moved ${sourceLabel} ${sourceOriginalNumber} → before ${targetLabel} ${targetOriginalNumber}`, 2000);
+        await this.runRippleRenameIfEnabled();
         // Small delay to allow Obsidian's metadata cache to update before refresh
         await new Promise(resolve => window.setTimeout(resolve, 100));
         this.options.onRefresh();
@@ -757,10 +758,37 @@ export class OuterRingDragController {
         this.log('apply void cell drop', { targetAct: targetActNumber, ring: target.ring, subplot: targetSubplotName, path: this.sourcePath, itemType: sourceType });
         await applySceneNumberUpdates(this.view.plugin.app, updates);
         new Notice(noticeText, 2000);
+        await this.runRippleRenameIfEnabled();
         // Small delay to allow Obsidian's metadata cache to update before refresh
         await new Promise(resolve => window.setTimeout(resolve, 100));
         this.options.onRefresh();
         this.resetState();
+    }
+
+    private async runRippleRenameIfEnabled(): Promise<void> {
+        const enabled = Boolean((this.view.plugin.settings as any).enableManuscriptRippleRename);
+        if (!enabled) return;
+
+        const pluginAny = this.view.plugin as any;
+        if (typeof pluginAny?.getSceneData !== 'function') return;
+
+        try {
+            const sceneData = await pluginAny.getSceneData();
+            const plan = buildRippleRenamePlan(sceneData, {
+                beatSystem: pluginAny.settings?.beatSystem,
+                customBeatSystemName: pluginAny.settings?.customBeatSystemName
+            });
+            if (plan.needRename === 0) {
+                new Notice('Ripple rename: already normalized (filenames only; no content edits).', 2600);
+                return;
+            }
+
+            new Notice(`Ripple rename: ${plan.needRename} file(s) need renaming (${plan.checked} checked, filenames only).`, 3200);
+            await applySceneNumberUpdates(this.view.plugin.app, plan.updates);
+        } catch (error) {
+            console.error('Ripple rename failed:', error);
+            new Notice('Ripple rename failed. See console for details.', 3500);
+        }
     }
 
     private onPointerMove(evt: PointerEvent): void {

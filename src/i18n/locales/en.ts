@@ -89,6 +89,10 @@ export interface TranslationKeys {
                 placeholder: string;
                 error: string;
             };
+            rippleRename: {
+                name: string;
+                desc: string;
+            };
             autoExpand: {
                 name: string;
                 desc: string;
@@ -339,6 +343,10 @@ export const en: TranslationKeys = {
                 desc: 'Maximum words for generated Synopsis. Hover display is synced automatically from this value.',
                 placeholder: '30',
                 error: 'Please enter a valid number between 10 and 300.',
+            },
+            rippleRename: {
+                name: 'Manuscript ripple rename: normalize numeric prefixes after reorder.',
+                desc: 'Renames both scene and beat (active set) filenames only. Keeps padding (01/001). Removes decimals.',
             },
             autoExpand: {
                 name: 'Auto-expand clipped scene titles',

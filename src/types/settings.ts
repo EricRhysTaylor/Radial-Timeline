@@ -389,6 +389,7 @@ export interface RadialTimelineSettings {
     enableZeroDraftMode?: boolean;
     metadataRefreshDebounceMs?: number;
     enableSceneTitleAutoExpand?: boolean;
+    enableManuscriptRippleRename?: boolean;
     synopsisHoverMaxLines?: number; // @deprecated Legacy hover line limit, now derived from Synopsis max words
     enableHoverDebugLogging?: boolean;
     showFullTripletAnalysis?: boolean;

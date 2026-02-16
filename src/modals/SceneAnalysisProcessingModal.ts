@@ -12,6 +12,7 @@ import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
 import { resolveAiLogFolder } from '../ai/log';
 import { getModelDisplayName } from '../utils/modelResolver';
 import type { LlmTimingStats } from '../types/settings';
+import { getSynopsisGenerationWordLimit } from '../utils/synopsisLimits';
 
 export type ProcessingMode = 'flagged' | 'unprocessed' | 'force-all' | 'synopsis-flagged' | 'synopsis-missing-weak' | 'synopsis-missing' | 'synopsis-all';
 
@@ -567,6 +568,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
             // Also update Synopsis checkbox
             const synopsisControl = controlsCard.createDiv({ cls: 'rt-synopsis-control rt-synopsis-control--row' });
+            const synopsisWordLimit = getSynopsisGenerationWordLimit(this.plugin.settings);
             const synopsisCheckboxId = `rt-synopsis-update-toggle-${Date.now()}`;
             const synopsisCheckbox = synopsisControl.createEl('input', {
                 type: 'checkbox',
@@ -581,7 +583,7 @@ export class SceneAnalysisProcessingModal extends Modal {
                 attr: { for: synopsisCheckboxId }
             });
             synopsisInfo.createDiv({
-                text: 'Also replace Synopsis with a concise version generated from scene content. Length is controlled in Settings → Configuration → Synopsis max words.',
+                text: `Also replace Synopsis with a concise version generated from scene content. Current length is ${synopsisWordLimit} words and controlled in Settings → Configuration → Synopsis max words.`,
                 cls: 'rt-synopsis-control-help'
             });
 

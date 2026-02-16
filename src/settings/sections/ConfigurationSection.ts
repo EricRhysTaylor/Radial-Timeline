@@ -54,6 +54,17 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
             plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
         });
 
+    // 1a. Manuscript ripple rename
+    new Settings(stackEl)
+        .setName(t('settings.configuration.rippleRename.name'))
+        .setDesc(t('settings.configuration.rippleRename.desc'))
+        .addToggle(toggle => toggle
+            .setValue(plugin.settings.enableManuscriptRippleRename ?? false)
+            .onChange(async (value) => {
+                plugin.settings.enableManuscriptRippleRename = value;
+                await plugin.saveSettings();
+            }));
+
     // 2. Auto-expand clipped scene titles
     new Settings(stackEl)
         .setName(t('settings.configuration.autoExpand.name'))
