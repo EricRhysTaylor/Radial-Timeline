@@ -26,6 +26,7 @@ import { parseWhenField } from './utils/date';
 import { getReadabilityMultiplier, getReadabilityScale } from './utils/readability';
 import { isAlienModeActive } from './view/interactions/ChronologueShiftController';
 import { getIcon } from 'obsidian';
+import { getSynopsisHoverLineLimit } from './utils/synopsisLimits';
 
 /**
  * Handles generating synopsis SVG/HTML blocks and positioning logic.
@@ -2037,7 +2038,7 @@ export default class SynopsisManager {
       const rows = buildRows();
       if (rows.length === 0) return null;
 
-      const synopsisMin = Math.max(5, (this.plugin.settings as any).synopsisHoverMaxLines ?? 5);
+      const synopsisMin = Math.max(3, getSynopsisHoverLineLimit(this.plugin.settings as any));
       const pendingMin = 3;
 
       let synopsisCount = 0;

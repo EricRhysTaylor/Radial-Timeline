@@ -2058,13 +2058,16 @@
   height: 14px;
 }
 
-/* ── Stage switcher (segmented control inside Custom panel) ────────── */
+/* ── Stage switcher (segmented control inside beat system panel) ──── */
+/* Sits between the tier-banner and the active content panel.         */
 .ert-ui.ert-scope--settings .ert-stage-switcher {
   display: inline-flex;
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--ert-control-radius);
   overflow: hidden;
   background: color-mix(in srgb, var(--background-secondary) 60%, var(--background-primary) 40%);
+  margin-top: var(--ert-pad-xs, 4px);
+  margin-bottom: var(--ert-pad-sm, 6px);
 }
 
 .ert-ui.ert-scope--settings button.ert-stage-btn {

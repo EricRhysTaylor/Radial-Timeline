@@ -39,6 +39,7 @@ import {
 } from '../../utils/yamlTemplateNormalize';
 import { runYamlAudit, collectFilesForAudit, formatAuditReport, type YamlAuditResult, type NoteAuditEntry } from '../../utils/yamlAudit';
 import { runYamlBackfill, runYamlFillEmptyValues, type BackfillResult } from '../../utils/yamlBackfill';
+import { IMPACT_FULL } from '../SettingImpact';
 
 type FieldEntryValue = string | string[];
 type FieldEntry = { key: string; value: FieldEntryValue; required: boolean };
@@ -771,6 +772,7 @@ export function renderStoryBeatsSection(params: {
                 const next = Number.isFinite(parsed) ? Math.max(3, parsed) : 3;
                 plugin.settings.actCount = next;
                 await plugin.saveSettings();
+                plugin.onSettingChanged(IMPACT_FULL); // Tier 3: act count affects timeline beat grouping
                 updateActPreview();
                 // Immediately refresh Custom beat editor so act columns update
                 refreshCustomBeatList?.();
@@ -787,6 +789,7 @@ export function renderStoryBeatsSection(params: {
             text.onChange(async (value) => {
                 plugin.settings.actLabelsRaw = value;
                 await plugin.saveSettings();
+                plugin.onSettingChanged(IMPACT_FULL); // Tier 3: act labels affect timeline display
                 updateActPreview();
             });
         });
@@ -823,21 +826,23 @@ export function renderStoryBeatsSection(params: {
     });
     // Tier banner (always visible; shows built-in vs custom, Core vs Pro)
     const tierBannerEl = beatSystemCard.createDiv({ cls: 'ert-beat-tier-banner ert-stack--tight' });
+
+    // ── Inner stage switcher (Preview | Design | Fields | Sets) ───────
+    // Rendered directly under the status block, above all content panels.
+    // Visible for ALL systems. Built-ins: Preview, Design, Fields. Custom: + Sets.
+    // Default: Preview. State at module level (_currentInnerStage) survives re-renders.
+    const stageSwitcher = beatSystemCard.createDiv({
+        cls: 'ert-stage-switcher',
+        attr: { role: 'tablist' }
+    });
+
+    // ── Content panels (toggled by stage switcher) ───────────────────
     const templatePreviewContainer = beatSystemCard.createDiv({ cls: ['ert-beat-template-preview', ERT_CLASSES.STACK] });
     const templatePreviewTitle = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-title' });
     const templatePreviewDesc = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-desc' });
     const templatePreviewExamples = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-examples' });
     const templatePreviewMeta = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-meta' });
     const templateActGrid = templatePreviewContainer.createDiv({ cls: 'ert-beat-act-grid' });
-
-    // ── Inner stage switcher (Preview | Design | Fields | Sets) ───────
-    // Visible for ALL systems. Built-ins: Preview, Design, Fields. Custom: + Sets.
-    // Default: Preview. State at module level (_currentInnerStage) survives re-renders.
-
-    const stageSwitcher = beatSystemCard.createDiv({
-        cls: 'ert-stage-switcher',
-        attr: { role: 'tablist' }
-    });
 
     // --- Custom System Configuration (Dynamic Visibility) ---
     const customConfigContainer = beatSystemCard.createDiv({ cls: ['ert-custom-beat-config', ERT_CLASSES.STACK] });
@@ -1762,6 +1767,7 @@ export function renderStoryBeatsSection(params: {
                 if (isActive) return;
                 plugin.settings.beatSystem = option.systemName;
                 await plugin.saveSettings();
+                plugin.onSettingChanged(IMPACT_FULL); // Tier 3: beat system change rebuilds timeline beats
                 existingBeatReady = false;
                 updateTemplateButton(templateSetting, option.systemName);
                 updateBeatSystemCard(option.systemName);
@@ -2313,7 +2319,9 @@ export function renderStoryBeatsSection(params: {
 
         // 6. Switch to Design stage so the user sees the loaded beats immediately
         _currentInnerStage = 'design';
-        void plugin.saveSettings();
+        void plugin.saveSettings().then(() => {
+            plugin.onSettingChanged(IMPACT_FULL); // Tier 3: loaded set changes timeline beats
+        });
         new Notice(`Loaded "${system.name}" into Custom.`);
 
         // 7. Targeted UI refresh — update only the affected sections instead of

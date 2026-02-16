@@ -389,7 +389,7 @@ export interface RadialTimelineSettings {
     enableZeroDraftMode?: boolean;
     metadataRefreshDebounceMs?: number;
     enableSceneTitleAutoExpand?: boolean;
-    synopsisHoverMaxLines?: number; // Max lines to display in hover synopsis (default: 5)
+    synopsisHoverMaxLines?: number; // @deprecated Legacy hover line limit, now derived from Synopsis max words
     enableHoverDebugLogging?: boolean;
     showFullTripletAnalysis?: boolean;
     sortByWhenDate?: boolean;
@@ -414,7 +414,8 @@ export interface RadialTimelineSettings {
 
     // Summary & Synopsis generation settings
     alsoUpdateSynopsis?: boolean; // When running Summary refresh, also generate Synopsis (default: false)
-    synopsisGenerationMaxLines?: number; // Max lines for AI-generated Synopsis (default: 3)
+    synopsisGenerationMaxWords?: number; // Max words for AI-generated Synopsis (default: 30)
+    synopsisGenerationMaxLines?: number; // @deprecated Legacy line-based synopsis limiter
 
     // Internal AI update timestamps (per-scene, keyed by file path)
     aiUpdateTimestamps?: Record<string, { synopsisUpdated?: string; summaryUpdated?: string }>

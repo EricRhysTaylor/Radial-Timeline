@@ -565,8 +565,8 @@ export class SceneAnalysisProcessingModal extends Modal {
             // Horizontal rule separator
             controlsCard.createEl('hr', { cls: 'rt-synopsis-control-divider' });
 
-            // Also update Synopsis checkbox + max lines input
-            const synopsisControl = controlsCard.createDiv({ cls: 'rt-synopsis-control rt-synopsis-control--row ert-synopsis-control--three-col' });
+            // Also update Synopsis checkbox
+            const synopsisControl = controlsCard.createDiv({ cls: 'rt-synopsis-control rt-synopsis-control--row' });
             const synopsisCheckboxId = `rt-synopsis-update-toggle-${Date.now()}`;
             const synopsisCheckbox = synopsisControl.createEl('input', {
                 type: 'checkbox',
@@ -581,46 +581,13 @@ export class SceneAnalysisProcessingModal extends Modal {
                 attr: { for: synopsisCheckboxId }
             });
             synopsisInfo.createDiv({
-                text: 'Also replace Synopsis with a short 1–3 sentence version generated from scene content. Used for scene hovers and outlines.',
+                text: 'Also replace Synopsis with a concise version generated from scene content. Length is controlled in Settings → Configuration → Synopsis max words.',
                 cls: 'rt-synopsis-control-help'
             });
-
-            // Synopsis max lines input (appears next to checkbox in right column)
-            const synopsisMaxLinesInput = synopsisControl.createEl('input', {
-                type: 'number',
-                cls: 'rt-synopsis-control-input',
-                attr: { min: '1', max: '10', step: '1', placeholder: '3' }
-            }) as HTMLInputElement;
-            synopsisMaxLinesInput.value = String(this.plugin.settings.synopsisGenerationMaxLines ?? 3);
-
-            // Show/hide max lines input based on checkbox state
-            const updateSynopsisInputVisibility = () => {
-                synopsisMaxLinesInput.style.opacity = synopsisCheckbox.checked ? '1' : '0.4';
-                synopsisMaxLinesInput.disabled = !synopsisCheckbox.checked;
-            };
-            updateSynopsisInputVisibility();
 
             synopsisCheckbox.addEventListener('change', () => {
                 this.plugin.settings.alsoUpdateSynopsis = synopsisCheckbox.checked;
                 this.plugin.saveSettings();
-                updateSynopsisInputVisibility();
-            });
-
-            const saveSynopsisMaxLines = () => {
-                const val = parseInt(synopsisMaxLinesInput.value, 10);
-                if (!isNaN(val) && val >= 1 && val <= 10) {
-                    this.plugin.settings.synopsisGenerationMaxLines = val;
-                    this.plugin.saveSettings();
-                }
-            };
-
-            synopsisMaxLinesInput.addEventListener('change', saveSynopsisMaxLines);
-            synopsisMaxLinesInput.addEventListener('blur', saveSynopsisMaxLines);
-            synopsisMaxLinesInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    saveSynopsisMaxLines();
-                    synopsisMaxLinesInput.blur();
-                }
             });
         }
 

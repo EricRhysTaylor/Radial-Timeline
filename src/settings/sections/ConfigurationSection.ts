@@ -5,6 +5,7 @@ import { t } from '../../i18n';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 import { IMPACT_FULL, IMPACT_DOMINANT_SUBPLOT } from '../SettingImpact';
+import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../../utils/synopsisLimits';
 
 export function renderConfigurationSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { app, plugin, containerEl } = params;
@@ -19,12 +20,12 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
 
     const stackEl = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
 
-    // 1. Synopsis hover max lines
+    // 1. Synopsis max words (drives generation and hover display)
     new Settings(stackEl)
         .setName(t('settings.configuration.synopsisMaxLines.name'))
         .setDesc(t('settings.configuration.synopsisMaxLines.desc'))
         .addText(text => {
-            const current = String(plugin.settings.synopsisHoverMaxLines ?? 5);
+            const current = String(getSynopsisGenerationWordLimit(plugin.settings));
             text.setPlaceholder(t('settings.configuration.synopsisMaxLines.placeholder'));
             text.setValue(current);
             text.inputEl.addClass('ert-input--sm');
@@ -38,14 +39,16 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
 
             const handleBlur = async () => {
                 const n = Number(text.getValue().trim());
-                if (!Number.isFinite(n) || n < 1) {
+                if (!Number.isFinite(n) || n < 10 || n > 300) {
                     new Notice(t('settings.configuration.synopsisMaxLines.error'));
-                    text.setValue(String(plugin.settings.synopsisHoverMaxLines ?? 5));
+                    text.setValue(String(getSynopsisGenerationWordLimit(plugin.settings)));
                     return;
                 }
-                plugin.settings.synopsisHoverMaxLines = n;
+                plugin.settings.synopsisGenerationMaxWords = Math.round(n);
+                // Keep legacy line-based setting synchronized for compatibility paths.
+                plugin.settings.synopsisHoverMaxLines = getSynopsisHoverLineLimit(plugin.settings);
                 await plugin.saveSettings();
-                plugin.onSettingChanged(IMPACT_FULL); // Tier 3: synopsis line count baked into SVG at render time
+                plugin.onSettingChanged(IMPACT_FULL); // Tier 3: synopsis content/line limits affect hover SVG layout
             };
 
             plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });

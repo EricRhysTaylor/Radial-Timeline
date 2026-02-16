@@ -4,7 +4,7 @@
  * Handles logic for the "Summary refresh" command.
  *
  * Summary = extended AI-generated scene analysis (≈200–300 words, configurable) — primary artifact for Inquiry corpus.
- * Synopsis = concise, skimmable navigation text (1–3 sentences) — optional for scene hovers.
+ * Synopsis = concise, skimmable navigation text (strict word-capped) — optional for scene hovers.
  */
 
 import { Vault, Notice, TFile } from 'obsidian';
@@ -18,6 +18,7 @@ import { callAiProvider } from './aiProvider';
 import type { SceneData } from './types';
 import { parseSceneTitle, decodeHtmlEntities } from '../utils/text';
 import { normalizeBooleanValue } from '../utils/sceneHelpers';
+import { getSynopsisGenerationWordLimit, truncateToWordLimit } from '../utils/synopsisLimits';
 
 /**
  * Check freshness: is the scene's Due/Completed date newer than the last AI update timestamp?
@@ -250,7 +251,7 @@ async function runSynopsisBatch(
     const threshold = weakThreshold ?? plugin.settings.synopsisWeakThreshold ?? 75;
     const target = targetWords ?? plugin.settings.synopsisTargetWords ?? 200;
     const alsoUpdateSynopsis = plugin.settings.alsoUpdateSynopsis ?? false;
-    const synopsisMaxLines = plugin.settings.synopsisGenerationMaxLines ?? 3;
+    const synopsisMaxWords = getSynopsisGenerationWordLimit(plugin.settings);
 
     // Filter scenes based on mode — now targeting Summary field
     const scenesToProcess = allScenes.filter(scene => {
@@ -335,7 +336,7 @@ async function runSynopsisBatch(
                             const synopsisPrompt = buildSynopsisPrompt(
                                 scene.body,
                                 String(scene.sceneNumber || 'N/A'),
-                                synopsisMaxLines
+                                synopsisMaxWords
                             );
 
                             const synopsisResult = await runAi(synopsisPrompt, null, 'synopsis', `${sceneName} (synopsis)`, undefined);
@@ -346,7 +347,7 @@ async function runSynopsisBatch(
                                 const synParsed = JSON.parse(synJsonStr);
                                 const parsedSynopsis = synParsed.synopsis || '';
                                 if (parsedSynopsis) {
-                                    newSynopsis = parsedSynopsis;
+                                    newSynopsis = truncateToWordLimit(parsedSynopsis, synopsisMaxWords);
                                 }
                             }
                         } catch (synErr) {

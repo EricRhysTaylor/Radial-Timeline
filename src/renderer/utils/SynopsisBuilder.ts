@@ -3,9 +3,7 @@ import { isBeatNote, type PluginRendererFacade } from '../../utils/sceneHelpers'
 import { splitIntoBalancedLinesOptimal } from '../../utils/text';
 import { resolveScenePov } from '../../utils/pov';
 import { getReadabilityMultiplier } from '../../utils/readability';
-
-/** Default max lines for hover synopsis (used if setting is not configured) */
-const DEFAULT_SYNOPSIS_MAX_LINES = 5;
+import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit, truncateToWordLimit } from '../../utils/synopsisLimits';
 
 /**
  * Split text into balanced lines and truncate to a maximum line count.
@@ -30,25 +28,27 @@ export function buildSynopsisElement(
     subplotIndexResolver?: (name: string) => number
 ): SVGGElement {
     const fontScale = getReadabilityMultiplier(plugin.settings as any);
-    const maxLines = (plugin.settings as any).synopsisHoverMaxLines ?? DEFAULT_SYNOPSIS_MAX_LINES;
+    const maxWords = getSynopsisGenerationWordLimit(plugin.settings as any);
+    const maxLines = getSynopsisHoverLineLimit(plugin.settings as any);
 
     // For Backdrop items, only show Title and world context text
     if (scene.itemType === 'Backdrop') {
         const lines = [scene.title || 'Untitled'];
         const backdropContext = scene.Context ?? scene.synopsis ?? scene.Description;
         if (backdropContext) {
-            lines.push(...splitAndTruncateLines(backdropContext, maxTextWidth, fontScale, maxLines));
+            lines.push(...splitAndTruncateLines(truncateToWordLimit(backdropContext, maxWords), maxTextWidth, fontScale, maxLines));
         }
         return plugin.synopsisManager.generateElement(scene, lines, sceneId, subplotIndexResolver);
     }
 
     const beatPurpose = scene.Purpose ?? scene.Description;
+    const cappedSynopsis = scene.synopsis ? truncateToWordLimit(scene.synopsis, maxWords) : undefined;
     const contentLines = [
         scene.title || '',
         ...(isBeatNote(scene) && beatPurpose
             ? [beatPurpose]
-            : scene.synopsis
-                ? [scene.synopsis]
+            : cappedSynopsis
+                ? [cappedSynopsis]
                 : [])
     ];
 

@@ -58,7 +58,7 @@ export interface TimelineItem {
     number?: number;
     /**
      * Scene narrative unit fields:
-     * - Synopsis: concise present-tense snapshot (1-3 sentences).
+     * - Synopsis: concise present-tense snapshot (word-capped).
      * - Summary: extended scene write-up (emotion/subtext/outcome allowed).
      */
     synopsis?: string;

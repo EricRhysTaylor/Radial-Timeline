@@ -94,12 +94,13 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     synopsisTargetWords: 200, // Target word count for generated summaries (legacy name)
     synopsisWeakThreshold: 75, // Summaries under this word count are considered "weak" (legacy name)
     alsoUpdateSynopsis: false, // When running Summary refresh, also generate Synopsis
-    synopsisGenerationMaxLines: 3, // Max lines for AI-generated Synopsis
+    synopsisGenerationMaxWords: 30, // Max words for AI-generated Synopsis
+    synopsisGenerationMaxLines: 3, // @deprecated Legacy line-based synopsis limiter
     aiUpdateTimestamps: {}, // Internal AI update timestamps (per-scene)
     metadataRefreshDebounceMs: 10000,
     discontinuityThreshold: undefined, // Default to auto-calculated (3x median gap or 30 days)
     enableSceneTitleAutoExpand: true, // Default: enabled to maintain current behavior
-    synopsisHoverMaxLines: 5, // Default: show at least 5 lines in hover synopsis
+    synopsisHoverMaxLines: 5, // @deprecated Legacy fallback; hover lines now derive from synopsis word limit
     enableHoverDebugLogging: false,
     sortByWhenDate: false, // Default: manuscript order (backward compatible)
     chronologueDurationCapSelection: 'auto',

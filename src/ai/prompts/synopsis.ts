@@ -1,7 +1,7 @@
 /*
  * AI Summary & Synopsis Prompt Builders
  * Summary = extended AI-generated scene analysis (≈200–300 words)
- * Synopsis = concise, skimmable navigation text (1–3 sentences, max N lines)
+ * Synopsis = concise, skimmable navigation text (strict max word cap)
  */
 
 const SUMMARY_JSON_SCHEMA = {
@@ -20,7 +20,7 @@ const SYNOPSIS_JSON_SCHEMA = {
   properties: {
     "synopsis": {
       type: "string",
-      description: "Concise scene synopsis for navigation and hovers (1–3 sentences)"
+      description: "Concise scene synopsis for navigation and hovers (strict word cap)"
     }
   },
   required: ["synopsis"]
@@ -83,13 +83,13 @@ ${sceneBody || 'N/A'}
 }
 
 /**
- * Build a prompt for generating a short Synopsis (1–3 sentences).
+ * Build a prompt for generating a short Synopsis with a strict word cap.
  * Synopsis is concise, skimmable navigation text for hovers and outlines.
  */
 export function buildSynopsisPrompt(
   sceneBody: string,
   sceneNumber: string,
-  maxLines: number = 3,
+  maxWords: number = 30,
   extraInstructions?: string
 ): string {
   let instructions = extraInstructions ? extraInstructions.trim() + '\n\n' : '';
@@ -98,14 +98,14 @@ export function buildSynopsisPrompt(
 Return ONLY valid JSON matching this structure:
 
 {
-  "synopsis": "One to three sentence synopsis of the scene."
+  "synopsis": "Short factual synopsis of the scene."
 }
 
 Rules:
 1. FOCUS: Purely factual summary of the main event(s) in the scene.
-2. LENGTH: Maximum ${maxLines} lines. Aim for 1–3 sentences.
+2. LENGTH: Maximum ${maxWords} words. Hard cap; do not exceed it.
 3. TONE: Neutral, objective, concise. No flowery prose.
-4. CONTENT: Capture the key action or turning point. Do NOT include analysis or "The scene is about...".
+4. CONTENT: Capture the key action or turning point. Prefer one compact paragraph. Do NOT include analysis or "The scene is about...".
 5. FORMAT: Output ONLY valid JSON. No markdown fencing around the JSON.
 
 Scene ${sceneNumber}:
