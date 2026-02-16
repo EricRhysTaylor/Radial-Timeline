@@ -38,6 +38,7 @@ import { SettingsService } from './services/SettingsService';
 import { DEFAULT_GEMINI_MODEL_ID } from './constants/aiDefaults';
 import { DEFAULT_SETTINGS } from './settings/defaults';
 import { PLOT_SYSTEM_NAMES } from './utils/beatsSystems';
+import { generateBeatGuid } from './utils/beatsInputNormalize';
 import type { BeatSystemConfig } from './types/settings';
 import { isDefaultEmbedPath } from './utils/aprPaths';
 import { DEFAULT_BOOK_TITLE, createBookId, deriveBookTitleFromSourcePath, getActiveBook, normalizeBookProfile } from './utils/books';
@@ -688,7 +689,39 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         }
 
-        if (before !== after || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated || backdropTemplateMigrated || pandocLayoutsMigrated || booksMigrated || schemaOntologyMigrated) {
+        // ─── Beat Id migration: assign GUIDs to custom/saved beats lacking ids ───
+        let beatIdMigrated = false;
+        if (Array.isArray(this.settings.customBeatSystemBeats)) {
+            for (const b of this.settings.customBeatSystemBeats) {
+                if (!b.id) {
+                    b.id = `custom:default:${generateBeatGuid()}`;
+                    beatIdMigrated = true;
+                }
+            }
+        }
+        if (Array.isArray(this.settings.savedBeatSystems)) {
+            for (const sys of this.settings.savedBeatSystems) {
+                if (Array.isArray(sys.beats)) {
+                    for (const b of sys.beats) {
+                        if (!b.id) {
+                            b.id = `custom:${sys.id}:${generateBeatGuid()}`;
+                            beatIdMigrated = true;
+                        }
+                    }
+                }
+            }
+        }
+        // Ensure base template includes Beat Id placeholder
+        if (this.settings.beatYamlTemplates?.base && !this.settings.beatYamlTemplates.base.includes('Beat Id:')) {
+            this.settings.beatYamlTemplates.base += '\nBeat Id: {{BeatId}}';
+            beatIdMigrated = true;
+            console.debug('[SchemaMigration]', {
+                event: 'beat_id_template_appended',
+                action: 'appended Beat Id placeholder to beat base template',
+            });
+        }
+
+        if (before !== after || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated || backdropTemplateMigrated || pandocLayoutsMigrated || booksMigrated || schemaOntologyMigrated || beatIdMigrated) {
             await this.saveSettings();
         }
     }

@@ -246,11 +246,13 @@ function generatePlotNoteContent(
     content = content.replace(/{{Description}}/g, purpose);
     content = content.replace(/{{BeatModel}}/g, beatSystem);
     content = content.replace(/{{Range}}/g, rangeValue);
+    content = content.replace(/{{BeatId}}/g, beatInfo.id ?? '');
 
     return `---\n${content}\n---\n` + buildBeatBody(beatInfo);
   }
 
   // Legacy hardcoded output (backward compatibility)
+  const beatId = beatInfo.id ?? '';
   const frontmatter = [
     '---',
     'Class: Beat',
@@ -258,6 +260,7 @@ function generatePlotNoteContent(
     `Purpose: ${purpose}`,
     `Beat Model: ${beatSystem}`,
     rangeValue ? `Range: ${rangeValue}` : 'Range:',
+    `Beat Id: ${beatId}`,
     '---',
     ''
   ].join('\n');

@@ -59,14 +59,15 @@ export class CreateBeatSetModal extends Modal {
     // Substitute placeholders with human-readable sample values.
     let previewYaml = this.beatTemplate;
     if (!previewYaml.trim()) {
-      previewYaml = `Class: Beat\nAct: 1\nPurpose: [Beat purpose]\nBeat Model: ${this.beatSystem}\nRange: [Ideal momentum range]`;
+      previewYaml = `Class: Beat\nAct: 1\nPurpose: [Beat purpose]\nBeat Model: ${this.beatSystem}\nRange: [Ideal momentum range]\nBeat Id: [auto-assigned]`;
     } else {
       previewYaml = previewYaml
         .replace(/\{\{Act\}\}/g, '1')
         .replace(/\{\{Purpose\}\}/g, '[Beat purpose]')
         .replace(/\{\{Description\}\}/g, '[Beat purpose]')
         .replace(/\{\{BeatModel\}\}/g, this.beatSystem)
-        .replace(/\{\{Range\}\}/g, '[Ideal momentum range]');
+        .replace(/\{\{Range\}\}/g, '[Ideal momentum range]')
+        .replace(/\{\{BeatId\}\}/g, '[auto-assigned]');
     }
 
     const exampleCode = card.createEl('pre', { cls: 'rt-code-block' });

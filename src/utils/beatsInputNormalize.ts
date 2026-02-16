@@ -74,6 +74,14 @@ export function toBeatModelMatchKey(value: string): string {
   return normalizeForMatching(value).replace(/\s+/g, '');
 }
 
+/** Stable GUID for custom beats — crypto.randomUUID with timestamp fallback. */
+export function generateBeatGuid(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export function resolveSelectedBeatModel(
   selectedBeatSystem?: string,
   customBeatSystemName?: string

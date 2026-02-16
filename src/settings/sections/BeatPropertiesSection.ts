@@ -21,6 +21,7 @@ import { isStoryBeat } from '../../utils/sceneHelpers';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import {
     hasBeatReadableText,
+    generateBeatGuid,
     normalizeBeatFieldKeyInput,
     normalizeBeatFieldListValueInput,
     normalizeBeatFieldValueInput,
@@ -43,7 +44,7 @@ import { IMPACT_FULL } from '../SettingImpact';
 
 type FieldEntryValue = string | string[];
 type FieldEntry = { key: string; value: FieldEntryValue; required: boolean };
-type BeatRow = { name: string; act: number; purpose?: string };
+type BeatRow = { name: string; act: number; purpose?: string; id?: string };
 type BeatSystemMode = 'builtin' | 'custom';
 type BuiltinBeatSetId = 'save_the_cat' | 'heros_journey' | 'story_grid';
 
@@ -308,11 +309,12 @@ export function renderStoryBeatsSection(params: {
 
     const parseBeatRow = (item: unknown): BeatRow => {
         if (typeof item === 'object' && item !== null && (item as { name?: unknown }).name) {
-            const obj = item as { name?: unknown; act?: unknown; purpose?: unknown };
+            const obj = item as { name?: unknown; act?: unknown; purpose?: unknown; id?: unknown };
             const objName = normalizeBeatNameInput(typeof obj.name === 'string' ? obj.name : String(obj.name ?? ''), '');
             const objAct = typeof obj.act === 'number' ? obj.act : 1;
             const objPurpose = typeof obj.purpose === 'string' ? obj.purpose.trim() : '';
-            return { name: objName, act: objAct, purpose: objPurpose || undefined };
+            const objId = typeof obj.id === 'string' ? obj.id : undefined;
+            return { name: objName, act: objAct, purpose: objPurpose || undefined, id: objId };
         }
         const raw = normalizeBeatNameInput(String(item ?? ''), '');
         if (!raw) return { name: '', act: 1 };
@@ -450,13 +452,22 @@ export function renderStoryBeatsSection(params: {
 
     const buildExistingBeatLookup = (beats: TimelineItem[]): Map<string, TimelineItem[]> => {
         const lookup = new Map<string, TimelineItem[]>();
+        const idLookup = new Map<string, TimelineItem[]>();
         beats.forEach(beat => {
             const key = normalizeBeatTitle(getBeatBasename(beat));
-            if (!key) return;
-            const list = lookup.get(key) ?? [];
-            list.push(beat);
-            lookup.set(key, list);
+            if (key) {
+                const list = lookup.get(key) ?? [];
+                list.push(beat);
+                lookup.set(key, list);
+            }
+            const beatId = beat["Beat Id"];
+            if (beatId) {
+                const idList = idLookup.get(beatId) ?? [];
+                idList.push(beat);
+                idLookup.set(beatId, idList);
+            }
         });
+        existingBeatIdLookup = idLookup;
         return lookup;
     };
 
@@ -469,6 +480,24 @@ export function renderStoryBeatsSection(params: {
         }
         const system = getPlotSystem(selectedSystem);
         return system?.beats ?? [];
+    };
+
+    /** Map of expected Beat Id → normalized beat name key for the selected system. */
+    const buildExpectedBeatIdMap = (selectedSystem: string): Map<string, string> => {
+        const map = new Map<string, string>();
+        if (selectedSystem === 'Custom') {
+            for (const b of (plugin.settings.customBeatSystemBeats || [])) {
+                if (b.id && b.name) map.set(b.id, normalizeBeatTitle(b.name));
+            }
+        } else {
+            const system = getPlotSystem(selectedSystem);
+            if (system?.beatDetails) {
+                for (const d of system.beatDetails) {
+                    if (d.id) map.set(d.id, normalizeBeatTitle(d.name));
+                }
+            }
+        }
+        return map;
     };
 
     const collectBeatNotesByTemplateNames = (expectedKeys: Set<string>, selectedSystem: string): TimelineItem[] => {
@@ -551,6 +580,7 @@ export function renderStoryBeatsSection(params: {
     };
 
     let existingBeatLookup = new Map<string, TimelineItem[]>();
+    let existingBeatIdLookup = new Map<string, TimelineItem[]>();
     let existingBeatCount = 0;
     let existingBeatMatchedCount = 0;
     let existingBeatExpectedCount = 0;
@@ -559,6 +589,7 @@ export function renderStoryBeatsSection(params: {
     let existingBeatSyncedCount = 0;
     let existingBeatNewCount = 0;
     let existingBeatMissingModelCount = 0;
+    let existingBeatLegacyMatchedCount = 0;
     let existingBeatStatsSystem = '';
     let existingBeatKey = '';
     let existingBeatReady = false;
@@ -624,6 +655,13 @@ export function renderStoryBeatsSection(params: {
                 tooltip: `${existingBeatNewCount} beat note${existingBeatNewCount !== 1 ? 's' : ''} not yet created.`
             };
         }
+        if (allGood && existingBeatLegacyMatchedCount > 0) {
+            return {
+                icon: 'alert-triangle',
+                statusClass: 'ert-beat-health-icon--warning',
+                tooltip: `${existingBeatLegacyMatchedCount} beat note${existingBeatLegacyMatchedCount !== 1 ? 's' : ''} matched by filename (run Repair to lock Beat Id).`
+            };
+        }
         if (allGood) {
             return {
                 icon: 'check-circle',
@@ -679,13 +717,44 @@ export function renderStoryBeatsSection(params: {
         const expectedKeys = new Set(expectedNames.map(name => normalizeBeatTitle(name)).filter(k => k.length > 0));
         const missingModelCandidates = collectBeatNotesMissingModelByExpectedNames(expectedKeys);
         const missingModelLookup = buildExistingBeatLookup(missingModelCandidates);
+        const expectedIdMap = buildExpectedBeatIdMap(selectedSystem);
         const buildCounts = (lookup: Map<string, TimelineItem[]>, total: number) => {
             existingBeatLookup = lookup;
             existingBeatCount = total;
             existingBeatStatsSystem = selectedSystem;
             existingBeatExpectedCount = expectedNames.length;
-            existingBeatMatchedCount = Array.from(expectedKeys).filter(key => lookup.has(key)).length;
-            existingBeatDuplicateCount = Array.from(expectedKeys).filter(key => (lookup.get(key)?.length ?? 0) > 1).length;
+
+            // Match by Beat Id first, then fall back to normalized name
+            let matched = 0;
+            let legacyMatched = 0;
+            let duplicates = 0;
+            const matchedByIdKeys = new Set<string>();
+            for (const key of expectedKeys) {
+                // Try Beat Id match first
+                let foundById = false;
+                for (const [beatId, nameKey] of expectedIdMap) {
+                    if (nameKey === key && existingBeatIdLookup.has(beatId)) {
+                        foundById = true;
+                        matchedByIdKeys.add(key);
+                        const idMatches = existingBeatIdLookup.get(beatId) ?? [];
+                        if (idMatches.length > 1) duplicates++;
+                        break;
+                    }
+                }
+                if (foundById) {
+                    matched++;
+                    continue;
+                }
+                // Fall back to name-based matching (legacy)
+                if (lookup.has(key)) {
+                    matched++;
+                    legacyMatched++;
+                    if ((lookup.get(key)?.length ?? 0) > 1) duplicates++;
+                }
+            }
+            existingBeatMatchedCount = matched;
+            existingBeatDuplicateCount = duplicates;
+            existingBeatLegacyMatchedCount = legacyMatched;
             existingBeatMissingModelCount = missingModelCandidates.length;
 
             // Compute misaligned count: beats matched by name but wrong number or act
@@ -972,6 +1041,7 @@ export function renderStoryBeatsSection(params: {
             const hasMisaligned = existingBeatMisalignedCount > 0;
             const hasMissing = existingBeatNewCount > 0;
             const hasMissingModel = existingBeatMissingModelCount > 0;
+            const hasLegacy = existingBeatLegacyMatchedCount > 0;
             const allGood = existingBeatSyncedCount === existingBeatExpectedCount
                 && !hasMisaligned && !hasDups && !hasMissingModel;
 
@@ -991,6 +1061,10 @@ export function renderStoryBeatsSection(params: {
                 healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--warning';
                 setIcon(healthIcon, 'alert-triangle');
                 setTooltip(healthIcon, `${existingBeatNewCount} beat note${existingBeatNewCount !== 1 ? 's' : ''} not yet created.`);
+            } else if (allGood && hasLegacy) {
+                healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--warning';
+                setIcon(healthIcon, 'alert-triangle');
+                setTooltip(healthIcon, `${existingBeatLegacyMatchedCount} beat note${existingBeatLegacyMatchedCount !== 1 ? 's' : ''} matched by filename (run Repair to lock Beat Id).`);
             } else if (allGood) {
                 healthIcon.className = 'ert-beat-health-icon ert-beat-health-icon--success';
                 setIcon(healthIcon, 'check-circle');
@@ -1347,7 +1421,8 @@ export function renderStoryBeatsSection(params: {
                     return;
                 }
                 const act = clampBeatAct(parseInt(addActSelect.value, 10) || defaultAct || 1, maxActs);
-                const updated = [...orderedBeats, { name, act }];
+                const id = `custom:${plugin.settings.activeCustomBeatSystemId ?? 'default'}:${generateBeatGuid()}`;
+                const updated = [...orderedBeats, { name, act, id }];
                 saveBeats(updated);
                 renderList();
             };
@@ -1509,9 +1584,11 @@ export function renderStoryBeatsSection(params: {
         const customName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom');
         templatePreviewTitle.setText(mode === 'builtin' ? copy.title : customName || 'Custom');
         const customDesc = (plugin.settings.customBeatSystemDescription ?? '').trim();
-        templatePreviewDesc.setText(mode === 'custom' && customDesc ? customDesc : copy.description);
+        const hasAuthorDesc = mode === 'custom' && customDesc.length > 0;
+        templatePreviewDesc.setText(hasAuthorDesc ? customDesc : copy.description);
+        templatePreviewDesc.style.whiteSpace = hasAuthorDesc ? 'pre-line' : ''; // SAFE: preserve author line breaks
         templatePreviewExamples.setText(copy.examples ?? '');
-        templatePreviewExamples.toggleClass('ert-settings-hidden', !copy.examples || mode === 'custom');
+        templatePreviewExamples.toggleClass('ert-settings-hidden', !copy.examples || hasAuthorDesc);
         templatePreviewMeta.setText(totalBeats > 0
             ? `${totalBeats} beats · ${columns.length} acts`
             : 'No beats yet — add beats in Design.');
@@ -2284,7 +2361,7 @@ export function renderStoryBeatsSection(params: {
     // Both dirty indicators (dropdown warning + dirty notice) now use the same baseline.
 
     /** Apply a saved or built-in system as the active system and refresh UI. */
-    const applyLoadedSystem = (system: { id: string; name: string; description?: string; beats: { name: string; act: number; purpose?: string }[]; beatYamlAdvanced?: string; beatHoverMetadataFields?: { key: string; label: string; icon: string; enabled: boolean }[] }) => {
+    const applyLoadedSystem = (system: { id: string; name: string; description?: string; beats: { name: string; act: number; purpose?: string; id?: string }[]; beatYamlAdvanced?: string; beatHoverMetadataFields?: { key: string; label: string; icon: string; enabled: boolean }[] }) => {
         // 1. Guarantee we're on the Custom system (config resolution depends on this)
         plugin.settings.beatSystem = 'Custom';
         // 2. Activate this set's id so config resolves to custom:<id>
@@ -4652,13 +4729,16 @@ export function renderStoryBeatsSection(params: {
             }
 
             // Build concise status description from non-zero counts
+            const legacyMatched = existingBeatLegacyMatchedCount;
             const parts: string[] = [];
             if (synced > 0) parts.push(`${synced} synced`);
             if (misaligned > 0) parts.push(`${misaligned} misaligned`);
             if (newBeats > 0) parts.push(`${newBeats} missing`);
             if (duplicates > 0) parts.push(`${duplicates} duplicate${duplicates > 1 ? 's' : ''}`);
             if (missingModel > 0) parts.push(`Missing Beat Model (${missingModel})`);
+            if (legacyMatched > 0) parts.push(`${legacyMatched} matched by filename`);
             let statusDesc = parts.join(', ') + '.';
+            if (legacyMatched > 0) statusDesc += ' Run Repair to lock Beat Id.';
 
             if (allSynced) {
                 // Scenario B: All synced — nothing to do
@@ -4695,16 +4775,18 @@ export function renderStoryBeatsSection(params: {
                 }
             }
 
-            // Merge button: show when misaligned beats or missing Beat Model values exist (Custom only)
-            if (mergeTemplatesButton && isCustom && (hasMisaligned || hasMissingModel)) {
+            // Merge button: show when misaligned beats, missing Beat Model, or legacy-matched notes exist (Custom only)
+            const hasLegacyToRepair = legacyMatched > 0;
+            if (mergeTemplatesButton && isCustom && (hasMisaligned || hasMissingModel || hasLegacyToRepair)) {
                 mergeTemplatesButton.buttonEl.removeClass('ert-hidden');
                 mergeTemplatesButton.setDisabled(false);
-                const repairCount = misaligned + missingModel;
+                const repairCount = misaligned + missingModel + legacyMatched;
                 mergeTemplatesButton.setButtonText(`Repair ${repairCount} beat note${repairCount > 1 ? 's' : ''}`);
                 const repairBits: string[] = [];
                 if (misaligned > 0) repairBits.push(`${misaligned} misaligned`);
                 if (missingModel > 0) repairBits.push(`${missingModel} missing Beat Model`);
-                mergeTemplatesButton.setTooltip(`Update Act and Beat Model for ${repairBits.join(' and ')} beat note${repairCount > 1 ? 's' : ''}. Prefix numbers are not changed.`);
+                if (legacyMatched > 0) repairBits.push(`${legacyMatched} missing Beat Id`);
+                mergeTemplatesButton.setTooltip(`Update Act, Beat Model, and Beat Id for ${repairBits.join(' and ')} beat note${repairCount > 1 ? 's' : ''}. Prefix numbers are not changed.`);
             }
 
             if (hasDuplicates) {
@@ -4755,7 +4837,8 @@ export function renderStoryBeatsSection(params: {
             : storyStructureName;
         const conflicts: string[] = [];
         const duplicates: string[] = [];
-        const updates: Array<{ file: TFile; targetPath: string; act: number; needsBeatModelFix: boolean }> = [];
+        const beatIdConflicts: string[] = [];
+        const updates: Array<{ file: TFile; targetPath: string; act: number; needsBeatModelFix: boolean; beatId?: string }> = [];
         const duplicateKeys = new Set<string>();
 
         const keyCounts = new Map<string, number>();
@@ -4775,8 +4858,16 @@ export function renderStoryBeatsSection(params: {
                 duplicates.push(beatLine.name);
                 return;
             }
-            let matches = existingLookup.get(key);
+
+            // Try Beat Id matching first
+            let matches: TimelineItem[] | undefined;
             let needsBeatModelFix = false;
+            if (beatLine.id && existingBeatIdLookup.has(beatLine.id)) {
+                matches = existingBeatIdLookup.get(beatLine.id);
+            }
+            if (!matches || matches.length === 0) {
+                matches = existingLookup.get(key);
+            }
             if (!matches || matches.length === 0) {
                 const missingMatches = missingModelLookup.get(key);
                 if (!missingMatches || missingMatches.length === 0) return;
@@ -4793,8 +4884,15 @@ export function renderStoryBeatsSection(params: {
             const file = app.vault.getAbstractFileByPath(match.path);
             if (!(file instanceof TFile)) return;
 
-            // Repair updates frontmatter only; no file renames (prefix numbers are not healed).
-            updates.push({ file, targetPath: file.path, act: beatLine.act, needsBeatModelFix });
+            // Check Beat Id conflict: note already has a different Beat Id
+            const existingBeatId = match["Beat Id"];
+            let beatIdToWrite = beatLine.id;
+            if (existingBeatId && beatLine.id && existingBeatId !== beatLine.id) {
+                beatIdConflicts.push(beatLine.name);
+                beatIdToWrite = undefined;
+            }
+
+            updates.push({ file, targetPath: file.path, act: beatLine.act, needsBeatModelFix, beatId: beatIdToWrite });
         });
 
         if (updates.length === 0) {
@@ -4804,11 +4902,16 @@ export function renderStoryBeatsSection(params: {
             return;
         }
 
+        let beatIdWrittenCount = 0;
         for (const update of updates) {
             await app.fileManager.processFrontMatter(update.file, (fm: Record<string, unknown>) => {
                 fm['Act'] = update.act;
                 fm['Beat Model'] = customModelName;
                 if (!fm['Class']) fm['Class'] = 'Beat';
+                if (update.beatId && !fm['Beat Id']) {
+                    fm['Beat Id'] = update.beatId;
+                    beatIdWrittenCount++;
+                }
             });
         }
 
@@ -4853,7 +4956,9 @@ export function renderStoryBeatsSection(params: {
         const conflictHint = conflicts.length > 0 ? ` ${conflicts.length} conflict${conflicts.length > 1 ? 's' : ''} skipped.` : '';
         const duplicateHint = duplicates.length > 0 ? ` ${duplicates.length} duplicate title${duplicates.length > 1 ? 's' : ''} skipped (manually delete duplicate beat notes).` : '';
         const modelHint = modelFixedCount > 0 ? ` Set Beat Model on ${modelFixedCount} note${modelFixedCount > 1 ? 's' : ''}.` : '';
-        new Notice(`Repaired ${updatedCount} beat note${updatedCount > 1 ? 's' : ''} (Act, Beat Model).${modelHint}${conflictHint}${duplicateHint}`);
+        const beatIdHint = beatIdWrittenCount > 0 ? ` Locked Beat Id on ${beatIdWrittenCount} note${beatIdWrittenCount > 1 ? 's' : ''}.` : '';
+        const beatIdConflictHint = beatIdConflicts.length > 0 ? ` ${beatIdConflicts.length} Beat Id conflict${beatIdConflicts.length > 1 ? 's' : ''} (existing id differs).` : '';
+        new Notice(`Repaired ${updatedCount} beat note${updatedCount > 1 ? 's' : ''} (Act, Beat Model).${modelHint}${beatIdHint}${conflictHint}${duplicateHint}${beatIdConflictHint}`);
     }
 
     async function createBeatTemplates(): Promise<void> {

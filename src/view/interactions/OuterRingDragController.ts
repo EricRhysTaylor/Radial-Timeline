@@ -233,6 +233,25 @@ export class OuterRingDragController {
         summaryLines.push('Ripple rename is enabled: scene and active-beat filenames are normalized after drop (filenames only). Decimalized prefixes are reflowed to integers.');
     }
 
+    private buildResequenceSummaryLine(
+        renumberUpdates: SceneUpdate[],
+        orderedEntries: OuterRingOrderEntry[]
+    ): string {
+        const itemTypeByPath = new Map(orderedEntries.map(entry => [entry.path, entry.itemType] as const));
+        let sceneCount = 0;
+        let beatCount = 0;
+        for (const update of renumberUpdates) {
+            if (itemTypeByPath.get(update.path) === 'Beat') beatCount += 1;
+            else sceneCount += 1;
+        }
+
+        const total = sceneCount + beatCount;
+        if (beatCount === 0) {
+            return `Will resequence ${total} filenames (${sceneCount} scenes) — updates numbering.`;
+        }
+        return `Will resequence ${total} filenames (${sceneCount} scenes, ${beatCount} beats) — resolves overlaps; decimals become integers.`;
+    }
+
     /** Extract the scene/beat path element ID from an .rt-scene-group */
     private getSceneIdFromSceneGroup(group: Element | null): string | null {
         if (!group) return null;
@@ -576,7 +595,8 @@ export class OuterRingDragController {
             reordered.splice(insertionIndex, 0, moved);
         }
 
-        const { updates } = this.buildRenumberDiff(reordered, isNoOpReorder);
+        const { updates: renumberUpdates } = this.buildRenumberDiff(reordered, isNoOpReorder);
+        const updates: SceneUpdate[] = [...renumberUpdates];
 
         const targetPathEl = this.svg.querySelector<SVGPathElement>(`#${this.cssEscape(targetId)}`);
         const targetGroup = targetPathEl?.closest('.rt-scene-group');
@@ -608,7 +628,7 @@ export class OuterRingDragController {
         const targetLabel = (targetItemType === 'Beat') ? 'beat' : 'scene';
         const summaryLines = [
             `Place ${sourceLabel} ${sourceOriginalNumber} after ${targetLabel} ${targetOriginalNumber}.`,
-            `Will renumber ${updates.length} item(s).`,
+            this.buildResequenceSummaryLine(renumberUpdates, reordered),
         ];
         this.appendRippleRenameSummary(summaryLines);
         if (actChanged) {
@@ -706,7 +726,8 @@ export class OuterRingDragController {
         const insertionIndex = this.findInsertionIndexByAngle(reordered, target.startAngle);
         reordered.splice(insertionIndex, 0, moved);
         const isNoOpReorder = insertionIndex === fromIdx;
-        const { updates, nextNumberByPath } = this.buildRenumberDiff(reordered, isNoOpReorder);
+        const { updates: renumberUpdates, nextNumberByPath } = this.buildRenumberDiff(reordered, isNoOpReorder);
+        const updates: SceneUpdate[] = [...renumberUpdates];
 
         // Safety fallback: if a dragged scene has no numeric prefix, force a valid sequence number.
         const fallbackSourceNumber = this.formatPrefixWithWidth(1, this.getPrefixWidthForEntry(movedEntry));
@@ -780,7 +801,7 @@ export class OuterRingDragController {
             summaryLines.push(`Move ${sourceLabel} ${sourceDisplayNumber} to "${targetSubplotName}".`);
         }
         summaryLines.push(subplotChangeDesc);
-        summaryLines.push(`Will renumber ${updates.length} item(s).`);
+        summaryLines.push(this.buildResequenceSummaryLine(renumberUpdates, reordered));
         this.appendRippleRenameSummary(summaryLines);
 
         this.confirming = true;

@@ -196,7 +196,8 @@ Iteration:`
 Act: {{Act}}
 Purpose: {{Purpose}}
 Beat Model: {{BeatModel}}
-Range: {{Range}}`,
+Range: {{Range}}
+Beat Id: {{BeatId}}`,
         advanced: ``
     },
     bookDesignerTemplates: [],

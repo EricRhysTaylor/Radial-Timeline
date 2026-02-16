@@ -201,6 +201,8 @@ export function getExcludeKeyPredicate(noteType: NoteType): (key: string) => boo
                 // All Gossamer-injected fields: Gossamer1, GossamerStage1,
                 // Gossamer1 Justification, Gossamer Last Updated, etc.
                 if (/^Gossamer/i.test(key)) return true;
+                // Beat Id is system-managed identity; never flag as extra
+                if (key === 'Beat Id') return true;
                 // Legacy base field (removed from template but may exist in older notes)
                 if (key === 'When') return true;
                 // Legacy beat narrative field (renamed to Purpose)
