@@ -56,6 +56,32 @@ export function getBeatConfigForSystem(
 }
 
 /**
+ * Ensure a BeatSystemConfig slot exists for the given system; create if missing.
+ * Used by the Fields editor when persisting edits.
+ */
+export function ensureBeatConfigForSystem(
+  settings: RadialTimelineSettings,
+  systemKey?: string
+): BeatSystemConfig {
+  const system = (systemKey ?? settings.beatSystem ?? 'Save The Cat').trim();
+  const key = system === 'Custom'
+    ? `custom:${settings.activeCustomBeatSystemId ?? 'default'}`
+    : system;
+  if (!settings.beatSystemConfigs) settings.beatSystemConfigs = {};
+  if (!settings.beatSystemConfigs[key]) {
+    if (system === 'Custom' || system.startsWith('custom:')) {
+      settings.beatSystemConfigs[key] = { beatYamlAdvanced: '', beatHoverMetadataFields: [] };
+    } else {
+      settings.beatSystemConfigs[key] = {
+        beatYamlAdvanced: settings.beatYamlTemplates?.advanced ?? '',
+        beatHoverMetadataFields: [...(settings.beatHoverMetadataFields ?? [])],
+      };
+    }
+  }
+  return settings.beatSystemConfigs[key];
+}
+
+/**
  * Resolve the BeatSystemConfig for a specific beat note by its Beat Model frontmatter value.
  * Used by: SynopsisManager (hover), SearchService (indexing).
  * Falls back through: exact built-in match → active custom → saved custom name match → empty.

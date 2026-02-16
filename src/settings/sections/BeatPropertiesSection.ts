@@ -3,7 +3,7 @@ import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
 import { CreateBeatSetModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem, getCustomSystemFromSettings, PRO_BEAT_SETS } from '../../utils/beatsSystems';
-import { createBeatNotesFromSet, getMergedBeatYaml, getBeatConfigForSystem, spreadBeatsAcrossScenes } from '../../utils/beatsTemplates';
+import { createBeatNotesFromSet, getMergedBeatYaml, getBeatConfigForSystem, ensureBeatConfigForSystem, spreadBeatsAcrossScenes } from '../../utils/beatsTemplates';
 import type { BeatSystemConfig } from '../../types/settings';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { renderMetadataSection } from './MetadataSection';
@@ -175,9 +175,12 @@ const deriveBeatSystemMode = (system?: string): { mode: BeatSystemMode; builtinS
 
 // ── Module-level UI state (survives re-renders within the same plugin session) ──
 
-/** Active Custom sub-tab. Module-level so it persists across re-renders. */
-type CustomStage = 'design' | 'fields' | 'pro';
-let _currentCustomStage: CustomStage = 'design';
+/** Inner tab selection. Shared by built-ins and Custom. Default: preview. */
+type InnerStage = 'preview' | 'design' | 'fields' | 'sets';
+let _currentInnerStage: InnerStage = 'preview';
+
+/** @deprecated Use InnerStage. Kept for backward compatibility in string literals. */
+type CustomStage = InnerStage;
 
 /**
  * Reactive dirty-state store for loaded beat sets (starter or saved).
@@ -242,6 +245,11 @@ export function renderStoryBeatsSection(params: {
     containerEl: HTMLElement;
 }): void {
     const { app, plugin, containerEl } = params;
+    const proActive = isProfessionalActive(plugin);
+    const canEditBuiltInBeatSystems = (): boolean => proActive;
+    const canEditFieldsForSystem = (systemKey: string): boolean =>
+        systemKey === 'Custom' ? true : canEditBuiltInBeatSystems();
+    const canManageCustomSets = (): boolean => proActive;
     _unsubTopBeatTabsDirty?.();
     _unsubTopBeatTabsDirty = null;
     _unsubBeatAuditDirty?.();
@@ -813,6 +821,8 @@ export function renderStoryBeatsSection(params: {
         cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-beat-system-card`,
         attr: { id: 'ert-beat-system-panel', role: 'tabpanel' }
     });
+    // Tier banner (always visible; shows built-in vs custom, Core vs Pro)
+    const tierBannerEl = beatSystemCard.createDiv({ cls: 'ert-beat-tier-banner ert-stack--tight' });
     const templatePreviewContainer = beatSystemCard.createDiv({ cls: ['ert-beat-template-preview', ERT_CLASSES.STACK] });
     const templatePreviewTitle = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-title' });
     const templatePreviewDesc = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-desc' });
@@ -820,15 +830,12 @@ export function renderStoryBeatsSection(params: {
     const templatePreviewMeta = templatePreviewContainer.createDiv({ cls: 'ert-beat-template-meta' });
     const templateActGrid = templatePreviewContainer.createDiv({ cls: 'ert-beat-act-grid' });
 
-    // ── Stage switcher for Custom workflow (3-stage) ──────────────────
-    // Stage state lives at module level (_currentCustomStage) so it survives
-    // re-renders. Controls which section is visible inside the Custom tab panel.
-    // 1) design — beat list editor + system name + beat-note health/actions
-    // 2) fields — YAML editor, hover metadata, schema audit
-    // 3) pro    — saved beat systems manager (Pro Sets, Pro-locked for Core)
+    // ── Inner stage switcher (Preview | Design | Fields | Sets) ───────
+    // Visible for ALL systems. Built-ins: Preview, Design, Fields. Custom: + Sets.
+    // Default: Preview. State at module level (_currentInnerStage) survives re-renders.
 
     const stageSwitcher = beatSystemCard.createDiv({
-        cls: 'ert-stage-switcher ert-settings-hidden',
+        cls: 'ert-stage-switcher',
         attr: { role: 'tablist' }
     });
 
@@ -1456,23 +1463,57 @@ export function renderStoryBeatsSection(params: {
         return { columns, totalBeats: total };
     };
 
-    const renderTemplatePreview = (system: string) => {
+    const buildCustomActColumns = (): { columns: ActGridColumn[]; totalBeats: number } => {
+        const beats = (plugin.settings.customBeatSystemBeats || []).map(parseBeatRow).filter(b => hasBeatReadableText(b.name));
+        const maxActs = getActCount();
+        const ordered = orderBeatsByAct(
+            beats.map(b => ({ ...b, act: clampBeatAct(b.act, maxActs) })),
+            maxActs
+        );
+        const grouped = new Map<string, ActGridColumn>();
+        ordered.forEach((beatLine) => {
+            const actNum = clampBeatAct(beatLine.act, maxActs);
+            const key = `act:${actNum}`;
+            if (!grouped.has(key)) {
+                grouped.set(key, { label: `Act ${actNum}`, beats: [], rank: actNum, isNumericAct: true });
+            }
+            grouped.get(key)!.beats.push(stripActPrefix(beatLine.name));
+        });
+        const columns = Array.from(grouped.values()).sort((a, b) => a.rank - b.rank);
+        return { columns, totalBeats: ordered.length };
+    };
+
+    const renderPreviewContent = (system: string) => {
         const { mode } = deriveBeatSystemMode(system);
-        templatePreviewContainer.toggleClass('ert-settings-hidden', mode !== 'builtin');
-        if (mode !== 'builtin') return;
-
         const copy = getBeatSystemCopy(system);
-        const { columns, totalBeats } = buildTemplateActColumns(system);
+        let columns: ActGridColumn[];
+        let totalBeats: number;
 
-        templatePreviewTitle.setText(copy.title);
+        if (mode === 'builtin') {
+            const result = buildTemplateActColumns(system);
+            columns = result.columns;
+            totalBeats = result.totalBeats;
+        } else {
+            const result = buildCustomActColumns();
+            columns = result.columns;
+            totalBeats = result.totalBeats;
+        }
+
+        const customName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom');
+        templatePreviewTitle.setText(mode === 'builtin' ? copy.title : customName || 'Custom');
         templatePreviewDesc.setText(copy.description);
         templatePreviewExamples.setText(copy.examples ?? '');
-        templatePreviewExamples.toggleClass('ert-settings-hidden', !copy.examples);
-        templatePreviewMeta.setText(`${totalBeats} beats · ${columns.length} acts`);
+        templatePreviewExamples.toggleClass('ert-settings-hidden', !copy.examples || mode === 'custom');
+        templatePreviewMeta.setText(totalBeats > 0
+            ? `${totalBeats} beats · ${columns.length} acts`
+            : 'No beats yet — add beats in Design.');
 
         templateActGrid.empty();
         if (columns.length === 0) {
-            templateActGrid.createDiv({ cls: 'ert-beat-act-empty', text: 'No beats found for this set.' });
+            templateActGrid.createDiv({
+                cls: 'ert-beat-act-empty',
+                text: mode === 'custom' ? 'No beats yet. Switch to Design to add beats.' : 'No beats found for this set.'
+            });
             return;
         }
 
@@ -1480,9 +1521,7 @@ export function renderStoryBeatsSection(params: {
         columns.forEach((column) => {
             const colEl = templateActGrid.createDiv({ cls: 'ert-beat-act-column' });
             const count = column.beats.length;
-            const headerText = column.isNumericAct
-                ? `${column.label} (${count})`
-                : `${column.label}${count > 0 ? ` (${count})` : ''}`;
+            const headerText = column.isNumericAct ? `${column.label} (${count})` : `${column.label}${count > 0 ? ` (${count})` : ''}`;
             colEl.createDiv({ cls: 'ert-beat-act-header', text: headerText });
             const listEl = colEl.createDiv({ cls: 'ert-beat-act-list' });
             column.beats.forEach((beat) => {
@@ -1490,6 +1529,10 @@ export function renderStoryBeatsSection(params: {
                 listEl.createDiv({ cls: 'ert-beat-act-item', text: `${runningBeatIdx}. ${beat}` });
             });
         });
+    };
+
+    const renderTemplatePreview = (system: string) => {
+        renderPreviewContent(system);
     };
 
     // Create template beat note button — wrapped in a container for reliable stage gating.
@@ -1568,26 +1611,29 @@ export function renderStoryBeatsSection(params: {
 
     // Stage 3: Fields (YAML editor, hover metadata, schema audit)
     const fieldsContainer = beatSystemCard.createDiv({ cls: ERT_CLASSES.STACK });
-    // Stage 3: PRO Sets (saved beat systems manager)
+    // Stage 4: Sets (saved/starter beat systems — Custom only)
     const proTemplatesContainer = beatSystemCard.createDiv({ cls: ERT_CLASSES.STACK });
 
     // ── Stage switcher rendering + visibility ───────────────────────────
     const renderStageSwitcher = () => {
         stageSwitcher.empty();
+        const system = plugin.settings.beatSystem || 'Custom';
+        const { mode } = deriveBeatSystemMode(system);
+        const isCustom = mode === 'custom';
 
         // Helper: create a numbered stage button
         const makeStageBtn = (
-            id: CustomStage,
+            id: InnerStage,
             stepNum: number,
             label: string,
             disabled = false
         ): HTMLButtonElement => {
             const btn = stageSwitcher.createEl('button', {
-                cls: `ert-stage-btn${_currentCustomStage === id ? ' is-active' : ''}${disabled ? ' is-disabled' : ''}`,
+                cls: `ert-stage-btn${_currentInnerStage === id ? ' is-active' : ''}${disabled ? ' is-disabled' : ''}`,
                 attr: {
                     type: 'button',
                     role: 'tab',
-                    'aria-selected': _currentCustomStage === id ? 'true' : 'false',
+                    'aria-selected': _currentInnerStage === id ? 'true' : 'false',
                     ...(disabled ? { disabled: 'true' } : {})
                 }
             });
@@ -1595,8 +1641,8 @@ export function renderStoryBeatsSection(params: {
             btn.appendText(` ${label}`);
             if (!disabled) {
                 btn.addEventListener('click', () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
-                    if (_currentCustomStage === id) return;
-                    _currentCustomStage = id;
+                    if (_currentInnerStage === id) return;
+                    _currentInnerStage = id;
                     renderStageSwitcher();
                     updateStageVisibility();
                 });
@@ -1604,70 +1650,82 @@ export function renderStoryBeatsSection(params: {
             return btn;
         };
 
-        // Stage 1: Design (beat list + health + create/merge actions)
-        makeStageBtn('design', 1, 'Design');
+        // Stage 1: Preview (acts + beats overview)
+        makeStageBtn('preview', 1, 'Preview');
 
-        // Stage 2: Fields (YAML editor, hover metadata, schema audit)
-        makeStageBtn('fields', 2, 'Fields');
+        // Stage 2: Design (beat list editor + beat notes in vault)
+        makeStageBtn('design', 2, 'Design');
 
-        // Stage 3: PRO Sets (always visible; content Pro-locked for Core)
-        const proBtn = stageSwitcher.createEl('button', {
-            cls: `ert-stage-btn ert-stage-btn--pro ${ERT_CLASSES.SKIN_PRO}${_currentCustomStage === 'pro' ? ' is-active' : ''}`,
-            attr: { type: 'button', role: 'tab', 'aria-selected': _currentCustomStage === 'pro' ? 'true' : 'false' }
-        });
-        // PRO pill inherits gradient from the ert-skin--pro ancestor (the button itself)
-        const proPill = proBtn.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}` });
-        setIcon(proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), 'signature');
-        proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
-        proBtn.appendText(' Sets');
-        proBtn.addEventListener('click', () => { // SAFE: direct addEventListener; Settings lifecycle manages cleanup
-            if (_currentCustomStage === 'pro') return;
-            _currentCustomStage = 'pro';
-            renderStageSwitcher();
-            updateStageVisibility();
-        });
+        // Stage 3: Fields (YAML editor, hover metadata, schema audit)
+        makeStageBtn('fields', 3, 'Fields');
+
+        // Stage 4: Sets (Custom only; saved/starter beat systems)
+        if (isCustom) {
+            const setsBtn = stageSwitcher.createEl('button', {
+                cls: `ert-stage-btn${_currentInnerStage === 'sets' ? ' is-active' : ''}`,
+                attr: { type: 'button', role: 'tab', 'aria-selected': _currentInnerStage === 'sets' ? 'true' : 'false' }
+            });
+            setsBtn.createSpan({ cls: 'ert-stage-btn-step', text: '4.' });
+            setsBtn.appendText(' Sets');
+            setsBtn.addEventListener('click', () => {
+                if (_currentInnerStage === 'sets') return;
+                _currentInnerStage = 'sets';
+                renderStageSwitcher();
+                updateStageVisibility();
+            });
+        }
     };
 
     /**
-     * Shows/hides stage panels based on _currentCustomStage.
-     * In template mode all stages are hidden and the switcher disappears.
+     * Shows/hides stage panels based on _currentInnerStage.
+     * Preview/Design/Fields visible for all systems; Sets only for Custom.
      */
     const updateStageVisibility = () => {
         const system = plugin.settings.beatSystem || 'Custom';
         const { mode } = deriveBeatSystemMode(system);
         const isCustom = mode === 'custom';
 
-        // Stage switcher only in custom mode
-        stageSwitcher.toggleClass('ert-settings-hidden', !isCustom);
+        // Preview: acts + beats overview (templatePreviewContainer for both; custom uses same structure)
+        templatePreviewContainer.toggleClass('ert-settings-hidden', _currentInnerStage !== 'preview');
 
-        if (!isCustom) {
-            // Template mode: show preview + template button, hide custom stuff
-            customConfigContainer.toggleClass('ert-settings-hidden', true);
-            designActionsContainer.toggleClass('ert-settings-hidden', false);
-            fieldsContainer.toggleClass('ert-settings-hidden', true);
-            proTemplatesContainer.toggleClass('ert-settings-hidden', true);
-            return;
-        }
+        // Design: beat list editor (Custom only) + beat notes in vault (all)
+        customConfigContainer.toggleClass('ert-settings-hidden', !isCustom || _currentInnerStage !== 'design');
+        designActionsContainer.toggleClass('ert-settings-hidden', _currentInnerStage !== 'design');
 
-        // Custom mode: Design shows beat list + health/actions
-        customConfigContainer.toggleClass('ert-settings-hidden', _currentCustomStage !== 'design');
-        designActionsContainer.toggleClass('ert-settings-hidden', _currentCustomStage !== 'design');
-        fieldsContainer.toggleClass('ert-settings-hidden', _currentCustomStage !== 'fields');
-        proTemplatesContainer.toggleClass('ert-settings-hidden', _currentCustomStage !== 'pro');
+        // Fields: YAML editor, hover metadata, schema audit
+        fieldsContainer.toggleClass('ert-settings-hidden', _currentInnerStage !== 'fields');
 
-        // Re-trigger custom data refresh when switching to Design
-        if (_currentCustomStage === 'design') {
+        // Sets: saved/starter beat systems (Custom only)
+        proTemplatesContainer.toggleClass('ert-settings-hidden', !isCustom || _currentInnerStage !== 'sets');
+
+        if (_currentInnerStage === 'design') {
             refreshCustomBeats?.(true);
         }
     };
 
-    const updateBeatSystemCard = (system: string) => {
+    const updateTierBanner = (system: string) => {
+        tierBannerEl.empty();
+        const { mode } = deriveBeatSystemMode(system);
+        tierBannerEl.createDiv({ cls: 'ert-beat-tier-line', text: mode === 'builtin' ? 'Built-in beat set' : 'Custom beat set' });
+        const builtinLocked = mode === 'builtin' && !canEditBuiltInBeatSystems();
+        const statusText = builtinLocked
+            ? 'Status: Read-only (Core)'
+            : (proActive ? 'Status: Editable (Pro)' : 'Status: Editable (Core)');
+        tierBannerEl.createDiv({ cls: 'ert-beat-tier-line ert-beat-tier-status', text: statusText });
+        if (builtinLocked) {
+            tierBannerEl.createDiv({ cls: 'ert-beat-tier-cta', text: 'Upgrade to Pro to edit beats and fields.' });
+        }
+    };
+
+    const updateBeatSystemCard = (system: string, options?: { resetStage?: boolean }) => {
         const { mode } = deriveBeatSystemMode(system);
         beatSystemCard.toggleClass('ert-beat-system-card--custom', mode === 'custom');
-        renderTemplatePreview(system);
-        // Reset to Design stage when switching to Custom mode
-        if (mode === 'custom' && _currentCustomStage !== 'design') {
-            _currentCustomStage = 'design';
+        updateTierBanner(system);
+        renderPreviewContent(system);
+        renderBeatYamlEditor();
+        updateBeatHoverPreview?.();
+        if (options?.resetStage !== false) {
+            _currentInnerStage = 'preview';
         }
         renderStageSwitcher();
         updateStageVisibility();
@@ -1722,27 +1780,12 @@ export function renderStoryBeatsSection(params: {
 
     const beatYamlContainer = beatYamlSection.createDiv({ cls: ['ert-panel', 'ert-advanced-template-card'] });
 
-    // ─── Custom-only beat-fields config helpers ────────────────────────
-    // Fields manager is scoped to Custom systems only; never write built-in slots here.
-    const getActiveCustomConfigKey = (): string => `custom:${plugin.settings.activeCustomBeatSystemId ?? 'default'}`;
-    const ensureCustomBeatConfig = (): BeatSystemConfig => {
-        const key = getActiveCustomConfigKey();
-        if (!plugin.settings.beatSystemConfigs) plugin.settings.beatSystemConfigs = {};
-        if (!plugin.settings.beatSystemConfigs[key]) {
-            plugin.settings.beatSystemConfigs[key] = { beatYamlAdvanced: '', beatHoverMetadataFields: [] };
-        }
-        return plugin.settings.beatSystemConfigs[key];
-    };
-    const canEditCustomBeatFields = (): boolean => {
-        if (plugin.settings.beatSystem === 'Custom') return true;
-        if (process.env.NODE_ENV !== 'production') {
-            console.warn('[BeatFields] Refusing field edit outside Custom system', {
-                beatSystem: plugin.settings.beatSystem,
-                activeCustomBeatSystemId: plugin.settings.activeCustomBeatSystemId ?? 'default',
-            });
-        }
-        return false;
-    };
+    // ─── Beat-fields config helpers (all systems: built-in + custom) ────
+    const getActiveSystemKey = (): string => plugin.settings.beatSystem || 'Save The Cat';
+    const getConfigForCurrentSystem = (): BeatSystemConfig =>
+        getBeatConfigForSystem(plugin.settings, getActiveSystemKey());
+    const ensureConfigForCurrentSystem = (): BeatSystemConfig =>
+        ensureBeatConfigForSystem(plugin.settings, getActiveSystemKey());
 
     // Beat hover metadata helpers (operate on active system's config slot)
     const refreshBeatHoverInViews = () => {
@@ -1751,12 +1794,12 @@ export function renderStoryBeatsSection(params: {
     };
 
     const getBeatHoverMetadata = (key: string): HoverMetadataField | undefined => {
-        return ensureCustomBeatConfig().beatHoverMetadataFields.find(f => f.key === key);
+        return getConfigForCurrentSystem().beatHoverMetadataFields.find(f => f.key === key);
     };
 
     const setBeatHoverMetadata = (key: string, icon: string, enabled: boolean) => {
-        if (!canEditCustomBeatFields()) return;
-        const config = ensureCustomBeatConfig();
+        if (!canEditFieldsForSystem(getActiveSystemKey())) return;
+        const config = ensureConfigForCurrentSystem();
         const existing = config.beatHoverMetadataFields.find(f => f.key === key);
         if (existing) {
             existing.icon = icon;
@@ -1770,8 +1813,8 @@ export function renderStoryBeatsSection(params: {
     };
 
     const removeBeatHoverMetadata = (key: string) => {
-        if (!canEditCustomBeatFields()) return;
-        const config = ensureCustomBeatConfig();
+        if (!canEditFieldsForSystem(getActiveSystemKey())) return;
+        const config = ensureConfigForCurrentSystem();
         config.beatHoverMetadataFields = config.beatHoverMetadataFields.filter(f => f.key !== key);
         refreshBeatHoverInViews();
         void plugin.saveSettings();
@@ -1779,8 +1822,8 @@ export function renderStoryBeatsSection(params: {
     };
 
     const renameBeatHoverMetadataKey = (oldKey: string, newKey: string) => {
-        if (!canEditCustomBeatFields()) return;
-        const config = ensureCustomBeatConfig();
+        if (!canEditFieldsForSystem(getActiveSystemKey())) return;
+        const config = ensureConfigForCurrentSystem();
         const existing = config.beatHoverMetadataFields.find(f => f.key === oldKey);
         if (existing) {
             existing.key = newKey;
@@ -1799,7 +1842,8 @@ export function renderStoryBeatsSection(params: {
     const renderBeatYamlEditor = () => {
         beatYamlContainer.empty();
 
-        const currentBeatAdvanced = ensureCustomBeatConfig().beatYamlAdvanced;
+        const fieldsReadOnly = !canEditFieldsForSystem(getActiveSystemKey());
+        const currentBeatAdvanced = getConfigForCurrentSystem().beatYamlAdvanced;
         const beatAdvancedObj = safeParseYaml(currentBeatAdvanced);
 
         const beatOptionalOrder = extractKeysInOrder(currentBeatAdvanced).filter(
@@ -1815,10 +1859,10 @@ export function renderStoryBeatsSection(params: {
         let beatDragIndex: number | null = null;
 
         const saveBeatEntries = (nextEntries: FieldEntry[]) => {
-            if (!canEditCustomBeatFields()) return;
+            if (!canEditFieldsForSystem(getActiveSystemKey())) return;
             beatWorkingEntries = nextEntries;
             const yaml = buildYamlFromEntries(nextEntries);
-            const config = ensureCustomBeatConfig();
+            const config = ensureConfigForCurrentSystem();
             config.beatYamlAdvanced = yaml;
             void plugin.saveSettings();
             dirtyState.notify();
@@ -1828,6 +1872,7 @@ export function renderStoryBeatsSection(params: {
             const data = next ?? beatWorkingEntries;
             beatWorkingEntries = data;
             beatYamlContainer.empty();
+            beatYamlContainer.toggleClass('ert-beat-fields-readonly', fieldsReadOnly);
 
             // Read-only base fields (collapsed summary)
             const baseCard = beatYamlContainer.createDiv({ cls: 'ert-template-base-summary' });
@@ -1853,9 +1898,9 @@ export function renderStoryBeatsSection(params: {
 
                 // Drag handle
                 const dragHandle = row.createDiv({ cls: 'ert-drag-handle' });
-                dragHandle.draggable = true;
+                dragHandle.draggable = !fieldsReadOnly;
                 setIcon(dragHandle, 'grip-vertical');
-                setTooltip(dragHandle, 'Drag to reorder');
+                setTooltip(dragHandle, fieldsReadOnly ? 'Requires Pro' : 'Drag to reorder');
 
                 row.createDiv({ cls: 'ert-grid-spacer' });
 
@@ -1869,7 +1914,8 @@ export function renderStoryBeatsSection(params: {
                     attr: { placeholder: 'Icon name...' }
                 });
                 iconInput.value = currentIcon;
-                setTooltip(iconInput, 'Lucide icon name for hover synopsis');
+                iconInput.disabled = fieldsReadOnly;
+                setTooltip(iconInput, fieldsReadOnly ? 'Requires Pro' : 'Lucide icon name for hover synopsis');
 
                 // Hover checkbox
                 const checkboxWrapper = row.createDiv({ cls: 'ert-hover-checkbox-wrapper' });
@@ -1878,17 +1924,20 @@ export function renderStoryBeatsSection(params: {
                     cls: 'ert-hover-checkbox'
                 });
                 checkbox.checked = currentEnabled;
-                setTooltip(checkbox, 'Show in beat hover synopsis');
+                checkbox.disabled = fieldsReadOnly;
+                setTooltip(checkbox, fieldsReadOnly ? 'Requires Pro' : 'Show in beat hover synopsis');
 
-                new IconSuggest(app, iconInput, (selectedIcon) => {
-                    iconInput.value = selectedIcon;
-                    iconPreview.empty();
-                    setIcon(iconPreview, selectedIcon);
-                    setBeatHoverMetadata(entry.key, selectedIcon, checkbox.checked);
-                    updateBeatHoverPreview?.();
-                });
+                if (!fieldsReadOnly) {
+                    new IconSuggest(app, iconInput, (selectedIcon) => {
+                        iconInput.value = selectedIcon;
+                        iconPreview.empty();
+                        setIcon(iconPreview, selectedIcon);
+                        setBeatHoverMetadata(entry.key, selectedIcon, checkbox.checked);
+                        updateBeatHoverPreview?.();
+                    });
+                }
 
-                iconInput.oninput = () => {
+                if (!fieldsReadOnly) iconInput.oninput = () => {
                     const iconName = iconInput.value.trim();
                     if (iconName && getIconIds().includes(iconName)) {
                         iconPreview.empty();
@@ -1898,7 +1947,7 @@ export function renderStoryBeatsSection(params: {
                     }
                 };
 
-                checkbox.onchange = () => {
+                if (!fieldsReadOnly) checkbox.onchange = () => {
                     const iconName = iconInput.value.trim() || DEFAULT_HOVER_ICON;
                     setBeatHoverMetadata(entry.key, iconName, checkbox.checked);
                     updateBeatHoverPreview?.();
@@ -1908,7 +1957,8 @@ export function renderStoryBeatsSection(params: {
                 const keyInput = row.createEl('input', { type: 'text', cls: 'ert-input ert-input--md' });
                 keyInput.value = entry.key;
                 keyInput.placeholder = 'Key';
-                keyInput.onchange = () => {
+                keyInput.disabled = fieldsReadOnly;
+                if (!fieldsReadOnly) keyInput.onchange = () => {
                     const newKey = normalizeBeatFieldKeyInput(keyInput.value);
                     if (!newKey || !hasBeatReadableText(newKey)) {
                         keyInput.value = entry.key;
@@ -1942,10 +1992,11 @@ export function renderStoryBeatsSection(params: {
                 // Value input
                 const value = entry.value;
                 const valInput = row.createEl('input', { type: 'text', cls: 'ert-input ert-input--md' });
+                valInput.disabled = fieldsReadOnly;
                 if (Array.isArray(value)) {
                     valInput.value = value.join(', ');
                     valInput.placeholder = 'Comma-separated values';
-                    valInput.onchange = () => {
+                    if (!fieldsReadOnly) valInput.onchange = () => {
                         valInput.value = normalizeBeatFieldListValueInput(valInput.value).join(', ');
                         const nextList = [...list];
                         nextList[idx] = { ...entry, value: normalizeBeatFieldListValueInput(valInput.value) };
@@ -1955,7 +2006,7 @@ export function renderStoryBeatsSection(params: {
                 } else {
                     valInput.value = typeof value === 'string' ? value : '';
                     valInput.placeholder = 'Default value (optional)';
-                    valInput.onchange = () => {
+                    if (!fieldsReadOnly) valInput.onchange = () => {
                         valInput.value = normalizeBeatFieldValueInput(valInput.value);
                         const nextList = [...list];
                         nextList[idx] = { ...entry, value: normalizeBeatFieldValueInput(valInput.value) };
@@ -1967,8 +2018,9 @@ export function renderStoryBeatsSection(params: {
                 // Delete button (matches scene: ert-iconBtn + trash icon)
                 const delBtn = row.createEl('button', { cls: 'ert-iconBtn', attr: { type: 'button', 'aria-label': 'Remove field' } });
                 setIcon(delBtn, 'trash');
-                setTooltip(delBtn, 'Remove field');
-                delBtn.onclick = () => {
+                setTooltip(delBtn, fieldsReadOnly ? 'Requires Pro' : 'Remove field');
+                delBtn.disabled = fieldsReadOnly;
+                if (!fieldsReadOnly) delBtn.onclick = () => {
                     removeBeatHoverMetadata(entry.key);
                     const nextList = list.filter((_, i) => i !== idx);
                     saveBeatEntries(nextList);
@@ -1977,18 +2029,19 @@ export function renderStoryBeatsSection(params: {
                 };
 
                 // Drag events (matches scene: is-dragging / ert-template-dragover + plugin.registerDomEvent)
-                plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
-                    beatDragIndex = idx;
-                    row.addClass('is-dragging');
-                    e.dataTransfer?.setData('text/plain', String(idx));
-                });
-                plugin.registerDomEvent(dragHandle, 'dragend', () => {
-                    beatDragIndex = null;
-                    row.removeClass('is-dragging');
-                });
-                plugin.registerDomEvent(row, 'dragover', (e) => { e.preventDefault(); row.addClass('ert-template-dragover'); });
-                plugin.registerDomEvent(row, 'dragleave', () => { row.removeClass('ert-template-dragover'); });
-                plugin.registerDomEvent(row, 'drop', (e) => {
+                if (!fieldsReadOnly) {
+                    plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
+                        beatDragIndex = idx;
+                        row.addClass('is-dragging');
+                        e.dataTransfer?.setData('text/plain', String(idx));
+                    });
+                    plugin.registerDomEvent(dragHandle, 'dragend', () => {
+                        beatDragIndex = null;
+                        row.removeClass('is-dragging');
+                    });
+                    plugin.registerDomEvent(row, 'dragover', (e) => { e.preventDefault(); row.addClass('ert-template-dragover'); });
+                    plugin.registerDomEvent(row, 'dragleave', () => { row.removeClass('ert-template-dragover'); });
+                    plugin.registerDomEvent(row, 'drop', (e) => {
                     e.preventDefault();
                     row.removeClass('ert-template-dragover');
                     if (beatDragIndex === null || beatDragIndex === idx) return;
@@ -1999,12 +2052,13 @@ export function renderStoryBeatsSection(params: {
                     rerenderBeatYaml(nextList);
                     updateBeatHoverPreview?.();
                 });
+                }
             };
 
             data.forEach((entry, idx) => renderBeatEntryRow(entry, idx, data));
 
-            // Add new field row — no drag handle or spacer; those waste space
-            // on the add row where nothing is draggable.
+            // Add new field row — only when editable
+            if (!fieldsReadOnly) {
             const addRow = listEl.createDiv({ cls: ['ert-yaml-row', 'ert-yaml-row--add', 'ert-yaml-row--add-beat'] });
 
             // 1. Icon input with preview for new entry
@@ -2056,7 +2110,7 @@ export function renderStoryBeatsSection(params: {
             setTooltip(addBtn, 'Add custom beat property');
 
             const doAddBeatField = () => {
-                if (!canEditCustomBeatFields()) return;
+                if (!canEditFieldsForSystem(getActiveSystemKey())) return;
                 const newKey = normalizeBeatFieldKeyInput(addKeyInput.value);
                 if (!newKey || !hasBeatReadableText(newKey)) {
                     new Notice('Field key must include letters or numbers.');
@@ -2133,8 +2187,8 @@ export function renderStoryBeatsSection(params: {
 
                 if (!confirmed) return;
 
-                if (!canEditCustomBeatFields()) return;
-                const resetConfig = ensureCustomBeatConfig();
+                if (!canEditFieldsForSystem(getActiveSystemKey())) return;
+                const resetConfig = ensureConfigForCurrentSystem();
                 resetConfig.beatYamlAdvanced = '';
                 resetConfig.beatHoverMetadataFields = [];
                 await plugin.saveSettings();
@@ -2143,6 +2197,7 @@ export function renderStoryBeatsSection(params: {
                 dirtyState.notify();
             };
         };
+            }
 
         rerenderBeatYaml(beatEntries);
     };
@@ -2159,7 +2214,7 @@ export function renderStoryBeatsSection(params: {
 
     const renderBeatHoverPreview = () => {
         beatHoverPreviewBody.empty();
-        const activeConfig = ensureCustomBeatConfig();
+        const activeConfig = getConfigForCurrentSystem();
         const enabledFields = activeConfig.beatHoverMetadataFields.filter(f => f.enabled);
         const currentBeatAdv = activeConfig.beatYamlAdvanced;
         const templateObj = safeParseYaml(currentBeatAdv);
@@ -2190,9 +2245,7 @@ export function renderStoryBeatsSection(params: {
     updateBeatHoverPreview = renderBeatHoverPreview;
     renderBeatHoverPreview();
 
-    // ─── SAVED BEAT SYSTEMS (Pro) — Campaign Manager card scaffold ────
-    const proActive = isProfessionalActive(plugin);
-
+    // ─── SAVED BEAT SYSTEMS (Sets tab) ────
     // Pro saved systems: lives in PRO Sets stage (stage 3).
     // Normal panel styling; Pro pill on heading communicates premium status.
     const savedCard = proTemplatesContainer.createDiv({
@@ -2259,7 +2312,7 @@ export function renderStoryBeatsSection(params: {
         }
 
         // 6. Switch to Design stage so the user sees the loaded beats immediately
-        _currentCustomStage = 'design';
+        _currentInnerStage = 'design';
         void plugin.saveSettings();
         new Notice(`Loaded "${system.name}" into Custom.`);
 
@@ -2270,8 +2323,8 @@ export function renderStoryBeatsSection(params: {
         renderCustomConfig();           // Design tab (beat list, header, health)
         renderBeatYamlEditor();         // Fields tab (YAML fields for new system)
         updateBeatHoverPreview?.();     // Fields tab (hover preview)
-        renderSavedBeatSystems();       // Pro Sets tab (dropdown, preview, dirty)
-        updateBeatSystemCard('Custom'); // Main tabs + stage switcher + visibility
+        renderSavedBeatSystems();       // Sets tab (dropdown, preview, dirty)
+        updateBeatSystemCard('Custom', { resetStage: false }); // Keep Design visible
         renderBeatSystemTabs();         // Ensure Custom tab is visually active
     };
 
@@ -2597,7 +2650,7 @@ export function renderStoryBeatsSection(params: {
             new Notice(`Set "${saveName}" ${verb}.`);
             // Targeted refresh — no full re-render needed
             if (opts.isCopy) {
-                _currentCustomStage = 'design';
+                _currentInnerStage = 'design';
                 renderCustomConfig();           // Design header shows new name/origin
                 renderBeatYamlEditor();         // Fields reflect new system's YAML
                 updateBeatHoverPreview?.();     // Hover preview reflects new config
@@ -4411,6 +4464,7 @@ export function renderStoryBeatsSection(params: {
     function updateTemplateButton(setting: Settings, selectedSystem: string): void {
         const isCustom = selectedSystem === 'Custom';
         const isTemplateMode = !isCustom;
+        const builtinLocked = isTemplateMode && !canEditBuiltInBeatSystems();
         const isDirtyCustom = isCustom && isSetDirty();
         let displayName = selectedSystem;
         let baseDesc = '';
@@ -4459,6 +4513,21 @@ export function renderStoryBeatsSection(params: {
             baseDesc = `Create ${selectedSystem} beat note files in your vault matching this system's structure.`;
             setting.setDesc(baseDesc);
             setting.settingEl.style.opacity = '1';
+        }
+
+        if (builtinLocked) {
+            setPrimaryDesignButton(
+                'Create missing beat notes',
+                'Upgrade to Pro to edit beats and fields.',
+                true,
+                async () => { /* no-op: disabled */ }
+            );
+            if (mergeTemplatesButton) {
+                mergeTemplatesButton.setDisabled(true);
+                mergeTemplatesButton.buttonEl.addClass('ert-hidden');
+            }
+            setting.setDesc(`${baseDesc} Upgrade to Pro to create and repair beat notes.`);
+            return;
         }
 
         // Default button states before async lookup

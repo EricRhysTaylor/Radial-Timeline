@@ -15,6 +15,9 @@ import { generateSceneContent } from '../../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
 import type { PandocLayoutTemplate } from '../../types';
+import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
+import { getActiveBookExportContext } from '../../utils/exportContext';
+import { isPathInFolderScope } from '../../utils/pathScope';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SYSTEM PATH SCANNING
@@ -220,8 +223,31 @@ class MatterSampleLaneModal extends Modal {
         contentEl.empty();
         contentEl.addClass('ert-stack');
 
-        contentEl.createEl('h3', { text: 'Choose Matter Sample Lane' });
-        contentEl.createDiv({ text: 'Generate one coherent Matter workflow pack.' });
+        contentEl.createEl('h3', { text: 'Generate Template Pack' });
+        contentEl.createDiv({ text: 'This will create a complete publishing template set in your vault.' });
+        contentEl.createDiv({ text: 'Choose how you want to manage front and back matter pages.' });
+        contentEl.createEl('h4', { text: 'Workflow' });
+
+        const createdTitle = contentEl.createEl('h4', { text: 'What Will Be Created' });
+        createdTitle.style.marginTop = '0.6rem';
+        const createdList = contentEl.createEl('ul');
+        const renderCreatedList = () => {
+            createdList.empty();
+            const items = this.selected === 'guided'
+                ? [
+                    '000 BookMeta.md (master publishing metadata file)',
+                    'Front matter stubs (Title Page, Copyright, Dedication, etc.)',
+                    'Back matter stubs (Acknowledgments, About the Author)',
+                    'Scene examples',
+                    'PDF layout templates'
+                ]
+                : [
+                    'Front/back matter examples with working LaTeX bodies',
+                    'Scene examples',
+                    'PDF layout templates'
+                ];
+            items.forEach(item => createdList.createEl('li', { text: item }));
+        };
 
         const makeOption = (lane: MatterSampleLane, title: string, desc: string) => {
             const row = contentEl.createDiv({ cls: 'setting-item' });
@@ -232,6 +258,10 @@ class MatterSampleLaneModal extends Modal {
                 attr: { name: 'rt-matter-lane', value: lane }
             });
             radio.checked = this.selected === lane;
+            radio.addEventListener('change', () => {
+                this.selected = lane;
+                renderCreatedList();
+            });
             nameRow.createSpan({ text: ` ${title}` });
             info.createDiv({ cls: 'setting-item-description', text: desc });
             row.onClickEvent(() => {
@@ -241,23 +271,25 @@ class MatterSampleLaneModal extends Modal {
                     const input = el as HTMLInputElement;
                     input.checked = input.value === lane;
                 });
+                renderCreatedList();
             });
         };
 
         makeOption(
             'guided',
             'Guided Matter (Recommended)',
-            'Edit one BookMeta file; layout handled by templates.'
+            'Uses a single BookMeta file for title, copyright, ISBN, and other publishing details. Matter pages are rendered by templates. Best for most authors.'
         );
         makeOption(
             'advanced',
-            'Advanced Matter (LaTeX Bodies)',
-            'Write LaTeX directly in matter notes.'
+            'Advanced (LaTeX in Body)',
+            'Write raw LaTeX directly inside front/back matter notes. Radial Timeline passes this content through unchanged. Best for advanced users comfortable with LaTeX.'
         );
+        renderCreatedList();
 
         const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
         new ButtonComponent(actions)
-            .setButtonText('Generate')
+            .setButtonText('Generate Template Pack')
             .setCta()
             .onClick(() => {
                 this.resolved = true;
@@ -286,6 +318,29 @@ async function chooseMatterSampleLane(app: App): Promise<MatterSampleLane | null
     return new Promise((resolve) => {
         new MatterSampleLaneModal(app, resolve).open();
     });
+}
+
+function getActiveBookMetaStatus(plugin: RadialTimelinePlugin): { found: boolean; path?: string } {
+    const sourceFolder = getActiveBookExportContext(plugin).sourceFolder.trim();
+    if (!sourceFolder) return { found: false };
+
+    const mappings = plugin.settings.enableCustomMetadataMapping
+        ? plugin.settings.frontmatterMappings
+        : undefined;
+
+    const candidates = plugin.app.vault.getMarkdownFiles()
+        .filter(file => isPathInFolderScope(file.path, sourceFolder))
+        .map(file => {
+            const cache = plugin.app.metadataCache.getFileCache(file);
+            if (!cache?.frontmatter) return null;
+            const normalized = normalizeFrontmatterKeys(cache.frontmatter as Record<string, unknown>, mappings);
+            return normalized.Class === 'BookMeta' ? file.path : null;
+        })
+        .filter((path): path is string => !!path)
+        .sort((a, b) => a.localeCompare(b));
+
+    if (!candidates.length) return { found: false };
+    return { found: true, path: candidates[0] };
 }
 
 /**
@@ -544,18 +599,16 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
     const guidedMatterComment = [
         '<!--',
         'Guided Matter Page',
-        'This page is rendered using BookMeta + the selected Pandoc template.',
-        'You usually do NOT need to write LaTeX here.',
-        'Add plain text below only if this page needs custom prose (e.g., disclaimer, dedication).',
+        'Rendered using BookMeta and the selected PDF template.',
+        'Add plain text below only if this page needs custom prose.',
         '-->'
     ];
 
     const advancedMatterComment = [
         '<!--',
         'Advanced Matter Page',
-        'This page uses raw LaTeX in the body.',
-        'Radial Timeline will pass this through without escaping.',
-        'BookMeta is optional in this workflow.',
+        'Raw LaTeX is used below.',
+        'Radial Timeline will not escape this content.',
         '-->'
     ];
 
@@ -1163,17 +1216,22 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     // ─────────────────────────────────────────────────────────────────────────
     const pandocPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
     const pandocHeading = addProRow(new Setting(pandocPanel))
-        .setName('Export & Pandoc')
-        .setDesc('Configure Pandoc binary paths and manuscript export templates for screenplay, podcast, and novel formats.')
+        .setName('Export & Publishing')
+        .setDesc('Assemble your manuscript in Markdown or render a print-ready PDF using Pandoc and LaTeX. Configure templates, layouts, and publishing tools below.')
         .setHeading();
     addHeadingIcon(pandocHeading, 'book-open-text');
     addWikiLink(pandocHeading, 'Settings#professional');
     applyErtHeaderLayout(pandocHeading);
 
+    const systemConfigSection = pandocPanel.createDiv({
+        cls: `${ERT_CLASSES.SECTION} ${ERT_CLASSES.SECTION_TIGHT}`
+    });
+    systemConfigSection.createEl('h5', { text: 'System Configuration', cls: ERT_CLASSES.SECTION_TITLE });
+
     // Settings
     let pandocPathInputEl: HTMLInputElement | null = null;
-    const defaultDesc = 'Path to the Pandoc executable. Leave blank for system PATH, or auto-locate Pandoc and LaTeX on your system.';
-    const pandocSetting = addProRow(new Setting(pandocPanel))
+    const defaultDesc = 'Path to your Pandoc executable. Required for PDF rendering. Leave blank to use your system PATH, or click Auto locate.';
+    const pandocSetting = addProRow(new Setting(systemConfigSection))
         .setName('Pandoc & LaTeX')
         .setDesc(defaultDesc)
         .addText(text => {
@@ -1239,9 +1297,9 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             });
         });
 
-    addProRow(new Setting(pandocPanel))
+    addProRow(new Setting(systemConfigSection))
         .setName('Pandoc fallback')
-        .setDesc('Optional path to a secondary bundled or portable Pandoc binary, used when the primary path is missing.')
+        .setDesc('Optional path to a secondary Pandoc binary. Used if the primary path cannot be found.')
         .addText(text => {
             text.inputEl.addClass('ert-input--lg');
             text.setPlaceholder('/path/to/pandoc');
@@ -1262,9 +1320,9 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         });
 
     // ── Pandoc Folder ─────────────────────────────────────────────────────
-    addProRow(new Setting(pandocPanel))
+    addProRow(new Setting(systemConfigSection))
         .setName('Pandoc folder')
-        .setDesc('Vault folder for Pandoc LaTeX templates and compile scripts (e.g. .tex, .js).')
+        .setDesc('Vault folder where Radial Timeline stores PDF templates and compile scripts (.tex, .js). This folder is used when rendering PDF exports.')
         .addText(text => {
             text.inputEl.addClass('ert-input--lg');
             text.setPlaceholder('Pandoc');
@@ -1302,9 +1360,33 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     const layoutSubSection = pandocPanel.createDiv({
         cls: `${ERT_CLASSES.SECTION} ${ERT_CLASSES.SECTION_TIGHT}`
     });
-    layoutSubSection.createEl('h5', { text: 'Pandoc Layouts', cls: ERT_CLASSES.SECTION_TITLE });
+    layoutSubSection.createEl('h5', { text: 'Export Layouts (PDF)', cls: ERT_CLASSES.SECTION_TITLE });
+    layoutSubSection.createEl('p', {
+        cls: ERT_CLASSES.SECTION_DESC,
+        text: 'Choose which LaTeX layout to use when rendering your manuscript to PDF.'
+    });
+    layoutSubSection.createEl('p', {
+        cls: ERT_CLASSES.SECTION_DESC,
+        text: 'Matter workflow is selected when generating a Template Pack:'
+    });
+    const workflowList = layoutSubSection.createEl('ul', { cls: ERT_CLASSES.SECTION_DESC });
+    workflowList.createEl('li', {
+        text: 'Guided (Recommended) — Uses a single BookMeta file and template-driven front/back matter pages.'
+    });
+    workflowList.createEl('li', {
+        text: 'Advanced (LaTeX in Body) — Write raw LaTeX directly inside matter note bodies.'
+    });
 
-    const presetLabels: Record<string, string> = { novel: 'Novel', screenplay: 'Screenplay', podcast: 'Podcast' };
+    const presetDescriptions: Record<string, string> = {
+        novel: 'Traditional novel manuscript layout. Scenes become chapters or sections. Suitable for print-ready PDF.',
+        screenplay: 'Screenplay formatting for industry-standard PDF scripts.',
+        podcast: 'Structured podcast script layout for narration-based formats.'
+    };
+    const buildLayoutDescription = (layout: PandocLayoutTemplate): string => {
+        const base = presetDescriptions[layout.preset] || 'Custom PDF layout.';
+        const pathLabel = layout.path || '(no path)';
+        return `${base} Template path: ${pathLabel}`;
+    };
 
     /** Flash-validate a layout path input using the centralized helper. */
     const flashValidateLayoutPath = (inputEl: HTMLInputElement, layout: PandocLayoutTemplate) => {
@@ -1327,7 +1409,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
 
         if (layouts.length === 0) {
             const emptyEl = layoutSubSection.createDiv({ cls: 'ert-layout-row setting-item' });
-            emptyEl.createSpan({ text: 'No layouts configured. Add one below or generate samples.', cls: 'setting-item-description' });
+            emptyEl.createSpan({ text: 'No layouts configured. Add one below or generate a Template Pack.', cls: 'setting-item-description' });
         }
 
         for (const layout of layouts) {
@@ -1335,7 +1417,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
 
             const s = addProRow(new Setting(row))
                 .setName(layout.name)
-                .setDesc(`${presetLabels[layout.preset] || layout.preset} · ${layout.path || '(no path)'}`)
+                .setDesc(buildLayoutDescription(layout))
                 .addText(text => {
                     text.inputEl.addClass('ert-input--lg');
                     text.setPlaceholder('path/to/template.tex');
@@ -1345,8 +1427,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                         layout.path = text.getValue().trim();
                         await plugin.saveSettings();
                         flashValidateLayoutPath(text.inputEl, layout);
-                        // Update description to show new path
-                        s.setDesc(`${presetLabels[layout.preset] || layout.preset} · ${layout.path || '(no path)'}`);
+                        s.setDesc(buildLayoutDescription(layout));
                     };
 
                     // SAFE: direct addEventListener; Modal/Settings lifecycle manages cleanup
@@ -1427,8 +1508,26 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         });
     });
 
-    // Add Layout + Generate Samples buttons row
-    const layoutActionsSetting = addProRow(new Setting(layoutSubSection));
+    const templatePackSection = pandocPanel.createDiv({
+        cls: `${ERT_CLASSES.SECTION} ${ERT_CLASSES.SECTION_TIGHT}`
+    });
+    templatePackSection.createEl('h5', { text: 'Template Pack Generation', cls: ERT_CLASSES.SECTION_TITLE });
+    templatePackSection.createEl('p', {
+        cls: ERT_CLASSES.SECTION_DESC,
+        text: 'Creates scene examples, Pandoc PDF templates, and front/back matter scaffolds. You will choose Guided or Advanced workflow during generation.'
+    });
+
+    const activeBookMetaStatus = getActiveBookMetaStatus(plugin);
+    addProRow(new Setting(templatePackSection))
+        .setName('Active book BookMeta')
+        .setDesc(
+            activeBookMetaStatus.found
+                ? '✅ BookMeta detected in active book folder.'
+                : '⚠ No BookMeta found for active book. Guided Matter pages may render incomplete.'
+        );
+
+    // Add Layout + Generate Template Pack buttons row
+    const layoutActionsSetting = addProRow(new Setting(templatePackSection));
     layoutActionsSetting.addButton(button => {
         button.setButtonText('Add Layout');
         button.onClick(() => {
@@ -1437,30 +1536,39 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         });
     });
     layoutActionsSetting.addButton(button => {
-        button.setButtonText('Generate Samples');
+        button.setButtonText('Generate Template Pack');
+        button.setTooltip('Creates scene samples, Pandoc templates, and matter workflow scaffolds (Guided or Advanced).');
         button.setCta();
         button.onClick(async () => {
             const lane = await chooseMatterSampleLane(plugin.app);
             if (!lane) return;
             button.setDisabled(true);
-            button.setButtonText('Generating…');
+            button.setButtonText('Generating Pack…');
             try {
                 const created = await generateSampleTemplates(plugin, lane);
                 if (created.length > 0) {
                     const laneLabel = lane === 'guided' ? 'guided' : 'advanced';
-                    new Notice(`Created ${created.length} ${laneLabel} sample files. Scenes → Export/Templates, LaTeX → ${plugin.settings.pandocFolder || 'Pandoc'}/. Layouts registered.`);
+                    new Notice(`Created ${created.length} ${laneLabel} template-pack files. Scenes → Export/Templates, LaTeX → ${plugin.settings.pandocFolder || 'Pandoc'}/. Layouts registered.`);
                 } else {
-                    new Notice('All sample files already exist. Layouts updated.');
+                    new Notice('All template-pack files already exist. Layouts updated.');
                 }
                 renderLayoutRows();
             } catch (e) {
                 const msg = (e as Error).message || String(e);
-                new Notice(`Error generating samples: ${msg}`);
+                new Notice(`Error generating template pack: ${msg}`);
             } finally {
                 button.setDisabled(false);
-                button.setButtonText('Generate Samples');
+                button.setButtonText('Generate Template Pack');
             }
         });
+    });
+    const templatePackHelp = templatePackSection.createEl('ul', { cls: ERT_CLASSES.SECTION_DESC });
+    templatePackHelp.createEl('li', { text: 'Scene examples' });
+    templatePackHelp.createEl('li', { text: 'Pandoc PDF templates' });
+    templatePackHelp.createEl('li', { text: 'Front/back matter scaffolds' });
+    templatePackSection.createEl('p', {
+        cls: ERT_CLASSES.SECTION_DESC,
+        text: 'You will choose Guided or Advanced workflow during generation.'
     });
 
     return section;

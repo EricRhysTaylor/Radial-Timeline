@@ -2014,6 +2014,32 @@
   --ert-panel-border: color-mix(in srgb, var(--ert-accent) 25%, var(--background-modifier-border));
 }
 
+/* ── Tier banner (built-in vs custom, Core vs Pro status) ──────────── */
+.ert-ui.ert-scope--settings .ert-beat-tier-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: var(--ert-pad-sm, 6px);
+}
+.ert-ui.ert-scope--settings .ert-beat-tier-line {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.ert-ui.ert-scope--settings .ert-beat-tier-status {
+  font-weight: 500;
+}
+.ert-ui.ert-scope--settings .ert-beat-tier-cta {
+  font-size: 11px;
+  color: var(--interactive-accent);
+}
+
+/* Beat Fields read-only (Core built-in) */
+.ert-ui.ert-scope--settings .ert-beat-fields-readonly .ert-drag-handle {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ── Custom tab icon (lucide, 14px, inherits color) ────────────────── */
 .ert-ui.ert-scope--settings .ert-mini-tab-icon {
   display: inline-flex;
