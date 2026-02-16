@@ -22,6 +22,17 @@ type DropTarget =
     | { type: 'scene'; group: SVGGElement; sceneId: string; act: number; ring: number }
     | { type: 'void'; element: SVGPathElement; act: number; ring: number; startAngle: number; endAngle: number; isOuterRing: boolean };
 
+type OuterRingOrderEntry = {
+    sceneId: string;
+    path: string;
+    basename: string;
+    numberText: string;
+    subplot: string;
+    ring: number;
+    itemType: 'Scene' | 'Beat';
+    startAngle: number;
+};
+
 /**
  * Flag to coordinate with click handlers - prevents file open during/after drag
  */
@@ -164,12 +175,62 @@ export class OuterRingDragController {
         return value.replace(/[^a-zA-Z0-9_\-]/g, '\\$&');
     }
 
-    private splitNumberParts(numText: string | null | undefined): { intPart: number; suffix: string } {
-        if (!numText) return { intPart: 0, suffix: '' };
-        const trimmed = String(numText).trim();
-        const match = trimmed.match(/^(\d+)(\..+)?$/);
-        if (!match) return { intPart: 0, suffix: '' };
-        return { intPart: Number(match[1]) || 0, suffix: match[2] || '' };
+    private getBasenameFromPath(path: string): string {
+        const fileName = path.split('/').pop() ?? path;
+        const extensionMatch = fileName.match(/\.([^.]+)$/);
+        return extensionMatch ? fileName.slice(0, -(extensionMatch[0].length)) : fileName;
+    }
+
+    private getCurrentPrefixForCompare(entry: OuterRingOrderEntry): string {
+        const basenameMatch = entry.basename.match(/^\s*(\d+(?:\.\d+)?)\s+/);
+        if (basenameMatch) return basenameMatch[1];
+        return (entry.numberText ?? '').trim();
+    }
+
+    private getPrefixWidthForEntry(entry: OuterRingOrderEntry): number {
+        const basenameMatch = entry.basename.match(/^\s*(\d+)(?:\.\d+)?\s+/);
+        if (basenameMatch?.[1]) return basenameMatch[1].length;
+        const numberTextMatch = (entry.numberText ?? '').trim().match(/^(\d+)(?:\.\d+)?$/);
+        return numberTextMatch?.[1]?.length ?? 0;
+    }
+
+    private formatPrefixWithWidth(index: number, width: number): string {
+        const raw = String(index);
+        if (width > 1) return raw.padStart(width, '0');
+        return raw;
+    }
+
+    private getNextPrefixForEntry(entry: OuterRingOrderEntry, index: number): string {
+        const width = this.getPrefixWidthForEntry(entry);
+        return this.formatPrefixWithWidth(index, width);
+    }
+
+    private buildRenumberDiff(
+        reordered: OuterRingOrderEntry[],
+        forceNoRenumber: boolean = false
+    ): { updates: SceneUpdate[]; nextNumberByPath: Map<string, string> } {
+        const updates: SceneUpdate[] = [];
+        const nextNumberByPath = new Map<string, string>();
+        reordered.forEach((entry, idx) => {
+            const nextNumber = this.getNextPrefixForEntry(entry, idx + 1);
+            nextNumberByPath.set(entry.path, nextNumber);
+            if (!forceNoRenumber) {
+                const currentPrefix = this.getCurrentPrefixForCompare(entry);
+                if (nextNumber !== currentPrefix) {
+                    updates.push({ path: entry.path, newNumber: nextNumber });
+                }
+            }
+        });
+        return { updates, nextNumberByPath };
+    }
+
+    private isRippleRenameEnabled(): boolean {
+        return Boolean((this.view.plugin.settings as any).enableManuscriptRippleRename);
+    }
+
+    private appendRippleRenameSummary(summaryLines: string[]): void {
+        if (!this.isRippleRenameEnabled()) return;
+        summaryLines.push('Ripple rename is enabled: scene and active-beat filenames are normalized after drop (filenames only). Decimalized prefixes are reflowed to integers.');
     }
 
     /** Extract the scene/beat path element ID from an .rt-scene-group */
@@ -184,7 +245,7 @@ export class OuterRingDragController {
      * Reads directly from .rt-scene-group elements sorted by data-start-angle (manuscript order).
      * Number text is extracted from the file path basename prefix (e.g., "03 Scene Title.md" → "03").
      */
-    private buildOuterRingOrder(): Array<{ sceneId: string; path: string; numberText: string; subplot: string; ring: number; itemType: 'Scene' | 'Beat'; startAngle: number }> {
+    private buildOuterRingOrder(): OuterRingOrderEntry[] {
         const masterSubplotOrder = (this.view.plugin.settings as any).masterSubplotOrder as string[] || ['Main Plot'];
         
         // Use shared helper for outer ring detection
@@ -209,19 +270,17 @@ export class OuterRingDragController {
             const path = encodedPath ? decodeURIComponent(encodedPath) : '';
             const itemType = (group.getAttribute('data-item-type') as 'Scene' | 'Beat') || 'Scene';
             
-            // Extract prefix number from file path basename (e.g., "01 Opening Image.md" → "01")
+            // Extract basename and numeric prefix from file path (e.g., "01 Opening Image.md" → "01")
+            const basename = path ? this.getBasenameFromPath(path) : '';
             let numberText = '';
-            if (path) {
-                const basename = path.split('/').pop()?.replace(/\.md$/i, '') || '';
-                const prefixMatch = basename.match(/^(\d+(?:\.\d+)?)\s/);
-                numberText = prefixMatch ? prefixMatch[1] : '';
-            }
+            const prefixMatch = basename.match(/^\s*(\d+(?:\.\d+)?)\s+/);
+            numberText = prefixMatch ? prefixMatch[1] : '';
             
             const subplotIdx = Number(group.getAttribute('data-subplot-index') ?? 0);
             const subplot = masterSubplotOrder[subplotIdx] || 'Main Plot';
             const ring = Number(group.getAttribute('data-ring') ?? 0);
             const startAngle = Number(group.getAttribute('data-start-angle') ?? 0);
-            return { sceneId, path, numberText, subplot, ring, itemType, startAngle };
+            return { sceneId, path, basename, numberText, subplot, ring, itemType, startAngle };
         }).filter(entry => entry.sceneId && entry.path);
     }
 
@@ -508,18 +567,16 @@ export class OuterRingDragController {
             return;
         }
 
+        const moved = order[fromIdx];
+        const insertionIndex = fromIdx < toIdx ? toIdx : toIdx + 1;
+        const isNoOpReorder = insertionIndex === fromIdx;
         const reordered = [...order];
-        const [moved] = reordered.splice(fromIdx, 1);
-        reordered.splice(toIdx, 0, moved);
+        if (!isNoOpReorder) {
+            reordered.splice(fromIdx, 1);
+            reordered.splice(insertionIndex, 0, moved);
+        }
 
-        const updates: SceneUpdate[] = [];
-        reordered.forEach((entry, idx) => {
-            const { suffix } = this.splitNumberParts(entry.numberText);
-            const nextNumber = `${idx + 1}${suffix}`;
-            if (nextNumber !== entry.numberText) {
-                updates.push({ path: entry.path, newNumber: nextNumber });
-            }
-        });
+        const { updates } = this.buildRenumberDiff(reordered, isNoOpReorder);
 
         const targetPathEl = this.svg.querySelector<SVGPathElement>(`#${this.cssEscape(targetId)}`);
         const targetGroup = targetPathEl?.closest('.rt-scene-group');
@@ -550,9 +607,10 @@ export class OuterRingDragController {
         const sourceLabel = sourceType === 'Beat' ? 'beat' : 'scene';
         const targetLabel = (targetItemType === 'Beat') ? 'beat' : 'scene';
         const summaryLines = [
-            `Move ${sourceLabel} ${sourceOriginalNumber} before ${targetLabel} ${targetOriginalNumber}.`,
+            `Place ${sourceLabel} ${sourceOriginalNumber} after ${targetLabel} ${targetOriginalNumber}.`,
             `Will renumber ${updates.length} item(s).`,
         ];
+        this.appendRippleRenameSummary(summaryLines);
         if (actChanged) {
             summaryLines.push(`Update moved ${sourceLabel} Act → ${targetActNumber}.`);
         }
@@ -607,7 +665,7 @@ export class OuterRingDragController {
         }
         this.log('apply updates', { count: updates.length, from: fromIdx, to: toIdx, itemType: sourceType, subplot: subplotChanged ? targetSubplot : undefined });
         await applySceneNumberUpdates(this.view.plugin.app, updates);
-        new Notice(`Moved ${sourceLabel} ${sourceOriginalNumber} → before ${targetLabel} ${targetOriginalNumber}`, 2000);
+        new Notice(`Moved ${sourceLabel} ${sourceOriginalNumber} → after ${targetLabel} ${targetOriginalNumber}`, 2000);
         await this.runRippleRenameIfEnabled();
         // Small delay to allow Obsidian's metadata cache to update before refresh
         await new Promise(resolve => window.setTimeout(resolve, 100));
@@ -642,24 +700,19 @@ export class OuterRingDragController {
 
         // Build the post-drop sequence by inserting the moved item at the void-cell angle.
         // This keeps numbering aligned with neighboring beats/scenes in manuscript order.
+        const moved = order[fromIdx];
         const reordered = [...order];
-        const [moved] = reordered.splice(fromIdx, 1);
+        reordered.splice(fromIdx, 1);
         const insertionIndex = this.findInsertionIndexByAngle(reordered, target.startAngle);
         reordered.splice(insertionIndex, 0, moved);
-
-        const updates: SceneUpdate[] = [];
-        const nextNumberByPath = new Map<string, string>();
-        reordered.forEach((entry, idx) => {
-            const { suffix } = this.splitNumberParts(entry.numberText);
-            const nextNumber = `${idx + 1}${suffix}`;
-            nextNumberByPath.set(entry.path, nextNumber);
-            if (nextNumber !== entry.numberText) {
-                updates.push({ path: entry.path, newNumber: nextNumber });
-            }
-        });
+        const isNoOpReorder = insertionIndex === fromIdx;
+        const { updates, nextNumberByPath } = this.buildRenumberDiff(reordered, isNoOpReorder);
 
         // Safety fallback: if a dragged scene has no numeric prefix, force a valid sequence number.
-        const sourceNextNumber = nextNumberByPath.get(this.sourcePath) || '1';
+        const fallbackSourceNumber = this.formatPrefixWithWidth(1, this.getPrefixWidthForEntry(movedEntry));
+        const sourceNextNumber = isNoOpReorder
+            ? (sourceOriginalNumber || fallbackSourceNumber)
+            : (nextNumberByPath.get(this.sourcePath) || fallbackSourceNumber);
         const sourceDisplayNumber = sourceOriginalNumber || sourceNextNumber;
         
         // Get current subplots for the item
@@ -728,6 +781,7 @@ export class OuterRingDragController {
         }
         summaryLines.push(subplotChangeDesc);
         summaryLines.push(`Will renumber ${updates.length} item(s).`);
+        this.appendRippleRenameSummary(summaryLines);
 
         this.confirming = true;
         let confirmed = false;

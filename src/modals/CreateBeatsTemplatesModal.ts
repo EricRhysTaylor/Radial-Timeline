@@ -13,9 +13,10 @@ export class CreateBeatSetModal extends Modal {
   private plugin: RadialTimelinePlugin;
   private beatSystem: string;
   private beatCount: number;
+  private beatTemplate: string;
   private resolve: ((result: CreateBeatSetResult) => void) | null = null;
 
-  constructor(app: App, plugin: RadialTimelinePlugin, beatSystem: string, beatCount: number) {
+  constructor(app: App, plugin: RadialTimelinePlugin, beatSystem: string, beatCount: number, beatTemplate?: string) {
     super(app);
     this.plugin = plugin;
 
@@ -27,6 +28,7 @@ export class CreateBeatSetModal extends Modal {
     }
 
     this.beatCount = beatCount;
+    this.beatTemplate = beatTemplate ?? '';
   }
 
   onOpen(): void {
@@ -53,15 +55,22 @@ export class CreateBeatSetModal extends Modal {
 
     card.createDiv({ cls: 'rt-sub-card-note', text: 'Each beat note will have the following property structure (shown in YAML format):' });
 
+    // Build preview from the actual merged template (base + custom fields).
+    // Substitute placeholders with human-readable sample values.
+    let previewYaml = this.beatTemplate;
+    if (!previewYaml.trim()) {
+      previewYaml = `Class: Beat\nAct: 1\nPurpose: [Beat purpose]\nBeat Model: ${this.beatSystem}\nRange: [Ideal momentum range]`;
+    } else {
+      previewYaml = previewYaml
+        .replace(/\{\{Act\}\}/g, '1')
+        .replace(/\{\{Purpose\}\}/g, '[Beat purpose]')
+        .replace(/\{\{Description\}\}/g, '[Beat purpose]')
+        .replace(/\{\{BeatModel\}\}/g, this.beatSystem)
+        .replace(/\{\{Range\}\}/g, '[Ideal momentum range]');
+    }
+
     const exampleCode = card.createEl('pre', { cls: 'rt-code-block' });
-    exampleCode.textContent = `---
-Class: Beat
-Act: 1
-Purpose: [Beat purpose]
-Beat Model: ${this.beatSystem}
-Range: [Ideal momentum range]
-Gossamer1:
----`;
+    exampleCode.textContent = `---\n${previewYaml}\n---`;
 
     const sourcePath = this.plugin.settings.sourcePath.trim();
     const locationText = sourcePath

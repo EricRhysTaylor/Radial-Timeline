@@ -912,6 +912,7 @@ export function renderStoryBeatsSection(params: {
                     existingBeatReady = false;
                     updateTemplateButton(templateSetting, 'Custom');
                     renderCustomConfig();
+                    renderPreviewContent('Custom');
                     return true;
                 }).open();
             };
@@ -1067,6 +1068,7 @@ export function renderStoryBeatsSection(params: {
             plugin.settings.customBeatSystemBeats = orderBeatsByAct(normalized, maxActs);
             await plugin.saveSettings();
             updateTemplateButton(templateSetting, 'Custom');
+            renderPreviewContent('Custom');
             // Re-render stage switcher after beat list changes
             renderStageSwitcher();
             dirtyState.notify();
@@ -1506,7 +1508,8 @@ export function renderStoryBeatsSection(params: {
 
         const customName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom');
         templatePreviewTitle.setText(mode === 'builtin' ? copy.title : customName || 'Custom');
-        templatePreviewDesc.setText(copy.description);
+        const customDesc = (plugin.settings.customBeatSystemDescription ?? '').trim();
+        templatePreviewDesc.setText(mode === 'custom' && customDesc ? customDesc : copy.description);
         templatePreviewExamples.setText(copy.examples ?? '');
         templatePreviewExamples.toggleClass('ert-settings-hidden', !copy.examples || mode === 'custom');
         templatePreviewMeta.setText(totalBeats > 0
@@ -1585,6 +1588,7 @@ export function renderStoryBeatsSection(params: {
         captureSetBaseline(activeId);
         dirtyState.notify();
         renderBeatSystemTabs();
+        renderPreviewContent(plugin.settings.beatSystem || 'Custom');
         updateTemplateButton(templateSetting, plugin.settings.beatSystem || 'Custom');
         refreshBeatAuditPrimaryAction?.();
         if (context === 'fields') {
@@ -2660,6 +2664,7 @@ export function renderStoryBeatsSection(params: {
             if (opts.isCopy) {
                 _currentInnerStage = 'design';
                 renderCustomConfig();           // Design header shows new name/origin
+                renderPreviewContent('Custom'); // Preview reflects new set's beats/description
                 renderBeatYamlEditor();         // Fields reflect new system's YAML
                 updateBeatHoverPreview?.();     // Hover preview reflects new config
                 renderSavedBeatSystems();       // Pro Sets dropdown updated
@@ -2669,6 +2674,7 @@ export function renderStoryBeatsSection(params: {
                 // Non-copy save: re-render Design header (clears dirty indicators)
                 // + Pro Sets panel (updates dropdown/preview)
                 renderCustomConfig();
+                renderPreviewContent('Custom'); // Preview reflects saved state
                 renderSavedBeatSystems();
             }
         };
@@ -2768,6 +2774,7 @@ export function renderStoryBeatsSection(params: {
                     existingBeatReady = false;
                     // Refresh all affected UI
                     renderCustomConfig();
+                    renderPreviewContent('Custom');
                     renderBeatYamlEditor();
                     updateBeatHoverPreview?.();
                     renderSavedBeatSystems();
@@ -4876,18 +4883,19 @@ export function renderStoryBeatsSection(params: {
             actSceneNumbers.set(act, range.sceneNumbers);
         });
         
+        const beatTemplate = getMergedBeatYaml(plugin.settings);
         const modal = new CreateBeatSetModal(
             app,
             plugin,
             storyStructureName,
-            storyStructure.beatCount || storyStructure.beats.length
+            storyStructure.beatCount || storyStructure.beats.length,
+            beatTemplate
         );
         modal.open();
         const result = await modal.waitForConfirmation();
         if (!result.confirmed) return;
         try {
             const sourcePath = plugin.settings.sourcePath || '';
-            const beatTemplate = getMergedBeatYaml(plugin.settings);
             const { created, skipped, errors, createdPaths } = await createBeatNotesFromSet(
                 app.vault,
                 storyStructureName,
