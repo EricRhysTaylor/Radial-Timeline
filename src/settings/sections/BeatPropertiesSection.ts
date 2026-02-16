@@ -35,11 +35,16 @@ import {
     type NoteType,
     extractKeysInOrder as sharedExtractKeysInOrder,
     safeParseYaml as sharedSafeParseYaml,
+    getBaseKeys,
     getCustomKeys,
     getCustomDefaults,
+    computeCanonicalOrder,
 } from '../../utils/yamlTemplateNormalize';
 import { runYamlAudit, collectFilesForAudit, formatAuditReport, type YamlAuditResult, type NoteAuditEntry } from '../../utils/yamlAudit';
 import { runYamlBackfill, runYamlFillEmptyValues, type BackfillResult } from '../../utils/yamlBackfill';
+import { runYamlDeleteFields, runYamlDeleteEmptyExtraFields, runYamlReorder, previewDeleteFields, previewReorder, type DeleteResult, type ReorderResult } from '../../utils/yamlManager';
+import { type FrontmatterSafetyResult, formatSafetyIssues } from '../../utils/yamlSafety';
+import { isPathInFolderScope } from '../../utils/pathScope';
 import { IMPACT_FULL } from '../SettingImpact';
 
 type FieldEntryValue = string | string[];
@@ -503,7 +508,8 @@ export function renderStoryBeatsSection(params: {
 
     const collectBeatNotesByTemplateNames = (expectedKeys: Set<string>, selectedSystem: string): TimelineItem[] => {
         if (expectedKeys.size === 0) return [];
-        const files = app.vault.getMarkdownFiles();
+        const bookScope = (plugin.settings.sourcePath || '').trim();
+        const files = app.vault.getMarkdownFiles().filter(f => isPathInFolderScope(f.path, bookScope));
         const matches: TimelineItem[] = [];
         const customName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom');
         const expectedModel = selectedSystem === 'Custom' ? customName : selectedSystem;
@@ -543,7 +549,8 @@ export function renderStoryBeatsSection(params: {
 
     const collectBeatNotesMissingModelByExpectedNames = (expectedKeys: Set<string>): TimelineItem[] => {
         if (expectedKeys.size === 0) return [];
-        const files = app.vault.getMarkdownFiles();
+        const bookScope = (plugin.settings.sourcePath || '').trim();
+        const files = app.vault.getMarkdownFiles().filter(f => isPathInFolderScope(f.path, bookScope));
         const matches: TimelineItem[] = [];
 
         files.forEach(file => {
@@ -932,7 +939,6 @@ export function renderStoryBeatsSection(params: {
         // ── Custom system header (mirrors built-in template preview header) ──
         const customSystemName = normalizeBeatSetNameInput(plugin.settings.customBeatSystemName || '', 'Custom beats');
         const customSystemDesc = plugin.settings.customBeatSystemDescription || '';
-        const copy = BEAT_SYSTEM_COPY['Custom'];
         const starterActive = isStarterSetActive();
         const activeId = plugin.settings.activeCustomBeatSystemId ?? 'default';
         const savedSystems: SavedBeatSystem[] = plugin.settings.savedBeatSystems ?? [];
@@ -997,35 +1003,22 @@ export function renderStoryBeatsSection(params: {
             }
         }
 
-        // ── Description: context-aware ───────────────────────────────
-        if (starterActive) {
-            // Starter set — show its marketing description + meta line
-            const starterSet = PRO_BEAT_SETS.find(ps => ps.id === (plugin.settings.activeCustomBeatSystemId ?? 'default'));
-            if (starterSet?.description) {
-                const descEl = headerRow.createDiv({ cls: 'ert-beat-template-desc' });
-                descEl.style.whiteSpace = 'pre-line'; // SAFE: inline style for pre-line (no CSS class needed for one-off)
-                descEl.setText(starterSet.description);
-            }
-            const actSet = new Set((plugin.settings.customBeatSystemBeats ?? []).map(b => b.act));
-            const beatCount = (plugin.settings.customBeatSystemBeats ?? []).length;
-            if (beatCount > 0) {
-                headerRow.createDiv({
-                    cls: 'ert-beat-template-examples',
-                    text: `${beatCount} beats · ${actSet.size} act${actSet.size !== 1 ? 's' : ''}`
-                });
-            }
-        } else if (customSystemDesc) {
-            // User-owned with custom description
-            const userDescEl = headerRow.createDiv({ cls: 'ert-beat-template-desc', text: customSystemDesc });
-            userDescEl.style.whiteSpace = 'pre-line'; // SAFE: inline style for pre-line (preserves user line breaks)
-        } else {
-            // Core default — boilerplate + examples
-            copy.description.split('\n\n').forEach(para => {
-                headerRow.createDiv({ cls: 'ert-beat-template-desc', text: para });
+        // ── Design guidance (keep concise; long boilerplate lives in Preview stage) ──
+        headerRow.createDiv({
+            cls: 'ert-beat-template-desc',
+            text: 'Create beats from the row at the bottom: enter a beat name, optional range, choose an act, then click + (or press Enter).'
+        });
+        headerRow.createDiv({
+            cls: 'ert-beat-template-examples',
+            text: 'Drag beats to reorder or drop them into another act. Use Beat notes below to create or repair beat files in your vault.'
+        });
+        const actSet = new Set((plugin.settings.customBeatSystemBeats ?? []).map(b => b.act));
+        const beatCount = (plugin.settings.customBeatSystemBeats ?? []).length;
+        if (beatCount > 0) {
+            headerRow.createDiv({
+                cls: 'ert-beat-template-meta',
+                text: `${beatCount} beats · ${actSet.size} act${actSet.size !== 1 ? 's' : ''}`
             });
-            if (copy.examples) {
-                headerRow.createDiv({ cls: 'ert-beat-template-examples', text: copy.examples });
-            }
         }
 
         // Update health icon from current beat-note audit counters.
@@ -1809,10 +1802,21 @@ export function renderStoryBeatsSection(params: {
         const { mode } = deriveBeatSystemMode(system);
         tierBannerEl.createDiv({ cls: 'ert-beat-tier-line', text: mode === 'builtin' ? 'Built-in beat set' : 'Custom beat set' });
         const builtinLocked = mode === 'builtin' && !canEditBuiltInBeatSystems();
-        const statusText = builtinLocked
-            ? 'Status: Read-only (Core)'
-            : (proActive ? 'Status: Editable (Pro)' : 'Status: Editable (Core)');
-        tierBannerEl.createDiv({ cls: 'ert-beat-tier-line ert-beat-tier-status', text: statusText });
+        const statusLine = tierBannerEl.createDiv({ cls: 'ert-beat-tier-line ert-beat-tier-status' });
+
+        if (builtinLocked) {
+            statusLine.setText('Status: Read-only (Core)');
+        } else if (mode === 'custom' && proActive) {
+            statusLine.setText('Status: Editable ');
+            statusLine.addClass(ERT_CLASSES.SKIN_PRO);
+            const proPill = statusLine.createSpan({
+                cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO} ${ERT_CLASSES.BADGE_PILL_SM}`
+            });
+            setIcon(proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON }), 'signature');
+            proPill.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'Pro' });
+        } else {
+            statusLine.setText('Status: Editable (Core)');
+        }
         if (builtinLocked) {
             tierBannerEl.createDiv({ cls: 'ert-beat-tier-cta', text: 'Upgrade to Pro to edit beats and fields.' });
         }
@@ -2369,7 +2373,7 @@ export function renderStoryBeatsSection(params: {
 
     savedCard.createEl('p', {
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Blank custom is always available as a reset. Starter sets are curated starting points. Saved sets are your own versions you can edit and delete. Core: one custom set. Pro: unlimited custom sets and five bonus starter sets.'
+        text: 'Starter sets are curated starting points. Saved sets are your own versions you can edit and delete. Core: one custom set. Pro: unlimited custom sets and five bonus starter sets.'
     });
 
     const savedControlsContainer = savedCard.createDiv({ cls: ERT_CLASSES.STACK });
@@ -4144,9 +4148,31 @@ export function renderStoryBeatsSection(params: {
             fillEmptyBtn.classList.add('ert-settings-hidden');
         });
 
+        // Delete extra fields button (hidden until audit finds extra keys)
+        let deleteExtraBtn: HTMLButtonElement | undefined;
+        auditSetting.addButton(button => {
+            button
+                .setButtonText('Delete extra fields')
+                .setTooltip('Remove extra frontmatter fields not defined in the template')
+                .onClick(() => void handleDeleteExtraFields());
+            deleteExtraBtn = button.buttonEl;
+            deleteExtraBtn.classList.add('ert-settings-hidden');
+        });
+
+        // Reorder fields button (hidden until audit finds order drift)
+        let reorderBtn: HTMLButtonElement | undefined;
+        auditSetting.addButton(button => {
+            button
+                .setButtonText('Reorder fields')
+                .setTooltip('Reorder frontmatter fields to match the canonical template order')
+                .onClick(() => void handleReorderFields());
+            reorderBtn = button.buttonEl;
+            reorderBtn.classList.add('ert-settings-hidden');
+        });
+
         // Run audit button — disabled when no notes of this type exist
         let auditBtn: ButtonComponent | undefined;
-        let auditPrimaryAction: (() => void) | null = null;
+        let auditPrimaryAction: (() => void | Promise<void>) | null = null;
         const updateAuditPrimaryAction = () => {
             if (!auditBtn) return;
             const isBeatFieldsStage = noteType === 'Beat' && plugin.settings.beatSystem === 'Custom';
@@ -4190,7 +4216,7 @@ export function renderStoryBeatsSection(params: {
         // ─── Results row: appears below header after audit runs ──────────
         const resultsEl = parentEl.createDiv({ cls: 'ert-audit-results-row ert-settings-hidden' });
 
-        const runAudit = () => {
+        const runAudit = async () => {
             const activeBeatSystemKey = resolveBeatAuditSystemKey();
             const files = collectFilesForAudit(app, noteType, plugin.settings, activeBeatSystemKey);
             if (files.length === 0) {
@@ -4203,12 +4229,13 @@ export function renderStoryBeatsSection(params: {
                 new Notice(`No ${noteType.toLowerCase()} notes found in the vault.`);
                 return;
             }
-            auditResult = runYamlAudit({
+            auditResult = await runYamlAudit({
                 app,
                 settings: plugin.settings,
                 noteType,
                 files,
                 beatSystemKey: activeBeatSystemKey,
+                includeSafetyScan: true,
             });
 
             console.debug('[YamlAudit] yaml_audit_run', {
@@ -4218,6 +4245,8 @@ export function renderStoryBeatsSection(params: {
                 extra: auditResult.summary.notesWithExtra,
                 drift: auditResult.summary.notesWithDrift,
                 warnings: auditResult.summary.notesWithWarnings,
+                unsafe: auditResult.summary.notesUnsafe,
+                suspicious: auditResult.summary.notesSuspicious,
                 unread: auditResult.summary.unreadNotes,
                 clean: auditResult.summary.clean,
             });
@@ -4239,6 +4268,34 @@ export function renderStoryBeatsSection(params: {
                 );
             } else {
                 fillEmptyBtn?.classList.add('ert-settings-hidden');
+            }
+
+            // Show delete-extra button when audit finds extra keys (and not all files are unsafe)
+            const safeExtraNotes = auditResult.notes.filter(n =>
+                n.extraKeys.length > 0 && n.safetyResult?.status !== 'dangerous'
+            );
+            if (safeExtraNotes.length > 0) {
+                deleteExtraBtn?.classList.remove('ert-settings-hidden');
+                deleteExtraBtn?.setAttribute(
+                    'aria-label',
+                    `Delete extra fields from ${safeExtraNotes.length} note${safeExtraNotes.length !== 1 ? 's' : ''}`
+                );
+            } else {
+                deleteExtraBtn?.classList.add('ert-settings-hidden');
+            }
+
+            // Show reorder button when audit finds order drift (and not all files are unsafe)
+            const safeDriftNotes = auditResult.notes.filter(n =>
+                n.orderDrift && n.safetyResult?.status !== 'dangerous'
+            );
+            if (safeDriftNotes.length > 0) {
+                reorderBtn?.classList.remove('ert-settings-hidden');
+                reorderBtn?.setAttribute(
+                    'aria-label',
+                    `Reorder fields in ${safeDriftNotes.length} note${safeDriftNotes.length !== 1 ? 's' : ''}`
+                );
+            } else {
+                reorderBtn?.classList.add('ert-settings-hidden');
             }
 
             renderResults();
@@ -4270,20 +4327,39 @@ export function renderStoryBeatsSection(params: {
             const effectiveClean = Math.max(0, s.clean - emptyOnlyCount);
 
             // Schema health + summary in one line
-            const healthLevel = (s.notesWithMissing > 0 || emptyValueNotes > 0)
-                ? 'needs-attention'
-                : (s.notesWithExtra > 0 || s.notesWithDrift > 0 || s.notesWithWarnings > 0)
-                    ? 'mixed'
-                    : 'clean';
+            const healthLevel = (s.notesUnsafe > 0)
+                ? 'unsafe'
+                : (s.notesWithMissing > 0 || emptyValueNotes > 0)
+                    ? 'needs-attention'
+                    : (s.notesWithExtra > 0 || s.notesWithDrift > 0 || s.notesWithWarnings > 0 || s.notesSuspicious > 0)
+                        ? 'mixed'
+                        : 'clean';
             const healthLabels: Record<string, string> = {
                 'clean': 'Clean',
                 'mixed': 'Mixed',
                 'needs-attention': 'Needs attention',
+                'unsafe': 'Unsafe notes detected',
             };
             const headerEl = resultsEl.createDiv({ cls: 'ert-audit-result-header' });
             const healthEl = headerEl.createSpan({ cls: `ert-audit-health ert-audit-health--${healthLevel}` });
             healthEl.textContent = `Schema health: ${healthLabels[healthLevel]}`;
             headerEl.createSpan({ text: ` · ${s.totalNotes} note${s.totalNotes !== 1 ? 's' : ''} scanned`, cls: 'ert-audit-summary' });
+
+            // Safety banner — unsafe files
+            if (s.notesUnsafe > 0) {
+                const unsafeBanner = resultsEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--danger' });
+                unsafeBanner.createSpan({
+                    text: `${s.notesUnsafe} note${s.notesUnsafe !== 1 ? 's have' : ' has'} dangerous frontmatter (broken YAML, code injection, or suspicious content). These notes are excluded from all batch operations. Open each file to inspect and fix manually.`
+                });
+            }
+
+            // Safety banner — suspicious files
+            if (s.notesSuspicious > 0) {
+                const suspectBanner = resultsEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });
+                suspectBanner.createSpan({
+                    text: `${s.notesSuspicious} note${s.notesSuspicious !== 1 ? 's have' : ' has'} suspicious frontmatter — review before running batch operations.`
+                });
+            }
 
             // Unread warning
             if (s.unreadNotes > 0) {
@@ -4313,7 +4389,7 @@ export function renderStoryBeatsSection(params: {
             }
 
             // All clean — early return
-            if (s.clean === s.totalNotes && s.unreadNotes === 0 && s.notesWithWarnings === 0 && emptyValueNotes === 0) {
+            if (s.clean === s.totalNotes && s.unreadNotes === 0 && s.notesWithWarnings === 0 && s.notesUnsafe === 0 && s.notesSuspicious === 0 && emptyValueNotes === 0) {
                 resultsEl.createDiv({
                     text: `All ${s.totalNotes} notes are up to date with this set.`,
                     cls: 'ert-audit-clean'
@@ -4325,11 +4401,15 @@ export function renderStoryBeatsSection(params: {
             interface ChipConfig {
                 label: string;
                 count: number;
-                kind: 'missing' | 'extra' | 'drift' | 'warning';
+                kind: 'missing' | 'extra' | 'drift' | 'warning' | 'unsafe' | 'suspicious';
                 entries: NoteAuditEntry[];
             }
 
             const chips: ChipConfig[] = [
+                { label: 'Unsafe', count: s.notesUnsafe, kind: 'unsafe',
+                  entries: auditResult.notes.filter(n => n.safetyResult?.status === 'dangerous') },
+                { label: 'Suspicious', count: s.notesSuspicious, kind: 'suspicious',
+                  entries: auditResult.notes.filter(n => n.safetyResult?.status === 'suspicious') },
                 { label: 'Missing fields', count: s.notesWithMissing, kind: 'missing',
                   entries: auditResult.notes.filter(n => n.missingFields.length > 0) },
                 { label: 'Extra keys', count: s.notesWithExtra, kind: 'extra',
@@ -4384,26 +4464,53 @@ export function renderStoryBeatsSection(params: {
                 // Note pills in a flowing row
                 const pillsEl = detailsEl.createDiv({ cls: 'ert-audit-note-pills' });
                 for (const entry of pageEntries) {
-                    const reason = activeChip.kind === 'missing'
-                        ? entry.missingFields.join(', ')
-                        : activeChip.kind === 'extra'
-                            ? entry.extraKeys.join(', ')
-                            : activeChip.kind === 'warning'
-                                ? entry.semanticWarnings.join(' | ')
-                                : 'order drift';
+                    let reason: string;
+                    switch (activeChip.kind) {
+                        case 'missing':
+                            reason = entry.missingFields.join(', ');
+                            break;
+                        case 'extra':
+                            reason = entry.extraKeys.join(', ');
+                            break;
+                        case 'warning':
+                            reason = entry.semanticWarnings.join(' | ');
+                            break;
+                        case 'unsafe':
+                        case 'suspicious':
+                            reason = entry.safetyResult
+                                ? entry.safetyResult.issues.map(i => i.message).join(' | ')
+                                : 'safety issue';
+                            break;
+                        default:
+                            reason = 'order drift';
+                    }
                     const reasonShort = reason.length > 40 ? reason.slice(0, 39) + '…' : reason;
 
                     const pillEl = pillsEl.createEl('button', {
                         cls: `ert-audit-note-pill ert-audit-note-pill--${activeChip.kind}`,
                         attr: { type: 'button' }
                     });
+
+                    // Safety badge on pill
+                    if (entry.safetyResult?.status === 'dangerous') {
+                        const badge = pillEl.createSpan({ cls: 'ert-audit-safety-badge ert-audit-safety-badge--danger' });
+                        setIcon(badge, 'shield-alert');
+                        setTooltip(badge, formatSafetyIssues(entry.safetyResult));
+                    } else if (entry.safetyResult?.status === 'suspicious') {
+                        const badge = pillEl.createSpan({ cls: 'ert-audit-safety-badge ert-audit-safety-badge--warning' });
+                        setIcon(badge, 'shield-question');
+                        setTooltip(badge, formatSafetyIssues(entry.safetyResult));
+                    }
+
                     pillEl.createSpan({ text: entry.file.basename, cls: 'ert-audit-note-pill-name' });
                     pillEl.createSpan({ text: ` — ${reasonShort}`, cls: 'ert-audit-note-pill-reason' });
                     setTooltip(pillEl, `${entry.file.basename}: ${reason}`);
 
                     pillEl.addEventListener('click', async () => {
                         await openOrRevealFile(app, entry.file, false);
-                        if (entry.missingFields.length > 0) {
+                        if (activeChip.kind === 'unsafe' || activeChip.kind === 'suspicious') {
+                            new Notice(`Safety: ${reason}`);
+                        } else if (entry.missingFields.length > 0) {
                             new Notice(`Missing fields: ${entry.missingFields.join(', ')}`);
                         } else if (entry.semanticWarnings.length > 0) {
                             new Notice(`Warnings: ${entry.semanticWarnings.join(' | ')}`);
@@ -4493,8 +4600,8 @@ export function renderStoryBeatsSection(params: {
                 }
 
                 const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
-                new ButtonComponent(footer).setButtonText('Insert').setCta().onClick(() => { modal.close(); resolve(true); });
-                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => { modal.close(); resolve(false); });
+                new ButtonComponent(footer).setButtonText('Insert').setCta().onClick(() => { resolve(true); modal.close(); });
+                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => { resolve(false); modal.close(); });
 
                 modal.onClose = () => resolve(false);
                 modal.open();
@@ -4566,8 +4673,8 @@ export function renderStoryBeatsSection(params: {
                 });
 
                 const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
-                new ButtonComponent(footer).setButtonText('Fill').setCta().onClick(() => { modal.close(); resolve(true); });
-                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => { modal.close(); resolve(false); });
+                new ButtonComponent(footer).setButtonText('Fill').setCta().onClick(() => { resolve(true); modal.close(); });
+                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => { resolve(false); modal.close(); });
 
                 modal.onClose = () => resolve(false);
                 modal.open();
@@ -4600,6 +4707,308 @@ export function renderStoryBeatsSection(params: {
             new Notice(parts.join(', ') || 'No changes made.');
 
             // Wait for Obsidian metadata cache to re-index before refreshing audit
+            setTimeout(() => runAudit(), 750);
+        };
+
+        // ─── Delete extra fields action ─────────────────────────────────
+        const handleDeleteExtraFields = async () => {
+            if (!auditResult) return;
+
+            const activeBeatSystemKey = resolveBeatAuditSystemKey();
+            const notesWithExtra = auditResult.notes.filter(n =>
+                n.extraKeys.length > 0 && n.safetyResult?.status !== 'dangerous'
+            );
+            if (notesWithExtra.length === 0) return;
+
+            // Build protected key set (template keys that must never be deleted)
+            const baseKeys = getBaseKeys(noteType, plugin.settings);
+            const customKeys = getCustomKeys(noteType, plugin.settings, activeBeatSystemKey);
+            const protectedKeys = new Set([...baseKeys, ...customKeys]);
+
+            // Collect all extra key names
+            const allExtraKeys = new Set<string>();
+            for (const n of notesWithExtra) {
+                for (const k of n.extraKeys) allExtraKeys.add(k);
+            }
+
+            // Preview what will be deleted
+            const targetFiles = notesWithExtra.map(n => n.file);
+            const preview = previewDeleteFields(
+                app, targetFiles, [...allExtraKeys], protectedKeys
+            );
+
+            // Separate empty and valued fields
+            let emptyFieldCount = 0;
+            let valuedFieldCount = 0;
+            const valuedFieldSamples: { key: string; value: string }[] = [];
+            for (const [, detail] of preview) {
+                for (const field of detail.fields) {
+                    const val = detail.values[field];
+                    const isEmpty = val === undefined || val === null
+                        || (typeof val === 'string' && val.trim() === '')
+                        || (Array.isArray(val) && val.length === 0);
+                    if (isEmpty) {
+                        emptyFieldCount++;
+                    } else {
+                        valuedFieldCount++;
+                        if (valuedFieldSamples.length < 8) {
+                            const valStr = Array.isArray(val) ? val.join(', ') : String(val);
+                            valuedFieldSamples.push({ key: field, value: valStr.length > 60 ? valStr.slice(0, 57) + '...' : valStr });
+                        }
+                    }
+                }
+            }
+
+            const totalFieldCount = emptyFieldCount + valuedFieldCount;
+            const hasValuedFields = valuedFieldCount > 0;
+
+            // Determine how many unsafe files were excluded
+            const unsafeSkippedCount = auditResult.notes.filter(n =>
+                n.extraKeys.length > 0 && n.safetyResult?.status === 'dangerous'
+            ).length;
+
+            // Confirmation modal
+            const confirmed = await new Promise<boolean>((resolve) => {
+                const modal = new Modal(app);
+                modal.titleEl.setText('');
+                modal.contentEl.empty();
+                modal.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+                modal.contentEl.addClass('ert-modal-container', 'ert-stack');
+
+                const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
+                header.createSpan({ cls: 'ert-modal-badge', text: 'YAML MANAGER' });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Delete extra fields' });
+                header.createDiv({
+                    cls: 'ert-modal-subtitle',
+                    text: `Remove ${totalFieldCount} extra field${totalFieldCount !== 1 ? 's' : ''} from ${notesWithExtra.length} ${noteType.toLowerCase()} note${notesWithExtra.length !== 1 ? 's' : ''}.`
+                });
+
+                // Safety banner for dangerous exclusions
+                if (unsafeSkippedCount > 0) {
+                    const banner = modal.contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--danger' });
+                    banner.createSpan({ text: `${unsafeSkippedCount} note${unsafeSkippedCount !== 1 ? 's' : ''} with unsafe frontmatter excluded from this operation.` });
+                }
+
+                // Suspicious file warning
+                const suspiciousCount = notesWithExtra.filter(n => n.safetyResult?.status === 'suspicious').length;
+                if (suspiciousCount > 0) {
+                    const banner = modal.contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });
+                    banner.createSpan({ text: `${suspiciousCount} note${suspiciousCount !== 1 ? 's have' : ' has'} suspicious frontmatter — review carefully.` });
+                }
+
+                const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+
+                if (emptyFieldCount > 0) {
+                    body.createDiv({ text: `${emptyFieldCount} empty field${emptyFieldCount !== 1 ? 's' : ''} will be removed (no data loss).` });
+                }
+
+                if (hasValuedFields) {
+                    const warningEl = body.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });
+                    warningEl.createDiv({
+                        text: `${valuedFieldCount} field${valuedFieldCount !== 1 ? 's' : ''} contain values that will be permanently deleted:`
+                    });
+                    const sampleList = warningEl.createEl('ul');
+                    for (const sample of valuedFieldSamples) {
+                        sampleList.createEl('li', { text: `${sample.key}: ${sample.value}` });
+                    }
+                    if (valuedFieldCount > valuedFieldSamples.length) {
+                        sampleList.createEl('li', { text: `... and ${valuedFieldCount - valuedFieldSamples.length} more` });
+                    }
+                }
+
+                const fieldListEl = body.createDiv();
+                fieldListEl.createDiv({ text: 'Fields to delete:', cls: 'ert-modal-subtitle' });
+                const ul = fieldListEl.createEl('ul');
+                for (const key of allExtraKeys) {
+                    ul.createEl('li', { text: key });
+                }
+
+                // Typed confirmation for valued fields
+                let confirmInput: HTMLInputElement | undefined;
+                if (hasValuedFields) {
+                    const confirmEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
+                    confirmEl.createDiv({ text: 'Type DELETE to confirm:', cls: 'ert-modal-subtitle' });
+                    confirmInput = confirmEl.createEl('input', { type: 'text', attr: { placeholder: 'DELETE' } });
+                }
+
+                const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
+                const deleteBtn = new ButtonComponent(footer)
+                    .setButtonText('Delete')
+                    .setWarning()
+                    .onClick(() => {
+                        if (hasValuedFields && confirmInput?.value.trim() !== 'DELETE') {
+                            confirmInput?.classList.add('ert-input-error');
+                            confirmInput?.focus();
+                            return;
+                        }
+                        resolve(true);
+                        modal.close();
+                    });
+                if (hasValuedFields) {
+                    deleteBtn.setDisabled(true);
+                    confirmInput?.addEventListener('input', () => {
+                        deleteBtn.setDisabled(confirmInput?.value.trim() !== 'DELETE');
+                        confirmInput?.classList.remove('ert-input-error');
+                    });
+                }
+                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => { resolve(false); modal.close(); });
+
+                modal.onClose = () => resolve(false);
+                modal.open();
+            });
+
+            if (!confirmed) return;
+
+            const result: DeleteResult = await runYamlDeleteFields({
+                app,
+                files: targetFiles,
+                fieldsToDelete: [...allExtraKeys],
+                protectedKeys,
+                safetyResults: auditResult.safetyResults,
+            });
+
+            console.debug('[YamlManager] yaml_delete_extra_execute', {
+                noteType,
+                deleted: result.deleted,
+                skipped: result.skipped,
+                failed: result.failed,
+                safetySkipped: result.safetySkipped,
+            });
+
+            const parts: string[] = [];
+            if (result.deleted > 0) parts.push(`Cleaned ${result.deleted} note${result.deleted !== 1 ? 's' : ''}`);
+            if (result.safetySkipped > 0) parts.push(`${result.safetySkipped} skipped (unsafe)`);
+            if (result.failed > 0) parts.push(`${result.failed} failed`);
+            new Notice(parts.join(', ') || 'No changes made.');
+
+            setTimeout(() => runAudit(), 750);
+        };
+
+        // ─── Reorder fields action ──────────────────────────────────────
+        const handleReorderFields = async () => {
+            if (!auditResult) return;
+
+            const activeBeatSystemKey = resolveBeatAuditSystemKey();
+            const notesWithDrift = auditResult.notes.filter(n =>
+                n.orderDrift && n.safetyResult?.status !== 'dangerous'
+            );
+            if (notesWithDrift.length === 0) return;
+
+            const canonicalOrder = computeCanonicalOrder(noteType, plugin.settings, activeBeatSystemKey);
+
+            // Build a before/after preview from the first affected file
+            const previewNote = notesWithDrift[0];
+            const reorderPreview = previewReorder(app, previewNote.file, canonicalOrder);
+
+            const unsafeSkippedCount = auditResult.notes.filter(n =>
+                n.orderDrift && n.safetyResult?.status === 'dangerous'
+            ).length;
+
+            // Confirmation modal
+            const confirmed = await new Promise<boolean>((resolve) => {
+                const modal = new Modal(app);
+                modal.titleEl.setText('');
+                modal.contentEl.empty();
+                modal.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+                modal.contentEl.addClass('ert-modal-container', 'ert-stack');
+
+                const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
+                header.createSpan({ cls: 'ert-modal-badge', text: 'YAML MANAGER' });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Reorder frontmatter fields' });
+                header.createDiv({
+                    cls: 'ert-modal-subtitle',
+                    text: `Reorder fields in ${notesWithDrift.length} ${noteType.toLowerCase()} note${notesWithDrift.length !== 1 ? 's' : ''} to match the canonical template order.`
+                });
+
+                if (unsafeSkippedCount > 0) {
+                    const banner = modal.contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--danger' });
+                    banner.createSpan({ text: `${unsafeSkippedCount} note${unsafeSkippedCount !== 1 ? 's' : ''} with unsafe frontmatter excluded from this operation.` });
+                }
+
+                const suspiciousCount = notesWithDrift.filter(n => n.safetyResult?.status === 'suspicious').length;
+                if (suspiciousCount > 0) {
+                    const banner = modal.contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });
+                    banner.createSpan({ text: `${suspiciousCount} note${suspiciousCount !== 1 ? 's have' : ' has'} suspicious frontmatter — proceed with caution.` });
+                }
+
+                const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                body.createDiv({ text: 'Only field order changes — all values are preserved exactly.' });
+
+                // Show before/after preview
+                if (reorderPreview) {
+                    body.createDiv({ text: `Preview (${previewNote.file.basename}):`, cls: 'ert-modal-subtitle' });
+                    const previewRow = body.createDiv({ cls: 'ert-reorder-preview' });
+
+                    const beforeCol = previewRow.createDiv({ cls: 'ert-reorder-preview-col' });
+                    beforeCol.createDiv({ text: 'Before:', cls: 'ert-reorder-preview-label' });
+                    const beforeList = beforeCol.createEl('ol');
+                    for (const key of reorderPreview.before) {
+                        beforeList.createEl('li', { text: key });
+                    }
+
+                    const afterCol = previewRow.createDiv({ cls: 'ert-reorder-preview-col' });
+                    afterCol.createDiv({ text: 'After:', cls: 'ert-reorder-preview-label' });
+                    const afterList = afterCol.createEl('ol');
+                    for (const key of reorderPreview.after) {
+                        const li = afterList.createEl('li', { text: key });
+                        if (!reorderPreview.before.includes(key) || reorderPreview.before.indexOf(key) !== reorderPreview.after.indexOf(key)) {
+                            li.classList.add('ert-reorder-preview-moved');
+                        }
+                    }
+                }
+
+                // Typed confirmation
+                const confirmEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
+                confirmEl.createDiv({ text: 'Type REORDER to confirm:', cls: 'ert-modal-subtitle' });
+                const confirmInput = confirmEl.createEl('input', { type: 'text', attr: { placeholder: 'REORDER' } });
+
+                const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
+                const reorderConfirmBtn = new ButtonComponent(footer)
+                    .setButtonText('Reorder')
+                    .setCta()
+                    .setDisabled(true)
+                    .onClick(() => {
+                        if (confirmInput.value.trim() !== 'REORDER') {
+                            confirmInput.classList.add('ert-input-error');
+                            confirmInput.focus();
+                            return;
+                        }
+                        resolve(true);
+                        modal.close();
+                    });
+                confirmInput.addEventListener('input', () => {
+                    reorderConfirmBtn.setDisabled(confirmInput.value.trim() !== 'REORDER');
+                    confirmInput.classList.remove('ert-input-error');
+                });
+                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => { resolve(false); modal.close(); });
+
+                modal.onClose = () => resolve(false);
+                modal.open();
+            });
+
+            if (!confirmed) return;
+
+            const result: ReorderResult = await runYamlReorder({
+                app,
+                files: notesWithDrift.map(n => n.file),
+                canonicalOrder,
+                safetyResults: auditResult.safetyResults,
+            });
+
+            console.debug('[YamlManager] yaml_reorder_execute', {
+                noteType,
+                reordered: result.reordered,
+                skipped: result.skipped,
+                failed: result.failed,
+                safetySkipped: result.safetySkipped,
+            });
+
+            const parts: string[] = [];
+            if (result.reordered > 0) parts.push(`Reordered ${result.reordered} note${result.reordered !== 1 ? 's' : ''}`);
+            if (result.safetySkipped > 0) parts.push(`${result.safetySkipped} skipped (unsafe)`);
+            if (result.failed > 0) parts.push(`${result.failed} failed`);
+            new Notice(parts.join(', ') || 'No changes made.');
+
             setTimeout(() => runAudit(), 750);
         };
 

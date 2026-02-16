@@ -131,7 +131,7 @@
   --ert-control-color: var(--text-normal);
   --ert-modal-bg: color-mix(in srgb, var(--background-primary) 68%, transparent);
   --ert-modal-border: color-mix(in srgb, var(--background-modifier-border) 96%, transparent);
-  --ert-modal-shadow: var(--shadow-l);
+  --ert-modal-shadow: none;
   --ert-modal-blur: blur(34px) saturate(1.35);
   --ert-modal-tint: linear-gradient(
     180deg,
@@ -4811,7 +4811,7 @@
   background: var(--ert-modal-bg);
   border: 1px solid var(--ert-modal-border);
   border-radius: calc(var(--ert-panel-radius) + var(--ert-gap-sm));
-  box-shadow: var(--ert-modal-shadow), var(--ert-modal-glow, none);
+  box-shadow: none;
   backdrop-filter: var(--ert-modal-blur);
   -webkit-backdrop-filter: var(--ert-modal-blur);
   padding: var(--ert-gap-sm);
@@ -6629,4 +6629,150 @@
   align-items: center;
   gap: var(--ert-gap-sm);
   flex-wrap: wrap;
+}
+
+/* ─── YAML Manager — Safety & Manager UI ─────────────────────────────── */
+
+/* Health status: unsafe level */
+.ert-ui.ert-scope--settings .ert-audit-health--unsafe {
+  color: var(--text-error);
+  font-weight: 700;
+}
+
+/* Safety banners */
+.ert-audit-safety-banner {
+  padding: 8px 12px;
+  border-radius: var(--ert-control-radius, 6px);
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 4px 0;
+}
+
+.ert-audit-safety-banner--danger {
+  background: color-mix(in srgb, var(--text-error) 10%, var(--background-primary));
+  border: 1px solid color-mix(in srgb, var(--text-error) 30%, var(--background-modifier-border));
+  color: var(--text-error);
+}
+
+.ert-audit-safety-banner--warning {
+  background: color-mix(in srgb, var(--text-warning) 8%, var(--background-primary));
+  border: 1px solid color-mix(in srgb, var(--text-warning) 25%, var(--background-modifier-border));
+  color: var(--text-warning);
+}
+
+.ert-audit-safety-banner ul {
+  margin: 4px 0 0 16px;
+  padding: 0;
+}
+
+.ert-audit-safety-banner li {
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* Safety chip variants */
+.ert-ui.ert-scope--settings .ert-audit-chip--unsafe {
+  --ert-chip-bg: color-mix(in srgb, var(--text-error) 16%, var(--background-secondary) 80%);
+  font-weight: 600;
+}
+
+.ert-ui.ert-scope--settings .ert-audit-chip--unsafe.is-active {
+  border-color: var(--text-error);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error) 20%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-audit-chip--suspicious {
+  --ert-chip-bg: color-mix(in srgb, var(--text-warning) 14%, var(--background-secondary) 80%);
+}
+
+.ert-ui.ert-scope--settings .ert-audit-chip--suspicious.is-active {
+  border-color: var(--text-warning);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-warning) 18%, transparent);
+}
+
+/* Safety pill variants */
+.ert-ui.ert-scope--settings .ert-audit-note-pill--unsafe {
+  border-color: var(--text-error);
+  background: color-mix(in srgb, var(--text-error) 6%, var(--background-secondary));
+}
+
+.ert-ui.ert-scope--settings .ert-audit-note-pill--suspicious {
+  border-color: color-mix(in srgb, var(--text-warning) 40%, var(--background-modifier-border));
+}
+
+/* Safety badges on pills */
+.ert-audit-safety-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+
+.ert-audit-safety-badge svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ert-audit-safety-badge--danger {
+  color: var(--text-error);
+}
+
+.ert-audit-safety-badge--warning {
+  color: var(--text-warning);
+}
+
+/* Typed confirmation input */
+.ert-modal-confirm-type {
+  margin-top: 8px;
+}
+
+.ert-modal-confirm-type input {
+  margin-top: 4px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--ert-control-radius, 6px);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 13px;
+  font-family: var(--font-monospace);
+  letter-spacing: 0.5px;
+}
+
+.ert-modal-confirm-type input.ert-input-error {
+  border-color: var(--text-error);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-error) 25%, transparent);
+}
+
+/* Reorder preview */
+.ert-reorder-preview {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.ert-reorder-preview-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.ert-reorder-preview-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.ert-reorder-preview ol {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.ert-reorder-preview li.ert-reorder-preview-moved {
+  color: var(--text-accent);
+  font-weight: 500;
 }

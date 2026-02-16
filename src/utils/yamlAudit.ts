@@ -3,6 +3,7 @@
  *
  * Compares note frontmatter against template-defined base + custom keys
  * and reports schema drift: missing fields, extra keys, and cosmetic order drift.
+ * Integrates the safety scanner to flag dangerous / suspicious frontmatter.
  *
  * NEVER modifies files — read-only analysis only.
  */
@@ -18,6 +19,11 @@ import type { RadialTimelineSettings } from '../types/settings';
 import { normalizeFrontmatterKeys } from './frontmatter';
 import { normalizeBeatSetNameInput, toBeatModelMatchKey } from './beatsInputNormalize';
 import { PRO_BEAT_SETS } from './beatsSystems';
+import { isPathInFolderScope } from './pathScope';
+import {
+    type FrontmatterSafetyResult,
+    scanFrontmatterSafety,
+} from './yamlSafety';
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -29,6 +35,8 @@ export interface NoteAuditEntry {
     semanticWarnings: string[];
     /** Short human-readable reason string (capped length). */
     reason: string;
+    /** Safety scan result — present when `includeSafetyScan` is true. */
+    safetyResult?: FrontmatterSafetyResult;
 }
 
 export interface YamlAuditSummary {
@@ -41,6 +49,10 @@ export interface YamlAuditSummary {
     notesWithDrift: number;
     notesWithWarnings: number;
     clean: number;
+    /** Notes flagged as dangerous by the safety scanner. */
+    notesUnsafe: number;
+    /** Notes flagged as suspicious (warning-level issues, no danger). */
+    notesSuspicious: number;
 }
 
 export interface YamlAuditResult {
@@ -48,6 +60,8 @@ export interface YamlAuditResult {
     /** Files that had no metadata cache entry — not counted as clean. */
     unreadFiles: TFile[];
     summary: YamlAuditSummary;
+    /** Per-file safety results — present when `includeSafetyScan` was true. */
+    safetyResults?: Map<TFile, FrontmatterSafetyResult>;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
@@ -87,9 +101,10 @@ function stripSceneNumberPrefix(title: string): string {
 
 function collectSceneTitleIndex(app: App, settings: RadialTimelineSettings): string[] {
     const mappings = settings.enableCustomMetadataMapping ? settings.frontmatterMappings : undefined;
+    const sourcePath = (settings.sourcePath || '').trim();
     const titles = new Set<string>();
 
-    for (const file of app.vault.getMarkdownFiles()) {
+    for (const file of app.vault.getMarkdownFiles().filter(f => isPathInFolderScope(f.path, sourcePath))) {
         const cache = app.metadataCache.getFileCache(file);
         if (!cache?.frontmatter) continue;
         const fm = mappings ? normalizeFrontmatterKeys(cache.frontmatter, mappings) : cache.frontmatter;
@@ -199,6 +214,13 @@ export interface YamlAuditOptions {
     files: TFile[];
     /** Beat system key override (only relevant when noteType === 'Beat'). */
     beatSystemKey?: string;
+    /**
+     * When true, runs the safety scanner on each file and attaches results
+     * to `NoteAuditEntry.safetyResult`. Makes the audit async and slightly
+     * slower (broken-YAML detection reads raw files for cache-less notes).
+     * Default: false (preserves original fast synchronous behaviour).
+     */
+    includeSafetyScan?: boolean;
 }
 
 /**
@@ -207,9 +229,14 @@ export interface YamlAuditOptions {
  * Uses `metadataCache.getFileCache()` for speed. If a file has no cache
  * entry (stale or not yet indexed), it is counted as "unread" — never
  * mislabelled as clean.
+ *
+ * When `includeSafetyScan` is true the function becomes async and
+ * attaches a `FrontmatterSafetyResult` to every audit entry. The
+ * safety results map is also returned at the top level so the UI
+ * can pass it to delete / reorder operations without re-scanning.
  */
-export function runYamlAudit(options: YamlAuditOptions): YamlAuditResult {
-    const { app, settings, noteType, files, beatSystemKey } = options;
+export async function runYamlAudit(options: YamlAuditOptions): Promise<YamlAuditResult> {
+    const { app, settings, noteType, files, beatSystemKey, includeSafetyScan = false } = options;
 
     const baseKeys = getBaseKeys(noteType, settings);
     const customKeys = getCustomKeys(noteType, settings, beatSystemKey);
@@ -220,11 +247,32 @@ export function runYamlAudit(options: YamlAuditOptions): YamlAuditResult {
     const mappings = settings.enableCustomMetadataMapping ? settings.frontmatterMappings : undefined;
     const sceneTitleIndex = noteType === 'Backdrop' ? collectSceneTitleIndex(app, settings) : [];
 
+    // Build the known-key set for the safety scanner (template + dynamic keys)
+    const knownKeysForSafety = new Set<string>([...allTemplateKeys]);
+    // Add common Obsidian-internal keys
+    for (const k of ['position', 'cssclasses', 'tags', 'aliases']) knownKeysForSafety.add(k);
+
     const notes: NoteAuditEntry[] = [];
     const unreadFiles: TFile[] = [];
+    const safetyResultsMap = includeSafetyScan
+        ? new Map<TFile, FrontmatterSafetyResult>()
+        : undefined;
 
     for (const file of files) {
         const cache: CachedMetadata | null = app.metadataCache.getFileCache(file);
+
+        // ── Safety scan (when enabled) ──────────────────────────────
+        let safetyResult: FrontmatterSafetyResult | undefined;
+        if (includeSafetyScan) {
+            safetyResult = await scanFrontmatterSafety({
+                app,
+                file,
+                cache,
+                knownKeys: knownKeysForSafety,
+                checkBrokenYaml: true,
+            });
+            safetyResultsMap!.set(file, safetyResult);
+        }
 
         // Stale-cache guard: if no cache entry at all, skip as unread
         if (!cache || !cache.frontmatter) {
@@ -266,8 +314,15 @@ export function runYamlAudit(options: YamlAuditOptions): YamlAuditResult {
         if (semanticWarnings.length > 0) {
             reasons.push(`warnings: ${semanticWarnings.join(' | ')}`);
         }
+        if (safetyResult && safetyResult.status !== 'safe') {
+            const label = safetyResult.status === 'dangerous' ? 'UNSAFE' : 'review';
+            reasons.push(`safety: ${label} (${safetyResult.issues.length} issue${safetyResult.issues.length !== 1 ? 's' : ''})`);
+        }
 
-        if (missingFields.length === 0 && extraKeys.length === 0 && !orderDrift && semanticWarnings.length === 0) {
+        const hasSchemaIssues = missingFields.length > 0 || extraKeys.length > 0 || orderDrift || semanticWarnings.length > 0;
+        const hasSafetyIssues = safetyResult && safetyResult.status !== 'safe';
+
+        if (!hasSchemaIssues && !hasSafetyIssues) {
             // Clean note — don't add to results
             continue;
         }
@@ -279,6 +334,7 @@ export function runYamlAudit(options: YamlAuditOptions): YamlAuditResult {
             orderDrift,
             semanticWarnings,
             reason: capReason(reasons.join(' | ')),
+            safetyResult,
         });
     }
 
@@ -286,6 +342,8 @@ export function runYamlAudit(options: YamlAuditOptions): YamlAuditResult {
     const notesWithExtra = notes.filter(n => n.extraKeys.length > 0).length;
     const notesWithDrift = notes.filter(n => n.orderDrift).length;
     const notesWithWarnings = notes.filter(n => n.semanticWarnings.length > 0).length;
+    const notesUnsafe = notes.filter(n => n.safetyResult?.status === 'dangerous').length;
+    const notesSuspicious = notes.filter(n => n.safetyResult?.status === 'suspicious').length;
 
     return {
         notes,
@@ -298,14 +356,17 @@ export function runYamlAudit(options: YamlAuditOptions): YamlAuditResult {
             notesWithDrift,
             notesWithWarnings,
             clean: files.length - notes.length - unreadFiles.length,
+            notesUnsafe,
+            notesSuspicious,
         },
+        safetyResults: safetyResultsMap,
     };
 }
 
 // ─── File collection helpers ────────────────────────────────────────────
 
 /**
- * Collect all vault files matching a note type.
+ * Collect vault files matching a note type, scoped to the active book folder.
  * Uses metadataCache for fast classification (no file I/O).
  */
 export function collectFilesForAudit(
@@ -314,7 +375,8 @@ export function collectFilesForAudit(
     settings: RadialTimelineSettings,
     beatSystemKey?: string
 ): TFile[] {
-    const files = app.vault.getMarkdownFiles();
+    const sourcePath = (settings.sourcePath || '').trim();
+    const files = app.vault.getMarkdownFiles().filter(f => isPathInFolderScope(f.path, sourcePath));
     const mappings = settings.enableCustomMetadataMapping ? settings.frontmatterMappings : undefined;
 
     // Resolve Beat Model name for custom systems.
@@ -380,6 +442,12 @@ export function formatAuditReport(result: YamlAuditResult, noteType: NoteType): 
     lines.push(`Extra keys:      ${s.notesWithExtra} note(s)`);
     lines.push(`Order drift:     ${s.notesWithDrift} note(s)`);
     lines.push(`Warnings:        ${s.notesWithWarnings} note(s)`);
+    if (s.notesUnsafe > 0) {
+        lines.push(`Unsafe:          ${s.notesUnsafe} note(s)`);
+    }
+    if (s.notesSuspicious > 0) {
+        lines.push(`Suspicious:      ${s.notesSuspicious} note(s)`);
+    }
     if (s.unreadNotes > 0) {
         lines.push(`Unread (stale):  ${s.unreadNotes} note(s)`);
     }
@@ -391,6 +459,11 @@ export function formatAuditReport(result: YamlAuditResult, noteType: NoteType): 
             lines.push(`  ${entry.file.basename}  —  ${entry.reason}`);
             if (entry.semanticWarnings.length > 0) {
                 lines.push(`    warnings: ${entry.semanticWarnings.join(' | ')}`);
+            }
+            if (entry.safetyResult && entry.safetyResult.status !== 'safe') {
+                for (const issue of entry.safetyResult.issues) {
+                    lines.push(`    [${issue.severity.toUpperCase()}] ${issue.message}`);
+                }
             }
         }
     }

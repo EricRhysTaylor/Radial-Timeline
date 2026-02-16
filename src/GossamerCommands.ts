@@ -23,6 +23,7 @@ import {
 } from './ai/log';
 import { ensureGossamerContentLogFolder, resolveGossamerContentLogFolder } from './inquiry/utils/logs';
 import { resolveSelectedBeatModel } from './utils/beatsInputNormalize';
+import { isPathInFolderScope } from './utils/pathScope';
 const resolveGeminiModelId = (plugin?: RadialTimelinePlugin): string =>
   plugin?.settings?.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
 
@@ -213,7 +214,8 @@ async function saveGossamerScores(
   scores: Map<string, number>, // beatTitle → score
   dominantStage?: string // Optional pre-computed stage
 ): Promise<void> {
-  const files = plugin.app.vault.getMarkdownFiles();
+  const bookScope = (plugin.settings.sourcePath || '').trim();
+  const files = plugin.app.vault.getMarkdownFiles().filter(f => isPathInFolderScope(f.path, bookScope));
   let updateCount = 0;
   
   // Detect dominant stage if not provided
@@ -925,7 +927,8 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       console.error('[Gossamer] Failed to detect dominant stage, defaulting to Zero:', e);
     }
     
-    const files = plugin.app.vault.getMarkdownFiles();
+    const geminiBookScope = (plugin.settings.sourcePath || '').trim();
+    const files = plugin.app.vault.getMarkdownFiles().filter(f => isPathInFolderScope(f.path, geminiBookScope));
     let updateCount = 0;
     const unmatchedBeats: string[] = [];
 
