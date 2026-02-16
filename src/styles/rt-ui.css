@@ -4234,13 +4234,18 @@
 .ert-ui.ert-scope--settings .ert-custom-beat-row {
   display: grid;
   box-sizing: border-box;
-  grid-template-columns: auto 1fr auto auto auto auto;
+  grid-template-columns: auto 1fr auto auto auto auto auto;
   align-items: center;
   gap: var(--ert-gap-md);
   padding: calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2)) calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2)) calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2)) var(--ert-gap-md);
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: calc(var(--ert-control-radius) + (var(--ert-gap-xs) / 2));
+}
+
+.ert-ui.ert-scope--settings .ert-beat-range-input {
+  width: 80px;
+  text-align: center;
 }
 
 .ert-ui.ert-scope--settings .ert-drag-handle {
@@ -6311,11 +6316,6 @@
 .ert-ui.ert-scope--modal .ert-apr-step.is-active .ert-apr-step-label {
   color: var(--text-normal);
   font-weight: 600;
-}
-
-/* Tooltip text balancing — avoids orphaned single words on the last line */
-.tooltip {
-  text-wrap: balance;
 }
 
 /* Books settings */

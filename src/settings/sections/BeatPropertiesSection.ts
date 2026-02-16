@@ -6,7 +6,7 @@ import { getPlotSystem, getCustomSystemFromSettings, PRO_BEAT_SETS } from '../..
 import { createBeatNotesFromSet, getMergedBeatYaml, getBeatConfigForSystem, ensureBeatConfigForSystem, spreadBeatsAcrossScenes } from '../../utils/beatsTemplates';
 import type { BeatSystemConfig } from '../../types/settings';
 import { DEFAULT_SETTINGS } from '../defaults';
-import { renderMetadataSection } from './MetadataSection';
+
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import type { HoverMetadataField, SavedBeatSystem } from '../../types/settings';
 import { isProfessionalActive } from './ProfessionalSection';
@@ -44,7 +44,7 @@ import { IMPACT_FULL } from '../SettingImpact';
 
 type FieldEntryValue = string | string[];
 type FieldEntry = { key: string; value: FieldEntryValue; required: boolean };
-type BeatRow = { name: string; act: number; purpose?: string; id?: string };
+type BeatRow = { name: string; act: number; purpose?: string; id?: string; range?: string };
 type BeatSystemMode = 'builtin' | 'custom';
 type BuiltinBeatSetId = 'save_the_cat' | 'heros_journey' | 'story_grid';
 
@@ -245,8 +245,9 @@ export function renderStoryBeatsSection(params: {
     app: App;
     plugin: RadialTimelinePlugin;
     containerEl: HTMLElement;
+    backdropYamlTargetEl?: HTMLElement;
 }): void {
-    const { app, plugin, containerEl } = params;
+    const { app, plugin, containerEl, backdropYamlTargetEl } = params;
     const proActive = isProfessionalActive(plugin);
     const canEditBuiltInBeatSystems = (): boolean => proActive;
     const canEditFieldsForSystem = (systemKey: string): boolean =>
@@ -257,7 +258,6 @@ export function renderStoryBeatsSection(params: {
     _unsubBeatAuditDirty?.();
     _unsubBeatAuditDirty = null;
     containerEl.empty();
-    containerEl.classList.add(ERT_CLASSES.STACK);
     const actsSection = containerEl.createDiv({ cls: ERT_CLASSES.STACK, attr: { [ERT_DATA.SECTION]: 'beats-acts' } });
     const actsStack = actsSection.createDiv({ cls: ERT_CLASSES.STACK });
     const beatsSection = containerEl.createDiv({ cls: ERT_CLASSES.STACK, attr: { [ERT_DATA.SECTION]: 'beats-story' } });
@@ -309,12 +309,13 @@ export function renderStoryBeatsSection(params: {
 
     const parseBeatRow = (item: unknown): BeatRow => {
         if (typeof item === 'object' && item !== null && (item as { name?: unknown }).name) {
-            const obj = item as { name?: unknown; act?: unknown; purpose?: unknown; id?: unknown };
+            const obj = item as { name?: unknown; act?: unknown; purpose?: unknown; id?: unknown; range?: unknown };
             const objName = normalizeBeatNameInput(typeof obj.name === 'string' ? obj.name : String(obj.name ?? ''), '');
             const objAct = typeof obj.act === 'number' ? obj.act : 1;
             const objPurpose = typeof obj.purpose === 'string' ? obj.purpose.trim() : '';
             const objId = typeof obj.id === 'string' ? obj.id : undefined;
-            return { name: objName, act: objAct, purpose: objPurpose || undefined, id: objId };
+            const objRange = typeof obj.range === 'string' ? obj.range.trim() : undefined;
+            return { name: objName, act: objAct, purpose: objPurpose || undefined, id: objId, range: objRange || undefined };
         }
         const raw = normalizeBeatNameInput(String(item ?? ''), '');
         if (!raw) return { name: '', act: 1 };
@@ -1336,9 +1337,21 @@ export function renderStoryBeatsSection(params: {
                         }
                         nameInput.value = newName;
                         const updated = [...orderedBeats];
-                        updated[index] = { name: newName, act: parseInt(act, 10) || 1 };
+                        updated[index] = { ...orderedBeats[index], name: newName, act: parseInt(act, 10) || 1 };
                         saveBeats(updated);
                         renderList();
+                    });
+
+                    // Range input
+                    const rangeInput = row.createEl('input', { type: 'text', cls: 'ert-beat-range-input ert-input' });
+                    rangeInput.value = beatLine.range ?? '';
+                    rangeInput.placeholder = 'e.g. 10-20';
+                    setTooltip(rangeInput, 'Gossamer momentum range (e.g. 10-20)');
+                    plugin.registerDomEvent(rangeInput, 'change', () => {
+                        const rangeVal = rangeInput.value.trim();
+                        const updated = [...orderedBeats];
+                        updated[index] = { ...orderedBeats[index], range: rangeVal || undefined };
+                        saveBeats(updated);
                     });
 
                     // Act select
@@ -1356,7 +1369,7 @@ export function renderStoryBeatsSection(params: {
                             return;
                         }
                         const actNum = clampBeatAct(parseInt(act, 10) || 1, maxActs);
-                        updated[index] = { name: currentName, act: actNum };
+                        updated[index] = { ...orderedBeats[index], name: currentName, act: actNum };
                         saveBeats(updated);
                         renderList();
                     });
@@ -1405,6 +1418,8 @@ export function renderStoryBeatsSection(params: {
             addRow.createDiv({ cls: 'ert-beat-index ert-beat-add-index', text: '' });
 
             const addNameInput = addRow.createEl('input', { type: 'text', cls: 'ert-beat-name-input ert-input', placeholder: 'New beat' });
+            const addRangeInput = addRow.createEl('input', { type: 'text', cls: 'ert-beat-range-input ert-input', placeholder: 'e.g. 10-20' });
+            setTooltip(addRangeInput, 'Gossamer momentum range (e.g. 10-20)');
             const addActSelect = addRow.createEl('select', { cls: 'ert-beat-act-select ert-input' });
             Array.from({ length: maxActs }, (_, i) => i + 1).forEach(n => {
                 const opt = addActSelect.createEl('option', { value: n.toString(), text: actLabels[n - 1] });
@@ -1422,7 +1437,8 @@ export function renderStoryBeatsSection(params: {
                 }
                 const act = clampBeatAct(parseInt(addActSelect.value, 10) || defaultAct || 1, maxActs);
                 const id = `custom:${plugin.settings.activeCustomBeatSystemId ?? 'default'}:${generateBeatGuid()}`;
-                const updated = [...orderedBeats, { name, act, id }];
+                const rangeVal = addRangeInput.value.trim() || undefined;
+                const updated = [...orderedBeats, { name, act, id, range: rangeVal }];
                 saveBeats(updated);
                 renderList();
             };
@@ -1589,9 +1605,8 @@ export function renderStoryBeatsSection(params: {
         templatePreviewDesc.style.whiteSpace = hasAuthorDesc ? 'pre-line' : ''; // SAFE: preserve author line breaks
         templatePreviewExamples.setText(copy.examples ?? '');
         templatePreviewExamples.toggleClass('ert-settings-hidden', !copy.examples || hasAuthorDesc);
-        templatePreviewMeta.setText(totalBeats > 0
-            ? `${totalBeats} beats · ${columns.length} acts`
-            : 'No beats yet — add beats in Design.');
+        templatePreviewMeta.setText(totalBeats > 0 ? `${totalBeats} beats · ${columns.length} acts` : '');
+        templatePreviewMeta.toggleClass('ert-settings-hidden', totalBeats === 0);
 
         templateActGrid.empty();
         if (columns.length === 0) {
@@ -1920,6 +1935,7 @@ export function renderStoryBeatsSection(params: {
     };
 
     let updateBeatHoverPreview: (() => void) | undefined;
+    let refreshFillEmptyPlanAfterDefaultsChange: (() => void) | undefined;
 
     const beatBaseTemplate = DEFAULT_SETTINGS.beatYamlTemplates!.base;
     const beatBaseKeys = extractKeysInOrder(beatBaseTemplate);
@@ -1953,6 +1969,7 @@ export function renderStoryBeatsSection(params: {
             config.beatYamlAdvanced = yaml;
             void plugin.saveSettings();
             dirtyState.notify();
+            refreshFillEmptyPlanAfterDefaultsChange?.();
         };
 
         const rerenderBeatYaml = (next?: FieldEntry[]) => {
@@ -2361,7 +2378,7 @@ export function renderStoryBeatsSection(params: {
     // Both dirty indicators (dropdown warning + dirty notice) now use the same baseline.
 
     /** Apply a saved or built-in system as the active system and refresh UI. */
-    const applyLoadedSystem = (system: { id: string; name: string; description?: string; beats: { name: string; act: number; purpose?: string; id?: string }[]; beatYamlAdvanced?: string; beatHoverMetadataFields?: { key: string; label: string; icon: string; enabled: boolean }[] }) => {
+    const applyLoadedSystem = (system: { id: string; name: string; description?: string; beats: { name: string; act: number; purpose?: string; id?: string; range?: string }[]; beatYamlAdvanced?: string; beatHoverMetadataFields?: { key: string; label: string; icon: string; enabled: boolean }[] }) => {
         // 1. Guarantee we're on the Custom system (config resolution depends on this)
         plugin.settings.beatSystem = 'Custom';
         // 2. Activate this set's id so config resolves to custom:<id>
@@ -2447,7 +2464,7 @@ export function renderStoryBeatsSection(params: {
         allLoadable.set('default', {
             id: 'default',
             name: 'Custom',
-            description: 'Blank custom set (reset to zero).',
+            description: '',
             beats: [],
             beatYamlAdvanced: '',
             beatHoverMetadataFields: [],
@@ -2597,9 +2614,11 @@ export function renderStoryBeatsSection(params: {
                 setIcon(tag, 'star');
             }
 
-            if (selectedEntry.description) {
+            const entryDescText = selectedEntry.description
+                || (selectedEntry.isDefault ? 'Blank custom set (reset to zero).' : '');
+            if (entryDescText) {
                 const descEl = previewEl.createDiv({ cls: 'ert-set-preview-desc ert-set-preview-desc--clamped' });
-                descEl.setText(selectedEntry.description);
+                descEl.setText(entryDescText);
                 // "Show more / less" toggle for long descriptions
                 const toggleEl = previewEl.createEl('button', {
                     cls: 'ert-set-preview-toggle',
@@ -2883,15 +2902,11 @@ export function renderStoryBeatsSection(params: {
 
     // Scene YAML Templates Section
     const yamlHeading = new Settings(yamlStack)
-        .setName('Remap metadata & advanced scene YAML sets')
+        .setName('Advanced scene YAML sets')
         .setHeading();
     addHeadingIcon(yamlHeading, 'form');
     addWikiLink(yamlHeading, 'Settings#yaml-templates');
     applyErtHeaderLayout(yamlHeading);
-
-    // Frontmatter remapper (moved here) - separate from template editor visibility
-    const remapContainer = yamlStack.createDiv();
-    renderMetadataSection({ app, plugin, containerEl: remapContainer });
 
     let onAdvancedToggle: (() => void) | undefined;
 
@@ -3499,6 +3514,9 @@ export function renderStoryBeatsSection(params: {
 
     renderAdvancedTemplateEditor();
 
+    // Scene audit container (created here for DOM order: editor → audit → preview)
+    const sceneAuditContainer = yamlStack.createDiv({ cls: ERT_CLASSES.STACK });
+
     // Hover Metadata Preview Panel
     const hoverPreviewContainer = yamlStack.createDiv({
         cls: ['ert-previewFrame', 'ert-previewFrame--center', 'ert-previewFrame--flush'],
@@ -3551,7 +3569,7 @@ export function renderStoryBeatsSection(params: {
     // BACKDROP YAML EDITOR
     // ═══════════════════════════════════════════════════════════════════════
 
-    const backdropYamlSection = yamlStack.createDiv({ cls: ERT_CLASSES.STACK });
+    const backdropYamlSection = (backdropYamlTargetEl ?? yamlStack).createDiv({ cls: ERT_CLASSES.STACK });
 
     const backdropYamlHeading = new Settings(backdropYamlSection)
         .setName('Backdrop YAML editor')
@@ -3727,16 +3745,16 @@ export function renderStoryBeatsSection(params: {
                 // Key input
                 const keyInput = row.createEl('input', {
                     type: 'text',
-                    cls: 'ert-input ert-input--lg',
-                    attr: { placeholder: 'Key name...' }
+                    cls: 'ert-input ert-input--md',
+                    attr: { placeholder: 'Key' }
                 });
                 keyInput.value = entry.key;
 
                 // Value input
                 const valInput = row.createEl('input', {
                     type: 'text',
-                    cls: 'ert-input ert-input--lg',
-                    attr: { placeholder: 'Default value...' }
+                    cls: 'ert-input ert-input--md',
+                    attr: { placeholder: 'Value' }
                 });
                 valInput.value = Array.isArray(entry.value) ? entry.value.join(', ') : (entry.value ?? '');
 
@@ -3807,29 +3825,91 @@ export function renderStoryBeatsSection(params: {
 
             data.forEach((entry, idx) => renderBackdropEntryRow(entry, idx, data));
 
-            // Add new field button
-            const addRow = listEl.createDiv({ cls: 'ert-yaml-row ert-yaml-row--add' });
-            const addBtn = addRow.createEl('button', {
-                cls: `${ERT_CLASSES.ICON_BTN} ert-add-field-btn`,
-                attr: { type: 'button' }
+            // Add new field row (matching scene YAML row layout)
+            const addRow = listEl.createDiv({ cls: ['ert-yaml-row', 'ert-yaml-row--add', 'ert-yaml-row--hover-meta'] });
+
+            // 1. Handle placeholder (direct child)
+            addRow.createDiv({ cls: ['ert-drag-handle', 'ert-drag-placeholder'] });
+
+            // 2. Spacer (direct child)
+            addRow.createDiv({ cls: 'ert-grid-spacer' });
+
+            // 3. Icon input with preview for new entry
+            const addIconWrapper = addRow.createDiv({ cls: 'ert-hover-icon-wrapper' });
+            const addIconPreview = addIconWrapper.createDiv({ cls: 'ert-hover-icon-preview' });
+            setIcon(addIconPreview, DEFAULT_HOVER_ICON);
+            const addIconInput = addIconWrapper.createEl('input', {
+                type: 'text',
+                cls: 'ert-input ert-input--lg ert-icon-input',
+                attr: { placeholder: 'Icon name...' }
             });
+            addIconInput.value = DEFAULT_HOVER_ICON;
+            setTooltip(addIconInput, 'Lucide icon name for hover synopsis');
+
+            new IconSuggest(app, addIconInput, (selectedIcon) => {
+                addIconInput.value = selectedIcon;
+                addIconPreview.empty();
+                setIcon(addIconPreview, selectedIcon);
+            });
+
+            addIconInput.oninput = () => {
+                const iconName = addIconInput.value.trim();
+                if (iconName && getIconIds().includes(iconName)) {
+                    addIconPreview.empty();
+                    setIcon(addIconPreview, iconName);
+                }
+            };
+
+            // 4. Checkbox for new entry (default unchecked)
+            const addCheckboxWrapper = addRow.createDiv({ cls: 'ert-hover-checkbox-wrapper' });
+            const addCheckbox = addCheckboxWrapper.createEl('input', {
+                type: 'checkbox',
+                cls: 'ert-hover-checkbox'
+            });
+            addCheckbox.checked = false;
+            setTooltip(addCheckbox, 'Show in backdrop hover synopsis');
+
+            // 5. Key input (direct child)
+            const addKeyInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--md', attr: { placeholder: 'New key' } });
+
+            // 6. Value input (direct child)
+            const addValInput = addRow.createEl('input', { type: 'text', cls: 'ert-input ert-input--md', attr: { placeholder: 'Value' } }) as HTMLInputElement;
+
+            // 7. Buttons wrapper (holds both + and reset)
+            const btnWrap = addRow.createDiv({ cls: ['ert-iconBtnGroup', 'ert-template-actions'] });
+
+            const addBtn = btnWrap.createEl('button', { cls: ['ert-iconBtn', 'ert-mod-cta'] });
             setIcon(addBtn, 'plus');
             setTooltip(addBtn, 'Add custom field');
             addBtn.addEventListener('click', () => {
-                const next = [...data, { key: '', value: '', required: false }];
+                const k = (addKeyInput.value || '').trim();
+                if (!k) return;
+                if (backdropBaseKeys.includes(k)) {
+                    new Notice(`"${k}" is a base field and cannot be used as a custom key.`);
+                    return;
+                }
+                if (backdropDisallowedNewWriteKeys.has(k)) {
+                    new Notice(`"${k}" is a legacy backdrop key. Use "Context" instead.`);
+                    return;
+                }
+                if (data.some(e => e.key === k)) {
+                    new Notice(`Key "${k}" already exists.`);
+                    return;
+                }
+                const iconName = addIconInput.value.trim() || DEFAULT_HOVER_ICON;
+                if (addCheckbox.checked || iconName !== DEFAULT_HOVER_ICON) {
+                    setBackdropHoverMetadata(k, iconName, addCheckbox.checked);
+                }
+                const next = [...data, { key: k, value: addValInput.value || '', required: false }];
                 saveBackdropEntries(next);
                 rerenderBackdropYaml(next);
+                updateBackdropHoverPreview?.();
             });
 
-            // Reset to default
-            const resetRow = listEl.createDiv({ cls: 'ert-yaml-row ert-yaml-row--reset' });
-            const resetBtn = resetRow.createEl('button', {
-                cls: `${ERT_CLASSES.ICON_BTN} ert-reset-btn`,
-                text: 'Reset to default',
-                attr: { type: 'button' }
-            });
-            setTooltip(resetBtn, 'Clear all custom backdrop fields');
-            resetBtn.addEventListener('click', async () => {
+            const revertBtn = btnWrap.createEl('button', { cls: ['ert-iconBtn', 'ert-template-reset-btn'] });
+            setIcon(revertBtn, 'rotate-ccw');
+            setTooltip(revertBtn, 'Clear all custom backdrop fields');
+            revertBtn.addEventListener('click', async () => {
                 if (!plugin.settings.backdropYamlTemplates) {
                     plugin.settings.backdropYamlTemplates = { base: backdropBaseTemplate, advanced: '' };
                 }
@@ -4391,30 +4471,31 @@ export function renderStoryBeatsSection(params: {
             // Confirmation modal
             const confirmed = await new Promise<boolean>((resolve) => {
                 const modal = new Modal(app);
-                modal.titleEl.setText(`Insert missing fields into ${targetFiles.length} ${noteType.toLowerCase()} note${targetFiles.length !== 1 ? 's' : ''}`);
+                modal.titleEl.setText('');
+                modal.contentEl.empty();
+                modal.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+                modal.contentEl.addClass('ert-modal-container', 'ert-stack');
 
-                const bodyEl = modal.contentEl.createDiv({ cls: 'ert-stack' });
-                bodyEl.createDiv({ text: 'The following fields will be added (existing values are never overwritten):' });
+                const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
+                header.createSpan({ cls: 'ert-modal-badge', text: 'BEAT AUDIT' });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Insert missing fields' });
+                header.createDiv({
+                    cls: 'ert-modal-subtitle',
+                    text: `Insert fields into ${targetFiles.length} ${noteType.toLowerCase()} note${targetFiles.length !== 1 ? 's' : ''}.`
+                });
 
-                const fieldListEl = bodyEl.createEl('ul');
+                const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                body.createDiv({ text: 'The following fields will be added (existing values are never overwritten):' });
+                const fieldListEl = body.createEl('ul');
                 for (const [key, val] of Object.entries(fieldsToInsert)) {
                     const valStr = Array.isArray(val) ? val.join(', ') : val;
                     fieldListEl.createEl('li', { text: valStr ? `${key}: ${valStr}` : `${key}: (empty)` });
                 }
 
-                const btnRow = modal.contentEl.createDiv({ cls: 'ert-audit-actions' });
-                const insertBtn = btnRow.createEl('button', {
-                    cls: 'ert-mod-cta',
-                    text: 'Insert',
-                    attr: { type: 'button' }
-                });
-                const cancelBtn = btnRow.createEl('button', {
-                    text: 'Cancel',
-                    attr: { type: 'button' }
-                });
+                const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
+                new ButtonComponent(footer).setButtonText('Insert').setCta().onClick(() => { modal.close(); resolve(true); });
+                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => { modal.close(); resolve(false); });
 
-                insertBtn.addEventListener('click', () => { modal.close(); resolve(true); });
-                cancelBtn.addEventListener('click', () => { modal.close(); resolve(false); });
                 modal.onClose = () => resolve(false);
                 modal.open();
             });
@@ -4441,8 +4522,8 @@ export function renderStoryBeatsSection(params: {
             if (result.failed > 0) parts.push(`${result.failed} failed`);
             new Notice(parts.join(', ') || 'No changes made.');
 
-            // Re-run audit to refresh
-            runAudit();
+            // Wait for Obsidian metadata cache to re-index before refreshing audit
+            setTimeout(() => runAudit(), 750);
         };
 
         const handleFillEmptyValues = async () => {
@@ -4461,32 +4542,33 @@ export function renderStoryBeatsSection(params: {
 
             const confirmed = await new Promise<boolean>((resolve) => {
                 const modal = new Modal(app);
-                modal.titleEl.setText(`Fill ${fillEmptyPlan!.filledFields} empty value${fillEmptyPlan!.filledFields !== 1 ? 's' : ''} in ${fillEmptyPlan!.files.length} beat note${fillEmptyPlan!.files.length !== 1 ? 's' : ''}`);
+                modal.titleEl.setText('');
+                modal.contentEl.empty();
+                modal.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+                modal.contentEl.addClass('ert-modal-container', 'ert-stack');
 
-                const bodyEl = modal.contentEl.createDiv({ cls: 'ert-stack' });
-                bodyEl.createDiv({ text: `Scope: ${fillEmptyPlan!.sourcePath}` });
-                bodyEl.createDiv({ text: 'Only existing empty keys are filled. No keys are added, removed, or overwritten.' });
+                const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
+                header.createSpan({ cls: 'ert-modal-badge', text: 'BEAT AUDIT' });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Fill empty values' });
+                header.createDiv({
+                    cls: 'ert-modal-subtitle',
+                    text: `Fill ${fillEmptyPlan!.filledFields} empty value${fillEmptyPlan!.filledFields !== 1 ? 's' : ''} in ${fillEmptyPlan!.files.length} beat note${fillEmptyPlan!.files.length !== 1 ? 's' : ''}.`
+                });
 
-                const fieldListEl = bodyEl.createEl('ul');
+                const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                body.createDiv({ text: `Scope: ${fillEmptyPlan!.sourcePath}`, cls: 'ert-modal-subtitle' });
+                body.createDiv({ text: 'Only existing empty keys are filled. No keys are added, removed, or overwritten.' });
+                const fieldListEl = body.createEl('ul');
                 fillEmptyPlan!.touchedKeys.forEach((key) => {
                     const val = fillEmptyPlan!.fieldsToInsert[key];
                     const valStr = Array.isArray(val) ? val.join(', ') : val;
                     fieldListEl.createEl('li', { text: `${key}: ${valStr}` });
                 });
 
-                const btnRow = modal.contentEl.createDiv({ cls: 'ert-audit-actions' });
-                const fillBtn = btnRow.createEl('button', {
-                    cls: 'ert-mod-cta',
-                    text: 'Fill',
-                    attr: { type: 'button' }
-                });
-                const cancelBtn = btnRow.createEl('button', {
-                    text: 'Cancel',
-                    attr: { type: 'button' }
-                });
+                const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
+                new ButtonComponent(footer).setButtonText('Fill').setCta().onClick(() => { modal.close(); resolve(true); });
+                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => { modal.close(); resolve(false); });
 
-                fillBtn.addEventListener('click', () => { modal.close(); resolve(true); });
-                cancelBtn.addEventListener('click', () => { modal.close(); resolve(false); });
                 modal.onClose = () => resolve(false);
                 modal.open();
             });
@@ -4517,7 +4599,25 @@ export function renderStoryBeatsSection(params: {
             if (result.failed > 0) parts.push(`${result.failed} failed`);
             new Notice(parts.join(', ') || 'No changes made.');
 
-            runAudit();
+            // Wait for Obsidian metadata cache to re-index before refreshing audit
+            setTimeout(() => runAudit(), 750);
+        };
+
+        // Allow the YAML fields editor to refresh the fill plan when defaults change
+        refreshFillEmptyPlanAfterDefaultsChange = () => {
+            if (!auditResult) return;
+            const activeBeatSystemKey = resolveBeatAuditSystemKey();
+            const files = collectFilesForAudit(app, noteType, plugin.settings, activeBeatSystemKey);
+            fillEmptyPlan = buildFillEmptyPlan(files, activeBeatSystemKey);
+            if (fillEmptyPlan) {
+                fillEmptyBtn?.classList.remove('ert-settings-hidden');
+                fillEmptyBtn?.setAttribute(
+                    'aria-label',
+                    `Fill ${fillEmptyPlan.filledFields} empty value${fillEmptyPlan.filledFields !== 1 ? 's' : ''} in ${fillEmptyPlan.files.length} note${fillEmptyPlan.files.length !== 1 ? 's' : ''}`
+                );
+            } else {
+                fillEmptyBtn?.classList.add('ert-settings-hidden');
+            }
         };
     }
 
@@ -4533,8 +4633,7 @@ export function renderStoryBeatsSection(params: {
             : plugin.settings.beatSystem ?? 'Save The Cat'
     );
 
-    // Scene audit panel (inside scene YAML section, after hover preview)
-    const sceneAuditContainer = yamlStack.createDiv({ cls: ERT_CLASSES.STACK });
+    // Scene audit panel (container already created above for DOM order: editor → audit → preview)
     const renderSceneAuditVisibility = () => {
         const visible = plugin.settings.enableAdvancedYamlEditor ?? false;
         sceneAuditContainer.toggleClass('ert-settings-hidden', !visible);

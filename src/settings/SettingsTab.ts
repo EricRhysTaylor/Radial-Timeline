@@ -855,7 +855,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         renderPovSection({ plugin: this.plugin, containerEl: povSection });
 
         const beatsWrapper = searchableContent.createDiv();
-        renderBeatPropertiesSection({ app: this.app, plugin: this.plugin, containerEl: beatsWrapper });
+        const backdropYamlTarget = createDiv();
 
         const publicationSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'publication' } });
         const publicationStack = publicationSection.createDiv({ cls: ERT_CLASSES.STACK });
@@ -871,6 +871,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         const backdropSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'backdrop' } });
         renderBackdropSection({ app: this.app, plugin: this.plugin, containerEl: backdropSection });
+        backdropSection.appendChild(backdropYamlTarget);
+
+        renderBeatPropertiesSection({ app: this.app, plugin: this.plugin, containerEl: beatsWrapper, backdropYamlTargetEl: backdropYamlTarget });
 
         const planetarySection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'planetary' } });
         renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl: planetarySection });

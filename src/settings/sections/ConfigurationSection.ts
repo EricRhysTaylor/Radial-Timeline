@@ -6,6 +6,7 @@ import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 import { IMPACT_FULL, IMPACT_DOMINANT_SUBPLOT } from '../SettingImpact';
 import { getSynopsisGenerationWordLimit, getSynopsisHoverLineLimit } from '../../utils/synopsisLimits';
+import { renderMetadataSection } from './MetadataSection';
 
 export function renderConfigurationSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { app, plugin, containerEl } = params;
@@ -19,6 +20,10 @@ export function renderConfigurationSection(params: { app: App; plugin: RadialTim
     applyErtHeaderLayout(configurationHeading);
 
     const stackEl = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
+
+    // Frontmatter remapper
+    const remapContainer = stackEl.createDiv({ cls: ERT_CLASSES.STACK });
+    renderMetadataSection({ app, plugin, containerEl: remapContainer });
 
     // 1. Synopsis max words (drives generation and hover display)
     new Settings(stackEl)

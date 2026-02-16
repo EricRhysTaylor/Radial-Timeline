@@ -326,7 +326,7 @@ export interface ProBeatSet {
   id: string;
   name: string;
   description: string;
-  beats: { name: string; act: number; purpose?: string; id?: string }[];
+  beats: { name: string; act: number; purpose?: string; id?: string; range?: string }[];
   beatYamlAdvanced: string;
   beatHoverMetadataFields: { key: string; label: string; icon: string; enabled: boolean }[];
 }
@@ -490,7 +490,7 @@ export const PRO_BEAT_SETS: ProBeatSet[] = [
  * Shared helper to construct the custom system object from settings.
  * Accepts any object that matches the minimal settings shape needed.
  */
-export function getCustomSystemFromSettings(settings: { customBeatSystemName?: string; customBeatSystemBeats?: { name: string; act: number; purpose?: string; id?: string }[] }): PlotSystemPreset {
+export function getCustomSystemFromSettings(settings: { customBeatSystemName?: string; customBeatSystemBeats?: { name: string; act: number; purpose?: string; id?: string; range?: string }[] }): PlotSystemPreset {
     const name = normalizeBeatSetNameInput(settings.customBeatSystemName ?? '', 'Custom');
     const beatObjs = settings.customBeatSystemBeats || [];
 
@@ -503,7 +503,7 @@ export function getCustomSystemFromSettings(settings: { customBeatSystemName?: s
         .map(b => ({
             name: b.name,
             description: typeof b.purpose === 'string' ? b.purpose.trim() : '',
-            range: '',
+            range: typeof b.range === 'string' ? b.range.trim() : '',
             act: b.act,
             id: b.id
         }));
