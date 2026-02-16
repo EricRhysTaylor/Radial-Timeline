@@ -40,6 +40,137 @@ function isSummaryStale(scene: SceneData, plugin: RadialTimelinePlugin): boolean
     return false;
 }
 
+function getCurrentModelId(plugin: RadialTimelinePlugin): string {
+    const provider = plugin.settings.defaultAiProvider || 'openai';
+    if (provider === 'anthropic') {
+        return plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
+    }
+    if (provider === 'gemini') {
+        return plugin.settings.geminiModelId || 'gemini-3-pro-preview';
+    }
+    if (provider === 'local') {
+        return plugin.settings.localModelId || 'local-model';
+    }
+    return plugin.settings.openaiModelId || 'gpt-5.1-chat-latest';
+}
+
+function setCaseInsensitiveField(frontmatter: Record<string, unknown>, key: string, value: string): void {
+    const lowerKey = key.toLowerCase();
+    for (const existingKey of Object.keys(frontmatter)) {
+        if (existingKey.toLowerCase() === lowerKey && existingKey !== key) {
+            delete frontmatter[existingKey];
+        }
+    }
+    frontmatter[key] = value;
+}
+
+function placeSummaryAfterSynopsis(frontmatter: Record<string, unknown>): void {
+    const keys = Object.keys(frontmatter);
+    const summaryKey = keys.find(key => key.toLowerCase() === 'summary');
+    const synopsisKey = keys.find(key => key.toLowerCase() === 'synopsis');
+    if (!summaryKey || !synopsisKey) return;
+
+    const summaryIndex = keys.indexOf(summaryKey);
+    const synopsisIndex = keys.indexOf(synopsisKey);
+    if (summaryIndex === synopsisIndex + 1) return;
+
+    const reorderedKeys = keys.filter(key => key !== summaryKey);
+    reorderedKeys.splice(reorderedKeys.indexOf(synopsisKey) + 1, 0, summaryKey);
+
+    const snapshot: Record<string, unknown> = {};
+    for (const key of reorderedKeys) {
+        snapshot[key] = frontmatter[key];
+    }
+    for (const key of Object.keys(frontmatter)) {
+        delete frontmatter[key];
+    }
+    Object.assign(frontmatter, snapshot);
+}
+
+async function persistSummaryForScene(
+    plugin: RadialTimelinePlugin,
+    scenePath: string,
+    summaryText: string,
+    synopsisText?: string
+): Promise<{ summary: string; synopsis?: string }> {
+    const file = plugin.app.vault.getAbstractFileByPath(scenePath);
+    if (!(file instanceof TFile)) {
+        throw new Error(`Scene file not found: ${scenePath}`);
+    }
+
+    const summary = String(summaryText ?? '').trim();
+    const synopsis = synopsisText ? String(synopsisText).trim() : undefined;
+    const modelId = getCurrentModelId(plugin);
+    const now = new Date();
+    const isoNow = now.toISOString();
+    const timestamp = now.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    } as Intl.DateTimeFormatOptions);
+
+    await plugin.app.fileManager.processFrontMatter(file, (fm) => {
+        const frontmatter = fm as Record<string, unknown>;
+
+        // Write canonical keys and clean up case-variant duplicates.
+        setCaseInsensitiveField(frontmatter, 'Summary', summary);
+        if (synopsis) {
+            setCaseInsensitiveField(frontmatter, 'Synopsis', synopsis);
+        }
+
+        // Keep Summary near Synopsis for scene authoring readability.
+        placeSummaryAfterSynopsis(frontmatter);
+
+        // Replace Summary Update / legacy Synopsis Update flag with timestamp
+        const summaryUpdateKeys = ['Summary Update', 'SummaryUpdate', 'summaryupdate'];
+        const legacyKeys = ['Synopsis Update', 'SynopsisUpdate', 'synopsisupdate'];
+
+        let updatedFlag = false;
+        for (const key of summaryUpdateKeys) {
+            if (key in frontmatter) {
+                frontmatter[key] = `${timestamp} by ${modelId}`;
+                updatedFlag = true;
+                break;
+            }
+        }
+        if (!updatedFlag) {
+            for (const key of legacyKeys) {
+                if (key in frontmatter) {
+                    delete frontmatter[key];
+                    frontmatter['Summary Update'] = `${timestamp} by ${modelId}`;
+                    updatedFlag = true;
+                    break;
+                }
+            }
+        }
+        if (!updatedFlag) {
+            frontmatter['Summary Update'] = `${timestamp} by ${modelId}`;
+        }
+    });
+
+    // Track internal timestamps per scene so stale checks remain accurate.
+    if (!plugin.settings.aiUpdateTimestamps) {
+        plugin.settings.aiUpdateTimestamps = {};
+    }
+    const sceneTimestamps = plugin.settings.aiUpdateTimestamps[scenePath] ?? {};
+    sceneTimestamps.summaryUpdated = isoNow;
+    if (synopsis) {
+        sceneTimestamps.synopsisUpdated = isoNow;
+    }
+    plugin.settings.aiUpdateTimestamps[scenePath] = sceneTimestamps;
+    try {
+        await plugin.saveSettings();
+    } catch (error) {
+        // Frontmatter writes are already committed; keep processing even if settings persistence fails.
+        console.warn('Failed to persist summary timestamp settings:', error);
+    }
+
+    return { summary, synopsis };
+}
+
 export async function calculateSynopsisSceneCount(
     plugin: RadialTimelinePlugin,
     vault: Vault,
@@ -81,6 +212,13 @@ export async function processSynopsisByManuscriptOrder(
     plugin: RadialTimelinePlugin,
     vault: Vault
 ): Promise<void> {
+    // If processing is already active, reopen that modal instead of creating a new setup flow.
+    if (plugin.activeBeatsModal && plugin.activeBeatsModal.isProcessing) {
+        plugin.activeBeatsModal.open();
+        new Notice('Reopening active processing session...');
+        return;
+    }
+
     // 1. Open Modal
     const modal = new SceneAnalysisProcessingModal(
         plugin.app,
@@ -146,8 +284,6 @@ async function runSynopsisBatch(
     if (modal.setProcessingQueue) modal.setProcessingQueue(queueItems);
 
     let processedCount = 0;
-    const summaryResults = new Map<string, string>(); // path -> newSummary
-    const synopsisResults = new Map<string, string>(); // path -> newSynopsis (only if checkbox enabled)
 
     for (const scene of scenesToProcess) {
         if (modal.isAborted()) break;
@@ -191,19 +327,7 @@ async function runSynopsisBatch(
                 }
 
                 if (newSummary) {
-                    summaryResults.set(scene.file.path, newSummary);
-                    processedCount++;
-
-                    // Update preview with final result
-                    if (modal.setSynopsisPreview) {
-                        modal.setSynopsisPreview(currentSummary, newSummary);
-                    }
-                    if (modal.updateProgress) {
-                        modal.updateProgress(processedCount, scenesToProcess.length, sceneName);
-                    }
-                    if (modal.markQueueStatus) {
-                        modal.markQueueStatus(scene.file.path, 'success');
-                    }
+                    let newSynopsis: string | undefined;
 
                     // --- Step 2: Generate Synopsis (optional, only if checkbox enabled) ---
                     if (alsoUpdateSynopsis) {
@@ -220,16 +344,36 @@ async function runSynopsisBatch(
                                 const synJsonMatch = synopsisResult.result.match(/\{[\s\S]*\}/);
                                 const synJsonStr = synJsonMatch ? synJsonMatch[0] : synopsisResult.result;
                                 const synParsed = JSON.parse(synJsonStr);
-                                const newSynopsis = synParsed.synopsis || '';
-                                if (newSynopsis) {
-                                    synopsisResults.set(scene.file.path, newSynopsis);
+                                const parsedSynopsis = synParsed.synopsis || '';
+                                if (parsedSynopsis) {
+                                    newSynopsis = parsedSynopsis;
                                 }
                             }
                         } catch (synErr) {
-                            // Synopsis generation failure is non-fatal — Summary still succeeds
+                            // Synopsis generation failure is non-fatal — Summary still succeeds.
                             console.warn(`Synopsis generation failed for ${sceneName}:`, synErr);
                             modal.addWarning(`Synopsis generation failed for ${sceneName} (Summary was saved)`);
                         }
+                    }
+
+                    try {
+                        const persisted = await persistSummaryForScene(plugin, scene.file.path, newSummary, newSynopsis);
+                        processedCount++;
+
+                        // Update preview with final result
+                        if (modal.setSynopsisPreview) {
+                            modal.setSynopsisPreview(currentSummary, persisted.summary);
+                        }
+                        if (modal.updateProgress) {
+                            modal.updateProgress(processedCount, scenesToProcess.length, sceneName);
+                        }
+                        if (modal.markQueueStatus) {
+                            modal.markQueueStatus(scene.file.path, 'success');
+                        }
+                    } catch (saveError) {
+                        const message = saveError instanceof Error ? saveError.message : String(saveError);
+                        modal.addError(`Save error for ${sceneName}: ${message}`);
+                        if (modal.markQueueStatus) modal.markQueueStatus(scene.file.path, 'error');
                     }
                 } else {
                     modal.addError(`Empty result: ${sceneName}`);
@@ -248,8 +392,5 @@ async function runSynopsisBatch(
         await new Promise(r => window.setTimeout(r, 100));
     }
 
-    // Processing finished. Store results in modal for Apply phase.
-    if (!modal.isAborted() && summaryResults.size > 0) {
-        modal.setSynopsisResults(summaryResults, synopsisResults);
-    }
+    // Results are written per-scene during processing; nothing left to apply at completion.
 }
