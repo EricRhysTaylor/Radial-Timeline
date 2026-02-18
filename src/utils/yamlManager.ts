@@ -113,7 +113,12 @@ interface FMInfo {
  * Delete specified frontmatter fields from the supplied files.
  *
  * Safety guarantees:
- * - Never deletes fields in `protectedKeys` (template-defined keys)
+ * - Never deletes fields in `protectedKeys` (template-defined keys).
+ *   Callers MUST populate protectedKeys with at least the merged schema keys
+ *   (from `getTemplateParts().merged`) and RESERVED_OBSIDIAN_KEYS.
+ * - Dynamic suffix zone keys (Gossamer, Pulse timestamps, scene analysis, etc.)
+ *   should be filtered out by the caller using `getExcludeKeyPredicate()` before
+ *   passing `fieldsToDelete`.
  * - Skips files flagged as dangerous by the safety scanner
  * - When `onlyEmpty` is true, only removes fields with empty values
  * - Uses processFrontMatter() for atomic updates
@@ -367,8 +372,16 @@ async function reorderSingleFile(
  * Build the final key list given the current keys and the canonical order.
  *
  * Strategy:
- * 1. Keys that appear in `canonicalOrder`, in that order
- * 2. Remaining keys not in `canonicalOrder`, in their original order
+ * 1. **Template zone** – Keys that appear in `canonicalOrder`, placed in that order.
+ * 2. **Dynamic suffix zone** – Remaining keys NOT in `canonicalOrder`, preserved in
+ *    their original relative order and appended after the template keys.
+ *
+ * The "dynamic suffix zone" is where AI-generated and plugin-injected fields
+ * (Gossamer scores, scene analysis, Pulse timestamps, etc.) naturally reside.
+ * Because these keys are never part of the canonical template order, they are
+ * always placed at the end and their internal ordering is never disturbed.
+ * This contract is critical: callers (delete, reorder, audit) must never
+ * include dynamic/excluded keys in `canonicalOrder` to preserve this guarantee.
  */
 function buildOrderedKeyList(
     currentKeys: string[],

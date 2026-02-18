@@ -1,12 +1,15 @@
 /**
- * Shared YAML template parsing utilities.
+ * Shared YAML template parsing utilities — single source of truth.
  *
- * Extracted from BeatPropertiesSection.ts so that the YAML Audit, Backfill,
- * and all three editor UIs (Scene / Beat / Backdrop) share one source of truth.
+ * All template resolution for Scene / Beat / Backdrop flows through
+ * `getTemplateParts()` and `getMergedTemplate()`.  Every creation path,
+ * audit, backfill, delete, and reorder operation MUST use these functions
+ * so that the canonical field order is consistent everywhere.
  */
 import { parseYaml } from 'obsidian';
 import type { RadialTimelineSettings, BeatSystemConfig } from '../types/settings';
-import { getBeatConfigForSystem } from './beatsTemplates';
+import { getBeatConfigForSystem, sanitizeBeatAdvancedForWrite } from './beatsTemplates';
+import { mergeTemplates } from './sceneGenerator';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 
 // ─── Types ──────────────────────────────────────────────────────────────
@@ -78,28 +81,116 @@ export function mergeOrders(primary: string[], secondary: string[]): string[] {
     return result;
 }
 
+// ─── Reserved keys ──────────────────────────────────────────────────────
+
+/** Obsidian-internal keys injected into the metadata cache — never user-editable. */
+export const RESERVED_OBSIDIAN_KEYS = new Set(['position', 'cssclasses', 'tags', 'aliases']);
+
+// ─── Template parts — single source of truth ───────────────────────────
+
+/** Resolved template strings for a note type. */
+export interface TemplateParts {
+    /** Raw base template string (placeholders intact). */
+    base: string;
+    /** Raw advanced template string (placeholders intact, empty if none). */
+    advanced: string;
+    /** Fully merged template string (base + advanced, via `mergeTemplates`). */
+    merged: string;
+}
+
+/**
+ * Resolve the base, advanced, and merged template strings for a note type.
+ *
+ * This is the **single source of truth** for template resolution.
+ * Every creation path, audit, backfill, delete, and reorder operation
+ * MUST use this (or its wrapper `getMergedTemplate`) so that the
+ * canonical field order is consistent everywhere.
+ */
+export function getTemplateParts(
+    noteType: NoteType,
+    settings: RadialTimelineSettings,
+    beatSystemKey?: string
+): TemplateParts {
+    switch (noteType) {
+        case 'Scene': {
+            const base = settings.sceneYamlTemplates?.base
+                ?? DEFAULT_SETTINGS.sceneYamlTemplates!.base;
+            const advanced = settings.sceneYamlTemplates?.advanced
+                ?? DEFAULT_SETTINGS.sceneYamlTemplates!.advanced;
+            const merged = advanced.trim()
+                ? mergeTemplates(base, advanced)
+                : base;
+            return { base, advanced, merged };
+        }
+        case 'Beat': {
+            const configuredBase = settings.beatYamlTemplates?.base
+                ?? DEFAULT_SETTINGS.beatYamlTemplates!.base;
+            const base = configuredBase.replace(/^Description:/gm, 'Purpose:');
+            const config = getBeatConfigForSystem(settings, beatSystemKey);
+            const advanced = sanitizeBeatAdvancedForWrite(config.beatYamlAdvanced);
+            const merged = advanced.trim()
+                ? mergeTemplates(base, advanced)
+                : base;
+            return { base, advanced, merged };
+        }
+        case 'Backdrop': {
+            const templates = settings.backdropYamlTemplates
+                ?? DEFAULT_SETTINGS.backdropYamlTemplates;
+            const base = templates?.base
+                ?? 'Class: Backdrop\nWhen:\nEnd:\nContext:';
+            const advancedRaw = templates?.advanced ?? '';
+            // Filter deprecated Synopsis from advanced writes
+            const advanced = filterDeprecatedBackdropKeys(advancedRaw);
+            const merged = advanced.trim()
+                ? mergeTemplates(base, advanced)
+                : base;
+            return { base, advanced, merged };
+        }
+    }
+}
+
+/**
+ * Return the fully merged template string for a note type.
+ * Convenience wrapper around `getTemplateParts().merged`.
+ */
+export function getMergedTemplate(
+    noteType: NoteType,
+    settings: RadialTimelineSettings,
+    beatSystemKey?: string
+): string {
+    return getTemplateParts(noteType, settings, beatSystemKey).merged;
+}
+
+/** Filter deprecated keys (Synopsis) from backdrop advanced templates. */
+function filterDeprecatedBackdropKeys(advancedRaw: string): string {
+    const lines = advancedRaw.split('\n');
+    const result: string[] = [];
+    let skipUntilNextField = false;
+    for (const line of lines) {
+        const fieldMatch = line.match(/^([A-Za-z][A-Za-z0-9 _'-]*):/);
+        if (fieldMatch) {
+            const fieldName = fieldMatch[1].trim();
+            if (fieldName === 'Synopsis') {
+                skipUntilNextField = true;
+                continue;
+            }
+            skipUntilNextField = false;
+            result.push(line);
+            continue;
+        }
+        if (skipUntilNextField) continue;
+        result.push(line);
+    }
+    return result.join('\n');
+}
+
 // ─── High-level per-note-type helpers ───────────────────────────────────
 
 /**
  * Return the base template keys for a given note type.
  */
 export function getBaseKeys(noteType: NoteType, settings: RadialTimelineSettings): string[] {
-    switch (noteType) {
-        case 'Scene':
-            return extractKeysInOrder(
-                settings.sceneYamlTemplates?.base ?? DEFAULT_SETTINGS.sceneYamlTemplates!.base
-            );
-        case 'Beat':
-            return extractKeysInOrder(
-                DEFAULT_SETTINGS.beatYamlTemplates!.base
-            );
-        case 'Backdrop':
-            return extractKeysInOrder(
-                settings.backdropYamlTemplates?.base
-                    ?? DEFAULT_SETTINGS.backdropYamlTemplates?.base
-                    ?? 'Class: Backdrop\nWhen:\nEnd:\nContext:'
-            );
-    }
+    return extractKeysInOrder(getTemplateParts(noteType, settings).base);
 }
 
 /**
@@ -111,41 +202,25 @@ export function getCustomKeys(
     settings: RadialTimelineSettings,
     beatSystemKey?: string
 ): string[] {
-    const baseKeys = getBaseKeys(noteType, settings);
-
-    switch (noteType) {
-        case 'Scene': {
-            const adv = settings.sceneYamlTemplates?.advanced
-                ?? DEFAULT_SETTINGS.sceneYamlTemplates!.advanced;
-            return extractKeysInOrder(adv).filter(k => !baseKeys.includes(k));
-        }
-        case 'Beat': {
-            const config = getBeatConfigForSystem(settings, beatSystemKey);
-            return extractKeysInOrder(config.beatYamlAdvanced).filter(k =>
-                !baseKeys.includes(k) && k !== 'When' && k !== 'Description'
-            );
-        }
-        case 'Backdrop': {
-            const adv = settings.backdropYamlTemplates?.advanced ?? '';
-            return extractKeysInOrder(adv).filter(k =>
-                !baseKeys.includes(k) && k !== 'Synopsis'
-            );
-        }
-    }
+    const parts = getTemplateParts(noteType, settings, beatSystemKey);
+    const baseKeys = extractKeysInOrder(parts.base);
+    const advKeys = extractKeysInOrder(parts.advanced);
+    return advKeys.filter(k => !baseKeys.includes(k));
 }
 
 /**
- * Compute the canonical key order for a note type: base keys first,
- * then custom keys, both in their template-defined order.
+ * Compute the canonical key order for a note type.
+ *
+ * Delegates to `getTemplateParts().merged` so the order mirrors the
+ * exact merged template that note-creation paths produce.
  */
 export function computeCanonicalOrder(
     noteType: NoteType,
     settings: RadialTimelineSettings,
     beatSystemKey?: string
 ): string[] {
-    return mergeOrders(
-        getBaseKeys(noteType, settings),
-        getCustomKeys(noteType, settings, beatSystemKey)
+    return extractKeysInOrder(
+        getTemplateParts(noteType, settings, beatSystemKey).merged
     );
 }
 
@@ -159,27 +234,15 @@ export function getCustomDefaults(
     settings: RadialTimelineSettings,
     beatSystemKey?: string
 ): Record<string, TemplateEntryValue> {
-    const customKeys = getCustomKeys(noteType, settings, beatSystemKey);
-    let advancedYaml = '';
+    const parts = getTemplateParts(noteType, settings, beatSystemKey);
+    const customKeys = extractKeysInOrder(parts.advanced).filter(
+        k => !extractKeysInOrder(parts.base).includes(k)
+    );
 
-    switch (noteType) {
-        case 'Scene':
-            advancedYaml = settings.sceneYamlTemplates?.advanced
-                ?? DEFAULT_SETTINGS.sceneYamlTemplates!.advanced;
-            break;
-        case 'Beat':
-            advancedYaml = getBeatConfigForSystem(settings, beatSystemKey).beatYamlAdvanced;
-            break;
-        case 'Backdrop':
-            advancedYaml = settings.backdropYamlTemplates?.advanced ?? '';
-            break;
-    }
-
-    const parsed = safeParseYaml(advancedYaml);
+    const parsed = safeParseYaml(parts.advanced);
     const defaults: Record<string, TemplateEntryValue> = {};
     for (const key of customKeys) {
         const val = parsed[key];
-        // Normalize undefined/null → '' to prevent `key: null` writes
         defaults[key] = val ?? '';
     }
     return defaults;
@@ -208,7 +271,7 @@ export function getExcludeKeyPredicate(noteType: NoteType): (key: string) => boo
                 // Legacy beat narrative field (renamed to Purpose)
                 if (key === 'Description') return true;
                 // Obsidian-internal keys
-                if (key === 'position' || key === 'cssclasses' || key === 'tags' || key === 'aliases') return true;
+                if (RESERVED_OBSIDIAN_KEYS.has(key)) return true;
                 return false;
             };
         case 'Scene':
@@ -222,8 +285,10 @@ export function getExcludeKeyPredicate(noteType: NoteType): (key: string) => boo
                 if (key === legacyNarrativeKey) return true;
                 // Repair metadata
                 if (['WhenSource', 'WhenConfidence', 'DurationSource', 'NeedsReview'].includes(key)) return true;
+                // AI-generated timestamp fields (written/deleted by purgeScenesBeats)
+                if (key === 'Pulse Last Updated' || key === 'Beats Last Updated') return true;
                 // Obsidian-internal keys
-                if (key === 'position' || key === 'cssclasses' || key === 'tags' || key === 'aliases') return true;
+                if (RESERVED_OBSIDIAN_KEYS.has(key)) return true;
                 return false;
             };
         case 'Backdrop':
@@ -231,7 +296,7 @@ export function getExcludeKeyPredicate(noteType: NoteType): (key: string) => boo
                 // Legacy backdrop narrative field (renamed to Context)
                 if (key === 'Synopsis') return true;
                 // Obsidian-internal keys
-                if (key === 'position' || key === 'cssclasses' || key === 'tags' || key === 'aliases') return true;
+                if (RESERVED_OBSIDIAN_KEYS.has(key)) return true;
                 return false;
             };
     }

@@ -711,13 +711,13 @@ export default class RadialTimelinePlugin extends Plugin {
                 }
             }
         }
-        // Ensure base template includes Beat Id placeholder
+        // Ensure base template includes Beat Id placeholder (prepend before Class)
         if (this.settings.beatYamlTemplates?.base && !this.settings.beatYamlTemplates.base.includes('Beat Id:')) {
-            this.settings.beatYamlTemplates.base += '\nBeat Id: {{BeatId}}';
+            this.settings.beatYamlTemplates.base = `Beat Id: {{BeatId}}\n${this.settings.beatYamlTemplates.base}`;
             beatIdMigrated = true;
             console.debug('[SchemaMigration]', {
-                event: 'beat_id_template_appended',
-                action: 'appended Beat Id placeholder to beat base template',
+                event: 'beat_id_template_prepended',
+                action: 'prepended Beat Id placeholder to beat base template',
             });
         }
 

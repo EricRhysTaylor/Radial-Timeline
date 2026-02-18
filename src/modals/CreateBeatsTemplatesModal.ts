@@ -59,7 +59,7 @@ export class CreateBeatSetModal extends Modal {
     // Substitute placeholders with human-readable sample values.
     let previewYaml = this.beatTemplate;
     if (!previewYaml.trim()) {
-      previewYaml = `Class: Beat\nAct: 1\nPurpose: [Beat purpose]\nBeat Model: ${this.beatSystem}\nRange: [Ideal momentum range]\nBeat Id: [auto-assigned]`;
+      previewYaml = `Beat Id: [auto-assigned]\nClass: Beat\nAct: 1\nPurpose: [Beat purpose]\nBeat Model: ${this.beatSystem}\nRange: [Ideal momentum range]`;
     } else {
       previewYaml = previewYaml
         .replace(/\{\{Act\}\}/g, '1')

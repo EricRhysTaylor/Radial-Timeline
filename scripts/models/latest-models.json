@@ -1,11 +1,17 @@
 {
-  "generatedAt": "2026-02-16T14:12:22.537Z",
+  "generatedAt": "2026-02-18T19:41:46.097Z",
   "summary": {
-    "anthropic": 10,
-    "openai": 114,
+    "anthropic": 11,
+    "openai": 113,
     "gemini": 45
   },
   "anthropic": [
+    {
+      "id": "claude-sonnet-4-6",
+      "display_name": "Claude Sonnet 4.6",
+      "created_at": "2026-02-17T00:00:00Z",
+      "type": "model"
+    },
     {
       "id": "claude-opus-4-6",
       "display_name": "Claude Opus 4.6",
@@ -482,11 +488,6 @@
       "id": "gpt-4o-audio-preview",
       "owned_by": "system",
       "created": 1727460443
-    },
-    {
-      "id": "chatgpt-4o-latest",
-      "owned_by": "system",
-      "created": 1723515131
     },
     {
       "id": "gpt-4o-2024-08-06",

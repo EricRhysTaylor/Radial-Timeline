@@ -3,7 +3,7 @@ import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
 import { CreateBeatSetModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem, getCustomSystemFromSettings, PRO_BEAT_SETS } from '../../utils/beatsSystems';
-import { createBeatNotesFromSet, getMergedBeatYaml, getBeatConfigForSystem, ensureBeatConfigForSystem, spreadBeatsAcrossScenes } from '../../utils/beatsTemplates';
+import { createBeatNotesFromSet, getBeatConfigForSystem, ensureBeatConfigForSystem, spreadBeatsAcrossScenes } from '../../utils/beatsTemplates';
 import type { BeatSystemConfig } from '../../types/settings';
 import { DEFAULT_SETTINGS } from '../defaults';
 
@@ -39,6 +39,9 @@ import {
     getCustomKeys,
     getCustomDefaults,
     computeCanonicalOrder,
+    getTemplateParts,
+    getExcludeKeyPredicate,
+    RESERVED_OBSIDIAN_KEYS,
 } from '../../utils/yamlTemplateNormalize';
 import { runYamlAudit, collectFilesForAudit, formatAuditReport, type YamlAuditResult, type NoteAuditEntry } from '../../utils/yamlAudit';
 import { runYamlBackfill, runYamlFillEmptyValues, type BackfillResult } from '../../utils/yamlBackfill';
@@ -686,7 +689,7 @@ export function renderStoryBeatsSection(params: {
 
     /** Produce a lightweight hash string from the current custom beat state. */
     const snapshotHash = (): string => {
-        const beats = (plugin.settings.customBeatSystemBeats ?? []).map(b => `${b.name}|${b.act}|${(b as { purpose?: string }).purpose ?? ''}`).join(';');
+        const beats = (plugin.settings.customBeatSystemBeats ?? []).map(b => `${b.name}|${b.act}|${(b as { purpose?: string }).purpose ?? ''}|${(b as { range?: string }).range ?? ''}`).join(';');
         const configKey = `custom:${plugin.settings.activeCustomBeatSystemId ?? 'default'}`;
         const cfg = plugin.settings.beatSystemConfigs?.[configKey];
         const yaml = cfg?.beatYamlAdvanced ?? '';
@@ -4159,6 +4162,17 @@ export function renderStoryBeatsSection(params: {
             deleteExtraBtn.classList.add('ert-settings-hidden');
         });
 
+        // Delete advanced fields button (hidden until advanced template has keys)
+        let deleteAdvancedBtn: HTMLButtonElement | undefined;
+        auditSetting.addButton(button => {
+            button
+                .setButtonText('Delete advanced fields')
+                .setTooltip('Remove advanced template fields from existing notes (base fields are preserved)')
+                .onClick(() => void handleDeleteAdvancedFields());
+            deleteAdvancedBtn = button.buttonEl;
+            deleteAdvancedBtn.classList.add('ert-settings-hidden');
+        });
+
         // Reorder fields button (hidden until audit finds order drift)
         let reorderBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
@@ -4282,6 +4296,29 @@ export function renderStoryBeatsSection(params: {
                 );
             } else {
                 deleteExtraBtn?.classList.add('ert-settings-hidden');
+            }
+
+            // Show delete-advanced button when an advanced template exists and
+            // at least one safe note has any of those advanced keys
+            const advancedKeySet = new Set(getCustomKeys(noteType, plugin.settings, activeBeatSystemKey));
+            if (advancedKeySet.size > 0) {
+                const notesWithAdvKeys = auditResult.notes.filter(n => {
+                    if (n.safetyResult?.status === 'dangerous') return false;
+                    const cache = app.metadataCache.getFileCache(n.file);
+                    if (!cache?.frontmatter) return false;
+                    return Object.keys(cache.frontmatter).some(k => advancedKeySet.has(k));
+                });
+                if (notesWithAdvKeys.length > 0) {
+                    deleteAdvancedBtn?.classList.remove('ert-settings-hidden');
+                    deleteAdvancedBtn?.setAttribute(
+                        'aria-label',
+                        `Delete advanced fields from ${notesWithAdvKeys.length} note${notesWithAdvKeys.length !== 1 ? 's' : ''}`
+                    );
+                } else {
+                    deleteAdvancedBtn?.classList.add('ert-settings-hidden');
+                }
+            } else {
+                deleteAdvancedBtn?.classList.add('ert-settings-hidden');
             }
 
             // Show reorder button when audit finds order drift (and not all files are unsafe)
@@ -4720,16 +4757,25 @@ export function renderStoryBeatsSection(params: {
             );
             if (notesWithExtra.length === 0) return;
 
-            // Build protected key set (template keys that must never be deleted)
-            const baseKeys = getBaseKeys(noteType, plugin.settings);
-            const customKeys = getCustomKeys(noteType, plugin.settings, activeBeatSystemKey);
-            const protectedKeys = new Set([...baseKeys, ...customKeys]);
+            // Build protected key set from merged schema (base + advanced)
+            const templateParts = getTemplateParts(noteType, plugin.settings, activeBeatSystemKey);
+            const mergedKeys = sharedExtractKeysInOrder(templateParts.merged);
+            const isExcluded = getExcludeKeyPredicate(noteType);
+            const protectedKeys = new Set([
+                ...mergedKeys,
+                ...RESERVED_OBSIDIAN_KEYS,
+            ]);
 
-            // Collect all extra key names
+            // Collect extra keys — skip dynamic/excluded and reserved
             const allExtraKeys = new Set<string>();
             for (const n of notesWithExtra) {
-                for (const k of n.extraKeys) allExtraKeys.add(k);
+                for (const k of n.extraKeys) {
+                    if (!isExcluded(k) && !RESERVED_OBSIDIAN_KEYS.has(k)) {
+                        allExtraKeys.add(k);
+                    }
+                }
             }
+            if (allExtraKeys.size === 0) return;
 
             // Preview what will be deleted
             const targetFiles = notesWithExtra.map(n => n.file);
@@ -4880,6 +4926,200 @@ export function renderStoryBeatsSection(params: {
             if (result.safetySkipped > 0) parts.push(`${result.safetySkipped} skipped (unsafe)`);
             if (result.failed > 0) parts.push(`${result.failed} failed`);
             new Notice(parts.join(', ') || 'No changes made.');
+
+            setTimeout(() => runAudit(), 750);
+        };
+
+        // ─── Delete advanced fields action ──────────────────────────────
+        const handleDeleteAdvancedFields = async () => {
+            if (!auditResult) return;
+
+            const activeBeatSystemKey = resolveBeatAuditSystemKey();
+            const parts = getTemplateParts(noteType, plugin.settings, activeBeatSystemKey);
+            const baseKeySet = new Set(sharedExtractKeysInOrder(parts.base));
+            const advancedKeys = sharedExtractKeysInOrder(parts.advanced)
+                .filter(k => !baseKeySet.has(k));
+            if (advancedKeys.length === 0) return;
+
+            const isExcluded = getExcludeKeyPredicate(noteType);
+            // Advanced keys eligible for deletion (not base, not excluded, not reserved)
+            const deletableAdvKeys = advancedKeys.filter(
+                k => !isExcluded(k) && !RESERVED_OBSIDIAN_KEYS.has(k)
+            );
+            if (deletableAdvKeys.length === 0) return;
+
+            // Find notes that have at least one of these advanced keys
+            const advKeySet = new Set(deletableAdvKeys);
+            const targetNotes = auditResult.notes.filter(n => {
+                if (n.safetyResult?.status === 'dangerous') return false;
+                const cache = app.metadataCache.getFileCache(n.file);
+                if (!cache?.frontmatter) return false;
+                return Object.keys(cache.frontmatter).some(k => advKeySet.has(k));
+            });
+            if (targetNotes.length === 0) return;
+
+            // Protected set: base keys + reserved + dynamic
+            const protectedKeys = new Set([
+                ...baseKeySet,
+                ...RESERVED_OBSIDIAN_KEYS,
+            ]);
+
+            // Preview
+            const targetFiles = targetNotes.map(n => n.file);
+            const preview = previewDeleteFields(
+                app, targetFiles, deletableAdvKeys, protectedKeys
+            );
+
+            // Count empty vs valued
+            let emptyFieldCount = 0;
+            let valuedFieldCount = 0;
+            const valuedFieldSamples: { key: string; value: string }[] = [];
+            for (const [, detail] of preview) {
+                for (const field of detail.fields) {
+                    const val = detail.values[field];
+                    const isEmpty = val === undefined || val === null
+                        || (typeof val === 'string' && val.trim() === '')
+                        || (Array.isArray(val) && val.length === 0);
+                    if (isEmpty) {
+                        emptyFieldCount++;
+                    } else {
+                        valuedFieldCount++;
+                        if (valuedFieldSamples.length < 8) {
+                            const valStr = Array.isArray(val) ? val.join(', ') : String(val);
+                            valuedFieldSamples.push({
+                                key: field,
+                                value: valStr.length > 60 ? valStr.slice(0, 57) + '...' : valStr
+                            });
+                        }
+                    }
+                }
+            }
+
+            const totalFieldCount = emptyFieldCount + valuedFieldCount;
+            const hasValuedFields = valuedFieldCount > 0;
+
+            const unsafeSkippedCount = auditResult.notes.filter(n =>
+                n.safetyResult?.status === 'dangerous'
+            ).length;
+
+            // Confirmation modal
+            const confirmed = await new Promise<boolean>((resolve) => {
+                const modal = new Modal(app);
+                modal.titleEl.setText('');
+                modal.contentEl.empty();
+                modal.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+                modal.contentEl.addClass('ert-modal-container', 'ert-stack');
+
+                const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
+                header.createSpan({ cls: 'ert-modal-badge', text: 'YAML MANAGER' });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Delete advanced fields' });
+                header.createDiv({
+                    cls: 'ert-modal-subtitle',
+                    text: `Remove ${totalFieldCount} advanced field${totalFieldCount !== 1 ? 's' : ''} from ${targetNotes.length} ${noteType.toLowerCase()} note${targetNotes.length !== 1 ? 's' : ''}. Base fields are never touched.`
+                });
+
+                if (unsafeSkippedCount > 0) {
+                    const banner = modal.contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--danger' });
+                    banner.createSpan({ text: `${unsafeSkippedCount} note${unsafeSkippedCount !== 1 ? 's' : ''} with unsafe frontmatter excluded from this operation.` });
+                }
+
+                const suspiciousCount = targetNotes.filter(n => n.safetyResult?.status === 'suspicious').length;
+                if (suspiciousCount > 0) {
+                    const banner = modal.contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });
+                    banner.createSpan({ text: `${suspiciousCount} note${suspiciousCount !== 1 ? 's have' : ' has'} suspicious frontmatter — review carefully.` });
+                }
+
+                const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+
+                if (emptyFieldCount > 0) {
+                    body.createDiv({ text: `${emptyFieldCount} empty field${emptyFieldCount !== 1 ? 's' : ''} will be removed (no data loss).` });
+                }
+
+                if (hasValuedFields) {
+                    const warningEl = body.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });
+                    warningEl.createDiv({
+                        text: `${valuedFieldCount} field${valuedFieldCount !== 1 ? 's' : ''} contain values that will be permanently deleted:`
+                    });
+                    const sampleList = warningEl.createEl('ul');
+                    for (const sample of valuedFieldSamples) {
+                        sampleList.createEl('li', { text: `${sample.key}: ${sample.value}` });
+                    }
+                    if (valuedFieldCount > valuedFieldSamples.length) {
+                        sampleList.createEl('li', { text: `... and ${valuedFieldCount - valuedFieldSamples.length} more` });
+                    }
+                }
+
+                const fieldListEl = body.createDiv();
+                fieldListEl.createDiv({ text: 'Advanced fields to delete:', cls: 'ert-modal-subtitle' });
+                const ul = fieldListEl.createEl('ul');
+                for (const key of deletableAdvKeys) {
+                    ul.createEl('li', { text: key });
+                }
+
+                // Base fields preserved notice
+                const preserveNotice = body.createDiv({ cls: 'ert-modal-subtitle' });
+                preserveNotice.style.opacity = '0.7';
+                preserveNotice.style.marginTop = '8px';
+                preserveNotice.setText(`Base fields preserved: ${[...baseKeySet].join(', ')}`);
+
+                // Typed confirmation for valued fields
+                let confirmInput: HTMLInputElement | undefined;
+                if (hasValuedFields) {
+                    const confirmEl = body.createDiv({ cls: 'ert-modal-confirm-type' });
+                    confirmEl.createDiv({ text: 'Type DELETE to confirm:', cls: 'ert-modal-subtitle' });
+                    confirmInput = confirmEl.createEl('input', { type: 'text', attr: { placeholder: 'DELETE' } });
+                }
+
+                const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
+                const deleteBtn = new ButtonComponent(footer)
+                    .setButtonText('Delete advanced fields')
+                    .setWarning()
+                    .onClick(() => {
+                        if (hasValuedFields && confirmInput?.value.trim() !== 'DELETE') {
+                            confirmInput?.classList.add('ert-input-error');
+                            confirmInput?.focus();
+                            return;
+                        }
+                        resolve(true);
+                        modal.close();
+                    });
+                if (hasValuedFields) {
+                    deleteBtn.setDisabled(true);
+                    confirmInput?.addEventListener('input', () => {
+                        deleteBtn.setDisabled(confirmInput?.value.trim() !== 'DELETE');
+                        confirmInput?.classList.remove('ert-input-error');
+                    });
+                }
+                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => { resolve(false); modal.close(); });
+
+                modal.onClose = () => resolve(false);
+                modal.open();
+            });
+
+            if (!confirmed) return;
+
+            const result: DeleteResult = await runYamlDeleteFields({
+                app,
+                files: targetFiles,
+                fieldsToDelete: deletableAdvKeys,
+                protectedKeys,
+                safetyResults: auditResult.safetyResults,
+            });
+
+            console.debug('[YamlManager] yaml_delete_advanced_execute', {
+                noteType,
+                deleted: result.deleted,
+                skipped: result.skipped,
+                failed: result.failed,
+                safetySkipped: result.safetySkipped,
+                advancedKeys: deletableAdvKeys,
+            });
+
+            const msgParts: string[] = [];
+            if (result.deleted > 0) msgParts.push(`Cleaned ${result.deleted} note${result.deleted !== 1 ? 's' : ''}`);
+            if (result.safetySkipped > 0) msgParts.push(`${result.safetySkipped} skipped (unsafe)`);
+            if (result.failed > 0) msgParts.push(`${result.failed} failed`);
+            new Notice(msgParts.join(', ') || 'No changes made.');
 
             setTimeout(() => runAudit(), 750);
         };
@@ -5496,7 +5736,7 @@ export function renderStoryBeatsSection(params: {
             actSceneNumbers.set(act, range.sceneNumbers);
         });
         
-        const beatTemplate = getMergedBeatYaml(plugin.settings);
+        const beatTemplate = getTemplateParts('Beat', plugin.settings).merged;
         const modal = new CreateBeatSetModal(
             app,
             plugin,

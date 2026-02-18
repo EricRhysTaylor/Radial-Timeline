@@ -192,12 +192,12 @@ Shift:
 Iteration:`
     },
     beatYamlTemplates: {
-        base: `Class: Beat
+        base: `Beat Id: {{BeatId}}
+Class: Beat
 Act: {{Act}}
 Purpose: {{Purpose}}
 Beat Model: {{BeatModel}}
-Range: {{Range}}
-Beat Id: {{BeatId}}`,
+Range: {{Range}}`,
         advanced: ``
     },
     bookDesignerTemplates: [],

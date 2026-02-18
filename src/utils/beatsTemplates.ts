@@ -186,8 +186,8 @@ function buildBeatBody(beatInfo: PlotBeatInfo): string {
 
 /**
  * Returns the merged beat YAML string (base + properties).
- * Reads properties YAML from the active system's config slot (per-system).
- * Falls back to legacy globals for pre-migration vaults.
+ * @deprecated Use `getTemplateParts('Beat', settings).merged` from yamlTemplateNormalize.ts
+ * which is the single source of truth for all note types.
  */
 export function getMergedBeatYaml(settings: RadialTimelineSettings): string {
   const configuredBase = settings.beatYamlTemplates?.base ?? LEGACY_BEAT_BASE;
@@ -198,7 +198,7 @@ export function getMergedBeatYaml(settings: RadialTimelineSettings): string {
   return mergeTemplates(base, advanced);
 }
 
-function sanitizeBeatAdvancedForWrite(advancedTemplate: string): string {
+export function sanitizeBeatAdvancedForWrite(advancedTemplate: string): string {
   const lines = (advancedTemplate || '').split('\n');
   const result: string[] = [];
   let skipUntilNextField = false;
@@ -255,12 +255,12 @@ function generatePlotNoteContent(
   const beatId = beatInfo.id ?? '';
   const frontmatter = [
     '---',
+    `Beat Id: ${beatId}`,
     'Class: Beat',
     `Act: ${act}`,
     `Purpose: ${purpose}`,
     `Beat Model: ${beatSystem}`,
     rangeValue ? `Range: ${rangeValue}` : 'Range:',
-    `Beat Id: ${beatId}`,
     '---',
     ''
   ].join('\n');

@@ -1,8 +1,9 @@
 import { App, Modal, Setting, Notice, normalizePath, ButtonComponent, TextAreaComponent, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { createBeatNotesFromSet, getMergedBeatYaml } from '../utils/beatsTemplates';
-import { generateSceneContent, mergeTemplates, SceneCreationData } from '../utils/sceneGenerator';
+import { createBeatNotesFromSet } from '../utils/beatsTemplates';
+import { generateSceneContent, SceneCreationData } from '../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
+import { getTemplateParts } from '../utils/yamlTemplateNormalize';
 import { parseDuration, parseDurationDetail } from '../utils/date';
 import { getCustomSystemFromSettings } from '../utils/beatsSystems';
 import type { BookDesignerTemplate, BookDesignerSceneAssignment } from '../types/settings';
@@ -1401,22 +1402,14 @@ export class BookDesignerModal extends Modal {
         const subplotList = this.subplots.split('\n').map(s => s.trim()).filter(s => s.length > 0);
         if (subplotList.length === 0) subplotList.push('Main Plot');
 
-        // Get template string
-        const userTemplates = this.plugin.settings.sceneYamlTemplates;
-        const baseTemplate = userTemplates?.base;
-        if (!baseTemplate) {
+        // Get template string from single source of truth
+        const sceneParts = getTemplateParts('Scene', this.plugin.settings);
+        if (!sceneParts.base) {
             new Notice('Base scene set not found in settings. Set a scene set before generating.');
             return;
         }
-        
-        // For advanced template, merge base + advanced fields
-        let templateString: string;
-        if (this.templateType === 'advanced') {
-            const advancedFields = userTemplates?.advanced ?? '';
-            templateString = mergeTemplates(baseTemplate, advancedFields);
-        } else {
-            templateString = baseTemplate;
-        }
+        const templateString = this.templateType === 'advanced'
+            ? sceneParts.merged : sceneParts.base;
 
         // Anchor generated scenes to today and advance each by time increment
         const sceneBaseDate = new Date();
@@ -1576,7 +1569,7 @@ export class BookDesignerModal extends Modal {
                 beatsSkippedDuplicate = true;
             } else {
                 const beatSystem = this.plugin.settings.beatSystem || 'Custom';
-                const beatTemplate = getMergedBeatYaml(this.plugin.settings);
+                const beatTemplate = getTemplateParts('Beat', this.plugin.settings).merged;
 
                 // Handle Custom Dynamic System
                 if (beatSystem === 'Custom') {

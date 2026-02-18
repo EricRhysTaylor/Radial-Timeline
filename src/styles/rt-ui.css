@@ -4854,6 +4854,11 @@
   z-index: 1;
 }
 
+.ert-ui.ert-scope--modal .ert-panel--glass,
+.ert-ui .ert-scope--modal .ert-panel--glass {
+  --ert-panel-shadow: none;
+}
+
 .ert-ui .ert-modal-shell input[type="text"]:not([class*="rt-input-"]):not([class*="ert-input-"]),
 .ert-ui .ert-modal-shell input[type="number"]:not([class*="rt-input-"]):not([class*="ert-input-"]),
 .ert-ui .ert-modal-shell input[type="password"]:not([class*="rt-input-"]):not([class*="ert-input-"]) {

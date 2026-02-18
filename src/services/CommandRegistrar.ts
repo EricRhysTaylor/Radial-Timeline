@@ -14,9 +14,10 @@ import { PlanetaryTimeModal } from '../modals/PlanetaryTimeModal';
 import { BookDesignerModal } from '../modals/BookDesignerModal';
 import { TimelineRepairModal } from '../modals/TimelineRepairModal';
 import { AuthorProgressModal } from '../modals/AuthorProgressModal';
-import { generateSceneContent, mergeTemplates } from '../utils/sceneGenerator';
+import { generateSceneContent } from '../utils/sceneGenerator';
 import { sanitizeSourcePath, buildInitialSceneFilename, buildInitialBackdropFilename } from '../utils/sceneCreation';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
+import { getTemplateParts } from '../utils/yamlTemplateNormalize';
 import { ensureManuscriptOutputFolder, ensureOutlineOutputFolder } from '../utils/aiOutput';
 import { buildExportFilename, buildPrecursorFilename, buildOutlineExport, getExportFormatExtension, getLayoutById, getVaultAbsolutePath, resolveTemplatePath, runPandocOnContent, validatePandocLayout } from '../utils/exportFormats';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
@@ -600,14 +601,8 @@ export class CommandRegistrar {
             const path = `${sanitizedPath}/${filename}`;
 
             // Use basic or advanced template based on type
-            const templates = this.plugin.settings.sceneYamlTemplates || DEFAULT_SETTINGS.sceneYamlTemplates;
-            const baseTemplate = templates?.base || DEFAULT_SETTINGS.sceneYamlTemplates!.base;
-            const advancedFields = templates?.advanced || DEFAULT_SETTINGS.sceneYamlTemplates!.advanced;
-
-            // For advanced, merge base + advanced fields
-            const template = type === 'advanced'
-                ? mergeTemplates(baseTemplate, advancedFields)
-                : baseTemplate;
+            const sceneParts = getTemplateParts('Scene', this.plugin.settings);
+            const template = type === 'advanced' ? sceneParts.merged : sceneParts.base;
 
             // Default placeholder values — screenplay/podcast pre-fill Runtime
             const today = new Date().toISOString().split('T')[0];
@@ -796,37 +791,8 @@ export class CommandRegistrar {
 
             const path = `${sanitizedPath}/${filename}`;
 
-            // Build backdrop template from base + advanced
-            const backdropTemplates = this.plugin.settings.backdropYamlTemplates
-                ?? DEFAULT_SETTINGS.backdropYamlTemplates;
-            const backdropBase = backdropTemplates?.base
-                ?? 'Class: Backdrop\nWhen: {{When}}\nEnd: {{End}}\nContext:';
-            const backdropAdvancedRaw = backdropTemplates?.advanced ?? '';
-            // Keep stored legacy fields intact, but avoid writing deprecated keys in new notes.
-            const backdropAdvanced = (() => {
-                const lines = backdropAdvancedRaw.split('\n');
-                const result: string[] = [];
-                let skipUntilNextField = false;
-                for (const line of lines) {
-                    const fieldMatch = line.match(/^([A-Za-z][A-Za-z0-9 _'-]*):/);
-                    if (fieldMatch) {
-                        const fieldName = fieldMatch[1].trim();
-                        if (fieldName === 'Synopsis') {
-                            skipUntilNextField = true;
-                            continue;
-                        }
-                        skipUntilNextField = false;
-                        result.push(line);
-                        continue;
-                    }
-                    if (skipUntilNextField) continue;
-                    result.push(line);
-                }
-                return result.join('\n');
-            })();
-            const template = backdropAdvanced.trim()
-                ? mergeTemplates(backdropBase, backdropAdvanced)
-                : backdropBase;
+            // Build backdrop template from single source of truth
+            const template = getTemplateParts('Backdrop', this.plugin.settings).merged;
 
             // Replace placeholders for backdrop
             const today = new Date().toISOString().split('T')[0];
