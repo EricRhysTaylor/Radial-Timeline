@@ -4,9 +4,11 @@ import type RadialTimelinePlugin from '../../main';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { callProvider, type ProviderResult } from '../../api/providerRouter';
 import { INQUIRY_MAX_OUTPUT_TOKENS, INQUIRY_SCHEMA_VERSION } from '../constants';
+import { PROVIDER_MAX_OUTPUT_TOKENS } from '../../constants/tokenLimits';
 import type { InquiryAiStatus, InquiryConfidence, InquiryFinding, InquiryResult, InquirySeverity } from '../state';
 import type {
     CorpusManifestEntry,
+    InquiryAiProvider,
     InquiryOmnibusInput,
     InquiryOmnibusQuestion,
     InquiryRunTrace,
@@ -88,7 +90,7 @@ export class InquiryRunnerService implements InquiryRunner {
 
         const jsonSchema = this.getJsonSchema();
         const temperature = 0.2;
-        const maxTokens = INQUIRY_MAX_OUTPUT_TOKENS;
+        const maxTokens = this.getOutputTokenCap(input.ai.provider);
         let response: ProviderResult | null = null;
 
         try {
@@ -125,12 +127,85 @@ export class InquiryRunnerService implements InquiryRunner {
                 };
             }
 
-            const parsed = this.parseResponse(response.content);
-            return { result: this.buildResult(input, parsed, this.getAiMetaFromResponse(response)), trace };
+            try {
+                const parsed = this.parseResponse(response.content);
+                return { result: this.buildResult(input, parsed, this.getAiMetaFromResponse(response)), trace };
+            } catch (parseError) {
+                const message = parseError instanceof Error ? parseError.message : String(parseError);
+                trace.notes.push(`Parse error: ${message}`);
+
+                const usage = trace.usage ?? this.extractUsage(response.responseData);
+                if (usage) trace.usage = usage;
+                const retryMaxTokens = this.getParseRetryOutputTokenCap(input.ai.provider, maxTokens);
+                const shouldRetry = this.shouldRetryParseFailure(usage, maxTokens, retryMaxTokens);
+
+                if (shouldRetry) {
+                    trace.notes.push(`Parse retry: output reached cap (${usage?.outputTokens}/${maxTokens}); retrying with cap ${retryMaxTokens}.`);
+                    try {
+                        const retryResponse = await this.callProvider(systemPrompt, userPrompt, input.ai, jsonSchema, temperature, retryMaxTokens);
+                        if (retryResponse.sanitizationNotes?.length) {
+                            trace.sanitizationNotes.push(...retryResponse.sanitizationNotes);
+                        }
+                        if (retryResponse.requestPayload) {
+                            trace.requestPayload = retryResponse.requestPayload;
+                        }
+                        const providerRetryCount = typeof retryResponse.retryCount === 'number' ? retryResponse.retryCount : 0;
+                        const priorRetryCount = typeof trace.retryCount === 'number' ? trace.retryCount : 0;
+                        trace.retryCount = priorRetryCount + 1 + providerRetryCount;
+                        trace.outputTokenCap = retryMaxTokens;
+                        trace.response = {
+                            content: retryResponse.content,
+                            responseData: retryResponse.responseData,
+                            aiStatus: retryResponse.aiStatus,
+                            aiReason: retryResponse.aiReason,
+                            error: retryResponse.error
+                        };
+                        const retryUsage = this.extractUsage(retryResponse.responseData);
+                        if (retryUsage) trace.usage = retryUsage;
+
+                        if (!retryResponse.success || !retryResponse.content || retryResponse.aiStatus !== 'success') {
+                            const status = retryResponse.aiStatus || 'unknown';
+                            const reason = retryResponse.aiReason ? ` (${retryResponse.aiReason})` : '';
+                            trace.notes.push(`Parse retry provider status: ${status}${reason}.`);
+                            if (retryResponse.error) {
+                                trace.notes.push(`Parse retry provider error: ${retryResponse.error}`);
+                            }
+                            const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus);
+                            return {
+                                result: this.buildStubResult(input, fallbackMeta, retryResponse.error),
+                                trace
+                            };
+                        }
+
+                        try {
+                            const retryParsed = this.parseResponse(retryResponse.content);
+                            trace.notes.push('Parse retry succeeded.');
+                            return { result: this.buildResult(input, retryParsed, this.getAiMetaFromResponse(retryResponse)), trace };
+                        } catch (retryParseError) {
+                            const retryMessage = retryParseError instanceof Error ? retryParseError.message : String(retryParseError);
+                            trace.notes.push(`Parse retry failed: ${retryMessage}`);
+                            const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus);
+                            return {
+                                result: this.buildStubResult(input, fallbackMeta, retryParseError),
+                                trace
+                            };
+                        }
+                    } catch (retryError) {
+                        const retryMessage = retryError instanceof Error ? retryError.message : String(retryError);
+                        trace.notes.push(`Parse retry error: ${retryMessage}`);
+                    }
+                }
+
+                const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(response), response.aiStatus);
+                return {
+                    result: this.buildStubResult(input, fallbackMeta, parseError),
+                    trace
+                };
+            }
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             if (response) {
-                trace.notes.push(`Parse error: ${message}`);
+                trace.notes.push(`Runner error after response: ${message}`);
                 const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(response), response.aiStatus);
                 return { result: this.buildStubResult(input, fallbackMeta, error), trace };
             }
@@ -147,7 +222,7 @@ export class InquiryRunnerService implements InquiryRunner {
 
         const jsonSchema = this.getOmnibusJsonSchema();
         const temperature = 0.2;
-        const maxTokens = INQUIRY_MAX_OUTPUT_TOKENS;
+        const maxTokens = this.getOutputTokenCap(input.ai.provider);
         let response: ProviderResult | null = null;
 
         try {
@@ -186,17 +261,98 @@ export class InquiryRunnerService implements InquiryRunner {
                 };
             }
 
-            const parsed = this.parseOmnibusResponse(response.content);
-            const aiMeta = this.getAiMetaFromResponse(response);
-            return {
-                results: this.buildOmnibusResults(input, parsed, aiMeta, trace),
-                trace,
-                rawResponse: parsed
-            };
+            try {
+                const parsed = this.parseOmnibusResponse(response.content);
+                const aiMeta = this.getAiMetaFromResponse(response);
+                return {
+                    results: this.buildOmnibusResults(input, parsed, aiMeta, trace),
+                    trace,
+                    rawResponse: parsed
+                };
+            } catch (parseError) {
+                const message = parseError instanceof Error ? parseError.message : String(parseError);
+                trace.notes.push(`Parse error: ${message}`);
+
+                const usage = trace.usage ?? this.extractUsage(response.responseData);
+                if (usage) trace.usage = usage;
+                const retryMaxTokens = this.getParseRetryOutputTokenCap(input.ai.provider, maxTokens);
+                const shouldRetry = this.shouldRetryParseFailure(usage, maxTokens, retryMaxTokens);
+
+                if (shouldRetry) {
+                    trace.notes.push(`Parse retry: output reached cap (${usage?.outputTokens}/${maxTokens}); retrying with cap ${retryMaxTokens}.`);
+                    try {
+                        const retryResponse = await this.callProvider(systemPrompt, userPrompt, input.ai, jsonSchema, temperature, retryMaxTokens);
+                        if (retryResponse.sanitizationNotes?.length) {
+                            trace.sanitizationNotes.push(...retryResponse.sanitizationNotes);
+                        }
+                        if (retryResponse.requestPayload) {
+                            trace.requestPayload = retryResponse.requestPayload;
+                        }
+                        const providerRetryCount = typeof retryResponse.retryCount === 'number' ? retryResponse.retryCount : 0;
+                        const priorRetryCount = typeof trace.retryCount === 'number' ? trace.retryCount : 0;
+                        trace.retryCount = priorRetryCount + 1 + providerRetryCount;
+                        trace.outputTokenCap = retryMaxTokens;
+                        trace.response = {
+                            content: retryResponse.content,
+                            responseData: retryResponse.responseData,
+                            aiStatus: retryResponse.aiStatus,
+                            aiReason: retryResponse.aiReason,
+                            error: retryResponse.error
+                        };
+                        const retryUsage = this.extractUsage(retryResponse.responseData);
+                        if (retryUsage) trace.usage = retryUsage;
+
+                        if (!retryResponse.success || !retryResponse.content || retryResponse.aiStatus !== 'success') {
+                            const status = retryResponse.aiStatus || 'unknown';
+                            const reason = retryResponse.aiReason ? ` (${retryResponse.aiReason})` : '';
+                            trace.notes.push(`Parse retry provider status: ${status}${reason}.`);
+                            if (retryResponse.error) {
+                                trace.notes.push(`Parse retry provider error: ${retryResponse.error}`);
+                            }
+                            const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus);
+                            return {
+                                results: this.buildOmnibusStubResults(input, fallbackMeta, retryResponse.error),
+                                trace,
+                                rawResponse: null
+                            };
+                        }
+
+                        try {
+                            const retryParsed = this.parseOmnibusResponse(retryResponse.content);
+                            trace.notes.push('Parse retry succeeded.');
+                            const aiMeta = this.getAiMetaFromResponse(retryResponse);
+                            return {
+                                results: this.buildOmnibusResults(input, retryParsed, aiMeta, trace),
+                                trace,
+                                rawResponse: retryParsed
+                            };
+                        } catch (retryParseError) {
+                            const retryMessage = retryParseError instanceof Error ? retryParseError.message : String(retryParseError);
+                            trace.notes.push(`Parse retry failed: ${retryMessage}`);
+                            const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus);
+                            return {
+                                results: this.buildOmnibusStubResults(input, fallbackMeta, retryParseError),
+                                trace,
+                                rawResponse: null
+                            };
+                        }
+                    } catch (retryError) {
+                        const retryMessage = retryError instanceof Error ? retryError.message : String(retryError);
+                        trace.notes.push(`Parse retry error: ${retryMessage}`);
+                    }
+                }
+
+                const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(response), response.aiStatus);
+                return {
+                    results: this.buildOmnibusStubResults(input, fallbackMeta, parseError),
+                    trace,
+                    rawResponse: null
+                };
+            }
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             if (response) {
-                trace.notes.push(`Parse error: ${message}`);
+                trace.notes.push(`Runner error after response: ${message}`);
                 const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(response), response.aiStatus);
                 return {
                     results: this.buildOmnibusStubResults(input, fallbackMeta, error),
@@ -1091,13 +1247,14 @@ export class InquiryRunnerService implements InquiryRunner {
         }
 
         const { systemPrompt, userPrompt, evidenceText } = this.buildPrompt(input, evidenceBlocks);
-        const tokenEstimate = this.buildTokenEstimate(systemPrompt, userPrompt);
+        const outputTokenCap = this.getOutputTokenCap(input.ai.provider);
+        const tokenEstimate = this.buildTokenEstimate(systemPrompt, userPrompt, outputTokenCap);
         const trace: InquiryRunTrace = {
             systemPrompt,
             userPrompt,
             evidenceText,
             tokenEstimate,
-            outputTokenCap: INQUIRY_MAX_OUTPUT_TOKENS,
+            outputTokenCap,
             response: null,
             sanitizationNotes,
             notes
@@ -1135,13 +1292,14 @@ export class InquiryRunnerService implements InquiryRunner {
 
         notes.push(`Omnibus run: ${input.questions.length} questions.`);
         const { systemPrompt, userPrompt, evidenceText } = this.buildOmnibusPrompt(input, evidenceBlocks);
-        const tokenEstimate = this.buildTokenEstimate(systemPrompt, userPrompt);
+        const outputTokenCap = this.getOutputTokenCap(input.ai.provider);
+        const tokenEstimate = this.buildTokenEstimate(systemPrompt, userPrompt, outputTokenCap);
         const trace: InquiryRunTrace = {
             systemPrompt,
             userPrompt,
             evidenceText,
             tokenEstimate,
-            outputTokenCap: INQUIRY_MAX_OUTPUT_TOKENS,
+            outputTokenCap,
             response: null,
             sanitizationNotes,
             notes
@@ -1150,16 +1308,37 @@ export class InquiryRunnerService implements InquiryRunner {
         return { trace };
     }
 
-    private buildTokenEstimate(systemPrompt: string, userPrompt: string): InquiryRunTrace['tokenEstimate'] {
+    private buildTokenEstimate(systemPrompt: string, userPrompt: string, outputTokens: number): InquiryRunTrace['tokenEstimate'] {
         const inputChars = (systemPrompt?.length ?? 0) + (userPrompt?.length ?? 0);
         const inputTokens = this.estimateTokensFromChars(inputChars);
-        const outputTokens = INQUIRY_MAX_OUTPUT_TOKENS;
         return {
             inputTokens,
             outputTokens,
             totalTokens: inputTokens + outputTokens,
             inputChars
         };
+    }
+
+    private getOutputTokenCap(provider: InquiryAiProvider): number {
+        const providerCap = PROVIDER_MAX_OUTPUT_TOKENS[provider] ?? INQUIRY_MAX_OUTPUT_TOKENS;
+        return Math.max(1, Math.min(INQUIRY_MAX_OUTPUT_TOKENS, providerCap));
+    }
+
+    private getParseRetryOutputTokenCap(provider: InquiryAiProvider, currentCap: number): number {
+        const providerCap = PROVIDER_MAX_OUTPUT_TOKENS[provider] ?? currentCap;
+        const retryTarget = Math.max(currentCap * 2, 4000);
+        return Math.max(currentCap, Math.min(providerCap, retryTarget));
+    }
+
+    private shouldRetryParseFailure(
+        usage: InquiryRunTrace['usage'] | undefined,
+        currentCap: number,
+        retryCap: number
+    ): boolean {
+        if (retryCap <= currentCap) return false;
+        const output = usage?.outputTokens;
+        if (typeof output !== 'number') return false;
+        return output >= currentCap;
     }
 
     private estimateTokensFromChars(chars: number): number {
