@@ -34,6 +34,7 @@ import {
     type RefactorAlert
 } from './refactorAlerts';
 import { DEFAULT_SETTINGS } from './defaults';
+import { getCredential } from '../ai/credentials/credentials';
 
 export class RadialTimelineSettingsTab extends PluginSettingTab {
     plugin: RadialTimelinePlugin;
@@ -152,7 +153,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         }
     }
 
-    private scheduleKeyValidation(provider: 'anthropic' | 'gemini' | 'openai' | 'local') {
+    private async scheduleKeyValidation(provider: 'anthropic' | 'gemini' | 'openai' | 'local') {
         const prior = this._keyValidateTimers[provider];
         if (prior) window.clearTimeout(prior);
 
@@ -172,10 +173,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     el.removeClass('ert-setting-input-success');
                     el.removeClass('ert-setting-input-error');
                 });
+                const localKey = await getCredential(this.plugin, 'ollama');
                 const result = await validateLocalModelAvailability(
                     baseUrl,
                     modelId,
-                    this.plugin.settings.localApiKey?.trim()
+                    localKey
                 );
                 if (result.reachable && result.hasModel) {
                     [baseInput, modelInput].forEach(el => {
@@ -197,7 +199,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 : this._openaiKeyInput;
         if (!inputEl) return;
 
-        const key = inputEl.value?.trim();
+        const key = await getCredential(
+            this.plugin,
+            provider === 'anthropic' ? 'anthropic' : provider === 'gemini' ? 'google' : 'openai'
+        );
         if (!key || key.length < 8) return;
 
         this._keyValidateTimers[provider] = window.setTimeout(async () => {
@@ -893,7 +898,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             addAiRelatedElement: (el: HTMLElement) => this._aiRelatedElements.push(el),
             toggleAiSettingsVisibility: (show: boolean) => this.toggleAiSettingsVisibility(show),
             refreshProviderDimming: () => this.refreshProviderDimming(),
-            scheduleKeyValidation: (p: 'anthropic' | 'gemini' | 'openai' | 'local') => this.scheduleKeyValidation(p),
+            scheduleKeyValidation: (p: 'anthropic' | 'gemini' | 'openai' | 'local') => { void this.scheduleKeyValidation(p); },
             setProviderSections: (sections) => { this._providerSections = sections; },
             setKeyInputRef: (provider, input) => {
                 if (provider === 'anthropic') this._anthropicKeyInput = input;

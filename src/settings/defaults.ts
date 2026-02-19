@@ -161,6 +161,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     localSendPulseToAiReport: true,
     aiSettings: buildDefaultAiSettings(),
     aiRegistryCacheJson: '',
+    aiProviderSnapshotCacheJson: '',
     enablePlanetaryTime: false,
     planetaryProfiles: [],
     activePlanetaryProfileId: undefined,

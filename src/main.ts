@@ -453,7 +453,8 @@ export default class RadialTimelinePlugin extends Plugin {
             this.settings.defaultAiProvider = DEFAULT_SETTINGS.defaultAiProvider;
         }
 
-        // Canonical AI settings migration/validation (legacy fields remain during transition).
+        // Canonical AI settings migration/validation.
+        const aiSettingsBefore = JSON.stringify(this.settings.aiSettings ?? null);
         const aiMigration = migrateAiSettings(this.settings);
         if (aiMigration.changed || !this.settings.aiSettings) {
             this.settings.aiSettings = aiMigration.aiSettings;
@@ -466,8 +467,10 @@ export default class RadialTimelinePlugin extends Plugin {
             this.settings.aiSettings.migrationWarnings = Array.from(prior);
             this.settings.aiSettings.upgradedBannerPending = true;
         }
+        const aiSettingsAfter = JSON.stringify(this.settings.aiSettings ?? null);
+        const aiSettingsMigrated = aiSettingsBefore !== aiSettingsAfter;
 
-        // Back-compat sync: keep legacy provider/model/key fields in step while modules migrate to aiClient.
+        // Back-compat sync: keep legacy provider/model fields in step while modules migrate to aiClient.
         if (this.settings.aiSettings) {
             const canonical = this.settings.aiSettings;
             this.settings.defaultAiProvider = mapAiProviderToLegacyProvider(canonical.provider);
@@ -482,10 +485,6 @@ export default class RadialTimelinePlugin extends Plugin {
                 }
             }
 
-            this.settings.openaiApiKey = canonical.credentials?.openaiApiKey ?? this.settings.openaiApiKey;
-            this.settings.anthropicApiKey = canonical.credentials?.anthropicApiKey ?? this.settings.anthropicApiKey;
-            this.settings.geminiApiKey = canonical.credentials?.googleApiKey ?? this.settings.geminiApiKey;
-            this.settings.localApiKey = canonical.credentials?.ollamaApiKey ?? this.settings.localApiKey;
             this.settings.localBaseUrl = canonical.connections?.ollamaBaseUrl ?? this.settings.localBaseUrl;
         }
 
@@ -762,7 +761,7 @@ export default class RadialTimelinePlugin extends Plugin {
             });
         }
 
-        if (before !== after || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated || backdropTemplateMigrated || pandocLayoutsMigrated || booksMigrated || schemaOntologyMigrated || beatIdMigrated) {
+        if (before !== after || aiSettingsMigrated || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated || backdropTemplateMigrated || pandocLayoutsMigrated || booksMigrated || schemaOntologyMigrated || beatIdMigrated) {
             await this.saveSettings();
         }
     }

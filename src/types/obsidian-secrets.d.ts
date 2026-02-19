@@ -17,6 +17,20 @@ declare module 'obsidian' {
          * @param key The identifier of the secret.
          */
         has(key: string): Promise<boolean>;
+
+        /**
+         * Store/update a secret by identifier.
+         * Method name varies across Obsidian builds.
+         */
+        set?(key: string, value: string): Promise<void> | void;
+        store?(key: string, value: string): Promise<void> | void;
+
+        /**
+         * Delete/remove a secret by identifier.
+         * Method name varies across Obsidian builds.
+         */
+        delete?(key: string): Promise<void> | void;
+        remove?(key: string): Promise<void> | void;
     }
 
     class SecretComponent extends TextComponent {

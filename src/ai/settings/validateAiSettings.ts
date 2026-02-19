@@ -17,6 +17,16 @@ function hasAlias(alias?: string): boolean {
 export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValidationResult {
     const warnings: string[] = [];
     const defaults = buildDefaultAiSettings();
+    const pickSecretId = (value: unknown): string | undefined => {
+        if (typeof value !== 'string') return undefined;
+        const trimmed = value.trim();
+        return trimmed.length ? trimmed : undefined;
+    };
+
+    const inputCredentials = (input?.credentials && typeof input.credentials === 'object')
+        ? input.credentials as Record<string, unknown>
+        : {};
+
     const value: AiSettingsV1 = {
         ...defaults,
         ...(input || {}),
@@ -36,8 +46,10 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
             ...(input?.featureProfiles || defaults.featureProfiles || {})
         },
         credentials: {
-            ...defaults.credentials,
-            ...(input?.credentials || {})
+            openaiSecretId: pickSecretId(inputCredentials.openaiSecretId) ?? defaults.credentials?.openaiSecretId,
+            anthropicSecretId: pickSecretId(inputCredentials.anthropicSecretId) ?? defaults.credentials?.anthropicSecretId,
+            googleSecretId: pickSecretId(inputCredentials.googleSecretId) ?? defaults.credentials?.googleSecretId,
+            ollamaSecretId: pickSecretId(inputCredentials.ollamaSecretId) ?? defaults.credentials?.ollamaSecretId
         },
         connections: {
             ...defaults.connections,
@@ -86,6 +98,10 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
     if (depth !== 'standard' && depth !== 'deep') {
         value.overrides.reasoningDepth = 'standard';
     }
+
+    value.privacy.allowTelemetry = !!value.privacy.allowTelemetry;
+    value.privacy.allowRemoteRegistry = !!value.privacy.allowRemoteRegistry;
+    value.privacy.allowProviderSnapshot = !!value.privacy.allowProviderSnapshot;
 
     if (typeof value.overrides.temperature === 'number') {
         value.overrides.temperature = Math.max(0, Math.min(2, value.overrides.temperature));

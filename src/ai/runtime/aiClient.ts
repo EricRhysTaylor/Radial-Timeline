@@ -5,6 +5,7 @@ import { mapErrorToUserMessage, mapProviderFailureToError, MalformedJsonError } 
 import { compilePrompt } from '../prompts/compilePrompt';
 import { composeEnvelope } from '../prompts/composeEnvelope';
 import { ModelRegistry } from '../registry/modelRegistry';
+import { findSnapshotModel, loadProviderSnapshot, type ProviderSnapshotLoadResult } from '../registry/providerSnapshot';
 import { selectModel } from '../router/selectModel';
 import { buildDefaultAiSettings } from '../settings/aiSettings';
 import { validateAiSettings } from '../settings/validateAiSettings';
@@ -17,6 +18,7 @@ import type {
     AiSettingsV1,
     Capability,
     ModelPolicy,
+    ModelInfo,
     ProviderExecutionResult
 } from '../types';
 import { buildProviders } from '../providers/provider';
@@ -26,6 +28,7 @@ import { AIRateLimiter } from './rateLimit';
 import { validateJsonResponse } from './jsonValidator';
 
 const DEFAULT_REMOTE_REGISTRY_URL = 'https://raw.githubusercontent.com/ericrhystaylor/radial-timeline/main/scripts/models/registry.json';
+const DEFAULT_REMOTE_PROVIDER_SNAPSHOT_URL = 'https://raw.githubusercontent.com/ericrhystaylor/radial-timeline/main/scripts/models/latest-models.json';
 
 type RoleTemplate = {
     id: string;
@@ -150,12 +153,19 @@ function setLastRunAdvanced(plugin: RadialTimelinePlugin, feature: string, conte
     target._aiLastRunAdvancedByFeature[feature] = context;
 }
 
+function toSnapshotProvider(provider: AIProviderId): 'openai' | 'anthropic' | 'google' | null {
+    if (provider === 'openai' || provider === 'anthropic' || provider === 'google') return provider;
+    return null;
+}
+
 export class AIClient {
     private registry: ModelRegistry;
     private providers: Record<AIProviderId, AIProvider | null>;
     private cache = new AICache();
     private limiter = new AIRateLimiter();
     private registryReady = false;
+    private providerSnapshot: ProviderSnapshotLoadResult = { source: 'none', snapshot: null };
+    private providerSnapshotReady = false;
 
     constructor(private plugin: RadialTimelinePlugin) {
         this.providers = buildProviders(plugin);
@@ -183,6 +193,36 @@ export class AIClient {
         });
         await this.registry.refresh();
         this.registryReady = true;
+    }
+
+    async refreshProviderSnapshot(forceRemote?: boolean): Promise<ProviderSnapshotLoadResult> {
+        const settings = getAiSettings(this.plugin.settings);
+        this.providerSnapshot = await loadProviderSnapshot({
+            enabled: forceRemote ?? settings.privacy.allowProviderSnapshot,
+            forceRemote,
+            url: DEFAULT_REMOTE_PROVIDER_SNAPSHOT_URL,
+            readCache: async () => this.plugin.settings.aiProviderSnapshotCacheJson ?? null,
+            writeCache: async (content: string) => {
+                this.plugin.settings.aiProviderSnapshotCacheJson = content;
+                await this.plugin.saveSettings();
+            }
+        });
+        this.providerSnapshotReady = true;
+        return this.providerSnapshot;
+    }
+
+    async getRegistryModels(forceRemote?: boolean): Promise<ModelInfo[]> {
+        if (!this.registryReady || forceRemote) {
+            await this.refreshRegistry(forceRemote);
+        }
+        return this.registry.getAll();
+    }
+
+    async getProviderSnapshot(forceRemote?: boolean): Promise<ProviderSnapshotLoadResult> {
+        if (!this.providerSnapshotReady || forceRemote) {
+            return this.refreshProviderSnapshot(forceRemote);
+        }
+        return this.providerSnapshot;
     }
 
     async run(request: AIRunRequest): Promise<AIRunResult> {
@@ -311,12 +351,24 @@ export class AIClient {
 
         await this.limiter.waitForSlot(toProviderKey(request.feature, provider), caps.requestPerMinute);
 
+        const snapshotState = await this.getProviderSnapshot(false);
+        const snapshotProvider = toSnapshotProvider(provider);
+        const availableModel = snapshotProvider
+            ? findSnapshotModel(snapshotState.snapshot, snapshotProvider, modelSelection.model.id)
+            : null;
+        const availabilityStatus: AIRunAdvancedContext['availabilityStatus'] = !snapshotProvider
+            ? 'unknown'
+            : !snapshotState.snapshot
+            ? 'unknown'
+            : (availableModel ? 'visible' : 'not_visible');
+
         const advancedContext: AIRunAdvancedContext = {
             roleTemplateName: roleTemplate.name,
             provider,
             modelAlias: modelSelection.model.alias,
             modelLabel: modelSelection.model.label,
             modelSelectionReason: modelSelection.reason,
+            availabilityStatus,
             maxInputTokens: caps.maxInputTokens,
             maxOutputTokens: caps.maxOutputTokens,
             featureModeInstructions,

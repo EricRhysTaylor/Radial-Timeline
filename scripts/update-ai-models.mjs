@@ -24,6 +24,14 @@ const PROVIDER_ORDER = {
     google: 2,
 };
 
+class FetchAttemptError extends Error {
+    constructor(message, { retryable = false } = {}) {
+        super(message);
+        this.name = 'FetchAttemptError';
+        this.retryable = retryable;
+    }
+}
+
 function hasFlag(flag) {
     return process.argv.slice(2).includes(flag);
 }
@@ -116,12 +124,18 @@ async function fetchJsonWithRetry(url, options = {}, context = 'request') {
                 }
 
                 const text = await response.text();
-                throw new Error(`${sanitized} failed (${response.status}): ${text}`);
+                throw new FetchAttemptError(
+                    `${sanitized} failed (${response.status}): ${text}`,
+                    { retryable: shouldRetry }
+                );
             }
 
             return response.json();
         } catch (error) {
             clearTimeout(timeoutId);
+            if (error instanceof FetchAttemptError && !error.retryable) {
+                throw error;
+            }
             if (attempt >= MAX_RETRIES) {
                 throw new Error(`${context} failed after retries: ${error instanceof Error ? error.message : String(error)}`);
             }

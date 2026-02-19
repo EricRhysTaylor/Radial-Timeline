@@ -249,6 +249,7 @@ export class GossamerProcessingModal extends Modal {
             `Role template: ${ctx.roleTemplateName}`,
             `Resolved model: ${ctx.provider} -> ${ctx.modelAlias} (${ctx.modelLabel})`,
             `Model selection reason: ${ctx.modelSelectionReason}`,
+            `Availability: ${ctx.availabilityStatus === 'visible' ? 'Visible to your key ✅' : ctx.availabilityStatus === 'not_visible' ? 'Not visible ⚠️' : 'Unknown (snapshot disabled)'}`,
             `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
             '',
             'Feature mode instructions:',

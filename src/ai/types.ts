@@ -70,6 +70,7 @@ export interface AIOverrides {
 export interface AIPrivacySettings {
     allowTelemetry: boolean;
     allowRemoteRegistry: boolean;
+    allowProviderSnapshot: boolean;
 }
 
 export interface AIAccessProfile {
@@ -85,10 +86,10 @@ export interface AIFeatureProfile {
 }
 
 export interface AIProviderCredentials {
-    openaiApiKey?: string;
-    anthropicApiKey?: string;
-    googleApiKey?: string;
-    ollamaApiKey?: string;
+    openaiSecretId?: string;
+    anthropicSecretId?: string;
+    googleSecretId?: string;
+    ollamaSecretId?: string;
 }
 
 export interface AIProviderConnectionSettings {
@@ -195,6 +196,7 @@ export interface AIRunAdvancedContext {
     modelAlias: string;
     modelLabel: string;
     modelSelectionReason: string;
+    availabilityStatus: 'visible' | 'not_visible' | 'unknown';
     maxInputTokens: number;
     maxOutputTokens: number;
     featureModeInstructions: string;
@@ -223,4 +225,24 @@ export interface RegistryRefreshResult {
     source: 'builtin' | 'cache' | 'remote';
     fetchedAt?: string;
     warning?: string;
+}
+
+export interface CanonicalModelRecord {
+    provider: 'openai' | 'anthropic' | 'google';
+    id: string;
+    label?: string;
+    createdAt?: string;
+    inputTokenLimit?: number;
+    outputTokenLimit?: number;
+    raw: Record<string, unknown>;
+}
+
+export interface ProviderSnapshotPayload {
+    generatedAt: string;
+    summary: {
+        openai: number;
+        anthropic: number;
+        google: number;
+    };
+    models: CanonicalModelRecord[];
 }

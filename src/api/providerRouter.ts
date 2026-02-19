@@ -2,7 +2,6 @@
  * Unified provider router
  */
 // TODO: DEPRECATED — migrate to aiClient
-import { App } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { DEFAULT_ANTHROPIC_MODEL_ID, DEFAULT_GEMINI_MODEL_ID, DEFAULT_OPENAI_MODEL_ID } from '../constants/aiDefaults';
 import { callOpenAiApi, type OpenAiApiResponse } from './openaiApi';
@@ -12,6 +11,7 @@ import { sanitizeProviderArgs, type AiProvider, type ProviderCallArgs as Provide
 import { buildProviderRequestPayload } from './requestPayload';
 import { classifyProviderError, type AiStatus } from './providerErrors';
 import { warnLegacyAccess } from './legacyAccessGuard';
+import { getCredential } from '../ai/credentials/credentials';
 
 export interface ProviderCallArgs extends ProviderCallArgsBase {
   provider?: AiProvider;
@@ -35,20 +35,6 @@ export interface ProviderResult<T = unknown> {
   sanitizationNotes?: string[];
   sanitizedParams?: string[];
   retryCount?: number;
-}
-
-export async function resolveKey(app: App, key: string): Promise<string> {
-    if (!key) return '';
-    if (app.secretStorage && app.secretStorage.get) {
-        try {
-            const secret = await app.secretStorage.get(key);
-            return secret || key;
-        } catch (e) {
-            // Fallback to raw key if lookup fails
-            return key;
-        }
-    }
-    return key;
 }
 
 export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderCallArgs): Promise<ProviderResult> {
@@ -83,13 +69,12 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
   const sanitizedParams = diffProviderArgs(rawArgs, baseArgs);
   const sanitizationNotes = sanitizedParams.map(param => `Removed unsupported parameter: ${param}.`);
 
-  const runCall = async (callArgs: ProviderCallArgsBase): Promise<ProviderResult> => {
-    const resolvedMaxTokens = typeof callArgs.maxTokens === 'number' ? callArgs.maxTokens : 4000;
-    const openAiMaxTokens = callArgs.maxTokens === null ? null : resolvedMaxTokens;
-    const requestPayload = buildProviderRequestPayload(provider, requestedModelId, callArgs);
-    if (provider === 'anthropic') {
-      const rawKey = plugin.settings.anthropicApiKey || '';
-      const apiKey = await resolveKey(plugin.app, rawKey);
+    const runCall = async (callArgs: ProviderCallArgsBase): Promise<ProviderResult> => {
+        const resolvedMaxTokens = typeof callArgs.maxTokens === 'number' ? callArgs.maxTokens : 4000;
+        const openAiMaxTokens = callArgs.maxTokens === null ? null : resolvedMaxTokens;
+        const requestPayload = buildProviderRequestPayload(provider, requestedModelId, callArgs);
+        if (provider === 'anthropic') {
+      const apiKey = await getCredential(plugin, 'anthropic');
       const resp: AnthropicApiResponse = await callAnthropicApi(
         apiKey,
         requestedModelId,
@@ -101,8 +86,7 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
       return { ...buildProviderResult(provider, requestedModelId, resp), requestPayload };
     }
     if (provider === 'gemini') {
-      const rawKey = plugin.settings.geminiApiKey || '';
-      const apiKey = await resolveKey(plugin.app, rawKey);
+      const apiKey = await getCredential(plugin, 'google');
       const resp: GeminiApiResponse = await callGeminiApi(
         apiKey,
         requestedModelId,
@@ -119,8 +103,7 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
       return { ...buildProviderResult(provider, requestedModelId, resp), requestPayload };
     }
     if (provider === 'local') {
-      const rawKey = plugin.settings.localApiKey || '';
-      const apiKey = await resolveKey(plugin.app, rawKey);
+      const apiKey = await getCredential(plugin, 'ollama');
       const baseUrl = plugin.settings.localBaseUrl || 'http://localhost:11434/v1';
       const resp: OpenAiApiResponse = await callOpenAiApi(
         apiKey,
@@ -137,8 +120,7 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
       );
       return { ...buildProviderResult(provider, requestedModelId, resp), requestPayload };
     }
-    const rawKey = plugin.settings.openaiApiKey || '';
-    const apiKey = await resolveKey(plugin.app, rawKey);
+    const apiKey = await getCredential(plugin, 'openai');
     const resp: OpenAiApiResponse = await callOpenAiApi(
       apiKey,
       requestedModelId,

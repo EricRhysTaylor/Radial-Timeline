@@ -62,10 +62,10 @@ export function migrateAiSettings(settings: RadialTimelineSettings): MigrationRe
     }
 
     aiSettings.credentials = {
-        openaiApiKey: settings.openaiApiKey,
-        anthropicApiKey: settings.anthropicApiKey,
-        googleApiKey: settings.geminiApiKey,
-        ollamaApiKey: settings.localApiKey
+        openaiSecretId: aiSettings.credentials?.openaiSecretId,
+        anthropicSecretId: aiSettings.credentials?.anthropicSecretId,
+        googleSecretId: aiSettings.credentials?.googleSecretId,
+        ollamaSecretId: aiSettings.credentials?.ollamaSecretId
     };
 
     aiSettings.connections = {

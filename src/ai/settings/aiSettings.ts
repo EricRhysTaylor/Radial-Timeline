@@ -6,6 +6,14 @@ import type {
 } from '../types';
 
 export const AI_SETTINGS_SCHEMA_VERSION = 1;
+export const DEFAULT_CREDENTIAL_SECRET_IDS = {
+    openaiSecretId: 'rt.openai.api-key',
+    anthropicSecretId: 'rt.anthropic.api-key',
+    googleSecretId: 'rt.google.api-key',
+    ollamaSecretId: 'rt.ollama.api-key'
+} as const;
+export type CredentialSecretField = keyof typeof DEFAULT_CREDENTIAL_SECRET_IDS;
+export type CredentialSecretProvider = 'openai' | 'anthropic' | 'google' | 'ollama';
 
 export const DEFAULT_MODEL_POLICY: ModelPolicy = { type: 'latestStable' };
 
@@ -42,10 +50,13 @@ export function buildDefaultAiSettings(): AiSettingsV1 {
         },
         privacy: {
             allowTelemetry: false,
-            allowRemoteRegistry: false
+            allowRemoteRegistry: false,
+            allowProviderSnapshot: false
         },
         featureProfiles: {},
-        credentials: {},
+        credentials: {
+            ...DEFAULT_CREDENTIAL_SECRET_IDS
+        },
         connections: {
             ollamaBaseUrl: 'http://localhost:11434/v1'
         },

@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-02-18T23:25:57.108Z",
+  "generatedAt": "2026-02-19T17:35:27.063Z",
   "summary": {
     "openai": 113,
     "anthropic": 11,
-    "google": 45
+    "google": 47
   },
   "models": [
     {
@@ -1921,6 +1921,58 @@
         "thinking": true
       },
       "label": "Gemini 3 Pro Preview",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536
+    },
+    {
+      "provider": "google",
+      "id": "gemini-3.1-pro-preview",
+      "raw": {
+        "name": "models/gemini-3.1-pro-preview",
+        "version": "3.1-pro-preview-01-2026",
+        "displayName": "Gemini 3.1 Pro Preview",
+        "description": "Gemini 3.1 Pro Preview",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "createCachedContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini 3.1 Pro Preview",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536
+    },
+    {
+      "provider": "google",
+      "id": "gemini-3.1-pro-preview-customtools",
+      "raw": {
+        "name": "models/gemini-3.1-pro-preview-customtools",
+        "version": "3.1-pro-preview-01-2026",
+        "displayName": "Gemini 3.1 Pro Preview Custom Tools",
+        "description": "Gemini 3.1 Pro Preview optimized for custom tool usage",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "createCachedContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini 3.1 Pro Preview Custom Tools",
       "inputTokenLimit": 1048576,
       "outputTokenLimit": 65536
     },

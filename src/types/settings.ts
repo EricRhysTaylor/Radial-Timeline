@@ -388,6 +388,7 @@ export interface RadialTimelineSettings {
     openaiModelId?: string;
     aiSettings?: AiSettingsV1;
     aiRegistryCacheJson?: string;
+    aiProviderSnapshotCacheJson?: string;
     enableAiSceneAnalysis: boolean;
     enableZeroDraftMode?: boolean;
     metadataRefreshDebounceMs?: number;

@@ -1,4 +1,4 @@
-import { Setting as Settings, Notice, DropdownComponent } from 'obsidian';
+import { Setting as Settings, Notice, DropdownComponent, setIcon } from 'obsidian';
 import type { App, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { fetchAnthropicModels } from '../../api/anthropicApi';
@@ -13,10 +13,30 @@ import { IMPACT_FULL } from '../SettingImpact';
 import { buildDefaultAiSettings, mapAiProviderToLegacyProvider } from '../../ai/settings/aiSettings';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import { BUILTIN_MODELS, MODEL_PROFILES } from '../../ai/registry/builtinModels';
+import {
+    mergeCuratedWithSnapshot,
+    formatAvailabilityLabel,
+    type AvailabilityStatus,
+    type MergedModelInfo
+} from '../../ai/registry/mergeModels';
+import {
+    computeRecommendedPicks,
+    getAvailabilityIconName,
+    getRecommendationComparisonTag,
+    type CurrentResolvedModelRef,
+    type RecommendationRow
+} from '../../ai/registry/recommendations';
 import { selectModel } from '../../ai/router/selectModel';
 import { computeCaps } from '../../ai/caps/computeCaps';
 import { getAIClient } from '../../ai/runtime/aiClient';
-import type { AIProviderId, ModelPolicy, ModelProfileName, Capability } from '../../ai/types';
+import {
+    getCredential,
+    getCredentialSecretId,
+    migrateLegacyKeysToSecretStorage,
+    setCredentialSecretId
+} from '../../ai/credentials/credentials';
+import { getSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
+import type { AIProviderId, ModelPolicy, ModelProfileName, Capability, ModelInfo } from '../../ai/types';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
 
@@ -177,10 +197,6 @@ export function renderAiSection(params: {
             }
         }
 
-        plugin.settings.openaiApiKey = aiSettings.credentials?.openaiApiKey ?? plugin.settings.openaiApiKey;
-        plugin.settings.anthropicApiKey = aiSettings.credentials?.anthropicApiKey ?? plugin.settings.anthropicApiKey;
-        plugin.settings.geminiApiKey = aiSettings.credentials?.googleApiKey ?? plugin.settings.geminiApiKey;
-        plugin.settings.localApiKey = aiSettings.credentials?.ollamaApiKey ?? plugin.settings.localApiKey;
         plugin.settings.localBaseUrl = aiSettings.connections?.ollamaBaseUrl ?? plugin.settings.localBaseUrl;
     };
 
@@ -360,6 +376,23 @@ export function renderAiSection(params: {
     });
     params.addAiRelatedElement(remoteRegistrySetting.settingEl);
 
+    const providerSnapshotSetting = new Settings(aiSettingsGroup)
+        .setName('Provider snapshot')
+        .setDesc('Optional provider-availability snapshot to show which models are visible to your API key.');
+    let providerSnapshotToggle: { setValue: (value: boolean) => unknown } | null = null;
+    providerSnapshotSetting.addToggle(toggle => {
+        providerSnapshotToggle = toggle;
+        return toggle
+            .setValue(ensureCanonicalAiSettings().privacy.allowProviderSnapshot)
+            .onChange(async value => {
+                const aiSettings = ensureCanonicalAiSettings();
+                aiSettings.privacy.allowProviderSnapshot = value;
+                await persistCanonical();
+                refreshRoutingUi();
+            });
+    });
+    params.addAiRelatedElement(providerSnapshotSetting.settingEl);
+
     const refreshModelsSetting = new Settings(aiSettingsGroup)
         .setName('Refresh models')
         .setDesc('Fetch the latest model registry and update alias-to-model mappings.');
@@ -371,6 +404,7 @@ export function renderAiSection(params: {
                 const client = getAIClient(plugin);
                 await client.refreshRegistry(true);
                 new Notice('Model registry refreshed.');
+                await refreshModelsTable({ forceRemoteRegistry: true });
                 refreshRoutingUi();
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
@@ -380,6 +414,330 @@ export function renderAiSection(params: {
             }
         }));
     params.addAiRelatedElement(refreshModelsSetting.settingEl);
+
+    const refreshAvailabilitySetting = new Settings(aiSettingsGroup)
+        .setName('Refresh availability')
+        .setDesc('Fetch provider snapshot data for model visibility and provider-reported caps.');
+    refreshAvailabilitySetting.addButton(button => button
+        .setButtonText('Refresh availability')
+        .onClick(async () => {
+            const aiSettings = ensureCanonicalAiSettings();
+            if (!aiSettings.privacy.allowProviderSnapshot) {
+                new Notice('Enable Provider snapshot first to refresh availability.');
+                return;
+            }
+            button.setDisabled(true);
+            try {
+                await getAIClient(plugin).refreshProviderSnapshot(true);
+                await refreshModelsTable({ forceRemoteSnapshot: true });
+                new Notice('Provider snapshot refreshed.');
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                new Notice(`Availability refresh failed: ${message}`);
+            } finally {
+                button.setDisabled(false);
+            }
+        }));
+    params.addAiRelatedElement(refreshAvailabilitySetting.settingEl);
+
+    const modelsPanel = aiSettingsGroup.createDiv({ cls: ['ert-panel', ERT_CLASSES.STACK, 'ert-ai-models-panel'] });
+    const modelsHeader = modelsPanel.createDiv({ cls: 'ert-inline ert-inline--split' });
+    modelsHeader.createDiv({ cls: 'ert-section-title', text: 'Models' });
+    const modelsRefreshedEl = modelsHeader.createDiv({ cls: 'ert-ai-models-refreshed' });
+    const modelsHintEl = modelsPanel.createDiv({ cls: 'ert-field-note' });
+    const recommendationsEl = modelsPanel.createDiv({ cls: 'ert-ai-recommendations ert-stack' });
+    const modelsTableEl = modelsPanel.createDiv({ cls: 'ert-ai-models-table ert-stack' });
+    const modelDetailsEl = modelsPanel.createDiv({ cls: 'ert-ai-model-details ert-settings-hidden' });
+    params.addAiRelatedElement(modelsPanel);
+
+    const matchesProfile = (model: ModelInfo, profileName: ModelProfileName): boolean => {
+        const profile = MODEL_PROFILES[profileName];
+        if (profile.tier && model.tier !== profile.tier) return false;
+        if (typeof profile.minReasoning === 'number' && model.personality.reasoning < profile.minReasoning) return false;
+        if (typeof profile.minWriting === 'number' && model.personality.writing < profile.minWriting) return false;
+        if (typeof profile.minDeterminism === 'number' && model.personality.determinism < profile.minDeterminism) return false;
+        if (profile.requiredCapabilities && !profile.requiredCapabilities.every(capability => model.capabilities.includes(capability))) return false;
+        return true;
+    };
+
+    const getBestForTags = (model: ModelInfo): string[] => {
+        const tags: string[] = [];
+        (['deepReasoner', 'deepWriter', 'balancedAnalysis'] as ModelProfileName[]).forEach(profile => {
+            if (matchesProfile(model, profile)) tags.push(profile);
+        });
+        if (model.tier === 'FAST' || model.tier === 'LOCAL') {
+            tags.push('fastRewrite');
+        }
+        return Array.from(new Set(tags)).slice(0, 3);
+    };
+
+    const formatContextOutput = (model: MergedModelInfo): string => {
+        if (model.providerCaps?.inputTokenLimit || model.providerCaps?.outputTokenLimit) {
+            const input = model.providerCaps.inputTokenLimit ? model.providerCaps.inputTokenLimit.toLocaleString() : '—';
+            const output = model.providerCaps.outputTokenLimit ? model.providerCaps.outputTokenLimit.toLocaleString() : '—';
+            return `${input} / ${output} (provider)`;
+        }
+        if (model.contextWindow || model.maxOutput) {
+            return `${model.contextWindow.toLocaleString()} / ${model.maxOutput.toLocaleString()} (curated)`;
+        }
+        return 'Unknown';
+    };
+
+    const formatRecommendationModel = (row: RecommendationRow): string => {
+        if (!row.model) return 'No eligible model';
+        const name = row.model.providerLabel || row.model.label;
+        return `${providerLabel[row.model.provider]} -> ${name} (${row.model.alias})`;
+    };
+
+    const renderRecommendations = (
+        rows: RecommendationRow[],
+        currentSelection: CurrentResolvedModelRef | null,
+        snapshotEnabled: boolean
+    ): void => {
+        recommendationsEl.empty();
+        const title = recommendationsEl.createDiv({ cls: 'ert-ai-recommendations-title' });
+        title.setText('Recommended picks');
+
+        rows.forEach(row => {
+            const item = recommendationsEl.createDiv({ cls: 'ert-ai-recommendation-row' });
+            item.createDiv({ cls: 'ert-ai-recommendation-name', text: row.title });
+
+            const value = item.createDiv({ cls: 'ert-ai-recommendation-value' });
+            const iconEl = value.createSpan({ cls: 'ert-ai-recommendation-icon' });
+            setIcon(iconEl, getAvailabilityIconName(row.availabilityStatus));
+            value.createSpan({ cls: 'ert-ai-recommendation-model', text: formatRecommendationModel(row) });
+            value.createSpan({ cls: 'ert-ai-recommendation-why', text: row.shortReason });
+
+            const comparisonTag = getRecommendationComparisonTag(row, currentSelection);
+            if (comparisonTag) {
+                value.createSpan({
+                    cls: 'ert-badgePill ert-badgePill--sm ert-ai-recommendation-status',
+                    text: comparisonTag
+                });
+            }
+
+            if (row.availabilityStatus === 'unknown') {
+                const hint = item.createDiv({
+                    cls: 'ert-ai-recommendation-hint',
+                    text: 'Enable Provider Snapshot for key-based visibility. This only fetches model metadata and availability.'
+                });
+
+                if (!snapshotEnabled) {
+                    const action = hint.createEl('button', {
+                        cls: 'ert-ai-recommendation-action',
+                        attr: { type: 'button' },
+                        text: 'Enable + refresh'
+                    });
+                    action.addEventListener('click', async (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        action.disabled = true;
+                        try {
+                            const aiSettings = ensureCanonicalAiSettings();
+                            if (!aiSettings.privacy.allowProviderSnapshot) {
+                                aiSettings.privacy.allowProviderSnapshot = true;
+                                await persistCanonical();
+                            }
+                            await getAIClient(plugin).refreshProviderSnapshot(true);
+                            await refreshModelsTable({ forceRemoteSnapshot: true });
+                            new Notice('Provider snapshot enabled and refreshed.');
+                        } catch (error) {
+                            const message = error instanceof Error ? error.message : String(error);
+                            new Notice(`Snapshot refresh failed: ${message}`);
+                        } finally {
+                            action.disabled = false;
+                        }
+                    });
+                }
+            }
+            if (row.reason) {
+                item.setAttr('title', row.reason);
+            }
+        });
+    };
+
+    const renderModelDetails = (
+        model: MergedModelInfo,
+        selection: { alias: string; reason: string } | null
+    ): void => {
+        modelDetailsEl.empty();
+        modelDetailsEl.removeClass('ert-settings-hidden');
+        modelDetailsEl.addClass('ert-settings-visible');
+
+        const heading = modelDetailsEl.createDiv({ cls: 'ert-ai-model-details-title' });
+        heading.setText(`${providerLabel[model.provider]} · ${model.label}`);
+        modelDetailsEl.createDiv({ cls: 'ert-field-note', text: `Alias: ${model.alias} · Provider ID: ${model.providerModelId}` });
+
+        const statusRow = modelDetailsEl.createDiv({ cls: 'ert-inline' });
+        statusRow.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: `Status: ${model.status}` });
+        statusRow.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: `Tier: ${model.tier}` });
+        statusRow.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: formatAvailabilityLabel(model.availabilityStatus) });
+
+        const providerMeta = modelDetailsEl.createDiv({ cls: 'ert-field-note' });
+        providerMeta.setText(
+            `Provider label: ${model.providerLabel || '—'} · Created: ${model.providerCreatedAt || '—'} · Context/Output: ${formatContextOutput(model)}`
+        );
+
+        const personality = modelDetailsEl.createDiv({ cls: 'ert-field-note' });
+        personality.setText(
+            `Personality: reasoning ${model.personality.reasoning}/10, writing ${model.personality.writing}/10, determinism ${model.personality.determinism}/10`
+        );
+
+        const aiSettings = ensureCanonicalAiSettings();
+        const tier = model.provider === 'anthropic' || model.provider === 'openai' || model.provider === 'google'
+            ? getAccessTier(model.provider)
+            : 1;
+        const effective = computeCaps({
+            provider: model.provider,
+            model,
+            accessTier: tier,
+            feature: 'InquiryMode',
+            overrides: aiSettings.overrides
+        });
+        modelDetailsEl.createDiv({
+            cls: 'ert-field-note',
+            text: `Effective caps preview: input=${effective.maxInputTokens.toLocaleString()}, output=${effective.maxOutputTokens.toLocaleString()}, tier=${tier}`
+        });
+
+        const why = modelDetailsEl.createDiv({ cls: 'ert-field-note' });
+        if (selection && selection.alias === model.alias) {
+            why.setText(`Why selected now: ${selection.reason}`);
+        } else {
+            why.setText('Why selected now: Not the currently resolved model for your active provider/policy.');
+        }
+
+        if (model.capsMismatch) {
+            const curatedInput = model.capsMismatch.curated?.inputTokenLimit;
+            const providerInput = model.capsMismatch.provider?.inputTokenLimit;
+            const curatedOutput = model.capsMismatch.curated?.outputTokenLimit;
+            const providerOutput = model.capsMismatch.provider?.outputTokenLimit;
+            modelDetailsEl.createDiv({
+                cls: 'ert-ai-model-warning',
+                text: `Caps mismatch (display only): curated input/output ${curatedInput ?? '—'}/${curatedOutput ?? '—'} vs provider ${providerInput ?? '—'}/${providerOutput ?? '—'}.`
+            });
+        }
+
+        const rawDetails = modelDetailsEl.createEl('details', { cls: 'ert-ai-model-raw' });
+        rawDetails.createEl('summary', { text: 'Show raw provider metadata' });
+        rawDetails.createEl('pre', { cls: 'ert-ai-model-raw-pre', text: JSON.stringify(model.raw || {}, null, 2) });
+    };
+
+    const renderModelsTable = (
+        mergedModels: MergedModelInfo[],
+        selection: { alias: string; reason: string } | null
+    ): void => {
+        modelsTableEl.empty();
+        const header = modelsTableEl.createDiv({ cls: 'ert-ai-models-row ert-ai-models-row--header' });
+        ['Model', 'Availability', 'Context / Output', 'Supports', 'Best for'].forEach(label => {
+            header.createDiv({ cls: 'ert-ai-models-cell', text: label });
+        });
+
+        const providerOrder: AIProviderId[] = ['anthropic', 'openai', 'google', 'ollama'];
+        providerOrder.forEach(provider => {
+            const rows = mergedModels.filter(model => model.provider === provider);
+            if (!rows.length) return;
+
+            const group = modelsTableEl.createDiv({ cls: 'ert-ai-models-provider' });
+            group.setText(providerLabel[provider]);
+
+            rows.forEach(model => {
+                const rowButton = modelsTableEl.createEl('button', {
+                    cls: 'ert-ai-models-row',
+                    attr: { type: 'button' }
+                });
+
+                const modelCell = rowButton.createDiv({ cls: 'ert-ai-models-cell ert-ai-models-cell--model' });
+                const providerMark = modelCell.createSpan({ cls: 'ert-ai-models-provider-mark' });
+                providerMark.setText(model.provider === 'anthropic' ? 'A' : model.provider === 'openai' ? 'O' : model.provider === 'google' ? 'G' : 'L');
+                modelCell.createSpan({ cls: 'ert-ai-models-name', text: model.providerLabel || model.label });
+                modelCell.createSpan({ cls: 'ert-ai-models-alias', text: model.alias });
+
+                rowButton.createDiv({ cls: 'ert-ai-models-cell', text: formatAvailabilityLabel(model.availabilityStatus) });
+                rowButton.createDiv({ cls: 'ert-ai-models-cell', text: formatContextOutput(model) });
+
+                const supportsCell = rowButton.createDiv({ cls: 'ert-ai-models-cell ert-ai-models-tags' });
+                ['jsonStrict', 'toolCalling', 'vision', 'streaming', 'longContext'].forEach(capability => {
+                    if (!model.capabilities.includes(capability as Capability)) return;
+                    supportsCell.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: capability });
+                });
+
+                const bestForCell = rowButton.createDiv({ cls: 'ert-ai-models-cell ert-ai-models-tags' });
+                getBestForTags(model).forEach(tag => {
+                    bestForCell.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: tag });
+                });
+
+                rowButton.addEventListener('click', () => renderModelDetails(model, selection));
+            });
+        });
+    };
+
+    const refreshModelsTable = async (options?: { forceRemoteRegistry?: boolean; forceRemoteSnapshot?: boolean }): Promise<void> => {
+        modelsRefreshedEl.setText('Loading...');
+        modelsHintEl.setText('Merging curated registry with provider snapshot...');
+        recommendationsEl.empty();
+        modelsTableEl.empty();
+
+        try {
+            const client = getAIClient(plugin);
+            const [curatedModels, snapshot] = await Promise.all([
+                client.getRegistryModels(options?.forceRemoteRegistry),
+                client.getProviderSnapshot(options?.forceRemoteSnapshot)
+            ]);
+
+            const curated = curatedModels.filter(model => model.provider !== 'none');
+            const merged = mergeCuratedWithSnapshot(curated, snapshot.snapshot);
+            const aiSettings = ensureCanonicalAiSettings();
+            const selectedProvider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
+            let selection: { alias: string; reason: string } | null = null;
+            let currentSelection: CurrentResolvedModelRef | null = null;
+            try {
+                const resolved = selectModel(curated, {
+                    provider: selectedProvider,
+                    policy: aiSettings.modelPolicy,
+                    requiredCapabilities: capabilityFloor,
+                    accessTier: getAccessTier(selectedProvider),
+                    contextTokensNeeded: 24000,
+                    outputTokensNeeded: 2000
+                });
+                selection = { alias: resolved.model.alias, reason: resolved.reason };
+                const mergedCurrent = merged.find(model =>
+                    model.provider === resolved.model.provider
+                    && (model.alias === resolved.model.alias || model.providerModelId === resolved.model.id)
+                );
+                const availabilityStatus: AvailabilityStatus = mergedCurrent?.availabilityStatus ?? 'unknown';
+                currentSelection = {
+                    provider: resolved.model.provider,
+                    alias: resolved.model.alias,
+                    modelId: resolved.model.id,
+                    availabilityStatus
+                };
+            } catch {
+                selection = null;
+                currentSelection = null;
+            }
+
+            if (snapshot.snapshot) {
+                modelsRefreshedEl.setText(`Last refreshed: ${snapshot.snapshot.generatedAt}`);
+                modelsHintEl.setText(snapshot.warning || 'Availability reflects the latest provider snapshot.');
+            } else {
+                modelsRefreshedEl.setText('Last refreshed: unavailable');
+                modelsHintEl.setText('Enable Provider Snapshot to show key-based availability.');
+            }
+
+            const picks = computeRecommendedPicks({
+                models: merged,
+                aiSettings,
+                includeLocalPrivate: aiSettings.provider === 'ollama'
+            });
+            renderRecommendations(picks, currentSelection, aiSettings.privacy.allowProviderSnapshot);
+            renderModelsTable(merged, selection);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            modelsRefreshedEl.setText('Last refreshed: error');
+            modelsHintEl.setText(`Unable to render models table: ${message}`);
+            recommendationsEl.empty();
+        }
+    };
 
     const resolvedPreviewSetting = new Settings(aiSettingsGroup)
         .setName('Resolved model preview')
@@ -427,6 +785,7 @@ export function renderAiSection(params: {
         outputModeDropdown?.setValue(aiSettings.overrides.maxOutputMode || 'auto');
         reasoningDepthDropdown?.setValue(aiSettings.overrides.reasoningDepth || 'standard');
         remoteRegistryToggle?.setValue(aiSettings.privacy.allowRemoteRegistry);
+        providerSnapshotToggle?.setValue(aiSettings.privacy.allowProviderSnapshot);
 
         const shouldShowPinned = policy.type === 'pinned';
         const shouldShowProfile = policy.type === 'profile';
@@ -476,6 +835,8 @@ export function renderAiSection(params: {
             const message = error instanceof Error ? error.message : String(error);
             resolvedPreviewSetting.setDesc(`Model resolution failed: ${message}`);
         }
+
+        void refreshModelsTable();
     };
 
     refreshRoutingUi();
@@ -495,163 +856,204 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(geminiSection);
     params.addAiRelatedElement(openaiSection);
 
-    // Helper to support SecretComponent if available (Obsidian 1.11.4+)
-    const addApiKeyInput = (
-        setting: Settings,
-        placeholder: string,
-        value: string,
-        save: (val: string) => Promise<void>,
-        validate: () => void,
-        setRef: (el: HTMLInputElement) => void,
-        extraCheck?: (val: string, el: HTMLElement) => boolean
-    ) => {
-        const configure = (component: TextComponent) => {
-            component.inputEl.addClass('ert-input--full');
-            component.setPlaceholder(placeholder).setValue(value);
+    const secretStorageAvailable = isSecretStorageAvailable(app);
+    const SecretComponentCtor = (app as any).SecretComponent as (new (containerEl: HTMLElement) => TextComponent) | undefined;
 
-            component.onChange(() => {
-                component.inputEl.removeClass('ert-setting-input-success');
-                component.inputEl.removeClass('ert-setting-input-error');
-            });
-
-            plugin.registerDomEvent(component.inputEl, 'keydown', (evt: KeyboardEvent) => {
-                if (evt.key === 'Enter') {
-                    evt.preventDefault();
-                    component.inputEl.blur();
-                }
-            });
-
-            const handleBlur = async () => {
-                const trimmed = component.getValue().trim();
-                await save(trimmed);
-                setRef(component.inputEl);
-
-                let valid = true;
-                if (extraCheck) {
-                    valid = extraCheck(trimmed, component.inputEl);
-                }
-
-                if (valid && trimmed) {
-                    validate();
-                }
-            };
-
-            plugin.registerDomEvent(component.inputEl, 'blur', () => { void handleBlur(); });
-        };
-
-        if ((app as any).SecretComponent) {
-            const SecretComponent = (app as any).SecretComponent;
-            const sc = new SecretComponent(setting.controlEl);
-            configure(sc);
-        } else {
-            setting.addText(text => configure(text));
-        }
-        setting.settingEl.addClass('ert-setting-full-width-input');
+    const hasLegacyKeyMaterial = (): boolean => {
+        return !!(
+            plugin.settings.openaiApiKey?.trim()
+            || plugin.settings.anthropicApiKey?.trim()
+            || plugin.settings.geminiApiKey?.trim()
+            || plugin.settings.localApiKey?.trim()
+        );
     };
 
-    // Anthropic API Key
-    const anthropicKeySetting = new Settings(anthropicSection)
-        .setName('Anthropic API key')
-        .setDesc((() => {
-            const frag = document.createDocumentFragment();
-            const span = document.createElement('span');
-            span.textContent = 'Your Anthropic API key for using Claude AI features. ';
-            const link = document.createElement('a');
-            link.href = 'https://platform.claude.com';
-            link.textContent = 'Get key';
-            link.target = '_blank';
-            link.rel = 'noopener';
-            frag.appendChild(span);
-            frag.appendChild(link);
-            return frag;
-        })());
+    if (!secretStorageAvailable) {
+        const warningSetting = new Settings(aiSettingsGroup)
+            .setName('Secret storage unavailable')
+            .setDesc('Upgrade Obsidian to use secure Secret Storage. Legacy key fields remain available in Advanced sections.');
+        params.addAiRelatedElement(warningSetting.settingEl);
+    }
 
-    addApiKeyInput(
-        anthropicKeySetting,
-        'Enter your Anthropic API key',
-        plugin.settings.anthropicApiKey || '',
-        async (val) => {
-            plugin.settings.anthropicApiKey = val;
+    if (secretStorageAvailable && hasLegacyKeyMaterial()) {
+        const migrateKeysSetting = new Settings(aiSettingsGroup)
+            .setName('Move keys to Secret Storage')
+            .setDesc('Migrates legacy API keys out of settings and clears plaintext key fields.');
+        migrateKeysSetting.addButton(button => button
+            .setButtonText('Move keys now')
+            .onClick(async () => {
+                button.setDisabled(true);
+                try {
+                    const migration = await migrateLegacyKeysToSecretStorage(plugin);
+                    if (migration.migratedProviders.length) {
+                        new Notice(`Moved ${migration.migratedProviders.length} provider key(s) to Secret Storage.`);
+                    } else {
+                        new Notice('No legacy provider keys were available to migrate.');
+                    }
+                    if (migration.warnings.length) {
+                        new Notice(migration.warnings[0]);
+                    }
+                    refreshRoutingUi();
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : String(error);
+                    new Notice(`Key migration failed: ${message}`);
+                } finally {
+                    button.setDisabled(false);
+                }
+            }));
+        params.addAiRelatedElement(migrateKeysSetting.settingEl);
+    }
+
+    const renderCredentialSettings = (options: {
+        section: HTMLElement;
+        provider: 'openai' | 'anthropic' | 'google';
+        legacyProvider: 'openai' | 'anthropic' | 'gemini';
+        providerName: string;
+        keyPlaceholder: string;
+        docsUrl: string;
+    }): void => {
+        const providerDesc = document.createDocumentFragment();
+        const span = document.createElement('span');
+        span.textContent = `${options.providerName} credential configuration. `;
+        const link = document.createElement('a');
+        link.href = options.docsUrl;
+        link.textContent = 'Get key';
+        link.target = '_blank';
+        link.rel = 'noopener';
+        providerDesc.appendChild(span);
+        providerDesc.appendChild(link);
+
+        const secretIdSetting = new Settings(options.section)
+            .setName(`${options.providerName} secret id`)
+            .setDesc(providerDesc);
+        secretIdSetting.addText(text => {
             const aiSettings = ensureCanonicalAiSettings();
-            aiSettings.credentials = { ...(aiSettings.credentials || {}), anthropicApiKey: val };
-            await persistCanonical();
-        },
-        () => params.scheduleKeyValidation('anthropic'),
-        (el) => params.setKeyInputRef('anthropic', el)
-    );
+            text.inputEl.addClass('ert-input--full');
+            text
+                .setPlaceholder(`rt.${options.provider}.api-key`)
+                .setValue(getCredentialSecretId(aiSettings, options.provider));
+            plugin.registerDomEvent(text.inputEl, 'blur', () => {
+                void (async () => {
+                    const ai = ensureCanonicalAiSettings();
+                    const nextId = text.getValue().trim();
+                    setCredentialSecretId(ai, options.provider, nextId);
+                    await persistCanonical();
+                })();
+            });
+        });
+        secretIdSetting.settingEl.addClass('ert-setting-full-width-input');
 
-    // Gemini API Key
-    const geminiKeySetting = new Settings(geminiSection)
-        .setName('Gemini API key')
-        .setDesc((() => {
-            const frag = document.createDocumentFragment();
-            const span = document.createElement('span');
-            span.textContent = 'Your Gemini API key for using Google Gemini models. ';
-            const link = document.createElement('a');
-            link.href = 'https://aistudio.google.com';
-            link.textContent = 'Get key';
-            link.target = '_blank';
-            link.rel = 'noopener';
-            frag.appendChild(span);
-            frag.appendChild(link);
-            return frag;
-        })());
+        if (secretStorageAvailable && SecretComponentCtor) {
+            const secureKeySetting = new Settings(options.section)
+                .setName(`${options.providerName} API key (Secret Storage)`)
+                .setDesc('Stored encrypted by Obsidian Secret Storage. This value is never written to settings.');
+            const secretInput = new SecretComponentCtor(secureKeySetting.controlEl);
+            secretInput.inputEl.addClass('ert-input--full');
+            secretInput.setPlaceholder(options.keyPlaceholder);
+            params.setKeyInputRef(options.legacyProvider, secretInput.inputEl);
 
-    addApiKeyInput(
-        geminiKeySetting,
-        'Enter your Gemini API key',
-        plugin.settings.geminiApiKey || '',
-        async (val) => {
-            plugin.settings.geminiApiKey = val;
-            const aiSettings = ensureCanonicalAiSettings();
-            aiSettings.credentials = { ...(aiSettings.credentials || {}), googleApiKey: val };
-            await persistCanonical();
-        },
-        () => params.scheduleKeyValidation('gemini'),
-        (el) => params.setKeyInputRef('gemini', el)
-    );
+            void (async () => {
+                const ai = ensureCanonicalAiSettings();
+                const currentSecret = await getSecret(app, getCredentialSecretId(ai, options.provider));
+                if (currentSecret) {
+                    secretInput.setValue(currentSecret);
+                }
+            })();
 
-    // OpenAI API Key
-    const openAiKeySetting = new Settings(openaiSection)
-        .setName('OpenAI API key')
-        .setDesc((() => {
-            const frag = document.createDocumentFragment();
-            const span = document.createElement('span');
-            span.textContent = 'Your OpenAI API key for using ChatGPT AI features. ';
-            const link = document.createElement('a');
-            link.href = 'https://platform.openai.com';
-            link.textContent = 'Get key';
-            link.target = '_blank';
-            link.rel = 'noopener';
-            frag.appendChild(span);
-            frag.appendChild(link);
-            return frag;
-        })());
-
-    addApiKeyInput(
-        openAiKeySetting,
-        'Enter your API key',
-        plugin.settings.openaiApiKey || '',
-        async (val) => {
-            plugin.settings.openaiApiKey = val;
-            const aiSettings = ensureCanonicalAiSettings();
-            aiSettings.credentials = { ...(aiSettings.credentials || {}), openaiApiKey: val };
-            await persistCanonical();
-        },
-        () => params.scheduleKeyValidation('openai'),
-        (el) => params.setKeyInputRef('openai', el),
-        (val, el) => {
-            el.removeClass('ert-setting-input-success');
-            el.removeClass('ert-setting-input-error');
-            // Only validate sk- prefix if NOT using SecretStorage (or strict legacy mode)
-            if (!(app as any).SecretComponent && val && !val.startsWith('sk-')) {
-                el.addClass('ert-setting-input-error');
-                new Notice('This does not look like an OpenAI secret key. Keys start with "sk-".');
-                return false;
-            }
-            return true;
+            plugin.registerDomEvent(secretInput.inputEl, 'blur', () => {
+                void (async () => {
+                    const value = secretInput.getValue().trim();
+                    if (!value) return;
+                    const ai = ensureCanonicalAiSettings();
+                    const secretId = getCredentialSecretId(ai, options.provider);
+                    if (!secretId) {
+                        new Notice(`Set a ${options.providerName} secret id first.`);
+                        return;
+                    }
+                    const stored = await setSecret(app, secretId, value);
+                    if (!stored) {
+                        new Notice(`Unable to save ${options.providerName} key to Secret Storage.`);
+                        return;
+                    }
+                    if (options.legacyProvider === 'gemini') plugin.settings.geminiApiKey = '';
+                    if (options.legacyProvider === 'anthropic') plugin.settings.anthropicApiKey = '';
+                    if (options.legacyProvider === 'openai') plugin.settings.openaiApiKey = '';
+                    await plugin.saveSettings();
+                    void params.scheduleKeyValidation(options.legacyProvider);
+                })();
+            });
+            secureKeySetting.settingEl.addClass('ert-setting-full-width-input');
         }
-    );
+
+        const legacyDetails = options.section.createEl('details', {
+            cls: 'ert-ai-legacy-credentials'
+        });
+        if (!secretStorageAvailable) {
+            legacyDetails.setAttr('open', '');
+        }
+        legacyDetails.createEl('summary', {
+            text: 'Advanced: legacy key fallback'
+        });
+        const legacyHost = legacyDetails.createDiv({ cls: ERT_CLASSES.STACK });
+        if (secretStorageAvailable) {
+            legacyHost.createDiv({
+                cls: 'ert-field-note',
+                text: 'Legacy key fields are disabled on this Obsidian version to avoid plaintext key storage.'
+            });
+        } else {
+            const legacySetting = new Settings(legacyHost)
+                .setName(`${options.providerName} legacy API key`)
+                .setDesc('Used only when Secret Storage is unavailable.');
+            legacySetting.addText(text => {
+                text.inputEl.addClass('ert-input--full');
+                const legacyValue = options.legacyProvider === 'gemini'
+                    ? plugin.settings.geminiApiKey
+                    : options.legacyProvider === 'anthropic'
+                    ? plugin.settings.anthropicApiKey
+                    : plugin.settings.openaiApiKey;
+                text
+                    .setPlaceholder(options.keyPlaceholder)
+                    .setValue(legacyValue || '');
+                params.setKeyInputRef(options.legacyProvider, text.inputEl);
+                plugin.registerDomEvent(text.inputEl, 'blur', () => {
+                    void (async () => {
+                        const next = text.getValue().trim();
+                        if (options.legacyProvider === 'gemini') plugin.settings.geminiApiKey = next;
+                        if (options.legacyProvider === 'anthropic') plugin.settings.anthropicApiKey = next;
+                        if (options.legacyProvider === 'openai') plugin.settings.openaiApiKey = next;
+                        await plugin.saveSettings();
+                        void params.scheduleKeyValidation(options.legacyProvider);
+                    })();
+                });
+            });
+            legacySetting.settingEl.addClass('ert-setting-full-width-input');
+        }
+    };
+
+    renderCredentialSettings({
+        section: anthropicSection,
+        provider: 'anthropic',
+        legacyProvider: 'anthropic',
+        providerName: 'Anthropic',
+        keyPlaceholder: 'Enter your Anthropic API key',
+        docsUrl: 'https://platform.claude.com'
+    });
+    renderCredentialSettings({
+        section: geminiSection,
+        provider: 'google',
+        legacyProvider: 'gemini',
+        providerName: 'Google Gemini',
+        keyPlaceholder: 'Enter your Gemini API key',
+        docsUrl: 'https://aistudio.google.com'
+    });
+    renderCredentialSettings({
+        section: openaiSection,
+        provider: 'openai',
+        legacyProvider: 'openai',
+        providerName: 'OpenAI',
+        keyPlaceholder: 'Enter your OpenAI API key',
+        docsUrl: 'https://platform.openai.com'
+    });
 
     const localWrapper = aiSettingsGroup.createDiv({
         cls: ['ert-provider-section', 'ert-provider-local', ERT_CLASSES.STACK]
@@ -749,7 +1151,7 @@ export function renderAiSection(params: {
                 button.setDisabled(true);
                 button.setIcon('loader-2');
                 try {
-                    const models = await fetchLocalModels(baseUrl, plugin.settings.localApiKey?.trim());
+                    const models = await fetchLocalModels(baseUrl, await getCredential(plugin, 'ollama'));
                     if (!Array.isArray(models) || models.length === 0) {
                         new Notice('No models reported by the local server.');
                         return;
@@ -809,24 +1211,84 @@ export function renderAiSection(params: {
             }));
     bypassSetting.settingEl.addClass(ERT_CLASSES.ROW);
 
-    const apiKeySetting = new Settings(localExtrasStack)
-        .setName('API Key (Optional)')
-        .setDesc('Required by some servers. For local tools like Ollama, this is usually ignored.')
-    apiKeySetting.settingEl.addClass(ERT_CLASSES.ROW);
+    const localApiDetails = localExtrasStack.createEl('details', { cls: 'ert-ai-legacy-credentials' });
+    if (!secretStorageAvailable) {
+        localApiDetails.setAttr('open', '');
+    }
+    localApiDetails.createEl('summary', { text: 'Advanced: local API key (optional)' });
+    const localApiContainer = localApiDetails.createDiv({ cls: ERT_CLASSES.STACK });
 
-    addApiKeyInput(
-        apiKeySetting,
-        'not-needed',
-        plugin.settings.localApiKey || '',
-        async (val) => {
-            plugin.settings.localApiKey = val;
-            const aiSettings = ensureCanonicalAiSettings();
-            aiSettings.credentials = { ...(aiSettings.credentials || {}), ollamaApiKey: val };
-            await persistCanonical();
-        },
-        () => params.scheduleKeyValidation('local'),
-        (el) => params.setKeyInputRef('local', el)
-    );
+    const localSecretIdSetting = new Settings(localApiContainer)
+        .setName('Local secret id')
+        .setDesc('Optional secret id if your local gateway requires a key.');
+    localSecretIdSetting.addText(text => {
+        text.inputEl.addClass('ert-input--full');
+        text.setPlaceholder('rt.ollama.api-key').setValue(getCredentialSecretId(ensureCanonicalAiSettings(), 'ollama'));
+        plugin.registerDomEvent(text.inputEl, 'blur', () => {
+            void (async () => {
+                const ai = ensureCanonicalAiSettings();
+                setCredentialSecretId(ai, 'ollama', text.getValue().trim());
+                await persistCanonical();
+            })();
+        });
+    });
+    localSecretIdSetting.settingEl.addClass('ert-setting-full-width-input');
+
+    if (secretStorageAvailable && SecretComponentCtor) {
+        const localSecretSetting = new Settings(localApiContainer)
+            .setName('Local API key (Secret Storage)')
+            .setDesc('Only needed when your local endpoint requires authentication.');
+        const localSecretInput = new SecretComponentCtor(localSecretSetting.controlEl);
+        localSecretInput.inputEl.addClass('ert-input--full');
+        localSecretInput.setPlaceholder('Optional local API key');
+        params.setKeyInputRef('local', localSecretInput.inputEl);
+        plugin.registerDomEvent(localSecretInput.inputEl, 'blur', () => {
+            void (async () => {
+                const key = localSecretInput.getValue().trim();
+                if (!key) return;
+                const ai = ensureCanonicalAiSettings();
+                const secretId = getCredentialSecretId(ai, 'ollama');
+                if (!secretId) {
+                    new Notice('Set a local secret id first.');
+                    return;
+                }
+                const stored = await setSecret(app, secretId, key);
+                if (!stored) {
+                    new Notice('Unable to save local API key to Secret Storage.');
+                    return;
+                }
+                plugin.settings.localApiKey = '';
+                await plugin.saveSettings();
+                void params.scheduleKeyValidation('local');
+            })();
+        });
+        localSecretSetting.settingEl.addClass('ert-setting-full-width-input');
+    }
+
+    if (secretStorageAvailable) {
+        localApiContainer.createDiv({
+            cls: 'ert-field-note',
+            text: 'Legacy local key field is disabled to avoid plaintext key storage.'
+        });
+    } else {
+        const legacyLocalSetting = new Settings(localApiContainer)
+            .setName('Legacy local API key')
+            .setDesc('Used only when Secret Storage is unavailable.');
+        legacyLocalSetting.addText(text => {
+            text.inputEl.addClass('ert-input--full');
+            text.setPlaceholder('Optional local API key');
+            text.setValue(plugin.settings.localApiKey || '');
+            params.setKeyInputRef('local', text.inputEl);
+            plugin.registerDomEvent(text.inputEl, 'blur', () => {
+                void (async () => {
+                    plugin.settings.localApiKey = text.getValue().trim();
+                    await plugin.saveSettings();
+                    void params.scheduleKeyValidation('local');
+                })();
+            });
+        });
+        legacyLocalSetting.settingEl.addClass('ert-setting-full-width-input');
+    }
 
     // Apply provider dimming on first render
     params.refreshProviderDimming();

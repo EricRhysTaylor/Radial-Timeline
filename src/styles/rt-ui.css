@@ -4769,6 +4769,209 @@
   margin-top: 6px;
 }
 
+.ert-ui.ert-scope--settings .ert-ai-models-panel {
+  margin-top: 8px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-recommendations {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--background-secondary) 45%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-recommendations-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-recommendation-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(320px, 2fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-recommendation-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-recommendation-value {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-recommendation-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-recommendation-model {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-recommendation-why {
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-recommendation-status {
+  margin-left: 2px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-recommendation-hint {
+  grid-column: 2 / 3;
+  font-size: 11px;
+  color: var(--text-faint);
+  line-height: 1.35;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-recommendation-action {
+  margin-left: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--interactive-accent);
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-recommendation-action:hover {
+  color: var(--interactive-accent-hover);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-models-refreshed {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-models-table {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-models-row {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1.5fr 2fr 1.5fr;
+  gap: 10px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  width: 100%;
+  text-align: left;
+  background: transparent;
+}
+
+.ert-ui.ert-scope--settings button.ert-ai-models-row {
+  border: none;
+  border-radius: 0;
+  margin: 0;
+  box-shadow: none;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-models-row:last-child {
+  border-bottom: none;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-models-row--header {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--background-secondary);
+}
+
+.ert-ui.ert-scope--settings button.ert-ai-models-row:hover {
+  background: color-mix(in srgb, var(--background-secondary) 70%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-models-provider {
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  background: color-mix(in srgb, var(--background-secondary) 55%, transparent);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-models-cell {
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-normal);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-models-cell--model {
+  flex-wrap: nowrap;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-models-provider-mark {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--background-modifier-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-models-name {
+  font-weight: 600;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-models-alias {
+  color: var(--text-faint);
+  font-family: var(--font-monospace);
+  font-size: 11px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-models-tags .ert-badgePill {
+  margin: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-model-details {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-model-details-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-model-warning {
+  color: var(--text-warning);
+  font-size: 12px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-model-raw-pre {
+  max-height: 220px;
+  overflow: auto;
+  margin-top: 8px;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Icon suggestions (ERT)                                                     */
 /* -------------------------------------------------------------------------- */
