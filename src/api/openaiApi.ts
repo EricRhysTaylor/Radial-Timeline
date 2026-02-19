@@ -3,7 +3,9 @@
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
+// TODO: DEPRECATED — migrate to aiClient
 import { requestUrl } from 'obsidian'; // Use requestUrl for consistency
+import { warnLegacyAccess } from './legacyAccessGuard';
 
 // Interface for the expected successful OpenAI Chat Completion response
 interface OpenAiChatSuccessResponse {
@@ -52,8 +54,10 @@ export async function callOpenAiApi(
     responseFormat?: OpenAiResponseFormat,
     temperature?: number,
     topP?: number,
-    allowFormatFallback = true
+    allowFormatFallback = true,
+    internalAdapterAccess?: boolean
 ): Promise<OpenAiApiResponse> {
+    warnLegacyAccess('openaiApi.callOpenAiApi', internalAdapterAccess);
     let apiUrl = 'https://api.openai.com/v1/chat/completions';
     if (baseUrl) {
         // Ensure we don't double-slash
@@ -120,7 +124,7 @@ export async function callOpenAiApi(
             // Broaden check to catch "JSON mode" errors from various local servers (Ollama, etc.)
             if (responseFormat && allowFormatFallback && /(response_format|json)/i.test(msg)) {
                 console.warn('[OpenAI API] JSON mode not supported by server/model, retrying without enforcement.');
-                return callOpenAiApi(apiKey, modelId, systemPrompt, userPrompt, maxTokens, baseUrl, undefined, temperature, topP, false);
+                return callOpenAiApi(apiKey, modelId, systemPrompt, userPrompt, maxTokens, baseUrl, undefined, temperature, topP, false, internalAdapterAccess);
             }
             return { success: false, content: null, responseData, error: msg };
         }

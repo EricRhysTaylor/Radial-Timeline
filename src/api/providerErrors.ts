@@ -1,3 +1,4 @@
+// TODO: DEPRECATED — migrate to aiClient
 export type AiStatus = 'success' | 'rejected' | 'unavailable' | 'timeout' | 'auth' | 'rate_limit';
 
 export interface ProviderErrorClassification {

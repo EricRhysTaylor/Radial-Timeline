@@ -2,7 +2,6 @@
  * Gossamer Commands and State - Manual Score Entry
  */
 import type RadialTimelinePlugin from './main';
-import { DEFAULT_GEMINI_MODEL_ID } from './constants/aiDefaults';
 import { buildRunFromDefault, buildAllGossamerRuns, GossamerRun, normalizeBeatName, appendGossamerScore, extractBeatOrder, detectDominantStage } from './utils/gossamer';
 import { Notice, TFile, TFolder, App, normalizePath } from 'obsidian';
 import { GossamerScoreModal } from './modals/GossamerScoreModal';
@@ -10,8 +9,8 @@ import { GossamerProcessingModal, type ManuscriptInfo, type AnalysisOptions } fr
 import { TimelineMode } from './modes/ModeDefinition';
 import { assembleManuscript } from './utils/manuscript';
 import { buildUnifiedBeatAnalysisPrompt, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
-import { callGeminiApi } from './api/geminiApi';
-import { buildProviderRequestPayload } from './api/requestPayload';
+import { getAIClient } from './ai/runtime/aiClient';
+import { mapAiProviderToLegacyProvider } from './ai/settings/aiSettings';
 import {
   extractTokenUsage,
   formatAiLogContent,
@@ -24,8 +23,7 @@ import {
 import { ensureGossamerContentLogFolder, resolveGossamerContentLogFolder } from './inquiry/utils/logs';
 import { resolveSelectedBeatModel } from './utils/beatsInputNormalize';
 import { isPathInFolderScope } from './utils/pathScope';
-const resolveGeminiModelId = (plugin?: RadialTimelinePlugin): string =>
-  plugin?.settings?.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
+import type { AIProviderId } from './ai/types';
 
 const sanitizeSegment = (value: string | null | undefined) => {
   if (!value) return '';
@@ -37,16 +35,9 @@ const sanitizeSegment = (value: string | null | undefined) => {
     .replace(/^-+|-+$/g, '');
 };
 
-const resolveGeminiModelFromResponse = (responseData: unknown): string | undefined => {
-  if (!responseData || typeof responseData !== 'object') return undefined;
-  const data = responseData as Record<string, unknown>;
-  if (typeof data.modelVersion === 'string') return data.modelVersion;
-  if (typeof data.model === 'string') return data.model;
-  return undefined;
-};
-
 type GossamerLogPayload = {
   status: 'success' | 'error';
+  provider: Exclude<AIProviderId, 'none'>;
   beatSystemLabel: string;
   modelRequested: string;
   modelResolved?: string;
@@ -75,7 +66,7 @@ async function writeGossamerLog(
   const sanitizationNotes = redactedKeys.length
     ? [`Redacted request keys: ${redactedKeys.join(', ')}.`]
     : [];
-  const tokenUsage = extractTokenUsage('gemini', payload.responseData);
+  const tokenUsage = extractTokenUsage(mapAiProviderToLegacyProvider(payload.provider), payload.responseData);
   const schemaWarnings = payload.schemaWarnings ?? [];
   const durationMs = payload.submittedAt && payload.returnedAt
     ? payload.returnedAt.getTime() - payload.submittedAt.getTime()
@@ -98,7 +89,7 @@ async function writeGossamerLog(
           metadata: {
             feature: 'Gossamer',
             scopeTarget,
-            provider: 'gemini',
+            provider: mapAiProviderToLegacyProvider(payload.provider),
             modelRequested: payload.modelRequested,
             modelResolved: payload.modelResolved ?? payload.modelRequested,
             submittedAt: payload.submittedAt ?? null,
@@ -166,7 +157,7 @@ async function writeGossamerLog(
       title: summaryTitle,
       feature: 'Gossamer',
       scopeTarget,
-      provider: 'gemini',
+      provider: mapAiProviderToLegacyProvider(payload.provider),
       modelRequested: payload.modelRequested,
       modelResolved: payload.modelResolved ?? payload.modelRequested,
       submittedAt: payload.submittedAt ?? null,
@@ -706,14 +697,6 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     try {
       modal.setStatus('Validating configuration...');
       
-      // Check if Gemini API key is configured
-      if (!plugin.settings.geminiApiKey || plugin.settings.geminiApiKey.trim() === '') {
-        modal.addError('Gemini API key not configured. Go to Settings → AI → Gemini API key.');
-        modal.completeProcessing(false, 'Configuration error');
-        new Notice('Gemini API key not configured. Go to Settings → AI → Gemini API key.');
-        return;
-      }
-      
       modal.setStatus('Loading story beats...');
       
       // Get all beat notes
@@ -805,48 +788,51 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     const prompt = buildUnifiedBeatAnalysisPrompt(manuscript.text, beats, beatSystem);
     const schema = getUnifiedBeatAnalysisJsonSchema();
 
-    // Call Gemini API
-    modal.setStatus('Sending manuscript to Gemini API for momentum analysis...');
+    // Call unified AI client
+    modal.setStatus('Sending manuscript to AI for momentum analysis...');
     modal.apiCallStarted();
-
-    const geminiModelId = resolveGeminiModelId(plugin);
-    const requestPayload = buildProviderRequestPayload('gemini', geminiModelId, {
-      userPrompt: prompt,
-      systemPrompt: null,
-      maxTokens: 9000,
-      temperature: 0.7,
-      jsonSchema: schema
-    });
+    const aiClient = getAIClient(plugin);
 
     const submittedAt = new Date();
-    const result = await callGeminiApi(
-      plugin.settings.geminiApiKey,
-      geminiModelId,
-      null, // No system prompt - instructions in user prompt
-      prompt,
-      9000, // Allow larger JSON output
-      0.7, // Temperature
-      schema
-    );
+    const result = await aiClient.run({
+      feature: 'Gossamer',
+      task: 'BeatMomentumAnalysis',
+      requiredCapabilities: ['jsonStrict', 'longContext', 'reasoningStrong', 'highOutputCap'],
+      profileOverride: 'balancedAnalysis',
+      featureModeInstructions: 'Evaluate narrative momentum at each beat using only the submitted manuscript and beat list. Avoid anchoring to prior scores.',
+      userInput: prompt,
+      returnType: 'json',
+      responseSchema: schema as unknown as Record<string, unknown>,
+      overrides: {
+        temperature: 0.7,
+        maxOutputMode: 'high',
+        reasoningDepth: 'deep',
+        jsonStrict: true
+      },
+      tokenEstimateInput: estimatedTokens
+    });
     const returnedAt = new Date();
+    modal.setAiAdvancedContext(result.advancedContext ?? null);
 
-    if (!result.success || !result.content) {
-      modal.apiCallError(result.error || 'Failed to get response from Gemini');
+    if (result.aiStatus !== 'success' || !result.content) {
+      modal.apiCallError(result.error || 'Failed to get response from AI');
       modal.completeProcessing(false, 'API call failed');
       
       // Check for rate limit
       if (result.error?.toLowerCase().includes('rate limit')) {
         modal.showRateLimitWarning();
       }
+      const providerForLog: Exclude<AIProviderId, 'none'> = result.provider === 'none' ? 'openai' : result.provider;
       
       await writeGossamerLog(plugin, {
         status: 'error',
+        provider: providerForLog,
         beatSystemLabel: beatSystemDisplayName,
-        modelRequested: geminiModelId,
-        modelResolved: resolveGeminiModelFromResponse(result.responseData) ?? geminiModelId,
+        modelRequested: result.modelRequested,
+        modelResolved: result.modelResolved,
         prompt,
         manuscriptText: manuscript.text,
-        requestPayload,
+        requestPayload: result.requestPayload ?? null,
         responseData: result.responseData,
         assistantContent: result.content,
         parsedOutput: null,
@@ -855,7 +841,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         schemaWarnings: result.error ? [`Error: ${result.error}`] : undefined
       });
       
-      throw new Error(result.error || 'Failed to get response from Gemini');
+      throw new Error(result.error || 'Failed to get response from AI');
     }
 
     modal.apiCallSuccess();
@@ -972,7 +958,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
           minute: '2-digit',
           hour12: true
         });
-        const modelId = resolveGeminiModelId(plugin);
+        const modelId = result.modelResolved || result.modelRequested || 'ai-model';
         fm['Gossamer Last Updated'] = `${timestamp} by ${modelId}`;
       });
       
@@ -1012,12 +998,13 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
 
     const reportFile = await writeGossamerLog(plugin, {
       status: 'success',
+      provider: result.provider === 'none' ? 'openai' : result.provider,
       beatSystemLabel: beatSystemDisplayName,
-      modelRequested: geminiModelId,
-      modelResolved: resolveGeminiModelFromResponse(result.responseData) ?? geminiModelId,
+      modelRequested: result.modelRequested,
+      modelResolved: result.modelResolved,
       prompt,
       manuscriptText: manuscript.text,
-      requestPayload,
+      requestPayload: result.requestPayload ?? null,
       responseData: result.responseData,
       assistantContent: result.content,
       parsedOutput: analysis,

@@ -3,7 +3,9 @@
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
+// TODO: DEPRECATED — migrate to aiClient
 import { requestUrl } from 'obsidian';
+import { warnLegacyAccess } from './legacyAccessGuard';
 
 interface GeminiPart { text?: string }
 interface GeminiContent { parts?: GeminiPart[]; role?: string }
@@ -38,8 +40,10 @@ export async function callGeminiApi(
   jsonSchema?: Record<string, unknown>,  // Optional JSON schema for structured output
   disableThinking: boolean = false,  // Disable extended thinking mode (for 2.5-pro models)
   cachedContentName?: string, // Optional: name of cached content resource (e.g. "cachedContents/...")
-  topP?: number
+  topP?: number,
+  internalAdapterAccess?: boolean
 ): Promise<GeminiApiResponse> {
+  warnLegacyAccess('geminiApi.callGeminiApi', internalAdapterAccess);
   if (!apiKey) {
     return { success: false, content: null, responseData: { error: { message: 'Gemini API key not configured.' } }, error: 'Gemini API key not configured.' };
   }

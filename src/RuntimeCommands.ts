@@ -13,8 +13,9 @@ import { estimateRuntime, getRuntimeSettings, formatRuntimeValue, parseRuntimeFi
 import { isNonSceneItem } from './utils/sceneHelpers';
 import { normalizeStatus } from './utils/text';
 import type { TimelineItem } from './types';
-import { callProvider } from './api/providerRouter';
+import { getAIClient } from './ai/runtime/aiClient';
 import { isProfessionalActive } from './settings/sections/ProfessionalSection';
+import type { AIRunAdvancedContext } from './ai/types';
 
 interface SceneToProcess {
     file: TFile;
@@ -197,6 +198,9 @@ async function processScenes(
                 // AI mode: send scene to AI for estimation
                 modal.setStatusMessage(`AI analyzing: ${scene.title}`);
                 const aiResult = await estimateSceneWithAi(plugin, scene, localResult, runtimeSettings);
+                if (typeof modal.setAiAdvancedContext === 'function') {
+                    modal.setAiAdvancedContext(aiResult.advancedContext ?? null);
+                }
                 
                 if (aiResult.success && typeof aiResult.runtimeSeconds === 'number') {
                     runtimeSeconds = aiResult.runtimeSeconds;
@@ -270,6 +274,7 @@ interface SceneAiResult {
     success: boolean;
     runtimeSeconds?: number;
     error?: string;
+    advancedContext?: AIRunAdvancedContext;
 }
 
 /**
@@ -344,29 +349,60 @@ Analyze the scene and provide your runtime estimate. Consider:
 Return JSON only: {"runtimeSeconds": number, "reasoning": "brief explanation"}`;
 
     try {
-        const response = await callProvider(plugin, {
-            systemPrompt,
-            userPrompt,
-            maxTokens: 500,
-            temperature: 0.3,
+        const aiClient = getAIClient(plugin);
+        const schema = {
+            type: 'object',
+            properties: {
+                runtimeSeconds: { type: 'number' },
+                reasoning: { type: 'string' }
+            },
+            required: ['runtimeSeconds']
+        } as const;
+
+        const run = await aiClient.run({
+            feature: 'RuntimeAI',
+            task: 'EstimateSceneRuntime',
+            requiredCapabilities: ['jsonStrict', 'reasoningStrong'],
+            featureModeInstructions: systemPrompt,
+            userInput: userPrompt,
+            returnType: 'json',
+            responseSchema: schema as unknown as Record<string, unknown>,
+            overrides: {
+                temperature: 0.3,
+                maxOutputMode: 'auto',
+                reasoningDepth: 'standard',
+                jsonStrict: true
+            },
+            tokenEstimateInput: Math.ceil((systemPrompt.length + userPrompt.length) / 4)
         });
 
-        if (!response.success || !response.content) {
-            return { success: false, error: 'AI request failed' };
+        if (run.aiStatus !== 'success' || !run.content) {
+            return {
+                success: false,
+                error: run.error || 'AI request failed',
+                advancedContext: run.advancedContext
+            };
         }
 
-        const parsed = extractJsonFromContent(response.content) as
+        const parsed = extractJsonFromContent(run.content) as
             | { runtimeSeconds?: number; estimatedSeconds?: number; totalSeconds?: number; seconds?: number }
             | null;
 
-        // Try various field names the AI might use
         const seconds = parsed?.runtimeSeconds ?? parsed?.estimatedSeconds ?? parsed?.totalSeconds ?? parsed?.seconds;
 
         if (typeof seconds === 'number' && Number.isFinite(seconds) && seconds >= 0) {
-            return { success: true, runtimeSeconds: Math.round(seconds) };
+            return {
+                success: true,
+                runtimeSeconds: Math.round(seconds),
+                advancedContext: run.advancedContext
+            };
         }
 
-        return { success: false, error: 'AI response missing runtimeSeconds' };
+        return {
+            success: false,
+            error: 'AI response missing runtimeSeconds',
+            advancedContext: run.advancedContext
+        };
     } catch (e) {
         return { success: false, error: e instanceof Error ? e.message : 'Unknown error' };
     }

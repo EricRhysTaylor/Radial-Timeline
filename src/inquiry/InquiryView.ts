@@ -46,6 +46,8 @@ import {
 } from './components/InquiryGlyph';
 import { ZONE_LAYOUT } from './zoneLayout';
 import { InquiryRunnerService } from './runner/InquiryRunnerService';
+import { getLastAiAdvancedContext } from '../ai/runtime/aiClient';
+import type { AIRunAdvancedContext } from '../ai/types';
 import type {
     CorpusManifest,
     CorpusManifestEntry,
@@ -359,6 +361,8 @@ class InquiryOmnibusModal extends Modal {
     private configPanel?: HTMLDivElement;
     private actionsEl?: HTMLDivElement;
     private resultEl?: HTMLDivElement;
+    private aiAdvancedPreEl?: HTMLPreElement;
+    private aiAdvancedContext: AIRunAdvancedContext | null = null;
 
     constructor(
         app: App,
@@ -598,6 +602,10 @@ class InquiryOmnibusModal extends Modal {
             this.progressTextEl = this.progressEl.createDiv({ cls: 'ert-omnibus-progress-text' });
             this.progressTextEl.setText('Preparing...');
             this.progressMicroEl = this.progressEl.createDiv({ cls: 'ert-omnibus-progress-micro ert-field-note' });
+            const advancedDetails = this.progressEl.createEl('details', { cls: 'ert-ai-advanced-details' });
+            advancedDetails.createEl('summary', { text: 'AI Prompt & Context (Advanced)' });
+            this.aiAdvancedPreEl = advancedDetails.createEl('pre', { cls: 'ert-ai-advanced-pre' });
+            this.renderAiAdvancedContext();
         }
         if (this.actionsEl) {
             this.actionsEl.empty();
@@ -620,6 +628,33 @@ class InquiryOmnibusModal extends Modal {
         if (this.progressMicroEl && !this.abortRequested) {
             this.progressMicroEl.setText(micro ?? `${zone} \u00B7 ${questionLabel}`);
         }
+    }
+
+    setAiAdvancedContext(context: AIRunAdvancedContext | null): void {
+        this.aiAdvancedContext = context;
+        this.renderAiAdvancedContext();
+    }
+
+    private renderAiAdvancedContext(): void {
+        if (!this.aiAdvancedPreEl) return;
+        if (!this.aiAdvancedContext) {
+            this.aiAdvancedPreEl.setText('Waiting for first AI request...');
+            return;
+        }
+        const ctx = this.aiAdvancedContext;
+        const lines = [
+            `Role template: ${ctx.roleTemplateName}`,
+            `Resolved model: ${ctx.provider} -> ${ctx.modelAlias} (${ctx.modelLabel})`,
+            `Model selection reason: ${ctx.modelSelectionReason}`,
+            `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
+            '',
+            'Feature mode instructions:',
+            ctx.featureModeInstructions || '(none)',
+            '',
+            'Final composed prompt:',
+            ctx.finalPrompt || '(none)'
+        ];
+        this.aiAdvancedPreEl.setText(lines.join('\n'));
     }
 
     /** Show completion or abort message and provide a Close button. */
@@ -6067,6 +6102,9 @@ export class InquiryView extends ItemView {
         try {
             const runOutput = await this.runner.runOmnibusWithTrace(omnibusInput);
             traceForLogs = runOutput.trace;
+            if (modal) {
+                modal.setAiAdvancedContext(getLastAiAdvancedContext(this.plugin, 'InquiryMode'));
+            }
             const completedAt = new Date();
             const questionsById = new Map(questions.map(question => [question.id, question]));
 
@@ -6233,6 +6271,9 @@ export class InquiryView extends ItemView {
                     const runOutput = await this.runner.runWithTrace(runnerInput);
                     result = runOutput.result;
                     trace = runOutput.trace;
+                    if (modal) {
+                        modal.setAiAdvancedContext(getLastAiAdvancedContext(this.plugin, 'InquiryMode'));
+                    }
                 } catch (error) {
                     result = this.buildErrorFallback(question, focusLabel, manifest.fingerprint, error);
                     const message = error instanceof Error ? error.message : String(error);

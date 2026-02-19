@@ -1,4 +1,5 @@
 import type { InquiryScope } from '../inquiry/state';
+import type { AiSettingsV1 } from '../ai/types';
 
 export interface AiContextTemplate {
     id: string;
@@ -385,6 +386,8 @@ export interface RadialTimelineSettings {
     localLlmInstructions?: string;
     localSendPulseToAiReport?: boolean;
     openaiModelId?: string;
+    aiSettings?: AiSettingsV1;
+    aiRegistryCacheJson?: string;
     enableAiSceneAnalysis: boolean;
     enableZeroDraftMode?: boolean;
     metadataRefreshDebounceMs?: number;

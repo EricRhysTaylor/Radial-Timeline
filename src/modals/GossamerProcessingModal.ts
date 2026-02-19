@@ -10,6 +10,7 @@ import { App, Modal, ButtonComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { getModelDisplayName } from '../utils/modelResolver';
 import { SimulatedProgress } from '../utils/simulatedProgress';
+import type { AIRunAdvancedContext } from '../ai/types';
 
 export interface ManuscriptInfo {
     totalScenes: number;
@@ -45,6 +46,8 @@ export class GossamerProcessingModal extends Modal {
     private progressBarEl?: HTMLElement;
     private errorListEl?: HTMLElement;
     private closeButtonEl?: ButtonComponent;
+    private aiAdvancedPreEl?: HTMLElement;
+    private aiAdvancedContext: AIRunAdvancedContext | null = null;
 
     // Processing state
     private manuscriptInfo?: ManuscriptInfo;
@@ -214,6 +217,11 @@ export class GossamerProcessingModal extends Modal {
         this.apiStatusEl = apiSection.createDiv({ cls: 'rt-gossamer-proc-api-status' });
         this.apiStatusEl.setText('Waiting to send...');
 
+        const advancedDetails = progressCard.createEl('details', { cls: 'ert-ai-advanced-details' });
+        advancedDetails.createEl('summary', { text: 'AI Prompt & Context (Advanced)' });
+        this.aiAdvancedPreEl = advancedDetails.createEl('pre', { cls: 'ert-ai-advanced-pre' });
+        this.renderAiAdvancedContext();
+
         // Error section
         this.errorListEl = bodyEl.createDiv({ cls: 'rt-pulse-error-list rt-glass-card rt-hidden' });
 
@@ -223,6 +231,33 @@ export class GossamerProcessingModal extends Modal {
             .setButtonText('Close')
             .setDisabled(true)
             .onClick(() => this.close());
+    }
+
+    public setAiAdvancedContext(context: AIRunAdvancedContext | null): void {
+        this.aiAdvancedContext = context;
+        this.renderAiAdvancedContext();
+    }
+
+    private renderAiAdvancedContext(): void {
+        if (!this.aiAdvancedPreEl) return;
+        if (!this.aiAdvancedContext) {
+            this.aiAdvancedPreEl.setText('Waiting for first AI request...');
+            return;
+        }
+        const ctx = this.aiAdvancedContext;
+        const lines = [
+            `Role template: ${ctx.roleTemplateName}`,
+            `Resolved model: ${ctx.provider} -> ${ctx.modelAlias} (${ctx.modelLabel})`,
+            `Model selection reason: ${ctx.modelSelectionReason}`,
+            `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
+            '',
+            'Feature mode instructions:',
+            ctx.featureModeInstructions || '(none)',
+            '',
+            'Final composed prompt:',
+            ctx.finalPrompt || '(none)'
+        ];
+        this.aiAdvancedPreEl.setText(lines.join('\n'));
     }
 
     /**

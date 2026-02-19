@@ -1,3 +1,4 @@
+// TODO: DEPRECATED — migrate to aiClient
 import type { AiProvider, ProviderCallArgs } from './providerCapabilities';
 
 type OpenAiPayload = {

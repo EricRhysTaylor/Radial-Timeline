@@ -12,6 +12,7 @@ import type { TimelineItem } from '../types';
 import { formatRuntimeValue, getRuntimeSettings } from '../utils/runtimeEstimator';
 import { isNonSceneItem } from '../utils/sceneHelpers';
 import { ERT_CLASSES } from '../ui/classes';
+import type { AIRunAdvancedContext } from '../ai/types';
 
 export type RuntimeScope = 'current' | 'subplot' | 'all';
 export type RuntimeMode = 'local' | 'ai';
@@ -79,6 +80,8 @@ export class RuntimeProcessingModal extends Modal {
     private queueContainer?: HTMLElement;
     private actionButton?: ButtonComponent;
     private closeButton?: ButtonComponent;
+    private aiAdvancedContext: AIRunAdvancedContext | null = null;
+    private aiAdvancedPreEl?: HTMLElement;
 
     // Subplot data
     private orderedSubplots: { name: string; count: number }[] = [];
@@ -583,6 +586,11 @@ export class RuntimeProcessingModal extends Modal {
         // Queue container
         this.queueContainer = progressCard.createDiv({ cls: 'ert-runtime-queue' });
 
+        const advancedDetails = progressCard.createEl('details', { cls: 'ert-ai-advanced-details' });
+        advancedDetails.createEl('summary', { text: 'AI Prompt & Context (Advanced)' });
+        this.aiAdvancedPreEl = advancedDetails.createEl('pre', { cls: 'ert-ai-advanced-pre' });
+        this.renderAiAdvancedContext();
+
         // Action buttons
         const buttonRow = contentEl.createDiv({ cls: 'ert-modal-actions' });
 
@@ -635,6 +643,33 @@ export class RuntimeProcessingModal extends Modal {
         if (this.statusTextEl) {
             this.statusTextEl.setText(message);
         }
+    }
+
+    public setAiAdvancedContext(context: AIRunAdvancedContext | null): void {
+        this.aiAdvancedContext = context;
+        this.renderAiAdvancedContext();
+    }
+
+    private renderAiAdvancedContext(): void {
+        if (!this.aiAdvancedPreEl) return;
+        if (!this.aiAdvancedContext) {
+            this.aiAdvancedPreEl.setText('Waiting for first AI request...');
+            return;
+        }
+        const ctx = this.aiAdvancedContext;
+        const lines = [
+            `Role template: ${ctx.roleTemplateName}`,
+            `Resolved model: ${ctx.provider} -> ${ctx.modelAlias} (${ctx.modelLabel})`,
+            `Model selection reason: ${ctx.modelSelectionReason}`,
+            `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
+            '',
+            'Feature mode instructions:',
+            ctx.featureModeInstructions || '(none)',
+            '',
+            'Final composed prompt:',
+            ctx.finalPrompt || '(none)'
+        ];
+        this.aiAdvancedPreEl.setText(lines.join('\n'));
     }
 
     public isAborted(): boolean {

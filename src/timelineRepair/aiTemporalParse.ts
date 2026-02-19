@@ -9,7 +9,7 @@
 
 import type RadialTimelinePlugin from '../main';
 import type { RepairSceneEntry, AiTemporalResponse, WhenConfidence } from './types';
-import { callProvider } from '../api/providerRouter';
+import { getAIClient } from '../ai/runtime/aiClient';
 import { parseWhenField } from '../utils/date';
 
 // ============================================================================
@@ -303,19 +303,40 @@ export async function runAiTemporalParse(
             );
             
             // Call AI
-            const result = await callProvider(plugin, {
-                systemPrompt: SYSTEM_PROMPT,
-                userPrompt,
-                maxTokens: 500,
-                temperature: 0.3  // Low temperature for consistent analysis
+            const aiClient = getAIClient(plugin);
+            const run = await aiClient.run({
+                feature: 'TimelineRepairAI',
+                task: 'TemporalInference',
+                requiredCapabilities: ['jsonStrict', 'reasoningStrong'],
+                featureModeInstructions: SYSTEM_PROMPT,
+                userInput: userPrompt,
+                returnType: 'json',
+                responseSchema: {
+                    type: 'object',
+                    properties: {
+                        whenSuggestion: { type: 'string' },
+                        confidence: { type: 'string' },
+                        evidenceQuotes: { type: 'array', items: { type: 'string' } },
+                        durationSuggestion: { type: 'number' },
+                        durationOngoing: { type: 'boolean' },
+                        rationale: { type: 'string' }
+                    },
+                    required: ['whenSuggestion', 'confidence']
+                },
+                overrides: {
+                    temperature: 0.3,
+                    maxOutputMode: 'auto',
+                    reasoningDepth: 'standard',
+                    jsonStrict: true
+                }
             });
             
-            if (!result.success || !result.content) {
+            if (run.aiStatus !== 'success' || !run.content) {
                 continue;
             }
             
             // Parse response
-            const aiResponse = parseAiResponse(result.content);
+            const aiResponse = parseAiResponse(run.content);
             if (!aiResponse) {
                 continue;
             }
@@ -425,4 +446,3 @@ function detectTemporalIssuesAfterAi(entries: RepairSceneEntry[]): void {
         }
     }
 }
-

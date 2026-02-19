@@ -7,6 +7,7 @@
 import type { RadialTimelineSettings } from '../types';
 import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
 import { buildDefaultInquiryPromptConfig } from '../inquiry/prompts';
+import { buildDefaultAiSettings } from '../ai/settings/aiSettings';
 
 export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     books: [],
@@ -158,6 +159,8 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     localModelId: 'llama3',
     localApiKey: '',
     localSendPulseToAiReport: true,
+    aiSettings: buildDefaultAiSettings(),
+    aiRegistryCacheJson: '',
     enablePlanetaryTime: false,
     planetaryProfiles: [],
     activePlanetaryProfileId: undefined,

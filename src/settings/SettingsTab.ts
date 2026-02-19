@@ -74,8 +74,15 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             const el = map[key];
             if (!el) return;
             const isSelected = key === selected;
-            if (isSelected) el.classList.remove('dimmed');
-            else el.classList.add('dimmed');
+            if (isSelected) {
+                el.classList.remove('dimmed');
+                el.classList.remove('ert-settings-hidden');
+                el.classList.add('ert-settings-visible');
+            } else {
+                el.classList.add('dimmed');
+                el.classList.remove('ert-settings-visible');
+                el.classList.add('ert-settings-hidden');
+            }
             const inputs = el.querySelectorAll('input, textarea, button, select');
             inputs.forEach(input => {
                 if (isSelected) input.removeAttribute('disabled');

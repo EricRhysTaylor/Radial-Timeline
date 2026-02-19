@@ -37,6 +37,10 @@ import { migrateSceneAnalysisFields } from './migrations/sceneAnalysis';
 import { SettingsService } from './services/SettingsService';
 import { DEFAULT_GEMINI_MODEL_ID } from './constants/aiDefaults';
 import { DEFAULT_SETTINGS } from './settings/defaults';
+import { migrateAiSettings } from './ai/settings/migrateAiSettings';
+import { validateAiSettings } from './ai/settings/validateAiSettings';
+import { mapAiProviderToLegacyProvider } from './ai/settings/aiSettings';
+import { findBuiltinByAlias } from './ai/registry/builtinModels';
 import { PLOT_SYSTEM_NAMES } from './utils/beatsSystems';
 import { generateBeatGuid } from './utils/beatsInputNormalize';
 import type { BeatSystemConfig } from './types/settings';
@@ -448,6 +452,43 @@ export default class RadialTimelinePlugin extends Plugin {
         if (!this.settings.defaultAiProvider || !['openai', 'anthropic', 'gemini', 'local'].includes(this.settings.defaultAiProvider)) {
             this.settings.defaultAiProvider = DEFAULT_SETTINGS.defaultAiProvider;
         }
+
+        // Canonical AI settings migration/validation (legacy fields remain during transition).
+        const aiMigration = migrateAiSettings(this.settings);
+        if (aiMigration.changed || !this.settings.aiSettings) {
+            this.settings.aiSettings = aiMigration.aiSettings;
+        }
+        const aiValidation = validateAiSettings(this.settings.aiSettings);
+        this.settings.aiSettings = aiValidation.value;
+        if (aiValidation.warnings.length) {
+            const prior = new Set(this.settings.aiSettings.migrationWarnings || []);
+            aiValidation.warnings.forEach(warning => prior.add(warning));
+            this.settings.aiSettings.migrationWarnings = Array.from(prior);
+            this.settings.aiSettings.upgradedBannerPending = true;
+        }
+
+        // Back-compat sync: keep legacy provider/model/key fields in step while modules migrate to aiClient.
+        if (this.settings.aiSettings) {
+            const canonical = this.settings.aiSettings;
+            this.settings.defaultAiProvider = mapAiProviderToLegacyProvider(canonical.provider);
+
+            if (canonical.modelPolicy.type === 'pinned' && canonical.modelPolicy.pinnedAlias) {
+                const pinned = findBuiltinByAlias(canonical.modelPolicy.pinnedAlias);
+                if (pinned) {
+                    if (pinned.provider === 'anthropic') this.settings.anthropicModelId = pinned.id;
+                    if (pinned.provider === 'openai') this.settings.openaiModelId = pinned.id;
+                    if (pinned.provider === 'google') this.settings.geminiModelId = pinned.id;
+                    if (pinned.provider === 'ollama') this.settings.localModelId = pinned.id;
+                }
+            }
+
+            this.settings.openaiApiKey = canonical.credentials?.openaiApiKey ?? this.settings.openaiApiKey;
+            this.settings.anthropicApiKey = canonical.credentials?.anthropicApiKey ?? this.settings.anthropicApiKey;
+            this.settings.geminiApiKey = canonical.credentials?.googleApiKey ?? this.settings.geminiApiKey;
+            this.settings.localApiKey = canonical.credentials?.ollamaApiKey ?? this.settings.localApiKey;
+            this.settings.localBaseUrl = canonical.connections?.ollamaBaseUrl ?? this.settings.localBaseUrl;
+        }
+
         if (typeof this.settings.lastSeenReleaseNotesVersion !== 'string') {
             this.settings.lastSeenReleaseNotesVersion = DEFAULT_SETTINGS.lastSeenReleaseNotesVersion;
         }

@@ -3,7 +3,9 @@
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
+// TODO: DEPRECATED — migrate to aiClient
 import { requestUrl } from 'obsidian';
+import { warnLegacyAccess } from './legacyAccessGuard';
 
 interface AnthropicSuccessResponse {
   content: { type: string; text: string }[];
@@ -25,7 +27,9 @@ export async function callAnthropicApi(
   systemPrompt: string | null,
   userPrompt: string,
   maxTokens: number = 4000,
+  internalAdapterAccess?: boolean,
 ): Promise<AnthropicApiResponse> {
+  warnLegacyAccess('anthropicApi.callAnthropicApi', internalAdapterAccess);
   const apiUrl = 'https://api.anthropic.com/v1/messages';
   const apiVersion = '2023-06-01';
   if (!apiKey) {

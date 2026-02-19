@@ -1,998 +1,2407 @@
 {
-  "generatedAt": "2026-02-18T19:41:46.097Z",
+  "generatedAt": "2026-02-18T23:25:57.108Z",
   "summary": {
-    "anthropic": 11,
     "openai": 113,
-    "gemini": 45
+    "anthropic": 11,
+    "google": 45
   },
-  "anthropic": [
+  "models": [
     {
-      "id": "claude-sonnet-4-6",
-      "display_name": "Claude Sonnet 4.6",
-      "created_at": "2026-02-17T00:00:00Z",
-      "type": "model"
-    },
-    {
-      "id": "claude-opus-4-6",
-      "display_name": "Claude Opus 4.6",
-      "created_at": "2026-02-04T00:00:00Z",
-      "type": "model"
-    },
-    {
-      "id": "claude-opus-4-5-20251101",
-      "display_name": "Claude Opus 4.5",
-      "created_at": "2025-11-24T00:00:00Z",
-      "type": "model"
-    },
-    {
-      "id": "claude-haiku-4-5-20251001",
-      "display_name": "Claude Haiku 4.5",
-      "created_at": "2025-10-15T00:00:00Z",
-      "type": "model"
-    },
-    {
-      "id": "claude-sonnet-4-5-20250929",
-      "display_name": "Claude Sonnet 4.5",
-      "created_at": "2025-09-29T00:00:00Z",
-      "type": "model"
-    },
-    {
-      "id": "claude-opus-4-1-20250805",
-      "display_name": "Claude Opus 4.1",
-      "created_at": "2025-08-05T00:00:00Z",
-      "type": "model"
-    },
-    {
-      "id": "claude-opus-4-20250514",
-      "display_name": "Claude Opus 4",
-      "created_at": "2025-05-22T00:00:00Z",
-      "type": "model"
-    },
-    {
-      "id": "claude-sonnet-4-20250514",
-      "display_name": "Claude Sonnet 4",
-      "created_at": "2025-05-22T00:00:00Z",
-      "type": "model"
-    },
-    {
-      "id": "claude-3-7-sonnet-20250219",
-      "display_name": "Claude Sonnet 3.7",
-      "created_at": "2025-02-24T00:00:00Z",
-      "type": "model"
-    },
-    {
-      "id": "claude-3-5-haiku-20241022",
-      "display_name": "Claude Haiku 3.5",
-      "created_at": "2024-10-22T00:00:00Z",
-      "type": "model"
-    },
-    {
-      "id": "claude-3-haiku-20240307",
-      "display_name": "Claude Haiku 3",
-      "created_at": "2024-03-07T00:00:00Z",
-      "type": "model"
-    }
-  ],
-  "openai": [
-    {
-      "id": "gpt-5.2-codex",
-      "owned_by": "system",
-      "created": 1766164985
-    },
-    {
-      "id": "chatgpt-image-latest",
-      "owned_by": "system",
-      "created": 1765925279
-    },
-    {
-      "id": "gpt-audio-mini-2025-12-15",
-      "owned_by": "system",
-      "created": 1765760008
-    },
-    {
-      "id": "gpt-realtime-mini-2025-12-15",
-      "owned_by": "system",
-      "created": 1765612007
-    },
-    {
-      "id": "gpt-4o-mini-tts-2025-12-15",
-      "owned_by": "system",
-      "created": 1765610837
-    },
-    {
-      "id": "gpt-4o-mini-tts-2025-03-20",
-      "owned_by": "system",
-      "created": 1765610731
-    },
-    {
-      "id": "gpt-4o-mini-transcribe-2025-03-20",
-      "owned_by": "system",
-      "created": 1765610545
-    },
-    {
-      "id": "gpt-4o-mini-transcribe-2025-12-15",
-      "owned_by": "system",
-      "created": 1765610407
-    },
-    {
-      "id": "gpt-5.2-chat-latest",
-      "owned_by": "system",
-      "created": 1765344352
-    },
-    {
-      "id": "gpt-5.2-pro",
-      "owned_by": "system",
-      "created": 1765343983
-    },
-    {
-      "id": "gpt-5.2-pro-2025-12-11",
-      "owned_by": "system",
-      "created": 1765343959
-    },
-    {
-      "id": "gpt-5.2",
-      "owned_by": "system",
-      "created": 1765313051
-    },
-    {
-      "id": "gpt-5.2-2025-12-11",
-      "owned_by": "system",
-      "created": 1765313028
-    },
-    {
-      "id": "gpt-image-1.5",
-      "owned_by": "system",
-      "created": 1764030620
-    },
-    {
-      "id": "gpt-5.1-codex-max",
-      "owned_by": "system",
-      "created": 1763671532
-    },
-    {
-      "id": "gpt-5.1-codex-mini",
-      "owned_by": "system",
-      "created": 1763007109
-    },
-    {
-      "id": "gpt-5.1-codex",
-      "owned_by": "system",
-      "created": 1762988221
-    },
-    {
-      "id": "gpt-5.1",
-      "owned_by": "system",
-      "created": 1762800673
-    },
-    {
-      "id": "gpt-5.1-2025-11-13",
-      "owned_by": "system",
-      "created": 1762800353
-    },
-    {
-      "id": "gpt-5.1-chat-latest",
-      "owned_by": "system",
-      "created": 1762547951
-    },
-    {
-      "id": "gpt-5-search-api-2025-10-14",
-      "owned_by": "system",
-      "created": 1760043960
-    },
-    {
-      "id": "sora-2-pro",
-      "owned_by": "system",
-      "created": 1759708663
-    },
-    {
-      "id": "sora-2",
-      "owned_by": "system",
-      "created": 1759708615
-    },
-    {
-      "id": "gpt-realtime-mini-2025-10-06",
-      "owned_by": "system",
-      "created": 1759517175
-    },
-    {
-      "id": "gpt-realtime-mini",
-      "owned_by": "system",
-      "created": 1759517133
-    },
-    {
-      "id": "gpt-5-search-api",
-      "owned_by": "system",
-      "created": 1759514629
-    },
-    {
-      "id": "gpt-audio-mini-2025-10-06",
-      "owned_by": "system",
-      "created": 1759512137
-    },
-    {
-      "id": "gpt-audio-mini",
-      "owned_by": "system",
-      "created": 1759512027
-    },
-    {
-      "id": "gpt-5-pro",
-      "owned_by": "system",
-      "created": 1759469822
-    },
-    {
-      "id": "gpt-5-pro-2025-10-06",
-      "owned_by": "system",
-      "created": 1759469707
-    },
-    {
-      "id": "gpt-image-1-mini",
-      "owned_by": "system",
-      "created": 1758845821
-    },
-    {
-      "id": "gpt-5-codex",
-      "owned_by": "system",
-      "created": 1757527818
-    },
-    {
-      "id": "gpt-audio",
-      "owned_by": "system",
-      "created": 1756339249
-    },
-    {
-      "id": "gpt-realtime-2025-08-28",
-      "owned_by": "system",
-      "created": 1756271773
-    },
-    {
-      "id": "gpt-realtime",
-      "owned_by": "system",
-      "created": 1756271701
-    },
-    {
-      "id": "gpt-audio-2025-08-28",
-      "owned_by": "system",
-      "created": 1756256146
-    },
-    {
-      "id": "gpt-5-nano",
-      "owned_by": "system",
-      "created": 1754426384
-    },
-    {
-      "id": "gpt-5-nano-2025-08-07",
-      "owned_by": "system",
-      "created": 1754426303
-    },
-    {
-      "id": "gpt-5-mini",
-      "owned_by": "system",
-      "created": 1754425928
-    },
-    {
-      "id": "gpt-5-mini-2025-08-07",
-      "owned_by": "system",
-      "created": 1754425867
-    },
-    {
-      "id": "gpt-5",
-      "owned_by": "system",
-      "created": 1754425777
-    },
-    {
-      "id": "gpt-5-2025-08-07",
-      "owned_by": "system",
-      "created": 1754075360
-    },
-    {
-      "id": "gpt-5-chat-latest",
-      "owned_by": "system",
-      "created": 1754073306
-    },
-    {
-      "id": "o4-mini-deep-research-2025-06-26",
-      "owned_by": "system",
-      "created": 1750866121
-    },
-    {
-      "id": "gpt-4o-transcribe-diarize",
-      "owned_by": "system",
-      "created": 1750798887
-    },
-    {
-      "id": "o4-mini-deep-research",
-      "owned_by": "system",
-      "created": 1749685485
-    },
-    {
-      "id": "gpt-4o-audio-preview-2025-06-03",
-      "owned_by": "system",
-      "created": 1748908498
-    },
-    {
-      "id": "gpt-4o-realtime-preview-2025-06-03",
-      "owned_by": "system",
-      "created": 1748907838
-    },
-    {
-      "id": "gpt-image-1",
-      "owned_by": "system",
-      "created": 1745517030
-    },
-    {
-      "id": "gpt-4.1-nano",
-      "owned_by": "system",
-      "created": 1744321707
-    },
-    {
-      "id": "gpt-4.1-nano-2025-04-14",
-      "owned_by": "system",
-      "created": 1744321025
-    },
-    {
-      "id": "gpt-4.1-mini",
-      "owned_by": "system",
-      "created": 1744318173
-    },
-    {
-      "id": "gpt-4.1-mini-2025-04-14",
-      "owned_by": "system",
-      "created": 1744317547
-    },
-    {
-      "id": "gpt-4.1",
-      "owned_by": "system",
-      "created": 1744316542
-    },
-    {
-      "id": "gpt-4.1-2025-04-14",
-      "owned_by": "system",
-      "created": 1744315746
-    },
-    {
-      "id": "o4-mini",
-      "owned_by": "system",
-      "created": 1744225351
-    },
-    {
-      "id": "o3",
-      "owned_by": "system",
-      "created": 1744225308
-    },
-    {
-      "id": "o4-mini-2025-04-16",
-      "owned_by": "system",
-      "created": 1744133506
-    },
-    {
-      "id": "o3-2025-04-16",
-      "owned_by": "system",
-      "created": 1744133301
-    },
-    {
-      "id": "gpt-4o-mini-tts",
-      "owned_by": "system",
-      "created": 1742403959
-    },
-    {
-      "id": "o1-pro",
-      "owned_by": "system",
-      "created": 1742251791
-    },
-    {
-      "id": "o1-pro-2025-03-19",
-      "owned_by": "system",
-      "created": 1742251504
-    },
-    {
-      "id": "gpt-4o-mini-transcribe",
-      "owned_by": "system",
-      "created": 1742068596
-    },
-    {
-      "id": "gpt-4o-transcribe",
-      "owned_by": "system",
-      "created": 1742068463
-    },
-    {
-      "id": "gpt-4o-mini-search-preview",
-      "owned_by": "system",
-      "created": 1741391161
-    },
-    {
-      "id": "gpt-4o-mini-search-preview-2025-03-11",
-      "owned_by": "system",
-      "created": 1741390858
-    },
-    {
-      "id": "gpt-4o-search-preview",
-      "owned_by": "system",
-      "created": 1741388720
-    },
-    {
-      "id": "gpt-4o-search-preview-2025-03-11",
-      "owned_by": "system",
-      "created": 1741388170
-    },
-    {
-      "id": "gpt-4o-2024-11-20",
-      "owned_by": "system",
-      "created": 1739331543
-    },
-    {
-      "id": "o3-mini-2025-01-31",
-      "owned_by": "system",
-      "created": 1738010200
-    },
-    {
-      "id": "o3-mini",
-      "owned_by": "system",
-      "created": 1737146383
-    },
-    {
-      "id": "gpt-4o-mini-audio-preview",
-      "owned_by": "system",
-      "created": 1734387424
-    },
-    {
-      "id": "gpt-4o-mini-realtime-preview",
-      "owned_by": "system",
-      "created": 1734387380
-    },
-    {
-      "id": "o1",
-      "owned_by": "system",
-      "created": 1734375816
-    },
-    {
-      "id": "o1-2024-12-17",
-      "owned_by": "system",
-      "created": 1734326976
-    },
-    {
-      "id": "gpt-4o-mini-audio-preview-2024-12-17",
-      "owned_by": "system",
-      "created": 1734115920
-    },
-    {
-      "id": "gpt-4o-mini-realtime-preview-2024-12-17",
-      "owned_by": "system",
-      "created": 1734112601
-    },
-    {
-      "id": "gpt-4o-audio-preview-2024-12-17",
-      "owned_by": "system",
-      "created": 1734034239
-    },
-    {
-      "id": "gpt-4o-realtime-preview-2024-12-17",
-      "owned_by": "system",
-      "created": 1733945430
-    },
-    {
-      "id": "omni-moderation-2024-09-26",
-      "owned_by": "system",
-      "created": 1732734466
-    },
-    {
-      "id": "omni-moderation-latest",
-      "owned_by": "system",
-      "created": 1731689265
-    },
-    {
-      "id": "gpt-4o-realtime-preview",
-      "owned_by": "system",
-      "created": 1727659998
-    },
-    {
-      "id": "gpt-4o-audio-preview",
-      "owned_by": "system",
-      "created": 1727460443
-    },
-    {
-      "id": "gpt-4o-2024-08-06",
-      "owned_by": "system",
-      "created": 1722814719
-    },
-    {
-      "id": "gpt-4o-mini",
-      "owned_by": "system",
-      "created": 1721172741
-    },
-    {
-      "id": "gpt-4o-mini-2024-07-18",
-      "owned_by": "system",
-      "created": 1721172717
-    },
-    {
-      "id": "gpt-4o-2024-05-13",
-      "owned_by": "system",
-      "created": 1715368132
-    },
-    {
-      "id": "gpt-4o",
-      "owned_by": "system",
-      "created": 1715367049
-    },
-    {
-      "id": "gpt-4-turbo-2024-04-09",
-      "owned_by": "system",
-      "created": 1712601677
-    },
-    {
-      "id": "gpt-4-turbo",
-      "owned_by": "system",
-      "created": 1712361441
-    },
-    {
-      "id": "gpt-3.5-turbo-0125",
-      "owned_by": "system",
-      "created": 1706048358
-    },
-    {
-      "id": "gpt-4-turbo-preview",
-      "owned_by": "system",
-      "created": 1706037777
-    },
-    {
-      "id": "gpt-4-0125-preview",
-      "owned_by": "system",
-      "created": 1706037612
-    },
-    {
-      "id": "text-embedding-3-large",
-      "owned_by": "system",
-      "created": 1705953180
-    },
-    {
-      "id": "text-embedding-3-small",
-      "owned_by": "system",
-      "created": 1705948997
-    },
-    {
-      "id": "tts-1-hd-1106",
-      "owned_by": "system",
-      "created": 1699053533
-    },
-    {
-      "id": "tts-1-1106",
-      "owned_by": "system",
-      "created": 1699053241
-    },
-    {
-      "id": "tts-1-hd",
-      "owned_by": "system",
-      "created": 1699046015
-    },
-    {
-      "id": "gpt-3.5-turbo-1106",
-      "owned_by": "system",
-      "created": 1698959748
-    },
-    {
-      "id": "gpt-4-1106-preview",
-      "owned_by": "system",
-      "created": 1698957206
-    },
-    {
-      "id": "dall-e-2",
-      "owned_by": "system",
-      "created": 1698798177
-    },
-    {
-      "id": "dall-e-3",
-      "owned_by": "system",
-      "created": 1698785189
-    },
-    {
-      "id": "gpt-3.5-turbo-instruct-0914",
-      "owned_by": "system",
-      "created": 1694122472
-    },
-    {
-      "id": "gpt-3.5-turbo-instruct",
-      "owned_by": "system",
-      "created": 1692901427
-    },
-    {
+      "provider": "openai",
       "id": "babbage-002",
-      "owned_by": "system",
-      "created": 1692634615
+      "raw": {
+        "id": "babbage-002",
+        "object": "model",
+        "created": 1692634615,
+        "owned_by": "system"
+      },
+      "createdAt": "2023-08-21T16:16:55.000Z"
     },
     {
+      "provider": "openai",
+      "id": "chatgpt-image-latest",
+      "raw": {
+        "id": "chatgpt-image-latest",
+        "object": "model",
+        "created": 1765925279,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-12-16T22:47:59.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "dall-e-2",
+      "raw": {
+        "id": "dall-e-2",
+        "object": "model",
+        "created": 1698798177,
+        "owned_by": "system"
+      },
+      "createdAt": "2023-11-01T00:22:57.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "dall-e-3",
+      "raw": {
+        "id": "dall-e-3",
+        "object": "model",
+        "created": 1698785189,
+        "owned_by": "system"
+      },
+      "createdAt": "2023-10-31T20:46:29.000Z"
+    },
+    {
+      "provider": "openai",
       "id": "davinci-002",
-      "owned_by": "system",
-      "created": 1692634301
+      "raw": {
+        "id": "davinci-002",
+        "object": "model",
+        "created": 1692634301,
+        "owned_by": "system"
+      },
+      "createdAt": "2023-08-21T16:11:41.000Z"
     },
     {
-      "id": "gpt-4",
-      "owned_by": "openai",
-      "created": 1687882411
-    },
-    {
-      "id": "gpt-4-0613",
-      "owned_by": "openai",
-      "created": 1686588896
-    },
-    {
-      "id": "gpt-3.5-turbo-16k",
-      "owned_by": "openai-internal",
-      "created": 1683758102
-    },
-    {
-      "id": "tts-1",
-      "owned_by": "openai-internal",
-      "created": 1681940951
-    },
-    {
+      "provider": "openai",
       "id": "gpt-3.5-turbo",
-      "owned_by": "openai",
-      "created": 1677610602
+      "raw": {
+        "id": "gpt-3.5-turbo",
+        "object": "model",
+        "created": 1677610602,
+        "owned_by": "openai"
+      },
+      "createdAt": "2023-02-28T18:56:42.000Z"
     },
     {
-      "id": "whisper-1",
-      "owned_by": "openai-internal",
-      "created": 1677532384
+      "provider": "openai",
+      "id": "gpt-3.5-turbo-0125",
+      "raw": {
+        "id": "gpt-3.5-turbo-0125",
+        "object": "model",
+        "created": 1706048358,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-01-23T22:19:18.000Z"
     },
     {
+      "provider": "openai",
+      "id": "gpt-3.5-turbo-1106",
+      "raw": {
+        "id": "gpt-3.5-turbo-1106",
+        "object": "model",
+        "created": 1698959748,
+        "owned_by": "system"
+      },
+      "createdAt": "2023-11-02T21:15:48.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-3.5-turbo-16k",
+      "raw": {
+        "id": "gpt-3.5-turbo-16k",
+        "object": "model",
+        "created": 1683758102,
+        "owned_by": "openai-internal"
+      },
+      "createdAt": "2023-05-10T22:35:02.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-3.5-turbo-instruct",
+      "raw": {
+        "id": "gpt-3.5-turbo-instruct",
+        "object": "model",
+        "created": 1692901427,
+        "owned_by": "system"
+      },
+      "createdAt": "2023-08-24T18:23:47.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-3.5-turbo-instruct-0914",
+      "raw": {
+        "id": "gpt-3.5-turbo-instruct-0914",
+        "object": "model",
+        "created": 1694122472,
+        "owned_by": "system"
+      },
+      "createdAt": "2023-09-07T21:34:32.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4",
+      "raw": {
+        "id": "gpt-4",
+        "object": "model",
+        "created": 1687882411,
+        "owned_by": "openai"
+      },
+      "createdAt": "2023-06-27T16:13:31.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4-0125-preview",
+      "raw": {
+        "id": "gpt-4-0125-preview",
+        "object": "model",
+        "created": 1706037612,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-01-23T19:20:12.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4-0613",
+      "raw": {
+        "id": "gpt-4-0613",
+        "object": "model",
+        "created": 1686588896,
+        "owned_by": "openai"
+      },
+      "createdAt": "2023-06-12T16:54:56.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4-1106-preview",
+      "raw": {
+        "id": "gpt-4-1106-preview",
+        "object": "model",
+        "created": 1698957206,
+        "owned_by": "system"
+      },
+      "createdAt": "2023-11-02T20:33:26.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4-turbo",
+      "raw": {
+        "id": "gpt-4-turbo",
+        "object": "model",
+        "created": 1712361441,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-04-05T23:57:21.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4-turbo-2024-04-09",
+      "raw": {
+        "id": "gpt-4-turbo-2024-04-09",
+        "object": "model",
+        "created": 1712601677,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-04-08T18:41:17.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4-turbo-preview",
+      "raw": {
+        "id": "gpt-4-turbo-preview",
+        "object": "model",
+        "created": 1706037777,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-01-23T19:22:57.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4.1",
+      "raw": {
+        "id": "gpt-4.1",
+        "object": "model",
+        "created": 1744316542,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-04-10T20:22:22.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4.1-2025-04-14",
+      "raw": {
+        "id": "gpt-4.1-2025-04-14",
+        "object": "model",
+        "created": 1744315746,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-04-10T20:09:06.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4.1-mini",
+      "raw": {
+        "id": "gpt-4.1-mini",
+        "object": "model",
+        "created": 1744318173,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-04-10T20:49:33.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4.1-mini-2025-04-14",
+      "raw": {
+        "id": "gpt-4.1-mini-2025-04-14",
+        "object": "model",
+        "created": 1744317547,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-04-10T20:39:07.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4.1-nano",
+      "raw": {
+        "id": "gpt-4.1-nano",
+        "object": "model",
+        "created": 1744321707,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-04-10T21:48:27.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4.1-nano-2025-04-14",
+      "raw": {
+        "id": "gpt-4.1-nano-2025-04-14",
+        "object": "model",
+        "created": 1744321025,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-04-10T21:37:05.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o",
+      "raw": {
+        "id": "gpt-4o",
+        "object": "model",
+        "created": 1715367049,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-05-10T18:50:49.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-2024-05-13",
+      "raw": {
+        "id": "gpt-4o-2024-05-13",
+        "object": "model",
+        "created": 1715368132,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-05-10T19:08:52.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-2024-08-06",
+      "raw": {
+        "id": "gpt-4o-2024-08-06",
+        "object": "model",
+        "created": 1722814719,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-08-04T23:38:39.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-2024-11-20",
+      "raw": {
+        "id": "gpt-4o-2024-11-20",
+        "object": "model",
+        "created": 1739331543,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-02-12T03:39:03.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-audio-preview",
+      "raw": {
+        "id": "gpt-4o-audio-preview",
+        "object": "model",
+        "created": 1727460443,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-09-27T18:07:23.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-audio-preview-2024-12-17",
+      "raw": {
+        "id": "gpt-4o-audio-preview-2024-12-17",
+        "object": "model",
+        "created": 1734034239,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-12-12T20:10:39.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-audio-preview-2025-06-03",
+      "raw": {
+        "id": "gpt-4o-audio-preview-2025-06-03",
+        "object": "model",
+        "created": 1748908498,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-06-02T23:54:58.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-mini",
+      "raw": {
+        "id": "gpt-4o-mini",
+        "object": "model",
+        "created": 1721172741,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-07-16T23:32:21.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-mini-2024-07-18",
+      "raw": {
+        "id": "gpt-4o-mini-2024-07-18",
+        "object": "model",
+        "created": 1721172717,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-07-16T23:31:57.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-mini-audio-preview",
+      "raw": {
+        "id": "gpt-4o-mini-audio-preview",
+        "object": "model",
+        "created": 1734387424,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-12-16T22:17:04.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-mini-audio-preview-2024-12-17",
+      "raw": {
+        "id": "gpt-4o-mini-audio-preview-2024-12-17",
+        "object": "model",
+        "created": 1734115920,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-12-13T18:52:00.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-mini-realtime-preview",
+      "raw": {
+        "id": "gpt-4o-mini-realtime-preview",
+        "object": "model",
+        "created": 1734387380,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-12-16T22:16:20.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-mini-realtime-preview-2024-12-17",
+      "raw": {
+        "id": "gpt-4o-mini-realtime-preview-2024-12-17",
+        "object": "model",
+        "created": 1734112601,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-12-13T17:56:41.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-mini-search-preview",
+      "raw": {
+        "id": "gpt-4o-mini-search-preview",
+        "object": "model",
+        "created": 1741391161,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-03-07T23:46:01.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-mini-search-preview-2025-03-11",
+      "raw": {
+        "id": "gpt-4o-mini-search-preview-2025-03-11",
+        "object": "model",
+        "created": 1741390858,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-03-07T23:40:58.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-mini-transcribe",
+      "raw": {
+        "id": "gpt-4o-mini-transcribe",
+        "object": "model",
+        "created": 1742068596,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-03-15T19:56:36.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-mini-transcribe-2025-03-20",
+      "raw": {
+        "id": "gpt-4o-mini-transcribe-2025-03-20",
+        "object": "model",
+        "created": 1765610545,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-12-13T07:22:25.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-mini-transcribe-2025-12-15",
+      "raw": {
+        "id": "gpt-4o-mini-transcribe-2025-12-15",
+        "object": "model",
+        "created": 1765610407,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-12-13T07:20:07.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-mini-tts",
+      "raw": {
+        "id": "gpt-4o-mini-tts",
+        "object": "model",
+        "created": 1742403959,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-03-19T17:05:59.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-mini-tts-2025-03-20",
+      "raw": {
+        "id": "gpt-4o-mini-tts-2025-03-20",
+        "object": "model",
+        "created": 1765610731,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-12-13T07:25:31.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-mini-tts-2025-12-15",
+      "raw": {
+        "id": "gpt-4o-mini-tts-2025-12-15",
+        "object": "model",
+        "created": 1765610837,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-12-13T07:27:17.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-realtime-preview",
+      "raw": {
+        "id": "gpt-4o-realtime-preview",
+        "object": "model",
+        "created": 1727659998,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-09-30T01:33:18.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-realtime-preview-2024-12-17",
+      "raw": {
+        "id": "gpt-4o-realtime-preview-2024-12-17",
+        "object": "model",
+        "created": 1733945430,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-12-11T19:30:30.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-realtime-preview-2025-06-03",
+      "raw": {
+        "id": "gpt-4o-realtime-preview-2025-06-03",
+        "object": "model",
+        "created": 1748907838,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-06-02T23:43:58.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-search-preview",
+      "raw": {
+        "id": "gpt-4o-search-preview",
+        "object": "model",
+        "created": 1741388720,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-03-07T23:05:20.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-search-preview-2025-03-11",
+      "raw": {
+        "id": "gpt-4o-search-preview-2025-03-11",
+        "object": "model",
+        "created": 1741388170,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-03-07T22:56:10.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-transcribe",
+      "raw": {
+        "id": "gpt-4o-transcribe",
+        "object": "model",
+        "created": 1742068463,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-03-15T19:54:23.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-transcribe-diarize",
+      "raw": {
+        "id": "gpt-4o-transcribe-diarize",
+        "object": "model",
+        "created": 1750798887,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-06-24T21:01:27.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5",
+      "raw": {
+        "id": "gpt-5",
+        "object": "model",
+        "created": 1754425777,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-08-05T20:29:37.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5-2025-08-07",
+      "raw": {
+        "id": "gpt-5-2025-08-07",
+        "object": "model",
+        "created": 1754075360,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-08-01T19:09:20.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5-chat-latest",
+      "raw": {
+        "id": "gpt-5-chat-latest",
+        "object": "model",
+        "created": 1754073306,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-08-01T18:35:06.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5-codex",
+      "raw": {
+        "id": "gpt-5-codex",
+        "object": "model",
+        "created": 1757527818,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-09-10T18:10:18.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5-mini",
+      "raw": {
+        "id": "gpt-5-mini",
+        "object": "model",
+        "created": 1754425928,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-08-05T20:32:08.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5-mini-2025-08-07",
+      "raw": {
+        "id": "gpt-5-mini-2025-08-07",
+        "object": "model",
+        "created": 1754425867,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-08-05T20:31:07.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5-nano",
+      "raw": {
+        "id": "gpt-5-nano",
+        "object": "model",
+        "created": 1754426384,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-08-05T20:39:44.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5-nano-2025-08-07",
+      "raw": {
+        "id": "gpt-5-nano-2025-08-07",
+        "object": "model",
+        "created": 1754426303,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-08-05T20:38:23.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5-pro",
+      "raw": {
+        "id": "gpt-5-pro",
+        "object": "model",
+        "created": 1759469822,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-10-03T05:37:02.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5-pro-2025-10-06",
+      "raw": {
+        "id": "gpt-5-pro-2025-10-06",
+        "object": "model",
+        "created": 1759469707,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-10-03T05:35:07.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5-search-api",
+      "raw": {
+        "id": "gpt-5-search-api",
+        "object": "model",
+        "created": 1759514629,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-10-03T18:03:49.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5-search-api-2025-10-14",
+      "raw": {
+        "id": "gpt-5-search-api-2025-10-14",
+        "object": "model",
+        "created": 1760043960,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-10-09T21:06:00.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.1",
+      "raw": {
+        "id": "gpt-5.1",
+        "object": "model",
+        "created": 1762800673,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-11-10T18:51:13.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.1-2025-11-13",
+      "raw": {
+        "id": "gpt-5.1-2025-11-13",
+        "object": "model",
+        "created": 1762800353,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-11-10T18:45:53.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.1-chat-latest",
+      "raw": {
+        "id": "gpt-5.1-chat-latest",
+        "object": "model",
+        "created": 1762547951,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-11-07T20:39:11.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.1-codex",
+      "raw": {
+        "id": "gpt-5.1-codex",
+        "object": "model",
+        "created": 1762988221,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-11-12T22:57:01.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.1-codex-max",
+      "raw": {
+        "id": "gpt-5.1-codex-max",
+        "object": "model",
+        "created": 1763671532,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-11-20T20:45:32.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.1-codex-mini",
+      "raw": {
+        "id": "gpt-5.1-codex-mini",
+        "object": "model",
+        "created": 1763007109,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-11-13T04:11:49.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.2",
+      "raw": {
+        "id": "gpt-5.2",
+        "object": "model",
+        "created": 1765313051,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-12-09T20:44:11.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.2-2025-12-11",
+      "raw": {
+        "id": "gpt-5.2-2025-12-11",
+        "object": "model",
+        "created": 1765313028,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-12-09T20:43:48.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.2-chat-latest",
+      "raw": {
+        "id": "gpt-5.2-chat-latest",
+        "object": "model",
+        "created": 1765344352,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-12-10T05:25:52.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.2-codex",
+      "raw": {
+        "id": "gpt-5.2-codex",
+        "object": "model",
+        "created": 1766164985,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-12-19T17:23:05.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.2-pro",
+      "raw": {
+        "id": "gpt-5.2-pro",
+        "object": "model",
+        "created": 1765343983,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-12-10T05:19:43.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.2-pro-2025-12-11",
+      "raw": {
+        "id": "gpt-5.2-pro-2025-12-11",
+        "object": "model",
+        "created": 1765343959,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-12-10T05:19:19.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-audio",
+      "raw": {
+        "id": "gpt-audio",
+        "object": "model",
+        "created": 1756339249,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-08-28T00:00:49.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-audio-2025-08-28",
+      "raw": {
+        "id": "gpt-audio-2025-08-28",
+        "object": "model",
+        "created": 1756256146,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-08-27T00:55:46.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-audio-mini",
+      "raw": {
+        "id": "gpt-audio-mini",
+        "object": "model",
+        "created": 1759512027,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-10-03T17:20:27.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-audio-mini-2025-10-06",
+      "raw": {
+        "id": "gpt-audio-mini-2025-10-06",
+        "object": "model",
+        "created": 1759512137,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-10-03T17:22:17.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-audio-mini-2025-12-15",
+      "raw": {
+        "id": "gpt-audio-mini-2025-12-15",
+        "object": "model",
+        "created": 1765760008,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-12-15T00:53:28.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-image-1",
+      "raw": {
+        "id": "gpt-image-1",
+        "object": "model",
+        "created": 1745517030,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-04-24T17:50:30.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-image-1-mini",
+      "raw": {
+        "id": "gpt-image-1-mini",
+        "object": "model",
+        "created": 1758845821,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-09-26T00:17:01.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-image-1.5",
+      "raw": {
+        "id": "gpt-image-1.5",
+        "object": "model",
+        "created": 1764030620,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-11-25T00:30:20.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-realtime",
+      "raw": {
+        "id": "gpt-realtime",
+        "object": "model",
+        "created": 1756271701,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-08-27T05:15:01.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-realtime-2025-08-28",
+      "raw": {
+        "id": "gpt-realtime-2025-08-28",
+        "object": "model",
+        "created": 1756271773,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-08-27T05:16:13.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-realtime-mini",
+      "raw": {
+        "id": "gpt-realtime-mini",
+        "object": "model",
+        "created": 1759517133,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-10-03T18:45:33.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-realtime-mini-2025-10-06",
+      "raw": {
+        "id": "gpt-realtime-mini-2025-10-06",
+        "object": "model",
+        "created": 1759517175,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-10-03T18:46:15.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-realtime-mini-2025-12-15",
+      "raw": {
+        "id": "gpt-realtime-mini-2025-12-15",
+        "object": "model",
+        "created": 1765612007,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-12-13T07:46:47.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "o1",
+      "raw": {
+        "id": "o1",
+        "object": "model",
+        "created": 1734375816,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-12-16T19:03:36.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "o1-2024-12-17",
+      "raw": {
+        "id": "o1-2024-12-17",
+        "object": "model",
+        "created": 1734326976,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-12-16T05:29:36.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "o1-pro",
+      "raw": {
+        "id": "o1-pro",
+        "object": "model",
+        "created": 1742251791,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-03-17T22:49:51.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "o1-pro-2025-03-19",
+      "raw": {
+        "id": "o1-pro-2025-03-19",
+        "object": "model",
+        "created": 1742251504,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-03-17T22:45:04.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "o3",
+      "raw": {
+        "id": "o3",
+        "object": "model",
+        "created": 1744225308,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-04-09T19:01:48.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "o3-2025-04-16",
+      "raw": {
+        "id": "o3-2025-04-16",
+        "object": "model",
+        "created": 1744133301,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-04-08T17:28:21.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "o3-mini",
+      "raw": {
+        "id": "o3-mini",
+        "object": "model",
+        "created": 1737146383,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-01-17T20:39:43.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "o3-mini-2025-01-31",
+      "raw": {
+        "id": "o3-mini-2025-01-31",
+        "object": "model",
+        "created": 1738010200,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-01-27T20:36:40.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "o4-mini",
+      "raw": {
+        "id": "o4-mini",
+        "object": "model",
+        "created": 1744225351,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-04-09T19:02:31.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "o4-mini-2025-04-16",
+      "raw": {
+        "id": "o4-mini-2025-04-16",
+        "object": "model",
+        "created": 1744133506,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-04-08T17:31:46.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "o4-mini-deep-research",
+      "raw": {
+        "id": "o4-mini-deep-research",
+        "object": "model",
+        "created": 1749685485,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-06-11T23:44:45.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "o4-mini-deep-research-2025-06-26",
+      "raw": {
+        "id": "o4-mini-deep-research-2025-06-26",
+        "object": "model",
+        "created": 1750866121,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-06-25T15:42:01.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "omni-moderation-2024-09-26",
+      "raw": {
+        "id": "omni-moderation-2024-09-26",
+        "object": "model",
+        "created": 1732734466,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-11-27T19:07:46.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "omni-moderation-latest",
+      "raw": {
+        "id": "omni-moderation-latest",
+        "object": "model",
+        "created": 1731689265,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-11-15T16:47:45.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "sora-2",
+      "raw": {
+        "id": "sora-2",
+        "object": "model",
+        "created": 1759708615,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-10-05T23:56:55.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "sora-2-pro",
+      "raw": {
+        "id": "sora-2-pro",
+        "object": "model",
+        "created": 1759708663,
+        "owned_by": "system"
+      },
+      "createdAt": "2025-10-05T23:57:43.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "text-embedding-3-large",
+      "raw": {
+        "id": "text-embedding-3-large",
+        "object": "model",
+        "created": 1705953180,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-01-22T19:53:00.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "text-embedding-3-small",
+      "raw": {
+        "id": "text-embedding-3-small",
+        "object": "model",
+        "created": 1705948997,
+        "owned_by": "system"
+      },
+      "createdAt": "2024-01-22T18:43:17.000Z"
+    },
+    {
+      "provider": "openai",
       "id": "text-embedding-ada-002",
-      "owned_by": "openai-internal",
-      "created": 1671217299
-    }
-  ],
-  "gemini": [
-    {
-      "id": "gemini-2.5-flash",
-      "name": "models/gemini-2.5-flash",
-      "displayName": "Gemini 2.5 Flash",
-      "description": "Stable version of Gemini 2.5 Flash, our mid-size multimodal model that supports up to 1 million tokens, released in June of 2025.",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
+      "raw": {
+        "id": "text-embedding-ada-002",
+        "object": "model",
+        "created": 1671217299,
+        "owned_by": "openai-internal"
+      },
+      "createdAt": "2022-12-16T19:01:39.000Z"
     },
     {
-      "id": "gemini-2.5-pro",
-      "name": "models/gemini-2.5-pro",
-      "displayName": "Gemini 2.5 Pro",
-      "description": "Stable release (June 17th, 2025) of Gemini 2.5 Pro",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
+      "provider": "openai",
+      "id": "tts-1",
+      "raw": {
+        "id": "tts-1",
+        "object": "model",
+        "created": 1681940951,
+        "owned_by": "openai-internal"
+      },
+      "createdAt": "2023-04-19T21:49:11.000Z"
     },
     {
-      "id": "gemini-2.0-flash",
-      "name": "models/gemini-2.0-flash",
-      "displayName": "Gemini 2.0 Flash",
-      "description": "Gemini 2.0 Flash",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 8192
+      "provider": "openai",
+      "id": "tts-1-1106",
+      "raw": {
+        "id": "tts-1-1106",
+        "object": "model",
+        "created": 1699053241,
+        "owned_by": "system"
+      },
+      "createdAt": "2023-11-03T23:14:01.000Z"
     },
     {
-      "id": "gemini-2.0-flash-001",
-      "name": "models/gemini-2.0-flash-001",
-      "displayName": "Gemini 2.0 Flash 001",
-      "description": "Stable version of Gemini 2.0 Flash, our fast and versatile multimodal model for scaling across diverse tasks, released in January of 2025.",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 8192
+      "provider": "openai",
+      "id": "tts-1-hd",
+      "raw": {
+        "id": "tts-1-hd",
+        "object": "model",
+        "created": 1699046015,
+        "owned_by": "system"
+      },
+      "createdAt": "2023-11-03T21:13:35.000Z"
     },
     {
-      "id": "gemini-2.0-flash-exp-image-generation",
-      "name": "models/gemini-2.0-flash-exp-image-generation",
-      "displayName": "Gemini 2.0 Flash (Image Generation) Experimental",
-      "description": "Gemini 2.0 Flash (Image Generation) Experimental",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 8192
+      "provider": "openai",
+      "id": "tts-1-hd-1106",
+      "raw": {
+        "id": "tts-1-hd-1106",
+        "object": "model",
+        "created": 1699053533,
+        "owned_by": "system"
+      },
+      "createdAt": "2023-11-03T23:18:53.000Z"
     },
     {
-      "id": "gemini-2.0-flash-lite-001",
-      "name": "models/gemini-2.0-flash-lite-001",
-      "displayName": "Gemini 2.0 Flash-Lite 001",
-      "description": "Stable version of Gemini 2.0 Flash-Lite",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 8192
+      "provider": "openai",
+      "id": "whisper-1",
+      "raw": {
+        "id": "whisper-1",
+        "object": "model",
+        "created": 1677532384,
+        "owned_by": "openai-internal"
+      },
+      "createdAt": "2023-02-27T21:13:04.000Z"
     },
     {
-      "id": "gemini-2.0-flash-lite",
-      "name": "models/gemini-2.0-flash-lite",
-      "displayName": "Gemini 2.0 Flash-Lite",
-      "description": "Gemini 2.0 Flash-Lite",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 8192
+      "provider": "anthropic",
+      "id": "claude-3-5-haiku-20241022",
+      "raw": {
+        "type": "model",
+        "id": "claude-3-5-haiku-20241022",
+        "display_name": "Claude Haiku 3.5",
+        "created_at": "2024-10-22T00:00:00Z"
+      },
+      "label": "Claude Haiku 3.5",
+      "createdAt": "2024-10-22T00:00:00Z"
     },
     {
-      "id": "gemini-exp-1206",
-      "name": "models/gemini-exp-1206",
-      "displayName": "Gemini Experimental 1206",
-      "description": "Experimental release (March 25th, 2025) of Gemini 2.5 Pro",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
+      "provider": "anthropic",
+      "id": "claude-3-7-sonnet-20250219",
+      "raw": {
+        "type": "model",
+        "id": "claude-3-7-sonnet-20250219",
+        "display_name": "Claude Sonnet 3.7",
+        "created_at": "2025-02-24T00:00:00Z"
+      },
+      "label": "Claude Sonnet 3.7",
+      "createdAt": "2025-02-24T00:00:00Z"
     },
     {
-      "id": "gemini-2.5-flash-preview-tts",
-      "name": "models/gemini-2.5-flash-preview-tts",
-      "displayName": "Gemini 2.5 Flash Preview TTS",
-      "description": "Gemini 2.5 Flash Preview TTS",
-      "inputTokenLimit": 8192,
-      "outputTokenLimit": 16384
+      "provider": "anthropic",
+      "id": "claude-3-haiku-20240307",
+      "raw": {
+        "type": "model",
+        "id": "claude-3-haiku-20240307",
+        "display_name": "Claude Haiku 3",
+        "created_at": "2024-03-07T00:00:00Z"
+      },
+      "label": "Claude Haiku 3",
+      "createdAt": "2024-03-07T00:00:00Z"
     },
     {
-      "id": "gemini-2.5-pro-preview-tts",
-      "name": "models/gemini-2.5-pro-preview-tts",
-      "displayName": "Gemini 2.5 Pro Preview TTS",
-      "description": "Gemini 2.5 Pro Preview TTS",
-      "inputTokenLimit": 8192,
-      "outputTokenLimit": 16384
+      "provider": "anthropic",
+      "id": "claude-haiku-4-5-20251001",
+      "raw": {
+        "type": "model",
+        "id": "claude-haiku-4-5-20251001",
+        "display_name": "Claude Haiku 4.5",
+        "created_at": "2025-10-15T00:00:00Z"
+      },
+      "label": "Claude Haiku 4.5",
+      "createdAt": "2025-10-15T00:00:00Z"
     },
     {
-      "id": "gemma-3-1b-it",
-      "name": "models/gemma-3-1b-it",
-      "displayName": "Gemma 3 1B",
-      "inputTokenLimit": 32768,
-      "outputTokenLimit": 8192
+      "provider": "anthropic",
+      "id": "claude-opus-4-1-20250805",
+      "raw": {
+        "type": "model",
+        "id": "claude-opus-4-1-20250805",
+        "display_name": "Claude Opus 4.1",
+        "created_at": "2025-08-05T00:00:00Z"
+      },
+      "label": "Claude Opus 4.1",
+      "createdAt": "2025-08-05T00:00:00Z"
     },
     {
-      "id": "gemma-3-4b-it",
-      "name": "models/gemma-3-4b-it",
-      "displayName": "Gemma 3 4B",
-      "inputTokenLimit": 32768,
-      "outputTokenLimit": 8192
+      "provider": "anthropic",
+      "id": "claude-opus-4-20250514",
+      "raw": {
+        "type": "model",
+        "id": "claude-opus-4-20250514",
+        "display_name": "Claude Opus 4",
+        "created_at": "2025-05-22T00:00:00Z"
+      },
+      "label": "Claude Opus 4",
+      "createdAt": "2025-05-22T00:00:00Z"
     },
     {
-      "id": "gemma-3-12b-it",
-      "name": "models/gemma-3-12b-it",
-      "displayName": "Gemma 3 12B",
-      "inputTokenLimit": 32768,
-      "outputTokenLimit": 8192
+      "provider": "anthropic",
+      "id": "claude-opus-4-5-20251101",
+      "raw": {
+        "type": "model",
+        "id": "claude-opus-4-5-20251101",
+        "display_name": "Claude Opus 4.5",
+        "created_at": "2025-11-24T00:00:00Z"
+      },
+      "label": "Claude Opus 4.5",
+      "createdAt": "2025-11-24T00:00:00Z"
     },
     {
-      "id": "gemma-3-27b-it",
-      "name": "models/gemma-3-27b-it",
-      "displayName": "Gemma 3 27B",
-      "inputTokenLimit": 131072,
-      "outputTokenLimit": 8192
+      "provider": "anthropic",
+      "id": "claude-opus-4-6",
+      "raw": {
+        "type": "model",
+        "id": "claude-opus-4-6",
+        "display_name": "Claude Opus 4.6",
+        "created_at": "2026-02-04T00:00:00Z"
+      },
+      "label": "Claude Opus 4.6",
+      "createdAt": "2026-02-04T00:00:00Z"
     },
     {
-      "id": "gemma-3n-e4b-it",
-      "name": "models/gemma-3n-e4b-it",
-      "displayName": "Gemma 3n E4B",
-      "inputTokenLimit": 8192,
-      "outputTokenLimit": 2048
+      "provider": "anthropic",
+      "id": "claude-sonnet-4-20250514",
+      "raw": {
+        "type": "model",
+        "id": "claude-sonnet-4-20250514",
+        "display_name": "Claude Sonnet 4",
+        "created_at": "2025-05-22T00:00:00Z"
+      },
+      "label": "Claude Sonnet 4",
+      "createdAt": "2025-05-22T00:00:00Z"
     },
     {
-      "id": "gemma-3n-e2b-it",
-      "name": "models/gemma-3n-e2b-it",
-      "displayName": "Gemma 3n E2B",
-      "inputTokenLimit": 8192,
-      "outputTokenLimit": 2048
+      "provider": "anthropic",
+      "id": "claude-sonnet-4-5-20250929",
+      "raw": {
+        "type": "model",
+        "id": "claude-sonnet-4-5-20250929",
+        "display_name": "Claude Sonnet 4.5",
+        "created_at": "2025-09-29T00:00:00Z"
+      },
+      "label": "Claude Sonnet 4.5",
+      "createdAt": "2025-09-29T00:00:00Z"
     },
     {
-      "id": "gemini-flash-latest",
-      "name": "models/gemini-flash-latest",
-      "displayName": "Gemini Flash Latest",
-      "description": "Latest release of Gemini Flash",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
+      "provider": "anthropic",
+      "id": "claude-sonnet-4-6",
+      "raw": {
+        "type": "model",
+        "id": "claude-sonnet-4-6",
+        "display_name": "Claude Sonnet 4.6",
+        "created_at": "2026-02-17T00:00:00Z"
+      },
+      "label": "Claude Sonnet 4.6",
+      "createdAt": "2026-02-17T00:00:00Z"
     },
     {
-      "id": "gemini-flash-lite-latest",
-      "name": "models/gemini-flash-lite-latest",
-      "displayName": "Gemini Flash-Lite Latest",
-      "description": "Latest release of Gemini Flash-Lite",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
-    },
-    {
-      "id": "gemini-pro-latest",
-      "name": "models/gemini-pro-latest",
-      "displayName": "Gemini Pro Latest",
-      "description": "Latest release of Gemini Pro",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
-    },
-    {
-      "id": "gemini-2.5-flash-lite",
-      "name": "models/gemini-2.5-flash-lite",
-      "displayName": "Gemini 2.5 Flash-Lite",
-      "description": "Stable version of Gemini 2.5 Flash-Lite, released in July of 2025",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
-    },
-    {
-      "id": "gemini-2.5-flash-image",
-      "name": "models/gemini-2.5-flash-image",
-      "displayName": "Nano Banana",
-      "description": "Gemini 2.5 Flash Preview Image",
-      "inputTokenLimit": 32768,
-      "outputTokenLimit": 32768
-    },
-    {
-      "id": "gemini-2.5-flash-preview-09-2025",
-      "name": "models/gemini-2.5-flash-preview-09-2025",
-      "displayName": "Gemini 2.5 Flash Preview Sep 2025",
-      "description": "Gemini 2.5 Flash Preview Sep 2025",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
-    },
-    {
-      "id": "gemini-2.5-flash-lite-preview-09-2025",
-      "name": "models/gemini-2.5-flash-lite-preview-09-2025",
-      "displayName": "Gemini 2.5 Flash-Lite Preview Sep 2025",
-      "description": "Preview release (Septempber 25th, 2025) of Gemini 2.5 Flash-Lite",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
-    },
-    {
-      "id": "gemini-3-pro-preview",
-      "name": "models/gemini-3-pro-preview",
-      "displayName": "Gemini 3 Pro Preview",
-      "description": "Gemini 3 Pro Preview",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
-    },
-    {
-      "id": "gemini-3-flash-preview",
-      "name": "models/gemini-3-flash-preview",
-      "displayName": "Gemini 3 Flash Preview",
-      "description": "Gemini 3 Flash Preview",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
-    },
-    {
-      "id": "gemini-3-pro-image-preview",
-      "name": "models/gemini-3-pro-image-preview",
-      "displayName": "Nano Banana Pro",
-      "description": "Gemini 3 Pro Image Preview",
-      "inputTokenLimit": 131072,
-      "outputTokenLimit": 32768
-    },
-    {
-      "id": "nano-banana-pro-preview",
-      "name": "models/nano-banana-pro-preview",
-      "displayName": "Nano Banana Pro",
-      "description": "Gemini 3 Pro Image Preview",
-      "inputTokenLimit": 131072,
-      "outputTokenLimit": 32768
-    },
-    {
-      "id": "gemini-robotics-er-1.5-preview",
-      "name": "models/gemini-robotics-er-1.5-preview",
-      "displayName": "Gemini Robotics-ER 1.5 Preview",
-      "description": "Gemini Robotics-ER 1.5 Preview",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
-    },
-    {
-      "id": "gemini-2.5-computer-use-preview-10-2025",
-      "name": "models/gemini-2.5-computer-use-preview-10-2025",
-      "displayName": "Gemini 2.5 Computer Use Preview 10-2025",
-      "description": "Gemini 2.5 Computer Use Preview 10-2025",
-      "inputTokenLimit": 131072,
-      "outputTokenLimit": 65536
-    },
-    {
-      "id": "deep-research-pro-preview-12-2025",
-      "name": "models/deep-research-pro-preview-12-2025",
-      "displayName": "Deep Research Pro Preview (Dec-12-2025)",
-      "description": "Preview release (December 12th, 2025) of Deep Research Pro",
-      "inputTokenLimit": 131072,
-      "outputTokenLimit": 65536
-    },
-    {
-      "id": "gemini-embedding-001",
-      "name": "models/gemini-embedding-001",
-      "displayName": "Gemini Embedding 001",
-      "description": "Obtain a distributed representation of a text.",
-      "inputTokenLimit": 2048,
-      "outputTokenLimit": 1
-    },
-    {
+      "provider": "google",
       "id": "aqa",
-      "name": "models/aqa",
-      "displayName": "Model that performs Attributed Question Answering.",
-      "description": "Model trained to return answers to questions that are grounded in provided sources, along with estimating answerable probability.",
+      "raw": {
+        "name": "models/aqa",
+        "version": "001",
+        "displayName": "Model that performs Attributed Question Answering.",
+        "description": "Model trained to return answers to questions that are grounded in provided sources, along with estimating answerable probability.",
+        "inputTokenLimit": 7168,
+        "outputTokenLimit": 1024,
+        "supportedGenerationMethods": [
+          "generateAnswer"
+        ],
+        "temperature": 0.2,
+        "topP": 1,
+        "topK": 40
+      },
+      "label": "Model that performs Attributed Question Answering.",
       "inputTokenLimit": 7168,
       "outputTokenLimit": 1024
     },
     {
-      "id": "imagen-4.0-generate-preview-06-06",
-      "name": "models/imagen-4.0-generate-preview-06-06",
-      "displayName": "Imagen 4 (Preview)",
-      "description": "Vertex served Imagen 4.0 model",
-      "inputTokenLimit": 480,
+      "provider": "google",
+      "id": "deep-research-pro-preview-12-2025",
+      "raw": {
+        "name": "models/deep-research-pro-preview-12-2025",
+        "version": "deepthink-exp-05-20",
+        "displayName": "Deep Research Pro Preview (Dec-12-2025)",
+        "description": "Preview release (December 12th, 2025) of Deep Research Pro",
+        "inputTokenLimit": 131072,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Deep Research Pro Preview (Dec-12-2025)",
+      "inputTokenLimit": 131072,
+      "outputTokenLimit": 65536
+    },
+    {
+      "provider": "google",
+      "id": "gemini-2.0-flash",
+      "raw": {
+        "name": "models/gemini-2.0-flash",
+        "version": "2.0",
+        "displayName": "Gemini 2.0 Flash",
+        "description": "Gemini 2.0 Flash",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "createCachedContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 40,
+        "maxTemperature": 2
+      },
+      "label": "Gemini 2.0 Flash",
+      "inputTokenLimit": 1048576,
       "outputTokenLimit": 8192
     },
     {
-      "id": "imagen-4.0-ultra-generate-preview-06-06",
-      "name": "models/imagen-4.0-ultra-generate-preview-06-06",
-      "displayName": "Imagen 4 Ultra (Preview)",
-      "description": "Vertex served Imagen 4.0 ultra model",
-      "inputTokenLimit": 480,
+      "provider": "google",
+      "id": "gemini-2.0-flash-001",
+      "raw": {
+        "name": "models/gemini-2.0-flash-001",
+        "version": "2.0",
+        "displayName": "Gemini 2.0 Flash 001",
+        "description": "Stable version of Gemini 2.0 Flash, our fast and versatile multimodal model for scaling across diverse tasks, released in January of 2025.",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "createCachedContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 40,
+        "maxTemperature": 2
+      },
+      "label": "Gemini 2.0 Flash 001",
+      "inputTokenLimit": 1048576,
       "outputTokenLimit": 8192
     },
     {
-      "id": "imagen-4.0-generate-001",
-      "name": "models/imagen-4.0-generate-001",
-      "displayName": "Imagen 4",
-      "description": "Vertex served Imagen 4.0 model",
-      "inputTokenLimit": 480,
+      "provider": "google",
+      "id": "gemini-2.0-flash-exp-image-generation",
+      "raw": {
+        "name": "models/gemini-2.0-flash-exp-image-generation",
+        "version": "2.0",
+        "displayName": "Gemini 2.0 Flash (Image Generation) Experimental",
+        "description": "Gemini 2.0 Flash (Image Generation) Experimental",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "bidiGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 40,
+        "maxTemperature": 2
+      },
+      "label": "Gemini 2.0 Flash (Image Generation) Experimental",
+      "inputTokenLimit": 1048576,
       "outputTokenLimit": 8192
     },
     {
-      "id": "imagen-4.0-ultra-generate-001",
-      "name": "models/imagen-4.0-ultra-generate-001",
-      "displayName": "Imagen 4 Ultra",
-      "description": "Vertex served Imagen 4.0 ultra model",
-      "inputTokenLimit": 480,
+      "provider": "google",
+      "id": "gemini-2.0-flash-lite",
+      "raw": {
+        "name": "models/gemini-2.0-flash-lite",
+        "version": "2.0",
+        "displayName": "Gemini 2.0 Flash-Lite",
+        "description": "Gemini 2.0 Flash-Lite",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "createCachedContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 40,
+        "maxTemperature": 2
+      },
+      "label": "Gemini 2.0 Flash-Lite",
+      "inputTokenLimit": 1048576,
       "outputTokenLimit": 8192
     },
     {
-      "id": "imagen-4.0-fast-generate-001",
-      "name": "models/imagen-4.0-fast-generate-001",
-      "displayName": "Imagen 4 Fast",
-      "description": "Vertex served Imagen 4.0 Fast model",
-      "inputTokenLimit": 480,
+      "provider": "google",
+      "id": "gemini-2.0-flash-lite-001",
+      "raw": {
+        "name": "models/gemini-2.0-flash-lite-001",
+        "version": "2.0",
+        "displayName": "Gemini 2.0 Flash-Lite 001",
+        "description": "Stable version of Gemini 2.0 Flash-Lite",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "createCachedContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 40,
+        "maxTemperature": 2
+      },
+      "label": "Gemini 2.0 Flash-Lite 001",
+      "inputTokenLimit": 1048576,
       "outputTokenLimit": 8192
     },
     {
-      "id": "veo-2.0-generate-001",
-      "name": "models/veo-2.0-generate-001",
-      "displayName": "Veo 2",
-      "description": "Vertex served Veo 2 model. Access to this model requires billing to be enabled on the associated Google Cloud Platform account. Please visit https://console.cloud.google.com/billing to enable it.",
-      "inputTokenLimit": 480,
-      "outputTokenLimit": 8192
+      "provider": "google",
+      "id": "gemini-2.5-computer-use-preview-10-2025",
+      "raw": {
+        "name": "models/gemini-2.5-computer-use-preview-10-2025",
+        "version": "Gemini 2.5 Computer Use Preview 10-2025",
+        "displayName": "Gemini 2.5 Computer Use Preview 10-2025",
+        "description": "Gemini 2.5 Computer Use Preview 10-2025",
+        "inputTokenLimit": 131072,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini 2.5 Computer Use Preview 10-2025",
+      "inputTokenLimit": 131072,
+      "outputTokenLimit": 65536
     },
     {
-      "id": "veo-3.0-generate-001",
-      "name": "models/veo-3.0-generate-001",
-      "displayName": "Veo 3",
-      "description": "Veo 3",
-      "inputTokenLimit": 480,
-      "outputTokenLimit": 8192
+      "provider": "google",
+      "id": "gemini-2.5-flash",
+      "raw": {
+        "name": "models/gemini-2.5-flash",
+        "version": "001",
+        "displayName": "Gemini 2.5 Flash",
+        "description": "Stable version of Gemini 2.5 Flash, our mid-size multimodal model that supports up to 1 million tokens, released in June of 2025.",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "createCachedContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini 2.5 Flash",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536
     },
     {
-      "id": "veo-3.0-fast-generate-001",
-      "name": "models/veo-3.0-fast-generate-001",
-      "displayName": "Veo 3 fast",
-      "description": "Veo 3 fast",
-      "inputTokenLimit": 480,
-      "outputTokenLimit": 8192
+      "provider": "google",
+      "id": "gemini-2.5-flash-image",
+      "raw": {
+        "name": "models/gemini-2.5-flash-image",
+        "version": "2.0",
+        "displayName": "Nano Banana",
+        "description": "Gemini 2.5 Flash Preview Image",
+        "inputTokenLimit": 32768,
+        "outputTokenLimit": 32768,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 1
+      },
+      "label": "Nano Banana",
+      "inputTokenLimit": 32768,
+      "outputTokenLimit": 32768
     },
     {
-      "id": "veo-3.1-generate-preview",
-      "name": "models/veo-3.1-generate-preview",
-      "displayName": "Veo 3.1",
-      "description": "Veo 3.1",
-      "inputTokenLimit": 480,
-      "outputTokenLimit": 8192
+      "provider": "google",
+      "id": "gemini-2.5-flash-lite",
+      "raw": {
+        "name": "models/gemini-2.5-flash-lite",
+        "version": "001",
+        "displayName": "Gemini 2.5 Flash-Lite",
+        "description": "Stable version of Gemini 2.5 Flash-Lite, released in July of 2025",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "createCachedContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini 2.5 Flash-Lite",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536
     },
     {
-      "id": "veo-3.1-fast-generate-preview",
-      "name": "models/veo-3.1-fast-generate-preview",
-      "displayName": "Veo 3.1 fast",
-      "description": "Veo 3.1 fast",
-      "inputTokenLimit": 480,
-      "outputTokenLimit": 8192
+      "provider": "google",
+      "id": "gemini-2.5-flash-lite-preview-09-2025",
+      "raw": {
+        "name": "models/gemini-2.5-flash-lite-preview-09-2025",
+        "version": "2.5-preview-09-25",
+        "displayName": "Gemini 2.5 Flash-Lite Preview Sep 2025",
+        "description": "Preview release (Septempber 25th, 2025) of Gemini 2.5 Flash-Lite",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "createCachedContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini 2.5 Flash-Lite Preview Sep 2025",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536
     },
     {
+      "provider": "google",
       "id": "gemini-2.5-flash-native-audio-latest",
-      "name": "models/gemini-2.5-flash-native-audio-latest",
-      "displayName": "Gemini 2.5 Flash Native Audio Latest",
-      "description": "Latest release of Gemini 2.5 Flash Native Audio",
+      "raw": {
+        "name": "models/gemini-2.5-flash-native-audio-latest",
+        "version": "Gemini 2.5 Flash Native Audio Latest",
+        "displayName": "Gemini 2.5 Flash Native Audio Latest",
+        "description": "Latest release of Gemini 2.5 Flash Native Audio",
+        "inputTokenLimit": 131072,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "countTokens",
+          "bidiGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini 2.5 Flash Native Audio Latest",
       "inputTokenLimit": 131072,
       "outputTokenLimit": 8192
     },
     {
+      "provider": "google",
       "id": "gemini-2.5-flash-native-audio-preview-09-2025",
-      "name": "models/gemini-2.5-flash-native-audio-preview-09-2025",
-      "displayName": "Gemini 2.5 Flash Native Audio Preview 09-2025",
-      "description": "Gemini 2.5 Flash Native Audio Preview 09-2025",
+      "raw": {
+        "name": "models/gemini-2.5-flash-native-audio-preview-09-2025",
+        "version": "gemini-2.5-flash-preview-native-audio-dialog-2025-05-19",
+        "displayName": "Gemini 2.5 Flash Native Audio Preview 09-2025",
+        "description": "Gemini 2.5 Flash Native Audio Preview 09-2025",
+        "inputTokenLimit": 131072,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "countTokens",
+          "bidiGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini 2.5 Flash Native Audio Preview 09-2025",
       "inputTokenLimit": 131072,
       "outputTokenLimit": 8192
     },
     {
+      "provider": "google",
       "id": "gemini-2.5-flash-native-audio-preview-12-2025",
-      "name": "models/gemini-2.5-flash-native-audio-preview-12-2025",
-      "displayName": "Gemini 2.5 Flash Native Audio Preview 12-2025",
-      "description": "Gemini 2.5 Flash Native Audio Preview 12-2025",
+      "raw": {
+        "name": "models/gemini-2.5-flash-native-audio-preview-12-2025",
+        "version": "12-2025",
+        "displayName": "Gemini 2.5 Flash Native Audio Preview 12-2025",
+        "description": "Gemini 2.5 Flash Native Audio Preview 12-2025",
+        "inputTokenLimit": 131072,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "countTokens",
+          "bidiGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini 2.5 Flash Native Audio Preview 12-2025",
       "inputTokenLimit": 131072,
+      "outputTokenLimit": 8192
+    },
+    {
+      "provider": "google",
+      "id": "gemini-2.5-flash-preview-09-2025",
+      "raw": {
+        "name": "models/gemini-2.5-flash-preview-09-2025",
+        "version": "Gemini 2.5 Flash Preview 09-2025",
+        "displayName": "Gemini 2.5 Flash Preview Sep 2025",
+        "description": "Gemini 2.5 Flash Preview Sep 2025",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "createCachedContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini 2.5 Flash Preview Sep 2025",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536
+    },
+    {
+      "provider": "google",
+      "id": "gemini-2.5-flash-preview-tts",
+      "raw": {
+        "name": "models/gemini-2.5-flash-preview-tts",
+        "version": "gemini-2.5-flash-exp-tts-2025-05-19",
+        "displayName": "Gemini 2.5 Flash Preview TTS",
+        "description": "Gemini 2.5 Flash Preview TTS",
+        "inputTokenLimit": 8192,
+        "outputTokenLimit": 16384,
+        "supportedGenerationMethods": [
+          "countTokens",
+          "generateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2
+      },
+      "label": "Gemini 2.5 Flash Preview TTS",
+      "inputTokenLimit": 8192,
+      "outputTokenLimit": 16384
+    },
+    {
+      "provider": "google",
+      "id": "gemini-2.5-pro",
+      "raw": {
+        "name": "models/gemini-2.5-pro",
+        "version": "2.5",
+        "displayName": "Gemini 2.5 Pro",
+        "description": "Stable release (June 17th, 2025) of Gemini 2.5 Pro",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "createCachedContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini 2.5 Pro",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536
+    },
+    {
+      "provider": "google",
+      "id": "gemini-2.5-pro-preview-tts",
+      "raw": {
+        "name": "models/gemini-2.5-pro-preview-tts",
+        "version": "gemini-2.5-pro-preview-tts-2025-05-19",
+        "displayName": "Gemini 2.5 Pro Preview TTS",
+        "description": "Gemini 2.5 Pro Preview TTS",
+        "inputTokenLimit": 8192,
+        "outputTokenLimit": 16384,
+        "supportedGenerationMethods": [
+          "countTokens",
+          "generateContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2
+      },
+      "label": "Gemini 2.5 Pro Preview TTS",
+      "inputTokenLimit": 8192,
+      "outputTokenLimit": 16384
+    },
+    {
+      "provider": "google",
+      "id": "gemini-3-flash-preview",
+      "raw": {
+        "name": "models/gemini-3-flash-preview",
+        "version": "3-flash-preview-12-2025",
+        "displayName": "Gemini 3 Flash Preview",
+        "description": "Gemini 3 Flash Preview",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "createCachedContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini 3 Flash Preview",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536
+    },
+    {
+      "provider": "google",
+      "id": "gemini-3-pro-image-preview",
+      "raw": {
+        "name": "models/gemini-3-pro-image-preview",
+        "version": "3.0",
+        "displayName": "Nano Banana Pro",
+        "description": "Gemini 3 Pro Image Preview",
+        "inputTokenLimit": 131072,
+        "outputTokenLimit": 32768,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 1,
+        "thinking": true
+      },
+      "label": "Nano Banana Pro",
+      "inputTokenLimit": 131072,
+      "outputTokenLimit": 32768
+    },
+    {
+      "provider": "google",
+      "id": "gemini-3-pro-preview",
+      "raw": {
+        "name": "models/gemini-3-pro-preview",
+        "version": "3-pro-preview-11-2025",
+        "displayName": "Gemini 3 Pro Preview",
+        "description": "Gemini 3 Pro Preview",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "createCachedContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini 3 Pro Preview",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536
+    },
+    {
+      "provider": "google",
+      "id": "gemini-embedding-001",
+      "raw": {
+        "name": "models/gemini-embedding-001",
+        "version": "001",
+        "displayName": "Gemini Embedding 001",
+        "description": "Obtain a distributed representation of a text.",
+        "inputTokenLimit": 2048,
+        "outputTokenLimit": 1,
+        "supportedGenerationMethods": [
+          "embedContent",
+          "countTextTokens",
+          "countTokens",
+          "asyncBatchEmbedContent"
+        ]
+      },
+      "label": "Gemini Embedding 001",
+      "inputTokenLimit": 2048,
+      "outputTokenLimit": 1
+    },
+    {
+      "provider": "google",
+      "id": "gemini-exp-1206",
+      "raw": {
+        "name": "models/gemini-exp-1206",
+        "version": "2.5-exp-03-25",
+        "displayName": "Gemini Experimental 1206",
+        "description": "Experimental release (March 25th, 2025) of Gemini 2.5 Pro",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "createCachedContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini Experimental 1206",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536
+    },
+    {
+      "provider": "google",
+      "id": "gemini-flash-latest",
+      "raw": {
+        "name": "models/gemini-flash-latest",
+        "version": "Gemini Flash Latest",
+        "displayName": "Gemini Flash Latest",
+        "description": "Latest release of Gemini Flash",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "createCachedContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini Flash Latest",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536
+    },
+    {
+      "provider": "google",
+      "id": "gemini-flash-lite-latest",
+      "raw": {
+        "name": "models/gemini-flash-lite-latest",
+        "version": "Gemini Flash-Lite Latest",
+        "displayName": "Gemini Flash-Lite Latest",
+        "description": "Latest release of Gemini Flash-Lite",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "createCachedContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini Flash-Lite Latest",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536
+    },
+    {
+      "provider": "google",
+      "id": "gemini-pro-latest",
+      "raw": {
+        "name": "models/gemini-pro-latest",
+        "version": "Gemini Pro Latest",
+        "displayName": "Gemini Pro Latest",
+        "description": "Latest release of Gemini Pro",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "createCachedContent",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini Pro Latest",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536
+    },
+    {
+      "provider": "google",
+      "id": "gemini-robotics-er-1.5-preview",
+      "raw": {
+        "name": "models/gemini-robotics-er-1.5-preview",
+        "version": "1.5-preview",
+        "displayName": "Gemini Robotics-ER 1.5 Preview",
+        "description": "Gemini Robotics-ER 1.5 Preview",
+        "inputTokenLimit": 1048576,
+        "outputTokenLimit": 65536,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 2,
+        "thinking": true
+      },
+      "label": "Gemini Robotics-ER 1.5 Preview",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536
+    },
+    {
+      "provider": "google",
+      "id": "gemma-3-12b-it",
+      "raw": {
+        "name": "models/gemma-3-12b-it",
+        "version": "001",
+        "displayName": "Gemma 3 12B",
+        "inputTokenLimit": 32768,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64
+      },
+      "label": "Gemma 3 12B",
+      "inputTokenLimit": 32768,
+      "outputTokenLimit": 8192
+    },
+    {
+      "provider": "google",
+      "id": "gemma-3-1b-it",
+      "raw": {
+        "name": "models/gemma-3-1b-it",
+        "version": "001",
+        "displayName": "Gemma 3 1B",
+        "inputTokenLimit": 32768,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64
+      },
+      "label": "Gemma 3 1B",
+      "inputTokenLimit": 32768,
+      "outputTokenLimit": 8192
+    },
+    {
+      "provider": "google",
+      "id": "gemma-3-27b-it",
+      "raw": {
+        "name": "models/gemma-3-27b-it",
+        "version": "001",
+        "displayName": "Gemma 3 27B",
+        "inputTokenLimit": 131072,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64
+      },
+      "label": "Gemma 3 27B",
+      "inputTokenLimit": 131072,
+      "outputTokenLimit": 8192
+    },
+    {
+      "provider": "google",
+      "id": "gemma-3-4b-it",
+      "raw": {
+        "name": "models/gemma-3-4b-it",
+        "version": "001",
+        "displayName": "Gemma 3 4B",
+        "inputTokenLimit": 32768,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64
+      },
+      "label": "Gemma 3 4B",
+      "inputTokenLimit": 32768,
+      "outputTokenLimit": 8192
+    },
+    {
+      "provider": "google",
+      "id": "gemma-3n-e2b-it",
+      "raw": {
+        "name": "models/gemma-3n-e2b-it",
+        "version": "001",
+        "displayName": "Gemma 3n E2B",
+        "inputTokenLimit": 8192,
+        "outputTokenLimit": 2048,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64
+      },
+      "label": "Gemma 3n E2B",
+      "inputTokenLimit": 8192,
+      "outputTokenLimit": 2048
+    },
+    {
+      "provider": "google",
+      "id": "gemma-3n-e4b-it",
+      "raw": {
+        "name": "models/gemma-3n-e4b-it",
+        "version": "001",
+        "displayName": "Gemma 3n E4B",
+        "inputTokenLimit": 8192,
+        "outputTokenLimit": 2048,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64
+      },
+      "label": "Gemma 3n E4B",
+      "inputTokenLimit": 8192,
+      "outputTokenLimit": 2048
+    },
+    {
+      "provider": "google",
+      "id": "imagen-4.0-fast-generate-001",
+      "raw": {
+        "name": "models/imagen-4.0-fast-generate-001",
+        "version": "001",
+        "displayName": "Imagen 4 Fast",
+        "description": "Vertex served Imagen 4.0 Fast model",
+        "inputTokenLimit": 480,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "predict"
+        ]
+      },
+      "label": "Imagen 4 Fast",
+      "inputTokenLimit": 480,
+      "outputTokenLimit": 8192
+    },
+    {
+      "provider": "google",
+      "id": "imagen-4.0-generate-001",
+      "raw": {
+        "name": "models/imagen-4.0-generate-001",
+        "version": "001",
+        "displayName": "Imagen 4",
+        "description": "Vertex served Imagen 4.0 model",
+        "inputTokenLimit": 480,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "predict"
+        ]
+      },
+      "label": "Imagen 4",
+      "inputTokenLimit": 480,
+      "outputTokenLimit": 8192
+    },
+    {
+      "provider": "google",
+      "id": "imagen-4.0-generate-preview-06-06",
+      "raw": {
+        "name": "models/imagen-4.0-generate-preview-06-06",
+        "version": "01",
+        "displayName": "Imagen 4 (Preview)",
+        "description": "Vertex served Imagen 4.0 model",
+        "inputTokenLimit": 480,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "predict"
+        ]
+      },
+      "label": "Imagen 4 (Preview)",
+      "inputTokenLimit": 480,
+      "outputTokenLimit": 8192
+    },
+    {
+      "provider": "google",
+      "id": "imagen-4.0-ultra-generate-001",
+      "raw": {
+        "name": "models/imagen-4.0-ultra-generate-001",
+        "version": "001",
+        "displayName": "Imagen 4 Ultra",
+        "description": "Vertex served Imagen 4.0 ultra model",
+        "inputTokenLimit": 480,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "predict"
+        ]
+      },
+      "label": "Imagen 4 Ultra",
+      "inputTokenLimit": 480,
+      "outputTokenLimit": 8192
+    },
+    {
+      "provider": "google",
+      "id": "imagen-4.0-ultra-generate-preview-06-06",
+      "raw": {
+        "name": "models/imagen-4.0-ultra-generate-preview-06-06",
+        "version": "01",
+        "displayName": "Imagen 4 Ultra (Preview)",
+        "description": "Vertex served Imagen 4.0 ultra model",
+        "inputTokenLimit": 480,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "predict"
+        ]
+      },
+      "label": "Imagen 4 Ultra (Preview)",
+      "inputTokenLimit": 480,
+      "outputTokenLimit": 8192
+    },
+    {
+      "provider": "google",
+      "id": "nano-banana-pro-preview",
+      "raw": {
+        "name": "models/nano-banana-pro-preview",
+        "version": "3.0",
+        "displayName": "Nano Banana Pro",
+        "description": "Gemini 3 Pro Image Preview",
+        "inputTokenLimit": 131072,
+        "outputTokenLimit": 32768,
+        "supportedGenerationMethods": [
+          "generateContent",
+          "countTokens",
+          "batchGenerateContent"
+        ],
+        "temperature": 1,
+        "topP": 0.95,
+        "topK": 64,
+        "maxTemperature": 1,
+        "thinking": true
+      },
+      "label": "Nano Banana Pro",
+      "inputTokenLimit": 131072,
+      "outputTokenLimit": 32768
+    },
+    {
+      "provider": "google",
+      "id": "veo-2.0-generate-001",
+      "raw": {
+        "name": "models/veo-2.0-generate-001",
+        "version": "2.0",
+        "displayName": "Veo 2",
+        "description": "Vertex served Veo 2 model. Access to this model requires billing to be enabled on the associated Google Cloud Platform account. Please visit https://console.cloud.google.com/billing to enable it.",
+        "inputTokenLimit": 480,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "predictLongRunning"
+        ]
+      },
+      "label": "Veo 2",
+      "inputTokenLimit": 480,
+      "outputTokenLimit": 8192
+    },
+    {
+      "provider": "google",
+      "id": "veo-3.0-fast-generate-001",
+      "raw": {
+        "name": "models/veo-3.0-fast-generate-001",
+        "version": "3.0",
+        "displayName": "Veo 3 fast",
+        "description": "Veo 3 fast",
+        "inputTokenLimit": 480,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "predictLongRunning"
+        ]
+      },
+      "label": "Veo 3 fast",
+      "inputTokenLimit": 480,
+      "outputTokenLimit": 8192
+    },
+    {
+      "provider": "google",
+      "id": "veo-3.0-generate-001",
+      "raw": {
+        "name": "models/veo-3.0-generate-001",
+        "version": "3.0",
+        "displayName": "Veo 3",
+        "description": "Veo 3",
+        "inputTokenLimit": 480,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "predictLongRunning"
+        ]
+      },
+      "label": "Veo 3",
+      "inputTokenLimit": 480,
+      "outputTokenLimit": 8192
+    },
+    {
+      "provider": "google",
+      "id": "veo-3.1-fast-generate-preview",
+      "raw": {
+        "name": "models/veo-3.1-fast-generate-preview",
+        "version": "3.1",
+        "displayName": "Veo 3.1 fast",
+        "description": "Veo 3.1 fast",
+        "inputTokenLimit": 480,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "predictLongRunning"
+        ]
+      },
+      "label": "Veo 3.1 fast",
+      "inputTokenLimit": 480,
+      "outputTokenLimit": 8192
+    },
+    {
+      "provider": "google",
+      "id": "veo-3.1-generate-preview",
+      "raw": {
+        "name": "models/veo-3.1-generate-preview",
+        "version": "3.1",
+        "displayName": "Veo 3.1",
+        "description": "Veo 3.1",
+        "inputTokenLimit": 480,
+        "outputTokenLimit": 8192,
+        "supportedGenerationMethods": [
+          "predictLongRunning"
+        ]
+      },
+      "label": "Veo 3.1",
+      "inputTokenLimit": 480,
       "outputTokenLimit": 8192
     }
   ]

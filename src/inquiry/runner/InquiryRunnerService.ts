@@ -2,7 +2,6 @@ import { TFile } from 'obsidian';
 import type { MetadataCache, Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
-import { callProvider, type ProviderResult } from '../../api/providerRouter';
 import { INQUIRY_MAX_OUTPUT_TOKENS, INQUIRY_SCHEMA_VERSION } from '../constants';
 import { PROVIDER_MAX_OUTPUT_TOKENS } from '../../constants/tokenLimits';
 import type { InquiryAiStatus, InquiryConfidence, InquiryFinding, InquiryResult, InquirySeverity } from '../state';
@@ -15,6 +14,9 @@ import type {
     InquiryRunner,
     InquiryRunnerInput
 } from './types';
+import { getAIClient } from '../../ai/runtime/aiClient';
+import { mapAiProviderToLegacyProvider, mapLegacyProviderToAiProvider } from '../../ai/settings/aiSettings';
+import type { AIRunResult } from '../../ai/types';
 
 const BOOK_FOLDER_REGEX = /^Book\s+(\d+)/i;
 type EvidenceBlock = {
@@ -69,6 +71,23 @@ type RawOmnibusResponse = {
     results?: RawOmnibusQuestionResult[];
 };
 
+type ProviderResult = {
+    success: boolean;
+    content: string | null;
+    responseData: unknown;
+    requestPayload?: unknown;
+    provider: InquiryAiProvider;
+    modelId?: string;
+    aiProvider?: InquiryAiProvider;
+    aiModelRequested?: string;
+    aiModelResolved?: string;
+    aiStatus?: InquiryAiStatus;
+    aiReason?: string;
+    error?: string;
+    sanitizationNotes?: string[];
+    retryCount?: number;
+};
+
 export class InquiryRunnerService implements InquiryRunner {
     constructor(
         private plugin: RadialTimelinePlugin,
@@ -94,7 +113,15 @@ export class InquiryRunnerService implements InquiryRunner {
         let response: ProviderResult | null = null;
 
         try {
-            response = await this.callProvider(systemPrompt, userPrompt, input.ai, jsonSchema, temperature, maxTokens);
+            response = await this.callProvider(
+                systemPrompt,
+                userPrompt,
+                input.ai,
+                jsonSchema,
+                temperature,
+                maxTokens,
+                input.questionText
+            );
             if (response.sanitizationNotes?.length) {
                 trace.sanitizationNotes.push(...response.sanitizationNotes);
             }
@@ -142,7 +169,15 @@ export class InquiryRunnerService implements InquiryRunner {
                 if (shouldRetry) {
                     trace.notes.push(`Parse retry: output reached cap (${usage?.outputTokens}/${maxTokens}); retrying with cap ${retryMaxTokens}.`);
                     try {
-                        const retryResponse = await this.callProvider(systemPrompt, userPrompt, input.ai, jsonSchema, temperature, retryMaxTokens);
+                        const retryResponse = await this.callProvider(
+                            systemPrompt,
+                            userPrompt,
+                            input.ai,
+                            jsonSchema,
+                            temperature,
+                            retryMaxTokens,
+                            input.questionText
+                        );
                         if (retryResponse.sanitizationNotes?.length) {
                             trace.sanitizationNotes.push(...retryResponse.sanitizationNotes);
                         }
@@ -170,7 +205,7 @@ export class InquiryRunnerService implements InquiryRunner {
                             if (retryResponse.error) {
                                 trace.notes.push(`Parse retry provider error: ${retryResponse.error}`);
                             }
-                            const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus);
+                            const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus ?? 'rejected');
                             return {
                                 result: this.buildStubResult(input, fallbackMeta, retryResponse.error),
                                 trace
@@ -184,7 +219,7 @@ export class InquiryRunnerService implements InquiryRunner {
                         } catch (retryParseError) {
                             const retryMessage = retryParseError instanceof Error ? retryParseError.message : String(retryParseError);
                             trace.notes.push(`Parse retry failed: ${retryMessage}`);
-                            const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus);
+                            const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus ?? 'rejected');
                             return {
                                 result: this.buildStubResult(input, fallbackMeta, retryParseError),
                                 trace
@@ -196,7 +231,7 @@ export class InquiryRunnerService implements InquiryRunner {
                     }
                 }
 
-                const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(response), response.aiStatus);
+                const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(response), response.aiStatus ?? 'rejected');
                 return {
                     result: this.buildStubResult(input, fallbackMeta, parseError),
                     trace
@@ -206,7 +241,7 @@ export class InquiryRunnerService implements InquiryRunner {
             const message = error instanceof Error ? error.message : String(error);
             if (response) {
                 trace.notes.push(`Runner error after response: ${message}`);
-                const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(response), response.aiStatus);
+                const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(response), response.aiStatus ?? 'rejected');
                 return { result: this.buildStubResult(input, fallbackMeta, error), trace };
             }
             trace.notes.push(`Runner error: ${message}`);
@@ -226,7 +261,15 @@ export class InquiryRunnerService implements InquiryRunner {
         let response: ProviderResult | null = null;
 
         try {
-            response = await this.callProvider(systemPrompt, userPrompt, input.ai, jsonSchema, temperature, maxTokens);
+            response = await this.callProvider(
+                systemPrompt,
+                userPrompt,
+                input.ai,
+                jsonSchema,
+                temperature,
+                maxTokens,
+                input.questions.map(question => question.question).join('\n')
+            );
             if (response.sanitizationNotes?.length) {
                 trace.sanitizationNotes.push(...response.sanitizationNotes);
             }
@@ -281,7 +324,15 @@ export class InquiryRunnerService implements InquiryRunner {
                 if (shouldRetry) {
                     trace.notes.push(`Parse retry: output reached cap (${usage?.outputTokens}/${maxTokens}); retrying with cap ${retryMaxTokens}.`);
                     try {
-                        const retryResponse = await this.callProvider(systemPrompt, userPrompt, input.ai, jsonSchema, temperature, retryMaxTokens);
+                        const retryResponse = await this.callProvider(
+                            systemPrompt,
+                            userPrompt,
+                            input.ai,
+                            jsonSchema,
+                            temperature,
+                            retryMaxTokens,
+                            input.questions.map(question => question.question).join('\n')
+                        );
                         if (retryResponse.sanitizationNotes?.length) {
                             trace.sanitizationNotes.push(...retryResponse.sanitizationNotes);
                         }
@@ -309,7 +360,7 @@ export class InquiryRunnerService implements InquiryRunner {
                             if (retryResponse.error) {
                                 trace.notes.push(`Parse retry provider error: ${retryResponse.error}`);
                             }
-                            const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus);
+                            const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus ?? 'rejected');
                             return {
                                 results: this.buildOmnibusStubResults(input, fallbackMeta, retryResponse.error),
                                 trace,
@@ -329,7 +380,7 @@ export class InquiryRunnerService implements InquiryRunner {
                         } catch (retryParseError) {
                             const retryMessage = retryParseError instanceof Error ? retryParseError.message : String(retryParseError);
                             trace.notes.push(`Parse retry failed: ${retryMessage}`);
-                            const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus);
+                            const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus ?? 'rejected');
                             return {
                                 results: this.buildOmnibusStubResults(input, fallbackMeta, retryParseError),
                                 trace,
@@ -342,7 +393,7 @@ export class InquiryRunnerService implements InquiryRunner {
                     }
                 }
 
-                const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(response), response.aiStatus);
+                const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(response), response.aiStatus ?? 'rejected');
                 return {
                     results: this.buildOmnibusStubResults(input, fallbackMeta, parseError),
                     trace,
@@ -353,7 +404,7 @@ export class InquiryRunnerService implements InquiryRunner {
             const message = error instanceof Error ? error.message : String(error);
             if (response) {
                 trace.notes.push(`Runner error after response: ${message}`);
-                const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(response), response.aiStatus);
+                const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(response), response.aiStatus ?? 'rejected');
                 return {
                     results: this.buildOmnibusStubResults(input, fallbackMeta, error),
                     trace,
@@ -841,18 +892,226 @@ export class InquiryRunnerService implements InquiryRunner {
         ai: InquiryRunnerInput['ai'],
         jsonSchema: Record<string, unknown>,
         temperature: number,
-        maxTokens: number
+        maxTokens: number,
+        userQuestion?: string
     ): Promise<ProviderResult> {
-        return callProvider(this.plugin, {
-            provider: ai.provider,
-            modelId: ai.modelId,
+        const aiClient = getAIClient(this.plugin);
+        let run = await this.runInquiryRequest(aiClient, {
+            task: 'AnalyzeCorpus',
             systemPrompt,
             userPrompt,
-            maxTokens,
-            temperature,
+            userQuestion,
+            ai,
             jsonSchema,
-            responseFormat: { type: 'json_schema', json_schema: { name: 'inquiry_result', schema: jsonSchema } }
+            temperature,
+            maxTokens
         });
+
+        // Inquiry specialization: when request is over safe context threshold, chunk evidence and synthesize.
+        if (run.aiReason === 'truncated') {
+            const chunked = await this.runChunkedInquiry(aiClient, {
+                systemPrompt,
+                userPrompt,
+                userQuestion,
+                ai,
+                jsonSchema,
+                temperature,
+                maxTokens
+            });
+            if (chunked) {
+                run = chunked;
+            }
+        }
+
+        return this.toProviderResult(run);
+    }
+
+    private async runInquiryRequest(
+        aiClient: ReturnType<typeof getAIClient>,
+        options: {
+            task: string;
+            systemPrompt: string;
+            userPrompt: string;
+            userQuestion?: string;
+            ai: InquiryRunnerInput['ai'];
+            jsonSchema: Record<string, unknown>;
+            temperature: number;
+            maxTokens: number;
+        }
+    ): Promise<AIRunResult> {
+        const tokenEstimateInput = this.estimateTokensFromChars(
+            (options.systemPrompt?.length ?? 0) + (options.userPrompt?.length ?? 0)
+        );
+        return aiClient.run({
+            feature: 'InquiryMode',
+            task: options.task,
+            requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
+            profileOverride: 'deepReasoner',
+            featureModeInstructions: [
+                options.systemPrompt,
+                'Do not reinterpret or expand the user’s question. Answer it directly. The role template provides tonal and contextual framing only.'
+            ].filter(Boolean).join('\n'),
+            userInput: options.userPrompt,
+            userQuestion: options.userQuestion,
+            promptText: options.userPrompt,
+            systemPrompt: undefined,
+            returnType: 'json',
+            responseSchema: options.jsonSchema,
+            providerOverride: mapLegacyProviderToAiProvider(options.ai.provider),
+            legacySelectionHint: {
+                provider: options.ai.provider,
+                modelId: options.ai.modelId
+            },
+            overrides: {
+                temperature: options.temperature,
+                maxOutputMode: this.resolveMaxOutputMode(options.maxTokens),
+                reasoningDepth: 'deep',
+                jsonStrict: true
+            },
+            tokenEstimateInput
+        });
+    }
+
+    private resolveMaxOutputMode(maxTokens: number): 'auto' | 'high' | 'max' {
+        if (maxTokens >= 12000) return 'max';
+        if (maxTokens >= 4000) return 'high';
+        return 'auto';
+    }
+
+    private toProviderResult(run: AIRunResult): ProviderResult {
+        const legacyProvider = mapAiProviderToLegacyProvider(run.provider);
+        return {
+            success: run.aiStatus === 'success' && !!run.content,
+            content: run.content,
+            responseData: run.responseData,
+            requestPayload: run.requestPayload,
+            provider: legacyProvider,
+            modelId: run.modelResolved || run.modelRequested,
+            aiProvider: legacyProvider,
+            aiModelRequested: run.modelRequested,
+            aiModelResolved: run.modelResolved || run.modelRequested,
+            aiStatus: run.aiStatus,
+            aiReason: run.aiReason,
+            error: run.error,
+            sanitizationNotes: run.sanitizationNotes,
+            retryCount: run.retryCount
+        };
+    }
+
+    private async runChunkedInquiry(
+        aiClient: ReturnType<typeof getAIClient>,
+        options: {
+            systemPrompt: string;
+            userPrompt: string;
+            userQuestion?: string;
+            ai: InquiryRunnerInput['ai'];
+            jsonSchema: Record<string, unknown>;
+            temperature: number;
+            maxTokens: number;
+        }
+    ): Promise<AIRunResult | null> {
+        const chunkPrompts = this.buildEvidenceChunkPrompts(options.userPrompt, 6000);
+        if (!chunkPrompts || chunkPrompts.length <= 1) return null;
+
+        const chunkOutputs: string[] = [];
+        for (let i = 0; i < chunkPrompts.length; i += 1) {
+            const chunkRun = await this.runInquiryRequest(aiClient, {
+                task: `AnalyzeCorpusChunk${i + 1}`,
+                systemPrompt: options.systemPrompt,
+                userPrompt: chunkPrompts[i],
+                userQuestion: options.userQuestion,
+                ai: options.ai,
+                jsonSchema: options.jsonSchema,
+                temperature: options.temperature,
+                maxTokens: options.maxTokens
+            });
+            if (chunkRun.aiStatus !== 'success' || !chunkRun.content) {
+                return null;
+            }
+            chunkOutputs.push(chunkRun.content);
+        }
+
+        const marker = '\nEvidence:\n';
+        const splitAt = options.userPrompt.indexOf(marker);
+        if (splitAt < 0) return null;
+        const prefix = options.userPrompt.slice(0, splitAt + marker.length);
+        const synthesisEvidence = chunkOutputs
+            .map((output, index) => `## Chunk ${index + 1} analysis\n${output}`)
+            .join('\n\n');
+
+        const synthesisRun = await this.runInquiryRequest(aiClient, {
+            task: 'SynthesizeChunkAnalyses',
+            systemPrompt: options.systemPrompt,
+            userPrompt: `${prefix}${synthesisEvidence}`,
+            userQuestion: options.userQuestion,
+            ai: options.ai,
+            jsonSchema: options.jsonSchema,
+            temperature: options.temperature,
+            maxTokens: options.maxTokens
+        });
+
+        if (synthesisRun.aiStatus !== 'success' || !synthesisRun.content) {
+            return null;
+        }
+
+        return {
+            ...synthesisRun,
+            warnings: [...(synthesisRun.warnings || []), `Inquiry chunked execution used ${chunkPrompts.length} chunks before synthesis.`]
+        };
+    }
+
+    private buildEvidenceChunkPrompts(userPrompt: string, maxChunkTokens: number): string[] | null {
+        const marker = '\nEvidence:\n';
+        const splitAt = userPrompt.indexOf(marker);
+        if (splitAt < 0) return null;
+        const prefix = userPrompt.slice(0, splitAt + marker.length);
+        const evidence = userPrompt.slice(splitAt + marker.length).trim();
+        if (!evidence) return null;
+
+        const maxChars = Math.max(1200, maxChunkTokens * 4);
+        const sections = evidence.split(/\n\n(?=##\s)/g).filter(Boolean);
+        if (!sections.length) return null;
+
+        const chunks: string[] = [];
+        let current = '';
+
+        const pushChunk = (text: string): void => {
+            const trimmed = text.trim();
+            if (trimmed.length > 0) chunks.push(trimmed);
+        };
+
+        const pushSection = (section: string): void => {
+            const candidate = current ? `${current}\n\n${section}` : section;
+            if (candidate.length <= maxChars) {
+                current = candidate;
+                return;
+            }
+            if (current) {
+                pushChunk(current);
+                current = '';
+            }
+            if (section.length <= maxChars) {
+                current = section;
+                return;
+            }
+            const paragraphs = section.split(/\n{2,}/g).filter(Boolean);
+            let subCurrent = '';
+            paragraphs.forEach(paragraph => {
+                const subCandidate = subCurrent ? `${subCurrent}\n\n${paragraph}` : paragraph;
+                if (subCandidate.length <= maxChars) {
+                    subCurrent = subCandidate;
+                } else {
+                    pushChunk(subCurrent || paragraph.slice(0, maxChars));
+                    subCurrent = paragraph.length > maxChars ? paragraph.slice(0, maxChars) : paragraph;
+                }
+            });
+            if (subCurrent) pushChunk(subCurrent);
+        };
+
+        sections.forEach(pushSection);
+        if (current) pushChunk(current);
+
+        return chunks.map(chunk => `${prefix}${chunk}`);
     }
 
     private parseResponse(content: string): RawInquiryResponse {
@@ -1321,7 +1580,7 @@ export class InquiryRunnerService implements InquiryRunner {
 
     private getOutputTokenCap(provider: InquiryAiProvider): number {
         const providerCap = PROVIDER_MAX_OUTPUT_TOKENS[provider] ?? INQUIRY_MAX_OUTPUT_TOKENS;
-        return Math.max(1, Math.min(INQUIRY_MAX_OUTPUT_TOKENS, providerCap));
+        return Math.max(512, providerCap);
     }
 
     private getParseRetryOutputTokenCap(provider: InquiryAiProvider, currentCap: number): number {

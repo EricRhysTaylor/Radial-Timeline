@@ -1,6 +1,7 @@
 /*
  * Unified provider router
  */
+// TODO: DEPRECATED — migrate to aiClient
 import { App } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { DEFAULT_ANTHROPIC_MODEL_ID, DEFAULT_GEMINI_MODEL_ID, DEFAULT_OPENAI_MODEL_ID } from '../constants/aiDefaults';
@@ -10,10 +11,12 @@ import { callGeminiApi, type GeminiApiResponse } from './geminiApi';
 import { sanitizeProviderArgs, type AiProvider, type ProviderCallArgs as ProviderCallArgsBase } from './providerCapabilities';
 import { buildProviderRequestPayload } from './requestPayload';
 import { classifyProviderError, type AiStatus } from './providerErrors';
+import { warnLegacyAccess } from './legacyAccessGuard';
 
 export interface ProviderCallArgs extends ProviderCallArgsBase {
   provider?: AiProvider;
   modelId?: string;
+  internalAdapterAccess?: boolean;
 }
 
 export interface ProviderResult<T = unknown> {
@@ -49,6 +52,7 @@ export async function resolveKey(app: App, key: string): Promise<string> {
 }
 
 export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderCallArgs): Promise<ProviderResult> {
+  warnLegacyAccess('providerRouter.callProvider', args.internalAdapterAccess);
   const provider = args.provider || plugin.settings.defaultAiProvider || 'openai';
   const maxTokens = typeof args.maxTokens === 'number'
     ? args.maxTokens
@@ -91,7 +95,8 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
         requestedModelId,
         callArgs.systemPrompt || null,
         callArgs.userPrompt,
-        resolvedMaxTokens
+        resolvedMaxTokens,
+        true
       );
       return { ...buildProviderResult(provider, requestedModelId, resp), requestPayload };
     }
@@ -108,7 +113,8 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
         callArgs.jsonSchema,
         callArgs.disableThinking,
         undefined,
-        callArgs.top_p
+        callArgs.top_p,
+        true
       );
       return { ...buildProviderResult(provider, requestedModelId, resp), requestPayload };
     }
@@ -125,7 +131,9 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
         baseUrl,
         callArgs.responseFormat,
         callArgs.temperature,
-        callArgs.top_p
+        callArgs.top_p,
+        true,
+        true
       );
       return { ...buildProviderResult(provider, requestedModelId, resp), requestPayload };
     }
@@ -140,7 +148,9 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
       undefined,
       callArgs.responseFormat,
       callArgs.temperature,
-      callArgs.top_p
+      callArgs.top_p,
+      true,
+      true
     );
     return { ...buildProviderResult(provider, requestedModelId, resp), requestPayload };
   };

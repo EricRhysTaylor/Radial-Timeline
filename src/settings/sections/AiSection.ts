@@ -5,12 +5,18 @@ import { fetchAnthropicModels } from '../../api/anthropicApi';
 import { fetchOpenAiModels } from '../../api/openaiApi';
 import { fetchGeminiModels } from '../../api/geminiApi';
 import { fetchLocalModels } from '../../api/localAiApi';
-import { CURATED_MODELS, CuratedModel, AiProvider } from '../../data/aiModels';
 import { AiContextModal } from '../AiContextModal';
 import { resolveAiLogFolder } from '../../ai/log';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
-import { IMPACT_NONE, IMPACT_FULL } from '../SettingImpact';
+import { IMPACT_FULL } from '../SettingImpact';
+import { buildDefaultAiSettings, mapAiProviderToLegacyProvider } from '../../ai/settings/aiSettings';
+import { validateAiSettings } from '../../ai/settings/validateAiSettings';
+import { BUILTIN_MODELS, MODEL_PROFILES } from '../../ai/registry/builtinModels';
+import { selectModel } from '../../ai/router/selectModel';
+import { computeCaps } from '../../ai/caps/computeCaps';
+import { getAIClient } from '../../ai/runtime/aiClient';
+import type { AIProviderId, ModelPolicy, ModelProfileName, Capability } from '../../ai/types';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
 
@@ -115,122 +121,364 @@ export function renderAiSection(params: {
             }));
     params.addAiRelatedElement(tripletDisplaySetting.settingEl);
 
-    // Single model picker
-    const modelPickerSetting = new Settings(aiSettingsGroup)
-        .setName('Model')
-        .setDesc('Pick preferred model for advanced writing analysis. Models marked "Latest" auto-update to the newest version.');
+    const capabilityFloor: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'];
+    const providerLabel: Record<AIProviderId, string> = {
+        anthropic: 'Anthropic',
+        openai: 'OpenAI',
+        google: 'Google',
+        ollama: 'Ollama',
+        none: 'Disabled'
+    };
 
-    const infoEl = modelPickerSetting.settingEl.querySelector('.setting-item-info');
-    const guidanceEl = infoEl?.createDiv({ cls: 'ert-model-guidance' }) ??
-        modelPickerSetting.settingEl.createDiv({ cls: 'ert-model-guidance' });
-    const dropdownContainer = modelPickerSetting.controlEl.createDiv({ cls: 'ert-model-picker-select' });
-    const dropdownComponent = new DropdownComponent(dropdownContainer);
-    dropdownComponent.selectEl.classList.add('ert-setting-dropdown', 'ert-setting-dropdown--wide');
+    const ensureCanonicalAiSettings = () => {
+        const validated = validateAiSettings(plugin.settings.aiSettings ?? buildDefaultAiSettings());
+        plugin.settings.aiSettings = validated.value;
+        return plugin.settings.aiSettings;
+    };
 
-    {
-        type ModelChoice = {
-            optionId: string;
-            provider: Provider;
-            modelId: string;
-            label: string;
-            guidance: string;
-        };
-        const providerLabel: Record<Provider, string> = {
-            anthropic: 'Anthropic',
-            gemini: 'Gemini',
-            openai: 'OpenAI',
-            local: 'Local / OpenAI Compatible'
-        };
+    const getProviderAliases = (provider: AIProviderId): string[] =>
+        BUILTIN_MODELS
+            .filter(model => model.provider === provider && model.status !== 'deprecated')
+            .map(model => model.alias);
 
-        const orderedProviders: AiProvider[] = ['anthropic', 'gemini', 'openai'];
-        const choices: ModelChoice[] = orderedProviders.flatMap(provider => {
-            const models = CURATED_MODELS[provider] || [];
-            return models.map(model => ({
-                optionId: `${provider}:${model.id}`,
-                provider,
-                modelId: model.id,
-                label: `${providerLabel[provider]} — ${model.label}`,
-                guidance: model.guidance,
-            }));
-        });
+    const getProviderDefaultAlias = (provider: AIProviderId): string | undefined =>
+        BUILTIN_MODELS.find(model => model.provider === provider && model.status === 'stable')?.alias
+        ?? BUILTIN_MODELS.find(model => model.provider === provider)?.alias;
 
-        // Add Local Option
-        choices.push({
-            optionId: 'local:custom',
-            provider: 'local',
-            modelId: 'custom',
-            label: 'Local / OpenAI Compatible',
-            guidance: 'Use a local LLM (like Ollama) or any OpenAI-compatible API. Configure URL and Model ID below.'
-        });
+    const getAccessTier = (provider: AIProviderId): 1 | 2 | 3 => {
+        const aiSettings = ensureCanonicalAiSettings();
+        if (provider === 'anthropic') return aiSettings.aiAccessProfile.anthropicTier ?? 1;
+        if (provider === 'openai') return aiSettings.aiAccessProfile.openaiTier ?? 1;
+        if (provider === 'google') return aiSettings.aiAccessProfile.googleTier ?? 1;
+        return 1;
+    };
 
-        choices.forEach(opt => {
-            dropdownComponent.addOption(opt.optionId, opt.label);
-        });
+    const setAccessTier = (provider: AIProviderId, tier: 1 | 2 | 3): void => {
+        const aiSettings = ensureCanonicalAiSettings();
+        if (provider === 'anthropic') aiSettings.aiAccessProfile.anthropicTier = tier;
+        if (provider === 'openai') aiSettings.aiAccessProfile.openaiTier = tier;
+        if (provider === 'google') aiSettings.aiAccessProfile.googleTier = tier;
+    };
 
-        const findDefaultChoice = (): ModelChoice | undefined => {
-            const provider = (plugin.settings.defaultAiProvider || 'openai') as Provider;
+    const syncLegacyFromCanonical = (): void => {
+        const aiSettings = ensureCanonicalAiSettings();
+        const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
+        const legacyProvider = mapAiProviderToLegacyProvider(provider);
+        plugin.settings.defaultAiProvider = legacyProvider;
 
-            if (provider === 'local') {
-                return choices.find(c => c.provider === 'local');
+        const policy = aiSettings.modelPolicy;
+        if (policy.type === 'pinned' && policy.pinnedAlias) {
+            const pinned = BUILTIN_MODELS.find(model => model.alias === policy.pinnedAlias);
+            if (pinned) {
+                if (pinned.provider === 'anthropic') plugin.settings.anthropicModelId = pinned.id;
+                if (pinned.provider === 'openai') plugin.settings.openaiModelId = pinned.id;
+                if (pinned.provider === 'google') plugin.settings.geminiModelId = pinned.id;
+                if (pinned.provider === 'ollama') plugin.settings.localModelId = pinned.id;
             }
-
-            const modelId =
-                provider === 'anthropic'
-                    ? plugin.settings.anthropicModelId
-                    : provider === 'gemini'
-                        ? plugin.settings.geminiModelId
-                        : plugin.settings.openaiModelId;
-
-            return (
-                choices.find(choice => choice.provider === provider && choice.modelId === modelId) ||
-                choices.find(choice => choice.provider === provider) ||
-                choices[0]
-            );
-        };
-
-        const updateGuidance = (choice?: ModelChoice) => {
-            guidanceEl.empty();
-            if (!choice) {
-                guidanceEl.setText('Select a model to see guidance on when to use it.');
-                return;
-            }
-            // Link or plain text
-            const match = choice.guidance.match(/\[FYI\]\((https?:\/\/[^\s)]+)\)/i);
-            const summary = match ? choice.guidance.replace(match[0], '').trim() : choice.guidance;
-            const text = document.createElement('span');
-            text.textContent = summary;
-            guidanceEl.appendChild(text);
-            if (match) {
-                guidanceEl.appendChild(document.createTextNode(' '));
-                const anchor = guidanceEl.createEl('a', { text: 'FYI', href: match[1] });
-                anchor.target = '_blank';
-                anchor.rel = 'noopener';
-            }
-        };
-
-        const defaultChoice = findDefaultChoice();
-        if (defaultChoice) {
-            dropdownComponent.setValue(defaultChoice.optionId);
-            updateGuidance(defaultChoice);
-        } else {
-            updateGuidance();
         }
 
-        dropdownComponent.onChange(async value => {
-            const choice = choices.find(c => c.optionId === value);
-            if (!choice) return;
-            plugin.settings.defaultAiProvider = choice.provider;
-            if (choice.provider === 'anthropic') plugin.settings.anthropicModelId = choice.modelId;
-            if (choice.provider === 'gemini') plugin.settings.geminiModelId = choice.modelId;
-            if (choice.provider === 'openai') plugin.settings.openaiModelId = choice.modelId;
-            // Local provider doesn't need to save a specific model ID here as it's custom
+        plugin.settings.openaiApiKey = aiSettings.credentials?.openaiApiKey ?? plugin.settings.openaiApiKey;
+        plugin.settings.anthropicApiKey = aiSettings.credentials?.anthropicApiKey ?? plugin.settings.anthropicApiKey;
+        plugin.settings.geminiApiKey = aiSettings.credentials?.googleApiKey ?? plugin.settings.geminiApiKey;
+        plugin.settings.localApiKey = aiSettings.credentials?.ollamaApiKey ?? plugin.settings.localApiKey;
+        plugin.settings.localBaseUrl = aiSettings.connections?.ollamaBaseUrl ?? plugin.settings.localBaseUrl;
+    };
 
-            await plugin.saveSettings();
-            params.refreshProviderDimming();
-            updateGuidance(choice);
+    const persistCanonical = async (): Promise<void> => {
+        ensureCanonicalAiSettings();
+        syncLegacyFromCanonical();
+        await plugin.saveSettings();
+        params.refreshProviderDimming();
+    };
+
+    const aiCoreHeading = new Settings(aiSettingsGroup)
+        .setName('AI core routing')
+        .setDesc('Provider, policy, and capability-driven routing for Inquiry and other AI features.');
+    params.addAiRelatedElement(aiCoreHeading.settingEl);
+
+    const providerSetting = new Settings(aiSettingsGroup)
+        .setName('Provider')
+        .setDesc('Choose the AI provider. Provider-specific credentials and local connection fields are shown below.');
+    let providerDropdown: DropdownComponent | null = null;
+    providerSetting.addDropdown(dropdown => {
+        providerDropdown = dropdown;
+        dropdown.addOption('anthropic', 'Anthropic');
+        dropdown.addOption('openai', 'OpenAI');
+        dropdown.addOption('google', 'Google');
+        dropdown.addOption('ollama', 'Ollama / Local');
+        dropdown.onChange(async value => {
+            const aiSettings = ensureCanonicalAiSettings();
+            const nextProvider = value as AIProviderId;
+            aiSettings.provider = nextProvider;
+
+            if (aiSettings.modelPolicy.type === 'pinned') {
+                const allowed = new Set(getProviderAliases(nextProvider));
+                if (!aiSettings.modelPolicy.pinnedAlias || !allowed.has(aiSettings.modelPolicy.pinnedAlias)) {
+                    aiSettings.modelPolicy.pinnedAlias = getProviderDefaultAlias(nextProvider);
+                }
+            }
+
+            await persistCanonical();
+            refreshRoutingUi();
         });
-    }
-    params.addAiRelatedElement(modelPickerSetting.settingEl);
+    });
+    params.addAiRelatedElement(providerSetting.settingEl);
+
+    const policySetting = new Settings(aiSettingsGroup)
+        .setName('Model policy')
+        .setDesc('Pinned keeps an explicit model identity. Profile and latest policies choose from compatible models at runtime.');
+    let policyDropdown: DropdownComponent | null = null;
+    policySetting.addDropdown(dropdown => {
+        policyDropdown = dropdown;
+        dropdown.addOption('pinned', 'Pinned model');
+        dropdown.addOption('profile', 'Profile');
+        dropdown.addOption('latestStable', 'Latest stable');
+        dropdown.addOption('latestFast', 'Latest fast');
+        dropdown.addOption('latestCheap', 'Latest cheap');
+        dropdown.onChange(async value => {
+            const aiSettings = ensureCanonicalAiSettings();
+            if (value === 'pinned') {
+                aiSettings.modelPolicy = {
+                    type: 'pinned',
+                    pinnedAlias: getProviderDefaultAlias(aiSettings.provider === 'none' ? 'openai' : aiSettings.provider)
+                };
+            } else if (value === 'profile') {
+                aiSettings.modelPolicy = { type: 'profile', profile: 'deepReasoner' };
+            } else {
+                aiSettings.modelPolicy = { type: value as Exclude<ModelPolicy['type'], 'pinned' | 'profile'> };
+            }
+            await persistCanonical();
+            refreshRoutingUi();
+        });
+    });
+    params.addAiRelatedElement(policySetting.settingEl);
+
+    const pinnedSetting = new Settings(aiSettingsGroup)
+        .setName('Pinned model alias')
+        .setDesc('Stable alias preserved across provider model ID churn (example: claude-sonnet-4.5).');
+    let pinnedDropdown: DropdownComponent | null = null;
+    pinnedSetting.addDropdown(dropdown => {
+        pinnedDropdown = dropdown;
+        dropdown.onChange(async value => {
+            const aiSettings = ensureCanonicalAiSettings();
+            if (aiSettings.modelPolicy.type !== 'pinned') return;
+            aiSettings.modelPolicy.pinnedAlias = value;
+            await persistCanonical();
+            refreshRoutingUi();
+        });
+    });
+    params.addAiRelatedElement(pinnedSetting.settingEl);
+
+    const profileSetting = new Settings(aiSettingsGroup)
+        .setName('Model profile')
+        .setDesc('Apply qualitative preference scoring after capability-floor filtering.');
+    let profileDropdown: DropdownComponent | null = null;
+    profileSetting.addDropdown(dropdown => {
+        profileDropdown = dropdown;
+        dropdown.addOption('deepReasoner', 'deepReasoner');
+        dropdown.addOption('deepWriter', 'deepWriter');
+        dropdown.addOption('balancedAnalysis', 'balancedAnalysis');
+        dropdown.onChange(async value => {
+            const aiSettings = ensureCanonicalAiSettings();
+            aiSettings.modelPolicy = { type: 'profile', profile: value as ModelProfileName };
+            await persistCanonical();
+            refreshRoutingUi();
+        });
+    });
+    params.addAiRelatedElement(profileSetting.settingEl);
+
+    const accessTierSetting = new Settings(aiSettingsGroup)
+        .setName('Access tier')
+        .setDesc('Controls request throughput, retry behavior, and output caps for the selected provider.');
+    let accessTierDropdown: DropdownComponent | null = null;
+    accessTierSetting.addDropdown(dropdown => {
+        accessTierDropdown = dropdown;
+        dropdown.addOption('1', 'Tier 1');
+        dropdown.addOption('2', 'Tier 2');
+        dropdown.addOption('3', 'Tier 3');
+        dropdown.onChange(async value => {
+            const aiSettings = ensureCanonicalAiSettings();
+            const provider = aiSettings.provider;
+            if (provider === 'anthropic' || provider === 'openai' || provider === 'google') {
+                setAccessTier(provider, Number(value) as 1 | 2 | 3);
+                await persistCanonical();
+                refreshRoutingUi();
+            }
+        });
+    });
+    params.addAiRelatedElement(accessTierSetting.settingEl);
+
+    const outputModeSetting = new Settings(aiSettingsGroup)
+        .setName('Output cap')
+        .setDesc('Auto follows safe defaults. High and Max use progressively larger output budgets.');
+    let outputModeDropdown: DropdownComponent | null = null;
+    outputModeSetting.addDropdown(dropdown => {
+        outputModeDropdown = dropdown;
+        dropdown.addOption('auto', 'Auto');
+        dropdown.addOption('high', 'High');
+        dropdown.addOption('max', 'Max');
+        dropdown.onChange(async value => {
+            const aiSettings = ensureCanonicalAiSettings();
+            aiSettings.overrides.maxOutputMode = value as 'auto' | 'high' | 'max';
+            await persistCanonical();
+            refreshRoutingUi();
+        });
+    });
+    params.addAiRelatedElement(outputModeSetting.settingEl);
+
+    const reasoningDepthSetting = new Settings(aiSettingsGroup)
+        .setName('Reasoning depth')
+        .setDesc('Standard for speed; Deep for higher-precision structural analysis.');
+    let reasoningDepthDropdown: DropdownComponent | null = null;
+    reasoningDepthSetting.addDropdown(dropdown => {
+        reasoningDepthDropdown = dropdown;
+        dropdown.addOption('standard', 'Standard');
+        dropdown.addOption('deep', 'Deep');
+        dropdown.onChange(async value => {
+            const aiSettings = ensureCanonicalAiSettings();
+            aiSettings.overrides.reasoningDepth = value as 'standard' | 'deep';
+            await persistCanonical();
+            refreshRoutingUi();
+        });
+    });
+    params.addAiRelatedElement(reasoningDepthSetting.settingEl);
+
+    const remoteRegistrySetting = new Settings(aiSettingsGroup)
+        .setName('Remote model registry')
+        .setDesc('Optional weekly-refresh model metadata. Built-in aliases are always available offline.');
+    let remoteRegistryToggle: { setValue: (value: boolean) => unknown } | null = null;
+    remoteRegistrySetting.addToggle(toggle => {
+        remoteRegistryToggle = toggle;
+        return toggle
+            .setValue(ensureCanonicalAiSettings().privacy.allowRemoteRegistry)
+            .onChange(async value => {
+                const aiSettings = ensureCanonicalAiSettings();
+                aiSettings.privacy.allowRemoteRegistry = value;
+                await persistCanonical();
+                refreshRoutingUi();
+            });
+    });
+    params.addAiRelatedElement(remoteRegistrySetting.settingEl);
+
+    const refreshModelsSetting = new Settings(aiSettingsGroup)
+        .setName('Refresh models')
+        .setDesc('Fetch the latest model registry and update alias-to-model mappings.');
+    refreshModelsSetting.addButton(button => button
+        .setButtonText('Refresh now')
+        .onClick(async () => {
+            button.setDisabled(true);
+            try {
+                const client = getAIClient(plugin);
+                await client.refreshRegistry(true);
+                new Notice('Model registry refreshed.');
+                refreshRoutingUi();
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                new Notice(`Model refresh failed: ${message}`);
+            } finally {
+                button.setDisabled(false);
+            }
+        }));
+    params.addAiRelatedElement(refreshModelsSetting.settingEl);
+
+    const resolvedPreviewSetting = new Settings(aiSettingsGroup)
+        .setName('Resolved model preview')
+        .setDesc('Resolving...');
+    params.addAiRelatedElement(resolvedPreviewSetting.settingEl);
+
+    const upgradeBannerSetting = new Settings(aiSettingsGroup)
+        .setName('AI settings upgraded')
+        .setDesc('Your AI settings were upgraded to capability-based routing. Review and confirm your provider and policy choices.');
+    upgradeBannerSetting.addButton(button => button
+        .setButtonText('Dismiss')
+        .onClick(async () => {
+            const aiSettings = ensureCanonicalAiSettings();
+            aiSettings.upgradedBannerPending = false;
+            await persistCanonical();
+            refreshRoutingUi();
+        }));
+    params.addAiRelatedElement(upgradeBannerSetting.settingEl);
+
+    const refreshRoutingUi = (): void => {
+        const aiSettings = ensureCanonicalAiSettings();
+        const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
+        const providerAliases = getProviderAliases(provider);
+        const policy = aiSettings.modelPolicy;
+
+        providerDropdown?.setValue(provider);
+        policyDropdown?.setValue(policy.type);
+
+        if (pinnedDropdown) {
+            pinnedDropdown.selectEl.empty();
+            providerAliases.forEach(alias => {
+                const model = BUILTIN_MODELS.find(entry => entry.alias === alias);
+                const label = model ? `${model.label} (${alias})` : alias;
+                pinnedDropdown?.addOption(alias, label);
+            });
+            const pinnedAlias = policy.type === 'pinned'
+                ? policy.pinnedAlias || getProviderDefaultAlias(provider) || providerAliases[0]
+                : getProviderDefaultAlias(provider) || providerAliases[0];
+            if (policy.type === 'pinned' && pinnedAlias && providerAliases.length) {
+                pinnedDropdown.setValue(providerAliases.includes(pinnedAlias) ? pinnedAlias : providerAliases[0]);
+            }
+        }
+
+        profileDropdown?.setValue(policy.type === 'profile' ? policy.profile : 'deepReasoner');
+        outputModeDropdown?.setValue(aiSettings.overrides.maxOutputMode || 'auto');
+        reasoningDepthDropdown?.setValue(aiSettings.overrides.reasoningDepth || 'standard');
+        remoteRegistryToggle?.setValue(aiSettings.privacy.allowRemoteRegistry);
+
+        const shouldShowPinned = policy.type === 'pinned';
+        const shouldShowProfile = policy.type === 'profile';
+        pinnedSetting.settingEl.toggleClass('ert-settings-hidden', !shouldShowPinned);
+        pinnedSetting.settingEl.toggleClass('ert-settings-visible', shouldShowPinned);
+        profileSetting.settingEl.toggleClass('ert-settings-hidden', !shouldShowProfile);
+        profileSetting.settingEl.toggleClass('ert-settings-visible', shouldShowProfile);
+
+        const supportsAccessTier = provider === 'anthropic' || provider === 'openai' || provider === 'google';
+        accessTierSetting.settingEl.toggleClass('ert-settings-hidden', !supportsAccessTier);
+        accessTierSetting.settingEl.toggleClass('ert-settings-visible', supportsAccessTier);
+        if (supportsAccessTier) {
+            accessTierDropdown?.setValue(String(getAccessTier(provider)));
+        }
+
+        upgradeBannerSetting.settingEl.toggleClass('ert-settings-hidden', !aiSettings.upgradedBannerPending);
+        upgradeBannerSetting.settingEl.toggleClass('ert-settings-visible', !!aiSettings.upgradedBannerPending);
+
+        try {
+            const selection = selectModel(BUILTIN_MODELS, {
+                provider,
+                policy,
+                requiredCapabilities: capabilityFloor,
+                accessTier: getAccessTier(provider),
+                contextTokensNeeded: 24000,
+                outputTokensNeeded: 2000
+            });
+            const caps = computeCaps({
+                provider,
+                model: selection.model,
+                accessTier: getAccessTier(provider),
+                feature: 'InquiryMode',
+                overrides: aiSettings.overrides
+            });
+            const policyLine = policy.type === 'profile'
+                ? `Selected via profile: ${policy.profile}`
+                : `Selected via policy: ${policy.type}`;
+            const profileDetails = policy.type === 'profile'
+                ? ` · profile floor: reasoning>=${MODEL_PROFILES[policy.profile].minReasoning ?? 'n/a'}`
+                : '';
+            const warningLine = selection.warnings.length ? ` Warning: ${selection.warnings[0]}` : '';
+            resolvedPreviewSetting.setDesc(
+                `${providerLabel[provider]} -> ${selection.model.label}. ${policyLine}${profileDetails}. `
+                + `Output cap ${caps.maxOutputTokens}. Reason: ${selection.reason}.${warningLine}`
+            );
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            resolvedPreviewSetting.setDesc(`Model resolution failed: ${message}`);
+        }
+    };
+
+    refreshRoutingUi();
 
     // Provider sections
     const anthropicSection = aiSettingsGroup.createDiv({
@@ -322,7 +570,12 @@ export function renderAiSection(params: {
         anthropicKeySetting,
         'Enter your Anthropic API key',
         plugin.settings.anthropicApiKey || '',
-        async (val) => { plugin.settings.anthropicApiKey = val; await plugin.saveSettings(); },
+        async (val) => {
+            plugin.settings.anthropicApiKey = val;
+            const aiSettings = ensureCanonicalAiSettings();
+            aiSettings.credentials = { ...(aiSettings.credentials || {}), anthropicApiKey: val };
+            await persistCanonical();
+        },
         () => params.scheduleKeyValidation('anthropic'),
         (el) => params.setKeyInputRef('anthropic', el)
     );
@@ -348,7 +601,12 @@ export function renderAiSection(params: {
         geminiKeySetting,
         'Enter your Gemini API key',
         plugin.settings.geminiApiKey || '',
-        async (val) => { plugin.settings.geminiApiKey = val; await plugin.saveSettings(); },
+        async (val) => {
+            plugin.settings.geminiApiKey = val;
+            const aiSettings = ensureCanonicalAiSettings();
+            aiSettings.credentials = { ...(aiSettings.credentials || {}), googleApiKey: val };
+            await persistCanonical();
+        },
         () => params.scheduleKeyValidation('gemini'),
         (el) => params.setKeyInputRef('gemini', el)
     );
@@ -374,7 +632,12 @@ export function renderAiSection(params: {
         openAiKeySetting,
         'Enter your API key',
         plugin.settings.openaiApiKey || '',
-        async (val) => { plugin.settings.openaiApiKey = val; await plugin.saveSettings(); },
+        async (val) => {
+            plugin.settings.openaiApiKey = val;
+            const aiSettings = ensureCanonicalAiSettings();
+            aiSettings.credentials = { ...(aiSettings.credentials || {}), openaiApiKey: val };
+            await persistCanonical();
+        },
         () => params.scheduleKeyValidation('openai'),
         (el) => params.setKeyInputRef('openai', el),
         (val, el) => {
@@ -419,7 +682,9 @@ export function renderAiSection(params: {
             });
             const handleBlur = async () => {
                 plugin.settings.localBaseUrl = text.getValue().trim();
-                await plugin.saveSettings();
+                const aiSettings = ensureCanonicalAiSettings();
+                aiSettings.connections = { ...(aiSettings.connections || {}), ollamaBaseUrl: plugin.settings.localBaseUrl };
+                await persistCanonical();
                 params.scheduleKeyValidation('local');
             };
             plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
@@ -458,7 +723,7 @@ export function renderAiSection(params: {
             });
             const handleBlur = async () => {
                 plugin.settings.localModelId = text.getValue().trim();
-                await plugin.saveSettings();
+                await persistCanonical();
                 params.scheduleKeyValidation('local');
             };
             plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
@@ -494,7 +759,12 @@ export function renderAiSection(params: {
                         ? models.find(m => m.id === existing)!
                         : models[0];
                     plugin.settings.localModelId = chosen.id;
-                    await plugin.saveSettings();
+                    const aiSettings = ensureCanonicalAiSettings();
+                    if (aiSettings.modelPolicy.type === 'pinned' && aiSettings.provider === 'ollama') {
+                        const alias = BUILTIN_MODELS.find(model => model.provider === 'ollama' && model.id === chosen.id)?.alias;
+                        if (alias) aiSettings.modelPolicy.pinnedAlias = alias;
+                    }
+                    await persistCanonical();
                     if (localModelText) {
                         localModelText.setValue(chosen.id);
                     }
@@ -548,7 +818,12 @@ export function renderAiSection(params: {
         apiKeySetting,
         'not-needed',
         plugin.settings.localApiKey || '',
-        async (val) => { plugin.settings.localApiKey = val; await plugin.saveSettings(); },
+        async (val) => {
+            plugin.settings.localApiKey = val;
+            const aiSettings = ensureCanonicalAiSettings();
+            aiSettings.credentials = { ...(aiSettings.credentials || {}), ollamaApiKey: val };
+            await persistCanonical();
+        },
         () => params.scheduleKeyValidation('local'),
         (el) => params.setKeyInputRef('local', el)
     );

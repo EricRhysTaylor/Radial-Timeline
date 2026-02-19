@@ -5,6 +5,7 @@
  */
 
 import type { TFile } from 'obsidian';
+import type { AIRunAdvancedContext } from '../ai/types';
 
 /**
  * Local representation of a manuscript scene.
@@ -22,6 +23,7 @@ export interface SceneData {
 export interface AiProviderResponse {
     result: string | null;
     modelIdUsed: string | null;
+    advancedContext?: AIRunAdvancedContext;
 }
 
 /**

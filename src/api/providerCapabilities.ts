@@ -1,3 +1,4 @@
+// TODO: DEPRECATED — migrate to aiClient
 import type { OpenAiResponseFormat } from './openaiApi';
 
 export type AiProvider = 'openai' | 'anthropic' | 'gemini' | 'local';

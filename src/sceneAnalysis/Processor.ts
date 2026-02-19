@@ -25,6 +25,7 @@ import { callAiProvider } from './aiProvider';
 import type { SceneData } from './types';
 import { parseSceneTitle, decodeHtmlEntities } from '../utils/text';
 import { parseRuntimeField } from '../utils/runtimeEstimator';
+import { buildPulseTriplet } from '../ai/evidence/pulseTriplet';
 
 export interface TripletMetric {
     value: number;
@@ -165,7 +166,7 @@ export async function processWithModal(
         const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt, extraInstructions);
 
         const sceneNameForLog = triplet.current.file.basename;
-        const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
+        const tripletForLog = buildPulseTriplet(prevNum, currentNum, nextNum).scenes;
         const queueId = triplet.current.file.path;
         const markQueueStatus = (status: 'success' | 'error', grade?: 'A' | 'B' | 'C') => {
             if (modal && typeof modal.markQueueStatus === 'function') {
@@ -184,7 +185,14 @@ export async function processWithModal(
         const startTime = performance.now();
 
         try {
-            const aiResult = await runAi(userPrompt, null, 'processByManuscriptOrder', sceneNameForLog, tripletForLog);
+            const aiResult = await runAi(userPrompt, null, 'processByManuscriptOrder', sceneNameForLog, {
+                prev: tripletForLog.previous,
+                current: tripletForLog.current,
+                next: tripletForLog.next
+            });
+            if (modal && typeof modal.setAiAdvancedContext === 'function') {
+                modal.setAiAdvancedContext(aiResult.advancedContext ?? null);
+            }
 
             // Record actual processing time for calibration
             const elapsedSeconds = (performance.now() - startTime) / 1000;
@@ -328,9 +336,13 @@ export async function processBySubplotOrder(
                 const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt, extraInstructions);
 
                 const sceneNameForLog = triplet.current.file.basename;
-                const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
+                const tripletForLog = buildPulseTriplet(prevNum, currentNum, nextNum).scenes;
                 const runAi = createAiRunner(plugin, vault, callAiProvider);
-                const aiResult = await runAi(userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog, tripletForLog);
+                const aiResult = await runAi(userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog, {
+                    prev: tripletForLog.previous,
+                    current: tripletForLog.current,
+                    next: tripletForLog.next
+                });
 
                 if (aiResult.result) {
                     const parsedAnalysis = parsePulseAnalysisResponse(aiResult.result, plugin);
@@ -448,7 +460,7 @@ export async function processSubplotWithModal(
         const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt, extraInstructions);
 
         const sceneNameForLog = triplet.current.file.basename;
-        const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
+        const tripletForLog = buildPulseTriplet(prevNum, currentNum, nextNum).scenes;
         const runAi = createAiRunner(plugin, vault, callAiProvider);
 
         // Calculate triplet metric and start progress bar animation
@@ -460,7 +472,14 @@ export async function processSubplotWithModal(
         const startTime = performance.now();
 
         try {
-            const aiResult = await runAi(userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog, tripletForLog);
+            const aiResult = await runAi(userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog, {
+                prev: tripletForLog.previous,
+                current: tripletForLog.current,
+                next: tripletForLog.next
+            });
+            if (modal && typeof modal.setAiAdvancedContext === 'function') {
+                modal.setAiAdvancedContext(aiResult.advancedContext ?? null);
+            }
 
             // Record actual processing time for calibration
             const elapsedSeconds = (performance.now() - startTime) / 1000;
@@ -596,7 +615,7 @@ export async function processEntireSubplotWithModalInternal(
         const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt, extraInstructions);
 
         const sceneNameForLog = triplet.current.file.basename;
-        const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
+        const tripletForLog = buildPulseTriplet(prevNum, currentNum, nextNum).scenes;
         const runAi = createAiRunner(plugin, vault, callAiProvider);
 
         // Calculate triplet metric and start progress bar animation
@@ -608,7 +627,14 @@ export async function processEntireSubplotWithModalInternal(
         const startTime = performance.now();
 
         try {
-            const aiResult = await runAi(userPrompt, subplotName, 'processEntireSubplot', sceneNameForLog, tripletForLog);
+            const aiResult = await runAi(userPrompt, subplotName, 'processEntireSubplot', sceneNameForLog, {
+                prev: tripletForLog.previous,
+                current: tripletForLog.current,
+                next: tripletForLog.next
+            });
+            if (modal && typeof modal.setAiAdvancedContext === 'function') {
+                modal.setAiAdvancedContext(aiResult.advancedContext ?? null);
+            }
 
             // Record actual processing time for calibration
             const elapsedSeconds = (performance.now() - startTime) / 1000;

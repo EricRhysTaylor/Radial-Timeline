@@ -13,6 +13,7 @@ import { resolveAiLogFolder } from '../ai/log';
 import { getModelDisplayName } from '../utils/modelResolver';
 import type { LlmTimingStats } from '../types/settings';
 import { getSynopsisGenerationWordLimit } from '../utils/synopsisLimits';
+import type { AIRunAdvancedContext } from '../ai/types';
 
 export type ProcessingMode = 'flagged' | 'unprocessed' | 'force-all' | 'synopsis-flagged' | 'synopsis-missing-weak' | 'synopsis-missing' | 'synopsis-all';
 
@@ -118,6 +119,8 @@ export class SceneAnalysisProcessingModal extends Modal {
     private queueActiveId?: string;
     private queueStatus: Map<string, 'success' | 'error'> = new Map();
     private queueGrades: Map<string, 'A' | 'B' | 'C'> = new Map();
+    private aiAdvancedContext: AIRunAdvancedContext | null = null;
+    private aiAdvancedPreEl?: HTMLElement;
 
     // Statistics
     private processedCount: number = 0;
@@ -439,6 +442,15 @@ export class SceneAnalysisProcessingModal extends Modal {
     private setTripletNote(prevNum: string, currentNum: string, nextNum: string): void {
         if (!this.queueNoteEl) return;
         this.queueNoteEl.empty();
+
+        const lensHeader = this.queueNoteEl.createDiv({ cls: 'rt-pulse-ruler-lens-header' });
+        lensHeader.setText('Triplet Lens');
+        const focusLine = this.queueNoteEl.createDiv({ cls: 'rt-pulse-ruler-lens-focus' });
+        focusLine.setText(`Focus scene: ${this.formatTripletValue(currentNum, 'Unnumbered scene')}`);
+        const evidenceLine = this.queueNoteEl.createDiv({ cls: 'rt-pulse-ruler-lens-evidence' });
+        evidenceLine.setText(
+            `Evidence scenes: ${this.formatTripletValue(prevNum, 'Start boundary')} • ${this.formatTripletValue(currentNum, 'Unnumbered')} • ${this.formatTripletValue(nextNum, 'End boundary')}`
+        );
 
         const boundaryLabel = this.subplotName ? 'subplot' : 'manuscript';
         const chips = [
@@ -906,6 +918,11 @@ export class SceneAnalysisProcessingModal extends Modal {
             this.queueNoteEl.setText('Triplets animate as the AI advances - starts, endings, and missing scenes handled automatically.');
         }
 
+        const advancedDetails = progressCard.createEl('details', { cls: 'ert-ai-advanced-details' });
+        advancedDetails.createEl('summary', { text: 'AI Prompt & Context (Advanced)' });
+        this.aiAdvancedPreEl = advancedDetails.createEl('pre', { cls: 'ert-ai-advanced-pre' });
+        this.renderAiAdvancedContext();
+
         this.errorListEl = bodyEl.createDiv({ cls: 'rt-pulse-error-list rt-glass-card rt-hidden' });
 
         this.actionButtonContainer = contentEl.createDiv({ cls: 'ert-modal-actions' });
@@ -1300,6 +1317,33 @@ export class SceneAnalysisProcessingModal extends Modal {
                 this.statusTextEl.setText(`Processing: ${sceneLabel}`);
             }
         }
+    }
+
+    public setAiAdvancedContext(context: AIRunAdvancedContext | null): void {
+        this.aiAdvancedContext = context;
+        this.renderAiAdvancedContext();
+    }
+
+    private renderAiAdvancedContext(): void {
+        if (!this.aiAdvancedPreEl) return;
+        if (!this.aiAdvancedContext) {
+            this.aiAdvancedPreEl.setText('Waiting for first AI request...');
+            return;
+        }
+        const ctx = this.aiAdvancedContext;
+        const lines = [
+            `Role template: ${ctx.roleTemplateName}`,
+            `Resolved model: ${ctx.provider} -> ${ctx.modelAlias} (${ctx.modelLabel})`,
+            `Model selection reason: ${ctx.modelSelectionReason}`,
+            `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
+            '',
+            'Feature mode instructions:',
+            ctx.featureModeInstructions || '(none)',
+            '',
+            'Final composed prompt:',
+            ctx.finalPrompt || '(none)'
+        ];
+        this.aiAdvancedPreEl.setText(lines.join('\n'));
     }
 
     public addWarning(message: string): void {
