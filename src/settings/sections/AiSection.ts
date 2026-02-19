@@ -7,7 +7,6 @@ import { fetchGeminiModels } from '../../api/geminiApi';
 import { fetchLocalModels } from '../../api/localAiApi';
 import { AiContextModal } from '../AiContextModal';
 import { resolveAiLogFolder } from '../../ai/log';
-import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { ERT_CLASSES } from '../../ui/classes';
 import { IMPACT_FULL } from '../SettingImpact';
 import { buildDefaultAiSettings, mapAiProviderToLegacyProvider } from '../../ai/settings/aiSettings';
@@ -35,7 +34,7 @@ import {
     migrateLegacyKeysToSecretStorage,
     setCredentialSecretId
 } from '../../ai/credentials/credentials';
-import { getSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
+import { getSecret, hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
 import type { AIProviderId, ModelPolicy, ModelProfileName, Capability, ModelInfo } from '../../ai/types';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
@@ -55,16 +54,6 @@ export function renderAiSection(params: {
     const { app, plugin, containerEl } = params;
     containerEl.classList.add(ERT_CLASSES.STACK);
 
-    // --- AI for Scene Analysis ---
-    const aiHeading = new Settings(containerEl)
-        .setName('AI LLM for scene analysis')
-        .setHeading();
-    addHeadingIcon(aiHeading, 'cpu');
-    addWikiLink(aiHeading, 'Settings#ai');
-    applyErtHeaderLayout(aiHeading);
-
-    const stackEl = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
-
     const getActiveTemplateName = (): string => {
         const templates = plugin.settings.aiContextTemplates || [];
         const activeId = plugin.settings.activeAiContextTemplateId;
@@ -72,26 +61,63 @@ export function renderAiSection(params: {
         return active?.name || 'Generic Editor';
     };
 
-    // Enable/disable scene beats features
-    // NOTE: This toggle should always be visible (not added to _aiRelatedElements)
-    const aiToggleSetting = new Settings(stackEl)
-        .setName('Enable AI LLM features')
-        .setDesc('Show command palette options and UI scene analysis colors and hover synopsis. When off, these visuals are hidden, but metadata remains unchanged.')
-        .addToggle(toggle => toggle
-            .setValue(plugin.settings.enableAiSceneAnalysis ?? true)
-            .onChange(async (value) => {
-                plugin.settings.enableAiSceneAnalysis = value;
-                await plugin.saveSettings();
-                params.toggleAiSettingsVisibility(value);
-                plugin.setInquiryVisible(value);
-                plugin.onSettingChanged(IMPACT_FULL); // Tier 3: changes number square colors + AI pulse elements
-                updateAiToggleWarning(value);
-            }));
+    const aiHero = containerEl.createDiv({
+        cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.CARD_HERO} ${ERT_CLASSES.STACK} ert-ai-hero-card`
+    });
+    const heroBadgeRow = aiHero.createDiv({ cls: 'ert-ai-hero-badge-row' });
+    const badge = heroBadgeRow.createSpan({ cls: ERT_CLASSES.BADGE_PILL });
+    const badgeIcon = badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
+    setIcon(badgeIcon, 'cpu');
+    badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'AI' });
+    const badgeWikiLink = badge.createEl('a', {
+        href: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#ai',
+        cls: 'ert-badgePill__inlineLink',
+        attr: {
+            'aria-label': 'Read more in the Wiki',
+            'target': '_blank',
+            'rel': 'noopener'
+        }
+    });
+    setIcon(badgeWikiLink, 'external-link');
 
-    const aiToggleInfo = aiToggleSetting.settingEl.querySelector('.setting-item-info');
-    const aiToggleWarning = (aiToggleInfo ?? aiToggleSetting.settingEl).createDiv({ cls: 'ert-ai-toggle-warning' });
-    aiToggleWarning.createDiv({ cls: 'ert-ai-toggle-warning-title', text: 'AI features disabled.' });
-    const aiToggleWarningList = aiToggleWarning.createEl('ul', { cls: 'ert-ai-toggle-warning-list' });
+    const heroToggleWrap = heroBadgeRow.createDiv({ cls: 'ert-toggle-item ert-ai-hero-toggle' });
+    const heroToggleLabel = heroToggleWrap.createSpan({ cls: 'ert-toggle-label', text: 'Inactive' });
+    const heroToggleInput = heroToggleWrap.createEl('input', {
+        cls: 'ert-toggle-input',
+        attr: { type: 'checkbox', 'aria-label': 'Enable AI features' }
+    }) as HTMLInputElement;
+
+    const heroTitle = aiHero.createEl('h3', {
+        cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title`,
+        text: 'AI guidance with stable routing and transparent model selection.'
+    });
+    const heroOnState = aiHero.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-hero-state-on` });
+    heroOnState.createEl('p', {
+        cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
+        text: 'Configure provider, model strategy, and feature defaults with capability-safe routing. See exactly why each model is selected.'
+    });
+    const heroOnFeatures = heroOnState.createDiv({
+        cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
+    });
+    heroOnFeatures.createEl('h5', { text: 'AI Highlights:', cls: 'ert-kicker' });
+    const heroOnList = heroOnFeatures.createEl('ul', { cls: ERT_CLASSES.STACK });
+    [
+        { icon: 'brain-circuit', text: 'Deterministic routing by capabilities, policy, and access tier.' },
+        { icon: 'shield-check', text: 'Clear model resolution reasons and availability status.' },
+        { icon: 'folder-open', text: 'Fields remain unchanged while AI guidance is configured.' }
+    ].forEach(item => {
+        const li = heroOnList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
+        const icon = li.createSpan({ cls: 'ert-feature-icon' });
+        setIcon(icon, item.icon);
+        li.createSpan({ text: item.text });
+    });
+
+    const heroOffState = aiHero.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-hero-state-off` });
+    heroOffState.createEl('p', {
+        cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
+        text: 'AI features are turned off. Turn AI on to restore analysis visuals and AI workflows.'
+    });
+    const heroOffList = heroOffState.createEl('ul', { cls: 'ert-ai-toggle-warning-list' });
     [
         'Inquiry mode (signals, prompt slots, and AI briefings).',
         'Scene Analysis / Pulse (hover synopsis, grades, and triplet context).',
@@ -99,23 +125,89 @@ export function renderAiSection(params: {
         'AI processing modals (Inquiry, Scene Analysis, Gossamer, and AI runtime estimation).',
         'AI command palette actions and AI log outputs.'
     ].forEach(item => {
-        aiToggleWarningList.createEl('li', { text: item });
+        heroOffList.createEl('li', { text: item });
     });
-    aiToggleWarning.createDiv({
+    heroOffState.createDiv({
         cls: 'ert-ai-toggle-warning-footer',
-        text: 'The Radial Timeline and other core features continue to operate.'
+        text: 'Fields remain unchanged while AI is off.'
     });
 
-    const updateAiToggleWarning = (enabled: boolean) => {
-        aiToggleWarning.toggleClass('ert-settings-hidden', enabled);
-        aiToggleWarning.toggleClass('ert-settings-visible', !enabled);
-    };
-    updateAiToggleWarning(plugin.settings.enableAiSceneAnalysis ?? true);
+    const aiStateContent = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
+    params.addAiRelatedElement(aiStateContent);
 
-    const aiSettingsGroup = stackEl.createDiv({ cls: ERT_CLASSES.STACK });
+    const updateAiHeroState = (enabled: boolean): void => {
+        heroToggleInput.checked = enabled;
+        heroToggleLabel.setText(enabled ? 'Active' : 'Inactive');
+        heroToggleLabel.toggleClass('is-active', enabled);
+        heroTitle.setText(enabled
+            ? 'AI guidance with stable routing and transparent model selection.'
+            : 'AI guidance is currently paused.');
+        heroOnState.toggleClass('ert-settings-hidden', !enabled);
+        heroOnState.toggleClass('ert-settings-visible', enabled);
+        heroOffState.toggleClass('ert-settings-hidden', enabled);
+        heroOffState.toggleClass('ert-settings-visible', !enabled);
+    };
+
+    const onAiToggleChanged = async (value: boolean): Promise<void> => {
+        plugin.settings.enableAiSceneAnalysis = value;
+        await plugin.saveSettings();
+        params.toggleAiSettingsVisibility(value);
+        plugin.setInquiryVisible(value);
+        plugin.onSettingChanged(IMPACT_FULL); // Tier 3: number square colors + AI pulse elements
+        updateAiHeroState(value);
+    };
+
+    heroToggleInput.checked = plugin.settings.enableAiSceneAnalysis ?? true;
+    plugin.registerDomEvent(heroToggleInput, 'change', () => {
+        void onAiToggleChanged(heroToggleInput.checked);
+    });
+    updateAiHeroState(plugin.settings.enableAiSceneAnalysis ?? true);
+
+    const aiSettingsGroup = aiStateContent.createDiv({ cls: ERT_CLASSES.STACK });
     params.addAiRelatedElement(aiSettingsGroup);
 
-    const contextTemplateSetting = new Settings(aiSettingsGroup)
+    const quickSetupSection = aiSettingsGroup.createDiv({
+        cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card`
+    });
+    quickSetupSection.createDiv({ cls: 'ert-section-title', text: 'Quick setup' });
+    quickSetupSection.createDiv({
+        cls: 'ert-section-desc',
+        text: 'Set provider, model strategy, profile, and routing defaults.'
+    });
+    const quickSetupGrid = quickSetupSection.createDiv({
+        cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_3} ert-ai-quick-grid`
+    });
+
+    const roleContextSection = aiSettingsGroup.createDiv({
+        cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card`
+    });
+    roleContextSection.createDiv({ cls: 'ert-section-title', text: 'Role & context' });
+    roleContextSection.createDiv({
+        cls: 'ert-section-desc',
+        text: 'Active role and context framing used for AI envelope composition.'
+    });
+
+    const featureDefaultsSection = aiSettingsGroup.createDiv({
+        cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card`
+    });
+    featureDefaultsSection.createDiv({ cls: 'ert-section-title', text: 'Feature defaults' });
+    featureDefaultsSection.createDiv({
+        cls: 'ert-section-desc',
+        text: 'Compact default behavior for Inquiry, Gossamer, Pulse, Summary refresh, and Runtime.'
+    });
+    const featureDefaultsGrid = featureDefaultsSection.createDiv({
+        cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_3} ert-ai-feature-grid`
+    });
+
+    const modelDetailsFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold' });
+    modelDetailsFold.createEl('summary', { text: 'Model details' });
+    const modelDetailsBody = modelDetailsFold.createDiv({ cls: ERT_CLASSES.STACK });
+
+    const advancedFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold' });
+    advancedFold.createEl('summary', { text: 'Advanced' });
+    const advancedBody = advancedFold.createDiv({ cls: ERT_CLASSES.STACK });
+
+    const contextTemplateSetting = new Settings(roleContextSection)
         .setName('AI prompt role & context template')
         .setDesc(`Active: ${getActiveTemplateName()}`)
         .addExtraButton(button => button
@@ -129,9 +221,9 @@ export function renderAiSection(params: {
             }));
     params.addAiRelatedElement(contextTemplateSetting.settingEl);
 
-    const tripletDisplaySetting = new Settings(aiSettingsGroup)
+    const tripletDisplaySetting = new Settings(featureDefaultsSection)
         .setName('Show previous and next scene analysis')
-        .setDesc('When enabled, scene hover metadata include the AI pulse for the previous and next scenes. Turn off to display only the current scene for a more compact view.')
+        .setDesc('When enabled, scene hover Fields include the AI pulse for the previous and next scenes. Turn off to display only the current scene for a more compact view.')
         .addToggle(toggle => toggle
             .setValue(plugin.settings.showFullTripletAnalysis ?? true)
             .onChange(async (value) => {
@@ -207,12 +299,7 @@ export function renderAiSection(params: {
         params.refreshProviderDimming();
     };
 
-    const aiCoreHeading = new Settings(aiSettingsGroup)
-        .setName('AI core routing')
-        .setDesc('Provider, policy, and capability-driven routing for Inquiry and other AI features.');
-    params.addAiRelatedElement(aiCoreHeading.settingEl);
-
-    const providerSetting = new Settings(aiSettingsGroup)
+    const providerSetting = new Settings(quickSetupGrid)
         .setName('Provider')
         .setDesc('Choose the AI provider. Provider-specific credentials and local connection fields are shown below.');
     let providerDropdown: DropdownComponent | null = null;
@@ -240,8 +327,8 @@ export function renderAiSection(params: {
     });
     params.addAiRelatedElement(providerSetting.settingEl);
 
-    const policySetting = new Settings(aiSettingsGroup)
-        .setName('Model policy')
+    const policySetting = new Settings(quickSetupGrid)
+        .setName('Model strategy')
         .setDesc('Pinned keeps an explicit model identity. Profile and latest policies choose from compatible models at runtime.');
     let policyDropdown: DropdownComponent | null = null;
     policySetting.addDropdown(dropdown => {
@@ -269,7 +356,7 @@ export function renderAiSection(params: {
     });
     params.addAiRelatedElement(policySetting.settingEl);
 
-    const pinnedSetting = new Settings(aiSettingsGroup)
+    const pinnedSetting = new Settings(quickSetupGrid)
         .setName('Pinned model alias')
         .setDesc('Stable alias preserved across provider model ID churn (example: claude-sonnet-4.5).');
     let pinnedDropdown: DropdownComponent | null = null;
@@ -285,8 +372,8 @@ export function renderAiSection(params: {
     });
     params.addAiRelatedElement(pinnedSetting.settingEl);
 
-    const profileSetting = new Settings(aiSettingsGroup)
-        .setName('Model profile')
+    const profileSetting = new Settings(quickSetupGrid)
+        .setName('Profile')
         .setDesc('Apply qualitative preference scoring after capability-floor filtering.');
     let profileDropdown: DropdownComponent | null = null;
     profileSetting.addDropdown(dropdown => {
@@ -303,8 +390,8 @@ export function renderAiSection(params: {
     });
     params.addAiRelatedElement(profileSetting.settingEl);
 
-    const accessTierSetting = new Settings(aiSettingsGroup)
-        .setName('Access tier')
+    const accessTierSetting = new Settings(quickSetupGrid)
+        .setName('Access level')
         .setDesc('Controls request throughput, retry behavior, and output caps for the selected provider.');
     let accessTierDropdown: DropdownComponent | null = null;
     accessTierSetting.addDropdown(dropdown => {
@@ -324,7 +411,7 @@ export function renderAiSection(params: {
     });
     params.addAiRelatedElement(accessTierSetting.settingEl);
 
-    const outputModeSetting = new Settings(aiSettingsGroup)
+    const outputModeSetting = new Settings(quickSetupGrid)
         .setName('Output cap')
         .setDesc('Auto follows safe defaults. High and Max use progressively larger output budgets.');
     let outputModeDropdown: DropdownComponent | null = null;
@@ -342,7 +429,7 @@ export function renderAiSection(params: {
     });
     params.addAiRelatedElement(outputModeSetting.settingEl);
 
-    const reasoningDepthSetting = new Settings(aiSettingsGroup)
+    const reasoningDepthSetting = new Settings(quickSetupGrid)
         .setName('Reasoning depth')
         .setDesc('Standard for speed; Deep for higher-precision structural analysis.');
     let reasoningDepthDropdown: DropdownComponent | null = null;
@@ -359,7 +446,24 @@ export function renderAiSection(params: {
     });
     params.addAiRelatedElement(reasoningDepthSetting.settingEl);
 
-    const remoteRegistrySetting = new Settings(aiSettingsGroup)
+    const applyQuickSetupLayoutOrder = (): void => {
+        [
+            providerSetting.settingEl,
+            policySetting.settingEl,
+            profileSetting.settingEl,
+            outputModeSetting.settingEl,
+            reasoningDepthSetting.settingEl,
+            accessTierSetting.settingEl,
+            pinnedSetting.settingEl,
+        ].forEach((el) => {
+            quickSetupGrid.appendChild(el);
+            el.addClass('ert-ai-grid-item');
+        });
+        resolvedPreviewSetting.settingEl.addClass('ert-ai-wide-setting');
+        upgradeBannerSetting.settingEl.addClass('ert-ai-wide-setting');
+    };
+
+    const remoteRegistrySetting = new Settings(advancedBody)
         .setName('Remote model registry')
         .setDesc('Optional weekly-refresh model metadata. Built-in aliases are always available offline.');
     let remoteRegistryToggle: { setValue: (value: boolean) => unknown } | null = null;
@@ -376,7 +480,7 @@ export function renderAiSection(params: {
     });
     params.addAiRelatedElement(remoteRegistrySetting.settingEl);
 
-    const providerSnapshotSetting = new Settings(aiSettingsGroup)
+    const providerSnapshotSetting = new Settings(advancedBody)
         .setName('Provider snapshot')
         .setDesc('Optional provider-availability snapshot to show which models are visible to your API key.');
     let providerSnapshotToggle: { setValue: (value: boolean) => unknown } | null = null;
@@ -393,7 +497,7 @@ export function renderAiSection(params: {
     });
     params.addAiRelatedElement(providerSnapshotSetting.settingEl);
 
-    const refreshModelsSetting = new Settings(aiSettingsGroup)
+    const refreshModelsSetting = new Settings(advancedBody)
         .setName('Refresh models')
         .setDesc('Fetch the latest model registry and update alias-to-model mappings.');
     refreshModelsSetting.addButton(button => button
@@ -415,7 +519,7 @@ export function renderAiSection(params: {
         }));
     params.addAiRelatedElement(refreshModelsSetting.settingEl);
 
-    const refreshAvailabilitySetting = new Settings(aiSettingsGroup)
+    const refreshAvailabilitySetting = new Settings(advancedBody)
         .setName('Refresh availability')
         .setDesc('Fetch provider snapshot data for model visibility and provider-reported caps.');
     refreshAvailabilitySetting.addButton(button => button
@@ -440,7 +544,7 @@ export function renderAiSection(params: {
         }));
     params.addAiRelatedElement(refreshAvailabilitySetting.settingEl);
 
-    const modelsPanel = aiSettingsGroup.createDiv({ cls: ['ert-panel', ERT_CLASSES.STACK, 'ert-ai-models-panel'] });
+    const modelsPanel = modelDetailsBody.createDiv({ cls: ['ert-panel', ERT_CLASSES.STACK, 'ert-ai-models-panel'] });
     const modelsHeader = modelsPanel.createDiv({ cls: 'ert-inline ert-inline--split' });
     modelsHeader.createDiv({ cls: 'ert-section-title', text: 'Models' });
     const modelsRefreshedEl = modelsHeader.createDiv({ cls: 'ert-ai-models-refreshed' });
@@ -487,6 +591,44 @@ export function renderAiSection(params: {
         if (!row.model) return 'No eligible model';
         const name = row.model.providerLabel || row.model.label;
         return `${providerLabel[row.model.provider]} -> ${name} (${row.model.alias})`;
+    };
+
+    const renderFeatureDefaultsCards = (): void => {
+        featureDefaultsGrid.empty();
+        const aiSettings = ensureCanonicalAiSettings();
+        const policySummary = aiSettings.modelPolicy.type === 'profile'
+            ? `Profile: ${aiSettings.modelPolicy.profile}`
+            : `Policy: ${aiSettings.modelPolicy.type}`;
+        const cards: Array<{ title: string; body: string }> = [
+            {
+                title: 'Inquiry',
+                body: `${policySummary}. Full-manuscript analysis with structured output focus.`
+            },
+            {
+                title: 'Gossamer',
+                body: 'Narrative momentum and prose sensitivity with deep analysis weighting.'
+            },
+            {
+                title: 'Pulse',
+                body: plugin.settings.showFullTripletAnalysis
+                    ? 'Triplet lens enabled: previous, focus, and next scenes.'
+                    : 'Triplet lens reduced: focus scene only.'
+            },
+            {
+                title: 'Summary refresh',
+                body: 'Uses current routing defaults for compact update passes.'
+            },
+            {
+                title: 'Runtime',
+                body: `Resolved by the same provider policy with output cap ${aiSettings.overrides.maxOutputMode || 'auto'}.`
+            }
+        ];
+
+        cards.forEach(card => {
+            const cardEl = featureDefaultsGrid.createDiv({ cls: 'ert-ai-feature-card' });
+            cardEl.createDiv({ cls: 'ert-ai-feature-card-title', text: card.title });
+            cardEl.createDiv({ cls: 'ert-ai-feature-card-body', text: card.body });
+        });
     };
 
     const renderRecommendations = (
@@ -739,12 +881,12 @@ export function renderAiSection(params: {
         }
     };
 
-    const resolvedPreviewSetting = new Settings(aiSettingsGroup)
+    const resolvedPreviewSetting = new Settings(quickSetupSection)
         .setName('Resolved model preview')
         .setDesc('Resolving...');
     params.addAiRelatedElement(resolvedPreviewSetting.settingEl);
 
-    const upgradeBannerSetting = new Settings(aiSettingsGroup)
+    const upgradeBannerSetting = new Settings(quickSetupSection)
         .setName('AI settings upgraded')
         .setDesc('Your AI settings were upgraded to capability-based routing. Review and confirm your provider and policy choices.');
     upgradeBannerSetting.addButton(button => button
@@ -756,6 +898,8 @@ export function renderAiSection(params: {
             refreshRoutingUi();
         }));
     params.addAiRelatedElement(upgradeBannerSetting.settingEl);
+
+    applyQuickSetupLayoutOrder();
 
     const refreshRoutingUi = (): void => {
         const aiSettings = ensureCanonicalAiSettings();
@@ -836,19 +980,20 @@ export function renderAiSection(params: {
             resolvedPreviewSetting.setDesc(`Model resolution failed: ${message}`);
         }
 
+        renderFeatureDefaultsCards();
         void refreshModelsTable();
     };
 
     refreshRoutingUi();
 
     // Provider sections
-    const anthropicSection = aiSettingsGroup.createDiv({
+    const anthropicSection = advancedBody.createDiv({
         cls: ['ert-provider-section', 'ert-provider-anthropic', ERT_CLASSES.STACK]
     });
-    const geminiSection = aiSettingsGroup.createDiv({
+    const geminiSection = advancedBody.createDiv({
         cls: ['ert-provider-section', 'ert-provider-gemini', ERT_CLASSES.STACK]
     });
-    const openaiSection = aiSettingsGroup.createDiv({
+    const openaiSection = advancedBody.createDiv({
         cls: ['ert-provider-section', 'ert-provider-openai', ERT_CLASSES.STACK]
     });
     params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection });
@@ -869,24 +1014,24 @@ export function renderAiSection(params: {
     };
 
     if (!secretStorageAvailable) {
-        const warningSetting = new Settings(aiSettingsGroup)
-            .setName('Secret storage unavailable')
-            .setDesc('Upgrade Obsidian to use secure Secret Storage. Legacy key fields remain available in Advanced sections.');
+        const warningSetting = new Settings(advancedBody)
+            .setName('Secure key saving unavailable')
+            .setDesc('Secure key saving isn’t available in this Obsidian version. Older key fields remain available in Advanced sections.');
         params.addAiRelatedElement(warningSetting.settingEl);
     }
 
     if (secretStorageAvailable && hasLegacyKeyMaterial()) {
-        const migrateKeysSetting = new Settings(aiSettingsGroup)
-            .setName('Move keys to Secret Storage')
-            .setDesc('Migrates legacy API keys out of settings and clears plaintext key fields.');
+        const migrateKeysSetting = new Settings(advancedBody)
+            .setName('Secure my saved keys')
+            .setDesc('Moves older provider key fields into private saved keys and clears plaintext values.');
         migrateKeysSetting.addButton(button => button
-            .setButtonText('Move keys now')
+            .setButtonText('Secure now')
             .onClick(async () => {
                 button.setDisabled(true);
                 try {
                     const migration = await migrateLegacyKeysToSecretStorage(plugin);
                     if (migration.migratedProviders.length) {
-                        new Notice(`Moved ${migration.migratedProviders.length} provider key(s) to Secret Storage.`);
+                        new Notice(`Secured ${migration.migratedProviders.length} provider key(s).`);
                     } else {
                         new Notice('No legacy provider keys were available to migrate.');
                     }
@@ -914,7 +1059,7 @@ export function renderAiSection(params: {
     }): void => {
         const providerDesc = document.createDocumentFragment();
         const span = document.createElement('span');
-        span.textContent = `${options.providerName} credential configuration. `;
+        span.textContent = `${options.providerName} key setup. `;
         const link = document.createElement('a');
         link.href = options.docsUrl;
         link.textContent = 'Get key';
@@ -922,15 +1067,50 @@ export function renderAiSection(params: {
         link.rel = 'noopener';
         providerDesc.appendChild(span);
         providerDesc.appendChild(link);
+        providerDesc.appendChild(document.createTextNode(' Use a short name like "openai-main" so you can reuse it later.'));
 
         const secretIdSetting = new Settings(options.section)
-            .setName(`${options.providerName} secret id`)
+            .setName(`${options.providerName} saved key name`)
             .setDesc(providerDesc);
+        const keyStatusSetting = new Settings(options.section)
+            .setName(`${options.providerName} key status`)
+            .setDesc('Not saved ⚠️');
+        const applyKeyStatus = (status: 'saved' | 'saved_not_tested' | 'not_saved') => {
+            if (status === 'saved') {
+                keyStatusSetting.setDesc('Saved ✅');
+                return;
+            }
+            if (status === 'saved_not_tested') {
+                keyStatusSetting.setDesc('Saved (not tested)');
+                return;
+            }
+            keyStatusSetting.setDesc('Not saved ⚠️');
+        };
+        const refreshKeyStatus = async (): Promise<void> => {
+            const ai = ensureCanonicalAiSettings();
+            if (secretStorageAvailable) {
+                const savedKeyName = getCredentialSecretId(ai, options.provider);
+                if (!savedKeyName) {
+                    applyKeyStatus('not_saved');
+                    return;
+                }
+                const exists = await hasSecret(app, savedKeyName);
+                applyKeyStatus(exists ? 'saved_not_tested' : 'not_saved');
+                return;
+            }
+            const legacyValue = options.legacyProvider === 'gemini'
+                ? plugin.settings.geminiApiKey
+                : options.legacyProvider === 'anthropic'
+                ? plugin.settings.anthropicApiKey
+                : plugin.settings.openaiApiKey;
+            applyKeyStatus((legacyValue || '').trim() ? 'saved' : 'not_saved');
+        };
+        void refreshKeyStatus();
         secretIdSetting.addText(text => {
             const aiSettings = ensureCanonicalAiSettings();
             text.inputEl.addClass('ert-input--full');
             text
-                .setPlaceholder(`rt.${options.provider}.api-key`)
+                .setPlaceholder(`${options.provider}-main`)
                 .setValue(getCredentialSecretId(aiSettings, options.provider));
             plugin.registerDomEvent(text.inputEl, 'blur', () => {
                 void (async () => {
@@ -938,6 +1118,7 @@ export function renderAiSection(params: {
                     const nextId = text.getValue().trim();
                     setCredentialSecretId(ai, options.provider, nextId);
                     await persistCanonical();
+                    await refreshKeyStatus();
                 })();
             });
         });
@@ -945,8 +1126,8 @@ export function renderAiSection(params: {
 
         if (secretStorageAvailable && SecretComponentCtor) {
             const secureKeySetting = new Settings(options.section)
-                .setName(`${options.providerName} API key (Secret Storage)`)
-                .setDesc('Stored encrypted by Obsidian Secret Storage. This value is never written to settings.');
+                .setName(`${options.providerName} API key`)
+                .setDesc('Keys are saved privately on this device. Radial Timeline never writes keys into your settings file.');
             const secretInput = new SecretComponentCtor(secureKeySetting.controlEl);
             secretInput.inputEl.addClass('ert-input--full');
             secretInput.setPlaceholder(options.keyPlaceholder);
@@ -967,18 +1148,19 @@ export function renderAiSection(params: {
                     const ai = ensureCanonicalAiSettings();
                     const secretId = getCredentialSecretId(ai, options.provider);
                     if (!secretId) {
-                        new Notice(`Set a ${options.providerName} secret id first.`);
+                        new Notice(`Set a ${options.providerName} saved key name first.`);
                         return;
                     }
                     const stored = await setSecret(app, secretId, value);
                     if (!stored) {
-                        new Notice(`Unable to save ${options.providerName} key to Secret Storage.`);
+                        new Notice(`Unable to save ${options.providerName} key privately.`);
                         return;
                     }
                     if (options.legacyProvider === 'gemini') plugin.settings.geminiApiKey = '';
                     if (options.legacyProvider === 'anthropic') plugin.settings.anthropicApiKey = '';
                     if (options.legacyProvider === 'openai') plugin.settings.openaiApiKey = '';
                     await plugin.saveSettings();
+                    await refreshKeyStatus();
                     void params.scheduleKeyValidation(options.legacyProvider);
                 })();
             });
@@ -992,18 +1174,18 @@ export function renderAiSection(params: {
             legacyDetails.setAttr('open', '');
         }
         legacyDetails.createEl('summary', {
-            text: 'Advanced: legacy key fallback'
+            text: 'Advanced: Older key fields (not recommended)'
         });
         const legacyHost = legacyDetails.createDiv({ cls: ERT_CLASSES.STACK });
         if (secretStorageAvailable) {
             legacyHost.createDiv({
                 cls: 'ert-field-note',
-                text: 'Legacy key fields are disabled on this Obsidian version to avoid plaintext key storage.'
+                text: 'Older key fields are disabled on this Obsidian version.'
             });
         } else {
             const legacySetting = new Settings(legacyHost)
-                .setName(`${options.providerName} legacy API key`)
-                .setDesc('Used only when Secret Storage is unavailable.');
+                .setName(`${options.providerName} older API key`)
+                .setDesc('Used only when secure key saving is unavailable.');
             legacySetting.addText(text => {
                 text.inputEl.addClass('ert-input--full');
                 const legacyValue = options.legacyProvider === 'gemini'
@@ -1022,6 +1204,7 @@ export function renderAiSection(params: {
                         if (options.legacyProvider === 'anthropic') plugin.settings.anthropicApiKey = next;
                         if (options.legacyProvider === 'openai') plugin.settings.openaiApiKey = next;
                         await plugin.saveSettings();
+                        await refreshKeyStatus();
                         void params.scheduleKeyValidation(options.legacyProvider);
                     })();
                 });
@@ -1055,7 +1238,7 @@ export function renderAiSection(params: {
         docsUrl: 'https://platform.openai.com'
     });
 
-    const localWrapper = aiSettingsGroup.createDiv({
+    const localWrapper = advancedBody.createDiv({
         cls: ['ert-provider-section', 'ert-provider-local', ERT_CLASSES.STACK]
     });
     params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection, local: localWrapper } as any);
@@ -1099,7 +1282,7 @@ export function renderAiSection(params: {
     localWarningSection.createEl('strong', { text: 'Advisory Note', cls: 'ert-local-llm-advisory-title' });
     const aiLogFolder = resolveAiLogFolder();
     localWarningSection.createSpan({
-        text: `By default, no LLM pulses are written to the scene when local transformer is used. Rather it is stored in an AI log file in the local logs output folder (${aiLogFolder}), as the response does not follow directions and breaks the scene hover formatting. You may still write scene hover metadata with local LLM by toggling off the setting "Bypass scene hover metadata yaml writes" below.`
+        text: `By default, no LLM pulses are written to the scene when local transformer is used. Rather it is stored in an AI log file in the local logs output folder (${aiLogFolder}), as the response does not follow directions and breaks scene hover formatting. You may still write scene hover Fields with local LLM by toggling off the setting "Bypass scene hover Fields writes" below.`
     });
 
     const localExtrasStack = localWrapper.createDiv({ cls: [ERT_CLASSES.STACK, 'ert-ai-local-extras'] });
@@ -1201,8 +1384,8 @@ export function renderAiSection(params: {
     customInstructionsSetting.settingEl.addClass('ert-setting-full-width-input');
 
     const bypassSetting = new Settings(localExtrasStack)
-        .setName('Bypass scene hover metadata yaml writes')
-        .setDesc('Default is enabled. Local LLM triplet pulse analysis skips writing to the scene note and saves the results in the AI log report instead. Recommended for local models.')
+        .setName('Bypass scene hover Fields writes')
+        .setDesc('Default is enabled. Local LLM triplet pulse analysis skips writing to the scene note and saves results in the AI log report instead. Recommended for local models.')
         .addToggle(toggle => toggle
             .setValue(plugin.settings.localSendPulseToAiReport ?? true)
             .onChange(async (value) => {
@@ -1215,20 +1398,49 @@ export function renderAiSection(params: {
     if (!secretStorageAvailable) {
         localApiDetails.setAttr('open', '');
     }
-    localApiDetails.createEl('summary', { text: 'Advanced: local API key (optional)' });
+    localApiDetails.createEl('summary', { text: 'Advanced: local saved key (optional)' });
     const localApiContainer = localApiDetails.createDiv({ cls: ERT_CLASSES.STACK });
 
     const localSecretIdSetting = new Settings(localApiContainer)
-        .setName('Local secret id')
-        .setDesc('Optional secret id if your local gateway requires a key.');
+        .setName('Local saved key name')
+        .setDesc('Optional saved key name if your local gateway requires a key.');
+    const localKeyStatusSetting = new Settings(localApiContainer)
+        .setName('Local key status')
+        .setDesc('Not saved ⚠️');
+    const applyLocalKeyStatus = (status: 'saved' | 'saved_not_tested' | 'not_saved') => {
+        if (status === 'saved') {
+            localKeyStatusSetting.setDesc('Saved ✅');
+            return;
+        }
+        if (status === 'saved_not_tested') {
+            localKeyStatusSetting.setDesc('Saved (not tested)');
+            return;
+        }
+        localKeyStatusSetting.setDesc('Not saved ⚠️');
+    };
+    const refreshLocalKeyStatus = async (): Promise<void> => {
+        const savedKeyName = getCredentialSecretId(ensureCanonicalAiSettings(), 'ollama');
+        if (secretStorageAvailable) {
+            if (!savedKeyName) {
+                applyLocalKeyStatus('not_saved');
+                return;
+            }
+            const exists = await hasSecret(app, savedKeyName);
+            applyLocalKeyStatus(exists ? 'saved_not_tested' : 'not_saved');
+            return;
+        }
+        applyLocalKeyStatus((plugin.settings.localApiKey || '').trim() ? 'saved' : 'not_saved');
+    };
+    void refreshLocalKeyStatus();
     localSecretIdSetting.addText(text => {
         text.inputEl.addClass('ert-input--full');
-        text.setPlaceholder('rt.ollama.api-key').setValue(getCredentialSecretId(ensureCanonicalAiSettings(), 'ollama'));
+        text.setPlaceholder('ollama-main').setValue(getCredentialSecretId(ensureCanonicalAiSettings(), 'ollama'));
         plugin.registerDomEvent(text.inputEl, 'blur', () => {
             void (async () => {
                 const ai = ensureCanonicalAiSettings();
                 setCredentialSecretId(ai, 'ollama', text.getValue().trim());
                 await persistCanonical();
+                await refreshLocalKeyStatus();
             })();
         });
     });
@@ -1236,8 +1448,8 @@ export function renderAiSection(params: {
 
     if (secretStorageAvailable && SecretComponentCtor) {
         const localSecretSetting = new Settings(localApiContainer)
-            .setName('Local API key (Secret Storage)')
-            .setDesc('Only needed when your local endpoint requires authentication.');
+            .setName('Local API key')
+            .setDesc('Keys are saved privately on this device. Radial Timeline never writes keys into your settings file.');
         const localSecretInput = new SecretComponentCtor(localSecretSetting.controlEl);
         localSecretInput.inputEl.addClass('ert-input--full');
         localSecretInput.setPlaceholder('Optional local API key');
@@ -1249,16 +1461,17 @@ export function renderAiSection(params: {
                 const ai = ensureCanonicalAiSettings();
                 const secretId = getCredentialSecretId(ai, 'ollama');
                 if (!secretId) {
-                    new Notice('Set a local secret id first.');
+                    new Notice('Set a local saved key name first.');
                     return;
                 }
                 const stored = await setSecret(app, secretId, key);
                 if (!stored) {
-                    new Notice('Unable to save local API key to Secret Storage.');
+                    new Notice('Unable to save local API key privately.');
                     return;
                 }
                 plugin.settings.localApiKey = '';
                 await plugin.saveSettings();
+                await refreshLocalKeyStatus();
                 void params.scheduleKeyValidation('local');
             })();
         });
@@ -1268,12 +1481,12 @@ export function renderAiSection(params: {
     if (secretStorageAvailable) {
         localApiContainer.createDiv({
             cls: 'ert-field-note',
-            text: 'Legacy local key field is disabled to avoid plaintext key storage.'
+            text: 'Older local key field is disabled on this Obsidian version.'
         });
     } else {
         const legacyLocalSetting = new Settings(localApiContainer)
-            .setName('Legacy local API key')
-            .setDesc('Used only when Secret Storage is unavailable.');
+            .setName('Older local API key')
+            .setDesc('Used only when secure key saving is unavailable.');
         legacyLocalSetting.addText(text => {
             text.inputEl.addClass('ert-input--full');
             text.setPlaceholder('Optional local API key');
@@ -1283,6 +1496,7 @@ export function renderAiSection(params: {
                 void (async () => {
                     plugin.settings.localApiKey = text.getValue().trim();
                     await plugin.saveSettings();
+                    await refreshLocalKeyStatus();
                     void params.scheduleKeyValidation('local');
                 })();
             });

@@ -97,7 +97,7 @@ export async function migrateLegacyKeysToSecretStorage(
     };
 
     if (!isSecretStorageAvailable(plugin.app)) {
-        result.warnings.push('Secret Storage unavailable in this Obsidian version.');
+        result.warnings.push('Secure key saving is unavailable in this Obsidian version.');
         return result;
     }
 
@@ -115,14 +115,14 @@ export async function migrateLegacyKeysToSecretStorage(
         const field = toSecretField(provider);
         const secretId = (aiSettings.credentials?.[field] || '').trim();
         if (!secretId) {
-            result.warnings.push(`${provider} secret id is missing; skipping migration for this provider.`);
+            result.warnings.push(`${provider} saved key name is missing; skipping migration for this provider.`);
             result.skippedProviders.push(provider);
             continue;
         }
 
         const stored = await setSecret(plugin.app, secretId, legacy);
         if (!stored) {
-            result.warnings.push(`${provider} key could not be saved to Secret Storage.`);
+            result.warnings.push(`${provider} key could not be saved privately.`);
             result.skippedProviders.push(provider);
             continue;
         }

@@ -4,6 +4,7 @@
 import type RadialTimelinePlugin from '../main';
 import { normalizePath, Notice, type Vault, TFile, TFolder } from 'obsidian';
 import { resolveInquiryLogFolder } from '../inquiry/utils/logs';
+import { redactSensitiveObject, redactSensitiveValue } from './credentials/redactSensitive';
 
 export type AiLogFeature = 'Inquiry' | 'Pulse' | 'Synopsis' | 'Gossamer';
 export type AiLogStatus = 'success' | 'error' | 'simulated';
@@ -75,41 +76,15 @@ export type SummaryLogEnvelope = {
     retryAttempts?: number;
 };
 
-const REDACT_KEYS = new Set([
-    'apikey',
-    'api_key',
-    'api-key',
-    'authorization',
-    'x-api-key',
-    'x_api_key',
-    'access_token',
-    'refresh_token',
-    'token',
-    'secret'
-]);
-
-export function sanitizeLogPayload(value: unknown): { sanitized: unknown; redactedKeys: string[] } {
-    const redactedKeys = new Set<string>();
-    const sanitize = (input: unknown): unknown => {
-        if (Array.isArray(input)) {
-            return input.map(item => sanitize(item));
-        }
-        if (input && typeof input === 'object') {
-            const output: Record<string, unknown> = {};
-            Object.entries(input as Record<string, unknown>).forEach(([key, val]) => {
-                const keyLower = key.toLowerCase();
-                if (REDACT_KEYS.has(keyLower)) {
-                    redactedKeys.add(key);
-                    output[key] = '[REDACTED]';
-                } else {
-                    output[key] = sanitize(val);
-                }
-            });
-            return output;
-        }
-        return input;
-    };
-    return { sanitized: sanitize(value), redactedKeys: Array.from(redactedKeys) };
+export function sanitizeLogPayload(value: unknown): { sanitized: unknown; hadRedactions: boolean } {
+    const sanitized = redactSensitiveObject(value);
+    let hadRedactions = false;
+    try {
+        hadRedactions = JSON.stringify(value) !== JSON.stringify(sanitized);
+    } catch {
+        hadRedactions = true;
+    }
+    return { sanitized, hadRedactions };
 }
 
 export function extractTokenUsage(provider: string, responseData: unknown): TokenUsage | null {
@@ -207,10 +182,11 @@ export function formatAiLogContent(
     const jsonSpacing = typeof options?.jsonSpacing === 'number' ? options.jsonSpacing : 2;
     const safeStringify = (value: unknown) => {
         if (value === undefined) return 'undefined';
+        const redactedValue = redactSensitiveObject(value);
         try {
-            return JSON.stringify(value, null, jsonSpacing);
+            return JSON.stringify(redactedValue, null, jsonSpacing);
         } catch {
-            return JSON.stringify(String(value));
+            return JSON.stringify(redactSensitiveValue(String(redactedValue)));
         }
     };
     const resolveExpectedSchema = (payload: unknown): { source: string; schema: unknown } | null => {
@@ -435,7 +411,7 @@ export async function writeAiLog(
         const filePath = resolveAvailableLogPath(vault, folderPath, options.baseName);
         await vault.create(filePath, options.content.trim());
     } catch (e) {
-        console.error('[AI][log] Failed to write log:', e);
+        console.error('[AI][log] Failed to write log:', redactSensitiveObject(e));
         new Notice('Failed to write AI log.');
     }
 }

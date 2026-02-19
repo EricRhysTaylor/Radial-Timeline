@@ -12,6 +12,7 @@ export * from './registry/recommendations';
 export * from './registry/recommendationWhy';
 export * from './credentials/secretStorage';
 export * from './credentials/credentials';
+export * from './credentials/redactSensitive';
 export * from './providers/provider';
 export * from './router/selectModel';
 export * from './evidence/pulseTriplet';

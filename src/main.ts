@@ -60,6 +60,23 @@ declare const EMBEDDED_README_CONTENT: string;
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
 const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline"; // Sentence case per guidelines
 
+const DEV_PLAINTEXT_KEY_PATTERNS: Array<{ label: string; regex: RegExp }> = [
+    { label: 'OpenAI key signature', regex: /sk-[A-Za-z0-9_-]{10,}/ },
+    { label: 'Anthropic key signature', regex: /sk-ant-[A-Za-z0-9_-]{10,}/ },
+    { label: 'Google API key signature', regex: /AIza[0-9A-Za-z_-]{16,}/ },
+    { label: 'Bearer header token', regex: /\bBearer\s+[A-Za-z0-9._~+\/=-]{8,}/i },
+    { label: 'Header-like high-entropy secret', regex: /(authorization|x-api-key|apiKey|token|secret)["']?\s*[:=]\s*["'][A-Za-z0-9+/_=-]{40,}/i }
+];
+
+function detectPlaintextCredentialPattern(serialized: string): string | null {
+    for (const pattern of DEV_PLAINTEXT_KEY_PATTERNS) {
+        if (pattern.regex.test(serialized)) {
+            return pattern.label;
+        }
+    }
+    return null;
+}
+
 
 
 // STATUS_COLORS now imported from constants
@@ -768,6 +785,20 @@ export default class RadialTimelinePlugin extends Plugin {
 
     async saveSettings() {
         this.syncLegacySourcePathFromActiveBook();
+        if (__RT_DEV__) {
+            try {
+                const serialized = JSON.stringify(this.settings);
+                const match = detectPlaintextCredentialPattern(serialized);
+                if (match) {
+                    console.error(
+                        `[AI][credentials] Plaintext credential detected in settings serialization: ${match}. `
+                        + 'Use saved keys and clear older key fields.'
+                    );
+                }
+            } catch (error) {
+                console.error('[AI][credentials] Failed to run plaintext credential scan.', error);
+            }
+        }
         await this.saveData(this.settings);
     }
 

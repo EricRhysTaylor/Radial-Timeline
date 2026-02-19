@@ -1,4 +1,5 @@
 import type { CanonicalModelRecord, ProviderSnapshotPayload } from '../types';
+import { redactSensitiveValue } from '../credentials/redactSensitive';
 
 export interface ProviderSnapshotCache {
     fetchedAt: string;
@@ -158,7 +159,7 @@ export async function loadProviderSnapshot(options: ProviderSnapshotOptions): Pr
             fetchedAt: nextCache.fetchedAt
         };
     } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = redactSensitiveValue(error instanceof Error ? error.message : String(error));
         if (cached) {
             return {
                 source: 'cache',
@@ -183,4 +184,3 @@ export function findSnapshotModel(
     if (!snapshot) return null;
     return snapshot.models.find(model => model.provider === provider && model.id === id) ?? null;
 }
-

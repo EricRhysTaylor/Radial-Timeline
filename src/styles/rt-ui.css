@@ -1927,6 +1927,91 @@
   transition: opacity 0.15s ease;
 }
 
+.ert-ui.ert-scope--settings .ert-ai-hero-badge-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ert-gap-md);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-hero-toggle {
+  margin-left: auto;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-section-card {
+  padding: var(--ert-pad-md);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-quick-grid {
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+}
+
+.ert-ui.ert-scope--settings .ert-ai-quick-grid .ert-ai-grid-item {
+  margin: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-feature-grid {
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+}
+
+.ert-ui.ert-scope--settings .ert-ai-feature-card {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--background-secondary) 78%, transparent);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-feature-card-title {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-feature-card-body {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-fold {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--background-secondary) 84%, transparent);
+  padding: 10px 12px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-fold > summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-normal);
+  list-style: none;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-fold[open] > summary {
+  margin-bottom: 10px;
+}
+
+@media (max-width: 1200px) {
+  .ert-ui.ert-scope--settings .ert-ai-quick-grid,
+  .ert-ui.ert-scope--settings .ert-ai-feature-grid {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .ert-ui.ert-scope--settings .ert-ai-quick-grid,
+  .ert-ui.ert-scope--settings .ert-ai-feature-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── Beat-system wrapper (tabs + panel as one unit) ──────────────────── */
 .ert-ui.ert-scope--settings .ert-beat-system-wrapper {
   display: flex;

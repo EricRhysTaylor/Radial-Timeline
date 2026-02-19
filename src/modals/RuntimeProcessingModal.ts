@@ -13,6 +13,7 @@ import { formatRuntimeValue, getRuntimeSettings } from '../utils/runtimeEstimato
 import { isNonSceneItem } from '../utils/sceneHelpers';
 import { ERT_CLASSES } from '../ui/classes';
 import type { AIRunAdvancedContext } from '../ai/types';
+import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
 
 export type RuntimeScope = 'current' | 'subplot' | 'all';
 export type RuntimeMode = 'local' | 'ai';
@@ -660,15 +661,15 @@ export class RuntimeProcessingModal extends Modal {
         const lines = [
             `Role template: ${ctx.roleTemplateName}`,
             `Resolved model: ${ctx.provider} -> ${ctx.modelAlias} (${ctx.modelLabel})`,
-            `Model selection reason: ${ctx.modelSelectionReason}`,
+            `Model selection reason: ${redactSensitiveValue(ctx.modelSelectionReason)}`,
             `Availability: ${ctx.availabilityStatus === 'visible' ? 'Visible to your key ✅' : ctx.availabilityStatus === 'not_visible' ? 'Not visible ⚠️' : 'Unknown (snapshot disabled)'}`,
             `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
             '',
             'Feature mode instructions:',
-            ctx.featureModeInstructions || '(none)',
+            redactSensitiveValue(ctx.featureModeInstructions || '(none)'),
             '',
             'Final composed prompt:',
-            ctx.finalPrompt || '(none)'
+            redactSensitiveValue(ctx.finalPrompt || '(none)')
         ];
         this.aiAdvancedPreEl.setText(lines.join('\n'));
     }

@@ -36,6 +36,7 @@ import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryA
 import { ensureInquiryContentLogFolder, ensureInquiryLogFolder } from './utils/logs';
 import { openOrRevealFile } from '../utils/fileUtils';
 import { extractTokenUsage, formatAiLogContent, formatDuration, sanitizeLogPayload, type AiLogStatus } from '../ai/log';
+import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
 import {
     InquiryGlyph,
     FLOW_RADIUS,
@@ -645,15 +646,15 @@ class InquiryOmnibusModal extends Modal {
         const lines = [
             `Role template: ${ctx.roleTemplateName}`,
             `Resolved model: ${ctx.provider} -> ${ctx.modelAlias} (${ctx.modelLabel})`,
-            `Model selection reason: ${ctx.modelSelectionReason}`,
+            `Model selection reason: ${redactSensitiveValue(ctx.modelSelectionReason)}`,
             `Availability: ${ctx.availabilityStatus === 'visible' ? 'Visible to your key ✅' : ctx.availabilityStatus === 'not_visible' ? 'Not visible ⚠️' : 'Unknown (snapshot disabled)'}`,
             `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
             '',
             'Feature mode instructions:',
-            ctx.featureModeInstructions || '(none)',
+            redactSensitiveValue(ctx.featureModeInstructions || '(none)'),
             '',
             'Final composed prompt:',
-            ctx.finalPrompt || '(none)'
+            redactSensitiveValue(ctx.finalPrompt || '(none)')
         ];
         this.aiAdvancedPreEl.setText(lines.join('\n'));
     }
@@ -9738,9 +9739,9 @@ export class InquiryView extends ItemView {
 
         const tokenUsage = trace.usage
             ?? (trace.response?.responseData ? extractTokenUsage(aiProvider, trace.response.responseData) : null);
-        const { sanitized: sanitizedPayload, redactedKeys } = sanitizeLogPayload(trace.requestPayload ?? null);
-        const redactionNotes = redactedKeys.length
-            ? [`Redacted request keys: ${redactedKeys.join(', ')}.`]
+        const { sanitized: sanitizedPayload, hadRedactions } = sanitizeLogPayload(trace.requestPayload ?? null);
+        const redactionNotes = hadRedactions
+            ? ['Redacted sensitive credential values from request payload.']
             : [];
         const sanitizationSteps = [...(trace.sanitizationNotes || []), ...redactionNotes].filter(Boolean);
         const schemaWarnings = [

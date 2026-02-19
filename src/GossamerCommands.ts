@@ -62,9 +62,9 @@ async function writeGossamerLog(
   const safeBeatSystem = sanitizeSegment(payload.beatSystemLabel) || 'Gossamer';
   const scopeTarget = `Manuscript · ${payload.beatSystemLabel}`;
 
-  const { sanitized: sanitizedPayload, redactedKeys } = sanitizeLogPayload(payload.requestPayload ?? null);
-  const sanitizationNotes = redactedKeys.length
-    ? [`Redacted request keys: ${redactedKeys.join(', ')}.`]
+  const { sanitized: sanitizedPayload, hadRedactions } = sanitizeLogPayload(payload.requestPayload ?? null);
+  const sanitizationNotes = hadRedactions
+    ? ['Redacted sensitive credential values from request payload.']
     : [];
   const tokenUsage = extractTokenUsage(mapAiProviderToLegacyProvider(payload.provider), payload.responseData);
   const schemaWarnings = payload.schemaWarnings ?? [];
@@ -123,7 +123,7 @@ async function writeGossamerLog(
         contentLogWritten = true;
       }
     } catch (e) {
-      console.error('[Gossamer][log] Failed to write content log:', e);
+      console.error('[Gossamer][log] Failed to write content log:', sanitizeLogPayload(e).sanitized);
       // Non-blocking: continue with summary log
     }
   }
@@ -175,7 +175,7 @@ async function writeGossamerLog(
     const summaryFilePath = resolveAvailableLogPath(plugin.app.vault, summaryFolderPath, summaryBaseName);
     summaryFile = await plugin.app.vault.create(summaryFilePath, summaryContent.trim());
   } catch (e) {
-    console.error('[Gossamer][log] Failed to write summary log:', e);
+    console.error('[Gossamer][log] Failed to write summary log:', sanitizeLogPayload(e).sanitized);
     // Non-blocking: logging failures should not break the AI run
   }
 
@@ -216,7 +216,7 @@ async function saveGossamerScores(
       const scenes = await plugin.getSceneData();
       stage = detectDominantStage(scenes);
     } catch (e) {
-      console.error('[Gossamer] Failed to detect dominant stage, defaulting to Zero:', e);
+      console.error('[Gossamer] Failed to detect dominant stage, defaulting to Zero:', sanitizeLogPayload(e).sanitized);
     }
   }
   
@@ -249,7 +249,7 @@ async function saveGossamerScores(
       
       updateCount++;
     } catch (e) {
-      console.error(`[Gossamer] Failed to update beat ${beatTitle}:`, e);
+      console.error(`[Gossamer] Failed to update beat ${beatTitle}:`, sanitizeLogPayload(e).sanitized);
     }
   }
   
@@ -910,7 +910,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       const allScenes = await plugin.getSceneData();
       dominantStage = detectDominantStage(allScenes);
     } catch (e) {
-      console.error('[Gossamer] Failed to detect dominant stage, defaulting to Zero:', e);
+      console.error('[Gossamer] Failed to detect dominant stage, defaulting to Zero:', sanitizeLogPayload(e).sanitized);
     }
     
     const geminiBookScope = (plugin.settings.sourcePath || '').trim();
@@ -1037,7 +1037,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       modal.addError(`Processing failed: ${errorMsg}`);
       modal.completeProcessing(false, 'Processing failed');
       new Notice(`Failed Gossamer AI analysis: ${errorMsg}`);
-      console.error('[Gossamer AI]', e);
+      console.error('[Gossamer AI]', sanitizeLogPayload(e).sanitized);
     }
   };
 
@@ -1082,6 +1082,6 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
   } catch (e) {
     const errorMsg = (e as Error)?.message || 'Unknown error';
     new Notice(`Failed to prepare Gossamer analysis: ${errorMsg}`);
-    console.error('[Gossamer AI Pre-check]', e);
+    console.error('[Gossamer AI Pre-check]', sanitizeLogPayload(e).sanitized);
   }
 }

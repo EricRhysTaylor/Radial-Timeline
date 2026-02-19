@@ -81,10 +81,10 @@ async function writePulseLog(
     if (payload.commandContext) scopeBits.push(`Command ${payload.commandContext}`);
     const scopeTarget = scopeBits.join(' · ');
 
-    const { sanitized: sanitizedPayload, redactedKeys } = sanitizeLogPayload(payload.requestPayload ?? null);
+    const { sanitized: sanitizedPayload, hadRedactions } = sanitizeLogPayload(payload.requestPayload ?? null);
     const tokenUsage = extractTokenUsage(payload.provider, payload.responseData);
-    const sanitizedNotes = redactedKeys.length
-        ? [`Redacted request keys: ${redactedKeys.join(', ')}.`]
+    const sanitizedNotes = hadRedactions
+        ? ['Redacted sensitive credential values from request payload.']
         : [];
     const durationMs = payload.submittedAt && payload.returnedAt
         ? payload.returnedAt.getTime() - payload.submittedAt.getTime()
@@ -141,7 +141,7 @@ async function writePulseLog(
                 contentLogWritten = true;
             }
         } catch (e) {
-            console.error('[Pulse][log] Failed to write content log:', e);
+            console.error('[Pulse][log] Failed to write content log:', sanitizeLogPayload(e).sanitized);
             // Non-blocking: continue with summary log
         }
     }
@@ -189,7 +189,7 @@ async function writePulseLog(
         const summaryFilePath = resolveAvailableLogPath(vault, summaryFolderPath, summaryBaseName);
         await vault.create(summaryFilePath, summaryContent.trim());
     } catch (e) {
-        console.error('[Pulse][log] Failed to write summary log:', e);
+        console.error('[Pulse][log] Failed to write summary log:', sanitizeLogPayload(e).sanitized);
         // Non-blocking: logging failures should not break the AI run
     }
 }
@@ -318,7 +318,10 @@ export async function callAiProvider(
         };
     } catch (error) {
         const detailedMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[API][BeatsCommands][callAiProvider] Error during ${provider} API call:`, error);
+        console.error(
+            `[API][BeatsCommands][callAiProvider] Error during ${provider} API call:`,
+            sanitizeLogPayload(error).sanitized
+        );
         new Notice(`Error calling ${provider} API:\n${detailedMessage}`, 8000);
 
         if (!submittedAt) submittedAt = new Date();

@@ -14,6 +14,7 @@ import { getModelDisplayName } from '../utils/modelResolver';
 import type { LlmTimingStats } from '../types/settings';
 import { getSynopsisGenerationWordLimit } from '../utils/synopsisLimits';
 import type { AIRunAdvancedContext } from '../ai/types';
+import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
 
 export type ProcessingMode = 'flagged' | 'unprocessed' | 'force-all' | 'synopsis-flagged' | 'synopsis-missing-weak' | 'synopsis-missing' | 'synopsis-all';
 
@@ -1334,15 +1335,15 @@ export class SceneAnalysisProcessingModal extends Modal {
         const lines = [
             `Role template: ${ctx.roleTemplateName}`,
             `Resolved model: ${ctx.provider} -> ${ctx.modelAlias} (${ctx.modelLabel})`,
-            `Model selection reason: ${ctx.modelSelectionReason}`,
+            `Model selection reason: ${redactSensitiveValue(ctx.modelSelectionReason)}`,
             `Availability: ${ctx.availabilityStatus === 'visible' ? 'Visible to your key ✅' : ctx.availabilityStatus === 'not_visible' ? 'Not visible ⚠️' : 'Unknown (snapshot disabled)'}`,
             `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
             '',
             'Feature mode instructions:',
-            ctx.featureModeInstructions || '(none)',
+            redactSensitiveValue(ctx.featureModeInstructions || '(none)'),
             '',
             'Final composed prompt:',
-            ctx.finalPrompt || '(none)'
+            redactSensitiveValue(ctx.finalPrompt || '(none)')
         ];
         this.aiAdvancedPreEl.setText(lines.join('\n'));
     }

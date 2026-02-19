@@ -48,13 +48,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _localBaseUrlInput?: HTMLInputElement;
     private _localModelIdInput?: HTMLInputElement;
     private _aiRelatedElements: HTMLElement[] = [];
-    private _activeTab: 'pro' | 'inquiry' | 'core' | 'social' = 'core';
+    private _activeTab: 'pro' | 'inquiry' | 'core' | 'social' | 'ai' = 'core';
     private _searchDebounceTimer?: number;
     private _coreSearchableContent?: HTMLElement;
     private readonly _searchShortAllowList = new Set(['ai', 'ui']);
 
     /** Public method to set active tab before/after opening settings */
-    public setActiveTab(tab: 'pro' | 'inquiry' | 'core' | 'social'): void {
+    public setActiveTab(tab: 'pro' | 'inquiry' | 'core' | 'social' | 'ai'): void {
         this._activeTab = tab;
     }
 
@@ -752,7 +752,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const socialTab = tabBar.createDiv({ cls: 'ert-settings-tab ert-settings-tab-social' });
         const socialIcon = socialTab.createSpan({ cls: 'ert-settings-tab-icon' });
         setIcon(socialIcon, 'radio');
-        socialTab.createSpan({ text: 'Social Media', cls: 'ert-settings-tab-label' });
+        socialTab.createSpan({ text: 'Social', cls: 'ert-settings-tab-label' });
+        const aiTab = tabBar.createDiv({ cls: 'ert-settings-tab' });
+        const aiIcon = aiTab.createSpan({ cls: 'ert-settings-tab-icon' });
+        setIcon(aiIcon, 'cpu');
+        aiTab.createSpan({ text: 'AI', cls: 'ert-settings-tab-label' });
 
         const proContent = containerEl.createDiv({
             cls: `ert-settings-tab-content ert-settings-pro-content ${ERT_CLASSES.ROOT} ert-scope--settings ${ERT_CLASSES.SKIN_PRO}`
@@ -762,22 +766,26 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const socialContent = containerEl.createDiv({
             cls: 'ert-settings-tab-content ert-settings-social-content ert-ui ert-scope--settings ert-skin--social ert-density--compact'
         });
+        const aiContent = containerEl.createDiv({ cls: 'ert-settings-tab-content ert-settings-ai-content ert-scope--settings' });
 
         const updateTabState = () => {
             proTab.toggleClass('ert-settings-tab-active', this._activeTab === 'pro');
             inquiryTab.toggleClass('ert-settings-tab-active', this._activeTab === 'inquiry');
             coreTab.toggleClass('ert-settings-tab-active', this._activeTab === 'core');
             socialTab.toggleClass('ert-settings-tab-active', this._activeTab === 'social');
+            aiTab.toggleClass('ert-settings-tab-active', this._activeTab === 'ai');
             proContent.toggleClass('ert-hidden', this._activeTab !== 'pro');
             inquiryContent.toggleClass('ert-hidden', this._activeTab !== 'inquiry');
             coreContent.toggleClass('ert-hidden', this._activeTab !== 'core');
             socialContent.toggleClass('ert-hidden', this._activeTab !== 'social');
+            aiContent.toggleClass('ert-hidden', this._activeTab !== 'ai');
         };
 
         this.plugin.registerDomEvent(proTab, 'click', () => { this._activeTab = 'pro'; updateTabState(); });
         this.plugin.registerDomEvent(inquiryTab, 'click', () => { this._activeTab = 'inquiry'; updateTabState(); });
         this.plugin.registerDomEvent(coreTab, 'click', () => { this._activeTab = 'core'; updateTabState(); });
         this.plugin.registerDomEvent(socialTab, 'click', () => { this._activeTab = 'social'; updateTabState(); });
+        this.plugin.registerDomEvent(aiTab, 'click', () => { this._activeTab = 'ai'; updateTabState(); });
         updateTabState();
 
         const isProActive = isProfessionalActive(this.plugin);
@@ -803,7 +811,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
         renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: proStack });
 
-        // Social Media Tab Content - APR Section
+        // Social Tab Content - APR Section
         renderAuthorProgressSection({ app: this.app, plugin: this.plugin, containerEl: socialContent });
 
         const inquiryStack = inquiryContent.createDiv({ cls: ERT_CLASSES.STACK });
@@ -890,7 +898,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const planetarySection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'planetary' } });
         renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl: planetarySection });
 
-        const aiSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'ai' } });
+        const aiSection = aiContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'ai' } });
         renderAiSection({
             app: this.app,
             plugin: this.plugin,
