@@ -82,9 +82,7 @@ function detectPlaintextCredentialPattern(serialized: string): string | null {
 
 
 
-// STATUS_COLORS now imported from constants
-// Note: Search highlighting is now handled entirely by addHighlightRectangles() in TimeLineView.ts
-// after the SVG is rendered. This simplifies the code and ensures a single source of truth.
+// Search highlighting is centralized in TimeLineView.addHighlightRectangles() after SVG render.
 
 export interface GetSceneDataOptions {
     filterBeatsBySystem?: boolean;
@@ -316,8 +314,7 @@ export default class RadialTimelinePlugin extends Plugin {
             this._settingsTabAdded = true;
         }
 
-        // Note: Frontmatter change detection is handled by the TimelineView with proper debouncing
-        // No metadata listener needed here to avoid triggering on body text changes
+        // Frontmatter detection is centralized in TimelineView debouncing; avoid duplicate listeners here.
 
         // Listen for tab changes and file manager interactions using Obsidian's events
         // This is more reliable than DOM events
@@ -849,8 +846,6 @@ export default class RadialTimelinePlugin extends Plugin {
         return this.settingsService.validateAndRememberPath(path);
     }
 
-    // Remove redundant parseSceneTitle method - use the one from utils/text.ts instead
-
     // ── Settings-aware refresh (tiered impact model) ─────────────────
     // Settings UI calls this instead of refreshTimelineIfNeeded(null) so
     // that only settings with a real visual effect trigger a render.
@@ -937,7 +932,7 @@ export default class RadialTimelinePlugin extends Plugin {
         this.hideBeatsStatusBar();
         // Clean up tooltip anchors appended to document.body
         cleanupTooltipAnchors();
-        // Note: Do NOT detach leaves here - Obsidian handles this automatically
+        // Do not detach leaves here; Obsidian owns leaf teardown.
     }
 
     public dispatch<T>(type: string, detail: T): void {

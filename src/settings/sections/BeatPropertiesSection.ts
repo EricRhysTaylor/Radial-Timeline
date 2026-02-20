@@ -1631,11 +1631,10 @@ export function renderStoryBeatsSection(params: {
         renderPreviewContent(system);
     };
 
-    // Create template beat note button — wrapped in a container for reliable stage gating.
-    // The wrapper is toggled by updateStageVisibility so async Setting updates can't leak.
+    // Keep action controls in a stable container so stage toggles do not leak stale button state.
     const designActionsContainer = beatSystemCard.createDiv();
     let createTemplatesButton: ButtonComponent | undefined;
-    let mergeTemplatesButton: ButtonComponent | undefined;
+    let repairBeatNotesButton: ButtonComponent | undefined;
     let refreshBeatAuditPrimaryAction: (() => void) | null = null;
     let primaryDesignAction: (() => Promise<void>) = async () => { await createBeatTemplates(); };
     const saveCurrentCustomSet = async (context: 'design' | 'fields' | 'generic' = 'generic'): Promise<void> => {
@@ -1695,7 +1694,7 @@ export function renderStoryBeatsSection(params: {
                 .onClick(() => { void primaryDesignAction(); });
         })
         .addButton(button => {
-            mergeTemplatesButton = button;
+            repairBeatNotesButton = button;
             button
                 .setButtonText('Repair beat notes')
                 .setTooltip('Update Act and Beat Model in frontmatter for misaligned beat notes. Prefix numbers are not changed.')
@@ -5362,15 +5361,15 @@ export function renderStoryBeatsSection(params: {
                 true,
                 async () => { /* no-op: disabled */ }
             );
-            if (mergeTemplatesButton) {
-                mergeTemplatesButton.setDisabled(true);
-                mergeTemplatesButton.buttonEl.addClass('ert-hidden');
+            if (repairBeatNotesButton) {
+                repairBeatNotesButton.setDisabled(true);
+                repairBeatNotesButton.buttonEl.addClass('ert-hidden');
             }
             setting.setDesc(`${baseDesc} Upgrade to Pro to create and repair beat notes.`);
             return;
         }
 
-        // Default button states before async lookup
+        // Reset action affordances before async lookup to avoid stale "Repair" UI.
         if (isDirtyCustom) {
             setPrimaryDesignButton(
                 'Save changes',
@@ -5393,9 +5392,9 @@ export function renderStoryBeatsSection(params: {
                 async () => { await createBeatTemplates(); }
             );
         }
-        if (mergeTemplatesButton) {
-            mergeTemplatesButton.setDisabled(true);
-            mergeTemplatesButton.buttonEl.addClass('ert-hidden');
+        if (repairBeatNotesButton) {
+            repairBeatNotesButton.setDisabled(true);
+            repairBeatNotesButton.buttonEl.addClass('ert-hidden');
         }
         if (isDirtyCustom) {
             setting.setDesc(`${baseDesc} Save changes before creating or repairing beat notes.`);
@@ -5523,18 +5522,18 @@ export function renderStoryBeatsSection(params: {
                 }
             }
 
-            // Merge button: show when misaligned beats, missing Beat Model, or legacy-matched notes exist (Custom only)
+            // Show Repair only when the beat-note audit reports canonical mismatches.
             const hasLegacyToRepair = legacyMatched > 0;
-            if (mergeTemplatesButton && isCustom && (hasMisaligned || hasMissingModel || hasLegacyToRepair)) {
-                mergeTemplatesButton.buttonEl.removeClass('ert-hidden');
-                mergeTemplatesButton.setDisabled(false);
+            if (repairBeatNotesButton && isCustom && (hasMisaligned || hasMissingModel || hasLegacyToRepair)) {
+                repairBeatNotesButton.buttonEl.removeClass('ert-hidden');
+                repairBeatNotesButton.setDisabled(false);
                 const repairCount = misaligned + missingModel + legacyMatched;
-                mergeTemplatesButton.setButtonText(`Repair ${repairCount} beat note${repairCount > 1 ? 's' : ''}`);
+                repairBeatNotesButton.setButtonText(`Repair ${repairCount} beat note${repairCount > 1 ? 's' : ''}`);
                 const repairBits: string[] = [];
                 if (misaligned > 0) repairBits.push(`${misaligned} misaligned`);
                 if (missingModel > 0) repairBits.push(`${missingModel} missing Beat Model`);
                 if (legacyMatched > 0) repairBits.push(`${legacyMatched} missing Beat Id`);
-                mergeTemplatesButton.setTooltip(`Update Act, Beat Model, and Beat Id for ${repairBits.join(' and ')} beat note${repairCount > 1 ? 's' : ''}. Prefix numbers are not changed.`);
+                repairBeatNotesButton.setTooltip(`Update Act, Beat Model, and Beat Id for ${repairBits.join(' and ')} beat note${repairCount > 1 ? 's' : ''}. Prefix numbers are not changed.`);
             }
 
             if (hasDuplicates) {
