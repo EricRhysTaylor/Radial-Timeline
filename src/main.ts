@@ -40,8 +40,9 @@ import { DEFAULT_GEMINI_MODEL_ID } from './constants/aiDefaults';
 import { DEFAULT_SETTINGS } from './settings/defaults';
 import { migrateAiSettings } from './ai/settings/migrateAiSettings';
 import { validateAiSettings } from './ai/settings/validateAiSettings';
-import { mapAiProviderToLegacyProvider } from './ai/settings/aiSettings';
+import { buildDefaultAiSettings, mapAiProviderToLegacyProvider } from './ai/settings/aiSettings';
 import { findBuiltinByAlias } from './ai/registry/builtinModels';
+import { migrateLegacyKeysToSecretStorage } from './ai/credentials/credentials';
 import { PLOT_SYSTEM_NAMES } from './utils/beatsSystems';
 import { generateBeatGuid } from './utils/beatsInputNormalize';
 import type { BeatSystemConfig } from './types/settings';
@@ -68,6 +69,7 @@ const DEV_PLAINTEXT_KEY_PATTERNS: Array<{ label: string; regex: RegExp }> = [
     { label: 'Bearer header token', regex: /\bBearer\s+[A-Za-z0-9._~+\/=-]{8,}/i },
     { label: 'Header-like high-entropy secret', regex: /(authorization|x-api-key|apiKey|token|secret)["']?\s*[:=]\s*["'][A-Za-z0-9+/_=-]{40,}/i }
 ];
+const AI_CANONICAL_RESET_WARNING = 'AI settings were reset to the canonical default setup. Review AI Strategy and choose your preferred provider/policy.';
 
 function detectPlaintextCredentialPattern(serialized: string): string | null {
     for (const pattern of DEV_PLAINTEXT_KEY_PATTERNS) {
@@ -486,6 +488,44 @@ export default class RadialTimelinePlugin extends Plugin {
             this.settings.aiSettings.migrationWarnings = Array.from(prior);
             this.settings.aiSettings.upgradedBannerPending = true;
         }
+
+        if (!this.settings.aiCanonicalResetCompleted) {
+            const previous = this.settings.aiSettings ?? buildDefaultAiSettings();
+            const reset = buildDefaultAiSettings();
+            reset.credentials = {
+                ...reset.credentials,
+                ...(previous.credentials || {})
+            };
+            reset.connections = {
+                ...reset.connections,
+                ollamaBaseUrl: previous.connections?.ollamaBaseUrl || this.settings.localBaseUrl || reset.connections?.ollamaBaseUrl
+            };
+            const priorWarnings = new Set(previous.migrationWarnings || []);
+            priorWarnings.add(AI_CANONICAL_RESET_WARNING);
+            reset.migrationWarnings = Array.from(priorWarnings);
+            reset.upgradedBannerPending = true;
+            this.settings.aiSettings = validateAiSettings(reset).value;
+            this.settings.aiCanonicalResetCompleted = true;
+        }
+
+        const hasLegacyAiKeys = !!(
+            (this.settings.openaiApiKey || '').trim()
+            || (this.settings.anthropicApiKey || '').trim()
+            || (this.settings.geminiApiKey || '').trim()
+            || (this.settings.localApiKey || '').trim()
+        );
+
+        if (hasLegacyAiKeys) {
+            const keyMigration = await migrateLegacyKeysToSecretStorage(this);
+            if (keyMigration.warnings.length) {
+                const canonical = this.settings.aiSettings ?? buildDefaultAiSettings();
+                const prior = new Set(canonical.migrationWarnings || []);
+                keyMigration.warnings.forEach(warning => prior.add(warning));
+                canonical.migrationWarnings = Array.from(prior);
+                this.settings.aiSettings = canonical;
+            }
+        }
+
         const aiSettingsAfter = JSON.stringify(this.settings.aiSettings ?? null);
         const aiSettingsMigrated = aiSettingsBefore !== aiSettingsAfter;
 

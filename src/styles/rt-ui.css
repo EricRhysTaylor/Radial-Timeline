@@ -1968,15 +1968,20 @@
 
 .ert-ui.ert-scope--settings .ert-ai-section-card {
   padding: var(--ert-pad-md);
+  position: relative;
+  overflow: visible;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-quick-grid {
   grid-template-columns: repeat(3, minmax(220px, 1fr));
   gap: var(--ert-gap-sm) var(--ert-gap-md);
+  overflow: visible;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-quick-grid .ert-ai-grid-item {
   margin: 0;
+  position: relative;
+  overflow: visible;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-quick-grid .ert-ai-strategy-row {
@@ -1990,6 +1995,8 @@
   border-radius: 10px;
   background: color-mix(in srgb, var(--background-secondary) 78%, transparent);
   padding: 8px 10px;
+  position: relative;
+  overflow: visible;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-quick-grid .ert-ai-strategy-row .setting-item-info {
@@ -2012,11 +2019,18 @@
   grid-row: 1;
   justify-self: end;
   margin: 0;
+  position: relative;
+  z-index: 3;
+  pointer-events: auto;
+  overflow: visible;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-quick-grid .ert-ai-strategy-row .ert-ai-strategy-select {
   width: 180px;
   min-width: 180px;
+  position: relative;
+  z-index: 4;
+  pointer-events: auto;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-quick-grid .ert-ai-strategy-row__desc {
@@ -2055,6 +2069,8 @@
 
 .ert-ui.ert-scope--settings .ert-ai-large-handling-body {
   gap: var(--ert-gap-sm);
+  position: relative;
+  overflow: visible;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-capacity-section {
@@ -2112,6 +2128,8 @@
   border-radius: 10px;
   background: color-mix(in srgb, var(--background-secondary) 84%, transparent);
   padding: 10px 12px;
+  position: relative;
+  overflow: visible;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-fold > summary {
@@ -2127,6 +2145,19 @@
 
 .ert-ui.ert-scope--settings .ert-ai-fold[open] > summary {
   margin-bottom: 10px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-large-handling :is(.setting-item, .setting-item-control) {
+  position: relative;
+  z-index: 3;
+  pointer-events: auto;
+  overflow: visible;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-large-handling .ert-ai-strategy-select {
+  position: relative;
+  z-index: 4;
+  pointer-events: auto;
 }
 
 @media (max-width: 1200px) {

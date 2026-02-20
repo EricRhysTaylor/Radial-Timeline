@@ -387,6 +387,7 @@ export interface RadialTimelineSettings {
     localSendPulseToAiReport?: boolean;
     openaiModelId?: string;
     aiSettings?: AiSettingsV1;
+    aiCanonicalResetCompleted?: boolean;
     aiRegistryCacheJson?: string;
     aiProviderSnapshotCacheJson?: string;
     enableAiSceneAnalysis: boolean;

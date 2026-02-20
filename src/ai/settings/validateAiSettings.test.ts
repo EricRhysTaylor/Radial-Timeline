@@ -68,4 +68,18 @@ describe('validateAiSettings', () => {
         expect(result.value.analysisPackaging).toBe('singlePassOnly');
         expect((result.value as unknown as Record<string, unknown>).analysisMethod).toBeUndefined();
     });
+
+    it('falls back invalid model policy type to latestStable', () => {
+        const result = validateAiSettings({
+            schemaVersion: 1,
+            provider: 'openai',
+            modelPolicy: { type: 'manual' as unknown as AiSettingsV1['modelPolicy']['type'] },
+            overrides: {},
+            aiAccessProfile: {},
+            privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false }
+        } as unknown as AiSettingsV1);
+
+        expect(result.value.modelPolicy.type).toBe('latestStable');
+        expect(result.warnings.some(warning => warning.includes('Unknown model policy'))).toBe(true);
+    });
 });

@@ -160,6 +160,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     localApiKey: '',
     localSendPulseToAiReport: true,
     aiSettings: buildDefaultAiSettings(),
+    aiCanonicalResetCompleted: false,
     aiRegistryCacheJson: '',
     aiProviderSnapshotCacheJson: '',
     enablePlanetaryTime: false,

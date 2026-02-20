@@ -100,6 +100,12 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
         }
     }
 
+    const validPolicyTypes = new Set(['pinned', 'latestStable', 'latestFast', 'latestCheap', 'profile']);
+    if (!validPolicyTypes.has(value.modelPolicy.type)) {
+        warnings.push(`Unknown model policy "${String(value.modelPolicy.type)}"; switching to latestStable.`);
+        value.modelPolicy = { type: 'latestStable' };
+    }
+
     const mode = value.overrides.maxOutputMode;
     if (mode !== 'auto' && mode !== 'high' && mode !== 'max') {
         value.overrides.maxOutputMode = 'auto';

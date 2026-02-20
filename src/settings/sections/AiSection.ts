@@ -89,12 +89,12 @@ export function renderAiSection(params: {
 
     const heroTitle = aiHero.createEl('h3', {
         cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title`,
-        text: 'AI guidance with clear model selection and focused analysis.'
+        text: 'A deep editorial lens for your manuscript.'
     });
     const heroOnState = aiHero.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-hero-state-on` });
     heroOnState.createEl('p', {
         cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
-        text: 'Configure how AI supports your manuscript—choose a provider, select a strategy, and set feature defaults. See exactly why each model is selected and how it will behave.'
+        text: 'Radial Timeline’s AI does not rewrite your work. It acts as a rigorous, genre-aware editor - analyzing structure, momentum, and continuity across scenes. Use it to stress-test your manuscript, uncover hidden contradictions, and sharpen narrative force while your voice remains fully your own.'
     });
     const heroOnFeatures = heroOnState.createDiv({
         cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
@@ -102,9 +102,10 @@ export function renderAiSection(params: {
     heroOnFeatures.createEl('h5', { text: 'AI HIGHLIGHTS', cls: 'ert-kicker' });
     const heroOnList = heroOnFeatures.createEl('ul', { cls: ERT_CLASSES.STACK });
     [
-        { icon: 'brain-circuit', text: 'Smart model selection - Stable routing by capability, strategy, and access level.' },
-        { icon: 'shield-check', text: 'Clear reasoning - See why a model was chosen and whether it is available to your key.' },
-        { icon: 'folder-open', text: 'Safe by design - Your manuscript fields remain unchanged while AI is configured.' }
+        { icon: 'waves', text: 'Inquiry - Ask precise, cross-scene questions and receive structured editorial insight.' },
+        { icon: 'activity', text: 'Pulse (Triplet Analysis) - Examine scenes in context using Radial Timeline’s three-scene lens.' },
+        { icon: 'waypoints', text: 'Gossamer Momentum - Measure beat-level tension and narrative drive.' },
+        { icon: 'sparkles', text: 'Force multiplier - Expand analytical reach while saving time with contextual, actionable insight.' }
     ].forEach(item => {
         const li = heroOnList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
         const icon = li.createSpan({ cls: 'ert-feature-icon' });
@@ -115,19 +116,22 @@ export function renderAiSection(params: {
     const heroOffState = aiHero.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-hero-state-off` });
     heroOffState.createEl('p', {
         cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
-        text: 'AI tools and analysis visuals are paused. Turn AI on to restore guided insight and automated scene analysis.'
+        text: 'Your manuscript is being shaped through human judgment, revision, and creative instinct. Radial Timeline continues to support structure, sequencing, and story architecture without automated analysis.'
+    });
+    heroOffState.createEl('p', {
+        cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
+        text: 'AI in Radial Timeline is editorial - never generative. It does not replace your voice or substitute machine-written prose. It can be enabled at any time when you want an additional layer of structured insight.'
     });
     const heroOffFeatures = heroOffState.createDiv({
         cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
     });
-    heroOffFeatures.createEl('h5', { text: 'DISABLED AI FEATURES', cls: 'ert-kicker' });
+    heroOffFeatures.createEl('h5', { text: 'AI TOOLS AVAILABLE WHEN ENABLED', cls: 'ert-kicker' });
     const heroOffList = heroOffFeatures.createEl('ul', { cls: ERT_CLASSES.STACK });
     [
-        'Inquiry mode - Manuscript-wide questions, signals, and structured analysis.',
-        'Scene analysis & Pulse - Hover summaries, tension grades, and triplet context.',
-        'Gossamer scoring - Momentum and tonal shift evaluation.',
-        'Smart summaries & runtime checks - Clarity refresh and structural validation.',
-        'Command tools & logs - AI actions and diagnostic output.'
+        'Inquiry - Cross-scene structural analysis via custom inquiry questions.',
+        'Pulse (Triplet Analysis) - Context-aware scene evaluation.',
+        'Gossamer Momentum - Beat-level narrative momentum mapping.',
+        'Enhanced features such as scene summaries & runtime estimates - Tools that speed workflow.'
     ].forEach(text => {
         const li = heroOffList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
         const icon = li.createSpan({ cls: 'ert-feature-icon' });
@@ -136,7 +140,7 @@ export function renderAiSection(params: {
     });
     heroOffState.createDiv({
         cls: 'ert-ai-hero-muted',
-        text: 'Your manuscript fields remain unchanged while AI is off.'
+        text: 'Your voice leads. AI supports.'
     });
 
     const aiStateContent = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
@@ -147,8 +151,8 @@ export function renderAiSection(params: {
         heroToggleLabel.setText(enabled ? 'Active' : 'Inactive');
         heroToggleLabel.toggleClass('is-active', enabled);
         heroTitle.setText(enabled
-            ? 'AI guidance with clear model selection and focused analysis.'
-            : 'AI guidance is currently turned off.');
+            ? 'A deep editorial lens for your manuscript.'
+            : 'AI guidance is currently paused.');
         heroOnState.toggleClass('ert-settings-hidden', !enabled);
         heroOnState.toggleClass('ert-settings-visible', enabled);
         heroOffState.toggleClass('ert-settings-hidden', enabled);
@@ -1006,14 +1010,37 @@ export function renderAiSection(params: {
 
     applyQuickSetupLayoutOrder();
 
+    const dropdownHasValue = (dropdown: DropdownComponent | null, value: string): boolean => {
+        if (!dropdown) return false;
+        return Array.from(dropdown.selectEl.options).some(option => option.value === value);
+    };
+
+    const setDropdownValueSafe = (dropdown: DropdownComponent | null, preferred: string, fallback?: string): void => {
+        if (!dropdown) return;
+        if (dropdownHasValue(dropdown, preferred)) {
+            dropdown.setValue(preferred);
+            return;
+        }
+        if (fallback && dropdownHasValue(dropdown, fallback)) {
+            dropdown.setValue(fallback);
+        }
+    };
+
     const refreshRoutingUi = (): void => {
         const aiSettings = ensureCanonicalAiSettings();
         const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
         const providerAliases = getProviderAliases(provider);
         const policy = aiSettings.modelPolicy;
+        const policyType = (
+            policy.type === 'pinned'
+            || policy.type === 'profile'
+            || policy.type === 'latestStable'
+            || policy.type === 'latestFast'
+            || policy.type === 'latestCheap'
+        ) ? policy.type : 'latestStable';
 
-        providerDropdown?.setValue(provider);
-        policyDropdown?.setValue(policy.type);
+        setDropdownValueSafe(providerDropdown, provider, 'openai');
+        setDropdownValueSafe(policyDropdown, policyType, 'latestStable');
 
         if (pinnedDropdown) {
             pinnedDropdown.selectEl.empty();
@@ -1030,13 +1057,24 @@ export function renderAiSection(params: {
             }
         }
 
-        profileDropdown?.setValue(policy.type === 'profile' ? policy.profile : 'deepReasoner');
-        outputModeDropdown?.setValue(aiSettings.overrides.maxOutputMode || 'auto');
-        reasoningDepthDropdown?.setValue(aiSettings.overrides.reasoningDepth || 'standard');
-        executionPreferenceDropdown?.setValue(aiSettings.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : 'automatic');
+        const profileValue = (policy.type === 'profile' && (
+            policy.profile === 'deepReasoner'
+            || policy.profile === 'deepWriter'
+            || policy.profile === 'balancedAnalysis'
+        )) ? policy.profile : 'deepReasoner';
+
+        setDropdownValueSafe(profileDropdown, profileValue, 'deepReasoner');
+        setDropdownValueSafe(outputModeDropdown, aiSettings.overrides.maxOutputMode || 'auto', 'auto');
+        setDropdownValueSafe(reasoningDepthDropdown, aiSettings.overrides.reasoningDepth || 'standard', 'standard');
+        setDropdownValueSafe(executionPreferenceDropdown, aiSettings.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : 'automatic', 'automatic');
         updateExecutionPreferenceNote();
         remoteRegistryToggle?.setValue(aiSettings.privacy.allowRemoteRegistry);
         providerSnapshotToggle?.setValue(aiSettings.privacy.allowProviderSnapshot);
+
+        [providerSetting, policySetting, outputModeSetting, reasoningDepthSetting].forEach(setting => {
+            setting.settingEl.toggleClass('ert-settings-hidden', false);
+            setting.settingEl.toggleClass('ert-settings-visible', true);
+        });
 
         const shouldShowPinned = policy.type === 'pinned';
         const shouldShowProfile = policy.type === 'profile';
@@ -1054,6 +1092,11 @@ export function renderAiSection(params: {
 
         upgradeBannerSetting.settingEl.toggleClass('ert-settings-hidden', !aiSettings.upgradedBannerPending);
         upgradeBannerSetting.settingEl.toggleClass('ert-settings-visible', !!aiSettings.upgradedBannerPending);
+
+        capacityProvider.valueEl.setText(providerLabel[provider]);
+        capacitySafeInput.valueEl.setText('Calculating...');
+        capacityOutput.valueEl.setText('Calculating...');
+        capacityMode.valueEl.setText(aiSettings.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic');
 
         try {
             const selection = selectModel(BUILTIN_MODELS, {
