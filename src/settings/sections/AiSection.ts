@@ -228,7 +228,7 @@ export function renderAiSection(params: {
     const packagingList = packagingSection.createEl('ul', { cls: ERT_CLASSES.STACK });
     [
         { icon: 'zap', text: 'Uses a single request when the selected content fits safely.' },
-        { icon: 'layers', text: 'For large submissions, analyzes the manuscript in structured segments and combines the results into one final response.' },
+        { icon: 'layers', text: 'For large submissions, analyzes the manuscript in structured segments and combines the results.' },
         { icon: 'anchor', text: 'Stable scene IDs keep references aligned across all segments.' }
     ].forEach(item => {
         const li = packagingList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
