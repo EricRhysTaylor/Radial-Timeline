@@ -1,8 +1,6 @@
 /*
  * Gossamer Prompt Builder - Full Manuscript Analysis
  */
-import { extractBeatOrder } from '../../utils/gossamer';
-
 export function buildGossamerPrompt(
   manuscriptText: string,
   beatSystem: string,

@@ -4,7 +4,6 @@
  * This module is only loaded in development builds
  */
 import type RadialTimelinePlugin from '../main';
-import type { RadialTimelineView } from '../view/TimeLineView';
 
 export interface DebugSnapshot {
     version: number;
@@ -95,4 +94,3 @@ export function buildSnapshot(plugin: RadialTimelinePlugin): DebugSnapshot {
         },
     };
 }
-
