@@ -139,7 +139,7 @@ export function getTemplateParts(
             const base = templates?.base
                 ?? 'Class: Backdrop\nWhen:\nEnd:\nContext:';
             const advancedRaw = templates?.advanced ?? '';
-            // Filter deprecated Synopsis from advanced writes
+            // Filter legacy Synopsis key from advanced writes.
             const advanced = filterDeprecatedBackdropKeys(advancedRaw);
             const merged = advanced.trim()
                 ? mergeYamlTemplates(base, advanced)

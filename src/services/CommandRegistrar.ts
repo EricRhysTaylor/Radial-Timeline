@@ -346,7 +346,7 @@ export class CommandRegistrar {
                 new Notice(`Manuscript exported to ${path}`);
                 return { savedPath: path, messages: statusMessages };
             } else {
-                // Pandoc execution lives in exportFormats; validate layout/template before invocation.
+                // Pandoc execution lives in `runPandocOnContent`; validate layout/template before invocation.
                 if (result.outputFormat !== 'pdf') {
                     throw new Error(`Unsupported manuscript output format: ${result.outputFormat}`);
                 }
@@ -585,11 +585,10 @@ export class CommandRegistrar {
 
             const path = `${sanitizedPath}/${filename}`;
 
-            // Use basic or advanced template based on type
+            // YAML template resolution is centralized in `getTemplateParts()`; do not re-merge templates here.
             const sceneParts = getTemplateParts('Scene', this.plugin.settings);
             const template = type === 'advanced' ? sceneParts.merged : sceneParts.base;
 
-            // Default placeholder values — screenplay/podcast pre-fill Runtime
             const today = new Date().toISOString().split('T')[0];
             const content = generateSceneContent(template, {
                 act: 1,
@@ -602,17 +601,14 @@ export class CommandRegistrar {
                 placeList: type === 'screenplay' ? ['INT. LOCATION'] : ['Unknown']
             });
 
-            // Ensure the content has structural scene identity and class markers.
             let finalContent = ensureSceneTemplateFrontmatter(content).frontmatter;
 
-            // Pre-fill Runtime for screenplay/podcast
             if (type === 'screenplay') {
                 finalContent = finalContent.replace(/^(Runtime:)\s*$/m, '$1 3:00');
             } else if (type === 'podcast') {
                 finalContent = finalContent.replace(/^(Runtime:)\s*$/m, '$1 8:00');
             }
 
-            // Build file content: YAML frontmatter + format-specific body scaffold
             let body = '';
             if (type === 'screenplay') {
                 body = SCREENPLAY_BODY_SCAFFOLD;

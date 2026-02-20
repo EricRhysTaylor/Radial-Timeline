@@ -92,15 +92,15 @@ export class SceneAnalysisProcessingModal extends Modal {
     private readonly isEntireSubplot?: boolean; // Track if this is "entire subplot" vs "flagged scenes"
     private readonly taskType: 'pulse' | 'synopsis';
 
-    private processedResults: Map<string, string> = new Map(); // Store summary results for apply phase
-    private processedSynopsisResults: Map<string, string> = new Map(); // Store synopsis results for apply phase
-    private hasPendingSynopsisResults: boolean = false; // Flag to indicate results are ready to apply
+    private processedResults: Map<string, string> = new Map(); // Staged Summary results for apply/discard flow.
+    private processedSynopsisResults: Map<string, string> = new Map(); // Optional staged Synopsis writes (legacy key).
+    private hasPendingSynopsisResults: boolean = false; // Whether staged results are available to apply.
 
     private selectedMode: ProcessingMode = 'flagged';
     public isProcessing: boolean = false;
     private abortController: AbortController | null = null;
 
-    // Synopsis-specific controls
+    // Summary-refresh controls
     private synopsisTargetWords: number = 200;
     private synopsisWeakThreshold: number = 75;
 
@@ -156,7 +156,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.isEntireSubplot = isEntireSubplot;
         this.taskType = taskType;
 
-        // Initialize synopsis settings from plugin settings
+        // Summary-refresh settings are persisted on plugin settings (legacy key names retained for compatibility).
         this.synopsisTargetWords = plugin.settings.synopsisTargetWords ?? 200;
         this.synopsisWeakThreshold = plugin.settings.synopsisWeakThreshold ?? 75;
     }
@@ -404,7 +404,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             return;
         }
 
-        // Synopsis mode: use checkmark icon instead of grades
+        // Summary-refresh mode uses completion state instead of Pulse grades.
         if (this.taskType === 'synopsis') {
             entry.addClass('rt-synopsis-complete');
 
@@ -496,7 +496,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         this.renderProcessingHero(contentEl);
 
-        // Summary & Synopsis controls (only for synopsis/summary mode)
+        // Summary-refresh controls (plus optional legacy Synopsis update).
         if (this.taskType === 'synopsis') {
             const controlsCard = contentEl.createDiv({ cls: 'rt-glass-card rt-synopsis-controls' });
 
@@ -579,7 +579,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             // Horizontal rule separator
             controlsCard.createEl('hr', { cls: 'rt-synopsis-control-divider' });
 
-            // Also update Synopsis checkbox
+            // Optional write-through to the legacy Synopsis key.
             const synopsisControl = controlsCard.createDiv({ cls: 'rt-synopsis-control rt-synopsis-control--row' });
             const synopsisWordLimit = getSynopsisGenerationWordLimit(this.plugin.settings);
             const synopsisCheckboxId = `rt-synopsis-update-toggle-${Date.now()}`;
@@ -967,8 +967,8 @@ export class SceneAnalysisProcessingModal extends Modal {
     }
 
     /**
-     * Store summary (and optional synopsis) results for the apply phase.
-     * Called from SynopsisCommands when processing completes.
+     * Store Summary (and optional legacy Synopsis) results for the apply phase.
+     * Called from Summary refresh processing when generation completes.
      * The modal will show Apply/Discard in the completion summary.
      */
     public setSynopsisResults(summaryResults: Map<string, string>, synopsisResults?: Map<string, string>): void {
@@ -1058,13 +1058,13 @@ export class SceneAnalysisProcessingModal extends Modal {
                         // Write Summary (primary artifact)
                         fm['Summary'] = newSummary;
 
-                        // Write Synopsis if also generated
+                        // Write legacy Synopsis only when the optional pass produced a value.
                         const newSynopsis = processedSynopsisResults.get(path);
                         if (newSynopsis) {
                             fm['Synopsis'] = newSynopsis;
                         }
 
-                        // Replace Summary Update / legacy Synopsis Update flag with timestamp
+                        // Normalize update markers onto Summary Update while preserving legacy-key compatibility.
                         const summaryUpdateKeys = ['Summary Update', 'SummaryUpdate', 'summaryupdate'];
                         const legacyKeys = ['Synopsis Update', 'SynopsisUpdate', 'synopsisupdate'];
 
@@ -1079,7 +1079,7 @@ export class SceneAnalysisProcessingModal extends Modal {
                             }
                         }
 
-                        // Fall back to legacy Synopsis Update keys (migrate to Summary Update)
+                        // Fall back to legacy Synopsis Update markers, then migrate to Summary Update.
                         if (!updatedFlag) {
                             for (const key of legacyKeys) {
                                 if (key in fm) {
@@ -1468,7 +1468,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         contentEl.querySelectorAll('.rt-pulse-summary-tip').forEach(el => el.remove());
 
-        // Only show log message for pulse analysis (synopsis doesn't write detailed logs)
+        // Only Pulse analysis writes detailed interaction logs in this modal flow.
         if (this.plugin.settings.logApiInteractions && this.taskType !== 'synopsis') {
             const logNoteEl = contentEl.createDiv({ cls: 'rt-pulse-summary-tip' });
             logNoteEl.createEl('strong', { text: 'Logs: ' });
@@ -1490,9 +1490,9 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (this.actionButtonContainer) {
             this.actionButtonContainer.empty();
 
-            // Synopsis mode with pending results: show Apply/Discard buttons
+            // Summary-refresh mode with staged results: show Apply/Discard actions.
             if (this.taskType === 'synopsis' && this.hasPendingSynopsisResults && this.processedResults.size > 0) {
-                // Add synopsis apply confirmation card above the buttons
+                // Render apply confirmation card above the action row.
                 contentEl.querySelectorAll('.rt-synopsis-apply-card').forEach(el => el.remove());
                 const applyCard = contentEl.createDiv({ cls: 'rt-glass-card rt-synopsis-apply-card' });
                 const hasSynopsisToo = this.processedSynopsisResults.size > 0;

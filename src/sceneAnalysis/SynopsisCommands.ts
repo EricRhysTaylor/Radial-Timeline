@@ -4,13 +4,13 @@
  * Handles logic for the "Summary refresh" command.
  *
  * Summary = extended AI-generated scene analysis (≈200–300 words, configurable) — primary artifact for Inquiry corpus.
- * Synopsis = concise, skimmable navigation text (strict word-capped) — optional for scene hovers.
+ * Hover blurb = concise scene text (strict word-capped), persisted to the legacy `Synopsis` key when enabled.
  */
 
 import { Vault, Notice, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { SceneAnalysisProcessingModal, type ProcessingMode, type SceneQueueItem } from '../modals/SceneAnalysisProcessingModal';
-import { getAllSceneData, compareScenesByOrder, getSummaryUpdateFlag, hasProcessableContent } from './data';
+import { getAllSceneData, compareScenesByOrder, getSummaryUpdateFlag } from './data';
 import { classifySynopsis } from './synopsisQuality';
 import { buildSummaryPrompt, buildSynopsisPrompt } from '../ai/prompts/synopsis';
 import { createAiRunner } from './RequestRunner';
@@ -122,10 +122,10 @@ async function persistSummaryForScene(
             setCaseInsensitiveField(frontmatter, 'Synopsis', synopsis);
         }
 
-        // Keep Summary near Synopsis for scene authoring readability.
+        // Keep Summary adjacent to the legacy Synopsis key for readability in frontmatter.
         placeSummaryAfterSynopsis(frontmatter);
 
-        // Replace Summary Update / legacy Synopsis Update flag with timestamp
+        // Normalize update markers onto Summary Update while preserving legacy-key compatibility.
         const summaryUpdateKeys = ['Summary Update', 'SummaryUpdate', 'summaryupdate'];
         const legacyKeys = ['Synopsis Update', 'SynopsisUpdate', 'synopsisupdate'];
 
@@ -213,14 +213,13 @@ export async function processSynopsisByManuscriptOrder(
     plugin: RadialTimelinePlugin,
     vault: Vault
 ): Promise<void> {
-    // If processing is already active, reopen that modal instead of creating a new setup flow.
+    // Reopen active modal state instead of creating a second run context.
     if (plugin.activeBeatsModal && plugin.activeBeatsModal.isProcessing) {
         plugin.activeBeatsModal.open();
         new Notice('Reopening active processing session...');
         return;
     }
 
-    // 1. Open Modal
     const modal = new SceneAnalysisProcessingModal(
         plugin.app,
         plugin,
@@ -231,7 +230,7 @@ export async function processSynopsisByManuscriptOrder(
         undefined,
         undefined,
         undefined,
-        'synopsis' // Specify taskType
+        'synopsis' // Legacy task identifier for Summary refresh mode.
     );
     modal.open();
 }
@@ -253,7 +252,7 @@ async function runSynopsisBatch(
     const alsoUpdateSynopsis = plugin.settings.alsoUpdateSynopsis ?? false;
     const synopsisMaxWords = getSynopsisGenerationWordLimit(plugin.settings);
 
-    // Filter scenes based on mode — now targeting Summary field
+    // Scene selection targets Summary quality and freshness gates.
     const scenesToProcess = allScenes.filter(scene => {
         const quality = classifySynopsis(scene.frontmatter.Summary, threshold);
         const isFlagged = normalizeBooleanValue(getSummaryUpdateFlag(scene.frontmatter));
@@ -330,7 +329,7 @@ async function runSynopsisBatch(
                 if (newSummary) {
                     let newSynopsis: string | undefined;
 
-                    // --- Step 2: Generate Synopsis (optional, only if checkbox enabled) ---
+                    // Optional second pass: generate the hover blurb (stored in the legacy Synopsis key).
                     if (alsoUpdateSynopsis) {
                         try {
                             const synopsisPrompt = buildSynopsisPrompt(

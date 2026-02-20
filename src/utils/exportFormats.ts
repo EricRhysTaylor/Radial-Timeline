@@ -1,5 +1,6 @@
 /*
- * Export format helpers (manuscript + outline + Pandoc)
+ * Export format helpers (manuscript + outline + Pandoc).
+ * Keep this module focused on formatting and process execution.
  */
 
 import { normalizePath, FileSystemAdapter, Vault, TFile } from 'obsidian';
@@ -109,9 +110,6 @@ export function buildPrecursorFilename(
 // Export Filename Acronyms
 // ════════════════════════════════════════════════════════════════════════════
 
-/**
- * Get acronym for scene ordering
- */
 function getOrderAcronym(order: ManuscriptOrder): string {
     switch (order) {
         case 'narrative': return 'Narr';
@@ -122,9 +120,6 @@ function getOrderAcronym(order: ManuscriptOrder): string {
     }
 }
 
-/**
- * Get acronym for outline preset
- */
 function getOutlinePresetAcronym(preset: OutlinePreset): string {
     switch (preset) {
         case 'beat-sheet': return 'BtSh';
@@ -136,9 +131,6 @@ function getOutlinePresetAcronym(preset: OutlinePreset): string {
     }
 }
 
-/**
- * Get acronym for manuscript preset (only for Pro presets)
- */
 function getManuscriptPresetAcronym(preset: ManuscriptPreset): string {
     switch (preset) {
         case 'screenplay': return 'Scrn';
@@ -148,9 +140,6 @@ function getManuscriptPresetAcronym(preset: ManuscriptPreset): string {
     }
 }
 
-/**
- * Generate friendly timestamp: "Jan 12 @ 3.32PM"
- */
 export function generateFriendlyTimestamp(): string {
     const now = new Date();
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -190,8 +179,7 @@ export function buildExportFilename(options: ExportFilenameOptions): string {
     const orderPart = hasSubplotFilter ? `Sub-${orderAcronym}` : orderAcronym;
     const isPandocExport = options.exportType === 'manuscript' && options.extension === 'pdf';
 
-    // Book-titled filename for Pandoc exports: readable format with preset, order, timestamp.
-    // Example: "Working Title Novl Narr Feb 14 @ 11.51AM.pdf"
+    // Pandoc exports use readable book-titled filenames for author-facing artifacts.
     if (isPandocExport && options.fileStem) {
         const presetAcronym = getManuscriptPresetAcronym(options.manuscriptPreset || 'novel');
         const isDefault = options.fileStem === 'Manuscript' || options.fileStem === 'Untitled-Manuscript';
@@ -297,32 +285,26 @@ export function buildOutlineExport(
     const runtimes = selection.runtimes ?? [];
     const wordCounts = selection.wordCounts ?? [];
 
-    // Calculations for runtime
     const totalRuntimeSeconds = (runtimes as (number | null)[]).reduce<number>(
         (sum, r) => sum + (r ?? 0),
         0
     );
     const totalFormattedRuntime = formatRuntimeValue(totalRuntimeSeconds);
 
-    // Calculations for writing planning
     const draftingWpm = runtimeSettings?.sessionPlanning?.draftingWpm || 0;
     const dailyMinutes = runtimeSettings?.sessionPlanning?.dailyMinutes || 0;
-    
-    // Estimate writing time (hours)
-    // Formula: (WordCount / WPM) / 60
+
     const calculateWritingHours = (words: number) => {
         if (!draftingWpm || draftingWpm <= 0) return 0;
         return (words / draftingWpm) / 60;
     };
-    
-    // Total estimated writing hours
+
     const totalWords = (wordCounts as (number | null)[]).reduce<number>(
         (sum, w) => sum + (w ?? 0),
         0
     );
     const totalWritingHours = calculateWritingHours(totalWords);
-    
-    // Sessions calculation
+
     const dailyHours = dailyMinutes > 0 ? dailyMinutes / 60 : 0;
     const totalSessions = dailyHours > 0 ? Math.ceil(totalWritingHours / dailyHours) : 0;
 
@@ -379,7 +361,6 @@ export function buildOutlineExport(
                 return card;
             });
             
-            // Add summary metadata if planning data is available
             const output: Record<string, unknown> = {
                 cards,
                 summary: {

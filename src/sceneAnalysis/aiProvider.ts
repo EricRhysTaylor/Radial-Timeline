@@ -81,6 +81,7 @@ async function writePulseLog(
     if (payload.commandContext) scopeBits.push(`Command ${payload.commandContext}`);
     const scopeTarget = scopeBits.join(' · ');
 
+    // `sanitizeLogPayload` must run before any disk write so logs never persist plaintext credentials.
     const { sanitized: sanitizedPayload, hadRedactions } = sanitizeLogPayload(payload.requestPayload ?? null);
     const tokenUsage = extractTokenUsage(payload.provider, payload.responseData);
     const sanitizedNotes = hadRedactions
@@ -93,7 +94,7 @@ async function writePulseLog(
     const isError = payload.status === 'error';
     const shouldWriteContent = plugin.settings.logApiInteractions || isError;
 
-    // Write Content Log first (if enabled) so we know whether to mark it as written
+    // Content log is optional and must stay non-blocking for generation flow.
     let contentLogWritten = false;
     if (shouldWriteContent) {
         try {
@@ -142,11 +143,11 @@ async function writePulseLog(
             }
         } catch (e) {
             console.error('[Pulse][log] Failed to write content log:', sanitizeLogPayload(e).sanitized);
-            // Non-blocking: continue with summary log
+            // Non-blocking: continue with summary log.
         }
     }
 
-    // Write Summary Log (always written for AI runs)
+    // Summary log is always attempted for AI runs.
     try {
         const summaryFolderPath = normalizePath(resolveAiLogFolder());
         const existing = vault.getAbstractFileByPath(summaryFolderPath);
@@ -190,7 +191,7 @@ async function writePulseLog(
         await vault.create(summaryFilePath, summaryContent.trim());
     } catch (e) {
         console.error('[Pulse][log] Failed to write summary log:', sanitizeLogPayload(e).sanitized);
-        // Non-blocking: logging failures should not break the AI run
+        // Non-blocking: logging failures should not break the AI run.
     }
 }
 
@@ -217,6 +218,7 @@ export async function callAiProvider(
 
     try {
         let jsonSchema: Record<string, unknown>;
+        // Legacy `synopsis` commandContext maps to Summary refresh prompts for backward compatibility.
         if (commandContext === 'synopsis') {
             const { getSummaryJsonSchema, getSummarySystemPrompt } = await import('../ai/prompts/synopsis');
             jsonSchema = getSummaryJsonSchema();
