@@ -150,7 +150,7 @@ export class GossamerProcessingModal extends Modal {
         this.manuscriptInfoEl.setText('Gathering manuscript details...');
 
         // Check if API key is configured
-        // TODO: Update this check to be provider-agnostic
+        // TODO(#SAN-2): Update this check to be provider-agnostic.
         if (!this.plugin.settings.geminiApiKey && this.plugin.settings.defaultAiProvider === 'gemini') {
             // Warning section for missing API key
             const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });

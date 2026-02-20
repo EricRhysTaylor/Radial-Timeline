@@ -2,7 +2,7 @@
  * Local AI validation helpers
  * Provide lightweight checks for OpenAI-compatible local servers.
  */
-// TODO: DEPRECATED — migrate to aiClient
+// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.
 import { requestUrl } from 'obsidian';
 
 type LocalModelEntry = { id: string; object?: string };

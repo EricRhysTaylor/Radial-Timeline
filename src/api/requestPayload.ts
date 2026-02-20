@@ -1,4 +1,4 @@
-// TODO: DEPRECATED — migrate to aiClient
+// DEPRECATED: Legacy provider payload shim; route new call paths through aiClient.
 import type { AiProvider, ProviderCallArgs } from './providerCapabilities';
 
 type OpenAiPayload = {

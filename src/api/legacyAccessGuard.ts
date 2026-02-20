@@ -1,4 +1,4 @@
-// TODO: DEPRECATED — migrate to aiClient
+// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.
 const LEGACY_WARNING_PREFIX = '[AI Legacy Access]';
 
 export function warnLegacyAccess(apiName: string, internalAdapterAccess?: boolean): void {

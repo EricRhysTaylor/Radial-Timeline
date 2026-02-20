@@ -1,7 +1,7 @@
 /*
  * Unified provider router
  */
-// TODO: DEPRECATED — migrate to aiClient
+// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.
 import type RadialTimelinePlugin from '../main';
 import { DEFAULT_ANTHROPIC_MODEL_ID, DEFAULT_GEMINI_MODEL_ID, DEFAULT_OPENAI_MODEL_ID } from '../constants/aiDefaults';
 import { callOpenAiApi, type OpenAiApiResponse } from './openaiApi';

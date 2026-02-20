@@ -20,11 +20,11 @@
         "warn",
         {
           "terms": [
-            "todo",
-            "fixme",
-            "hack"
+            "todo:",
+            "fixme:",
+            "hack:"
           ],
-          "location": "anywhere"
+          "location": "start"
         }
       ],
       "@typescript-eslint/ban-ts-comment": "off",

@@ -1,4 +1,4 @@
-// TODO: DEPRECATED — migrate to aiClient
+// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.
 export type AiStatus = 'success' | 'rejected' | 'unavailable' | 'timeout' | 'auth' | 'rate_limit';
 
 export interface ProviderErrorClassification {

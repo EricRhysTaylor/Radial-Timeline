@@ -1015,7 +1015,7 @@ export function isProfessionalLicenseValid(key: string | undefined): boolean {
     if (!key || key.trim().length === 0) {
         return false;
     }
-    // TODO: Connect to license validation API when beta ends
+    // TODO(#SAN-1): Connect to license validation API when beta ends.
     return key.trim().length >= 16;
 }
 

@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
-// TODO: DEPRECATED — migrate to aiClient
+// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.
 import { requestUrl } from 'obsidian';
 import { warnLegacyAccess } from './legacyAccessGuard';
 
