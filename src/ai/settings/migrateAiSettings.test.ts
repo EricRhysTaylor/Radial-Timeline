@@ -22,6 +22,7 @@ describe('migrateAiSettings', () => {
         expect(result.aiSettings.provider).toBe('google');
         expect(result.aiSettings.modelPolicy.type).toBe('pinned');
         expect((result.aiSettings.modelPolicy as any).pinnedAlias).toBe('gemini-pro-latest');
+        expect(result.aiSettings.analysisPackaging).toBe('automatic');
         expect((result.aiSettings.credentials as any).googleApiKey).toBeUndefined();
         expect(result.aiSettings.credentials?.googleSecretId).toBeTruthy();
         expect(result.changed).toBe(true);

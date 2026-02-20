@@ -1,5 +1,6 @@
 import type { InquiryAiStatus, InquiryMode, InquiryScope, InquiryZone, InquiryResult } from '../state';
 import type { InquiryMaterialMode } from '../../types/settings';
+import type { AnalysisPackaging } from '../../ai/types';
 
 export type EvidenceClass = string;
 
@@ -19,6 +20,7 @@ export interface InquiryOmnibusQuestion {
 
 export interface CorpusManifestEntry {
     path: string;
+    sceneId?: string;
     mtime: number;
     class: EvidenceClass;
     scope?: InquiryScope;
@@ -90,6 +92,9 @@ export interface InquiryRunTrace {
         aiReason?: string;
         error?: string;
     } | null;
+    analysisPackaging?: AnalysisPackaging;
+    executionPassCount?: number;
+    packagingTriggerReason?: string;
     usage?: {
         inputTokens?: number;
         outputTokens?: number;

@@ -15,8 +15,14 @@ import type {
     InquiryRunnerInput
 } from './types';
 import { getAIClient } from '../../ai/runtime/aiClient';
-import { mapAiProviderToLegacyProvider, mapLegacyProviderToAiProvider } from '../../ai/settings/aiSettings';
-import type { AIRunResult } from '../../ai/types';
+import { buildDefaultAiSettings, mapAiProviderToLegacyProvider, mapLegacyProviderToAiProvider } from '../../ai/settings/aiSettings';
+import { validateAiSettings } from '../../ai/settings/validateAiSettings';
+import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
+import { selectModel } from '../../ai/router/selectModel';
+import { computeCaps } from '../../ai/caps/computeCaps';
+import type { AIRunResult, AnalysisPackaging, AIProviderId, SceneRef } from '../../ai/types';
+import { readSceneId, resolveSceneReferenceId } from '../../utils/sceneIds';
+import { buildSceneRefIndex, isStableSceneId, normalizeSceneRef } from '../../ai/references/sceneRefNormalizer';
 
 const BOOK_FOLDER_REGEX = /^Book\s+(\d+)/i;
 type EvidenceBlock = {
@@ -27,12 +33,15 @@ type EvidenceBlock = {
 type SceneSnapshot = {
     path: string;
     label: string;
+    sceneId: string;
     summary: string;  // Extended Summary field (frontmatter["Summary"])
     sceneNumber?: number;
 };
 
 type RawInquiryFinding = {
     ref_id?: string;
+    ref_label?: string;
+    ref_path?: string;
     kind?: string;
     lens?: string;
     headline?: string;
@@ -86,6 +95,9 @@ type ProviderResult = {
     error?: string;
     sanitizationNotes?: string[];
     retryCount?: number;
+    analysisPackaging?: AnalysisPackaging;
+    executionPassCount?: number;
+    packagingTriggerReason?: string;
 };
 
 export class InquiryRunnerService implements InquiryRunner {
@@ -130,6 +142,15 @@ export class InquiryRunnerService implements InquiryRunner {
             }
             if (typeof response.retryCount === 'number') {
                 trace.retryCount = response.retryCount;
+            }
+            if (response.analysisPackaging) {
+                trace.analysisPackaging = response.analysisPackaging;
+            }
+            if (typeof response.executionPassCount === 'number') {
+                trace.executionPassCount = response.executionPassCount;
+            }
+            if (response.packagingTriggerReason) {
+                trace.packagingTriggerReason = response.packagingTriggerReason;
             }
             trace.response = {
                 content: response.content,
@@ -278,6 +299,15 @@ export class InquiryRunnerService implements InquiryRunner {
             }
             if (typeof response.retryCount === 'number') {
                 trace.retryCount = response.retryCount;
+            }
+            if (response.analysisPackaging) {
+                trace.analysisPackaging = response.analysisPackaging;
+            }
+            if (typeof response.executionPassCount === 'number') {
+                trace.executionPassCount = response.executionPassCount;
+            }
+            if (response.packagingTriggerReason) {
+                trace.packagingTriggerReason = response.packagingTriggerReason;
             }
             trace.response = {
                 content: response.content,
@@ -449,13 +479,13 @@ export class InquiryRunnerService implements InquiryRunner {
                 const mode = sceneModeByPath.get(scene.path) ?? 'none';
                 if (mode === 'summary') {
                     if (!scene.summary) continue;
-                    blocks.push({ label: `Scene ${scene.label} summary`, content: scene.summary });
+                    blocks.push({ label: `Scene ${scene.label} (${scene.sceneId}) summary`, content: scene.summary });
                     continue;
                 }
                 if (mode === 'full') {
                     const content = await this.readFileContent(scene.path);
                     if (!content) continue;
-                    blocks.push({ label: `Scene ${scene.label}`, content });
+                    blocks.push({ label: `Scene ${scene.label} (${scene.sceneId})`, content });
                 }
             }
 
@@ -479,13 +509,13 @@ export class InquiryRunnerService implements InquiryRunner {
                 const mode = sceneModeByPath.get(scene.path) ?? 'none';
                 if (mode === 'summary') {
                     if (!scene.summary) continue;
-                    blocks.push({ label: `Scene ${scene.label} summary`, content: scene.summary });
+                    blocks.push({ label: `Scene ${scene.label} (${scene.sceneId}) summary`, content: scene.summary });
                     continue;
                 }
                 if (mode === 'full') {
                     const content = await this.readFileContent(scene.path);
                     if (!content) continue;
-                    blocks.push({ label: `Scene ${scene.label}`, content });
+                    blocks.push({ label: `Scene ${scene.label} (${scene.sceneId})`, content });
                 }
             }
         }
@@ -523,9 +553,14 @@ export class InquiryRunnerService implements InquiryRunner {
             const frontmatter = this.getFrontmatter(file);
             const summary = this.extractSummary(frontmatter);
             const sceneNumber = this.extractSceneNumber(frontmatter);
+            const sceneId = resolveSceneReferenceId(
+                entry.sceneId ?? readSceneId(frontmatter) ?? undefined,
+                file.path
+            );
             scenes.push({
                 path: file.path,
                 label: '',
+                sceneId,
                 summary,
                 sceneNumber
             });
@@ -671,7 +706,9 @@ export class InquiryRunnerService implements InquiryRunner {
             '  },',
             '  "findings": [',
             '    {',
-            '      "ref_id": "S12",',
+            '      "ref_id": "scn_a1b2c3d4",',
+            '      "ref_label": "S12 · Scene title (optional)",',
+            '      "ref_path": "Book 1/12 Scene.md (optional debug path)",',
             '      "kind": "string",',
             '      "lens": "flow|depth|both (optional)",',
             '      "headline": "short line",',
@@ -699,6 +736,7 @@ export class InquiryRunnerService implements InquiryRunner {
             'Use flow summary phrasing that emphasizes compression, timing, and pressure.',
             'Use depth summary phrasing that emphasizes alignment, implication, and consistency.',
             'If conclusions align, still phrase summaries to match the active lens emphasis.',
+            'Use scene ref_id values from evidence labels in parentheses (e.g., scn_a1b2c3d4).',
             'Optionally tag findings with lens: flow|depth|both to indicate relevance.',
             'Return JSON only with summaryFlow, summaryDepth, verdict.flow, verdict.depth, impact, assessmentConfidence, and findings.',
             'Return JSON only using the exact schema below.',
@@ -742,7 +780,9 @@ export class InquiryRunnerService implements InquiryRunner {
             '      },',
             '      "findings": [',
             '        {',
-            '          "ref_id": "S12",',
+            '          "ref_id": "scn_a1b2c3d4",',
+            '          "ref_label": "S12 · Scene title (optional)",',
+            '          "ref_path": "Book 1/12 Scene.md (optional debug path)",',
             '          "kind": "string",',
             '          "lens": "flow|depth|both (optional)",',
             '          "headline": "short line",',
@@ -778,6 +818,7 @@ export class InquiryRunnerService implements InquiryRunner {
             'Use flow summary phrasing that emphasizes compression, timing, and pressure.',
             'Use depth summary phrasing that emphasizes alignment, implication, and consistency.',
             'If conclusions align, still phrase summaries to match the active lens emphasis.',
+            'Use scene ref_id values from evidence labels in parentheses (e.g., scn_a1b2c3d4).',
             'Optionally tag findings with lens: flow|depth|both to indicate relevance.',
             'Return JSON only with summaryFlow, summaryDepth, verdict.flow, verdict.depth, impact, assessmentConfidence, and findings for every question.',
             'Return JSON only using the exact schema below.',
@@ -816,6 +857,8 @@ export class InquiryRunnerService implements InquiryRunner {
                         type: 'object',
                         properties: {
                             ref_id: { type: 'string' },
+                            ref_label: { type: 'string' },
+                            ref_path: { type: 'string' },
                             kind: { type: 'string' },
                             lens: { type: 'string' },
                             headline: { type: 'string' },
@@ -865,6 +908,8 @@ export class InquiryRunnerService implements InquiryRunner {
                                     type: 'object',
                                     properties: {
                                         ref_id: { type: 'string' },
+                                        ref_label: { type: 'string' },
+                                        ref_path: { type: 'string' },
                                         kind: { type: 'string' },
                                         lens: { type: 'string' },
                                         headline: { type: 'string' },
@@ -896,6 +941,33 @@ export class InquiryRunnerService implements InquiryRunner {
         userQuestion?: string
     ): Promise<ProviderResult> {
         const aiClient = getAIClient(this.plugin);
+        const analysisPackaging = this.getAnalysisPackaging();
+        const packagingPrecheck = this.getPackagingPrecheck(systemPrompt, userPrompt, ai, maxTokens);
+
+        if (analysisPackaging === 'singlePassOnly' && packagingPrecheck.exceedsSafeBudget) {
+            const reason = `Estimated input ${Math.round(packagingPrecheck.inputTokens).toLocaleString()} exceeds safe input budget ${Math.round(packagingPrecheck.safeInputTokens).toLocaleString()} for this Inquiry request.`;
+            return this.buildSinglePassOnlyOverflowResult(ai, reason);
+        }
+
+        if (analysisPackaging === 'automatic' && packagingPrecheck.exceedsSafeBudget) {
+            const packaged = await this.runChunkedInquiry(aiClient, {
+                systemPrompt,
+                userPrompt,
+                userQuestion,
+                ai,
+                jsonSchema,
+                temperature,
+                maxTokens
+            });
+            if (packaged) {
+                return this.toProviderResult(this.withExecutionContext(packaged, {
+                    analysisPackaging,
+                    executionPassCount: packaged.advancedContext?.executionPassCount,
+                    packagingTriggerReason: `Estimated input ${Math.round(packagingPrecheck.inputTokens).toLocaleString()} exceeded safe input budget ${Math.round(packagingPrecheck.safeInputTokens).toLocaleString()}.`
+                }));
+            }
+        }
+
         let run = await this.runInquiryRequest(aiClient, {
             task: 'AnalyzeCorpus',
             systemPrompt,
@@ -906,20 +978,47 @@ export class InquiryRunnerService implements InquiryRunner {
             temperature,
             maxTokens
         });
+        run = this.withExecutionContext(run, {
+            analysisPackaging,
+            executionPassCount: 1
+        });
 
-        // Inquiry specialization: when request is over safe context threshold, chunk evidence and synthesize.
+        // Inquiry specialization: if single-pass truncates, package and synthesize unless explicitly disabled.
         if (run.aiReason === 'truncated') {
-            const chunked = await this.runChunkedInquiry(aiClient, {
-                systemPrompt,
-                userPrompt,
-                userQuestion,
-                ai,
-                jsonSchema,
-                temperature,
-                maxTokens
-            });
-            if (chunked) {
-                run = chunked;
+            if (analysisPackaging === 'singlePassOnly') {
+                run = this.withExecutionContext({
+                    ...run,
+                    aiStatus: run.aiStatus === 'success' ? 'rejected' : run.aiStatus,
+                    aiReason: run.aiReason || 'truncated',
+                    error: run.error || 'This request exceeds the safe limit for a single pass. Switch Execution Preference to Automatic, or reduce scope.',
+                    warnings: [
+                        ...(run.warnings || []),
+                        'Single-pass only is enabled, so large-manuscript packaging was skipped.'
+                    ]
+                }, {
+                    analysisPackaging,
+                    executionPassCount: 1,
+                    packagingTriggerReason: 'Single-pass response exceeded safe limits, but automatic packaging is disabled.'
+                });
+            } else {
+                const chunked = await this.runChunkedInquiry(aiClient, {
+                    systemPrompt,
+                    userPrompt,
+                    userQuestion,
+                    ai,
+                    jsonSchema,
+                    temperature,
+                    maxTokens
+                });
+                if (chunked) {
+                    run = chunked;
+                } else {
+                    run = this.withExecutionContext(run, {
+                        analysisPackaging,
+                        executionPassCount: 1,
+                        packagingTriggerReason: 'Single-pass response exceeded safe limits, and automatic packaging did not complete.'
+                    });
+                }
             }
         }
 
@@ -978,6 +1077,107 @@ export class InquiryRunnerService implements InquiryRunner {
         return 'auto';
     }
 
+    private getAnalysisPackaging(): AnalysisPackaging {
+        const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
+        return aiSettings.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : 'automatic';
+    }
+
+    private getAccessTier(provider: AIProviderId): 1 | 2 | 3 {
+        const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
+        if (provider === 'anthropic') return aiSettings.aiAccessProfile.anthropicTier ?? 1;
+        if (provider === 'openai') return aiSettings.aiAccessProfile.openaiTier ?? 1;
+        if (provider === 'google') return aiSettings.aiAccessProfile.googleTier ?? 1;
+        return 1;
+    }
+
+    private getPackagingPrecheck(
+        systemPrompt: string,
+        userPrompt: string,
+        ai: InquiryRunnerInput['ai'],
+        maxTokens: number
+    ): { inputTokens: number; safeInputTokens: number; exceedsSafeBudget: boolean } {
+        const inputTokens = this.estimateTokensFromChars((systemPrompt?.length ?? 0) + (userPrompt?.length ?? 0));
+        const provider = mapLegacyProviderToAiProvider(ai.provider);
+        if (provider === 'none') {
+            return { inputTokens, safeInputTokens: 0, exceedsSafeBudget: false };
+        }
+
+        try {
+            const modelSelection = selectModel(BUILTIN_MODELS, {
+                provider,
+                policy: { type: 'profile', profile: 'deepReasoner' },
+                requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
+                accessTier: this.getAccessTier(provider),
+                contextTokensNeeded: inputTokens,
+                outputTokensNeeded: maxTokens
+            });
+            const caps = computeCaps({
+                provider,
+                model: modelSelection.model,
+                accessTier: this.getAccessTier(provider),
+                feature: 'InquiryMode',
+                overrides: {
+                    maxOutputMode: this.resolveMaxOutputMode(maxTokens),
+                    reasoningDepth: 'deep',
+                    jsonStrict: true
+                }
+            });
+            return {
+                inputTokens,
+                safeInputTokens: caps.maxInputTokens,
+                exceedsSafeBudget: inputTokens > caps.maxInputTokens
+            };
+        } catch {
+            return {
+                inputTokens,
+                safeInputTokens: 0,
+                exceedsSafeBudget: false
+            };
+        }
+    }
+
+    private buildSinglePassOnlyOverflowResult(
+        ai: InquiryRunnerInput['ai'],
+        reason: string
+    ): ProviderResult {
+        return {
+            success: false,
+            content: null,
+            responseData: null,
+            provider: ai.provider,
+            modelId: ai.modelId,
+            aiProvider: ai.provider,
+            aiModelRequested: ai.modelId,
+            aiModelResolved: ai.modelId,
+            aiStatus: 'rejected',
+            aiReason: 'truncated',
+            error: 'This request exceeds the safe limit for a single pass. Switch Execution Preference to Automatic, or reduce scope.',
+            analysisPackaging: 'singlePassOnly',
+            executionPassCount: 1,
+            packagingTriggerReason: reason
+        };
+    }
+
+    private withExecutionContext(
+        run: AIRunResult,
+        context: {
+            analysisPackaging: AnalysisPackaging;
+            executionPassCount?: number;
+            packagingTriggerReason?: string;
+        }
+    ): AIRunResult {
+        if (!run.advancedContext) return run;
+        return {
+            ...run,
+            advancedContext: {
+                ...run.advancedContext,
+                analysisPackaging: context.analysisPackaging,
+                executionPassCount: context.executionPassCount ?? run.advancedContext.executionPassCount,
+                packagingTriggerReason: context.packagingTriggerReason ?? run.advancedContext.packagingTriggerReason
+            }
+        };
+    }
+
     private toProviderResult(run: AIRunResult): ProviderResult {
         const legacyProvider = mapAiProviderToLegacyProvider(run.provider);
         return {
@@ -994,7 +1194,10 @@ export class InquiryRunnerService implements InquiryRunner {
             aiReason: run.aiReason,
             error: run.error,
             sanitizationNotes: run.sanitizationNotes,
-            retryCount: run.retryCount
+            retryCount: run.retryCount,
+            analysisPackaging: run.advancedContext?.analysisPackaging,
+            executionPassCount: run.advancedContext?.executionPassCount,
+            packagingTriggerReason: run.advancedContext?.packagingTriggerReason
         };
     }
 
@@ -1054,10 +1257,15 @@ export class InquiryRunnerService implements InquiryRunner {
             return null;
         }
 
-        return {
+        const passCount = chunkPrompts.length + 1;
+        return this.withExecutionContext({
             ...synthesisRun,
             warnings: [...(synthesisRun.warnings || []), `Inquiry chunked execution used ${chunkPrompts.length} chunks before synthesis.`]
-        };
+        }, {
+            analysisPackaging: 'automatic',
+            executionPassCount: passCount,
+            packagingTriggerReason: 'Single-pass request exceeded safe limits, so structured packaging and synthesis were used.'
+        });
     }
 
     private buildEvidenceChunkPrompts(userPrompt: string, maxChunkTokens: number): string[] | null {
@@ -1159,7 +1367,14 @@ export class InquiryRunnerService implements InquiryRunner {
         const assessmentConfidence = this.normalizeAssessmentConfidence(verdict.assessmentConfidence ?? verdict.confidence);
 
         const findings = Array.isArray(parsed.findings) ? parsed.findings : [];
-        const mappedFindings = findings.map(finding => this.mapFinding(finding, input.focusLabel));
+        const sceneEntries = input.corpus.entries.filter(entry => entry.class === 'scene' && !!entry.sceneId);
+        const sceneRefIndex = buildSceneRefIndex(sceneEntries.map(entry => ({
+            sceneId: entry.sceneId!,
+            path: entry.path,
+            label: entry.path.split('/').pop()
+        })));
+        const fallbackRefId = this.resolveFindingFallbackRefId(input);
+        const mappedFindings = findings.map(finding => this.mapFinding(finding, fallbackRefId, sceneRefIndex));
 
         const summaryFlow = parsed.summaryFlow
             ? String(parsed.summaryFlow)
@@ -1271,15 +1486,19 @@ export class InquiryRunnerService implements InquiryRunner {
         };
     }
 
-    private mapFinding(raw: RawInquiryFinding, fallbackRef: string): InquiryFinding {
+    private mapFinding(
+        raw: RawInquiryFinding,
+        fallbackRef: string,
+        sceneRefIndex: ReturnType<typeof buildSceneRefIndex>
+    ): InquiryFinding {
         const kind = this.normalizeFindingKind(raw.kind);
-        const refId = raw.ref_id ? String(raw.ref_id) : fallbackRef;
+        const normalizedRef = this.normalizeFindingRef(raw, fallbackRef, sceneRefIndex);
         const lens = this.normalizeFindingLens(raw.lens);
         const bullets = Array.isArray(raw.bullets)
             ? raw.bullets.map(value => String(value)).filter(Boolean)
             : [];
         return {
-            refId,
+            refId: normalizedRef.ref_id,
             kind,
             status: kind === 'none' ? 'resolved' : 'unclear',
             impact: this.normalizeImpact(raw.impact ?? raw.severity),
@@ -1292,6 +1511,33 @@ export class InquiryRunnerService implements InquiryRunner {
         };
     }
 
+    private resolveFindingFallbackRefId(input: InquiryRunnerInput): string {
+        if (isStableSceneId(input.focusSceneId)) {
+            return String(input.focusSceneId).trim().toLowerCase();
+        }
+        const firstSceneId = input.corpus.entries.find(entry => entry.class === 'scene' && isStableSceneId(entry.sceneId))?.sceneId;
+        if (firstSceneId) return firstSceneId.toLowerCase();
+        if (isStableSceneId(input.focusLabel)) return input.focusLabel.trim().toLowerCase();
+        return input.focusLabel;
+    }
+
+    private normalizeFindingRef(
+        raw: RawInquiryFinding,
+        fallbackRef: string,
+        sceneRefIndex: ReturnType<typeof buildSceneRefIndex>
+    ): SceneRef {
+        const normalized = normalizeSceneRef({
+            ref_id: raw.ref_id ? String(raw.ref_id) : undefined,
+            ref_label: raw.ref_label ? String(raw.ref_label) : undefined,
+            ref_path: raw.ref_path ? String(raw.ref_path) : undefined
+        }, sceneRefIndex, { fallbackRefId: fallbackRef });
+
+        if (normalized.warning) {
+            console.warn(`[Inquiry] ${normalized.warning}`);
+        }
+        return normalized.ref;
+    }
+
     private buildStubResult(
         input: InquiryRunnerInput,
         aiMeta: Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'>,
@@ -1300,6 +1546,7 @@ export class InquiryRunnerService implements InquiryRunner {
         const message = error instanceof Error ? error.message : error ? String(error) : '';
         const summary = this.buildStubSummary(aiMeta.aiStatus, aiMeta.aiReason, message);
         const bullets = message ? [`Runner note: ${message}`] : ['Deterministic placeholder result.'];
+        const fallbackRefId = this.resolveFindingFallbackRefId(input);
 
         return {
             runId: `run-${Date.now()}`,
@@ -1318,7 +1565,7 @@ export class InquiryRunnerService implements InquiryRunner {
                 assessmentConfidence: 'low'
             },
             findings: [{
-                refId: input.focusLabel,
+                refId: fallbackRefId,
                 kind: 'unclear',
                 status: 'unclear',
                 impact: 'low',

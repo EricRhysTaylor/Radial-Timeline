@@ -79,6 +79,13 @@ describe('AI settings models table', () => {
     it('renders unknown availability snapshot hint copy in recommendations block', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes('Enable Provider Snapshot for key-based visibility.')).toBe(true);
-        expect(source.includes('This only fetches model metadata and availability.')).toBe(true);
+        expect(source.includes('This only fetches model details and availability.')).toBe(true);
+    });
+
+    it('renders Large Manuscript Handling section with execution preference controls', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('Large Manuscript Handling')).toBe(true);
+        expect(source.includes('Execution Preference')).toBe(true);
+        expect(source.includes('singlePassOnly')).toBe(true);
     });
 });

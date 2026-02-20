@@ -8,6 +8,7 @@ import { parseDuration, parseDurationDetail } from '../utils/date';
 import { getCustomSystemFromSettings } from '../utils/beatsSystems';
 import type { BookDesignerTemplate, BookDesignerSceneAssignment } from '../types/settings';
 import { ModalFolderSuggest } from '../settings/FolderSuggest';
+import { ensureSceneTemplateFrontmatter } from '../utils/sceneIds';
 
 const DEFAULT_SUBPLOTS = "Main Plot\nSubplot A\nSubplot B";
 const DEFAULT_CHARACTERS = "Hero\nAntagonist";
@@ -1530,7 +1531,8 @@ export class BookDesignerModal extends Modal {
             };
 
             const content = generateSceneContent(templateString, data);
-            const fileContent = `---\n${content}\n---\n\n`;
+            const withSceneId = ensureSceneTemplateFrontmatter(content);
+            const fileContent = `---\n${withSceneId.frontmatter}\n---\n\n`;
 
             const filename = `${sceneNum} Scene.md`;
             const filePath = targetFolder ? `${targetFolder}/${filename}` : filename;

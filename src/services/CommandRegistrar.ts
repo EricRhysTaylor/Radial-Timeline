@@ -25,6 +25,7 @@ import { getActiveBookExportContext } from '../utils/exportContext';
 import { getActiveBook } from '../utils/books';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { isPathInFolderScope } from '../utils/pathScope';
+import { ensureSceneTemplateFrontmatter } from '../utils/sceneIds';
 
 import { getRuntimeSettings } from '../utils/runtimeEstimator';
 
@@ -617,8 +618,8 @@ export class CommandRegistrar {
                 placeList: type === 'screenplay' ? ['INT. LOCATION'] : ['Unknown']
             });
 
-            // Ensure the content has Class: Scene if not already present
-            let finalContent = ensureClassScene(content);
+            // Ensure the content has structural scene identity and class markers.
+            let finalContent = ensureSceneTemplateFrontmatter(content).frontmatter;
 
             // Pre-fill Runtime for screenplay/podcast
             if (type === 'screenplay') {
@@ -850,12 +851,3 @@ const PODCAST_BODY_SCAFFOLD = [
     '',
     ''
 ].join('\n');
-
-function ensureClassScene(template: string): string {
-    const lines = template.split('\n');
-    const hasClass = lines.some(line => line.trim().startsWith('Class:') || line.trim().startsWith('class:'));
-    if (!hasClass) {
-        return `Class: Scene\n${template}`;
-    }
-    return template;
-}

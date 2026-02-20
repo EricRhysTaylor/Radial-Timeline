@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { validateAiSettings } from './validateAiSettings';
+import type { AiSettingsV1 } from '../types';
 
 describe('validateAiSettings', () => {
     it('falls back invalid provider and bad pinned alias', () => {
@@ -22,6 +23,7 @@ describe('validateAiSettings', () => {
             schemaVersion: 1,
             provider: 'openai',
             modelPolicy: { type: 'latestStable' },
+            analysisPackaging: 'bad-value' as unknown as 'automatic',
             overrides: { temperature: 99, topP: 99, maxOutputMode: 'bad' as any },
             aiAccessProfile: { openaiTier: 99 as any },
             privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false }
@@ -30,6 +32,7 @@ describe('validateAiSettings', () => {
         expect(result.value.overrides.temperature).toBe(2);
         expect(result.value.overrides.topP).toBe(1);
         expect(result.value.overrides.maxOutputMode).toBe('auto');
+        expect(result.value.analysisPackaging).toBe('automatic');
         expect(result.value.aiAccessProfile.openaiTier).toBe(1);
     });
 
@@ -49,5 +52,20 @@ describe('validateAiSettings', () => {
 
         expect((result.value.credentials as any).openaiApiKey).toBeUndefined();
         expect(result.value.credentials?.openaiSecretId).toBe('rt.openai.api-key');
+    });
+
+    it('maps legacy analysisMethod to analysisPackaging and drops legacy field', () => {
+        const result = validateAiSettings({
+            schemaVersion: 1,
+            provider: 'openai',
+            modelPolicy: { type: 'latestStable' },
+            analysisMethod: 'singlePassOnly',
+            overrides: {},
+            aiAccessProfile: {},
+            privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false }
+        } as unknown as AiSettingsV1);
+
+        expect(result.value.analysisPackaging).toBe('singlePassOnly');
+        expect((result.value as unknown as Record<string, unknown>).analysisMethod).toBeUndefined();
     });
 });

@@ -26,6 +26,7 @@ import type { SceneData } from './types';
 import { parseSceneTitle, decodeHtmlEntities } from '../utils/text';
 import { parseRuntimeField } from '../utils/runtimeEstimator';
 import { buildPulseTriplet } from '../ai/evidence/pulseTriplet';
+import { readSceneId, resolveSceneReferenceId } from '../utils/sceneIds';
 
 export interface TripletMetric {
     value: number;
@@ -36,6 +37,21 @@ interface SceneTriplet {
     prev: SceneData | null;
     current: SceneData;
     next: SceneData | null;
+}
+
+function buildTripletSceneRefs(triplet: SceneTriplet): {
+    prevRefId?: string;
+    currentRefId: string;
+    nextRefId?: string;
+} {
+    const currentRefId = resolveSceneReferenceId(readSceneId(triplet.current.frontmatter), triplet.current.file.path);
+    const prevRefId = triplet.prev
+        ? resolveSceneReferenceId(readSceneId(triplet.prev.frontmatter), triplet.prev.file.path)
+        : undefined;
+    const nextRefId = triplet.next
+        ? resolveSceneReferenceId(readSceneId(triplet.next.frontmatter), triplet.next.file.path)
+        : undefined;
+    return { prevRefId, currentRefId, nextRefId };
 }
 
 /**
@@ -163,7 +179,17 @@ export async function processWithModal(
 
         const contextPrompt = getActiveContextPrompt(plugin);
         const extraInstructions = plugin.settings.defaultAiProvider === 'local' ? plugin.settings.localLlmInstructions : undefined;
-        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt, extraInstructions);
+        const userPrompt = buildSceneAnalysisPrompt(
+            prevBody,
+            currentBody,
+            nextBody,
+            prevNum,
+            currentNum,
+            nextNum,
+            contextPrompt,
+            extraInstructions,
+            buildTripletSceneRefs(triplet)
+        );
 
         const sceneNameForLog = triplet.current.file.basename;
         const tripletForLog = buildPulseTriplet(prevNum, currentNum, nextNum).scenes;
@@ -333,7 +359,17 @@ export async function processBySubplotOrder(
 
                 const contextPrompt = getActiveContextPrompt(plugin);
                 const extraInstructions = plugin.settings.defaultAiProvider === 'local' ? plugin.settings.localLlmInstructions : undefined;
-                const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt, extraInstructions);
+                const userPrompt = buildSceneAnalysisPrompt(
+                    prevBody,
+                    currentBody,
+                    nextBody,
+                    prevNum,
+                    currentNum,
+                    nextNum,
+                    contextPrompt,
+                    extraInstructions,
+                    buildTripletSceneRefs(triplet)
+                );
 
                 const sceneNameForLog = triplet.current.file.basename;
                 const tripletForLog = buildPulseTriplet(prevNum, currentNum, nextNum).scenes;
@@ -457,7 +493,17 @@ export async function processSubplotWithModal(
 
         const contextPrompt = getActiveContextPrompt(plugin);
         const extraInstructions = plugin.settings.defaultAiProvider === 'local' ? plugin.settings.localLlmInstructions : undefined;
-        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt, extraInstructions);
+        const userPrompt = buildSceneAnalysisPrompt(
+            prevBody,
+            currentBody,
+            nextBody,
+            prevNum,
+            currentNum,
+            nextNum,
+            contextPrompt,
+            extraInstructions,
+            buildTripletSceneRefs(triplet)
+        );
 
         const sceneNameForLog = triplet.current.file.basename;
         const tripletForLog = buildPulseTriplet(prevNum, currentNum, nextNum).scenes;
@@ -612,7 +658,17 @@ export async function processEntireSubplotWithModalInternal(
 
         const contextPrompt = getActiveContextPrompt(plugin);
         const extraInstructions = plugin.settings.defaultAiProvider === 'local' ? plugin.settings.localLlmInstructions : undefined;
-        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt, extraInstructions);
+        const userPrompt = buildSceneAnalysisPrompt(
+            prevBody,
+            currentBody,
+            nextBody,
+            prevNum,
+            currentNum,
+            nextNum,
+            contextPrompt,
+            extraInstructions,
+            buildTripletSceneRefs(triplet)
+        );
 
         const sceneNameForLog = triplet.current.file.basename;
         const tripletForLog = buildPulseTriplet(prevNum, currentNum, nextNum).scenes;

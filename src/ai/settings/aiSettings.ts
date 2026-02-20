@@ -37,6 +37,7 @@ export function buildDefaultAiSettings(): AiSettingsV1 {
         schemaVersion: AI_SETTINGS_SCHEMA_VERSION,
         provider: 'openai',
         modelPolicy: { ...DEFAULT_MODEL_POLICY },
+        analysisPackaging: 'automatic',
         roleTemplateId: 'commercial_genre',
         overrides: {
             maxOutputMode: 'auto',

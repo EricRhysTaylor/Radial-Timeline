@@ -30,6 +30,9 @@ export interface AiProviderResponse {
  * Beat items returned by LLMs.
  */
 export interface BeatItem {
+    ref_id?: string;
+    ref_label?: string;
+    ref_path?: string;
     scene: string;
     title?: string;
     grade: '+' | '-' | '?' | 'A' | 'B' | 'C';

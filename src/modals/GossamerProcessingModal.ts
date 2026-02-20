@@ -252,6 +252,7 @@ export class GossamerProcessingModal extends Modal {
             `Model selection reason: ${redactSensitiveValue(ctx.modelSelectionReason)}`,
             `Availability: ${ctx.availabilityStatus === 'visible' ? 'Visible to your key ✅' : ctx.availabilityStatus === 'not_visible' ? 'Not visible ⚠️' : 'Unknown (snapshot disabled)'}`,
             `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
+            `Packaging: ${ctx.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic'}`,
             '',
             'Feature mode instructions:',
             redactSensitiveValue(ctx.featureModeInstructions || '(none)'),
@@ -259,6 +260,12 @@ export class GossamerProcessingModal extends Modal {
             'Final composed prompt:',
             redactSensitiveValue(ctx.finalPrompt || '(none)')
         ];
+        if (typeof ctx.executionPassCount === 'number' && ctx.executionPassCount > 1) {
+            lines.splice(6, 0, `Pass count: ${ctx.executionPassCount}`);
+        }
+        if (ctx.packagingTriggerReason) {
+            lines.splice(7, 0, `Packaging trigger: ${redactSensitiveValue(ctx.packagingTriggerReason)}`);
+        }
         this.aiAdvancedPreEl.setText(lines.join('\n'));
     }
 

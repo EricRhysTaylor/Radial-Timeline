@@ -51,6 +51,7 @@ export interface TimelineItem {
     title?: string;
     date: string;
     path?: string;
+    sceneId?: string;
     subplot?: string;
     act?: string;
     pov?: string;

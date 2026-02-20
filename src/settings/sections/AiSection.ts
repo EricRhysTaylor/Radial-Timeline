@@ -89,22 +89,22 @@ export function renderAiSection(params: {
 
     const heroTitle = aiHero.createEl('h3', {
         cls: `${ERT_CLASSES.SECTION_TITLE} ert-hero-title`,
-        text: 'AI guidance with stable routing and transparent model selection.'
+        text: 'AI guidance with clear model selection and focused analysis.'
     });
     const heroOnState = aiHero.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-hero-state-on` });
     heroOnState.createEl('p', {
         cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
-        text: 'Configure provider, model strategy, and feature defaults with capability-safe routing. See exactly why each model is selected.'
+        text: 'Configure how AI supports your manuscript—choose a provider, select a strategy, and set feature defaults. See exactly why each model is selected and how it will behave.'
     });
     const heroOnFeatures = heroOnState.createDiv({
         cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
     });
-    heroOnFeatures.createEl('h5', { text: 'AI Highlights:', cls: 'ert-kicker' });
+    heroOnFeatures.createEl('h5', { text: 'AI HIGHLIGHTS', cls: 'ert-kicker' });
     const heroOnList = heroOnFeatures.createEl('ul', { cls: ERT_CLASSES.STACK });
     [
-        { icon: 'brain-circuit', text: 'Deterministic routing by capabilities, policy, and access tier.' },
-        { icon: 'shield-check', text: 'Clear model resolution reasons and availability status.' },
-        { icon: 'folder-open', text: 'Fields remain unchanged while AI guidance is configured.' }
+        { icon: 'brain-circuit', text: 'Smart model selection - Stable routing by capability, strategy, and access level.' },
+        { icon: 'shield-check', text: 'Clear reasoning - See why a model was chosen and whether it is available to your key.' },
+        { icon: 'folder-open', text: 'Safe by design - Your manuscript fields remain unchanged while AI is configured.' }
     ].forEach(item => {
         const li = heroOnList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
         const icon = li.createSpan({ cls: 'ert-feature-icon' });
@@ -115,21 +115,28 @@ export function renderAiSection(params: {
     const heroOffState = aiHero.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-hero-state-off` });
     heroOffState.createEl('p', {
         cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
-        text: 'AI features are turned off. Turn AI on to restore analysis visuals and AI workflows.'
+        text: 'AI tools and analysis visuals are paused. Turn AI on to restore guided insight and automated scene analysis.'
     });
-    const heroOffList = heroOffState.createEl('ul', { cls: 'ert-ai-toggle-warning-list' });
+    const heroOffFeatures = heroOffState.createDiv({
+        cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
+    });
+    heroOffFeatures.createEl('h5', { text: 'DISABLED AI FEATURES', cls: 'ert-kicker' });
+    const heroOffList = heroOffFeatures.createEl('ul', { cls: ERT_CLASSES.STACK });
     [
-        'Inquiry mode (signals, prompt slots, and AI briefings).',
-        'Scene Analysis / Pulse (hover synopsis, grades, and triplet context).',
-        'Gossamer AI analysis and score generation.',
-        'AI processing modals (Inquiry, Scene Analysis, Gossamer, and AI runtime estimation).',
-        'AI command palette actions and AI log outputs.'
-    ].forEach(item => {
-        heroOffList.createEl('li', { text: item });
+        'Inquiry mode - Manuscript-wide questions, signals, and structured analysis.',
+        'Scene analysis & Pulse - Hover summaries, tension grades, and triplet context.',
+        'Gossamer scoring - Momentum and tonal shift evaluation.',
+        'Smart summaries & runtime checks - Clarity refresh and structural validation.',
+        'Command tools & logs - AI actions and diagnostic output.'
+    ].forEach(text => {
+        const li = heroOffList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
+        const icon = li.createSpan({ cls: 'ert-feature-icon' });
+        setIcon(icon, 'x-circle');
+        li.createSpan({ text });
     });
     heroOffState.createDiv({
-        cls: 'ert-ai-toggle-warning-footer',
-        text: 'Fields remain unchanged while AI is off.'
+        cls: 'ert-ai-hero-muted',
+        text: 'Your manuscript fields remain unchanged while AI is off.'
     });
 
     const aiStateContent = containerEl.createDiv({ cls: ERT_CLASSES.STACK });
@@ -140,8 +147,8 @@ export function renderAiSection(params: {
         heroToggleLabel.setText(enabled ? 'Active' : 'Inactive');
         heroToggleLabel.toggleClass('is-active', enabled);
         heroTitle.setText(enabled
-            ? 'AI guidance with stable routing and transparent model selection.'
-            : 'AI guidance is currently paused.');
+            ? 'AI guidance with clear model selection and focused analysis.'
+            : 'AI guidance is currently turned off.');
         heroOnState.toggleClass('ert-settings-hidden', !enabled);
         heroOnState.toggleClass('ert-settings-visible', enabled);
         heroOffState.toggleClass('ert-settings-hidden', enabled);
@@ -169,19 +176,88 @@ export function renderAiSection(params: {
     const quickSetupSection = aiSettingsGroup.createDiv({
         cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card`
     });
-    quickSetupSection.createDiv({ cls: 'ert-section-title', text: 'Quick setup' });
+    quickSetupSection.createDiv({ cls: 'ert-section-title', text: 'AI Strategy' });
     quickSetupSection.createDiv({
         cls: 'ert-section-desc',
-        text: 'Set provider, model strategy, profile, and routing defaults.'
+        text: 'Choose how AI thinks, selects models, and responds across features.'
     });
     const quickSetupGrid = quickSetupSection.createDiv({
         cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_3} ert-ai-quick-grid`
     });
 
+    const largeHandlingFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold ert-ai-large-handling' });
+    largeHandlingFold.setAttr('open', '');
+    largeHandlingFold.setAttr('data-ert-role', 'ai-setting:large-manuscript-handling');
+    largeHandlingFold.createEl('summary', { text: 'Large Manuscript Handling' });
+    const largeHandlingBody = largeHandlingFold.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-large-handling-body` });
+    largeHandlingBody.createDiv({
+        cls: 'ert-section-desc',
+        text: 'Radial Timeline automatically adapts how large manuscripts are prepared for AI. When a request exceeds safe context limits, it uses structured packaging and synthesis to preserve accuracy and scene-level citations.'
+    });
+    largeHandlingBody.createDiv({
+        cls: 'ert-field-note',
+        text: 'A small buffer is reserved so structured answers do not get cut off.'
+    });
+
+    const capacitySection = largeHandlingBody.createDiv({ cls: 'ert-ai-capacity-section' });
+    capacitySection.createDiv({ cls: 'ert-ai-capacity-title', text: 'Current context capacity' });
+    const capacityGrid = capacitySection.createDiv({ cls: 'ert-ai-capacity-grid' });
+    const createCapacityCell = (label: string): { valueEl: HTMLElement } => {
+        const cell = capacityGrid.createDiv({ cls: 'ert-ai-capacity-cell' });
+        cell.createDiv({ cls: 'ert-ai-capacity-label', text: label });
+        const valueEl = cell.createDiv({ cls: 'ert-ai-capacity-value', text: '—' });
+        return { valueEl };
+    };
+    const capacityProvider = createCapacityCell('Provider');
+    const capacitySafeInput = createCapacityCell('Safe input budget');
+    const capacityOutput = createCapacityCell('Output allowance');
+    const capacityMode = createCapacityCell('Current packaging preference');
+
+    const packagingSection = largeHandlingBody.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-packaging-copy` });
+    packagingSection.createDiv({ cls: 'ert-ai-capacity-title', text: 'Automatic packaging behavior' });
+    const packagingList = packagingSection.createEl('ul', { cls: `${ERT_CLASSES.STACK} ert-ai-packaging-list` });
+    [
+        'One pass is used when the full request fits safely.',
+        'When needed, Radial Timeline switches to structured packaging and synthesis automatically.',
+        'Stable scene IDs keep scene citations aligned across synthesis.'
+    ].forEach(item => {
+        packagingList.createEl('li', { text: item });
+    });
+
+    const executionPreferenceSetting = new Settings(largeHandlingBody)
+        .setName('Execution Preference')
+        .setDesc('Choose how large requests are handled during Inquiry execution.');
+    executionPreferenceSetting.settingEl.setAttr('data-ert-role', 'ai-setting:execution-preference');
+    let executionPreferenceDropdown: DropdownComponent | null = null;
+    executionPreferenceSetting.addDropdown(dropdown => {
+        executionPreferenceDropdown = dropdown;
+        dropdown.selectEl.addClass('ert-input--md', 'ert-ai-strategy-select');
+        dropdown.addOption('automatic', 'Automatic (recommended)');
+        dropdown.addOption('singlePassOnly', 'Single-pass only');
+        dropdown.onChange(async value => {
+            const aiSettings = ensureCanonicalAiSettings();
+            aiSettings.analysisPackaging = value === 'singlePassOnly' ? 'singlePassOnly' : 'automatic';
+            await persistCanonical();
+            refreshRoutingUi();
+        });
+    });
+    const executionPreferenceNote = largeHandlingBody.createDiv({ cls: 'ert-field-note' });
+    const updateExecutionPreferenceNote = (): void => {
+        const mode = ensureCanonicalAiSettings().analysisPackaging;
+        executionPreferenceNote.setText(
+            mode === 'singlePassOnly'
+                ? 'Single-pass only: Sends the full request in one pass. If it exceeds safe limits, reduce scope or adjust settings.'
+                : 'Automatic: Uses one pass when possible, then uses structured packaging and synthesis only when needed.'
+        );
+    };
+    updateExecutionPreferenceNote();
+    params.addAiRelatedElement(largeHandlingFold);
+    params.addAiRelatedElement(executionPreferenceSetting.settingEl);
+
     const roleContextSection = aiSettingsGroup.createDiv({
         cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card`
     });
-    roleContextSection.createDiv({ cls: 'ert-section-title', text: 'Role & context' });
+    roleContextSection.createDiv({ cls: 'ert-section-title', text: 'Role context' });
     roleContextSection.createDiv({
         cls: 'ert-section-desc',
         text: 'Active role and context framing used for AI envelope composition.'
@@ -301,10 +377,12 @@ export function renderAiSection(params: {
 
     const providerSetting = new Settings(quickSetupGrid)
         .setName('Provider')
-        .setDesc('Choose the AI provider. Provider-specific credentials and local connection fields are shown below.');
+        .setDesc('Choose which AI service powers analysis and summaries.');
+    providerSetting.settingEl.setAttr('data-ert-role', 'ai-setting:provider');
     let providerDropdown: DropdownComponent | null = null;
     providerSetting.addDropdown(dropdown => {
         providerDropdown = dropdown;
+        dropdown.selectEl.addClass('ert-input--md', 'ert-ai-strategy-select');
         dropdown.addOption('anthropic', 'Anthropic');
         dropdown.addOption('openai', 'OpenAI');
         dropdown.addOption('google', 'Google');
@@ -329,11 +407,13 @@ export function renderAiSection(params: {
 
     const policySetting = new Settings(quickSetupGrid)
         .setName('Model strategy')
-        .setDesc('Pinned keeps an explicit model identity. Profile and latest policies choose from compatible models at runtime.');
+        .setDesc('Decide how models are selected - automatically, by profile, or manually.');
+    policySetting.settingEl.setAttr('data-ert-role', 'ai-setting:model-strategy');
     let policyDropdown: DropdownComponent | null = null;
     policySetting.addDropdown(dropdown => {
         policyDropdown = dropdown;
-        dropdown.addOption('pinned', 'Pinned model');
+        dropdown.selectEl.addClass('ert-input--md', 'ert-ai-strategy-select');
+        dropdown.addOption('pinned', 'Manual (Pinned)');
         dropdown.addOption('profile', 'Profile');
         dropdown.addOption('latestStable', 'Latest stable');
         dropdown.addOption('latestFast', 'Latest fast');
@@ -358,10 +438,12 @@ export function renderAiSection(params: {
 
     const pinnedSetting = new Settings(quickSetupGrid)
         .setName('Pinned model alias')
-        .setDesc('Stable alias preserved across provider model ID churn (example: claude-sonnet-4.5).');
+        .setDesc('Select a specific model to use instead of automatic selection.');
+    pinnedSetting.settingEl.setAttr('data-ert-role', 'ai-setting:pinned-model');
     let pinnedDropdown: DropdownComponent | null = null;
     pinnedSetting.addDropdown(dropdown => {
         pinnedDropdown = dropdown;
+        dropdown.selectEl.addClass('ert-input--md', 'ert-ai-strategy-select');
         dropdown.onChange(async value => {
             const aiSettings = ensureCanonicalAiSettings();
             if (aiSettings.modelPolicy.type !== 'pinned') return;
@@ -374,10 +456,12 @@ export function renderAiSection(params: {
 
     const profileSetting = new Settings(quickSetupGrid)
         .setName('Profile')
-        .setDesc('Apply qualitative preference scoring after capability-floor filtering.');
+        .setDesc('Apply a thinking style suited to your task (deep analysis, balanced, or fast).');
+    profileSetting.settingEl.setAttr('data-ert-role', 'ai-setting:profile');
     let profileDropdown: DropdownComponent | null = null;
     profileSetting.addDropdown(dropdown => {
         profileDropdown = dropdown;
+        dropdown.selectEl.addClass('ert-input--md', 'ert-ai-strategy-select');
         dropdown.addOption('deepReasoner', 'deepReasoner');
         dropdown.addOption('deepWriter', 'deepWriter');
         dropdown.addOption('balancedAnalysis', 'balancedAnalysis');
@@ -392,10 +476,12 @@ export function renderAiSection(params: {
 
     const accessTierSetting = new Settings(quickSetupGrid)
         .setName('Access level')
-        .setDesc('Controls request throughput, retry behavior, and output caps for the selected provider.');
+        .setDesc('Adjust request scale and output allowance for your provider.');
+    accessTierSetting.settingEl.setAttr('data-ert-role', 'ai-setting:access-level');
     let accessTierDropdown: DropdownComponent | null = null;
     accessTierSetting.addDropdown(dropdown => {
         accessTierDropdown = dropdown;
+        dropdown.selectEl.addClass('ert-input--md', 'ert-ai-strategy-select');
         dropdown.addOption('1', 'Tier 1');
         dropdown.addOption('2', 'Tier 2');
         dropdown.addOption('3', 'Tier 3');
@@ -413,10 +499,11 @@ export function renderAiSection(params: {
 
     const outputModeSetting = new Settings(quickSetupGrid)
         .setName('Output cap')
-        .setDesc('Auto follows safe defaults. High and Max use progressively larger output budgets.');
+        .setDesc('Control how much response space AI can use. Higher values allow longer answers.');
     let outputModeDropdown: DropdownComponent | null = null;
     outputModeSetting.addDropdown(dropdown => {
         outputModeDropdown = dropdown;
+        dropdown.selectEl.addClass('ert-input--md', 'ert-ai-strategy-select');
         dropdown.addOption('auto', 'Auto');
         dropdown.addOption('high', 'High');
         dropdown.addOption('max', 'Max');
@@ -431,10 +518,11 @@ export function renderAiSection(params: {
 
     const reasoningDepthSetting = new Settings(quickSetupGrid)
         .setName('Reasoning depth')
-        .setDesc('Standard for speed; Deep for higher-precision structural analysis.');
+        .setDesc('Standard for speed. Deep for more precise structural insight.');
     let reasoningDepthDropdown: DropdownComponent | null = null;
     reasoningDepthSetting.addDropdown(dropdown => {
         reasoningDepthDropdown = dropdown;
+        dropdown.selectEl.addClass('ert-input--md', 'ert-ai-strategy-select');
         dropdown.addOption('standard', 'Standard');
         dropdown.addOption('deep', 'Deep');
         dropdown.onChange(async value => {
@@ -463,9 +551,18 @@ export function renderAiSection(params: {
         upgradeBannerSetting.settingEl.addClass('ert-ai-wide-setting');
     };
 
+    const applyStrategyRowCopyLayout = (setting: Settings, description: string): void => {
+        setting.setDesc('');
+        setting.settingEl.addClass('ert-ai-strategy-row');
+        const existing = setting.settingEl.querySelector('.ert-ai-strategy-row__desc');
+        if (!existing) {
+            setting.settingEl.createDiv({ cls: 'ert-ai-strategy-row__desc', text: description });
+        }
+    };
+
     const remoteRegistrySetting = new Settings(advancedBody)
         .setName('Remote model registry')
-        .setDesc('Optional weekly-refresh model metadata. Built-in aliases are always available offline.');
+        .setDesc('Optional weekly-refresh model catalog. Built-in aliases are always available offline.');
     let remoteRegistryToggle: { setValue: (value: boolean) => unknown } | null = null;
     remoteRegistrySetting.addToggle(toggle => {
         remoteRegistryToggle = toggle;
@@ -661,7 +758,7 @@ export function renderAiSection(params: {
             if (row.availabilityStatus === 'unknown') {
                 const hint = item.createDiv({
                     cls: 'ert-ai-recommendation-hint',
-                    text: 'Enable Provider Snapshot for key-based visibility. This only fetches model metadata and availability.'
+                    text: 'Enable Provider Snapshot for key-based visibility. This only fetches model details and availability.'
                 });
 
                 if (!snapshotEnabled) {
@@ -715,8 +812,8 @@ export function renderAiSection(params: {
         statusRow.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: `Tier: ${model.tier}` });
         statusRow.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: formatAvailabilityLabel(model.availabilityStatus) });
 
-        const providerMeta = modelDetailsEl.createDiv({ cls: 'ert-field-note' });
-        providerMeta.setText(
+        const providerDetails = modelDetailsEl.createDiv({ cls: 'ert-field-note' });
+        providerDetails.setText(
             `Provider label: ${model.providerLabel || '—'} · Created: ${model.providerCreatedAt || '—'} · Context/Output: ${formatContextOutput(model)}`
         );
 
@@ -760,7 +857,7 @@ export function renderAiSection(params: {
         }
 
         const rawDetails = modelDetailsEl.createEl('details', { cls: 'ert-ai-model-raw' });
-        rawDetails.createEl('summary', { text: 'Show raw provider metadata' });
+        rawDetails.createEl('summary', { text: 'Show raw provider details' });
         rawDetails.createEl('pre', { cls: 'ert-ai-model-raw-pre', text: JSON.stringify(model.raw || {}, null, 2) });
     };
 
@@ -899,6 +996,14 @@ export function renderAiSection(params: {
         }));
     params.addAiRelatedElement(upgradeBannerSetting.settingEl);
 
+    applyStrategyRowCopyLayout(providerSetting, 'Choose which AI service powers analysis and summaries.');
+    applyStrategyRowCopyLayout(policySetting, 'Decide how models are selected - automatically, by profile, or manually.');
+    applyStrategyRowCopyLayout(profileSetting, 'Apply a thinking style suited to your task (deep analysis, balanced, or fast).');
+    applyStrategyRowCopyLayout(outputModeSetting, 'Control how much response space AI can use. Higher values allow longer answers.');
+    applyStrategyRowCopyLayout(reasoningDepthSetting, 'Standard for speed. Deep for more precise structural insight.');
+    applyStrategyRowCopyLayout(accessTierSetting, 'Adjust request scale and output allowance for your provider.');
+    applyStrategyRowCopyLayout(pinnedSetting, 'Select a specific model to use instead of automatic selection.');
+
     applyQuickSetupLayoutOrder();
 
     const refreshRoutingUi = (): void => {
@@ -928,6 +1033,8 @@ export function renderAiSection(params: {
         profileDropdown?.setValue(policy.type === 'profile' ? policy.profile : 'deepReasoner');
         outputModeDropdown?.setValue(aiSettings.overrides.maxOutputMode || 'auto');
         reasoningDepthDropdown?.setValue(aiSettings.overrides.reasoningDepth || 'standard');
+        executionPreferenceDropdown?.setValue(aiSettings.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : 'automatic');
+        updateExecutionPreferenceNote();
         remoteRegistryToggle?.setValue(aiSettings.privacy.allowRemoteRegistry);
         providerSnapshotToggle?.setValue(aiSettings.privacy.allowProviderSnapshot);
 
@@ -964,6 +1071,7 @@ export function renderAiSection(params: {
                 feature: 'InquiryMode',
                 overrides: aiSettings.overrides
             });
+            const safetyPct = Math.round(caps.safeChunkThreshold * 100);
             const policyLine = policy.type === 'profile'
                 ? `Selected via profile: ${policy.profile}`
                 : `Selected via policy: ${policy.type}`;
@@ -975,9 +1083,17 @@ export function renderAiSection(params: {
                 `${providerLabel[provider]} -> ${selection.model.label}. ${policyLine}${profileDetails}. `
                 + `Output cap ${caps.maxOutputTokens}. Reason: ${selection.reason}.${warningLine}`
             );
+            capacityProvider.valueEl.setText(`${providerLabel[provider]} · ${selection.model.label}`);
+            capacitySafeInput.valueEl.setText(`${caps.maxInputTokens.toLocaleString()} tokens (${safetyPct}% safe window)`);
+            capacityOutput.valueEl.setText(`${caps.maxOutputTokens.toLocaleString()} tokens`);
+            capacityMode.valueEl.setText(aiSettings.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic');
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             resolvedPreviewSetting.setDesc(`Model resolution failed: ${message}`);
+            capacityProvider.valueEl.setText(providerLabel[provider]);
+            capacitySafeInput.valueEl.setText('Unavailable');
+            capacityOutput.valueEl.setText('Unavailable');
+            capacityMode.valueEl.setText(aiSettings.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic');
         }
 
         renderFeatureDefaultsCards();

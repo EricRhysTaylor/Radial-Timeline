@@ -1927,6 +1927,29 @@
   transition: opacity 0.15s ease;
 }
 
+.ert-ui.ert-scope--settings .setting-item.is-attention-pulse {
+  border: 1px solid color-mix(in srgb, var(--text-error) 45%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--text-error) 10%, var(--background-secondary));
+  animation: ert-settings-attention-pulse 1.3s ease-in-out 2;
+}
+
+.ert-ui.ert-scope--settings [data-ert-role^="ai-setting:"].is-attention-pulse:not(.setting-item) {
+  border: 1px solid color-mix(in srgb, var(--text-error) 45%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--text-error) 10%, var(--background-secondary));
+  animation: ert-settings-attention-pulse 1.3s ease-in-out 2;
+}
+
+@keyframes ert-settings-attention-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--text-error) 25%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--text-error) 8%, transparent);
+  }
+}
+
 .ert-ui.ert-scope--settings .ert-ai-hero-badge-row {
   display: flex;
   align-items: center;
@@ -1938,16 +1961,70 @@
   margin-left: auto;
 }
 
+.ert-ui.ert-scope--settings .ert-ai-hero-muted {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 .ert-ui.ert-scope--settings .ert-ai-section-card {
   padding: var(--ert-pad-md);
 }
 
 .ert-ui.ert-scope--settings .ert-ai-quick-grid {
   grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: var(--ert-gap-sm) var(--ert-gap-md);
 }
 
 .ert-ui.ert-scope--settings .ert-ai-quick-grid .ert-ai-grid-item {
   margin: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-quick-grid .ert-ai-strategy-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  column-gap: var(--ert-gap-sm);
+  row-gap: 4px;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 75%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--background-secondary) 78%, transparent);
+  padding: 8px 10px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-quick-grid .ert-ai-strategy-row .setting-item-info {
+  grid-column: 1;
+  grid-row: 1;
+  margin: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-quick-grid .ert-ai-strategy-row .setting-item-info .setting-item-description {
+  display: none;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-quick-grid .ert-ai-strategy-row .setting-item-name {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-quick-grid .ert-ai-strategy-row .setting-item-control {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  margin: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-quick-grid .ert-ai-strategy-row .ert-ai-strategy-select {
+  width: 180px;
+  min-width: 180px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-quick-grid .ert-ai-strategy-row__desc {
+  grid-column: 1 / span 2;
+  grid-row: 2;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.35;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-feature-grid {
@@ -1971,6 +2048,60 @@
 }
 
 .ert-ui.ert-scope--settings .ert-ai-feature-card-body {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-large-handling-body {
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-capacity-section {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--background-secondary) 78%, transparent);
+  padding: 10px 12px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-capacity-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-normal);
+  margin-bottom: 8px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-capacity-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-capacity-cell {
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 75%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--background-primary) 88%, transparent);
+  padding: 8px 10px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-capacity-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-capacity-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-packaging-list {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-packaging-list li {
   font-size: 12px;
   color: var(--text-muted);
   line-height: 1.35;
@@ -2008,6 +2139,28 @@
 @media (max-width: 760px) {
   .ert-ui.ert-scope--settings .ert-ai-quick-grid,
   .ert-ui.ert-scope--settings .ert-ai-feature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ert-ui.ert-scope--settings .ert-ai-quick-grid .ert-ai-strategy-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ert-ui.ert-scope--settings .ert-ai-quick-grid .ert-ai-strategy-row .setting-item-control {
+    grid-column: 1;
+    justify-self: start;
+  }
+
+  .ert-ui.ert-scope--settings .ert-ai-quick-grid .ert-ai-strategy-row .ert-ai-strategy-select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .ert-ui.ert-scope--settings .ert-ai-quick-grid .ert-ai-strategy-row__desc {
+    grid-column: 1;
+  }
+
+  .ert-ui.ert-scope--settings .ert-ai-capacity-grid {
     grid-template-columns: 1fr;
   }
 }

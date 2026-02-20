@@ -36,7 +36,9 @@ import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryA
 import { ensureInquiryContentLogFolder, ensureInquiryLogFolder } from './utils/logs';
 import { openOrRevealFile } from '../utils/fileUtils';
 import { extractTokenUsage, formatAiLogContent, formatDuration, sanitizeLogPayload, type AiLogStatus } from '../ai/log';
+import { getCredentialSecretId } from '../ai/credentials/credentials';
 import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
+import { hasSecret, isSecretStorageAvailable } from '../ai/credentials/secretStorage';
 import {
     InquiryGlyph,
     FLOW_RADIUS,
@@ -48,7 +50,12 @@ import {
 import { ZONE_LAYOUT } from './zoneLayout';
 import { InquiryRunnerService } from './runner/InquiryRunnerService';
 import { getLastAiAdvancedContext } from '../ai/runtime/aiClient';
-import type { AIRunAdvancedContext } from '../ai/types';
+import { computeCaps } from '../ai/caps/computeCaps';
+import { BUILTIN_MODELS } from '../ai/registry/builtinModels';
+import { selectModel } from '../ai/router/selectModel';
+import { buildDefaultAiSettings, mapLegacyProviderToAiProvider } from '../ai/settings/aiSettings';
+import { validateAiSettings } from '../ai/settings/validateAiSettings';
+import type { AIRunAdvancedContext, AIProviderId, AiSettingsV1, Capability, ModelInfo } from '../ai/types';
 import type {
     CorpusManifest,
     CorpusManifestEntry,
@@ -64,10 +71,18 @@ import type { InquirySourcesSettings } from '../types/settings';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { InquiryCorpusResolver, InquiryCorpusSnapshot, InquiryCorpusItem, InquirySceneItem } from './services/InquiryCorpusResolver';
+import {
+    buildCorpusSelectionKey,
+    buildLegacyCorpusSelectionKey,
+    parseCorpusSelectionKey
+} from './services/corpusSelectionKeys';
+import { buildMinimapSubsetResult } from './services/minimapSubset';
+import { buildPassIndicator, evaluateInquiryReadiness, type InquiryReadinessResult } from './services/readiness';
 import { getModelDisplayName } from '../utils/modelResolver';
 import { addTooltipData, setupTooltipsFromDataAttributes } from '../utils/tooltip';
 import { splitIntoBalancedLinesOptimal } from '../utils/text';
 import { classifySynopsis, type SynopsisQuality } from '../sceneAnalysis/synopsisQuality';
+import { readSceneId } from '../utils/sceneIds';
 import {
     MAX_RESOLVED_SCAN_ROOTS,
     normalizeScanRootPatterns,
@@ -197,8 +212,9 @@ const GUIDANCE_LINE_HEIGHT = 18;
 const GUIDANCE_ALERT_LINE_HEIGHT = 26;
 const INQUIRY_PROMPT_OVERHEAD_CHARS = 900;
 const INQUIRY_CHARS_PER_TOKEN = 4;
-const INQUIRY_INPUT_TOKENS_AMBER = 60000;
-const INQUIRY_INPUT_TOKENS_RED = 110000;
+const INQUIRY_INPUT_TOKENS_AMBER = 90000;
+const INQUIRY_INPUT_TOKENS_RED = 140000;
+const INQUIRY_REQUIRED_CAPABILITIES: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'];
 
 type InquiryQuestion = {
     id: string;
@@ -649,6 +665,7 @@ class InquiryOmnibusModal extends Modal {
             `Model selection reason: ${redactSensitiveValue(ctx.modelSelectionReason)}`,
             `Availability: ${ctx.availabilityStatus === 'visible' ? 'Visible to your key ✅' : ctx.availabilityStatus === 'not_visible' ? 'Not visible ⚠️' : 'Unknown (snapshot disabled)'}`,
             `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
+            `Packaging: ${ctx.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic'}`,
             '',
             'Feature mode instructions:',
             redactSensitiveValue(ctx.featureModeInstructions || '(none)'),
@@ -656,6 +673,12 @@ class InquiryOmnibusModal extends Modal {
             'Final composed prompt:',
             redactSensitiveValue(ctx.finalPrompt || '(none)')
         ];
+        if (typeof ctx.executionPassCount === 'number' && ctx.executionPassCount > 1) {
+            lines.splice(6, 0, `Pass count: ${ctx.executionPassCount}`);
+        }
+        if (ctx.packagingTriggerReason) {
+            lines.splice(7, 0, `Packaging trigger: ${redactSensitiveValue(ctx.packagingTriggerReason)}`);
+        }
         this.aiAdvancedPreEl.setText(lines.join('\n'));
     }
 
@@ -747,6 +770,7 @@ type CorpusCcEntry = {
     entryKey: string;
     label: string;
     filePath: string;
+    sceneId?: string;
     className: string;
     classKey: string;
     scope?: InquiryScope;
@@ -807,6 +831,35 @@ type EngineChoice = {
     enabled: boolean;
     disabledReason?: string;
 };
+type AiSettingsFocus =
+    | 'provider'
+    | 'model-strategy'
+    | 'profile'
+    | 'access-level'
+    | 'pinned-model'
+    | 'execution-preference'
+    | 'large-manuscript-handling';
+type EngineFailureGuidance = {
+    message: string;
+    buttonLabel: string;
+    targets: AiSettingsFocus[];
+};
+type InquiryReadinessUiState = {
+    readiness: InquiryReadinessResult;
+    estimateInputTokens: number;
+    safeInputBudget: number;
+    outputBudget: number;
+    packaging: AiSettingsV1['analysisPackaging'];
+    hasEligibleModel: boolean;
+    hasCredential: boolean;
+    provider: AIProviderId;
+    providerLabel: string;
+    reason: string;
+    model?: ModelInfo;
+    runScopeLabel: string;
+    canSwitchToSummaries: boolean;
+    canUseSelectedScenesOnly: boolean;
+};
 
 export class InquiryView extends ItemView {
     static readonly viewType = INQUIRY_VIEW_TYPE;
@@ -840,8 +893,15 @@ export class InquiryView extends ItemView {
     private enginePanelRunAnywayButton?: HTMLButtonElement;
     private enginePanelListEl?: HTMLDivElement;
     private enginePanelMetaEl?: HTMLDivElement;
+    private enginePanelReadinessEl?: HTMLDivElement;
+    private enginePanelReadinessStatusEl?: HTMLDivElement;
+    private enginePanelReadinessMessageEl?: HTMLDivElement;
+    private enginePanelReadinessActionsEl?: HTMLDivElement;
+    private enginePanelReadinessScopeEl?: HTMLDivElement;
     private enginePanelHideTimer?: number;
     private pendingGuardQuestion?: InquiryQuestion;
+    private enginePanelFailureGuidance: EngineFailureGuidance | null = null;
+    private lastReadinessUiState?: InquiryReadinessUiState;
     private omnibusAbortRequested = false;
     private activeOmnibusModal?: InquiryOmnibusModal;
     private minimapTicksEl?: SVGGElement;
@@ -865,6 +925,8 @@ export class InquiryView extends ItemView {
     };
     private minimapBackboneGradientStops: SVGStopElement[] = [];
     private minimapBackboneShineStops: SVGStopElement[] = [];
+    private minimapPassIndicatorGroup?: SVGGElement;
+    private minimapPassIndicatorText?: SVGTextElement;
     private backboneStartColors?: BackboneColors;
     private backboneTargetColors?: BackboneColors;
     private backboneOscillationColors?: { base: BackboneColors; target: BackboneColors };
@@ -957,6 +1019,8 @@ export class InquiryView extends ItemView {
     private helpTipsEnabled = false;
     private iconSymbols = new Set<string>();
     private svgDefs?: SVGDefsElement;
+    private providerSecretPresence: Partial<Record<AIProviderId, boolean>> = {};
+    private providerSecretProbePending = new Set<AIProviderId>();
     private lastFocusSceneByBookId = new Map<string, string>();
     private corpusResolver: InquiryCorpusResolver;
     private corpus?: InquiryCorpusSnapshot;
@@ -1366,21 +1430,31 @@ export class InquiryView extends ItemView {
         header.createDiv({ cls: 'ert-inquiry-engine-title', text: 'AI Engine' });
         this.enginePanelMetaEl = header.createDiv({ cls: 'ert-inquiry-engine-meta', text: '' });
 
+        this.enginePanelReadinessEl = panel.createDiv({ cls: 'ert-inquiry-engine-readiness' });
+        this.enginePanelReadinessStatusEl = this.enginePanelReadinessEl.createDiv({
+            cls: 'ert-inquiry-engine-readiness-status',
+            text: 'Ready'
+        });
+        this.enginePanelReadinessMessageEl = this.enginePanelReadinessEl.createDiv({
+            cls: 'ert-inquiry-engine-readiness-message',
+            text: ''
+        });
+        this.enginePanelReadinessScopeEl = this.enginePanelReadinessEl.createDiv({
+            cls: 'ert-inquiry-engine-readiness-scope',
+            text: ''
+        });
+        this.enginePanelReadinessActionsEl = this.enginePanelReadinessEl.createDiv({
+            cls: 'ert-inquiry-engine-readiness-actions'
+        });
+
         this.enginePanelGuardEl = panel.createDiv({ cls: 'ert-inquiry-engine-guard ert-hidden' });
         this.enginePanelGuardNoteEl = this.enginePanelGuardEl.createDiv({
             cls: 'ert-inquiry-engine-guard-note'
         });
-        this.enginePanelGuardNoteEl.createSpan({ text: 'Current payload: ' });
-        this.enginePanelGuardTokenEl = this.enginePanelGuardNoteEl.createEl('strong', {
-            cls: 'ert-inquiry-engine-guard-token',
-            text: ''
-        });
-        this.enginePanelGuardNoteEl.createSpan({
-            text: '. Adjust corpus via the Inquiry View Corpus manager below, or update general settings in Settings > Inquiry.'
-        });
+        this.enginePanelGuardNoteEl.setText('Adjust settings to continue.');
         this.enginePanelRunAnywayButton = this.enginePanelGuardEl.createEl('button', {
             cls: 'ert-inquiry-engine-run-anyway',
-            text: 'Edit Scope',
+            text: 'Adjust Settings',
             attr: { type: 'button' }
         });
         this.registerDomEvent(this.enginePanelRunAnywayButton, 'click', (event: MouseEvent) => {
@@ -1455,27 +1529,42 @@ export class InquiryView extends ItemView {
             };
         });
 
-        const contextQuestion = this.getEngineContextQuestion();
+        const contextQuestion = this.getEngineContextQuestion() ?? this.getCurrentPromptQuestion();
         const payloadSummary = this.buildEnginePayloadSummary(contextQuestion);
-        const tokenTier = contextQuestion ? payloadSummary.tier : 'normal';
+        const readinessUi = this.buildReadinessUiState(contextQuestion);
+        this.lastReadinessUiState = readinessUi;
+        const tokenTier: TokenTier = readinessUi.readiness.pressureTone === 'red'
+            ? 'red'
+            : readinessUi.readiness.pressureTone === 'amber'
+                ? 'amber'
+                : 'normal';
+        const failureGuidance = this.getEngineFailureGuidance();
+        this.enginePanelFailureGuidance = failureGuidance;
         if (this.enginePanelMetaEl) {
             const activeLabel = `${this.getActiveInquiryProviderLabel()} · ${this.getActiveInquiryModelLabel()}`;
             this.enginePanelMetaEl.setText(`Active: ${activeLabel} · ${payloadSummary.text}`);
         }
+        this.renderEngineReadinessStrip(readinessUi);
 
         const recommendedChoices = tokenTier === 'red' ? this.pickRecommendedEngineChoices(choices) : [];
         const recommendedKeys = new Set(recommendedChoices.map(choice => `${choice.provider}::${choice.modelId}`));
 
         if (this.enginePanelGuardEl) {
-            const showGuard = Boolean(this.pendingGuardQuestion);
+            const showGuard = Boolean(this.pendingGuardQuestion) || Boolean(failureGuidance);
             this.enginePanelGuardEl.classList.toggle('ert-hidden', !showGuard);
+            this.enginePanelGuardEl.classList.toggle('is-error-guidance', Boolean(failureGuidance));
             if (this.enginePanelGuardNoteEl && showGuard) {
-                const guardQuestion = this.pendingGuardQuestion?.question ?? contextQuestion;
-                const guardSummary = this.buildEnginePayloadSummary(guardQuestion);
-                const guardTokens = this.formatTokenEstimate(guardSummary.inputTokens);
-                if (this.enginePanelGuardTokenEl) {
-                    this.enginePanelGuardTokenEl.setText(`~${guardTokens} input tokens`);
-                    this.enginePanelGuardTokenEl.classList.toggle('is-large', guardSummary.tier === 'red');
+                this.enginePanelGuardNoteEl.empty();
+                if (failureGuidance) {
+                    this.enginePanelGuardTokenEl = undefined;
+                    this.enginePanelGuardNoteEl.setText(failureGuidance.message);
+                    this.enginePanelRunAnywayButton?.setText(failureGuidance.buttonLabel);
+                } else {
+                    const guardQuestion = this.pendingGuardQuestion?.question ?? contextQuestion;
+                    const guardReadiness = this.buildReadinessUiState(guardQuestion);
+                    this.enginePanelGuardTokenEl = undefined;
+                    this.enginePanelGuardNoteEl.setText(guardReadiness.reason);
+                    this.enginePanelRunAnywayButton?.setText('Adjust Settings');
                 }
             }
         }
@@ -1515,9 +1604,104 @@ export class InquiryView extends ItemView {
     }
 
     private handleGuardSettingsClick(): void {
+        if (this.enginePanelFailureGuidance) {
+            const guidance = this.enginePanelFailureGuidance;
+            this.pendingGuardQuestion = undefined;
+            this.hideEnginePanel();
+            this.openAiSettings(guidance.targets);
+            return;
+        }
+        const readinessTargets = this.getReadinessTargets(this.lastReadinessUiState);
         this.pendingGuardQuestion = undefined;
         this.hideEnginePanel();
-        this.openInquirySettings('class-scope');
+        this.openAiSettings(readinessTargets);
+    }
+
+    private openAiSettings(targets: AiSettingsFocus[] = []): void {
+        if (this.plugin.settingsTab) {
+            this.plugin.settingsTab.setActiveTab('ai');
+        }
+        // SAFE: any type used for accessing Obsidian's internal settings API
+        const setting = (this.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting;
+        if (setting) {
+            setting.open();
+            setting.openTabById('radial-timeline');
+        }
+        window.setTimeout(() => {
+            const uniqueTargets = Array.from(new Set(targets));
+            uniqueTargets.forEach((target, index) => {
+                window.setTimeout(() => this.scrollAndPulseAiSetting(target, index === 0), index * 120);
+            });
+        }, 180);
+    }
+
+    private scrollAndPulseAiSetting(target: AiSettingsFocus, shouldScroll: boolean): void {
+        const el = document.querySelector(`[data-ert-role="ai-setting:${target}"]`);
+        if (!(el instanceof HTMLElement)) return;
+        if (shouldScroll) {
+            el.scrollIntoView({ block: 'center' });
+        }
+        el.classList.remove('is-attention-pulse');
+        void el.offsetWidth;
+        el.classList.add('is-attention-pulse');
+        window.setTimeout(() => {
+            el.classList.remove('is-attention-pulse');
+        }, 2600);
+    }
+
+    private getEngineFailureGuidance(): EngineFailureGuidance | null {
+        const result = this.state.activeResult;
+        if (!result) return null;
+        if (!this.isErrorResult(result)) return null;
+        const detail = [
+            result.summary,
+            result.summaryFlow,
+            result.summaryDepth,
+            result.aiStatus,
+            result.aiReason,
+            ...result.findings.map(finding => finding.headline || ''),
+            ...result.findings.flatMap(finding => finding.bullets || [])
+        ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+
+        if (detail.includes('no model satisfies capability floor')) {
+            const providerMatch = detail.match(/provider\s+([a-z0-9_-]+)/);
+            const providerRaw = providerMatch?.[1] || this.plugin.settings.defaultAiProvider || 'openai';
+            const providerLabel = this.getInquiryProviderLabel(
+                (providerRaw === 'anthropic' || providerRaw === 'gemini' || providerRaw === 'openai' || providerRaw === 'local')
+                    ? providerRaw
+                    : 'openai'
+            );
+            return {
+                message: `${providerLabel} cannot run this Inquiry setup. In Settings > AI Strategy, update Provider and Model strategy, then retry.`,
+                buttonLabel: 'Adjust Settings',
+                targets: ['provider', 'model-strategy', 'profile', 'access-level']
+            };
+        }
+
+        if (detail.includes('safe limit for a single pass') || detail.includes('single-pass only')) {
+            return {
+                message: 'This request exceeds the safe limit for a single pass. Switch Execution Preference to Automatic, or reduce scope.',
+                buttonLabel: 'Adjust Settings',
+                targets: ['large-manuscript-handling', 'execution-preference']
+            };
+        }
+
+        if (result.aiReason === 'auth') {
+            return {
+                message: 'Provider credentials need attention. In Settings > AI, verify your provider and saved key details.',
+                buttonLabel: 'Adjust Settings',
+                targets: ['provider']
+            };
+        }
+
+        return {
+            message: 'Inquiry failed. Open Settings > AI to check Provider, Model strategy, and Profile before retrying.',
+            buttonLabel: 'Adjust Settings',
+            targets: ['provider', 'model-strategy', 'profile', 'access-level']
+        };
     }
 
     private renderEngineChoices(
@@ -1628,6 +1812,299 @@ export class InquiryView extends ItemView {
             tier: this.getTokenTier(estimate.inputTokens),
             hasQuestion
         };
+    }
+
+    private getCurrentPromptQuestion(): string | null {
+        const activeZone = this.state.activeZone ?? 'setup';
+        const activePrompt = this.getActivePrompt(activeZone);
+        if (activePrompt?.question?.trim()) return activePrompt.question.trim();
+        const fallback = this.getPromptOptions('setup')[0];
+        return fallback?.question?.trim() || null;
+    }
+
+    private getCanonicalAiSettings(): AiSettingsV1 {
+        const validated = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings());
+        this.plugin.settings.aiSettings = validated.value;
+        return validated.value;
+    }
+
+    private getAccessTierForProvider(provider: AIProviderId, aiSettings: AiSettingsV1): 1 | 2 | 3 {
+        if (provider === 'anthropic') return aiSettings.aiAccessProfile.anthropicTier ?? 1;
+        if (provider === 'openai') return aiSettings.aiAccessProfile.openaiTier ?? 1;
+        if (provider === 'google') return aiSettings.aiAccessProfile.googleTier ?? 1;
+        return 1;
+    }
+
+    private getReadinessTargets(readiness?: InquiryReadinessUiState): AiSettingsFocus[] {
+        if (!readiness) {
+            return ['provider', 'model-strategy', 'profile', 'access-level'];
+        }
+        if (readiness.readiness.cause === 'missing_key') return ['provider'];
+        if (readiness.readiness.cause === 'capability_floor') return ['provider', 'model-strategy', 'profile', 'access-level'];
+        if (readiness.readiness.cause === 'single_pass_limit') return ['large-manuscript-handling', 'execution-preference'];
+        if (readiness.readiness.state === 'large') return ['large-manuscript-handling', 'execution-preference'];
+        return ['provider', 'model-strategy'];
+    }
+
+    private buildReadinessUiState(questionText: string | null): InquiryReadinessUiState {
+        const aiSettings = this.getCanonicalAiSettings();
+        const providerCandidate = aiSettings.provider === 'none'
+            ? mapLegacyProviderToAiProvider(this.plugin.settings.defaultAiProvider)
+            : aiSettings.provider;
+        const provider: Exclude<AIProviderId, 'none'> = providerCandidate === 'none' ? 'openai' : providerCandidate;
+        const engineProvider: EngineProvider = provider === 'google'
+            ? 'gemini'
+            : provider === 'ollama'
+                ? 'local'
+                : provider;
+        const providerLabel = this.getInquiryProviderLabel(engineProvider);
+        const hasCredential = this.getProviderAvailability(engineProvider).enabled;
+        const question = (questionText || '').trim();
+        const tokenEstimate = this.getTokenEstimateForQuestion(question);
+        const estimateInputTokens = tokenEstimate.inputTokens;
+        let hasEligibleModel = false;
+        let reason = 'Ready to run.';
+        let safeInputBudget = 0;
+        let outputBudget = INQUIRY_MAX_OUTPUT_TOKENS;
+        let model: ModelInfo | undefined;
+
+        try {
+            const policy = aiSettings.featureProfiles?.InquiryMode?.modelPolicy ?? aiSettings.modelPolicy;
+            const modelSelection = selectModel(BUILTIN_MODELS, {
+                provider,
+                policy,
+                requiredCapabilities: INQUIRY_REQUIRED_CAPABILITIES,
+                accessTier: this.getAccessTierForProvider(provider, aiSettings),
+                contextTokensNeeded: estimateInputTokens,
+                outputTokensNeeded: 0
+            });
+            hasEligibleModel = true;
+            model = modelSelection.model;
+            const caps = computeCaps({
+                provider,
+                model: modelSelection.model,
+                accessTier: this.getAccessTierForProvider(provider, aiSettings),
+                feature: 'InquiryMode',
+                overrides: aiSettings.overrides
+            });
+            safeInputBudget = caps.maxInputTokens;
+            outputBudget = caps.maxOutputTokens;
+            reason = modelSelection.reason;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            reason = message || 'No model satisfies capability floor.';
+        }
+
+        const readiness = evaluateInquiryReadiness({
+            hasEligibleModel,
+            hasCredential,
+            analysisPackaging: aiSettings.analysisPackaging,
+            estimatedInputTokens: estimateInputTokens,
+            safeInputBudget
+        });
+
+        const canSwitchToSummaries = this.hasAnyBodyEvidence()
+            && safeInputBudget > 0
+            && this.estimateSummaryOnlyTokens(question) <= safeInputBudget;
+        const selectedSceneOverrides = this.getSelectedSceneOverrideEntries();
+        const stats = this.getPayloadStats();
+        const canUseSelectedScenesOnly = this.state.scope === 'book'
+            && selectedSceneOverrides.length > 0
+            && selectedSceneOverrides.length < Math.max(1, stats.sceneTotal);
+
+        if (readiness.cause === 'missing_key') {
+            reason = `${providerLabel} key is missing. Add a saved key in AI settings.`;
+        } else if (readiness.cause === 'capability_floor') {
+            reason = `${providerLabel} cannot satisfy this Inquiry setup. Update Provider, Model strategy, or Access level.`;
+        } else if (readiness.cause === 'single_pass_limit') {
+            reason = 'This request exceeds the safe limit for a single pass. Switch Execution Preference to Automatic, or reduce scope.';
+        } else if (readiness.state === 'large') {
+            reason = 'Large request detected. Automatic packaging will use multiple passes for stability.';
+        }
+
+        return {
+            readiness,
+            estimateInputTokens,
+            safeInputBudget,
+            outputBudget,
+            packaging: aiSettings.analysisPackaging,
+            hasEligibleModel,
+            hasCredential,
+            provider,
+            providerLabel,
+            reason,
+            model,
+            runScopeLabel: this.buildRunScopeLabel(stats, selectedSceneOverrides.length),
+            canSwitchToSummaries,
+            canUseSelectedScenesOnly
+        };
+    }
+
+    private buildRunScopeLabel(stats: InquiryPayloadStats, selectedSceneCount: number): string {
+        const sceneMode = stats.sceneFullTextCount > 0
+            ? 'Bodies'
+            : stats.sceneSynopsisUsed > 0
+                ? 'Summaries'
+                : 'No scene evidence';
+        const outlineCount = stats.bookOutlineCount + stats.sagaOutlineCount;
+        const outlineMode = (stats.bookOutlineFullCount + stats.sagaOutlineFullCount) > 0
+            ? 'Body'
+            : (stats.bookOutlineSummaryCount + stats.sagaOutlineSummaryCount) > 0
+                ? 'Summary'
+                : '';
+
+        if (this.state.scope === 'book' && selectedSceneCount > 0 && selectedSceneCount < Math.max(1, stats.sceneTotal)) {
+            return `Run on ${selectedSceneCount} scenes (${sceneMode}).`;
+        }
+
+        if (this.state.scope === 'book') {
+            const parts: string[] = [];
+            if (outlineCount > 0) {
+                parts.push(`Outline (${outlineMode || 'Off'})`);
+            }
+            if (stats.sceneTotal > 0) {
+                parts.push(sceneMode);
+            }
+            return `Run on Book ${this.getFocusLabel()} (${parts.join(' + ')}).`;
+        }
+
+        return `Run on Saga ${this.getFocusLabel()} (${sceneMode}).`;
+    }
+
+    private renderEngineReadinessStrip(readinessUi: InquiryReadinessUiState): void {
+        if (!this.enginePanelReadinessEl
+            || !this.enginePanelReadinessStatusEl
+            || !this.enginePanelReadinessMessageEl
+            || !this.enginePanelReadinessActionsEl
+            || !this.enginePanelReadinessScopeEl) {
+            return;
+        }
+
+        const stateClass = readinessUi.readiness.state === 'ready'
+            ? 'is-ready'
+            : readinessUi.readiness.state === 'large'
+                ? 'is-amber'
+                : 'is-error';
+        this.enginePanelReadinessEl.classList.remove('is-ready', 'is-amber', 'is-error');
+        this.enginePanelReadinessEl.classList.add(stateClass);
+
+        const statusText = readinessUi.readiness.state === 'ready'
+            ? 'Ready'
+            : readinessUi.readiness.state === 'large'
+                ? 'Large request'
+                : 'Will fail';
+        this.enginePanelReadinessStatusEl.setText(statusText);
+
+        const inputLabel = this.formatTokenEstimate(readinessUi.estimateInputTokens);
+        const safeLabel = readinessUi.safeInputBudget > 0
+            ? this.formatTokenEstimate(readinessUi.safeInputBudget)
+            : 'n/a';
+        const ratioPercent = Number.isFinite(readinessUi.readiness.pressureRatio)
+            ? Math.round(Math.max(0, readinessUi.readiness.pressureRatio) * 100)
+            : 0;
+        const packagingLabel = readinessUi.packaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic';
+        this.enginePanelReadinessMessageEl.setText(
+            `${readinessUi.reason} Context usage ~${inputLabel} / ${safeLabel} (${ratioPercent}%). Packaging: ${packagingLabel}.`
+        );
+        this.enginePanelReadinessScopeEl.setText(readinessUi.runScopeLabel);
+
+        this.enginePanelReadinessActionsEl.empty();
+        this.createReadinessActionButton('Adjust Settings', () => {
+            this.openAiSettings(this.getReadinessTargets(readinessUi));
+        });
+        this.createReadinessActionButton('Large Manuscript Handling', () => {
+            this.openAiSettings(['large-manuscript-handling', 'execution-preference']);
+        });
+        if (readinessUi.canSwitchToSummaries) {
+            this.createReadinessActionButton('Switch to Summaries', () => {
+                this.applySummariesSuggestion();
+            });
+        }
+        if (readinessUi.canUseSelectedScenesOnly) {
+            this.createReadinessActionButton('Use Selected Scenes Only', () => {
+                this.applySelectedScenesSuggestion();
+            });
+        }
+    }
+
+    private createReadinessActionButton(label: string, onClick: () => void): void {
+        if (!this.enginePanelReadinessActionsEl) return;
+        const button = this.enginePanelReadinessActionsEl.createEl('button', {
+            cls: 'ert-inquiry-engine-readiness-action',
+            text: label,
+            attr: { type: 'button' }
+        });
+        this.registerDomEvent(button, 'click', (event: MouseEvent) => {
+            event.stopPropagation();
+            onClick();
+        });
+    }
+
+    private hasAnyBodyEvidence(): boolean {
+        const stats = this.getPayloadStats();
+        return stats.sceneFullTextCount > 0 || stats.bookOutlineFullCount > 0 || stats.sagaOutlineFullCount > 0;
+    }
+
+    private estimateSummaryOnlyTokens(questionText: string): number {
+        const manifest = this.buildCorpusManifest('payload-preview', {
+            questionZone: this.previewLast?.zone,
+            applyOverrides: true
+        });
+        const summaryChars = manifest.entries.reduce((sum, entry) => {
+            const isSynopsisCapable = entry.class === 'scene' || entry.class === 'outline';
+            if (!isSynopsisCapable) {
+                return sum + this.getEntryContentLength(entry);
+            }
+            const summary = this.getEntrySummary(entry.path);
+            if (summary.length > 0) {
+                return sum + summary.length;
+            }
+            return sum + this.getEntryContentLength(entry);
+        }, 0);
+        return this.estimateTokensFromChars(summaryChars + (questionText?.length ?? 0) + INQUIRY_PROMPT_OVERHEAD_CHARS);
+    }
+
+    private getSelectedSceneOverrideEntries(): Array<{ entryKey: string; mode: InquiryMaterialMode }> {
+        const entries = this.getCorpusCcEntries().filter(entry => entry.classKey === 'scene');
+        const selected: Array<{ entryKey: string; mode: InquiryMaterialMode }> = [];
+        entries.forEach(entry => {
+            const override = this.getCorpusItemOverride(entry.classKey, entry.filePath, entry.scope, entry.sceneId);
+            if (!override || !this.isModeActive(override)) return;
+            selected.push({ entryKey: entry.entryKey, mode: override });
+        });
+        return selected;
+    }
+
+    private applySummariesSuggestion(): void {
+        if (this.state.isRunning) return;
+        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
+        ['scene', 'outline', 'outline-saga'].forEach(groupKey => {
+            const baseMode = this.getCorpusGroupBaseMode(groupKey, configMap);
+            if (baseMode === 'none') return;
+            const nextMode: InquiryMaterialMode = 'summary';
+            if (nextMode === baseMode) {
+                this.corpusClassOverrides.delete(groupKey);
+            } else {
+                this.corpusClassOverrides.set(groupKey, nextMode);
+            }
+            this.clearItemOverridesForGroup(groupKey);
+        });
+        this.corpusWarningActive = false;
+        this.refreshUI();
+    }
+
+    private applySelectedScenesSuggestion(): void {
+        if (this.state.isRunning || this.state.scope !== 'book') return;
+        const selected = this.getSelectedSceneOverrideEntries();
+        if (!selected.length) return;
+        this.corpusClassOverrides.set('scene', 'none');
+        this.clearItemOverridesForGroup('scene');
+        selected.forEach(entry => {
+            this.corpusItemOverrides.set(entry.entryKey, entry.mode);
+        });
+        this.corpusWarningActive = false;
+        this.refreshUI();
     }
 
     private pickRecommendedEngineChoices(choices: EngineChoice[]): EngineChoice[] {
@@ -3307,9 +3784,14 @@ export class InquiryView extends ItemView {
 
     private syncEngineBadgePulse(): void {
         if (!this.engineBadgeGroup) return;
-        const baseSummary = this.buildEnginePayloadSummary(null);
-        this.engineBadgeGroup.classList.toggle('is-engine-pulse-amber', baseSummary.tier === 'amber');
-        this.engineBadgeGroup.classList.toggle('is-engine-pulse-red', baseSummary.tier === 'red');
+        const readinessUi = this.lastReadinessUiState ?? this.buildReadinessUiState(this.getEngineContextQuestion() ?? this.getCurrentPromptQuestion());
+        const hasError = this.isErrorState();
+        const amber = !hasError && (readinessUi.readiness.state === 'large' || readinessUi.readiness.pressureTone === 'amber');
+        const red = hasError
+            || readinessUi.readiness.state === 'blocked'
+            || (readinessUi.packaging === 'singlePassOnly' && readinessUi.readiness.exceedsBudget);
+        this.engineBadgeGroup.classList.toggle('is-engine-pulse-amber', amber && !red);
+        this.engineBadgeGroup.classList.toggle('is-engine-pulse-red', red);
     }
 
     private getActiveInquiryModelId(): string {
@@ -3367,18 +3849,6 @@ export class InquiryView extends ItemView {
         return { allowAll, allowed };
     }
 
-    private openAiSettings(): void {
-        if (this.plugin.settingsTab) {
-            this.plugin.settingsTab.setActiveTab('core');
-        }
-        // SAFE: any type used for accessing Obsidian's internal settings API
-        const setting = (this.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting;
-        if (setting) {
-            setting.open();
-            setting.openTabById('radial-timeline');
-        }
-    }
-
     private getCurrentItems(): InquiryCorpusItem[] {
         if (!this.corpus) return [];
         return this.state.scope === 'saga' ? this.corpus.books : this.corpus.scenes;
@@ -3407,11 +3877,28 @@ export class InquiryView extends ItemView {
 
     private pickFocusScene(bookId: string | undefined, scenes: InquiryCorpusItem[]): string | undefined {
         if (!bookId || !scenes.length) return undefined;
-        const prior = this.lastFocusSceneByBookId.get(bookId);
-        if (prior && scenes.some(scene => scene.id === prior)) {
-            return prior;
+        const candidates = [
+            this.lastFocusSceneByBookId.get(bookId),
+            this.state.focusSceneId
+        ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+
+        for (const candidate of candidates) {
+            const match = scenes.find(scene => this.matchesSceneSelectionId(scene, candidate));
+            if (match) {
+                return match.id;
+            }
         }
         return scenes[0]?.id;
+    }
+
+    private matchesSceneSelectionId(item: InquiryCorpusItem, selectionId: string): boolean {
+        const target = selectionId.toLowerCase();
+        if (item.id.toLowerCase() === target) return true;
+        if (typeof item.sceneId === 'string' && item.sceneId.toLowerCase() === target) return true;
+        if (item.filePaths?.some(path => path.toLowerCase() === target)) return true;
+        const scenePath = (item as { filePath?: string }).filePath;
+        if (scenePath && scenePath.toLowerCase() === target) return true;
+        return false;
     }
 
     private isSceneFile(file: TFile): boolean {
@@ -3553,6 +4040,7 @@ export class InquiryView extends ItemView {
             this.minimapBackboneGroup?.setAttribute('display', 'none');
             this.renderCorpusCcStrip();
             this.updateMinimapFocus();
+            this.updateMinimapPressureGauge();
             this.updatePreviewPanelPosition();
             return;
         }
@@ -3620,6 +4108,11 @@ export class InquiryView extends ItemView {
             tick.setAttribute('data-id', item.id);
             tick.setAttribute('data-label', label);
             tick.setAttribute('data-full-label', fullLabel);
+            if (item.sceneId) {
+                tick.setAttribute('data-scene-id', item.sceneId);
+            } else {
+                tick.removeAttribute('data-scene-id');
+            }
             tick.setAttribute('data-tooltip', this.balanceTooltipText(fullLabel));
             tick.setAttribute('data-tooltip-placement', 'bottom');
             tick.setAttribute('data-tooltip-offset-y', '6');
@@ -3659,7 +4152,9 @@ export class InquiryView extends ItemView {
         this.buildMinimapSweepLayer(tickLayouts, tickWidth, length);
         void this.refreshMinimapEmptyStates(items);
         this.renderCorpusCcStrip();
+        this.applyMinimapSubsetShading(items);
         this.updateMinimapFocus();
+        this.updateMinimapPressureGauge();
     }
 
     private updatePreviewPanelPosition(): void {
@@ -3724,6 +4219,19 @@ export class InquiryView extends ItemView {
             this.minimapBackboneShine = shine;
         }
 
+        let passGroup = this.minimapPassIndicatorGroup;
+        if (!passGroup) {
+            passGroup = this.createSvgGroup(this.minimapGroup, 'ert-inquiry-minimap-pass-indicator');
+            this.minimapPassIndicatorGroup = passGroup;
+        }
+        let passText = this.minimapPassIndicatorText;
+        if (!passText && passGroup) {
+            passText = this.createSvgText(passGroup, 'ert-inquiry-minimap-pass-text', '', 0, 0);
+            passText.setAttribute('text-anchor', 'start');
+            passText.setAttribute('dominant-baseline', 'middle');
+            this.minimapPassIndicatorText = passText;
+        }
+
         glow.setAttribute('x', baselineStart.toFixed(2));
         glow.setAttribute('y', String(glowY));
         glow.setAttribute('width', length.toFixed(2));
@@ -3737,6 +4245,118 @@ export class InquiryView extends ItemView {
         shine.setAttribute('height', String(shineHeight));
         shine.setAttribute('rx', String(Math.round(shineHeight / 2)));
         shine.setAttribute('ry', String(Math.round(shineHeight / 2)));
+
+        if (passGroup) {
+            passGroup.setAttribute('transform', `translate(${Math.round(baselineStart + length + 10)} 0)`);
+        }
+    }
+
+    private applyMinimapSubsetShading(items: InquiryCorpusItem[]): void {
+        if (this.state.scope !== 'book' || !this.minimapTicks.length || !items.length) {
+            this.minimapTicks.forEach(tick => {
+                tick.classList.remove('is-excluded', 'is-included', 'is-selection-boundary');
+            });
+            return;
+        }
+
+        const manifest = this.buildCorpusManifest('minimap-subset', {
+            questionZone: this.state.activeZone ?? undefined,
+            applyOverrides: true
+        });
+        const includedSceneIds = new Set(
+            manifest.entries
+                .filter(entry => entry.class === 'scene')
+                .map(entry => entry.sceneId)
+                .filter((sceneId): sceneId is string => typeof sceneId === 'string' && sceneId.trim().length > 0)
+        );
+        const includedPaths = new Set(
+            manifest.entries
+                .filter(entry => entry.class === 'scene')
+                .map(entry => entry.path)
+                .filter(path => typeof path === 'string' && path.trim().length > 0)
+        );
+
+        const subset = buildMinimapSubsetResult(
+            items.map(item => ({
+                id: item.id,
+                sceneId: item.sceneId,
+                filePath: (item as { filePath?: string }).filePath,
+                filePaths: item.filePaths
+            })),
+            includedSceneIds,
+            includedPaths
+        );
+
+        this.minimapTicks.forEach((tick, index) => {
+            const included = subset.included[index] ?? true;
+            tick.classList.toggle('is-excluded', subset.hasSubset && !included);
+            tick.classList.toggle('is-included', subset.hasSubset && included);
+            const prev = subset.included[index - 1];
+            const next = subset.included[index + 1];
+            const isBoundary = subset.hasSubset
+                && included
+                && ((index > 0 && prev !== included) || (index < subset.included.length - 1 && next !== included));
+            tick.classList.toggle('is-selection-boundary', isBoundary);
+        });
+    }
+
+    private updateMinimapPressureGauge(): void {
+        if (!this.minimapBackboneGroup || !this.minimapBaseline || this.state.isRunning) return;
+        const question = this.getEngineContextQuestion() ?? this.getCurrentPromptQuestion();
+        const readinessUi = this.lastReadinessUiState
+            && (this.previewLast?.question || this.pendingGuardQuestion?.question || this.getCurrentPromptQuestion())
+            ? this.lastReadinessUiState
+            : this.buildReadinessUiState(question);
+        this.lastReadinessUiState = readinessUi;
+
+        const ratio = Math.max(0, readinessUi.readiness.pressureRatio);
+        const clamped = Math.min(ratio, 1);
+        this.setBackboneFillProgress(clamped, 0);
+        this.minimapBackboneShine?.setAttribute('width', '0');
+        const pressureColors = this.getBackbonePressureColors(readinessUi.readiness.pressureTone);
+        this.applyBackboneStopColors(pressureColors.gradient, pressureColors.shine);
+
+        this.minimapBackboneGroup.classList.remove('is-pressure-normal', 'is-pressure-amber', 'is-pressure-red', 'is-pressure-over-budget');
+        this.minimapBackboneGroup.classList.add(
+            readinessUi.readiness.pressureTone === 'red'
+                ? 'is-pressure-red'
+                : readinessUi.readiness.pressureTone === 'amber'
+                    ? 'is-pressure-amber'
+                    : 'is-pressure-normal'
+        );
+        this.minimapBackboneGroup.classList.toggle(
+            'is-pressure-over-budget',
+            readinessUi.packaging === 'singlePassOnly' && readinessUi.readiness.exceedsBudget
+        );
+
+        const inputLabel = this.formatTokenEstimate(readinessUi.estimateInputTokens);
+        const safeLabel = readinessUi.safeInputBudget > 0 ? this.formatTokenEstimate(readinessUi.safeInputBudget) : 'n/a';
+        const packagingLabel = readinessUi.packaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic';
+        const tooltipLines = [
+            `Context usage: ~${inputLabel} / ~${safeLabel}`,
+            `Packaging: ${packagingLabel}`
+        ];
+        if (readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget) {
+            tooltipLines.push('Will package into multiple passes');
+        }
+        addTooltipData(this.minimapBaseline, this.balanceTooltipText(tooltipLines.join('\n')), 'top');
+
+        const advanced = getLastAiAdvancedContext(this.plugin, 'InquiryMode');
+        const passIndicator = buildPassIndicator(advanced?.executionPassCount, readinessUi.readiness.state === 'large');
+        if (this.minimapPassIndicatorGroup && this.minimapPassIndicatorText) {
+            this.minimapPassIndicatorGroup.classList.toggle('ert-hidden', !passIndicator.visible);
+            if (passIndicator.visible) {
+                this.minimapPassIndicatorText.textContent = passIndicator.marks;
+                const reason = advanced?.packagingTriggerReason
+                    || (passIndicator.expectedOnly ? 'Large corpus packaged for stability.' : 'Large corpus packaging completed.');
+                const passText = passIndicator.exactCount ? `Passes: ${passIndicator.exactCount}` : 'Passes: packaging expected';
+                addTooltipData(
+                    this.minimapPassIndicatorGroup,
+                    this.balanceTooltipText(`${passText}\n${reason}`),
+                    'top'
+                );
+            }
+        }
     }
 
     private buildMinimapSweepLayer(
@@ -4165,18 +4785,48 @@ export class InquiryView extends ItemView {
         return className;
     }
 
-    private getCorpusItemKey(className: string, filePath: string, scope?: InquiryScope): string {
-        const scopeKey = scope ?? 'none';
-        return `${className}::${scopeKey}::${filePath}`;
+    private getCorpusItemKey(className: string, filePath: string, scope?: InquiryScope, sceneId?: string): string {
+        return buildCorpusSelectionKey({
+            className,
+            filePath,
+            scope,
+            sceneId
+        });
     }
 
-    private parseCorpusItemKey(entryKey: string): { className: string; scope?: InquiryScope; path: string } {
-        const parts = entryKey.split('::');
-        const className = parts.shift() ?? '';
-        const scopeRaw = parts.shift() ?? 'none';
-        const scope = scopeRaw === 'book' || scopeRaw === 'saga' ? scopeRaw : undefined;
-        const path = parts.join('::');
-        return { className, scope, path };
+    private parseCorpusItemKey(entryKey: string): { className: string; scope?: InquiryScope; path: string; sceneId?: string } {
+        const parsed = parseCorpusSelectionKey(entryKey);
+        return {
+            className: parsed.className,
+            scope: parsed.scope,
+            path: parsed.path ?? '',
+            sceneId: parsed.sceneId
+        };
+    }
+
+    private getCorpusItemOverride(
+        className: string,
+        filePath: string,
+        scope?: InquiryScope,
+        sceneId?: string
+    ): InquiryMaterialMode | undefined {
+        const preferredKey = this.getCorpusItemKey(className, filePath, scope, sceneId);
+        const preferred = this.corpusItemOverrides.get(preferredKey);
+        if (preferred !== undefined) return preferred;
+
+        if (className !== 'scene' || !sceneId) return undefined;
+
+        const legacyKey = buildLegacyCorpusSelectionKey({
+            className,
+            filePath,
+            scope
+        });
+        const legacyValue = this.corpusItemOverrides.get(legacyKey);
+        if (legacyValue === undefined) return undefined;
+
+        this.corpusItemOverrides.set(preferredKey, legacyValue);
+        this.corpusItemOverrides.delete(legacyKey);
+        return legacyValue;
     }
 
     private getCorpusCycleModes(className: string): InquiryMaterialMode[] {
@@ -4227,7 +4877,7 @@ export class InquiryView extends ItemView {
         const baseClass = this.getCorpusGroupBaseClass(groupKey);
         const baseMode = this.getCorpusGroupBaseMode(groupKey, configMap);
         const classOverride = this.corpusClassOverrides.get(groupKey);
-        const itemOverride = this.corpusItemOverrides.get(this.getCorpusItemKey(entry.class, entry.path, entry.scope));
+        const itemOverride = this.getCorpusItemOverride(entry.class, entry.path, entry.scope, entry.sceneId);
         const effective = itemOverride ?? classOverride ?? baseMode;
         return this.normalizeContributionMode(effective, baseClass);
     }
@@ -4552,12 +5202,13 @@ export class InquiryView extends ItemView {
             const className = entry.class === 'outline' && entry.scope === 'saga'
                 ? 'outline-saga'
                 : entry.class;
-            const entryKey = this.getCorpusItemKey(entry.class, entry.path, entry.scope);
+            const entryKey = this.getCorpusItemKey(entry.class, entry.path, entry.scope, entry.sceneId);
             return {
                 id: `${entry.class}:${entry.path}`,
                 entryKey,
                 label,
                 filePath: entry.path,
+                sceneId: entry.sceneId,
                 className,
                 classKey: entry.class,
                 scope: entry.scope,
@@ -5058,6 +5709,45 @@ export class InquiryView extends ItemView {
         };
     }
 
+    private getBackbonePressureColors(tone: 'normal' | 'amber' | 'red'): BackboneColors {
+        if (tone === 'amber') {
+            return this.getBackboneStartColors();
+        }
+        if (tone === 'red') {
+            const base = { r: 244, g: 76, b: 76 };
+            return {
+                gradient: [
+                    base,
+                    this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, 0.35),
+                    this.mixRgbColor(base, { r: 0, g: 0, b: 0 }, 0.18)
+                ],
+                shine: [
+                    this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, 0.68),
+                    this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, 0.9),
+                    this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, 0.4),
+                    this.mixRgbColor(base, { r: 255, g: 255, b: 255 }, 0.68)
+                ]
+            };
+        }
+
+        const themeBase = this.parseRgbColor(getComputedStyle(document.documentElement).getPropertyValue('--interactive-accent'))
+            ?? this.getBackboneTargetColors(isProfessionalActive(this.plugin)).gradient[0]
+            ?? { r: 87, g: 151, b: 245 };
+        return {
+            gradient: [
+                themeBase,
+                this.mixRgbColor(themeBase, { r: 255, g: 255, b: 255 }, 0.52),
+                this.mixRgbColor(themeBase, { r: 0, g: 0, b: 0 }, 0.14)
+            ],
+            shine: [
+                this.mixRgbColor(themeBase, { r: 255, g: 255, b: 255 }, 0.75),
+                this.mixRgbColor(themeBase, { r: 255, g: 255, b: 255 }, 0.92),
+                this.mixRgbColor(themeBase, { r: 255, g: 255, b: 255 }, 0.45),
+                this.mixRgbColor(themeBase, { r: 255, g: 255, b: 255 }, 0.75)
+            ]
+        };
+    }
+
     private applyBackboneStopColors(gradientColors: RgbColor[], shineColors: RgbColor[]): void {
         gradientColors.forEach((color, idx) => {
             const stop = this.minimapBackboneGradientStops[idx];
@@ -5294,7 +5984,8 @@ export class InquiryView extends ItemView {
             });
             return;
         }
-        const hitMap = this.buildHitFindingMap(result);
+        const resultItems = result ? this.getResultItems(result) : [];
+        const hitMap = this.buildHitFindingMap(result, resultItems);
 
         this.minimapTicks.forEach((tick, idx) => {
             const label = tick.getAttribute('data-label') || `T${idx + 1}`;
@@ -5372,6 +6063,7 @@ export class InquiryView extends ItemView {
             if (wasRunning) {
                 this.startBackboneFadeOut();
             }
+            this.updateMinimapPressureGauge();
         }
     }
 
@@ -5821,8 +6513,9 @@ export class InquiryView extends ItemView {
         }
 
         if (!options?.bypassTokenGuard) {
-            const tokenTier = this.getTokenTierForQuestion(question.question);
-            if (tokenTier === 'red') {
+            const readinessUi = this.buildReadinessUiState(question.question);
+            this.lastReadinessUiState = readinessUi;
+            if (readinessUi.readiness.state === 'blocked') {
                 this.pendingGuardQuestion = question;
                 this.showEnginePanel();
                 return;
@@ -6637,6 +7330,29 @@ export class InquiryView extends ItemView {
         return modelId ? getModelDisplayName(modelId.replace(/^models\//, '')) : 'Unknown model';
     }
 
+    private toAiProvider(provider: EngineProvider): AIProviderId {
+        if (provider === 'anthropic') return 'anthropic';
+        if (provider === 'gemini') return 'google';
+        if (provider === 'local') return 'ollama';
+        return 'openai';
+    }
+
+    private probeSecretPresence(provider: AIProviderId, secretId: string): void {
+        if (!secretId.trim()) return;
+        if (this.providerSecretProbePending.has(provider)) return;
+        this.providerSecretProbePending.add(provider);
+        void hasSecret(this.app, secretId)
+            .then(exists => {
+                this.providerSecretPresence[provider] = exists;
+            })
+            .finally(() => {
+                this.providerSecretProbePending.delete(provider);
+                if (this.enginePanelEl && !this.enginePanelEl.classList.contains('ert-hidden')) {
+                    this.refreshEnginePanel();
+                }
+            });
+    }
+
     private getProviderAvailability(provider: EngineProvider): { enabled: boolean; reason?: string } {
         if (provider === 'local') {
             const baseUrl = this.plugin.settings.localBaseUrl?.trim();
@@ -6647,7 +7363,24 @@ export class InquiryView extends ItemView {
             : provider === 'gemini'
                 ? this.plugin.settings.geminiApiKey
                 : this.plugin.settings.openaiApiKey;
-        return key?.trim() ? { enabled: true } : { enabled: false, reason: 'API key missing' };
+        if (key?.trim()) return { enabled: true };
+
+        const aiProvider = this.toAiProvider(provider);
+        const aiSettings = this.getCanonicalAiSettings();
+        const secretId = getCredentialSecretId(aiSettings, aiProvider);
+        if (!secretId || !isSecretStorageAvailable(this.app)) {
+            return { enabled: false, reason: 'API key missing' };
+        }
+
+        const cachedPresence = this.providerSecretPresence[aiProvider];
+        if (cachedPresence === true) {
+            return { enabled: true };
+        }
+        if (cachedPresence === false) {
+            return { enabled: false, reason: 'Saved key not found' };
+        }
+        this.probeSecretPresence(aiProvider, secretId);
+        return { enabled: true };
     }
 
     private applySession(
@@ -6725,8 +7458,9 @@ export class InquiryView extends ItemView {
         const assessmentConfidence = verdict.assessmentConfidence ?? verdict.confidence ?? 'low';
         const findings = result.findings.map(finding => {
             const legacy = finding as InquiryFinding & { severity?: InquirySeverity; confidence?: InquiryConfidence };
+            const normalizedRefId = this.normalizeResultRefId(legacy.refId);
             return {
-                refId: legacy.refId,
+                refId: normalizedRefId,
                 kind: legacy.kind,
                 status: legacy.status,
                 impact: legacy.impact ?? legacy.severity ?? 'low',
@@ -6755,6 +7489,34 @@ export class InquiryView extends ItemView {
             normalized.runId = inquiryId;
         }
         return normalized;
+    }
+
+    private normalizeResultRefId(refId: string | undefined): string {
+        const trimmed = typeof refId === 'string' ? refId.trim() : '';
+        if (!trimmed) return '';
+        if (!this.corpus?.scenes?.length) return trimmed;
+
+        const lower = trimmed.toLowerCase();
+        if (/^scn_[a-f0-9]{8,10}$/.test(lower)) {
+            return lower;
+        }
+
+        for (const scene of this.corpus.scenes) {
+            if (scene.sceneId && scene.sceneId.toLowerCase() === lower) {
+                return scene.sceneId.toLowerCase();
+            }
+            if (scene.id.toLowerCase() === lower && scene.sceneId) {
+                return scene.sceneId.toLowerCase();
+            }
+            if (scene.filePath.toLowerCase() === lower && scene.sceneId) {
+                return scene.sceneId.toLowerCase();
+            }
+            if (scene.filePaths?.some(path => path.toLowerCase() === lower) && scene.sceneId) {
+                return scene.sceneId.toLowerCase();
+            }
+        }
+
+        return trimmed;
     }
 
     private collectNormalizationNotes(raw: InquiryResult, normalized: InquiryResult): string[] {
@@ -6892,10 +7654,16 @@ export class InquiryView extends ItemView {
 
         const sceneByLabel = new Map<string, string>();
         const sceneById = new Map<string, string>();
+        const sceneBySceneId = new Map<string, string>();
+        const sceneByPath = new Map<string, string>();
         if (this.corpus?.scenes?.length) {
             this.corpus.scenes.forEach(scene => {
                 sceneByLabel.set(scene.displayLabel, scene.filePath);
                 sceneById.set(scene.id, scene.filePath);
+                if (scene.sceneId) {
+                    sceneBySceneId.set(scene.sceneId, scene.filePath);
+                }
+                scene.filePaths?.forEach(path => sceneByPath.set(path, scene.filePath));
             });
         }
 
@@ -6908,7 +7676,12 @@ export class InquiryView extends ItemView {
             if (this.getImpactRank(finding.impact) < minimumRank) return;
             const note = this.formatInquiryActionNote(finding, briefTitle);
             const refId = finding.refId?.trim();
-            const filePath = refId ? (sceneByLabel.get(refId) ?? sceneById.get(refId)) : undefined;
+            const filePath = refId
+                ? (sceneByLabel.get(refId)
+                    ?? sceneBySceneId.get(refId)
+                    ?? sceneById.get(refId)
+                    ?? sceneByPath.get(refId))
+                : undefined;
             if (filePath && !handledScenes.has(filePath)) {
                 addNote(filePath, note);
                 handledScenes.add(filePath);
@@ -7224,7 +7997,7 @@ export class InquiryView extends ItemView {
                     const groupKey = this.getCorpusGroupKey(entry.class, entry.scope);
                     const baseClass = this.getCorpusGroupBaseClass(groupKey);
                     const classOverride = this.corpusClassOverrides.get(groupKey);
-                    const itemOverride = this.corpusItemOverrides.get(this.getCorpusItemKey(entry.class, entry.path, entry.scope));
+                    const itemOverride = this.getCorpusItemOverride(entry.class, entry.path, entry.scope, entry.sceneId);
                     const mode = this.normalizeContributionMode(itemOverride ?? classOverride ?? entry.mode ?? 'none', baseClass);
                     return { ...entry, mode };
                 });
@@ -7295,7 +8068,7 @@ export class InquiryView extends ItemView {
                     if (applyOverrides) {
                         const groupKey = this.getCorpusGroupKey(className, outlineScope);
                         const classOverride = this.corpusClassOverrides.get(groupKey);
-                        const itemOverride = this.corpusItemOverrides.get(this.getCorpusItemKey(className, file.path, outlineScope));
+                        const itemOverride = this.getCorpusItemOverride(className, file.path, outlineScope);
                         mode = itemOverride ?? classOverride ?? mode;
                         mode = this.normalizeContributionMode(mode, className);
                     }
@@ -7320,7 +8093,7 @@ export class InquiryView extends ItemView {
                     if (applyOverrides) {
                         const groupKey = this.getCorpusGroupKey(className);
                         const classOverride = this.corpusClassOverrides.get(groupKey);
-                        const itemOverride = this.corpusItemOverrides.get(this.getCorpusItemKey(className, file.path));
+                        const itemOverride = this.getCorpusItemOverride(className, file.path);
                         mode = itemOverride ?? classOverride ?? mode;
                         mode = this.normalizeContributionMode(mode, className);
                     }
@@ -7340,10 +8113,11 @@ export class InquiryView extends ItemView {
                         className
                     );
                 }
+                const sceneId = className === 'scene' ? readSceneId(normalized) : undefined;
                 if (applyOverrides) {
                     const groupKey = this.getCorpusGroupKey(className);
                     const classOverride = this.corpusClassOverrides.get(groupKey);
-                    const itemOverride = this.corpusItemOverrides.get(this.getCorpusItemKey(className, file.path));
+                    const itemOverride = this.getCorpusItemOverride(className, file.path, undefined, sceneId);
                     mode = itemOverride ?? classOverride ?? mode;
                     mode = this.normalizeContributionMode(mode, className);
                 }
@@ -7351,6 +8125,7 @@ export class InquiryView extends ItemView {
 
                 entries.push({
                     path: file.path,
+                    sceneId,
                     mtime: file.stat.mtime ?? now,
                     class: className,
                     mode
@@ -7383,7 +8158,7 @@ export class InquiryView extends ItemView {
         const resolvedRoots = entryResult.resolvedRoots;
 
         const fingerprintSource = entries
-            .map(entry => `${entry.path}:${entry.mtime}:${entry.mode ?? 'none'}`)
+            .map(entry => `${entry.path}:${entry.sceneId ?? ''}:${entry.mtime}:${entry.mode ?? 'none'}`)
             .sort()
             .join('|');
         const modelId = modelIdOverride ?? this.getActiveInquiryModelId();
@@ -7448,8 +8223,14 @@ export class InquiryView extends ItemView {
                 if (!path) return;
                 const file = this.app.vault.getAbstractFileByPath(path);
                 const mtime = file && 'stat' in file ? (file as { stat: { mtime: number } }).stat.mtime : now;
+                let sceneId: string | undefined;
+                if (data.class === 'scene' && file && this.isTFile(file)) {
+                    const frontmatter = this.getNormalizedFrontmatter(file);
+                    sceneId = readSceneId(frontmatter ?? undefined);
+                }
                 entries.push({
                     path,
+                    sceneId,
                     mtime,
                     class: data.class,
                     scope: data.scope,
@@ -7469,7 +8250,7 @@ export class InquiryView extends ItemView {
         }
 
         const fingerprintSource = entries
-            .map(entry => `${entry.path}:${entry.mtime}:${entry.mode ?? 'none'}`)
+            .map(entry => `${entry.path}:${entry.sceneId ?? ''}:${entry.mtime}:${entry.mode ?? 'none'}`)
             .sort()
             .join('|');
         const modelId = modelIdOverride ?? this.getActiveInquiryModelId();
@@ -7631,9 +8412,9 @@ export class InquiryView extends ItemView {
             this.state.focusBookId = item.id;
             this.scheduleFocusPersist();
         } else {
-            this.state.focusSceneId = item.id;
+            this.state.focusSceneId = item.sceneId ?? item.id;
             if (this.state.focusBookId) {
-                this.lastFocusSceneByBookId.set(this.state.focusBookId, item.id);
+                this.lastFocusSceneByBookId.set(this.state.focusBookId, this.state.focusSceneId);
                 this.scheduleFocusPersist();
             }
         }
@@ -7695,7 +8476,9 @@ export class InquiryView extends ItemView {
         const items = this.getCurrentItems();
         if (!items.length) return 1;
         const focusId = this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusSceneId;
-        const index = items.findIndex(item => item.id === focusId);
+        const index = focusId
+            ? items.findIndex(item => this.matchesSceneSelectionId(item, focusId))
+            : -1;
         return index >= 0 ? index + 1 : 1;
     }
 
@@ -7760,7 +8543,7 @@ export class InquiryView extends ItemView {
             this.setHoverText(this.buildMinimapHoverText(hoverLabel));
             return;
         }
-        const finding = this.buildHitFindingMap(result).get(label);
+        const finding = this.buildHitFindingMap(result, this.getResultItems(result)).get(label);
         if (!finding) {
             this.setHoverText(this.buildMinimapHoverText(hoverLabel));
             return;
@@ -7814,14 +8597,19 @@ export class InquiryView extends ItemView {
         return kind.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
     }
 
-    private buildHitFindingMap(result: InquiryResult | null | undefined): Map<string, InquiryFinding> {
+    private buildHitFindingMap(
+        result: InquiryResult | null | undefined,
+        items: InquiryCorpusItem[]
+    ): Map<string, InquiryFinding> {
         const map = new Map<string, InquiryFinding>();
         if (!result) return map;
         result.findings.forEach(finding => {
             if (!this.isFindingHit(finding)) return;
-            const existing = map.get(finding.refId);
+            const label = this.resolveFindingChipLabel(finding, result, items);
+            if (!label) return;
+            const existing = map.get(label);
             if (!existing || this.getImpactRank(finding.impact) > this.getImpactRank(existing.impact)) {
-                map.set(finding.refId, finding);
+                map.set(label, finding);
             }
         });
         return map;
@@ -7877,6 +8665,8 @@ export class InquiryView extends ItemView {
         this.previewLast = { zone, question };
         this.updatePromptPreview(zone, mode, question, undefined, undefined, { hideEmpty: true });
         this.previewGroup.classList.add('is-visible');
+        this.lastReadinessUiState = this.buildReadinessUiState(question);
+        this.updateMinimapPressureGauge();
         void this.requestPayloadEstimate(question);
     }
 
@@ -8159,6 +8949,9 @@ export class InquiryView extends ItemView {
 
         const idMatch = items.find(item => item.id === refId || item.id.toLowerCase() === refLower);
         if (idMatch) return idMatch.displayLabel;
+
+        const sceneIdMatch = items.find(item => typeof item.sceneId === 'string' && item.sceneId.toLowerCase() === refLower);
+        if (sceneIdMatch) return sceneIdMatch.displayLabel;
 
         const pathMatch = items.find(item => item.filePaths?.some(path => path === refId));
         if (pathMatch) return pathMatch.displayLabel;
@@ -8476,6 +9269,8 @@ export class InquiryView extends ItemView {
         this.resetPreviewRowLabels();
         this.setPreviewFooterText('');
         this.updatePromptPreview(question.zone, this.state.mode, question.question, rows, undefined, { hideEmpty: true });
+        this.lastReadinessUiState = this.buildReadinessUiState(question.question);
+        this.updateMinimapPressureGauge();
     }
 
     private unlockPromptPreview(): void {
@@ -8490,6 +9285,8 @@ export class InquiryView extends ItemView {
         }
         this.resetPreviewRowLabels();
         this.setPreviewFooterText('');
+        this.lastReadinessUiState = undefined;
+        this.updateMinimapPressureGauge();
     }
 
     private layoutPreviewPills(startY: number, values: string[], options?: { hideEmpty?: boolean }): number {
@@ -8569,11 +9366,11 @@ export class InquiryView extends ItemView {
         const tokensRow = this.previewRows.find(row => row.group.classList.contains('is-tokens-slot'));
         if (!tokensRow) return;
         if (!questionText) return;
-        const tier = this.getTokenTierForQuestion(questionText);
-        if (tier === 'amber') {
+        const readiness = this.buildReadinessUiState(questionText).readiness;
+        if (readiness.pressureTone === 'amber') {
             tokensRow.group.classList.add('is-token-amber');
         }
-        if (tier === 'red') {
+        if (readiness.pressureTone === 'red' || readiness.state === 'blocked') {
             tokensRow.group.classList.add('is-token-red');
         }
     }
@@ -9418,6 +10215,7 @@ export class InquiryView extends ItemView {
             const match = items.find(item => {
                 if (item.displayLabel.toLowerCase() === labelLower) return true;
                 if (item.id.toLowerCase() === labelLower) return true;
+                if (item.sceneId && item.sceneId.toLowerCase() === labelLower) return true;
                 return item.filePaths?.some(path => path.toLowerCase() === labelLower) ?? false;
             });
             const anchorSource = match
@@ -9607,6 +10405,8 @@ export class InquiryView extends ItemView {
             const reasonLower = reason.toLowerCase();
             const failureReason = resolveFailureReason() ?? '';
             const failureLower = failureReason.toLowerCase();
+            const isCapabilityMismatch = failureLower.includes('capability floor')
+                || failureLower.includes('no model satisfies capability floor');
             const isTruncated = reasonLower === 'truncated'
                 || failureLower.includes('truncated')
                 || failureLower.includes('max tokens')
@@ -9624,7 +10424,10 @@ export class InquiryView extends ItemView {
                 ? manifest.entries.some(entry => entry.class === 'outline' && this.normalizeEvidenceMode(entry.mode) === 'full')
                 : false;
 
-            if (isTruncated) {
+            if (isCapabilityMismatch) {
+                suggestions.push('Open Settings > AI and change Provider or Model strategy to a compatible option.');
+                suggestions.push('For Inquiry, prefer Anthropic or Gemini when OpenAI cannot satisfy requirements.');
+            } else if (isTruncated) {
                 if (hasContext) {
                     suggestions.push('Reduce Context (disable Character / Place / Power).');
                 }
@@ -9670,6 +10473,16 @@ export class InquiryView extends ItemView {
         lines.push(`- Estimated input: ${formatTokenCount(tokenEstimateInput, true)}`);
         lines.push(`- Actual usage: ${usageText}`);
         lines.push(`- Tier: ${tokenTier ?? 'unknown'}`);
+        lines.push('');
+
+        lines.push('## Execution');
+        lines.push(`- Packaging: ${trace.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic'}`);
+        if (typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) {
+            lines.push(`- Pass count: ${trace.executionPassCount}`);
+        }
+        if (trace.packagingTriggerReason) {
+            lines.push(`- Packaging trigger: ${trace.packagingTriggerReason}`);
+        }
         lines.push('');
 
         lines.push('## Result');
@@ -9766,6 +10579,7 @@ export class InquiryView extends ItemView {
             `- AI model requested: ${result.aiModelRequested || 'unknown'}`,
             `- AI model resolved: ${result.aiModelResolved || 'unknown'}`,
             `- AI next-run override: ${typeof result.aiModelNextRunOnly === 'boolean' ? String(result.aiModelNextRunOnly) : 'unknown'}`,
+            `- Packaging: ${trace.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : 'automatic'}`,
             `- AI status: ${result.aiStatus || 'unknown'}`,
             `- AI reason: ${result.aiReason || 'none'}`,
             `- Submitted at (raw): ${result.submittedAt || 'unknown'}`,
@@ -9774,6 +10588,12 @@ export class InquiryView extends ItemView {
             `- Token estimate input: ${typeof result.tokenEstimateInput === 'number' ? String(Math.round(result.tokenEstimateInput)) : 'unknown'}`,
             `- Token estimate tier: ${result.tokenEstimateTier || 'unknown'}`
         ];
+        if (typeof trace.executionPassCount === 'number' && trace.executionPassCount > 1) {
+            contextLines.push(`- Execution pass count: ${trace.executionPassCount}`);
+        }
+        if (trace.packagingTriggerReason) {
+            contextLines.push(`- Packaging trigger reason: ${trace.packagingTriggerReason}`);
+        }
         if (manifest) {
             const counts = manifest.classCounts || {};
             const countList = Object.keys(counts)

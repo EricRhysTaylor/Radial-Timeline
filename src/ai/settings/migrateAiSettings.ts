@@ -30,6 +30,25 @@ export function migrateAiSettings(settings: RadialTimelineSettings): MigrationRe
     const warnings: string[] = [];
     const existing = settings.aiSettings;
     if (existing && existing.schemaVersion === 1) {
+        const migratedPackaging = existing.analysisPackaging
+            ?? ((existing as unknown as { analysisMethod?: string }).analysisMethod === 'singlePassOnly'
+                ? 'singlePassOnly'
+                : 'automatic');
+        if (existing.analysisPackaging !== migratedPackaging) {
+            const upgraded: AiSettingsV1 = {
+                ...existing,
+                analysisPackaging: migratedPackaging
+            };
+            const legacyCleanup = upgraded as unknown as Record<string, unknown>;
+            if ('analysisMethod' in legacyCleanup) {
+                delete legacyCleanup.analysisMethod;
+            }
+            return {
+                aiSettings: upgraded,
+                changed: true,
+                warnings: Array.isArray(existing.migrationWarnings) ? existing.migrationWarnings : []
+            };
+        }
         return {
             aiSettings: existing,
             changed: false,
@@ -80,6 +99,7 @@ export function migrateAiSettings(settings: RadialTimelineSettings): MigrationRe
         reasoningDepth: 'standard',
         jsonStrict: true
     };
+    aiSettings.analysisPackaging = 'automatic';
 
     aiSettings.featureProfiles = {
         ...(aiSettings.featureProfiles || {}),

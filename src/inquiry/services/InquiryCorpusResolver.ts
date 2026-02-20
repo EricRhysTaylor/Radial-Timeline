@@ -4,6 +4,7 @@ import type { InquiryClassConfig, InquirySourcesSettings } from '../../types/set
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { getScenePrefixNumber } from '../../utils/text';
 import { MAX_RESOLVED_SCAN_ROOTS, normalizeScanRootPatterns, resolveScanRoots, toVaultRoot } from '../utils/scanRoots';
+import { readSceneId } from '../../utils/sceneIds';
 
 const BOOK_FOLDER_REGEX = /^Book\s+(\d+)/i;
 
@@ -11,6 +12,7 @@ export type InquiryCorpusItem = {
     id: string;
     displayLabel: string;
     filePaths: string[];
+    sceneId?: string;
     hasSynopsis?: boolean;
 };
 
@@ -166,12 +168,15 @@ export class InquiryCorpusResolver {
             if (!classValues.includes('scene')) return;
             const sceneNumber = this.getSceneNumber(file.basename);
             const hasSynopsis = this.hasSynopsis(frontmatter);
+            const sceneId = readSceneId(frontmatter);
+            const stableId = sceneId && sceneId.trim().length > 0 ? sceneId.trim() : file.path;
             scenes.push({
-                id: file.path,
+                id: stableId,
                 bookId,
                 filePath: file.path,
                 filePaths: [file.path],
                 displayLabel: '',
+                sceneId,
                 sceneNumber,
                 hasSynopsis
             });

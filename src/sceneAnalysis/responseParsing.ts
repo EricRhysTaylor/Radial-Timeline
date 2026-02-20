@@ -9,6 +9,7 @@ import type { BeatItem, ParsedSceneAnalysis, SceneAnalysisJsonResponse } from '.
 
 const MAIN_GRADE_VALUES = new Set(['A', 'B', 'C']);
 const LINK_GRADE_VALUES = new Set(['+', '-', '?']);
+const SCENE_ID_REGEX = /^scn_[a-f0-9]{8,10}$/i;
 
 function formatBeatLines(
     items: BeatItem[] | undefined,
@@ -60,6 +61,8 @@ function validateSceneAnalysisPayload(payload: SceneAnalysisJsonResponse): void 
         }
     }
 
+    normalizeSceneRef(firstCurrent, 'currentSceneAnalysis', 0);
+
     // Validation for restCurrent is now handled by the shared ensureLinkGrades helper below
     // restCurrent.forEach((item, index) => {
     //    if (!LINK_GRADE_VALUES.has(item.grade)) {
@@ -82,6 +85,7 @@ function validateSceneAnalysisPayload(payload: SceneAnalysisJsonResponse): void 
                 // We could throw here, but for local LLMs it's better to be forgiving
                 // throw new Error(`${label} item #${index + 1} must use "+", "-", or "?".`);
             }
+            normalizeSceneRef(item, label, index);
         });
     };
 
@@ -91,6 +95,29 @@ function validateSceneAnalysisPayload(payload: SceneAnalysisJsonResponse): void 
     // Also fix up the REST of the current scene items (skipping the first one)
     if (restCurrent.length > 0) {
         ensureLinkGrades(restCurrent, 'currentSceneAnalysis (subsequent items)');
+    }
+}
+
+function normalizeSceneRef(item: BeatItem | undefined, section: string, index: number): void {
+    if (!item) return;
+    const candidate = typeof item.ref_id === 'string' ? item.ref_id.trim() : '';
+    if (candidate && SCENE_ID_REGEX.test(candidate)) {
+        item.ref_id = candidate.toLowerCase();
+        return;
+    }
+
+    const fromScene = typeof item.scene === 'string' ? item.scene.trim() : '';
+    if (fromScene && SCENE_ID_REGEX.test(fromScene)) {
+        item.ref_id = fromScene.toLowerCase();
+        return;
+    }
+
+    if (!candidate && fromScene) {
+        item.ref_id = fromScene;
+    }
+
+    if (!candidate) {
+        console.warn(`[Pulse] Missing stable ref_id in ${section}[${index}]; using legacy scene token.`);
     }
 }
 

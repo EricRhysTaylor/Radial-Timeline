@@ -371,6 +371,8 @@ export class AIClient {
             availabilityStatus,
             maxInputTokens: caps.maxInputTokens,
             maxOutputTokens: caps.maxOutputTokens,
+            analysisPackaging: aiSettings.analysisPackaging,
+            executionPassCount: 1,
             featureModeInstructions,
             finalPrompt: envelope.finalPrompt
         };

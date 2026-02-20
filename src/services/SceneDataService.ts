@@ -20,6 +20,7 @@ import { stripWikiLinks } from '../utils/text';
 import { filterBeatsBySystem } from '../utils/gossamer';
 import { clampActNumber, getConfiguredActCount } from '../utils/acts';
 import { isPathInFolderScope } from '../utils/pathScope';
+import { readSceneId } from '../utils/sceneIds';
 
 export interface GetSceneDataOptions {
     filterBeatsBySystem?: boolean;
@@ -185,6 +186,7 @@ export class SceneDataService {
                     const configuredActs = getConfiguredActCount(this.settings);
                     const actNumberRaw = (actValue !== undefined && actValue !== null && actValue !== '') ? Number(actValue) : 1;
                     const validActNumber = clampActNumber(actNumberRaw, configuredActs);
+                    const sceneId = readSceneId(metadata);
 
                     // Use filename for display; numbering is derived from the filename/title prefix.
                     // Do not consume YAML Title for numbering/ordering to avoid stale frontmatter.
@@ -261,6 +263,7 @@ export class SceneDataService {
                             when: normalizedWhen,
                             missingWhen,
                             path: file.path,
+                            sceneId,
                             title: sceneTitle,
                             number: undefined,
                             subplot: subplot,

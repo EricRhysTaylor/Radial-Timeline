@@ -96,10 +96,13 @@ export interface AIProviderConnectionSettings {
     ollamaBaseUrl?: string;
 }
 
+export type AnalysisPackaging = 'automatic' | 'singlePassOnly';
+
 export interface AiSettingsV1 {
     schemaVersion: 1;
     provider: AIProviderId;
     modelPolicy: ModelPolicy;
+    analysisPackaging: AnalysisPackaging;
     roleTemplateId?: string;
     overrides: AIOverrides;
     aiAccessProfile: AIAccessProfile;
@@ -199,6 +202,9 @@ export interface AIRunAdvancedContext {
     availabilityStatus: 'visible' | 'not_visible' | 'unknown';
     maxInputTokens: number;
     maxOutputTokens: number;
+    analysisPackaging: AnalysisPackaging;
+    executionPassCount?: number;
+    packagingTriggerReason?: string;
     featureModeInstructions: string;
     finalPrompt: string;
 }
@@ -235,6 +241,12 @@ export interface CanonicalModelRecord {
     inputTokenLimit?: number;
     outputTokenLimit?: number;
     raw: Record<string, unknown>;
+}
+
+export interface SceneRef {
+    ref_id: string;
+    ref_label?: string;
+    ref_path?: string;
 }
 
 export interface ProviderSnapshotPayload {

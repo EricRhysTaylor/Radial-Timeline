@@ -34,6 +34,7 @@ import { ThemeService } from './services/ThemeService';
 import type { SceneAnalysisProcessingModal } from './modals/SceneAnalysisProcessingModal';
 import { TimelineMetricsService } from './services/TimelineMetricsService';
 import { migrateSceneAnalysisFields } from './migrations/sceneAnalysis';
+import { migrateSceneFrontmatterIds } from './migrations/sceneIds';
 import { SettingsService } from './services/SettingsService';
 import { DEFAULT_GEMINI_MODEL_ID } from './constants/aiDefaults';
 import { DEFAULT_SETTINGS } from './settings/defaults';
@@ -252,6 +253,7 @@ export default class RadialTimelinePlugin extends Plugin {
 
         // Migration: Convert old field names to new field names
         await migrateSceneAnalysisFields(this);
+        await migrateSceneFrontmatterIds(this);
 
         // Load embedded fonts (no external requests per Obsidian guidelines)
         // Embedded font injection removed to avoid inserting <style> tags at runtime.
