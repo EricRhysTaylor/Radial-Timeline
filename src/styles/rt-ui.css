@@ -1569,9 +1569,9 @@
 
 .ert-ui select.dropdown {
   background-repeat: no-repeat;
-  background-position: right var(--ert-control-pad-x) center;
-  background-size: 14px 14px;
-  padding-right: calc(var(--ert-control-pad-x) * 2 + 14px);
+  background-position: right 6px center;
+  background-size: 12px 12px;
+  padding-right: calc(6px + 12px + 4px);
 }
 
 .ert-ui textarea {
@@ -2195,10 +2195,6 @@
   color: var(--text-normal);
 }
 
-.ert-ui.ert-scope--settings .ert-ai-packaging-copy {
-  margin: 0;
-  padding-left: 0;
-}
 
 .ert-ui.ert-scope--settings .ert-ai-fold {
   border: 1px solid var(--background-modifier-border);

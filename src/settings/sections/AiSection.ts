@@ -225,7 +225,7 @@ export function renderAiSection(params: {
     const capacityMode = createCapacityCell('Current packaging preference');
 
     const packagingSection = largeHandlingBody.createDiv({
-        cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT} ert-ai-packaging-copy`
+        cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
     });
     packagingSection.createEl('h5', { text: 'AUTOMATIC PACKAGING', cls: 'ert-kicker' });
     const packagingList = packagingSection.createEl('ul', { cls: ERT_CLASSES.STACK });
@@ -247,7 +247,7 @@ export function renderAiSection(params: {
     let executionPreferenceDropdown: DropdownComponent | null = null;
     executionPreferenceSetting.addDropdown(dropdown => {
         executionPreferenceDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
         dropdown.addOption('automatic', 'Automatic (recommended)');
         dropdown.addOption('singlePassOnly', 'Single-pass only');
         dropdown.onChange(async value => {
@@ -276,7 +276,7 @@ export function renderAiSection(params: {
     roleContextSection.createDiv({ cls: 'ert-section-title', text: 'Role context' });
     roleContextSection.createDiv({
         cls: 'ert-section-desc',
-        text: 'Active role and context framing used for AI envelope composition.'
+        text: 'Active role and context framing used for AI envelope composition. Applied to Inquiry, Pulse (Triplet Analysis), Gossamer Momentum, Summary Refresh, Runtime Estimation, and Timeline Repair.'
     });
 
     const featureDefaultsSection = aiSettingsGroup.createDiv({
