@@ -7,9 +7,9 @@
  * so that the canonical field order is consistent everywhere.
  */
 import { parseYaml } from 'obsidian';
-import type { RadialTimelineSettings, BeatSystemConfig } from '../types/settings';
+import type { RadialTimelineSettings } from '../types/settings';
 import { getBeatConfigForSystem, sanitizeBeatAdvancedForWrite } from './beatsTemplates';
-import { mergeTemplates } from './sceneGenerator';
+import { mergeTemplates as mergeYamlTemplates } from './sceneGenerator';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 
 // ─── Types ──────────────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ export interface TemplateParts {
     base: string;
     /** Raw advanced template string (placeholders intact, empty if none). */
     advanced: string;
-    /** Fully merged template string (base + advanced, via `mergeTemplates`). */
+    /** Fully merged template string (base + advanced, via scene generator merge helper). */
     merged: string;
 }
 
@@ -118,7 +118,7 @@ export function getTemplateParts(
             const advanced = settings.sceneYamlTemplates?.advanced
                 ?? DEFAULT_SETTINGS.sceneYamlTemplates!.advanced;
             const merged = advanced.trim()
-                ? mergeTemplates(base, advanced)
+                ? mergeYamlTemplates(base, advanced)
                 : base;
             return { base, advanced, merged };
         }
@@ -129,7 +129,7 @@ export function getTemplateParts(
             const config = getBeatConfigForSystem(settings, beatSystemKey);
             const advanced = sanitizeBeatAdvancedForWrite(config.beatYamlAdvanced);
             const merged = advanced.trim()
-                ? mergeTemplates(base, advanced)
+                ? mergeYamlTemplates(base, advanced)
                 : base;
             return { base, advanced, merged };
         }
@@ -142,7 +142,7 @@ export function getTemplateParts(
             // Filter deprecated Synopsis from advanced writes
             const advanced = filterDeprecatedBackdropKeys(advancedRaw);
             const merged = advanced.trim()
-                ? mergeTemplates(base, advanced)
+                ? mergeYamlTemplates(base, advanced)
                 : base;
             return { base, advanced, merged };
         }
