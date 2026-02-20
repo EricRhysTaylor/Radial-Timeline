@@ -184,7 +184,7 @@ export function renderAiSection(params: {
     quickSetupSection.createDiv({ cls: 'ert-section-title', text: 'AI Strategy' });
     quickSetupSection.createDiv({
         cls: 'ert-section-desc',
-        text: 'Choose how AI thinks, selects models, and responds across features.'
+        text: 'Choose how AI approaches analysis and selects the active model across features.'
     });
     const quickSetupGrid = quickSetupSection.createDiv({
         cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_3} ert-ai-quick-grid`
@@ -219,10 +219,7 @@ export function renderAiSection(params: {
     const capacitySafeInput = createCapacityCell('Safe input budget');
     const capacityOutput = createCapacityCell('Output allowance');
     const capacityMode = createCapacityCell('Current packaging preference');
-    capacitySection.createDiv({
-        cls: 'ert-field-note',
-        text: 'A small safety margin is reserved to prevent structured answers from being cut off.'
-    });
+
 
     const packagingSection = largeHandlingBody.createDiv({
         cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
@@ -231,7 +228,7 @@ export function renderAiSection(params: {
     const packagingList = packagingSection.createEl('ul', { cls: ERT_CLASSES.STACK });
     [
         { icon: 'zap', text: 'Uses a single request when the selected content fits safely.' },
-        { icon: 'layers', text: 'When content is too large, analyzes the manuscript in structured segments and combines the results into one final response.' },
+        { icon: 'layers', text: 'For large submissions, analyzes the manuscript in structured segments and combines the results into one final response.' },
         { icon: 'anchor', text: 'Stable scene IDs keep references aligned across all segments.' }
     ].forEach(item => {
         const li = packagingList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
@@ -263,8 +260,9 @@ export function renderAiSection(params: {
         executionPreferenceNote.setText(
             mode === 'singlePassOnly'
                 ? 'Send the full request as one pass. If it exceeds safe limits, reduce scope or adjust settings.'
-                : 'Adapts to large manuscripts when needed. Recommended for most projects.'
+                : ''
         );
+        executionPreferenceNote.toggleClass('ert-settings-hidden', mode !== 'singlePassOnly');
     };
     updateExecutionPreferenceNote();
     params.addAiRelatedElement(largeHandlingFold);
@@ -276,7 +274,7 @@ export function renderAiSection(params: {
     roleContextSection.createDiv({ cls: 'ert-section-title', text: 'Role context' });
     roleContextSection.createDiv({
         cls: 'ert-section-desc',
-        text: 'Active role and context framing used for AI envelope composition. Applied to Inquiry, Pulse (Triplet Analysis), Gossamer Momentum, Summary Refresh, Runtime Estimation, and Timeline Repair.'
+        text: 'Active role and context framing used for AI submissions. Applied to Inquiry, Pulse (Triplet Analysis), Gossamer Momentum, Summary Refresh, Runtime AI Estimation.'
     });
 
     const featureDefaultsSection = aiSettingsGroup.createDiv({
@@ -476,7 +474,7 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(policySetting.settingEl);
 
     const pinnedSetting = new Settings(quickSetupGrid)
-        .setName('PINNED ALIAS')
+        .setName('PINNED MODEL')
         .setDesc('Select a specific model to use instead of automatic selection.');
     pinnedSetting.settingEl.setAttr('data-ert-role', 'ai-setting:pinned-model');
     let pinnedDropdown: DropdownComponent | null = null;
@@ -1321,18 +1319,15 @@ export function renderAiSection(params: {
         text: 'Provider: —'
     });
     const resolvedPreviewPills = resolvedPreviewFrame.createDiv({ cls: 'ert-ai-resolved-preview-pills' });
-    const resolvedPreviewDetails = resolvedPreviewFrame.createEl('details', { cls: 'ert-ai-resolved-preview-details' });
-    resolvedPreviewDetails.createEl('summary', { text: 'Details' });
-    const resolvedPreviewDetailsBody = resolvedPreviewDetails.createDiv({ cls: 'ert-field-note ert-ai-resolved-preview-details-body' });
     params.addAiRelatedElement(resolvedPreviewFrame);
 
 
-    applyStrategyRowCopyLayout(providerSetting, 'Choose which AI service powers analysis and summaries.');
-    applyStrategyRowCopyLayout(policySetting, 'Decide how models are selected - automatically, by profile, or manually.');
-    applyStrategyRowCopyLayout(profileSetting, 'Apply a thinking style suited to your task (deep analysis, balanced, or fast).');
-    applyStrategyRowCopyLayout(outputModeSetting, 'Control how much response space AI can use. Higher values allow longer answers.');
-    applyStrategyRowCopyLayout(reasoningDepthSetting, 'Standard for speed. Deep for more precise structural insight.');
-    applyStrategyRowCopyLayout(accessTierSetting, 'Adjust request scale and output allowance for your provider.');
+    applyStrategyRowCopyLayout(providerSetting, 'Select the AI service that powers structural analysis and editorial insight across your manuscript.');
+    applyStrategyRowCopyLayout(policySetting, 'Choose how the active model is selected — automatically, by profile, or manually.');
+    applyStrategyRowCopyLayout(profileSetting, 'Select a thinking style suited to your task — deep structural analysis, balanced review, or faster iteration.');
+    applyStrategyRowCopyLayout(outputModeSetting, 'Control how much response space AI can use. Higher values allow longer, more detailed answers.');
+    applyStrategyRowCopyLayout(reasoningDepthSetting, 'Standard favors speed. Deep increases precision for structural and cross-scene analysis.');
+    applyStrategyRowCopyLayout(accessTierSetting, 'Adjust request scale and available output capacity based on your provider\'s limits.');
     applyStrategyRowCopyLayout(pinnedSetting, 'Select a specific model to use instead of automatic selection.');
 
     applyQuickSetupLayoutOrder();
@@ -1403,12 +1398,6 @@ export function renderAiSection(params: {
             createResolvedPreviewPill(availabilityPillText(state.availabilityStatus));
         }
 
-        const warningSuffix = state.warnings.length ? ` Warning: ${state.warnings[0]}` : '';
-        resolvedPreviewDetailsBody.setText(
-            state.errorMessage
-                ? `Selection details: ${state.errorMessage}`
-                : `Selection details: ${state.reasonDetails}.${warningSuffix}`
-        );
     };
 
     const snapshotProviderFor = (provider: AIProviderId): 'openai' | 'anthropic' | 'google' | null => {

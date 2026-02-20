@@ -169,7 +169,7 @@
   --ert-modal-glow: 0 18px 50px color-mix(in srgb, var(--ert-accent) 22%, transparent);
   --ert-input-width-xs: var(--rt-input-width-xs, 6ch);
   --ert-input-width-sm: var(--rt-input-width-sm, 10ch);
-  --ert-input-width-md: var(--rt-input-width-md, 16ch);
+  --ert-input-width-md: var(--rt-input-width-md, 18ch);
   --ert-input-width-lg: var(--rt-input-width-lg, 24ch);
   --ert-input-width-xl: var(--rt-input-width-xl, 48ch);
   --ert-settings-select-width-wide: 250px;
