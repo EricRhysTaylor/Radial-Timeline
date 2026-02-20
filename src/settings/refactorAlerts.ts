@@ -50,6 +50,13 @@ export const BASE_BEAT_FIELDS = [
 // Severity: info (blue), warning (orange), critical (red).
 export const REFACTOR_ALERTS: RefactorAlert[] = [
     {
+        id: 'ai-model-system-migration-v8',
+        severity: 'info',
+        icon: 'bot',
+        title: 'AI Model System Updated',
+        description: 'AI models are being migrated to a new system. No action is required. See Settings → AI for details, and adjust settings to match your personal preferences.',
+    },
+    {
         id: 'base-advanced-template-separation-v7',
         severity: 'info',
         icon: 'file-check',

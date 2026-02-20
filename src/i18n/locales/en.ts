@@ -345,8 +345,8 @@ export const en: TranslationKeys = {
                 error: 'Please enter a valid number between 10 and 300.',
             },
             rippleRename: {
-                name: 'Manuscript ripple rename: normalize numeric prefixes after reorder.',
-                desc: 'Renames both scene and beat (active set) filenames only. Keeps padding (01/001). Removes decimals.',
+                name: 'Manuscript ripple rename: normalize numeric prefixes after drag reorder.',
+                desc: 'Renames both scenes and beats filenames only. Keeps padding (01/001). Removes decimals (1.2/1.5 -> 1/2).',
             },
             autoExpand: {
                 name: 'Auto-expand clipped scene titles',

@@ -715,10 +715,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             badgeVariant: ERT_CLASSES.BADGE_PILL_NEUTRAL,
             wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#core',
             title: 'Build the core of your writing workflow.',
-            subtitle: 'The Radial Timeline is designed to empower you, the author, to greater productivity and accountability. Using core settings, configure the Radial Timeline to reflect your manuscript’s structure and writing style. Search surfaces any matching section instantly.',
+            subtitle: 'The Radial Timeline is designed to empower you, the author, to greater productivity and accountability. Using core settings, configure the Radial Timeline to reflect your manuscript’s structure and writing style. Speed workflow',
             kicker: 'Core Highlights:',
             features: [
-                { icon: 'layout-grid', text: 'Story structure — manage scenes, beats, templates, and advanced YAML fields.' },
+                { icon: 'layout-grid', text: 'Story structure — manage scenes, beats, templates, and advanced fields.' },
                 { icon: 'orbit', text: 'Chronologue & time — align chronologue, backdrop, and planetary clocks' },
                 { icon: 'book-open-text', text: 'Publishing setup — set stage due dates, configure manuscript formats, and work with PANDOC.' },
             ]
@@ -898,28 +898,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const planetarySection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'planetary' } });
         renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl: planetarySection });
 
-        const aiSection = aiContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'ai' } });
-        renderAiSection({
-            app: this.app,
-            plugin: this.plugin,
-            containerEl: aiSection,
-            addAiRelatedElement: (el: HTMLElement) => this._aiRelatedElements.push(el),
-            toggleAiSettingsVisibility: (show: boolean) => this.toggleAiSettingsVisibility(show),
-            refreshProviderDimming: () => this.refreshProviderDimming(),
-            scheduleKeyValidation: (p: 'anthropic' | 'gemini' | 'openai' | 'local') => { void this.scheduleKeyValidation(p); },
-            setProviderSections: (sections) => { this._providerSections = sections; },
-            setKeyInputRef: (provider, input) => {
-                if (provider === 'anthropic') this._anthropicKeyInput = input;
-                if (provider === 'gemini') this._geminiKeyInput = input;
-                if (provider === 'openai') this._openaiKeyInput = input;
-                if (provider === 'local') this._localKeyInput = input;
-            },
-            setLocalConnectionInputs: ({ baseInput, modelInput }) => {
-                if (baseInput) this._localBaseUrlInput = baseInput;
-                if (modelInput) this._localModelIdInput = modelInput;
-            },
-        });
-
         const configurationSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'configuration' } });
         renderConfigurationSection({ app: this.app, plugin: this.plugin, containerEl: configurationSection });
 
@@ -931,6 +909,38 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         const readmeSection = searchableContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'readme' } });
         renderReadmeSection({ app: this.app, containerEl: readmeSection, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
+
+        const aiSection = aiContent.createDiv({ attr: { [ERT_DATA.SECTION]: 'ai' } });
+        try {
+            renderAiSection({
+                app: this.app,
+                plugin: this.plugin,
+                containerEl: aiSection,
+                addAiRelatedElement: (el: HTMLElement) => this._aiRelatedElements.push(el),
+                toggleAiSettingsVisibility: (show: boolean) => this.toggleAiSettingsVisibility(show),
+                refreshProviderDimming: () => this.refreshProviderDimming(),
+                scheduleKeyValidation: (p: 'anthropic' | 'gemini' | 'openai' | 'local') => { void this.scheduleKeyValidation(p); },
+                setProviderSections: (sections) => { this._providerSections = sections; },
+                setKeyInputRef: (provider, input) => {
+                    if (provider === 'anthropic') this._anthropicKeyInput = input;
+                    if (provider === 'gemini') this._geminiKeyInput = input;
+                    if (provider === 'openai') this._openaiKeyInput = input;
+                    if (provider === 'local') this._localKeyInput = input;
+                },
+                setLocalConnectionInputs: ({ baseInput, modelInput }) => {
+                    if (baseInput) this._localBaseUrlInput = baseInput;
+                    if (modelInput) this._localModelIdInput = modelInput;
+                },
+            });
+        } catch (error) {
+            console.error('[Settings] Failed to render AI tab content:', error);
+            const fallback = aiSection.createDiv({ cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.STACK}` });
+            fallback.createDiv({ cls: ERT_CLASSES.SECTION_TITLE, text: 'AI settings unavailable' });
+            fallback.createDiv({
+                cls: ERT_CLASSES.SECTION_DESC,
+                text: 'AI settings could not be fully rendered. Reopen settings after updating your configuration.'
+            });
+        }
 
         this.applyElementBlockLayout(containerEl);
         this.addSearchMetadataToSettings(searchableContent);

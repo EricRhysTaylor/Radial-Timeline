@@ -189,6 +189,12 @@ export function renderAiSection(params: {
         cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_3} ert-ai-quick-grid`
     });
 
+    const ensureCanonicalAiSettings = () => {
+        const validated = validateAiSettings(plugin.settings.aiSettings ?? buildDefaultAiSettings());
+        plugin.settings.aiSettings = validated.value;
+        return plugin.settings.aiSettings;
+    };
+
     const largeHandlingFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold ert-ai-large-handling' });
     largeHandlingFold.setAttr('open', '');
     largeHandlingFold.setAttr('data-ert-role', 'ai-setting:large-manuscript-handling');
@@ -235,7 +241,7 @@ export function renderAiSection(params: {
     let executionPreferenceDropdown: DropdownComponent | null = null;
     executionPreferenceSetting.addDropdown(dropdown => {
         executionPreferenceDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input--md', 'ert-ai-strategy-select');
+        dropdown.selectEl.addClass('ert-input--sm', 'ert-ai-strategy-select');
         dropdown.addOption('automatic', 'Automatic (recommended)');
         dropdown.addOption('singlePassOnly', 'Single-pass only');
         dropdown.onChange(async value => {
@@ -322,12 +328,6 @@ export function renderAiSection(params: {
         none: 'Disabled'
     };
 
-    const ensureCanonicalAiSettings = () => {
-        const validated = validateAiSettings(plugin.settings.aiSettings ?? buildDefaultAiSettings());
-        plugin.settings.aiSettings = validated.value;
-        return plugin.settings.aiSettings;
-    };
-
     const getProviderAliases = (provider: AIProviderId): string[] =>
         BUILTIN_MODELS
             .filter(model => model.provider === provider && model.status !== 'deprecated')
@@ -380,13 +380,13 @@ export function renderAiSection(params: {
     };
 
     const providerSetting = new Settings(quickSetupGrid)
-        .setName('Provider')
+        .setName('Choose Provider')
         .setDesc('Choose which AI service powers analysis and summaries.');
     providerSetting.settingEl.setAttr('data-ert-role', 'ai-setting:provider');
     let providerDropdown: DropdownComponent | null = null;
     providerSetting.addDropdown(dropdown => {
         providerDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input--md', 'ert-ai-strategy-select');
+        dropdown.selectEl.addClass('ert-input--sm', 'ert-ai-strategy-select');
         dropdown.addOption('anthropic', 'Anthropic');
         dropdown.addOption('openai', 'OpenAI');
         dropdown.addOption('google', 'Google');
@@ -416,7 +416,7 @@ export function renderAiSection(params: {
     let policyDropdown: DropdownComponent | null = null;
     policySetting.addDropdown(dropdown => {
         policyDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input--md', 'ert-ai-strategy-select');
+        dropdown.selectEl.addClass('ert-input--sm', 'ert-ai-strategy-select');
         dropdown.addOption('pinned', 'Manual (Pinned)');
         dropdown.addOption('profile', 'Profile');
         dropdown.addOption('latestStable', 'Latest stable');
@@ -447,7 +447,7 @@ export function renderAiSection(params: {
     let pinnedDropdown: DropdownComponent | null = null;
     pinnedSetting.addDropdown(dropdown => {
         pinnedDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input--md', 'ert-ai-strategy-select');
+        dropdown.selectEl.addClass('ert-input--sm', 'ert-ai-strategy-select');
         dropdown.onChange(async value => {
             const aiSettings = ensureCanonicalAiSettings();
             if (aiSettings.modelPolicy.type !== 'pinned') return;
@@ -465,7 +465,7 @@ export function renderAiSection(params: {
     let profileDropdown: DropdownComponent | null = null;
     profileSetting.addDropdown(dropdown => {
         profileDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input--md', 'ert-ai-strategy-select');
+        dropdown.selectEl.addClass('ert-input--sm', 'ert-ai-strategy-select');
         dropdown.addOption('deepReasoner', 'deepReasoner');
         dropdown.addOption('deepWriter', 'deepWriter');
         dropdown.addOption('balancedAnalysis', 'balancedAnalysis');
@@ -485,7 +485,7 @@ export function renderAiSection(params: {
     let accessTierDropdown: DropdownComponent | null = null;
     accessTierSetting.addDropdown(dropdown => {
         accessTierDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input--md', 'ert-ai-strategy-select');
+        dropdown.selectEl.addClass('ert-input--sm', 'ert-ai-strategy-select');
         dropdown.addOption('1', 'Tier 1');
         dropdown.addOption('2', 'Tier 2');
         dropdown.addOption('3', 'Tier 3');
@@ -507,7 +507,7 @@ export function renderAiSection(params: {
     let outputModeDropdown: DropdownComponent | null = null;
     outputModeSetting.addDropdown(dropdown => {
         outputModeDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input--md', 'ert-ai-strategy-select');
+        dropdown.selectEl.addClass('ert-input--sm', 'ert-ai-strategy-select');
         dropdown.addOption('auto', 'Auto');
         dropdown.addOption('high', 'High');
         dropdown.addOption('max', 'Max');
@@ -526,7 +526,7 @@ export function renderAiSection(params: {
     let reasoningDepthDropdown: DropdownComponent | null = null;
     reasoningDepthSetting.addDropdown(dropdown => {
         reasoningDepthDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input--md', 'ert-ai-strategy-select');
+        dropdown.selectEl.addClass('ert-input--sm', 'ert-ai-strategy-select');
         dropdown.addOption('standard', 'Standard');
         dropdown.addOption('deep', 'Deep');
         dropdown.onChange(async value => {
@@ -558,9 +558,13 @@ export function renderAiSection(params: {
     const applyStrategyRowCopyLayout = (setting: Settings, description: string): void => {
         setting.setDesc('');
         setting.settingEl.addClass('ert-ai-strategy-row');
+        const nativeDesc = setting.settingEl.querySelector('.setting-item-description');
+        if (nativeDesc) nativeDesc.remove();
         const existing = setting.settingEl.querySelector('.ert-ai-strategy-row__desc');
         if (!existing) {
             setting.settingEl.createDiv({ cls: 'ert-ai-strategy-row__desc', text: description });
+        } else {
+            existing.setText(description);
         }
     };
 
