@@ -149,8 +149,8 @@ export function renderCenterGrid(params: {
       <text x="${startXGrid + gridWidth}" y="${startYGrid + gridHeight + (cellGapY + 16)}" text-anchor="end" dominant-baseline="alphabetic" class="center-key-text">${currentYearLabel}//${estimatedTotalScenes}</text>
     `;
 
-  // Check if the entire book is complete (all scenes in the final Press stage are completed)
-  const isBookComplete = (() => {
+  // Check if the final Press stage is complete (all Press scenes completed)
+  const isPressStageComplete = (() => {
     const mostAdvancedStageIdx = stagesForGrid.reduce((acc, s, idx) => {
       const counts = gridCounts[s];
       const total = (counts.Todo || 0) + (counts.Working || 0) + (counts.Due || 0) + (counts.Completed || 0);
@@ -190,9 +190,9 @@ export function renderCenterGrid(params: {
         const mostStage = stagesForGrid[Math.max(0, mostAdvancedStageIdx)];
         const solid = (PUBLISH_STAGE_COLORS[mostStage as keyof typeof PUBLISH_STAGE_COLORS] || '#888888');
         
-        // Use smile face for ALL rows when the book is complete
-        const iconId = isBookComplete ? 'icon-smile' : 'icon-bookmark-check';
-        const completedTooltip = isBookComplete ? 'Book Complete! 🎉' : `${stage} stage complete`;
+        // Use smile face for ALL rows when final book completion is reached
+        const iconId = isPressStageComplete ? 'icon-smile' : 'icon-bookmark-check';
+        const completedTooltip = isPressStageComplete ? 'Book Complete! 🎉' : `${stage} stage complete`;
         
         return `
           <g transform="translate(${x}, ${y})" class="rt-tooltip-target rt-grid-cell-complete" data-tooltip="${completedTooltip}" data-tooltip-placement="bottom">
@@ -234,5 +234,3 @@ export function renderCenterGrid(params: {
 
   return `${header}${rows}${arrows}</g>`;
 }
-
-

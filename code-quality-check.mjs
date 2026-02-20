@@ -93,6 +93,7 @@ const ALLOWED_CLASS_NAMES = [
   'view-content',
   // External library classes
   'cm-',  // CodeMirror prefix
+  'mod-styled-scrollbar',  // Obsidian built-in scrollbar styling
 ];
 
 // Check if a CSS class name is allowed (has proper prefix or is in exception list)

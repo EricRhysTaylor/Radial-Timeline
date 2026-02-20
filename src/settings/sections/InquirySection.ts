@@ -387,6 +387,7 @@ export function renderInquirySection(params: SectionParams): void {
     scanRootsText.setPlaceholder('/Book */\n/Character/\n/World/');
     scanRootsText.inputEl.rows = 4;
     scanRootsText.inputEl.addClass('ert-textarea--wide');
+    scanRootsText.inputEl.addClass('mod-styled-scrollbar');
     scanRootsInput = scanRootsText;
 
     plugin.registerDomEvent(scanRootsText.inputEl, 'blur', () => {
@@ -422,6 +423,7 @@ export function renderInquirySection(params: SectionParams): void {
         text: 'Resolved Folders (0)'
     });
     const resolvedList = resolvedPreview.createDiv({ cls: 'ert-controlGroup ert-controlGroup--scroll' });
+    resolvedList.addClass('mod-styled-scrollbar');
     resolvedList.style.setProperty('--ert-controlGroup-columns', '1fr');
     resolvedList.style.setProperty('--ert-controlGroup-max-height', '220px');
 
@@ -435,6 +437,7 @@ export function renderInquirySection(params: SectionParams): void {
         text.setValue(listToText(inquirySources.classScope));
         text.inputEl.rows = 4;
         text.inputEl.addClass('ert-textarea--md');
+        text.inputEl.addClass('mod-styled-scrollbar');
         text.setPlaceholder('scene\noutline\ncharacter\nplace');
         classScopeInput = text;
 

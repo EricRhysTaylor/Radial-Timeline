@@ -25,6 +25,8 @@ export type MilestoneType =
     | 'stage-zero-complete'
     | 'stage-author-complete'
     | 'stage-house-complete'
+    | 'stage-press-complete'
+    // Legacy alias retained for compatibility with older milestone payloads
     | 'book-complete'
     | 'staleness-warn'
     | 'staleness-late'
@@ -71,6 +73,7 @@ function getIconForMilestone(type: MilestoneType): { icon: string; color: string
                 color: 'var(--rt-publishStageColors-House, #6FB971)',
                 label: 'HOUSE COMPLETE'
             };
+        case 'stage-press-complete':
         case 'book-complete':
             return {
                 // Shell/trophy icon - ultimate victory

@@ -908,7 +908,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         const rulerBlock = progressCard.createDiv({ cls: 'rt-pulse-ruler-block' });
         rulerBlock.createDiv({ cls: 'rt-pulse-ruler-title', text: 'Scene queue' });
-        this.queueScrollEl = rulerBlock.createDiv({ cls: 'rt-pulse-ruler-scroll' });
+        this.queueScrollEl = rulerBlock.createDiv({ cls: 'rt-pulse-ruler-scroll mod-styled-scrollbar' });
         this.queueTrackEl = this.queueScrollEl.createDiv({ cls: 'rt-pulse-ruler-track' });
         this.queueItems = [];
         this.renderQueueItems();

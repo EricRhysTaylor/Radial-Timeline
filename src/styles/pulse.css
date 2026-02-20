@@ -823,18 +823,6 @@
   padding-right: 20px;
   scroll-padding-left: 24px;
   scroll-padding-right: 24px;
-  /* Hide scrollbar for cleaner look, but allow scroll */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
-}
-
-.rt-pulse-ruler-scroll::-webkit-scrollbar {
-  height: 4px;
-}
-
-.rt-pulse-ruler-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
 }
 
 .rt-pulse-ruler-track {

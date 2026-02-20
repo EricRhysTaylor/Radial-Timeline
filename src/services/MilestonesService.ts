@@ -87,6 +87,7 @@ export class MilestonesService {
             // Stage is completely done → show celebration milestone
             // This syncs with the hero cards in PublicationSection (Zero/Author/House/Press complete)
             if (highestStageWithScenes === 'Press') {
+                // Final celebration state (not a publish stage): all Press scenes complete = book complete.
                 return { type: 'book-complete', stage: highestStageWithScenes };
             } else if (highestStageWithScenes === 'House') {
                 return { type: 'stage-house-complete', stage: highestStageWithScenes };

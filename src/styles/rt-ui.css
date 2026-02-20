@@ -66,18 +66,45 @@
   --rt-completion-stalled-soft: #e63946;
   --rt-completion-gold: var(--rt-color-search);
   --rt-completion-green: var(--rt-color-press);
-  --rt-completion-zero-soft: #d4b8e8;
-  --rt-completion-author-soft: #a8c4e8;
-  --rt-completion-house-soft: #e8c4a8;
+  --rt-completion-zero-soft: color-mix(in srgb, var(--rt-color-zero) 45%, var(--text-on-accent, var(--text-normal)));
+  --rt-completion-author-soft: color-mix(in srgb, var(--rt-color-author) 45%, var(--text-on-accent, var(--text-normal)));
+  --rt-completion-house-soft: color-mix(in srgb, var(--rt-color-house) 45%, var(--text-on-accent, var(--text-normal)));
   --rt-completion-progress-grad: linear-gradient(90deg, var(--rt-color-author), var(--rt-color-press));
   --rt-completion-bar-warn: linear-gradient(90deg, var(--rt-completion-warn), var(--rt-completion-warn-soft));
   --rt-completion-bar-late: linear-gradient(90deg, var(--rt-completion-late), var(--rt-completion-late-soft));
   --rt-completion-bar-stalled: linear-gradient(90deg, var(--rt-completion-stalled), var(--rt-completion-stalled-soft));
-  --rt-completion-complete-grad: linear-gradient(135deg, #2d5a2d 0%, #3d7a3d 25%, #4a9a4a 50%, #3d7a3d 75%, #2d5a2d 100%);
-  --rt-completion-zero-grad: linear-gradient(135deg, #3d2d5a 0%, #5a3d7a 25%, #7a4d9a 50%, #5a3d7a 75%, #3d2d5a 100%);
-  --rt-completion-author-grad: linear-gradient(135deg, #2d3d5a 0%, #3d5a7a 25%, #4d7a9a 50%, #3d5a7a 75%, #2d3d5a 100%);
-  --rt-completion-house-grad: linear-gradient(135deg, #5a3d2d 0%, #7a4d3d 25%, #9a5d47 50%, #7a4d3d 75%, #5a3d2d 100%);
-  --rt-completion-book-grad: linear-gradient(135deg, #5a4a0a 0%, #8b7a1a 20%, #c9a227 45%, #e6c340 55%, #c9a227 70%, #8b7a1a 90%, #5a4a0a 100%);
+  --rt-completion-complete-grad: linear-gradient(135deg,
+      color-mix(in srgb, var(--rt-completion-green) 36%, var(--background-primary)) 0%,
+      color-mix(in srgb, var(--rt-completion-green) 52%, var(--background-primary)) 25%,
+      color-mix(in srgb, var(--rt-completion-green) 64%, var(--background-primary)) 50%,
+      color-mix(in srgb, var(--rt-completion-green) 52%, var(--background-primary)) 75%,
+      color-mix(in srgb, var(--rt-completion-green) 36%, var(--background-primary)) 100%);
+  --rt-completion-zero-grad: linear-gradient(135deg,
+      color-mix(in srgb, var(--rt-color-zero) 36%, var(--background-primary)) 0%,
+      color-mix(in srgb, var(--rt-color-zero) 52%, var(--background-primary)) 25%,
+      color-mix(in srgb, var(--rt-color-zero) 64%, var(--background-primary)) 50%,
+      color-mix(in srgb, var(--rt-color-zero) 52%, var(--background-primary)) 75%,
+      color-mix(in srgb, var(--rt-color-zero) 36%, var(--background-primary)) 100%);
+  --rt-completion-author-grad: linear-gradient(135deg,
+      color-mix(in srgb, var(--rt-color-author) 36%, var(--background-primary)) 0%,
+      color-mix(in srgb, var(--rt-color-author) 52%, var(--background-primary)) 25%,
+      color-mix(in srgb, var(--rt-color-author) 64%, var(--background-primary)) 50%,
+      color-mix(in srgb, var(--rt-color-author) 52%, var(--background-primary)) 75%,
+      color-mix(in srgb, var(--rt-color-author) 36%, var(--background-primary)) 100%);
+  --rt-completion-house-grad: linear-gradient(135deg,
+      color-mix(in srgb, var(--rt-color-house) 36%, var(--background-primary)) 0%,
+      color-mix(in srgb, var(--rt-color-house) 52%, var(--background-primary)) 25%,
+      color-mix(in srgb, var(--rt-color-house) 64%, var(--background-primary)) 50%,
+      color-mix(in srgb, var(--rt-color-house) 52%, var(--background-primary)) 75%,
+      color-mix(in srgb, var(--rt-color-house) 36%, var(--background-primary)) 100%);
+  --rt-completion-press-grad: linear-gradient(135deg,
+      color-mix(in srgb, var(--rt-completion-gold) 30%, var(--background-primary)) 0%,
+      color-mix(in srgb, var(--rt-completion-gold) 46%, var(--background-primary)) 25%,
+      color-mix(in srgb, var(--rt-completion-gold) 58%, var(--background-primary)) 50%,
+      color-mix(in srgb, var(--rt-completion-gold) 46%, var(--background-primary)) 75%,
+      color-mix(in srgb, var(--rt-completion-gold) 30%, var(--background-primary)) 100%);
+  /* Book-complete is a final celebration surface, not a separate publish stage. */
+  --rt-completion-book-grad: var(--rt-completion-press-grad);
   --rt-completion-title-grad: linear-gradient(180deg, var(--rt-color-empty) 0%, var(--rt-completion-gold) 100%);
   --ert-panel-bg: var(--background-primary);
   --ert-panel-border: var(--background-modifier-border);
@@ -1986,9 +2013,11 @@
 
 .ert-ui.ert-scope--settings .ert-ai-quick-grid .setting-item.ert-ai-strategy-row.ert-ai-grid-item {
   flex-wrap: wrap;
-  gap: 0 var(--ert-gap-sm);
+  row-gap: 0;
+  column-gap: var(--ert-gap-sm);
   align-items: center;
   border: 1px solid color-mix(in srgb, var(--background-modifier-border) 75%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--background-modifier-border) 75%, transparent);
   border-radius: 10px;
   background: color-mix(in srgb, var(--background-secondary) 78%, transparent);
   padding: 10px 12px;
@@ -2003,6 +2032,7 @@
   width: auto;
   max-width: max-content;
   margin: 0;
+  padding: 0;
   min-width: 0;
 }
 
@@ -2022,6 +2052,7 @@
   flex: 0 0 auto;
   margin: 0;
   margin-left: auto;
+  padding: 0;
 }
 
 
@@ -4177,7 +4208,8 @@
   font-weight: 500;
 }
 
-.ert-ui.ert-scope--settings :is(.ert-completion-preview-book-complete,.ert-ui.ert-scope--settings 
+.ert-ui.ert-scope--settings :is(.ert-completion-preview-press-complete,.ert-ui.ert-scope--settings 
+  .ert-completion-preview-book-complete,.ert-ui.ert-scope--settings 
   .ert-completion-preview-zero-complete,.ert-ui.ert-scope--settings 
   .ert-completion-preview-author-complete,.ert-ui.ert-scope--settings 
   .ert-completion-preview-house-complete) {
@@ -4185,21 +4217,21 @@
   overflow: hidden;
 }
 
-.ert-ui.ert-scope--settings .ert-completion-preview-book-complete {
-  background: var(--rt-completion-book-grad);
+.ert-ui.ert-scope--settings :is(.ert-completion-preview-press-complete, .ert-completion-preview-book-complete) {
+  background: var(--rt-completion-press-grad);
   border: 0.125rem solid var(--rt-completion-gold);
   box-shadow:
     0 0 2.5rem color-mix(in srgb, var(--rt-completion-gold) 40%, transparent),
     0 0 5rem color-mix(in srgb, var(--rt-completion-gold) 20%, transparent),
     inset 0 0 3.75rem color-mix(in srgb, var(--rt-completion-gold) 15%, transparent);
-  animation: ert-book-complete-glow 3s ease-in-out infinite;
+  animation: ert-press-complete-glow 3s ease-in-out infinite;
 }
 
-.ert-ui.ert-scope--settings .ert-settings-root .ert-completion-preview-book-complete {
+.ert-ui.ert-scope--settings .ert-settings-root :is(.ert-completion-preview-press-complete, .ert-completion-preview-book-complete) {
   animation: none;
 }
 
-@keyframes ert-book-complete-glow {
+@keyframes ert-press-complete-glow {
 
   0%,
   100% {
@@ -4215,14 +4247,14 @@
   }
 }
 
-.ert-ui.ert-scope--settings .ert-completion-preview-book-complete .ert-planetary-preview-heading {
+.ert-ui.ert-scope--settings :is(.ert-completion-preview-press-complete, .ert-completion-preview-book-complete) .ert-planetary-preview-heading {
   color: color-mix(in srgb, var(--text-on-accent) 95%, transparent);
   text-shadow: 0 0.0625rem 0.25rem color-mix(in srgb, var(--text-normal) 30%, transparent);
   position: relative;
   z-index: 1;
 }
 
-.ert-ui.ert-scope--settings .ert-completion-preview-book-complete .ert-completion-complete-title {
+.ert-ui.ert-scope--settings :is(.ert-completion-preview-press-complete, .ert-completion-preview-book-complete) .ert-completion-complete-title {
   font-size: 1.8rem;
   background: var(--rt-completion-title-grad);
   -webkit-background-clip: text;
@@ -4231,15 +4263,15 @@
   filter: drop-shadow(0 0.125rem 0.25rem color-mix(in srgb, var(--text-normal) 40%, transparent));
 }
 
-.ert-ui.ert-scope--settings .ert-completion-preview-book-complete .ert-completion-complete-subtitle {
+.ert-ui.ert-scope--settings :is(.ert-completion-preview-press-complete, .ert-completion-preview-book-complete) .ert-completion-complete-subtitle {
   color: color-mix(in srgb, var(--text-on-accent) 90%, transparent);
 }
 
-.ert-ui.ert-scope--settings .ert-completion-preview-book-complete .ert-completion-complete-bg-icon {
+.ert-ui.ert-scope--settings :is(.ert-completion-preview-press-complete, .ert-completion-preview-book-complete) .ert-completion-complete-bg-icon {
   opacity: 0.18;
 }
 
-.ert-ui.ert-scope--settings .ert-completion-preview-book-complete .ert-completion-complete-bg-icon svg {
+.ert-ui.ert-scope--settings :is(.ert-completion-preview-press-complete, .ert-completion-preview-book-complete) .ert-completion-complete-bg-icon svg {
   width: 12.5rem;
   height: 12.5rem;
   color: var(--rt-completion-gold);

@@ -370,8 +370,8 @@ export function renderCompletionEstimatePreview(params: {
                 }
 
                 // Show hero card based on milestone type (single source of truth)
-                if (milestone.type === 'book-complete') {
-                    // ULTIMATE celebration - the book is DONE!
+                if (milestone.type === 'stage-press-complete' || milestone.type === 'book-complete') {
+                    // Final gold celebration once Press stage is fully complete.
                     previewContainer.addClass('ert-completion-preview-book-complete');
 
                     const bgIcon = previewContainer.createDiv({ cls: 'ert-completion-complete-bg-icon' });
@@ -380,7 +380,7 @@ export function renderCompletionEstimatePreview(params: {
                     const heading = previewContainer.createDiv({ cls: 'ert-planetary-preview-heading' });
                     heading.setText('Book Complete');
 
-                    const bookCelebrations = [
+                    const pressCelebrations = [
                         { title: "You wrote a book.", subtitle: "Let that sink in." },
                         { title: "It's done.", subtitle: "You actually did it. A whole book." },
                         { title: "Author status: confirmed.", subtitle: "Press stage complete. This is a real book now." },
@@ -390,7 +390,7 @@ export function renderCompletionEstimatePreview(params: {
                         { title: "Final boss defeated.", subtitle: "The book is finished. You win." },
                         { title: "Standing ovation.", subtitle: "From first word to final scene — you did this." },
                     ];
-                    const celebration = bookCelebrations[Math.floor(Math.random() * bookCelebrations.length)];
+                    const celebration = pressCelebrations[Math.floor(Math.random() * pressCelebrations.length)];
 
                     const body = previewContainer.createDiv({ cls: 'ert-planetary-preview-body ert-completion-preview-body' });
                     const completeContent = body.createDiv({ cls: 'ert-completion-complete' });
