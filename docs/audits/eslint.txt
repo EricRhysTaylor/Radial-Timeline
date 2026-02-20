@@ -448,9 +448,6 @@
   565:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
   730:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
 
-/Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/sceneAnalysis/SynopsisCommands.ts
-  13:71  warning  'hasProcessableContent' is defined but never used  @typescript-eslint/no-unused-vars
-
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/sceneAnalysis/responseParsing.ts
   126:26  error  Unexpected control character(s) in regular expression: \x00, \x1f  no-control-regex
   152:20  error  Unexpected any. Specify a different type                           @typescript-eslint/no-explicit-any
@@ -472,13 +469,12 @@
   506:13  error    'showProgressPercent' is never reassigned. Use 'const' instead  prefer-const
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/services/CommandRegistrar.ts
-   19:10  warning  'DEFAULT_SETTINGS' is defined but never used  @typescript-eslint/no-unused-vars
-  442:39  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
-  450:35  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
-  650:35  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
-  695:35  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
-  735:35  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
-  811:35  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  426:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  434:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  630:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  675:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  715:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  791:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/services/FileTrackingService.ts
   97:86  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
@@ -568,8 +564,8 @@
      4:10   warning  'fetchAnthropicModels' is defined but never used  @typescript-eslint/no-unused-vars
      5:10   warning  'fetchOpenAiModels' is defined but never used     @typescript-eslint/no-unused-vars
      6:10   warning  'fetchGeminiModels' is defined but never used     @typescript-eslint/no-unused-vars
-  1599:41   error    Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
-  1838:134  error    Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  1604:41   error    Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  1843:134  error    Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/settings/sections/AuthorProgressSection.ts
     10:10  warning  'getPresetPalettes' is defined but never used                                                                       @typescript-eslint/no-unused-vars
@@ -725,9 +721,6 @@
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/utils/text.ts
   281:7  warning  'currentLength' is assigned a value but never used  @typescript-eslint/no-unused-vars
 
-/Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/utils/yamlTemplateNormalize.ts
-  10:39  warning  'BeatSystemConfig' is defined but never used  @typescript-eslint/no-unused-vars
-
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/view/TimeLineView.ts
     7:56  warning  'TAbstractFile' is defined but never used                 @typescript-eslint/no-unused-vars
     7:79  warning  'normalizePath' is defined but never used                 @typescript-eslint/no-unused-vars
@@ -864,6 +857,6 @@
   108:78  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
   115:52  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
 
-✖ 647 problems (377 errors, 270 warnings)
+✖ 644 problems (377 errors, 267 warnings)
   17 errors and 0 warnings potentially fixable with the `--fix` option.
 

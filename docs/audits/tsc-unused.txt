@@ -218,7 +218,6 @@ src/sceneAnalysis/Maintenance.ts(13,1): error TS6192: All imports in import decl
 src/sceneAnalysis/Maintenance.ts(14,1): error TS6133: 'DEFAULT_SETTINGS' is declared but its value is never read.
 src/sceneAnalysis/Maintenance.ts(23,5): error TS6133: 'vault' is declared but its value is never read.
 src/sceneAnalysis/Maintenance.ts(255,5): error TS6133: 'vault' is declared but its value is never read.
-src/sceneAnalysis/SynopsisCommands.ts(13,71): error TS6133: 'hasProcessableContent' is declared but its value is never read.
 src/SceneAnalysisCommands.ts(9,1): error TS6133: 'updateSceneAnalysis' is declared but its value is never read.
 src/SceneAnalysisCommands.ts(13,5): error TS6133: 'calculateFlaggedCount' is declared but its value is never read.
 src/SceneAnalysisCommands.ts(14,5): error TS6133: 'compareScenesByOrder' is declared but its value is never read.
@@ -233,7 +232,6 @@ src/SceneAnalysisCommands.ts(203,11): error TS6133: 'originalOnOpen' is declared
 src/SceneAnalysisCommands.ts(308,11): error TS6133: 'originalOnOpen' is declared but its value is never read.
 src/services/AuthorProgressService.ts(1,23): error TS6133: 'TFolder' is declared but its value is never read.
 src/services/AuthorProgressService.ts(5,1): error TS6133: 'getAllScenes' is declared but its value is never read.
-src/services/CommandRegistrar.ts(19,1): error TS6133: 'DEFAULT_SETTINGS' is declared but its value is never read.
 src/services/ReleaseNotesService.ts(6,10): error TS6133: 'requestUrl' is declared but its value is never read.
 src/services/ReleaseNotesService.ts(7,38): error TS6133: 'parseReleaseVersion' is declared but its value is never read.
 src/services/ReleaseNotesService.ts(16,13): error TS6133: 'releaseNotesFetchPromise' is declared but its value is never read.
@@ -317,7 +315,6 @@ src/utils/gossamer.ts(501,11): error TS6133: 'allRuns' is declared but its value
 src/utils/manuscript.ts(278,36): error TS6133: 'app' is declared but its value is never read.
 src/utils/numberSquareHelpers.ts(45,5): error TS6133: 'grade' is declared but its value is never read.
 src/utils/text.ts(263,7): error TS6133: 'currentLength' is declared but its value is never read.
-src/utils/yamlTemplateNormalize.ts(10,39): error TS6196: 'BeatSystemConfig' is declared but never used.
 src/view/interactions/ChronologueShiftController.ts(89,9): error TS6133: 'hoveredScenePath' is declared but its value is never read.
 src/view/interactions/ChronologueShiftController.ts(379,19): error TS6133: 'hoveredSceneGroup' is declared but its value is never read.
 src/view/interactions/ChronologueShiftController.ts(1065,11): error TS6133: 'bg' is declared but its value is never read.

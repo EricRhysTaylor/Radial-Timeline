@@ -1,39 +1,27 @@
 # Sanitation Audit
 
-Generated: 2026-02-20T16:40:21.398Z
+Generated: 2026-02-20T17:24:02.014Z
 
 ## Executive summary
 
-This audit pass is report-only and does not change runtime behavior. The scan found 1377 matched lines across 140 files, indicating comment debt plus terminology drift around settings refresh and AI/export plumbing. Recent refactors increased drift risk where old naming or adapter helpers may still be referenced in comments and wrappers (especially around settings refresh flow and template merge paths).
-
-## After this PR
-
-- Total scan hits: `1402 -> 1377` (`-25`).
-- `TODO`: `77 -> 68` (`-9`) by replacing deprecated adapter TODOs with canonical deprecation pointers and ticketing remaining TODOs.
-- `mergeTemplates`: `21 -> 8` (`-13`) by replacing stale UI variable naming with repair-focused naming in settings.
-- `NOTE`: `304 -> 301` (`-3`) via low-risk comment trimming in settings/refresh files.
-
-Remaining hotspots and why:
-- `src/SynopsisManager.ts` and `src/sceneAnalysis/SynopsisCommands.ts` remain high due to legitimate `Synopsis` domain naming, not deprecated paths.
-- `src/inquiry/InquiryView.ts` remains high and includes TODO markers; deeper cleanup deferred because the file currently has active local edits.
-- `src/modals/SceneAnalysisProcessingModal.ts` remains high from dense UI/process commentary; safe reduction needs a dedicated pass to preserve operational guidance.
+This audit pass is report-only and does not change runtime behavior. The scan found 1366 matched lines across 140 files, indicating comment debt plus terminology drift around settings refresh and AI/export plumbing. Recent refactors increased drift risk where old naming or adapter helpers may still be referenced in comments and wrappers (especially around settings refresh flow and template merge paths).
 
 ## Totals by token
 
 | Token | Category | Total hits |
 | --- | --- | --- |
-| `Synopsis` | drift-term | 855 |
+| `Synopsis` | drift-term | 847 |
 | `NOTE` | stale-comment | 301 |
 | `TODO` | stale-comment | 68 |
-| `DEPRECATED` | stale-comment | 59 |
+| `DEPRECATED` | stale-comment | 58 |
 | `refreshTimelineIfNeeded` | drift-term | 32 |
 | `TEMP` | stale-comment | 14 |
 | `IMPORTANT` | stale-comment | 14 |
 | `Ripple Rename` | drift-term | 9 |
-| `mergeTemplates` | drift-term | 8 |
 | `ChangeType.SETTINGS` | drift-term | 6 |
+| `legacy key` | drift-term | 4 |
+| `mergeTemplates` | drift-term | 4 |
 | `getMergedBeatYaml` | drift-term | 4 |
-| `legacy key` | drift-term | 2 |
 | `plaintext key` | drift-term | 2 |
 | `HACK` | stale-comment | 1 |
 | `WORKAROUND` | stale-comment | 1 |
@@ -53,14 +41,13 @@ Remaining hotspots and why:
 | File | Hits |
 | --- | --- |
 | `src/SynopsisManager.ts` | 204 |
-| `src/modals/SceneAnalysisProcessingModal.ts` | 126 |
+| `src/modals/SceneAnalysisProcessingModal.ts` | 120 |
 | `src/inquiry/InquiryView.ts` | 101 |
 | `src/settings/sections/BeatPropertiesSection.ts` | 91 |
-| `src/sceneAnalysis/SynopsisCommands.ts` | 66 |
+| `src/sceneAnalysis/SynopsisCommands.ts` | 65 |
 | `src/services/CommandRegistrar.ts` | 30 |
 | `src/utils/yamlAudit.ts` | 27 |
 | `src/utils/beatsTemplates.ts` | 21 |
-| `src/utils/yamlTemplateNormalize.ts` | 21 |
 | `src/i18n/locales/en.ts` | 20 |
 | `src/modals/ManuscriptOptionsModal.ts` | 20 |
 | `src/view/modes/ChronologueMode.ts` | 20 |
@@ -70,14 +57,15 @@ Remaining hotspots and why:
 | `src/main.ts` | 16 |
 | `src/renderer/utils/SynopsisBuilder.ts` | 16 |
 | `src/utils/exportFormats.ts` | 16 |
+| `src/utils/yamlTemplateNormalize.ts` | 16 |
 | `src/renderer/dom/SynopsisDOMUpdater.ts` | 15 |
 | `src/settings/sections/AiSection.ts` | 15 |
 
 ## Suggested cleanup lanes
 
-- Lane A: Safety/destructive ops (80 hits). Focus on risky transitional language and stale safeguards before deleting wrappers.
+- Lane A: Safety/destructive ops (81 hits). Focus on risky transitional language and stale safeguards before deleting wrappers.
 - Lane B: Settings + refresh (47 hits). Normalize refresh path references and retire stale settings-change terminology.
-- Lane C: AI + export pipeline (867 hits). Consolidate merge-helper naming and align comments with canonical helpers.
+- Lane C: AI + export pipeline (855 hits). Consolidate merge-helper naming and align comments with canonical helpers.
 
 ## Comment cleanup rubric
 
@@ -86,7 +74,7 @@ Remaining hotspots and why:
 
 ## Findings by token (top 20 per token)
 
-### `Synopsis` (855)
+### `Synopsis` (847)
 
 | File | Line | Matched line |
 | --- | --- | --- |
@@ -161,7 +149,7 @@ Remaining hotspots and why:
 | `src/renderer/apr/AprRenderer.ts` | 135 | `// ── Todo: gray base + 45° crosshatch (diagonal lines, no patternTransform) ──` |
 | `src/renderer/apr/AprRenderer.ts` | 136 | `const ts = todo.tileSize;` |
 
-### `DEPRECATED` (59)
+### `DEPRECATED` (58)
 
 | File | Line | Matched line |
 | --- | --- | --- |
@@ -226,9 +214,9 @@ Remaining hotspots and why:
 | `src/services/SceneReorderService.ts` | 69 | `// Simple temp name: z + final basename (sorts to end, easy to spot)` |
 | `src/services/SceneReorderService.ts` | 83 | `// Phase 1: Rename ALL files to temp namespace` |
 | `src/services/SceneReorderService.ts` | 92 | `// Phase 2: Rename ALL files from temp to final` |
-| `src/utils/exportFormats.ts` | 10 | `import * as fs from 'fs'; // SAFE: Node fs required for Pandoc temp files` |
-| `src/utils/exportFormats.ts` | 11 | `import * as os from 'os'; // SAFE: Node os required for temp directory resolution` |
-| `src/utils/exportFormats.ts` | 12 | `import * as path from 'path'; // SAFE: Node path required for temp/absolute paths` |
+| `src/utils/exportFormats.ts` | 11 | `import * as fs from 'fs'; // SAFE: Node fs required for Pandoc temp files` |
+| `src/utils/exportFormats.ts` | 12 | `import * as os from 'os'; // SAFE: Node os required for temp directory resolution` |
+| `src/utils/exportFormats.ts` | 13 | `import * as path from 'path'; // SAFE: Node path required for temp/absolute paths` |
 
 ### `IMPORTANT` (14)
 
@@ -263,19 +251,6 @@ Remaining hotspots and why:
 | `src/view/interactions/OuterRingDragController.ts` | 864 | `console.error('Ripple rename failed:', error);` |
 | `src/view/interactions/OuterRingDragController.ts` | 865 | `new Notice('Ripple rename failed. See console for details.', 3500);` |
 
-### `mergeTemplates` (8)
-
-| File | Line | Matched line |
-| --- | --- | --- |
-| `src/utils/beatsTemplates.ts` | 10 | `import { mergeTemplates } from './sceneGenerator';` |
-| `src/utils/beatsTemplates.ts` | 198 | `return mergeTemplates(base, advanced);` |
-| `src/utils/sceneGenerator.ts` | 66 | `export function mergeTemplates(baseTemplate: string, advancedFields: string): string {` |
-| `src/utils/yamlTemplateNormalize.ts` | 12 | `import { mergeTemplates } from './sceneGenerator';` |
-| `src/utils/yamlTemplateNormalize.ts` | 97 | `/** Fully merged template string (base + advanced, via `mergeTemplates`). */` |
-| `src/utils/yamlTemplateNormalize.ts` | 121 | `? mergeTemplates(base, advanced)` |
-| `src/utils/yamlTemplateNormalize.ts` | 132 | `? mergeTemplates(base, advanced)` |
-| `src/utils/yamlTemplateNormalize.ts` | 145 | `? mergeTemplates(base, advanced)` |
-
 ### `ChangeType.SETTINGS` (6)
 
 | File | Line | Matched line |
@@ -287,6 +262,24 @@ Remaining hotspots and why:
 | `src/services/TimelineService.ts` | 122 | `this.scheduleRender([ChangeType.SETTINGS], effectiveDelay);` |
 | `src/settings/SettingImpact.ts` | 33 | `changeTypes: [ChangeType.SETTINGS],` |
 
+### `legacy key` (4)
+
+| File | Line | Matched line |
+| --- | --- | --- |
+| `src/ai/credentials/credentials.test.ts` | 50 | `it('migration moves legacy key values into Secret Storage and clears legacy fields', async () => {` |
+| `src/modals/SceneAnalysisProcessingModal.ts` | 96 | `private processedSynopsisResults: Map<string, string> = new Map(); // Optional staged Synopsis writes (legacy key).` |
+| `src/modals/SceneAnalysisProcessingModal.ts` | 159 | `// Summary-refresh settings are persisted on plugin settings (legacy key names retained for compatibility).` |
+| `src/services/SceneDataService.ts` | 205 | `// Compat: Check for legacy keys (metrics only)` |
+
+### `mergeTemplates` (4)
+
+| File | Line | Matched line |
+| --- | --- | --- |
+| `src/utils/beatsTemplates.ts` | 10 | `import { mergeTemplates } from './sceneGenerator';` |
+| `src/utils/beatsTemplates.ts` | 198 | `return mergeTemplates(base, advanced);` |
+| `src/utils/sceneGenerator.ts` | 66 | `export function mergeTemplates(baseTemplate: string, advancedFields: string): string {` |
+| `src/utils/yamlTemplateNormalize.ts` | 12 | `import { mergeTemplates as mergeYamlTemplates } from './sceneGenerator';` |
+
 ### `getMergedBeatYaml` (4)
 
 | File | Line | Matched line |
@@ -295,13 +288,6 @@ Remaining hotspots and why:
 | `src/utils/beatsTemplates.ts` | 192 | `export function getMergedBeatYaml(settings: RadialTimelineSettings): string {` |
 | `src/utils/beatsTemplates.ts` | 460 | `/** @deprecated Use getMergedBeatYaml */` |
 | `src/utils/beatsTemplates.ts` | 461 | `export const getMergedBeatYamlTemplate = getMergedBeatYaml;` |
-
-### `legacy key` (2)
-
-| File | Line | Matched line |
-| --- | --- | --- |
-| `src/ai/credentials/credentials.test.ts` | 50 | `it('migration moves legacy key values into Secret Storage and clears legacy fields', async () => {` |
-| `src/services/SceneDataService.ts` | 205 | `// Compat: Check for legacy keys (metrics only)` |
 
 ### `plaintext key` (2)
 
@@ -352,3 +338,4 @@ Remaining hotspots and why:
 - [ ] Rewrite comments that reference removed systems to point to canonical helpers.
 - [ ] Remove dead wrappers after a dev-guard period.
 - [ ] Remove unused exports and legacy adapters.
+

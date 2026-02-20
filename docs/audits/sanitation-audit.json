@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-02-20T16:40:21.383Z",
+  "generatedAt": "2026-02-20T17:24:01.999Z",
   "scannedDirectories": [
     "src",
     "scripts"
@@ -440,30 +440,30 @@
     }
   ],
   "summary": {
-    "totalHits": 1377,
+    "totalHits": 1366,
     "totalFilesScanned": 355,
     "filesWithHits": 140,
     "totalsByToken": {
       "api key in settings": 1,
       "ChangeType.SETTINGS": 6,
-      "DEPRECATED": 59,
+      "DEPRECATED": 58,
       "getMergedBeatYaml": 4,
       "HACK": 1,
       "IMPORTANT": 14,
-      "legacy key": 2,
-      "mergeTemplates": 8,
+      "legacy key": 4,
+      "mergeTemplates": 4,
       "NOTE": 301,
       "plaintext key": 2,
       "refreshTimelineIfNeeded": 32,
       "Ripple Rename": 9,
-      "Synopsis": 855,
+      "Synopsis": 847,
       "TEMP": 14,
       "TODO": 68,
       "WORKAROUND": 1
     },
     "totalsByCategory": {
-      "drift-term": 919,
-      "stale-comment": 458
+      "drift-term": 909,
+      "stale-comment": 457
     },
     "hotspots": [
       {
@@ -472,7 +472,7 @@
       },
       {
         "filePath": "src/modals/SceneAnalysisProcessingModal.ts",
-        "hitCount": 126
+        "hitCount": 120
       },
       {
         "filePath": "src/inquiry/InquiryView.ts",
@@ -484,7 +484,7 @@
       },
       {
         "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-        "hitCount": 66
+        "hitCount": 65
       },
       {
         "filePath": "src/services/CommandRegistrar.ts",
@@ -496,10 +496,6 @@
       },
       {
         "filePath": "src/utils/beatsTemplates.ts",
-        "hitCount": 21
-      },
-      {
-        "filePath": "src/utils/yamlTemplateNormalize.ts",
         "hitCount": 21
       },
       {
@@ -539,6 +535,10 @@
         "hitCount": 16
       },
       {
+        "filePath": "src/utils/yamlTemplateNormalize.ts",
+        "hitCount": 16
+      },
+      {
         "filePath": "src/renderer/dom/SynopsisDOMUpdater.ts",
         "hitCount": 15
       },
@@ -563,6 +563,10 @@
         "hitCount": 14
       },
       {
+        "filePath": "src/sceneAnalysis/aiProvider.ts",
+        "hitCount": 13
+      },
+      {
         "filePath": "src/services/SceneDataService.ts",
         "hitCount": 13
       },
@@ -572,10 +576,6 @@
       },
       {
         "filePath": "src/renderer/TimelineRenderer.ts",
-        "hitCount": 12
-      },
-      {
-        "filePath": "src/sceneAnalysis/aiProvider.ts",
         "hitCount": 12
       },
       {
@@ -8378,43 +8378,22 @@
     },
     {
       "filePath": "src/utils/exportFormats.ts",
-      "line": 10,
+      "line": 11,
       "token": "TEMP",
       "category": "stale-comment",
       "lineText": "import * as fs from 'fs'; // SAFE: Node fs required for Pandoc temp files",
       "context": {
         "before": {
-          "line": 9,
+          "line": 10,
           "text": "import { execFile } from 'child_process'; // SAFE: Node child_process for Pandoc subprocess"
         },
         "current": {
-          "line": 10,
-          "text": "import * as fs from 'fs'; // SAFE: Node fs required for Pandoc temp files"
-        },
-        "after": {
           "line": 11,
-          "text": "import * as os from 'os'; // SAFE: Node os required for temp directory resolution"
-        }
-      }
-    },
-    {
-      "filePath": "src/utils/exportFormats.ts",
-      "line": 11,
-      "token": "TEMP",
-      "category": "stale-comment",
-      "lineText": "import * as os from 'os'; // SAFE: Node os required for temp directory resolution",
-      "context": {
-        "before": {
-          "line": 10,
           "text": "import * as fs from 'fs'; // SAFE: Node fs required for Pandoc temp files"
-        },
-        "current": {
-          "line": 11,
-          "text": "import * as os from 'os'; // SAFE: Node os required for temp directory resolution"
         },
         "after": {
           "line": 12,
-          "text": "import * as path from 'path'; // SAFE: Node path required for temp/absolute paths"
+          "text": "import * as os from 'os'; // SAFE: Node os required for temp directory resolution"
         }
       }
     },
@@ -8423,291 +8402,312 @@
       "line": 12,
       "token": "TEMP",
       "category": "stale-comment",
-      "lineText": "import * as path from 'path'; // SAFE: Node path required for temp/absolute paths",
+      "lineText": "import * as os from 'os'; // SAFE: Node os required for temp directory resolution",
       "context": {
         "before": {
           "line": 11,
-          "text": "import * as os from 'os'; // SAFE: Node os required for temp directory resolution"
+          "text": "import * as fs from 'fs'; // SAFE: Node fs required for Pandoc temp files"
         },
         "current": {
           "line": 12,
-          "text": "import * as path from 'path'; // SAFE: Node path required for temp/absolute paths"
+          "text": "import * as os from 'os'; // SAFE: Node os required for temp directory resolution"
         },
         "after": {
           "line": 13,
+          "text": "import * as path from 'path'; // SAFE: Node path required for temp/absolute paths"
+        }
+      }
+    },
+    {
+      "filePath": "src/utils/exportFormats.ts",
+      "line": 13,
+      "token": "TEMP",
+      "category": "stale-comment",
+      "lineText": "import * as path from 'path'; // SAFE: Node path required for temp/absolute paths",
+      "context": {
+        "before": {
+          "line": 12,
+          "text": "import * as os from 'os'; // SAFE: Node os required for temp directory resolution"
+        },
+        "current": {
+          "line": 13,
+          "text": "import * as path from 'path'; // SAFE: Node path required for temp/absolute paths"
+        },
+        "after": {
+          "line": 14,
           "text": "import { formatRuntimeValue, RuntimeSettings } from './runtimeEstimator';"
         }
       }
     },
     {
       "filePath": "src/utils/exportFormats.ts",
-      "line": 289,
+      "line": 277,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "includeSynopsis = false,",
       "context": {
         "before": {
-          "line": 288,
+          "line": 276,
           "text": "preset: OutlinePreset,"
         },
         "current": {
-          "line": 289,
+          "line": 277,
           "text": "includeSynopsis = false,"
         },
         "after": {
-          "line": 290,
+          "line": 278,
           "text": "runtimeSettings?: RuntimeSettings"
         }
       }
     },
     {
       "filePath": "src/utils/exportFormats.ts",
-      "line": 331,
+      "line": 313,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "const header = includeSynopsis",
       "context": {
         "before": {
-          "line": 330,
+          "line": 312,
           "text": "case 'index-cards-csv': {"
         },
         "current": {
-          "line": 331,
+          "line": 313,
           "text": "const header = includeSynopsis"
         },
         "after": {
-          "line": 332,
+          "line": 314,
           "text": "? ['Scene', 'Title', 'When', 'Subplot', 'Synopsis', 'Runtime', 'Words', 'Path']"
         }
       }
     },
     {
       "filePath": "src/utils/exportFormats.ts",
-      "line": 332,
+      "line": 314,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "? ['Scene', 'Title', 'When', 'Subplot', 'Synopsis', 'Runtime', 'Words', 'Path']",
       "context": {
         "before": {
-          "line": 331,
+          "line": 313,
           "text": "const header = includeSynopsis"
         },
         "current": {
-          "line": 332,
+          "line": 314,
           "text": "? ['Scene', 'Title', 'When', 'Subplot', 'Synopsis', 'Runtime', 'Words', 'Path']"
         },
         "after": {
-          "line": 333,
+          "line": 315,
           "text": ": ['Scene', 'Title', 'When', 'Subplot', 'Runtime', 'Words', 'Path'];"
         }
       }
     },
     {
       "filePath": "src/utils/exportFormats.ts",
-      "line": 347,
+      "line": 329,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "if (includeSynopsis) {",
       "context": {
         "before": {
-          "line": 346,
+          "line": 328,
           "text": "];"
         },
         "current": {
-          "line": 347,
+          "line": 329,
           "text": "if (includeSynopsis) {"
         },
         "after": {
-          "line": 348,
+          "line": 330,
           "text": "base.push(formatCsvValue(synopses[idx] || ''));"
         }
       }
     },
     {
       "filePath": "src/utils/exportFormats.ts",
-      "line": 375,
+      "line": 357,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "if (includeSynopsis) {",
       "context": {
         "before": {
-          "line": 374,
+          "line": 356,
           "text": "};"
         },
         "current": {
-          "line": 375,
+          "line": 357,
           "text": "if (includeSynopsis) {"
         },
         "after": {
-          "line": 376,
+          "line": 358,
           "text": "card.synopsis = synopses[idx] || null;"
         }
       }
     },
     {
       "filePath": "src/utils/exportFormats.ts",
-      "line": 376,
+      "line": 358,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "card.synopsis = synopses[idx] || null;",
       "context": {
         "before": {
-          "line": 375,
+          "line": 357,
           "text": "if (includeSynopsis) {"
         },
         "current": {
-          "line": 376,
+          "line": 358,
           "text": "card.synopsis = synopses[idx] || null;"
         },
         "after": {
-          "line": 377,
+          "line": 359,
           "text": "}"
         }
       }
     },
     {
       "filePath": "src/utils/exportFormats.ts",
-      "line": 420,
+      "line": 401,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "if (includeSynopsis && synopses[idx]) {",
       "context": {
         "before": {
-          "line": 419,
+          "line": 400,
           "text": "lines.push(`${sceneLabel}. ${title}${when}${rt}`);"
         },
         "current": {
-          "line": 420,
+          "line": 401,
           "text": "if (includeSynopsis && synopses[idx]) {"
         },
         "after": {
-          "line": 421,
+          "line": 402,
           "text": "lines.push(` > ${synopses[idx]}`);"
         }
       }
     },
     {
       "filePath": "src/utils/exportFormats.ts",
-      "line": 428,
+      "line": 409,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "const header = includeSynopsis",
       "context": {
         "before": {
-          "line": 427,
+          "line": 408,
           "text": "case 'shooting-schedule': {"
         },
         "current": {
-          "line": 428,
+          "line": 409,
           "text": "const header = includeSynopsis"
         },
         "after": {
-          "line": 429,
+          "line": 410,
           "text": "? ['# Shooting schedule', '', '| Scene | Title | When | Subplot | Runtime | Synopsis |', '|-------|-------|------|---------|---------|----------|']"
         }
       }
     },
     {
       "filePath": "src/utils/exportFormats.ts",
-      "line": 429,
+      "line": 410,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "? ['# Shooting schedule', '', '| Scene | Title | When | Subplot | Runtime | Synopsis |', '|-------|-------|------|---------|---------|----------|']",
       "context": {
         "before": {
-          "line": 428,
+          "line": 409,
           "text": "const header = includeSynopsis"
         },
         "current": {
-          "line": 429,
+          "line": 410,
           "text": "? ['# Shooting schedule', '', '| Scene | Title | When | Subplot | Runtime | Synopsis |', '|-------|-------|------|---------|---------|----------|']"
         },
         "after": {
-          "line": 430,
+          "line": 411,
           "text": ": ['# Shooting schedule', '', '| Scene | Title | When | Subplot | Runtime |', '|-------|-------|------|---------|---------|'];"
         }
       }
     },
     {
       "filePath": "src/utils/exportFormats.ts",
-      "line": 436,
+      "line": 417,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "if (includeSynopsis) {",
       "context": {
         "before": {
-          "line": 435,
+          "line": 416,
           "text": ""
         },
         "current": {
-          "line": 436,
+          "line": 417,
           "text": "if (includeSynopsis) {"
         },
         "after": {
-          "line": 437,
+          "line": 418,
           "text": "const synopsis = (synopses[idx] || '—').replace(/\\|/g, '\\\\|'); // Escape pipes for markdown table"
         }
       }
     },
     {
       "filePath": "src/utils/exportFormats.ts",
-      "line": 437,
+      "line": 418,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "const synopsis = (synopses[idx] || '—').replace(/\\|/g, '\\\\|'); // Escape pipes for markdown table",
       "context": {
         "before": {
-          "line": 436,
+          "line": 417,
           "text": "if (includeSynopsis) {"
         },
         "current": {
-          "line": 437,
+          "line": 418,
           "text": "const synopsis = (synopses[idx] || '—').replace(/\\|/g, '\\\\|'); // Escape pipes for markdown table"
         },
         "after": {
-          "line": 438,
+          "line": 419,
           "text": "lines.push(`| ${sceneLabel} | ${title} | ${whenDates[idx] || '—'} | ${subplots[idx] || '—'} | ${rt} | ${synopsis} |`);"
         }
       }
     },
     {
       "filePath": "src/utils/exportFormats.ts",
-      "line": 438,
+      "line": 419,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "lines.push(`| ${sceneLabel} | ${title} | ${whenDates[idx] || '—'} | ${subplots[idx] || '—'} | ${rt} | ${synopsis} |`);",
       "context": {
         "before": {
-          "line": 437,
+          "line": 418,
           "text": "const synopsis = (synopses[idx] || '—').replace(/\\|/g, '\\\\|'); // Escape pipes for markdown table"
         },
         "current": {
-          "line": 438,
+          "line": 419,
           "text": "lines.push(`| ${sceneLabel} | ${title} | ${whenDates[idx] || '—'} | ${subplots[idx] || '—'} | ${rt} | ${synopsis} |`);"
         },
         "after": {
-          "line": 439,
+          "line": 420,
           "text": "} else {"
         }
       }
     },
     {
       "filePath": "src/utils/exportFormats.ts",
-      "line": 474,
+      "line": 455,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "if (includeSynopsis && synopses[idx]) {",
       "context": {
         "before": {
-          "line": 473,
+          "line": 454,
           "text": "lines.push(`${sceneLabel}. ${title}${wc}`);"
         },
         "current": {
-          "line": 474,
+          "line": 455,
           "text": "if (includeSynopsis && synopses[idx]) {"
         },
         "after": {
-          "line": 475,
+          "line": 456,
           "text": "lines.push(` > ${synopses[idx]}`);"
         }
       }
@@ -10225,7 +10225,7 @@
       "line": 12,
       "token": "mergeTemplates",
       "category": "drift-term",
-      "lineText": "import { mergeTemplates } from './sceneGenerator';",
+      "lineText": "import { mergeTemplates as mergeYamlTemplates } from './sceneGenerator';",
       "context": {
         "before": {
           "line": 11,
@@ -10233,7 +10233,7 @@
         },
         "current": {
           "line": 12,
-          "text": "import { mergeTemplates } from './sceneGenerator';"
+          "text": "import { mergeTemplates as mergeYamlTemplates } from './sceneGenerator';"
         },
         "after": {
           "line": 13,
@@ -10285,27 +10285,6 @@
     },
     {
       "filePath": "src/utils/yamlTemplateNormalize.ts",
-      "line": 97,
-      "token": "mergeTemplates",
-      "category": "drift-term",
-      "lineText": "/** Fully merged template string (base + advanced, via `mergeTemplates`). */",
-      "context": {
-        "before": {
-          "line": 96,
-          "text": "advanced: string;"
-        },
-        "current": {
-          "line": 97,
-          "text": "/** Fully merged template string (base + advanced, via `mergeTemplates`). */"
-        },
-        "after": {
-          "line": 98,
-          "text": "merged: string;"
-        }
-      }
-    },
-    {
-      "filePath": "src/utils/yamlTemplateNormalize.ts",
       "line": 102,
       "token": "NOTE",
       "category": "stale-comment",
@@ -10327,73 +10306,10 @@
     },
     {
       "filePath": "src/utils/yamlTemplateNormalize.ts",
-      "line": 121,
-      "token": "mergeTemplates",
-      "category": "drift-term",
-      "lineText": "? mergeTemplates(base, advanced)",
-      "context": {
-        "before": {
-          "line": 120,
-          "text": "const merged = advanced.trim()"
-        },
-        "current": {
-          "line": 121,
-          "text": "? mergeTemplates(base, advanced)"
-        },
-        "after": {
-          "line": 122,
-          "text": ": base;"
-        }
-      }
-    },
-    {
-      "filePath": "src/utils/yamlTemplateNormalize.ts",
-      "line": 132,
-      "token": "mergeTemplates",
-      "category": "drift-term",
-      "lineText": "? mergeTemplates(base, advanced)",
-      "context": {
-        "before": {
-          "line": 131,
-          "text": "const merged = advanced.trim()"
-        },
-        "current": {
-          "line": 132,
-          "text": "? mergeTemplates(base, advanced)"
-        },
-        "after": {
-          "line": 133,
-          "text": ": base;"
-        }
-      }
-    },
-    {
-      "filePath": "src/utils/yamlTemplateNormalize.ts",
-      "line": 142,
-      "token": "DEPRECATED",
-      "category": "stale-comment",
-      "lineText": "// Filter deprecated Synopsis from advanced writes",
-      "context": {
-        "before": {
-          "line": 141,
-          "text": "const advancedRaw = templates?.advanced ?? '';"
-        },
-        "current": {
-          "line": 142,
-          "text": "// Filter deprecated Synopsis from advanced writes"
-        },
-        "after": {
-          "line": 143,
-          "text": "const advanced = filterDeprecatedBackdropKeys(advancedRaw);"
-        }
-      }
-    },
-    {
-      "filePath": "src/utils/yamlTemplateNormalize.ts",
       "line": 142,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "// Filter deprecated Synopsis from advanced writes",
+      "lineText": "// Filter legacy Synopsis key from advanced writes.",
       "context": {
         "before": {
           "line": 141,
@@ -10401,32 +10317,11 @@
         },
         "current": {
           "line": 142,
-          "text": "// Filter deprecated Synopsis from advanced writes"
+          "text": "// Filter legacy Synopsis key from advanced writes."
         },
         "after": {
           "line": 143,
           "text": "const advanced = filterDeprecatedBackdropKeys(advancedRaw);"
-        }
-      }
-    },
-    {
-      "filePath": "src/utils/yamlTemplateNormalize.ts",
-      "line": 145,
-      "token": "mergeTemplates",
-      "category": "drift-term",
-      "lineText": "? mergeTemplates(base, advanced)",
-      "context": {
-        "before": {
-          "line": 144,
-          "text": "const merged = advanced.trim()"
-        },
-        "current": {
-          "line": 145,
-          "text": "? mergeTemplates(base, advanced)"
-        },
-        "after": {
-          "line": 146,
-          "text": ": base;"
         }
       }
     },
@@ -12070,106 +11965,85 @@
     },
     {
       "filePath": "src/settings/sections/AiSection.ts",
-      "line": 255,
+      "line": 260,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "const executionPreferenceNote = largeHandlingBody.createDiv({ cls: 'ert-field-note' });",
       "context": {
         "before": {
-          "line": 254,
+          "line": 259,
           "text": "});"
         },
         "current": {
-          "line": 255,
+          "line": 260,
           "text": "const executionPreferenceNote = largeHandlingBody.createDiv({ cls: 'ert-field-note' });"
         },
         "after": {
-          "line": 256,
+          "line": 261,
           "text": "const updateExecutionPreferenceNote = (): void => {"
         }
       }
     },
     {
       "filePath": "src/settings/sections/AiSection.ts",
-      "line": 363,
+      "line": 368,
       "token": "DEPRECATED",
       "category": "stale-comment",
       "lineText": ".filter(model => model.provider === provider && model.status !== 'deprecated')",
       "context": {
         "before": {
-          "line": 362,
+          "line": 367,
           "text": "BUILTIN_MODELS"
         },
         "current": {
-          "line": 363,
+          "line": 368,
           "text": ".filter(model => model.provider === provider && model.status !== 'deprecated')"
         },
         "after": {
-          "line": 364,
+          "line": 369,
           "text": ".map(model => model.alias);"
         }
       }
     },
     {
       "filePath": "src/settings/sections/AiSection.ts",
-      "line": 969,
+      "line": 974,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "const modelsHintEl = modelsPanel.createDiv({ cls: 'ert-field-note' });",
       "context": {
         "before": {
-          "line": 968,
+          "line": 973,
           "text": "const modelsRefreshedEl = modelsHeader.createDiv({ cls: 'ert-ai-models-refreshed' });"
         },
         "current": {
-          "line": 969,
+          "line": 974,
           "text": "const modelsHintEl = modelsPanel.createDiv({ cls: 'ert-field-note' });"
         },
         "after": {
-          "line": 970,
+          "line": 975,
           "text": "const recommendationsEl = modelsPanel.createDiv({ cls: 'ert-ai-recommendations ert-stack' });"
         }
       }
     },
     {
       "filePath": "src/settings/sections/AiSection.ts",
-      "line": 1129,
+      "line": 1134,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "modelDetailsEl.createDiv({ cls: 'ert-field-note', text: `Alias: ${model.alias} · Provider ID: ${model.providerModelId}` });",
       "context": {
         "before": {
-          "line": 1128,
+          "line": 1133,
           "text": "heading.setText(`${providerLabel[model.provider]} · ${model.label}`);"
         },
         "current": {
-          "line": 1129,
+          "line": 1134,
           "text": "modelDetailsEl.createDiv({ cls: 'ert-field-note', text: `Alias: ${model.alias} · Provider ID: ${model.providerModelId}` });"
         },
         "after": {
-          "line": 1130,
-          "text": ""
-        }
-      }
-    },
-    {
-      "filePath": "src/settings/sections/AiSection.ts",
-      "line": 1136,
-      "token": "NOTE",
-      "category": "stale-comment",
-      "lineText": "const providerDetails = modelDetailsEl.createDiv({ cls: 'ert-field-note' });",
-      "context": {
-        "before": {
           "line": 1135,
           "text": ""
-        },
-        "current": {
-          "line": 1136,
-          "text": "const providerDetails = modelDetailsEl.createDiv({ cls: 'ert-field-note' });"
-        },
-        "after": {
-          "line": 1137,
-          "text": "providerDetails.setText("
         }
       }
     },
@@ -12178,7 +12052,7 @@
       "line": 1141,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "const personality = modelDetailsEl.createDiv({ cls: 'ert-field-note' });",
+      "lineText": "const providerDetails = modelDetailsEl.createDiv({ cls: 'ert-field-note' });",
       "context": {
         "before": {
           "line": 1140,
@@ -12186,178 +12060,199 @@
         },
         "current": {
           "line": 1141,
-          "text": "const personality = modelDetailsEl.createDiv({ cls: 'ert-field-note' });"
+          "text": "const providerDetails = modelDetailsEl.createDiv({ cls: 'ert-field-note' });"
         },
         "after": {
           "line": 1142,
+          "text": "providerDetails.setText("
+        }
+      }
+    },
+    {
+      "filePath": "src/settings/sections/AiSection.ts",
+      "line": 1146,
+      "token": "NOTE",
+      "category": "stale-comment",
+      "lineText": "const personality = modelDetailsEl.createDiv({ cls: 'ert-field-note' });",
+      "context": {
+        "before": {
+          "line": 1145,
+          "text": ""
+        },
+        "current": {
+          "line": 1146,
+          "text": "const personality = modelDetailsEl.createDiv({ cls: 'ert-field-note' });"
+        },
+        "after": {
+          "line": 1147,
           "text": "personality.setText("
         }
       }
     },
     {
       "filePath": "src/settings/sections/AiSection.ts",
-      "line": 1158,
+      "line": 1163,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "cls: 'ert-field-note',",
       "context": {
         "before": {
-          "line": 1157,
+          "line": 1162,
           "text": "modelDetailsEl.createDiv({"
         },
         "current": {
-          "line": 1158,
+          "line": 1163,
           "text": "cls: 'ert-field-note',"
         },
         "after": {
-          "line": 1159,
+          "line": 1164,
           "text": "text: `Effective caps preview: input=${effective.maxInputTokens.toLocaleString()}, output=${effective.maxOutputTokens.toLocaleString()}, tier=${tier}`"
         }
       }
     },
     {
       "filePath": "src/settings/sections/AiSection.ts",
-      "line": 1162,
+      "line": 1167,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "const why = modelDetailsEl.createDiv({ cls: 'ert-field-note' });",
       "context": {
         "before": {
-          "line": 1161,
+          "line": 1166,
           "text": ""
         },
         "current": {
-          "line": 1162,
+          "line": 1167,
           "text": "const why = modelDetailsEl.createDiv({ cls: 'ert-field-note' });"
         },
         "after": {
-          "line": 1163,
+          "line": 1168,
           "text": "if (selection && selection.alias === model.alias) {"
         }
       }
     },
     {
       "filePath": "src/settings/sections/AiSection.ts",
-      "line": 1321,
+      "line": 1326,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "const resolvedPreviewDetailsBody = resolvedPreviewDetails.createDiv({ cls: 'ert-field-note ert-ai-resolved-preview-details-body' });",
       "context": {
         "before": {
-          "line": 1320,
+          "line": 1325,
           "text": "resolvedPreviewDetails.createEl('summary', { text: 'Details' });"
         },
         "current": {
-          "line": 1321,
+          "line": 1326,
           "text": "const resolvedPreviewDetailsBody = resolvedPreviewDetails.createDiv({ cls: 'ert-field-note ert-ai-resolved-preview-details-body' });"
         },
         "after": {
-          "line": 1322,
+          "line": 1327,
           "text": "params.addAiRelatedElement(resolvedPreviewFrame);"
         }
       }
     },
     {
       "filePath": "src/settings/sections/AiSection.ts",
-      "line": 1776,
+      "line": 1781,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "cls: 'ert-field-note',",
       "context": {
         "before": {
-          "line": 1775,
+          "line": 1780,
           "text": "legacyHost.createDiv({"
         },
         "current": {
-          "line": 1776,
+          "line": 1781,
           "text": "cls: 'ert-field-note',"
         },
         "after": {
-          "line": 1777,
+          "line": 1782,
           "text": "text: 'Older key fields are disabled on this Obsidian version.'"
         }
       }
     },
     {
       "filePath": "src/settings/sections/AiSection.ts",
-      "line": 1874,
+      "line": 1879,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "// Advisory note as separate section",
       "context": {
         "before": {
-          "line": 1873,
+          "line": 1878,
           "text": ""
         },
         "current": {
-          "line": 1874,
+          "line": 1879,
           "text": "// Advisory note as separate section"
         },
         "after": {
-          "line": 1875,
+          "line": 1880,
           "text": "const localWarningSection = localBaseStack.createDiv({ cls: ['ert-local-llm-advisory', ERT_CLASSES.ROW] });"
         }
       }
     },
     {
       "filePath": "src/settings/sections/AiSection.ts",
-      "line": 1876,
+      "line": 1881,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "localWarningSection.createEl('strong', { text: 'Advisory Note', cls: 'ert-local-llm-advisory-title' });",
       "context": {
         "before": {
-          "line": 1875,
+          "line": 1880,
           "text": "const localWarningSection = localBaseStack.createDiv({ cls: ['ert-local-llm-advisory', ERT_CLASSES.ROW] });"
         },
         "current": {
-          "line": 1876,
+          "line": 1881,
           "text": "localWarningSection.createEl('strong', { text: 'Advisory Note', cls: 'ert-local-llm-advisory-title' });"
         },
         "after": {
-          "line": 1877,
+          "line": 1882,
           "text": "const aiLogFolder = resolveAiLogFolder();"
         }
       }
     },
     {
       "filePath": "src/settings/sections/AiSection.ts",
-      "line": 1982,
+      "line": 1987,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": ".setDesc('Default is enabled. Local LLM triplet pulse analysis skips writing to the scene note and saves results in the AI log report instead. Recommended for local models.')",
       "context": {
         "before": {
-          "line": 1981,
+          "line": 1986,
           "text": ".setName('Bypass scene hover Fields writes')"
         },
         "current": {
-          "line": 1982,
+          "line": 1987,
           "text": ".setDesc('Default is enabled. Local LLM triplet pulse analysis skips writing to the scene note and saves results in the AI log report instead. Recommended for local models.')"
         },
         "after": {
-          "line": 1983,
+          "line": 1988,
           "text": ".addToggle(toggle => toggle"
         }
       }
     },
     {
       "filePath": "src/settings/sections/AiSection.ts",
-      "line": 2077,
+      "line": 2082,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "cls: 'ert-field-note',",
       "context": {
         "before": {
-          "line": 2076,
+          "line": 2081,
           "text": "localApiContainer.createDiv({"
         },
         "current": {
-          "line": 2077,
+          "line": 2082,
           "text": "cls: 'ert-field-note',"
         },
         "after": {
-          "line": 2078,
+          "line": 2083,
           "text": "text: 'Older local key field is disabled on this Obsidian version.'"
         }
       }
@@ -15430,43 +15325,64 @@
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 94,
+      "line": 93,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "id: 'create-basic-scene-note',",
       "context": {
         "before": {
-          "line": 93,
+          "line": 92,
           "text": "this.plugin.addCommand({"
         },
         "current": {
-          "line": 94,
+          "line": 93,
           "text": "id: 'create-basic-scene-note',"
         },
         "after": {
-          "line": 95,
+          "line": 94,
           "text": "name: 'Create basic scene note',"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 95,
+      "line": 94,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "name: 'Create basic scene note',",
       "context": {
         "before": {
-          "line": 94,
+          "line": 93,
           "text": "id: 'create-basic-scene-note',"
         },
         "current": {
-          "line": 95,
+          "line": 94,
           "text": "name: 'Create basic scene note',"
         },
         "after": {
-          "line": 96,
+          "line": 95,
           "text": "callback: async () => {"
+        }
+      }
+    },
+    {
+      "filePath": "src/services/CommandRegistrar.ts",
+      "line": 101,
+      "token": "NOTE",
+      "category": "stale-comment",
+      "lineText": "id: 'create-advanced-scene-note',",
+      "context": {
+        "before": {
+          "line": 100,
+          "text": "this.plugin.addCommand({"
+        },
+        "current": {
+          "line": 101,
+          "text": "id: 'create-advanced-scene-note',"
+        },
+        "after": {
+          "line": 102,
+          "text": "name: 'Create advanced scene note',"
         }
       }
     },
@@ -15475,40 +15391,40 @@
       "line": 102,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "id: 'create-advanced-scene-note',",
+      "lineText": "name: 'Create advanced scene note',",
       "context": {
         "before": {
           "line": 101,
-          "text": "this.plugin.addCommand({"
+          "text": "id: 'create-advanced-scene-note',"
         },
         "current": {
           "line": 102,
-          "text": "id: 'create-advanced-scene-note',"
+          "text": "name: 'Create advanced scene note',"
         },
         "after": {
           "line": 103,
-          "text": "name: 'Create advanced scene note',"
+          "text": "callback: async () => {"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 103,
+      "line": 109,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "name: 'Create advanced scene note',",
+      "lineText": "id: 'create-screenplay-scene-note',",
       "context": {
         "before": {
-          "line": 102,
-          "text": "id: 'create-advanced-scene-note',"
+          "line": 108,
+          "text": "this.plugin.addCommand({"
         },
         "current": {
-          "line": 103,
-          "text": "name: 'Create advanced scene note',"
+          "line": 109,
+          "text": "id: 'create-screenplay-scene-note',"
         },
         "after": {
-          "line": 104,
-          "text": "callback: async () => {"
+          "line": 110,
+          "text": "name: 'Create screenplay scene note',"
         }
       }
     },
@@ -15517,40 +15433,40 @@
       "line": 110,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "id: 'create-screenplay-scene-note',",
+      "lineText": "name: 'Create screenplay scene note',",
       "context": {
         "before": {
           "line": 109,
-          "text": "this.plugin.addCommand({"
+          "text": "id: 'create-screenplay-scene-note',"
         },
         "current": {
           "line": 110,
-          "text": "id: 'create-screenplay-scene-note',"
+          "text": "name: 'Create screenplay scene note',"
         },
         "after": {
           "line": 111,
-          "text": "name: 'Create screenplay scene note',"
+          "text": "callback: async () => {"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 111,
+      "line": 117,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "name: 'Create screenplay scene note',",
+      "lineText": "id: 'create-podcast-scene-note',",
       "context": {
         "before": {
-          "line": 110,
-          "text": "id: 'create-screenplay-scene-note',"
+          "line": 116,
+          "text": "this.plugin.addCommand({"
         },
         "current": {
-          "line": 111,
-          "text": "name: 'Create screenplay scene note',"
+          "line": 117,
+          "text": "id: 'create-podcast-scene-note',"
         },
         "after": {
-          "line": 112,
-          "text": "callback: async () => {"
+          "line": 118,
+          "text": "name: 'Create podcast scene note',"
         }
       }
     },
@@ -15559,40 +15475,40 @@
       "line": 118,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "id: 'create-podcast-scene-note',",
+      "lineText": "name: 'Create podcast scene note',",
       "context": {
         "before": {
           "line": 117,
-          "text": "this.plugin.addCommand({"
+          "text": "id: 'create-podcast-scene-note',"
         },
         "current": {
           "line": 118,
-          "text": "id: 'create-podcast-scene-note',"
+          "text": "name: 'Create podcast scene note',"
         },
         "after": {
           "line": 119,
-          "text": "name: 'Create podcast scene note',"
+          "text": "callback: async () => {"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 119,
+      "line": 125,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "name: 'Create podcast scene note',",
+      "lineText": "id: 'create-frontmatter-note',",
       "context": {
         "before": {
-          "line": 118,
-          "text": "id: 'create-podcast-scene-note',"
+          "line": 124,
+          "text": "this.plugin.addCommand({"
         },
         "current": {
-          "line": 119,
-          "text": "name: 'Create podcast scene note',"
+          "line": 125,
+          "text": "id: 'create-frontmatter-note',"
         },
         "after": {
-          "line": 120,
-          "text": "callback: async () => {"
+          "line": 126,
+          "text": "name: 'Create front matter note',"
         }
       }
     },
@@ -15601,40 +15517,40 @@
       "line": 126,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "id: 'create-frontmatter-note',",
+      "lineText": "name: 'Create front matter note',",
       "context": {
         "before": {
           "line": 125,
-          "text": "this.plugin.addCommand({"
+          "text": "id: 'create-frontmatter-note',"
         },
         "current": {
           "line": 126,
-          "text": "id: 'create-frontmatter-note',"
+          "text": "name: 'Create front matter note',"
         },
         "after": {
           "line": 127,
-          "text": "name: 'Create front matter note',"
+          "text": "callback: async () => {"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 127,
+      "line": 133,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "name: 'Create front matter note',",
+      "lineText": "id: 'create-backmatter-note',",
       "context": {
         "before": {
-          "line": 126,
-          "text": "id: 'create-frontmatter-note',"
+          "line": 132,
+          "text": "this.plugin.addCommand({"
         },
         "current": {
-          "line": 127,
-          "text": "name: 'Create front matter note',"
+          "line": 133,
+          "text": "id: 'create-backmatter-note',"
         },
         "after": {
-          "line": 128,
-          "text": "callback: async () => {"
+          "line": 134,
+          "text": "name: 'Create back matter note',"
         }
       }
     },
@@ -15643,40 +15559,40 @@
       "line": 134,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "id: 'create-backmatter-note',",
+      "lineText": "name: 'Create back matter note',",
       "context": {
         "before": {
           "line": 133,
-          "text": "this.plugin.addCommand({"
+          "text": "id: 'create-backmatter-note',"
         },
         "current": {
           "line": 134,
-          "text": "id: 'create-backmatter-note',"
+          "text": "name: 'Create back matter note',"
         },
         "after": {
           "line": 135,
-          "text": "name: 'Create back matter note',"
+          "text": "callback: async () => {"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 135,
+      "line": 141,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "name: 'Create back matter note',",
+      "lineText": "id: 'create-bookmeta-note',",
       "context": {
         "before": {
-          "line": 134,
-          "text": "id: 'create-backmatter-note',"
+          "line": 140,
+          "text": "this.plugin.addCommand({"
         },
         "current": {
-          "line": 135,
-          "text": "name: 'Create back matter note',"
+          "line": 141,
+          "text": "id: 'create-bookmeta-note',"
         },
         "after": {
-          "line": 136,
-          "text": "callback: async () => {"
+          "line": 142,
+          "text": "name: 'Create BookMeta note',"
         }
       }
     },
@@ -15685,40 +15601,40 @@
       "line": 142,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "id: 'create-bookmeta-note',",
+      "lineText": "name: 'Create BookMeta note',",
       "context": {
         "before": {
           "line": 141,
-          "text": "this.plugin.addCommand({"
+          "text": "id: 'create-bookmeta-note',"
         },
         "current": {
           "line": 142,
-          "text": "id: 'create-bookmeta-note',"
+          "text": "name: 'Create BookMeta note',"
         },
         "after": {
           "line": 143,
-          "text": "name: 'Create BookMeta note',"
+          "text": "callback: async () => {"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 143,
+      "line": 149,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "name: 'Create BookMeta note',",
+      "lineText": "id: 'create-backdrop-note',",
       "context": {
         "before": {
-          "line": 142,
-          "text": "id: 'create-bookmeta-note',"
+          "line": 148,
+          "text": "this.plugin.addCommand({"
         },
         "current": {
-          "line": 143,
-          "text": "name: 'Create BookMeta note',"
+          "line": 149,
+          "text": "id: 'create-backdrop-note',"
         },
         "after": {
-          "line": 144,
-          "text": "callback: async () => {"
+          "line": 150,
+          "text": "name: 'Create backdrop note',"
         }
       }
     },
@@ -15727,333 +15643,312 @@
       "line": 150,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "id: 'create-backdrop-note',",
-      "context": {
-        "before": {
-          "line": 149,
-          "text": "this.plugin.addCommand({"
-        },
-        "current": {
-          "line": 150,
-          "text": "id: 'create-backdrop-note',"
-        },
-        "after": {
-          "line": 151,
-          "text": "name: 'Create backdrop note',"
-        }
-      }
-    },
-    {
-      "filePath": "src/services/CommandRegistrar.ts",
-      "line": 151,
-      "token": "NOTE",
-      "category": "stale-comment",
       "lineText": "name: 'Create backdrop note',",
       "context": {
         "before": {
-          "line": 150,
+          "line": 149,
           "text": "id: 'create-backdrop-note',"
         },
         "current": {
-          "line": 151,
+          "line": 150,
           "text": "name: 'Create backdrop note',"
         },
         "after": {
-          "line": 152,
+          "line": 151,
           "text": "callback: async () => {"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 290,
+      "line": 285,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "result.includeSynopsis ?? false,",
       "context": {
         "before": {
-          "line": 289,
+          "line": 284,
           "text": "result.outlinePreset || 'beat-sheet',"
         },
         "current": {
-          "line": 290,
+          "line": 285,
           "text": "result.includeSynopsis ?? false,"
         },
         "after": {
-          "line": 291,
+          "line": 286,
           "text": "runtimeSettings"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 316,
+      "line": 310,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "statusMessages.push('No BookMeta note found. Semantic matter pages may render incomplete.');",
       "context": {
         "before": {
-          "line": 315,
+          "line": 309,
           "text": "if (!bookMetaResolution.bookMeta && this.selectionRequiresBookMeta(slicedFiles, filteredSelection.matterMetaByPath)) {"
         },
         "current": {
-          "line": 316,
+          "line": 310,
           "text": "statusMessages.push('No BookMeta note found. Semantic matter pages may render incomplete.');"
         },
         "after": {
-          "line": 317,
+          "line": 311,
           "text": "}"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 576,
+      "line": 560,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "* Create a new scene note with basic, advanced, screenplay, or podcast template.",
       "context": {
         "before": {
-          "line": 575,
+          "line": 559,
           "text": "/**"
         },
         "current": {
-          "line": 576,
+          "line": 560,
           "text": "* Create a new scene note with basic, advanced, screenplay, or podcast template."
         },
         "after": {
-          "line": 577,
+          "line": 561,
           "text": "*/"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 648,
+      "line": 628,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "new Notice(`Created ${labelMap[type]} scene note: ${filename}`);",
       "context": {
         "before": {
-          "line": 647,
+          "line": 627,
           "text": "};"
         },
         "current": {
-          "line": 648,
+          "line": 628,
           "text": "new Notice(`Created ${labelMap[type]} scene note: ${filename}`);"
         },
         "after": {
-          "line": 649,
+          "line": 629,
           "text": "} catch (error) {"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 651,
+      "line": 631,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "new Notice('Failed to create scene note: ' + msg);",
       "context": {
         "before": {
-          "line": 650,
+          "line": 630,
           "text": "const msg = (error as any)?.message || String(error);"
         },
         "current": {
-          "line": 651,
+          "line": 631,
           "text": "new Notice('Failed to create scene note: ' + msg);"
         },
         "after": {
-          "line": 652,
+          "line": 632,
           "text": "}"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 656,
+      "line": 636,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "* Create a new front-matter or back-matter note.",
       "context": {
         "before": {
-          "line": 655,
+          "line": 635,
           "text": "/**"
         },
         "current": {
-          "line": 656,
+          "line": 636,
           "text": "* Create a new front-matter or back-matter note."
         },
         "after": {
-          "line": 657,
+          "line": 637,
           "text": "*/"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 693,
+      "line": 673,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "new Notice(`Created ${defaultLabel.toLowerCase()} note: ${filename}`);",
       "context": {
         "before": {
-          "line": 692,
+          "line": 672,
           "text": "await leaf.openFile(newFile);"
         },
         "current": {
-          "line": 693,
+          "line": 673,
           "text": "new Notice(`Created ${defaultLabel.toLowerCase()} note: ${filename}`);"
         },
         "after": {
-          "line": 694,
+          "line": 674,
           "text": "} catch (error) {"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 696,
+      "line": 676,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "new Notice(`Failed to create ${classValue.toLowerCase()} note: ${msg}`);",
       "context": {
         "before": {
-          "line": 695,
+          "line": 675,
           "text": "const msg = (error as any)?.message || String(error);"
         },
         "current": {
-          "line": 696,
+          "line": 676,
           "text": "new Notice(`Failed to create ${classValue.toLowerCase()} note: ${msg}`);"
         },
         "after": {
-          "line": 697,
+          "line": 677,
           "text": "}"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 733,
+      "line": 713,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "new Notice(`Created BookMeta note: ${newFile.name}`);",
       "context": {
         "before": {
-          "line": 732,
+          "line": 712,
           "text": "await leaf.openFile(newFile);"
         },
         "current": {
-          "line": 733,
+          "line": 713,
           "text": "new Notice(`Created BookMeta note: ${newFile.name}`);"
         },
         "after": {
-          "line": 734,
+          "line": 714,
           "text": "} catch (error) {"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 736,
+      "line": 716,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "new Notice(`Failed to create BookMeta note: ${msg}`);",
       "context": {
         "before": {
-          "line": 735,
+          "line": 715,
           "text": "const msg = (error as any)?.message || String(error);"
         },
         "current": {
-          "line": 736,
+          "line": 716,
           "text": "new Notice(`Failed to create BookMeta note: ${msg}`);"
         },
         "after": {
-          "line": 737,
+          "line": 717,
           "text": "}"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 746,
+      "line": 726,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "const typed = window.prompt('No active source folder found. Enter folder path for BookMeta note:', this.plugin.settings.sourcePath || '');",
       "context": {
         "before": {
-          "line": 745,
+          "line": 725,
           "text": ""
         },
         "current": {
-          "line": 746,
+          "line": 726,
           "text": "const typed = window.prompt('No active source folder found. Enter folder path for BookMeta note:', this.plugin.settings.sourcePath || '');"
         },
         "after": {
-          "line": 747,
+          "line": 727,
           "text": "if (typed === null) return null;"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 775,
+      "line": 755,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "* Create a new backdrop note.",
       "context": {
         "before": {
-          "line": 774,
+          "line": 754,
           "text": "/**"
         },
         "current": {
-          "line": 775,
+          "line": 755,
           "text": "* Create a new backdrop note."
         },
         "after": {
-          "line": 776,
+          "line": 756,
           "text": "*/"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 809,
+      "line": 789,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "new Notice(`Created backdrop note: ${filename}`);",
       "context": {
         "before": {
-          "line": 808,
+          "line": 788,
           "text": "await leaf.openFile(newFile);"
         },
         "current": {
-          "line": 809,
+          "line": 789,
           "text": "new Notice(`Created backdrop note: ${filename}`);"
         },
         "after": {
-          "line": 810,
+          "line": 790,
           "text": "} catch (error) {"
         }
       }
     },
     {
       "filePath": "src/services/CommandRegistrar.ts",
-      "line": 812,
+      "line": 792,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "new Notice('Failed to create backdrop note: ' + msg);",
       "context": {
         "before": {
-          "line": 811,
+          "line": 791,
           "text": "const msg = (error as any)?.message || String(error);"
         },
         "current": {
-          "line": 812,
+          "line": 792,
           "text": "new Notice('Failed to create backdrop note: ' + msg);"
         },
         "after": {
-          "line": 813,
+          "line": 793,
           "text": "}"
         }
       }
@@ -17386,7 +17281,7 @@
       "line": 7,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "* Synopsis = concise, skimmable navigation text (strict word-capped) — optional for scene hovers.",
+      "lineText": "* Hover blurb = concise scene text (strict word-capped), persisted to the legacy `Synopsis` key when enabled.",
       "context": {
         "before": {
           "line": 6,
@@ -17394,7 +17289,7 @@
         },
         "current": {
           "line": 7,
-          "text": "* Synopsis = concise, skimmable navigation text (strict word-capped) — optional for scene hovers."
+          "text": "* Hover blurb = concise scene text (strict word-capped), persisted to the legacy `Synopsis` key when enabled."
         },
         "after": {
           "line": 8,
@@ -17411,7 +17306,7 @@
       "context": {
         "before": {
           "line": 13,
-          "text": "import { getAllSceneData, compareScenesByOrder, getSummaryUpdateFlag, hasProcessableContent } from './data';"
+          "text": "import { getAllSceneData, compareScenesByOrder, getSummaryUpdateFlag } from './data';"
         },
         "current": {
           "line": 14,
@@ -17701,7 +17596,7 @@
       "line": 125,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "// Keep Summary near Synopsis for scene authoring readability.",
+      "lineText": "// Keep Summary adjacent to the legacy Synopsis key for readability in frontmatter.",
       "context": {
         "before": {
           "line": 124,
@@ -17709,7 +17604,7 @@
         },
         "current": {
           "line": 125,
-          "text": "// Keep Summary near Synopsis for scene authoring readability."
+          "text": "// Keep Summary adjacent to the legacy Synopsis key for readability in frontmatter."
         },
         "after": {
           "line": 126,
@@ -17726,7 +17621,7 @@
       "context": {
         "before": {
           "line": 125,
-          "text": "// Keep Summary near Synopsis for scene authoring readability."
+          "text": "// Keep Summary adjacent to the legacy Synopsis key for readability in frontmatter."
         },
         "current": {
           "line": 126,
@@ -17735,27 +17630,6 @@
         "after": {
           "line": 127,
           "text": ""
-        }
-      }
-    },
-    {
-      "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 128,
-      "token": "Synopsis",
-      "category": "drift-term",
-      "lineText": "// Replace Summary Update / legacy Synopsis Update flag with timestamp",
-      "context": {
-        "before": {
-          "line": 127,
-          "text": ""
-        },
-        "current": {
-          "line": 128,
-          "text": "// Replace Summary Update / legacy Synopsis Update flag with timestamp"
-        },
-        "after": {
-          "line": 129,
-          "text": "const summaryUpdateKeys = ['Summary Update', 'SummaryUpdate', 'summaryupdate'];"
         }
       }
     },
@@ -18034,85 +17908,106 @@
     },
     {
       "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 227,
+      "line": 226,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "(mode, weakThreshold) => calculateSynopsisSceneCount(plugin, vault, mode, weakThreshold),",
       "context": {
         "before": {
-          "line": 226,
+          "line": 225,
           "text": "plugin,"
         },
         "current": {
-          "line": 227,
+          "line": 226,
           "text": "(mode, weakThreshold) => calculateSynopsisSceneCount(plugin, vault, mode, weakThreshold),"
         },
         "after": {
-          "line": 228,
+          "line": 227,
           "text": "async (mode, weakThreshold, targetWords) => {"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 229,
+      "line": 228,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "await runSynopsisBatch(plugin, vault, mode, modal, weakThreshold, targetWords);",
       "context": {
         "before": {
-          "line": 228,
+          "line": 227,
           "text": "async (mode, weakThreshold, targetWords) => {"
         },
         "current": {
-          "line": 229,
+          "line": 228,
           "text": "await runSynopsisBatch(plugin, vault, mode, modal, weakThreshold, targetWords);"
         },
         "after": {
-          "line": 230,
+          "line": 229,
           "text": "},"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 234,
+      "line": 233,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "'synopsis' // Specify taskType",
+      "lineText": "'synopsis' // Legacy task identifier for Summary refresh mode.",
       "context": {
         "before": {
-          "line": 233,
+          "line": 232,
           "text": "undefined,"
         },
         "current": {
-          "line": 234,
-          "text": "'synopsis' // Specify taskType"
+          "line": 233,
+          "text": "'synopsis' // Legacy task identifier for Summary refresh mode."
         },
         "after": {
-          "line": 235,
+          "line": 234,
           "text": ");"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 239,
+      "line": 238,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "async function runSynopsisBatch(",
       "context": {
         "before": {
-          "line": 238,
+          "line": 237,
           "text": ""
         },
         "current": {
-          "line": 239,
+          "line": 238,
           "text": "async function runSynopsisBatch("
         },
         "after": {
-          "line": 240,
+          "line": 239,
           "text": "plugin: RadialTimelinePlugin,"
+        }
+      }
+    },
+    {
+      "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
+      "line": 250,
+      "token": "Synopsis",
+      "category": "drift-term",
+      "lineText": "const threshold = weakThreshold ?? plugin.settings.synopsisWeakThreshold ?? 75;",
+      "context": {
+        "before": {
+          "line": 249,
+          "text": "// Get settings with fallbacks"
+        },
+        "current": {
+          "line": 250,
+          "text": "const threshold = weakThreshold ?? plugin.settings.synopsisWeakThreshold ?? 75;"
+        },
+        "after": {
+          "line": 251,
+          "text": "const target = targetWords ?? plugin.settings.synopsisTargetWords ?? 200;"
         }
       }
     },
@@ -18121,19 +18016,19 @@
       "line": 251,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "const threshold = weakThreshold ?? plugin.settings.synopsisWeakThreshold ?? 75;",
+      "lineText": "const target = targetWords ?? plugin.settings.synopsisTargetWords ?? 200;",
       "context": {
         "before": {
           "line": 250,
-          "text": "// Get settings with fallbacks"
+          "text": "const threshold = weakThreshold ?? plugin.settings.synopsisWeakThreshold ?? 75;"
         },
         "current": {
           "line": 251,
-          "text": "const threshold = weakThreshold ?? plugin.settings.synopsisWeakThreshold ?? 75;"
+          "text": "const target = targetWords ?? plugin.settings.synopsisTargetWords ?? 200;"
         },
         "after": {
           "line": 252,
-          "text": "const target = targetWords ?? plugin.settings.synopsisTargetWords ?? 200;"
+          "text": "const alsoUpdateSynopsis = plugin.settings.alsoUpdateSynopsis ?? false;"
         }
       }
     },
@@ -18142,19 +18037,19 @@
       "line": 252,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "const target = targetWords ?? plugin.settings.synopsisTargetWords ?? 200;",
+      "lineText": "const alsoUpdateSynopsis = plugin.settings.alsoUpdateSynopsis ?? false;",
       "context": {
         "before": {
           "line": 251,
-          "text": "const threshold = weakThreshold ?? plugin.settings.synopsisWeakThreshold ?? 75;"
+          "text": "const target = targetWords ?? plugin.settings.synopsisTargetWords ?? 200;"
         },
         "current": {
           "line": 252,
-          "text": "const target = targetWords ?? plugin.settings.synopsisTargetWords ?? 200;"
+          "text": "const alsoUpdateSynopsis = plugin.settings.alsoUpdateSynopsis ?? false;"
         },
         "after": {
           "line": 253,
-          "text": "const alsoUpdateSynopsis = plugin.settings.alsoUpdateSynopsis ?? false;"
+          "text": "const synopsisMaxWords = getSynopsisGenerationWordLimit(plugin.settings);"
         }
       }
     },
@@ -18163,61 +18058,61 @@
       "line": 253,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "const alsoUpdateSynopsis = plugin.settings.alsoUpdateSynopsis ?? false;",
-      "context": {
-        "before": {
-          "line": 252,
-          "text": "const target = targetWords ?? plugin.settings.synopsisTargetWords ?? 200;"
-        },
-        "current": {
-          "line": 253,
-          "text": "const alsoUpdateSynopsis = plugin.settings.alsoUpdateSynopsis ?? false;"
-        },
-        "after": {
-          "line": 254,
-          "text": "const synopsisMaxWords = getSynopsisGenerationWordLimit(plugin.settings);"
-        }
-      }
-    },
-    {
-      "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 254,
-      "token": "Synopsis",
-      "category": "drift-term",
       "lineText": "const synopsisMaxWords = getSynopsisGenerationWordLimit(plugin.settings);",
       "context": {
         "before": {
-          "line": 253,
+          "line": 252,
           "text": "const alsoUpdateSynopsis = plugin.settings.alsoUpdateSynopsis ?? false;"
         },
         "current": {
-          "line": 254,
+          "line": 253,
           "text": "const synopsisMaxWords = getSynopsisGenerationWordLimit(plugin.settings);"
         },
         "after": {
-          "line": 255,
+          "line": 254,
           "text": ""
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 258,
+      "line": 257,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "const quality = classifySynopsis(scene.frontmatter.Summary, threshold);",
       "context": {
         "before": {
-          "line": 257,
+          "line": 256,
           "text": "const scenesToProcess = allScenes.filter(scene => {"
         },
         "current": {
-          "line": 258,
+          "line": 257,
           "text": "const quality = classifySynopsis(scene.frontmatter.Summary, threshold);"
         },
         "after": {
-          "line": 259,
+          "line": 258,
           "text": "const isFlagged = normalizeBooleanValue(getSummaryUpdateFlag(scene.frontmatter));"
+        }
+      }
+    },
+    {
+      "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
+      "line": 259,
+      "token": "Synopsis",
+      "category": "drift-term",
+      "lineText": "if (mode === 'synopsis-flagged') return isFlagged;",
+      "context": {
+        "before": {
+          "line": 258,
+          "text": "const isFlagged = normalizeBooleanValue(getSummaryUpdateFlag(scene.frontmatter));"
+        },
+        "current": {
+          "line": 259,
+          "text": "if (mode === 'synopsis-flagged') return isFlagged;"
+        },
+        "after": {
+          "line": 260,
+          "text": "if (mode === 'synopsis-missing-weak') return quality === 'missing' || quality === 'weak' || isSummaryStale(scene, plugin);"
         }
       }
     },
@@ -18226,19 +18121,19 @@
       "line": 260,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "if (mode === 'synopsis-flagged') return isFlagged;",
+      "lineText": "if (mode === 'synopsis-missing-weak') return quality === 'missing' || quality === 'weak' || isSummaryStale(scene, plugin);",
       "context": {
         "before": {
           "line": 259,
-          "text": "const isFlagged = normalizeBooleanValue(getSummaryUpdateFlag(scene.frontmatter));"
+          "text": "if (mode === 'synopsis-flagged') return isFlagged;"
         },
         "current": {
           "line": 260,
-          "text": "if (mode === 'synopsis-flagged') return isFlagged;"
+          "text": "if (mode === 'synopsis-missing-weak') return quality === 'missing' || quality === 'weak' || isSummaryStale(scene, plugin);"
         },
         "after": {
           "line": 261,
-          "text": "if (mode === 'synopsis-missing-weak') return quality === 'missing' || quality === 'weak' || isSummaryStale(scene, plugin);"
+          "text": "if (mode === 'synopsis-missing') return quality === 'missing';"
         }
       }
     },
@@ -18247,19 +18142,19 @@
       "line": 261,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "if (mode === 'synopsis-missing-weak') return quality === 'missing' || quality === 'weak' || isSummaryStale(scene, plugin);",
+      "lineText": "if (mode === 'synopsis-missing') return quality === 'missing';",
       "context": {
         "before": {
           "line": 260,
-          "text": "if (mode === 'synopsis-flagged') return isFlagged;"
+          "text": "if (mode === 'synopsis-missing-weak') return quality === 'missing' || quality === 'weak' || isSummaryStale(scene, plugin);"
         },
         "current": {
           "line": 261,
-          "text": "if (mode === 'synopsis-missing-weak') return quality === 'missing' || quality === 'weak' || isSummaryStale(scene, plugin);"
+          "text": "if (mode === 'synopsis-missing') return quality === 'missing';"
         },
         "after": {
           "line": 262,
-          "text": "if (mode === 'synopsis-missing') return quality === 'missing';"
+          "text": "if (mode === 'synopsis-all') return true;"
         }
       }
     },
@@ -18268,40 +18163,40 @@
       "line": 262,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "if (mode === 'synopsis-missing') return quality === 'missing';",
+      "lineText": "if (mode === 'synopsis-all') return true;",
       "context": {
         "before": {
           "line": 261,
-          "text": "if (mode === 'synopsis-missing-weak') return quality === 'missing' || quality === 'weak' || isSummaryStale(scene, plugin);"
+          "text": "if (mode === 'synopsis-missing') return quality === 'missing';"
         },
         "current": {
           "line": 262,
-          "text": "if (mode === 'synopsis-missing') return quality === 'missing';"
+          "text": "if (mode === 'synopsis-all') return true;"
         },
         "after": {
           "line": 263,
-          "text": "if (mode === 'synopsis-all') return true;"
+          "text": "return false;"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 263,
+      "line": 295,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "if (mode === 'synopsis-all') return true;",
+      "lineText": "if (modal.setSynopsisPreview) {",
       "context": {
         "before": {
-          "line": 262,
-          "text": "if (mode === 'synopsis-missing') return quality === 'missing';"
+          "line": 294,
+          "text": "// Show current item info (including old summary for preview)"
         },
         "current": {
-          "line": 263,
-          "text": "if (mode === 'synopsis-all') return true;"
+          "line": 295,
+          "text": "if (modal.setSynopsisPreview) {"
         },
         "after": {
-          "line": 264,
-          "text": "return false;"
+          "line": 296,
+          "text": "modal.setSynopsisPreview(currentSummary, 'Generating...');"
         }
       }
     },
@@ -18310,103 +18205,103 @@
       "line": 296,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "if (modal.setSynopsisPreview) {",
-      "context": {
-        "before": {
-          "line": 295,
-          "text": "// Show current item info (including old summary for preview)"
-        },
-        "current": {
-          "line": 296,
-          "text": "if (modal.setSynopsisPreview) {"
-        },
-        "after": {
-          "line": 297,
-          "text": "modal.setSynopsisPreview(currentSummary, 'Generating...');"
-        }
-      }
-    },
-    {
-      "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 297,
-      "token": "Synopsis",
-      "category": "drift-term",
       "lineText": "modal.setSynopsisPreview(currentSummary, 'Generating...');",
       "context": {
         "before": {
-          "line": 296,
+          "line": 295,
           "text": "if (modal.setSynopsisPreview) {"
         },
         "current": {
-          "line": 297,
+          "line": 296,
           "text": "modal.setSynopsisPreview(currentSummary, 'Generating...');"
         },
         "after": {
-          "line": 298,
+          "line": 297,
           "text": "}"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 314,
+      "line": 313,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "const result = await runAi(summaryPrompt, null, 'synopsis', sceneName, undefined);",
       "context": {
         "before": {
-          "line": 313,
+          "line": 312,
           "text": "try {"
         },
         "current": {
-          "line": 314,
+          "line": 313,
           "text": "const result = await runAi(summaryPrompt, null, 'synopsis', sceneName, undefined);"
         },
         "after": {
-          "line": 315,
+          "line": 314,
           "text": ""
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 323,
+      "line": 322,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "newSummary = parsed.summary || parsed.synopsis || ''; // Accept either key",
       "context": {
         "before": {
-          "line": 322,
+          "line": 321,
           "text": "const parsed = JSON.parse(jsonStr);"
         },
         "current": {
-          "line": 323,
+          "line": 322,
           "text": "newSummary = parsed.summary || parsed.synopsis || ''; // Accept either key"
         },
         "after": {
-          "line": 324,
+          "line": 323,
           "text": "} catch (e) {"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 331,
+      "line": 330,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "let newSynopsis: string | undefined;",
       "context": {
         "before": {
-          "line": 330,
+          "line": 329,
           "text": "if (newSummary) {"
         },
         "current": {
-          "line": 331,
+          "line": 330,
           "text": "let newSynopsis: string | undefined;"
         },
         "after": {
-          "line": 332,
+          "line": 331,
           "text": ""
+        }
+      }
+    },
+    {
+      "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
+      "line": 332,
+      "token": "Synopsis",
+      "category": "drift-term",
+      "lineText": "// Optional second pass: generate the hover blurb (stored in the legacy Synopsis key).",
+      "context": {
+        "before": {
+          "line": 331,
+          "text": ""
+        },
+        "current": {
+          "line": 332,
+          "text": "// Optional second pass: generate the hover blurb (stored in the legacy Synopsis key)."
+        },
+        "after": {
+          "line": 333,
+          "text": "if (alsoUpdateSynopsis) {"
         }
       }
     },
@@ -18415,103 +18310,103 @@
       "line": 333,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "// --- Step 2: Generate Synopsis (optional, only if checkbox enabled) ---",
-      "context": {
-        "before": {
-          "line": 332,
-          "text": ""
-        },
-        "current": {
-          "line": 333,
-          "text": "// --- Step 2: Generate Synopsis (optional, only if checkbox enabled) ---"
-        },
-        "after": {
-          "line": 334,
-          "text": "if (alsoUpdateSynopsis) {"
-        }
-      }
-    },
-    {
-      "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 334,
-      "token": "Synopsis",
-      "category": "drift-term",
       "lineText": "if (alsoUpdateSynopsis) {",
       "context": {
         "before": {
-          "line": 333,
-          "text": "// --- Step 2: Generate Synopsis (optional, only if checkbox enabled) ---"
+          "line": 332,
+          "text": "// Optional second pass: generate the hover blurb (stored in the legacy Synopsis key)."
         },
         "current": {
-          "line": 334,
+          "line": 333,
           "text": "if (alsoUpdateSynopsis) {"
         },
         "after": {
-          "line": 335,
+          "line": 334,
           "text": "try {"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 336,
+      "line": 335,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "const synopsisPrompt = buildSynopsisPrompt(",
       "context": {
         "before": {
-          "line": 335,
+          "line": 334,
           "text": "try {"
         },
         "current": {
-          "line": 336,
+          "line": 335,
           "text": "const synopsisPrompt = buildSynopsisPrompt("
         },
         "after": {
-          "line": 337,
+          "line": 336,
           "text": "scene.body,"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 339,
+      "line": 338,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "synopsisMaxWords",
       "context": {
         "before": {
-          "line": 338,
+          "line": 337,
           "text": "String(scene.sceneNumber || 'N/A'),"
         },
         "current": {
-          "line": 339,
+          "line": 338,
           "text": "synopsisMaxWords"
         },
         "after": {
-          "line": 340,
+          "line": 339,
           "text": ");"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 342,
+      "line": 341,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "const synopsisResult = await runAi(synopsisPrompt, null, 'synopsis', `${sceneName} (synopsis)`, undefined);",
       "context": {
         "before": {
-          "line": 341,
+          "line": 340,
           "text": ""
         },
         "current": {
-          "line": 342,
+          "line": 341,
           "text": "const synopsisResult = await runAi(synopsisPrompt, null, 'synopsis', `${sceneName} (synopsis)`, undefined);"
         },
         "after": {
-          "line": 343,
+          "line": 342,
           "text": ""
+        }
+      }
+    },
+    {
+      "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
+      "line": 343,
+      "token": "Synopsis",
+      "category": "drift-term",
+      "lineText": "if (synopsisResult.result) {",
+      "context": {
+        "before": {
+          "line": 342,
+          "text": ""
+        },
+        "current": {
+          "line": 343,
+          "text": "if (synopsisResult.result) {"
+        },
+        "after": {
+          "line": 344,
+          "text": "const synJsonMatch = synopsisResult.result.match(/\\{[\\s\\S]*\\}/);"
         }
       }
     },
@@ -18520,19 +18415,19 @@
       "line": 344,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "if (synopsisResult.result) {",
+      "lineText": "const synJsonMatch = synopsisResult.result.match(/\\{[\\s\\S]*\\}/);",
       "context": {
         "before": {
           "line": 343,
-          "text": ""
+          "text": "if (synopsisResult.result) {"
         },
         "current": {
           "line": 344,
-          "text": "if (synopsisResult.result) {"
+          "text": "const synJsonMatch = synopsisResult.result.match(/\\{[\\s\\S]*\\}/);"
         },
         "after": {
           "line": 345,
-          "text": "const synJsonMatch = synopsisResult.result.match(/\\{[\\s\\S]*\\}/);"
+          "text": "const synJsonStr = synJsonMatch ? synJsonMatch[0] : synopsisResult.result;"
         }
       }
     },
@@ -18541,40 +18436,40 @@
       "line": 345,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "const synJsonMatch = synopsisResult.result.match(/\\{[\\s\\S]*\\}/);",
+      "lineText": "const synJsonStr = synJsonMatch ? synJsonMatch[0] : synopsisResult.result;",
       "context": {
         "before": {
           "line": 344,
-          "text": "if (synopsisResult.result) {"
+          "text": "const synJsonMatch = synopsisResult.result.match(/\\{[\\s\\S]*\\}/);"
         },
         "current": {
           "line": 345,
-          "text": "const synJsonMatch = synopsisResult.result.match(/\\{[\\s\\S]*\\}/);"
+          "text": "const synJsonStr = synJsonMatch ? synJsonMatch[0] : synopsisResult.result;"
         },
         "after": {
           "line": 346,
-          "text": "const synJsonStr = synJsonMatch ? synJsonMatch[0] : synopsisResult.result;"
+          "text": "const synParsed = JSON.parse(synJsonStr);"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 346,
+      "line": 347,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "const synJsonStr = synJsonMatch ? synJsonMatch[0] : synopsisResult.result;",
+      "lineText": "const parsedSynopsis = synParsed.synopsis || '';",
       "context": {
         "before": {
-          "line": 345,
-          "text": "const synJsonMatch = synopsisResult.result.match(/\\{[\\s\\S]*\\}/);"
+          "line": 346,
+          "text": "const synParsed = JSON.parse(synJsonStr);"
         },
         "current": {
-          "line": 346,
-          "text": "const synJsonStr = synJsonMatch ? synJsonMatch[0] : synopsisResult.result;"
+          "line": 347,
+          "text": "const parsedSynopsis = synParsed.synopsis || '';"
         },
         "after": {
-          "line": 347,
-          "text": "const synParsed = JSON.parse(synJsonStr);"
+          "line": 348,
+          "text": "if (parsedSynopsis) {"
         }
       }
     },
@@ -18583,19 +18478,19 @@
       "line": 348,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "const parsedSynopsis = synParsed.synopsis || '';",
+      "lineText": "if (parsedSynopsis) {",
       "context": {
         "before": {
           "line": 347,
-          "text": "const synParsed = JSON.parse(synJsonStr);"
+          "text": "const parsedSynopsis = synParsed.synopsis || '';"
         },
         "current": {
           "line": 348,
-          "text": "const parsedSynopsis = synParsed.synopsis || '';"
+          "text": "if (parsedSynopsis) {"
         },
         "after": {
           "line": 349,
-          "text": "if (parsedSynopsis) {"
+          "text": "newSynopsis = truncateToWordLimit(parsedSynopsis, synopsisMaxWords);"
         }
       }
     },
@@ -18604,40 +18499,40 @@
       "line": 349,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "if (parsedSynopsis) {",
+      "lineText": "newSynopsis = truncateToWordLimit(parsedSynopsis, synopsisMaxWords);",
       "context": {
         "before": {
           "line": 348,
-          "text": "const parsedSynopsis = synParsed.synopsis || '';"
+          "text": "if (parsedSynopsis) {"
         },
         "current": {
           "line": 349,
-          "text": "if (parsedSynopsis) {"
+          "text": "newSynopsis = truncateToWordLimit(parsedSynopsis, synopsisMaxWords);"
         },
         "after": {
           "line": 350,
-          "text": "newSynopsis = truncateToWordLimit(parsedSynopsis, synopsisMaxWords);"
+          "text": "}"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 350,
+      "line": 353,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "newSynopsis = truncateToWordLimit(parsedSynopsis, synopsisMaxWords);",
+      "lineText": "// Synopsis generation failure is non-fatal — Summary still succeeds.",
       "context": {
         "before": {
-          "line": 349,
-          "text": "if (parsedSynopsis) {"
+          "line": 352,
+          "text": "} catch (synErr) {"
         },
         "current": {
-          "line": 350,
-          "text": "newSynopsis = truncateToWordLimit(parsedSynopsis, synopsisMaxWords);"
+          "line": 353,
+          "text": "// Synopsis generation failure is non-fatal — Summary still succeeds."
         },
         "after": {
-          "line": 351,
-          "text": "}"
+          "line": 354,
+          "text": "console.warn(`Synopsis generation failed for ${sceneName}:`, synErr);"
         }
       }
     },
@@ -18646,19 +18541,19 @@
       "line": 354,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "// Synopsis generation failure is non-fatal — Summary still succeeds.",
+      "lineText": "console.warn(`Synopsis generation failed for ${sceneName}:`, synErr);",
       "context": {
         "before": {
           "line": 353,
-          "text": "} catch (synErr) {"
+          "text": "// Synopsis generation failure is non-fatal — Summary still succeeds."
         },
         "current": {
           "line": 354,
-          "text": "// Synopsis generation failure is non-fatal — Summary still succeeds."
+          "text": "console.warn(`Synopsis generation failed for ${sceneName}:`, synErr);"
         },
         "after": {
           "line": 355,
-          "text": "console.warn(`Synopsis generation failed for ${sceneName}:`, synErr);"
+          "text": "modal.addWarning(`Synopsis generation failed for ${sceneName} (Summary was saved)`);"
         }
       }
     },
@@ -18667,61 +18562,61 @@
       "line": 355,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "console.warn(`Synopsis generation failed for ${sceneName}:`, synErr);",
-      "context": {
-        "before": {
-          "line": 354,
-          "text": "// Synopsis generation failure is non-fatal — Summary still succeeds."
-        },
-        "current": {
-          "line": 355,
-          "text": "console.warn(`Synopsis generation failed for ${sceneName}:`, synErr);"
-        },
-        "after": {
-          "line": 356,
-          "text": "modal.addWarning(`Synopsis generation failed for ${sceneName} (Summary was saved)`);"
-        }
-      }
-    },
-    {
-      "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 356,
-      "token": "Synopsis",
-      "category": "drift-term",
       "lineText": "modal.addWarning(`Synopsis generation failed for ${sceneName} (Summary was saved)`);",
       "context": {
         "before": {
-          "line": 355,
+          "line": 354,
           "text": "console.warn(`Synopsis generation failed for ${sceneName}:`, synErr);"
         },
         "current": {
-          "line": 356,
+          "line": 355,
           "text": "modal.addWarning(`Synopsis generation failed for ${sceneName} (Summary was saved)`);"
         },
         "after": {
-          "line": 357,
+          "line": 356,
           "text": "}"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 361,
+      "line": 360,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "const persisted = await persistSummaryForScene(plugin, scene.file.path, newSummary, newSynopsis);",
       "context": {
         "before": {
-          "line": 360,
+          "line": 359,
           "text": "try {"
         },
         "current": {
-          "line": 361,
+          "line": 360,
           "text": "const persisted = await persistSummaryForScene(plugin, scene.file.path, newSummary, newSynopsis);"
         },
         "after": {
-          "line": 362,
+          "line": 361,
           "text": "processedCount++;"
+        }
+      }
+    },
+    {
+      "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
+      "line": 364,
+      "token": "Synopsis",
+      "category": "drift-term",
+      "lineText": "if (modal.setSynopsisPreview) {",
+      "context": {
+        "before": {
+          "line": 363,
+          "text": "// Update preview with final result"
+        },
+        "current": {
+          "line": 364,
+          "text": "if (modal.setSynopsisPreview) {"
+        },
+        "after": {
+          "line": 365,
+          "text": "modal.setSynopsisPreview(currentSummary, persisted.summary);"
         }
       }
     },
@@ -18730,39 +18625,18 @@
       "line": 365,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "if (modal.setSynopsisPreview) {",
-      "context": {
-        "before": {
-          "line": 364,
-          "text": "// Update preview with final result"
-        },
-        "current": {
-          "line": 365,
-          "text": "if (modal.setSynopsisPreview) {"
-        },
-        "after": {
-          "line": 366,
-          "text": "modal.setSynopsisPreview(currentSummary, persisted.summary);"
-        }
-      }
-    },
-    {
-      "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
-      "line": 366,
-      "token": "Synopsis",
-      "category": "drift-term",
       "lineText": "modal.setSynopsisPreview(currentSummary, persisted.summary);",
       "context": {
         "before": {
-          "line": 365,
+          "line": 364,
           "text": "if (modal.setSynopsisPreview) {"
         },
         "current": {
-          "line": 366,
+          "line": 365,
           "text": "modal.setSynopsisPreview(currentSummary, persisted.summary);"
         },
         "after": {
-          "line": 367,
+          "line": 366,
           "text": "}"
         }
       }
@@ -18790,64 +18664,43 @@
     },
     {
       "filePath": "src/sceneAnalysis/aiProvider.ts",
-      "line": 109,
+      "line": 110,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "feature: payload.commandContext === 'synopsis' ? 'Synopsis' : 'Pulse',",
       "context": {
         "before": {
-          "line": 108,
+          "line": 109,
           "text": "metadata: {"
         },
         "current": {
-          "line": 109,
+          "line": 110,
           "text": "feature: payload.commandContext === 'synopsis' ? 'Synopsis' : 'Pulse',"
         },
         "after": {
-          "line": 110,
+          "line": 111,
           "text": "scopeTarget,"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/aiProvider.ts",
-      "line": 172,
+      "line": 173,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "feature: payload.commandContext === 'synopsis' ? 'Synopsis' : 'Pulse',",
       "context": {
         "before": {
-          "line": 171,
+          "line": 172,
           "text": "title: summaryTitle,"
         },
         "current": {
-          "line": 172,
+          "line": 173,
           "text": "feature: payload.commandContext === 'synopsis' ? 'Synopsis' : 'Pulse',"
         },
         "after": {
-          "line": 173,
+          "line": 174,
           "text": "scopeTarget,"
-        }
-      }
-    },
-    {
-      "filePath": "src/sceneAnalysis/aiProvider.ts",
-      "line": 220,
-      "token": "Synopsis",
-      "category": "drift-term",
-      "lineText": "if (commandContext === 'synopsis') {",
-      "context": {
-        "before": {
-          "line": 219,
-          "text": "let jsonSchema: Record<string, unknown>;"
-        },
-        "current": {
-          "line": 220,
-          "text": "if (commandContext === 'synopsis') {"
-        },
-        "after": {
-          "line": 221,
-          "text": "const { getSummaryJsonSchema, getSummarySystemPrompt } = await import('../ai/prompts/synopsis');"
         }
       }
     },
@@ -18856,165 +18709,207 @@
       "line": 221,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "const { getSummaryJsonSchema, getSummarySystemPrompt } = await import('../ai/prompts/synopsis');",
+      "lineText": "// Legacy `synopsis` commandContext maps to Summary refresh prompts for backward compatibility.",
       "context": {
         "before": {
           "line": 220,
-          "text": "if (commandContext === 'synopsis') {"
+          "text": "let jsonSchema: Record<string, unknown>;"
         },
         "current": {
           "line": 221,
-          "text": "const { getSummaryJsonSchema, getSummarySystemPrompt } = await import('../ai/prompts/synopsis');"
+          "text": "// Legacy `synopsis` commandContext maps to Summary refresh prompts for backward compatibility."
         },
         "after": {
           "line": 222,
+          "text": "if (commandContext === 'synopsis') {"
+        }
+      }
+    },
+    {
+      "filePath": "src/sceneAnalysis/aiProvider.ts",
+      "line": 222,
+      "token": "Synopsis",
+      "category": "drift-term",
+      "lineText": "if (commandContext === 'synopsis') {",
+      "context": {
+        "before": {
+          "line": 221,
+          "text": "// Legacy `synopsis` commandContext maps to Summary refresh prompts for backward compatibility."
+        },
+        "current": {
+          "line": 222,
+          "text": "if (commandContext === 'synopsis') {"
+        },
+        "after": {
+          "line": 223,
+          "text": "const { getSummaryJsonSchema, getSummarySystemPrompt } = await import('../ai/prompts/synopsis');"
+        }
+      }
+    },
+    {
+      "filePath": "src/sceneAnalysis/aiProvider.ts",
+      "line": 223,
+      "token": "Synopsis",
+      "category": "drift-term",
+      "lineText": "const { getSummaryJsonSchema, getSummarySystemPrompt } = await import('../ai/prompts/synopsis');",
+      "context": {
+        "before": {
+          "line": 222,
+          "text": "if (commandContext === 'synopsis') {"
+        },
+        "current": {
+          "line": 223,
+          "text": "const { getSummaryJsonSchema, getSummarySystemPrompt } = await import('../ai/prompts/synopsis');"
+        },
+        "after": {
+          "line": 224,
           "text": "jsonSchema = getSummaryJsonSchema();"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/aiProvider.ts",
-      "line": 231,
+      "line": 233,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "feature: commandContext === 'synopsis' ? 'SummaryRefresh' : 'PulseAnalysis',",
       "context": {
         "before": {
-          "line": 230,
+          "line": 232,
           "text": "runResult = await aiClient.run({"
         },
         "current": {
-          "line": 231,
+          "line": 233,
           "text": "feature: commandContext === 'synopsis' ? 'SummaryRefresh' : 'PulseAnalysis',"
         },
         "after": {
-          "line": 232,
+          "line": 234,
           "text": "task: commandContext === 'synopsis' ? 'SceneSummary' : 'ScenePulseTriplet',"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/aiProvider.ts",
-      "line": 232,
+      "line": 234,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "task: commandContext === 'synopsis' ? 'SceneSummary' : 'ScenePulseTriplet',",
       "context": {
         "before": {
-          "line": 231,
+          "line": 233,
           "text": "feature: commandContext === 'synopsis' ? 'SummaryRefresh' : 'PulseAnalysis',"
         },
         "current": {
-          "line": 232,
+          "line": 234,
           "text": "task: commandContext === 'synopsis' ? 'SceneSummary' : 'ScenePulseTriplet',"
         },
         "after": {
-          "line": 233,
+          "line": 235,
           "text": "requiredCapabilities: ['jsonStrict', 'reasoningStrong'],"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/aiProvider.ts",
-      "line": 250,
+      "line": 252,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "temperature: commandContext === 'synopsis' ? 0.2 : 0.1,",
       "context": {
         "before": {
-          "line": 249,
+          "line": 251,
           "text": "overrides: {"
         },
         "current": {
-          "line": 250,
+          "line": 252,
           "text": "temperature: commandContext === 'synopsis' ? 0.2 : 0.1,"
         },
         "after": {
-          "line": 251,
+          "line": 253,
           "text": "maxOutputMode: 'high',"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/aiProvider.ts",
-      "line": 265,
+      "line": 267,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "if (commandContext !== 'synopsis') {",
       "context": {
         "before": {
-          "line": 264,
+          "line": 266,
           "text": "if (runResult.aiStatus !== 'success' || !runResult.content) {"
         },
         "current": {
-          "line": 265,
+          "line": 267,
           "text": "if (commandContext !== 'synopsis') {"
         },
         "after": {
-          "line": 266,
+          "line": 268,
           "text": "await writePulseLog(plugin, vault, {"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/aiProvider.ts",
-      "line": 289,
+      "line": 291,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "const parsedForLog = commandContext !== 'synopsis'",
       "context": {
         "before": {
-          "line": 288,
+          "line": 290,
           "text": ""
         },
         "current": {
-          "line": 289,
+          "line": 291,
           "text": "const parsedForLog = commandContext !== 'synopsis'"
         },
         "after": {
-          "line": 290,
+          "line": 292,
           "text": "? parsePulseAnalysisResponse(runResult.content, plugin)"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/aiProvider.ts",
-      "line": 292,
+      "line": 294,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "if (commandContext !== 'synopsis') {",
       "context": {
         "before": {
-          "line": 291,
+          "line": 293,
           "text": ": null;"
         },
         "current": {
-          "line": 292,
+          "line": 294,
           "text": "if (commandContext !== 'synopsis') {"
         },
         "after": {
-          "line": 293,
+          "line": 295,
           "text": "await writePulseLog(plugin, vault, {"
         }
       }
     },
     {
       "filePath": "src/sceneAnalysis/aiProvider.ts",
-      "line": 333,
+      "line": 335,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "if (commandContext !== 'synopsis') {",
       "context": {
         "before": {
-          "line": 332,
+          "line": 334,
           "text": ""
         },
         "current": {
-          "line": 333,
+          "line": 335,
           "text": "if (commandContext !== 'synopsis') {"
         },
         "after": {
-          "line": 334,
+          "line": 336,
           "text": "await writePulseLog(plugin, vault, {"
         }
       }
@@ -22888,19 +22783,40 @@
       "line": 96,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "private processedSynopsisResults: Map<string, string> = new Map(); // Store synopsis results for apply phase",
+      "lineText": "private processedSynopsisResults: Map<string, string> = new Map(); // Optional staged Synopsis writes (legacy key).",
       "context": {
         "before": {
           "line": 95,
-          "text": "private processedResults: Map<string, string> = new Map(); // Store summary results for apply phase"
+          "text": "private processedResults: Map<string, string> = new Map(); // Staged Summary results for apply/discard flow."
         },
         "current": {
           "line": 96,
-          "text": "private processedSynopsisResults: Map<string, string> = new Map(); // Store synopsis results for apply phase"
+          "text": "private processedSynopsisResults: Map<string, string> = new Map(); // Optional staged Synopsis writes (legacy key)."
         },
         "after": {
           "line": 97,
-          "text": "private hasPendingSynopsisResults: boolean = false; // Flag to indicate results are ready to apply"
+          "text": "private hasPendingSynopsisResults: boolean = false; // Whether staged results are available to apply."
+        }
+      }
+    },
+    {
+      "filePath": "src/modals/SceneAnalysisProcessingModal.ts",
+      "line": 96,
+      "token": "legacy key",
+      "category": "drift-term",
+      "lineText": "private processedSynopsisResults: Map<string, string> = new Map(); // Optional staged Synopsis writes (legacy key).",
+      "context": {
+        "before": {
+          "line": 95,
+          "text": "private processedResults: Map<string, string> = new Map(); // Staged Summary results for apply/discard flow."
+        },
+        "current": {
+          "line": 96,
+          "text": "private processedSynopsisResults: Map<string, string> = new Map(); // Optional staged Synopsis writes (legacy key)."
+        },
+        "after": {
+          "line": 97,
+          "text": "private hasPendingSynopsisResults: boolean = false; // Whether staged results are available to apply."
         }
       }
     },
@@ -22909,40 +22825,19 @@
       "line": 97,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "private hasPendingSynopsisResults: boolean = false; // Flag to indicate results are ready to apply",
+      "lineText": "private hasPendingSynopsisResults: boolean = false; // Whether staged results are available to apply.",
       "context": {
         "before": {
           "line": 96,
-          "text": "private processedSynopsisResults: Map<string, string> = new Map(); // Store synopsis results for apply phase"
+          "text": "private processedSynopsisResults: Map<string, string> = new Map(); // Optional staged Synopsis writes (legacy key)."
         },
         "current": {
           "line": 97,
-          "text": "private hasPendingSynopsisResults: boolean = false; // Flag to indicate results are ready to apply"
+          "text": "private hasPendingSynopsisResults: boolean = false; // Whether staged results are available to apply."
         },
         "after": {
           "line": 98,
           "text": ""
-        }
-      }
-    },
-    {
-      "filePath": "src/modals/SceneAnalysisProcessingModal.ts",
-      "line": 103,
-      "token": "Synopsis",
-      "category": "drift-term",
-      "lineText": "// Synopsis-specific controls",
-      "context": {
-        "before": {
-          "line": 102,
-          "text": ""
-        },
-        "current": {
-          "line": 103,
-          "text": "// Synopsis-specific controls"
-        },
-        "after": {
-          "line": 104,
-          "text": "private synopsisTargetWords: number = 200;"
         }
       }
     },
@@ -22955,7 +22850,7 @@
       "context": {
         "before": {
           "line": 103,
-          "text": "// Synopsis-specific controls"
+          "text": "// Summary-refresh controls"
         },
         "current": {
           "line": 104,
@@ -23012,9 +22907,9 @@
     {
       "filePath": "src/modals/SceneAnalysisProcessingModal.ts",
       "line": 159,
-      "token": "Synopsis",
+      "token": "legacy key",
       "category": "drift-term",
-      "lineText": "// Initialize synopsis settings from plugin settings",
+      "lineText": "// Summary-refresh settings are persisted on plugin settings (legacy key names retained for compatibility).",
       "context": {
         "before": {
           "line": 158,
@@ -23022,7 +22917,7 @@
         },
         "current": {
           "line": 159,
-          "text": "// Initialize synopsis settings from plugin settings"
+          "text": "// Summary-refresh settings are persisted on plugin settings (legacy key names retained for compatibility)."
         },
         "after": {
           "line": 160,
@@ -23039,7 +22934,7 @@
       "context": {
         "before": {
           "line": 159,
-          "text": "// Initialize synopsis settings from plugin settings"
+          "text": "// Summary-refresh settings are persisted on plugin settings (legacy key names retained for compatibility)."
         },
         "current": {
           "line": 160,
@@ -23368,27 +23263,6 @@
     },
     {
       "filePath": "src/modals/SceneAnalysisProcessingModal.ts",
-      "line": 407,
-      "token": "Synopsis",
-      "category": "drift-term",
-      "lineText": "// Synopsis mode: use checkmark icon instead of grades",
-      "context": {
-        "before": {
-          "line": 406,
-          "text": ""
-        },
-        "current": {
-          "line": 407,
-          "text": "// Synopsis mode: use checkmark icon instead of grades"
-        },
-        "after": {
-          "line": 408,
-          "text": "if (this.taskType === 'synopsis') {"
-        }
-      }
-    },
-    {
-      "filePath": "src/modals/SceneAnalysisProcessingModal.ts",
       "line": 408,
       "token": "Synopsis",
       "category": "drift-term",
@@ -23396,7 +23270,7 @@
       "context": {
         "before": {
           "line": 407,
-          "text": "// Synopsis mode: use checkmark icon instead of grades"
+          "text": "// Summary-refresh mode uses completion state instead of Pulse grades."
         },
         "current": {
           "line": 408,
@@ -23434,7 +23308,7 @@
       "line": 499,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "// Summary & Synopsis controls (only for synopsis/summary mode)",
+      "lineText": "// Summary-refresh controls (plus optional legacy Synopsis update).",
       "context": {
         "before": {
           "line": 498,
@@ -23442,7 +23316,7 @@
         },
         "current": {
           "line": 499,
-          "text": "// Summary & Synopsis controls (only for synopsis/summary mode)"
+          "text": "// Summary-refresh controls (plus optional legacy Synopsis update)."
         },
         "after": {
           "line": 500,
@@ -23459,7 +23333,7 @@
       "context": {
         "before": {
           "line": 499,
-          "text": "// Summary & Synopsis controls (only for synopsis/summary mode)"
+          "text": "// Summary-refresh controls (plus optional legacy Synopsis update)."
         },
         "current": {
           "line": 500,
@@ -23896,7 +23770,7 @@
       "line": 582,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "// Also update Synopsis checkbox",
+      "lineText": "// Optional write-through to the legacy Synopsis key.",
       "context": {
         "before": {
           "line": 581,
@@ -23904,7 +23778,7 @@
         },
         "current": {
           "line": 582,
-          "text": "// Also update Synopsis checkbox"
+          "text": "// Optional write-through to the legacy Synopsis key."
         },
         "after": {
           "line": 583,
@@ -23921,7 +23795,7 @@
       "context": {
         "before": {
           "line": 582,
-          "text": "// Also update Synopsis checkbox"
+          "text": "// Optional write-through to the legacy Synopsis key."
         },
         "current": {
           "line": 583,
@@ -24778,7 +24652,7 @@
       "line": 970,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "* Store summary (and optional synopsis) results for the apply phase.",
+      "lineText": "* Store Summary (and optional legacy Synopsis) results for the apply phase.",
       "context": {
         "before": {
           "line": 969,
@@ -24786,32 +24660,11 @@
         },
         "current": {
           "line": 970,
-          "text": "* Store summary (and optional synopsis) results for the apply phase."
+          "text": "* Store Summary (and optional legacy Synopsis) results for the apply phase."
         },
         "after": {
           "line": 971,
-          "text": "* Called from SynopsisCommands when processing completes."
-        }
-      }
-    },
-    {
-      "filePath": "src/modals/SceneAnalysisProcessingModal.ts",
-      "line": 971,
-      "token": "Synopsis",
-      "category": "drift-term",
-      "lineText": "* Called from SynopsisCommands when processing completes.",
-      "context": {
-        "before": {
-          "line": 970,
-          "text": "* Store summary (and optional synopsis) results for the apply phase."
-        },
-        "current": {
-          "line": 971,
-          "text": "* Called from SynopsisCommands when processing completes."
-        },
-        "after": {
-          "line": 972,
-          "text": "* The modal will show Apply/Discard in the completion summary."
+          "text": "* Called from Summary refresh processing when generation completes."
         }
       }
     },
@@ -25009,7 +24862,7 @@
       "line": 1061,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "// Write Synopsis if also generated",
+      "lineText": "// Write legacy Synopsis only when the optional pass produced a value.",
       "context": {
         "before": {
           "line": 1060,
@@ -25017,7 +24870,7 @@
         },
         "current": {
           "line": 1061,
-          "text": "// Write Synopsis if also generated"
+          "text": "// Write legacy Synopsis only when the optional pass produced a value."
         },
         "after": {
           "line": 1062,
@@ -25034,7 +24887,7 @@
       "context": {
         "before": {
           "line": 1061,
-          "text": "// Write Synopsis if also generated"
+          "text": "// Write legacy Synopsis only when the optional pass produced a value."
         },
         "current": {
           "line": 1062,
@@ -25090,27 +24943,6 @@
     },
     {
       "filePath": "src/modals/SceneAnalysisProcessingModal.ts",
-      "line": 1067,
-      "token": "Synopsis",
-      "category": "drift-term",
-      "lineText": "// Replace Summary Update / legacy Synopsis Update flag with timestamp",
-      "context": {
-        "before": {
-          "line": 1066,
-          "text": ""
-        },
-        "current": {
-          "line": 1067,
-          "text": "// Replace Summary Update / legacy Synopsis Update flag with timestamp"
-        },
-        "after": {
-          "line": 1068,
-          "text": "const summaryUpdateKeys = ['Summary Update', 'SummaryUpdate', 'summaryupdate'];"
-        }
-      }
-    },
-    {
-      "filePath": "src/modals/SceneAnalysisProcessingModal.ts",
       "line": 1069,
       "token": "Synopsis",
       "category": "drift-term",
@@ -25135,7 +24967,7 @@
       "line": 1082,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "// Fall back to legacy Synopsis Update keys (migrate to Summary Update)",
+      "lineText": "// Fall back to legacy Synopsis Update markers, then migrate to Summary Update.",
       "context": {
         "before": {
           "line": 1081,
@@ -25143,7 +24975,7 @@
         },
         "current": {
           "line": 1082,
-          "text": "// Fall back to legacy Synopsis Update keys (migrate to Summary Update)"
+          "text": "// Fall back to legacy Synopsis Update markers, then migrate to Summary Update."
         },
         "after": {
           "line": 1083,
@@ -25237,27 +25069,6 @@
     },
     {
       "filePath": "src/modals/SceneAnalysisProcessingModal.ts",
-      "line": 1471,
-      "token": "Synopsis",
-      "category": "drift-term",
-      "lineText": "// Only show log message for pulse analysis (synopsis doesn't write detailed logs)",
-      "context": {
-        "before": {
-          "line": 1470,
-          "text": ""
-        },
-        "current": {
-          "line": 1471,
-          "text": "// Only show log message for pulse analysis (synopsis doesn't write detailed logs)"
-        },
-        "after": {
-          "line": 1472,
-          "text": "if (this.plugin.settings.logApiInteractions && this.taskType !== 'synopsis') {"
-        }
-      }
-    },
-    {
-      "filePath": "src/modals/SceneAnalysisProcessingModal.ts",
       "line": 1472,
       "token": "Synopsis",
       "category": "drift-term",
@@ -25265,7 +25076,7 @@
       "context": {
         "before": {
           "line": 1471,
-          "text": "// Only show log message for pulse analysis (synopsis doesn't write detailed logs)"
+          "text": "// Only Pulse analysis writes detailed interaction logs in this modal flow."
         },
         "current": {
           "line": 1472,
@@ -25279,27 +25090,6 @@
     },
     {
       "filePath": "src/modals/SceneAnalysisProcessingModal.ts",
-      "line": 1493,
-      "token": "Synopsis",
-      "category": "drift-term",
-      "lineText": "// Synopsis mode with pending results: show Apply/Discard buttons",
-      "context": {
-        "before": {
-          "line": 1492,
-          "text": ""
-        },
-        "current": {
-          "line": 1493,
-          "text": "// Synopsis mode with pending results: show Apply/Discard buttons"
-        },
-        "after": {
-          "line": 1494,
-          "text": "if (this.taskType === 'synopsis' && this.hasPendingSynopsisResults && this.processedResults.size > 0) {"
-        }
-      }
-    },
-    {
-      "filePath": "src/modals/SceneAnalysisProcessingModal.ts",
       "line": 1494,
       "token": "Synopsis",
       "category": "drift-term",
@@ -25307,7 +25097,7 @@
       "context": {
         "before": {
           "line": 1493,
-          "text": "// Synopsis mode with pending results: show Apply/Discard buttons"
+          "text": "// Summary-refresh mode with staged results: show Apply/Discard actions."
         },
         "current": {
           "line": 1494,
@@ -25315,28 +25105,7 @@
         },
         "after": {
           "line": 1495,
-          "text": "// Add synopsis apply confirmation card above the buttons"
-        }
-      }
-    },
-    {
-      "filePath": "src/modals/SceneAnalysisProcessingModal.ts",
-      "line": 1495,
-      "token": "Synopsis",
-      "category": "drift-term",
-      "lineText": "// Add synopsis apply confirmation card above the buttons",
-      "context": {
-        "before": {
-          "line": 1494,
-          "text": "if (this.taskType === 'synopsis' && this.hasPendingSynopsisResults && this.processedResults.size > 0) {"
-        },
-        "current": {
-          "line": 1495,
-          "text": "// Add synopsis apply confirmation card above the buttons"
-        },
-        "after": {
-          "line": 1496,
-          "text": "contentEl.querySelectorAll('.rt-synopsis-apply-card').forEach(el => el.remove());"
+          "text": "// Render apply confirmation card above the action row."
         }
       }
     },
@@ -25349,7 +25118,7 @@
       "context": {
         "before": {
           "line": 1495,
-          "text": "// Add synopsis apply confirmation card above the buttons"
+          "text": "// Render apply confirmation card above the action row."
         },
         "current": {
           "line": 1496,

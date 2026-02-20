@@ -225,7 +225,7 @@ export function renderAiSection(params: {
     const capacityMode = createCapacityCell('Current packaging preference');
 
     const packagingSection = largeHandlingBody.createDiv({
-        cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT} ert-ai-packaging-copy`
+        cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT} ert-ai-packaging-copy`
     });
     packagingSection.createEl('h5', { text: 'AUTOMATIC PACKAGING', cls: 'ert-kicker' });
     const packagingList = packagingSection.createEl('ul', { cls: ERT_CLASSES.STACK });

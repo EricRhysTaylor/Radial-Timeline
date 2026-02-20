@@ -2174,7 +2174,7 @@
   border: 1px solid var(--background-modifier-border);
   border-radius: 10px;
   background: color-mix(in srgb, var(--background-secondary) 84%, transparent);
-  padding: 10px 12px;
+  padding: var(--ert-pad-md);
   position: relative;
   overflow: visible;
 }
