@@ -26,7 +26,11 @@
 		"test:coverage": "vitest run --coverage",
 		"css-drift": "node scripts/css-drift-check.mjs",
 		"scan-ert": "node scripts/scan-ert-classes.mjs",
-		"verify": "node scripts/verify.mjs"
+		"verify": "node scripts/verify.mjs",
+		"audit:sanitation": "node scripts/audit/run-scan.ts",
+		"audit:tsc-unused": "mkdir -p docs/audits && tsc -p tsconfig.audit.json --noEmit > docs/audits/tsc-unused.txt 2>&1 || true",
+		"audit:eslint": "mkdir -p docs/audits && eslint . > docs/audits/eslint.txt 2>&1 || true",
+		"audit:all": "npm run audit:sanitation && npm run audit:tsc-unused && npm run audit:eslint"
 	},
 	"keywords": [
 		"obsidian",
@@ -43,10 +47,13 @@
 		"@vitest/coverage-v8": "^4.0.16",
 		"builtin-modules": "^3.3.0",
 		"esbuild": "^0.25.10",
+		"eslint": "^8.57.1",
 		"fs-extra": "^11.3.0",
 		"husky": "^9.1.7",
 		"lint-staged": "^15.5.0",
 		"obsidian": "^1.4.11",
+		"@typescript-eslint/eslint-plugin": "^6.21.0",
+		"@typescript-eslint/parser": "^6.21.0",
 		"typescript": "5.3.3",
 		"vitest": "^4.0.16"
 	},
