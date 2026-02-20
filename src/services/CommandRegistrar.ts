@@ -16,7 +16,6 @@ import { TimelineRepairModal } from '../modals/TimelineRepairModal';
 import { AuthorProgressModal } from '../modals/AuthorProgressModal';
 import { generateSceneContent } from '../utils/sceneGenerator';
 import { sanitizeSourcePath, buildInitialSceneFilename, buildInitialBackdropFilename } from '../utils/sceneCreation';
-import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { getTemplateParts } from '../utils/yamlTemplateNormalize';
 import { ensureManuscriptOutputFolder, ensureOutlineOutputFolder } from '../utils/aiOutput';
 import { buildExportFilename, buildPrecursorFilename, buildOutlineExport, getExportFormatExtension, getLayoutById, getVaultAbsolutePath, resolveTemplatePath, runPandocOnContent, validatePandocLayout } from '../utils/exportFormats';
@@ -255,7 +254,6 @@ export class CommandRegistrar {
                 sortOrder: scenes.sortOrder
             };
 
-            // Filter by subplot if selected
             let filteredSelection = selection;
             if (result.subplot && result.subplot !== 'All Subplots') {
                 const indices = selection.subplots.map((s, i) => s === result.subplot ? i : -1).filter(i => i !== -1);
@@ -274,15 +272,12 @@ export class CommandRegistrar {
                 };
             }
 
-            // Slice by range
             const slicedFiles = sliceScenesByRange(filteredSelection.files, result.rangeStart, result.rangeEnd);
 
-            // Handle output generation
+            // Outline export remains a thin adapter: slice selection and delegate generation.
             if (result.exportType === 'outline') {
-                // Get runtime settings for session planning
                 const runtimeSettings = getRuntimeSettings(this.plugin.settings);
 
-                // outline export expects ManuscriptSceneSelection
                 const slicedSelection = this.sliceSelection(filteredSelection, result.rangeStart, result.rangeEnd);
                 const outline = buildOutlineExport(
                     slicedSelection,
@@ -304,8 +299,7 @@ export class CommandRegistrar {
                 return { savedPath: path };
             }
 
-            // Manuscript assembly
-            // Pass BookMeta so semantic matter roles (e.g. copyright) can be rendered
+            // Manuscript assembly is centralized in `assembleManuscript`; command layer only wires options.
             const bookMetaResolution = this.resolveBookMetaForExport(folder);
             const statusMessages: string[] = [];
             if (bookMetaResolution.warning) {
@@ -331,14 +325,11 @@ export class CommandRegistrar {
                 filteredSelection.matterMetaByPath
             );
 
-            // Update word counts if requested
             if (result.updateWordCounts) {
                 new Notice('Updating word counts...');
-                // assembleManuscript returns { scenes: SceneContent[] } which has word counts
                 await updateSceneWordCounts(this.app, slicedFiles, assembled.scenes);
             }
 
-            // Build filename with acronyms
             const extension = getExportFormatExtension(result.outputFormat);
             const filename = buildExportFilename({
                 exportType: 'manuscript',
@@ -355,19 +346,17 @@ export class CommandRegistrar {
                 new Notice(`Manuscript exported to ${path}`);
                 return { savedPath: path, messages: statusMessages };
             } else {
-                // Pandoc export (Pro) — layout-aware pipeline
+                // Pandoc execution lives in exportFormats; validate layout/template before invocation.
                 if (result.outputFormat !== 'pdf') {
                     throw new Error(`Unsupported manuscript output format: ${result.outputFormat}`);
                 }
 
-                // Resolve the layout
                 const layout = getLayoutById(this.plugin, result.selectedLayoutId);
                 if (!layout) {
                     new Notice('No Pandoc layout selected. Configure layouts in Pro settings.');
                     return {};
                 }
 
-                // Hard-guard: validate template file exists before calling Pandoc
                 const layoutValidation = validatePandocLayout(this.plugin, layout);
                 if (!layoutValidation.valid) {
                     new Notice(`Layout "${layout.name}" is invalid: ${layoutValidation.error}`);
@@ -382,7 +371,6 @@ export class CommandRegistrar {
                     return {};
                 }
 
-                // Save compiled precursor .md alongside output
                 const precursorName = buildPrecursorFilename(
                     ctx.fileStem,
                     result.manuscriptPreset || 'novel',
@@ -393,14 +381,12 @@ export class CommandRegistrar {
                 try {
                     await this.app.vault.create(precursorPath, assembled.text);
                 } catch {
-                    // If file already exists, silently overwrite via modify
                     const existing = this.app.vault.getAbstractFileByPath(precursorPath);
                     if (existing instanceof TFile) {
                         await this.app.vault.modify(existing, assembled.text);
                     }
                 }
 
-                // Build book-titled output filename
                 const pandocFilename = buildExportFilename({
                     exportType: 'manuscript',
                     order: result.order,
@@ -411,7 +397,6 @@ export class CommandRegistrar {
                 });
                 const outputPath = `${absoluteOutputFolder}/${pandocFilename}`;
 
-                // Resolve template path to absolute for Pandoc
                 const templatePath = resolveTemplatePath(this.plugin, layout.path);
                 const renderedVaultPath = `${outputFolder}/${pandocFilename}`;
 
@@ -426,7 +411,6 @@ export class CommandRegistrar {
                         fallbackPath: this.plugin.settings.pandocFallbackPath
                     });
 
-                    // Persist last-used layout per preset on the active book
                     const activeBook = getActiveBook(this.plugin.settings);
                     if (activeBook) {
                         if (!activeBook.lastUsedPandocLayoutByPreset) {

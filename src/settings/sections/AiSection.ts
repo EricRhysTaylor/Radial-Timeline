@@ -247,7 +247,7 @@ export function renderAiSection(params: {
     let executionPreferenceDropdown: DropdownComponent | null = null;
     executionPreferenceSetting.addDropdown(dropdown => {
         executionPreferenceDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
         dropdown.addOption('automatic', 'Automatic (recommended)');
         dropdown.addOption('singlePassOnly', 'Single-pass only');
         dropdown.onChange(async value => {
@@ -421,7 +421,7 @@ export function renderAiSection(params: {
     let providerDropdown: DropdownComponent | null = null;
     providerSetting.addDropdown(dropdown => {
         providerDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
         dropdown.addOption('anthropic', 'Anthropic');
         dropdown.addOption('openai', 'OpenAI');
         dropdown.addOption('google', 'Google');
@@ -451,7 +451,7 @@ export function renderAiSection(params: {
     let policyDropdown: DropdownComponent | null = null;
     policySetting.addDropdown(dropdown => {
         policyDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
         dropdown.addOption('pinned', 'Manual (Pinned)');
         dropdown.addOption('profile', 'Profile');
         dropdown.addOption('latestStable', 'Latest stable');
@@ -482,7 +482,7 @@ export function renderAiSection(params: {
     let pinnedDropdown: DropdownComponent | null = null;
     pinnedSetting.addDropdown(dropdown => {
         pinnedDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
         dropdown.onChange(async value => {
             const aiSettings = ensureCanonicalAiSettings();
             if (aiSettings.modelPolicy.type !== 'pinned') return;
@@ -500,7 +500,7 @@ export function renderAiSection(params: {
     let profileDropdown: DropdownComponent | null = null;
     profileSetting.addDropdown(dropdown => {
         profileDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
         dropdown.addOption('deepReasoner', 'deepReasoner');
         dropdown.addOption('deepWriter', 'deepWriter');
         dropdown.addOption('balancedAnalysis', 'balancedAnalysis');
@@ -520,7 +520,7 @@ export function renderAiSection(params: {
     let accessTierDropdown: DropdownComponent | null = null;
     accessTierSetting.addDropdown(dropdown => {
         accessTierDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
         dropdown.addOption('1', 'Tier 1');
         dropdown.addOption('2', 'Tier 2');
         dropdown.addOption('3', 'Tier 3');
@@ -543,7 +543,7 @@ export function renderAiSection(params: {
     let outputModeDropdown: DropdownComponent | null = null;
     outputModeSetting.addDropdown(dropdown => {
         outputModeDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
         dropdown.addOption('auto', 'Auto');
         dropdown.addOption('high', 'High');
         dropdown.addOption('max', 'Max');
@@ -562,7 +562,7 @@ export function renderAiSection(params: {
     let reasoningDepthDropdown: DropdownComponent | null = null;
     reasoningDepthSetting.addDropdown(dropdown => {
         reasoningDepthDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
         dropdown.addOption('standard', 'Standard');
         dropdown.addOption('deep', 'Deep');
         dropdown.onChange(async value => {
