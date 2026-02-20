@@ -6,6 +6,20 @@ Generated: 2026-02-20T17:24:02.014Z
 
 This audit pass is report-only and does not change runtime behavior. The scan found 1366 matched lines across 140 files, indicating comment debt plus terminology drift around settings refresh and AI/export plumbing. Recent refactors increased drift risk where old naming or adapter helpers may still be referenced in comments and wrappers (especially around settings refresh flow and template merge paths).
 
+## After Lane C PR
+
+- Total scan hits: `1377 -> 1366` (`-11`).
+- Lane C drift markers:
+- `Synopsis`: `855 -> 847` (`-8`) from Summary-first comment rewrites in AI/export modules.
+- `mergeTemplates`: `8 -> 4` (`-4`) from canonical merge-helper naming cleanup.
+- `DEPRECATED`: `59 -> 58` (`-1`) by removing stale deprecation marker noise.
+- `TODO` remained `68` (no new unlabeled TODO/FIXME/HACK introduced).
+
+Remaining Lane C hotspots and why:
+- `src/SynopsisManager.ts` and `src/sceneAnalysis/SynopsisCommands.ts` remain high because `Synopsis` is still a compatibility/runtime identifier in schema keys and helper names.
+- `src/modals/SceneAnalysisProcessingModal.ts` remains dense due operational guidance in a complex long-running modal workflow.
+- `src/inquiry/InquiryView.ts` remains deferred due active local edits and broad surface area.
+
 ## Totals by token
 
 | Token | Category | Total hits |
@@ -338,4 +352,3 @@ This audit pass is report-only and does not change runtime behavior. The scan fo
 - [ ] Rewrite comments that reference removed systems to point to canonical helpers.
 - [ ] Remove dead wrappers after a dev-guard period.
 - [ ] Remove unused exports and legacy adapters.
-
