@@ -2012,25 +2012,22 @@
 }
 
 .ert-ui.ert-scope--settings .ert-ai-quick-grid .setting-item.ert-ai-strategy-row.ert-ai-grid-item {
-  flex-wrap: wrap;
-  row-gap: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
   column-gap: var(--ert-gap-sm);
+  row-gap: calc(var(--ert-gap-xs) / 2);
   align-items: center;
   border: 1px solid color-mix(in srgb, var(--background-modifier-border) 75%, transparent);
   border-top: 1px solid color-mix(in srgb, var(--background-modifier-border) 75%, transparent);
   border-radius: 10px;
   background: color-mix(in srgb, var(--background-secondary) 78%, transparent);
-  padding: 10px 12px;
+  padding: calc(var(--ert-gap-sm) + (var(--ert-gap-xs) / 2)) var(--ert-gap-md);
   position: relative;
   overflow: visible;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-quick-grid .setting-item.ert-ai-strategy-row > .setting-item-info {
-  flex-grow: 0;
-  flex-shrink: 1;
-  flex-basis: auto;
-  width: auto;
-  max-width: max-content;
+  grid-column: 1 / 2;
   margin: 0;
   padding: 0;
   min-width: 0;
@@ -2049,16 +2046,18 @@
 }
 
 .ert-ui.ert-scope--settings .ert-ai-quick-grid .setting-item.ert-ai-strategy-row > .setting-item-control {
-  flex: 0 0 auto;
+  grid-column: 2 / 3;
+  justify-self: end;
+  align-self: center;
   margin: 0;
-  margin-left: auto;
   padding: 0;
+  min-width: 0;
 }
 
 
 .ert-ui.ert-scope--settings .ert-ai-quick-grid .setting-item.ert-ai-strategy-row > .ert-ai-strategy-row__desc {
-  flex-basis: 100%;
-  margin-top: 4px;
+  grid-column: 1 / -1;
+  margin: 0;
   font-size: 11px;
   color: var(--text-muted);
   line-height: 1.4;
@@ -2239,12 +2238,14 @@
     grid-template-columns: 1fr;
   }
 
-  .ert-ui.ert-scope--settings .ert-ai-quick-grid .setting-item.ert-ai-strategy-row > .setting-item-info {
-    flex-basis: 100%;
+  .ert-ui.ert-scope--settings .ert-ai-quick-grid .setting-item.ert-ai-strategy-row.ert-ai-grid-item {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--ert-gap-xs);
   }
 
   .ert-ui.ert-scope--settings .ert-ai-quick-grid .setting-item.ert-ai-strategy-row > .setting-item-control {
-    flex-basis: 100%;
+    grid-column: 1 / -1;
+    justify-self: stretch;
   }
 
 

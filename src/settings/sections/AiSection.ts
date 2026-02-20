@@ -591,7 +591,7 @@ export function renderAiSection(params: {
 
     const applyStrategyRowCopyLayout = (setting: Settings, description: string): void => {
         setting.setDesc('');
-        setting.settingEl.addClass('ert-ai-strategy-row');
+        setting.settingEl.addClass('ert-ai-strategy-row', 'ert-setting-two-row');
         const nativeDesc = setting.settingEl.querySelector('.setting-item-description');
         if (nativeDesc) nativeDesc.remove();
         const existing = setting.settingEl.querySelector('.ert-ai-strategy-row__desc');
