@@ -203,11 +203,7 @@ export function renderAiSection(params: {
     const largeHandlingBody = largeHandlingFold.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-large-handling-body` });
     largeHandlingBody.createDiv({
         cls: 'ert-section-desc',
-        text: 'Radial Timeline automatically adapts how large manuscripts are prepared for AI. When a request exceeds safe context limits, it uses structured packaging and synthesis to preserve accuracy and scene-level citations.'
-    });
-    largeHandlingBody.createDiv({
-        cls: 'ert-field-note',
-        text: 'A small buffer is reserved so structured answers do not get cut off.'
+        text: 'Radial Timeline automatically adjusts how large manuscripts are prepared for AI. When a request exceeds safe context limits, it processes the material in structured segments to preserve accuracy and scene-level references.'
     });
 
     const capacitySection = largeHandlingBody.createDiv({ cls: 'ert-ai-capacity-section' });
@@ -223,16 +219,20 @@ export function renderAiSection(params: {
     const capacitySafeInput = createCapacityCell('Safe input budget');
     const capacityOutput = createCapacityCell('Output allowance');
     const capacityMode = createCapacityCell('Current packaging preference');
+    capacitySection.createDiv({
+        cls: 'ert-field-note',
+        text: 'A small safety margin is reserved to prevent structured answers from being cut off.'
+    });
 
     const packagingSection = largeHandlingBody.createDiv({
         cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
     });
-    packagingSection.createEl('h5', { text: 'AUTOMATIC PACKAGING', cls: 'ert-kicker' });
+    packagingSection.createEl('h5', { text: 'HOW LARGE REQUESTS ARE PROCESSED', cls: 'ert-kicker' });
     const packagingList = packagingSection.createEl('ul', { cls: ERT_CLASSES.STACK });
     [
-        { icon: 'zap', text: 'One pass is used when the full request fits safely.' },
-        { icon: 'layers', text: 'Switches to structured packaging and synthesis automatically when needed.' },
-        { icon: 'anchor', text: 'Stable scene IDs keep citations aligned across synthesis.' }
+        { icon: 'zap', text: 'Uses a single request when the selected content fits safely.' },
+        { icon: 'layers', text: 'When content is too large, analyzes the manuscript in structured segments and combines the results into one final response.' },
+        { icon: 'anchor', text: 'Stable scene IDs keep references aligned across all segments.' }
     ].forEach(item => {
         const li = packagingList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
         const icon = li.createSpan({ cls: 'ert-feature-icon' });
@@ -242,13 +242,13 @@ export function renderAiSection(params: {
 
     const executionPreferenceSetting = new Settings(largeHandlingBody)
         .setName('Execution Preference')
-        .setDesc('Choose how large requests are handled during Inquiry execution.');
+        .setDesc('Choose how large requests are handled during Inquiry.');
     executionPreferenceSetting.settingEl.setAttr('data-ert-role', 'ai-setting:execution-preference');
     let executionPreferenceDropdown: DropdownComponent | null = null;
     executionPreferenceSetting.addDropdown(dropdown => {
         executionPreferenceDropdown = dropdown;
         dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
-        dropdown.addOption('automatic', 'Automatic (recommended)');
+        dropdown.addOption('automatic', 'Automatic');
         dropdown.addOption('singlePassOnly', 'Single-pass only');
         dropdown.onChange(async value => {
             const aiSettings = ensureCanonicalAiSettings();
@@ -262,8 +262,8 @@ export function renderAiSection(params: {
         const mode = ensureCanonicalAiSettings().analysisPackaging;
         executionPreferenceNote.setText(
             mode === 'singlePassOnly'
-                ? 'Single-pass only: Sends the full request in one pass. If it exceeds safe limits, reduce scope or adjust settings.'
-                : 'Automatic: Uses one pass when possible, then uses structured packaging and synthesis only when needed.'
+                ? 'Send the full request as one pass. If it exceeds safe limits, reduce scope or adjust settings.'
+                : 'Adapts to large manuscripts when needed. Recommended for most projects.'
         );
     };
     updateExecutionPreferenceNote();
