@@ -1,5 +1,5 @@
 import { PROVIDER_CAPS } from './providerCaps';
-import type { AIProviderId, AIOverrides, ModelInfo } from '../types';
+import type { AccessTier, AIProviderId, AIOverrides, ModelInfo } from '../types';
 
 export interface RetryPolicy {
     maxAttempts: number;
@@ -19,7 +19,7 @@ export interface ComputedCaps {
 export interface ComputeCapsInput {
     provider: AIProviderId;
     model: ModelInfo;
-    accessTier?: 1 | 2 | 3;
+    accessTier?: AccessTier;
     feature: string;
     overrides?: Partial<AIOverrides>;
 }

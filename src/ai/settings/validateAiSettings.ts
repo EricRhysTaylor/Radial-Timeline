@@ -77,8 +77,8 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
         value.roleTemplateId = defaults.roleTemplateId;
     }
 
-    const sanitizeTier = (tier: unknown): 1 | 2 | 3 => {
-        if (tier === 1 || tier === 2 || tier === 3) return tier;
+    const sanitizeTier = (tier: unknown): 1 | 2 | 3 | 4 => {
+        if (tier === 1 || tier === 2 || tier === 3 || tier === 4) return tier;
         return 1;
     };
     value.aiAccessProfile.anthropicTier = sanitizeTier(value.aiAccessProfile.anthropicTier);
@@ -126,6 +126,36 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
 
     if (typeof value.overrides.topP === 'number') {
         value.overrides.topP = Math.max(0, Math.min(1, value.overrides.topP));
+    }
+
+    if (value.lastThroughputCheck) {
+        const check = value.lastThroughputCheck;
+        const isValidProvider = check.provider === 'openai'
+            || check.provider === 'anthropic'
+            || check.provider === 'google'
+            || check.provider === 'ollama';
+        if (!isValidProvider || typeof check.checkedAt !== 'string' || !check.checkedAt.trim()) {
+            value.lastThroughputCheck = undefined;
+        } else {
+            if (typeof check.endpoint !== 'string') check.endpoint = '';
+            if (typeof check.statusCode !== 'number' || !Number.isFinite(check.statusCode)) check.statusCode = 0;
+            check.observedHeaders = (check.observedHeaders && typeof check.observedHeaders === 'object')
+                ? check.observedHeaders
+                : {};
+            check.observedFields = (check.observedFields && typeof check.observedFields === 'object')
+                ? check.observedFields
+                : {};
+            check.noLimitInfoAvailable = !!check.noLimitInfoAvailable;
+            if (check.heuristicTierSuggestion !== 1
+                && check.heuristicTierSuggestion !== 2
+                && check.heuristicTierSuggestion !== 3
+                && check.heuristicTierSuggestion !== 4) {
+                check.heuristicTierSuggestion = undefined;
+            }
+            if (typeof check.heuristicSummary !== 'string' || !check.heuristicSummary.trim()) {
+                check.heuristicSummary = 'No limit info available.';
+            }
+        }
     }
 
     value.migrationWarnings = [...new Set([...(value.migrationWarnings || []), ...warnings])];

@@ -1,5 +1,5 @@
 import { selectModel } from '../router/selectModel';
-import type { AIProviderId, AiSettingsV1, Capability, ModelInfo, ModelPolicy } from '../types';
+import type { AccessTier, AIProviderId, AiSettingsV1, Capability, ModelInfo, ModelPolicy } from '../types';
 import type { AvailabilityStatus, MergedModelInfo } from './mergeModels';
 import { formatRecommendationWhy } from './recommendationWhy';
 
@@ -27,7 +27,7 @@ function toShortReason(reason: string, maxWords = 14): string {
     return `${words.slice(0, maxWords).join(' ')}...`;
 }
 
-function getTier(aiSettings: AiSettingsV1, provider: AIProviderId): 1 | 2 | 3 {
+function getTier(aiSettings: AiSettingsV1, provider: AIProviderId): AccessTier {
     if (provider === 'anthropic') return aiSettings.aiAccessProfile.anthropicTier ?? 1;
     if (provider === 'openai') return aiSettings.aiAccessProfile.openaiTier ?? 1;
     if (provider === 'google') return aiSettings.aiAccessProfile.googleTier ?? 1;

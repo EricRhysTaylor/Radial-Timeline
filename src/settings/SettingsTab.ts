@@ -715,7 +715,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             badgeVariant: ERT_CLASSES.BADGE_PILL_NEUTRAL,
             wikiHref: 'https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings#core',
             title: 'Build the core of your writing workflow.',
-            subtitle: 'The Radial Timeline is designed to empower you, the author, to greater productivity and accountability. Using core settings, configure the Radial Timeline to reflect your manuscript’s structure and writing style. Speed workflow',
+            subtitle: 'The Radial Timeline is designed to empower you, the author, toward greater productivity and accountability. Use Core settings to align the timeline with your manuscript’s structure, sharpen your workflow, and move faster with clarity.',
             kicker: 'Core Highlights:',
             features: [
                 { icon: 'layout-grid', text: 'Story structure — manage scenes, beats, templates, and advanced fields.' },

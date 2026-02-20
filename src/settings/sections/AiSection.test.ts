@@ -82,6 +82,14 @@ describe('AI settings models table', () => {
         expect(source.includes('This only fetches model details and availability.')).toBe(true);
     });
 
+    it('renders active model preview container with wrapped config pill copy', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('PREVIEW (ACTIVE MODEL)')).toBe(true);
+        expect(source.includes('Automatic Packaging')).toBe(true);
+        expect(source.includes('Input ·')).toBe(true);
+        expect(source.includes('Response ·')).toBe(true);
+    });
+
     it('renders Large Manuscript Handling section with execution preference controls', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes('Large Manuscript Handling')).toBe(true);

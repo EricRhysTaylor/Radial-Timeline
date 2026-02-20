@@ -55,7 +55,7 @@ import { BUILTIN_MODELS } from '../ai/registry/builtinModels';
 import { selectModel } from '../ai/router/selectModel';
 import { buildDefaultAiSettings, mapLegacyProviderToAiProvider } from '../ai/settings/aiSettings';
 import { validateAiSettings } from '../ai/settings/validateAiSettings';
-import type { AIRunAdvancedContext, AIProviderId, AiSettingsV1, Capability, ModelInfo } from '../ai/types';
+import type { AIRunAdvancedContext, AIProviderId, AiSettingsV1, Capability, ModelInfo, AccessTier } from '../ai/types';
 import type {
     CorpusManifest,
     CorpusManifestEntry,
@@ -1828,7 +1828,7 @@ export class InquiryView extends ItemView {
         return validated.value;
     }
 
-    private getAccessTierForProvider(provider: AIProviderId, aiSettings: AiSettingsV1): 1 | 2 | 3 {
+    private getAccessTierForProvider(provider: AIProviderId, aiSettings: AiSettingsV1): AccessTier {
         if (provider === 'anthropic') return aiSettings.aiAccessProfile.anthropicTier ?? 1;
         if (provider === 'openai') return aiSettings.aiAccessProfile.openaiTier ?? 1;
         if (provider === 'google') return aiSettings.aiAccessProfile.googleTier ?? 1;

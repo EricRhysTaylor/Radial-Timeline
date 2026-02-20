@@ -36,6 +36,19 @@ describe('validateAiSettings', () => {
         expect(result.value.aiAccessProfile.openaiTier).toBe(1);
     });
 
+    it('accepts tier 4 in access profile', () => {
+        const result = validateAiSettings({
+            schemaVersion: 1,
+            provider: 'openai',
+            modelPolicy: { type: 'latestStable' },
+            overrides: {},
+            aiAccessProfile: { openaiTier: 4 },
+            privacy: { allowTelemetry: false, allowRemoteRegistry: false, allowProviderSnapshot: false }
+        } as unknown as AiSettingsV1);
+
+        expect(result.value.aiAccessProfile.openaiTier).toBe(4);
+    });
+
     it('strips legacy raw credential fields and keeps secret-id credentials only', () => {
         const result = validateAiSettings({
             schemaVersion: 1,

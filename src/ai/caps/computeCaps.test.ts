@@ -20,7 +20,16 @@ describe('computeCaps', () => {
             feature: 'InquiryMode',
             overrides: { maxOutputMode: 'high' }
         });
+        const tier4 = computeCaps({
+            provider: 'anthropic',
+            model: model!,
+            accessTier: 4,
+            feature: 'InquiryMode',
+            overrides: { maxOutputMode: 'high' }
+        });
         expect(tier3.maxOutputTokens).toBeGreaterThan(tier1.maxOutputTokens);
+        expect(tier4.requestPerMinute).toBeGreaterThan(tier3.requestPerMinute);
+        expect(tier4.safeChunkThreshold).toBeGreaterThanOrEqual(tier3.safeChunkThreshold);
     });
 
     it('uses deeper reasoning defaults for inquiry when requested', () => {

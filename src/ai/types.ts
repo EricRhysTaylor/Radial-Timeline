@@ -2,6 +2,7 @@ import type { AiStatus } from '../api/providerErrors';
 
 export type AIProviderId = 'openai' | 'anthropic' | 'google' | 'ollama' | 'none';
 export type LegacyProviderId = 'openai' | 'anthropic' | 'gemini' | 'local';
+export type AccessTier = 1 | 2 | 3 | 4;
 
 export type Capability =
     | 'longContext'
@@ -74,9 +75,9 @@ export interface AIPrivacySettings {
 }
 
 export interface AIAccessProfile {
-    anthropicTier?: 1 | 2 | 3;
-    openaiTier?: 1 | 2 | 3;
-    googleTier?: 1 | 2 | 3;
+    anthropicTier?: AccessTier;
+    openaiTier?: AccessTier;
+    googleTier?: AccessTier;
 }
 
 export interface AIFeatureProfile {
@@ -112,6 +113,19 @@ export interface AiSettingsV1 {
     connections?: AIProviderConnectionSettings;
     migrationWarnings?: string[];
     upgradedBannerPending?: boolean;
+    lastThroughputCheck?: AIThroughputCheckResult;
+}
+
+export interface AIThroughputCheckResult {
+    checkedAt: string;
+    provider: Exclude<AIProviderId, 'none'>;
+    endpoint: string;
+    statusCode: number;
+    observedHeaders: Record<string, string>;
+    observedFields?: Record<string, string>;
+    noLimitInfoAvailable: boolean;
+    heuristicTierSuggestion?: AccessTier;
+    heuristicSummary: string;
 }
 
 export interface GenerateTextRequest {
@@ -155,7 +169,7 @@ export interface ModelSelectionRequest {
     provider: AIProviderId;
     policy: ModelPolicy;
     requiredCapabilities: Capability[];
-    accessTier?: 1 | 2 | 3;
+    accessTier?: AccessTier;
     contextTokensNeeded?: number;
     outputTokensNeeded?: number;
 }

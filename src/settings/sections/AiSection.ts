@@ -27,7 +27,7 @@ import {
 } from '../../ai/registry/recommendations';
 import { selectModel } from '../../ai/router/selectModel';
 import { computeCaps } from '../../ai/caps/computeCaps';
-import { getAIClient } from '../../ai/runtime/aiClient';
+import { getAIClient, getLastAiAdvancedContext } from '../../ai/runtime/aiClient';
 import {
     getCredential,
     getCredentialSecretId,
@@ -35,7 +35,8 @@ import {
     setCredentialSecretId
 } from '../../ai/credentials/credentials';
 import { getSecret, hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
-import type { AIProviderId, ModelPolicy, ModelProfileName, Capability, ModelInfo } from '../../ai/types';
+import { PROVIDER_CAPS } from '../../ai/caps/providerCaps';
+import type { AccessTier, AIProviderId, AIThroughputCheckResult, ModelPolicy, ModelProfileName, Capability, ModelInfo } from '../../ai/types';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
 
@@ -102,7 +103,7 @@ export function renderAiSection(params: {
     heroOnFeatures.createEl('h5', { text: 'AI HIGHLIGHTS', cls: 'ert-kicker' });
     const heroOnList = heroOnFeatures.createEl('ul', { cls: ERT_CLASSES.STACK });
     [
-        { icon: 'waves', text: 'Inquiry - Ask precise, cross-scene questions and receive structured editorial insight.' },
+        { icon: 'waves', text: 'Inquiry - Ask precise, cross-scene questions and receive structured editorial feedback.' },
         { icon: 'activity', text: 'Pulse (Triplet Analysis) - Examine scenes in context using Radial Timeline’s three-scene lens.' },
         { icon: 'waypoints', text: 'Gossamer Momentum - Measure beat-level tension and narrative drive.' },
         { icon: 'sparkles', text: 'Force multiplier - Expand analytical reach while saving time with contextual, actionable insight.' }
@@ -223,15 +224,20 @@ export function renderAiSection(params: {
     const capacityOutput = createCapacityCell('Output allowance');
     const capacityMode = createCapacityCell('Current packaging preference');
 
-    const packagingSection = largeHandlingBody.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-packaging-copy` });
-    packagingSection.createDiv({ cls: 'ert-ai-capacity-title', text: 'Automatic packaging behavior' });
-    const packagingList = packagingSection.createEl('ul', { cls: `${ERT_CLASSES.STACK} ert-ai-packaging-list` });
+    const packagingSection = largeHandlingBody.createDiv({
+        cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT} ert-ai-packaging-copy`
+    });
+    packagingSection.createEl('h5', { text: 'AUTOMATIC PACKAGING', cls: 'ert-kicker' });
+    const packagingList = packagingSection.createEl('ul', { cls: ERT_CLASSES.STACK });
     [
-        'One pass is used when the full request fits safely.',
-        'When needed, Radial Timeline switches to structured packaging and synthesis automatically.',
-        'Stable scene IDs keep scene citations aligned across synthesis.'
+        { icon: 'zap', text: 'One pass is used when the full request fits safely.' },
+        { icon: 'layers', text: 'Switches to structured packaging and synthesis automatically when needed.' },
+        { icon: 'anchor', text: 'Stable scene IDs keep citations aligned across synthesis.' }
     ].forEach(item => {
-        packagingList.createEl('li', { text: item });
+        const li = packagingList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
+        const icon = li.createSpan({ cls: 'ert-feature-icon' });
+        setIcon(icon, item.icon);
+        li.createSpan({ text: item.text });
     });
 
     const executionPreferenceSetting = new Settings(largeHandlingBody)
@@ -241,7 +247,7 @@ export function renderAiSection(params: {
     let executionPreferenceDropdown: DropdownComponent | null = null;
     executionPreferenceSetting.addDropdown(dropdown => {
         executionPreferenceDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input--sm', 'ert-ai-strategy-select');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
         dropdown.addOption('automatic', 'Automatic (recommended)');
         dropdown.addOption('singlePassOnly', 'Single-pass only');
         dropdown.onChange(async value => {
@@ -328,6 +334,35 @@ export function renderAiSection(params: {
         none: 'Disabled'
     };
 
+    const profileLabel: Record<ModelProfileName, string> = {
+        deepReasoner: 'Deep Structural Analysis',
+        deepWriter: 'Narrative Craft',
+        balancedAnalysis: 'Balanced Editorial'
+    };
+
+    const strategyLabel = (policy: ModelPolicy): string => {
+        if (policy.type === 'profile') {
+            return profileLabel[policy.profile] ?? 'Balanced Editorial';
+        }
+        if (policy.type === 'pinned') return 'Manual Selection';
+        if (policy.type === 'latestFast') return 'Fast Iteration';
+        if (policy.type === 'latestCheap') return 'Efficient Drafting';
+        return 'Stable Default';
+    };
+
+    const formatApproxTokens = (value: number): string => {
+        if (!Number.isFinite(value) || value <= 0) return 'n/a';
+        if (value < 1000) return `~${Math.round(value)}`;
+        const rounded = Math.round(value / 1000);
+        return `~${rounded}k`;
+    };
+
+    const availabilityPillText = (status: AvailabilityStatus): string => {
+        if (status === 'visible') return 'Availability · Visible';
+        if (status === 'not_visible') return 'Availability · Not visible';
+        return 'Availability · Unknown';
+    };
+
     const getProviderAliases = (provider: AIProviderId): string[] =>
         BUILTIN_MODELS
             .filter(model => model.provider === provider && model.status !== 'deprecated')
@@ -337,7 +372,7 @@ export function renderAiSection(params: {
         BUILTIN_MODELS.find(model => model.provider === provider && model.status === 'stable')?.alias
         ?? BUILTIN_MODELS.find(model => model.provider === provider)?.alias;
 
-    const getAccessTier = (provider: AIProviderId): 1 | 2 | 3 => {
+    const getAccessTier = (provider: AIProviderId): AccessTier => {
         const aiSettings = ensureCanonicalAiSettings();
         if (provider === 'anthropic') return aiSettings.aiAccessProfile.anthropicTier ?? 1;
         if (provider === 'openai') return aiSettings.aiAccessProfile.openaiTier ?? 1;
@@ -345,7 +380,7 @@ export function renderAiSection(params: {
         return 1;
     };
 
-    const setAccessTier = (provider: AIProviderId, tier: 1 | 2 | 3): void => {
+    const setAccessTier = (provider: AIProviderId, tier: AccessTier): void => {
         const aiSettings = ensureCanonicalAiSettings();
         if (provider === 'anthropic') aiSettings.aiAccessProfile.anthropicTier = tier;
         if (provider === 'openai') aiSettings.aiAccessProfile.openaiTier = tier;
@@ -380,13 +415,13 @@ export function renderAiSection(params: {
     };
 
     const providerSetting = new Settings(quickSetupGrid)
-        .setName('Choose Provider')
+        .setName('CHOOSE PROVIDER')
         .setDesc('Choose which AI service powers analysis and summaries.');
     providerSetting.settingEl.setAttr('data-ert-role', 'ai-setting:provider');
     let providerDropdown: DropdownComponent | null = null;
     providerSetting.addDropdown(dropdown => {
         providerDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input--sm', 'ert-ai-strategy-select');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
         dropdown.addOption('anthropic', 'Anthropic');
         dropdown.addOption('openai', 'OpenAI');
         dropdown.addOption('google', 'Google');
@@ -410,13 +445,13 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(providerSetting.settingEl);
 
     const policySetting = new Settings(quickSetupGrid)
-        .setName('Model strategy')
+        .setName('MODEL STRATEGY')
         .setDesc('Decide how models are selected - automatically, by profile, or manually.');
     policySetting.settingEl.setAttr('data-ert-role', 'ai-setting:model-strategy');
     let policyDropdown: DropdownComponent | null = null;
     policySetting.addDropdown(dropdown => {
         policyDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input--sm', 'ert-ai-strategy-select');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
         dropdown.addOption('pinned', 'Manual (Pinned)');
         dropdown.addOption('profile', 'Profile');
         dropdown.addOption('latestStable', 'Latest stable');
@@ -441,13 +476,13 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(policySetting.settingEl);
 
     const pinnedSetting = new Settings(quickSetupGrid)
-        .setName('Pinned model alias')
+        .setName('PINNED ALIAS')
         .setDesc('Select a specific model to use instead of automatic selection.');
     pinnedSetting.settingEl.setAttr('data-ert-role', 'ai-setting:pinned-model');
     let pinnedDropdown: DropdownComponent | null = null;
     pinnedSetting.addDropdown(dropdown => {
         pinnedDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input--sm', 'ert-ai-strategy-select');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
         dropdown.onChange(async value => {
             const aiSettings = ensureCanonicalAiSettings();
             if (aiSettings.modelPolicy.type !== 'pinned') return;
@@ -459,13 +494,13 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(pinnedSetting.settingEl);
 
     const profileSetting = new Settings(quickSetupGrid)
-        .setName('Profile')
+        .setName('PROFILE')
         .setDesc('Apply a thinking style suited to your task (deep analysis, balanced, or fast).');
     profileSetting.settingEl.setAttr('data-ert-role', 'ai-setting:profile');
     let profileDropdown: DropdownComponent | null = null;
     profileSetting.addDropdown(dropdown => {
         profileDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input--sm', 'ert-ai-strategy-select');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
         dropdown.addOption('deepReasoner', 'deepReasoner');
         dropdown.addOption('deepWriter', 'deepWriter');
         dropdown.addOption('balancedAnalysis', 'balancedAnalysis');
@@ -479,21 +514,22 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(profileSetting.settingEl);
 
     const accessTierSetting = new Settings(quickSetupGrid)
-        .setName('Access level')
+        .setName('ACCESS LEVEL')
         .setDesc('Adjust request scale and output allowance for your provider.');
     accessTierSetting.settingEl.setAttr('data-ert-role', 'ai-setting:access-level');
     let accessTierDropdown: DropdownComponent | null = null;
     accessTierSetting.addDropdown(dropdown => {
         accessTierDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input--sm', 'ert-ai-strategy-select');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
         dropdown.addOption('1', 'Tier 1');
         dropdown.addOption('2', 'Tier 2');
         dropdown.addOption('3', 'Tier 3');
+        dropdown.addOption('4', 'Tier 4');
         dropdown.onChange(async value => {
             const aiSettings = ensureCanonicalAiSettings();
             const provider = aiSettings.provider;
             if (provider === 'anthropic' || provider === 'openai' || provider === 'google') {
-                setAccessTier(provider, Number(value) as 1 | 2 | 3);
+                setAccessTier(provider, Number(value) as AccessTier);
                 await persistCanonical();
                 refreshRoutingUi();
             }
@@ -502,12 +538,12 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(accessTierSetting.settingEl);
 
     const outputModeSetting = new Settings(quickSetupGrid)
-        .setName('Output cap')
+        .setName('OUTPUT CAP')
         .setDesc('Control how much response space AI can use. Higher values allow longer answers.');
     let outputModeDropdown: DropdownComponent | null = null;
     outputModeSetting.addDropdown(dropdown => {
         outputModeDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input--sm', 'ert-ai-strategy-select');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
         dropdown.addOption('auto', 'Auto');
         dropdown.addOption('high', 'High');
         dropdown.addOption('max', 'Max');
@@ -521,12 +557,12 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(outputModeSetting.settingEl);
 
     const reasoningDepthSetting = new Settings(quickSetupGrid)
-        .setName('Reasoning depth')
+        .setName('REASONING DEPTH')
         .setDesc('Standard for speed. Deep for more precise structural insight.');
     let reasoningDepthDropdown: DropdownComponent | null = null;
     reasoningDepthSetting.addDropdown(dropdown => {
         reasoningDepthDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input--sm', 'ert-ai-strategy-select');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--lg');
         dropdown.addOption('standard', 'Standard');
         dropdown.addOption('deep', 'Deep');
         dropdown.onChange(async value => {
@@ -551,8 +587,6 @@ export function renderAiSection(params: {
             quickSetupGrid.appendChild(el);
             el.addClass('ert-ai-grid-item');
         });
-        resolvedPreviewSetting.settingEl.addClass('ert-ai-wide-setting');
-        upgradeBannerSetting.settingEl.addClass('ert-ai-wide-setting');
     };
 
     const applyStrategyRowCopyLayout = (setting: Settings, description: string): void => {
@@ -565,6 +599,218 @@ export function renderAiSection(params: {
             setting.settingEl.createDiv({ cls: 'ert-ai-strategy-row__desc', text: description });
         } else {
             existing.setText(description);
+        }
+    };
+
+    const sanitizeEndpointForDisplay = (endpoint: string): string => {
+        try {
+            const parsed = new URL(endpoint);
+            if (parsed.searchParams.has('key')) {
+                parsed.searchParams.set('key', '***');
+            }
+            return parsed.toString();
+        } catch {
+            return endpoint;
+        }
+    };
+
+    const isRateLikeKey = (key: string): boolean => {
+        const normalized = key.toLowerCase();
+        return normalized.includes('ratelimit')
+            || normalized.includes('rate-limit')
+            || normalized.includes('rate_limit')
+            || normalized.includes('quota')
+            || normalized === 'retry-after';
+    };
+
+    const extractRelevantHeaders = (headers: Headers): Record<string, string> => {
+        const observed: Record<string, string> = {};
+        headers.forEach((value, key) => {
+            if (!isRateLikeKey(key)) return;
+            const cleaned = value.trim();
+            if (!cleaned) return;
+            observed[key.toLowerCase()] = cleaned;
+        });
+        return observed;
+    };
+
+    const extractRelevantFields = (value: unknown): Record<string, string> => {
+        const observed: Record<string, string> = {};
+        if (!value || typeof value !== 'object') return observed;
+
+        const queue: Array<{ path: string; value: unknown; depth: number }> = [{ path: '', value, depth: 0 }];
+        const maxDepth = 2;
+        const maxFields = 16;
+
+        while (queue.length > 0 && Object.keys(observed).length < maxFields) {
+            const current = queue.shift();
+            if (!current) break;
+            if (current.depth > maxDepth) continue;
+
+            if (current.value && typeof current.value === 'object' && !Array.isArray(current.value)) {
+                const entries = Object.entries(current.value as Record<string, unknown>);
+                for (const [key, child] of entries) {
+                    const path = current.path ? `${current.path}.${key}` : key;
+                    const keyForMatch = key.toLowerCase();
+                    const isRelevant = isRateLikeKey(keyForMatch)
+                        || keyForMatch.includes('limit')
+                        || keyForMatch.includes('retry')
+                        || keyForMatch.includes('requests');
+                    if (isRelevant && (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean')) {
+                        observed[path] = String(child);
+                    } else if (current.depth < maxDepth && child && typeof child === 'object') {
+                        queue.push({ path, value: child, depth: current.depth + 1 });
+                    }
+                    if (Object.keys(observed).length >= maxFields) break;
+                }
+            }
+        }
+
+        return observed;
+    };
+
+    const parseNumericLimit = (raw: string | undefined): number | null => {
+        if (!raw) return null;
+        const match = raw.match(/(\d{1,9})/);
+        if (!match) return null;
+        const parsed = Number(match[1]);
+        return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const getObservedRpm = (
+        observedHeaders: Record<string, string>,
+        observedFields: Record<string, string>
+    ): number | null => {
+        const candidates: Array<string | undefined> = [
+            observedHeaders['x-ratelimit-limit-requests'],
+            observedHeaders['ratelimit-limit-requests'],
+            observedHeaders['x-ratelimit-limit'],
+            observedHeaders['ratelimit-limit'],
+            observedFields.requests_per_minute,
+            observedFields.rpm,
+            observedFields.rate_limit_requests,
+            observedFields.rate_limit_per_minute,
+            observedFields.limits_requests_per_minute
+        ];
+        for (const candidate of candidates) {
+            const parsed = parseNumericLimit(candidate);
+            if (parsed && parsed > 0) return parsed;
+        }
+        return null;
+    };
+
+    const inferTierSuggestion = (
+        provider: Exclude<AIProviderId, 'none'>,
+        currentTier: AccessTier,
+        observedRpm: number | null
+    ): { heuristicTierSuggestion?: AccessTier; heuristicSummary: string; noLimitInfoAvailable: boolean } => {
+        if (!observedRpm) {
+            return {
+                noLimitInfoAvailable: true,
+                heuristicSummary: 'No limit info available from the provider response. This check could not estimate throughput.'
+            };
+        }
+
+        const tierOrder: AccessTier[] = [1, 2, 3, 4];
+        const tierCaps = PROVIDER_CAPS[provider].tiers;
+        let closestTier: AccessTier = currentTier;
+        let smallestDelta = Number.POSITIVE_INFINITY;
+
+        for (const tier of tierOrder) {
+            const delta = Math.abs(tierCaps[tier].requestPerMinute - observedRpm);
+            if (delta < smallestDelta) {
+                smallestDelta = delta;
+                closestTier = tier;
+            }
+        }
+
+        if (closestTier === currentTier) {
+            return {
+                noLimitInfoAvailable: false,
+                heuristicTierSuggestion: currentTier,
+                heuristicSummary: `Observed throughput appears around ${observedRpm}/min and appears consistent with Tier ${currentTier}.`
+            };
+        }
+
+        return {
+            noLimitInfoAvailable: false,
+            heuristicTierSuggestion: closestTier,
+            heuristicSummary: `Observed throughput appears around ${observedRpm}/min. This suggests Tier ${closestTier} may match better than Tier ${currentTier}.`
+        };
+    };
+
+    const runThroughputProbe = async (): Promise<AIThroughputCheckResult> => {
+        const aiSettings = ensureCanonicalAiSettings();
+        const providerCandidate = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
+        const provider: Exclude<AIProviderId, 'none'> = providerCandidate;
+        const currentTier = getAccessTier(provider);
+        const timeoutController = new AbortController();
+        const timeout = window.setTimeout(() => timeoutController.abort(), 12000);
+
+        let endpoint = '';
+        const requestHeaders: Record<string, string> = {};
+
+        try {
+            if (provider === 'openai') {
+                const key = await getCredential(plugin, 'openai');
+                if (!key) throw new Error('No saved key found for OpenAI.');
+                endpoint = 'https://api.openai.com/v1/models';
+                requestHeaders.Authorization = `Bearer ${key}`;
+            } else if (provider === 'anthropic') {
+                const key = await getCredential(plugin, 'anthropic');
+                if (!key) throw new Error('No saved key found for Anthropic.');
+                endpoint = 'https://api.anthropic.com/v1/models?limit=1';
+                requestHeaders['x-api-key'] = key;
+                requestHeaders['anthropic-version'] = '2023-06-01';
+            } else if (provider === 'google') {
+                const key = await getCredential(plugin, 'google');
+                if (!key) throw new Error('No saved key found for Google.');
+                endpoint = `https://generativelanguage.googleapis.com/v1beta/models?pageSize=1&key=${encodeURIComponent(key)}`;
+            } else {
+                const base = (aiSettings.connections?.ollamaBaseUrl || plugin.settings.localBaseUrl || 'http://localhost:11434/v1').trim();
+                const trimmedBase = base.replace(/\/+$/, '');
+                endpoint = trimmedBase.endsWith('/models') ? trimmedBase : `${trimmedBase}/models`;
+                const key = await getCredential(plugin, 'ollama');
+                if (key) requestHeaders.Authorization = `Bearer ${key}`;
+            }
+
+            const response = await fetch(endpoint, {
+                method: 'GET',
+                headers: requestHeaders,
+                signal: timeoutController.signal
+            });
+
+            const observedHeaders = extractRelevantHeaders(response.headers);
+            let observedFields: Record<string, string> = {};
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                try {
+                    const payload = await response.json() as unknown;
+                    observedFields = extractRelevantFields(payload);
+                } catch {
+                    observedFields = {};
+                }
+            } else {
+                try { await response.text(); } catch { /* ignore */ }
+            }
+
+            const observedRpm = getObservedRpm(observedHeaders, observedFields);
+            const inference = inferTierSuggestion(provider, currentTier, observedRpm);
+
+            return {
+                checkedAt: new Date().toISOString(),
+                provider,
+                endpoint: sanitizeEndpointForDisplay(endpoint),
+                statusCode: response.status,
+                observedHeaders,
+                observedFields,
+                noLimitInfoAvailable: inference.noLimitInfoAvailable,
+                heuristicTierSuggestion: inference.heuristicTierSuggestion,
+                heuristicSummary: inference.heuristicSummary
+            };
+        } finally {
+            window.clearTimeout(timeout);
         }
     };
 
@@ -648,6 +894,78 @@ export function renderAiSection(params: {
             }
         }));
     params.addAiRelatedElement(refreshAvailabilitySetting.settingEl);
+
+    const throughputCheckSetting = new Settings(advancedBody)
+        .setName('Check throughput')
+        .setDesc('Runs a small test to estimate limits for your current provider.');
+    const throughputResultSetting = new Settings(advancedBody)
+        .setName('Last throughput check')
+        .setDesc('No throughput checks have been run yet.');
+
+    const renderThroughputResult = (): void => {
+        const result = ensureCanonicalAiSettings().lastThroughputCheck;
+        if (!result) {
+            throughputResultSetting.setDesc('No throughput checks have been run yet.');
+            return;
+        }
+        const observedHeaderCount = Object.keys(result.observedHeaders || {}).length;
+        const observedFieldCount = Object.keys(result.observedFields || {}).length;
+        const observedTotal = observedHeaderCount + observedFieldCount;
+        const timestamp = new Date(result.checkedAt).toLocaleString();
+        const suggestion = result.heuristicTierSuggestion
+            ? ` Suggested tier: ${result.heuristicTierSuggestion}.`
+            : '';
+        const observedText = observedTotal > 0
+            ? ` Observed ${observedTotal} limit signal${observedTotal === 1 ? '' : 's'}.`
+            : ' No limit info available.';
+        const sampleSignals = [
+            ...Object.entries(result.observedHeaders || {}),
+            ...Object.entries(result.observedFields || {})
+        ]
+            .slice(0, 3)
+            .map(([key, value]) => `${key}=${value}`)
+            .join('; ');
+        const sampleText = sampleSignals ? ` Signals: ${sampleSignals}.` : '';
+        throughputResultSetting.setDesc(
+            `${timestamp} · ${result.provider.toUpperCase()} (${result.statusCode}). ${result.heuristicSummary}${suggestion}${observedText}${sampleText}`
+        );
+    };
+
+    throughputCheckSetting.addButton(button => button
+        .setButtonText('Run check')
+        .onClick(async () => {
+            button.setDisabled(true);
+            try {
+                const result = await runThroughputProbe();
+                const aiSettings = ensureCanonicalAiSettings();
+                aiSettings.lastThroughputCheck = result;
+                await persistCanonical();
+                renderThroughputResult();
+                new Notice('Throughput check completed.');
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                const aiSettings = ensureCanonicalAiSettings();
+                const provider = (aiSettings.provider === 'none' ? 'openai' : aiSettings.provider) as Exclude<AIProviderId, 'none'>;
+                aiSettings.lastThroughputCheck = {
+                    checkedAt: new Date().toISOString(),
+                    provider,
+                    endpoint: 'unavailable',
+                    statusCode: 0,
+                    observedHeaders: {},
+                    observedFields: {},
+                    noLimitInfoAvailable: true,
+                    heuristicSummary: `No limit info available. The check suggests verifying your provider key and trying again (${message}).`
+                };
+                await persistCanonical();
+                renderThroughputResult();
+                new Notice(`Throughput check failed: ${message}`);
+            } finally {
+                button.setDisabled(false);
+            }
+        }));
+    params.addAiRelatedElement(throughputCheckSetting.settingEl);
+    params.addAiRelatedElement(throughputResultSetting.settingEl);
+    renderThroughputResult();
 
     const modelsPanel = modelDetailsBody.createDiv({ cls: ['ert-panel', ERT_CLASSES.STACK, 'ert-ai-models-panel'] });
     const modelsHeader = modelsPanel.createDiv({ cls: 'ert-inline ert-inline--split' });
@@ -986,23 +1304,28 @@ export function renderAiSection(params: {
         }
     };
 
-    const resolvedPreviewSetting = new Settings(quickSetupSection)
-        .setName('Resolved model preview')
-        .setDesc('Resolving...');
-    params.addAiRelatedElement(resolvedPreviewSetting.settingEl);
+    const resolvedPreviewFrame = quickSetupSection.createDiv({
+        cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--center', 'ert-previewFrame--flush', 'ert-ai-resolved-preview'],
+        attr: { 'data-ert-role': 'ai-setting:resolved-model-preview' }
+    });
+    const resolvedPreviewKicker = resolvedPreviewFrame.createDiv({
+        cls: 'ert-ai-resolved-preview-kicker',
+        text: 'PREVIEW (ACTIVE MODEL)'
+    });
+    const resolvedPreviewModel = resolvedPreviewFrame.createDiv({
+        cls: 'ert-ai-resolved-preview-model',
+        text: 'Resolving...'
+    });
+    const resolvedPreviewProvider = resolvedPreviewFrame.createDiv({
+        cls: 'ert-ai-resolved-preview-provider',
+        text: 'Provider: —'
+    });
+    const resolvedPreviewPills = resolvedPreviewFrame.createDiv({ cls: 'ert-ai-resolved-preview-pills' });
+    const resolvedPreviewDetails = resolvedPreviewFrame.createEl('details', { cls: 'ert-ai-resolved-preview-details' });
+    resolvedPreviewDetails.createEl('summary', { text: 'Details' });
+    const resolvedPreviewDetailsBody = resolvedPreviewDetails.createDiv({ cls: 'ert-field-note ert-ai-resolved-preview-details-body' });
+    params.addAiRelatedElement(resolvedPreviewFrame);
 
-    const upgradeBannerSetting = new Settings(quickSetupSection)
-        .setName('AI settings upgraded')
-        .setDesc('Your AI settings were upgraded to capability-based routing. Review and confirm your provider and policy choices.');
-    upgradeBannerSetting.addButton(button => button
-        .setButtonText('Dismiss')
-        .onClick(async () => {
-            const aiSettings = ensureCanonicalAiSettings();
-            aiSettings.upgradedBannerPending = false;
-            await persistCanonical();
-            refreshRoutingUi();
-        }));
-    params.addAiRelatedElement(upgradeBannerSetting.settingEl);
 
     applyStrategyRowCopyLayout(providerSetting, 'Choose which AI service powers analysis and summaries.');
     applyStrategyRowCopyLayout(policySetting, 'Decide how models are selected - automatically, by profile, or manually.');
@@ -1027,6 +1350,94 @@ export function renderAiSection(params: {
         }
         if (fallback && dropdownHasValue(dropdown, fallback)) {
             dropdown.setValue(fallback);
+        }
+    };
+
+    interface ResolvedPreviewRenderState {
+        modelKey: string;
+        provider: AIProviderId;
+        modelId: string;
+        modelLabel: string;
+        modelAlias: string;
+        strategyPill: string;
+        analysisPackaging: 'automatic' | 'singlePassOnly';
+        maxInputTokens: number | null;
+        maxOutputTokens: number | null;
+        reasonDetails: string;
+        warnings: string[];
+        availabilityStatus: AvailabilityStatus;
+        showAvailabilityPill: boolean;
+        passCount: number | null;
+        errorMessage?: string;
+    }
+
+    let activeResolvedPreviewKey = '';
+    let resolvedPreviewState: ResolvedPreviewRenderState | null = null;
+
+    const createResolvedPreviewPill = (text: string): void => {
+        resolvedPreviewPills.createSpan({
+            cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM} ert-ai-resolved-preview-pill`,
+            text
+        });
+    };
+
+    const renderResolvedPreview = (state: ResolvedPreviewRenderState): void => {
+        resolvedPreviewState = state;
+        activeResolvedPreviewKey = state.modelKey;
+
+        resolvedPreviewKicker.setText('PREVIEW (ACTIVE MODEL)');
+        resolvedPreviewModel.setText(state.modelLabel);
+        resolvedPreviewProvider.setText(`${providerLabel[state.provider]} · ${state.modelAlias}`);
+        resolvedPreviewPills.empty();
+
+        createResolvedPreviewPill(state.strategyPill);
+        createResolvedPreviewPill(state.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic Packaging');
+        createResolvedPreviewPill(`Input · ${state.maxInputTokens ? formatApproxTokens(state.maxInputTokens) : 'n/a'}`);
+        createResolvedPreviewPill(`Response · ${state.maxOutputTokens ? `${formatApproxTokens(state.maxOutputTokens)} / pass` : 'n/a'}`);
+
+        if (state.passCount && state.passCount > 1) {
+            createResolvedPreviewPill(`Passes · ${state.passCount}`);
+        }
+
+        if (state.showAvailabilityPill && state.availabilityStatus !== 'unknown') {
+            createResolvedPreviewPill(availabilityPillText(state.availabilityStatus));
+        }
+
+        const warningSuffix = state.warnings.length ? ` Warning: ${state.warnings[0]}` : '';
+        resolvedPreviewDetailsBody.setText(
+            state.errorMessage
+                ? `Selection details: ${state.errorMessage}`
+                : `Selection details: ${state.reasonDetails}.${warningSuffix}`
+        );
+    };
+
+    const snapshotProviderFor = (provider: AIProviderId): 'openai' | 'anthropic' | 'google' | null => {
+        if (provider === 'openai' || provider === 'anthropic' || provider === 'google') return provider;
+        return null;
+    };
+
+    const refreshResolvedPreviewAvailability = async (state: ResolvedPreviewRenderState): Promise<void> => {
+        if (!state.showAvailabilityPill) return;
+        const snapshotProvider = snapshotProviderFor(state.provider);
+        if (!snapshotProvider) return;
+
+        try {
+            const snapshotResult = await getAIClient(plugin).getProviderSnapshot(false);
+            if (activeResolvedPreviewKey !== state.modelKey || !resolvedPreviewState) return;
+            const status: AvailabilityStatus = !snapshotResult.snapshot
+                ? 'unknown'
+                : snapshotResult.snapshot.models.some(model =>
+                    model.provider === snapshotProvider && model.id === state.modelId
+                )
+                ? 'visible'
+                : 'not_visible';
+
+            renderResolvedPreview({
+                ...state,
+                availabilityStatus: status
+            });
+        } catch {
+            // Ignore availability lookup failures; preview stays in a known-safe state.
         }
     };
 
@@ -1094,8 +1505,10 @@ export function renderAiSection(params: {
             accessTierDropdown?.setValue(String(getAccessTier(provider)));
         }
 
-        upgradeBannerSetting.settingEl.toggleClass('ert-settings-hidden', !aiSettings.upgradedBannerPending);
-        upgradeBannerSetting.settingEl.toggleClass('ert-settings-visible', !!aiSettings.upgradedBannerPending);
+        const inquiryAdvanced = getLastAiAdvancedContext(plugin, 'InquiryMode');
+        const passCount = typeof inquiryAdvanced?.executionPassCount === 'number' && inquiryAdvanced.executionPassCount > 1
+            ? inquiryAdvanced.executionPassCount
+            : null;
 
         capacityProvider.valueEl.setText(providerLabel[provider]);
         capacitySafeInput.valueEl.setText('Calculating...');
@@ -1119,24 +1532,47 @@ export function renderAiSection(params: {
                 overrides: aiSettings.overrides
             });
             const safetyPct = Math.round(caps.safeChunkThreshold * 100);
-            const policyLine = policy.type === 'profile'
-                ? `Selected via profile: ${policy.profile}`
-                : `Selected via policy: ${policy.type}`;
-            const profileDetails = policy.type === 'profile'
-                ? ` · profile floor: reasoning>=${MODEL_PROFILES[policy.profile].minReasoning ?? 'n/a'}`
-                : '';
-            const warningLine = selection.warnings.length ? ` Warning: ${selection.warnings[0]}` : '';
-            resolvedPreviewSetting.setDesc(
-                `${providerLabel[provider]} -> ${selection.model.label}. ${policyLine}${profileDetails}. `
-                + `Output cap ${caps.maxOutputTokens}. Reason: ${selection.reason}.${warningLine}`
-            );
+            const previewState: ResolvedPreviewRenderState = {
+                modelKey: `${provider}:${selection.model.id}`,
+                provider,
+                modelId: selection.model.id,
+                modelLabel: selection.model.label,
+                modelAlias: selection.model.alias,
+                strategyPill: strategyLabel(policy),
+                analysisPackaging: aiSettings.analysisPackaging,
+                maxInputTokens: caps.maxInputTokens,
+                maxOutputTokens: caps.maxOutputTokens,
+                reasonDetails: selection.reason,
+                warnings: selection.warnings,
+                availabilityStatus: 'unknown',
+                showAvailabilityPill: aiSettings.privacy.allowProviderSnapshot,
+                passCount
+            };
+            renderResolvedPreview(previewState);
+            void refreshResolvedPreviewAvailability(previewState);
             capacityProvider.valueEl.setText(`${providerLabel[provider]} · ${selection.model.label}`);
             capacitySafeInput.valueEl.setText(`${caps.maxInputTokens.toLocaleString()} tokens (${safetyPct}% safe window)`);
             capacityOutput.valueEl.setText(`${caps.maxOutputTokens.toLocaleString()} tokens`);
             capacityMode.valueEl.setText(aiSettings.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic');
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            resolvedPreviewSetting.setDesc(`Model resolution failed: ${message}`);
+            renderResolvedPreview({
+                modelKey: `${provider}:unresolved`,
+                provider,
+                modelId: 'unresolved',
+                modelLabel: 'No eligible model',
+                modelAlias: providerLabel[provider],
+                strategyPill: strategyLabel(policy),
+                analysisPackaging: aiSettings.analysisPackaging,
+                maxInputTokens: null,
+                maxOutputTokens: null,
+                reasonDetails: message,
+                warnings: [],
+                availabilityStatus: 'unknown',
+                showAvailabilityPill: false,
+                passCount,
+                errorMessage: message
+            });
             capacityProvider.valueEl.setText(providerLabel[provider]);
             capacitySafeInput.valueEl.setText('Unavailable');
             capacityOutput.valueEl.setText('Unavailable');

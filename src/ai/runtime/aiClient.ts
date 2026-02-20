@@ -19,6 +19,7 @@ import type {
     Capability,
     ModelPolicy,
     ModelInfo,
+    AccessTier,
     ProviderExecutionResult
 } from '../types';
 import { buildProviders } from '../providers/provider';
@@ -45,7 +46,7 @@ function getAiSettings(settings: RadialTimelineSettings): AiSettingsV1 {
     return validated.value;
 }
 
-function resolveTier(settings: AiSettingsV1, provider: AIProviderId): 1 | 2 | 3 {
+function resolveTier(settings: AiSettingsV1, provider: AIProviderId): AccessTier {
     if (provider === 'anthropic') return settings.aiAccessProfile.anthropicTier ?? 1;
     if (provider === 'openai') return settings.aiAccessProfile.openaiTier ?? 1;
     if (provider === 'google') return settings.aiAccessProfile.googleTier ?? 1;

@@ -20,7 +20,7 @@ import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 import { selectModel } from '../../ai/router/selectModel';
 import { computeCaps } from '../../ai/caps/computeCaps';
-import type { AIRunResult, AnalysisPackaging, AIProviderId, SceneRef } from '../../ai/types';
+import type { AIRunResult, AnalysisPackaging, AIProviderId, AccessTier, SceneRef } from '../../ai/types';
 import { readSceneId, resolveSceneReferenceId } from '../../utils/sceneIds';
 import { buildSceneRefIndex, isStableSceneId, normalizeSceneRef } from '../../ai/references/sceneRefNormalizer';
 
@@ -1082,7 +1082,7 @@ export class InquiryRunnerService implements InquiryRunner {
         return aiSettings.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : 'automatic';
     }
 
-    private getAccessTier(provider: AIProviderId): 1 | 2 | 3 {
+    private getAccessTier(provider: AIProviderId): AccessTier {
         const aiSettings = validateAiSettings(this.plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
         if (provider === 'anthropic') return aiSettings.aiAccessProfile.anthropicTier ?? 1;
         if (provider === 'openai') return aiSettings.aiAccessProfile.openaiTier ?? 1;
