@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-02-20T16:33:46.566Z",
+  "generatedAt": "2026-02-20T16:40:21.383Z",
   "scannedDirectories": [
     "src",
     "scripts"
@@ -440,7 +440,7 @@
     }
   ],
   "summary": {
-    "totalHits": 1402,
+    "totalHits": 1377,
     "totalFilesScanned": 355,
     "filesWithHits": 140,
     "totalsByToken": {
@@ -451,19 +451,19 @@
       "HACK": 1,
       "IMPORTANT": 14,
       "legacy key": 2,
-      "mergeTemplates": 21,
-      "NOTE": 304,
+      "mergeTemplates": 8,
+      "NOTE": 301,
       "plaintext key": 2,
       "refreshTimelineIfNeeded": 32,
       "Ripple Rename": 9,
       "Synopsis": 855,
       "TEMP": 14,
-      "TODO": 77,
+      "TODO": 68,
       "WORKAROUND": 1
     },
     "totalsByCategory": {
-      "drift-term": 932,
-      "stale-comment": 470
+      "drift-term": 919,
+      "stale-comment": 458
     },
     "hotspots": [
       {
@@ -475,12 +475,12 @@
         "hitCount": 126
       },
       {
-        "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-        "hitCount": 104
-      },
-      {
         "filePath": "src/inquiry/InquiryView.ts",
         "hitCount": 101
+      },
+      {
+        "filePath": "src/settings/sections/BeatPropertiesSection.ts",
+        "hitCount": 91
       },
       {
         "filePath": "src/sceneAnalysis/SynopsisCommands.ts",
@@ -515,10 +515,6 @@
         "hitCount": 20
       },
       {
-        "filePath": "src/main.ts",
-        "hitCount": 19
-      },
-      {
         "filePath": "src/types/settings.ts",
         "hitCount": 19
       },
@@ -529,6 +525,10 @@
       {
         "filePath": "src/view/modes/GossamerMode.ts",
         "hitCount": 18
+      },
+      {
+        "filePath": "src/main.ts",
+        "hitCount": 16
       },
       {
         "filePath": "src/renderer/utils/SynopsisBuilder.ts",
@@ -5186,378 +5186,315 @@
     },
     {
       "filePath": "src/main.ts",
-      "line": 86,
-      "token": "NOTE",
-      "category": "stale-comment",
-      "lineText": "// Note: Search highlighting is now handled entirely by addHighlightRectangles() in TimeLineView.ts",
-      "context": {
-        "before": {
-          "line": 85,
-          "text": "// STATUS_COLORS now imported from constants"
-        },
-        "current": {
-          "line": 86,
-          "text": "// Note: Search highlighting is now handled entirely by addHighlightRectangles() in TimeLineView.ts"
-        },
-        "after": {
-          "line": 87,
-          "text": "// after the SVG is rendered. This simplifies the code and ensures a single source of truth."
-        }
-      }
-    },
-    {
-      "filePath": "src/main.ts",
-      "line": 141,
+      "line": 139,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "// Add a synopsisManager instance",
       "context": {
         "before": {
-          "line": 140,
+          "line": 138,
           "text": ""
         },
         "current": {
-          "line": 141,
+          "line": 139,
           "text": "// Add a synopsisManager instance"
         },
         "after": {
-          "line": 142,
+          "line": 140,
           "text": "public synopsisManager: SynopsisManager;"
         }
       }
     },
     {
       "filePath": "src/main.ts",
-      "line": 142,
+      "line": 140,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "public synopsisManager: SynopsisManager;",
       "context": {
         "before": {
-          "line": 141,
+          "line": 139,
           "text": "// Add a synopsisManager instance"
         },
         "current": {
-          "line": 142,
+          "line": 140,
           "text": "public synopsisManager: SynopsisManager;"
         },
         "after": {
-          "line": 143,
+          "line": 141,
           "text": ""
         }
       }
     },
     {
       "filePath": "src/main.ts",
-      "line": 206,
+      "line": 204,
       "token": "refreshTimelineIfNeeded",
       "category": "drift-term",
       "lineText": "this.refreshTimelineIfNeeded(null);",
       "context": {
         "before": {
+          "line": 203,
+          "text": "await this.saveSettings();"
+        },
+        "current": {
+          "line": 204,
+          "text": "this.refreshTimelineIfNeeded(null);"
+        },
+        "after": {
           "line": 205,
-          "text": "await this.saveSettings();"
-        },
-        "current": {
-          "line": 206,
-          "text": "this.refreshTimelineIfNeeded(null);"
-        },
-        "after": {
-          "line": 207,
           "text": "this.updateTimelineBookHeaders();"
         }
       }
     },
     {
       "filePath": "src/main.ts",
-      "line": 213,
+      "line": 211,
       "token": "refreshTimelineIfNeeded",
       "category": "drift-term",
       "lineText": "this.refreshTimelineIfNeeded(null);",
       "context": {
         "before": {
-          "line": 212,
+          "line": 210,
           "text": "await this.saveSettings();"
         },
         "current": {
-          "line": 213,
+          "line": 211,
           "text": "this.refreshTimelineIfNeeded(null);"
         },
         "after": {
-          "line": 214,
+          "line": 212,
           "text": "this.updateTimelineBookHeaders();"
         }
       }
     },
     {
       "filePath": "src/main.ts",
-      "line": 273,
+      "line": 271,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "this.synopsisManager = new SynopsisManager(this);",
       "context": {
         "before": {
-          "line": 272,
+          "line": 270,
           "text": "this.rendererService = new RendererService(this);"
         },
         "current": {
-          "line": 273,
+          "line": 271,
           "text": "this.synopsisManager = new SynopsisManager(this);"
         },
         "after": {
-          "line": 274,
+          "line": 272,
           "text": "this.commandRegistrar = new CommandRegistrar(this, this.app);"
         }
       }
     },
     {
       "filePath": "src/main.ts",
-      "line": 319,
-      "token": "NOTE",
-      "category": "stale-comment",
-      "lineText": "// Note: Frontmatter change detection is handled by the TimelineView with proper debouncing",
-      "context": {
-        "before": {
-          "line": 318,
-          "text": ""
-        },
-        "current": {
-          "line": 319,
-          "text": "// Note: Frontmatter change detection is handled by the TimelineView with proper debouncing"
-        },
-        "after": {
-          "line": 320,
-          "text": "// No metadata listener needed here to avoid triggering on body text changes"
-        }
-      }
-    },
-    {
-      "filePath": "src/main.ts",
-      "line": 341,
+      "line": 338,
       "token": "refreshTimelineIfNeeded",
       "category": "drift-term",
       "lineText": "this.refreshTimelineIfNeeded(null);",
       "context": {
         "before": {
-          "line": 340,
+          "line": 337,
           "text": "// Refresh timeline to show update indicator"
         },
         "current": {
-          "line": 341,
+          "line": 338,
           "text": "this.refreshTimelineIfNeeded(null);"
         },
         "after": {
-          "line": 342,
+          "line": 339,
           "text": "}"
         }
       }
     },
     {
       "filePath": "src/main.ts",
-      "line": 398,
+      "line": 395,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "* Populated during getSceneData() — returns null if no BookMeta note exists.",
       "context": {
         "before": {
-          "line": 397,
+          "line": 394,
           "text": "* Get the BookMeta for the active manuscript."
         },
         "current": {
-          "line": 398,
+          "line": 395,
           "text": "* Populated during getSceneData() — returns null if no BookMeta note exists."
         },
         "after": {
-          "line": 399,
+          "line": 396,
           "text": "*/"
         }
       }
     },
     {
       "filePath": "src/main.ts",
-      "line": 713,
+      "line": 710,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "const knownBaseKeys = ['Class', 'When', 'End', 'Context', 'Synopsis'];",
       "context": {
         "before": {
-          "line": 712,
+          "line": 709,
           "text": "if (!this.settings.backdropYamlTemplates) {"
         },
         "current": {
-          "line": 713,
+          "line": 710,
           "text": "const knownBaseKeys = ['Class', 'When', 'End', 'Context', 'Synopsis'];"
         },
         "after": {
-          "line": 714,
+          "line": 711,
           "text": "const legacyBackdropTemplate = this.settings.backdropYamlTemplate ?? '';"
         }
       }
     },
     {
       "filePath": "src/main.ts",
-      "line": 747,
+      "line": 744,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "if (this.settings.backdropYamlTemplates?.base?.includes('Synopsis:')) {",
       "context": {
         "before": {
-          "line": 746,
+          "line": 743,
           "text": "}"
         },
         "current": {
-          "line": 747,
+          "line": 744,
           "text": "if (this.settings.backdropYamlTemplates?.base?.includes('Synopsis:')) {"
         },
         "after": {
-          "line": 748,
+          "line": 745,
           "text": "this.settings.backdropYamlTemplates.base = this.settings.backdropYamlTemplates.base.replace(/^Synopsis:/gm, 'Context:');"
         }
       }
     },
     {
       "filePath": "src/main.ts",
-      "line": 748,
+      "line": 745,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "this.settings.backdropYamlTemplates.base = this.settings.backdropYamlTemplates.base.replace(/^Synopsis:/gm, 'Context:');",
       "context": {
         "before": {
-          "line": 747,
+          "line": 744,
           "text": "if (this.settings.backdropYamlTemplates?.base?.includes('Synopsis:')) {"
         },
         "current": {
-          "line": 748,
+          "line": 745,
           "text": "this.settings.backdropYamlTemplates.base = this.settings.backdropYamlTemplates.base.replace(/^Synopsis:/gm, 'Context:');"
         },
         "after": {
-          "line": 749,
+          "line": 746,
           "text": "backdropTemplateMigrated = true;"
         }
       }
     },
     {
       "filePath": "src/main.ts",
-      "line": 752,
+      "line": 749,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "event: 'backdrop_base_template_synopsis_to_context',",
       "context": {
         "before": {
-          "line": 751,
+          "line": 748,
           "text": "console.debug('[SchemaMigration]', {"
         },
         "current": {
-          "line": 752,
+          "line": 749,
           "text": "event: 'backdrop_base_template_synopsis_to_context',"
         },
         "after": {
-          "line": 753,
+          "line": 750,
           "text": "action: 'updated backdrop base template to write Context',"
         }
       }
     },
     {
       "filePath": "src/main.ts",
-      "line": 855,
+      "line": 850,
       "token": "refreshTimelineIfNeeded",
       "category": "drift-term",
       "lineText": "// Settings UI calls this instead of refreshTimelineIfNeeded(null) so",
       "context": {
         "before": {
-          "line": 854,
+          "line": 849,
           "text": "// ── Settings-aware refresh (tiered impact model) ─────────────────"
         },
         "current": {
-          "line": 855,
+          "line": 850,
           "text": "// Settings UI calls this instead of refreshTimelineIfNeeded(null) so"
         },
         "after": {
-          "line": 856,
+          "line": 851,
           "text": "// that only settings with a real visual effect trigger a render."
         }
       }
     },
     {
       "filePath": "src/main.ts",
-      "line": 873,
+      "line": 868,
       "token": "refreshTimelineIfNeeded",
       "category": "drift-term",
       "lineText": "this.refreshTimelineIfNeeded(null, 100);",
       "context": {
         "before": {
-          "line": 872,
+          "line": 867,
           "text": "// impact.kind === 'full' — debounce 100 ms to avoid flicker cascades"
         },
         "current": {
-          "line": 873,
+          "line": 868,
           "text": "this.refreshTimelineIfNeeded(null, 100);"
         },
         "after": {
-          "line": 874,
+          "line": 869,
           "text": "}"
         }
       }
     },
     {
       "filePath": "src/main.ts",
-      "line": 877,
+      "line": 872,
       "token": "refreshTimelineIfNeeded",
       "category": "drift-term",
       "lineText": "refreshTimelineIfNeeded(file: TAbstractFile | null | undefined, delayMs?: number) {",
       "context": {
         "before": {
-          "line": 876,
+          "line": 871,
           "text": "// Method to refresh the timeline if the active view exists (with debouncing)"
         },
         "current": {
-          "line": 877,
+          "line": 872,
           "text": "refreshTimelineIfNeeded(file: TAbstractFile | null | undefined, delayMs?: number) {"
         },
         "after": {
-          "line": 878,
+          "line": 873,
           "text": "// For settings changes (file=null), use 0ms delay for immediate feedback"
         }
       }
     },
     {
       "filePath": "src/main.ts",
-      "line": 881,
+      "line": 876,
       "token": "refreshTimelineIfNeeded",
       "category": "drift-term",
       "lineText": "this.timelineService.refreshTimelineIfNeeded(file, effectiveDelay);",
       "context": {
         "before": {
-          "line": 880,
+          "line": 875,
           "text": "const effectiveDelay = file === null && delayMs === undefined ? 0 : (delayMs ?? 400);"
         },
         "current": {
-          "line": 881,
+          "line": 876,
           "text": "this.timelineService.refreshTimelineIfNeeded(file, effectiveDelay);"
         },
         "after": {
-          "line": 882,
-          "text": "}"
-        }
-      }
-    },
-    {
-      "filePath": "src/main.ts",
-      "line": 940,
-      "token": "NOTE",
-      "category": "stale-comment",
-      "lineText": "// Note: Do NOT detach leaves here - Obsidian handles this automatically",
-      "context": {
-        "before": {
-          "line": 939,
-          "text": "cleanupTooltipAnchors();"
-        },
-        "current": {
-          "line": 940,
-          "text": "// Note: Do NOT detach leaves here - Obsidian handles this automatically"
-        },
-        "after": {
-          "line": 941,
+          "line": 877,
           "text": "}"
         }
       }
@@ -12931,400 +12868,358 @@
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 1634,
-      "token": "NOTE",
-      "category": "stale-comment",
-      "lineText": "// Create template beat note button — wrapped in a container for reliable stage gating.",
-      "context": {
-        "before": {
-          "line": 1633,
-          "text": ""
-        },
-        "current": {
-          "line": 1634,
-          "text": "// Create template beat note button — wrapped in a container for reliable stage gating."
-        },
-        "after": {
-          "line": 1635,
-          "text": "// The wrapper is toggled by updateStageVisibility so async Setting updates can't leak."
-        }
-      }
-    },
-    {
-      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 1638,
-      "token": "mergeTemplates",
-      "category": "drift-term",
-      "lineText": "let mergeTemplatesButton: ButtonComponent | undefined;",
-      "context": {
-        "before": {
-          "line": 1637,
-          "text": "let createTemplatesButton: ButtonComponent | undefined;"
-        },
-        "current": {
-          "line": 1638,
-          "text": "let mergeTemplatesButton: ButtonComponent | undefined;"
-        },
-        "after": {
-          "line": 1639,
-          "text": "let refreshBeatAuditPrimaryAction: (() => void) | null = null;"
-        }
-      }
-    },
-    {
-      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 1689,
+      "line": 1688,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": ".setDesc('Create beat note files in your vault based on the selected story structure system.')",
       "context": {
         "before": {
-          "line": 1688,
+          "line": 1687,
           "text": ".setName('Beat notes')"
         },
         "current": {
-          "line": 1689,
+          "line": 1688,
           "text": ".setDesc('Create beat note files in your vault based on the selected story structure system.')"
         },
         "after": {
-          "line": 1690,
+          "line": 1689,
           "text": ".addButton(button => {"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 1694,
+      "line": 1693,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": ".setTooltip('Create beat note files in your source path')",
       "context": {
         "before": {
-          "line": 1693,
+          "line": 1692,
           "text": ".setButtonText('Create beat notes')"
         },
         "current": {
-          "line": 1694,
+          "line": 1693,
           "text": ".setTooltip('Create beat note files in your source path')"
         },
         "after": {
-          "line": 1695,
+          "line": 1694,
           "text": ".onClick(() => { void primaryDesignAction(); });"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 1698,
-      "token": "mergeTemplates",
-      "category": "drift-term",
-      "lineText": "mergeTemplatesButton = button;",
-      "context": {
-        "before": {
-          "line": 1697,
-          "text": ".addButton(button => {"
-        },
-        "current": {
-          "line": 1698,
-          "text": "mergeTemplatesButton = button;"
-        },
-        "after": {
-          "line": 1699,
-          "text": "button"
-        }
-      }
-    },
-    {
-      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 2029,
+      "line": 2028,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "setTooltip(iconInput, fieldsReadOnly ? 'Requires Pro' : 'Lucide icon name for hover synopsis');",
       "context": {
         "before": {
-          "line": 2028,
+          "line": 2027,
           "text": "iconInput.disabled = fieldsReadOnly;"
         },
         "current": {
-          "line": 2029,
+          "line": 2028,
           "text": "setTooltip(iconInput, fieldsReadOnly ? 'Requires Pro' : 'Lucide icon name for hover synopsis');"
         },
         "after": {
-          "line": 2030,
+          "line": 2029,
           "text": ""
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 2039,
+      "line": 2038,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "setTooltip(checkbox, fieldsReadOnly ? 'Requires Pro' : 'Show in beat hover synopsis');",
       "context": {
         "before": {
-          "line": 2038,
+          "line": 2037,
           "text": "checkbox.disabled = fieldsReadOnly;"
         },
         "current": {
-          "line": 2039,
+          "line": 2038,
           "text": "setTooltip(checkbox, fieldsReadOnly ? 'Requires Pro' : 'Show in beat hover synopsis');"
         },
         "after": {
-          "line": 2040,
+          "line": 2039,
           "text": ""
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 2185,
+      "line": 2184,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "setTooltip(addIconInput, 'Lucide icon name for beat hover synopsis');",
       "context": {
         "before": {
-          "line": 2184,
+          "line": 2183,
           "text": "addIconInput.value = DEFAULT_HOVER_ICON;"
         },
         "current": {
-          "line": 2185,
+          "line": 2184,
           "text": "setTooltip(addIconInput, 'Lucide icon name for beat hover synopsis');"
         },
         "after": {
-          "line": 2186,
+          "line": 2185,
           "text": ""
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 2208,
+      "line": 2207,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "setTooltip(addCheckbox, 'Show in beat hover synopsis');",
       "context": {
         "before": {
-          "line": 2207,
+          "line": 2206,
           "text": "addCheckbox.checked = false;"
         },
         "current": {
-          "line": 2208,
+          "line": 2207,
           "text": "setTooltip(addCheckbox, 'Show in beat hover synopsis');"
         },
         "after": {
-          "line": 2209,
+          "line": 2208,
           "text": ""
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 2336,
+      "line": 2335,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "beatHoverPreviewBody.createDiv({ text: 'Enable fields using the checkboxes above to show them in beat hover synopsis.', cls: 'ert-hover-preview-empty' });",
       "context": {
         "before": {
-          "line": 2335,
+          "line": 2334,
           "text": "beatHoverPreviewHeading.setText('Beat Hover Metadata Preview (none enabled)');"
         },
         "current": {
-          "line": 2336,
+          "line": 2335,
           "text": "beatHoverPreviewBody.createDiv({ text: 'Enable fields using the checkboxes above to show them in beat hover synopsis.', cls: 'ert-hover-preview-empty' });"
         },
         "after": {
-          "line": 2337,
+          "line": 2336,
           "text": "return;"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 2922,
+      "line": 2921,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": ".setDesc('Set up custom scene YAML keys for the advanced YAML set. Enable fields to reveal in scene hover synopsis. Type any keyword to search for a perfect lucide icon. Reorder fields to match your preferred order.');",
       "context": {
         "before": {
-          "line": 2921,
+          "line": 2920,
           "text": ".setName('Advanced YAML editor')"
         },
         "current": {
-          "line": 2922,
+          "line": 2921,
           "text": ".setDesc('Set up custom scene YAML keys for the advanced YAML set. Enable fields to reveal in scene hover synopsis. Type any keyword to search for a perfect lucide icon. Reorder fields to match your preferred order.');"
         },
         "after": {
-          "line": 2923,
+          "line": 2922,
           "text": "const advancedToggleButton = advancedYamlSetting.controlEl.createEl('button', {"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 3188,
+      "line": 3187,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "// 3. Icon input with preview (for hover synopsis)",
       "context": {
         "before": {
-          "line": 3187,
+          "line": 3186,
           "text": ""
         },
         "current": {
-          "line": 3188,
+          "line": 3187,
           "text": "// 3. Icon input with preview (for hover synopsis)"
         },
         "after": {
-          "line": 3189,
+          "line": 3188,
           "text": "const iconWrapper = row.createDiv({ cls: 'ert-hover-icon-wrapper' });"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 3198,
+      "line": 3197,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "setTooltip(iconInput, 'Lucide icon name for hover synopsis');",
       "context": {
         "before": {
-          "line": 3197,
+          "line": 3196,
           "text": "iconInput.value = currentIcon;"
         },
         "current": {
-          "line": 3198,
+          "line": 3197,
           "text": "setTooltip(iconInput, 'Lucide icon name for hover synopsis');"
         },
         "after": {
-          "line": 3199,
+          "line": 3198,
           "text": ""
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 3200,
+      "line": 3199,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "// 4. Checkbox to enable in hover synopsis (defined before icon handlers so they can reference it)",
       "context": {
         "before": {
-          "line": 3199,
+          "line": 3198,
           "text": ""
         },
         "current": {
-          "line": 3200,
+          "line": 3199,
           "text": "// 4. Checkbox to enable in hover synopsis (defined before icon handlers so they can reference it)"
         },
         "after": {
-          "line": 3201,
+          "line": 3200,
           "text": "const checkboxWrapper = row.createDiv({ cls: 'ert-hover-checkbox-wrapper' });"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 3207,
+      "line": 3206,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "setTooltip(checkbox, 'Show in hover synopsis');",
       "context": {
         "before": {
-          "line": 3206,
+          "line": 3205,
           "text": "checkbox.checked = currentEnabled;"
         },
         "current": {
-          "line": 3207,
+          "line": 3206,
           "text": "setTooltip(checkbox, 'Show in hover synopsis');"
         },
         "after": {
-          "line": 3208,
+          "line": 3207,
           "text": ""
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 3403,
+      "line": 3402,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "setTooltip(addIconInput, 'Lucide icon name for hover synopsis');",
       "context": {
         "before": {
-          "line": 3402,
+          "line": 3401,
           "text": "addIconInput.value = DEFAULT_HOVER_ICON;"
         },
         "current": {
-          "line": 3403,
+          "line": 3402,
           "text": "setTooltip(addIconInput, 'Lucide icon name for hover synopsis');"
         },
         "after": {
-          "line": 3404,
+          "line": 3403,
           "text": ""
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 3427,
+      "line": 3426,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "setTooltip(addCheckbox, 'Show in hover synopsis');",
       "context": {
         "before": {
-          "line": 3426,
+          "line": 3425,
           "text": "addCheckbox.checked = false;"
         },
         "current": {
-          "line": 3427,
+          "line": 3426,
           "text": "setTooltip(addCheckbox, 'Show in hover synopsis');"
         },
         "after": {
-          "line": 3428,
+          "line": 3427,
           "text": ""
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 3543,
+      "line": 3542,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "hoverPreviewBody.createDiv({ text: 'Enable fields using the checkboxes above to show them in hover synopsis.', cls: 'ert-hover-preview-empty' });",
       "context": {
         "before": {
-          "line": 3542,
+          "line": 3541,
           "text": "hoverPreviewHeading.setText('Hover Metadata Preview (none enabled)');"
         },
         "current": {
-          "line": 3543,
+          "line": 3542,
           "text": "hoverPreviewBody.createDiv({ text: 'Enable fields using the checkboxes above to show them in hover synopsis.', cls: 'ert-hover-preview-empty' });"
         },
         "after": {
-          "line": 3544,
+          "line": 3543,
           "text": "return;"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 3583,
+      "line": 3582,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": ".setDesc('Customize additional YAML keys for backdrop notes. Enable fields to show in backdrop hover synopsis.');",
       "context": {
         "before": {
-          "line": 3582,
+          "line": 3581,
           "text": ".setName('Backdrop YAML editor')"
         },
         "current": {
-          "line": 3583,
+          "line": 3582,
           "text": ".setDesc('Customize additional YAML keys for backdrop notes. Enable fields to show in backdrop hover synopsis.');"
         },
         "after": {
-          "line": 3584,
+          "line": 3583,
           "text": "const backdropYamlToggleBtn = backdropYamlHeading.controlEl.createEl('button', {"
+        }
+      }
+    },
+    {
+      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
+      "line": 3637,
+      "token": "Synopsis",
+      "category": "drift-term",
+      "lineText": "// `Synopsis` is legacy for Backdrop and should not be written by new templates.",
+      "context": {
+        "before": {
+          "line": 3636,
+          "text": "const backdropBaseKeys = extractKeysInOrder(backdropBaseTemplate);"
+        },
+        "current": {
+          "line": 3637,
+          "text": "// `Synopsis` is legacy for Backdrop and should not be written by new templates."
+        },
+        "after": {
+          "line": 3638,
+          "text": "const backdropDisallowedNewWriteKeys = new Set(['Synopsis']);"
         }
       }
     },
@@ -13333,397 +13228,397 @@
       "line": 3638,
       "token": "Synopsis",
       "category": "drift-term",
-      "lineText": "// `Synopsis` is legacy for Backdrop and should not be written by new templates.",
-      "context": {
-        "before": {
-          "line": 3637,
-          "text": "const backdropBaseKeys = extractKeysInOrder(backdropBaseTemplate);"
-        },
-        "current": {
-          "line": 3638,
-          "text": "// `Synopsis` is legacy for Backdrop and should not be written by new templates."
-        },
-        "after": {
-          "line": 3639,
-          "text": "const backdropDisallowedNewWriteKeys = new Set(['Synopsis']);"
-        }
-      }
-    },
-    {
-      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 3639,
-      "token": "Synopsis",
-      "category": "drift-term",
       "lineText": "const backdropDisallowedNewWriteKeys = new Set(['Synopsis']);",
       "context": {
         "before": {
-          "line": 3638,
+          "line": 3637,
           "text": "// `Synopsis` is legacy for Backdrop and should not be written by new templates."
         },
         "current": {
-          "line": 3639,
+          "line": 3638,
           "text": "const backdropDisallowedNewWriteKeys = new Set(['Synopsis']);"
         },
         "after": {
-          "line": 3640,
+          "line": 3639,
           "text": ""
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 3721,
+      "line": 3720,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "setTooltip(iconInput, 'Lucide icon name for hover synopsis');",
       "context": {
         "before": {
-          "line": 3720,
+          "line": 3719,
           "text": "iconInput.value = currentIcon;"
         },
         "current": {
-          "line": 3721,
+          "line": 3720,
           "text": "setTooltip(iconInput, 'Lucide icon name for hover synopsis');"
         },
         "after": {
-          "line": 3722,
+          "line": 3721,
           "text": ""
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 3730,
+      "line": 3729,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "setTooltip(checkbox, 'Show in backdrop hover synopsis');",
       "context": {
         "before": {
-          "line": 3729,
+          "line": 3728,
           "text": "checkbox.checked = currentEnabled;"
         },
         "current": {
-          "line": 3730,
+          "line": 3729,
           "text": "setTooltip(checkbox, 'Show in backdrop hover synopsis');"
         },
         "after": {
-          "line": 3731,
+          "line": 3730,
           "text": ""
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 3854,
+      "line": 3853,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "setTooltip(addIconInput, 'Lucide icon name for hover synopsis');",
       "context": {
         "before": {
-          "line": 3853,
+          "line": 3852,
           "text": "addIconInput.value = DEFAULT_HOVER_ICON;"
         },
         "current": {
-          "line": 3854,
+          "line": 3853,
           "text": "setTooltip(addIconInput, 'Lucide icon name for hover synopsis');"
         },
         "after": {
-          "line": 3855,
+          "line": 3854,
           "text": ""
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 3877,
+      "line": 3876,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "setTooltip(addCheckbox, 'Show in backdrop hover synopsis');",
       "context": {
         "before": {
-          "line": 3876,
+          "line": 3875,
           "text": "addCheckbox.checked = false;"
         },
         "current": {
-          "line": 3877,
+          "line": 3876,
           "text": "setTooltip(addCheckbox, 'Show in backdrop hover synopsis');"
         },
         "after": {
-          "line": 3878,
+          "line": 3877,
           "text": ""
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 3964,
+      "line": 3963,
       "token": "Synopsis",
       "category": "drift-term",
       "lineText": "backdropHoverPreviewBody.createDiv({ text: 'Enable fields using the checkboxes above to show them in backdrop hover synopsis.', cls: 'ert-hover-preview-empty' });",
       "context": {
         "before": {
-          "line": 3963,
+          "line": 3962,
           "text": "backdropHoverPreviewHeading.setText('Backdrop Hover Metadata Preview (none enabled)');"
         },
         "current": {
-          "line": 3964,
+          "line": 3963,
           "text": "backdropHoverPreviewBody.createDiv({ text: 'Enable fields using the checkboxes above to show them in backdrop hover synopsis.', cls: 'ert-hover-preview-empty' });"
         },
         "after": {
-          "line": 3965,
+          "line": 3964,
           "text": "return;"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4281,
+      "line": 4280,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "`Fill ${fillEmptyPlan.filledFields} empty value${fillEmptyPlan.filledFields !== 1 ? 's' : ''} in ${fillEmptyPlan.files.length} note${fillEmptyPlan.files.length !== 1 ? 's' : ''}`",
       "context": {
         "before": {
-          "line": 4280,
+          "line": 4279,
           "text": "'aria-label',"
         },
         "current": {
-          "line": 4281,
+          "line": 4280,
           "text": "`Fill ${fillEmptyPlan.filledFields} empty value${fillEmptyPlan.filledFields !== 1 ? 's' : ''} in ${fillEmptyPlan.files.length} note${fillEmptyPlan.files.length !== 1 ? 's' : ''}`"
         },
         "after": {
-          "line": 4282,
+          "line": 4281,
           "text": ");"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4295,
+      "line": 4294,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "`Delete extra fields from ${safeExtraNotes.length} note${safeExtraNotes.length !== 1 ? 's' : ''}`",
       "context": {
         "before": {
-          "line": 4294,
+          "line": 4293,
           "text": "'aria-label',"
         },
         "current": {
-          "line": 4295,
+          "line": 4294,
           "text": "`Delete extra fields from ${safeExtraNotes.length} note${safeExtraNotes.length !== 1 ? 's' : ''}`"
         },
         "after": {
-          "line": 4296,
+          "line": 4295,
           "text": ");"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4302,
+      "line": 4301,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "// at least one safe note has any of those advanced keys",
       "context": {
         "before": {
-          "line": 4301,
+          "line": 4300,
           "text": "// Show delete-advanced button when an advanced template exists and"
         },
         "current": {
-          "line": 4302,
+          "line": 4301,
           "text": "// at least one safe note has any of those advanced keys"
         },
         "after": {
-          "line": 4303,
+          "line": 4302,
           "text": "const advancedKeySet = new Set(getCustomKeys(noteType, plugin.settings, activeBeatSystemKey));"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4315,
+      "line": 4314,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "`Delete advanced fields from ${notesWithAdvKeys.length} note${notesWithAdvKeys.length !== 1 ? 's' : ''}`",
       "context": {
         "before": {
-          "line": 4314,
+          "line": 4313,
           "text": "'aria-label',"
         },
         "current": {
-          "line": 4315,
+          "line": 4314,
           "text": "`Delete advanced fields from ${notesWithAdvKeys.length} note${notesWithAdvKeys.length !== 1 ? 's' : ''}`"
         },
         "after": {
-          "line": 4316,
+          "line": 4315,
           "text": ");"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4332,
+      "line": 4331,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "`Reorder fields in ${safeDriftNotes.length} note${safeDriftNotes.length !== 1 ? 's' : ''}`",
       "context": {
         "before": {
-          "line": 4331,
+          "line": 4330,
           "text": "'aria-label',"
         },
         "current": {
-          "line": 4332,
+          "line": 4331,
           "text": "`Reorder fields in ${safeDriftNotes.length} note${safeDriftNotes.length !== 1 ? 's' : ''}`"
         },
         "after": {
-          "line": 4333,
+          "line": 4332,
           "text": ");"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4383,
+      "line": 4382,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "headerEl.createSpan({ text: ` · ${s.totalNotes} note${s.totalNotes !== 1 ? 's' : ''} scanned`, cls: 'ert-audit-summary' });",
       "context": {
         "before": {
-          "line": 4382,
+          "line": 4381,
           "text": "healthEl.textContent = `Schema health: ${healthLabels[healthLevel]}`;"
         },
         "current": {
-          "line": 4383,
+          "line": 4382,
           "text": "headerEl.createSpan({ text: ` · ${s.totalNotes} note${s.totalNotes !== 1 ? 's' : ''} scanned`, cls: 'ert-audit-summary' });"
         },
         "after": {
-          "line": 4384,
+          "line": 4383,
           "text": ""
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4389,
+      "line": 4388,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "text: `${s.notesUnsafe} note${s.notesUnsafe !== 1 ? 's have' : ' has'} dangerous frontmatter (broken YAML, code injection, or suspicious content). These notes are excluded from all batch operations. Open each file to inspect and fix manually.`",
       "context": {
         "before": {
-          "line": 4388,
+          "line": 4387,
           "text": "unsafeBanner.createSpan({"
         },
         "current": {
-          "line": 4389,
+          "line": 4388,
           "text": "text: `${s.notesUnsafe} note${s.notesUnsafe !== 1 ? 's have' : ' has'} dangerous frontmatter (broken YAML, code injection, or suspicious content). These notes are excluded from all batch operations. Open each file to inspect and fix manually.`"
         },
         "after": {
-          "line": 4390,
+          "line": 4389,
           "text": "});"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4397,
+      "line": 4396,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "text: `${s.notesSuspicious} note${s.notesSuspicious !== 1 ? 's have' : ' has'} suspicious frontmatter — review before running batch operations.`",
       "context": {
         "before": {
-          "line": 4396,
+          "line": 4395,
           "text": "suspectBanner.createSpan({"
         },
         "current": {
-          "line": 4397,
+          "line": 4396,
           "text": "text: `${s.notesSuspicious} note${s.notesSuspicious !== 1 ? 's have' : ' has'} suspicious frontmatter — review before running batch operations.`"
         },
         "after": {
-          "line": 4398,
+          "line": 4397,
           "text": "});"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4404,
+      "line": 4403,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "unreadEl.textContent = `${s.unreadNotes} note${s.unreadNotes !== 1 ? 's' : ''} not yet indexed — rerun audit after Obsidian finishes indexing.`;",
       "context": {
         "before": {
-          "line": 4403,
+          "line": 4402,
           "text": "const unreadEl = resultsEl.createDiv({ cls: 'ert-audit-unread-warn' });"
         },
         "current": {
-          "line": 4404,
+          "line": 4403,
           "text": "unreadEl.textContent = `${s.unreadNotes} note${s.unreadNotes !== 1 ? 's' : ''} not yet indexed — rerun audit after Obsidian finishes indexing.`;"
         },
         "after": {
-          "line": 4405,
+          "line": 4404,
           "text": "}"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4409,
+      "line": 4408,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "emptyEl.textContent = `${emptyValueNotes} note${emptyValueNotes !== 1 ? 's' : ''} have ${emptyValueFields} empty custom field value${emptyValueFields !== 1 ? 's' : ''}.`;",
       "context": {
         "before": {
-          "line": 4408,
+          "line": 4407,
           "text": "const emptyEl = resultsEl.createDiv({ cls: 'ert-audit-unread-warn' });"
         },
         "current": {
-          "line": 4409,
+          "line": 4408,
           "text": "emptyEl.textContent = `${emptyValueNotes} note${emptyValueNotes !== 1 ? 's' : ''} have ${emptyValueFields} empty custom field value${emptyValueFields !== 1 ? 's' : ''}.`;"
         },
         "after": {
-          "line": 4410,
+          "line": 4409,
           "text": ""
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4411,
+      "line": 4410,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "const emptyDetails = resultsEl.createDiv({ cls: 'ert-audit-note-pills' });",
       "context": {
         "before": {
-          "line": 4410,
+          "line": 4409,
           "text": ""
         },
         "current": {
-          "line": 4411,
+          "line": 4410,
           "text": "const emptyDetails = resultsEl.createDiv({ cls: 'ert-audit-note-pills' });"
         },
         "after": {
-          "line": 4412,
+          "line": 4411,
           "text": "for (const entry of fillEmptyPlan!.entries.slice(0, AUDIT_OPEN_ALL_MAX)) {"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4415,
+      "line": 4414,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "cls: 'ert-audit-note-pill ert-audit-note-pill--warning',",
       "context": {
         "before": {
-          "line": 4414,
+          "line": 4413,
           "text": "const pillEl = emptyDetails.createEl('button', {"
         },
         "current": {
-          "line": 4415,
+          "line": 4414,
           "text": "cls: 'ert-audit-note-pill ert-audit-note-pill--warning',"
         },
         "after": {
-          "line": 4416,
+          "line": 4415,
           "text": "attr: { type: 'button' }"
+        }
+      }
+    },
+    {
+      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
+      "line": 4417,
+      "token": "NOTE",
+      "category": "stale-comment",
+      "lineText": "pillEl.createSpan({ text: entry.file.basename, cls: 'ert-audit-note-pill-name' });",
+      "context": {
+        "before": {
+          "line": 4416,
+          "text": "});"
+        },
+        "current": {
+          "line": 4417,
+          "text": "pillEl.createSpan({ text: entry.file.basename, cls: 'ert-audit-note-pill-name' });"
+        },
+        "after": {
+          "line": 4418,
+          "text": "pillEl.createSpan({ text: ` — empty: ${keys}`, cls: 'ert-audit-note-pill-reason' });"
         }
       }
     },
@@ -13732,61 +13627,61 @@
       "line": 4418,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "pillEl.createSpan({ text: entry.file.basename, cls: 'ert-audit-note-pill-name' });",
-      "context": {
-        "before": {
-          "line": 4417,
-          "text": "});"
-        },
-        "current": {
-          "line": 4418,
-          "text": "pillEl.createSpan({ text: entry.file.basename, cls: 'ert-audit-note-pill-name' });"
-        },
-        "after": {
-          "line": 4419,
-          "text": "pillEl.createSpan({ text: ` — empty: ${keys}`, cls: 'ert-audit-note-pill-reason' });"
-        }
-      }
-    },
-    {
-      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4419,
-      "token": "NOTE",
-      "category": "stale-comment",
       "lineText": "pillEl.createSpan({ text: ` — empty: ${keys}`, cls: 'ert-audit-note-pill-reason' });",
       "context": {
         "before": {
-          "line": 4418,
+          "line": 4417,
           "text": "pillEl.createSpan({ text: entry.file.basename, cls: 'ert-audit-note-pill-name' });"
         },
         "current": {
-          "line": 4419,
+          "line": 4418,
           "text": "pillEl.createSpan({ text: ` — empty: ${keys}`, cls: 'ert-audit-note-pill-reason' });"
         },
         "after": {
-          "line": 4420,
+          "line": 4419,
           "text": "setTooltip(pillEl, `${entry.file.basename}: empty values in ${keys}`);"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4486,
+      "line": 4485,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "// Note pills — flat list across the row, wrapping, up to 5 per page",
       "context": {
         "before": {
-          "line": 4485,
+          "line": 4484,
           "text": ""
         },
         "current": {
-          "line": 4486,
+          "line": 4485,
           "text": "// Note pills — flat list across the row, wrapping, up to 5 per page"
         },
         "after": {
-          "line": 4487,
+          "line": 4486,
           "text": "let page = 0;"
+        }
+      }
+    },
+    {
+      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
+      "line": 4500,
+      "token": "NOTE",
+      "category": "stale-comment",
+      "lineText": "// Note pills in a flowing row",
+      "context": {
+        "before": {
+          "line": 4499,
+          "text": ""
+        },
+        "current": {
+          "line": 4500,
+          "text": "// Note pills in a flowing row"
+        },
+        "after": {
+          "line": 4501,
+          "text": "const pillsEl = detailsEl.createDiv({ cls: 'ert-audit-note-pills' });"
         }
       }
     },
@@ -13795,61 +13690,61 @@
       "line": 4501,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "// Note pills in a flowing row",
-      "context": {
-        "before": {
-          "line": 4500,
-          "text": ""
-        },
-        "current": {
-          "line": 4501,
-          "text": "// Note pills in a flowing row"
-        },
-        "after": {
-          "line": 4502,
-          "text": "const pillsEl = detailsEl.createDiv({ cls: 'ert-audit-note-pills' });"
-        }
-      }
-    },
-    {
-      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4502,
-      "token": "NOTE",
-      "category": "stale-comment",
       "lineText": "const pillsEl = detailsEl.createDiv({ cls: 'ert-audit-note-pills' });",
       "context": {
         "before": {
-          "line": 4501,
+          "line": 4500,
           "text": "// Note pills in a flowing row"
         },
         "current": {
-          "line": 4502,
+          "line": 4501,
           "text": "const pillsEl = detailsEl.createDiv({ cls: 'ert-audit-note-pills' });"
         },
         "after": {
-          "line": 4503,
+          "line": 4502,
           "text": "for (const entry of pageEntries) {"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4527,
+      "line": 4526,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "cls: `ert-audit-note-pill ert-audit-note-pill--${activeChip.kind}`,",
       "context": {
         "before": {
-          "line": 4526,
+          "line": 4525,
           "text": "const pillEl = pillsEl.createEl('button', {"
         },
         "current": {
-          "line": 4527,
+          "line": 4526,
           "text": "cls: `ert-audit-note-pill ert-audit-note-pill--${activeChip.kind}`,"
         },
         "after": {
-          "line": 4528,
+          "line": 4527,
           "text": "attr: { type: 'button' }"
+        }
+      }
+    },
+    {
+      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
+      "line": 4541,
+      "token": "NOTE",
+      "category": "stale-comment",
+      "lineText": "pillEl.createSpan({ text: entry.file.basename, cls: 'ert-audit-note-pill-name' });",
+      "context": {
+        "before": {
+          "line": 4540,
+          "text": ""
+        },
+        "current": {
+          "line": 4541,
+          "text": "pillEl.createSpan({ text: entry.file.basename, cls: 'ert-audit-note-pill-name' });"
+        },
+        "after": {
+          "line": 4542,
+          "text": "pillEl.createSpan({ text: ` — ${reasonShort}`, cls: 'ert-audit-note-pill-reason' });"
         }
       }
     },
@@ -13858,586 +13753,460 @@
       "line": 4542,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "pillEl.createSpan({ text: entry.file.basename, cls: 'ert-audit-note-pill-name' });",
-      "context": {
-        "before": {
-          "line": 4541,
-          "text": ""
-        },
-        "current": {
-          "line": 4542,
-          "text": "pillEl.createSpan({ text: entry.file.basename, cls: 'ert-audit-note-pill-name' });"
-        },
-        "after": {
-          "line": 4543,
-          "text": "pillEl.createSpan({ text: ` — ${reasonShort}`, cls: 'ert-audit-note-pill-reason' });"
-        }
-      }
-    },
-    {
-      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4543,
-      "token": "NOTE",
-      "category": "stale-comment",
       "lineText": "pillEl.createSpan({ text: ` — ${reasonShort}`, cls: 'ert-audit-note-pill-reason' });",
       "context": {
         "before": {
-          "line": 4542,
+          "line": 4541,
           "text": "pillEl.createSpan({ text: entry.file.basename, cls: 'ert-audit-note-pill-name' });"
         },
         "current": {
-          "line": 4543,
+          "line": 4542,
           "text": "pillEl.createSpan({ text: ` — ${reasonShort}`, cls: 'ert-audit-note-pill-reason' });"
         },
         "after": {
-          "line": 4544,
+          "line": 4543,
           "text": "setTooltip(pillEl, `${entry.file.basename}: ${reason}`);"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4628,
+      "line": 4627,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "text: `Insert fields into ${targetFiles.length} ${noteType.toLowerCase()} note${targetFiles.length !== 1 ? 's' : ''}.`",
       "context": {
         "before": {
-          "line": 4627,
+          "line": 4626,
           "text": "cls: 'ert-modal-subtitle',"
         },
         "current": {
-          "line": 4628,
+          "line": 4627,
           "text": "text: `Insert fields into ${targetFiles.length} ${noteType.toLowerCase()} note${targetFiles.length !== 1 ? 's' : ''}.`"
         },
         "after": {
-          "line": 4629,
+          "line": 4628,
           "text": "});"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4664,
+      "line": 4663,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "if (result.updated > 0) parts.push(`Updated ${result.updated} note${result.updated !== 1 ? 's' : ''}`);",
       "context": {
         "before": {
-          "line": 4663,
+          "line": 4662,
           "text": "const parts: string[] = [];"
         },
         "current": {
-          "line": 4664,
+          "line": 4663,
           "text": "if (result.updated > 0) parts.push(`Updated ${result.updated} note${result.updated !== 1 ? 's' : ''}`);"
         },
         "after": {
-          "line": 4665,
+          "line": 4664,
           "text": "if (result.skipped > 0) parts.push(`${result.skipped} already had all fields`);"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4699,
+      "line": 4698,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "text: `Fill ${fillEmptyPlan!.filledFields} empty value${fillEmptyPlan!.filledFields !== 1 ? 's' : ''} in ${fillEmptyPlan!.files.length} beat note${fillEmptyPlan!.files.length !== 1 ? 's' : ''}.`",
       "context": {
         "before": {
-          "line": 4698,
+          "line": 4697,
           "text": "cls: 'ert-modal-subtitle',"
         },
         "current": {
-          "line": 4699,
+          "line": 4698,
           "text": "text: `Fill ${fillEmptyPlan!.filledFields} empty value${fillEmptyPlan!.filledFields !== 1 ? 's' : ''} in ${fillEmptyPlan!.files.length} beat note${fillEmptyPlan!.files.length !== 1 ? 's' : ''}.`"
         },
         "after": {
-          "line": 4700,
+          "line": 4699,
           "text": "});"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4740,
+      "line": 4739,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "if (result.updated > 0) parts.push(`Updated ${result.updated} note${result.updated !== 1 ? 's' : ''}`);",
       "context": {
         "before": {
-          "line": 4739,
+          "line": 4738,
           "text": "const parts: string[] = [];"
         },
         "current": {
-          "line": 4740,
+          "line": 4739,
           "text": "if (result.updated > 0) parts.push(`Updated ${result.updated} note${result.updated !== 1 ? 's' : ''}`);"
         },
         "after": {
-          "line": 4741,
+          "line": 4740,
           "text": "if (result.filledFields > 0) parts.push(`Filled ${result.filledFields} value${result.filledFields !== 1 ? 's' : ''}`);"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4829,
+      "line": 4828,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "text: `Remove ${totalFieldCount} extra field${totalFieldCount !== 1 ? 's' : ''} from ${notesWithExtra.length} ${noteType.toLowerCase()} note${notesWithExtra.length !== 1 ? 's' : ''}.`",
       "context": {
         "before": {
-          "line": 4828,
+          "line": 4827,
           "text": "cls: 'ert-modal-subtitle',"
         },
         "current": {
-          "line": 4829,
+          "line": 4828,
           "text": "text: `Remove ${totalFieldCount} extra field${totalFieldCount !== 1 ? 's' : ''} from ${notesWithExtra.length} ${noteType.toLowerCase()} note${notesWithExtra.length !== 1 ? 's' : ''}.`"
         },
         "after": {
-          "line": 4830,
+          "line": 4829,
           "text": "});"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4835,
+      "line": 4834,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "banner.createSpan({ text: `${unsafeSkippedCount} note${unsafeSkippedCount !== 1 ? 's' : ''} with unsafe frontmatter excluded from this operation.` });",
       "context": {
         "before": {
-          "line": 4834,
+          "line": 4833,
           "text": "const banner = modal.contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--danger' });"
         },
         "current": {
-          "line": 4835,
+          "line": 4834,
           "text": "banner.createSpan({ text: `${unsafeSkippedCount} note${unsafeSkippedCount !== 1 ? 's' : ''} with unsafe frontmatter excluded from this operation.` });"
         },
         "after": {
-          "line": 4836,
+          "line": 4835,
           "text": "}"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4842,
+      "line": 4841,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "banner.createSpan({ text: `${suspiciousCount} note${suspiciousCount !== 1 ? 's have' : ' has'} suspicious frontmatter — review carefully.` });",
       "context": {
         "before": {
-          "line": 4841,
+          "line": 4840,
           "text": "const banner = modal.contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });"
         },
         "current": {
-          "line": 4842,
+          "line": 4841,
           "text": "banner.createSpan({ text: `${suspiciousCount} note${suspiciousCount !== 1 ? 's have' : ' has'} suspicious frontmatter — review carefully.` });"
         },
         "after": {
-          "line": 4843,
+          "line": 4842,
           "text": "}"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 4925,
+      "line": 4924,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "if (result.deleted > 0) parts.push(`Cleaned ${result.deleted} note${result.deleted !== 1 ? 's' : ''}`);",
       "context": {
         "before": {
-          "line": 4924,
+          "line": 4923,
           "text": "const parts: string[] = [];"
         },
         "current": {
-          "line": 4925,
+          "line": 4924,
           "text": "if (result.deleted > 0) parts.push(`Cleaned ${result.deleted} note${result.deleted !== 1 ? 's' : ''}`);"
         },
         "after": {
-          "line": 4926,
+          "line": 4925,
           "text": "if (result.safetySkipped > 0) parts.push(`${result.safetySkipped} skipped (unsafe)`);"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5018,
+      "line": 5017,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "text: `Remove ${totalFieldCount} advanced field${totalFieldCount !== 1 ? 's' : ''} from ${targetNotes.length} ${noteType.toLowerCase()} note${targetNotes.length !== 1 ? 's' : ''}. Base fields are never touched.`",
       "context": {
         "before": {
-          "line": 5017,
+          "line": 5016,
           "text": "cls: 'ert-modal-subtitle',"
         },
         "current": {
-          "line": 5018,
+          "line": 5017,
           "text": "text: `Remove ${totalFieldCount} advanced field${totalFieldCount !== 1 ? 's' : ''} from ${targetNotes.length} ${noteType.toLowerCase()} note${targetNotes.length !== 1 ? 's' : ''}. Base fields are never touched.`"
         },
         "after": {
-          "line": 5019,
+          "line": 5018,
           "text": "});"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5023,
+      "line": 5022,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "banner.createSpan({ text: `${unsafeSkippedCount} note${unsafeSkippedCount !== 1 ? 's' : ''} with unsafe frontmatter excluded from this operation.` });",
       "context": {
         "before": {
-          "line": 5022,
+          "line": 5021,
           "text": "const banner = modal.contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--danger' });"
         },
         "current": {
-          "line": 5023,
+          "line": 5022,
           "text": "banner.createSpan({ text: `${unsafeSkippedCount} note${unsafeSkippedCount !== 1 ? 's' : ''} with unsafe frontmatter excluded from this operation.` });"
         },
         "after": {
-          "line": 5024,
+          "line": 5023,
           "text": "}"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5029,
+      "line": 5028,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "banner.createSpan({ text: `${suspiciousCount} note${suspiciousCount !== 1 ? 's have' : ' has'} suspicious frontmatter — review carefully.` });",
       "context": {
         "before": {
-          "line": 5028,
+          "line": 5027,
           "text": "const banner = modal.contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });"
         },
         "current": {
-          "line": 5029,
+          "line": 5028,
           "text": "banner.createSpan({ text: `${suspiciousCount} note${suspiciousCount !== 1 ? 's have' : ' has'} suspicious frontmatter — review carefully.` });"
         },
         "after": {
-          "line": 5030,
+          "line": 5029,
           "text": "}"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5119,
+      "line": 5118,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "if (result.deleted > 0) msgParts.push(`Cleaned ${result.deleted} note${result.deleted !== 1 ? 's' : ''}`);",
       "context": {
         "before": {
-          "line": 5118,
+          "line": 5117,
           "text": "const msgParts: string[] = [];"
         },
         "current": {
-          "line": 5119,
+          "line": 5118,
           "text": "if (result.deleted > 0) msgParts.push(`Cleaned ${result.deleted} note${result.deleted !== 1 ? 's' : ''}`);"
         },
         "after": {
-          "line": 5120,
+          "line": 5119,
           "text": "if (result.safetySkipped > 0) msgParts.push(`${result.safetySkipped} skipped (unsafe)`);"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5160,
+      "line": 5159,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "text: `Reorder fields in ${notesWithDrift.length} ${noteType.toLowerCase()} note${notesWithDrift.length !== 1 ? 's' : ''} to match the canonical template order.`",
       "context": {
         "before": {
-          "line": 5159,
+          "line": 5158,
           "text": "cls: 'ert-modal-subtitle',"
         },
         "current": {
-          "line": 5160,
+          "line": 5159,
           "text": "text: `Reorder fields in ${notesWithDrift.length} ${noteType.toLowerCase()} note${notesWithDrift.length !== 1 ? 's' : ''} to match the canonical template order.`"
         },
         "after": {
-          "line": 5161,
+          "line": 5160,
           "text": "});"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5165,
+      "line": 5164,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "banner.createSpan({ text: `${unsafeSkippedCount} note${unsafeSkippedCount !== 1 ? 's' : ''} with unsafe frontmatter excluded from this operation.` });",
       "context": {
         "before": {
-          "line": 5164,
+          "line": 5163,
           "text": "const banner = modal.contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--danger' });"
         },
         "current": {
-          "line": 5165,
+          "line": 5164,
           "text": "banner.createSpan({ text: `${unsafeSkippedCount} note${unsafeSkippedCount !== 1 ? 's' : ''} with unsafe frontmatter excluded from this operation.` });"
         },
         "after": {
-          "line": 5166,
+          "line": 5165,
           "text": "}"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5171,
+      "line": 5170,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "banner.createSpan({ text: `${suspiciousCount} note${suspiciousCount !== 1 ? 's have' : ' has'} suspicious frontmatter — proceed with caution.` });",
       "context": {
         "before": {
-          "line": 5170,
+          "line": 5169,
           "text": "const banner = modal.contentEl.createDiv({ cls: 'ert-audit-safety-banner ert-audit-safety-banner--warning' });"
         },
         "current": {
-          "line": 5171,
+          "line": 5170,
           "text": "banner.createSpan({ text: `${suspiciousCount} note${suspiciousCount !== 1 ? 's have' : ' has'} suspicious frontmatter — proceed with caution.` });"
         },
         "after": {
-          "line": 5172,
+          "line": 5171,
           "text": "}"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5247,
+      "line": 5246,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "if (result.reordered > 0) parts.push(`Reordered ${result.reordered} note${result.reordered !== 1 ? 's' : ''}`);",
       "context": {
         "before": {
-          "line": 5246,
+          "line": 5245,
           "text": "const parts: string[] = [];"
         },
         "current": {
-          "line": 5247,
+          "line": 5246,
           "text": "if (result.reordered > 0) parts.push(`Reordered ${result.reordered} note${result.reordered !== 1 ? 's' : ''}`);"
         },
         "after": {
-          "line": 5248,
+          "line": 5247,
           "text": "if (result.safetySkipped > 0) parts.push(`${result.safetySkipped} skipped (unsafe)`);"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5265,
+      "line": 5264,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "`Fill ${fillEmptyPlan.filledFields} empty value${fillEmptyPlan.filledFields !== 1 ? 's' : ''} in ${fillEmptyPlan.files.length} note${fillEmptyPlan.files.length !== 1 ? 's' : ''}`",
       "context": {
         "before": {
-          "line": 5264,
+          "line": 5263,
           "text": "'aria-label',"
         },
         "current": {
-          "line": 5265,
+          "line": 5264,
           "text": "`Fill ${fillEmptyPlan.filledFields} empty value${fillEmptyPlan.filledFields !== 1 ? 's' : ''} in ${fillEmptyPlan.files.length} note${fillEmptyPlan.files.length !== 1 ? 's' : ''}`"
         },
         "after": {
-          "line": 5266,
+          "line": 5265,
           "text": ");"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5342,
+      "line": 5341,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "baseDesc = `Create ${beats.length} beat note files for your custom system.`;",
       "context": {
         "before": {
-          "line": 5341,
+          "line": 5340,
           "text": "setting.setName(`Beat notes in your vault for ${displayName}`);"
         },
         "current": {
-          "line": 5342,
+          "line": 5341,
           "text": "baseDesc = `Create ${beats.length} beat note files for your custom system.`;"
         },
         "after": {
-          "line": 5343,
+          "line": 5342,
           "text": "setting.setDesc(baseDesc);"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5353,
+      "line": 5352,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "baseDesc = `Create ${selectedSystem} beat note files in your vault matching this system's structure.`;",
       "context": {
         "before": {
-          "line": 5352,
+          "line": 5351,
           "text": "setting.setName(`Beat notes in your vault for ${selectedSystem}`);"
         },
         "current": {
-          "line": 5353,
+          "line": 5352,
           "text": "baseDesc = `Create ${selectedSystem} beat note files in your vault matching this system's structure.`;"
         },
         "after": {
-          "line": 5354,
+          "line": 5353,
           "text": "setting.setDesc(baseDesc);"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5365,
-      "token": "mergeTemplates",
-      "category": "drift-term",
-      "lineText": "if (mergeTemplatesButton) {",
-      "context": {
-        "before": {
-          "line": 5364,
-          "text": ");"
-        },
-        "current": {
-          "line": 5365,
-          "text": "if (mergeTemplatesButton) {"
-        },
-        "after": {
-          "line": 5366,
-          "text": "mergeTemplatesButton.setDisabled(true);"
-        }
-      }
-    },
-    {
-      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5366,
-      "token": "mergeTemplates",
-      "category": "drift-term",
-      "lineText": "mergeTemplatesButton.setDisabled(true);",
-      "context": {
-        "before": {
-          "line": 5365,
-          "text": "if (mergeTemplatesButton) {"
-        },
-        "current": {
-          "line": 5366,
-          "text": "mergeTemplatesButton.setDisabled(true);"
-        },
-        "after": {
-          "line": 5367,
-          "text": "mergeTemplatesButton.buttonEl.addClass('ert-hidden');"
-        }
-      }
-    },
-    {
-      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5367,
-      "token": "mergeTemplates",
-      "category": "drift-term",
-      "lineText": "mergeTemplatesButton.buttonEl.addClass('ert-hidden');",
-      "context": {
-        "before": {
-          "line": 5366,
-          "text": "mergeTemplatesButton.setDisabled(true);"
-        },
-        "current": {
-          "line": 5367,
-          "text": "mergeTemplatesButton.buttonEl.addClass('ert-hidden');"
-        },
-        "after": {
-          "line": 5368,
-          "text": "}"
-        }
-      }
-    },
-    {
-      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5391,
+      "line": 5390,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "'Create beat note files in your source path',",
       "context": {
         "before": {
-          "line": 5390,
+          "line": 5389,
           "text": "'Create beat notes',"
         },
         "current": {
-          "line": 5391,
+          "line": 5390,
           "text": "'Create beat note files in your source path',"
         },
         "after": {
-          "line": 5392,
+          "line": 5391,
           "text": "!hasBeats,"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5396,
-      "token": "mergeTemplates",
-      "category": "drift-term",
-      "lineText": "if (mergeTemplatesButton) {",
+      "line": 5437,
+      "token": "NOTE",
+      "category": "stale-comment",
+      "lineText": "`Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`,",
       "context": {
         "before": {
-          "line": 5395,
-          "text": "}"
+          "line": 5436,
+          "text": "setPrimaryDesignButton("
         },
         "current": {
-          "line": 5396,
-          "text": "if (mergeTemplatesButton) {"
+          "line": 5437,
+          "text": "`Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`,"
         },
         "after": {
-          "line": 5397,
-          "text": "mergeTemplatesButton.setDisabled(true);"
-        }
-      }
-    },
-    {
-      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5397,
-      "token": "mergeTemplates",
-      "category": "drift-term",
-      "lineText": "mergeTemplatesButton.setDisabled(true);",
-      "context": {
-        "before": {
-          "line": 5396,
-          "text": "if (mergeTemplatesButton) {"
-        },
-        "current": {
-          "line": 5397,
-          "text": "mergeTemplatesButton.setDisabled(true);"
-        },
-        "after": {
-          "line": 5398,
-          "text": "mergeTemplatesButton.buttonEl.addClass('ert-hidden');"
-        }
-      }
-    },
-    {
-      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5398,
-      "token": "mergeTemplates",
-      "category": "drift-term",
-      "lineText": "mergeTemplatesButton.buttonEl.addClass('ert-hidden');",
-      "context": {
-        "before": {
-          "line": 5397,
-          "text": "mergeTemplatesButton.setDisabled(true);"
-        },
-        "current": {
-          "line": 5398,
-          "text": "mergeTemplatesButton.buttonEl.addClass('ert-hidden');"
-        },
-        "after": {
-          "line": 5399,
-          "text": "}"
+          "line": 5438,
+          "text": "`Create the remaining ${newBeats} beat note${newBeats > 1 ? 's' : ''} for ${selectedSystem}`,"
         }
       }
     },
@@ -14446,250 +14215,166 @@
       "line": 5438,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "`Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`,",
-      "context": {
-        "before": {
-          "line": 5437,
-          "text": "setPrimaryDesignButton("
-        },
-        "current": {
-          "line": 5438,
-          "text": "`Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`,"
-        },
-        "after": {
-          "line": 5439,
-          "text": "`Create the remaining ${newBeats} beat note${newBeats > 1 ? 's' : ''} for ${selectedSystem}`,"
-        }
-      }
-    },
-    {
-      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5439,
-      "token": "NOTE",
-      "category": "stale-comment",
       "lineText": "`Create the remaining ${newBeats} beat note${newBeats > 1 ? 's' : ''} for ${selectedSystem}`,",
       "context": {
         "before": {
-          "line": 5438,
+          "line": 5437,
           "text": "`Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`,"
         },
         "current": {
-          "line": 5439,
+          "line": 5438,
           "text": "`Create the remaining ${newBeats} beat note${newBeats > 1 ? 's' : ''} for ${selectedSystem}`,"
         },
         "after": {
-          "line": 5440,
+          "line": 5439,
           "text": "false,"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5472,
+      "line": 5471,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "`Create ${existingBeatExpectedCount} beat note files`,",
       "context": {
         "before": {
-          "line": 5471,
+          "line": 5470,
           "text": "'Create beat notes',"
         },
         "current": {
-          "line": 5472,
+          "line": 5471,
           "text": "`Create ${existingBeatExpectedCount} beat note files`,"
         },
         "after": {
-          "line": 5473,
+          "line": 5472,
           "text": "false,"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5506,
+      "line": 5505,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "`Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`,",
       "context": {
         "before": {
-          "line": 5505,
+          "line": 5504,
           "text": "setPrimaryDesignButton("
         },
         "current": {
-          "line": 5506,
+          "line": 5505,
           "text": "`Create ${newBeats} missing beat note${newBeats > 1 ? 's' : ''}`,"
         },
         "after": {
-          "line": 5507,
+          "line": 5506,
           "text": "`Create missing beat notes for ${newBeats} beat${newBeats > 1 ? 's' : ''} without files`,"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5528,
-      "token": "mergeTemplates",
-      "category": "drift-term",
-      "lineText": "if (mergeTemplatesButton && isCustom && (hasMisaligned || hasMissingModel || hasLegacyToRepair)) {",
+      "line": 5525,
+      "token": "NOTE",
+      "category": "stale-comment",
+      "lineText": "// Show Repair only when the beat-note audit reports canonical mismatches.",
       "context": {
         "before": {
-          "line": 5527,
+          "line": 5524,
+          "text": ""
+        },
+        "current": {
+          "line": 5525,
+          "text": "// Show Repair only when the beat-note audit reports canonical mismatches."
+        },
+        "after": {
+          "line": 5526,
           "text": "const hasLegacyToRepair = legacyMatched > 0;"
-        },
-        "current": {
-          "line": 5528,
-          "text": "if (mergeTemplatesButton && isCustom && (hasMisaligned || hasMissingModel || hasLegacyToRepair)) {"
-        },
-        "after": {
-          "line": 5529,
-          "text": "mergeTemplatesButton.buttonEl.removeClass('ert-hidden');"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5529,
-      "token": "mergeTemplates",
-      "category": "drift-term",
-      "lineText": "mergeTemplatesButton.buttonEl.removeClass('ert-hidden');",
-      "context": {
-        "before": {
-          "line": 5528,
-          "text": "if (mergeTemplatesButton && isCustom && (hasMisaligned || hasMissingModel || hasLegacyToRepair)) {"
-        },
-        "current": {
-          "line": 5529,
-          "text": "mergeTemplatesButton.buttonEl.removeClass('ert-hidden');"
-        },
-        "after": {
-          "line": 5530,
-          "text": "mergeTemplatesButton.setDisabled(false);"
-        }
-      }
-    },
-    {
-      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5530,
-      "token": "mergeTemplates",
-      "category": "drift-term",
-      "lineText": "mergeTemplatesButton.setDisabled(false);",
-      "context": {
-        "before": {
-          "line": 5529,
-          "text": "mergeTemplatesButton.buttonEl.removeClass('ert-hidden');"
-        },
-        "current": {
-          "line": 5530,
-          "text": "mergeTemplatesButton.setDisabled(false);"
-        },
-        "after": {
-          "line": 5531,
-          "text": "const repairCount = misaligned + missingModel + legacyMatched;"
-        }
-      }
-    },
-    {
-      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5532,
+      "line": 5531,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "mergeTemplatesButton.setButtonText(`Repair ${repairCount} beat note${repairCount > 1 ? 's' : ''}`);",
+      "lineText": "repairBeatNotesButton.setButtonText(`Repair ${repairCount} beat note${repairCount > 1 ? 's' : ''}`);",
       "context": {
         "before": {
-          "line": 5531,
+          "line": 5530,
           "text": "const repairCount = misaligned + missingModel + legacyMatched;"
         },
         "current": {
-          "line": 5532,
-          "text": "mergeTemplatesButton.setButtonText(`Repair ${repairCount} beat note${repairCount > 1 ? 's' : ''}`);"
+          "line": 5531,
+          "text": "repairBeatNotesButton.setButtonText(`Repair ${repairCount} beat note${repairCount > 1 ? 's' : ''}`);"
         },
         "after": {
-          "line": 5533,
+          "line": 5532,
           "text": "const repairBits: string[] = [];"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5532,
-      "token": "mergeTemplates",
-      "category": "drift-term",
-      "lineText": "mergeTemplatesButton.setButtonText(`Repair ${repairCount} beat note${repairCount > 1 ? 's' : ''}`);",
-      "context": {
-        "before": {
-          "line": 5531,
-          "text": "const repairCount = misaligned + missingModel + legacyMatched;"
-        },
-        "current": {
-          "line": 5532,
-          "text": "mergeTemplatesButton.setButtonText(`Repair ${repairCount} beat note${repairCount > 1 ? 's' : ''}`);"
-        },
-        "after": {
-          "line": 5533,
-          "text": "const repairBits: string[] = [];"
-        }
-      }
-    },
-    {
-      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5537,
+      "line": 5536,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "mergeTemplatesButton.setTooltip(`Update Act, Beat Model, and Beat Id for ${repairBits.join(' and ')} beat note${repairCount > 1 ? 's' : ''}. Prefix numbers are not changed.`);",
+      "lineText": "repairBeatNotesButton.setTooltip(`Update Act, Beat Model, and Beat Id for ${repairBits.join(' and ')} beat note${repairCount > 1 ? 's' : ''}. Prefix numbers are not changed.`);",
       "context": {
         "before": {
-          "line": 5536,
+          "line": 5535,
           "text": "if (legacyMatched > 0) repairBits.push(`${legacyMatched} missing Beat Id`);"
         },
         "current": {
-          "line": 5537,
-          "text": "mergeTemplatesButton.setTooltip(`Update Act, Beat Model, and Beat Id for ${repairBits.join(' and ')} beat note${repairCount > 1 ? 's' : ''}. Prefix numbers are not changed.`);"
+          "line": 5536,
+          "text": "repairBeatNotesButton.setTooltip(`Update Act, Beat Model, and Beat Id for ${repairBits.join(' and ')} beat note${repairCount > 1 ? 's' : ''}. Prefix numbers are not changed.`);"
         },
         "after": {
-          "line": 5538,
+          "line": 5537,
           "text": "}"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5537,
-      "token": "mergeTemplates",
-      "category": "drift-term",
-      "lineText": "mergeTemplatesButton.setTooltip(`Update Act, Beat Model, and Beat Id for ${repairBits.join(' and ')} beat note${repairCount > 1 ? 's' : ''}. Prefix numbers are not changed.`);",
-      "context": {
-        "before": {
-          "line": 5536,
-          "text": "if (legacyMatched > 0) repairBits.push(`${legacyMatched} missing Beat Id`);"
-        },
-        "current": {
-          "line": 5537,
-          "text": "mergeTemplatesButton.setTooltip(`Update Act, Beat Model, and Beat Id for ${repairBits.join(' and ')} beat note${repairCount > 1 ? 's' : ''}. Prefix numbers are not changed.`);"
-        },
-        "after": {
-          "line": 5538,
-          "text": "}"
-        }
-      }
-    },
-    {
-      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5635,
+      "line": 5634,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "// Check Beat Id conflict: note already has a different Beat Id",
       "context": {
         "before": {
-          "line": 5634,
+          "line": 5633,
           "text": ""
         },
         "current": {
-          "line": 5635,
+          "line": 5634,
           "text": "// Check Beat Id conflict: note already has a different Beat Id"
         },
         "after": {
-          "line": 5636,
+          "line": 5635,
           "text": "const existingBeatId = match[\"Beat Id\"];"
+        }
+      }
+    },
+    {
+      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
+      "line": 5705,
+      "token": "NOTE",
+      "category": "stale-comment",
+      "lineText": "const modelHint = modelFixedCount > 0 ? ` Set Beat Model on ${modelFixedCount} note${modelFixedCount > 1 ? 's' : ''}.` : '';",
+      "context": {
+        "before": {
+          "line": 5704,
+          "text": "const duplicateHint = duplicates.length > 0 ? ` ${duplicates.length} duplicate title${duplicates.length > 1 ? 's' : ''} skipped (manually delete duplicate beat notes).` : '';"
+        },
+        "current": {
+          "line": 5705,
+          "text": "const modelHint = modelFixedCount > 0 ? ` Set Beat Model on ${modelFixedCount} note${modelFixedCount > 1 ? 's' : ''}.` : '';"
+        },
+        "after": {
+          "line": 5706,
+          "text": "const beatIdHint = beatIdWrittenCount > 0 ? ` Locked Beat Id on ${beatIdWrittenCount} note${beatIdWrittenCount > 1 ? 's' : ''}.` : '';"
         }
       }
     },
@@ -14698,60 +14383,39 @@
       "line": 5706,
       "token": "NOTE",
       "category": "stale-comment",
-      "lineText": "const modelHint = modelFixedCount > 0 ? ` Set Beat Model on ${modelFixedCount} note${modelFixedCount > 1 ? 's' : ''}.` : '';",
-      "context": {
-        "before": {
-          "line": 5705,
-          "text": "const duplicateHint = duplicates.length > 0 ? ` ${duplicates.length} duplicate title${duplicates.length > 1 ? 's' : ''} skipped (manually delete duplicate beat notes).` : '';"
-        },
-        "current": {
-          "line": 5706,
-          "text": "const modelHint = modelFixedCount > 0 ? ` Set Beat Model on ${modelFixedCount} note${modelFixedCount > 1 ? 's' : ''}.` : '';"
-        },
-        "after": {
-          "line": 5707,
-          "text": "const beatIdHint = beatIdWrittenCount > 0 ? ` Locked Beat Id on ${beatIdWrittenCount} note${beatIdWrittenCount > 1 ? 's' : ''}.` : '';"
-        }
-      }
-    },
-    {
-      "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5707,
-      "token": "NOTE",
-      "category": "stale-comment",
       "lineText": "const beatIdHint = beatIdWrittenCount > 0 ? ` Locked Beat Id on ${beatIdWrittenCount} note${beatIdWrittenCount > 1 ? 's' : ''}.` : '';",
       "context": {
         "before": {
-          "line": 5706,
+          "line": 5705,
           "text": "const modelHint = modelFixedCount > 0 ? ` Set Beat Model on ${modelFixedCount} note${modelFixedCount > 1 ? 's' : ''}.` : '';"
         },
         "current": {
-          "line": 5707,
+          "line": 5706,
           "text": "const beatIdHint = beatIdWrittenCount > 0 ? ` Locked Beat Id on ${beatIdWrittenCount} note${beatIdWrittenCount > 1 ? 's' : ''}.` : '';"
         },
         "after": {
-          "line": 5708,
+          "line": 5707,
           "text": "const beatIdConflictHint = beatIdConflicts.length > 0 ? ` ${beatIdConflicts.length} Beat Id conflict${beatIdConflicts.length > 1 ? 's' : ''} (existing id differs).` : '';"
         }
       }
     },
     {
       "filePath": "src/settings/sections/BeatPropertiesSection.ts",
-      "line": 5709,
+      "line": 5708,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "new Notice(`Repaired ${updatedCount} beat note${updatedCount > 1 ? 's' : ''} (Act, Beat Model).${modelHint}${beatIdHint}${conflictHint}${duplicateHint}${beatIdConflictHint}`);",
       "context": {
         "before": {
-          "line": 5708,
+          "line": 5707,
           "text": "const beatIdConflictHint = beatIdConflicts.length > 0 ? ` ${beatIdConflicts.length} Beat Id conflict${beatIdConflicts.length > 1 ? 's' : ''} (existing id differs).` : '';"
         },
         "current": {
-          "line": 5709,
+          "line": 5708,
           "text": "new Notice(`Repaired ${updatedCount} beat note${updatedCount > 1 ? 's' : ''} (Act, Beat Model).${modelHint}${beatIdHint}${conflictHint}${duplicateHint}${beatIdConflictHint}`);"
         },
         "after": {
-          "line": 5710,
+          "line": 5709,
           "text": "}"
         }
       }
@@ -15559,7 +15223,7 @@
       "line": 1018,
       "token": "TODO",
       "category": "stale-comment",
-      "lineText": "// TODO: Connect to license validation API when beta ends",
+      "lineText": "// TODO(#SAN-1): Connect to license validation API when beta ends.",
       "context": {
         "before": {
           "line": 1017,
@@ -15567,7 +15231,7 @@
         },
         "current": {
           "line": 1018,
-          "text": "// TODO: Connect to license validation API when beta ends"
+          "text": "// TODO(#SAN-1): Connect to license validation API when beta ends."
         },
         "after": {
           "line": 1019,
@@ -22489,7 +22153,7 @@
       "line": 153,
       "token": "TODO",
       "category": "stale-comment",
-      "lineText": "// TODO: Update this check to be provider-agnostic",
+      "lineText": "// TODO(#SAN-2): Update this check to be provider-agnostic.",
       "context": {
         "before": {
           "line": 152,
@@ -22497,7 +22161,7 @@
         },
         "current": {
           "line": 153,
-          "text": "// TODO: Update this check to be provider-agnostic"
+          "text": "// TODO(#SAN-2): Update this check to be provider-agnostic."
         },
         "after": {
           "line": 154,
@@ -28829,30 +28493,9 @@
     {
       "filePath": "src/api/anthropicApi.ts",
       "line": 6,
-      "token": "TODO",
-      "category": "stale-comment",
-      "lineText": "// TODO: DEPRECATED — migrate to aiClient",
-      "context": {
-        "before": {
-          "line": 5,
-          "text": "*/"
-        },
-        "current": {
-          "line": 6,
-          "text": "// TODO: DEPRECATED — migrate to aiClient"
-        },
-        "after": {
-          "line": 7,
-          "text": "import { requestUrl } from 'obsidian';"
-        }
-      }
-    },
-    {
-      "filePath": "src/api/anthropicApi.ts",
-      "line": 6,
       "token": "DEPRECATED",
       "category": "stale-comment",
-      "lineText": "// TODO: DEPRECATED — migrate to aiClient",
+      "lineText": "// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.",
       "context": {
         "before": {
           "line": 5,
@@ -28860,28 +28503,7 @@
         },
         "current": {
           "line": 6,
-          "text": "// TODO: DEPRECATED — migrate to aiClient"
-        },
-        "after": {
-          "line": 7,
-          "text": "import { requestUrl } from 'obsidian';"
-        }
-      }
-    },
-    {
-      "filePath": "src/api/geminiApi.ts",
-      "line": 6,
-      "token": "TODO",
-      "category": "stale-comment",
-      "lineText": "// TODO: DEPRECATED — migrate to aiClient",
-      "context": {
-        "before": {
-          "line": 5,
-          "text": "*/"
-        },
-        "current": {
-          "line": 6,
-          "text": "// TODO: DEPRECATED — migrate to aiClient"
+          "text": "// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints."
         },
         "after": {
           "line": 7,
@@ -28894,7 +28516,7 @@
       "line": 6,
       "token": "DEPRECATED",
       "category": "stale-comment",
-      "lineText": "// TODO: DEPRECATED — migrate to aiClient",
+      "lineText": "// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.",
       "context": {
         "before": {
           "line": 5,
@@ -28902,7 +28524,7 @@
         },
         "current": {
           "line": 6,
-          "text": "// TODO: DEPRECATED — migrate to aiClient"
+          "text": "// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints."
         },
         "after": {
           "line": 7,
@@ -28913,30 +28535,13 @@
     {
       "filePath": "src/api/legacyAccessGuard.ts",
       "line": 1,
-      "token": "TODO",
-      "category": "stale-comment",
-      "lineText": "// TODO: DEPRECATED — migrate to aiClient",
-      "context": {
-        "current": {
-          "line": 1,
-          "text": "// TODO: DEPRECATED — migrate to aiClient"
-        },
-        "after": {
-          "line": 2,
-          "text": "const LEGACY_WARNING_PREFIX = '[AI Legacy Access]';"
-        }
-      }
-    },
-    {
-      "filePath": "src/api/legacyAccessGuard.ts",
-      "line": 1,
       "token": "DEPRECATED",
       "category": "stale-comment",
-      "lineText": "// TODO: DEPRECATED — migrate to aiClient",
+      "lineText": "// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.",
       "context": {
         "current": {
           "line": 1,
-          "text": "// TODO: DEPRECATED — migrate to aiClient"
+          "text": "// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints."
         },
         "after": {
           "line": 2,
@@ -28968,30 +28573,9 @@
     {
       "filePath": "src/api/localAiApi.ts",
       "line": 5,
-      "token": "TODO",
-      "category": "stale-comment",
-      "lineText": "// TODO: DEPRECATED — migrate to aiClient",
-      "context": {
-        "before": {
-          "line": 4,
-          "text": "*/"
-        },
-        "current": {
-          "line": 5,
-          "text": "// TODO: DEPRECATED — migrate to aiClient"
-        },
-        "after": {
-          "line": 6,
-          "text": "import { requestUrl } from 'obsidian';"
-        }
-      }
-    },
-    {
-      "filePath": "src/api/localAiApi.ts",
-      "line": 5,
       "token": "DEPRECATED",
       "category": "stale-comment",
-      "lineText": "// TODO: DEPRECATED — migrate to aiClient",
+      "lineText": "// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.",
       "context": {
         "before": {
           "line": 4,
@@ -28999,7 +28583,7 @@
         },
         "current": {
           "line": 5,
-          "text": "// TODO: DEPRECATED — migrate to aiClient"
+          "text": "// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints."
         },
         "after": {
           "line": 6,
@@ -29010,30 +28594,9 @@
     {
       "filePath": "src/api/openaiApi.ts",
       "line": 6,
-      "token": "TODO",
-      "category": "stale-comment",
-      "lineText": "// TODO: DEPRECATED — migrate to aiClient",
-      "context": {
-        "before": {
-          "line": 5,
-          "text": "*/"
-        },
-        "current": {
-          "line": 6,
-          "text": "// TODO: DEPRECATED — migrate to aiClient"
-        },
-        "after": {
-          "line": 7,
-          "text": "import { requestUrl } from 'obsidian'; // Use requestUrl for consistency"
-        }
-      }
-    },
-    {
-      "filePath": "src/api/openaiApi.ts",
-      "line": 6,
       "token": "DEPRECATED",
       "category": "stale-comment",
-      "lineText": "// TODO: DEPRECATED — migrate to aiClient",
+      "lineText": "// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.",
       "context": {
         "before": {
           "line": 5,
@@ -29041,7 +28604,7 @@
         },
         "current": {
           "line": 6,
-          "text": "// TODO: DEPRECATED — migrate to aiClient"
+          "text": "// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints."
         },
         "after": {
           "line": 7,
@@ -29052,30 +28615,13 @@
     {
       "filePath": "src/api/providerCapabilities.ts",
       "line": 1,
-      "token": "TODO",
-      "category": "stale-comment",
-      "lineText": "// TODO: DEPRECATED — migrate to aiClient",
-      "context": {
-        "current": {
-          "line": 1,
-          "text": "// TODO: DEPRECATED — migrate to aiClient"
-        },
-        "after": {
-          "line": 2,
-          "text": "import type { OpenAiResponseFormat } from './openaiApi';"
-        }
-      }
-    },
-    {
-      "filePath": "src/api/providerCapabilities.ts",
-      "line": 1,
       "token": "DEPRECATED",
       "category": "stale-comment",
-      "lineText": "// TODO: DEPRECATED — migrate to aiClient",
+      "lineText": "// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.",
       "context": {
         "current": {
           "line": 1,
-          "text": "// TODO: DEPRECATED — migrate to aiClient"
+          "text": "// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints."
         },
         "after": {
           "line": 2,
@@ -29086,30 +28632,13 @@
     {
       "filePath": "src/api/providerErrors.ts",
       "line": 1,
-      "token": "TODO",
-      "category": "stale-comment",
-      "lineText": "// TODO: DEPRECATED — migrate to aiClient",
-      "context": {
-        "current": {
-          "line": 1,
-          "text": "// TODO: DEPRECATED — migrate to aiClient"
-        },
-        "after": {
-          "line": 2,
-          "text": "export type AiStatus = 'success' | 'rejected' | 'unavailable' | 'timeout' | 'auth' | 'rate_limit';"
-        }
-      }
-    },
-    {
-      "filePath": "src/api/providerErrors.ts",
-      "line": 1,
       "token": "DEPRECATED",
       "category": "stale-comment",
-      "lineText": "// TODO: DEPRECATED — migrate to aiClient",
+      "lineText": "// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.",
       "context": {
         "current": {
           "line": 1,
-          "text": "// TODO: DEPRECATED — migrate to aiClient"
+          "text": "// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints."
         },
         "after": {
           "line": 2,
@@ -29120,30 +28649,9 @@
     {
       "filePath": "src/api/providerRouter.ts",
       "line": 4,
-      "token": "TODO",
-      "category": "stale-comment",
-      "lineText": "// TODO: DEPRECATED — migrate to aiClient",
-      "context": {
-        "before": {
-          "line": 3,
-          "text": "*/"
-        },
-        "current": {
-          "line": 4,
-          "text": "// TODO: DEPRECATED — migrate to aiClient"
-        },
-        "after": {
-          "line": 5,
-          "text": "import type RadialTimelinePlugin from '../main';"
-        }
-      }
-    },
-    {
-      "filePath": "src/api/providerRouter.ts",
-      "line": 4,
       "token": "DEPRECATED",
       "category": "stale-comment",
-      "lineText": "// TODO: DEPRECATED — migrate to aiClient",
+      "lineText": "// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints.",
       "context": {
         "before": {
           "line": 3,
@@ -29151,7 +28659,7 @@
         },
         "current": {
           "line": 4,
-          "text": "// TODO: DEPRECATED — migrate to aiClient"
+          "text": "// DEPRECATED: Legacy provider adapter; prefer aiClient entrypoints."
         },
         "after": {
           "line": 5,
@@ -29162,30 +28670,13 @@
     {
       "filePath": "src/api/requestPayload.ts",
       "line": 1,
-      "token": "TODO",
-      "category": "stale-comment",
-      "lineText": "// TODO: DEPRECATED — migrate to aiClient",
-      "context": {
-        "current": {
-          "line": 1,
-          "text": "// TODO: DEPRECATED — migrate to aiClient"
-        },
-        "after": {
-          "line": 2,
-          "text": "import type { AiProvider, ProviderCallArgs } from './providerCapabilities';"
-        }
-      }
-    },
-    {
-      "filePath": "src/api/requestPayload.ts",
-      "line": 1,
       "token": "DEPRECATED",
       "category": "stale-comment",
-      "lineText": "// TODO: DEPRECATED — migrate to aiClient",
+      "lineText": "// DEPRECATED: Legacy provider payload shim; route new call paths through aiClient.",
       "context": {
         "current": {
           "line": 1,
-          "text": "// TODO: DEPRECATED — migrate to aiClient"
+          "text": "// DEPRECATED: Legacy provider payload shim; route new call paths through aiClient."
         },
         "after": {
           "line": 2,
@@ -29258,63 +28749,63 @@
     },
     {
       "filePath": "src/ai/prompts/gossamer.ts",
-      "line": 47,
+      "line": 45,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "\"note\": \"Opening establishes world effectively\"",
       "context": {
         "before": {
-          "line": 46,
+          "line": 44,
           "text": "\"score\": 0,"
         },
         "current": {
-          "line": 47,
+          "line": 45,
           "text": "\"note\": \"Opening establishes world effectively\""
         },
         "after": {
-          "line": 48,
+          "line": 46,
           "text": "},"
         }
       }
     },
     {
       "filePath": "src/ai/prompts/gossamer.ts",
-      "line": 52,
+      "line": 50,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "\"note\": \"Strong reversal creates new stakes\"",
       "context": {
         "before": {
-          "line": 51,
+          "line": 49,
           "text": "\"score\": 72,"
         },
         "current": {
-          "line": 52,
+          "line": 50,
           "text": "\"note\": \"Strong reversal creates new stakes\""
         },
         "after": {
-          "line": 53,
+          "line": 51,
           "text": "}"
         }
       }
     },
     {
       "filePath": "src/ai/prompts/gossamer.ts",
-      "line": 63,
+      "line": 61,
       "token": "NOTE",
       "category": "stale-comment",
       "lineText": "- \"note\": one concise sentence of guidance for this beat",
       "context": {
         "before": {
-          "line": 62,
+          "line": 60,
           "text": "- \"score\": 0-100 number representing tension/momentum at that beat"
         },
         "current": {
-          "line": 63,
+          "line": 61,
           "text": "- \"note\": one concise sentence of guidance for this beat"
         },
         "after": {
-          "line": 64,
+          "line": 62,
           "text": "- Only output the JSON object, no markdown fences, no commentary"
         }
       }

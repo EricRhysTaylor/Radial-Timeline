@@ -81,9 +81,6 @@
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/ai/credentials/redactSensitive.ts
   57:53  error  Unnecessary escape character: \/  no-useless-escape
 
-/Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/ai/prompts/gossamer.ts
-  4:10  warning  'extractBeatOrder' is defined but never used  @typescript-eslint/no-unused-vars
-
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/ai/prompts/synopsis.ts
   55:7  error  'instructions' is never reassigned. Use 'const' instead  prefer-const
   95:7  error  'instructions' is never reassigned. Use 'const' instead  prefer-const
@@ -104,43 +101,17 @@
   66:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/api/anthropicApi.ts
-   6:1   warning  Unexpected 'todo' comment: 'TODO: DEPRECATED — migrate to aiClient'  no-warning-comments
-  96:57  error    Unexpected any. Specify a different type                             @typescript-eslint/no-explicit-any
-
-/Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/api/geminiApi.ts
-  6:1  warning  Unexpected 'todo' comment: 'TODO: DEPRECATED — migrate to aiClient'  no-warning-comments
-
-/Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/api/legacyAccessGuard.ts
-  1:1  warning  Unexpected 'todo' comment: 'TODO: DEPRECATED — migrate to aiClient'  no-warning-comments
-
-/Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/api/localAiApi.ts
-  5:1  warning  Unexpected 'todo' comment: 'TODO: DEPRECATED — migrate to aiClient'  no-warning-comments
-
-/Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/api/openaiApi.ts
-  6:1  warning  Unexpected 'todo' comment: 'TODO: DEPRECATED — migrate to aiClient'  no-warning-comments
-
-/Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/api/providerCapabilities.ts
-  1:1  warning  Unexpected 'todo' comment: 'TODO: DEPRECATED — migrate to aiClient'  no-warning-comments
+  96:57  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/api/providerErrors.ts
-   1:1   warning  Unexpected 'todo' comment: 'TODO: DEPRECATED — migrate to aiClient'  no-warning-comments
-  19:68  error    Unexpected any. Specify a different type                             @typescript-eslint/no-explicit-any
-
-/Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/api/providerRouter.ts
-  4:1  warning  Unexpected 'todo' comment: 'TODO: DEPRECATED — migrate to aiClient'  no-warning-comments
-
-/Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/api/requestPayload.ts
-  1:1  warning  Unexpected 'todo' comment: 'TODO: DEPRECATED — migrate to aiClient'  no-warning-comments
+  19:68  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/assets/embeddedFonts.ts
-  24:23872  warning  Unexpected 'todo' comment: 'TODO: Paste your base64-encoded 04b03b...'  no-warning-comments
+  24:23872  warning  Unexpected 'todo:' comment: 'TODO: Paste your base64-encoded 04b03b...'  no-warning-comments
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/debug/index.ts
    9:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
   10:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-
-/Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/debug/snapshot.ts
-  7:15  warning  'RadialTimelineView' is defined but never used  @typescript-eslint/no-unused-vars
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/inquiry/InquiryView.ts
   4006:15  warning  'secondRowCount' is assigned a value but never used  @typescript-eslint/no-unused-vars
@@ -181,8 +152,8 @@
    57:15   warning  'EMBEDDED_README_CONTENT' is defined but never used              @typescript-eslint/no-unused-vars
    63:7    warning  'TIMELINE_VIEW_DISPLAY_TEXT' is assigned a value but never used  @typescript-eslint/no-unused-vars
    69:70   error    Unnecessary escape character: \/                                 no-useless-escape
-  195:26   error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
-  196:26   error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  193:26   error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  194:26   error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/modals/AprPaletteModal.ts
   104:19  warning  'applyBtn' is assigned a value but never used  @typescript-eslint/no-unused-vars
@@ -201,9 +172,6 @@
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/modals/CreateBeatsTemplatesModal.ts
   4:39  warning  'Notice' is defined but never used  @typescript-eslint/no-unused-vars
-
-/Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/modals/GossamerProcessingModal.ts
-  153:9  warning  Unexpected 'todo' comment: 'TODO: Update this check to be...'  no-warning-comments
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/modals/GossamerScoreModal.ts
    61:71  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
@@ -273,98 +241,86 @@
   47:44  error  'innerHTML' is restricted from being used. For security reasons, use DOM manipulation methods instead of innerHTML  no-restricted-properties
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/renderer/TimelineRenderer.ts
-   18:68   warning  'NumberSquareVisualResolver' is defined but never used                @typescript-eslint/no-unused-vars
-   20:10   warning  'formatNumber' is defined but never used                              @typescript-eslint/no-unused-vars
-   20:24   warning  'escapeXml' is defined but never used                                 @typescript-eslint/no-unused-vars
-   21:23   warning  'isOverdueDateString' is defined but never used                       @typescript-eslint/no-unused-vars
-   22:10   warning  'parseSceneTitle' is defined but never used                           @typescript-eslint/no-unused-vars
-   22:27   warning  'normalizeStatus' is defined but never used                           @typescript-eslint/no-unused-vars
-   22:44   warning  'parseSceneTitleComponents' is defined but never used                 @typescript-eslint/no-unused-vars
-   22:71   warning  'getScenePrefixNumber' is defined but never used                      @typescript-eslint/no-unused-vars
-   25:5    warning  'getSceneState' is defined but never used                             @typescript-eslint/no-unused-vars
-   26:5    warning  'buildSquareClasses' is defined but never used                        @typescript-eslint/no-unused-vars
-   27:5    warning  'buildTextClasses' is defined but never used                          @typescript-eslint/no-unused-vars
-   28:5    warning  'extractPosition' is defined but never used                           @typescript-eslint/no-unused-vars
-   29:5    warning  'sortScenes' is defined but never used                                @typescript-eslint/no-unused-vars
-   33:10   warning  'generateNumberSquareGroup' is defined but never used                 @typescript-eslint/no-unused-vars
-   34:10   warning  'normalizeBeatName' is defined but never used                         @typescript-eslint/no-unused-vars
-   37:10   warning  'getMostAdvancedStageColor' is defined but never used                 @typescript-eslint/no-unused-vars
-   39:10   warning  'arcPath' is defined but never used                                   @typescript-eslint/no-unused-vars
-   52:5    warning  'ELAPSED_ARC_RADIUS' is defined but never used                        @typescript-eslint/no-unused-vars
-   53:5    warning  'ELAPSED_TICK_LENGTH' is defined but never used                       @typescript-eslint/no-unused-vars
-   58:5    warning  'SYNOPSIS_INSET' is defined but never used                            @typescript-eslint/no-unused-vars
-   60:5    warning  'TEXTPATH_START_NUDGE_RAD' is defined but never used                  @typescript-eslint/no-unused-vars
-   62:5    warning  'PLOT_PIXEL_WIDTH' is defined but never used                          @typescript-eslint/no-unused-vars
-   63:5    warning  'BEAT_FONT_PX' is defined but never used                              @typescript-eslint/no-unused-vars
-   64:5    warning  'ESTIMATE_FUDGE_RENDER' is defined but never used                     @typescript-eslint/no-unused-vars
-   65:5    warning  'PADDING_RENDER_PX' is defined but never used                         @typescript-eslint/no-unused-vars
-   66:5    warning  'ANGULAR_GAP_PX' is defined but never used                            @typescript-eslint/no-unused-vars
-   68:10   warning  'computePositions' is defined but never used                          @typescript-eslint/no-unused-vars
-   68:28   warning  'getEffectiveScenesForRing' is defined but never used                 @typescript-eslint/no-unused-vars
-   68:60   warning  'PositionInfo' is defined but never used                              @typescript-eslint/no-unused-vars
-   70:10   warning  'getFillForScene' is defined but never used                           @typescript-eslint/no-unused-vars
-   71:10   warning  'estimatePixelsFromTitle' is defined but never used                   @typescript-eslint/no-unused-vars
-   75:44   warning  'computeSubplotDominanceStates' is defined but never used             @typescript-eslint/no-unused-vars
-   75:75   warning  'resolveDominantScene' is defined but never used                      @typescript-eslint/no-unused-vars
-   75:102  warning  'SubplotDominanceState' is defined but never used                     @typescript-eslint/no-unused-vars
-   78:10   warning  'sceneArcPath' is defined but never used                              @typescript-eslint/no-unused-vars
-   78:24   warning  'renderVoidCellPath' is defined but never used                        @typescript-eslint/no-unused-vars
-   79:10   warning  'renderBeatSlice' is defined but never used                           @typescript-eslint/no-unused-vars
-   85:10   warning  'renderSceneGroup' is defined but never used                          @typescript-eslint/no-unused-vars
-   86:10   warning  'renderBeatGroup' is defined but never used                           @typescript-eslint/no-unused-vars
-   88:10   warning  'renderOuterRingNumberSquares' is defined but never used              @typescript-eslint/no-unused-vars
-   88:40   warning  'renderInnerRingsNumberSquaresAllScenes' is defined but never used    @typescript-eslint/no-unused-vars
-   88:80   warning  'renderNumberSquaresStandard' is defined but never used               @typescript-eslint/no-unused-vars
-   89:10   warning  'shouldRenderStoryBeats' is defined but never used                    @typescript-eslint/no-unused-vars
-   89:90   warning  'shouldShowInnerRingContent' is defined but never used                @typescript-eslint/no-unused-vars
-   89:118  warning  'getSubplotLabelText' is defined but never used                       @typescript-eslint/no-unused-vars
-  190:11   warning  'sceneCount' is assigned a value but never used                       @typescript-eslint/no-unused-vars
-  197:69   error    Unexpected any. Specify a different type                              @typescript-eslint/no-explicit-any
-  198:67   error    Unexpected any. Specify a different type                              @typescript-eslint/no-explicit-any
-  201:11   warning  'sceneTitleInset' is assigned a value but never used                  @typescript-eslint/no-unused-vars
-  214:9    warning  'totalPlotNotes' is assigned a value but never used                   @typescript-eslint/no-unused-vars
-  215:9    warning  'plotIndexByKey' is assigned a value but never used                   @typescript-eslint/no-unused-vars
-  216:9    warning  'plotsBySubplot' is assigned a value but never used                   @typescript-eslint/no-unused-vars
-  226:45   error    Unexpected any. Specify a different type                              @typescript-eslint/no-explicit-any
-  249:11   warning  'forceSubplotFillColors' is assigned a value but never used           @typescript-eslint/no-unused-vars
-  252:62   error    Unexpected any. Specify a different type                              @typescript-eslint/no-explicit-any
-  253:57   error    Unexpected any. Specify a different type                              @typescript-eslint/no-explicit-any
-  256:72   error    Unexpected any. Specify a different type                              @typescript-eslint/no-explicit-any
-  285:11   warning  'beatTextRadius' is assigned a value but never used                   @typescript-eslint/no-unused-vars
-  313:5    warning  Unexpected 'todo' comment: 'Define patterns for Working and Todo...'  no-warning-comments
-  380:11   warning  'circumference' is assigned a value but never used                    @typescript-eslint/no-unused-vars
-  383:11   warning  'currentYearEndAngle' is assigned a value but never used              @typescript-eslint/no-unused-vars
-  442:15   warning  'actNumber' is assigned a value but never used                        @typescript-eslint/no-unused-vars
-  447:49   error    Unexpected any. Specify a different type                              @typescript-eslint/no-explicit-any
-  449:76   error    Unexpected any. Specify a different type                              @typescript-eslint/no-explicit-any
-  483:11   warning  'lastBeatEndByAct' is assigned a value but never used                 @typescript-eslint/no-unused-vars
-  498:16   error    Unexpected any. Specify a different type                              @typescript-eslint/no-explicit-any
-  559:11   warning  'keyX' is assigned a value but never used                             @typescript-eslint/no-unused-vars
-  560:11   warning  'keyY' is assigned a value but never used                             @typescript-eslint/no-unused-vars
-  561:11   warning  'swatchSize' is assigned a value but never used                       @typescript-eslint/no-unused-vars
-  562:11   warning  'textOffset' is assigned a value but never used                       @typescript-eslint/no-unused-vars
-  563:11   warning  'lineHeight' is assigned a value but never used                       @typescript-eslint/no-unused-vars
-  572:11   warning  'centerRadius' is assigned a value but never used                     @typescript-eslint/no-unused-vars
-  573:11   warning  'centerKeySize' is assigned a value but never used                    @typescript-eslint/no-unused-vars
-  578:11   warning  'ICON_ID_MAP' is assigned a value but never used                      @typescript-eslint/no-unused-vars
-  590:11   warning  'startY' is assigned a value but never used                           @typescript-eslint/no-unused-vars
-  620:27   warning  'maxStageIdxForGrid' is assigned a value but never used               @typescript-eslint/no-unused-vars
-  650:47   error    Unexpected any. Specify a different type                              @typescript-eslint/no-explicit-any
-  737:69   error    Unexpected any. Specify a different type                              @typescript-eslint/no-explicit-any
-
-/Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/renderer/apr/AprConstants.ts
-  144:5   warning  Unexpected 'todo' comment: '* Todo: gray base + 45° crosshatch...'      no-warning-comments
-  284:38  warning  Unexpected 'todo' comment: 'Show status colors (Todo, In Progress,...'  no-warning-comments
-  307:43  warning  Unexpected 'todo' comment: 'Show Todo, In Progress, Overdue'            no-warning-comments
+   18:68   warning  'NumberSquareVisualResolver' is defined but never used              @typescript-eslint/no-unused-vars
+   20:10   warning  'formatNumber' is defined but never used                            @typescript-eslint/no-unused-vars
+   20:24   warning  'escapeXml' is defined but never used                               @typescript-eslint/no-unused-vars
+   21:23   warning  'isOverdueDateString' is defined but never used                     @typescript-eslint/no-unused-vars
+   22:10   warning  'parseSceneTitle' is defined but never used                         @typescript-eslint/no-unused-vars
+   22:27   warning  'normalizeStatus' is defined but never used                         @typescript-eslint/no-unused-vars
+   22:44   warning  'parseSceneTitleComponents' is defined but never used               @typescript-eslint/no-unused-vars
+   22:71   warning  'getScenePrefixNumber' is defined but never used                    @typescript-eslint/no-unused-vars
+   25:5    warning  'getSceneState' is defined but never used                           @typescript-eslint/no-unused-vars
+   26:5    warning  'buildSquareClasses' is defined but never used                      @typescript-eslint/no-unused-vars
+   27:5    warning  'buildTextClasses' is defined but never used                        @typescript-eslint/no-unused-vars
+   28:5    warning  'extractPosition' is defined but never used                         @typescript-eslint/no-unused-vars
+   29:5    warning  'sortScenes' is defined but never used                              @typescript-eslint/no-unused-vars
+   33:10   warning  'generateNumberSquareGroup' is defined but never used               @typescript-eslint/no-unused-vars
+   34:10   warning  'normalizeBeatName' is defined but never used                       @typescript-eslint/no-unused-vars
+   37:10   warning  'getMostAdvancedStageColor' is defined but never used               @typescript-eslint/no-unused-vars
+   39:10   warning  'arcPath' is defined but never used                                 @typescript-eslint/no-unused-vars
+   52:5    warning  'ELAPSED_ARC_RADIUS' is defined but never used                      @typescript-eslint/no-unused-vars
+   53:5    warning  'ELAPSED_TICK_LENGTH' is defined but never used                     @typescript-eslint/no-unused-vars
+   58:5    warning  'SYNOPSIS_INSET' is defined but never used                          @typescript-eslint/no-unused-vars
+   60:5    warning  'TEXTPATH_START_NUDGE_RAD' is defined but never used                @typescript-eslint/no-unused-vars
+   62:5    warning  'PLOT_PIXEL_WIDTH' is defined but never used                        @typescript-eslint/no-unused-vars
+   63:5    warning  'BEAT_FONT_PX' is defined but never used                            @typescript-eslint/no-unused-vars
+   64:5    warning  'ESTIMATE_FUDGE_RENDER' is defined but never used                   @typescript-eslint/no-unused-vars
+   65:5    warning  'PADDING_RENDER_PX' is defined but never used                       @typescript-eslint/no-unused-vars
+   66:5    warning  'ANGULAR_GAP_PX' is defined but never used                          @typescript-eslint/no-unused-vars
+   68:10   warning  'computePositions' is defined but never used                        @typescript-eslint/no-unused-vars
+   68:28   warning  'getEffectiveScenesForRing' is defined but never used               @typescript-eslint/no-unused-vars
+   68:60   warning  'PositionInfo' is defined but never used                            @typescript-eslint/no-unused-vars
+   70:10   warning  'getFillForScene' is defined but never used                         @typescript-eslint/no-unused-vars
+   71:10   warning  'estimatePixelsFromTitle' is defined but never used                 @typescript-eslint/no-unused-vars
+   75:44   warning  'computeSubplotDominanceStates' is defined but never used           @typescript-eslint/no-unused-vars
+   75:75   warning  'resolveDominantScene' is defined but never used                    @typescript-eslint/no-unused-vars
+   75:102  warning  'SubplotDominanceState' is defined but never used                   @typescript-eslint/no-unused-vars
+   78:10   warning  'sceneArcPath' is defined but never used                            @typescript-eslint/no-unused-vars
+   78:24   warning  'renderVoidCellPath' is defined but never used                      @typescript-eslint/no-unused-vars
+   79:10   warning  'renderBeatSlice' is defined but never used                         @typescript-eslint/no-unused-vars
+   85:10   warning  'renderSceneGroup' is defined but never used                        @typescript-eslint/no-unused-vars
+   86:10   warning  'renderBeatGroup' is defined but never used                         @typescript-eslint/no-unused-vars
+   88:10   warning  'renderOuterRingNumberSquares' is defined but never used            @typescript-eslint/no-unused-vars
+   88:40   warning  'renderInnerRingsNumberSquaresAllScenes' is defined but never used  @typescript-eslint/no-unused-vars
+   88:80   warning  'renderNumberSquaresStandard' is defined but never used             @typescript-eslint/no-unused-vars
+   89:10   warning  'shouldRenderStoryBeats' is defined but never used                  @typescript-eslint/no-unused-vars
+   89:90   warning  'shouldShowInnerRingContent' is defined but never used              @typescript-eslint/no-unused-vars
+   89:118  warning  'getSubplotLabelText' is defined but never used                     @typescript-eslint/no-unused-vars
+  190:11   warning  'sceneCount' is assigned a value but never used                     @typescript-eslint/no-unused-vars
+  197:69   error    Unexpected any. Specify a different type                            @typescript-eslint/no-explicit-any
+  198:67   error    Unexpected any. Specify a different type                            @typescript-eslint/no-explicit-any
+  201:11   warning  'sceneTitleInset' is assigned a value but never used                @typescript-eslint/no-unused-vars
+  214:9    warning  'totalPlotNotes' is assigned a value but never used                 @typescript-eslint/no-unused-vars
+  215:9    warning  'plotIndexByKey' is assigned a value but never used                 @typescript-eslint/no-unused-vars
+  216:9    warning  'plotsBySubplot' is assigned a value but never used                 @typescript-eslint/no-unused-vars
+  226:45   error    Unexpected any. Specify a different type                            @typescript-eslint/no-explicit-any
+  249:11   warning  'forceSubplotFillColors' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  252:62   error    Unexpected any. Specify a different type                            @typescript-eslint/no-explicit-any
+  253:57   error    Unexpected any. Specify a different type                            @typescript-eslint/no-explicit-any
+  256:72   error    Unexpected any. Specify a different type                            @typescript-eslint/no-explicit-any
+  285:11   warning  'beatTextRadius' is assigned a value but never used                 @typescript-eslint/no-unused-vars
+  380:11   warning  'circumference' is assigned a value but never used                  @typescript-eslint/no-unused-vars
+  383:11   warning  'currentYearEndAngle' is assigned a value but never used            @typescript-eslint/no-unused-vars
+  442:15   warning  'actNumber' is assigned a value but never used                      @typescript-eslint/no-unused-vars
+  447:49   error    Unexpected any. Specify a different type                            @typescript-eslint/no-explicit-any
+  449:76   error    Unexpected any. Specify a different type                            @typescript-eslint/no-explicit-any
+  483:11   warning  'lastBeatEndByAct' is assigned a value but never used               @typescript-eslint/no-unused-vars
+  498:16   error    Unexpected any. Specify a different type                            @typescript-eslint/no-explicit-any
+  559:11   warning  'keyX' is assigned a value but never used                           @typescript-eslint/no-unused-vars
+  560:11   warning  'keyY' is assigned a value but never used                           @typescript-eslint/no-unused-vars
+  561:11   warning  'swatchSize' is assigned a value but never used                     @typescript-eslint/no-unused-vars
+  562:11   warning  'textOffset' is assigned a value but never used                     @typescript-eslint/no-unused-vars
+  563:11   warning  'lineHeight' is assigned a value but never used                     @typescript-eslint/no-unused-vars
+  572:11   warning  'centerRadius' is assigned a value but never used                   @typescript-eslint/no-unused-vars
+  573:11   warning  'centerKeySize' is assigned a value but never used                  @typescript-eslint/no-unused-vars
+  578:11   warning  'ICON_ID_MAP' is assigned a value but never used                    @typescript-eslint/no-unused-vars
+  590:11   warning  'startY' is assigned a value but never used                         @typescript-eslint/no-unused-vars
+  620:27   warning  'maxStageIdxForGrid' is assigned a value but never used             @typescript-eslint/no-unused-vars
+  650:47   error    Unexpected any. Specify a different type                            @typescript-eslint/no-explicit-any
+  737:69   error    Unexpected any. Specify a different type                            @typescript-eslint/no-explicit-any
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/renderer/apr/AprRenderer.ts
-   28:37  warning  Unexpected 'todo' comment: 'Show status colors (Todo, In Progress,...'    no-warning-comments
-  118:1   warning  Unexpected 'todo' comment: '* * Generate Figma-safe SVG <pattern>...'     no-warning-comments
-  135:9   warning  Unexpected 'todo' comment: '── Todo: gray base + 45° crosshatch...'       no-warning-comments
-  206:11  warning  'spokeWidth' is assigned a value but never used                           @typescript-eslint/no-unused-vars
-  364:30  warning  Unexpected 'todo' comment: 'STATUS_COLORS.Todo fallback'                  no-warning-comments
-  368:5   warning  Unexpected 'todo' comment: '(no patternTransform) so Todo crosshatch...'  no-warning-comments
-  574:1   warning  Unexpected 'todo' comment: '* * Resolve the fill color for a scene...'    no-warning-comments
+  206:11  warning  'spokeWidth' is assigned a value but never used  @typescript-eslint/no-unused-vars
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/renderer/apr/aprLayout.ts
   74:7  warning  'stroke' is assigned a value but never used  @typescript-eslint/no-unused-vars
@@ -385,12 +341,8 @@
   181:11  warning  'TICK_LABEL_RADIUS' is assigned a value but never used  @typescript-eslint/no-unused-vars
   331:10  warning  'calculateMedian' is defined but never used             @typescript-eslint/no-unused-vars
 
-/Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/renderer/components/Defs.ts
-  37:5  warning  Unexpected 'todo' comment: 'Todo pattern: crosshatch grid — the...'  no-warning-comments
-
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/renderer/components/Grid.ts
-   39:5  warning  'runtimeContentType' is assigned a value but never used               @typescript-eslint/no-unused-vars
-  112:9  warning  Unexpected 'todo' comment: 'Show scene names for Todo, Working, Due'  no-warning-comments
+  39:5  warning  'runtimeContentType' is assigned a value but never used  @typescript-eslint/no-unused-vars
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/renderer/components/Months.ts
   20:9  error  'radius' is never reassigned. Use 'const' instead  prefer-const
@@ -465,8 +417,7 @@
   72:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/renderer/utils/GridData.ts
-   6:27  warning  'STATUSES_FOR_GRID' is defined but never used                             @typescript-eslint/no-unused-vars
-  54:9   warning  Unexpected 'todo' comment: 'If status is empty/undefined/null, count...'  no-warning-comments
+  6:27  warning  'STATUSES_FOR_GRID' is defined but never used  @typescript-eslint/no-unused-vars
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/renderer/utils/Precompute.ts
    49:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
@@ -653,20 +604,20 @@
    862:11  warning  'actLabelsSetting' is assigned a value but never used                  @typescript-eslint/no-unused-vars
   1279:25  error    'name' is never reassigned. Use 'const' instead                        prefer-const
   1630:11  warning  'renderTemplatePreview' is assigned a value but never used             @typescript-eslint/no-unused-vars
-  1884:11  warning  'beatYamlSetting' is assigned a value but never used                   @typescript-eslint/no-unused-vars
-  1944:9   error    'updateBeatHoverPreview' is never reassigned. Use 'const' instead      prefer-const
-  2310:10  error    Unnecessary semicolon                                                  no-extra-semi
-  2467:15  warning  'unsaved' is assigned a value but never used                           @typescript-eslint/no-unused-vars
-  2790:19  warning  'currentHasBeats' is assigned a value but never used                   @typescript-eslint/no-unused-vars
-  2815:9   error    'loadBtn' is never reassigned. Use 'const' instead                     prefer-const
-  2823:9   error    'saveBtn' is never reassigned. Use 'const' instead                     prefer-const
-  2835:9   error    'deleteBtn' is never reassigned. Use 'const' instead                   prefer-const
-  2918:9   error    'onAdvancedToggle' is never reassigned. Use 'const' instead            prefer-const
-  2997:9   error    'updateHoverPreview' is never reassigned. Use 'const' instead          prefer-const
-  3111:15  warning  'attachHint' is assigned a value but never used                        @typescript-eslint/no-unused-vars
-  3130:15  warning  'attachTypeIcon' is assigned a value but never used                    @typescript-eslint/no-unused-vars
-  3632:9   error    'updateBackdropHoverPreview' is never reassigned. Use 'const' instead  prefer-const
-  5860:10  warning  'buildYamlWithRequired' is defined but never used                      @typescript-eslint/no-unused-vars
+  1883:11  warning  'beatYamlSetting' is assigned a value but never used                   @typescript-eslint/no-unused-vars
+  1943:9   error    'updateBeatHoverPreview' is never reassigned. Use 'const' instead      prefer-const
+  2309:10  error    Unnecessary semicolon                                                  no-extra-semi
+  2466:15  warning  'unsaved' is assigned a value but never used                           @typescript-eslint/no-unused-vars
+  2789:19  warning  'currentHasBeats' is assigned a value but never used                   @typescript-eslint/no-unused-vars
+  2814:9   error    'loadBtn' is never reassigned. Use 'const' instead                     prefer-const
+  2822:9   error    'saveBtn' is never reassigned. Use 'const' instead                     prefer-const
+  2834:9   error    'deleteBtn' is never reassigned. Use 'const' instead                   prefer-const
+  2917:9   error    'onAdvancedToggle' is never reassigned. Use 'const' instead            prefer-const
+  2996:9   error    'updateHoverPreview' is never reassigned. Use 'const' instead          prefer-const
+  3110:15  warning  'attachHint' is assigned a value but never used                        @typescript-eslint/no-unused-vars
+  3129:15  warning  'attachTypeIcon' is assigned a value but never used                    @typescript-eslint/no-unused-vars
+  3631:9   error    'updateBackdropHoverPreview' is never reassigned. Use 'const' instead  prefer-const
+  5859:10  warning  'buildYamlWithRequired' is defined but never used                      @typescript-eslint/no-unused-vars
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/settings/sections/CampaignManagerSection.ts
    276:11  warning  'newCampaignSetting' is assigned a value but never used                                                             @typescript-eslint/no-unused-vars
@@ -698,11 +649,10 @@
   114:18  error    Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/settings/sections/ProfessionalSection.ts
-     9:56  warning  'TFile' is defined but never used                                        @typescript-eslint/no-unused-vars
-    56:15  warning  'appData' is assigned a value but never used                             @typescript-eslint/no-unused-vars
-  1018:5   warning  Unexpected 'todo' comment: 'TODO: Connect to license validation API...'  no-warning-comments
-  1047:11  warning  'hasValidKey' is assigned a value but never used                         @typescript-eslint/no-unused-vars
-  1158:15  warning  'feedbackLink' is assigned a value but never used                        @typescript-eslint/no-unused-vars
+     9:56  warning  'TFile' is defined but never used                  @typescript-eslint/no-unused-vars
+    56:15  warning  'appData' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  1047:11  warning  'hasValidKey' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  1158:15  warning  'feedbackLink' is assigned a value but never used  @typescript-eslint/no-unused-vars
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/settings/sections/PublicationSection.ts
   676:29  error  Empty block statement  no-empty
@@ -734,8 +684,7 @@
   8:17  warning  'TFile' is defined but never used  @typescript-eslint/no-unused-vars
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/utils/colour.ts
-  10:1   warning  Unexpected 'todo' comment: '* * Gets the color for the most advanced...'  no-warning-comments
-  64:21  error    'l' is never reassigned. Use 'const' instead                              prefer-const
+  64:21  error  'l' is never reassigned. Use 'const' instead  prefer-const
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/utils/date.ts
    339:13  error    Unexpected lexical declaration in case block        no-case-declarations
@@ -775,9 +724,6 @@
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/utils/text.ts
   281:7  warning  'currentLength' is assigned a value but never used  @typescript-eslint/no-unused-vars
-
-/Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/utils/tooltip.ts
-  7:1  warning  Unexpected 'hack' comment: '* * Unified Tooltip Utility for Radial...'  no-warning-comments
 
 /Users/ericrhystaylor/Documents/RT LLC/CodeBase/radial-timeline/src/utils/yamlTemplateNormalize.ts
   10:39  warning  'BeatSystemConfig' is defined but never used  @typescript-eslint/no-unused-vars
@@ -918,6 +864,6 @@
   108:78  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
   115:52  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
 
-✖ 675 problems (377 errors, 298 warnings)
+✖ 647 problems (377 errors, 270 warnings)
   17 errors and 0 warnings potentially fixable with the `--fix` option.
 
