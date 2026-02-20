@@ -9,7 +9,7 @@
 import { parseYaml } from 'obsidian';
 import type { RadialTimelineSettings } from '../types/settings';
 import { getBeatConfigForSystem, sanitizeBeatAdvancedForWrite } from './beatsTemplates';
-import { mergeTemplates as mergeYamlTemplates } from './sceneGenerator';
+import { mergeTemplateParts } from './templateMerge';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 
 // ─── Types ──────────────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ export interface TemplateParts {
     base: string;
     /** Raw advanced template string (placeholders intact, empty if none). */
     advanced: string;
-    /** Fully merged template string (base + advanced, via scene generator merge helper). */
+    /** Fully merged template string (base + advanced, via canonical template merge helper). */
     merged: string;
 }
 
@@ -118,7 +118,7 @@ export function getTemplateParts(
             const advanced = settings.sceneYamlTemplates?.advanced
                 ?? DEFAULT_SETTINGS.sceneYamlTemplates!.advanced;
             const merged = advanced.trim()
-                ? mergeYamlTemplates(base, advanced)
+                ? mergeTemplateParts(base, advanced)
                 : base;
             return { base, advanced, merged };
         }
@@ -129,7 +129,7 @@ export function getTemplateParts(
             const config = getBeatConfigForSystem(settings, beatSystemKey);
             const advanced = sanitizeBeatAdvancedForWrite(config.beatYamlAdvanced);
             const merged = advanced.trim()
-                ? mergeYamlTemplates(base, advanced)
+                ? mergeTemplateParts(base, advanced)
                 : base;
             return { base, advanced, merged };
         }
@@ -142,7 +142,7 @@ export function getTemplateParts(
             // Filter legacy Synopsis key from advanced writes.
             const advanced = filterDeprecatedBackdropKeys(advancedRaw);
             const merged = advanced.trim()
-                ? mergeYamlTemplates(base, advanced)
+                ? mergeTemplateParts(base, advanced)
                 : base;
             return { base, advanced, merged };
         }

@@ -7,16 +7,10 @@
  */
 import { Vault, TFile, normalizePath } from 'obsidian';
 import { PLOT_SYSTEMS, PLOT_SYSTEM_NAMES, PRO_BEAT_SETS, PlotSystemPreset, PlotBeatInfo } from './beatsSystems';
-import { mergeTemplates } from './sceneGenerator';
 import type { BeatSystemConfig, RadialTimelineSettings } from '../types/settings';
 import { normalizeBeatSetNameInput, sanitizeBeatFilenameSegment, toBeatModelMatchKey } from './beatsInputNormalize';
-
-/** Legacy beat base template — canonical beat fields only (Gossamer fields are injected dynamically). */
-const LEGACY_BEAT_BASE = `Class: Beat
-Act: {{Act}}
-Purpose: {{Purpose}}
-Beat Model: {{BeatModel}}
-Range: {{Range}}`;
+import { mergeTemplateParts } from './templateMerge';
+import { DEFAULT_SETTINGS } from '../settings/defaults';
 
 // ─── Per-system Beat Config Resolvers ────────────────────────────────
 
@@ -190,12 +184,14 @@ function buildBeatBody(beatInfo: PlotBeatInfo): string {
  * which is the single source of truth for all note types.
  */
 export function getMergedBeatYaml(settings: RadialTimelineSettings): string {
-  const configuredBase = settings.beatYamlTemplates?.base ?? LEGACY_BEAT_BASE;
+  const configuredBase = settings.beatYamlTemplates?.base
+    ?? DEFAULT_SETTINGS.beatYamlTemplates!.base;
   const base = configuredBase.replace(/^Description:/gm, 'Purpose:');
   const config = getBeatConfigForSystem(settings);
   const advanced = sanitizeBeatAdvancedForWrite(config.beatYamlAdvanced);
-  if (!advanced.trim()) return base;
-  return mergeTemplates(base, advanced);
+  return advanced.trim()
+    ? mergeTemplateParts(base, advanced)
+    : base;
 }
 
 export function sanitizeBeatAdvancedForWrite(advancedTemplate: string): string {
