@@ -79,7 +79,7 @@
   /* very short numbers / codes */
   --rt-input-width-sm: 10ch;
   /* small text / short IDs */
-  --rt-input-width-md: 20ch;
+  --rt-input-width-md: 22ch;
   /* medium text (dropdowns, model names, standard labels) */
   --rt-input-width-lg: 24ch;
   /* longer tokens/IDs */
