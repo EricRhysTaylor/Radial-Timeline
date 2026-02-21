@@ -190,7 +190,7 @@ export function renderAiSection(params: {
         cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_3} ert-ai-quick-grid`
     });
     const quickSetupPreviewSection = aiSettingsGroup.createDiv({
-        cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card ert-ai-preview-section-card`
+        cls: `${ERT_CLASSES.STACK} ert-ai-preview-section`
     });
 
     const ensureCanonicalAiSettings = () => {
@@ -199,6 +199,8 @@ export function renderAiSection(params: {
         return plugin.settings.aiSettings;
     };
 
+    let isSyncingRoutingUi = false;
+
     const largeHandlingFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold ert-ai-large-handling' });
     largeHandlingFold.setAttr('open', '');
     largeHandlingFold.setAttr('data-ert-role', 'ai-setting:large-manuscript-handling');
@@ -206,22 +208,39 @@ export function renderAiSection(params: {
     const largeHandlingBody = largeHandlingFold.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-large-handling-body` });
     largeHandlingBody.createDiv({
         cls: 'ert-section-desc',
-        text: 'Large manuscript requests are handled with safe per-pass limits so structure and references stay clear.'
+        text: 'Requests are handled with safe per-pass limits so structure and references stay clear.'
     });
 
     const capacitySection = largeHandlingBody.createDiv({ cls: 'ert-ai-capacity-section' });
     capacitySection.createDiv({ cls: 'ert-ai-capacity-title', text: 'Context and forecast' });
     const capacityGrid = capacitySection.createDiv({ cls: 'ert-ai-capacity-grid' });
-    const createCapacityCell = (label: string): { valueEl: HTMLElement } => {
+    const createCapacityCell = (label: string): { cellEl: HTMLElement; valueEl: HTMLElement } => {
         const cell = capacityGrid.createDiv({ cls: 'ert-ai-capacity-cell' });
         cell.createDiv({ cls: 'ert-ai-capacity-label', text: label });
         const valueEl = cell.createDiv({ cls: 'ert-ai-capacity-value', text: '—' });
-        return { valueEl };
+        return { cellEl: cell, valueEl };
     };
     const capacitySafeInput = createCapacityCell('Safe input (per pass)');
     const capacityOutput = createCapacityCell('Response (per pass)');
-    const capacityExample500k = createCapacityCell('Example: 500,000 tokens');
-    const capacityExample1m = createCapacityCell('Example: 1,000,000 tokens');
+    const capacityExample500k = createCapacityCell('Example A - 500,000 tokens');
+    const capacityExample500kScope = capacityExample500k.valueEl.createDiv({
+        cls: 'ert-ai-capacity-subcopy',
+        text: 'Outline + scene summaries across the full manuscript'
+    });
+    const capacityExample500kEstimate = capacityExample500k.valueEl.createDiv({
+        cls: 'ert-ai-capacity-estimate',
+        text: 'Estimated: —'
+    });
+
+    const capacityExample1m = createCapacityCell('Example B - 1,000,000 tokens');
+    const capacityExample1mScope = capacityExample1m.valueEl.createDiv({
+        cls: 'ert-ai-capacity-subcopy',
+        text: 'Full scene bodies + outline + character bios'
+    });
+    const capacityExample1mEstimate = capacityExample1m.valueEl.createDiv({
+        cls: 'ert-ai-capacity-estimate',
+        text: 'Estimated: —'
+    });
 
 
     const packagingSection = largeHandlingBody.createDiv({
@@ -233,7 +252,9 @@ export function renderAiSection(params: {
         icon: string;
         title: string;
         body: string;
-        example: string;
+        example?: string;
+        questions: string[];
+        note?: string;
         support?: string;
     }): void => {
         const block = analysisModes.createDiv({ cls: 'ert-ai-analysis-mode' });
@@ -243,7 +264,19 @@ export function renderAiSection(params: {
         const content = block.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT} ert-ai-analysis-mode-content` });
         content.createDiv({ cls: 'ert-ai-analysis-mode-title', text: config.title });
         content.createDiv({ cls: 'ert-ai-analysis-mode-body', text: config.body });
-        content.createDiv({ cls: 'ert-ai-analysis-mode-example', text: config.example });
+        if (config.example) {
+            content.createDiv({ cls: 'ert-ai-analysis-mode-example', text: config.example });
+        }
+        const questionList = content.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT} ert-ai-analysis-mode-questions` });
+        config.questions.forEach(question => {
+            const row = questionList.createDiv({ cls: 'ert-ai-analysis-mode-question' });
+            const questionIcon = row.createSpan({ cls: 'ert-ai-analysis-mode-question-icon' });
+            setIcon(questionIcon, 'message-circle-question-mark');
+            row.createSpan({ cls: 'ert-ai-analysis-mode-question-text', text: question });
+        });
+        if (config.note) {
+            content.createDiv({ cls: 'ert-ai-analysis-mode-note', text: config.note });
+        }
         if (config.support) {
             content.createDiv({ cls: 'ert-ai-analysis-mode-support', text: config.support });
         }
@@ -253,7 +286,12 @@ export function renderAiSection(params: {
         icon: 'arrow-right',
         title: 'Single-Pass Analysis',
         body: 'Entire manuscript analyzed in one request. Best suited for deeply global thematic questions that depend on the full manuscript being considered at once.',
-        example: 'Example: Full corpus -> one unified response'
+        questions: [
+            'What is the central moral argument of this book?',
+            'Does the ending fulfill the thematic promise of the opening?',
+            'Is the protagonist’s transformation coherent across all acts?',
+            'How does the midpoint reframe the final resolution?'
+        ]
     });
 
     analysisModes.createDiv({ cls: 'ert-ai-analysis-mode-divider' });
@@ -261,14 +299,18 @@ export function renderAiSection(params: {
     createAnalysisModeBlock({
         icon: 'git-fork',
         title: 'Multi-Pass Analysis',
-        body: 'Large manuscripts are split into structured segments. Each segment is evaluated independently, and the findings are combined into one unified response.',
-        example: 'Example: 3 segments -> 1 final result',
-        support: 'Stable scene IDs keep references aligned across all segments.'
+        body: 'Large manuscripts are split into structured segments. Each segment is evaluated independently, and the findings are combined into one unified response. These questions evaluate structural patterns that can be analyzed segment by segment. Scene IDs keep references aligned across all segments.',
+        questions: [
+            'Identify unresolved character arcs across the manuscript.',
+            'Where does tension stall or repeat structurally?',
+            'Detect timeline inconsistencies or continuity errors.',
+            'Compare scene-level pacing patterns across acts.'
+        ]
     });
 
     const executionPreferenceSetting = new Settings(largeHandlingBody)
         .setName('Execution Preference')
-        .setDesc('Choose how large requests are handled during Inquiry. Automatic is recommended.');
+        .setDesc('Choose how large requests are handled during Inquiry. Tradeoff: single-pass can add nuance for highly global thematic interpretation, while multi-pass remains strong for structural diagnostics at scale. Automatic is recommended.');
     executionPreferenceSetting.settingEl.setAttr('data-ert-role', 'ai-setting:execution-preference');
     let executionPreferenceDropdown: DropdownComponent | null = null;
     executionPreferenceSetting.addDropdown(dropdown => {
@@ -277,6 +319,7 @@ export function renderAiSection(params: {
         dropdown.addOption('automatic', 'Automatic');
         dropdown.addOption('singlePassOnly', 'Single-pass only');
         dropdown.onChange(async value => {
+            if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
             aiSettings.analysisPackaging = value === 'singlePassOnly' ? 'singlePassOnly' : 'automatic';
             await persistCanonical();
@@ -294,6 +337,8 @@ export function renderAiSection(params: {
         executionPreferenceNote.toggleClass('ert-settings-hidden', mode !== 'singlePassOnly');
     };
     updateExecutionPreferenceNote();
+    capacityExample500kScope.setText('Outline + scene summaries across the full manuscript');
+    capacityExample1mScope.setText('Full scene bodies + outline + character bios');
     params.addAiRelatedElement(largeHandlingFold);
     params.addAiRelatedElement(executionPreferenceSetting.settingEl);
 
@@ -318,9 +363,7 @@ export function renderAiSection(params: {
         cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_3} ert-ai-feature-grid`
     });
 
-    const modelDetailsFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold' });
-    modelDetailsFold.createEl('summary', { text: 'Model details' });
-    const modelDetailsBody = modelDetailsFold.createDiv({ cls: ERT_CLASSES.STACK });
+    const modelDetailsBody = aiSettingsGroup;
 
     const advancedFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold' });
     advancedFold.createEl('summary', { text: 'Advanced' });
@@ -349,6 +392,7 @@ export function renderAiSection(params: {
                 plugin.settings.showFullTripletAnalysis = value;
                 await plugin.saveSettings();
                 // Tier 1: triplet display is read at hover time, no SVG change needed
+                renderFeatureDefaultsCards();
             }));
     params.addAiRelatedElement(tripletDisplaySetting.settingEl);
 
@@ -442,6 +486,7 @@ export function renderAiSection(params: {
     };
 
     type ThinkingStyleId = 'deepStructuralEdit' | 'balancedEditorialReview' | 'quickStructuralPass';
+    let thinkingStyleDropdown: DropdownComponent | null = null;
 
     const thinkingStyleToProfile = (style: ThinkingStyleId): ModelProfileName => {
         if (style === 'deepStructuralEdit') return 'deepReasoner';
@@ -474,6 +519,14 @@ export function renderAiSection(params: {
         return 'balancedEditorialReview';
     };
 
+    const getThinkingStyleFromUiOrState = (): ThinkingStyleId => {
+        const value = thinkingStyleDropdown?.selectEl.value;
+        if (value === 'deepStructuralEdit' || value === 'balancedEditorialReview' || value === 'quickStructuralPass') {
+            return value;
+        }
+        return inferThinkingStyle();
+    };
+
     const applyThinkingStyleInternals = (
         aiSettings: ReturnType<typeof ensureCanonicalAiSettings>,
         provider: AIProviderId,
@@ -504,9 +557,10 @@ export function renderAiSection(params: {
         dropdown.addOption('google', 'Google');
         dropdown.addOption('ollama', 'Local');
         dropdown.onChange(async value => {
+            if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
             const nextProvider = value as AIProviderId;
-            const currentStyle = inferThinkingStyle();
+            const currentStyle = getThinkingStyleFromUiOrState();
             aiSettings.provider = nextProvider;
             applyThinkingStyleInternals(aiSettings, nextProvider, currentStyle, { forceProfile: aiSettings.modelPolicy.type !== 'pinned' });
 
@@ -527,7 +581,6 @@ export function renderAiSection(params: {
         .setName('Thinking Style')
         .setDesc('Choose the depth and intensity of analysis. Radial Timeline automatically applies the strongest safe settings for the selected style.');
     thinkingStyleSetting.settingEl.setAttr('data-ert-role', 'ai-setting:thinking-style');
-    let thinkingStyleDropdown: DropdownComponent | null = null;
     thinkingStyleSetting.addDropdown(dropdown => {
         thinkingStyleDropdown = dropdown;
         dropdown.selectEl.addClass('ert-input', 'ert-input--md');
@@ -535,6 +588,7 @@ export function renderAiSection(params: {
         dropdown.addOption('balancedEditorialReview', 'Balanced Editorial Review');
         dropdown.addOption('quickStructuralPass', 'Quick Structural Pass');
         dropdown.onChange(async value => {
+            if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
             const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
             applyThinkingStyleInternals(aiSettings, provider, value as ThinkingStyleId, { forceProfile: aiSettings.modelPolicy.type !== 'pinned' });
@@ -553,10 +607,11 @@ export function renderAiSection(params: {
         modelOverrideDropdown = dropdown;
         dropdown.selectEl.addClass('ert-input', 'ert-input--md');
         dropdown.onChange(async value => {
+            if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
             const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
             if (value === 'auto') {
-                const style = inferThinkingStyle();
+                const style = getThinkingStyleFromUiOrState();
                 aiSettings.modelPolicy = { type: 'profile', profile: thinkingStyleToProfile(style) };
                 applyThinkingStyleInternals(aiSettings, provider, style, { forceProfile: true });
             } else {
@@ -581,12 +636,13 @@ export function renderAiSection(params: {
         dropdown.addOption('3', 'Tier 3');
         dropdown.addOption('4', 'Tier 4');
         dropdown.onChange(async value => {
+            if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
             const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
             if (provider === 'anthropic' || provider === 'openai' || provider === 'google') {
                 setAccessTier(provider, Number(value) as AccessTier);
             }
-            applyThinkingStyleInternals(aiSettings, provider, inferThinkingStyle());
+            applyThinkingStyleInternals(aiSettings, provider, getThinkingStyleFromUiOrState());
             await persistCanonical();
             refreshRoutingUi();
         });
@@ -607,6 +663,7 @@ export function renderAiSection(params: {
         dropdown.addOption('latestFast', 'Latest fast');
         dropdown.addOption('latestCheap', 'Latest cheap');
         dropdown.onChange(async value => {
+            if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
             if (value === 'pinned') {
                 aiSettings.modelPolicy = {
@@ -635,6 +692,7 @@ export function renderAiSection(params: {
         dropdown.addOption('high', 'High');
         dropdown.addOption('max', 'Max');
         dropdown.onChange(async value => {
+            if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
             aiSettings.overrides.maxOutputMode = value as 'auto' | 'high' | 'max';
             await persistCanonical();
@@ -653,6 +711,7 @@ export function renderAiSection(params: {
         dropdown.addOption('standard', 'Standard');
         dropdown.addOption('deep', 'Deep');
         dropdown.onChange(async value => {
+            if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
             aiSettings.overrides.reasoningDepth = value as 'standard' | 'deep';
             await persistCanonical();
@@ -1513,7 +1572,6 @@ export function renderAiSection(params: {
         const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
         const providerAliases = getProviderAliases(provider);
         const thinkingStyle = inferThinkingStyle();
-        applyThinkingStyleInternals(aiSettings, provider, thinkingStyle);
 
         if (aiSettings.modelPolicy.type === 'pinned') {
             const allowed = new Set(providerAliases);
@@ -1531,27 +1589,32 @@ export function renderAiSection(params: {
             || policy.type === 'latestCheap'
         ) ? policy.type : 'profile';
 
-        setDropdownValueSafe(providerDropdown, provider, 'openai');
-        setDropdownValueSafe(thinkingStyleDropdown, thinkingStyle, 'balancedEditorialReview');
-        setDropdownValueSafe(policyDropdown, policyType, 'profile');
+        isSyncingRoutingUi = true;
+        try {
+            setDropdownValueSafe(providerDropdown, provider, 'openai');
+            setDropdownValueSafe(thinkingStyleDropdown, thinkingStyle, 'balancedEditorialReview');
+            setDropdownValueSafe(policyDropdown, policyType, 'profile');
 
-        if (modelOverrideDropdown) {
-            modelOverrideDropdown.selectEl.empty();
-            modelOverrideDropdown.addOption('auto', 'Auto (recommended)');
-            providerAliases.forEach(alias => {
-                const model = BUILTIN_MODELS.find(entry => entry.alias === alias);
-                const label = model ? `${model.label} (${alias})` : alias;
-                modelOverrideDropdown?.addOption(alias, label);
-            });
-            const overrideValue = policy.type === 'pinned'
-                ? policy.pinnedAlias || 'auto'
-                : 'auto';
-            setDropdownValueSafe(modelOverrideDropdown, overrideValue, 'auto');
+            if (modelOverrideDropdown) {
+                modelOverrideDropdown.selectEl.empty();
+                modelOverrideDropdown.addOption('auto', 'Auto (recommended)');
+                providerAliases.forEach(alias => {
+                    const model = BUILTIN_MODELS.find(entry => entry.alias === alias);
+                    const label = model ? `${model.label} (${alias})` : alias;
+                    modelOverrideDropdown?.addOption(alias, label);
+                });
+                const overrideValue = policy.type === 'pinned'
+                    ? policy.pinnedAlias || 'auto'
+                    : 'auto';
+                setDropdownValueSafe(modelOverrideDropdown, overrideValue, 'auto');
+            }
+
+            setDropdownValueSafe(outputModeDropdown, aiSettings.overrides.maxOutputMode || 'auto', 'auto');
+            setDropdownValueSafe(reasoningDepthDropdown, aiSettings.overrides.reasoningDepth || 'standard', 'standard');
+            setDropdownValueSafe(executionPreferenceDropdown, aiSettings.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : 'automatic', 'automatic');
+        } finally {
+            isSyncingRoutingUi = false;
         }
-
-        setDropdownValueSafe(outputModeDropdown, aiSettings.overrides.maxOutputMode || 'auto', 'auto');
-        setDropdownValueSafe(reasoningDepthDropdown, aiSettings.overrides.reasoningDepth || 'standard', 'standard');
-        setDropdownValueSafe(executionPreferenceDropdown, aiSettings.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : 'automatic', 'automatic');
         updateExecutionPreferenceNote();
         remoteRegistryToggle?.setValue(aiSettings.privacy.allowRemoteRegistry);
         providerSnapshotToggle?.setValue(aiSettings.privacy.allowProviderSnapshot);
@@ -1575,8 +1638,8 @@ export function renderAiSection(params: {
 
         capacitySafeInput.valueEl.setText('Calculating...');
         capacityOutput.valueEl.setText('Calculating...');
-        capacityExample500k.valueEl.setText('Calculating...');
-        capacityExample1m.valueEl.setText('Calculating...');
+        capacityExample500kEstimate.setText('Estimated: Calculating...');
+        capacityExample1mEstimate.setText('Estimated: Calculating...');
 
         try {
             const selection = selectModel(BUILTIN_MODELS, {
@@ -1621,8 +1684,8 @@ export function renderAiSection(params: {
             void refreshResolvedPreviewAvailability(previewState);
             capacitySafeInput.valueEl.setText(`~${safeBudgetTokens.toLocaleString()} tokens (safe window)`);
             capacityOutput.valueEl.setText(`~${caps.maxOutputTokens.toLocaleString()} tokens`);
-            capacityExample500k.valueEl.setText(formatForecastPasses(500000));
-            capacityExample1m.valueEl.setText(formatForecastPasses(1000000));
+            capacityExample500kEstimate.setText(`Estimated: ${formatForecastPasses(500000)}`);
+            capacityExample1mEstimate.setText(`Estimated: ${formatForecastPasses(1000000)}`);
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             renderResolvedPreview({
@@ -1644,8 +1707,8 @@ export function renderAiSection(params: {
             });
             capacitySafeInput.valueEl.setText('Unavailable');
             capacityOutput.valueEl.setText('Unavailable');
-            capacityExample500k.valueEl.setText('Unavailable');
-            capacityExample1m.valueEl.setText('Unavailable');
+            capacityExample500kEstimate.setText('Estimated: Unavailable');
+            capacityExample1mEstimate.setText('Estimated: Unavailable');
         }
 
         renderFeatureDefaultsCards();
