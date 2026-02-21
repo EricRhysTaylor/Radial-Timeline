@@ -543,7 +543,7 @@ export function renderAiSection(params: {
     let accessTierDropdown: DropdownComponent | null = null;
     accessTierSetting.addDropdown(dropdown => {
         accessTierDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--sm');
         dropdown.addOption('1', 'Tier 1');
         dropdown.addOption('2', 'Tier 2');
         dropdown.addOption('3', 'Tier 3');
@@ -566,7 +566,7 @@ export function renderAiSection(params: {
     let outputModeDropdown: DropdownComponent | null = null;
     outputModeSetting.addDropdown(dropdown => {
         outputModeDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--sm');
         dropdown.addOption('auto', 'Auto');
         dropdown.addOption('high', 'High');
         dropdown.addOption('max', 'Max');
@@ -585,7 +585,7 @@ export function renderAiSection(params: {
     let reasoningDepthDropdown: DropdownComponent | null = null;
     reasoningDepthSetting.addDropdown(dropdown => {
         reasoningDepthDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--sm');
         dropdown.addOption('standard', 'Standard');
         dropdown.addOption('deep', 'Deep');
         dropdown.onChange(async value => {

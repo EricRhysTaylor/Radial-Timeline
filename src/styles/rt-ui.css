@@ -2029,8 +2029,32 @@
 }
 
 .ert-ui.ert-scope--settings .ert-ai-step-card > .setting-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: var(--ert-gap-sm);
+  row-gap: 2px;
+  align-items: center;
   border-top: none;
-  padding: var(--ert-gap-xs) 0;
+  padding: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-step-card > .setting-item > .setting-item-info {
+  display: contents;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-step-card > .setting-item .setting-item-name {
+  grid-column: 1 / 2;
+  grid-row: 1;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-step-card > .setting-item .setting-item-description {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-step-card > .setting-item > .setting-item-control {
+  grid-column: 2 / 3;
+  grid-row: 1;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-step3-grid {
