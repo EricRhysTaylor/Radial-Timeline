@@ -312,8 +312,8 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(contextTemplateSetting.settingEl);
 
     const tripletDisplaySetting = new Settings(featureDefaultsSection)
-        .setName('Show previous and next scene analysis')
-        .setDesc('When enabled, scene hover Fields include the AI pulse for the previous and next scenes. Turn off to display only the current scene for a more compact view.')
+        .setName('Pulse: Show previous and next scene triplet analysis')
+        .setDesc('When enabled, scene hover fields include the AI pulse for the previous and next scenes. Turn off to display only the current scene for a more compact view.')
         .addToggle(toggle => toggle
             .setValue(plugin.settings.showFullTripletAnalysis ?? true)
             .onChange(async (value) => {
