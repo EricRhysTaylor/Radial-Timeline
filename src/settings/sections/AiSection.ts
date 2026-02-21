@@ -1327,7 +1327,7 @@ export function renderAiSection(params: {
     applyStrategyRowCopyLayout(profileSetting, 'Select a thinking style suited to your task — deep structural analysis, balanced review, or faster iteration.');
     applyStrategyRowCopyLayout(outputModeSetting, 'Control how much response space AI can use. Higher values allow longer, more detailed answers.');
     applyStrategyRowCopyLayout(reasoningDepthSetting, 'Standard favors speed. Deep increases precision for structural and cross-scene analysis.');
-    applyStrategyRowCopyLayout(accessTierSetting, 'Adjust request scale and available output capacity based on your provider\'s limits.');
+    applyStrategyRowCopyLayout(accessTierSetting, 'Adjust request scale and available output capacity based on your granted access Tier.');
     applyStrategyRowCopyLayout(pinnedSetting, 'Select a specific model to use instead of automatic selection.');
 
     applyQuickSetupLayoutOrder();

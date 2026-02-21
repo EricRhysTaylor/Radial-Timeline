@@ -1567,12 +1567,6 @@
   line-height: 1.2;
 }
 
-.ert-ui select.dropdown {
-  background-repeat: no-repeat;
-  background-position: right 6px center;
-  background-size: 12px 12px;
-  padding-right: calc(6px + 12px + 4px);
-}
 
 .ert-ui textarea {
   padding: var(--ert-control-pad-y) var(--ert-control-pad-x);
