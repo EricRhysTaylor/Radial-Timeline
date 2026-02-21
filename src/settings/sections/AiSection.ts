@@ -184,11 +184,36 @@ export function renderAiSection(params: {
     quickSetupSection.createDiv({ cls: 'ert-section-title', text: 'AI Strategy' });
     quickSetupSection.createDiv({
         cls: 'ert-section-desc',
-        text: 'Choose how AI approaches analysis and selects the active model across features.'
+        text: 'Set how AI selects its model and how deeply it analyzes your manuscript.'
     });
     const quickSetupGrid = quickSetupSection.createDiv({
         cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_3} ert-ai-quick-grid`
     });
+
+    const stepsRow = quickSetupSection.createDiv({ cls: 'ert-ai-steps-row' });
+    const step1Card = stepsRow.createDiv({
+        cls: `ert-ai-step-card ert-ai-step-primary ${ERT_CLASSES.STACK}`
+    });
+    step1Card.createDiv({ cls: 'ert-ai-step-label', text: 'STEP 1 · Model Selection' });
+    step1Card.createDiv({
+        cls: 'ert-ai-step-desc',
+        text: 'Choose how the active model is selected for analysis.'
+    });
+
+    const step2Card = stepsRow.createDiv({
+        cls: `ert-ai-step-card ert-ai-step-primary ${ERT_CLASSES.STACK}`
+    });
+    step2Card.createDiv({ cls: 'ert-ai-step-label', text: 'STEP 2 · Thinking Style' });
+    step2Card.createDiv({
+        cls: 'ert-ai-step-desc',
+        text: 'Select a thinking style suited to your task — deep structural analysis, balanced review, or faster iteration.'
+    });
+
+    const step3Card = quickSetupSection.createDiv({
+        cls: `ert-ai-step-card ert-ai-step-secondary ${ERT_CLASSES.STACK}`
+    });
+    step3Card.createDiv({ cls: 'ert-ai-step-label', text: 'STEP 3 · Analysis Tuning' });
+    const step3Grid = step3Card.createDiv({ cls: 'ert-ai-step3-grid' });
 
     const ensureCanonicalAiSettings = () => {
         const validated = validateAiSettings(plugin.settings.aiSettings ?? buildDefaultAiSettings());
@@ -413,8 +438,8 @@ export function renderAiSection(params: {
     };
 
     const providerSetting = new Settings(quickSetupGrid)
-        .setName('CHOOSE PROVIDER')
-        .setDesc('Choose which AI service powers analysis and summaries.');
+        .setName('Provider')
+        .setDesc('Select the AI service that powers structural analysis and editorial insight across your manuscript.');
     providerSetting.settingEl.setAttr('data-ert-role', 'ai-setting:provider');
     let providerDropdown: DropdownComponent | null = null;
     providerSetting.addDropdown(dropdown => {
@@ -443,8 +468,8 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(providerSetting.settingEl);
 
     const policySetting = new Settings(quickSetupGrid)
-        .setName('MODEL STRATEGY')
-        .setDesc('Decide how models are selected - automatically, by profile, or manually.');
+        .setName('Model strategy')
+        .setDesc('Select how the system chooses the active model.');
     policySetting.settingEl.setAttr('data-ert-role', 'ai-setting:model-strategy');
     let policyDropdown: DropdownComponent | null = null;
     policySetting.addDropdown(dropdown => {
@@ -474,8 +499,8 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(policySetting.settingEl);
 
     const pinnedSetting = new Settings(quickSetupGrid)
-        .setName('PINNED MODEL')
-        .setDesc('Select a specific model to use instead of automatic selection.');
+        .setName('Pinned model')
+        .setDesc('Select a specific model instead of automatic selection.');
     pinnedSetting.settingEl.setAttr('data-ert-role', 'ai-setting:pinned-model');
     let pinnedDropdown: DropdownComponent | null = null;
     pinnedSetting.addDropdown(dropdown => {
@@ -492,8 +517,8 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(pinnedSetting.settingEl);
 
     const profileSetting = new Settings(quickSetupGrid)
-        .setName('PROFILE')
-        .setDesc('Apply a thinking style suited to your task (deep analysis, balanced, or fast).');
+        .setName('Profile')
+        .setDesc('Select a thinking style suited to your task — deep structural analysis, balanced review, or faster iteration.');
     profileSetting.settingEl.setAttr('data-ert-role', 'ai-setting:profile');
     let profileDropdown: DropdownComponent | null = null;
     profileSetting.addDropdown(dropdown => {
@@ -512,8 +537,8 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(profileSetting.settingEl);
 
     const accessTierSetting = new Settings(quickSetupGrid)
-        .setName('ACCESS LEVEL')
-        .setDesc('Adjust request scale and output allowance for your provider.');
+        .setName('Access level')
+        .setDesc('Adjust request scale and available output capacity.');
     accessTierSetting.settingEl.setAttr('data-ert-role', 'ai-setting:access-level');
     let accessTierDropdown: DropdownComponent | null = null;
     accessTierSetting.addDropdown(dropdown => {
@@ -536,8 +561,8 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(accessTierSetting.settingEl);
 
     const outputModeSetting = new Settings(quickSetupGrid)
-        .setName('OUTPUT CAP')
-        .setDesc('Control how much response space AI can use. Higher values allow longer answers.');
+        .setName('Output cap')
+        .setDesc('Control how much response space AI can use.');
     let outputModeDropdown: DropdownComponent | null = null;
     outputModeSetting.addDropdown(dropdown => {
         outputModeDropdown = dropdown;
@@ -555,8 +580,8 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(outputModeSetting.settingEl);
 
     const reasoningDepthSetting = new Settings(quickSetupGrid)
-        .setName('REASONING DEPTH')
-        .setDesc('Standard for speed. Deep for more precise structural insight.');
+        .setName('Reasoning depth')
+        .setDesc('Standard favors speed. Deep increases structural precision.');
     let reasoningDepthDropdown: DropdownComponent | null = null;
     reasoningDepthSetting.addDropdown(dropdown => {
         reasoningDepthDropdown = dropdown;
@@ -573,18 +598,19 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(reasoningDepthSetting.settingEl);
 
     const applyQuickSetupLayoutOrder = (): void => {
-        [
-            providerSetting.settingEl,
-            policySetting.settingEl,
-            profileSetting.settingEl,
-            outputModeSetting.settingEl,
-            reasoningDepthSetting.settingEl,
-            accessTierSetting.settingEl,
-            pinnedSetting.settingEl,
-        ].forEach((el) => {
-            quickSetupGrid.appendChild(el);
-            el.addClass('ert-ai-grid-item');
+        quickSetupSection.insertBefore(providerSetting.settingEl, stepsRow);
+
+        step1Card.appendChild(policySetting.settingEl);
+        step1Card.appendChild(pinnedSetting.settingEl);
+
+        step2Card.appendChild(profileSetting.settingEl);
+
+        [outputModeSetting, reasoningDepthSetting, accessTierSetting].forEach(setting => {
+            step3Grid.appendChild(setting.settingEl);
+            setting.settingEl.addClass('ert-ai-grid-item');
         });
+
+        quickSetupGrid.addClass('ert-settings-hidden');
     };
 
     const applyStrategyRowCopyLayout = (setting: Settings, description: string): void => {
@@ -1322,13 +1348,9 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(resolvedPreviewFrame);
 
 
-    applyStrategyRowCopyLayout(providerSetting, 'Select the AI service that powers structural analysis and editorial insight across your manuscript.');
-    applyStrategyRowCopyLayout(policySetting, 'Choose how the active model is selected — automatically, by profile, or manually.');
-    applyStrategyRowCopyLayout(profileSetting, 'Select a thinking style suited to your task — deep structural analysis, balanced review, or faster iteration.');
-    applyStrategyRowCopyLayout(outputModeSetting, 'Control how much response space AI can use. Higher values allow longer, more detailed answers.');
-    applyStrategyRowCopyLayout(reasoningDepthSetting, 'Standard favors speed. Deep increases precision for structural and cross-scene analysis.');
-    applyStrategyRowCopyLayout(accessTierSetting, 'Adjust request scale and available output capacity based on your granted access Tier.');
-    applyStrategyRowCopyLayout(pinnedSetting, 'Select a specific model to use instead of automatic selection.');
+    applyStrategyRowCopyLayout(outputModeSetting, 'Control how much response space AI can use.');
+    applyStrategyRowCopyLayout(reasoningDepthSetting, 'Standard favors speed. Deep increases structural precision.');
+    applyStrategyRowCopyLayout(accessTierSetting, 'Adjust request scale and available output capacity.');
 
     applyQuickSetupLayoutOrder();
 
@@ -1486,6 +1508,8 @@ export function renderAiSection(params: {
         pinnedSetting.settingEl.toggleClass('ert-settings-visible', shouldShowPinned);
         profileSetting.settingEl.toggleClass('ert-settings-hidden', !shouldShowProfile);
         profileSetting.settingEl.toggleClass('ert-settings-visible', shouldShowProfile);
+        step2Card.toggleClass('ert-settings-hidden', !shouldShowProfile);
+        step2Card.toggleClass('ert-settings-visible', shouldShowProfile);
 
         const supportsAccessTier = provider === 'anthropic' || provider === 'openai' || provider === 'google';
         accessTierSetting.settingEl.toggleClass('ert-settings-hidden', !supportsAccessTier);
