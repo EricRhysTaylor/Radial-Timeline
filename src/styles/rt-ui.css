@@ -2213,6 +2213,44 @@
   color: var(--text-normal);
 }
 
+.ert-ui.ert-scope--settings .ert-ai-large-steps {
+  margin: 0;
+  padding-left: calc(var(--ert-gap-md) + var(--ert-gap-xs));
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-large-step {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-large-step strong {
+  color: var(--text-normal);
+  font-weight: 600;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-segment-note {
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 75%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--background-primary) 88%, transparent);
+  padding: var(--ert-gap-sm) var(--ert-gap-md);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-segment-note-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-segment-note-copy {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
 
 .ert-ui.ert-scope--settings .ert-ai-fold {
   border: 1px solid var(--background-modifier-border);

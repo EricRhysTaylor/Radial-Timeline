@@ -190,6 +190,10 @@ export function renderAiSection(params: {
         cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_3} ert-ai-quick-grid`
     });
 
+    const providerCard = quickSetupSection.createDiv({
+        cls: `ert-ai-step-card ${ERT_CLASSES.STACK}`
+    });
+
     const stepsRow = quickSetupSection.createDiv({ cls: 'ert-ai-steps-row' });
     const step1Card = stepsRow.createDiv({
         cls: `ert-ai-step-card ${ERT_CLASSES.STACK}`
@@ -220,11 +224,11 @@ export function renderAiSection(params: {
     const largeHandlingBody = largeHandlingFold.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-large-handling-body` });
     largeHandlingBody.createDiv({
         cls: 'ert-section-desc',
-        text: 'Radial Timeline automatically adjusts how large manuscripts are prepared for AI. When a request exceeds safe context limits, it processes the material in structured segments to preserve accuracy and scene-level references.'
+        text: 'Large manuscript requests are handled with safe per-pass limits so structure and references stay clear.'
     });
 
     const capacitySection = largeHandlingBody.createDiv({ cls: 'ert-ai-capacity-section' });
-    capacitySection.createDiv({ cls: 'ert-ai-capacity-title', text: 'Current context capacity' });
+    capacitySection.createDiv({ cls: 'ert-ai-capacity-title', text: 'Context and forecast' });
     const capacityGrid = capacitySection.createDiv({ cls: 'ert-ai-capacity-grid' });
     const createCapacityCell = (label: string): { valueEl: HTMLElement } => {
         const cell = capacityGrid.createDiv({ cls: 'ert-ai-capacity-cell' });
@@ -232,31 +236,50 @@ export function renderAiSection(params: {
         const valueEl = cell.createDiv({ cls: 'ert-ai-capacity-value', text: '—' });
         return { valueEl };
     };
-    const capacityProvider = createCapacityCell('Provider');
-    const capacitySafeInput = createCapacityCell('Safe input budget');
-    const capacityOutput = createCapacityCell('Output allowance');
-    const capacityMode = createCapacityCell('Current packaging preference');
+    const capacitySafeInput = createCapacityCell('Safe input (per pass)');
+    const capacityOutput = createCapacityCell('Response (per pass)');
+    const capacityExample500k = createCapacityCell('Example: 500,000 tokens');
+    const capacityExample1m = createCapacityCell('Example: 1,000,000 tokens');
 
 
     const packagingSection = largeHandlingBody.createDiv({
-        cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
+        cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
     });
-    packagingSection.createEl('h5', { text: 'HOW LARGE REQUESTS ARE PROCESSED', cls: 'ert-kicker' });
-    const packagingList = packagingSection.createEl('ul', { cls: ERT_CLASSES.STACK });
-    [
-        { icon: 'zap', text: 'Uses a single request when the selected content fits safely.' },
-        { icon: 'layers', text: 'For large submissions, analyzes the manuscript in structured segments and combines the results.' },
-        { icon: 'anchor', text: 'Stable scene IDs keep references aligned and consistent over time.' }
-    ].forEach(item => {
-        const li = packagingList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
-        const icon = li.createSpan({ cls: 'ert-feature-icon' });
-        setIcon(icon, item.icon);
-        li.createSpan({ text: item.text });
+    packagingSection.createEl('h5', { text: 'How large requests are processed', cls: 'ert-kicker' });
+    const packagingSteps = packagingSection.createEl('ol', { cls: 'ert-ai-large-steps' });
+    const addPackagingStep = (title: string, detail: string): void => {
+        const item = packagingSteps.createEl('li', { cls: 'ert-ai-large-step' });
+        item.createEl('strong', { text: title });
+        item.appendText(` — ${detail}`);
+    };
+    addPackagingStep('Single pass when possible', 'If the selected content fits safely, it runs in one request.');
+    addPackagingStep('Segmented analysis when needed', 'If content is too large, it is analyzed in structured portions.');
+    addPackagingStep('Combined result', 'Findings from each portion are combined into one unified response.');
+    addPackagingStep('Stable references', 'Scene IDs keep references aligned across all portions.');
+
+    const segmentedProcessingNote = packagingSection.createDiv({
+        cls: `ert-ai-segment-note ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
+    });
+    segmentedProcessingNote.createDiv({
+        cls: 'ert-ai-segment-note-title',
+        text: 'When content is processed in segments'
+    });
+    segmentedProcessingNote.createDiv({
+        cls: 'ert-ai-segment-note-copy',
+        text: 'Large requests are analyzed in structured portions of the manuscript. Each portion is evaluated independently, and the findings are unified into one response. This preserves structural accuracy and scene-level references.'
+    });
+    segmentedProcessingNote.createDiv({
+        cls: 'ert-ai-segment-note-copy',
+        text: 'For most structural and diagnostic questions, results are equivalent to full-context analysis. For deeply global thematic questions that depend on the entire manuscript being considered at once, single-pass analysis may provide additional nuance when supported by your provider’s limits.'
+    });
+    segmentedProcessingNote.createDiv({
+        cls: 'ert-ai-segment-note-copy',
+        text: 'As model context windows expand over time, more manuscripts will fit within a single pass.'
     });
 
     const executionPreferenceSetting = new Settings(largeHandlingBody)
         .setName('Execution Preference')
-        .setDesc('Choose how large requests are handled during Inquiry.');
+        .setDesc('Choose how large requests are handled during Inquiry. Automatic is recommended.');
     executionPreferenceSetting.settingEl.setAttr('data-ert-role', 'ai-setting:execution-preference');
     let executionPreferenceDropdown: DropdownComponent | null = null;
     executionPreferenceSetting.addDropdown(dropdown => {
@@ -529,8 +552,8 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(profileSetting.settingEl);
 
     const accessTierSetting = new Settings(quickSetupGrid)
-        .setName('Access level')
-        .setDesc('Adjust request scale and available output capacity.');
+        .setName('Access Tier')
+        .setDesc('Set your granted access Tier for maximum capacity.');
     accessTierSetting.settingEl.setAttr('data-ert-role', 'ai-setting:access-level');
     let accessTierDropdown: DropdownComponent | null = null;
     accessTierSetting.addDropdown(dropdown => {
@@ -590,7 +613,7 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(reasoningDepthSetting.settingEl);
 
     const applyQuickSetupLayoutOrder = (): void => {
-        quickSetupSection.insertBefore(providerSetting.settingEl, stepsRow);
+        providerCard.appendChild(providerSetting.settingEl);
 
         step1Card.appendChild(policySetting.settingEl);
         step1Card.appendChild(pinnedSetting.settingEl);
@@ -1523,10 +1546,10 @@ export function renderAiSection(params: {
             ? inquiryAdvanced.executionPassCount
             : null;
 
-        capacityProvider.valueEl.setText(providerLabel[provider]);
         capacitySafeInput.valueEl.setText('Calculating...');
         capacityOutput.valueEl.setText('Calculating...');
-        capacityMode.valueEl.setText(aiSettings.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic');
+        capacityExample500k.valueEl.setText('Calculating...');
+        capacityExample1m.valueEl.setText('Calculating...');
 
         try {
             const selection = selectModel(BUILTIN_MODELS, {
@@ -1544,7 +1567,13 @@ export function renderAiSection(params: {
                 feature: 'InquiryMode',
                 overrides: aiSettings.overrides
             });
-            const safetyPct = Math.round(caps.safeChunkThreshold * 100);
+            const safeBudgetTokens = Math.max(0, Math.floor(caps.maxInputTokens));
+            const formatForecastPasses = (exampleTokens: number): string => {
+                if (aiSettings.analysisPackaging === 'singlePassOnly') return 'Not possible — exceeds safe limit';
+                if (safeBudgetTokens <= 0) return 'Unavailable';
+                const passes = Math.ceil(exampleTokens / safeBudgetTokens);
+                return `${passes} structured passes (Automatic)`;
+            };
             const previewState: ResolvedPreviewRenderState = {
                 modelKey: `${provider}:${selection.model.id}`,
                 provider,
@@ -1563,10 +1592,10 @@ export function renderAiSection(params: {
             };
             renderResolvedPreview(previewState);
             void refreshResolvedPreviewAvailability(previewState);
-            capacityProvider.valueEl.setText(`${providerLabel[provider]} · ${selection.model.label}`);
-            capacitySafeInput.valueEl.setText(`${caps.maxInputTokens.toLocaleString()} tokens (${safetyPct}% safe window)`);
-            capacityOutput.valueEl.setText(`${caps.maxOutputTokens.toLocaleString()} tokens`);
-            capacityMode.valueEl.setText(aiSettings.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic');
+            capacitySafeInput.valueEl.setText(`~${safeBudgetTokens.toLocaleString()} tokens (safe window)`);
+            capacityOutput.valueEl.setText(`~${caps.maxOutputTokens.toLocaleString()} tokens`);
+            capacityExample500k.valueEl.setText(formatForecastPasses(500000));
+            capacityExample1m.valueEl.setText(formatForecastPasses(1000000));
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             renderResolvedPreview({
@@ -1586,10 +1615,10 @@ export function renderAiSection(params: {
                 passCount,
                 errorMessage: message
             });
-            capacityProvider.valueEl.setText(providerLabel[provider]);
             capacitySafeInput.valueEl.setText('Unavailable');
             capacityOutput.valueEl.setText('Unavailable');
-            capacityMode.valueEl.setText(aiSettings.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic');
+            capacityExample500k.valueEl.setText('Unavailable');
+            capacityExample1m.valueEl.setText('Unavailable');
         }
 
         renderFeatureDefaultsCards();
