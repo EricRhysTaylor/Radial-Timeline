@@ -79,8 +79,8 @@
   /* very short numbers / codes */
   --rt-input-width-sm: 10ch;
   /* small text / short IDs */
-  --rt-input-width-md: 18ch;
-  /* standard text (beats, YAML keys) */
+  --rt-input-width-md: 20ch;
+  /* medium text (dropdowns, model names, standard labels) */
   --rt-input-width-lg: 24ch;
   /* longer tokens/IDs */
   --rt-input-width-xl: 48ch;
