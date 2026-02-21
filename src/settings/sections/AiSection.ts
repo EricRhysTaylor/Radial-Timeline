@@ -229,7 +229,7 @@ export function renderAiSection(params: {
     [
         { icon: 'zap', text: 'Uses a single request when the selected content fits safely.' },
         { icon: 'layers', text: 'For large submissions, analyzes the manuscript in structured segments and combines the results.' },
-        { icon: 'anchor', text: 'Stable scene IDs keep references aligned across all segments.' }
+        { icon: 'anchor', text: 'Stable scene IDs keep references aligned and consistent over time.' }
     ].forEach(item => {
         const li = packagingList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
         const icon = li.createSpan({ cls: 'ert-feature-icon' });
