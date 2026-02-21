@@ -189,27 +189,9 @@ export function renderAiSection(params: {
     const quickSetupGrid = quickSetupSection.createDiv({
         cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_3} ert-ai-quick-grid`
     });
-
-    const providerCard = quickSetupSection.createDiv({
-        cls: `ert-ai-step-card ${ERT_CLASSES.STACK}`
+    const quickSetupPreviewSection = aiSettingsGroup.createDiv({
+        cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card ert-ai-preview-section-card`
     });
-
-    const stepsRow = quickSetupSection.createDiv({ cls: 'ert-ai-steps-row' });
-    const step1Card = stepsRow.createDiv({
-        cls: `ert-ai-step-card ${ERT_CLASSES.STACK}`
-    });
-    step1Card.createDiv({ cls: 'ert-ai-step-label', text: 'STEP 1 · Model Selection' });
-
-    const step2Card = stepsRow.createDiv({
-        cls: `ert-ai-step-card ${ERT_CLASSES.STACK}`
-    });
-    step2Card.createDiv({ cls: 'ert-ai-step-label', text: 'STEP 2 · Thinking Style' });
-
-    const step3Card = quickSetupSection.createDiv({
-        cls: `ert-ai-step-card ${ERT_CLASSES.STACK}`
-    });
-    step3Card.createDiv({ cls: 'ert-ai-step-label', text: 'STEP 3 · Analysis Tuning' });
-    const step3Grid = step3Card.createDiv({ cls: 'ert-ai-step3-grid' });
 
     const ensureCanonicalAiSettings = () => {
         const validated = validateAiSettings(plugin.settings.aiSettings ?? buildDefaultAiSettings());
@@ -243,38 +225,45 @@ export function renderAiSection(params: {
 
 
     const packagingSection = largeHandlingBody.createDiv({
-        cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
+        cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
     });
     packagingSection.createEl('h5', { text: 'How large requests are processed', cls: 'ert-kicker' });
-    const packagingSteps = packagingSection.createEl('ol', { cls: 'ert-ai-large-steps' });
-    const addPackagingStep = (title: string, detail: string): void => {
-        const item = packagingSteps.createEl('li', { cls: 'ert-ai-large-step' });
-        item.createEl('strong', { text: title });
-        item.appendText(` — ${detail}`);
-    };
-    addPackagingStep('Single pass when possible', 'If the selected content fits safely, it runs in one request.');
-    addPackagingStep('Segmented analysis when needed', 'If content is too large, it is analyzed in structured portions.');
-    addPackagingStep('Combined result', 'Findings from each portion are combined into one unified response.');
-    addPackagingStep('Stable references', 'Scene IDs keep references aligned across all portions.');
+    const analysisModes = packagingSection.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-analysis-modes` });
+    const createAnalysisModeBlock = (config: {
+        icon: string;
+        title: string;
+        body: string;
+        example: string;
+        support?: string;
+    }): void => {
+        const block = analysisModes.createDiv({ cls: 'ert-ai-analysis-mode' });
+        const icon = block.createSpan({ cls: 'ert-ai-analysis-mode-icon' });
+        setIcon(icon, config.icon);
 
-    const segmentedProcessingNote = packagingSection.createDiv({
-        cls: `ert-ai-segment-note ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
+        const content = block.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT} ert-ai-analysis-mode-content` });
+        content.createDiv({ cls: 'ert-ai-analysis-mode-title', text: config.title });
+        content.createDiv({ cls: 'ert-ai-analysis-mode-body', text: config.body });
+        content.createDiv({ cls: 'ert-ai-analysis-mode-example', text: config.example });
+        if (config.support) {
+            content.createDiv({ cls: 'ert-ai-analysis-mode-support', text: config.support });
+        }
+    };
+
+    createAnalysisModeBlock({
+        icon: 'arrow-right',
+        title: 'Single-Pass Analysis',
+        body: 'Entire manuscript analyzed in one request. Best suited for deeply global thematic questions that depend on the full manuscript being considered at once.',
+        example: 'Example: Full corpus -> one unified response'
     });
-    segmentedProcessingNote.createDiv({
-        cls: 'ert-ai-segment-note-title',
-        text: 'When content is processed in segments'
-    });
-    segmentedProcessingNote.createDiv({
-        cls: 'ert-ai-segment-note-copy',
-        text: 'Large requests are analyzed in structured portions of the manuscript. Each portion is evaluated independently, and the findings are unified into one response. This preserves structural accuracy and scene-level references.'
-    });
-    segmentedProcessingNote.createDiv({
-        cls: 'ert-ai-segment-note-copy',
-        text: 'For most structural and diagnostic questions, results are equivalent to full-context analysis. For deeply global thematic questions that depend on the entire manuscript being considered at once, single-pass analysis may provide additional nuance when supported by your provider’s limits.'
-    });
-    segmentedProcessingNote.createDiv({
-        cls: 'ert-ai-segment-note-copy',
-        text: 'As model context windows expand over time, more manuscripts will fit within a single pass.'
+
+    analysisModes.createDiv({ cls: 'ert-ai-analysis-mode-divider' });
+
+    createAnalysisModeBlock({
+        icon: 'git-fork',
+        title: 'Multi-Pass Analysis',
+        body: 'Large manuscripts are split into structured segments. Each segment is evaluated independently, and the findings are combined into one unified response.',
+        example: 'Example: 3 segments -> 1 final result',
+        support: 'Stable scene IDs keep references aligned across all segments.'
     });
 
     const executionPreferenceSetting = new Settings(largeHandlingBody)
@@ -452,9 +441,59 @@ export function renderAiSection(params: {
         params.refreshProviderDimming();
     };
 
+    type ThinkingStyleId = 'deepStructuralEdit' | 'balancedEditorialReview' | 'quickStructuralPass';
+
+    const thinkingStyleToProfile = (style: ThinkingStyleId): ModelProfileName => {
+        if (style === 'deepStructuralEdit') return 'deepReasoner';
+        if (style === 'quickStructuralPass') return 'deepWriter';
+        return 'balancedAnalysis';
+    };
+
+    const thinkingStyleToReasoningDepth = (style: ThinkingStyleId): 'standard' | 'deep' =>
+        style === 'deepStructuralEdit' ? 'deep' : 'standard';
+
+    const thinkingStyleToOutputMode = (
+        style: ThinkingStyleId,
+        tier: AccessTier
+    ): 'auto' | 'high' | 'max' => {
+        if (style === 'deepStructuralEdit') return tier >= 3 ? 'max' : 'high';
+        if (style === 'quickStructuralPass') return 'auto';
+        return tier >= 2 ? 'high' : 'auto';
+    };
+
+    const inferThinkingStyle = (): ThinkingStyleId => {
+        const aiSettings = ensureCanonicalAiSettings();
+        const policy = aiSettings.modelPolicy;
+        if (policy.type === 'profile') {
+            if (policy.profile === 'deepReasoner') return 'deepStructuralEdit';
+            if (policy.profile === 'deepWriter') return 'quickStructuralPass';
+            return 'balancedEditorialReview';
+        }
+        if (aiSettings.overrides.reasoningDepth === 'deep') return 'deepStructuralEdit';
+        if (aiSettings.overrides.maxOutputMode === 'auto') return 'quickStructuralPass';
+        return 'balancedEditorialReview';
+    };
+
+    const applyThinkingStyleInternals = (
+        aiSettings: ReturnType<typeof ensureCanonicalAiSettings>,
+        provider: AIProviderId,
+        style: ThinkingStyleId,
+        options?: { forceProfile?: boolean }
+    ): void => {
+        const tier: AccessTier =
+            provider === 'anthropic' || provider === 'openai' || provider === 'google'
+                ? getAccessTier(provider)
+                : 1;
+        aiSettings.overrides.reasoningDepth = thinkingStyleToReasoningDepth(style);
+        aiSettings.overrides.maxOutputMode = thinkingStyleToOutputMode(style, tier);
+        if (options?.forceProfile || aiSettings.modelPolicy.type === 'profile') {
+            aiSettings.modelPolicy = { type: 'profile', profile: thinkingStyleToProfile(style) };
+        }
+    };
+
     const providerSetting = new Settings(quickSetupGrid)
         .setName('Provider')
-        .setDesc('Select the AI service that powers structural analysis and editorial insight across your manuscript.');
+        .setDesc('Select the AI service that powers structural analysis and editorial insight.');
     providerSetting.settingEl.setAttr('data-ert-role', 'ai-setting:provider');
     let providerDropdown: DropdownComponent | null = null;
     providerSetting.addDropdown(dropdown => {
@@ -463,11 +502,13 @@ export function renderAiSection(params: {
         dropdown.addOption('anthropic', 'Anthropic');
         dropdown.addOption('openai', 'OpenAI');
         dropdown.addOption('google', 'Google');
-        dropdown.addOption('ollama', 'Ollama / Local');
+        dropdown.addOption('ollama', 'Local');
         dropdown.onChange(async value => {
             const aiSettings = ensureCanonicalAiSettings();
             const nextProvider = value as AIProviderId;
+            const currentStyle = inferThinkingStyle();
             aiSettings.provider = nextProvider;
+            applyThinkingStyleInternals(aiSettings, nextProvider, currentStyle, { forceProfile: aiSettings.modelPolicy.type !== 'pinned' });
 
             if (aiSettings.modelPolicy.type === 'pinned') {
                 const allowed = new Set(getProviderAliases(nextProvider));
@@ -482,9 +523,79 @@ export function renderAiSection(params: {
     });
     params.addAiRelatedElement(providerSetting.settingEl);
 
-    const policySetting = new Settings(quickSetupGrid)
-        .setName('Model strategy')
-        .setDesc('Select how the system chooses the active model.');
+    const thinkingStyleSetting = new Settings(quickSetupGrid)
+        .setName('Thinking Style')
+        .setDesc('Choose the depth and intensity of analysis. Radial Timeline automatically applies the strongest safe settings for the selected style.');
+    thinkingStyleSetting.settingEl.setAttr('data-ert-role', 'ai-setting:thinking-style');
+    let thinkingStyleDropdown: DropdownComponent | null = null;
+    thinkingStyleSetting.addDropdown(dropdown => {
+        thinkingStyleDropdown = dropdown;
+        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
+        dropdown.addOption('deepStructuralEdit', 'Deep Structural Edit');
+        dropdown.addOption('balancedEditorialReview', 'Balanced Editorial Review');
+        dropdown.addOption('quickStructuralPass', 'Quick Structural Pass');
+        dropdown.onChange(async value => {
+            const aiSettings = ensureCanonicalAiSettings();
+            const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
+            applyThinkingStyleInternals(aiSettings, provider, value as ThinkingStyleId, { forceProfile: aiSettings.modelPolicy.type !== 'pinned' });
+            await persistCanonical();
+            refreshRoutingUi();
+        });
+    });
+    params.addAiRelatedElement(thinkingStyleSetting.settingEl);
+
+    const modelOverrideSetting = new Settings(quickSetupGrid)
+        .setName('Model Override')
+        .setDesc('Override the model selected by your thinking style. Most authors should leave this set to Auto.');
+    modelOverrideSetting.settingEl.setAttr('data-ert-role', 'ai-setting:model-override');
+    let modelOverrideDropdown: DropdownComponent | null = null;
+    modelOverrideSetting.addDropdown(dropdown => {
+        modelOverrideDropdown = dropdown;
+        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
+        dropdown.onChange(async value => {
+            const aiSettings = ensureCanonicalAiSettings();
+            const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
+            if (value === 'auto') {
+                const style = inferThinkingStyle();
+                aiSettings.modelPolicy = { type: 'profile', profile: thinkingStyleToProfile(style) };
+                applyThinkingStyleInternals(aiSettings, provider, style, { forceProfile: true });
+            } else {
+                aiSettings.modelPolicy = { type: 'pinned', pinnedAlias: value };
+            }
+            await persistCanonical();
+            refreshRoutingUi();
+        });
+    });
+    params.addAiRelatedElement(modelOverrideSetting.settingEl);
+
+    const accessTierSetting = new Settings(quickSetupGrid)
+        .setName('Access Tier')
+        .setDesc('Increase available context headroom if your provider grants higher limits.');
+    accessTierSetting.settingEl.setAttr('data-ert-role', 'ai-setting:access-level');
+    let accessTierDropdown: DropdownComponent | null = null;
+    accessTierSetting.addDropdown(dropdown => {
+        accessTierDropdown = dropdown;
+        dropdown.selectEl.addClass('ert-input', 'ert-input--sm');
+        dropdown.addOption('1', 'Tier 1');
+        dropdown.addOption('2', 'Tier 2');
+        dropdown.addOption('3', 'Tier 3');
+        dropdown.addOption('4', 'Tier 4');
+        dropdown.onChange(async value => {
+            const aiSettings = ensureCanonicalAiSettings();
+            const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
+            if (provider === 'anthropic' || provider === 'openai' || provider === 'google') {
+                setAccessTier(provider, Number(value) as AccessTier);
+            }
+            applyThinkingStyleInternals(aiSettings, provider, inferThinkingStyle());
+            await persistCanonical();
+            refreshRoutingUi();
+        });
+    });
+    params.addAiRelatedElement(accessTierSetting.settingEl);
+
+    const policySetting = new Settings(advancedBody)
+        .setName('Model strategy (advanced)')
+        .setDesc('Manual routing mode controls.');
     policySetting.settingEl.setAttr('data-ert-role', 'ai-setting:model-strategy');
     let policyDropdown: DropdownComponent | null = null;
     policySetting.addDropdown(dropdown => {
@@ -503,7 +614,7 @@ export function renderAiSection(params: {
                     pinnedAlias: getProviderDefaultAlias(aiSettings.provider === 'none' ? 'openai' : aiSettings.provider)
                 };
             } else if (value === 'profile') {
-                aiSettings.modelPolicy = { type: 'profile', profile: 'deepReasoner' };
+                aiSettings.modelPolicy = { type: 'profile', profile: thinkingStyleToProfile(inferThinkingStyle()) };
             } else {
                 aiSettings.modelPolicy = { type: value as Exclude<ModelPolicy['type'], 'pinned' | 'profile'> };
             }
@@ -513,71 +624,9 @@ export function renderAiSection(params: {
     });
     params.addAiRelatedElement(policySetting.settingEl);
 
-    const pinnedSetting = new Settings(quickSetupGrid)
-        .setName('Pinned model')
-        .setDesc('Select a specific model instead of automatic selection.');
-    pinnedSetting.settingEl.setAttr('data-ert-role', 'ai-setting:pinned-model');
-    let pinnedDropdown: DropdownComponent | null = null;
-    pinnedSetting.addDropdown(dropdown => {
-        pinnedDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
-        dropdown.onChange(async value => {
-            const aiSettings = ensureCanonicalAiSettings();
-            if (aiSettings.modelPolicy.type !== 'pinned') return;
-            aiSettings.modelPolicy.pinnedAlias = value;
-            await persistCanonical();
-            refreshRoutingUi();
-        });
-    });
-    params.addAiRelatedElement(pinnedSetting.settingEl);
-
-    const profileSetting = new Settings(quickSetupGrid)
-        .setName('Profile')
-        .setDesc('Select a thinking style suited to your task — deep structural analysis, balanced review, or faster iteration.');
-    profileSetting.settingEl.setAttr('data-ert-role', 'ai-setting:profile');
-    let profileDropdown: DropdownComponent | null = null;
-    profileSetting.addDropdown(dropdown => {
-        profileDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
-        dropdown.addOption('deepReasoner', 'deepReasoner');
-        dropdown.addOption('deepWriter', 'deepWriter');
-        dropdown.addOption('balancedAnalysis', 'balancedAnalysis');
-        dropdown.onChange(async value => {
-            const aiSettings = ensureCanonicalAiSettings();
-            aiSettings.modelPolicy = { type: 'profile', profile: value as ModelProfileName };
-            await persistCanonical();
-            refreshRoutingUi();
-        });
-    });
-    params.addAiRelatedElement(profileSetting.settingEl);
-
-    const accessTierSetting = new Settings(quickSetupGrid)
-        .setName('Access Tier')
-        .setDesc('Set your granted access Tier for maximum capacity.');
-    accessTierSetting.settingEl.setAttr('data-ert-role', 'ai-setting:access-level');
-    let accessTierDropdown: DropdownComponent | null = null;
-    accessTierSetting.addDropdown(dropdown => {
-        accessTierDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--sm');
-        dropdown.addOption('1', 'Tier 1');
-        dropdown.addOption('2', 'Tier 2');
-        dropdown.addOption('3', 'Tier 3');
-        dropdown.addOption('4', 'Tier 4');
-        dropdown.onChange(async value => {
-            const aiSettings = ensureCanonicalAiSettings();
-            const provider = aiSettings.provider;
-            if (provider === 'anthropic' || provider === 'openai' || provider === 'google') {
-                setAccessTier(provider, Number(value) as AccessTier);
-                await persistCanonical();
-                refreshRoutingUi();
-            }
-        });
-    });
-    params.addAiRelatedElement(accessTierSetting.settingEl);
-
-    const outputModeSetting = new Settings(quickSetupGrid)
-        .setName('Output cap')
-        .setDesc('Control how much response space AI can use.');
+    const outputModeSetting = new Settings(advancedBody)
+        .setName('Output cap (advanced)')
+        .setDesc('Manual response allowance override.');
     let outputModeDropdown: DropdownComponent | null = null;
     outputModeSetting.addDropdown(dropdown => {
         outputModeDropdown = dropdown;
@@ -594,9 +643,9 @@ export function renderAiSection(params: {
     });
     params.addAiRelatedElement(outputModeSetting.settingEl);
 
-    const reasoningDepthSetting = new Settings(quickSetupGrid)
-        .setName('Depth')
-        .setDesc('Standard reasoning depth favors speed. Deep increases structural precision.');
+    const reasoningDepthSetting = new Settings(advancedBody)
+        .setName('Reasoning depth (advanced)')
+        .setDesc('Manual reasoning depth override.');
     let reasoningDepthDropdown: DropdownComponent | null = null;
     reasoningDepthSetting.addDropdown(dropdown => {
         reasoningDepthDropdown = dropdown;
@@ -613,23 +662,10 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(reasoningDepthSetting.settingEl);
 
     const applyQuickSetupLayoutOrder = (): void => {
-        providerCard.appendChild(providerSetting.settingEl);
-
-        step1Card.appendChild(policySetting.settingEl);
-        step1Card.appendChild(pinnedSetting.settingEl);
-
-        step2Card.appendChild(profileSetting.settingEl);
-
-        [outputModeSetting, reasoningDepthSetting, accessTierSetting].forEach(setting => {
-            step3Grid.appendChild(setting.settingEl);
-        });
-
-        [providerSetting, policySetting, pinnedSetting, profileSetting,
-         outputModeSetting, reasoningDepthSetting, accessTierSetting].forEach(setting => {
+        [providerSetting, thinkingStyleSetting, modelOverrideSetting, accessTierSetting].forEach(setting => {
+            quickSetupGrid.appendChild(setting.settingEl);
             setting.settingEl.addClass('ert-ai-grid-item');
         });
-
-        quickSetupGrid.addClass('ert-settings-hidden');
     };
 
     const applyStrategyRowCopyLayout = (setting: Settings, description: string): void => {
@@ -1347,7 +1383,7 @@ export function renderAiSection(params: {
         }
     };
 
-    const resolvedPreviewFrame = quickSetupSection.createDiv({
+    const resolvedPreviewFrame = quickSetupPreviewSection.createDiv({
         cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--center', 'ert-previewFrame--flush', 'ert-ai-resolved-preview'],
         attr: { 'data-ert-role': 'ai-setting:resolved-model-preview' }
     });
@@ -1367,13 +1403,10 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(resolvedPreviewFrame);
 
 
-    applyStrategyRowCopyLayout(providerSetting, 'Select the AI service that powers structural analysis and editorial insight across your manuscript.');
-    applyStrategyRowCopyLayout(policySetting, 'Select how the system chooses the active model.');
-    applyStrategyRowCopyLayout(pinnedSetting, 'Select a specific model instead of automatic selection.');
-    applyStrategyRowCopyLayout(profileSetting, 'Select a thinking style suited to your task — deep structural analysis, balanced review, or faster iteration.');
-    applyStrategyRowCopyLayout(outputModeSetting, 'Control how much response space AI can use.');
-    applyStrategyRowCopyLayout(reasoningDepthSetting, 'Standard favors speed. Deep increases structural precision.');
-    applyStrategyRowCopyLayout(accessTierSetting, 'Adjust request scale and available output capacity.');
+    applyStrategyRowCopyLayout(providerSetting, 'Select the AI service that powers structural analysis and editorial insight.');
+    applyStrategyRowCopyLayout(thinkingStyleSetting, 'Choose the depth and intensity of analysis. Radial Timeline automatically applies the strongest safe settings for the selected style.');
+    applyStrategyRowCopyLayout(modelOverrideSetting, 'Override the model selected by your thinking style. Most authors should leave this set to Auto.');
+    applyStrategyRowCopyLayout(accessTierSetting, 'Increase available context headroom if your provider grants higher limits.');
 
     applyQuickSetupLayoutOrder();
 
@@ -1479,6 +1512,16 @@ export function renderAiSection(params: {
         const aiSettings = ensureCanonicalAiSettings();
         const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
         const providerAliases = getProviderAliases(provider);
+        const thinkingStyle = inferThinkingStyle();
+        applyThinkingStyleInternals(aiSettings, provider, thinkingStyle);
+
+        if (aiSettings.modelPolicy.type === 'pinned') {
+            const allowed = new Set(providerAliases);
+            if (!aiSettings.modelPolicy.pinnedAlias || !allowed.has(aiSettings.modelPolicy.pinnedAlias)) {
+                aiSettings.modelPolicy.pinnedAlias = getProviderDefaultAlias(provider);
+            }
+        }
+
         const policy = aiSettings.modelPolicy;
         const policyType = (
             policy.type === 'pinned'
@@ -1486,33 +1529,26 @@ export function renderAiSection(params: {
             || policy.type === 'latestStable'
             || policy.type === 'latestFast'
             || policy.type === 'latestCheap'
-        ) ? policy.type : 'latestStable';
+        ) ? policy.type : 'profile';
 
         setDropdownValueSafe(providerDropdown, provider, 'openai');
-        setDropdownValueSafe(policyDropdown, policyType, 'latestStable');
+        setDropdownValueSafe(thinkingStyleDropdown, thinkingStyle, 'balancedEditorialReview');
+        setDropdownValueSafe(policyDropdown, policyType, 'profile');
 
-        if (pinnedDropdown) {
-            pinnedDropdown.selectEl.empty();
+        if (modelOverrideDropdown) {
+            modelOverrideDropdown.selectEl.empty();
+            modelOverrideDropdown.addOption('auto', 'Auto (recommended)');
             providerAliases.forEach(alias => {
                 const model = BUILTIN_MODELS.find(entry => entry.alias === alias);
                 const label = model ? `${model.label} (${alias})` : alias;
-                pinnedDropdown?.addOption(alias, label);
+                modelOverrideDropdown?.addOption(alias, label);
             });
-            const pinnedAlias = policy.type === 'pinned'
-                ? policy.pinnedAlias || getProviderDefaultAlias(provider) || providerAliases[0]
-                : getProviderDefaultAlias(provider) || providerAliases[0];
-            if (policy.type === 'pinned' && pinnedAlias && providerAliases.length) {
-                pinnedDropdown.setValue(providerAliases.includes(pinnedAlias) ? pinnedAlias : providerAliases[0]);
-            }
+            const overrideValue = policy.type === 'pinned'
+                ? policy.pinnedAlias || 'auto'
+                : 'auto';
+            setDropdownValueSafe(modelOverrideDropdown, overrideValue, 'auto');
         }
 
-        const profileValue = (policy.type === 'profile' && (
-            policy.profile === 'deepReasoner'
-            || policy.profile === 'deepWriter'
-            || policy.profile === 'balancedAnalysis'
-        )) ? policy.profile : 'deepReasoner';
-
-        setDropdownValueSafe(profileDropdown, profileValue, 'deepReasoner');
         setDropdownValueSafe(outputModeDropdown, aiSettings.overrides.maxOutputMode || 'auto', 'auto');
         setDropdownValueSafe(reasoningDepthDropdown, aiSettings.overrides.reasoningDepth || 'standard', 'standard');
         setDropdownValueSafe(executionPreferenceDropdown, aiSettings.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : 'automatic', 'automatic');
@@ -1520,25 +1556,16 @@ export function renderAiSection(params: {
         remoteRegistryToggle?.setValue(aiSettings.privacy.allowRemoteRegistry);
         providerSnapshotToggle?.setValue(aiSettings.privacy.allowProviderSnapshot);
 
-        [providerSetting, policySetting, outputModeSetting, reasoningDepthSetting].forEach(setting => {
+        [providerSetting, thinkingStyleSetting, modelOverrideSetting, accessTierSetting].forEach(setting => {
             setting.settingEl.toggleClass('ert-settings-hidden', false);
             setting.settingEl.toggleClass('ert-settings-visible', true);
         });
 
-        const shouldShowPinned = policy.type === 'pinned';
-        const shouldShowProfile = policy.type === 'profile';
-        pinnedSetting.settingEl.toggleClass('ert-settings-hidden', !shouldShowPinned);
-        pinnedSetting.settingEl.toggleClass('ert-settings-visible', shouldShowPinned);
-        profileSetting.settingEl.toggleClass('ert-settings-hidden', !shouldShowProfile);
-        profileSetting.settingEl.toggleClass('ert-settings-visible', shouldShowProfile);
-        step2Card.toggleClass('ert-settings-hidden', !shouldShowProfile);
-        step2Card.toggleClass('ert-settings-visible', shouldShowProfile);
-
         const supportsAccessTier = provider === 'anthropic' || provider === 'openai' || provider === 'google';
-        accessTierSetting.settingEl.toggleClass('ert-settings-hidden', !supportsAccessTier);
-        accessTierSetting.settingEl.toggleClass('ert-settings-visible', supportsAccessTier);
         if (supportsAccessTier) {
             accessTierDropdown?.setValue(String(getAccessTier(provider)));
+        } else {
+            accessTierDropdown?.setValue('1');
         }
 
         const inquiryAdvanced = getLastAiAdvancedContext(plugin, 'InquiryMode');
@@ -1556,14 +1583,14 @@ export function renderAiSection(params: {
                 provider,
                 policy,
                 requiredCapabilities: capabilityFloor,
-                accessTier: getAccessTier(provider),
+                accessTier: supportsAccessTier ? getAccessTier(provider) : 1,
                 contextTokensNeeded: 24000,
                 outputTokensNeeded: 2000
             });
             const caps = computeCaps({
                 provider,
                 model: selection.model,
-                accessTier: getAccessTier(provider),
+                accessTier: supportsAccessTier ? getAccessTier(provider) : 1,
                 feature: 'InquiryMode',
                 overrides: aiSettings.overrides
             });
