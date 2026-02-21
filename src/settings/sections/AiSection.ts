@@ -1,4 +1,4 @@
-import { Setting as Settings, Notice, DropdownComponent, setIcon } from 'obsidian';
+import { Setting as Settings, Notice, DropdownComponent, setIcon, requestUrl } from 'obsidian';
 import type { App, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { fetchAnthropicModels } from '../../api/anthropicApi';
@@ -95,7 +95,7 @@ export function renderAiSection(params: {
     const heroOnState = aiHero.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-hero-state-on` });
     heroOnState.createEl('p', {
         cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
-        text: 'Radial Timeline’s AI does not rewrite your work. It acts as a rigorous, genre-aware editor - analyzing structure, momentum, and continuity across scenes. Use it to stress-test your manuscript, uncover hidden contradictions, and sharpen narrative force while your voice remains fully your own.'
+        text: 'Radial Timeline’s AI phylosophy is not to rewrite your work, but to act as a rigorous, genre-aware editor - analyzing structure, momentum, and continuity across scenes and materials. Use it to stress-test your manuscript, uncover hidden contradictions, and sharpen narrative identity while your voice remains fully your own.'
     });
     const heroOnFeatures = heroOnState.createDiv({
         cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
@@ -194,8 +194,11 @@ export function renderAiSection(params: {
     });
 
     const ensureCanonicalAiSettings = () => {
-        const validated = validateAiSettings(plugin.settings.aiSettings ?? buildDefaultAiSettings());
-        plugin.settings.aiSettings = validated.value;
+        if (!plugin.settings.aiSettings) {
+            plugin.settings.aiSettings = validateAiSettings(buildDefaultAiSettings()).value;
+        }
+        const validated = validateAiSettings(plugin.settings.aiSettings);
+        Object.assign(plugin.settings.aiSettings, validated.value);
         return plugin.settings.aiSettings;
     };
 
@@ -204,7 +207,7 @@ export function renderAiSection(params: {
     const largeHandlingFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold ert-ai-large-handling' });
     largeHandlingFold.setAttr('open', '');
     largeHandlingFold.setAttr('data-ert-role', 'ai-setting:large-manuscript-handling');
-    largeHandlingFold.createEl('summary', { text: 'Large Manuscript Handling' });
+    largeHandlingFold.createEl('summary', { text: 'Large Manuscript Handling & Multi-Pass Analysis' });
     const largeHandlingBody = largeHandlingFold.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-large-handling-body` });
     largeHandlingBody.createDiv({
         cls: 'ert-section-desc',
@@ -246,7 +249,6 @@ export function renderAiSection(params: {
     const packagingSection = largeHandlingBody.createDiv({
         cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
     });
-    packagingSection.createEl('h5', { text: 'How large requests are processed', cls: 'ert-kicker' });
     const analysisModes = packagingSection.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-analysis-modes` });
     const createAnalysisModeBlock = (config: {
         icon: string;
@@ -257,17 +259,18 @@ export function renderAiSection(params: {
         note?: string;
         support?: string;
     }): void => {
-        const block = analysisModes.createDiv({ cls: 'ert-ai-analysis-mode' });
-        const icon = block.createSpan({ cls: 'ert-ai-analysis-mode-icon' });
-        setIcon(icon, config.icon);
-
+        const block = analysisModes.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-analysis-mode` });
         const content = block.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT} ert-ai-analysis-mode-content` });
         content.createDiv({ cls: 'ert-ai-analysis-mode-title', text: config.title });
         content.createDiv({ cls: 'ert-ai-analysis-mode-body', text: config.body });
         if (config.example) {
             content.createDiv({ cls: 'ert-ai-analysis-mode-example', text: config.example });
         }
-        const questionList = content.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT} ert-ai-analysis-mode-questions` });
+
+        const questionRow = block.createDiv({ cls: 'ert-ai-analysis-mode-question-row' });
+        const icon = questionRow.createSpan({ cls: 'ert-ai-analysis-mode-icon' });
+        setIcon(icon, config.icon);
+        const questionList = questionRow.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT} ert-ai-analysis-mode-questions` });
         config.questions.forEach(question => {
             const row = questionList.createDiv({ cls: 'ert-ai-analysis-mode-question' });
             const questionIcon = row.createSpan({ cls: 'ert-ai-analysis-mode-question-icon' });
@@ -275,10 +278,10 @@ export function renderAiSection(params: {
             row.createSpan({ cls: 'ert-ai-analysis-mode-question-text', text: question });
         });
         if (config.note) {
-            content.createDiv({ cls: 'ert-ai-analysis-mode-note', text: config.note });
+            block.createDiv({ cls: 'ert-ai-analysis-mode-note', text: config.note });
         }
         if (config.support) {
-            content.createDiv({ cls: 'ert-ai-analysis-mode-support', text: config.support });
+            block.createDiv({ cls: 'ert-ai-analysis-mode-support', text: config.support });
         }
     };
 
@@ -299,7 +302,7 @@ export function renderAiSection(params: {
     createAnalysisModeBlock({
         icon: 'git-fork',
         title: 'Multi-Pass Analysis',
-        body: 'Large manuscripts are split into structured segments. Each segment is evaluated independently, and the findings are combined into one unified response. These questions evaluate structural patterns that can be analyzed segment by segment. Scene IDs keep references aligned across all segments.',
+        body: 'Large manuscripts are split into structured segments. Each segment is evaluated independently, and the findings are combined into one unified response. These questions evaluate structural patterns that can be analyzed segment by segment.',
         questions: [
             'Identify unresolved character arcs across the manuscript.',
             'Where does tension stall or repeat structurally?',
@@ -351,23 +354,27 @@ export function renderAiSection(params: {
         text: 'Active role and context framing used for AI submissions. Applied to Inquiry, Pulse (Triplet Analysis), Gossamer Momentum, Summary Refresh, Runtime AI Estimation.'
     });
 
-    const featureDefaultsSection = aiSettingsGroup.createDiv({
+    const aiDisplaySection = aiSettingsGroup.createDiv({
         cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card`
     });
-    featureDefaultsSection.createDiv({ cls: 'ert-section-title', text: 'Feature defaults' });
-    featureDefaultsSection.createDiv({
+    aiDisplaySection.createDiv({ cls: 'ert-section-title', text: 'AI Display' });
+    aiDisplaySection.createDiv({
         cls: 'ert-section-desc',
-        text: 'Compact default behavior for Inquiry, Gossamer, Pulse, Summary refresh, and Runtime.'
-    });
-    const featureDefaultsGrid = featureDefaultsSection.createDiv({
-        cls: `${ERT_CLASSES.GRID_FORM} ${ERT_CLASSES.GRID_FORM_3} ert-ai-feature-grid`
+        text: 'Display preferences for Pulse context visibility.'
     });
 
-    const modelDetailsBody = aiSettingsGroup;
+    const configurationFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold ert-ai-configuration' });
+    configurationFold.setAttr('open', '');
+    configurationFold.createEl('summary', { text: 'Configuration' });
+    const configurationBody = configurationFold.createDiv({ cls: ERT_CLASSES.STACK });
 
     const advancedFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold' });
-    advancedFold.createEl('summary', { text: 'Advanced' });
+    advancedFold.createEl('summary', { text: 'Advanced & Diagnostics' });
     const advancedBody = advancedFold.createDiv({ cls: ERT_CLASSES.STACK });
+    advancedBody.createDiv({
+        cls: 'ert-section-desc',
+        text: 'Infrastructure and troubleshooting tools. Most authors can ignore this section.'
+    });
 
     const contextTemplateSetting = new Settings(roleContextSection)
         .setName('AI prompt role & context template')
@@ -383,7 +390,7 @@ export function renderAiSection(params: {
             }));
     params.addAiRelatedElement(contextTemplateSetting.settingEl);
 
-    const tripletDisplaySetting = new Settings(featureDefaultsSection)
+    const tripletDisplaySetting = new Settings(aiDisplaySection)
         .setName('Pulse: Show previous and next scene triplet analysis')
         .setDesc('When enabled, scene hover fields include the AI pulse for the previous and next scenes. Turn off to display only the current scene for a more compact view.')
         .addToggle(toggle => toggle
@@ -392,7 +399,6 @@ export function renderAiSection(params: {
                 plugin.settings.showFullTripletAnalysis = value;
                 await plugin.saveSettings();
                 // Tier 1: triplet display is read at hover time, no SVG change needed
-                renderFeatureDefaultsCards();
             }));
     params.addAiRelatedElement(tripletDisplaySetting.settingEl);
 
@@ -449,13 +455,6 @@ export function renderAiSection(params: {
         if (provider === 'openai') return aiSettings.aiAccessProfile.openaiTier ?? 1;
         if (provider === 'google') return aiSettings.aiAccessProfile.googleTier ?? 1;
         return 1;
-    };
-
-    const setAccessTier = (provider: AIProviderId, tier: AccessTier): void => {
-        const aiSettings = ensureCanonicalAiSettings();
-        if (provider === 'anthropic') aiSettings.aiAccessProfile.anthropicTier = tier;
-        if (provider === 'openai') aiSettings.aiAccessProfile.openaiTier = tier;
-        if (provider === 'google') aiSettings.aiAccessProfile.googleTier = tier;
     };
 
     const syncLegacyFromCanonical = (): void => {
@@ -533,10 +532,12 @@ export function renderAiSection(params: {
         style: ThinkingStyleId,
         options?: { forceProfile?: boolean }
     ): void => {
-        const tier: AccessTier =
-            provider === 'anthropic' || provider === 'openai' || provider === 'google'
-                ? getAccessTier(provider)
-                : 1;
+        const tier: AccessTier = (() => {
+            if (provider === 'anthropic') return aiSettings.aiAccessProfile.anthropicTier ?? 1;
+            if (provider === 'openai') return aiSettings.aiAccessProfile.openaiTier ?? 1;
+            if (provider === 'google') return aiSettings.aiAccessProfile.googleTier ?? 1;
+            return 1;
+        })() as AccessTier;
         aiSettings.overrides.reasoningDepth = thinkingStyleToReasoningDepth(style);
         aiSettings.overrides.maxOutputMode = thinkingStyleToOutputMode(style, tier);
         if (options?.forceProfile || aiSettings.modelPolicy.type === 'profile') {
@@ -639,9 +640,10 @@ export function renderAiSection(params: {
             if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
             const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
-            if (provider === 'anthropic' || provider === 'openai' || provider === 'google') {
-                setAccessTier(provider, Number(value) as AccessTier);
-            }
+            const numTier = Number(value) as AccessTier;
+            if (provider === 'anthropic') aiSettings.aiAccessProfile.anthropicTier = numTier;
+            else if (provider === 'openai') aiSettings.aiAccessProfile.openaiTier = numTier;
+            else if (provider === 'google') aiSettings.aiAccessProfile.googleTier = numTier;
             applyThinkingStyleInternals(aiSettings, provider, getThinkingStyleFromUiOrState());
             await persistCanonical();
             refreshRoutingUi();
@@ -761,14 +763,23 @@ export function renderAiSection(params: {
             || normalized === 'retry-after';
     };
 
-    const extractRelevantHeaders = (headers: Headers): Record<string, string> => {
+    const extractRelevantHeaders = (headers: Headers | Record<string, string>): Record<string, string> => {
         const observed: Record<string, string> = {};
-        headers.forEach((value, key) => {
-            if (!isRateLikeKey(key)) return;
-            const cleaned = value.trim();
-            if (!cleaned) return;
-            observed[key.toLowerCase()] = cleaned;
-        });
+        if (headers instanceof Headers) {
+            headers.forEach((value, key) => {
+                if (!isRateLikeKey(key)) return;
+                const cleaned = value.trim();
+                if (!cleaned) return;
+                observed[key.toLowerCase()] = cleaned;
+            });
+        } else {
+            Object.entries(headers ?? {}).forEach(([key, value]) => {
+                if (!isRateLikeKey(key)) return;
+                const cleaned = value.trim();
+                if (!cleaned) return;
+                observed[key.toLowerCase()] = cleaned;
+            });
+        }
         return observed;
     };
 
@@ -882,8 +893,6 @@ export function renderAiSection(params: {
         const providerCandidate = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
         const provider: Exclude<AIProviderId, 'none'> = providerCandidate;
         const currentTier = getAccessTier(provider);
-        const timeoutController = new AbortController();
-        const timeout = window.setTimeout(() => timeoutController.abort(), 12000);
 
         let endpoint = '';
         const requestHeaders: Record<string, string> = {};
@@ -912,25 +921,38 @@ export function renderAiSection(params: {
                 if (key) requestHeaders.Authorization = `Bearer ${key}`;
             }
 
-            const response = await fetch(endpoint, {
-                method: 'GET',
-                headers: requestHeaders,
-                signal: timeoutController.signal
+            let timeoutId: number | null = null;
+            const timeoutPromise = new Promise<never>((_, reject) => {
+                timeoutId = window.setTimeout(() => reject(new Error('Request timed out after 12s.')), 12000);
             });
+            let response: Awaited<ReturnType<typeof requestUrl>>;
+            try {
+                response = await Promise.race([
+                    requestUrl({
+                        url: endpoint,
+                        method: 'GET',
+                        headers: requestHeaders,
+                        throw: false
+                    }),
+                    timeoutPromise
+                ]);
+            } finally {
+                if (timeoutId !== null) {
+                    window.clearTimeout(timeoutId);
+                }
+            }
 
             const observedHeaders = extractRelevantHeaders(response.headers);
             let observedFields: Record<string, string> = {};
-
-            const contentType = response.headers.get('content-type') || '';
-            if (contentType.includes('application/json')) {
+            const payload = response.json as unknown;
+            observedFields = extractRelevantFields(payload);
+            if (Object.keys(observedFields).length === 0 && response.text) {
                 try {
-                    const payload = await response.json() as unknown;
-                    observedFields = extractRelevantFields(payload);
+                    const parsed = JSON.parse(response.text) as unknown;
+                    observedFields = extractRelevantFields(parsed);
                 } catch {
                     observedFields = {};
                 }
-            } else {
-                try { await response.text(); } catch { /* ignore */ }
             }
 
             const observedRpm = getObservedRpm(observedHeaders, observedFields);
@@ -947,8 +969,8 @@ export function renderAiSection(params: {
                 heuristicTierSuggestion: inference.heuristicTierSuggestion,
                 heuristicSummary: inference.heuristicSummary
             };
-        } finally {
-            window.clearTimeout(timeout);
+        } catch (error) {
+            throw error;
         }
     };
 
@@ -1105,7 +1127,7 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(throughputResultSetting.settingEl);
     renderThroughputResult();
 
-    const modelsPanel = modelDetailsBody.createDiv({ cls: ['ert-panel', ERT_CLASSES.STACK, 'ert-ai-models-panel'] });
+    const modelsPanel = advancedBody.createDiv({ cls: ['ert-panel', ERT_CLASSES.STACK, 'ert-ai-models-panel'] });
     const modelsHeader = modelsPanel.createDiv({ cls: 'ert-inline ert-inline--split' });
     modelsHeader.createDiv({ cls: 'ert-section-title', text: 'Models' });
     const modelsRefreshedEl = modelsHeader.createDiv({ cls: 'ert-ai-models-refreshed' });
@@ -1152,44 +1174,6 @@ export function renderAiSection(params: {
         if (!row.model) return 'No eligible model';
         const name = row.model.providerLabel || row.model.label;
         return `${providerLabel[row.model.provider]} -> ${name} (${row.model.alias})`;
-    };
-
-    const renderFeatureDefaultsCards = (): void => {
-        featureDefaultsGrid.empty();
-        const aiSettings = ensureCanonicalAiSettings();
-        const policySummary = aiSettings.modelPolicy.type === 'profile'
-            ? `Profile: ${aiSettings.modelPolicy.profile}`
-            : `Policy: ${aiSettings.modelPolicy.type}`;
-        const cards: Array<{ title: string; body: string }> = [
-            {
-                title: 'Inquiry',
-                body: `${policySummary}. Full-manuscript analysis with structured output focus.`
-            },
-            {
-                title: 'Gossamer',
-                body: 'Narrative momentum and prose sensitivity with deep analysis weighting.'
-            },
-            {
-                title: 'Pulse',
-                body: plugin.settings.showFullTripletAnalysis
-                    ? 'Triplet lens enabled: previous, focus, and next scenes.'
-                    : 'Triplet lens reduced: focus scene only.'
-            },
-            {
-                title: 'Summary refresh',
-                body: 'Uses current routing defaults for compact update passes.'
-            },
-            {
-                title: 'Runtime',
-                body: `Resolved by the same provider policy with output cap ${aiSettings.overrides.maxOutputMode || 'auto'}.`
-            }
-        ];
-
-        cards.forEach(card => {
-            const cardEl = featureDefaultsGrid.createDiv({ cls: 'ert-ai-feature-card' });
-            cardEl.createDiv({ cls: 'ert-ai-feature-card-title', text: card.title });
-            cardEl.createDiv({ cls: 'ert-ai-feature-card-body', text: card.body });
-        });
     };
 
     const renderRecommendations = (
@@ -1711,20 +1695,19 @@ export function renderAiSection(params: {
             capacityExample1mEstimate.setText('Estimated: Unavailable');
         }
 
-        renderFeatureDefaultsCards();
         void refreshModelsTable();
     };
 
     refreshRoutingUi();
 
     // Provider sections
-    const anthropicSection = advancedBody.createDiv({
+    const anthropicSection = configurationBody.createDiv({
         cls: ['ert-provider-section', 'ert-provider-anthropic', ERT_CLASSES.STACK]
     });
-    const geminiSection = advancedBody.createDiv({
+    const geminiSection = configurationBody.createDiv({
         cls: ['ert-provider-section', 'ert-provider-gemini', ERT_CLASSES.STACK]
     });
-    const openaiSection = advancedBody.createDiv({
+    const openaiSection = configurationBody.createDiv({
         cls: ['ert-provider-section', 'ert-provider-openai', ERT_CLASSES.STACK]
     });
     params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection });
@@ -1745,14 +1728,14 @@ export function renderAiSection(params: {
     };
 
     if (!secretStorageAvailable) {
-        const warningSetting = new Settings(advancedBody)
+        const warningSetting = new Settings(configurationBody)
             .setName('Secure key saving unavailable')
-            .setDesc('Secure key saving isn’t available in this Obsidian version. Older key fields remain available in Advanced sections.');
+            .setDesc('Secure key saving isn’t available in this Obsidian version. Older key fields remain available in Configuration sections.');
         params.addAiRelatedElement(warningSetting.settingEl);
     }
 
     if (secretStorageAvailable && hasLegacyKeyMaterial()) {
-        const migrateKeysSetting = new Settings(advancedBody)
+        const migrateKeysSetting = new Settings(configurationBody)
             .setName('Secure my saved keys')
             .setDesc('Moves older provider key fields into private saved keys and clears plaintext values.');
         migrateKeysSetting.addButton(button => button
@@ -1969,7 +1952,7 @@ export function renderAiSection(params: {
         docsUrl: 'https://platform.openai.com'
     });
 
-    const localWrapper = advancedBody.createDiv({
+    const localWrapper = configurationBody.createDiv({
         cls: ['ert-provider-section', 'ert-provider-local', ERT_CLASSES.STACK]
     });
     params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection, local: localWrapper } as any);
@@ -2234,6 +2217,24 @@ export function renderAiSection(params: {
         });
         legacyLocalSetting.settingEl.addClass('ert-setting-full-width-input');
     }
+
+    // Final section order in AI tab:
+    // 1) AI Display (Pulse toggle)
+    // 2) Role context
+    // 3) Preview
+    // 4) AI Strategy
+    // 5) Large Manuscript Handling
+    // 6) Configuration
+    // 7) Advanced & Diagnostics
+    [
+        aiDisplaySection,
+        roleContextSection,
+        quickSetupPreviewSection,
+        quickSetupSection,
+        largeHandlingFold,
+        configurationFold,
+        advancedFold
+    ].forEach(section => aiSettingsGroup.appendChild(section));
 
     // Apply provider dimming on first render
     params.refreshProviderDimming();
