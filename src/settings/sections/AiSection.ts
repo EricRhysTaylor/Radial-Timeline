@@ -192,25 +192,17 @@ export function renderAiSection(params: {
 
     const stepsRow = quickSetupSection.createDiv({ cls: 'ert-ai-steps-row' });
     const step1Card = stepsRow.createDiv({
-        cls: `ert-ai-step-card ert-ai-step-primary ${ERT_CLASSES.STACK}`
+        cls: `ert-ai-step-card ${ERT_CLASSES.STACK}`
     });
     step1Card.createDiv({ cls: 'ert-ai-step-label', text: 'STEP 1 · Model Selection' });
-    step1Card.createDiv({
-        cls: 'ert-ai-step-desc',
-        text: 'Choose how the active model is selected for analysis.'
-    });
 
     const step2Card = stepsRow.createDiv({
-        cls: `ert-ai-step-card ert-ai-step-primary ${ERT_CLASSES.STACK}`
+        cls: `ert-ai-step-card ${ERT_CLASSES.STACK}`
     });
     step2Card.createDiv({ cls: 'ert-ai-step-label', text: 'STEP 2 · Thinking Style' });
-    step2Card.createDiv({
-        cls: 'ert-ai-step-desc',
-        text: 'Select a thinking style suited to your task — deep structural analysis, balanced review, or faster iteration.'
-    });
 
     const step3Card = quickSetupSection.createDiv({
-        cls: `ert-ai-step-card ert-ai-step-secondary ${ERT_CLASSES.STACK}`
+        cls: `ert-ai-step-card ${ERT_CLASSES.STACK}`
     });
     step3Card.createDiv({ cls: 'ert-ai-step-label', text: 'STEP 3 · Analysis Tuning' });
     const step3Grid = step3Card.createDiv({ cls: 'ert-ai-step3-grid' });
@@ -607,6 +599,10 @@ export function renderAiSection(params: {
 
         [outputModeSetting, reasoningDepthSetting, accessTierSetting].forEach(setting => {
             step3Grid.appendChild(setting.settingEl);
+        });
+
+        [providerSetting, policySetting, pinnedSetting, profileSetting,
+         outputModeSetting, reasoningDepthSetting, accessTierSetting].forEach(setting => {
             setting.settingEl.addClass('ert-ai-grid-item');
         });
 
