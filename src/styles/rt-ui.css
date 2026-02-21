@@ -2028,7 +2028,7 @@
   line-height: 1.4;
 }
 
-.ert-ui.ert-scope--settings .ert-ai-step-card > .setting-item {
+.ert-ui.ert-scope--settings .ert-ai-step-card > .setting-item.ert-ai-strategy-row {
   display: grid;
   grid-template-columns: 1fr auto;
   column-gap: var(--ert-gap-sm);
@@ -2038,23 +2038,30 @@
   padding: 0;
 }
 
-.ert-ui.ert-scope--settings .ert-ai-step-card > .setting-item > .setting-item-info {
-  display: contents;
-}
-
-.ert-ui.ert-scope--settings .ert-ai-step-card > .setting-item .setting-item-name {
+.ert-ui.ert-scope--settings .ert-ai-step-card > .setting-item.ert-ai-strategy-row > .setting-item-info {
   grid-column: 1 / 2;
-  grid-row: 1;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
 }
 
-.ert-ui.ert-scope--settings .ert-ai-step-card > .setting-item .setting-item-description {
-  grid-column: 1 / -1;
-  grid-row: 2;
+.ert-ui.ert-scope--settings .ert-ai-step-card > .setting-item.ert-ai-strategy-row > .setting-item-info .setting-item-description {
+  display: none;
 }
 
-.ert-ui.ert-scope--settings .ert-ai-step-card > .setting-item > .setting-item-control {
+.ert-ui.ert-scope--settings .ert-ai-step-card > .setting-item.ert-ai-strategy-row > .setting-item-control {
   grid-column: 2 / 3;
-  grid-row: 1;
+  margin: 0;
+  padding: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-step-card > .setting-item.ert-ai-strategy-row > .ert-ai-strategy-row__desc {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-step3-grid {

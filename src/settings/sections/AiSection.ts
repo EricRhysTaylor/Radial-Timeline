@@ -580,8 +580,8 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(outputModeSetting.settingEl);
 
     const reasoningDepthSetting = new Settings(quickSetupGrid)
-        .setName('Reasoning depth')
-        .setDesc('Standard favors speed. Deep increases structural precision.');
+        .setName('Depth')
+        .setDesc('Standard reasoning depth favors speed. Deep increases structural precision.');
     let reasoningDepthDropdown: DropdownComponent | null = null;
     reasoningDepthSetting.addDropdown(dropdown => {
         reasoningDepthDropdown = dropdown;
@@ -1348,6 +1348,10 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(resolvedPreviewFrame);
 
 
+    applyStrategyRowCopyLayout(providerSetting, 'Select the AI service that powers structural analysis and editorial insight across your manuscript.');
+    applyStrategyRowCopyLayout(policySetting, 'Select how the system chooses the active model.');
+    applyStrategyRowCopyLayout(pinnedSetting, 'Select a specific model instead of automatic selection.');
+    applyStrategyRowCopyLayout(profileSetting, 'Select a thinking style suited to your task — deep structural analysis, balanced review, or faster iteration.');
     applyStrategyRowCopyLayout(outputModeSetting, 'Control how much response space AI can use.');
     applyStrategyRowCopyLayout(reasoningDepthSetting, 'Standard favors speed. Deep increases structural precision.');
     applyStrategyRowCopyLayout(accessTierSetting, 'Adjust request scale and available output capacity.');
