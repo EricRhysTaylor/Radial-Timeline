@@ -2001,6 +2001,13 @@
   align-items: start;
 }
 
+.ert-ui.ert-scope--settings .ert-ai-step-card {
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 75%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--background-secondary) 78%, transparent);
+  padding: var(--ert-pad-md);
+}
+
 .ert-ui.ert-scope--settings .ert-ai-step-label {
   font-size: 11px;
   font-weight: 700;
