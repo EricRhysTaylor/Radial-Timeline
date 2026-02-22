@@ -35,6 +35,8 @@ export interface ModelInfo {
     maxOutput: number;
     status: ModelStatus;
     releasedAt?: string;
+    /** Product line grouping (e.g. 'claude-sonnet', 'claude-opus', 'gpt-5', 'gemini-pro'). */
+    line?: string;
 }
 
 export type ModelProfileName = 'deepWriter' | 'deepReasoner' | 'balancedAnalysis';
@@ -55,8 +57,6 @@ export interface ModelProfile {
 export type ModelPolicy =
     | { type: 'pinned'; pinnedAlias?: string }
     | { type: 'latestStable' }
-    | { type: 'latestFast' }
-    | { type: 'latestCheap' }
     | { type: 'profile'; profile: ModelProfileName };
 
 export interface AIOverrides {

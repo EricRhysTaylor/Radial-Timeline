@@ -137,7 +137,7 @@ export function computeRecommendedPicks(input: {
             id: 'quick',
             title: 'Recommended for Quick tasks',
             provider: selectedProvider,
-            policy: { type: 'latestFast' },
+            policy: { type: 'latestStable' },
             requiredCapabilities: ['jsonStrict']
         }
     ];
@@ -151,7 +151,7 @@ export function computeRecommendedPicks(input: {
             id: 'local',
             title: 'Recommended for Local/Private',
             provider: 'ollama',
-            policy: { type: 'latestFast' },
+            policy: { type: 'latestStable' },
             requiredCapabilities: ['jsonStrict']
         };
         const localRow = resolveIntent(input.models, input.aiSettings, localIntent);

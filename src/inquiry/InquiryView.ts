@@ -833,8 +833,7 @@ type EngineChoice = {
 };
 type AiSettingsFocus =
     | 'provider'
-    | 'model-strategy'
-    | 'profile'
+    | 'thinking-style'
     | 'access-level'
     | 'pinned-model'
     | 'execution-preference'
@@ -1675,9 +1674,9 @@ export class InquiryView extends ItemView {
                     : 'openai'
             );
             return {
-                message: `${providerLabel} cannot run this Inquiry setup. In Settings > AI Strategy, update Provider and Model strategy, then retry.`,
+                message: `${providerLabel} cannot run this Inquiry setup. In Settings > AI Strategy, update Provider or Thinking Style, then retry.`,
                 buttonLabel: 'Adjust Settings',
-                targets: ['provider', 'model-strategy', 'profile', 'access-level']
+                targets: ['provider', 'thinking-style', 'access-level']
             };
         }
 
@@ -1698,9 +1697,9 @@ export class InquiryView extends ItemView {
         }
 
         return {
-            message: 'Inquiry failed. Open Settings > AI to check Provider, Model strategy, and Profile before retrying.',
+            message: 'Inquiry failed. Open Settings > AI to check Provider and Thinking Style before retrying.',
             buttonLabel: 'Adjust Settings',
-            targets: ['provider', 'model-strategy', 'profile', 'access-level']
+            targets: ['provider', 'thinking-style', 'access-level']
         };
     }
 
@@ -1837,13 +1836,13 @@ export class InquiryView extends ItemView {
 
     private getReadinessTargets(readiness?: InquiryReadinessUiState): AiSettingsFocus[] {
         if (!readiness) {
-            return ['provider', 'model-strategy', 'profile', 'access-level'];
+            return ['provider', 'thinking-style', 'access-level'];
         }
         if (readiness.readiness.cause === 'missing_key') return ['provider'];
-        if (readiness.readiness.cause === 'capability_floor') return ['provider', 'model-strategy', 'profile', 'access-level'];
+        if (readiness.readiness.cause === 'capability_floor') return ['provider', 'thinking-style', 'access-level'];
         if (readiness.readiness.cause === 'single_pass_limit') return ['large-manuscript-handling', 'execution-preference'];
         if (readiness.readiness.state === 'large') return ['large-manuscript-handling', 'execution-preference'];
-        return ['provider', 'model-strategy'];
+        return ['provider', 'thinking-style'];
     }
 
     private buildReadinessUiState(questionText: string | null): InquiryReadinessUiState {
@@ -1915,7 +1914,7 @@ export class InquiryView extends ItemView {
         if (readiness.cause === 'missing_key') {
             reason = `${providerLabel} key is missing. Add a saved key in AI settings.`;
         } else if (readiness.cause === 'capability_floor') {
-            reason = `${providerLabel} cannot satisfy this Inquiry setup. Update Provider, Model strategy, or Access level.`;
+            reason = `${providerLabel} cannot satisfy this Inquiry setup. Update Provider, Thinking Style, or Access level.`;
         } else if (readiness.cause === 'single_pass_limit') {
             reason = 'This request exceeds the safe limit for a single pass. Switch Execution Preference to Automatic, or reduce scope.';
         } else if (readiness.state === 'large') {
@@ -10425,7 +10424,7 @@ export class InquiryView extends ItemView {
                 : false;
 
             if (isCapabilityMismatch) {
-                suggestions.push('Open Settings > AI and change Provider or Model strategy to a compatible option.');
+                suggestions.push('Open Settings > AI and change Provider or Thinking Style to a compatible option.');
                 suggestions.push('For Inquiry, prefer Anthropic or Gemini when OpenAI cannot satisfy requirements.');
             } else if (isTruncated) {
                 if (hasContext) {

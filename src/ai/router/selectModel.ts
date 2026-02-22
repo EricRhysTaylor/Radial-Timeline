@@ -51,30 +51,63 @@ function enforceProfileFloor(model: ModelInfo, profile: NonNullable<typeof MODEL
     return true;
 }
 
-function selectLatestFast(eligible: ModelInfo[]): ModelInfo | undefined {
-    return eligible
-        .filter(model => model.status === 'stable')
-        .sort((a, b) => {
-            const fastA = a.tier === 'FAST' ? 1 : 0;
-            const fastB = b.tier === 'FAST' ? 1 : 0;
-            if (fastB !== fastA) return fastB - fastA;
-            const detDelta = b.personality.determinism - a.personality.determinism;
-            if (detDelta !== 0) return detDelta;
-            return a.alias.localeCompare(b.alias);
-        })[0];
+function inferLine(model: ModelInfo): string {
+    if (model.line) return model.line;
+    return `${model.provider}:${model.alias}`;
 }
 
-function selectLatestCheap(eligible: ModelInfo[]): ModelInfo | undefined {
-    return eligible
-        .filter(model => model.status === 'stable')
-        .sort((a, b) => {
-            const cheapA = (a.tier === 'LOCAL' || a.tier === 'FAST') ? 1 : 0;
-            const cheapB = (b.tier === 'LOCAL' || b.tier === 'FAST') ? 1 : 0;
-            if (cheapB !== cheapA) return cheapB - cheapA;
-            const tierDelta = TIER_RANK[a.tier] - TIER_RANK[b.tier];
-            if (tierDelta !== 0) return tierDelta;
-            return a.alias.localeCompare(b.alias);
-        })[0];
+/**
+ * Within a line, pick the newest stable model.
+ * Prefers: releasedAt (descending) > alias (descending, higher version sorts later).
+ */
+function selectNewestInLine(models: ModelInfo[]): ModelInfo {
+    const stable = models.filter(m => m.status === 'stable');
+    const pool = stable.length ? stable : models;
+    return pool.sort((a, b) => {
+        if (a.releasedAt && b.releasedAt) {
+            const dateDelta = b.releasedAt.localeCompare(a.releasedAt);
+            if (dateDelta !== 0) return dateDelta;
+        } else if (a.releasedAt) {
+            return -1;
+        } else if (b.releasedAt) {
+            return 1;
+        }
+        return b.alias.localeCompare(a.alias);
+    })[0];
+}
+
+/**
+ * Two-phase profile selection:
+ *  1) Score all eligible models to pick the best LINE (product family).
+ *  2) Within that line, always choose the newest stable model.
+ */
+function selectByProfile(
+    eligible: ModelInfo[],
+    profile: NonNullable<typeof MODEL_PROFILES[keyof typeof MODEL_PROFILES]>,
+    fallback: ModelInfo
+): { model: ModelInfo; warnings: string[] } {
+    const warnings: string[] = [];
+    const profiled = eligible.filter(m => enforceProfileFloor(m, profile));
+    const pool = profiled.length ? profiled : eligible;
+    if (!profiled.length) {
+        warnings.push(`No model met strict profile floor for this profile; best eligible match used.`);
+    }
+
+    const bestByScore = pool.slice().sort((a, b) => {
+        const scoreDelta = scoreByProfile(b, profile) - scoreByProfile(a, profile);
+        if (scoreDelta !== 0) return scoreDelta;
+        return a.alias.localeCompare(b.alias);
+    })[0];
+
+    const winningLine = inferLine(bestByScore ?? fallback);
+    const lineMembers = eligible.filter(m => inferLine(m) === winningLine && m.status === 'stable');
+
+    if (lineMembers.length <= 1) {
+        return { model: bestByScore ?? fallback, warnings };
+    }
+
+    const newest = selectNewestInLine(lineMembers);
+    return { model: newest, warnings };
 }
 
 export function selectModel(models: ModelInfo[], request: ModelSelectionRequest): ModelSelectionResult {
@@ -113,43 +146,13 @@ export function selectModel(models: ModelInfo[], request: ModelSelectionRequest)
 
     if (request.policy.type === 'profile') {
         const profile = MODEL_PROFILES[request.policy.profile];
-        const profiled = eligible.filter(model => enforceProfileFloor(model, profile));
-        const ranked = (profiled.length ? profiled : eligible)
-            .slice()
-            .sort((a, b) => {
-                const scoreDelta = scoreByProfile(b, profile) - scoreByProfile(a, profile);
-                if (scoreDelta !== 0) return scoreDelta;
-                return a.alias.localeCompare(b.alias);
-            });
-        const selected = ranked[0] ?? fallback;
-        if (!profiled.length) {
-            warnings.push(`No model met strict profile floor for ${request.policy.profile}; best eligible match used.`);
-        }
+        const result = selectByProfile(eligible, profile, fallback);
+        warnings.push(...result.warnings);
         return {
             provider: request.provider,
-            model: selected,
+            model: result.model,
             warnings,
-            reason: `Selected via profile ${request.policy.profile} with deterministic weighted ranking.`
-        };
-    }
-
-    if (request.policy.type === 'latestFast') {
-        const selected = selectLatestFast(eligible) ?? fallback;
-        return {
-            provider: request.provider,
-            model: selected,
-            warnings,
-            reason: 'Selected via latestFast policy after capability floor filtering.'
-        };
-    }
-
-    if (request.policy.type === 'latestCheap') {
-        const selected = selectLatestCheap(eligible) ?? fallback;
-        return {
-            provider: request.provider,
-            model: selected,
-            warnings,
-            reason: 'Selected via latestCheap policy after capability floor filtering.'
+            reason: `Auto: best line ${inferLine(result.model)}, newest stable selected (${result.model.alias}).`
         };
     }
 

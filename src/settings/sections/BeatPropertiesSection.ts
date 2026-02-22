@@ -4112,6 +4112,7 @@ export function renderStoryBeatsSection(params: {
                     ? 'Scan beat notes for schema drift and empty custom-field values.'
                     : `Scan ${noteType.toLowerCase()} notes for schema drift — missing fields, extra keys, and ordering issues.`
             );
+        auditSetting.settingEl.addClass('ert-audit-setting');
 
         // Copy button (hidden until audit runs)
         let copyBtn: HTMLButtonElement | undefined;

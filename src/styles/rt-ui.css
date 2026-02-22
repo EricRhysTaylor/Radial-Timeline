@@ -2356,15 +2356,28 @@
   overflow: visible;
 }
 
-.ert-ui.ert-scope--settings .ert-ai-fold > summary {
+.ert-ui.ert-scope--settings .ert-ai-collapsible > summary {
   cursor: pointer;
   font-weight: 600;
   color: var(--text-normal);
   list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
 }
 
-.ert-ui.ert-scope--settings .ert-ai-fold > summary::-webkit-details-marker {
+.ert-ui.ert-scope--settings .ert-ai-collapsible > summary::marker,
+.ert-ui.ert-scope--settings .ert-ai-collapsible > summary::-webkit-details-marker {
   display: none;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-collapsible-summary-label {
+  min-width: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-fold-toggle {
+  margin-left: auto;
+  flex: 0 0 auto;
 }
 
 .ert-ui.ert-scope--settings .ert-ai-fold[open] > summary {
@@ -4928,6 +4941,14 @@
   opacity: 0.95;
 }
 
+.ert-ui.ert-scope--settings .ert-yaml-row--add.ert-yaml-row--hover-meta {
+  grid-template-columns: auto 0 auto auto minmax(0, 1fr) minmax(0, 1fr) auto;
+}
+
+.ert-ui.ert-scope--settings .ert-yaml-row--add :is(input, select).ert-input {
+  min-width: 0;
+}
+
 /* Beat YAML add row — no drag handle or spacer, so 5 columns instead of 7 */
 .ert-ui.ert-scope--settings .ert-yaml-row--add-beat {
   grid-template-columns: auto auto 1fr 1fr auto;
@@ -5209,6 +5230,27 @@
 
 .ert-ui.ert-scope--settings .ert-provider-section.dimmed {
   opacity: 0.55;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-key-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ert-ui.ert-scope--settings .ert-ai-key-status__icon {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-key-status.is-saved .ert-ai-key-status__icon,
+.ert-ui.ert-scope--settings .ert-ai-key-status.is-saved_not_tested .ert-ai-key-status__icon {
+  color: var(--interactive-accent);
+}
+
+.ert-ui.ert-scope--settings .ert-ai-key-status.is-not_saved .ert-ai-key-status__icon {
+  color: var(--text-warning);
 }
 
 .ert-ui.ert-scope--settings .ert-local-llm-advisory {
@@ -7129,6 +7171,22 @@
 /* ═══════════════════════════════════════════════════════════════════════
    YAML Audit + Backfill Panel
    ═══════════════════════════════════════════════════════════════════════ */
+
+/* --- Audit setting row: wraps buttons below name/desc when too many --- */
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .setting-item.ert-audit-setting {
+  flex-wrap: wrap;
+}
+
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .setting-item.ert-audit-setting > .setting-item-info {
+  flex: 1 1 100%;
+}
+
+:is(.ert-ui.ert-scope--settings.ert-settings-root, .ert-ui.ert-scope--settings .ert-settings-root) .setting-item.ert-audit-setting > .setting-item-control {
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 6px;
+}
 
 /* --- Results row (appears below the Setting header after audit runs) --- */
 .ert-ui.ert-scope--settings .ert-audit-results-row {
