@@ -19,6 +19,7 @@ import {
     type FrontmatterSafetyResult,
     scanFrontmatterSafety,
 } from './yamlSafety';
+import { buildFrontmatterDocument, extractBodyAfterFrontmatter } from './frontmatterDocument';
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -360,9 +361,8 @@ async function reorderSingleFile(
     }
 
     const newYamlStr = stringifyYaml(reorderedObj);
-    const bodyStart = fmInfo.to;
-    const body = content.slice(bodyStart);
-    const newContent = `---\n${newYamlStr}---${body}`;
+    const body = extractBodyAfterFrontmatter(content, fmInfo);
+    const newContent = buildFrontmatterDocument(newYamlStr, body);
 
     await app.vault.modify(file, newContent);
     return true;

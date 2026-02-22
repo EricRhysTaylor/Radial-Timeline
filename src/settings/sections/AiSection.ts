@@ -237,7 +237,7 @@ export function renderAiSection(params: {
     const largeHandlingFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold ert-ai-large-handling' }) as HTMLDetailsElement;
     largeHandlingFold.setAttr('open', '');
     largeHandlingFold.setAttr('data-ert-role', 'ai-setting:large-manuscript-handling');
-    const largeHandlingSummary = largeHandlingFold.createEl('summary', { text: 'Large Manuscript Handling & Multi-Pass Analysis' });
+    const largeHandlingSummary = largeHandlingFold.createEl('summary', { text: 'Large Manuscript Handling & Multi-Pass Analysis (Inquiry & Gossamer' });
     attachAiCollapseButton(largeHandlingFold, largeHandlingSummary);
     const largeHandlingBody = largeHandlingFold.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-large-handling-body` });
     largeHandlingBody.createDiv({
@@ -385,10 +385,10 @@ export function renderAiSection(params: {
         text: 'Active role and context framing used for AI submissions. Applied to Inquiry, Pulse (Triplet Analysis), Gossamer Momentum, Summary Refresh, Runtime AI Estimation.'
     });
 
-    const configurationFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold ert-ai-configuration' }) as HTMLDetailsElement;
-    configurationFold.setAttr('open', '');
-    const configurationSummary = configurationFold.createEl('summary', { text: 'Configuration' });
-    attachAiCollapseButton(configurationFold, configurationSummary);
+    const configurationFold = aiSettingsGroup.createDiv({
+        cls: `ert-ai-fold ert-ai-configuration ${ERT_CLASSES.STACK}`
+    });
+    configurationFold.createDiv({ cls: 'ert-ai-fold-heading', text: 'Configuration' });
     const configurationBody = configurationFold.createDiv({ cls: ERT_CLASSES.STACK });
 
     const advancedFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold' }) as HTMLDetailsElement;
@@ -669,10 +669,12 @@ export function renderAiSection(params: {
     });
     params.addAiRelatedElement(modelOverrideSetting.settingEl);
 
+    // Do not rewrite this copy as generic: it reflects limits specifically granted to the author/user by their provider.
+    const ACCESS_TIER_COPY = 'Increase available context headroom if your provider has granted you a higher Tier.';
+
     const accessTierSetting = new Settings(quickSetupGrid)
         .setName('Access Tier')
-        // Do not rewrite this copy as generic: it reflects limits specifically granted to the author/user by their provider.
-        .setDesc('Increase available context headroom if your provider has granted you higher limits.');
+        .setDesc(ACCESS_TIER_COPY);
     accessTierSetting.settingEl.setAttr('data-ert-role', 'ai-setting:access-level');
     let accessTierDropdown: DropdownComponent | null = null;
     accessTierSetting.addDropdown(dropdown => {
@@ -1152,7 +1154,7 @@ export function renderAiSection(params: {
     applyStrategyRowCopyLayout(providerSetting, 'Select the AI service that powers structural analysis and editorial insight.');
     applyStrategyRowCopyLayout(thinkingStyleSetting, 'Choose the depth and intensity of analysis. Radial Timeline automatically applies the strongest safe settings for the selected style.');
     applyStrategyRowCopyLayout(modelOverrideSetting, 'Override the model selected by your thinking style. Most authors should leave this set to Auto.');
-    applyStrategyRowCopyLayout(accessTierSetting, 'Increase available context headroom if your provider grants higher limits.');
+    applyStrategyRowCopyLayout(accessTierSetting, ACCESS_TIER_COPY);
 
     applyQuickSetupLayoutOrder();
 
@@ -1194,11 +1196,50 @@ export function renderAiSection(params: {
     let activeResolvedPreviewKey = '';
     let resolvedPreviewState: ResolvedPreviewRenderState | null = null;
 
-    const createResolvedPreviewPill = (text: string): void => {
-        resolvedPreviewPills.createSpan({
+    const createResolvedPreviewPill = (container: HTMLElement, text: string): void => {
+        container.createSpan({
             cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_SM} ert-ai-resolved-preview-pill`,
             text
         });
+    };
+
+    const splitResolvedPreviewPills = (pillTexts: string[]): [string[], string[]] => {
+        if (pillTexts.length <= 3) return [pillTexts, []];
+
+        const weights = pillTexts.map(text => text.trim().length + 10);
+        const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+        const targetFirstRowWeight = totalWeight * 0.6;
+
+        let runningWeight = 0;
+        let bestSplitIndex = 1;
+        let bestScore = Number.POSITIVE_INFINITY;
+        for (let index = 1; index < pillTexts.length; index += 1) {
+            runningWeight += weights[index - 1];
+            const firstRowWeight = runningWeight;
+            const secondRowWeight = totalWeight - runningWeight;
+            const penalty = firstRowWeight < secondRowWeight ? totalWeight : 0;
+            const score = Math.abs(firstRowWeight - targetFirstRowWeight) + penalty;
+            if (score < bestScore) {
+                bestScore = score;
+                bestSplitIndex = index;
+            }
+        }
+
+        return [pillTexts.slice(0, bestSplitIndex), pillTexts.slice(bestSplitIndex)];
+    };
+
+    const renderResolvedPreviewPills = (pillTexts: string[]): void => {
+        resolvedPreviewPills.empty();
+        if (!pillTexts.length) return;
+
+        const [firstRow, secondRow] = splitResolvedPreviewPills(pillTexts);
+        const firstRowEl = resolvedPreviewPills.createDiv({ cls: 'ert-ai-resolved-preview-pill-row' });
+        firstRow.forEach(text => createResolvedPreviewPill(firstRowEl, text));
+
+        if (secondRow.length) {
+            const secondRowEl = resolvedPreviewPills.createDiv({ cls: 'ert-ai-resolved-preview-pill-row' });
+            secondRow.forEach(text => createResolvedPreviewPill(secondRowEl, text));
+        }
     };
 
     const renderResolvedPreview = (state: ResolvedPreviewRenderState): void => {
@@ -1211,21 +1252,23 @@ export function renderAiSection(params: {
             ? `${providerLabel[state.provider]} · ${state.modelId}`
             : `${providerLabel[state.provider]} · ${state.modelAlias}`;
         resolvedPreviewProvider.setText(providerDetail);
-        resolvedPreviewPills.empty();
-
-        createResolvedPreviewPill(state.strategyPill);
-        createResolvedPreviewPill(state.thinkingStylePill);
-        createResolvedPreviewPill(state.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic Packaging');
-        createResolvedPreviewPill(`Input · ${state.maxInputTokens ? formatApproxTokens(state.maxInputTokens) : 'n/a'}`);
-        createResolvedPreviewPill(`Response · ${state.maxOutputTokens ? `${formatApproxTokens(state.maxOutputTokens)} / pass` : 'n/a'}`);
+        const previewPills = [
+            state.strategyPill,
+            state.thinkingStylePill,
+            state.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic Packaging',
+            `Input · ${state.maxInputTokens ? formatApproxTokens(state.maxInputTokens) : 'n/a'}`,
+            `Response · ${state.maxOutputTokens ? `${formatApproxTokens(state.maxOutputTokens)} / pass` : 'n/a'}`
+        ];
 
         if (state.passCount && state.passCount > 1) {
-            createResolvedPreviewPill(`Passes · ${state.passCount}`);
+            previewPills.push(`Passes · ${state.passCount}`);
         }
 
         if (state.showAvailabilityPill && state.availabilityStatus !== 'unknown') {
-            createResolvedPreviewPill(availabilityPillText(state.availabilityStatus));
+            previewPills.push(availabilityPillText(state.availabilityStatus));
         }
+
+        renderResolvedPreviewPills(previewPills);
 
     };
 
@@ -1506,6 +1549,8 @@ export function renderAiSection(params: {
         state: 'ready' | 'rejected' | 'network_blocked';
         detail: string;
     }
+    const SAVED_KEY_ENTRY_COPY = 'Saved privately on this device. Paste a key, then click outside this field or press Enter/Return to save or replace it. Keys are never written to your settings file.';
+
     const validateProviderKeyQuick = async (
         provider: 'openai' | 'anthropic' | 'google',
         key: string
@@ -1560,6 +1605,7 @@ export function renderAiSection(params: {
         const keyStatusSetting = new Settings(options.section)
             .setName(`${options.providerName} key status`)
             .setDesc('');
+        keyStatusSetting.settingEl.addClass('ert-ai-provider-key-status-row');
 
         let providerState: ProviderKeyUiState = 'not_configured';
         let providerStateDetail = '';
@@ -1729,7 +1775,7 @@ export function renderAiSection(params: {
         if (secretStorageAvailable) {
             secureKeySetting = new Settings(options.section)
                 .setName(`${options.providerName} API key`)
-                .setDesc('Saved privately on this device. Paste a key and leave the field to save or replace it. Keys are never written to your settings file.');
+                .setDesc(SAVED_KEY_ENTRY_COPY);
             secureKeySetting.addText(text => {
                 text.inputEl.addClass('ert-input--full');
                 configureSensitiveInput(text.inputEl);
@@ -1784,7 +1830,7 @@ export function renderAiSection(params: {
 
         if (!secretStorageAvailable) {
             const legacyDetails = options.section.createEl('details', {
-                cls: 'ert-ai-legacy-credentials'
+                cls: 'ert-ai-fold ert-ai-legacy-credentials'
             }) as HTMLDetailsElement;
             legacyDetails.setAttr('open', '');
             const legacySummary = legacyDetails.createEl('summary', {
@@ -2004,7 +2050,7 @@ export function renderAiSection(params: {
             }));
     bypassSetting.settingEl.addClass(ERT_CLASSES.ROW);
 
-    const localApiDetails = localExtrasStack.createEl('details', { cls: 'ert-ai-legacy-credentials' }) as HTMLDetailsElement;
+    const localApiDetails = localExtrasStack.createEl('details', { cls: 'ert-ai-fold ert-ai-legacy-credentials' }) as HTMLDetailsElement;
     if (!secretStorageAvailable) {
         localApiDetails.setAttr('open', '');
     }
@@ -2052,12 +2098,19 @@ export function renderAiSection(params: {
     if (secretStorageAvailable) {
         const localSecretSetting = new Settings(localApiContainer)
             .setName('Local API key')
-            .setDesc('Saved privately on this device. Paste a key and leave the field to save or replace it.');
+            .setDesc(SAVED_KEY_ENTRY_COPY);
         localSecretSetting.addText(text => {
             text.inputEl.addClass('ert-input--full');
             configureSensitiveInput(text.inputEl);
             text.setPlaceholder('Optional local API key');
             params.setKeyInputRef('local', text.inputEl);
+
+            plugin.registerDomEvent(text.inputEl, 'keydown', (event: KeyboardEvent) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
 
             void (async () => {
                 const ai = ensureCanonicalAiSettings();

@@ -66,7 +66,9 @@
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-endcap,
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-backbone,
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-backbone-glow,
-.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-backbone-shine {
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-backbone-shine,
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-bar,
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-endcap {
   display: none;
 }
 
@@ -454,6 +456,29 @@
 .ert-inquiry-minimap-endcap {
   fill: var(--text-normal);
   pointer-events: none;
+}
+
+.ert-inquiry-minimap-tokencap-bar {
+  fill: #ffffff;
+  opacity: 0.85;
+  pointer-events: none;
+  transition: fill 200ms ease;
+}
+
+.ert-inquiry-minimap-tokencap-endcap {
+  fill: var(--text-normal);
+  opacity: 0.6;
+  pointer-events: none;
+  transition: fill 200ms ease;
+}
+
+.ert-inquiry-minimap-tokencap-endcap.is-over-capacity {
+  fill: #f44c4c;
+}
+
+.ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-bar,
+.ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-endcap {
+  opacity: 0.3;
 }
 
 .ert-inquiry-minimap-ticks {

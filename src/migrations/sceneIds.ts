@@ -1,11 +1,13 @@
 import { getFrontMatterInfo, parseYaml, stringifyYaml } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { ensureSceneIdFrontmatter, isSceneClassFrontmatter, readSceneId } from '../utils/sceneIds';
+import { buildFrontmatterDocument, extractBodyAfterFrontmatter } from '../utils/frontmatterDocument';
 
 type FrontmatterInfo = {
     exists?: boolean;
     frontmatter?: string;
-    to: number;
+    to?: number;
+    position?: { end?: { offset?: number } };
 };
 
 export async function migrateSceneFrontmatterIds(plugin: RadialTimelinePlugin): Promise<void> {
@@ -30,8 +32,8 @@ export async function migrateSceneFrontmatterIds(plugin: RadialTimelinePlugin): 
 
             const normalized = ensureSceneIdFrontmatter(parsed);
             const rebuiltYaml = stringifyYaml(normalized.frontmatter);
-            const body = content.slice(info.to);
-            const updated = `---\n${rebuiltYaml}---${body}`;
+            const body = extractBodyAfterFrontmatter(content, info);
+            const updated = buildFrontmatterDocument(rebuiltYaml, body);
             await plugin.app.vault.modify(file, updated);
         }
     } catch (error) {

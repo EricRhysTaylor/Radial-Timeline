@@ -1026,7 +1026,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             const provider = this.plugin.settings.defaultAiProvider || 'openai';
             let modelId = 'Unknown Model';
             if (provider === 'anthropic') {
-                modelId = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
+                modelId = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-6';
             } else if (provider === 'gemini') {
                 modelId = this.plugin.settings.geminiModelId || 'gemini-3-pro-preview';
             } else if (provider === 'openai') {
@@ -1590,7 +1590,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         let modelId: string;
 
         if (provider === 'anthropic') {
-            modelId = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
+            modelId = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-6';
         } else if (provider === 'gemini') {
             modelId = this.plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
         } else if (provider === 'local') {

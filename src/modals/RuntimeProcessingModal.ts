@@ -452,7 +452,7 @@ export class RuntimeProcessingModal extends Modal {
             case 'openai':
                 return `OpenAI (${this.plugin.settings.openaiModelId || 'gpt-5.1-chat-latest'})`;
             case 'anthropic':
-                return `Anthropic (${this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929'})`;
+                return `Anthropic (${this.plugin.settings.anthropicModelId || 'claude-sonnet-4-6'})`;
             case 'gemini':
                 return `Google Gemini (${this.plugin.settings.geminiModelId || 'gemini-2.5-flash'})`;
             case 'local':

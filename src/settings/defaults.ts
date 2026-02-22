@@ -84,9 +84,9 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     completionEstimateWindowDays: 30, // Rolling window (days) for completion estimate pace
     openaiApiKey: '', // Default to empty string
     anthropicApiKey: '', // Default empty string
-    anthropicModelId: 'claude-sonnet-4-5-20250929', // Default to Sonnet 4.5 (20250929)
+    anthropicModelId: 'claude-sonnet-4-6', // Default to Sonnet 4.6
     geminiApiKey: '',
-    geminiModelId: DEFAULT_GEMINI_MODEL_ID, // Default to Gemini 3 Pro Preview
+    geminiModelId: DEFAULT_GEMINI_MODEL_ID, // Default to Gemini 3.1 Pro Preview
     defaultAiProvider: 'openai',
     openaiModelId: 'gpt-5.1-chat-latest', // Default to GPT-5.1
     enableAiSceneAnalysis: true,

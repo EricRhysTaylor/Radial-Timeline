@@ -117,7 +117,7 @@ const PREVIEW_PILL_GAP_Y = 14;
 const PREVIEW_FOOTER_GAP = 12;
 const PREVIEW_FOOTER_HEIGHT = 22;
 const PREVIEW_RESULTS_FOOTER_OFFSET = 30;
-const PREVIEW_SHIMMER_WIDTH = 80;
+const PREVIEW_SHIMMER_WIDTH = 120;
 const PREVIEW_SHIMMER_OVERHANG = 110;
 const RESULTS_EMPTY_TEXT = 'No notable findings.';
 const RESULTS_MAX_CHIPS = 6;
@@ -771,11 +771,23 @@ type CorpusCcEntry = {
     label: string;
     filePath: string;
     sceneId?: string;
+    bookId?: string;
+    bookLabel?: string;
     className: string;
     classKey: string;
     scope?: InquiryScope;
     mode: InquiryMaterialMode;
     sortLabel?: string;
+};
+
+type CorpusCcGroup = {
+    key: string;
+    className: string;
+    items: CorpusCcEntry[];
+    count: number;
+    mode: InquiryMaterialMode;
+    headerLabel?: string;
+    headerTooltipLabel?: string;
 };
 
 type CorpusCcSlot = {
@@ -907,6 +919,9 @@ export class InquiryView extends ItemView {
     private minimapBaseline?: SVGLineElement;
     private minimapEndCapStart?: SVGRectElement;
     private minimapEndCapEnd?: SVGRectElement;
+    private minimapTokenCapBar?: SVGRectElement;
+    private minimapTokenCapStartCap?: SVGRectElement;
+    private minimapTokenCapEndCap?: SVGRectElement;
     private minimapTicks: SVGGElement[] = [];
     private minimapGroup?: SVGGElement;
     private minimapBackboneGroup?: SVGGElement;
@@ -1213,6 +1228,16 @@ export class InquiryView extends ItemView {
         this.minimapEndCapEnd.classList.add('ert-inquiry-minimap-endcap');
         minimapGroup.appendChild(this.minimapEndCapEnd);
 
+        this.minimapTokenCapBar = this.createSvgElement('rect');
+        this.minimapTokenCapBar.classList.add('ert-inquiry-minimap-tokencap-bar');
+        minimapGroup.appendChild(this.minimapTokenCapBar);
+        this.minimapTokenCapStartCap = this.createSvgElement('rect');
+        this.minimapTokenCapStartCap.classList.add('ert-inquiry-minimap-tokencap-endcap');
+        minimapGroup.appendChild(this.minimapTokenCapStartCap);
+        this.minimapTokenCapEndCap = this.createSvgElement('rect');
+        this.minimapTokenCapEndCap.classList.add('ert-inquiry-minimap-tokencap-endcap');
+        minimapGroup.appendChild(this.minimapTokenCapEndCap);
+
         this.minimapTicksEl = this.createSvgGroup(minimapGroup, 'ert-inquiry-minimap-ticks', baselineStartX, 0);
         this.renderModeIcons(minimapGroup);
 
@@ -1506,8 +1531,8 @@ export class InquiryView extends ItemView {
 
         const clean = (value: string) => value.replace(/^models\//, '').trim();
         const getProviderModelId = (provider: EngineProvider): string => {
-            if (provider === 'anthropic') return clean(this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929');
-            if (provider === 'gemini') return clean(this.plugin.settings.geminiModelId || 'gemini-pro-latest');
+            if (provider === 'anthropic') return clean(this.plugin.settings.anthropicModelId || 'claude-sonnet-4-6');
+            if (provider === 'gemini') return clean(this.plugin.settings.geminiModelId || 'gemini-3.1-pro-preview');
             if (provider === 'local') return clean(this.plugin.settings.localModelId || 'local-model');
             return clean(this.plugin.settings.openaiModelId || 'gpt-5.2-chat-latest');
         };
@@ -3531,7 +3556,7 @@ export class InquiryView extends ItemView {
     }
 
     private renderModeIcons(parent: SVGGElement): void {
-        const iconOffsetY = -300;
+        const iconOffsetY = -330;
         const iconSize = Math.round(VIEWBOX_SIZE * 0.25 * 0.7);
         const iconX = Math.round(-iconSize / 2);
         const viewBoxHalf = MODE_ICON_VIEWBOX / 2;
@@ -3797,10 +3822,10 @@ export class InquiryView extends ItemView {
         const provider = this.plugin.settings.defaultAiProvider || 'openai';
         const clean = (value: string) => value.replace(/^models\//, '').trim();
         if (provider === 'anthropic') {
-            return clean(this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929');
+            return clean(this.plugin.settings.anthropicModelId || 'claude-sonnet-4-6');
         }
         if (provider === 'gemini') {
-            return clean(this.plugin.settings.geminiModelId || 'gemini-pro-latest');
+            return clean(this.plugin.settings.geminiModelId || 'gemini-3.1-pro-preview');
         }
         if (provider === 'local') {
             return clean(this.plugin.settings.localModelId || 'local-model');
@@ -4031,7 +4056,29 @@ export class InquiryView extends ItemView {
             this.minimapEndCapEnd.setAttribute('width', String(Math.round(capWidth)));
             this.minimapEndCapEnd.setAttribute('height', String(Math.round(capHeight)));
         }
-        this.minimapBottomOffset = capHalfHeight;
+        const tokenCapY = 7;
+        const tokenCapBarHeight = 2;
+        const tokenCapCapHeight = 10;
+        const tokenCapCapY = tokenCapY - Math.round((tokenCapCapHeight - tokenCapBarHeight) / 2);
+        if (this.minimapTokenCapBar) {
+            this.minimapTokenCapBar.setAttribute('x', String(baselineStart));
+            this.minimapTokenCapBar.setAttribute('y', String(tokenCapY));
+            this.minimapTokenCapBar.setAttribute('width', '0');
+            this.minimapTokenCapBar.setAttribute('height', String(tokenCapBarHeight));
+            this.minimapTokenCapBar.setAttribute('rx', String(Math.round(tokenCapBarHeight / 2)));
+            this.minimapTokenCapBar.setAttribute('ry', String(Math.round(tokenCapBarHeight / 2)));
+        }
+        if (this.minimapTokenCapStartCap && this.minimapTokenCapEndCap) {
+            this.minimapTokenCapStartCap.setAttribute('x', String(baselineStart - capHalfWidth));
+            this.minimapTokenCapStartCap.setAttribute('y', String(tokenCapCapY));
+            this.minimapTokenCapStartCap.setAttribute('width', String(Math.round(capWidth)));
+            this.minimapTokenCapStartCap.setAttribute('height', String(Math.round(tokenCapCapHeight)));
+            this.minimapTokenCapEndCap.setAttribute('x', String(baselineEnd - capHalfWidth));
+            this.minimapTokenCapEndCap.setAttribute('y', String(tokenCapCapY));
+            this.minimapTokenCapEndCap.setAttribute('width', String(Math.round(capWidth)));
+            this.minimapTokenCapEndCap.setAttribute('height', String(Math.round(tokenCapCapHeight)));
+        }
+        this.minimapBottomOffset = tokenCapCapY + tokenCapCapHeight;
         this.minimapTicksEl.setAttribute('transform', `translate(${baselineStart} 0)`);
         this.renderMinimapBackbone(baselineStart, length);
 
@@ -4310,14 +4357,30 @@ export class InquiryView extends ItemView {
 
         const ratio = Math.max(0, readinessUi.readiness.pressureRatio);
         const clamped = Math.min(ratio, 1);
-        this.setBackboneFillProgress(clamped, 0);
+        this.setBackboneFillProgress(0, 0);
         this.minimapBackboneShine?.setAttribute('width', '0');
-        const pressureColors = this.getBackbonePressureColors(readinessUi.readiness.pressureTone);
-        this.applyBackboneStopColors(pressureColors.gradient, pressureColors.shine);
+        this.minimapBackboneGlow?.setAttribute('width', '0');
+
+        const isOverCapacity = ratio >= 1;
+        this.updateTokenCapBar(clamped, isOverCapacity);
+
+        if (isOverCapacity) {
+            const redColors = this.getBackbonePressureColors('red');
+            this.applyBackboneStopColors(redColors.gradient, redColors.shine);
+            this.minimapBaseline.style.stroke = '#f44c4c';
+            this.minimapEndCapStart?.style.setProperty('fill', '#f44c4c');
+            this.minimapEndCapEnd?.style.setProperty('fill', '#f44c4c');
+        } else {
+            const pressureColors = this.getBackbonePressureColors(readinessUi.readiness.pressureTone);
+            this.applyBackboneStopColors(pressureColors.gradient, pressureColors.shine);
+            this.minimapBaseline.style.stroke = '';
+            this.minimapEndCapStart?.style.removeProperty('fill');
+            this.minimapEndCapEnd?.style.removeProperty('fill');
+        }
 
         this.minimapBackboneGroup.classList.remove('is-pressure-normal', 'is-pressure-amber', 'is-pressure-red', 'is-pressure-over-budget');
         this.minimapBackboneGroup.classList.add(
-            readinessUi.readiness.pressureTone === 'red'
+            isOverCapacity || readinessUi.readiness.pressureTone === 'red'
                 ? 'is-pressure-red'
                 : readinessUi.readiness.pressureTone === 'amber'
                     ? 'is-pressure-amber'
@@ -4439,7 +4502,7 @@ export class InquiryView extends ItemView {
             const placements: Array<{ entry: CorpusCcEntry; x: number; y: number }> = [];
             const layoutEntries: CorpusCcEntry[] = [];
             const classLayouts: Array<{
-                group: { className: string; items: CorpusCcEntry[]; count: number; mode: InquiryMaterialMode };
+                group: CorpusCcGroup;
                 centerX: number;
                 width: number;
             }> = [];
@@ -4702,9 +4765,9 @@ export class InquiryView extends ItemView {
             label.setAttribute('dominant-baseline', 'middle');
             headerGroup.appendChild(label);
             this.registerDomEvent(headerGroup as unknown as HTMLElement, 'click', () => {
-                const className = headerGroup.getAttribute('data-class');
-                if (!className) return;
-                this.handleCorpusGroupToggle(className);
+                const groupKey = headerGroup.getAttribute('data-group-key') ?? headerGroup.getAttribute('data-class');
+                if (!groupKey) return;
+                this.handleCorpusGroupToggle(groupKey);
             });
             titleTexts.push({ group: headerGroup, hit, icon, iconOuter, iconInner, text: label });
         }
@@ -4713,6 +4776,7 @@ export class InquiryView extends ItemView {
             const { group, centerX, width } = classLayout;
             const availableWidth = Math.max(4, width - layout.gap);
             const modeMeta = this.getCorpusCcModeMeta(group.mode);
+            header.group.setAttribute('data-group-key', group.key);
             header.group.setAttribute('data-class', group.className);
             header.group.classList.toggle('is-off', !modeMeta.isActive);
             header.group.classList.toggle('is-active', modeMeta.isActive);
@@ -4725,7 +4789,7 @@ export class InquiryView extends ItemView {
                 header.group.classList.add('is-mode-none');
             }
 
-            const variants = this.getCorpusCcHeaderLabelVariants(group.className, group.count);
+            const variants = this.getCorpusCcHeaderLabelVariants(group.className, group.count, group.headerLabel);
             header.text.textContent = variants[0] ?? '';
             for (let i = 0; i < variants.length; i += 1) {
                 header.text.textContent = variants[i];
@@ -4756,7 +4820,11 @@ export class InquiryView extends ItemView {
             header.hit.setAttribute('width', String(Math.round(totalWidth + (hitPaddingX * 2))));
             header.hit.setAttribute('height', String(Math.round(hitHeight)));
             header.group.classList.remove('ert-hidden');
-            addTooltipData(header.group, this.getCorpusCcHeaderTooltip(group.className, group.mode, group.count), 'top');
+            addTooltipData(
+                header.group,
+                this.getCorpusCcHeaderTooltip(group.className, group.mode, group.count, group.headerTooltipLabel),
+                'top'
+            );
         });
         titleTexts.forEach((header, idx) => {
             if (idx < layout.classLayouts.length) return;
@@ -4782,6 +4850,17 @@ export class InquiryView extends ItemView {
     private getCorpusGroupKey(className: string, scope?: InquiryScope): string {
         if (className === 'outline' && scope === 'saga') return 'outline-saga';
         return className;
+    }
+
+    private getSceneBookGroupKey(bookId: string): string {
+        return `scene-book:${bookId}`;
+    }
+
+    private parseSceneBookGroupKey(groupKey: string): string | null {
+        const prefix = 'scene-book:';
+        if (!groupKey.startsWith(prefix)) return null;
+        const bookId = groupKey.slice(prefix.length).trim();
+        return bookId.length ? bookId : null;
     }
 
     private getCorpusItemKey(className: string, filePath: string, scope?: InquiryScope, sceneId?: string): string {
@@ -4973,6 +5052,11 @@ export class InquiryView extends ItemView {
 
     private handleCorpusGroupToggle(groupKey: string): void {
         if (this.state.isRunning) return;
+        const sceneBookId = this.parseSceneBookGroupKey(groupKey);
+        if (sceneBookId) {
+            this.handleCorpusSceneBookGroupToggle(sceneBookId);
+            return;
+        }
         const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
         const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
         const currentMode = this.getCorpusGroupEffectiveMode(groupKey, configMap);
@@ -4986,6 +5070,47 @@ export class InquiryView extends ItemView {
             this.corpusClassOverrides.set(groupKey, normalizedNext);
         }
         this.clearItemOverridesForGroup(groupKey);
+        this.corpusWarningActive = false;
+        this.refreshUI();
+    }
+
+    private getSceneBookEffectiveMode(entries: CorpusCcEntry[]): InquiryMaterialMode | 'mixed' {
+        if (!entries.length) return 'none';
+        const modes = entries.map(entry => this.normalizeContributionMode(entry.mode ?? 'none', 'scene'));
+        const first = modes[0];
+        if (modes.every(mode => mode === first)) return first;
+        return 'mixed';
+    }
+
+    private getSceneBookDisplayMode(entries: CorpusCcEntry[]): InquiryMaterialMode {
+        const mode = this.getSceneBookEffectiveMode(entries);
+        if (mode === 'mixed') {
+            const hasFull = entries.some(entry => this.normalizeContributionMode(entry.mode ?? 'none', 'scene') === 'full');
+            return hasFull ? 'full' : 'summary';
+        }
+        return mode;
+    }
+
+    private handleCorpusSceneBookGroupToggle(bookId: string): void {
+        const entries = this.ccEntries.filter(entry => entry.className === 'scene' && entry.bookId === bookId);
+        if (!entries.length) return;
+
+        const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
+        const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
+        const classMode = this.getCorpusGroupEffectiveMode('scene', configMap);
+        const currentMode = this.getSceneBookEffectiveMode(entries);
+        const modes = this.getCorpusCycleModes('scene');
+        const nextMode = currentMode === 'mixed' ? 'none' : this.getNextCorpusMode(currentMode, modes);
+        const normalizedNext = this.normalizeContributionMode(nextMode, 'scene');
+
+        entries.forEach(entry => {
+            if (normalizedNext === classMode) {
+                this.corpusItemOverrides.delete(entry.entryKey);
+            } else {
+                this.corpusItemOverrides.set(entry.entryKey, normalizedNext);
+            }
+        });
+
         this.corpusWarningActive = false;
         this.refreshUI();
     }
@@ -5068,14 +5193,24 @@ export class InquiryView extends ItemView {
         return { label: 'Off', short: 'OFF', icon: 'circle', isActive: false };
     }
 
-    private getCorpusCcHeaderLabelVariants(className: string, count: number): string[] {
+    private getCorpusCcHeaderLabelVariants(className: string, count: number, overrideLabel?: string): string[] {
+        if (overrideLabel && overrideLabel.trim().length > 0) {
+            return [overrideLabel.trim()];
+        }
         const base = this.getCorpusClassLabelVariants(className);
         return base.map(label => `${label} ${count}`);
     }
 
-    private getCorpusCcHeaderTooltip(className: string, mode: InquiryMaterialMode, count: number): string {
+    private getCorpusCcHeaderTooltip(
+        className: string,
+        mode: InquiryMaterialMode,
+        count: number,
+        overrideLabel?: string
+    ): string {
         const meta = this.getCorpusCcModeMeta(mode);
-        const label = this.getCorpusCcHeaderDisplayLabel(className);
+        const label = (overrideLabel && overrideLabel.trim().length > 0)
+            ? overrideLabel.trim()
+            : this.getCorpusCcHeaderDisplayLabel(className);
         const parts = [label, meta.label];
         if (meta.isActive || count > 0) {
             parts.push(String(count));
@@ -5084,6 +5219,7 @@ export class InquiryView extends ItemView {
     }
 
     private getCorpusCcHeaderDisplayLabel(className: string): string {
+        if (className === 'outline-saga') return 'Saga Outline';
         const variants = this.getCorpusClassLabelVariants(className);
         return variants[0] ?? 'Class';
     }
@@ -5092,7 +5228,7 @@ export class InquiryView extends ItemView {
         const normalized = className.trim();
         if (!normalized) return ['Class', 'Cls', 'C'];
         if (normalized === 'outline-saga') {
-            return ['Series Outline', 'Series', 'Saga'];
+            return [`${SIGMA_CHAR}`, 'Saga', 'Series'];
         }
         const words = normalized
             .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -5111,26 +5247,111 @@ export class InquiryView extends ItemView {
         return Array.from(new Set(variants.filter(Boolean)));
     }
 
-    private getCorpusCcClassGroups(entriesByClass: Map<string, CorpusCcEntry[]>): Array<{
-        className: string;
-        items: CorpusCcEntry[];
-        count: number;
-        mode: InquiryMaterialMode;
-    }> {
+    private getSceneBookMetaFromEntry(entry: CorpusCcEntry): { bookId: string; bookLabel: string; order: number } {
+        const books = this.corpus?.books ?? [];
+        if (entry.bookId) {
+            const match = books.find(book => book.id === entry.bookId);
+            if (match) {
+                const index = books.findIndex(book => book.id === match.id);
+                return {
+                    bookId: match.id,
+                    bookLabel: entry.bookLabel || match.displayLabel || 'B0',
+                    order: index >= 0 ? index : Number.POSITIVE_INFINITY
+                };
+            }
+            return {
+                bookId: entry.bookId,
+                bookLabel: entry.bookLabel || 'B0',
+                order: Number.POSITIVE_INFINITY
+            };
+        }
+
+        const byPath = books.find(book => entry.filePath === book.rootPath || entry.filePath.startsWith(`${book.rootPath}/`));
+        if (byPath) {
+            const index = books.findIndex(book => book.id === byPath.id);
+            return {
+                bookId: byPath.id,
+                bookLabel: byPath.displayLabel || 'B0',
+                order: index >= 0 ? index : Number.POSITIVE_INFINITY
+            };
+        }
+
+        const fallback = entry.filePath.split('/').filter(Boolean);
+        const folder = fallback.length > 1 ? fallback[0] : 'book';
+        const numeric = this.getCorpusCcOrderNumber(folder, 'outline');
+        const fallbackLabel = numeric !== null ? `B${numeric}` : 'B0';
+        return {
+            bookId: folder || entry.filePath,
+            bookLabel: fallbackLabel,
+            order: numeric !== null ? numeric : Number.POSITIVE_INFINITY
+        };
+    }
+
+    private buildSagaSceneGroups(
+        sceneEntries: CorpusCcEntry[],
+        sceneMode: InquiryMaterialMode
+    ): CorpusCcGroup[] {
+        if (!sceneEntries.length) {
+            return [{
+                key: 'scene',
+                className: 'scene',
+                items: [],
+                count: 0,
+                mode: sceneMode
+            }];
+        }
+
+        const groups = new Map<string, { items: CorpusCcEntry[]; label: string; order: number }>();
+        sceneEntries.forEach(entry => {
+            const meta = this.getSceneBookMetaFromEntry(entry);
+            const bucket = groups.get(meta.bookId);
+            if (bucket) {
+                bucket.items.push(entry);
+                return;
+            }
+            groups.set(meta.bookId, { items: [entry], label: meta.bookLabel, order: meta.order });
+        });
+
+        const orderedGroups = Array.from(groups.entries())
+            .map(([bookId, value]) => ({
+                key: this.getSceneBookGroupKey(bookId),
+                className: 'scene' as const,
+                items: value.items,
+                count: value.items.length,
+                mode: this.getSceneBookDisplayMode(value.items),
+                headerLabel: value.label,
+                headerTooltipLabel: `${value.label} Scenes`,
+                order: value.order
+            }))
+            .sort((a, b) => {
+                if (a.order !== b.order) return a.order - b.order;
+                return a.headerLabel!.localeCompare(b.headerLabel!, undefined, { numeric: true, sensitivity: 'base' });
+            });
+
+        return orderedGroups.map(({ order: _order, ...group }) => group);
+    }
+
+    private getCorpusCcClassGroups(entriesByClass: Map<string, CorpusCcEntry[]>): CorpusCcGroup[] {
         const sources = this.normalizeInquirySources(this.plugin.settings.inquirySources);
         const classScope = this.getClassScopeConfig(sources.classScope);
         const configMap = new Map((sources.classes || []).map(config => [config.className, config]));
         const configs = (sources.classes || [])
             .filter(config => classScope.allowAll || classScope.allowed.has(config.className));
-        const groups: Array<{ className: string; items: CorpusCcEntry[]; count: number; mode: InquiryMaterialMode }> = [];
+        const groups: CorpusCcGroup[] = [];
         const ensureGroup = (className: string, mode: InquiryMaterialMode) => {
             const items = entriesByClass.get(className) ?? [];
-            groups.push({ className, items, count: items.length, mode });
+            groups.push({ key: className, className, items, count: items.length, mode });
         };
 
         configs.forEach(config => {
             if (!config) return;
             const normalizedName = config.className;
+            if (normalizedName === 'scene' && this.state.scope === 'saga') {
+                const sceneMode = this.getCorpusGroupEffectiveMode('scene', configMap);
+                const sceneItems = entriesByClass.get('scene') ?? [];
+                groups.push(...this.buildSagaSceneGroups(sceneItems, sceneMode));
+                return;
+            }
             if (normalizedName === 'outline') {
                 const outlineMode = this.getCorpusGroupEffectiveMode('outline', configMap);
                 ensureGroup('outline', outlineMode);
@@ -5146,10 +5367,16 @@ export class InquiryView extends ItemView {
         });
 
         entriesByClass.forEach((items, className) => {
-            if (groups.some(group => group.className === className)) return;
+            if (groups.some(group => group.key === className || group.className === className)) return;
             const override = this.corpusClassOverrides.get(className);
             const mode = override ?? items[0]?.mode ?? 'none';
-            groups.push({ className, items, count: items.length, mode: this.normalizeContributionMode(mode, this.getCorpusGroupBaseClass(className)) });
+            groups.push({
+                key: className,
+                className,
+                items,
+                count: items.length,
+                mode: this.normalizeContributionMode(mode, this.getCorpusGroupBaseClass(className))
+            });
         });
 
         const order = ['scene', 'outline', 'outline-saga', 'character', 'place', 'power'];
@@ -5163,6 +5390,36 @@ export class InquiryView extends ItemView {
         });
 
         return groups;
+    }
+
+    private resolveCorpusBookForPath(path: string): { id: string; label: string } | undefined {
+        const books = this.corpus?.books ?? [];
+        const match = books.find(book => path === book.rootPath || path.startsWith(`${book.rootPath}/`));
+        if (match) {
+            return {
+                id: match.id,
+                label: match.displayLabel
+            };
+        }
+
+        const segments = path.split('/').filter(Boolean);
+        const bookSegmentIndex = segments.findIndex(segment => /^book\s+\d+/i.test(segment));
+        if (bookSegmentIndex >= 0) {
+            const segment = segments[bookSegmentIndex];
+            const numberMatch = segment.match(/^book\s+(\d+)/i);
+            const number = numberMatch ? Number.parseInt(numberMatch[1], 10) : Number.NaN;
+            return {
+                id: segments.slice(0, bookSegmentIndex + 1).join('/'),
+                label: Number.isFinite(number) ? `B${number}` : 'B0'
+            };
+        }
+
+        const fallbackRoot = segments[0] || path;
+        const numeric = this.getCorpusCcOrderNumber(fallbackRoot, 'outline');
+        return {
+            id: fallbackRoot,
+            label: numeric !== null ? `B${numeric}` : 'B0'
+        };
     }
 
     private getCorpusCcEntries(): CorpusCcEntry[] {
@@ -5202,12 +5459,21 @@ export class InquiryView extends ItemView {
                 ? 'outline-saga'
                 : entry.class;
             const entryKey = this.getCorpusItemKey(entry.class, entry.path, entry.scope, entry.sceneId);
+            const resolvedSceneBook = entry.class === 'scene' ? this.resolveCorpusBookForPath(entry.path) : undefined;
+            const sceneBook = entry.class === 'scene'
+                ? {
+                    id: entry.bookId || resolvedSceneBook?.id || '',
+                    label: resolvedSceneBook?.label || 'B0'
+                }
+                : undefined;
             return {
                 id: `${entry.class}:${entry.path}`,
                 entryKey,
                 label,
                 filePath: entry.path,
                 sceneId: entry.sceneId,
+                bookId: sceneBook?.id || undefined,
+                bookLabel: sceneBook?.label,
                 className,
                 classKey: entry.class,
                 scope: entry.scope,
@@ -5771,6 +6037,18 @@ export class InquiryView extends ItemView {
         this.applyBackboneStopColors(gradientColors, shineColors);
     }
 
+    private updateTokenCapBar(fillRatio: number, isOverCapacity: boolean): void {
+        if (!this.minimapTokenCapBar || !this.minimapLayout) return;
+        const length = this.minimapLayout.length;
+        const filledWidth = length * Math.min(Math.max(fillRatio, 0), 1);
+        this.minimapTokenCapBar.setAttribute('x', String(Math.round(this.minimapLayout.startX)));
+        this.minimapTokenCapBar.setAttribute('width', filledWidth.toFixed(2));
+        this.minimapTokenCapBar.style.fill = isOverCapacity ? '#f44c4c' : '#ffffff';
+
+        this.minimapTokenCapStartCap?.classList.toggle('is-over-capacity', isOverCapacity);
+        this.minimapTokenCapEndCap?.classList.toggle('is-over-capacity', isOverCapacity);
+    }
+
     private applyBackboneOscillationColors(progress: number): void {
         if (!this.backboneOscillationColors) return;
         const { base, target } = this.backboneOscillationColors;
@@ -6314,6 +6592,11 @@ export class InquiryView extends ItemView {
         this.backboneOscillationPhaseOffset = Math.PI / 2;
         this.setBackboneFillProgress(0, 0);
         this.applyBackboneColors(0);
+        if (this.minimapBaseline) {
+            this.minimapBaseline.style.stroke = '';
+        }
+        this.minimapEndCapStart?.style.removeProperty('fill');
+        this.minimapEndCapEnd?.style.removeProperty('fill');
         const animate = (now: number) => {
             if (!this.state.isRunning) {
                 this.stopRunningAnimations();
@@ -7313,10 +7596,10 @@ export class InquiryView extends ItemView {
     private getInquiryModelIdForProvider(provider: EngineProvider): string {
         const clean = (value: string) => value.replace(/^models\//, '').trim();
         if (provider === 'anthropic') {
-            return clean(this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929');
+            return clean(this.plugin.settings.anthropicModelId || 'claude-sonnet-4-6');
         }
         if (provider === 'gemini') {
-            return clean(this.plugin.settings.geminiModelId || 'gemini-pro-latest');
+            return clean(this.plugin.settings.geminiModelId || 'gemini-3.1-pro-preview');
         }
         if (provider === 'local') {
             return clean(this.plugin.settings.localModelId || 'local-model');
@@ -9139,9 +9422,11 @@ export class InquiryView extends ItemView {
             gradient.setAttribute('y2', '0%');
             const stops = [
                 { offset: '0%', opacity: '0' },
-                { offset: '20%', opacity: '0.55' },
+                { offset: '10%', opacity: '0.08' },
+                { offset: '25%', opacity: '0.4' },
                 { offset: '50%', opacity: '1' },
-                { offset: '80%', opacity: '0.55' },
+                { offset: '75%', opacity: '0.4' },
+                { offset: '90%', opacity: '0.08' },
                 { offset: '100%', opacity: '0' }
             ];
             stops.forEach(stopDef => {

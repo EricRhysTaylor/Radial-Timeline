@@ -4,7 +4,7 @@ import { BUILTIN_MODELS } from '../registry/builtinModels';
 
 describe('computeCaps', () => {
     it('increases output cap for higher access tiers', () => {
-        const model = BUILTIN_MODELS.find(entry => entry.alias === 'claude-sonnet-4.5');
+        const model = BUILTIN_MODELS.find(entry => entry.alias === 'claude-sonnet-4.6');
         expect(model).toBeDefined();
         const tier1 = computeCaps({
             provider: 'anthropic',

@@ -144,7 +144,7 @@ export class SceneAnalysisService {
     getActiveModelName(): string {
         const provider = this.plugin.settings.defaultAiProvider || 'openai';
         if (provider === 'anthropic') {
-            const modelId = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
+            const modelId = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-6';
             // Just show the raw model ID, or maybe minimal formatting
             return modelId;
         }

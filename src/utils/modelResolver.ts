@@ -16,15 +16,15 @@
 // These are updated when we get actual model info from API responses
 const LATEST_ALIAS_DISPLAY_NAMES: Record<string, string> = {
     // Gemini
-    'gemini-pro-latest': 'Gemini Pro (Latest)',
-    'gemini-flash-latest': 'Gemini Flash (Latest)',
-    'gemini-flash-lite-latest': 'Gemini Flash Lite (Latest)',
+    'gemini-pro-latest': 'Gemini 3.1 Pro Preview',
+    'gemini-flash-latest': 'Gemini 2.5 Flash',
+    'gemini-flash-lite-latest': 'Gemini Flash Lite',
     
     // OpenAI
-    'gpt-5.2-chat-latest': 'GPT-5.2 (Latest)',
-    'gpt-5.1-chat-latest': 'GPT-5.1 (Latest)',
-    'gpt-5-chat-latest': 'GPT-5 (Latest)',
-    'chatgpt-4o-latest': 'ChatGPT-4o (Latest)',
+    'gpt-5.2-chat-latest': 'GPT-5.2',
+    'gpt-5.1-chat-latest': 'GPT-5.1',
+    'gpt-5-chat-latest': 'GPT-5',
+    'chatgpt-4o-latest': 'ChatGPT-4o',
 };
 
 // Runtime cache for resolved model names (updated from API responses)
@@ -34,7 +34,7 @@ const resolvedModelCache: Map<string, { resolvedTo: string; displayName: string;
  * Get a friendly display name for a model ID.
  * For "latest" aliases, shows what they resolve to if known.
  * 
- * @param modelId The model ID (e.g., "gemini-pro-latest" or "claude-sonnet-4-5-20250929")
+ * @param modelId The model ID (e.g., "gemini-3.1-pro-preview" or "claude-sonnet-4-6")
  * @returns A user-friendly display name
  */
 export function getModelDisplayName(modelId: string): string {
@@ -62,7 +62,7 @@ export function getModelDisplayName(modelId: string): string {
 function formatModelName(modelId: string): string {
     // Claude models
     if (modelId.startsWith('claude-')) {
-        // claude-sonnet-4-5-20250929 -> Claude Sonnet 4.5
+        // claude-sonnet-4-6 -> Claude Sonnet 4.6
         const match = modelId.match(/claude-(\w+)-(\d+)-(\d+)-\d+/);
         if (match) {
             const variant = match[1].charAt(0).toUpperCase() + match[1].slice(1);
@@ -132,4 +132,3 @@ export function getResolvedModelId(aliasId: string): string | null {
 export function isLatestAlias(modelId: string): boolean {
     return modelId.includes('latest');
 }
-

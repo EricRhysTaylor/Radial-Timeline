@@ -44,7 +44,7 @@ function isSummaryStale(scene: SceneData, plugin: RadialTimelinePlugin): boolean
 function getCurrentModelId(plugin: RadialTimelinePlugin): string {
     const provider = plugin.settings.defaultAiProvider || 'openai';
     if (provider === 'anthropic') {
-        return plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
+        return plugin.settings.anthropicModelId || 'claude-sonnet-4-6';
     }
     if (provider === 'gemini') {
         return plugin.settings.geminiModelId || 'gemini-3-pro-preview';

@@ -6,10 +6,10 @@ describe('selectModel', () => {
     it('returns pinned alias when eligible', () => {
         const result = selectModel(BUILTIN_MODELS, {
             provider: 'anthropic',
-            policy: { type: 'pinned', pinnedAlias: 'claude-sonnet-4.5' },
+            policy: { type: 'pinned', pinnedAlias: 'claude-sonnet-4.6' },
             requiredCapabilities: ['longContext', 'jsonStrict']
         });
-        expect(result.model.alias).toBe('claude-sonnet-4.5');
+        expect(result.model.alias).toBe('claude-sonnet-4.6');
         expect(result.warnings.length).toBe(0);
     });
 
