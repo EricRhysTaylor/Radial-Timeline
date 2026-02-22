@@ -173,7 +173,7 @@ const CC_CELL_SIZE = 20;
 const CC_PAGE_BASE_SIZE = Math.round(CC_CELL_SIZE * 0.8);
 const CC_PAGE_MIN_SIZE = Math.max(6, Math.round(CC_CELL_SIZE * 0.33));
 const CC_HEADER_ICON_SIZE = 12;
-const CC_HEADER_ICON_GAP = 6;
+const CC_HEADER_ICON_GAP = 4;
 const CC_HEADER_ICON_OFFSET = 1;
 const CC_CELL_ICON_OFFSET = -1;
 const CC_LABEL_HINT_SIZE = 7;
@@ -4791,10 +4791,25 @@ export class InquiryView extends ItemView {
 
             const variants = this.getCorpusCcHeaderLabelVariants(group.className, group.count, group.headerLabel);
             header.text.textContent = variants[0] ?? '';
+            const iconAllowance = CC_HEADER_ICON_SIZE + CC_HEADER_ICON_GAP;
+            let fallbackVariant = variants[0] ?? '';
+            let fallbackWidth = Number.POSITIVE_INFINITY;
+            let hasFit = false;
             for (let i = 0; i < variants.length; i += 1) {
-                header.text.textContent = variants[i];
-                const iconAllowance = CC_HEADER_ICON_SIZE + CC_HEADER_ICON_GAP;
-                if (header.text.getComputedTextLength() + iconAllowance <= availableWidth) break;
+                const variant = variants[i] ?? '';
+                header.text.textContent = variant;
+                const measuredWidth = header.text.getComputedTextLength() + iconAllowance;
+                if (measuredWidth < fallbackWidth) {
+                    fallbackVariant = variant;
+                    fallbackWidth = measuredWidth;
+                }
+                if (measuredWidth <= availableWidth) {
+                    hasFit = true;
+                    break;
+                }
+            }
+            if (!hasFit) {
+                header.text.textContent = fallbackVariant;
             }
 
             const textWidth = header.text.getComputedTextLength();
@@ -5197,6 +5212,9 @@ export class InquiryView extends ItemView {
         if (overrideLabel && overrideLabel.trim().length > 0) {
             return [overrideLabel.trim()];
         }
+        if (className === 'outline-saga') {
+            return [`${SIGMA_CHAR}`];
+        }
         const base = this.getCorpusClassLabelVariants(className);
         return base.map(label => `${label} ${count}`);
     }
@@ -5228,7 +5246,7 @@ export class InquiryView extends ItemView {
         const normalized = className.trim();
         if (!normalized) return ['Class', 'Cls', 'C'];
         if (normalized === 'outline-saga') {
-            return [`${SIGMA_CHAR}`, 'Saga', 'Series'];
+            return [`${SIGMA_CHAR}`, 'Saga', 'S'];
         }
         const words = normalized
             .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -5357,7 +5375,16 @@ export class InquiryView extends ItemView {
                 ensureGroup('outline', outlineMode);
                 if (this.state.scope === 'saga') {
                     const sagaMode = this.getCorpusGroupEffectiveMode('outline-saga', configMap);
-                    ensureGroup('outline-saga', sagaMode);
+                    const sagaItems = entriesByClass.get('outline-saga') ?? [];
+                    groups.push({
+                        key: 'outline-saga',
+                        className: 'outline-saga',
+                        items: sagaItems,
+                        count: sagaItems.length,
+                        mode: sagaMode,
+                        headerLabel: `${SIGMA_CHAR}`,
+                        headerTooltipLabel: 'Saga Outline'
+                    });
                 }
                 return;
             }
@@ -6270,8 +6297,10 @@ export class InquiryView extends ItemView {
             tick.classList.toggle('is-hit', !!finding);
             severityClasses.forEach(cls => tick.classList.remove(cls));
             const fullLabel = tick.getAttribute('data-full-label') || label;
-            const tooltip = finding ? `${fullLabel} • ${finding.headline}` : fullLabel;
-            tick.setAttribute('data-tooltip', this.balanceTooltipText(tooltip));
+            const tooltip = finding
+                ? this.buildFindingTooltip(label, finding)
+                : fullLabel;
+            tick.setAttribute('data-tooltip', tooltip);
         });
     }
 
@@ -8818,6 +8847,34 @@ export class InquiryView extends ItemView {
         return label;
     }
 
+    private buildFindingTooltip(label: string, finding: InquiryFinding): string {
+        const MAX_LINES = 4;
+        const MAX_CHARS = 90;
+        const lines: string[] = [];
+        let titleLine = `${label}: ${finding.headline.trim()}`;
+        if (titleLine.length > MAX_CHARS) {
+            titleLine = titleLine.substring(0, MAX_CHARS - 1).trimEnd() + '…';
+        }
+        lines.push(titleLine);
+        for (const bullet of finding.bullets) {
+            if (lines.length >= MAX_LINES) break;
+            const trimmed = bullet.trim();
+            if (!trimmed) continue;
+            let bulletLine = `  • ${trimmed}`;
+            if (bulletLine.length > MAX_CHARS) {
+                bulletLine = bulletLine.substring(0, MAX_CHARS - 1).trimEnd() + '…';
+            }
+            lines.push(bulletLine);
+        }
+        if (lines.length >= MAX_LINES && finding.bullets.length > lines.length - 1) {
+            const last = lines[lines.length - 1];
+            if (!last.endsWith('…')) {
+                lines[lines.length - 1] = last.trimEnd() + ' …';
+            }
+        }
+        return lines.join('\n');
+    }
+
     private handleMinimapHover(label: string, displayLabel?: string): void {
         const hoverLabel = displayLabel || label;
         const result = this.state.activeResult;
@@ -8831,7 +8888,10 @@ export class InquiryView extends ItemView {
             return;
         }
         if (this.previewLocked || !this.previewGroup) {
-            this.setHoverText(`${hoverLabel}: ${finding.headline}`);
+            const summary = finding.bullets?.[0]
+                ? `${hoverLabel}: ${finding.headline} — ${finding.bullets[0]}`
+                : `${hoverLabel}: ${finding.headline}`;
+            this.setHoverText(summary);
             return;
         }
         this.showResultPreview(hoverLabel, finding, result);

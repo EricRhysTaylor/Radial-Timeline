@@ -36,8 +36,15 @@ import {
 } from '../../ai/credentials/credentials';
 import { getSecret, hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
 import type { AccessTier, AIProviderId, ModelPolicy, ModelProfileName, Capability, ModelInfo } from '../../ai/types';
+import type { InquiryClassConfig, InquirySourcesSettings } from '../../types/settings';
+import { getActiveBookSourceFolder, getActiveBookTitle } from '../../utils/books';
+import { resolveScanRoots } from '../../inquiry/utils/scanRoots';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
+
+const FORECAST_CHARS_PER_TOKEN = 4;
+const FORECAST_SUMMARY_RATIO = 0.12;
+const FORECAST_PROMPT_OVERHEAD_TOKENS = 250;
 
 export function renderAiSection(params: {
     app: App;
@@ -256,22 +263,22 @@ export function renderAiSection(params: {
     };
     const capacitySafeInput = createCapacityCell('Safe input (per pass)');
     const capacityOutput = createCapacityCell('Response (per pass)');
-    const capacityExample500k = createCapacityCell('Example A - 500,000 tokens');
-    const capacityExample500kScope = capacityExample500k.valueEl.createDiv({
+    const capacityInquiry = createCapacityCell('Inquiry');
+    const capacityInquiryScope = capacityInquiry.valueEl.createDiv({
         cls: 'ert-ai-capacity-subcopy',
-        text: 'Outline + scene summaries across the full manuscript'
+        text: 'Scanning vault…'
     });
-    const capacityExample500kEstimate = capacityExample500k.valueEl.createDiv({
+    const capacityInquiryEstimate = capacityInquiry.valueEl.createDiv({
         cls: 'ert-ai-capacity-estimate',
         text: 'Estimated: —'
     });
 
-    const capacityExample1m = createCapacityCell('Example B - 1,000,000 tokens');
-    const capacityExample1mScope = capacityExample1m.valueEl.createDiv({
+    const capacityGossamer = createCapacityCell('Gossamer');
+    const capacityGossamerScope = capacityGossamer.valueEl.createDiv({
         cls: 'ert-ai-capacity-subcopy',
-        text: 'Full scene bodies + outline + character bios'
+        text: 'Scanning vault…'
     });
-    const capacityExample1mEstimate = capacityExample1m.valueEl.createDiv({
+    const capacityGossamerEstimate = capacityGossamer.valueEl.createDiv({
         cls: 'ert-ai-capacity-estimate',
         text: 'Estimated: —'
     });
@@ -371,8 +378,6 @@ export function renderAiSection(params: {
         executionPreferenceNote.toggleClass('ert-settings-hidden', mode !== 'singlePassOnly');
     };
     updateExecutionPreferenceNote();
-    capacityExample500kScope.setText('Outline + scene summaries across the full manuscript');
-    capacityExample1mScope.setText('Full scene bodies + outline + character bios');
     params.addAiRelatedElement(largeHandlingFold);
     params.addAiRelatedElement(executionPreferenceSetting.settingEl);
 
@@ -1302,6 +1307,85 @@ export function renderAiSection(params: {
         }
     };
 
+    type FeatureForecast = {
+        label: string;
+        estimatedInputTokens: number;
+    };
+
+    const computeVaultForecasts = async (): Promise<{ inquiry: FeatureForecast; gossamer: FeatureForecast }> => {
+        const vault = app.vault;
+        const allFiles = vault.getMarkdownFiles();
+
+        const sourceFolder = getActiveBookSourceFolder(plugin.settings);
+        const bookTitle = getActiveBookTitle(plugin.settings, 'Manuscript');
+
+        const sceneFiles = sourceFolder
+            ? allFiles.filter(f => f.path.startsWith(sourceFolder + '/') || f.path === sourceFolder)
+            : allFiles;
+
+        let totalSceneBytes = 0;
+        for (const f of sceneFiles) {
+            totalSceneBytes += f.stat.size;
+        }
+
+        const inquirySources = plugin.settings.inquirySources as InquirySourcesSettings | undefined;
+        const classes: InquiryClassConfig[] = inquirySources?.classes ?? [];
+        const enabledClasses = classes.filter(c => c.enabled);
+
+        let inquiryFiles = sceneFiles;
+        const scanRoots = inquirySources?.scanRoots ?? [];
+        if (scanRoots.length > 0) {
+            const resolved = resolveScanRoots(scanRoots, vault);
+            if (resolved.resolvedRoots.length > 0) {
+                const roots = resolved.resolvedRoots;
+                inquiryFiles = allFiles.filter(f => roots.some(r => r === '' || f.path.startsWith(r + '/')));
+            }
+        }
+
+        let inquiryTotalBytes = 0;
+        for (const f of inquiryFiles) {
+            inquiryTotalBytes += f.stat.size;
+        }
+
+        const dominantMode = getDominantEvidenceMode(enabledClasses);
+        const modeRatio = dominantMode === 'summary' ? FORECAST_SUMMARY_RATIO
+            : dominantMode === 'full' ? 1.0
+            : 0;
+        const inquiryChars = Math.ceil(inquiryTotalBytes * modeRatio);
+        const inquiryTokens = Math.ceil(inquiryChars / FORECAST_CHARS_PER_TOKEN) + FORECAST_PROMPT_OVERHEAD_TOKENS;
+
+        const inquiryLabel = scanRoots.length > 0
+            ? `${inquiryFiles.length} files across scan roots (${dominantMode === 'summary' ? 'Summaries' : dominantMode === 'full' ? 'Full bodies' : 'None'})`
+            : `${inquiryFiles.length} files in ${bookTitle} (${dominantMode === 'summary' ? 'Summaries' : dominantMode === 'full' ? 'Full bodies' : 'None'})`;
+
+        const gossamerChars = totalSceneBytes;
+        const gossamerTokens = Math.ceil(gossamerChars / FORECAST_CHARS_PER_TOKEN) + FORECAST_PROMPT_OVERHEAD_TOKENS;
+        const gossamerLabel = `Full manuscript — ${sceneFiles.length} scenes in ${bookTitle}`;
+
+        return {
+            inquiry: {
+                label: inquiryLabel,
+                estimatedInputTokens: modeRatio > 0 ? inquiryTokens : 0,
+            },
+            gossamer: {
+                label: gossamerLabel,
+                estimatedInputTokens: gossamerTokens,
+            },
+        };
+    };
+
+    const getDominantEvidenceMode = (classes: InquiryClassConfig[]): 'none' | 'summary' | 'full' => {
+        if (!classes.length) return 'full';
+        const rank = { none: 0, summary: 1, full: 2 };
+        let best: 'none' | 'summary' | 'full' = 'none';
+        for (const c of classes) {
+            for (const mode of [c.bookScope, c.sagaScope, c.referenceScope]) {
+                if (rank[mode] > rank[best]) best = mode;
+            }
+        }
+        return best;
+    };
+
     const refreshRoutingUi = (): void => {
         const aiSettings = ensureCanonicalAiSettings();
         const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
@@ -1363,8 +1447,8 @@ export function renderAiSection(params: {
 
         capacitySafeInput.valueEl.setText('Calculating...');
         capacityOutput.valueEl.setText('Calculating...');
-        capacityExample500kEstimate.setText('Estimated: Calculating...');
-        capacityExample1mEstimate.setText('Estimated: Calculating...');
+        capacityInquiryEstimate.setText('Estimated: Calculating...');
+        capacityGossamerEstimate.setText('Estimated: Calculating...');
 
         try {
             const selection = selectModel(BUILTIN_MODELS, {
@@ -1383,10 +1467,12 @@ export function renderAiSection(params: {
                 overrides: aiSettings.overrides
             });
             const safeBudgetTokens = Math.max(0, Math.floor(caps.maxInputTokens));
-            const formatForecastPasses = (exampleTokens: number): string => {
-                if (aiSettings.analysisPackaging === 'singlePassOnly') return 'Not possible — exceeds safe limit';
+            const formatForecastPasses = (estimatedTokens: number, singlePassOnly: boolean): string => {
+                if (estimatedTokens <= 0) return 'No content detected';
+                if (estimatedTokens <= safeBudgetTokens) return 'Fits safely — single pass';
+                if (singlePassOnly) return 'Not possible (single-pass only)';
                 if (safeBudgetTokens <= 0) return 'Unavailable';
-                const passes = Math.ceil(exampleTokens / safeBudgetTokens);
+                const passes = Math.ceil(estimatedTokens / safeBudgetTokens);
                 return `${passes} structured passes (Automatic)`;
             };
             const previewState: ResolvedPreviewRenderState = {
@@ -1410,8 +1496,21 @@ export function renderAiSection(params: {
             void refreshResolvedPreviewAvailability(previewState);
             capacitySafeInput.valueEl.setText(`~${safeBudgetTokens.toLocaleString()} tokens (safe window)`);
             capacityOutput.valueEl.setText(`~${caps.maxOutputTokens.toLocaleString()} tokens`);
-            capacityExample500kEstimate.setText(`Estimated: ${formatForecastPasses(500000)}`);
-            capacityExample1mEstimate.setText(`Estimated: ${formatForecastPasses(1000000)}`);
+
+            const singlePassOnly = aiSettings.analysisPackaging === 'singlePassOnly';
+            void computeVaultForecasts().then(forecasts => {
+                capacityInquiry.cellEl.querySelector('.ert-ai-capacity-label')?.setText('Inquiry');
+                capacityInquiryScope.setText(forecasts.inquiry.label);
+                capacityInquiryEstimate.setText(
+                    `~${forecasts.inquiry.estimatedInputTokens.toLocaleString()} tokens — ${formatForecastPasses(forecasts.inquiry.estimatedInputTokens, singlePassOnly)}`
+                );
+
+                capacityGossamer.cellEl.querySelector('.ert-ai-capacity-label')?.setText('Gossamer');
+                capacityGossamerScope.setText(forecasts.gossamer.label);
+                capacityGossamerEstimate.setText(
+                    `~${forecasts.gossamer.estimatedInputTokens.toLocaleString()} tokens — ${formatForecastPasses(forecasts.gossamer.estimatedInputTokens, singlePassOnly)}`
+                );
+            });
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             renderResolvedPreview({
@@ -1434,8 +1533,8 @@ export function renderAiSection(params: {
             });
             capacitySafeInput.valueEl.setText('Unavailable');
             capacityOutput.valueEl.setText('Unavailable');
-            capacityExample500kEstimate.setText('Estimated: Unavailable');
-            capacityExample1mEstimate.setText('Estimated: Unavailable');
+            capacityInquiryEstimate.setText('Unavailable');
+            capacityGossamerEstimate.setText('Unavailable');
         }
 
         void refreshModelsTable();
