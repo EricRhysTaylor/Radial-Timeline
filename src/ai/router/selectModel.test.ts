@@ -31,4 +31,16 @@ describe('selectModel', () => {
         });
         expect(result.model.alias).toContain('claude-opus');
     });
+
+    it('resolves an OpenAI model for high-output inquiry requirements', () => {
+        const result = selectModel(BUILTIN_MODELS, {
+            provider: 'openai',
+            policy: { type: 'profile', profile: 'deepReasoner' },
+            requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
+            contextTokensNeeded: 24000,
+            outputTokensNeeded: 2000
+        });
+        expect(result.model.provider).toBe('openai');
+        expect(result.model.capabilities.includes('highOutputCap')).toBe(true);
+    });
 });

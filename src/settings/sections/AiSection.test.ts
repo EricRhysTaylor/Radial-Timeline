@@ -6,14 +6,20 @@ describe('AI settings models table', () => {
     it('renders unknown availability helper when snapshot is missing', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes('Enable Provider Snapshot above to show key-based model availability.')).toBe(true);
+        expect(source.includes("else if (snapshot.warning)")).toBe(true);
         expect(source.includes('formatAvailabilityLabel(model.availabilityStatus)')).toBe(true);
     });
 
-    it('does not render recommendations block above models table', () => {
+    it('renders recommendations block above models area', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('Recommended picks')).toBe(false);
-        expect(source.includes('ert-ai-recommendations')).toBe(false);
-        expect(source.includes('computeRecommendedPicks')).toBe(false);
+        expect(source.includes('Recommended picks')).toBe(true);
+        expect(source.includes('ert-ai-recommendations')).toBe(true);
+        expect(source.includes('computeRecommendedPicks')).toBe(true);
+    });
+
+    it('does not render the dense models table rows in refresh flow', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('renderModelsTable(merged, selection)')).toBe(false);
     });
 
     it('renders active model preview container with wrapped config pill copy', () => {
@@ -29,5 +35,16 @@ describe('AI settings models table', () => {
         expect(source.includes('Large Manuscript Handling')).toBe(true);
         expect(source.includes('Execution Preference')).toBe(true);
         expect(source.includes('singlePassOnly')).toBe(true);
+    });
+
+    it('renders provider key status states without saved-not-tested phrasing', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes('Status: Ready ✓')).toBe(true);
+        expect(source.includes('Status: Not configured')).toBe(true);
+        expect(source.includes('Status: Key rejected')).toBe(true);
+        expect(source.includes('Status: Provider validation failed')).toBe(true);
+        expect(source.includes('Replace key...')).toBe(true);
+        expect(source.includes('Copy key name')).toBe(true);
+        expect(source.includes('Saved (not tested)')).toBe(false);
     });
 });

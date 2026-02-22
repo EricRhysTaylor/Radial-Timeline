@@ -18,6 +18,13 @@ import {
     type AvailabilityStatus,
     type MergedModelInfo
 } from '../../ai/registry/mergeModels';
+import {
+    computeRecommendedPicks,
+    getAvailabilityIconName,
+    getRecommendationComparisonTag,
+    type CurrentResolvedModelRef,
+    type RecommendationRow
+} from '../../ai/registry/recommendations';
 import { selectModel } from '../../ai/router/selectModel';
 import { computeCaps } from '../../ai/caps/computeCaps';
 import { getAIClient, getLastAiAdvancedContext } from '../../ai/runtime/aiClient';
@@ -87,7 +94,7 @@ export function renderAiSection(params: {
     const heroOnState = aiHero.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-hero-state-on` });
     heroOnState.createEl('p', {
         cls: `${ERT_CLASSES.SECTION_DESC} ert-hero-subtitle`,
-        text: 'Radial Timeline’s AI phylosophy is not to rewrite your work, but to act as a rigorous, genre-aware editor - analyzing structure, momentum, and continuity across scenes and materials. Use it to stress-test your manuscript, uncover hidden contradictions, and sharpen narrative identity while your voice remains fully your own.'
+        text: 'Radial Timeline’s AI phylosophy is about helping the author efficiently and effectively prepare their creative work for human editors and a human audience. AI acts as a rigorous, genre-aware editor - analyzing structure, momentum, and continuity across scenes and materials. Use it to stress-test your manuscript, uncover hidden contradictions, and sharpen narrative identity while your voice remains fully your own.'
     });
     const heroOnFeatures = heroOnState.createDiv({
         cls: `${ERT_CLASSES.HERO_FEATURES} ${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}`
@@ -310,7 +317,7 @@ export function renderAiSection(params: {
     };
 
     createAnalysisModeBlock({
-        icon: 'arrow-right',
+        icon: 'git-commit-vertical',
         title: 'Single-Pass Analysis',
         body: 'Entire manuscript analyzed in one request. Best suited for deeply global thematic questions that depend on the full manuscript being considered at once.',
         questions: [
@@ -378,15 +385,6 @@ export function renderAiSection(params: {
         text: 'Active role and context framing used for AI submissions. Applied to Inquiry, Pulse (Triplet Analysis), Gossamer Momentum, Summary Refresh, Runtime AI Estimation.'
     });
 
-    const aiDisplaySection = aiSettingsGroup.createDiv({
-        cls: `${ERT_CLASSES.CARD} ${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK} ert-ai-section-card`
-    });
-    aiDisplaySection.createDiv({ cls: 'ert-section-title', text: 'Scene Hover Fields' });
-    aiDisplaySection.createDiv({
-        cls: 'ert-section-desc',
-        text: 'Display preferences for Pulse triplet analysis visibility.'
-    });
-
     const configurationFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold ert-ai-configuration' }) as HTMLDetailsElement;
     configurationFold.setAttr('open', '');
     const configurationSummary = configurationFold.createEl('summary', { text: 'Configuration' });
@@ -416,7 +414,7 @@ export function renderAiSection(params: {
             }));
     params.addAiRelatedElement(contextTemplateSetting.settingEl);
 
-    const tripletDisplaySetting = new Settings(aiDisplaySection)
+    const tripletDisplaySetting = new Settings(aiSettingsGroup)
         .setName('Pulse: Show previous and next scene triplet analysis')
         .setDesc('When enabled, scene hover fields include the AI pulse for the previous and next scenes. Turn off to display only the current scene for a more compact view.')
         .addToggle(toggle => toggle
@@ -426,6 +424,7 @@ export function renderAiSection(params: {
                 await plugin.saveSettings();
                 // Tier 1: triplet display is read at hover time, no SVG change needed
             }));
+    tripletDisplaySetting.settingEl.addClass(ERT_CLASSES.ROW);
     params.addAiRelatedElement(tripletDisplaySetting.settingEl);
 
     const capabilityFloor: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'];
@@ -747,6 +746,7 @@ export function renderAiSection(params: {
                 const aiSettings = ensureCanonicalAiSettings();
                 aiSettings.privacy.allowProviderSnapshot = value;
                 await persistCanonical();
+                await refreshModelsTable(value ? { forceRemoteSnapshot: true } : undefined);
                 refreshRoutingUi();
             });
     });
@@ -787,9 +787,15 @@ export function renderAiSection(params: {
             }
             button.setDisabled(true);
             try {
-                await getAIClient(plugin).refreshProviderSnapshot(true);
+                const refreshed = await getAIClient(plugin).refreshProviderSnapshot(true);
                 await refreshModelsTable({ forceRemoteSnapshot: true });
-                new Notice('Provider snapshot refreshed.');
+                if (refreshed.snapshot) {
+                    new Notice(refreshed.warning
+                        ? `Provider snapshot refreshed with warning: ${refreshed.warning}`
+                        : 'Provider snapshot refreshed.');
+                } else {
+                    new Notice(refreshed.warning || 'Provider snapshot unavailable.');
+                }
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
                 new Notice(`Availability refresh failed: ${message}`);
@@ -804,7 +810,8 @@ export function renderAiSection(params: {
     modelsHeader.createDiv({ cls: 'ert-section-title', text: 'Models' });
     const modelsRefreshedEl = modelsHeader.createDiv({ cls: 'ert-ai-models-refreshed' });
     const modelsHintEl = modelsPanel.createDiv({ cls: 'ert-field-note' });
-    const modelsTableEl = modelsPanel.createDiv({ cls: 'ert-ai-models-table ert-stack' });
+    const recommendationsEl = modelsPanel.createDiv({ cls: 'ert-ai-recommendations ert-stack' });
+    const modelsTableEl = modelsPanel.createDiv({ cls: 'ert-ai-models-table ert-stack ert-settings-hidden' });
     const modelDetailsEl = modelsPanel.createDiv({ cls: 'ert-ai-model-details ert-settings-hidden' });
     params.addAiRelatedElement(modelsPanel);
 
@@ -839,6 +846,98 @@ export function renderAiSection(params: {
             return `${model.contextWindow.toLocaleString()} / ${model.maxOutput.toLocaleString()} (curated)`;
         }
         return 'Unknown';
+    };
+
+    const formatReadableTimestamp = (timestamp: string): string => {
+        const parsed = Date.parse(timestamp);
+        if (!Number.isFinite(parsed)) return timestamp;
+        try {
+            return new Intl.DateTimeFormat(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                second: '2-digit',
+                timeZoneName: 'short'
+            }).format(new Date(parsed));
+        } catch {
+            return new Date(parsed).toLocaleString();
+        }
+    };
+
+    const formatRecommendationModel = (row: RecommendationRow): string => {
+        if (!row.model) return 'No eligible model';
+        const name = row.model.providerLabel || row.model.label;
+        return `${providerLabel[row.model.provider]} -> ${name} (${row.model.alias})`;
+    };
+
+    const renderRecommendations = (
+        rows: RecommendationRow[],
+        currentSelection: CurrentResolvedModelRef | null,
+        snapshotEnabled: boolean
+    ): void => {
+        recommendationsEl.empty();
+        const title = recommendationsEl.createDiv({ cls: 'ert-ai-recommendations-title' });
+        const activeProvider = rows[0]?.provider ? providerLabel[rows[0].provider] : 'Current provider';
+        title.setText(`Recommended picks (${activeProvider})`);
+
+        rows.forEach(row => {
+            const item = recommendationsEl.createDiv({ cls: 'ert-ai-recommendation-row' });
+            item.createDiv({ cls: 'ert-ai-recommendation-name', text: row.title });
+
+            const value = item.createDiv({ cls: 'ert-ai-recommendation-value' });
+            const iconEl = value.createSpan({ cls: 'ert-ai-recommendation-icon' });
+            setIcon(iconEl, getAvailabilityIconName(row.availabilityStatus));
+            value.createSpan({ cls: 'ert-ai-recommendation-model', text: formatRecommendationModel(row) });
+            value.createSpan({ cls: 'ert-ai-recommendation-why', text: row.shortReason });
+
+            const comparisonTag = getRecommendationComparisonTag(row, currentSelection);
+            if (comparisonTag) {
+                value.createSpan({
+                    cls: 'ert-badgePill ert-badgePill--sm ert-ai-recommendation-status',
+                    text: comparisonTag
+                });
+            }
+
+            if (row.availabilityStatus === 'unknown') {
+                const hint = item.createDiv({
+                    cls: 'ert-ai-recommendation-hint',
+                    text: 'Enable Provider Snapshot for key-based visibility. This only fetches model details and availability.'
+                });
+
+                if (!snapshotEnabled) {
+                    const action = hint.createEl('button', {
+                        cls: 'ert-ai-recommendation-action',
+                        attr: { type: 'button' },
+                        text: 'Enable + refresh'
+                    });
+                    action.addEventListener('click', async (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        action.disabled = true;
+                        try {
+                            const aiSettings = ensureCanonicalAiSettings();
+                            if (!aiSettings.privacy.allowProviderSnapshot) {
+                                aiSettings.privacy.allowProviderSnapshot = true;
+                                await persistCanonical();
+                            }
+                            await getAIClient(plugin).refreshProviderSnapshot(true);
+                            await refreshModelsTable({ forceRemoteSnapshot: true });
+                            new Notice('Provider snapshot enabled and refreshed.');
+                        } catch (error) {
+                            const message = error instanceof Error ? error.message : String(error);
+                            new Notice(`Snapshot refresh failed: ${message}`);
+                        } finally {
+                            action.disabled = false;
+                        }
+                    });
+                }
+            }
+            if (row.reason) {
+                item.setAttr('title', row.reason);
+            }
+        });
     };
 
     const renderModelDetails = (
@@ -960,6 +1059,7 @@ export function renderAiSection(params: {
     const refreshModelsTable = async (options?: { forceRemoteRegistry?: boolean; forceRemoteSnapshot?: boolean }): Promise<void> => {
         modelsRefreshedEl.setText('Loading...');
         modelsHintEl.setText('Merging curated registry with provider snapshot...');
+        recommendationsEl.empty();
         modelsTableEl.empty();
 
         try {
@@ -974,6 +1074,7 @@ export function renderAiSection(params: {
             const aiSettings = ensureCanonicalAiSettings();
             const selectedProvider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
             let selection: { alias: string; reason: string } | null = null;
+            let currentSelection: CurrentResolvedModelRef | null = null;
             try {
                 const resolved = selectModel(curated, {
                     provider: selectedProvider,
@@ -984,13 +1085,28 @@ export function renderAiSection(params: {
                     outputTokensNeeded: 2000
                 });
                 selection = { alias: resolved.model.alias, reason: resolved.reason };
+                const mergedCurrent = merged.find(model =>
+                    model.provider === resolved.model.provider
+                    && (model.alias === resolved.model.alias || model.providerModelId === resolved.model.id)
+                );
+                const availabilityStatus: AvailabilityStatus = mergedCurrent?.availabilityStatus ?? 'unknown';
+                currentSelection = {
+                    provider: resolved.model.provider,
+                    alias: resolved.model.alias,
+                    modelId: resolved.model.id,
+                    availabilityStatus
+                };
             } catch {
                 selection = null;
+                currentSelection = null;
             }
 
             if (snapshot.snapshot) {
-                modelsRefreshedEl.setText(`Last checked: ${snapshot.snapshot.generatedAt}`);
+                modelsRefreshedEl.setText(`Last checked: ${formatReadableTimestamp(snapshot.snapshot.generatedAt)}`);
                 modelsHintEl.setText(snapshot.warning || 'Availability reflects the latest provider snapshot.');
+            } else if (snapshot.warning) {
+                modelsRefreshedEl.setText('Availability: Check failed');
+                modelsHintEl.setText(snapshot.warning);
             } else if (!aiSettings.privacy.allowProviderSnapshot) {
                 modelsRefreshedEl.setText('Availability: Disabled');
                 modelsHintEl.setText('Enable Provider Snapshot above to show key-based model availability.');
@@ -999,11 +1115,17 @@ export function renderAiSection(params: {
                 modelsHintEl.setText('Use Refresh Availability to fetch provider data.');
             }
 
-            renderModelsTable(merged, selection);
+            const picks = computeRecommendedPicks({
+                models: merged,
+                aiSettings,
+                includeLocalPrivate: aiSettings.provider === 'ollama'
+            });
+            renderRecommendations(picks, currentSelection, aiSettings.privacy.allowProviderSnapshot);
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             modelsRefreshedEl.setText('Availability: Check failed');
-            modelsHintEl.setText(`Unable to render models table: ${message}`);
+            modelsHintEl.setText(`Unable to load model recommendations: ${message}`);
+            recommendationsEl.empty();
         }
     };
 
@@ -1340,13 +1462,14 @@ export function renderAiSection(params: {
         params.addAiRelatedElement(migrateKeysSetting.settingEl);
     }
 
-    type KeyStatus = 'saved' | 'saved_not_tested' | 'not_saved';
+    type LocalKeyStatus = 'saved' | 'not_saved';
+    type ProviderKeyUiState = 'ready' | 'not_configured' | 'rejected' | 'network_blocked' | 'checking';
     const configureSensitiveInput = (inputEl: HTMLInputElement): void => {
         inputEl.type = 'password';
         inputEl.autocomplete = 'new-password';
         inputEl.spellcheck = false;
     };
-    const buildKeyStatusDesc = (status: KeyStatus): DocumentFragment => {
+    const buildLocalKeyStatusDesc = (status: LocalKeyStatus): DocumentFragment => {
         const desc = document.createDocumentFragment();
         const row = document.createElement('span');
         row.className = `ert-ai-key-status is-${status}`;
@@ -1355,15 +1478,60 @@ export function renderAiSection(params: {
         if (status === 'saved') {
             setIcon(icon, 'check-circle-2');
             text.setText('Saved');
-        } else if (status === 'saved_not_tested') {
-            setIcon(icon, 'shield-check');
-            text.setText('Saved (not tested)');
         } else {
             setIcon(icon, 'alert-triangle');
             text.setText('Not saved');
         }
         desc.appendChild(row);
         return desc;
+    };
+    const extractStatusCodeFromError = (message: string): number | null => {
+        const wrapped = message.match(/\((\d{1,3})\)/);
+        if (wrapped) return Number(wrapped[1]);
+        const direct = message.match(/\b(?:status|http)\s*(\d{1,3})\b/i);
+        if (direct) return Number(direct[1]);
+        return null;
+    };
+    const isAuthError = (message: string, statusCode: number | null): boolean => {
+        if (statusCode === 400 || statusCode === 401 || statusCode === 403) return true;
+        return /unauthorized|forbidden|invalid (?:api )?key|invalid auth|authentication/i.test(message);
+    };
+    const buildProviderValidationDetail = (message: string, statusCode: number | null): string => {
+        if (statusCode === 429) return 'Provider rate limit reached (HTTP 429). Wait briefly and retry.';
+        if (statusCode !== null && statusCode >= 500) return `Provider service error (HTTP ${statusCode}). Try again shortly.`;
+        if (statusCode !== null) return `Provider returned HTTP ${statusCode} while validating the key.`;
+        return `No HTTP status returned during validation (${message}).`;
+    };
+    interface ProviderKeyValidationResult {
+        state: 'ready' | 'rejected' | 'network_blocked';
+        detail: string;
+    }
+    const validateProviderKeyQuick = async (
+        provider: 'openai' | 'anthropic' | 'google',
+        key: string
+    ): Promise<ProviderKeyValidationResult> => {
+        try {
+            if (provider === 'anthropic') await fetchAnthropicModels(key);
+            else if (provider === 'google') await fetchGeminiModels(key);
+            else await fetchOpenAiModels(key);
+            return {
+                state: 'ready',
+                detail: ''
+            };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            const statusCode = extractStatusCodeFromError(message);
+            if (isAuthError(message, statusCode)) {
+                return {
+                    state: 'rejected',
+                    detail: ''
+                };
+            }
+            return {
+                state: 'network_blocked',
+                detail: buildProviderValidationDetail(message, statusCode)
+            };
+        }
     };
 
     const renderCredentialSettings = (options: {
@@ -1391,30 +1559,152 @@ export function renderAiSection(params: {
             .setDesc(providerDesc);
         const keyStatusSetting = new Settings(options.section)
             .setName(`${options.providerName} key status`)
-            .setDesc(buildKeyStatusDesc('not_saved'));
-        const applyKeyStatus = (status: KeyStatus) => {
-            keyStatusSetting.setDesc(buildKeyStatusDesc(status));
+            .setDesc('');
+
+        let providerState: ProviderKeyUiState = 'not_configured';
+        let providerStateDetail = '';
+        let replaceRequested = false;
+        let revealSecretName = false;
+        let secureKeySetting: Settings | null = null;
+        let secureKeyInput: HTMLInputElement | null = null;
+        const setSettingRowVisible = (setting: Settings, visible: boolean): void => {
+            if (visible) {
+                setting.settingEl.style.removeProperty('display');
+                setting.settingEl.removeAttribute('hidden');
+            } else {
+                setting.settingEl.style.setProperty('display', 'none', 'important');
+                setting.settingEl.setAttribute('hidden', '');
+            }
+            setting.settingEl.toggleClass('ert-settings-hidden', !visible);
+            setting.settingEl.toggleClass('ert-settings-visible', visible);
         };
-        const refreshKeyStatus = async (): Promise<void> => {
+
+        const setProviderState = (next: ProviderKeyUiState): void => {
+            providerState = next;
+            const ai = ensureCanonicalAiSettings();
+            const secretId = getCredentialSecretId(ai, options.provider).trim();
+            const desc = document.createDocumentFragment();
+
+            const stateBlock = document.createElement('div');
+            stateBlock.className = `ert-ai-provider-key-state is-${next}`;
+            const icon = stateBlock.createSpan({ cls: 'ert-ai-provider-key-state__icon' });
+            setIcon(icon, next === 'ready' ? 'shield-check' : 'shield-alert');
+            const body = stateBlock.createSpan({ cls: 'ert-ai-provider-key-state__body' });
+            const text = body.createSpan({ cls: 'ert-ai-provider-key-state__text' });
+            if (next === 'ready') {
+                providerStateDetail = '';
+                text.setText('Status: Ready ✓');
+            } else if (next === 'rejected') {
+                providerStateDetail = '';
+                text.setText('Status: Key rejected');
+            } else if (next === 'network_blocked') {
+                text.setText('Status: Provider validation failed');
+            } else if (next === 'checking') {
+                providerStateDetail = '';
+                text.setText('Status: Checking key...');
+            } else {
+                providerStateDetail = '';
+                text.setText('Status: Not configured');
+            }
+            desc.appendChild(stateBlock);
+
+            const helper = body.createSpan({ cls: 'ert-ai-provider-key-state__helper' });
+            if (next === 'not_configured') {
+                helper.textContent = 'Paste a key to enable this provider.';
+            } else if (next === 'rejected') {
+                helper.textContent = 'Paste a new key to replace the saved one.';
+            } else if (next === 'network_blocked') {
+                helper.textContent = providerStateDetail || 'Provider could not be reached. You can still replace the key below.';
+            } else if (next === 'checking') {
+                helper.textContent = 'Validating saved key with the provider...';
+            }
+            if (!helper.textContent) helper.remove();
+
+            if ((next === 'ready' || next === 'network_blocked') && secretStorageAvailable) {
+                const actions = body.createSpan({ cls: 'ert-ai-provider-key-actions' });
+
+                const replaceBtn = document.createElement('button');
+                replaceBtn.className = 'ert-ai-provider-key-action';
+                replaceBtn.type = 'button';
+                replaceBtn.textContent = 'Replace key...';
+                replaceBtn.addEventListener('click', () => {
+                    replaceRequested = true;
+                    setProviderState(providerState);
+                    secureKeyInput?.focus();
+                });
+                actions.appendChild(replaceBtn);
+
+                if (secretId) {
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = 'ert-ai-provider-key-action';
+                    copyBtn.type = 'button';
+                    copyBtn.textContent = 'Copy key name';
+                    copyBtn.addEventListener('click', () => {
+                        revealSecretName = true;
+                        setProviderState(providerState);
+                        secretIdSetting.settingEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        void navigator.clipboard.writeText(secretId)
+                            .then(() => new Notice('Saved key name copied.'))
+                            .catch(() => new Notice('Unable to copy saved key name.'));
+                    });
+                    actions.appendChild(copyBtn);
+                }
+            }
+
+            keyStatusSetting.setDesc(desc);
+
+            const showSecretIdRow = !secretStorageAvailable
+                || next !== 'ready'
+                || revealSecretName;
+            setSettingRowVisible(secretIdSetting, showSecretIdRow);
+
+            if (secureKeySetting) {
+                const shouldShowInput = replaceRequested || next === 'not_configured' || next === 'rejected';
+                setSettingRowVisible(secureKeySetting, shouldShowInput);
+                if (!shouldShowInput && secureKeyInput) secureKeyInput.value = '';
+            }
+            params.refreshProviderDimming();
+        };
+
+        const refreshProviderKeyState = async (): Promise<void> => {
             const ai = ensureCanonicalAiSettings();
             if (secretStorageAvailable) {
-                const savedKeyName = getCredentialSecretId(ai, options.provider);
-                if (!savedKeyName) {
-                    applyKeyStatus('not_saved');
+                const savedKeyName = getCredentialSecretId(ai, options.provider).trim();
+                if (!savedKeyName || !(await hasSecret(app, savedKeyName))) {
+                    replaceRequested = false;
+                    revealSecretName = false;
+                    setProviderState('not_configured');
                     return;
                 }
-                const exists = await hasSecret(app, savedKeyName);
-                applyKeyStatus(exists ? 'saved_not_tested' : 'not_saved');
+
+                const key = await getCredential(plugin, options.provider);
+                if (!key || key.length < 8) {
+                    replaceRequested = false;
+                    revealSecretName = false;
+                    setProviderState('not_configured');
+                    return;
+                }
+
+                setProviderState('checking');
+                const validation = await validateProviderKeyQuick(options.provider, key);
+                providerStateDetail = validation.detail;
+                if (validation.state === 'ready') {
+                    replaceRequested = false;
+                    revealSecretName = false;
+                }
+                setProviderState(validation.state);
                 return;
             }
+
             const legacyValue = options.legacyProvider === 'gemini'
                 ? plugin.settings.geminiApiKey
                 : options.legacyProvider === 'anthropic'
                 ? plugin.settings.anthropicApiKey
                 : plugin.settings.openaiApiKey;
-            applyKeyStatus((legacyValue || '').trim() ? 'saved' : 'not_saved');
+            replaceRequested = false;
+            revealSecretName = false;
+            setProviderState((legacyValue || '').trim() ? 'ready' : 'not_configured');
         };
-        void refreshKeyStatus();
         secretIdSetting.addText(text => {
             const aiSettings = ensureCanonicalAiSettings();
             text.inputEl.addClass('ert-input--full');
@@ -1427,29 +1717,32 @@ export function renderAiSection(params: {
                     const nextId = text.getValue().trim();
                     setCredentialSecretId(ai, options.provider, nextId);
                     await persistCanonical();
-                    await refreshKeyStatus();
+                    await refreshProviderKeyState();
                 })();
             });
         });
         secretIdSetting.settingEl.addClass('ert-setting-full-width-input');
+        if (secretStorageAvailable) {
+            setSettingRowVisible(secretIdSetting, false);
+        }
 
         if (secretStorageAvailable) {
-            const secureKeySetting = new Settings(options.section)
+            secureKeySetting = new Settings(options.section)
                 .setName(`${options.providerName} API key`)
                 .setDesc('Saved privately on this device. Paste a key and leave the field to save or replace it. Keys are never written to your settings file.');
             secureKeySetting.addText(text => {
                 text.inputEl.addClass('ert-input--full');
                 configureSensitiveInput(text.inputEl);
                 text.setPlaceholder(options.keyPlaceholder);
+                secureKeyInput = text.inputEl;
                 params.setKeyInputRef(options.legacyProvider, text.inputEl);
 
-                void (async () => {
-                    const ai = ensureCanonicalAiSettings();
-                    const currentSecret = await getSecret(app, getCredentialSecretId(ai, options.provider));
-                    if (currentSecret) {
-                        text.setValue(currentSecret);
+                plugin.registerDomEvent(text.inputEl, 'keydown', (event: KeyboardEvent) => {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        text.inputEl.blur();
                     }
-                })();
+                });
 
                 plugin.registerDomEvent(text.inputEl, 'blur', () => {
                     void (async () => {
@@ -1470,31 +1763,35 @@ export function renderAiSection(params: {
                         if (options.legacyProvider === 'anthropic') plugin.settings.anthropicApiKey = '';
                         if (options.legacyProvider === 'openai') plugin.settings.openaiApiKey = '';
                         await plugin.saveSettings();
-                        await refreshKeyStatus();
-                        void params.scheduleKeyValidation(options.legacyProvider);
+                        text.setValue('');
+                        setProviderState('checking');
+                        const validation = await validateProviderKeyQuick(options.provider, value);
+                        providerStateDetail = validation.detail;
+                        if (validation.state === 'ready') {
+                            replaceRequested = false;
+                            revealSecretName = false;
+                        }
+                        setProviderState(validation.state);
                     })();
                 });
             });
             secureKeySetting.settingEl.addClass('ert-setting-full-width-input');
+            setSettingRowVisible(secureKeySetting, false);
+            setProviderState(providerState);
         }
 
-        const legacyDetails = options.section.createEl('details', {
-            cls: 'ert-ai-legacy-credentials'
-        }) as HTMLDetailsElement;
+        void refreshProviderKeyState();
+
         if (!secretStorageAvailable) {
+            const legacyDetails = options.section.createEl('details', {
+                cls: 'ert-ai-legacy-credentials'
+            }) as HTMLDetailsElement;
             legacyDetails.setAttr('open', '');
-        }
-        const legacySummary = legacyDetails.createEl('summary', {
-            text: 'Advanced: Older key fields (not recommended)'
-        });
-        attachAiCollapseButton(legacyDetails, legacySummary);
-        const legacyHost = legacyDetails.createDiv({ cls: ERT_CLASSES.STACK });
-        if (secretStorageAvailable) {
-            legacyHost.createDiv({
-                cls: 'ert-field-note',
-                text: 'Older key fields are disabled while secure key saving is enabled.'
+            const legacySummary = legacyDetails.createEl('summary', {
+                text: 'Advanced: Older key fields (not recommended)'
             });
-        } else {
+            attachAiCollapseButton(legacyDetails, legacySummary);
+            const legacyHost = legacyDetails.createDiv({ cls: ERT_CLASSES.STACK });
             const legacySetting = new Settings(legacyHost)
                 .setName(`${options.providerName} older API key`)
                 .setDesc('Used only when secure key saving is unavailable.');
@@ -1517,7 +1814,7 @@ export function renderAiSection(params: {
                         if (options.legacyProvider === 'anthropic') plugin.settings.anthropicApiKey = next;
                         if (options.legacyProvider === 'openai') plugin.settings.openaiApiKey = next;
                         await plugin.saveSettings();
-                        await refreshKeyStatus();
+                        await refreshProviderKeyState();
                         void params.scheduleKeyValidation(options.legacyProvider);
                     })();
                 });
@@ -1720,9 +2017,9 @@ export function renderAiSection(params: {
         .setDesc('Optional saved key name if your local gateway requires a key.');
     const localKeyStatusSetting = new Settings(localApiContainer)
         .setName('Local key status')
-        .setDesc(buildKeyStatusDesc('not_saved'));
-    const applyLocalKeyStatus = (status: KeyStatus) => {
-        localKeyStatusSetting.setDesc(buildKeyStatusDesc(status));
+        .setDesc(buildLocalKeyStatusDesc('not_saved'));
+    const applyLocalKeyStatus = (status: LocalKeyStatus) => {
+        localKeyStatusSetting.setDesc(buildLocalKeyStatusDesc(status));
     };
     const refreshLocalKeyStatus = async (): Promise<void> => {
         const savedKeyName = getCredentialSecretId(ensureCanonicalAiSettings(), 'ollama');
@@ -1732,7 +2029,7 @@ export function renderAiSection(params: {
                 return;
             }
             const exists = await hasSecret(app, savedKeyName);
-            applyLocalKeyStatus(exists ? 'saved_not_tested' : 'not_saved');
+            applyLocalKeyStatus(exists ? 'saved' : 'not_saved');
             return;
         }
         applyLocalKeyStatus((plugin.settings.localApiKey || '').trim() ? 'saved' : 'not_saved');
@@ -1831,7 +2128,7 @@ export function renderAiSection(params: {
     // 6) Configuration
     // 7) Advanced & Diagnostics
     [
-        aiDisplaySection,
+        tripletDisplaySetting.settingEl,
         roleContextSection,
         quickSetupPreviewSection,
         quickSetupSection,

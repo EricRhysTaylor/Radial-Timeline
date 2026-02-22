@@ -153,4 +153,46 @@ describe('computeRecommendedPicks', () => {
             expect(words).toBeLessThanOrEqual(14);
         });
     });
+
+    it('differentiates inquiry/gossamer/quick picks when provider offers deep, balanced, and fast options', () => {
+        const aiSettings = buildDefaultAiSettings();
+        aiSettings.provider = 'openai';
+        const models: MergedModelInfo[] = [
+            makeMergedModel({
+                id: 'openai-deep',
+                alias: 'openai-deep',
+                label: 'OpenAI Deep',
+                tier: 'DEEP',
+                capabilities: ['jsonStrict', 'longContext', 'reasoningStrong', 'highOutputCap'],
+                contextWindow: 400000,
+                maxOutput: 16000,
+                personality: { reasoning: 10, writing: 9, determinism: 9 }
+            }),
+            makeMergedModel({
+                id: 'openai-balanced',
+                alias: 'openai-balanced',
+                label: 'OpenAI Balanced',
+                tier: 'BALANCED',
+                capabilities: ['jsonStrict', 'longContext', 'reasoningStrong', 'highOutputCap'],
+                contextWindow: 200000,
+                maxOutput: 8000,
+                personality: { reasoning: 8, writing: 10, determinism: 9 }
+            }),
+            makeMergedModel({
+                id: 'openai-fast',
+                alias: 'openai-fast',
+                label: 'OpenAI Fast',
+                tier: 'FAST',
+                capabilities: ['jsonStrict'],
+                contextWindow: 32000,
+                maxOutput: 2000,
+                personality: { reasoning: 6, writing: 6, determinism: 10 }
+            })
+        ];
+
+        const picks = computeRecommendedPicks({ models, aiSettings, includeLocalPrivate: false });
+        expect(picks.find(pick => pick.id === 'inquiry')?.model?.alias).toBe('openai-deep');
+        expect(picks.find(pick => pick.id === 'gossamer')?.model?.alias).toBe('openai-balanced');
+        expect(picks.find(pick => pick.id === 'quick')?.model?.alias).toBe('openai-fast');
+    });
 });
