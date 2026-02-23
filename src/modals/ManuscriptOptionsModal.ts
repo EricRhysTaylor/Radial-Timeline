@@ -1371,6 +1371,19 @@ HOST: Let's start with Sarah's story...`
                 splitMode: this.splitMode,
                 splitParts: this.isSplitEnabled() ? this.splitParts : 1
             });
+            const hasOutcome = Boolean(
+                outcome.savedPath
+                || outcome.renderedPath
+                || (outcome.savedPaths && outcome.savedPaths.length > 0)
+                || (outcome.renderedPaths && outcome.renderedPaths.length > 0)
+            );
+            if (!hasOutcome) {
+                this.exportCompleted = false;
+                this.lastOutcome = null;
+                this.updateActionButtonDisabledState();
+                this.updateActionButtonLabel();
+                return;
+            }
             this.exportCompleted = true;
             this.lastOutcome = outcome;
             this.showOutputStatus(outcome);
