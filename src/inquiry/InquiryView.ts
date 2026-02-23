@@ -871,6 +871,7 @@ type InquiryReadinessUiState = {
     canSwitchToSummaries: boolean;
     canUseSelectedScenesOnly: boolean;
 };
+type InquiryEnginePopoverState = 'ready' | 'multi-pass' | 'exceeds';
 
 export class InquiryView extends ItemView {
     static readonly viewType = INQUIRY_VIEW_TYPE;
@@ -1565,8 +1566,8 @@ export class InquiryView extends ItemView {
         const failureGuidance = this.getEngineFailureGuidance();
         this.enginePanelFailureGuidance = failureGuidance;
         if (this.enginePanelMetaEl) {
-            const activeLabel = `${this.getActiveInquiryProviderLabel()} · ${this.getActiveInquiryModelLabel()}`;
-            this.enginePanelMetaEl.setText(`Active: ${activeLabel} · ${payloadSummary.text}`);
+            const resolvedModelLabel = readinessUi.model?.label || this.getActiveInquiryModelLabel();
+            this.enginePanelMetaEl.setText(`Engine: ${readinessUi.providerLabel} · ${resolvedModelLabel} · ${payloadSummary.text}`);
         }
         this.renderEngineReadinessStrip(readinessUi);
 
@@ -1574,22 +1575,14 @@ export class InquiryView extends ItemView {
         const recommendedKeys = new Set(recommendedChoices.map(choice => `${choice.provider}::${choice.modelId}`));
 
         if (this.enginePanelGuardEl) {
-            const showGuard = Boolean(this.pendingGuardQuestion) || Boolean(failureGuidance);
+            const showGuard = Boolean(failureGuidance);
             this.enginePanelGuardEl.classList.toggle('ert-hidden', !showGuard);
             this.enginePanelGuardEl.classList.toggle('is-error-guidance', Boolean(failureGuidance));
-            if (this.enginePanelGuardNoteEl && showGuard) {
+            if (this.enginePanelGuardNoteEl && failureGuidance) {
                 this.enginePanelGuardNoteEl.empty();
-                if (failureGuidance) {
-                    this.enginePanelGuardTokenEl = undefined;
-                    this.enginePanelGuardNoteEl.setText(failureGuidance.message);
-                    this.enginePanelRunAnywayButton?.setText(failureGuidance.buttonLabel);
-                } else {
-                    const guardQuestion = this.pendingGuardQuestion?.question ?? contextQuestion;
-                    const guardReadiness = this.buildReadinessUiState(guardQuestion);
-                    this.enginePanelGuardTokenEl = undefined;
-                    this.enginePanelGuardNoteEl.setText(guardReadiness.reason);
-                    this.enginePanelRunAnywayButton?.setText('Adjust Settings');
-                }
+                this.enginePanelGuardTokenEl = undefined;
+                this.enginePanelGuardNoteEl.setText(failureGuidance.message);
+                this.enginePanelRunAnywayButton?.setText(failureGuidance.buttonLabel);
             }
         }
 
@@ -1887,7 +1880,7 @@ export class InquiryView extends ItemView {
         const tokenEstimate = this.getTokenEstimateForQuestion(question);
         const estimateInputTokens = tokenEstimate.inputTokens;
         let hasEligibleModel = false;
-        let reason = 'Ready to run.';
+        let reason = 'Fits safely - single pass.';
         let safeInputBudget = 0;
         let outputBudget = INQUIRY_MAX_OUTPUT_TOKENS;
         let model: ModelInfo | undefined;
@@ -1913,7 +1906,6 @@ export class InquiryView extends ItemView {
             });
             safeInputBudget = caps.maxInputTokens;
             outputBudget = caps.maxOutputTokens;
-            reason = modelSelection.reason;
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             reason = message || 'No model satisfies capability floor.';
@@ -1941,9 +1933,9 @@ export class InquiryView extends ItemView {
         } else if (readiness.cause === 'capability_floor') {
             reason = `${providerLabel} cannot satisfy this Inquiry setup. Update Provider, Thinking Style, or Access level.`;
         } else if (readiness.cause === 'single_pass_limit') {
-            reason = 'This request exceeds the safe limit for a single pass. Switch Execution Preference to Automatic, or reduce scope.';
+            reason = 'Exceeds the single-pass safe limit. Switch to Automatic or reduce corpus.';
         } else if (readiness.state === 'large') {
-            reason = 'Large request detected. Automatic packaging will use multiple passes for stability.';
+            reason = 'Automatic packaging will run multiple structured passes.';
         }
 
         return {
@@ -1995,6 +1987,19 @@ export class InquiryView extends ItemView {
         return `Run on Saga ${this.getFocusLabel()} (${sceneMode}).`;
     }
 
+    private resolveEnginePopoverState(readinessUi: InquiryReadinessUiState): InquiryEnginePopoverState {
+        if (readinessUi.readiness.state === 'ready') return 'ready';
+        if (readinessUi.readiness.state === 'large' && readinessUi.packaging === 'automatic') return 'multi-pass';
+        return 'exceeds';
+    }
+
+    private estimateStructuredPassCount(readinessUi: InquiryReadinessUiState): number {
+        if (readinessUi.safeInputBudget <= 0) return 2;
+        const ratio = readinessUi.estimateInputTokens / readinessUi.safeInputBudget;
+        if (!Number.isFinite(ratio)) return 2;
+        return Math.max(2, Math.ceil(Math.max(1, ratio)));
+    }
+
     private renderEngineReadinessStrip(readinessUi: InquiryReadinessUiState): void {
         if (!this.enginePanelReadinessEl
             || !this.enginePanelReadinessStatusEl
@@ -2004,48 +2009,67 @@ export class InquiryView extends ItemView {
             return;
         }
 
-        const stateClass = readinessUi.readiness.state === 'ready'
+        const popoverState = this.resolveEnginePopoverState(readinessUi);
+        const stateClass = popoverState === 'ready'
             ? 'is-ready'
-            : readinessUi.readiness.state === 'large'
+            : popoverState === 'multi-pass'
                 ? 'is-amber'
                 : 'is-error';
         this.enginePanelReadinessEl.classList.remove('is-ready', 'is-amber', 'is-error');
         this.enginePanelReadinessEl.classList.add(stateClass);
 
-        const statusText = readinessUi.readiness.state === 'ready'
+        const statusText = popoverState === 'ready'
             ? 'Ready'
-            : readinessUi.readiness.state === 'large'
-                ? 'Large request'
-                : 'Will fail';
+            : popoverState === 'multi-pass'
+                ? 'Multi-pass'
+                : 'Exceeds limits';
         this.enginePanelReadinessStatusEl.setText(statusText);
 
         const inputLabel = this.formatTokenEstimate(readinessUi.estimateInputTokens);
         const safeLabel = readinessUi.safeInputBudget > 0
             ? this.formatTokenEstimate(readinessUi.safeInputBudget)
             : 'n/a';
-        const ratioPercent = Number.isFinite(readinessUi.readiness.pressureRatio)
-            ? Math.round(Math.max(0, readinessUi.readiness.pressureRatio) * 100)
-            : 0;
-        const packagingLabel = readinessUi.packaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic';
-        this.enginePanelReadinessMessageEl.setText(
-            `${readinessUi.reason} Context usage ~${inputLabel} / ${safeLabel} (${ratioPercent}%). Packaging: ${packagingLabel}.`
-        );
+        const structuredPassCount = this.estimateStructuredPassCount(readinessUi);
+        if (popoverState === 'ready') {
+            this.enginePanelReadinessMessageEl.setText(`Payload estimate: ~${inputLabel}. Fits safely - single pass.`);
+        } else if (popoverState === 'multi-pass') {
+            this.enginePanelReadinessMessageEl.setText(
+                `Large request - handled in ${structuredPassCount} passes (Automatic). Payload estimate: ~${inputLabel}.`
+            );
+        } else if (readinessUi.readiness.cause === 'single_pass_limit') {
+            this.enginePanelReadinessMessageEl.setText(
+                `Payload estimate: ~${inputLabel} exceeds single-pass safe limit (~${safeLabel}).`
+            );
+        } else {
+            this.enginePanelReadinessMessageEl.setText(readinessUi.reason);
+        }
         this.enginePanelReadinessScopeEl.setText(readinessUi.runScopeLabel);
 
         this.enginePanelReadinessActionsEl.empty();
+        if (this.enginePanelFailureGuidance) return;
+        if (popoverState === 'ready') return;
+
+        const tokenLimitExceeded = readinessUi.readiness.cause === 'single_pass_limit';
+
+        if (popoverState === 'multi-pass') {
+            if (readinessUi.canSwitchToSummaries) {
+                this.createReadinessActionButton('Switch to Summaries', () => {
+                    this.applySummariesSuggestion();
+                });
+            }
+            return;
+        }
+
         this.createReadinessActionButton('Adjust Settings', () => {
             this.openAiSettings(this.getReadinessTargets(readinessUi));
         });
-        this.createReadinessActionButton('Large Manuscript Handling', () => {
-            this.openAiSettings(['large-manuscript-handling', 'execution-preference']);
-        });
-        if (readinessUi.canSwitchToSummaries) {
-            this.createReadinessActionButton('Switch to Summaries', () => {
+        if (tokenLimitExceeded && readinessUi.canSwitchToSummaries) {
+            this.createReadinessActionButton('Use Summaries', () => {
                 this.applySummariesSuggestion();
             });
         }
-        if (readinessUi.canUseSelectedScenesOnly) {
-            this.createReadinessActionButton('Use Selected Scenes Only', () => {
+        if (tokenLimitExceeded && readinessUi.canUseSelectedScenesOnly) {
+            this.createReadinessActionButton('Reduce Corpus', () => {
                 this.applySelectedScenesSuggestion();
             });
         }
