@@ -1241,8 +1241,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             pandocPathInputEl = text.inputEl;
             plugin.registerDomEvent(text.inputEl, 'blur', async () => {
                 const value = text.getValue().trim();
-                const normalizedPath = value ? normalizePath(value) : '';
-                plugin.settings.pandocPath = normalizedPath;
+                plugin.settings.pandocPath = value;
                 await plugin.saveSettings();
             });
         })
@@ -1306,8 +1305,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             text.setValue(plugin.settings.pandocFallbackPath || '');
             plugin.registerDomEvent(text.inputEl, 'blur', async () => {
                 const value = text.getValue().trim();
-                const normalizedPath = value ? normalizePath(value) : '';
-                plugin.settings.pandocFallbackPath = normalizedPath;
+                plugin.settings.pandocFallbackPath = value;
                 await plugin.saveSettings();
             });
         })

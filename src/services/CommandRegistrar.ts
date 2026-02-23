@@ -6,7 +6,7 @@
 import { App, Notice, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { BookMeta, MatterMeta } from '../types';
-import { assembleManuscript, getSceneFilesByOrder, sliceScenesByRange, ManuscriptSceneSelection, updateSceneWordCounts } from '../utils/manuscript';
+import { assembleManuscript, getSceneFilesByOrder, ManuscriptSceneSelection, updateSceneWordCounts } from '../utils/manuscript';
 import { openGossamerScoreEntry, runGossamerAiAnalysis } from '../GossamerCommands';
 import { ManageSubplotsModal } from '../modals/ManageSubplotsModal';
 import { ManuscriptOptionsModal, ManuscriptModalResult, type ManuscriptExportOutcome } from '../modals/ManuscriptOptionsModal';
@@ -18,13 +18,14 @@ import { generateSceneContent } from '../utils/sceneGenerator';
 import { sanitizeSourcePath, buildInitialSceneFilename, buildInitialBackdropFilename } from '../utils/sceneCreation';
 import { getTemplateParts } from '../utils/yamlTemplateNormalize';
 import { ensureManuscriptOutputFolder, ensureOutlineOutputFolder } from '../utils/aiOutput';
-import { buildExportFilename, buildPrecursorFilename, buildOutlineExport, getExportFormatExtension, getLayoutById, getVaultAbsolutePath, resolveTemplatePath, runPandocOnContent, validatePandocLayout } from '../utils/exportFormats';
+import { buildExportFilename, buildPrecursorFilename, buildOutlineExport, getExportFormatExtension, getLayoutById, getVaultAbsolutePath, resolveTemplatePath, runPandocOnContent, stemToReadable, validatePandocLayout } from '../utils/exportFormats';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { getActiveBookExportContext } from '../utils/exportContext';
 import { getActiveBook } from '../utils/books';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { isPathInFolderScope } from '../utils/pathScope';
 import { ensureSceneTemplateFrontmatter } from '../utils/sceneIds';
+import { chunkScenesIntoParts } from '../utils/splitOutput';
 
 import { getRuntimeSettings } from '../utils/runtimeEstimator';
 
@@ -272,41 +273,79 @@ export class CommandRegistrar {
                 };
             }
 
-            const slicedFiles = sliceScenesByRange(filteredSelection.files, result.rangeStart, result.rangeEnd);
-
-            // Outline export remains a thin adapter: slice selection and delegate generation.
-            if (result.exportType === 'outline') {
-                const runtimeSettings = getRuntimeSettings(this.plugin.settings);
-
-                const slicedSelection = this.sliceSelection(filteredSelection, result.rangeStart, result.rangeEnd);
-                const outline = buildOutlineExport(
-                    slicedSelection,
-                    result.outlinePreset || 'beat-sheet',
-                    result.includeSynopsis ?? false,
-                    runtimeSettings
-                );
-                const outputFolder = await ensureOutlineOutputFolder(this.plugin);
-                const filename = buildExportFilename({
-                    exportType: 'outline',
-                    order: result.order,
-                    subplotFilter: result.subplot,
-                    outlinePreset: result.outlinePreset,
-                    extension: outline.extension
-                });
-                const path = `${outputFolder}/${filename}`;
-                await this.app.vault.create(path, outline.text);
-                new Notice(`Outline exported to ${path}`);
-                return { savedPath: path };
+            const slicedSelection = this.sliceSelection(filteredSelection, result.rangeStart, result.rangeEnd);
+            if (slicedSelection.files.length === 0) {
+                new Notice('Selected range is empty.');
+                return {};
             }
 
-            // Manuscript assembly is centralized in `assembleManuscript`; command layer only wires options.
-            const bookMetaResolution = this.resolveBookMetaForExport(folder);
+            const requestedParts = result.splitMode === 'parts'
+                ? Math.max(2, Math.min(20, Math.floor(result.splitParts ?? 2)))
+                : 1;
+
+            if (requestedParts > slicedSelection.files.length) {
+                new Notice(`Not enough scenes selected to split into ${requestedParts} parts.`);
+                return {};
+            }
+
+            const partRanges = requestedParts > 1
+                ? chunkScenesIntoParts(Array.from({ length: slicedSelection.files.length }, (_unused, idx) => idx), requestedParts).ranges.filter(r => r.size > 0)
+                : [{ part: 1, start: 1, end: slicedSelection.files.length, size: slicedSelection.files.length }];
+
+            const isSplitRun = requestedParts > 1;
+            const baseTitle = stemToReadable(ctx.fileStem);
+            const savedPaths: string[] = [];
+            const renderedPaths: string[] = [];
             const statusMessages: string[] = [];
+
+            if (result.exportType === 'outline') {
+                const runtimeSettings = getRuntimeSettings(this.plugin.settings);
+                const baseOutputFolder = await ensureOutlineOutputFolder(this.plugin);
+                const outputFolder = isSplitRun
+                    ? await this.createSplitOutputFolder(baseOutputFolder, baseTitle)
+                    : baseOutputFolder;
+
+                for (const range of partRanges) {
+                    const partSelection = this.sliceSelection(slicedSelection, range.start, range.end);
+                    const outline = buildOutlineExport(
+                        partSelection,
+                        result.outlinePreset || 'beat-sheet',
+                        result.includeSynopsis ?? false,
+                        runtimeSettings
+                    );
+                    const filename = isSplitRun
+                        ? `${baseTitle} - Part ${range.part}.${outline.extension}`
+                        : buildExportFilename({
+                            exportType: 'outline',
+                            order: result.order,
+                            subplotFilter: result.subplot,
+                            outlinePreset: result.outlinePreset,
+                            extension: outline.extension
+                        });
+                    const vaultPath = `${outputFolder}/${filename}`;
+                    await this.writeVaultTextFile(vaultPath, outline.text);
+                    savedPaths.push(vaultPath);
+                }
+
+                if (isSplitRun) {
+                    new Notice(`Outline exported to ${outputFolder} (${savedPaths.length} files)`);
+                } else {
+                    new Notice(`Outline exported to ${savedPaths[0]}`);
+                }
+                return {
+                    savedPath: savedPaths[0],
+                    savedPaths,
+                    outputFolder,
+                    messages: statusMessages
+                };
+            }
+
+            const bookMetaResolution = this.resolveBookMetaForExport(folder);
             if (bookMetaResolution.warning) {
                 statusMessages.push(bookMetaResolution.warning);
                 statusMessages.push('Keep only one BookMeta per book folder to avoid ambiguity.');
             }
-            if (!bookMetaResolution.bookMeta && this.selectionRequiresBookMeta(slicedFiles, filteredSelection.matterMetaByPath)) {
+            if (!bookMetaResolution.bookMeta && this.selectionRequiresBookMeta(slicedSelection.files, filteredSelection.matterMetaByPath)) {
                 statusMessages.push('No BookMeta note found. Semantic matter pages may render incomplete.');
             }
 
@@ -314,122 +353,162 @@ export class CommandRegistrar {
                 if (!bookMetaResolution.bookMeta.title) new Notice('Warning: BookMeta is missing "Title"');
                 if (bookMetaResolution.bookMeta.rights && !bookMetaResolution.bookMeta.rights.year) new Notice('Warning: BookMeta is missing "Rights: Year"');
             }
-            const assembled = await assembleManuscript(
-                slicedFiles,
-                this.app.vault,
-                undefined,
-                false,
-                filteredSelection.sortOrder,
-                result.tocMode !== 'none',
-                bookMetaResolution.bookMeta,
-                filteredSelection.matterMetaByPath
-            );
-
-            if (result.updateWordCounts) {
-                new Notice('Updating word counts...');
-                await updateSceneWordCounts(this.app, slicedFiles, assembled.scenes);
-            }
 
             const extension = getExportFormatExtension(result.outputFormat);
-            const filename = buildExportFilename({
-                exportType: 'manuscript',
-                order: result.order,
-                subplotFilter: result.subplot,
-                manuscriptPreset: result.manuscriptPreset,
-                extension
-            });
+            const baseOutputFolder = await ensureManuscriptOutputFolder(this.plugin);
+            const outputFolder = isSplitRun
+                ? await this.createSplitOutputFolder(baseOutputFolder, baseTitle)
+                : baseOutputFolder;
 
             if (result.outputFormat === 'markdown') {
-                const outputFolder = await ensureManuscriptOutputFolder(this.plugin);
-                const path = `${outputFolder}/${filename}`;
-                await this.app.vault.create(path, assembled.text);
-                new Notice(`Manuscript exported to ${path}`);
-                return { savedPath: path, messages: statusMessages };
-            } else {
-                // Pandoc execution lives in `runPandocOnContent`; validate layout/template before invocation.
-                if (result.outputFormat !== 'pdf') {
-                    throw new Error(`Unsupported manuscript output format: ${result.outputFormat}`);
-                }
+                for (const range of partRanges) {
+                    const partSelection = this.sliceSelection(slicedSelection, range.start, range.end);
+                    const assembled = await assembleManuscript(
+                        partSelection.files,
+                        this.app.vault,
+                        undefined,
+                        false,
+                        filteredSelection.sortOrder,
+                        result.tocMode !== 'none',
+                        bookMetaResolution.bookMeta,
+                        filteredSelection.matterMetaByPath
+                    );
 
-                const layout = getLayoutById(this.plugin, result.selectedLayoutId);
-                if (!layout) {
-                    new Notice('No Pandoc layout selected. Configure layouts in Pro settings.');
-                    return {};
-                }
-
-                const layoutValidation = validatePandocLayout(this.plugin, layout);
-                if (!layoutValidation.valid) {
-                    new Notice(`Layout "${layout.name}" is invalid: ${layoutValidation.error}`);
-                    return {};
-                }
-
-                const outputFolder = await ensureManuscriptOutputFolder(this.plugin);
-                const absoluteOutputFolder = getVaultAbsolutePath(this.plugin, outputFolder);
-
-                if (!absoluteOutputFolder) {
-                    new Notice('Pandoc export not supported in this environment.');
-                    return {};
-                }
-
-                const precursorName = buildPrecursorFilename(
-                    ctx.fileStem,
-                    result.manuscriptPreset || 'novel',
-                    result.order,
-                    result.subplot
-                );
-                const precursorPath = `${outputFolder}/${precursorName}`;
-                try {
-                    await this.app.vault.create(precursorPath, assembled.text);
-                } catch {
-                    const existing = this.app.vault.getAbstractFileByPath(precursorPath);
-                    if (existing instanceof TFile) {
-                        await this.app.vault.modify(existing, assembled.text);
+                    if (result.updateWordCounts) {
+                        await updateSceneWordCounts(this.app, partSelection.files, assembled.scenes);
                     }
+
+                    const filename = isSplitRun
+                        ? `${baseTitle} - Part ${range.part}.${extension}`
+                        : buildExportFilename({
+                            exportType: 'manuscript',
+                            order: result.order,
+                            subplotFilter: result.subplot,
+                            manuscriptPreset: result.manuscriptPreset,
+                            extension
+                        });
+                    const vaultPath = `${outputFolder}/${filename}`;
+                    await this.writeVaultTextFile(vaultPath, assembled.text);
+                    savedPaths.push(vaultPath);
                 }
 
-                const pandocFilename = buildExportFilename({
-                    exportType: 'manuscript',
-                    order: result.order,
-                    subplotFilter: result.subplot,
-                    manuscriptPreset: result.manuscriptPreset,
-                    extension,
-                    fileStem: ctx.fileStem
-                });
-                const outputPath = `${absoluteOutputFolder}/${pandocFilename}`;
-
-                const templatePath = resolveTemplatePath(this.plugin, layout.path);
-                const renderedVaultPath = `${outputFolder}/${pandocFilename}`;
-
-                new Notice('Running Pandoc...');
-                try {
-                    await runPandocOnContent(assembled.text, outputPath, {
-                        targetFormat: 'pdf',
-                        templatePath,
-                        workingDir: absoluteOutputFolder,
-                        pandocPath: this.plugin.settings.pandocPath,
-                        enableFallback: this.plugin.settings.pandocEnableFallback,
-                        fallbackPath: this.plugin.settings.pandocFallbackPath
-                    });
-
-                    const activeBook = getActiveBook(this.plugin.settings);
-                    if (activeBook) {
-                        if (!activeBook.lastUsedPandocLayoutByPreset) {
-                            activeBook.lastUsedPandocLayoutByPreset = {};
-                        }
-                        activeBook.lastUsedPandocLayoutByPreset[result.manuscriptPreset || 'novel'] = layout.id;
-                    }
-                    await this.plugin.saveSettings();
-
-                    new Notice(`Export successful: ${pandocFilename}`);
-                    return { savedPath: precursorPath, renderedPath: renderedVaultPath, messages: statusMessages };
-                } catch (e) {
-                    const msg = (e as any)?.message || String(e);
-                    new Notice(`Pandoc failed: ${msg}`);
-                    console.error(e);
-                    throw e;
+                if (isSplitRun) {
+                    new Notice(`Manuscript exported to ${outputFolder} (${savedPaths.length} files)`);
+                } else {
+                    new Notice(`Manuscript exported to ${savedPaths[0]}`);
                 }
+                return {
+                    savedPath: savedPaths[0],
+                    savedPaths,
+                    outputFolder,
+                    messages: statusMessages
+                };
             }
 
+            if (result.outputFormat !== 'pdf') {
+                throw new Error(`Unsupported manuscript output format: ${result.outputFormat}`);
+            }
+
+            const layout = getLayoutById(this.plugin, result.selectedLayoutId);
+            if (!layout) {
+                new Notice('No Pandoc layout selected. Configure layouts in Pro settings.');
+                return {};
+            }
+            const layoutValidation = validatePandocLayout(this.plugin, layout);
+            if (!layoutValidation.valid) {
+                new Notice(`Layout "${layout.name}" is invalid: ${layoutValidation.error}`);
+                return {};
+            }
+
+            const absoluteOutputFolder = getVaultAbsolutePath(this.plugin, outputFolder);
+            if (!absoluteOutputFolder) {
+                new Notice('Pandoc export not supported in this environment.');
+                return {};
+            }
+
+            const templatePath = resolveTemplatePath(this.plugin, layout.path);
+            const shouldSaveMarkdown = result.saveMarkdownArtifact ?? true;
+
+            new Notice('Running Pandoc...');
+            for (const range of partRanges) {
+                const partSelection = this.sliceSelection(slicedSelection, range.start, range.end);
+                const assembled = await assembleManuscript(
+                    partSelection.files,
+                    this.app.vault,
+                    undefined,
+                    false,
+                    filteredSelection.sortOrder,
+                    result.tocMode !== 'none',
+                    bookMetaResolution.bookMeta,
+                    filteredSelection.matterMetaByPath
+                );
+
+                if (result.updateWordCounts) {
+                    await updateSceneWordCounts(this.app, partSelection.files, assembled.scenes);
+                }
+
+                if (shouldSaveMarkdown) {
+                    const precursorName = isSplitRun
+                        ? `${baseTitle} - Part ${range.part}.md`
+                        : buildPrecursorFilename(
+                            ctx.fileStem,
+                            result.manuscriptPreset || 'novel',
+                            result.order,
+                            result.subplot
+                        );
+                    const precursorPath = `${outputFolder}/${precursorName}`;
+                    await this.writeVaultTextFile(precursorPath, assembled.text);
+                    savedPaths.push(precursorPath);
+                }
+
+                const renderedFilename = isSplitRun
+                    ? `${baseTitle} - Part ${range.part}.pdf`
+                    : buildExportFilename({
+                        exportType: 'manuscript',
+                        order: result.order,
+                        subplotFilter: result.subplot,
+                        manuscriptPreset: result.manuscriptPreset,
+                        extension,
+                        fileStem: ctx.fileStem
+                    });
+                const renderedAbsolutePath = `${absoluteOutputFolder}/${renderedFilename}`;
+                const renderedVaultPath = `${outputFolder}/${renderedFilename}`;
+
+                await runPandocOnContent(assembled.text, renderedAbsolutePath, {
+                    targetFormat: 'pdf',
+                    templatePath,
+                    workingDir: absoluteOutputFolder,
+                    pandocPath: this.plugin.settings.pandocPath,
+                    enableFallback: this.plugin.settings.pandocEnableFallback,
+                    fallbackPath: this.plugin.settings.pandocFallbackPath
+                });
+
+                renderedPaths.push(renderedVaultPath);
+            }
+
+            const activeBook = getActiveBook(this.plugin.settings);
+            if (activeBook) {
+                if (!activeBook.lastUsedPandocLayoutByPreset) {
+                    activeBook.lastUsedPandocLayoutByPreset = {};
+                }
+                activeBook.lastUsedPandocLayoutByPreset[result.manuscriptPreset || 'novel'] = layout.id;
+            }
+            await this.plugin.saveSettings();
+
+            if (isSplitRun) {
+                new Notice(`Export successful: ${renderedPaths.length} PDFs`);
+            } else {
+                new Notice(`Export successful: ${renderedPaths[0]?.split('/').pop() || 'PDF'}`);
+            }
+
+            return {
+                savedPath: savedPaths[0],
+                renderedPath: renderedPaths[0],
+                savedPaths,
+                renderedPaths,
+                outputFolder,
+                messages: statusMessages
+            };
         } catch (error) {
             const msg = (error as any)?.message || String(error);
             new Notice('Export failed: ' + msg);
@@ -457,6 +536,33 @@ export class CommandRegistrar {
             matterMetaByPath: selection.matterMetaByPath,
             sortOrder: selection.sortOrder
         };
+    }
+
+    private async writeVaultTextFile(vaultPath: string, content: string): Promise<void> {
+        const existing = this.app.vault.getAbstractFileByPath(vaultPath);
+        if (existing instanceof TFile) {
+            await this.app.vault.modify(existing, content);
+            return;
+        }
+        await this.app.vault.create(vaultPath, content);
+    }
+
+    private async ensureVaultFolderPath(folderPath: string): Promise<void> {
+        const parts = folderPath.split('/').filter(Boolean);
+        let current = '';
+        for (const part of parts) {
+            current = current ? `${current}/${part}` : part;
+            if (!this.app.vault.getAbstractFileByPath(current)) {
+                await this.app.vault.createFolder(current);
+            }
+        }
+    }
+
+    private async createSplitOutputFolder(baseOutputFolder: string, baseTitle: string): Promise<string> {
+        const safeStamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const splitFolder = `${baseOutputFolder}/${baseTitle} - Split ${safeStamp}`;
+        await this.ensureVaultFolderPath(splitFolder);
+        return splitFolder;
     }
 
     private parseBookMetaFromFrontmatter(frontmatter: Record<string, unknown>, sourcePath: string): BookMeta {

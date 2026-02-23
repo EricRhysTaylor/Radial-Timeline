@@ -259,6 +259,7 @@ export interface InquirySourcesSettings {
     preset?: InquirySourcesPreset;
     scanRoots?: string[];
     resolvedScanRoots?: string[];
+    bookInclusion?: Record<string, boolean>;
     classScope?: string[];
     classes?: InquiryClassConfig[];
     classCounts?: Record<string, number>;

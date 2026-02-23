@@ -78,6 +78,11 @@ import {
 } from './services/corpusSelectionKeys';
 import { buildMinimapSubsetResult } from './services/minimapSubset';
 import { buildPassIndicator, evaluateInquiryReadiness, type InquiryReadinessResult } from './services/readiness';
+import {
+    isPathIncludedByInquiryBooks,
+    normalizeInquiryBookInclusion,
+    resolveInquiryBookResolution
+} from './services/bookResolution';
 import { getModelDisplayName } from '../utils/modelResolver';
 import { addTooltipData, setupTooltipsFromDataAttributes } from '../utils/tooltip';
 import { splitIntoBalancedLinesOptimal } from '../utils/text';
@@ -5636,6 +5641,13 @@ export class InquiryView extends ItemView {
                 : resolveScanRoots(scanRoots, this.app.vault, MAX_RESOLVED_SCAN_ROOTS).resolvedRoots)
             : [];
         const resolvedVaultRoots = resolvedRoots.map(toVaultRoot);
+        const bookResolution = resolveInquiryBookResolution({
+            vault: this.app.vault,
+            metadataCache: this.app.metadataCache,
+            resolvedVaultRoots,
+            frontmatterMappings: this.plugin.settings.frontmatterMappings,
+            bookInclusion: sources.bookInclusion
+        });
 
         const inRoots = (path: string) => {
             return resolvedVaultRoots.some(root => !root || path === root || path.startsWith(`${root}/`));
@@ -5644,6 +5656,7 @@ export class InquiryView extends ItemView {
         const files = this.app.vault.getMarkdownFiles();
         return files.filter(file => {
             if (!inRoots(file.path)) return false;
+            if (!isPathIncludedByInquiryBooks(file.path, bookResolution.candidates)) return false;
             const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
             if (!frontmatter) return false;
             const normalized = normalizeFrontmatterKeys(frontmatter, this.plugin.settings.frontmatterMappings);
@@ -8346,6 +8359,13 @@ export class InquiryView extends ItemView {
                 : resolveScanRoots(scanRoots, this.app.vault, MAX_RESOLVED_SCAN_ROOTS).resolvedRoots)
             : [];
         const resolvedVaultRoots = resolvedRoots.map(toVaultRoot);
+        const bookResolution = resolveInquiryBookResolution({
+            vault: this.app.vault,
+            metadataCache: this.app.metadataCache,
+            resolvedVaultRoots,
+            frontmatterMappings: this.plugin.settings.frontmatterMappings,
+            bookInclusion: sources.bookInclusion
+        });
 
         if (!classScope.allowAll && classScope.allowed.size === 0) {
             return { entries, resolvedRoots };
@@ -8358,6 +8378,7 @@ export class InquiryView extends ItemView {
         const files = this.app.vault.getMarkdownFiles();
         files.forEach(file => {
             if (!inRoots(file.path)) return;
+            if (!isPathIncludedByInquiryBooks(file.path, bookResolution.candidates)) return;
             const cache = this.app.metadataCache.getFileCache(file);
             const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
             if (!frontmatter) return;
@@ -8661,14 +8682,15 @@ export class InquiryView extends ItemView {
 
     private normalizeInquirySources(raw?: InquirySourcesSettings): InquirySourcesSettings {
         if (!raw) {
-            return { scanRoots: [], classes: [], classCounts: {}, resolvedScanRoots: [] };
+            return { scanRoots: [], bookInclusion: {}, classes: [], classCounts: {}, resolvedScanRoots: [] };
         }
         if ('sceneFolders' in raw || 'bookOutlineFiles' in raw || 'sagaOutlineFile' in raw) {
-            return { scanRoots: [], classes: [], classCounts: {}, resolvedScanRoots: [] };
+            return { scanRoots: [], bookInclusion: {}, classes: [], classCounts: {}, resolvedScanRoots: [] };
         }
         return {
             preset: raw.preset,
             scanRoots: raw.scanRoots && raw.scanRoots.length ? normalizeScanRootPatterns(raw.scanRoots) : [],
+            bookInclusion: normalizeInquiryBookInclusion(raw.bookInclusion),
             classScope: raw.classScope ? raw.classScope.map(value => value.trim().toLowerCase()).filter(Boolean) : [],
             classes: (raw.classes || []).map(config => this.normalizeClassContribution({
                 className: config.className.toLowerCase(),

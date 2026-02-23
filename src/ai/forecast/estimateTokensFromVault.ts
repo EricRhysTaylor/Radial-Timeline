@@ -4,6 +4,7 @@ import type { InquiryClassConfig, InquiryMaterialMode, InquirySourcesSettings } 
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { normalizeScanRootPatterns, resolveScanRoots, toVaultRoot } from '../../inquiry/utils/scanRoots';
 import { cleanEvidenceBody } from '../../inquiry/utils/evidenceCleaning';
+import { isPathIncludedByInquiryBooks, resolveInquiryBookResolution } from '../../inquiry/services/bookResolution';
 import { getSortedSceneFiles } from '../../utils/manuscript';
 import type { GossamerEvidenceMode } from '../../gossamer/evidence/buildGossamerEvidence';
 import { buildGossamerEvidenceDocument } from '../../gossamer/evidence/buildGossamerEvidence';
@@ -124,7 +125,9 @@ const getNormalizedFrontmatter = (
 
 const selectInquiryFiles = (
     vault: Vault,
-    inquirySources?: InquirySourcesSettings
+    metadataCache: MetadataCache,
+    inquirySources?: InquirySourcesSettings,
+    frontmatterMappings?: Record<string, string>
 ): { files: TFile[]; selectionLabel: string } => {
     const scanRoots = normalizeScanRootPatterns(inquirySources?.scanRoots);
     if (!scanRoots.length) {
@@ -135,8 +138,16 @@ const selectInquiryFiles = (
         ? inquirySources.resolvedScanRoots
         : resolveScanRoots(scanRoots, vault).resolvedRoots;
     const vaultRoots = resolvedRoots.map(toVaultRoot);
+    const bookResolution = resolveInquiryBookResolution({
+        vault,
+        metadataCache,
+        resolvedVaultRoots: vaultRoots,
+        frontmatterMappings,
+        bookInclusion: inquirySources?.bookInclusion
+    });
     const files = vault.getMarkdownFiles().filter(file =>
         vaultRoots.some(root => !root || file.path === root || file.path.startsWith(`${root}/`))
+        && isPathIncludedByInquiryBooks(file.path, bookResolution.candidates)
     );
     const selectionLabel = resolvedRoots.length
         ? `${resolvedRoots.length} scan root${resolvedRoots.length === 1 ? '' : 's'}`
@@ -156,7 +167,12 @@ export async function estimateInquiryTokens(params: {
     const classes = normalizeInquiryClasses(params.inquirySources?.classes);
     const classConfigMap = new Map(classes.map(config => [config.className, config]));
     const classScope = getClassScopeConfig(params.inquirySources?.classScope);
-    const selected = selectInquiryFiles(params.vault, params.inquirySources);
+    const selected = selectInquiryFiles(
+        params.vault,
+        params.metadataCache,
+        params.inquirySources,
+        params.frontmatterMappings
+    );
     const blocks: InquiryEvidenceBlock[] = [];
 
     if (!classScope.allowAll && classScope.allowed.size === 0) {

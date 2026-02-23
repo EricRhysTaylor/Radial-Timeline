@@ -239,6 +239,23 @@
   gap: 10px;
 }
 
+.ert-manuscript-pill-row--single {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.ert-manuscript-pill-row--single .rt-manuscript-pill {
+  flex: 0 0 auto;
+}
+
+.ert-manuscript-output-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .rt-manuscript-pill {
   display: inline-flex;
   align-items: center;
@@ -363,6 +380,52 @@
 
 .ert-manuscript-scope-input {
   min-width: 220px;
+}
+
+.ert-manuscript-split-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ert-manuscript-split-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ert-manuscript-split-parts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ert-manuscript-split-input-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ert-manuscript-split-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ert-manuscript-split-error {
+  color: var(--text-error);
+}
+
+@media (max-width: 720px) {
+  .ert-manuscript-output-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .ert-manuscript-output-row .ert-manuscript-pill-row--single {
+    width: 100%;
+  }
 }
 
 .ert-manuscript-rule-block {

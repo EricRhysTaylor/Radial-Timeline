@@ -1869,6 +1869,10 @@
   background: color-mix(in srgb, var(--text-warning) 10%, var(--background-secondary));
 }
 
+.ert-inquiry-engine-guard.ert-hidden {
+  display: none;
+}
+
 .ert-inquiry-engine-guard.is-error-guidance {
   border-color: color-mix(in srgb, var(--text-error) 45%, transparent);
   background: color-mix(in srgb, var(--text-error) 12%, var(--background-secondary));

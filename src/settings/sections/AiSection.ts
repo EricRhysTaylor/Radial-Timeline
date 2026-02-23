@@ -431,12 +431,12 @@ export function renderAiSection(params: {
         return 'auto';
     };
     const gossamerEvidenceSetting = new Settings(aiSettingsGroup)
-        .setName('Gossamer evidence')
+        .setName('Gossamer material')
         .setDesc('Auto sends current manuscript body content to AI and switches to summaries only when the selected model cannot safely accept the full body payload.')
         .addDropdown(dropdown => {
             gossamerEvidenceDropdown = dropdown;
             dropdown.selectEl.addClass('ert-input', 'ert-input--md');
-            dropdown.addOption('auto', 'Auto (scene bodies first)');
+            dropdown.addOption('auto', 'Auto');
             dropdown.addOption('summaries', 'Summaries');
             dropdown.addOption('bodies', 'Scene bodies only');
             dropdown.onChange(async value => {

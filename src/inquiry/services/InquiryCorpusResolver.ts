@@ -1,12 +1,11 @@
-import { MetadataCache, TFile, TFolder, Vault, normalizePath } from 'obsidian';
+import { MetadataCache, TFile, Vault } from 'obsidian';
 import type { InquiryScope } from '../state';
 import type { InquiryClassConfig, InquirySourcesSettings } from '../../types/settings';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { getScenePrefixNumber } from '../../utils/text';
 import { MAX_RESOLVED_SCAN_ROOTS, normalizeScanRootPatterns, resolveScanRoots, toVaultRoot } from '../utils/scanRoots';
 import { readSceneId } from '../../utils/sceneIds';
-
-const BOOK_FOLDER_REGEX = /^Book\s+(\d+)/i;
+import { resolveInquiryBookResolution } from './bookResolution';
 
 export type InquiryCorpusItem = {
     id: string;
@@ -64,6 +63,7 @@ export class InquiryCorpusResolver {
                 activeBookId: undefined
             };
         }
+
         const scanRoots = normalizeScanRootPatterns(sources.scanRoots);
         const resolvedRoots = scanRoots.length
             ? (sources.resolvedScanRoots && sources.resolvedScanRoots.length
@@ -72,7 +72,18 @@ export class InquiryCorpusResolver {
             : [];
         const resolvedVaultRoots = resolvedRoots.map(toVaultRoot);
 
-        const books = this.buildBookItems(resolvedVaultRoots);
+        const bookResolution = resolveInquiryBookResolution({
+            vault: this.vault,
+            metadataCache: this.metadataCache,
+            resolvedVaultRoots,
+            frontmatterMappings: this.frontmatterMappings,
+            bookInclusion: sources.bookInclusion
+        });
+
+        const books = this.buildBookItems(bookResolution.includedBooks.map(book => ({
+            rootPath: book.rootPath,
+            bookNumber: book.bookNumber
+        })));
         const activeBookId = this.getActiveBookId(books, params.focusBookId);
         const scenes = params.scope === 'book' && activeBookId
             ? this.buildSceneItems(activeBookId, resolvedVaultRoots, sources.classes || [], classScope)
@@ -87,55 +98,21 @@ export class InquiryCorpusResolver {
         };
     }
 
-    private buildBookItems(resolvedVaultRoots: string[]): InquiryBookItem[] {
-        if (!resolvedVaultRoots.length) return [];
-
-        const bookMap = new Map<string, InquiryBookItem>();
-        const hasRootScan = resolvedVaultRoots.some(root => root === '');
-
-        if (hasRootScan) {
-            const folders = this.vault.getAllLoadedFiles().filter((file): file is TFolder => file instanceof TFolder);
-            folders.forEach(folder => {
-                const match = BOOK_FOLDER_REGEX.exec(folder.name);
-                if (!match) return;
-                const bookNumber = Number(match[1]);
-                this.addBookItem(bookMap, folder.path, bookNumber);
-            });
-            folders.forEach(folder => {
-                if (folder.path.includes('/')) return;
-                if (bookMap.has(normalizePath(folder.path))) return;
-                if (this.isBookFolderByOutline(folder.path)) {
-                    this.addBookItem(bookMap, folder.path, undefined);
-                }
-            });
-        }
-
-        resolvedVaultRoots.forEach(root => {
-            if (!root) return;
-            const candidate = this.extractBookRoot(root);
-            if (candidate) {
-                const match = BOOK_FOLDER_REGEX.exec(candidate.split('/').pop() || '');
-                const bookNumber = match ? Number(match[1]) : undefined;
-                this.addBookItem(bookMap, candidate, bookNumber);
-                return;
-            }
-            if (this.isBookFolderByOutline(root)) {
-                this.addBookItem(bookMap, root, undefined);
-            }
-        });
-
-        const list = Array.from(bookMap.values());
-        list.sort((a, b) => {
-            const numA = a.bookNumber ?? Number.POSITIVE_INFINITY;
-            const numB = b.bookNumber ?? Number.POSITIVE_INFINITY;
-            if (numA !== numB) return numA - numB;
-            return a.rootPath.localeCompare(b.rootPath);
-        });
-
-        return list.map((book, index) => ({
-            ...book,
-            displayLabel: `B${this.clampLabelNumber(book.bookNumber ?? index + 1)}`
-        }));
+    private buildBookItems(books: Array<{ rootPath: string; bookNumber?: number }>): InquiryBookItem[] {
+        return books
+            .sort((a, b) => {
+                const numA = a.bookNumber ?? Number.POSITIVE_INFINITY;
+                const numB = b.bookNumber ?? Number.POSITIVE_INFINITY;
+                if (numA !== numB) return numA - numB;
+                return a.rootPath.localeCompare(b.rootPath);
+            })
+            .map((book, index) => ({
+                id: book.rootPath,
+                rootPath: book.rootPath,
+                filePaths: [book.rootPath],
+                displayLabel: `B${this.clampLabelNumber(book.bookNumber ?? index + 1)}`,
+                bookNumber: book.bookNumber
+            }));
     }
 
     private buildSceneItems(
@@ -201,26 +178,6 @@ export class InquiryCorpusResolver {
         return books[0].id;
     }
 
-    private addBookItem(map: Map<string, InquiryBookItem>, rootPath: string, bookNumber?: number): void {
-        const normalized = normalizePath(rootPath);
-        if (!normalized) return;
-        if (map.has(normalized)) return;
-        map.set(normalized, {
-            id: normalized,
-            rootPath: normalized,
-            filePaths: [normalized],
-            displayLabel: '',
-            bookNumber
-        });
-    }
-
-    private extractBookRoot(path: string): string | null {
-        const segments = normalizePath(path).split('/').filter(Boolean);
-        const index = segments.findIndex(segment => BOOK_FOLDER_REGEX.test(segment));
-        if (index < 0) return null;
-        return segments.slice(0, index + 1).join('/');
-    }
-
     private getFrontmatter(file: TFile): Record<string, unknown> | null {
         const cache = this.metadataCache.getFileCache(file);
         const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
@@ -267,21 +224,6 @@ export class InquiryCorpusResolver {
     /** Alias for hasSynopsis — prefer in new code to prevent semantic drift. */
     private hasSummary(frontmatter: Record<string, unknown>): boolean {
         return this.hasSynopsis(frontmatter);
-    }
-
-    private isBookFolderByOutline(folderPath: string): boolean {
-        const prefix = `${folderPath}/`;
-        const files = this.vault.getMarkdownFiles();
-        return files.some(file => {
-            if (!file.path.startsWith(prefix)) return false;
-            const frontmatter = this.getFrontmatter(file);
-            if (!frontmatter) return false;
-            const classValues = this.extractClassValues(frontmatter);
-            if (!classValues.includes('outline')) return false;
-            const scope = frontmatter['Scope'];
-            if (typeof scope !== 'string') return false;
-            return scope.trim().toLowerCase() === 'book';
-        });
     }
 
     private clampLabelNumber(value: number): number {

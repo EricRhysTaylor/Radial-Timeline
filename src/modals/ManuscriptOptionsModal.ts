@@ -8,6 +8,7 @@ import { t } from '../i18n';
 import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, getLayoutsForPreset, validatePandocLayout } from '../utils/exportFormats';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { getActiveBook, getActiveBookTitle, DEFAULT_BOOK_TITLE } from '../utils/books';
+import { chunkScenesIntoParts } from '../utils/splitOutput';
 
 export interface ManuscriptModalResult {
     order: ManuscriptOrder;
@@ -24,11 +25,16 @@ export interface ManuscriptModalResult {
     includeMatter?: boolean;
     saveMarkdownArtifact?: boolean;
     selectedLayoutId?: string;
+    splitMode?: 'single' | 'parts';
+    splitParts?: number;
 }
 
 export interface ManuscriptExportOutcome {
     savedPath?: string;
     renderedPath?: string;
+    savedPaths?: string[];
+    renderedPaths?: string[];
+    outputFolder?: string;
     messages?: string[];
 }
 
@@ -51,14 +57,13 @@ export class ManuscriptOptionsModal extends Modal {
     private includeSynopsis: boolean = true;
     private includeMatter: boolean = true;
     private saveMarkdownArtifact: boolean = true;
-    private selectedAct: string = 'all';
     private hasWhenDates: boolean = false;
     private includeMatterUserChoice: boolean = true;
+    private splitMode: 'single' | 'parts' = 'single';
+    private splitParts: number = 3;
 
     private sceneTitles: string[] = [];
     private sceneWhenDates: (string | null)[] = [];
-    private sceneActs: (number | null)[] = [];
-    private availableActs: number[] = [];
     private sceneNumbers: number[] = [];
     private totalScenes = 0;
     private rangeStart = 1;
@@ -76,10 +81,7 @@ export class ManuscriptOptionsModal extends Modal {
     private openFolderButton?: ButtonComponent;
     private markdownArtifactToggle?: ToggleComponent;
     private subplotDropdown?: DropdownComponent;
-    private actDropdown?: DropdownComponent;
-    private actRowEl?: HTMLElement;
     private chronoHelperEl?: HTMLElement;
-    private actSnapNoteEl?: HTMLElement;
     private outputStatusEl?: HTMLElement;
     private orderPills: { el: HTMLElement, order: ManuscriptOrder }[] = [];
     private exportTypePills: { el: HTMLElement, type: ExportType }[] = [];
@@ -93,9 +95,11 @@ export class ManuscriptOptionsModal extends Modal {
     private scopeCard?: HTMLElement;
     private orderingCard?: HTMLElement;
     private filterCard?: HTMLElement;
+    private splitCard?: HTMLElement;
+    private manuscriptRulesCard?: HTMLElement;
+    private publishingCard?: HTMLElement;
     private includeMatterCard?: HTMLElement;
-    private outlineSynopsisRow?: HTMLElement;
-    private advancedDetailsEl?: HTMLDetailsElement;
+    private synopsisRow?: HTMLElement;
     private templateWarningEl?: HTMLElement;
     private layoutContainerEl?: HTMLElement;
     private selectedLayoutId?: string;
@@ -109,6 +113,13 @@ export class ManuscriptOptionsModal extends Modal {
     private outlinePreviewIcon?: HTMLElement;
     private manuscriptPreviewExpanded: boolean = false;
     private outlinePreviewExpanded: boolean = false;
+    private splitPartsInputEl?: HTMLInputElement;
+    private splitPartsContainerEl?: HTMLElement;
+    private splitPreviewEl?: HTMLElement;
+    private splitErrorEl?: HTMLElement;
+    private splitSingleInputEl?: HTMLInputElement;
+    private splitPartsRadioInputEl?: HTMLInputElement;
+    private cancelButton?: ButtonComponent;
 
     private activeHandle: DragHandle = null;
     private detachEvents?: () => void;
@@ -200,13 +211,18 @@ export class ManuscriptOptionsModal extends Modal {
         // A) OUTPUT
         const outputCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         this.createSectionHeading(outputCard, 'Output', 'file-output');
-        const exportRow = outputCard.createDiv({ cls: 'rt-manuscript-pill-row' });
+        const exportTypeRow = outputCard.createDiv({ cls: 'ert-manuscript-output-row' });
+        exportTypeRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Document type' });
+        const exportRow = exportTypeRow.createDiv({ cls: 'rt-manuscript-pill-row ert-manuscript-pill-row--single' });
         this.createExportTypePill(exportRow, t('manuscriptModal.exportTypeManuscript'), 'manuscript');
         this.createExportTypePill(exportRow, t('manuscriptModal.exportTypeOutline'), 'outline', !this.isPro, true);
-        const formatRow = outputCard.createDiv({ cls: 'rt-manuscript-pill-row' });
+        const formatGroupRow = outputCard.createDiv({ cls: 'ert-manuscript-output-row' });
+        formatGroupRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Format' });
+        const formatRow = formatGroupRow.createDiv({ cls: 'rt-manuscript-pill-row ert-manuscript-pill-row--single' });
         this.createOutputFormatPill(formatRow, t('manuscriptModal.formatMarkdown'), 'markdown', false, 'both');
         this.createOutputFormatPill(formatRow, t('manuscriptModal.formatPdf'), 'pdf', !this.isPro, 'manuscript', true);
 
+        // B) PRESETS
         this.manuscriptOptionsCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         this.createSectionHeading(this.manuscriptOptionsCard, t('manuscriptModal.manuscriptPresetHeading'), 'book-open');
         const presetRow = this.manuscriptOptionsCard.createDiv({ cls: 'rt-manuscript-input-container' });
@@ -252,24 +268,62 @@ export class ManuscriptOptionsModal extends Modal {
         this.outlinePresetDescEl = this.outlineOptionsCard.createDiv({ cls: 'rt-sub-card-note' });
         this.updateOutlinePresetDescription();
 
-        // B) SCOPE
+        // C) SPLIT OUTPUT
+        this.splitCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        this.createSectionHeading(this.splitCard, 'Split Output', 'split');
+        this.splitCard.createDiv({
+            cls: 'rt-sub-card-note',
+            text: 'Export as one file or split into multiple parts.'
+        });
+        const splitModeRow = this.splitCard.createDiv({ cls: 'ert-manuscript-split-mode' });
+        const splitModeGroup = `rt-manuscript-split-${Date.now()}`;
+        const singleOption = splitModeRow.createEl('label', { cls: 'ert-manuscript-split-option' });
+        this.splitSingleInputEl = singleOption.createEl('input', {
+            attr: { type: 'radio', name: splitModeGroup, value: 'single' }
+        }) as HTMLInputElement;
+        singleOption.createSpan({ text: 'Single file' });
+
+        const partsOption = splitModeRow.createEl('label', { cls: 'ert-manuscript-split-option' });
+        this.splitPartsRadioInputEl = partsOption.createEl('input', {
+            attr: { type: 'radio', name: splitModeGroup, value: 'parts' }
+        }) as HTMLInputElement;
+        partsOption.createSpan({ text: 'Split into parts' });
+
+        this.splitSingleInputEl.checked = true;
+        this.splitSingleInputEl.addEventListener('change', () => {
+            if (!this.splitSingleInputEl?.checked) return;
+            this.splitMode = 'single';
+            this.updateSplitUi();
+        });
+        this.splitPartsRadioInputEl.addEventListener('change', () => {
+            if (!this.splitPartsRadioInputEl?.checked) return;
+            this.splitMode = 'parts';
+            this.updateSplitUi();
+        });
+
+        this.splitPartsContainerEl = this.splitCard.createDiv({ cls: 'ert-manuscript-split-parts rt-hidden' });
+        const splitInputRow = this.splitPartsContainerEl.createDiv({ cls: 'ert-manuscript-split-input-row' });
+        splitInputRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Number of parts' });
+        this.splitPartsInputEl = splitInputRow.createEl('input', {
+            cls: 'ert-input ert-input--xs',
+            attr: { type: 'number', min: '2', max: '20', step: '1', value: String(this.splitParts) }
+        }) as HTMLInputElement;
+        this.splitPartsInputEl.addEventListener('input', () => {
+            const next = Number.parseInt(this.splitPartsInputEl?.value || '', 10);
+            this.splitParts = this.clampSplitParts(next);
+            if (this.splitPartsInputEl) this.splitPartsInputEl.value = String(this.splitParts);
+            this.updateSplitUi();
+        });
+        this.splitPartsContainerEl.createDiv({
+            cls: 'rt-sub-card-note',
+            text: 'Scenes are divided evenly across files.'
+        });
+        this.splitErrorEl = this.splitPartsContainerEl.createDiv({ cls: 'rt-sub-card-note ert-manuscript-split-error rt-hidden' });
+        this.splitPreviewEl = this.splitPartsContainerEl.createDiv({ cls: 'ert-manuscript-split-preview' });
+
+        // D) SCOPE
         this.scopeCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         this.createSectionHeading(this.scopeCard, 'Scope', 'filter');
-
-        this.actRowEl = this.scopeCard.createDiv({ cls: 'ert-manuscript-scope-row' });
-        this.actRowEl.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Act' });
-        const actControl = this.actRowEl.createDiv({ cls: 'rt-manuscript-input-container ert-manuscript-scope-input' });
-        this.actDropdown = new DropdownComponent(actControl)
-            .addOption('all', 'All acts')
-            .setValue('all')
-            .onChange((value) => {
-                this.selectedAct = value;
-                this.applyActSnap();
-            });
-        this.actSnapNoteEl = this.scopeCard.createDiv({
-            cls: 'rt-sub-card-note',
-            text: 'Act snapping follows the current ordering mode.'
-        });
 
         this.filterCard = this.scopeCard.createDiv({ cls: 'ert-manuscript-scope-row' });
         this.filterCard.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Subplot filter' });
@@ -294,7 +348,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.registerPointerEvents();
         this.loadingEl = this.scopeCard.createDiv({ cls: 'rt-manuscript-loading', text: t('manuscriptModal.rangeLoading') });
 
-        // C) ORDERING
+        // E) ORDERING
         this.orderingCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         this.createSectionHeading(this.orderingCard, t('manuscriptModal.orderHeading'), 'arrow-down-up');
         const orderRow = this.orderingCard.createDiv({ cls: 'rt-manuscript-pill-row' });
@@ -311,11 +365,11 @@ export class ManuscriptOptionsModal extends Modal {
             text: t('manuscriptModal.orderNote')
         });
 
-        // D) CONTENT RULES
-        const rulesCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        this.createSectionHeading(rulesCard, 'Content rules', 'list-checks');
+        // F) MANUSCRIPT OPTIONS
+        this.manuscriptRulesCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        this.createSectionHeading(this.manuscriptRulesCard, 'Manuscript Options', 'list-checks');
 
-        this.tocCard = rulesCard.createDiv({ cls: 'ert-manuscript-rule-block' });
+        this.tocCard = this.manuscriptRulesCard.createDiv({ cls: 'ert-manuscript-rule-block' });
         this.tocCard.createDiv({ cls: 'rt-manuscript-toggle-label', text: t('manuscriptModal.tocHeading') });
         const tocActions = this.tocCard.createDiv({ cls: 'rt-manuscript-pill-row' });
         this.createPill(tocActions, t('manuscriptModal.tocMarkdown'), this.tocMode === 'markdown', () => {
@@ -335,7 +389,7 @@ export class ManuscriptOptionsModal extends Modal {
             text: t('manuscriptModal.tocNote')
         });
 
-        this.includeMatterCard = rulesCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
+        this.includeMatterCard = this.manuscriptRulesCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
         this.includeMatterCard.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Include matter notes' });
         new ToggleComponent(this.includeMatterCard)
             .setValue(this.includeMatterUserChoice)
@@ -344,19 +398,20 @@ export class ManuscriptOptionsModal extends Modal {
                 this.includeMatter = value;
             });
 
-        this.outlineSynopsisRow = rulesCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
-        this.outlineSynopsisRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: t('manuscriptModal.includeSynopsis') });
-        new ToggleComponent(this.outlineSynopsisRow)
+        this.synopsisRow = this.manuscriptRulesCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
+        this.synopsisRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: t('manuscriptModal.includeSynopsis') });
+        new ToggleComponent(this.synopsisRow)
             .setValue(this.includeSynopsis)
             .onChange((value) => {
                 this.includeSynopsis = value;
             });
 
-        this.advancedDetailsEl = rulesCard.createEl('details', { cls: 'ert-manuscript-advanced' });
-        this.advancedDetailsEl.createEl('summary', { text: 'Advanced' });
-        const advancedBody = this.advancedDetailsEl.createDiv({ cls: 'ert-manuscript-advanced-body' });
+        // G) PUBLISHING OPTIONS
+        this.publishingCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        this.createSectionHeading(this.publishingCard, 'Publishing Options', 'settings');
+        const publishingBody = this.publishingCard.createDiv({ cls: 'ert-manuscript-advanced-body' });
 
-        this.wordCountCard = advancedBody.createDiv({ cls: 'rt-manuscript-toggle-row' });
+        this.wordCountCard = publishingBody.createDiv({ cls: 'rt-manuscript-toggle-row' });
         this.wordCountCard.createSpan({ cls: 'rt-manuscript-toggle-label', text: t('manuscriptModal.wordCountToggle') });
         new ToggleComponent(this.wordCountCard)
             .setValue(this.updateWordCounts)
@@ -364,19 +419,19 @@ export class ManuscriptOptionsModal extends Modal {
                 this.updateWordCounts = value;
             });
 
-        const artifactRow = advancedBody.createDiv({ cls: 'rt-manuscript-toggle-row' });
-        artifactRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Always save markdown artifact' });
+        const artifactRow = publishingBody.createDiv({ cls: 'rt-manuscript-toggle-row' });
+        artifactRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Always save Markdown file' });
         this.markdownArtifactToggle = new ToggleComponent(artifactRow)
             .setValue(this.saveMarkdownArtifact)
             .onChange((value) => {
                 this.saveMarkdownArtifact = value;
             });
-        advancedBody.createDiv({
+        publishingBody.createDiv({
             cls: 'rt-sub-card-note',
-            text: 'When rendering PDF, the markdown input is saved first.'
+            text: 'When rendering PDF, the Markdown file is saved first.'
         });
 
-        // E) FOOTER
+        // H) FOOTER
         const actions = container.createDiv({ cls: 'ert-modal-actions' });
         this.actionButton = new ButtonComponent(actions)
             .setButtonText(this.getPrimaryActionLabel())
@@ -394,7 +449,7 @@ export class ManuscriptOptionsModal extends Modal {
             .onClick(() => this.openOutcomeFolder());
         this.openFolderButton.buttonEl.addClass('rt-hidden');
 
-        new ButtonComponent(actions)
+        this.cancelButton = new ButtonComponent(actions)
             .setButtonText(t('manuscriptModal.actionCancel'))
             .onClick(() => this.close());
 
@@ -581,9 +636,10 @@ export class ManuscriptOptionsModal extends Modal {
 
         this.manuscriptOptionsCard?.toggleClass('rt-hidden', this.exportType !== 'manuscript');
         this.outlineOptionsCard?.toggleClass('rt-hidden', this.exportType !== 'outline');
-        this.tocCard?.toggleClass('rt-hidden', !rules.tocEnabled);
-        this.includeMatterCard?.toggleClass('rt-hidden', rules.includeMatterMode !== 'user');
-        this.outlineSynopsisRow?.toggleClass('rt-hidden', this.exportType !== 'outline');
+        this.manuscriptRulesCard?.toggleClass('rt-hidden', this.exportType !== 'manuscript');
+        this.tocCard?.toggleClass('rt-hidden', !rules.tocEnabled || this.exportType !== 'manuscript');
+        this.includeMatterCard?.toggleClass('rt-hidden', rules.includeMatterMode !== 'user' || this.exportType !== 'manuscript');
+        this.synopsisRow?.toggleClass('rt-hidden', this.exportType !== 'manuscript');
         this.filterCard?.toggleClass('rt-hidden', !rules.showSubplotFilter);
         this.chronoHelperEl?.toggleClass('rt-hidden', !rules.chronoMessage);
 
@@ -613,6 +669,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.updateLayoutPicker();
         this.updateTemplateWarning();
         this.updateOrderPillsState();
+        this.updateSplitUi();
         this.updateActionButtonLabel();
     }
 
@@ -863,64 +920,86 @@ HOST: Let's start with Sarah's story...`
         }
     }
 
-    private updateActOptions(): void {
-        if (!this.actDropdown || !this.actRowEl) return;
-
-        const uniqueActs = Array.from(new Set(this.sceneActs.filter((act): act is number => typeof act === 'number' && act > 0))).sort((a, b) => a - b);
-        this.availableActs = uniqueActs;
-
-        if (uniqueActs.length === 0) {
-            this.selectedAct = 'all';
-            this.actRowEl.addClass('rt-hidden');
-            return;
-        }
-
-        this.actRowEl.removeClass('rt-hidden');
-        this.actDropdown.selectEl.textContent = '';
-        this.actDropdown.addOption('all', 'All acts');
-        uniqueActs.forEach(act => {
-            this.actDropdown?.addOption(String(act), `Act ${act}`);
-        });
-
-        if (this.selectedAct !== 'all' && !uniqueActs.includes(Number(this.selectedAct))) {
-            this.selectedAct = 'all';
-        }
-        this.actDropdown.setValue(this.selectedAct);
+    private clampSplitParts(value: number): number {
+        if (!Number.isFinite(value)) return 2;
+        return Math.max(2, Math.min(20, Math.floor(value)));
     }
 
-    private applyActSnap(): void {
-        if (this.totalScenes === 0) return;
+    private getSelectedSceneCount(): number {
+        if (this.totalScenes === 0) return 0;
+        return Math.max(0, this.rangeEnd - this.rangeStart + 1);
+    }
 
-        if (this.selectedAct === 'all') {
-            this.rangeStart = 1;
-            this.rangeEnd = Math.max(1, this.totalScenes);
-            this.updateRangeUI();
-            return;
+    private isSplitEnabled(): boolean {
+        return this.splitMode === 'parts';
+    }
+
+    private isSplitSelectionValid(): boolean {
+        if (!this.isSplitEnabled()) return true;
+        const selectedCount = this.getSelectedSceneCount();
+        return selectedCount >= this.splitParts;
+    }
+
+    private getPlannedOutputCount(): number {
+        return this.isSplitEnabled() ? this.splitParts : 1;
+    }
+
+    private updateActionButtonDisabledState(): void {
+        if (!this.actionButton || this.exportCompleted) return;
+        const splitInvalid = !this.isSplitSelectionValid();
+        this.actionButton.setDisabled(this.totalScenes === 0 || splitInvalid);
+    }
+
+    private updateSplitUi(): void {
+        const selectedCount = this.getSelectedSceneCount();
+        const canSplit = selectedCount >= 2;
+
+        if (!canSplit && this.splitMode === 'parts') {
+            this.splitMode = 'single';
         }
 
-        const actValue = parseInt(this.selectedAct, 10);
-        if (!Number.isFinite(actValue)) return;
-
-        const positions: number[] = [];
-        this.sceneActs.forEach((act, index) => {
-            if (act === actValue) positions.push(index + 1);
-        });
-
-        if (positions.length === 0) {
-            this.rangeStart = 1;
-            this.rangeEnd = Math.max(1, this.totalScenes);
-            this.updateRangeUI();
-            return;
+        if (this.splitSingleInputEl) this.splitSingleInputEl.checked = this.splitMode === 'single';
+        if (this.splitPartsRadioInputEl) {
+            this.splitPartsRadioInputEl.checked = this.splitMode === 'parts';
+            this.splitPartsRadioInputEl.disabled = !canSplit;
         }
 
-        this.rangeStart = positions[0];
-        this.rangeEnd = positions[positions.length - 1];
-        this.updateRangeUI();
+        const partsEnabled = this.splitMode === 'parts';
+        this.splitPartsContainerEl?.toggleClass('rt-hidden', !partsEnabled);
+
+        const splitInvalid = partsEnabled && !this.isSplitSelectionValid();
+        if (this.splitErrorEl) {
+            if (splitInvalid) {
+                this.splitErrorEl.setText(`Not enough scenes selected to split into ${this.splitParts} parts.`);
+                this.splitErrorEl.removeClass('rt-hidden');
+            } else {
+                this.splitErrorEl.addClass('rt-hidden');
+            }
+        }
+
+        if (this.splitPreviewEl) {
+            this.splitPreviewEl.empty();
+            if (partsEnabled && !splitInvalid) {
+                const items = Array.from({ length: selectedCount }, (_unused, index) => index + 1);
+                const preview = chunkScenesIntoParts(items, this.splitParts);
+                this.splitPreviewEl.createDiv({ text: `Will generate ${this.splitParts} files:` });
+                preview.ranges.forEach(range => {
+                    this.splitPreviewEl?.createDiv({
+                        cls: 'rt-sub-card-note',
+                        text: `Part ${range.part} (Scenes ${range.start}–${range.end})`
+                    });
+                });
+            }
+        }
+
+        this.updateActionButtonDisabledState();
     }
 
     private getPrimaryActionLabel(): string {
         if (this.exportCompleted) return 'Done';
-        return this.outputFormat === 'pdf' ? 'Render PDF' : 'Generate Markdown';
+        const base = this.outputFormat === 'pdf' ? 'Render PDF' : 'Generate Markdown';
+        const files = this.getPlannedOutputCount();
+        return files > 1 ? `${base} (${files} files)` : base;
     }
 
     private getOpenFolderButtonLabel(): string {
@@ -938,33 +1017,52 @@ HOST: Let's start with Sarah's story...`
         this.actionButton?.setButtonText(this.getPrimaryActionLabel());
     }
 
+    private renderStatusPathGroup(label: 'Saved' | 'Rendered', paths: string[]): void {
+        if (!this.outputStatusEl || paths.length === 0) return;
+
+        const summary = this.outputStatusEl.createDiv();
+        summary.createSpan({ text: `${label}: ` });
+        const firstLink = summary.createEl('a', { text: paths[0], attr: { href: '#' } });
+        firstLink.addEventListener('click', (evt) => {
+            evt.preventDefault();
+            void this.openVaultPath(paths[0]);
+        });
+        if (paths.length > 1) {
+            summary.createSpan({ text: ` (${paths.length} files)` });
+        }
+
+        if (paths.length > 1) {
+            const second = this.outputStatusEl.createDiv({ cls: 'rt-sub-card-note' });
+            const secondLink = second.createEl('a', { text: paths[1], attr: { href: '#' } });
+            secondLink.addEventListener('click', (evt) => {
+                evt.preventDefault();
+                void this.openVaultPath(paths[1]);
+            });
+        }
+
+        if (paths.length > 2) {
+            this.outputStatusEl.createDiv({ cls: 'rt-sub-card-note', text: `+${paths.length - 2} more` });
+        }
+    }
+
     private showOutputStatus(outcome: ManuscriptExportOutcome): void {
         if (!this.outputStatusEl) return;
         this.outputStatusEl.empty();
-        if (outcome.savedPath) {
-            const row = this.outputStatusEl.createDiv();
-            row.createSpan({ text: 'Saved: ' });
-            const link = row.createEl('a', { text: outcome.savedPath, attr: { href: '#' } });
-            link.addEventListener('click', (evt) => {
-                evt.preventDefault();
-                void this.openVaultPath(outcome.savedPath!);
-            });
-        }
-        if (outcome.renderedPath) {
-            const row = this.outputStatusEl.createDiv();
-            row.createSpan({ text: 'Rendered: ' });
-            const link = row.createEl('a', { text: outcome.renderedPath, attr: { href: '#' } });
-            link.addEventListener('click', (evt) => {
-                evt.preventDefault();
-                void this.openVaultPath(outcome.renderedPath!);
-            });
-        }
+        const savedPaths = outcome.savedPaths && outcome.savedPaths.length > 0
+            ? outcome.savedPaths
+            : outcome.savedPath ? [outcome.savedPath] : [];
+        const renderedPaths = outcome.renderedPaths && outcome.renderedPaths.length > 0
+            ? outcome.renderedPaths
+            : outcome.renderedPath ? [outcome.renderedPath] : [];
+
+        this.renderStatusPathGroup('Saved', savedPaths);
+        this.renderStatusPathGroup('Rendered', renderedPaths);
         if (outcome.messages && outcome.messages.length > 0) {
             outcome.messages.forEach(message => {
                 this.outputStatusEl?.createDiv({ text: message });
             });
         }
-        this.outputStatusEl.toggleClass('rt-hidden', !outcome.savedPath && !outcome.renderedPath && !(outcome.messages && outcome.messages.length > 0));
+        this.outputStatusEl.toggleClass('rt-hidden', savedPaths.length === 0 && renderedPaths.length === 0 && !(outcome.messages && outcome.messages.length > 0));
     }
 
     private async openVaultPath(vaultPath: string): Promise<void> {
@@ -978,7 +1076,13 @@ HOST: Let's start with Sarah's story...`
     }
 
     private getOutcomeFolderPath(): string | null {
-        const path = this.lastOutcome?.renderedPath || this.lastOutcome?.savedPath;
+        if (this.lastOutcome?.outputFolder) {
+            return this.lastOutcome.outputFolder;
+        }
+        const path = this.lastOutcome?.renderedPaths?.[0]
+            || this.lastOutcome?.savedPaths?.[0]
+            || this.lastOutcome?.renderedPath
+            || this.lastOutcome?.savedPath;
         if (!path) return null;
         const idx = path.lastIndexOf('/');
         if (idx <= 0) return null;
@@ -1105,10 +1209,9 @@ HOST: Let's start with Sarah's story...`
 
     private async loadScenesForOrder(): Promise<void> {
         try {
-            const { titles, whenDates, acts, sceneNumbers } = await getSceneFilesByOrder(this.app, this.plugin, this.order, this.subplot);
+            const { titles, whenDates, sceneNumbers } = await getSceneFilesByOrder(this.app, this.plugin, this.order, this.subplot);
             this.sceneTitles = titles;
             this.sceneWhenDates = whenDates;
-            this.sceneActs = acts;
             this.sceneNumbers = sceneNumbers;
             this.totalScenes = titles.length;
             this.rangeStart = 1;
@@ -1123,8 +1226,6 @@ HOST: Let's start with Sarah's story...`
             }
             this.renderHeroMeta(meta);
 
-            this.updateActOptions();
-            this.applyActSnap();
             this.loadingEl?.remove();
             this.syncRangeAvailability();
             this.updateOrderPillsState();
@@ -1152,10 +1253,6 @@ HOST: Let's start with Sarah's story...`
         this.updateRangeUI();
     }
 
-    private isReverseOrder(): boolean {
-        return this.order === 'reverse-narrative' || this.order === 'reverse-chronological';
-    }
-
     private isChronologicalOrder(): boolean {
         return this.order === 'chronological' || this.order === 'reverse-chronological';
     }
@@ -1167,19 +1264,8 @@ HOST: Let's start with Sarah's story...`
     }
 
     private syncRangeAvailability(): void {
-        // Get actual scene numbers for the range boundaries
-        const startSceneNum = this.getSceneNumberAt(this.rangeStart);
-        const endSceneNum = this.getSceneNumberAt(this.rangeEnd);
-        const displayStart = startSceneNum;
-        const displayEnd = endSceneNum;
-        this.rangeStatusEl?.setText(
-            t('manuscriptModal.rangeStatus', {
-                start: displayStart,
-                end: displayEnd,
-                total: this.totalScenes,
-                count: this.rangeEnd - this.rangeStart + 1
-            })
-        );
+        const count = this.getSelectedSceneCount();
+        this.rangeStatusEl?.setText(`${count} scenes selected`);
     }
 
     private updateRangeUI(): void {
@@ -1196,6 +1282,7 @@ HOST: Let's start with Sarah's story...`
 
         this.renderRangeCards();
         this.syncRangeAvailability();
+        this.updateSplitUi();
     }
 
     private formatCardTitle(index: number): string {
@@ -1247,6 +1334,11 @@ HOST: Let's start with Sarah's story...`
             new Notice(t('manuscriptModal.emptyNotice'));
             return;
         }
+        if (!this.isSplitSelectionValid()) {
+            new Notice(`Not enough scenes selected to split into ${this.splitParts} parts.`);
+            this.updateActionButtonDisabledState();
+            return;
+        }
         const rules = this.resolveExportRules();
         const tocMode: TocMode = rules.tocEnabled ? this.tocMode : rules.tocDefault;
         const includeMatter = rules.includeMatterMode === 'user' ? this.includeMatterUserChoice : false;
@@ -1256,6 +1348,7 @@ HOST: Let's start with Sarah's story...`
         this.exportCompleted = false;
         this.lastOutcome = null;
         this.openFolderButton?.buttonEl.addClass('rt-hidden');
+        this.cancelButton?.buttonEl.removeClass('rt-hidden');
         this.actionButton?.setDisabled(true);
         this.updateActionButtonLabel();
 
@@ -1274,19 +1367,22 @@ HOST: Let's start with Sarah's story...`
                 includeSynopsis,
                 includeMatter,
                 saveMarkdownArtifact: this.outputFormat === 'pdf' ? true : this.saveMarkdownArtifact,
-                selectedLayoutId: this.selectedLayoutId
+                selectedLayoutId: this.selectedLayoutId,
+                splitMode: this.splitMode,
+                splitParts: this.isSplitEnabled() ? this.splitParts : 1
             });
             this.exportCompleted = true;
             this.lastOutcome = outcome;
             this.showOutputStatus(outcome);
             this.actionButton?.setDisabled(false);
             this.openFolderButton?.buttonEl.toggleClass('rt-hidden', !this.getOutcomeFolderPath());
+            this.cancelButton?.buttonEl.addClass('rt-hidden');
             this.updateActionButtonLabel();
         } catch (err) {
             console.error(err);
             new Notice(t('manuscriptModal.loadError'));
             this.exportCompleted = false;
-            this.actionButton?.setDisabled(false);
+            this.updateActionButtonDisabledState();
             this.updateActionButtonLabel();
         }
     }

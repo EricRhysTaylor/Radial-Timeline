@@ -222,13 +222,28 @@ function resolveVaultAbsolutePath(plugin: RadialTimelinePlugin, vaultPath: strin
 }
 
 function resolvePandocBinary(options: PandocOptions): string {
-    if (options.pandocPath && options.pandocPath.trim()) {
-        return options.pandocPath.trim();
+    const configured = options.pandocPath && options.pandocPath.trim()
+        ? options.pandocPath.trim()
+        : options.enableFallback && options.fallbackPath && options.fallbackPath.trim()
+            ? options.fallbackPath.trim()
+            : 'pandoc';
+
+    // Recover from settings values incorrectly normalized as vault paths
+    // (e.g. "/opt/homebrew/bin/pandoc" stored as "opt/homebrew/bin/pandoc").
+    if (
+        process.platform !== 'win32'
+        && configured.includes('/')
+        && !configured.startsWith('/')
+        && !configured.startsWith('./')
+        && !configured.startsWith('../')
+    ) {
+        const candidate = `/${configured.replace(/^\/+/, '')}`;
+        if (fs.existsSync(candidate)) {
+            return candidate;
+        }
     }
-    if (options.enableFallback && options.fallbackPath && options.fallbackPath.trim()) {
-        return options.fallbackPath.trim();
-    }
-    return 'pandoc';
+
+    return configured;
 }
 
 export async function runPandocOnContent(

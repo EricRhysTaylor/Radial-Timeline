@@ -24,6 +24,13 @@ import {
     toDisplayRoot,
     toVaultRoot
 } from '../../inquiry/utils/scanRoots';
+import {
+    isPathIncludedByInquiryBooks,
+    normalizeInquiryBookInclusion,
+    resolveInquiryBookResolution,
+    type InquiryBookResolution,
+    type InquiryResolvedBook
+} from '../../inquiry/services/bookResolution';
 
 interface SectionParams {
     app: App;
@@ -270,6 +277,7 @@ const migrateLegacySources = (legacy: LegacyInquirySourcesSettings): InquirySour
 
     return {
         scanRoots: roots.size ? normalizeScanRootPatterns(Array.from(roots)) : [],
+        bookInclusion: {},
         classScope: [],
         classes,
         classCounts: {},
@@ -280,7 +288,7 @@ const migrateLegacySources = (legacy: LegacyInquirySourcesSettings): InquirySour
 
 const normalizeInquirySources = (raw?: InquirySourcesSettings | LegacyInquirySourcesSettings): InquirySourcesSettings => {
     if (!raw) {
-        return { scanRoots: [], classes: [], classCounts: {}, resolvedScanRoots: [] };
+        return { scanRoots: [], bookInclusion: {}, classes: [], classCounts: {}, resolvedScanRoots: [] };
     }
     if (isLegacySources(raw)) {
         return migrateLegacySources(raw);
@@ -288,6 +296,7 @@ const normalizeInquirySources = (raw?: InquirySourcesSettings | LegacyInquirySou
     return {
         preset: raw.preset,
         scanRoots: raw.scanRoots && raw.scanRoots.length ? normalizeScanRootPatterns(raw.scanRoots) : [],
+        bookInclusion: normalizeInquiryBookInclusion(raw.bookInclusion),
         classScope: raw.classScope ? parseClassScopeInput(listToText(raw.classScope)) : [],
         classes: (raw.classes || []).map(config => normalizeClassContribution({
             className: config.className.toLowerCase(),
@@ -409,6 +418,18 @@ export function renderInquirySection(params: SectionParams): void {
         const nextRoots = Array.from(new Set([...(inquirySources.scanRoots || []), '/Book */']));
         applyScanRoots(nextRoots);
     });
+    addActionButton('Add Book Manager folders', () => {
+        const managerRoots = (plugin.settings.books || [])
+            .map(book => normalizePath((book.sourceFolder || '').trim()))
+            .filter(Boolean)
+            .map(root => toDisplayRoot(root));
+        if (!managerRoots.length) {
+            new Notice('No Book Manager folders are configured.');
+            return;
+        }
+        const nextRoots = Array.from(new Set([...(inquirySources.scanRoots || []), ...managerRoots]));
+        applyScanRoots(nextRoots);
+    });
     addActionButton('Add Character folder', () => {
         const nextRoots = Array.from(new Set([...(inquirySources.scanRoots || []), '/Character/']));
         applyScanRoots(nextRoots);
@@ -426,6 +447,20 @@ export function renderInquirySection(params: SectionParams): void {
     resolvedList.addClass('mod-styled-scrollbar');
     resolvedList.style.setProperty('--ert-controlGroup-columns', '1fr');
     resolvedList.style.setProperty('--ert-controlGroup-max-height', '220px');
+
+    const resolvedBooksPreview = sourcesBody.createDiv({
+        cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--flush'],
+        attr: { 'data-preview': 'inquiry-resolved-books' }
+    });
+    const resolvedBooksHeading = resolvedBooksPreview.createDiv({
+        cls: ['ert-planetary-preview-heading', 'ert-previewFrame__title'],
+        text: 'Resolved Books (0 included / 0 total)'
+    });
+    const resolvedBooksList = resolvedBooksPreview.createDiv({ cls: 'ert-controlGroup ert-controlGroup--scroll' });
+    resolvedBooksList.addClass('mod-styled-scrollbar');
+    resolvedBooksList.style.setProperty('--ert-controlGroup-columns', '1fr');
+    resolvedBooksList.style.setProperty('--ert-controlGroup-max-height', '220px');
+    const resolvedBooksWarnings = resolvedBooksPreview.createDiv({ cls: ERT_CLASSES.STACK });
 
     const classScopeSetting = new Settings(sourcesBody)
         .setName('Inquiry class scope')
@@ -448,6 +483,7 @@ export function renderInquirySection(params: SectionParams): void {
     });
 
     let resolvedRootCache: { signature: string; resolvedRoots: string[]; total: number } | null = null;
+    let resolvedBookCache: InquiryBookResolution | null = null;
 
     const presetSetting = new Settings(sourcesBody)
         .setName('Presets')
@@ -481,7 +517,7 @@ export function renderInquirySection(params: SectionParams): void {
     const tableCard = sourcesBody.createDiv({ cls: ERT_CLASSES.PANEL });
     const classTableWrap = tableCard.createDiv({ cls: ['ert-controlGroup', 'ert-controlGroup--class-scope'] });
 
-    const scanInquiryClasses = async (roots: string[]): Promise<{
+    const scanInquiryClasses = async (roots: string[], includePath?: (path: string) => boolean): Promise<{
         discoveredCounts: Record<string, number>;
         discoveredClasses: string[];
         rootClassCounts: Record<string, Record<string, number>>;
@@ -504,6 +540,7 @@ export function renderInquirySection(params: SectionParams): void {
 
         files.forEach(file => {
             if (!inRoots(file.path)) return;
+            if (includePath && !includePath(file.path)) return;
             const cache = plugin.app.metadataCache.getFileCache(file);
             const frontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
             if (!frontmatter) return;
@@ -751,11 +788,97 @@ export function renderInquirySection(params: SectionParams): void {
         resolvedList.replaceChildren(...Array.from(container.children));
     };
 
+    const getBookStatusSuffix = (book: InquiryResolvedBook): string => {
+        if (book.status === 'excluded_variant') return 'duplicate/variant';
+        if (book.status === 'excluded_nested') return 'nested draft';
+        if (book.status === 'excluded_manual') return 'manual';
+        if (book.overrideIncluded === true && !book.defaultIncluded) return 'manual override';
+        return 'included';
+    };
+
+    const renderResolvedBooks = (resolution: InquiryBookResolution) => {
+        resolvedBooksHeading.setText(`Resolved Books (${resolution.includedBooks.length} included / ${resolution.candidates.length} total)`);
+        const container = document.createElement('div');
+        container.className = resolvedBooksList.className;
+
+        if (!resolution.candidates.length) {
+            const emptyRow = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
+            emptyRow.createDiv({
+                cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--faint'],
+                text: 'No book folders resolved from current scan roots.'
+            });
+        } else {
+            const header = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--header'] });
+            header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Include' });
+            header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Book folder' });
+            header.createDiv({ cls: 'ert-controlGroup__cell', text: 'Status' });
+
+            resolution.candidates.forEach(book => {
+                const row = container.createDiv({ cls: ['ert-controlGroup__row', 'ert-controlGroup__row--card'] });
+                if (!book.included) row.addClass('is-disabled');
+
+                const includeCell = row.createDiv({ cls: 'ert-controlGroup__cell' });
+                const includeToggle = includeCell.createEl('input', { type: 'checkbox' });
+                includeToggle.checked = book.included;
+                plugin.registerDomEvent(includeToggle, 'change', () => {
+                    setBookInclusionOverride(book, includeToggle.checked);
+                });
+
+                const pathCell = row.createDiv({ cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--mono'] });
+                const managerMatch = (plugin.settings.books || []).find(entry =>
+                    normalizePath((entry.sourceFolder || '').trim()) === normalizePath(book.rootPath)
+                );
+                const managerLabel = managerMatch?.title?.trim() ? ` · ${managerMatch.title.trim()}` : '';
+                pathCell.setText(`${toDisplayRoot(book.rootPath)}${managerLabel}`);
+
+                const statusCell = row.createDiv({ cls: ['ert-controlGroup__cell', 'ert-controlGroup__cell--meta'] });
+                const methodLabel = book.detectedBy === 'name+outline'
+                    ? 'name + outline'
+                    : book.detectedBy === 'name'
+                        ? 'name'
+                        : 'outline';
+                statusCell.setText(`${book.statusLabel} (${getBookStatusSuffix(book)}; ${methodLabel})`);
+            });
+        }
+
+        resolvedBooksList.replaceChildren(...Array.from(container.children));
+
+        resolvedBooksWarnings.empty();
+        if (resolution.hasNestedExclusions) {
+            resolvedBooksWarnings.createDiv({
+                cls: 'setting-item-description',
+                text: 'Nested drafts detected. Inquiry excludes nested draft folders by default. Adjust scan roots if needed.'
+            });
+        }
+        if (resolution.hasVariantExclusions) {
+            resolvedBooksWarnings.createDiv({
+                cls: 'setting-item-description',
+                text: 'Draft-style variants were excluded by default. Toggle Include to override for a specific folder.'
+            });
+        }
+    };
+
+    const setBookInclusionOverride = (book: InquiryResolvedBook, include: boolean) => {
+        const next = {
+            ...normalizeInquiryBookInclusion(inquirySources.bookInclusion)
+        };
+        const normalizedPath = normalizePath(book.rootPath);
+        if (!normalizedPath || normalizedPath === '/' || normalizedPath === '.') return;
+        if (include === book.defaultIncluded) {
+            delete next[normalizedPath];
+        } else {
+            next[normalizedPath] = include;
+        }
+        inquirySources = { ...inquirySources, bookInclusion: next };
+        void refreshClassScan();
+    };
+
     const applyScanRoots = (nextRoots: string[]) => {
         const normalized = nextRoots.length ? normalizeScanRootPatterns(nextRoots) : [];
         inquirySources = { ...inquirySources, scanRoots: normalized };
         scanRootsInput?.setValue(listToText(normalized));
         resolvedRootCache = null;
+        resolvedBookCache = null;
         void refreshClassScan();
     };
 
@@ -769,7 +892,12 @@ export function renderInquirySection(params: SectionParams): void {
     const refreshClassScan = async () => {
         const rawRoots = inquirySources.scanRoots || [];
         const scanRoots = normalizeScanRootPatterns(rawRoots);
-        const signature = scanRoots.join('|');
+        const bookInclusion = normalizeInquiryBookInclusion(inquirySources.bookInclusion);
+        const inclusionSignature = Object.entries(bookInclusion)
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([path, include]) => `${path}:${include ? '1' : '0'}`)
+            .join('|');
+        const signature = `${scanRoots.join('|')}::${inclusionSignature}`;
         if (!resolvedRootCache || resolvedRootCache.signature !== signature) {
             if (!scanRoots.length) {
                 resolvedRootCache = { signature, resolvedRoots: [], total: 0 };
@@ -786,7 +914,17 @@ export function renderInquirySection(params: SectionParams): void {
             }
         }
         const resolvedVaultRoots = resolvedRootCache.resolvedRoots.map(toVaultRoot);
-        const scan = await scanInquiryClasses(resolvedVaultRoots);
+        resolvedBookCache = resolveInquiryBookResolution({
+            vault: plugin.app.vault,
+            metadataCache: plugin.app.metadataCache,
+            resolvedVaultRoots,
+            frontmatterMappings: plugin.settings.frontmatterMappings,
+            bookInclusion
+        });
+        const scan = await scanInquiryClasses(
+            resolvedVaultRoots,
+            (path) => isPathIncludedByInquiryBooks(path, resolvedBookCache?.candidates || [])
+        );
         const scopeConfig = getClassScopeConfig(inquirySources.classScope);
         const allowedClasses = scopeConfig.allowAll ? scan.discoveredClasses : scopeConfig.allowed;
         const allowedSet = new Set(allowedClasses);
@@ -796,6 +934,7 @@ export function renderInquirySection(params: SectionParams): void {
         inquirySources = {
             preset: inquirySources.preset,
             scanRoots: rawRoots,
+            bookInclusion,
             classScope: inquirySources.classScope || [],
             classes: merged,
             classCounts: scan.discoveredCounts,
@@ -823,6 +962,7 @@ export function renderInquirySection(params: SectionParams): void {
             scan.rootClassCounts,
             participatingClasses
         );
+        renderResolvedBooks(resolvedBookCache);
 
     };
 
