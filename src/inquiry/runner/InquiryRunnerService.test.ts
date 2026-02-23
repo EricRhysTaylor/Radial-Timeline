@@ -9,4 +9,10 @@ describe('InquiryRunnerService packaging integrity', () => {
         expect(source.includes('Use scene ref_id values from evidence labels in parentheses')).toBe(true);
         expect(source.includes('(${scene.sceneId})')).toBe(true);
     });
+
+    it('readFileContent delegates stripping to cleanEvidenceBody', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/inquiry/runner/InquiryRunnerService.ts'), 'utf8');
+        expect(source).toContain('cleanEvidenceBody(raw)');
+        expect(source).toContain("from '../utils/evidenceCleaning'");
+    });
 });

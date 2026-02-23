@@ -36,15 +36,9 @@ import {
 } from '../../ai/credentials/credentials';
 import { getSecret, hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
 import type { AccessTier, AIProviderId, ModelPolicy, ModelProfileName, Capability, ModelInfo } from '../../ai/types';
-import type { InquiryClassConfig, InquirySourcesSettings } from '../../types/settings';
-import { getActiveBookSourceFolder, getActiveBookTitle } from '../../utils/books';
-import { resolveScanRoots } from '../../inquiry/utils/scanRoots';
+import { estimateGossamerTokens, estimateInquiryTokens } from '../../ai/forecast/estimateTokensFromVault';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
-
-const FORECAST_CHARS_PER_TOKEN = 4;
-const FORECAST_SUMMARY_RATIO = 0.12;
-const FORECAST_PROMPT_OVERHEAD_TOKENS = 250;
 
 export function renderAiSection(params: {
     app: App;
@@ -244,7 +238,7 @@ export function renderAiSection(params: {
     const largeHandlingFold = aiSettingsGroup.createEl('details', { cls: 'ert-ai-fold ert-ai-large-handling' }) as HTMLDetailsElement;
     largeHandlingFold.setAttr('open', '');
     largeHandlingFold.setAttr('data-ert-role', 'ai-setting:large-manuscript-handling');
-    const largeHandlingSummary = largeHandlingFold.createEl('summary', { text: 'Large Manuscript Handling & Multi-Pass Analysis (Inquiry & Gossamer' });
+    const largeHandlingSummary = largeHandlingFold.createEl('summary', { text: 'Large Manuscript Handling & Multi-Pass Analysis (Inquiry & Gossamer)' });
     attachAiCollapseButton(largeHandlingFold, largeHandlingSummary);
     const largeHandlingBody = largeHandlingFold.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-large-handling-body` });
     largeHandlingBody.createDiv({
@@ -270,7 +264,11 @@ export function renderAiSection(params: {
     });
     const capacityInquiryEstimate = capacityInquiry.valueEl.createDiv({
         cls: 'ert-ai-capacity-estimate',
-        text: 'Estimated: —'
+        text: 'Estimate: —'
+    });
+    const capacityInquiryExpected = capacityInquiry.valueEl.createDiv({
+        cls: 'ert-ai-capacity-estimate',
+        text: 'Expected: —'
     });
 
     const capacityGossamer = createCapacityCell('Gossamer');
@@ -280,7 +278,11 @@ export function renderAiSection(params: {
     });
     const capacityGossamerEstimate = capacityGossamer.valueEl.createDiv({
         cls: 'ert-ai-capacity-estimate',
-        text: 'Estimated: —'
+        text: 'Estimate: —'
+    });
+    const capacityGossamerExpected = capacityGossamer.valueEl.createDiv({
+        cls: 'ert-ai-capacity-estimate',
+        text: 'Expected: —'
     });
 
 
@@ -431,6 +433,27 @@ export function renderAiSection(params: {
             }));
     tripletDisplaySetting.settingEl.addClass(ERT_CLASSES.ROW);
     params.addAiRelatedElement(tripletDisplaySetting.settingEl);
+
+    let gossamerEvidenceDropdown: DropdownComponent | null = null;
+    const gossamerEvidenceSetting = new Settings(aiSettingsGroup)
+        .setName('Gossamer evidence')
+        .setDesc('Summaries scale better for large manuscripts.')
+        .addDropdown(dropdown => {
+            gossamerEvidenceDropdown = dropdown;
+            dropdown.selectEl.addClass('ert-input', 'ert-input--md');
+            dropdown.addOption('summaries', 'Summaries');
+            dropdown.addOption('bodies', 'Scene bodies');
+            dropdown.onChange(async value => {
+                if (isSyncingRoutingUi) return;
+                plugin.settings.gossamerEvidenceMode = value === 'bodies' ? 'bodies' : 'summaries';
+                await persistCanonical();
+                refreshRoutingUi();
+            });
+            dropdown.setValue(plugin.settings.gossamerEvidenceMode === 'bodies' ? 'bodies' : 'summaries');
+        });
+    gossamerEvidenceSetting.settingEl.setAttr('data-ert-role', 'ai-setting:gossamer-evidence');
+    gossamerEvidenceSetting.settingEl.addClass(ERT_CLASSES.ROW);
+    params.addAiRelatedElement(gossamerEvidenceSetting.settingEl);
 
     const capabilityFloor: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'];
     const providerLabel: Record<AIProviderId, string> = {
@@ -1313,77 +1336,32 @@ export function renderAiSection(params: {
     };
 
     const computeVaultForecasts = async (): Promise<{ inquiry: FeatureForecast; gossamer: FeatureForecast }> => {
-        const vault = app.vault;
-        const allFiles = vault.getMarkdownFiles();
-
-        const sourceFolder = getActiveBookSourceFolder(plugin.settings);
-        const bookTitle = getActiveBookTitle(plugin.settings, 'Manuscript');
-
-        const sceneFiles = sourceFolder
-            ? allFiles.filter(f => f.path.startsWith(sourceFolder + '/') || f.path === sourceFolder)
-            : allFiles;
-
-        let totalSceneBytes = 0;
-        for (const f of sceneFiles) {
-            totalSceneBytes += f.stat.size;
-        }
-
-        const inquirySources = plugin.settings.inquirySources as InquirySourcesSettings | undefined;
-        const classes: InquiryClassConfig[] = inquirySources?.classes ?? [];
-        const enabledClasses = classes.filter(c => c.enabled);
-
-        let inquiryFiles = sceneFiles;
-        const scanRoots = inquirySources?.scanRoots ?? [];
-        if (scanRoots.length > 0) {
-            const resolved = resolveScanRoots(scanRoots, vault);
-            if (resolved.resolvedRoots.length > 0) {
-                const roots = resolved.resolvedRoots;
-                inquiryFiles = allFiles.filter(f => roots.some(r => r === '' || f.path.startsWith(r + '/')));
-            }
-        }
-
-        let inquiryTotalBytes = 0;
-        for (const f of inquiryFiles) {
-            inquiryTotalBytes += f.stat.size;
-        }
-
-        const dominantMode = getDominantEvidenceMode(enabledClasses);
-        const modeRatio = dominantMode === 'summary' ? FORECAST_SUMMARY_RATIO
-            : dominantMode === 'full' ? 1.0
-            : 0;
-        const inquiryChars = Math.ceil(inquiryTotalBytes * modeRatio);
-        const inquiryTokens = Math.ceil(inquiryChars / FORECAST_CHARS_PER_TOKEN) + FORECAST_PROMPT_OVERHEAD_TOKENS;
-
-        const inquiryLabel = scanRoots.length > 0
-            ? `${inquiryFiles.length} files across scan roots (${dominantMode === 'summary' ? 'Summaries' : dominantMode === 'full' ? 'Full bodies' : 'None'})`
-            : `${inquiryFiles.length} files in ${bookTitle} (${dominantMode === 'summary' ? 'Summaries' : dominantMode === 'full' ? 'Full bodies' : 'None'})`;
-
-        const gossamerChars = totalSceneBytes;
-        const gossamerTokens = Math.ceil(gossamerChars / FORECAST_CHARS_PER_TOKEN) + FORECAST_PROMPT_OVERHEAD_TOKENS;
-        const gossamerLabel = `Full manuscript — ${sceneFiles.length} scenes in ${bookTitle}`;
+        const inquiryEstimate = await estimateInquiryTokens({
+            vault: app.vault,
+            metadataCache: app.metadataCache,
+            inquirySources: plugin.settings.inquirySources,
+            frontmatterMappings: plugin.settings.frontmatterMappings,
+            scopeContext: { scope: 'book' }
+        });
+        const gossamerEvidenceMode = plugin.settings.gossamerEvidenceMode === 'bodies' ? 'bodies' : 'summaries';
+        const gossamerEstimate = await estimateGossamerTokens({
+            plugin,
+            vault: app.vault,
+            metadataCache: app.metadataCache,
+            evidenceMode: gossamerEvidenceMode,
+            frontmatterMappings: plugin.settings.frontmatterMappings
+        });
 
         return {
             inquiry: {
-                label: inquiryLabel,
-                estimatedInputTokens: modeRatio > 0 ? inquiryTokens : 0,
+                label: `Inquiry — ${inquiryEstimate.selectionLabel} (${inquiryEstimate.evidenceLabel})`,
+                estimatedInputTokens: inquiryEstimate.estimatedInputTokens,
             },
             gossamer: {
-                label: gossamerLabel,
-                estimatedInputTokens: gossamerTokens,
+                label: `Gossamer — Full manuscript (${gossamerEstimate.evidenceLabel})`,
+                estimatedInputTokens: gossamerEstimate.estimatedInputTokens,
             },
         };
-    };
-
-    const getDominantEvidenceMode = (classes: InquiryClassConfig[]): 'none' | 'summary' | 'full' => {
-        if (!classes.length) return 'full';
-        const rank = { none: 0, summary: 1, full: 2 };
-        let best: 'none' | 'summary' | 'full' = 'none';
-        for (const c of classes) {
-            for (const mode of [c.bookScope, c.sagaScope, c.referenceScope]) {
-                if (rank[mode] > rank[best]) best = mode;
-            }
-        }
-        return best;
     };
 
     const refreshRoutingUi = (): void => {
@@ -1421,6 +1399,11 @@ export function renderAiSection(params: {
             }
 
             setDropdownValueSafe(executionPreferenceDropdown, aiSettings.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : 'automatic', 'automatic');
+            setDropdownValueSafe(
+                gossamerEvidenceDropdown,
+                plugin.settings.gossamerEvidenceMode === 'bodies' ? 'bodies' : 'summaries',
+                'summaries'
+            );
         } finally {
             isSyncingRoutingUi = false;
         }
@@ -1428,7 +1411,7 @@ export function renderAiSection(params: {
         remoteRegistryToggle?.setValue(aiSettings.privacy.allowRemoteRegistry);
         providerSnapshotToggle?.setValue(aiSettings.privacy.allowProviderSnapshot);
 
-        [providerSetting, thinkingStyleSetting, modelOverrideSetting, accessTierSetting].forEach(setting => {
+        [providerSetting, thinkingStyleSetting, modelOverrideSetting, accessTierSetting, gossamerEvidenceSetting].forEach(setting => {
             setting.settingEl.toggleClass('ert-settings-hidden', false);
             setting.settingEl.toggleClass('ert-settings-visible', true);
         });
@@ -1447,8 +1430,10 @@ export function renderAiSection(params: {
 
         capacitySafeInput.valueEl.setText('Calculating...');
         capacityOutput.valueEl.setText('Calculating...');
-        capacityInquiryEstimate.setText('Estimated: Calculating...');
-        capacityGossamerEstimate.setText('Estimated: Calculating...');
+        capacityInquiryEstimate.setText('Estimate: Calculating...');
+        capacityInquiryExpected.setText('Expected: Calculating...');
+        capacityGossamerEstimate.setText('Estimate: Calculating...');
+        capacityGossamerExpected.setText('Expected: Calculating...');
 
         try {
             const selection = selectModel(BUILTIN_MODELS, {
@@ -1499,16 +1484,20 @@ export function renderAiSection(params: {
 
             const singlePassOnly = aiSettings.analysisPackaging === 'singlePassOnly';
             void computeVaultForecasts().then(forecasts => {
-                capacityInquiry.cellEl.querySelector('.ert-ai-capacity-label')?.setText('Inquiry');
                 capacityInquiryScope.setText(forecasts.inquiry.label);
                 capacityInquiryEstimate.setText(
-                    `~${forecasts.inquiry.estimatedInputTokens.toLocaleString()} tokens — ${formatForecastPasses(forecasts.inquiry.estimatedInputTokens, singlePassOnly)}`
+                    `Estimate: ~${forecasts.inquiry.estimatedInputTokens.toLocaleString()} tokens`
+                );
+                capacityInquiryExpected.setText(
+                    `Expected: ${formatForecastPasses(forecasts.inquiry.estimatedInputTokens, singlePassOnly)}`
                 );
 
-                capacityGossamer.cellEl.querySelector('.ert-ai-capacity-label')?.setText('Gossamer');
                 capacityGossamerScope.setText(forecasts.gossamer.label);
                 capacityGossamerEstimate.setText(
-                    `~${forecasts.gossamer.estimatedInputTokens.toLocaleString()} tokens — ${formatForecastPasses(forecasts.gossamer.estimatedInputTokens, singlePassOnly)}`
+                    `Estimate: ~${forecasts.gossamer.estimatedInputTokens.toLocaleString()} tokens`
+                );
+                capacityGossamerExpected.setText(
+                    `Expected: ${formatForecastPasses(forecasts.gossamer.estimatedInputTokens, singlePassOnly)}`
                 );
             });
         } catch (error) {
@@ -1534,7 +1523,9 @@ export function renderAiSection(params: {
             capacitySafeInput.valueEl.setText('Unavailable');
             capacityOutput.valueEl.setText('Unavailable');
             capacityInquiryEstimate.setText('Unavailable');
+            capacityInquiryExpected.setText('Unavailable');
             capacityGossamerEstimate.setText('Unavailable');
+            capacityGossamerExpected.setText('Unavailable');
         }
 
         void refreshModelsTable();
@@ -2281,6 +2272,7 @@ export function renderAiSection(params: {
     // 7) Advanced & Diagnostics
     [
         tripletDisplaySetting.settingEl,
+        gossamerEvidenceSetting.settingEl,
         roleContextSection,
         quickSetupPreviewSection,
         quickSetupSection,

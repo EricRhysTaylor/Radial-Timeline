@@ -390,6 +390,7 @@ export interface RadialTimelineSettings {
     aiCanonicalResetCompleted?: boolean;
     aiRegistryCacheJson?: string;
     aiProviderSnapshotCacheJson?: string;
+    gossamerEvidenceMode?: 'summaries' | 'bodies';
     enableAiSceneAnalysis: boolean;
     enableZeroDraftMode?: boolean;
     metadataRefreshDebounceMs?: number;

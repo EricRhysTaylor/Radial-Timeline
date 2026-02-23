@@ -7,7 +7,7 @@ import { Notice, TFile, TFolder, App, normalizePath } from 'obsidian';
 import { GossamerScoreModal } from './modals/GossamerScoreModal';
 import { GossamerProcessingModal, type ManuscriptInfo, type AnalysisOptions } from './modals/GossamerProcessingModal';
 import { TimelineMode } from './modes/ModeDefinition';
-import { assembleManuscript } from './utils/manuscript';
+import { getSortedSceneFiles } from './utils/manuscript';
 import { buildUnifiedBeatAnalysisPrompt, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
 import { getAIClient } from './ai/runtime/aiClient';
 import { mapAiProviderToLegacyProvider } from './ai/settings/aiSettings';
@@ -24,6 +24,7 @@ import { ensureGossamerContentLogFolder, resolveGossamerContentLogFolder } from 
 import { resolveSelectedBeatModel } from './utils/beatsInputNormalize';
 import { isPathInFolderScope } from './utils/pathScope';
 import type { AIProviderId } from './ai/types';
+import { buildGossamerEvidenceDocument, type GossamerEvidenceMode } from './gossamer/evidence/buildGossamerEvidence';
 
 const sanitizeSegment = (value: string | null | undefined) => {
   if (!value) return '';
@@ -34,6 +35,9 @@ const sanitizeSegment = (value: string | null | undefined) => {
     .trim()
     .replace(/^-+|-+$/g, '');
 };
+
+const getGossamerEvidenceMode = (plugin: RadialTimelinePlugin): GossamerEvidenceMode =>
+  plugin.settings.gossamerEvidenceMode === 'bodies' ? 'bodies' : 'summaries';
 
 type GossamerLogPayload = {
   status: 'success' | 'error';
@@ -746,11 +750,12 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         };
       });
 
-    modal.setStatus('Assembling manuscript with table of contents...');
+    const evidenceMode = getGossamerEvidenceMode(plugin);
+    const evidenceModeLabel = evidenceMode === 'summaries' ? 'Summaries' : 'Bodies';
+    modal.setStatus(`Assembling manuscript evidence (${evidenceModeLabel})...`);
 
     // Get sorted scene files (single source of truth)
-    const { getSortedSceneFiles } = await import('./utils/manuscript');
-    const { files: sceneFiles, sortOrder } = await getSortedSceneFiles(plugin);
+    const { files: sceneFiles } = await getSortedSceneFiles(plugin);
 
     if (sceneFiles.length === 0) {
       modal.addError('No scenes found in source path.');
@@ -759,33 +764,39 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       return;
     }
 
-    // Assemble manuscript with table of contents
-    const manuscript = await assembleManuscript(sceneFiles, plugin.app.vault, undefined, true, sortOrder); // includeTableOfContents = true
+    const evidenceDocument = await buildGossamerEvidenceDocument({
+      sceneFiles,
+      vault: plugin.app.vault,
+      metadataCache: plugin.app.metadataCache,
+      evidenceMode,
+      frontmatterMappings: plugin.settings.frontmatterMappings
+    });
 
-    if (!manuscript.text || manuscript.text.trim().length === 0) {
-      modal.addError('Manuscript is empty. Check that your scene files have content.');
+    if (!evidenceDocument.text || evidenceDocument.text.trim().length === 0 || evidenceDocument.includedScenes === 0) {
+      modal.addError(`No ${evidenceMode === 'summaries' ? 'scene summaries' : 'scene body content'} available for analysis.`);
       modal.completeProcessing(false, 'Empty manuscript');
-      new Notice('Manuscript is empty. Check that your scene files have content.');
+      new Notice(`No ${evidenceMode === 'summaries' ? 'scene summaries' : 'scene body content'} available for analysis.`);
       return;
     }
 
     // Estimate tokens (rough: ~4 characters per token)
-    const estimatedTokens = Math.ceil(manuscript.text.length / 4);
+    const estimatedTokens = Math.ceil(evidenceDocument.text.length / 4);
     
     // Update modal with manuscript info
     const manuscriptInfo: ManuscriptInfo = {
-      totalScenes: manuscript.totalScenes,
-      totalWords: manuscript.totalWords,
+      totalScenes: evidenceDocument.totalScenes,
+      totalWords: evidenceDocument.totalWords,
       estimatedTokens: estimatedTokens,
       beatCount: beats.length,
       beatSystem: beatSystemDisplayName, // Use display name (may include custom name)
+      evidenceMode: evidenceModeLabel,
       hasIterativeContext: false // Always false - we don't send previous scores to avoid anchoring bias
     };
     modal.setManuscriptInfo(manuscriptInfo);
 
     // Build prompt
     modal.setStatus('Building analysis prompt...');
-    const prompt = buildUnifiedBeatAnalysisPrompt(manuscript.text, beats, beatSystem);
+    const prompt = buildUnifiedBeatAnalysisPrompt(evidenceDocument.text, beats, beatSystem);
     const schema = getUnifiedBeatAnalysisJsonSchema();
 
     // Call unified AI client
@@ -831,7 +842,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         modelRequested: result.modelRequested,
         modelResolved: result.modelResolved,
         prompt,
-        manuscriptText: manuscript.text,
+        manuscriptText: evidenceDocument.text,
         requestPayload: result.requestPayload ?? null,
         responseData: result.responseData,
         assistantContent: result.content,
@@ -1003,7 +1014,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       modelRequested: result.modelRequested,
       modelResolved: result.modelResolved,
       prompt,
-      manuscriptText: manuscript.text,
+      manuscriptText: evidenceDocument.text,
       requestPayload: result.requestPayload ?? null,
       responseData: result.responseData,
       assistantContent: result.content,
@@ -1022,7 +1033,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     
     const aiFolderPath = resolveAiLogFolder();
     const logMessage = plugin.settings.logApiInteractions
-      ? `${successMessage}. Log saved to ${aiFolderPath} (includes full manuscript).`
+      ? `${successMessage}. Log saved to ${aiFolderPath} (evidence: ${evidenceModeLabel.toLowerCase()}).`
       : `${successMessage}. (Logging disabled - no report saved)`;
 
     modal.completeProcessing(true, successMessage);
@@ -1054,19 +1065,25 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     }
     
     // Get sorted scene files (single source of truth)
-    const { getSortedSceneFiles } = await import('./utils/manuscript');
     const { files: sceneFiles } = await getSortedSceneFiles(plugin);
-
-    // Quick manuscript assembly to get stats
-    const manuscript = await assembleManuscript(sceneFiles, plugin.app.vault);
-    const estimatedTokens = Math.ceil(manuscript.text.length / 4);
+    const evidenceMode = getGossamerEvidenceMode(plugin);
+    const evidenceModeLabel = evidenceMode === 'summaries' ? 'Summaries' : 'Bodies';
+    const evidenceDocument = await buildGossamerEvidenceDocument({
+      sceneFiles,
+      vault: plugin.app.vault,
+      metadataCache: plugin.app.metadataCache,
+      evidenceMode,
+      frontmatterMappings: plugin.settings.frontmatterMappings
+    });
+    const estimatedTokens = Math.ceil(evidenceDocument.text.length / 4);
     
     const manuscriptInfo: ManuscriptInfo = {
-      totalScenes: manuscript.totalScenes,
-      totalWords: manuscript.totalWords,
+      totalScenes: evidenceDocument.totalScenes,
+      totalWords: evidenceDocument.totalWords,
       estimatedTokens: estimatedTokens,
       beatCount: plotBeats.length,
       beatSystem: beatSystemDisplayName, // Use display name (may include custom name)
+      evidenceMode: evidenceModeLabel,
       hasIterativeContext: false // Always false - we don't send previous scores to avoid anchoring bias
     };
 

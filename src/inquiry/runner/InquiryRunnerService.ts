@@ -23,8 +23,12 @@ import { computeCaps } from '../../ai/caps/computeCaps';
 import type { AIRunResult, AnalysisPackaging, AIProviderId, AccessTier, SceneRef } from '../../ai/types';
 import { readSceneId, resolveSceneReferenceId } from '../../utils/sceneIds';
 import { buildSceneRefIndex, isStableSceneId, normalizeSceneRef } from '../../ai/references/sceneRefNormalizer';
+import { cleanEvidenceBody } from '../utils/evidenceCleaning';
+
+export { cleanEvidenceBody } from '../utils/evidenceCleaning';
 
 const BOOK_FOLDER_REGEX = /^Book\s+(\d+)/i;
+
 type EvidenceBlock = {
     label: string;
     content: string;
@@ -656,7 +660,8 @@ export class InquiryRunnerService implements InquiryRunner {
         const file = this.vault.getAbstractFileByPath(path);
         if (!file || !this.isTFile(file)) return null;
         try {
-            return await this.vault.read(file);
+            const raw = await this.vault.read(file);
+            return cleanEvidenceBody(raw);
         } catch {
             return null;
         }

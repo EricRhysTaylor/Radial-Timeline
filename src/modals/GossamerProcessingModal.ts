@@ -19,6 +19,7 @@ export interface ManuscriptInfo {
     estimatedTokens: number;
     beatCount: number;
     beatSystem: string; // Beat system name (e.g., "Save The Cat", "Custom")
+    evidenceMode?: 'Summaries' | 'Bodies';
     hasIterativeContext?: boolean; // Always false - previous scores not sent to avoid anchoring bias
 }
 
@@ -130,7 +131,7 @@ export class GossamerProcessingModal extends Modal {
         contentEl.empty();
 
         const modelName = this.getActiveModelDisplayName();
-        this.renderProcessingHero(contentEl, 'Evaluate narrative momentum at each story beat. This will pass the entire manuscript to the AI for fresh analysis. The AI evaluates the manuscript with fresh eyes each time, without reference to previous scores, to avoid anchoring bias. The AI will return a score and justification for each beat.', modelName);
+        this.renderProcessingHero(contentEl, 'Evaluate narrative momentum at each story beat. This will pass the selected manuscript evidence to the AI for fresh analysis. The AI evaluates the material with fresh eyes each time, without reference to previous scores, to avoid anchoring bias. The AI will return a score and justification for each beat.', modelName);
 
         this.confirmationView = contentEl;
 
@@ -253,6 +254,7 @@ export class GossamerProcessingModal extends Modal {
             `Availability: ${ctx.availabilityStatus === 'visible' ? 'Visible to your key ✅' : ctx.availabilityStatus === 'not_visible' ? 'Not visible ⚠️' : 'Unknown (snapshot disabled)'}`,
             `Applied caps: input=${ctx.maxInputTokens}, output=${ctx.maxOutputTokens}`,
             `Packaging: ${ctx.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic'}`,
+            `Evidence: ${this.manuscriptInfo?.evidenceMode || 'Summaries'}`,
             '',
             'Feature mode instructions:',
             redactSensitiveValue(ctx.featureModeInstructions || '(none)'),
@@ -291,6 +293,7 @@ export class GossamerProcessingModal extends Modal {
             createStat('Words', info.totalWords.toLocaleString());
             createStat('Est. Tokens', `~${info.estimatedTokens.toLocaleString()}`);
             createStat('Story Beats', info.beatCount.toString());
+            createStat('Evidence', info.evidenceMode || 'Summaries');
 
             // Note: Previous scores are not sent to AI to avoid anchoring bias.
             // Each analysis is fresh based on manuscript content only.
@@ -304,6 +307,7 @@ export class GossamerProcessingModal extends Modal {
         if (beatSystemInfoEl) {
             beatSystemInfoEl.setText(`Beat System: ${info.beatSystem}`);
         }
+        this.renderAiAdvancedContext();
     }
 
     /**
