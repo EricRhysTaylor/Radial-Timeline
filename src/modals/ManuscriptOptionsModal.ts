@@ -5,7 +5,7 @@ import { App, ButtonComponent, DropdownComponent, Modal, Notice, Platform, setIc
 import type RadialTimelinePlugin from '../main';
 import { getSceneFilesByOrder, ManuscriptOrder, TocMode } from '../utils/manuscript';
 import { t } from '../i18n';
-import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, getLayoutsForPreset, validatePandocLayout } from '../utils/exportFormats';
+import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset, getAutoPdfEngineSelection, getLayoutsForPreset, resolveTemplatePath, validatePandocLayout } from '../utils/exportFormats';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 import { getActiveBook, getActiveBookTitle, DEFAULT_BOOK_TITLE } from '../utils/books';
 import { chunkScenesIntoParts } from '../utils/splitOutput';
@@ -117,6 +117,7 @@ export class ManuscriptOptionsModal extends Modal {
     private splitPartsContainerEl?: HTMLElement;
     private splitPreviewEl?: HTMLElement;
     private splitErrorEl?: HTMLElement;
+    private splitHelperEl?: HTMLElement;
     private splitSingleInputEl?: HTMLInputElement;
     private splitPartsRadioInputEl?: HTMLInputElement;
     private cancelButton?: ButtonComponent;
@@ -277,7 +278,7 @@ export class ManuscriptOptionsModal extends Modal {
         });
         const splitModeRow = this.splitCard.createDiv({ cls: 'ert-manuscript-split-grid' });
         const splitModeGroup = `rt-manuscript-split-${Date.now()}`;
-        const singleCol = splitModeRow.createDiv({ cls: 'ert-manuscript-split-col' });
+        const singleCol = splitModeRow.createDiv({ cls: 'ert-manuscript-split-col ert-manuscript-split-col--single' });
         const singleOption = singleCol.createEl('label', { cls: 'ert-manuscript-split-option' });
         this.splitSingleInputEl = singleOption.createEl('input', {
             attr: { type: 'radio', name: splitModeGroup, value: 'single' }
@@ -317,7 +318,7 @@ export class ManuscriptOptionsModal extends Modal {
             this.updateSplitUi();
         });
         this.splitPartsContainerEl = this.splitCard.createDiv({ cls: 'ert-manuscript-split-parts rt-hidden' });
-        this.splitPartsContainerEl.createDiv({
+        this.splitHelperEl = this.splitPartsContainerEl.createDiv({
             cls: 'rt-sub-card-note',
             text: 'Scenes are divided evenly across files.'
         });
@@ -790,6 +791,12 @@ export class ManuscriptOptionsModal extends Modal {
         setIcon(icon, 'check-circle-2');
         const text = this.templateWarningEl.createSpan({ cls: 'rt-warning-text' });
         text.createSpan({ text: `Layout ready: ${selectedLayout.name}` });
+
+        const templatePath = resolveTemplatePath(this.plugin, selectedLayout.path);
+        const engineSelection = getAutoPdfEngineSelection(templatePath);
+        const engineRow = this.templateWarningEl.createDiv({ cls: 'rt-sub-card-note' });
+        const enginePathSuffix = engineSelection.path ? ` (${engineSelection.path})` : '';
+        engineRow.setText(`PDF engine (auto): ${engineSelection.engine}${enginePathSuffix}`);
     }
 
     /**
@@ -972,6 +979,7 @@ HOST: Let's start with Sarah's story...`
 
         const partsEnabled = this.splitMode === 'parts';
         this.splitPartsContainerEl?.toggleClass('rt-hidden', !partsEnabled);
+        this.splitHelperEl?.toggleClass('rt-hidden', !partsEnabled);
 
         const splitInvalid = partsEnabled && !this.isSplitSelectionValid();
         if (this.splitErrorEl) {

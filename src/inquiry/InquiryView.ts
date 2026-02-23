@@ -70,7 +70,7 @@ import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import type { InquirySourcesSettings } from '../types/settings';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
-import { InquiryCorpusResolver, InquiryCorpusSnapshot, InquiryCorpusItem, InquirySceneItem } from './services/InquiryCorpusResolver';
+import { InquiryCorpusResolver, InquiryCorpusSnapshot, InquiryCorpusItem, InquirySceneItem, InquiryBookItem } from './services/InquiryCorpusResolver';
 import {
     buildCorpusSelectionKey,
     buildLegacyCorpusSelectionKey,
@@ -1003,10 +1003,6 @@ export class InquiryView extends ItemView {
     private rehydratePulseTimer?: number;
     private rehydrateHighlightTimer?: number;
     private rehydrateTargetKey?: string;
-    private cacheStatusEl?: SVGTextElement;
-    private confidenceEl?: SVGTextElement;
-    private apiStatusEl?: SVGTextElement;
-    private apiStatusState: { state: 'idle' | 'running' | 'success' | 'error'; reason?: string } = { state: 'idle' };
     private ccGroup?: SVGGElement;
     private ccLabelGroup?: SVGGElement;
     private ccLabelHit?: SVGRectElement;
@@ -1302,17 +1298,12 @@ export class InquiryView extends ItemView {
 
         const hudFooterY = 1360;
         const navGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-nav', 0, hudFooterY);
-        this.navPrevButton = this.createIconButton(navGroup, 0, -18, 44, 'chevron-left', 'Previous focus', 'ert-inquiry-nav-btn');
+        this.navPrevButton = this.createIconButton(navGroup, 0, -18, 44, 'chevron-left', 'Previous book', 'ert-inquiry-nav-btn');
         this.navPrevIcon = this.navPrevButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
-        this.navNextButton = this.createIconButton(navGroup, 54, -18, 44, 'chevron-right', 'Next focus', 'ert-inquiry-nav-btn');
+        this.navNextButton = this.createIconButton(navGroup, 54, -18, 44, 'chevron-right', 'Next book', 'ert-inquiry-nav-btn');
         this.navNextIcon = this.navNextButton.querySelector('.ert-inquiry-icon') as SVGUseElement;
         this.registerDomEvent(this.navPrevButton as unknown as HTMLElement, 'click', () => this.shiftFocus(-1));
         this.registerDomEvent(this.navNextButton as unknown as HTMLElement, 'click', () => this.shiftFocus(1));
-
-        const statusGroup = this.createSvgGroup(hudGroup, 'ert-inquiry-status', 180, hudFooterY + 6);
-        this.cacheStatusEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'Cache: none', 0, 0);
-        this.confidenceEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'Assessment confidence: none', 140, 0);
-        this.apiStatusEl = this.createSvgText(statusGroup, 'ert-inquiry-status-item', 'API: idle', 0, 18);
 
         this.buildBriefingPanel();
         this.buildEnginePanel();
@@ -6333,40 +6324,40 @@ export class InquiryView extends ItemView {
     }
 
     private updateFooterStatus(): void {
-        if (this.cacheStatusEl) {
-            const cacheEnabled = this.plugin.settings.inquiryCacheEnabled ?? true;
-            const cacheText = cacheEnabled ? (this.state.cacheStatus || 'none') : 'off';
-            this.cacheStatusEl.textContent = `Cache: ${cacheText}`;
-        }
-        if (this.confidenceEl) {
-            const confidence = this.state.activeResult?.verdict.assessmentConfidence || 'none';
-            this.confidenceEl.textContent = `Assessment confidence: ${confidence}`;
-        }
-        if (this.apiStatusEl) {
-            const status = this.apiStatusState.state;
-            const reason = this.apiStatusState.reason;
-            let text = 'API: idle';
-            if (status === 'running') {
-                text = 'API: running...';
-            } else if (status === 'success') {
-                text = 'API: success';
-            } else if (status === 'error') {
-                text = `API: error — ${reason || 'unknown'}`;
-            }
-            this.apiStatusEl.textContent = text;
-        }
+        // Legacy diagnostics removed from footer by design.
     }
 
-    private setApiStatus(state: 'idle' | 'running' | 'success' | 'error', reason?: string): void {
-        this.apiStatusState = { state, reason };
+    private setApiStatus(_state: 'idle' | 'running' | 'success' | 'error', _reason?: string): void {
         this.updateFooterStatus();
     }
 
     private updateNavigationIcons(): void {
-        if (!this.navPrevButton || !this.navNextButton) return;
-        const isSaga = this.state.scope === 'saga';
-        this.setIconUse(this.navPrevIcon, isSaga ? 'chevron-up' : 'chevron-left');
-        this.setIconUse(this.navNextIcon, isSaga ? 'chevron-down' : 'chevron-right');
+        if (!this.navPrevButton || !this.navNextButton || !this.navPrevIcon || !this.navNextIcon) return;
+        this.setIconUse(this.navPrevIcon, 'chevron-left');
+        this.setIconUse(this.navNextIcon, 'chevron-right');
+
+        const books = this.getNavigationBooks();
+        const current = this.getNavigationBookIndex(books);
+        const hasPrev = books.length > 1 && current > 0;
+        const hasNext = books.length > 1 && current >= 0 && current < books.length - 1;
+        const lockout = this.isInquiryGuidanceLockout();
+
+        this.setIconButtonDisabled(this.navPrevButton, lockout || !hasPrev);
+        this.setIconButtonDisabled(this.navNextButton, lockout || !hasNext);
+
+        const prevBook = hasPrev ? books[current - 1] : undefined;
+        const nextBook = hasNext ? books[current + 1] : undefined;
+        const prevTooltip = prevBook
+            ? `Previous book: ${this.getBookTitleForId(prevBook.id) || prevBook.displayLabel || 'Book'}`
+            : 'No previous book.';
+        const nextTooltip = nextBook
+            ? `Next book: ${this.getBookTitleForId(nextBook.id) || nextBook.displayLabel || 'Book'}`
+            : 'No next book.';
+
+        addTooltipData(this.navPrevButton, this.balanceTooltipText(prevTooltip), 'top');
+        addTooltipData(this.navNextButton, this.balanceTooltipText(nextTooltip), 'top');
+        this.navPrevButton.setAttribute('aria-label', prevTooltip);
+        this.navNextButton.setAttribute('aria-label', nextTooltip);
     }
 
     private updateRunningState(): void {
@@ -6465,8 +6456,6 @@ export class InquiryView extends ItemView {
         this.setIconButtonDisabled(this.scopeToggleButton, lockout);
         this.setIconButtonDisabled(this.engineBadgeGroup, lockout);
         this.setIconButtonDisabled(this.artifactButton, lockout);
-        this.setIconButtonDisabled(this.navPrevButton, lockout);
-        this.setIconButtonDisabled(this.navNextButton, lockout);
         this.setIconButtonDisabled(this.detailsToggle, lockout);
 
         if (this.briefingSaveButton) {
@@ -6488,6 +6477,7 @@ export class InquiryView extends ItemView {
 
         this.updateGuidanceText(state);
         this.updateGuidanceHelpTooltip(state);
+        this.updateNavigationIcons();
     }
 
     private updateGuidanceText(state: InquiryGuidanceState): void {
@@ -8746,21 +8736,15 @@ export class InquiryView extends ItemView {
     }
 
     private setFocusByIndex(index: number): void {
-        const items = this.getCurrentItems();
-        const item = items[index - 1];
-        if (!item) return;
-        if (this.state.scope === 'saga') {
-            this.state.focusBookId = item.id;
-            this.scheduleFocusPersist();
-        } else {
-            this.state.focusSceneId = item.sceneId ?? item.id;
-            if (this.state.focusBookId) {
-                this.lastFocusSceneByBookId.set(this.state.focusBookId, this.state.focusSceneId);
-                this.scheduleFocusPersist();
-            }
+        const books = this.getNavigationBooks();
+        const book = books[index - 1];
+        if (!book) return;
+        this.state.focusBookId = book.id;
+        if (this.state.scope === 'book') {
+            this.state.focusSceneId = this.lastFocusSceneByBookId.get(book.id);
         }
-        this.updateMinimapFocus();
-        this.updateFocusGlyph();
+        this.scheduleFocusPersist();
+        this.refreshUI();
     }
 
     private async openActiveBrief(anchorId?: string): Promise<void> {
@@ -8806,21 +8790,30 @@ export class InquiryView extends ItemView {
 
     private shiftFocus(delta: number): void {
         this.clearErrorStateForAction();
-        const count = this.getCurrentItems().length;
+        const books = this.getNavigationBooks();
+        const count = books.length;
         if (!count) return;
-        const current = this.getFocusIndex();
+        const current = this.getNavigationBookIndex(books) + 1;
         const next = Math.min(Math.max(current + delta, 1), count);
+        if (next === current) return;
         this.setFocusByIndex(next);
     }
 
     private getFocusIndex(): number {
-        const items = this.getCurrentItems();
-        if (!items.length) return 1;
-        const focusId = this.state.scope === 'saga' ? this.state.focusBookId : this.state.focusSceneId;
-        const index = focusId
-            ? items.findIndex(item => this.matchesSceneSelectionId(item, focusId))
-            : -1;
-        return index >= 0 ? index + 1 : 1;
+        const books = this.getNavigationBooks();
+        if (!books.length) return 1;
+        return this.getNavigationBookIndex(books) + 1;
+    }
+
+    private getNavigationBooks(): InquiryBookItem[] {
+        return this.corpus?.books ?? [];
+    }
+
+    private getNavigationBookIndex(books: InquiryBookItem[]): number {
+        if (!books.length) return 0;
+        const focusBookId = this.state.focusBookId ?? this.corpus?.activeBookId ?? books[0]?.id;
+        const index = focusBookId ? books.findIndex(book => book.id === focusBookId) : -1;
+        return index >= 0 ? index : 0;
     }
 
     private getFocusBookLabel(): string {
@@ -8834,8 +8827,12 @@ export class InquiryView extends ItemView {
 
     private getFocusBookTitleForMessages(): string | null {
         const focusBookId = this.state.focusBookId ?? this.corpus?.activeBookId ?? this.corpus?.books?.[0]?.id;
-        if (!focusBookId) return null;
-        const normalizedFocus = normalizePath(focusBookId);
+        return this.getBookTitleForId(focusBookId);
+    }
+
+    private getBookTitleForId(bookId: string | undefined): string | null {
+        if (!bookId) return null;
+        const normalizedFocus = normalizePath(bookId);
         if (!normalizedFocus) return null;
         const match = (this.plugin.settings.books || []).find(book =>
             normalizePath((book.sourceFolder || '').trim()) === normalizedFocus
@@ -10246,12 +10243,12 @@ export class InquiryView extends ItemView {
             },
             {
                 element: this.navPrevButton,
-                text: 'Previous focus.',
+                text: 'Previous book.',
                 placement: 'top'
             },
             {
                 element: this.navNextButton,
-                text: 'Next focus.',
+                text: 'Next book.',
                 placement: 'top'
             }
         ];

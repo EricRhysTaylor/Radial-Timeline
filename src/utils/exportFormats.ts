@@ -246,23 +246,112 @@ function resolvePandocBinary(options: PandocOptions): string {
     return configured;
 }
 
+export type PdfEngine = 'pdflatex' | 'xelatex' | 'lualatex';
+
+export interface PdfEngineSelection {
+    engine: PdfEngine;
+    path: string | null;
+    available: Array<{ engine: PdfEngine; path: string }>;
+    templateNeedsUnicode: boolean;
+}
+
+function templateNeedsUnicodeEngine(templatePath?: string): boolean {
+    if (!templatePath || !templatePath.trim()) return false;
+    const trimmed = templatePath.trim();
+    if (!path.isAbsolute(trimmed) || !fs.existsSync(trimmed)) return false;
+    try {
+        const tex = fs.readFileSync(trimmed, 'utf8');
+        return /\\usepackage\s*\{fontspec\}|\\setmainfont|\\newfontface|\\defaultfontfeatures/i.test(tex);
+    } catch {
+        return false;
+    }
+}
+
+function getEngineCandidatePaths(engine: PdfEngine): string[] {
+    if (process.platform === 'win32') {
+        const userProfile = process.env.USERPROFILE || 'C:\\Users\\Public';
+        const localAppData = process.env.LOCALAPPDATA || `${userProfile}\\AppData\\Local`;
+        const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
+        const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+        return [
+            `${programFiles}\\MiKTeX\\miktex\\bin\\x64\\${engine}.exe`,
+            `${programFiles}\\MiKTeX\\miktex\\bin\\${engine}.exe`,
+            `${programFilesX86}\\MiKTeX\\miktex\\bin\\${engine}.exe`,
+            `${programFiles}\\texlive\\2024\\bin\\win32\\${engine}.exe`,
+            `${programFilesX86}\\texlive\\2024\\bin\\win32\\${engine}.exe`,
+            `${localAppData}\\Programs\\MiKTeX\\miktex\\bin\\x64\\${engine}.exe`
+        ];
+    }
+
+    return [
+        `/Library/TeX/texbin/${engine}`,
+        `/opt/homebrew/bin/${engine}`,
+        `/usr/local/bin/${engine}`,
+        `/usr/bin/${engine}`
+    ];
+}
+
+export function getAutoPdfEngineSelection(templatePath?: string): PdfEngineSelection {
+    const preferUnicode = templateNeedsUnicodeEngine(templatePath);
+    const order: PdfEngine[] = preferUnicode
+        ? ['xelatex', 'lualatex', 'pdflatex']
+        : ['pdflatex', 'xelatex', 'lualatex'];
+
+    const available: Array<{ engine: PdfEngine; path: string }> = [];
+    for (const engine of ['pdflatex', 'xelatex', 'lualatex'] as const) {
+        const found = getEngineCandidatePaths(engine).find(candidate => fs.existsSync(candidate));
+        if (found) {
+            available.push({ engine, path: found });
+        }
+    }
+
+    for (const engine of order) {
+        const found = getEngineCandidatePaths(engine).find(candidate => fs.existsSync(candidate));
+        if (found) {
+            return {
+                engine,
+                path: found,
+                available,
+                templateNeedsUnicode: preferUnicode
+            };
+        }
+    }
+
+    return {
+        engine: order[0],
+        path: null,
+        available,
+        templateNeedsUnicode: preferUnicode
+    };
+}
+
 export async function runPandocOnContent(
     content: string,
     outputAbsolutePath: string,
     options: PandocOptions
 ): Promise<void> {
     const binary = resolvePandocBinary(options);
+    const pdfEngineSelection = getAutoPdfEngineSelection(options.templatePath);
+    const pdfEngine = pdfEngineSelection.path || pdfEngineSelection.engine;
     const tmpDir = os.tmpdir();
     const tmpInput = path.join(tmpDir, `rt-pandoc-${Date.now()}.md`);
     await fs.promises.writeFile(tmpInput, content, 'utf8');
 
     const args = ['-f', 'markdown', '-t', options.targetFormat, '-o', outputAbsolutePath, tmpInput];
+    args.push('--pdf-engine', pdfEngine);
     if (options.templatePath && options.templatePath.trim()) {
         args.push('--template', options.templatePath.trim());
     }
 
     await new Promise<void>((resolve, reject) => {
-        execFile(binary, args, { cwd: options.workingDir }, (error, _stdout, stderr) => {
+        const env = { ...process.env };
+        const pathSeparator = process.platform === 'win32' ? ';' : ':';
+        const extraPaths = process.platform === 'win32'
+            ? ['C:\\Program Files\\MiKTeX\\miktex\\bin\\x64', 'C:\\Program Files\\texlive\\2024\\bin\\win32']
+            : ['/Library/TeX/texbin', '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin'];
+        env.PATH = [env.PATH, ...extraPaths].filter(Boolean).join(pathSeparator);
+
+        execFile(binary, args, { cwd: options.workingDir, env }, (error, _stdout, stderr) => {
             if (error) {
                 reject(new Error(stderr || error.message));
                 return;

@@ -202,6 +202,17 @@ async function scanSystemPaths(): Promise<ScanResult> {
     return result;
 }
 
+function listAvailableLatexEngines(): Array<{ engine: string; path: string }> {
+    const available: Array<{ engine: string; path: string }> = [];
+    for (const { engine, paths } of getKnownLatexPaths()) {
+        const found = paths.find(p => fileExistsSync(p));
+        if (found) {
+            available.push({ engine, path: found });
+        }
+    }
+    return available;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // SAMPLE TEMPLATE GENERATION
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -939,6 +950,76 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
                 '',
                 '\\end{document}'
             ].join('\n')
+        },
+        {
+            name: 'ajfinn_rt.tex',
+            content: [
+                '% Pandoc LaTeX Template — AJ Finn (Radial Timeline native)',
+                '% Sophisticated print styling without external JS compile layer.',
+                '\\documentclass[11pt,letterpaper,twoside]{book}',
+                '',
+                '\\usepackage{fontspec}',
+                '\\usepackage{fancyhdr}',
+                '\\usepackage{titlesec}',
+                '\\usepackage{geometry}',
+                '\\usepackage{setspace}',
+                '\\usepackage{graphicx}',
+                '\\usepackage{etoolbox}',
+                '',
+                '% Print trim-style page geometry',
+                '\\geometry{paperwidth=6in,paperheight=9in,top=1in,bottom=1in,left=1in,right=1in}',
+                '',
+                '\\defaultfontfeatures{Ligatures=TeX}',
+                '\\IfFontExistsTF{Sorts Mill Goudy}{',
+                '  \\setmainfont{Sorts Mill Goudy}[ItalicFont={Sorts Mill Goudy Italic}]',
+                '  \\newfontface\\headerfont{Sorts Mill Goudy}[LetterSpace=15.0]',
+                '}{',
+                '  \\setmainfont{TeX Gyre Pagella}',
+                '  \\newfontface\\headerfont{TeX Gyre Pagella}[LetterSpace=12.0]',
+                '}',
+                '',
+                '\\newcommand{\\BookTitle}{$if(title)$$title$$else$Untitled Manuscript$endif$}',
+                '\\newcommand{\\AuthorName}{$if(author)$$for(author)$$author$$sep$, $endfor$$else$Author$endif$}',
+                '',
+                '\\fancyhf{}',
+                '\\renewcommand{\\headrulewidth}{0pt}',
+                '\\renewcommand{\\footrulewidth}{0pt}',
+                '\\setlength{\\parskip}{0pt}',
+                '\\setlength{\\headsep}{24pt}',
+                '\\setlength{\\headheight}{14pt}',
+                '',
+                '\\newcommand{\\KernedText}[1]{{\\headerfont\\MakeUppercase{#1}}}',
+                '\\newcommand{\\PageNumber}[1]{\\raisebox{0.2ex}{#1}}',
+                '\\newcommand{\\HeaderSeparator}{\\raisebox{0.2ex}{\\textbar}}',
+                '',
+                '\\fancyhead[CE]{%',
+                '  \\ifnum\\value{page}=1\\relax\\else',
+                '    \\PageNumber{\\thepage}\\hspace{1em}\\HeaderSeparator\\hspace{1em}\\KernedText{\\AuthorName}',
+                '  \\fi',
+                '}',
+                '\\fancyhead[CO]{%',
+                '  \\ifnum\\value{page}=1\\relax\\else',
+                '    \\KernedText{\\BookTitle}\\hspace{1em}\\HeaderSeparator\\hspace{1em}\\PageNumber{\\thepage}',
+                '  \\fi',
+                '}',
+                '\\fancyfoot{}',
+                '\\pagestyle{fancy}',
+                '',
+                '\\setcounter{secnumdepth}{1}',
+                '\\titleformat{\\section}{\\normalfont\\Huge\\bfseries\\centering}{\\arabic{section}}{0pt}{}',
+                '\\titlespacing*{\\section}{0pt}{50pt}{-5pt}',
+                '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
+                '',
+                '\\onehalfspacing',
+                '\\setlength{\\parindent}{1.5em}',
+                '',
+                '\\begin{document}',
+                '\\setcounter{page}{1}',
+                '',
+                '$body$',
+                '',
+                '\\end{document}'
+            ].join('\n')
         }
     ];
 
@@ -982,6 +1063,7 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
         { id: 'bundled-screenplay', name: 'Screenplay', preset: 'screenplay', path: normalizePath(`${pandocFolder}/screenplay_template.tex`), bundled: true },
         { id: 'bundled-podcast', name: 'Podcast Script', preset: 'podcast', path: normalizePath(`${pandocFolder}/podcast_template.tex`), bundled: true },
         { id: 'bundled-novel', name: 'Novel Manuscript', preset: 'novel', path: normalizePath(`${pandocFolder}/novel_template.tex`), bundled: true },
+        { id: 'bundled-novel-ajfinn-rt', name: 'AJ Finn RT', preset: 'novel', path: normalizePath(`${pandocFolder}/ajfinn_rt.tex`), bundled: true },
     ];
     for (const layout of sampleLayouts) {
         if (!existingIds.has(layout.id)) {
@@ -1272,6 +1354,11 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
 
                     if (scan.latexPath) {
                         msgs.push(`✓ LaTeX found (${scan.latexEngine})`);
+                        const availableEngines = listAvailableLatexEngines();
+                        if (availableEngines.length > 0) {
+                            msgs.push(`Available engines: ${availableEngines.map(item => item.engine).join(', ')}`);
+                        }
+                        msgs.push('Auto PDF engine: xelatex/lualatex for fontspec templates, otherwise pdflatex.');
                     } else {
                         msgs.push('⚠ LaTeX not found — needed for PDF export');
                     }
