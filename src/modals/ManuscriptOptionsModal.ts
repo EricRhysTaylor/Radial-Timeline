@@ -275,19 +275,27 @@ export class ManuscriptOptionsModal extends Modal {
             cls: 'rt-sub-card-note',
             text: 'Export as one file or split into multiple parts.'
         });
-        const splitModeRow = this.splitCard.createDiv({ cls: 'ert-manuscript-split-mode' });
+        const splitModeRow = this.splitCard.createDiv({ cls: 'ert-manuscript-split-grid' });
         const splitModeGroup = `rt-manuscript-split-${Date.now()}`;
-        const singleOption = splitModeRow.createEl('label', { cls: 'ert-manuscript-split-option' });
+        const singleCol = splitModeRow.createDiv({ cls: 'ert-manuscript-split-col' });
+        const singleOption = singleCol.createEl('label', { cls: 'ert-manuscript-split-option' });
         this.splitSingleInputEl = singleOption.createEl('input', {
             attr: { type: 'radio', name: splitModeGroup, value: 'single' }
         }) as HTMLInputElement;
         singleOption.createSpan({ text: 'Single file' });
 
-        const partsOption = splitModeRow.createEl('label', { cls: 'ert-manuscript-split-option' });
+        const partsCol = splitModeRow.createDiv({ cls: 'ert-manuscript-split-col ert-manuscript-split-col--parts' });
+        const partsOption = partsCol.createEl('label', { cls: 'ert-manuscript-split-option' });
         this.splitPartsRadioInputEl = partsOption.createEl('input', {
             attr: { type: 'radio', name: splitModeGroup, value: 'parts' }
         }) as HTMLInputElement;
         partsOption.createSpan({ text: 'Split into parts' });
+        const splitInputRow = partsCol.createDiv({ cls: 'ert-manuscript-split-inline' });
+        splitInputRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Number of parts' });
+        this.splitPartsInputEl = splitInputRow.createEl('input', {
+            cls: 'ert-input ert-input--xs',
+            attr: { type: 'number', min: '2', max: '20', step: '1', value: String(this.splitParts) }
+        }) as HTMLInputElement;
 
         this.splitSingleInputEl.checked = true;
         this.splitSingleInputEl.addEventListener('change', () => {
@@ -300,20 +308,15 @@ export class ManuscriptOptionsModal extends Modal {
             this.splitMode = 'parts';
             this.updateSplitUi();
         });
-
-        this.splitPartsContainerEl = this.splitCard.createDiv({ cls: 'ert-manuscript-split-parts rt-hidden' });
-        const splitInputRow = this.splitPartsContainerEl.createDiv({ cls: 'ert-manuscript-split-input-row' });
-        splitInputRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Number of parts' });
-        this.splitPartsInputEl = splitInputRow.createEl('input', {
-            cls: 'ert-input ert-input--xs',
-            attr: { type: 'number', min: '2', max: '20', step: '1', value: String(this.splitParts) }
-        }) as HTMLInputElement;
         this.splitPartsInputEl.addEventListener('input', () => {
             const next = Number.parseInt(this.splitPartsInputEl?.value || '', 10);
             this.splitParts = this.clampSplitParts(next);
             if (this.splitPartsInputEl) this.splitPartsInputEl.value = String(this.splitParts);
+            if (this.splitPartsRadioInputEl) this.splitPartsRadioInputEl.checked = true;
+            this.splitMode = 'parts';
             this.updateSplitUi();
         });
+        this.splitPartsContainerEl = this.splitCard.createDiv({ cls: 'ert-manuscript-split-parts rt-hidden' });
         this.splitPartsContainerEl.createDiv({
             cls: 'rt-sub-card-note',
             text: 'Scenes are divided evenly across files.'
@@ -963,6 +966,9 @@ HOST: Let's start with Sarah's story...`
             this.splitPartsRadioInputEl.checked = this.splitMode === 'parts';
             this.splitPartsRadioInputEl.disabled = !canSplit;
         }
+        if (this.splitPartsInputEl) {
+            this.splitPartsInputEl.disabled = !canSplit;
+        }
 
         const partsEnabled = this.splitMode === 'parts';
         this.splitPartsContainerEl?.toggleClass('rt-hidden', !partsEnabled);
@@ -1227,6 +1233,7 @@ HOST: Let's start with Sarah's story...`
             this.renderHeroMeta(meta);
 
             this.loadingEl?.remove();
+            this.updateRangeUI();
             this.syncRangeAvailability();
             this.updateOrderPillsState();
             this.syncExportUi();
