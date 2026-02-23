@@ -88,10 +88,10 @@ export function mapErrorToUserMessage(error: unknown): string {
         return 'Provider unavailable or network blocked. Check connectivity and provider status.';
     }
     if (error instanceof ContextTooLongError) {
-        return 'Context too long for the selected model. Reduce corpus size or switch to a larger context profile.';
+        return 'Context too long for the selected model. Reduce corpus size or switch to a model with a larger context window.';
     }
     if (error instanceof MalformedJsonError) {
-        return 'Model returned malformed JSON. Retry, or switch to a higher determinism profile.';
+        return 'Model returned malformed JSON. Retry, or switch to a different model.';
     }
     if (error instanceof Error) {
         return error.message;

@@ -34,6 +34,8 @@ export function readSceneId(frontmatter: Record<string, unknown> | null | undefi
     return trimmed.length > 0 ? trimmed : undefined;
 }
 
+export const readReferenceId = readSceneId;
+
 export function isSceneClassFrontmatter(frontmatter: Record<string, unknown> | null | undefined): boolean {
     if (!frontmatter || typeof frontmatter !== 'object') return false;
     const classKey = findCaseInsensitiveKey(frontmatter, SCENE_CLASS_KEY);
@@ -47,17 +49,35 @@ export function ensureSceneIdFrontmatter(
     frontmatter: Record<string, unknown>,
     providedId?: string
 ): { frontmatter: Record<string, unknown>; sceneId: string; changed: boolean } {
-    const existingId = readSceneId(frontmatter);
-    const sceneId = existingId ?? normalizeSceneIdValue(providedId) ?? generateSceneId();
+    const ensured = ensureReferenceIdFrontmatter(frontmatter, {
+        providedId,
+        classFallback: 'Scene'
+    });
+    return {
+        frontmatter: ensured.frontmatter,
+        sceneId: ensured.id,
+        changed: ensured.changed
+    };
+}
+
+export function ensureReferenceIdFrontmatter(
+    frontmatter: Record<string, unknown>,
+    options: {
+        providedId?: string;
+        classFallback?: string;
+    } = {}
+): { frontmatter: Record<string, unknown>; id: string; changed: boolean } {
+    const existingId = readReferenceId(frontmatter);
+    const id = existingId ?? normalizeSceneIdValue(options.providedId) ?? generateSceneId();
     const classKey = findCaseInsensitiveKey(frontmatter, SCENE_CLASS_KEY);
     const idKey = findCaseInsensitiveKey(frontmatter, SCENE_ID_KEY);
     const ordered: Record<string, unknown> = {};
 
-    ordered.id = sceneId;
+    ordered.id = id;
     if (classKey) {
         ordered[classKey] = frontmatter[classKey];
-    } else {
-        ordered.Class = 'Scene';
+    } else if (options.classFallback) {
+        ordered.Class = options.classFallback;
     }
 
     for (const [key, value] of Object.entries(frontmatter)) {
@@ -66,10 +86,10 @@ export function ensureSceneIdFrontmatter(
         ordered[key] = value;
     }
 
-    const changed = !existingId || idKey !== 'id' || !classKey;
+    const changed = !existingId || idKey !== 'id' || (!classKey && !!options.classFallback);
     return {
         frontmatter: ordered,
-        sceneId,
+        id,
         changed
     };
 }

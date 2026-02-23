@@ -14,32 +14,26 @@ export function formatRecommendationWhy(input: {
     routerReason?: string;
 }): string {
     if (!input.model) {
-        return 'No eligible model; enable provider or refresh snapshot.';
+        return 'No eligible model available for current provider and capability requirements.';
     }
 
     if (input.intentId === 'inquiry') {
-        if (input.model.personality.determinism >= 8) {
-            return 'Best for full-manuscript questions with reliable structured answers.';
-        }
-        return 'Best for full-manuscript questions and broad structural pattern tracking.';
+        return 'Uses the current deterministic auto selection for cross-scene structural analysis.';
     }
 
     if (input.intentId === 'gossamer') {
-        if (input.model.personality.writing >= 8) {
-            return 'Strong thematic and prose sensitivity for momentum and tone shifts.';
-        }
-        return 'Balances narrative momentum signals with dependable scene-level coherence reads.';
+        return 'Uses the current deterministic auto selection for beat-level momentum analysis.';
     }
 
     if (input.intentId === 'quick') {
-        return 'Fast iterations for small edits and lightweight writing transforms.';
+        return 'Uses the current deterministic auto selection for general JSON-capable tasks.';
     }
 
     if (input.intentId === 'local') {
-        return 'Runs locally for privacy, with less depth than cloud models.';
+        return 'Uses the current deterministic auto selection for local/private runs.';
     }
 
     return trimToMaxWords(
-        input.routerReason?.trim() || 'Fits your current settings and requested writing constraints.'
+        input.routerReason?.trim() || 'Model selected from current provider and capability requirements.'
     );
 }

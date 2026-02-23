@@ -39,25 +39,9 @@ export interface ModelInfo {
     line?: string;
 }
 
-export type ModelProfileName = 'deepWriter' | 'deepReasoner' | 'balancedAnalysis';
-
-export interface ModelProfile {
-    tier?: ModelTier;
-    minReasoning?: number;
-    minWriting?: number;
-    minDeterminism?: number;
-    requiredCapabilities?: Capability[];
-    weighting?: {
-        reasoning: number;
-        writing: number;
-        determinism: number;
-    };
-}
-
 export type ModelPolicy =
     | { type: 'pinned'; pinnedAlias?: string }
-    | { type: 'latestStable' }
-    | { type: 'profile'; profile: ModelProfileName };
+    | { type: 'latestStable' };
 
 export interface AIOverrides {
     temperature?: number;
@@ -198,7 +182,6 @@ export interface AIRunRequest {
     responseSchema?: Record<string, unknown>;
     policyOverride?: ModelPolicy;
     providerOverride?: AIProviderId;
-    profileOverride?: ModelProfileName;
     overrides?: Partial<AIOverrides>;
     tokenEstimateInput?: number;
     legacySelectionHint?: {

@@ -104,5 +104,5 @@ export function mergeCuratedWithSnapshot(
 export function formatAvailabilityLabel(status: AvailabilityStatus): string {
     if (status === 'visible') return 'Visible to your key ✅';
     if (status === 'not_visible') return 'Not visible ⚠️';
-    return 'Unknown (snapshot disabled)';
+    return 'Unknown (snapshot unavailable)';
 }

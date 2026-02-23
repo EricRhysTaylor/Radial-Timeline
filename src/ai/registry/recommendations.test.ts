@@ -23,7 +23,7 @@ function makeMergedModel(overrides: Partial<MergedModelInfo>): MergedModelInfo {
 }
 
 describe('computeRecommendedPicks', () => {
-    it('returns Inquiry, Gossamer, and Quick recommendations when eligible models exist', () => {
+    it('returns Inquiry, Gossamer Momentum, and General use rows when eligible models exist', () => {
         const aiSettings = buildDefaultAiSettings();
         aiSettings.provider = 'openai';
         const models: MergedModelInfo[] = [
@@ -51,9 +51,9 @@ describe('computeRecommendedPicks', () => {
 
         const picks = computeRecommendedPicks({ models, aiSettings, includeLocalPrivate: false });
         expect(picks.map(pick => pick.title)).toEqual([
-            'Recommended for Inquiry',
-            'Recommended for Gossamer',
-            'Recommended for Quick tasks'
+            'Inquiry',
+            'Gossamer Momentum',
+            'General use'
         ]);
     });
 
@@ -117,7 +117,7 @@ describe('computeRecommendedPicks', () => {
         expect(getAvailabilityIconName('unknown')).toBe('help-circle');
     });
 
-    it('maps author-facing why text for each intent within the compact word bound', () => {
+    it('maps factual why text for each intent within the compact word bound', () => {
         const aiSettings = buildDefaultAiSettings();
         aiSettings.provider = 'openai';
         const openAiModel = makeMergedModel({
@@ -192,7 +192,7 @@ describe('computeRecommendedPicks', () => {
 
         const picks = computeRecommendedPicks({ models, aiSettings, includeLocalPrivate: false });
         expect(picks.find(pick => pick.id === 'inquiry')?.model?.alias).toBe('openai-deep');
-        expect(picks.find(pick => pick.id === 'gossamer')?.model?.alias).toBe('openai-balanced');
-        expect(picks.find(pick => pick.id === 'quick')?.model?.alias).toBe('openai-fast');
+        expect(picks.find(pick => pick.id === 'gossamer')?.model?.alias).toBe('openai-deep');
+        expect(picks.find(pick => pick.id === 'quick')?.model?.alias).toBe('openai-deep');
     });
 });

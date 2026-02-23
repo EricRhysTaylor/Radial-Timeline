@@ -43,8 +43,9 @@ import {
     getExcludeKeyPredicate,
     RESERVED_OBSIDIAN_KEYS,
 } from '../../utils/yamlTemplateNormalize';
-import { runYamlAudit, collectFilesForAudit, formatAuditReport, type YamlAuditResult, type NoteAuditEntry } from '../../utils/yamlAudit';
+import { runYamlAudit, collectFilesForAudit, collectFilesForAuditWithScope, formatAuditReport, type YamlAuditResult, type NoteAuditEntry } from '../../utils/yamlAudit';
 import { runYamlBackfill, runYamlFillEmptyValues, type BackfillResult } from '../../utils/yamlBackfill';
+import { runReferenceIdBackfill } from '../../utils/referenceIdBackfill';
 import { runYamlDeleteFields, runYamlDeleteEmptyExtraFields, runYamlReorder, previewDeleteFields, previewReorder, type DeleteResult, type ReorderResult } from '../../utils/yamlManager';
 import { type FrontmatterSafetyResult, formatSafetyIssues } from '../../utils/yamlSafety';
 import { isPathInFolderScope } from '../../utils/pathScope';
@@ -3997,6 +3998,7 @@ export function renderStoryBeatsSection(params: {
         beatSystemKey?: string
     ): void {
         let auditResult: YamlAuditResult | null = null;
+        let auditScopeSummary = '';
         type FillEmptyPlan = {
             files: TFile[];
             entries: Array<{ file: TFile; emptyKeys: string[] }>;
@@ -4131,15 +4133,25 @@ export function renderStoryBeatsSection(params: {
             copyBtn.classList.add('ert-settings-hidden');
         });
 
-        // Insert missing button (hidden until audit finds missing fields)
+        // Insert missing fields button (hidden until audit finds missing fields)
         let backfillBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
             button
-                .setButtonText('Insert missing')
+                .setButtonText('Insert missing fields')
                 .setTooltip('Add missing custom fields to existing notes')
                 .onClick(() => void handleBackfill());
             backfillBtn = button.buttonEl;
             backfillBtn.classList.add('ert-settings-hidden');
+        });
+        // Insert missing IDs button (hidden until audit finds missing IDs)
+        let insertMissingIdsBtn: HTMLButtonElement | undefined;
+        auditSetting.addButton(button => {
+            button
+                .setButtonText('Insert missing IDs')
+                .setTooltip('Insert missing Reference IDs in this scope')
+                .onClick(() => void handleInsertMissingIds());
+            insertMissingIdsBtn = button.buttonEl;
+            insertMissingIdsBtn.classList.add('ert-settings-hidden');
         });
         let fillEmptyBtn: HTMLButtonElement | undefined;
         auditSetting.addButton(button => {
@@ -4200,15 +4212,19 @@ export function renderStoryBeatsSection(params: {
             }
             auditBtn.buttonEl.classList.remove('ert-save-changes-btn--attention');
             const activeBeatSystemKey = resolveBeatAuditSystemKey();
-            const preCheckFiles = collectFilesForAudit(app, noteType, plugin.settings, activeBeatSystemKey);
-            if (preCheckFiles.length === 0) {
+            const preCheckScope = collectFilesForAuditWithScope(app, noteType, plugin.settings, activeBeatSystemKey);
+            if (preCheckScope.reason) {
+                auditBtn.setDisabled(true);
+                auditBtn.setButtonText('Run audit');
+                auditBtn.setTooltip(preCheckScope.reason);
+            } else if (preCheckScope.files.length === 0) {
                 auditBtn.setDisabled(true);
                 auditBtn.setButtonText('Run audit');
                 auditBtn.setTooltip(`No ${noteType.toLowerCase()} notes found. Create beat notes first.`);
             } else {
                 auditBtn.setDisabled(false);
                 auditBtn.setButtonText('Run audit');
-                auditBtn.setTooltip(`Scan all ${noteType.toLowerCase()} notes for YAML schema drift`);
+                auditBtn.setTooltip(`Scan ${preCheckScope.scopeSummary} for YAML schema drift`);
             }
             auditPrimaryAction = () => runAudit();
         };
@@ -4232,15 +4248,27 @@ export function renderStoryBeatsSection(params: {
 
         const runAudit = async () => {
             const activeBeatSystemKey = resolveBeatAuditSystemKey();
-            const files = collectFilesForAudit(app, noteType, plugin.settings, activeBeatSystemKey);
+            const auditScope = collectFilesForAuditWithScope(app, noteType, plugin.settings, activeBeatSystemKey);
+            const files = auditScope.files;
+            auditScopeSummary = auditScope.scopeSummary;
+            if (auditScope.reason) {
+                resultsEl.empty();
+                resultsEl.classList.remove('ert-settings-hidden');
+                resultsEl.createDiv({
+                    text: auditScope.reason,
+                    cls: 'ert-audit-clean'
+                });
+                new Notice(auditScope.reason);
+                return;
+            }
             if (files.length === 0) {
                 resultsEl.empty();
                 resultsEl.classList.remove('ert-settings-hidden');
                 resultsEl.createDiv({
-                    text: `No ${noteType.toLowerCase()} notes found in the vault yet.`,
+                    text: `No ${noteType.toLowerCase()} notes found in the active book scope.`,
                     cls: 'ert-audit-clean'
                 });
-                new Notice(`No ${noteType.toLowerCase()} notes found in the vault.`);
+                new Notice(`No ${noteType.toLowerCase()} notes found in scope: ${auditScopeSummary}`);
                 return;
             }
             auditResult = await runYamlAudit({
@@ -4254,8 +4282,10 @@ export function renderStoryBeatsSection(params: {
 
             console.debug('[YamlAudit] yaml_audit_run', {
                 noteType,
+                scope: auditScopeSummary,
                 totalNotes: auditResult.summary.totalNotes,
                 missing: auditResult.summary.notesWithMissing,
+                missingIds: auditResult.summary.notesMissingIds,
                 extra: auditResult.summary.notesWithExtra,
                 drift: auditResult.summary.notesWithDrift,
                 warnings: auditResult.summary.notesWithWarnings,
@@ -4271,6 +4301,11 @@ export function renderStoryBeatsSection(params: {
                 backfillBtn?.classList.remove('ert-settings-hidden');
             } else {
                 backfillBtn?.classList.add('ert-settings-hidden');
+            }
+            if (auditResult.summary.notesMissingIds > 0) {
+                insertMissingIdsBtn?.classList.remove('ert-settings-hidden');
+            } else {
+                insertMissingIdsBtn?.classList.add('ert-settings-hidden');
             }
 
             fillEmptyPlan = buildFillEmptyPlan(files, activeBeatSystemKey);
@@ -4352,6 +4387,7 @@ export function renderStoryBeatsSection(params: {
                 auditResult.notes
                     .filter(n =>
                         n.missingFields.length > 0
+                        || n.missingReferenceId
                         || n.extraKeys.length > 0
                         || n.orderDrift
                         || n.semanticWarnings.length > 0
@@ -4366,7 +4402,9 @@ export function renderStoryBeatsSection(params: {
             // Schema health + summary in one line
             const healthLevel = (s.notesUnsafe > 0)
                 ? 'unsafe'
-                : (s.notesWithMissing > 0 || emptyValueNotes > 0)
+                : (s.notesMissingIds > 0)
+                    ? 'critical'
+                    : (s.notesWithMissing > 0 || emptyValueNotes > 0)
                     ? 'needs-attention'
                     : (s.notesWithExtra > 0 || s.notesWithDrift > 0 || s.notesWithWarnings > 0 || s.notesSuspicious > 0)
                         ? 'mixed'
@@ -4375,12 +4413,20 @@ export function renderStoryBeatsSection(params: {
                 'clean': 'Clean',
                 'mixed': 'Mixed',
                 'needs-attention': 'Needs attention',
+                'critical': 'Critical issues detected',
                 'unsafe': 'Unsafe notes detected',
             };
             const headerEl = resultsEl.createDiv({ cls: 'ert-audit-result-header' });
             const healthEl = headerEl.createSpan({ cls: `ert-audit-health ert-audit-health--${healthLevel}` });
             healthEl.textContent = `Schema health: ${healthLabels[healthLevel]}`;
-            headerEl.createSpan({ text: ` · ${s.totalNotes} note${s.totalNotes !== 1 ? 's' : ''} scanned`, cls: 'ert-audit-summary' });
+            headerEl.createSpan({ text: ` · Scope: ${auditScopeSummary}`, cls: 'ert-audit-summary' });
+
+            if (s.notesMissingIds > 0) {
+                resultsEl.createDiv({
+                    text: `Critical: Missing IDs (${s.notesMissingIds})`,
+                    cls: 'ert-audit-critical-summary'
+                });
+            }
 
             // Safety banner — unsafe files
             if (s.notesUnsafe > 0) {
@@ -4426,7 +4472,15 @@ export function renderStoryBeatsSection(params: {
             }
 
             // All clean — early return
-            if (s.clean === s.totalNotes && s.unreadNotes === 0 && s.notesWithWarnings === 0 && s.notesUnsafe === 0 && s.notesSuspicious === 0 && emptyValueNotes === 0) {
+            if (
+                s.clean === s.totalNotes
+                && s.unreadNotes === 0
+                && s.notesWithWarnings === 0
+                && s.notesUnsafe === 0
+                && s.notesSuspicious === 0
+                && s.notesMissingIds === 0
+                && emptyValueNotes === 0
+            ) {
                 resultsEl.createDiv({
                     text: `All ${s.totalNotes} notes are up to date with this set.`,
                     cls: 'ert-audit-clean'
@@ -4438,11 +4492,13 @@ export function renderStoryBeatsSection(params: {
             interface ChipConfig {
                 label: string;
                 count: number;
-                kind: 'missing' | 'extra' | 'drift' | 'warning' | 'unsafe' | 'suspicious';
+                kind: 'critical' | 'missing' | 'extra' | 'drift' | 'warning' | 'unsafe' | 'suspicious';
                 entries: NoteAuditEntry[];
             }
 
             const chips: ChipConfig[] = [
+                { label: 'Critical: Missing IDs', count: s.notesMissingIds, kind: 'critical',
+                  entries: auditResult.notes.filter(n => n.missingReferenceId) },
                 { label: 'Unsafe', count: s.notesUnsafe, kind: 'unsafe',
                   entries: auditResult.notes.filter(n => n.safetyResult?.status === 'dangerous') },
                 { label: 'Suspicious', count: s.notesSuspicious, kind: 'suspicious',
@@ -4503,6 +4559,9 @@ export function renderStoryBeatsSection(params: {
                 for (const entry of pageEntries) {
                     let reason: string;
                     switch (activeChip.kind) {
+                        case 'critical':
+                            reason = 'Missing Reference ID';
+                            break;
                         case 'missing':
                             reason = entry.missingFields.join(', ');
                             break;
@@ -4545,7 +4604,9 @@ export function renderStoryBeatsSection(params: {
 
                     pillEl.addEventListener('click', async () => {
                         await openOrRevealFile(app, entry.file, false);
-                        if (activeChip.kind === 'unsafe' || activeChip.kind === 'suspicious') {
+                        if (activeChip.kind === 'critical') {
+                            new Notice('Missing Reference ID');
+                        } else if (activeChip.kind === 'unsafe' || activeChip.kind === 'suspicious') {
                             new Notice(`Safety: ${reason}`);
                         } else if (entry.missingFields.length > 0) {
                             new Notice(`Missing fields: ${entry.missingFields.join(', ')}`);
@@ -4594,6 +4655,67 @@ export function renderStoryBeatsSection(params: {
             renderNoteList();
         };
 
+        // ─── Insert missing IDs action ───────────────────────────────────
+        const handleInsertMissingIds = async () => {
+            if (!auditResult || auditResult.summary.notesMissingIds === 0) return;
+
+            const targetFiles = auditResult.notes
+                .filter(n => n.missingReferenceId)
+                .map(n => n.file);
+            if (targetFiles.length === 0) return;
+
+            const confirmed = await new Promise<boolean>((resolve) => {
+                const modal = new Modal(app);
+                modal.titleEl.setText('');
+                modal.contentEl.empty();
+                modal.modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal-shell--md');
+                modal.contentEl.addClass('ert-modal-container', 'ert-stack');
+
+                const header = modal.contentEl.createDiv({ cls: 'ert-modal-header' });
+                header.createSpan({ cls: 'ert-modal-badge', text: `${noteType.toUpperCase()} AUDIT` });
+                header.createDiv({ cls: 'ert-modal-title', text: 'Insert missing IDs' });
+                header.createDiv({
+                    cls: 'ert-modal-subtitle',
+                    text: `Insert Reference IDs into ${targetFiles.length} ${noteType.toLowerCase()} note${targetFiles.length !== 1 ? 's' : ''}.`
+                });
+
+                const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                body.createDiv({ text: `Scope: ${auditScopeSummary}`, cls: 'ert-modal-subtitle' });
+                body.createDiv({ text: 'Only notes missing a Reference ID will be updated. Existing IDs are preserved.' });
+
+                const footer = modal.contentEl.createDiv({ cls: 'ert-modal-actions' });
+                new ButtonComponent(footer).setButtonText('Insert IDs').setCta().onClick(() => { resolve(true); modal.close(); });
+                new ButtonComponent(footer).setButtonText('Cancel').onClick(() => { resolve(false); modal.close(); });
+
+                modal.onClose = () => resolve(false);
+                modal.open();
+            });
+
+            if (!confirmed) return;
+
+            const result = await runReferenceIdBackfill({
+                app,
+                files: targetFiles,
+                noteType
+            });
+
+            console.debug('[YamlAudit] reference_id_backfill_execute', {
+                noteType,
+                scope: auditScopeSummary,
+                updated: result.updated,
+                skipped: result.skipped,
+                failed: result.failed
+            });
+
+            const parts: string[] = [];
+            if (result.updated > 0) parts.push(`Updated ${result.updated} note${result.updated !== 1 ? 's' : ''}`);
+            if (result.skipped > 0) parts.push(`${result.skipped} already had IDs`);
+            if (result.failed > 0) parts.push(`${result.failed} failed`);
+            new Notice(parts.join(', ') || 'No changes made.');
+
+            setTimeout(() => runAudit(), 750);
+        };
+
         // ─── Backfill action ─────────────────────────────────────────────
         const handleBackfill = async () => {
             if (!auditResult || auditResult.summary.notesWithMissing === 0) return;
@@ -4629,6 +4751,7 @@ export function renderStoryBeatsSection(params: {
                 });
 
                 const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                body.createDiv({ text: `Scope: ${auditScopeSummary}`, cls: 'ert-modal-subtitle' });
                 body.createDiv({ text: 'The following fields will be added (existing values are never overwritten):' });
                 const fieldListEl = body.createEl('ul');
                 for (const [key, val] of Object.entries(fieldsToInsert)) {
@@ -4843,6 +4966,7 @@ export function renderStoryBeatsSection(params: {
                 }
 
                 const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                body.createDiv({ text: `Scope: ${auditScopeSummary}`, cls: 'ert-modal-subtitle' });
 
                 if (emptyFieldCount > 0) {
                     body.createDiv({ text: `${emptyFieldCount} empty field${emptyFieldCount !== 1 ? 's' : ''} will be removed (no data loss).` });
@@ -5030,6 +5154,7 @@ export function renderStoryBeatsSection(params: {
                 }
 
                 const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                body.createDiv({ text: `Scope: ${auditScopeSummary}`, cls: 'ert-modal-subtitle' });
 
                 if (emptyFieldCount > 0) {
                     body.createDiv({ text: `${emptyFieldCount} empty field${emptyFieldCount !== 1 ? 's' : ''} will be removed (no data loss).` });
@@ -5172,6 +5297,7 @@ export function renderStoryBeatsSection(params: {
                 }
 
                 const body = modal.contentEl.createDiv({ cls: ['ert-panel', 'ert-panel--glass'] });
+                body.createDiv({ text: `Scope: ${auditScopeSummary}`, cls: 'ert-modal-subtitle' });
                 body.createDiv({ text: 'Only field order changes — all values are preserved exactly.' });
 
                 // Show before/after preview

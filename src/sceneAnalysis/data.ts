@@ -4,13 +4,14 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import { getFrontMatterInfo, parseYaml, type Vault } from 'obsidian';
+import { getFrontMatterInfo, parseYaml, type Vault, type TFile } from 'obsidian';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { stripObsidianComments } from '../utils/text';
 import { normalizeBooleanValue } from '../utils/sceneHelpers';
 import type RadialTimelinePlugin from '../main';
 import type { ProcessingMode } from '../modals/SceneAnalysisProcessingModal';
 import type { ProcessedCheckOptions, SceneData } from './types';
+import { isPathInExplicitFolderScope } from '../utils/pathScope';
 
 function extractSceneNumber(filename: string): number | null {
     const match = filename.match(/^(\d+(\.\d+)?)/);
@@ -158,13 +159,20 @@ export function hasBeenProcessedForBeats(
     return hasTimestamp || hasAnalysis;
 }
 
-export async function getAllSceneData(plugin: RadialTimelinePlugin, vault: Vault): Promise<SceneData[]> {
+export interface SceneDataQueryOptions {
+    files?: TFile[];
+}
+
+export async function getAllSceneData(
+    plugin: RadialTimelinePlugin,
+    vault: Vault,
+    options: SceneDataQueryOptions = {}
+): Promise<SceneData[]> {
+    const scopedFiles = options.files;
     const sourcePath = plugin.settings.sourcePath.trim();
-    const allFiles = vault.getMarkdownFiles();
-    const filesInPath = allFiles.filter(file => {
-        if (sourcePath === '') return true;
-        return file.path.startsWith(sourcePath + '/') || file.path === sourcePath;
-    });
+    const filesInPath = scopedFiles
+        ? scopedFiles
+        : vault.getMarkdownFiles().filter(file => isPathInExplicitFolderScope(file.path, sourcePath));
 
     const sceneDataPromises = filesInPath.map(async (file): Promise<SceneData | null> => {
         try {

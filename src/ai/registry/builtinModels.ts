@@ -1,4 +1,4 @@
-import type { Capability, ModelInfo, ModelProfile, ModelProfileName } from '../types';
+import type { Capability, ModelInfo } from '../types';
 
 const DEEP_CAPS: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'];
 const BALANCED_CAPS: Capability[] = ['longContext', 'jsonStrict', 'reasoningStrong'];
@@ -165,45 +165,6 @@ export const BUILTIN_MODELS: ModelInfo[] = [
         status: 'legacy'
     }
 ];
-
-export const MODEL_PROFILES: Record<ModelProfileName, ModelProfile> = {
-    deepWriter: {
-        tier: 'DEEP',
-        minReasoning: 8,
-        minWriting: 8,
-        minDeterminism: 7,
-        requiredCapabilities: ['longContext', 'jsonStrict'],
-        weighting: {
-            reasoning: 0.4,
-            writing: 0.4,
-            determinism: 0.2
-        }
-    },
-    deepReasoner: {
-        tier: 'DEEP',
-        minReasoning: 9,
-        minWriting: 6,
-        minDeterminism: 8,
-        requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
-        weighting: {
-            reasoning: 0.55,
-            writing: 0.15,
-            determinism: 0.3
-        }
-    },
-    balancedAnalysis: {
-        tier: 'BALANCED',
-        minReasoning: 7,
-        minWriting: 7,
-        minDeterminism: 8,
-        requiredCapabilities: ['jsonStrict', 'reasoningStrong'],
-        weighting: {
-            reasoning: 0.4,
-            writing: 0.3,
-            determinism: 0.3
-        }
-    }
-};
 
 export function findBuiltinByAlias(alias: string): ModelInfo | undefined {
     return BUILTIN_MODELS.find(model => model.alias === alias);

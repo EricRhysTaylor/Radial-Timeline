@@ -20,7 +20,8 @@ import type {
     ModelPolicy,
     ModelInfo,
     AccessTier,
-    ProviderExecutionResult
+    ProviderExecutionResult,
+    RegistryRefreshResult
 } from '../types';
 import { buildProviders } from '../providers/provider';
 import { AICache } from './cache';
@@ -69,12 +70,6 @@ function ensureJsonCapability(request: AIRunRequest): Capability[] {
 }
 
 function mergePolicy(base: ModelPolicy, request: AIRunRequest): ModelPolicy {
-    if (request.profileOverride) {
-        return {
-            type: 'profile',
-            profile: request.profileOverride
-        };
-    }
     return request.policyOverride ?? base;
 }
 
@@ -172,7 +167,7 @@ export class AIClient {
         this.providers = buildProviders(plugin);
         this.registry = new ModelRegistry({
             remoteRegistryUrl: DEFAULT_REMOTE_REGISTRY_URL,
-            allowRemoteRegistry: false,
+            allowRemoteRegistry: true,
             readCache: async () => this.plugin.settings.aiRegistryCacheJson ?? null,
             writeCache: async (content: string) => {
                 this.plugin.settings.aiRegistryCacheJson = content;
@@ -181,25 +176,24 @@ export class AIClient {
         });
     }
 
-    async refreshRegistry(forceRemote?: boolean): Promise<void> {
-        const settings = getAiSettings(this.plugin.settings);
+    async refreshRegistry(forceRemote?: boolean): Promise<RegistryRefreshResult> {
         this.registry = new ModelRegistry({
             remoteRegistryUrl: DEFAULT_REMOTE_REGISTRY_URL,
-            allowRemoteRegistry: forceRemote ?? settings.privacy.allowRemoteRegistry,
+            allowRemoteRegistry: true,
             readCache: async () => this.plugin.settings.aiRegistryCacheJson ?? null,
             writeCache: async (content: string) => {
                 this.plugin.settings.aiRegistryCacheJson = content;
                 await this.plugin.saveSettings();
             }
         });
-        await this.registry.refresh();
+        const result = await this.registry.refresh();
         this.registryReady = true;
+        return result;
     }
 
     async refreshProviderSnapshot(forceRemote?: boolean): Promise<ProviderSnapshotLoadResult> {
-        const settings = getAiSettings(this.plugin.settings);
         this.providerSnapshot = await loadProviderSnapshot({
-            enabled: forceRemote ?? settings.privacy.allowProviderSnapshot,
+            enabled: true,
             forceRemote,
             url: DEFAULT_REMOTE_PROVIDER_SNAPSHOT_URL,
             readCache: async () => this.plugin.settings.aiProviderSnapshotCacheJson ?? null,
@@ -210,6 +204,59 @@ export class AIClient {
         });
         this.providerSnapshotReady = true;
         return this.providerSnapshot;
+    }
+
+    private parseCacheFetchedAt(raw: string | null | undefined): string | null {
+        if (!raw) return null;
+        try {
+            const parsed = JSON.parse(raw) as { fetchedAt?: unknown };
+            if (typeof parsed.fetchedAt !== 'string' || !parsed.fetchedAt.trim()) return null;
+            const timestamp = Date.parse(parsed.fetchedAt);
+            if (!Number.isFinite(timestamp)) return null;
+            return new Date(timestamp).toISOString();
+        } catch {
+            return null;
+        }
+    }
+
+    getLastModelUpdateAt(): string | null {
+        const registryFetchedAt = this.parseCacheFetchedAt(this.plugin.settings.aiRegistryCacheJson ?? null);
+        const snapshotFetchedAt = this.parseCacheFetchedAt(this.plugin.settings.aiProviderSnapshotCacheJson ?? null);
+        const candidates = [registryFetchedAt, snapshotFetchedAt]
+            .filter((value): value is string => !!value)
+            .map(value => Date.parse(value))
+            .filter(value => Number.isFinite(value));
+        if (!candidates.length) return null;
+        return new Date(Math.max(...candidates)).toISOString();
+    }
+
+    async updateModelData(forceRemote = true): Promise<{
+        registry: RegistryRefreshResult;
+        snapshot: ProviderSnapshotLoadResult;
+        lastUpdatedAt: string | null;
+    }> {
+        const [registry, snapshot] = await Promise.all([
+            this.refreshRegistry(forceRemote),
+            this.refreshProviderSnapshot(forceRemote)
+        ]);
+        return {
+            registry,
+            snapshot,
+            lastUpdatedAt: this.getLastModelUpdateAt()
+        };
+    }
+
+    async refreshModelDataIfStale(maxAgeMs = 24 * 60 * 60 * 1000): Promise<boolean> {
+        const lastUpdatedAt = this.getLastModelUpdateAt();
+        const lastUpdateTs = lastUpdatedAt ? Date.parse(lastUpdatedAt) : Number.NaN;
+        const isStale = !Number.isFinite(lastUpdateTs) || (Date.now() - lastUpdateTs) > maxAgeMs;
+        if (!isStale) return false;
+        try {
+            await this.updateModelData(true);
+        } catch {
+            // Silent background refresh: offline or remote errors should not block UI.
+        }
+        return true;
     }
 
     async getRegistryModels(forceRemote?: boolean): Promise<ModelInfo[]> {

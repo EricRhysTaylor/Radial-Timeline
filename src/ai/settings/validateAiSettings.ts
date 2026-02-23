@@ -92,15 +92,7 @@ export function validateAiSettings(input?: AiSettingsV1 | null): AiSettingsValid
         }
     }
 
-    if (value.modelPolicy.type === 'profile') {
-        const validProfiles = new Set(['deepWriter', 'deepReasoner', 'balancedAnalysis']);
-        if (!validProfiles.has(value.modelPolicy.profile)) {
-            warnings.push(`Unknown model profile "${value.modelPolicy.profile}"; switching to latestStable.`);
-            value.modelPolicy = { type: 'latestStable' };
-        }
-    }
-
-    const validPolicyTypes = new Set(['pinned', 'latestStable', 'profile']);
+    const validPolicyTypes = new Set(['pinned', 'latestStable']);
     if (!validPolicyTypes.has(value.modelPolicy.type)) {
         warnings.push(`Unknown model policy "${String(value.modelPolicy.type)}"; switching to latestStable.`);
         value.modelPolicy = { type: 'latestStable' };

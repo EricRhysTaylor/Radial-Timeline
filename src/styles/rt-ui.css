@@ -7322,9 +7322,21 @@
   color: var(--text-error);
 }
 
+.ert-ui.ert-scope--settings .ert-audit-health--critical {
+  color: var(--text-error);
+  font-weight: 700;
+}
+
 .ert-ui.ert-scope--settings .ert-audit-summary {
   font-size: 12px;
   color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-audit-critical-summary {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-error);
+  padding: 2px 0;
 }
 
 .ert-ui.ert-scope--settings .ert-audit-unread-warn {
@@ -7346,6 +7358,16 @@
 
 .ert-ui.ert-scope--settings .ert-audit-chip--missing {
   --ert-chip-bg: color-mix(in srgb, var(--text-error) 12%, var(--background-secondary) 80%);
+}
+
+.ert-ui.ert-scope--settings .ert-audit-chip--critical {
+  --ert-chip-bg: color-mix(in srgb, var(--text-error) 16%, var(--background-secondary) 78%);
+  font-weight: 600;
+}
+
+.ert-ui.ert-scope--settings .ert-audit-chip--critical.is-active {
+  border-color: var(--text-error);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error) 20%, transparent);
 }
 
 .ert-ui.ert-scope--settings .ert-audit-chip--missing.is-active {
@@ -7420,6 +7442,11 @@
 
 .ert-ui.ert-scope--settings .ert-audit-note-pill--missing {
   border-color: color-mix(in srgb, var(--text-error) 30%, var(--background-modifier-border));
+}
+
+.ert-ui.ert-scope--settings .ert-audit-note-pill--critical {
+  border-color: var(--text-error);
+  background: color-mix(in srgb, var(--text-error) 6%, var(--background-secondary));
 }
 
 .ert-ui.ert-scope--settings .ert-audit-note-pill--extra {

@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-02-22T18:34:23.894Z",
+  "generatedAt": "2026-02-23T18:50:33.190Z",
   "summary": {
-    "openai": 113,
+    "openai": 115,
     "anthropic": 9,
     "google": 43
   },
@@ -855,6 +855,17 @@
     },
     {
       "provider": "openai",
+      "id": "gpt-audio-1.5",
+      "raw": {
+        "id": "gpt-audio-1.5",
+        "object": "model",
+        "created": 1771550885,
+        "owned_by": "system"
+      },
+      "createdAt": "2026-02-20T01:28:05.000Z"
+    },
+    {
+      "provider": "openai",
       "id": "gpt-audio-2025-08-28",
       "raw": {
         "id": "gpt-audio-2025-08-28",
@@ -940,6 +951,17 @@
         "owned_by": "system"
       },
       "createdAt": "2025-08-27T05:15:01.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-realtime-1.5",
+      "raw": {
+        "id": "gpt-realtime-1.5",
+        "object": "model",
+        "created": 1771461469,
+        "owned_by": "system"
+      },
+      "createdAt": "2026-02-19T00:37:49.000Z"
     },
     {
       "provider": "openai",

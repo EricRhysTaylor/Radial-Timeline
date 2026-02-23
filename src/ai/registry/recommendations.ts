@@ -1,5 +1,5 @@
 import { selectModel } from '../router/selectModel';
-import type { AccessTier, AIProviderId, AiSettingsV1, Capability, ModelInfo, ModelPolicy, ModelTier } from '../types';
+import type { AccessTier, AIProviderId, AiSettingsV1, Capability, ModelInfo, ModelPolicy } from '../types';
 import type { AvailabilityStatus, MergedModelInfo } from './mergeModels';
 import { formatRecommendationWhy } from './recommendationWhy';
 
@@ -19,8 +19,6 @@ interface RecommendationIntent {
     provider: AIProviderId;
     policy: ModelPolicy;
     requiredCapabilities: Capability[];
-    strategy?: 'router' | 'tier_weighted';
-    preferredTiers?: ModelTier[];
     contextTokensNeeded?: number;
     outputTokensNeeded?: number;
 }
@@ -40,49 +38,6 @@ function getTier(aiSettings: AiSettingsV1, provider: AIProviderId): AccessTier {
 
 function findMergedModel(models: MergedModelInfo[], selected: ModelInfo): MergedModelInfo | null {
     return models.find(model => model.provider === selected.provider && model.alias === selected.alias) ?? null;
-}
-
-function hasCapabilities(model: ModelInfo, required: Capability[]): boolean {
-    return required.every(capability => model.capabilities.includes(capability));
-}
-
-function availabilityRank(status: AvailabilityStatus): number {
-    if (status === 'visible') return 0;
-    if (status === 'unknown') return 1;
-    return 2;
-}
-
-function statusRank(status: MergedModelInfo['status']): number {
-    if (status === 'stable') return 0;
-    if (status === 'legacy') return 1;
-    return 2;
-}
-
-function scoreForIntent(model: MergedModelInfo, intentId: RecommendationIntent['id']): number {
-    if (intentId === 'quick') {
-        return model.personality.determinism * 4 + model.personality.reasoning * 2 + model.personality.writing;
-    }
-    if (intentId === 'gossamer') {
-        return model.personality.writing * 4 + model.personality.determinism * 3 + model.personality.reasoning * 2;
-    }
-    return model.personality.reasoning * 4 + model.personality.writing * 2 + model.personality.determinism;
-}
-
-function getTierIndex(model: MergedModelInfo, preferredTiers: ModelTier[] | undefined): number {
-    if (!preferredTiers?.length) return 999;
-    const idx = preferredTiers.indexOf(model.tier);
-    return idx === -1 ? preferredTiers.length + 10 : idx;
-}
-
-function buildEligibleModels(models: MergedModelInfo[], intent: RecommendationIntent): MergedModelInfo[] {
-    const contextTokensNeeded = intent.contextTokensNeeded ?? 4000;
-    const outputTokensNeeded = intent.outputTokensNeeded ?? 800;
-    return models
-        .filter(model => model.provider === intent.provider)
-        .filter(model => model.status !== 'deprecated')
-        .filter(model => hasCapabilities(model, intent.requiredCapabilities))
-        .filter(model => contextTokensNeeded <= model.contextWindow)
-        .filter(model => outputTokensNeeded <= model.maxOutput);
 }
 
 function resolveIntentWithRouter(
@@ -129,65 +84,12 @@ function resolveIntentWithRouter(
     }
 }
 
-function resolveIntentTierWeighted(
-    models: MergedModelInfo[],
-    aiSettings: AiSettingsV1,
-    intent: RecommendationIntent,
-    usedAliases: Set<string>
-): RecommendationRow {
-    const eligible = buildEligibleModels(models, intent);
-    if (!eligible.length) {
-        return resolveIntentWithRouter(models, aiSettings, intent);
-    }
-
-    const ranked = eligible.slice().sort((a, b) => {
-        const availabilityDelta = availabilityRank(a.availabilityStatus) - availabilityRank(b.availabilityStatus);
-        if (availabilityDelta !== 0) return availabilityDelta;
-
-        const statusDelta = statusRank(a.status) - statusRank(b.status);
-        if (statusDelta !== 0) return statusDelta;
-
-        const tierDelta = getTierIndex(a, intent.preferredTiers) - getTierIndex(b, intent.preferredTiers);
-        if (tierDelta !== 0) return tierDelta;
-
-        const scoreDelta = scoreForIntent(b, intent.id) - scoreForIntent(a, intent.id);
-        if (scoreDelta !== 0) return scoreDelta;
-
-        return a.alias.localeCompare(b.alias);
-    });
-
-    const distinctCandidate = ranked.find(model => !usedAliases.has(model.alias));
-    const selectedModel = distinctCandidate ?? ranked[0];
-    const availabilityStatus = selectedModel.availabilityStatus ?? 'unknown';
-    const reason = distinctCandidate
-        ? `Tier-weighted intent selection (${intent.id}) chose ${selectedModel.alias} from preferred tiers.`
-        : `Tier-weighted intent selection (${intent.id}) reused ${selectedModel.alias}; no distinct eligible alternative found.`;
-    const why = formatRecommendationWhy({
-        intentId: intent.id,
-        model: selectedModel,
-        routerReason: reason
-    });
-
-    return {
-        id: intent.id,
-        title: intent.title,
-        provider: intent.provider,
-        model: selectedModel,
-        reason,
-        shortReason: toShortReason(why),
-        availabilityStatus
-    };
-}
-
 function resolveIntent(
     models: MergedModelInfo[],
     aiSettings: AiSettingsV1,
     intent: RecommendationIntent,
-    usedAliases: Set<string>
+    _usedAliases: Set<string>
 ): RecommendationRow {
-    if (intent.strategy === 'tier_weighted') {
-        return resolveIntentTierWeighted(models, aiSettings, intent, usedAliases);
-    }
     return resolveIntentWithRouter(models, aiSettings, intent);
 }
 
@@ -231,33 +133,28 @@ export function computeRecommendedPicks(input: {
     const intents: RecommendationIntent[] = [
         {
             id: 'inquiry',
-            title: 'Recommended for Inquiry',
+            title: 'Inquiry',
             provider: selectedProvider,
-            policy: { type: 'profile', profile: 'deepReasoner' },
+            policy: { type: 'latestStable' },
             requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
-            strategy: 'router',
             contextTokensNeeded: 24000,
             outputTokensNeeded: 2000
         },
         {
             id: 'gossamer',
-            title: 'Recommended for Gossamer',
+            title: 'Gossamer Momentum',
             provider: selectedProvider,
-            policy: { type: 'profile', profile: 'deepWriter' },
+            policy: { type: 'latestStable' },
             requiredCapabilities: ['longContext', 'jsonStrict'],
-            strategy: 'tier_weighted',
-            preferredTiers: ['BALANCED', 'DEEP', 'FAST', 'LOCAL'],
             contextTokensNeeded: 4000,
             outputTokensNeeded: 1000
         },
         {
             id: 'quick',
-            title: 'Recommended for Quick tasks',
+            title: 'General use',
             provider: selectedProvider,
             policy: { type: 'latestStable' },
             requiredCapabilities: ['jsonStrict'],
-            strategy: 'tier_weighted',
-            preferredTiers: ['FAST', 'BALANCED', 'DEEP', 'LOCAL'],
             contextTokensNeeded: 2000,
             outputTokensNeeded: 600
         }
@@ -274,11 +171,10 @@ export function computeRecommendedPicks(input: {
     if (input.includeLocalPrivate) {
         const localIntent: RecommendationIntent = {
             id: 'local',
-            title: 'Recommended for Local/Private',
+            title: 'Local/Private',
             provider: 'ollama',
             policy: { type: 'latestStable' },
             requiredCapabilities: ['jsonStrict'],
-            strategy: 'router'
         };
         const localRow = resolveIntent(input.models, input.aiSettings, localIntent, usedAliases);
         if (localRow.model) {

@@ -1050,7 +1050,6 @@ export class InquiryRunnerService implements InquiryRunner {
             feature: 'InquiryMode',
             task: options.task,
             requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
-            profileOverride: 'deepReasoner',
             featureModeInstructions: [
                 options.systemPrompt,
                 'Do not reinterpret or expand the user’s question. Answer it directly. The role template provides tonal and contextual framing only.'
@@ -1110,7 +1109,7 @@ export class InquiryRunnerService implements InquiryRunner {
         try {
             const modelSelection = selectModel(BUILTIN_MODELS, {
                 provider,
-                policy: { type: 'profile', profile: 'deepReasoner' },
+                policy: { type: 'latestStable' },
                 requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
                 accessTier: this.getAccessTier(provider),
                 contextTokensNeeded: inputTokens,

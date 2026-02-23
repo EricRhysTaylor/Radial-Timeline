@@ -19,17 +19,19 @@ import type { RadialTimelineSettings } from '../types/settings';
 import { normalizeFrontmatterKeys } from './frontmatter';
 import { normalizeBeatSetNameInput, toBeatModelMatchKey } from './beatsInputNormalize';
 import { PRO_BEAT_SETS } from './beatsSystems';
-import { isPathInFolderScope } from './pathScope';
 import {
     type FrontmatterSafetyResult,
     scanFrontmatterSafety,
 } from './yamlSafety';
+import { explainScope, resolveBookScopedFiles } from '../services/NoteScopeResolver';
+import { readReferenceId } from './sceneIds';
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
 export interface NoteAuditEntry {
     file: TFile;
     missingFields: string[];
+    missingReferenceId: boolean;
     extraKeys: string[];
     orderDrift: boolean;
     semanticWarnings: string[];
@@ -44,6 +46,7 @@ export interface YamlAuditSummary {
     /** Notes whose cache was unavailable (recently created / not yet indexed). */
     unreadNotes: number;
     notesWithMissing: number;
+    notesMissingIds: number;
     notesWithExtra: number;
     /** Only counted when missingFields.length === 0 for a note. */
     notesWithDrift: number;
@@ -101,10 +104,10 @@ function stripSceneNumberPrefix(title: string): string {
 
 function collectSceneTitleIndex(app: App, settings: RadialTimelineSettings): string[] {
     const mappings = settings.enableCustomMetadataMapping ? settings.frontmatterMappings : undefined;
-    const sourcePath = (settings.sourcePath || '').trim();
     const titles = new Set<string>();
 
-    for (const file of app.vault.getMarkdownFiles().filter(f => isPathInFolderScope(f.path, sourcePath))) {
+    const scopedScenes = resolveBookScopedFiles({ app, settings, noteType: 'Scene' }).files;
+    for (const file of scopedScenes) {
         const cache = app.metadataCache.getFileCache(file);
         if (!cache?.frontmatter) continue;
         const fm = mappings ? normalizeFrontmatterKeys(cache.frontmatter, mappings) : cache.frontmatter;
@@ -288,6 +291,7 @@ export async function runYamlAudit(options: YamlAuditOptions): Promise<YamlAudit
 
         // Missing: template keys not present in note
         const missingFields = [...allTemplateKeys].filter(k => !noteKeys.includes(k));
+        const missingReferenceId = !readReferenceId(fm);
 
         // Extra: note keys not in any template and not excluded
         const extraKeys = noteKeys.filter(k =>
@@ -305,6 +309,9 @@ export async function runYamlAudit(options: YamlAuditOptions): Promise<YamlAudit
         if (missingFields.length > 0) {
             reasons.push(`missing: ${missingFields.join(', ')}`);
         }
+        if (missingReferenceId) {
+            reasons.push('missing reference id');
+        }
         if (extraKeys.length > 0) {
             reasons.push(`extra: ${extraKeys.join(', ')}`);
         }
@@ -319,7 +326,7 @@ export async function runYamlAudit(options: YamlAuditOptions): Promise<YamlAudit
             reasons.push(`safety: ${label} (${safetyResult.issues.length} issue${safetyResult.issues.length !== 1 ? 's' : ''})`);
         }
 
-        const hasSchemaIssues = missingFields.length > 0 || extraKeys.length > 0 || orderDrift || semanticWarnings.length > 0;
+        const hasSchemaIssues = missingFields.length > 0 || missingReferenceId || extraKeys.length > 0 || orderDrift || semanticWarnings.length > 0;
         const hasSafetyIssues = safetyResult && safetyResult.status !== 'safe';
 
         if (!hasSchemaIssues && !hasSafetyIssues) {
@@ -330,6 +337,7 @@ export async function runYamlAudit(options: YamlAuditOptions): Promise<YamlAudit
         notes.push({
             file,
             missingFields,
+            missingReferenceId,
             extraKeys,
             orderDrift,
             semanticWarnings,
@@ -339,6 +347,7 @@ export async function runYamlAudit(options: YamlAuditOptions): Promise<YamlAudit
     }
 
     const notesWithMissing = notes.filter(n => n.missingFields.length > 0).length;
+    const notesMissingIds = notes.filter(n => n.missingReferenceId).length;
     const notesWithExtra = notes.filter(n => n.extraKeys.length > 0).length;
     const notesWithDrift = notes.filter(n => n.orderDrift).length;
     const notesWithWarnings = notes.filter(n => n.semanticWarnings.length > 0).length;
@@ -352,6 +361,7 @@ export async function runYamlAudit(options: YamlAuditOptions): Promise<YamlAudit
             totalNotes: files.length,
             unreadNotes: unreadFiles.length,
             notesWithMissing,
+            notesMissingIds,
             notesWithExtra,
             notesWithDrift,
             notesWithWarnings,
@@ -375,8 +385,25 @@ export function collectFilesForAudit(
     settings: RadialTimelineSettings,
     beatSystemKey?: string
 ): TFile[] {
-    const sourcePath = (settings.sourcePath || '').trim();
-    const files = app.vault.getMarkdownFiles().filter(f => isPathInFolderScope(f.path, sourcePath));
+    return collectFilesForAuditWithScope(app, noteType, settings, beatSystemKey).files;
+}
+
+export interface AuditScopeResult {
+    files: TFile[];
+    sourcePath: string;
+    bookTitle: string;
+    scopeSummary: string;
+    reason?: string;
+}
+
+export function collectFilesForAuditWithScope(
+    app: App,
+    noteType: NoteType,
+    settings: RadialTimelineSettings,
+    beatSystemKey?: string
+): AuditScopeResult {
+    const scoped = resolveBookScopedFiles({ app, settings, noteType });
+    const files = scoped.files;
     const mappings = settings.enableCustomMetadataMapping ? settings.frontmatterMappings : undefined;
 
     // Resolve Beat Model name for custom systems.
@@ -400,7 +427,7 @@ export function collectFilesForAudit(
         }
     }
 
-    return files.filter(file => {
+    const filteredFiles = files.filter(file => {
         const cache = app.metadataCache.getFileCache(file);
         if (!cache?.frontmatter) return false;
         const fm = mappings
@@ -423,6 +450,14 @@ export function collectFilesForAudit(
                 return false;
         }
     });
+
+    return {
+        files: filteredFiles,
+        sourcePath: scoped.sourcePath,
+        bookTitle: scoped.bookTitle,
+        scopeSummary: explainScope(filteredFiles, { noteType, bookTitle: scoped.bookTitle }),
+        reason: scoped.reason
+    };
 }
 
 // ─── Report formatting ──────────────────────────────────────────────────
@@ -439,6 +474,7 @@ export function formatAuditReport(result: YamlAuditResult, noteType: NoteType): 
     lines.push(`Total notes:     ${s.totalNotes}`);
     lines.push(`Clean:           ${s.clean}`);
     lines.push(`Missing fields:  ${s.notesWithMissing} note(s)`);
+    lines.push(`Missing IDs:     ${s.notesMissingIds} note(s)`);
     lines.push(`Extra keys:      ${s.notesWithExtra} note(s)`);
     lines.push(`Order drift:     ${s.notesWithDrift} note(s)`);
     lines.push(`Warnings:        ${s.notesWithWarnings} note(s)`);

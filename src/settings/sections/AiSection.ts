@@ -11,7 +11,7 @@ import { ERT_CLASSES } from '../../ui/classes';
 import { IMPACT_FULL } from '../SettingImpact';
 import { buildDefaultAiSettings, mapAiProviderToLegacyProvider } from '../../ai/settings/aiSettings';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
-import { BUILTIN_MODELS, MODEL_PROFILES } from '../../ai/registry/builtinModels';
+import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
 import {
     mergeCuratedWithSnapshot,
     formatAvailabilityLabel,
@@ -35,7 +35,7 @@ import {
     setCredentialSecretId
 } from '../../ai/credentials/credentials';
 import { getSecret, hasSecret, isSecretStorageAvailable, setSecret } from '../../ai/credentials/secretStorage';
-import type { AccessTier, AIProviderId, ModelPolicy, ModelProfileName, Capability, ModelInfo } from '../../ai/types';
+import type { AccessTier, AIProviderId, ModelPolicy, Capability } from '../../ai/types';
 import { estimateGossamerTokens, estimateInquiryTokens } from '../../ai/forecast/estimateTokensFromVault';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
@@ -464,15 +464,9 @@ export function renderAiSection(params: {
         none: 'Disabled'
     };
 
-    const thinkingStyleLabel: Record<ThinkingStyleId, string> = {
-        deepStructuralEdit: 'Deep Structural Edit',
-        balancedEditorialReview: 'Balanced Editorial Review',
-        quickStructuralPass: 'Quick Structural Pass'
-    };
-
     const strategyLabel = (policy: ModelPolicy): string => {
         if (policy.type === 'pinned') return 'Manual Selection';
-        return 'Auto (best match)';
+        return 'Auto (latest stable)';
     };
 
     const formatApproxTokens = (value: number): string => {
@@ -532,90 +526,6 @@ export function renderAiSection(params: {
         params.refreshProviderDimming();
     };
 
-    type ThinkingStyleId = 'deepStructuralEdit' | 'balancedEditorialReview' | 'quickStructuralPass';
-    let thinkingStyleDropdown: DropdownComponent | null = null;
-
-    const thinkingStyleToProfile = (style: ThinkingStyleId): ModelProfileName => {
-        if (style === 'deepStructuralEdit') return 'deepReasoner';
-        if (style === 'quickStructuralPass') return 'deepWriter';
-        return 'balancedAnalysis';
-    };
-
-    const profileToThinkingStyle = (profile: ModelProfileName): ThinkingStyleId => {
-        if (profile === 'deepReasoner') return 'deepStructuralEdit';
-        if (profile === 'deepWriter') return 'quickStructuralPass';
-        return 'balancedEditorialReview';
-    };
-
-    const inferThinkingStyleForAlias = (alias: string): ThinkingStyleId => {
-        const model = BUILTIN_MODELS.find(m => m.alias === alias);
-        if (!model) return 'balancedEditorialReview';
-        const profiles: ModelProfileName[] = ['deepReasoner', 'balancedAnalysis', 'deepWriter'];
-        let bestProfile: ModelProfileName = 'balancedAnalysis';
-        let bestScore = -Infinity;
-        for (const name of profiles) {
-            const p = MODEL_PROFILES[name];
-            const w = p.weighting ?? { reasoning: 0.34, writing: 0.33, determinism: 0.33 };
-            const score = model.personality.reasoning * w.reasoning
-                + model.personality.writing * w.writing
-                + model.personality.determinism * w.determinism;
-            if (score > bestScore) { bestScore = score; bestProfile = name; }
-        }
-        return profileToThinkingStyle(bestProfile);
-    };
-
-    const thinkingStyleToReasoningDepth = (style: ThinkingStyleId): 'standard' | 'deep' =>
-        style === 'deepStructuralEdit' ? 'deep' : 'standard';
-
-    const thinkingStyleToOutputMode = (
-        style: ThinkingStyleId,
-        tier: AccessTier
-    ): 'auto' | 'high' | 'max' => {
-        if (style === 'deepStructuralEdit') return tier >= 3 ? 'max' : 'high';
-        if (style === 'quickStructuralPass') return 'auto';
-        return tier >= 2 ? 'high' : 'auto';
-    };
-
-    const inferThinkingStyle = (): ThinkingStyleId => {
-        const aiSettings = ensureCanonicalAiSettings();
-        const policy = aiSettings.modelPolicy;
-        if (policy.type === 'profile') {
-            if (policy.profile === 'deepReasoner') return 'deepStructuralEdit';
-            if (policy.profile === 'deepWriter') return 'quickStructuralPass';
-            return 'balancedEditorialReview';
-        }
-        if (aiSettings.overrides.reasoningDepth === 'deep') return 'deepStructuralEdit';
-        if (aiSettings.overrides.maxOutputMode === 'auto') return 'quickStructuralPass';
-        return 'balancedEditorialReview';
-    };
-
-    const getThinkingStyleFromUiOrState = (): ThinkingStyleId => {
-        const value = thinkingStyleDropdown?.selectEl.value;
-        if (value === 'deepStructuralEdit' || value === 'balancedEditorialReview' || value === 'quickStructuralPass') {
-            return value;
-        }
-        return inferThinkingStyle();
-    };
-
-    const applyThinkingStyleInternals = (
-        aiSettings: ReturnType<typeof ensureCanonicalAiSettings>,
-        provider: AIProviderId,
-        style: ThinkingStyleId,
-        options?: { forceProfile?: boolean }
-    ): void => {
-        const tier: AccessTier = (() => {
-            if (provider === 'anthropic') return aiSettings.aiAccessProfile.anthropicTier ?? 1;
-            if (provider === 'openai') return aiSettings.aiAccessProfile.openaiTier ?? 1;
-            if (provider === 'google') return aiSettings.aiAccessProfile.googleTier ?? 1;
-            return 1;
-        })() as AccessTier;
-        aiSettings.overrides.reasoningDepth = thinkingStyleToReasoningDepth(style);
-        aiSettings.overrides.maxOutputMode = thinkingStyleToOutputMode(style, tier);
-        if (options?.forceProfile || aiSettings.modelPolicy.type === 'profile') {
-            aiSettings.modelPolicy = { type: 'profile', profile: thinkingStyleToProfile(style) };
-        }
-    };
-
     const providerSetting = new Settings(quickSetupGrid)
         .setName('Provider')
         .setDesc('Select the AI service that powers structural analysis and editorial insight.');
@@ -632,9 +542,7 @@ export function renderAiSection(params: {
             if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
             const nextProvider = value as AIProviderId;
-            const currentStyle = getThinkingStyleFromUiOrState();
             aiSettings.provider = nextProvider;
-            applyThinkingStyleInternals(aiSettings, nextProvider, currentStyle, { forceProfile: aiSettings.modelPolicy.type !== 'pinned' });
 
             if (aiSettings.modelPolicy.type === 'pinned') {
                 const allowed = new Set(getProviderAliases(nextProvider));
@@ -649,30 +557,9 @@ export function renderAiSection(params: {
     });
     params.addAiRelatedElement(providerSetting.settingEl);
 
-    const thinkingStyleSetting = new Settings(quickSetupGrid)
-        .setName('Thinking Style')
-        .setDesc('Choose the depth and intensity of analysis. Radial Timeline automatically applies the strongest safe settings for the selected style.');
-    thinkingStyleSetting.settingEl.setAttr('data-ert-role', 'ai-setting:thinking-style');
-    thinkingStyleSetting.addDropdown(dropdown => {
-        thinkingStyleDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
-        dropdown.addOption('deepStructuralEdit', 'Deep Structural Edit');
-        dropdown.addOption('balancedEditorialReview', 'Balanced Editorial Review');
-        dropdown.addOption('quickStructuralPass', 'Quick Structural Pass');
-        dropdown.onChange(async value => {
-            if (isSyncingRoutingUi) return;
-            const aiSettings = ensureCanonicalAiSettings();
-            const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
-            applyThinkingStyleInternals(aiSettings, provider, value as ThinkingStyleId, { forceProfile: true });
-            await persistCanonical();
-            refreshRoutingUi();
-        });
-    });
-    params.addAiRelatedElement(thinkingStyleSetting.settingEl);
-
     const modelOverrideSetting = new Settings(quickSetupGrid)
-        .setName('Model Override')
-        .setDesc('Override the model selected by your thinking style. Most authors should leave this set to Auto.');
+        .setName('Model')
+        .setDesc('Choose Auto to use the latest stable model, or pick a specific model.');
     modelOverrideSetting.settingEl.setAttr('data-ert-role', 'ai-setting:model-override');
     let modelOverrideDropdown: DropdownComponent | null = null;
     modelOverrideSetting.addDropdown(dropdown => {
@@ -681,15 +568,10 @@ export function renderAiSection(params: {
         dropdown.onChange(async value => {
             if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
-            const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
             if (value === 'auto') {
-                const style = getThinkingStyleFromUiOrState();
-                aiSettings.modelPolicy = { type: 'profile', profile: thinkingStyleToProfile(style) };
-                applyThinkingStyleInternals(aiSettings, provider, style, { forceProfile: true });
+                aiSettings.modelPolicy = { type: 'latestStable' };
             } else {
                 aiSettings.modelPolicy = { type: 'pinned', pinnedAlias: value };
-                const snappedStyle = inferThinkingStyleForAlias(value);
-                applyThinkingStyleInternals(aiSettings, provider, snappedStyle);
             }
             await persistCanonical();
             refreshRoutingUi();
@@ -720,7 +602,6 @@ export function renderAiSection(params: {
             if (provider === 'anthropic') aiSettings.aiAccessProfile.anthropicTier = numTier;
             else if (provider === 'openai') aiSettings.aiAccessProfile.openaiTier = numTier;
             else if (provider === 'google') aiSettings.aiAccessProfile.googleTier = numTier;
-            applyThinkingStyleInternals(aiSettings, provider, getThinkingStyleFromUiOrState());
             await persistCanonical();
             refreshRoutingUi();
         });
@@ -728,7 +609,7 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(accessTierSetting.settingEl);
 
     const applyQuickSetupLayoutOrder = (): void => {
-        [providerSetting, thinkingStyleSetting, modelOverrideSetting, accessTierSetting].forEach(setting => {
+        [providerSetting, modelOverrideSetting, accessTierSetting].forEach(setting => {
             quickSetupGrid.appendChild(setting.settingEl);
             setting.settingEl.addClass('ert-ai-grid-item');
         });
@@ -747,93 +628,53 @@ export function renderAiSection(params: {
         }
     };
 
-    const remoteRegistrySetting = new Settings(advancedBody)
-        .setName('Remote model registry')
-        .setDesc('Optional weekly-refresh model catalog. Built-in aliases are always available offline.');
-    let remoteRegistryToggle: { setValue: (value: boolean) => unknown } | null = null;
-    remoteRegistrySetting.addToggle(toggle => {
-        remoteRegistryToggle = toggle;
-        return toggle
-            .setValue(ensureCanonicalAiSettings().privacy.allowRemoteRegistry)
-            .onChange(async value => {
-                const aiSettings = ensureCanonicalAiSettings();
-                aiSettings.privacy.allowRemoteRegistry = value;
-                await persistCanonical();
-                refreshRoutingUi();
-            });
-    });
-    params.addAiRelatedElement(remoteRegistrySetting.settingEl);
-
-    const providerSnapshotSetting = new Settings(advancedBody)
-        .setName('Provider snapshot')
-        .setDesc('Optional provider-availability snapshot to show which models are visible to your API key.');
-    let providerSnapshotToggle: { setValue: (value: boolean) => unknown } | null = null;
-    providerSnapshotSetting.addToggle(toggle => {
-        providerSnapshotToggle = toggle;
-        return toggle
-            .setValue(ensureCanonicalAiSettings().privacy.allowProviderSnapshot)
-            .onChange(async value => {
-                const aiSettings = ensureCanonicalAiSettings();
-                aiSettings.privacy.allowProviderSnapshot = value;
-                await persistCanonical();
-                await refreshModelsTable(value ? { forceRemoteSnapshot: true } : undefined);
-                refreshRoutingUi();
-            });
-    });
-    params.addAiRelatedElement(providerSnapshotSetting.settingEl);
-
-    const refreshModelsSetting = new Settings(advancedBody)
-        .setName('Refresh models')
-        .setDesc('Fetch the latest model registry and update alias-to-model mappings.');
-    refreshModelsSetting.addButton(button => button
-        .setButtonText('Refresh now')
+    const aiModelUpdatesSetting = new Settings(advancedBody)
+        .setName('AI Model Updates');
+    const formatModelUpdateTimestamp = (timestamp: string): string => {
+        const parsed = Date.parse(timestamp);
+        if (!Number.isFinite(parsed)) return timestamp;
+        try {
+            return new Intl.DateTimeFormat(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                second: '2-digit',
+                timeZoneName: 'short'
+            }).format(new Date(parsed));
+        } catch {
+            return new Date(parsed).toLocaleString();
+        }
+    };
+    const updateAiModelUpdatesDescription = (): void => {
+        const lastUpdatedAt = getAIClient(plugin).getLastModelUpdateAt();
+        aiModelUpdatesSetting.setDesc(`Last updated: ${lastUpdatedAt ? formatModelUpdateTimestamp(lastUpdatedAt) : 'Never'}`);
+    };
+    aiModelUpdatesSetting.addButton(button => button
+        .setButtonText('Update AI models')
         .onClick(async () => {
             button.setDisabled(true);
             try {
-                const client = getAIClient(plugin);
-                await client.refreshRegistry(true);
-                new Notice('Model registry refreshed.');
-                await refreshModelsTable({ forceRemoteRegistry: true });
+                const refreshed = await getAIClient(plugin).updateModelData(true);
+                updateAiModelUpdatesDescription();
                 refreshRoutingUi();
-            } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                new Notice(`Model refresh failed: ${message}`);
-            } finally {
-                button.setDisabled(false);
-            }
-        }));
-    params.addAiRelatedElement(refreshModelsSetting.settingEl);
-
-    const refreshAvailabilitySetting = new Settings(advancedBody)
-        .setName('Refresh availability')
-        .setDesc('Fetch provider snapshot data for model visibility and provider-reported caps.');
-    refreshAvailabilitySetting.addButton(button => button
-        .setButtonText('Refresh availability')
-        .onClick(async () => {
-            const aiSettings = ensureCanonicalAiSettings();
-            if (!aiSettings.privacy.allowProviderSnapshot) {
-                new Notice('Enable Provider snapshot first to refresh availability.');
-                return;
-            }
-            button.setDisabled(true);
-            try {
-                const refreshed = await getAIClient(plugin).refreshProviderSnapshot(true);
-                await refreshModelsTable({ forceRemoteSnapshot: true });
-                if (refreshed.snapshot) {
-                    new Notice(refreshed.warning
-                        ? `Provider snapshot refreshed with warning: ${refreshed.warning}`
-                        : 'Provider snapshot refreshed.');
+                const warnings = [refreshed.registry.warning, refreshed.snapshot.warning]
+                    .filter((entry): entry is string => !!entry);
+                if (warnings.length) {
+                    new Notice('AI models updated with partial availability data.');
                 } else {
-                    new Notice(refreshed.warning || 'Provider snapshot unavailable.');
+                    new Notice('AI models updated.');
                 }
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
-                new Notice(`Availability refresh failed: ${message}`);
+                new Notice(`AI model update failed: ${message}`);
             } finally {
                 button.setDisabled(false);
             }
         }));
-    params.addAiRelatedElement(refreshAvailabilitySetting.settingEl);
+    updateAiModelUpdatesDescription();
+    params.addAiRelatedElement(aiModelUpdatesSetting.settingEl);
 
     const modelsPanel = advancedBody.createDiv({ cls: ['ert-panel', ERT_CLASSES.STACK, 'ert-ai-models-panel'] });
     const modelsHeader = modelsPanel.createDiv({ cls: 'ert-inline ert-inline--split' });
@@ -844,27 +685,6 @@ export function renderAiSection(params: {
     const modelsTableEl = modelsPanel.createDiv({ cls: 'ert-ai-models-table ert-stack ert-settings-hidden' });
     const modelDetailsEl = modelsPanel.createDiv({ cls: 'ert-ai-model-details ert-settings-hidden' });
     params.addAiRelatedElement(modelsPanel);
-
-    const matchesProfile = (model: ModelInfo, profileName: ModelProfileName): boolean => {
-        const profile = MODEL_PROFILES[profileName];
-        if (profile.tier && model.tier !== profile.tier) return false;
-        if (typeof profile.minReasoning === 'number' && model.personality.reasoning < profile.minReasoning) return false;
-        if (typeof profile.minWriting === 'number' && model.personality.writing < profile.minWriting) return false;
-        if (typeof profile.minDeterminism === 'number' && model.personality.determinism < profile.minDeterminism) return false;
-        if (profile.requiredCapabilities && !profile.requiredCapabilities.every(capability => model.capabilities.includes(capability))) return false;
-        return true;
-    };
-
-    const getBestForTags = (model: ModelInfo): string[] => {
-        const tags: string[] = [];
-        (['deepReasoner', 'deepWriter', 'balancedAnalysis'] as ModelProfileName[]).forEach(profile => {
-            if (matchesProfile(model, profile)) tags.push(profile);
-        });
-        if (model.tier === 'FAST' || model.tier === 'LOCAL') {
-            tags.push('fastRewrite');
-        }
-        return Array.from(new Set(tags)).slice(0, 3);
-    };
 
     const formatContextOutput = (model: MergedModelInfo): string => {
         if (model.providerCaps?.inputTokenLimit || model.providerCaps?.outputTokenLimit) {
@@ -904,8 +724,7 @@ export function renderAiSection(params: {
 
     const renderRecommendations = (
         rows: RecommendationRow[],
-        currentSelection: CurrentResolvedModelRef | null,
-        snapshotEnabled: boolean
+        currentSelection: CurrentResolvedModelRef | null
     ): void => {
         recommendationsEl.empty();
         const title = recommendationsEl.createDiv({ cls: 'ert-ai-recommendations-title' });
@@ -931,38 +750,10 @@ export function renderAiSection(params: {
             }
 
             if (row.availabilityStatus === 'unknown') {
-                const hint = item.createDiv({
+                item.createDiv({
                     cls: 'ert-ai-recommendation-hint',
-                    text: 'Enable Provider Snapshot for key-based visibility. This only fetches model details and availability.'
+                    text: 'Availability is unavailable from the latest snapshot update.'
                 });
-
-                if (!snapshotEnabled) {
-                    const action = hint.createEl('button', {
-                        cls: 'ert-ai-recommendation-action',
-                        attr: { type: 'button' },
-                        text: 'Enable + refresh'
-                    });
-                    action.addEventListener('click', async (event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        action.disabled = true;
-                        try {
-                            const aiSettings = ensureCanonicalAiSettings();
-                            if (!aiSettings.privacy.allowProviderSnapshot) {
-                                aiSettings.privacy.allowProviderSnapshot = true;
-                                await persistCanonical();
-                            }
-                            await getAIClient(plugin).refreshProviderSnapshot(true);
-                            await refreshModelsTable({ forceRemoteSnapshot: true });
-                            new Notice('Provider snapshot enabled and refreshed.');
-                        } catch (error) {
-                            const message = error instanceof Error ? error.message : String(error);
-                            new Notice(`Snapshot refresh failed: ${message}`);
-                        } finally {
-                            action.disabled = false;
-                        }
-                    });
-                }
             }
             if (row.reason) {
                 item.setAttr('title', row.reason);
@@ -984,17 +775,11 @@ export function renderAiSection(params: {
 
         const statusRow = modelDetailsEl.createDiv({ cls: 'ert-inline' });
         statusRow.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: `Status: ${model.status}` });
-        statusRow.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: `Tier: ${model.tier}` });
         statusRow.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: formatAvailabilityLabel(model.availabilityStatus) });
 
         const providerDetails = modelDetailsEl.createDiv({ cls: 'ert-field-note' });
         providerDetails.setText(
             `Provider label: ${model.providerLabel || '—'} · Created: ${model.providerCreatedAt || '—'} · Context/Output: ${formatContextOutput(model)}`
-        );
-
-        const personality = modelDetailsEl.createDiv({ cls: 'ert-field-note' });
-        personality.setText(
-            `Personality: reasoning ${model.personality.reasoning}/10, writing ${model.personality.writing}/10, determinism ${model.personality.determinism}/10`
         );
 
         const aiSettings = ensureCanonicalAiSettings();
@@ -1043,7 +828,7 @@ export function renderAiSection(params: {
     ): void => {
         modelsTableEl.empty();
         const header = modelsTableEl.createDiv({ cls: 'ert-ai-models-row ert-ai-models-row--header' });
-        ['Model', 'Availability', 'Context / Output', 'Supports', 'Best for'].forEach(label => {
+        ['Model', 'Availability', 'Context / Output', 'Supports'].forEach(label => {
             header.createDiv({ cls: 'ert-ai-models-cell', text: label });
         });
 
@@ -1076,11 +861,6 @@ export function renderAiSection(params: {
                     supportsCell.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: capability });
                 });
 
-                const bestForCell = rowButton.createDiv({ cls: 'ert-ai-models-cell ert-ai-models-tags' });
-                getBestForTags(model).forEach(tag => {
-                    bestForCell.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: tag });
-                });
-
                 rowButton.addEventListener('click', () => renderModelDetails(model, selection));
             });
         });
@@ -1088,7 +868,7 @@ export function renderAiSection(params: {
 
     const refreshModelsTable = async (options?: { forceRemoteRegistry?: boolean; forceRemoteSnapshot?: boolean }): Promise<void> => {
         modelsRefreshedEl.setText('Loading...');
-        modelsHintEl.setText('Merging curated registry with provider snapshot...');
+        modelsHintEl.setText('Loading AI model updates...');
         recommendationsEl.empty();
         modelsTableEl.empty();
 
@@ -1132,30 +912,30 @@ export function renderAiSection(params: {
             }
 
             if (snapshot.snapshot) {
-                modelsRefreshedEl.setText(`Last checked: ${formatReadableTimestamp(snapshot.snapshot.generatedAt)}`);
-                modelsHintEl.setText(snapshot.warning || 'Availability reflects the latest provider snapshot.');
+                modelsHintEl.setText(snapshot.warning
+                    ? 'Some availability details could not be refreshed. Showing the best available model data.'
+                    : 'Model availability is up to date.');
             } else if (snapshot.warning) {
-                modelsRefreshedEl.setText('Availability: Check failed');
-                modelsHintEl.setText(snapshot.warning);
-            } else if (!aiSettings.privacy.allowProviderSnapshot) {
-                modelsRefreshedEl.setText('Availability: Disabled');
-                modelsHintEl.setText('Enable Provider Snapshot above to show key-based model availability.');
+                modelsHintEl.setText('Availability details are temporarily unavailable. Showing the best available model data.');
             } else {
-                modelsRefreshedEl.setText('Availability: Not checked yet');
-                modelsHintEl.setText('Use Refresh Availability to fetch provider data.');
+                modelsHintEl.setText('Availability details are unavailable. Showing curated model data.');
             }
+            const lastUpdatedAt = client.getLastModelUpdateAt();
+            modelsRefreshedEl.setText(`Last updated: ${lastUpdatedAt ? formatReadableTimestamp(lastUpdatedAt) : 'Never'}`);
+            updateAiModelUpdatesDescription();
 
             const picks = computeRecommendedPicks({
                 models: merged,
                 aiSettings,
                 includeLocalPrivate: aiSettings.provider === 'ollama'
             });
-            renderRecommendations(picks, currentSelection, aiSettings.privacy.allowProviderSnapshot);
+            renderRecommendations(picks, currentSelection);
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            modelsRefreshedEl.setText('Availability: Check failed');
+            modelsRefreshedEl.setText('Last updated: Unavailable');
             modelsHintEl.setText(`Unable to load model recommendations: ${message}`);
             recommendationsEl.empty();
+            updateAiModelUpdatesDescription();
         }
     };
 
@@ -1180,11 +960,22 @@ export function renderAiSection(params: {
 
 
     applyStrategyRowCopyLayout(providerSetting, 'Select the AI service that powers structural analysis and editorial insight.');
-    applyStrategyRowCopyLayout(thinkingStyleSetting, 'Choose the depth and intensity of analysis. Radial Timeline automatically applies the strongest safe settings for the selected style.');
-    applyStrategyRowCopyLayout(modelOverrideSetting, 'Override the model selected by your thinking style. Most authors should leave this set to Auto.');
+    applyStrategyRowCopyLayout(modelOverrideSetting, 'Use Auto for deterministic latest-stable selection, or pin a specific model.');
     applyStrategyRowCopyLayout(accessTierSetting, ACCESS_TIER_COPY);
 
     applyQuickSetupLayoutOrder();
+
+    const aiFeaturesSection = quickSetupSection.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-features-info` });
+    aiFeaturesSection.createDiv({ cls: 'ert-section-title', text: 'AI Features in Radial Timeline' });
+    const aiFeaturesList = aiFeaturesSection.createEl('ul', { cls: ERT_CLASSES.STACK });
+    [
+        'Inquiry — Cross-scene structural analysis across selected corpus.',
+        'Pulse (Triplet Analysis) — Evaluates a scene in context of previous and next scenes.',
+        'Gossamer Momentum — Measures beat-level structural drive and tension.'
+    ].forEach(text => {
+        const li = aiFeaturesList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
+        li.createSpan({ text });
+    });
 
     const dropdownHasValue = (dropdown: DropdownComponent | null, value: string): boolean => {
         if (!dropdown) return false;
@@ -1209,7 +1000,6 @@ export function renderAiSection(params: {
         modelLabel: string;
         modelAlias: string;
         strategyPill: string;
-        thinkingStylePill: string;
         analysisPackaging: 'automatic' | 'singlePassOnly';
         maxInputTokens: number | null;
         maxOutputTokens: number | null;
@@ -1282,7 +1072,6 @@ export function renderAiSection(params: {
         resolvedPreviewProvider.setText(providerDetail);
         const previewPills = [
             state.strategyPill,
-            state.thinkingStylePill,
             state.analysisPackaging === 'singlePassOnly' ? 'Single-pass only' : 'Automatic Packaging',
             `Input · ${state.maxInputTokens ? formatApproxTokens(state.maxInputTokens) : 'n/a'}`,
             `Response · ${state.maxOutputTokens ? `${formatApproxTokens(state.maxOutputTokens)} / pass` : 'n/a'}`
@@ -1368,7 +1157,6 @@ export function renderAiSection(params: {
         const aiSettings = ensureCanonicalAiSettings();
         const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
         const providerAliases = getProviderAliases(provider);
-        const thinkingStyle = inferThinkingStyle();
 
         if (aiSettings.modelPolicy.type === 'pinned') {
             const allowed = new Set(providerAliases);
@@ -1382,11 +1170,10 @@ export function renderAiSection(params: {
         isSyncingRoutingUi = true;
         try {
             setDropdownValueSafe(providerDropdown, provider, 'openai');
-            setDropdownValueSafe(thinkingStyleDropdown, thinkingStyle, 'balancedEditorialReview');
 
             if (modelOverrideDropdown) {
                 modelOverrideDropdown.selectEl.empty();
-                modelOverrideDropdown.addOption('auto', 'Auto (recommended)');
+                modelOverrideDropdown.addOption('auto', 'Auto (latest stable)');
                 providerAliases.forEach(alias => {
                     const model = BUILTIN_MODELS.find(entry => entry.alias === alias);
                     const label = model ? `${model.label} (${alias})` : alias;
@@ -1408,10 +1195,9 @@ export function renderAiSection(params: {
             isSyncingRoutingUi = false;
         }
         updateExecutionPreferenceNote();
-        remoteRegistryToggle?.setValue(aiSettings.privacy.allowRemoteRegistry);
-        providerSnapshotToggle?.setValue(aiSettings.privacy.allowProviderSnapshot);
+        updateAiModelUpdatesDescription();
 
-        [providerSetting, thinkingStyleSetting, modelOverrideSetting, accessTierSetting, gossamerEvidenceSetting].forEach(setting => {
+        [providerSetting, modelOverrideSetting, accessTierSetting, gossamerEvidenceSetting].forEach(setting => {
             setting.settingEl.toggleClass('ert-settings-hidden', false);
             setting.settingEl.toggleClass('ert-settings-visible', true);
         });
@@ -1467,14 +1253,13 @@ export function renderAiSection(params: {
                 modelLabel: selection.model.label,
                 modelAlias: selection.model.alias,
                 strategyPill: strategyLabel(policy),
-                thinkingStylePill: thinkingStyleLabel[thinkingStyle],
                 analysisPackaging: aiSettings.analysisPackaging,
                 maxInputTokens: caps.maxInputTokens,
                 maxOutputTokens: caps.maxOutputTokens,
                 reasonDetails: selection.reason,
                 warnings: selection.warnings,
                 availabilityStatus: 'unknown',
-                showAvailabilityPill: aiSettings.privacy.allowProviderSnapshot,
+                showAvailabilityPill: true,
                 passCount
             };
             renderResolvedPreview(previewState);
@@ -1509,7 +1294,6 @@ export function renderAiSection(params: {
                 modelLabel: 'No eligible model',
                 modelAlias: providerLabel[provider],
                 strategyPill: strategyLabel(policy),
-                thinkingStylePill: thinkingStyleLabel[thinkingStyle],
                 analysisPackaging: aiSettings.analysisPackaging,
                 maxInputTokens: null,
                 maxOutputTokens: null,

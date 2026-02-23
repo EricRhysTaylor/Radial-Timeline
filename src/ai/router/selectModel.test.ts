@@ -23,19 +23,19 @@ describe('selectModel', () => {
         expect(result.warnings.some(w => w.includes('missing-alias'))).toBe(true);
     });
 
-    it('uses profile ranking deterministically', () => {
+    it('auto policy chooses latest stable model', () => {
         const result = selectModel(BUILTIN_MODELS, {
             provider: 'anthropic',
-            policy: { type: 'profile', profile: 'deepReasoner' },
+            policy: { type: 'latestStable' },
             requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong']
         });
-        expect(result.model.alias).toContain('claude-opus');
+        expect(result.model.alias).toBe('claude-sonnet-4.6');
     });
 
     it('resolves an OpenAI model for high-output inquiry requirements', () => {
         const result = selectModel(BUILTIN_MODELS, {
             provider: 'openai',
-            policy: { type: 'profile', profile: 'deepReasoner' },
+            policy: { type: 'latestStable' },
             requiredCapabilities: ['longContext', 'jsonStrict', 'reasoningStrong', 'highOutputCap'],
             contextTokensNeeded: 24000,
             outputTokensNeeded: 2000

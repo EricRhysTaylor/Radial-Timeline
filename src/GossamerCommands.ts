@@ -809,7 +809,6 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       feature: 'Gossamer',
       task: 'BeatMomentumAnalysis',
       requiredCapabilities: ['jsonStrict', 'longContext', 'reasoningStrong', 'highOutputCap'],
-      profileOverride: 'balancedAnalysis',
       featureModeInstructions: 'Evaluate narrative momentum at each beat using only the submitted manuscript and beat list. Avoid anchoring to prior scores.',
       userInput: prompt,
       returnType: 'json',

@@ -46,14 +46,37 @@ export function normalizePath(path: string): string {
 }
 
 export function parseYaml(yaml: string): unknown {
-  // Minimal YAML parsing for tests - just handle simple key: value
+  // Minimal YAML parsing for tests - handles "Key: value" and simple lists.
   const result: Record<string, unknown> = {};
-  const lines = yaml.split('\n');
+  const lines = yaml.split(/\r?\n/);
+  let currentListKey: string | null = null;
   for (const line of lines) {
-    const match = line.match(/^(\w+):\s*(.*)$/);
+    const listMatch = line.match(/^\s*-\s*(.*)$/);
+    if (listMatch && currentListKey) {
+      const current = result[currentListKey];
+      if (Array.isArray(current)) {
+        current.push(listMatch[1]);
+      } else {
+        result[currentListKey] = [listMatch[1]];
+      }
+      continue;
+    }
+
+    const match = line.match(/^([A-Za-z0-9 _'-]+):\s*(.*)$/);
     if (match) {
       const [, key, value] = match;
-      result[key] = value.trim();
+      const trimmedKey = key.trim();
+      const trimmedValue = value.trim();
+      if (trimmedValue === '') {
+        result[trimmedKey] = '';
+      } else if (/^(true|false)$/i.test(trimmedValue)) {
+        result[trimmedKey] = /^true$/i.test(trimmedValue);
+      } else if (/^-?\d+(?:\.\d+)?$/.test(trimmedValue)) {
+        result[trimmedKey] = Number(trimmedValue);
+      } else {
+        result[trimmedKey] = trimmedValue;
+      }
+      currentListKey = trimmedKey;
     }
   }
   return result;
@@ -61,9 +84,48 @@ export function parseYaml(yaml: string): unknown {
 
 export function stringifyYaml(obj: unknown): string {
   if (typeof obj !== 'object' || obj === null) return '';
-  return Object.entries(obj as Record<string, unknown>)
-    .map(([k, v]) => `${k}: ${v}`)
-    .join('\n');
+  const lines: string[] = [];
+  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+    if (Array.isArray(v)) {
+      lines.push(`${k}:`);
+      v.forEach(item => lines.push(`  - ${item}`));
+      continue;
+    }
+    const value = v === undefined || v === null ? '' : String(v);
+    lines.push(`${k}: ${value}`);
+  }
+  return lines.join('\n');
+}
+
+export function getFrontMatterInfo(content: string): {
+  exists: boolean;
+  frontmatter?: string;
+  from?: number;
+  to?: number;
+  position?: { start: { offset: number }; end: { offset: number } };
+} {
+  if (!content.startsWith('---\n') && !content.startsWith('---\r\n')) {
+    return { exists: false };
+  }
+
+  const newline = content.includes('\r\n') ? '\r\n' : '\n';
+  const marker = `${newline}---`;
+  const endIdx = content.indexOf(marker, 3);
+  if (endIdx === -1) return { exists: false };
+
+  const frontmatterStart = content.startsWith('---\r\n') ? 5 : 4;
+  const frontmatter = content.slice(frontmatterStart, endIdx);
+  const endOffset = endIdx + marker.length;
+  return {
+    exists: true,
+    frontmatter,
+    from: 0,
+    to: endOffset,
+    position: {
+      start: { offset: 0 },
+      end: { offset: endOffset }
+    }
+  };
 }
 
 // Moment stub (Obsidian uses moment.js)
@@ -224,10 +286,20 @@ export class Vault {
 export class App {
   vault: Vault;
   workspace: Workspace;
+  metadataCache: { getFileCache: (_file: TFile) => { frontmatter?: Record<string, unknown> } | null };
+  fileManager: { processFrontMatter: (_file: TFile, cb: (fm: Record<string, unknown>) => void) => Promise<void> };
   
   constructor() {
     this.vault = new Vault();
     this.workspace = new Workspace();
+    this.metadataCache = {
+      getFileCache: () => null,
+    };
+    this.fileManager = {
+      processFrontMatter: async () => {
+        // no-op in default mock; tests can override
+      },
+    };
   }
 }
 
@@ -243,5 +315,3 @@ export class MarkdownRenderer {
     return Promise.resolve();
   }
 }
-
-

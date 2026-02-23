@@ -2,6 +2,7 @@ import { getFrontMatterInfo, parseYaml, stringifyYaml } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { ensureSceneIdFrontmatter, isSceneClassFrontmatter, readSceneId } from '../utils/sceneIds';
 import { buildFrontmatterDocument, extractBodyAfterFrontmatter } from '../utils/frontmatterDocument';
+import { resolveBookScopedMarkdownFiles } from '../services/NoteScopeResolver';
 
 type FrontmatterInfo = {
     exists?: boolean;
@@ -12,7 +13,14 @@ type FrontmatterInfo = {
 
 export async function migrateSceneFrontmatterIds(plugin: RadialTimelinePlugin): Promise<void> {
     try {
-        const files = plugin.app.vault.getMarkdownFiles();
+        const scope = resolveBookScopedMarkdownFiles(plugin.app, plugin.settings);
+        if (!scope.sourcePath) {
+            console.info('[Radial Timeline] Skipping scene id migration: no active book scope configured.');
+            return;
+        }
+
+        const files = scope.files;
+        console.info(`[Radial Timeline] Scene id migration scope: ${scope.scopeSummary}`);
         for (const file of files) {
             const content = await plugin.app.vault.read(file);
             const info = getFrontMatterInfo(content) as unknown as FrontmatterInfo;

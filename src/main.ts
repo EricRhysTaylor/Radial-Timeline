@@ -42,6 +42,7 @@ import { migrateAiSettings } from './ai/settings/migrateAiSettings';
 import { validateAiSettings } from './ai/settings/validateAiSettings';
 import { buildDefaultAiSettings, mapAiProviderToLegacyProvider } from './ai/settings/aiSettings';
 import { findBuiltinByAlias } from './ai/registry/builtinModels';
+import { getAIClient } from './ai/runtime/aiClient';
 import { migrateLegacyKeysToSecretStorage } from './ai/credentials/credentials';
 import { PLOT_SYSTEM_NAMES } from './utils/beatsSystems';
 import { generateBeatGuid } from './utils/beatsInputNormalize';
@@ -247,6 +248,7 @@ export default class RadialTimelinePlugin extends Plugin {
     async onload() {
         this.settingsService = new SettingsService(this);
         await this.loadSettings();
+        void getAIClient(this).refreshModelDataIfStale();
         this.releaseNotesService = new ReleaseNotesService(this.settings, () => this.saveSettings());
         this.releaseNotesService.initializeFromEmbedded();
         void this.releaseNotesService.ensureReleaseNotesFresh(); // Removed argument

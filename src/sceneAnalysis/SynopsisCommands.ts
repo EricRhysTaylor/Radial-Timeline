@@ -19,6 +19,7 @@ import type { SceneData } from './types';
 import { parseSceneTitle, decodeHtmlEntities } from '../utils/text';
 import { normalizeBooleanValue } from '../utils/sceneHelpers';
 import { getSynopsisGenerationWordLimit, truncateToWordLimit } from '../utils/synopsisLimits';
+import { resolveBookScopedFiles } from '../services/NoteScopeResolver';
 
 /**
  * Check freshness: is the scene's Due/Completed date newer than the last AI update timestamp?
@@ -172,6 +173,23 @@ async function persistSummaryForScene(
     return { summary, synopsis };
 }
 
+function resolveSummaryRefreshScope(plugin: RadialTimelinePlugin): {
+    files: TFile[];
+    scopeSummary: string;
+    reason?: string;
+} {
+    const scope = resolveBookScopedFiles({
+        app: plugin.app,
+        settings: plugin.settings,
+        noteType: 'Scene'
+    });
+    return {
+        files: scope.files,
+        scopeSummary: scope.scopeSummary,
+        reason: scope.reason
+    };
+}
+
 export async function calculateSynopsisSceneCount(
     plugin: RadialTimelinePlugin,
     vault: Vault,
@@ -179,7 +197,9 @@ export async function calculateSynopsisSceneCount(
     weakThreshold?: number
 ): Promise<number> {
     try {
-        const allScenes = await getAllSceneData(plugin, vault);
+        const scope = resolveSummaryRefreshScope(plugin);
+        if (scope.files.length === 0) return 0;
+        const allScenes = await getAllSceneData(plugin, vault, { files: scope.files });
         const threshold = weakThreshold ?? plugin.settings.synopsisWeakThreshold ?? 75;
 
         const isFlagged = (scene: SceneData) =>
@@ -220,6 +240,16 @@ export async function processSynopsisByManuscriptOrder(
         return;
     }
 
+    const scope = resolveSummaryRefreshScope(plugin);
+    if (scope.reason) {
+        new Notice(scope.reason);
+        return;
+    }
+    if (scope.files.length === 0) {
+        new Notice('No scene notes found in the active book scope.');
+        return;
+    }
+
     const modal = new SceneAnalysisProcessingModal(
         plugin.app,
         plugin,
@@ -235,7 +265,7 @@ export async function processSynopsisByManuscriptOrder(
     modal.open();
 }
 
-async function runSynopsisBatch(
+export async function runSynopsisBatch(
     plugin: RadialTimelinePlugin,
     vault: Vault,
     mode: ProcessingMode,
@@ -243,8 +273,20 @@ async function runSynopsisBatch(
     weakThreshold?: number,
     targetWords?: number
 ): Promise<void> {
-    const allScenes = await getAllSceneData(plugin, vault);
+    const scope = resolveSummaryRefreshScope(plugin);
+    if (scope.reason) {
+        new Notice(scope.reason);
+        return;
+    }
+    if (scope.files.length === 0) {
+        new Notice('No scene notes found in the active book scope.');
+        return;
+    }
+
+    const allScenes = await getAllSceneData(plugin, vault, { files: scope.files });
     allScenes.sort(compareScenesByOrder);
+    new Notice(`Summary refresh scope: ${scope.scopeSummary}`);
+    console.info(`[SummaryRefresh] Scope: ${scope.scopeSummary}`);
 
     // Get settings with fallbacks
     const threshold = weakThreshold ?? plugin.settings.synopsisWeakThreshold ?? 75;

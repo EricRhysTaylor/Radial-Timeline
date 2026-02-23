@@ -34,15 +34,31 @@ export function migrateAiSettings(settings: RadialTimelineSettings): MigrationRe
             ?? ((existing as unknown as { analysisMethod?: string }).analysisMethod === 'singlePassOnly'
                 ? 'singlePassOnly'
                 : 'automatic');
+        const legacyPolicyType = (existing.modelPolicy as { type?: string } | undefined)?.type;
+        const migratedPolicy = legacyPolicyType === 'profile'
+            ? { type: 'latestStable' as const }
+            : existing.modelPolicy;
         if (existing.analysisPackaging !== migratedPackaging) {
             const upgraded: AiSettingsV1 = {
                 ...existing,
-                analysisPackaging: migratedPackaging
+                analysisPackaging: migratedPackaging,
+                modelPolicy: migratedPolicy
             };
             const legacyCleanup = upgraded as unknown as Record<string, unknown>;
             if ('analysisMethod' in legacyCleanup) {
                 delete legacyCleanup.analysisMethod;
             }
+            return {
+                aiSettings: upgraded,
+                changed: true,
+                warnings: Array.isArray(existing.migrationWarnings) ? existing.migrationWarnings : []
+            };
+        }
+        if (legacyPolicyType === 'profile') {
+            const upgraded: AiSettingsV1 = {
+                ...existing,
+                modelPolicy: { type: 'latestStable' }
+            };
             return {
                 aiSettings: upgraded,
                 changed: true,
@@ -104,7 +120,7 @@ export function migrateAiSettings(settings: RadialTimelineSettings): MigrationRe
     aiSettings.featureProfiles = {
         ...(aiSettings.featureProfiles || {}),
         InquiryMode: {
-            modelPolicy: { type: 'profile', profile: 'deepReasoner' },
+            modelPolicy: { type: 'latestStable' },
             overrides: {
                 maxOutputMode: 'high',
                 reasoningDepth: 'deep',
