@@ -12,19 +12,7 @@ import { IMPACT_FULL } from '../SettingImpact';
 import { buildDefaultAiSettings, mapAiProviderToLegacyProvider } from '../../ai/settings/aiSettings';
 import { validateAiSettings } from '../../ai/settings/validateAiSettings';
 import { BUILTIN_MODELS } from '../../ai/registry/builtinModels';
-import {
-    mergeCuratedWithSnapshot,
-    formatAvailabilityLabel,
-    type AvailabilityStatus,
-    type MergedModelInfo
-} from '../../ai/registry/mergeModels';
-import {
-    computeRecommendedPicks,
-    getAvailabilityIconName,
-    getRecommendationComparisonTag,
-    type CurrentResolvedModelRef,
-    type RecommendationRow
-} from '../../ai/registry/recommendations';
+import type { AvailabilityStatus } from '../../ai/registry/mergeModels';
 import { selectModel } from '../../ai/router/selectModel';
 import { computeCaps } from '../../ai/caps/computeCaps';
 import { getAIClient, getLastAiAdvancedContext } from '../../ai/runtime/aiClient';
@@ -39,6 +27,7 @@ import type { AccessTier, AIProviderId, ModelPolicy, Capability } from '../../ai
 import { estimateGossamerTokens, estimateInquiryTokens } from '../../ai/forecast/estimateTokensFromVault';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
+type GossamerEvidencePreference = 'auto' | 'summaries' | 'bodies';
 
 export function renderAiSection(params: {
     app: App;
@@ -307,6 +296,7 @@ export function renderAiSection(params: {
             content.createDiv({ cls: 'ert-ai-analysis-mode-example', text: config.example });
         }
 
+        block.createDiv({ cls: 'ert-ai-analysis-mode-question-divider' });
         const questionRow = block.createDiv({ cls: 'ert-ai-analysis-mode-question-row' });
         const icon = questionRow.createSpan({ cls: 'ert-ai-analysis-mode-icon' });
         setIcon(icon, config.icon);
@@ -435,21 +425,31 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(tripletDisplaySetting.settingEl);
 
     let gossamerEvidenceDropdown: DropdownComponent | null = null;
+    const getGossamerEvidencePreference = (): GossamerEvidencePreference => {
+        const mode = plugin.settings.gossamerEvidenceMode;
+        if (mode === 'summaries' || mode === 'bodies' || mode === 'auto') return mode;
+        return 'auto';
+    };
     const gossamerEvidenceSetting = new Settings(aiSettingsGroup)
         .setName('Gossamer evidence')
-        .setDesc('Summaries scale better for large manuscripts.')
+        .setDesc('Auto sends current manuscript body content to AI and switches to summaries only when the selected model cannot safely accept the full body payload.')
         .addDropdown(dropdown => {
             gossamerEvidenceDropdown = dropdown;
             dropdown.selectEl.addClass('ert-input', 'ert-input--md');
+            dropdown.addOption('auto', 'Auto (scene bodies first)');
             dropdown.addOption('summaries', 'Summaries');
-            dropdown.addOption('bodies', 'Scene bodies');
+            dropdown.addOption('bodies', 'Scene bodies only');
             dropdown.onChange(async value => {
                 if (isSyncingRoutingUi) return;
-                plugin.settings.gossamerEvidenceMode = value === 'bodies' ? 'bodies' : 'summaries';
+                plugin.settings.gossamerEvidenceMode = value === 'summaries'
+                    ? 'summaries'
+                    : value === 'bodies'
+                        ? 'bodies'
+                        : 'auto';
                 await persistCanonical();
                 refreshRoutingUi();
             });
-            dropdown.setValue(plugin.settings.gossamerEvidenceMode === 'bodies' ? 'bodies' : 'summaries');
+            dropdown.setValue(getGossamerEvidencePreference());
         });
     gossamerEvidenceSetting.settingEl.setAttr('data-ert-role', 'ai-setting:gossamer-evidence');
     gossamerEvidenceSetting.settingEl.addClass(ERT_CLASSES.ROW);
@@ -533,7 +533,7 @@ export function renderAiSection(params: {
     let providerDropdown: DropdownComponent | null = null;
     providerSetting.addDropdown(dropdown => {
         providerDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--sm');
         dropdown.addOption('anthropic', 'Anthropic');
         dropdown.addOption('openai', 'OpenAI');
         dropdown.addOption('google', 'Google');
@@ -564,7 +564,7 @@ export function renderAiSection(params: {
     let modelOverrideDropdown: DropdownComponent | null = null;
     modelOverrideSetting.addDropdown(dropdown => {
         modelOverrideDropdown = dropdown;
-        dropdown.selectEl.addClass('ert-input', 'ert-input--md');
+        dropdown.selectEl.addClass('ert-input', 'ert-input--sm');
         dropdown.onChange(async value => {
             if (isSyncingRoutingUi) return;
             const aiSettings = ensureCanonicalAiSettings();
@@ -676,269 +676,6 @@ export function renderAiSection(params: {
     updateAiModelUpdatesDescription();
     params.addAiRelatedElement(aiModelUpdatesSetting.settingEl);
 
-    const modelsPanel = advancedBody.createDiv({ cls: ['ert-panel', ERT_CLASSES.STACK, 'ert-ai-models-panel'] });
-    const modelsHeader = modelsPanel.createDiv({ cls: 'ert-inline ert-inline--split' });
-    modelsHeader.createDiv({ cls: 'ert-section-title', text: 'Models' });
-    const modelsRefreshedEl = modelsHeader.createDiv({ cls: 'ert-ai-models-refreshed' });
-    const modelsHintEl = modelsPanel.createDiv({ cls: 'ert-field-note' });
-    const recommendationsEl = modelsPanel.createDiv({ cls: 'ert-ai-recommendations ert-stack' });
-    const modelsTableEl = modelsPanel.createDiv({ cls: 'ert-ai-models-table ert-stack ert-settings-hidden' });
-    const modelDetailsEl = modelsPanel.createDiv({ cls: 'ert-ai-model-details ert-settings-hidden' });
-    params.addAiRelatedElement(modelsPanel);
-
-    const formatContextOutput = (model: MergedModelInfo): string => {
-        if (model.providerCaps?.inputTokenLimit || model.providerCaps?.outputTokenLimit) {
-            const input = model.providerCaps.inputTokenLimit ? model.providerCaps.inputTokenLimit.toLocaleString() : '—';
-            const output = model.providerCaps.outputTokenLimit ? model.providerCaps.outputTokenLimit.toLocaleString() : '—';
-            return `${input} / ${output} (provider)`;
-        }
-        if (model.contextWindow || model.maxOutput) {
-            return `${model.contextWindow.toLocaleString()} / ${model.maxOutput.toLocaleString()} (curated)`;
-        }
-        return 'Unknown';
-    };
-
-    const formatReadableTimestamp = (timestamp: string): string => {
-        const parsed = Date.parse(timestamp);
-        if (!Number.isFinite(parsed)) return timestamp;
-        try {
-            return new Intl.DateTimeFormat(undefined, {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                second: '2-digit',
-                timeZoneName: 'short'
-            }).format(new Date(parsed));
-        } catch {
-            return new Date(parsed).toLocaleString();
-        }
-    };
-
-    const formatRecommendationModel = (row: RecommendationRow): string => {
-        if (!row.model) return 'No eligible model';
-        const name = row.model.providerLabel || row.model.label;
-        return `${providerLabel[row.model.provider]} -> ${name} (${row.model.alias})`;
-    };
-
-    const renderRecommendations = (
-        rows: RecommendationRow[],
-        currentSelection: CurrentResolvedModelRef | null
-    ): void => {
-        recommendationsEl.empty();
-        const title = recommendationsEl.createDiv({ cls: 'ert-ai-recommendations-title' });
-        const activeProvider = rows[0]?.provider ? providerLabel[rows[0].provider] : 'Current provider';
-        title.setText(`Recommended picks (${activeProvider})`);
-
-        rows.forEach(row => {
-            const item = recommendationsEl.createDiv({ cls: 'ert-ai-recommendation-row' });
-            item.createDiv({ cls: 'ert-ai-recommendation-name', text: row.title });
-
-            const value = item.createDiv({ cls: 'ert-ai-recommendation-value' });
-            const iconEl = value.createSpan({ cls: 'ert-ai-recommendation-icon' });
-            setIcon(iconEl, getAvailabilityIconName(row.availabilityStatus));
-            value.createSpan({ cls: 'ert-ai-recommendation-model', text: formatRecommendationModel(row) });
-            value.createSpan({ cls: 'ert-ai-recommendation-why', text: row.shortReason });
-
-            const comparisonTag = getRecommendationComparisonTag(row, currentSelection);
-            if (comparisonTag) {
-                value.createSpan({
-                    cls: 'ert-badgePill ert-badgePill--sm ert-ai-recommendation-status',
-                    text: comparisonTag
-                });
-            }
-
-            if (row.availabilityStatus === 'unknown') {
-                item.createDiv({
-                    cls: 'ert-ai-recommendation-hint',
-                    text: 'Availability is unavailable from the latest snapshot update.'
-                });
-            }
-            if (row.reason) {
-                item.setAttr('title', row.reason);
-            }
-        });
-    };
-
-    const renderModelDetails = (
-        model: MergedModelInfo,
-        selection: { alias: string; reason: string } | null
-    ): void => {
-        modelDetailsEl.empty();
-        modelDetailsEl.removeClass('ert-settings-hidden');
-        modelDetailsEl.addClass('ert-settings-visible');
-
-        const heading = modelDetailsEl.createDiv({ cls: 'ert-ai-model-details-title' });
-        heading.setText(`${providerLabel[model.provider]} · ${model.label}`);
-        modelDetailsEl.createDiv({ cls: 'ert-field-note', text: `Alias: ${model.alias} · Provider ID: ${model.providerModelId}` });
-
-        const statusRow = modelDetailsEl.createDiv({ cls: 'ert-inline' });
-        statusRow.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: `Status: ${model.status}` });
-        statusRow.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: formatAvailabilityLabel(model.availabilityStatus) });
-
-        const providerDetails = modelDetailsEl.createDiv({ cls: 'ert-field-note' });
-        providerDetails.setText(
-            `Provider label: ${model.providerLabel || '—'} · Created: ${model.providerCreatedAt || '—'} · Context/Output: ${formatContextOutput(model)}`
-        );
-
-        const aiSettings = ensureCanonicalAiSettings();
-        const tier = model.provider === 'anthropic' || model.provider === 'openai' || model.provider === 'google'
-            ? getAccessTier(model.provider)
-            : 1;
-        const effective = computeCaps({
-            provider: model.provider,
-            model,
-            accessTier: tier,
-            feature: 'InquiryMode',
-            overrides: aiSettings.overrides
-        });
-        modelDetailsEl.createDiv({
-            cls: 'ert-field-note',
-            text: `Effective caps preview: input=${effective.maxInputTokens.toLocaleString()}, output=${effective.maxOutputTokens.toLocaleString()}, tier=${tier}`
-        });
-
-        const why = modelDetailsEl.createDiv({ cls: 'ert-field-note' });
-        if (selection && selection.alias === model.alias) {
-            why.setText(`Why selected now: ${selection.reason}`);
-        } else {
-            why.setText('Why selected now: Not the currently resolved model for your active provider/policy.');
-        }
-
-        if (model.capsMismatch) {
-            const curatedInput = model.capsMismatch.curated?.inputTokenLimit;
-            const providerInput = model.capsMismatch.provider?.inputTokenLimit;
-            const curatedOutput = model.capsMismatch.curated?.outputTokenLimit;
-            const providerOutput = model.capsMismatch.provider?.outputTokenLimit;
-            modelDetailsEl.createDiv({
-                cls: 'ert-ai-model-warning',
-                text: `Caps mismatch (display only): curated input/output ${curatedInput ?? '—'}/${curatedOutput ?? '—'} vs provider ${providerInput ?? '—'}/${providerOutput ?? '—'}.`
-            });
-        }
-
-        const rawDetails = modelDetailsEl.createEl('details', { cls: 'ert-ai-model-raw' }) as HTMLDetailsElement;
-        const rawSummary = rawDetails.createEl('summary', { text: 'Raw provider details' });
-        attachAiCollapseButton(rawDetails, rawSummary);
-        rawDetails.createEl('pre', { cls: 'ert-ai-model-raw-pre', text: JSON.stringify(model.raw || {}, null, 2) });
-    };
-
-    const renderModelsTable = (
-        mergedModels: MergedModelInfo[],
-        selection: { alias: string; reason: string } | null
-    ): void => {
-        modelsTableEl.empty();
-        const header = modelsTableEl.createDiv({ cls: 'ert-ai-models-row ert-ai-models-row--header' });
-        ['Model', 'Availability', 'Context / Output', 'Supports'].forEach(label => {
-            header.createDiv({ cls: 'ert-ai-models-cell', text: label });
-        });
-
-        const providerOrder: AIProviderId[] = ['anthropic', 'openai', 'google', 'ollama'];
-        providerOrder.forEach(provider => {
-            const rows = mergedModels.filter(model => model.provider === provider);
-            if (!rows.length) return;
-
-            const group = modelsTableEl.createDiv({ cls: 'ert-ai-models-provider' });
-            group.setText(providerLabel[provider]);
-
-            rows.forEach(model => {
-                const rowButton = modelsTableEl.createEl('button', {
-                    cls: 'ert-ai-models-row',
-                    attr: { type: 'button' }
-                });
-
-                const modelCell = rowButton.createDiv({ cls: 'ert-ai-models-cell ert-ai-models-cell--model' });
-                const providerMark = modelCell.createSpan({ cls: 'ert-ai-models-provider-mark' });
-                providerMark.setText(model.provider === 'anthropic' ? 'A' : model.provider === 'openai' ? 'O' : model.provider === 'google' ? 'G' : 'L');
-                modelCell.createSpan({ cls: 'ert-ai-models-name', text: model.providerLabel || model.label });
-                modelCell.createSpan({ cls: 'ert-ai-models-alias', text: model.alias });
-
-                rowButton.createDiv({ cls: 'ert-ai-models-cell', text: formatAvailabilityLabel(model.availabilityStatus) });
-                rowButton.createDiv({ cls: 'ert-ai-models-cell', text: formatContextOutput(model) });
-
-                const supportsCell = rowButton.createDiv({ cls: 'ert-ai-models-cell ert-ai-models-tags' });
-                ['jsonStrict', 'toolCalling', 'vision', 'streaming', 'longContext'].forEach(capability => {
-                    if (!model.capabilities.includes(capability as Capability)) return;
-                    supportsCell.createSpan({ cls: 'ert-badgePill ert-badgePill--sm', text: capability });
-                });
-
-                rowButton.addEventListener('click', () => renderModelDetails(model, selection));
-            });
-        });
-    };
-
-    const refreshModelsTable = async (options?: { forceRemoteRegistry?: boolean; forceRemoteSnapshot?: boolean }): Promise<void> => {
-        modelsRefreshedEl.setText('Loading...');
-        modelsHintEl.setText('Loading AI model updates...');
-        recommendationsEl.empty();
-        modelsTableEl.empty();
-
-        try {
-            const client = getAIClient(plugin);
-            const [curatedModels, snapshot] = await Promise.all([
-                client.getRegistryModels(options?.forceRemoteRegistry),
-                client.getProviderSnapshot(options?.forceRemoteSnapshot)
-            ]);
-
-            const curated = curatedModels.filter(model => model.provider !== 'none');
-            const merged = mergeCuratedWithSnapshot(curated, snapshot.snapshot);
-            const aiSettings = ensureCanonicalAiSettings();
-            const selectedProvider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
-            let selection: { alias: string; reason: string } | null = null;
-            let currentSelection: CurrentResolvedModelRef | null = null;
-            try {
-                const resolved = selectModel(curated, {
-                    provider: selectedProvider,
-                    policy: aiSettings.modelPolicy,
-                    requiredCapabilities: capabilityFloor,
-                    accessTier: getAccessTier(selectedProvider),
-                    contextTokensNeeded: 24000,
-                    outputTokensNeeded: 2000
-                });
-                selection = { alias: resolved.model.alias, reason: resolved.reason };
-                const mergedCurrent = merged.find(model =>
-                    model.provider === resolved.model.provider
-                    && (model.alias === resolved.model.alias || model.providerModelId === resolved.model.id)
-                );
-                const availabilityStatus: AvailabilityStatus = mergedCurrent?.availabilityStatus ?? 'unknown';
-                currentSelection = {
-                    provider: resolved.model.provider,
-                    alias: resolved.model.alias,
-                    modelId: resolved.model.id,
-                    availabilityStatus
-                };
-            } catch {
-                selection = null;
-                currentSelection = null;
-            }
-
-            if (snapshot.snapshot) {
-                modelsHintEl.setText(snapshot.warning
-                    ? 'Some availability details could not be refreshed. Showing the best available model data.'
-                    : 'Model availability is up to date.');
-            } else if (snapshot.warning) {
-                modelsHintEl.setText('Availability details are temporarily unavailable. Showing the best available model data.');
-            } else {
-                modelsHintEl.setText('Availability details are unavailable. Showing curated model data.');
-            }
-            const lastUpdatedAt = client.getLastModelUpdateAt();
-            modelsRefreshedEl.setText(`Last updated: ${lastUpdatedAt ? formatReadableTimestamp(lastUpdatedAt) : 'Never'}`);
-            updateAiModelUpdatesDescription();
-
-            const picks = computeRecommendedPicks({
-                models: merged,
-                aiSettings,
-                includeLocalPrivate: aiSettings.provider === 'ollama'
-            });
-            renderRecommendations(picks, currentSelection);
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            modelsRefreshedEl.setText('Last updated: Unavailable');
-            modelsHintEl.setText(`Unable to load model recommendations: ${message}`);
-            recommendationsEl.empty();
-            updateAiModelUpdatesDescription();
-        }
-    };
-
     const resolvedPreviewFrame = quickSetupPreviewSection.createDiv({
         cls: [ERT_CLASSES.PREVIEW_FRAME, ERT_CLASSES.STACK, 'ert-previewFrame--center', 'ert-previewFrame--flush', 'ert-ai-resolved-preview'],
         attr: { 'data-ert-role': 'ai-setting:resolved-model-preview' }
@@ -964,18 +701,6 @@ export function renderAiSection(params: {
     applyStrategyRowCopyLayout(accessTierSetting, ACCESS_TIER_COPY);
 
     applyQuickSetupLayoutOrder();
-
-    const aiFeaturesSection = quickSetupSection.createDiv({ cls: `${ERT_CLASSES.STACK} ert-ai-features-info` });
-    aiFeaturesSection.createDiv({ cls: 'ert-section-title', text: 'AI Features in Radial Timeline' });
-    const aiFeaturesList = aiFeaturesSection.createEl('ul', { cls: ERT_CLASSES.STACK });
-    [
-        'Inquiry — Cross-scene structural analysis across selected corpus.',
-        'Pulse (Triplet Analysis) — Evaluates a scene in context of previous and next scenes.',
-        'Gossamer Momentum — Measures beat-level structural drive and tension.'
-    ].forEach(text => {
-        const li = aiFeaturesList.createEl('li', { cls: `${ERT_CLASSES.INLINE} ert-feature-item` });
-        li.createSpan({ text });
-    });
 
     const dropdownHasValue = (dropdown: DropdownComponent | null, value: string): boolean => {
         if (!dropdown) return false;
@@ -1132,7 +857,8 @@ export function renderAiSection(params: {
             frontmatterMappings: plugin.settings.frontmatterMappings,
             scopeContext: { scope: 'book' }
         });
-        const gossamerEvidenceMode = plugin.settings.gossamerEvidenceMode === 'bodies' ? 'bodies' : 'summaries';
+        const gossamerPreference = getGossamerEvidencePreference();
+        const gossamerEvidenceMode = gossamerPreference === 'summaries' ? 'summaries' : 'bodies';
         const gossamerEstimate = await estimateGossamerTokens({
             plugin,
             vault: app.vault,
@@ -1147,7 +873,9 @@ export function renderAiSection(params: {
                 estimatedInputTokens: inquiryEstimate.estimatedInputTokens,
             },
             gossamer: {
-                label: `Gossamer — Full manuscript (${gossamerEstimate.evidenceLabel})`,
+                label: gossamerPreference === 'auto'
+                    ? `Gossamer — Full manuscript (${gossamerEstimate.evidenceLabel} first, auto summary fallback)`
+                    : `Gossamer — Full manuscript (${gossamerEstimate.evidenceLabel})`,
                 estimatedInputTokens: gossamerEstimate.estimatedInputTokens,
             },
         };
@@ -1188,8 +916,8 @@ export function renderAiSection(params: {
             setDropdownValueSafe(executionPreferenceDropdown, aiSettings.analysisPackaging === 'singlePassOnly' ? 'singlePassOnly' : 'automatic', 'automatic');
             setDropdownValueSafe(
                 gossamerEvidenceDropdown,
-                plugin.settings.gossamerEvidenceMode === 'bodies' ? 'bodies' : 'summaries',
-                'summaries'
+                getGossamerEvidencePreference(),
+                'auto'
             );
         } finally {
             isSyncingRoutingUi = false;
@@ -1312,7 +1040,6 @@ export function renderAiSection(params: {
             capacityGossamerExpected.setText('Unavailable');
         }
 
-        void refreshModelsTable();
     };
 
     refreshRoutingUi();

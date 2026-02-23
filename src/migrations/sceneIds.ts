@@ -15,12 +15,10 @@ export async function migrateSceneFrontmatterIds(plugin: RadialTimelinePlugin): 
     try {
         const scope = resolveBookScopedMarkdownFiles(plugin.app, plugin.settings);
         if (!scope.sourcePath) {
-            console.info('[Radial Timeline] Skipping scene id migration: no active book scope configured.');
             return;
         }
 
         const files = scope.files;
-        console.info(`[Radial Timeline] Scene id migration scope: ${scope.scopeSummary}`);
         for (const file of files) {
             const content = await plugin.app.vault.read(file);
             const info = getFrontMatterInfo(content) as unknown as FrontmatterInfo;

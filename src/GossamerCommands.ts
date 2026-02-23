@@ -10,7 +10,11 @@ import { TimelineMode } from './modes/ModeDefinition';
 import { getSortedSceneFiles } from './utils/manuscript';
 import { buildUnifiedBeatAnalysisPrompt, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
 import { getAIClient } from './ai/runtime/aiClient';
-import { mapAiProviderToLegacyProvider } from './ai/settings/aiSettings';
+import { buildDefaultAiSettings, mapAiProviderToLegacyProvider } from './ai/settings/aiSettings';
+import { validateAiSettings } from './ai/settings/validateAiSettings';
+import { BUILTIN_MODELS } from './ai/registry/builtinModels';
+import { selectModel } from './ai/router/selectModel';
+import { computeCaps } from './ai/caps/computeCaps';
 import {
   extractTokenUsage,
   formatAiLogContent,
@@ -23,7 +27,7 @@ import {
 import { ensureGossamerContentLogFolder, resolveGossamerContentLogFolder } from './inquiry/utils/logs';
 import { resolveSelectedBeatModel } from './utils/beatsInputNormalize';
 import { isPathInFolderScope } from './utils/pathScope';
-import type { AIProviderId } from './ai/types';
+import type { AccessTier, AIProviderId, AiSettingsV1, Capability } from './ai/types';
 import { buildGossamerEvidenceDocument, type GossamerEvidenceMode } from './gossamer/evidence/buildGossamerEvidence';
 
 const sanitizeSegment = (value: string | null | undefined) => {
@@ -36,8 +40,105 @@ const sanitizeSegment = (value: string | null | undefined) => {
     .replace(/^-+|-+$/g, '');
 };
 
-const getGossamerEvidenceMode = (plugin: RadialTimelinePlugin): GossamerEvidenceMode =>
-  plugin.settings.gossamerEvidenceMode === 'bodies' ? 'bodies' : 'summaries';
+type GossamerEvidencePreference = 'auto' | 'summaries' | 'bodies';
+
+interface ResolvedGossamerEvidence {
+  document: Awaited<ReturnType<typeof buildGossamerEvidenceDocument>>;
+  mode: GossamerEvidenceMode;
+  label: string;
+}
+
+const GOSSAMER_CAPABILITY_FLOOR: Capability[] = ['jsonStrict', 'longContext', 'reasoningStrong', 'highOutputCap'];
+
+const estimateTokens = (text: string): number => Math.ceil(text.length / 4);
+
+const getGossamerEvidencePreference = (plugin: RadialTimelinePlugin): GossamerEvidencePreference => {
+  const mode = plugin.settings.gossamerEvidenceMode;
+  if (mode === 'summaries' || mode === 'bodies' || mode === 'auto') return mode;
+  return 'auto';
+};
+
+const resolveAccessTier = (settings: AiSettingsV1, provider: AIProviderId): AccessTier => {
+  if (provider === 'anthropic') return settings.aiAccessProfile.anthropicTier ?? 1;
+  if (provider === 'openai') return settings.aiAccessProfile.openaiTier ?? 1;
+  if (provider === 'google') return settings.aiAccessProfile.googleTier ?? 1;
+  return 1;
+};
+
+const resolveSafeGossamerInputLimit = (plugin: RadialTimelinePlugin): number | null => {
+  const aiSettings = validateAiSettings(plugin.settings.aiSettings ?? buildDefaultAiSettings()).value;
+  const provider = aiSettings.provider === 'none' ? 'openai' : aiSettings.provider;
+  const accessTier = resolveAccessTier(aiSettings, provider);
+
+  try {
+    const selection = selectModel(BUILTIN_MODELS, {
+      provider,
+      policy: aiSettings.modelPolicy,
+      requiredCapabilities: GOSSAMER_CAPABILITY_FLOOR,
+      accessTier,
+      contextTokensNeeded: 0,
+      outputTokensNeeded: 0
+    });
+    const caps = computeCaps({
+      provider,
+      model: selection.model,
+      accessTier,
+      feature: 'Gossamer',
+      overrides: aiSettings.overrides
+    });
+    return Math.max(0, Math.floor(caps.maxInputTokens * 0.8));
+  } catch {
+    return null;
+  }
+};
+
+const resolveGossamerEvidence = async (params: {
+  plugin: RadialTimelinePlugin;
+  sceneFiles: TFile[];
+}): Promise<ResolvedGossamerEvidence> => {
+  const frontmatterMappings = params.plugin.settings.frontmatterMappings;
+  const preference = getGossamerEvidencePreference(params.plugin);
+
+  if (preference === 'summaries') {
+    const document = await buildGossamerEvidenceDocument({
+      sceneFiles: params.sceneFiles,
+      vault: params.plugin.app.vault,
+      metadataCache: params.plugin.app.metadataCache,
+      evidenceMode: 'summaries',
+      frontmatterMappings
+    });
+    return { document, mode: 'summaries', label: 'Summaries (manual)' };
+  }
+
+  const bodyDocument = await buildGossamerEvidenceDocument({
+    sceneFiles: params.sceneFiles,
+    vault: params.plugin.app.vault,
+    metadataCache: params.plugin.app.metadataCache,
+    evidenceMode: 'bodies',
+    frontmatterMappings
+  });
+
+  if (preference === 'bodies') {
+    return { document: bodyDocument, mode: 'bodies', label: 'Scene bodies (manual)' };
+  }
+
+  const safeLimit = resolveSafeGossamerInputLimit(params.plugin);
+  const bodyTokenEstimate = estimateTokens(bodyDocument.text || '');
+  if (safeLimit !== null && safeLimit > 0 && bodyTokenEstimate > safeLimit) {
+    const summaryDocument = await buildGossamerEvidenceDocument({
+      sceneFiles: params.sceneFiles,
+      vault: params.plugin.app.vault,
+      metadataCache: params.plugin.app.metadataCache,
+      evidenceMode: 'summaries',
+      frontmatterMappings
+    });
+    if (summaryDocument.includedScenes > 0 && summaryDocument.text.trim().length > 0) {
+      return { document: summaryDocument, mode: 'summaries', label: 'Summaries (auto fallback)' };
+    }
+  }
+
+  return { document: bodyDocument, mode: 'bodies', label: 'Scene bodies (auto)' };
+};
 
 type GossamerLogPayload = {
   status: 'success' | 'error';
@@ -750,9 +851,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         };
       });
 
-    const evidenceMode = getGossamerEvidenceMode(plugin);
-    const evidenceModeLabel = evidenceMode === 'summaries' ? 'Summaries' : 'Bodies';
-    modal.setStatus(`Assembling manuscript evidence (${evidenceModeLabel})...`);
+    modal.setStatus('Assembling manuscript evidence...');
 
     // Get sorted scene files (single source of truth)
     const { files: sceneFiles } = await getSortedSceneFiles(plugin);
@@ -764,13 +863,14 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       return;
     }
 
-    const evidenceDocument = await buildGossamerEvidenceDocument({
-      sceneFiles,
-      vault: plugin.app.vault,
-      metadataCache: plugin.app.metadataCache,
-      evidenceMode,
-      frontmatterMappings: plugin.settings.frontmatterMappings
+    const resolvedEvidence = await resolveGossamerEvidence({
+      plugin,
+      sceneFiles
     });
+    const evidenceMode = resolvedEvidence.mode;
+    const evidenceModeLabel = resolvedEvidence.label;
+    modal.setStatus(`Assembling manuscript evidence (${evidenceModeLabel})...`);
+    const evidenceDocument = resolvedEvidence.document;
 
     if (!evidenceDocument.text || evidenceDocument.text.trim().length === 0 || evidenceDocument.includedScenes === 0) {
       modal.addError(`No ${evidenceMode === 'summaries' ? 'scene summaries' : 'scene body content'} available for analysis.`);
@@ -1065,15 +1165,12 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     
     // Get sorted scene files (single source of truth)
     const { files: sceneFiles } = await getSortedSceneFiles(plugin);
-    const evidenceMode = getGossamerEvidenceMode(plugin);
-    const evidenceModeLabel = evidenceMode === 'summaries' ? 'Summaries' : 'Bodies';
-    const evidenceDocument = await buildGossamerEvidenceDocument({
-      sceneFiles,
-      vault: plugin.app.vault,
-      metadataCache: plugin.app.metadataCache,
-      evidenceMode,
-      frontmatterMappings: plugin.settings.frontmatterMappings
+    const resolvedEvidence = await resolveGossamerEvidence({
+      plugin,
+      sceneFiles
     });
+    const evidenceModeLabel = resolvedEvidence.label;
+    const evidenceDocument = resolvedEvidence.document;
     const estimatedTokens = Math.ceil(evidenceDocument.text.length / 4);
     
     const manuscriptInfo: ManuscriptInfo = {

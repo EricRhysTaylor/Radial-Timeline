@@ -163,7 +163,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     aiCanonicalResetCompleted: false,
     aiRegistryCacheJson: '',
     aiProviderSnapshotCacheJson: '',
-    gossamerEvidenceMode: 'summaries',
+    gossamerEvidenceMode: 'auto',
     enablePlanetaryTime: false,
     planetaryProfiles: [],
     activePlanetaryProfileId: undefined,

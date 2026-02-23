@@ -3,26 +3,14 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 describe('AI settings models table', () => {
-    it('renders unknown availability helper when snapshot is missing', () => {
-        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('Availability is unavailable from the latest snapshot update.')).toBe(true);
-        expect(source.includes("else if (snapshot.warning)")).toBe(true);
-        expect(source.includes('formatAvailabilityLabel(model.availabilityStatus)')).toBe(true);
-    });
-
     it('renders a single AI model update control in advanced diagnostics', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes("setName('AI Model Updates')")).toBe(true);
         expect(source.includes("setButtonText('Update AI models')")).toBe(true);
         expect(source.includes('Refresh availability')).toBe(false);
         expect(source.includes('Remote model registry')).toBe(false);
-    });
-
-    it('renders recommendations block above models area', () => {
-        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('Recommended picks')).toBe(true);
-        expect(source.includes('ert-ai-recommendations')).toBe(true);
-        expect(source.includes('computeRecommendedPicks')).toBe(true);
+        expect(source.includes("text: 'Models'")).toBe(false);
+        expect(source.includes('computeRecommendedPicks')).toBe(false);
     });
 
     it('keeps AI Strategy to provider, model, and tier controls', () => {
@@ -33,17 +21,17 @@ describe('AI settings models table', () => {
         expect(source.includes(".setName('Thinking Style')")).toBe(false);
     });
 
-    it('renders factual AI feature descriptions under AI Strategy', () => {
+    it('does not render duplicate AI Features container beneath AI Strategy', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('AI Features in Radial Timeline')).toBe(true);
-        expect(source.includes('Inquiry — Cross-scene structural analysis across selected corpus.')).toBe(true);
-        expect(source.includes('Pulse (Triplet Analysis) — Evaluates a scene in context of previous and next scenes.')).toBe(true);
-        expect(source.includes('Gossamer Momentum — Measures beat-level structural drive and tension.')).toBe(true);
+        expect(source.includes('AI Features in Radial Timeline')).toBe(false);
+        expect(source.includes('ert-ai-features-section')).toBe(false);
     });
 
-    it('does not render the dense models table rows in refresh flow', () => {
+    it('keeps gossamer evidence defaulting to auto body-first behavior', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
-        expect(source.includes('renderModelsTable(merged, selection)')).toBe(false);
+        expect(source.includes("dropdown.addOption('auto', 'Auto (scene bodies first)')")).toBe(true);
+        expect(source.includes('auto summary fallback')).toBe(true);
+        expect(source.includes('Summaries scale better for large manuscripts.')).toBe(false);
     });
 
     it('renders active model preview container with wrapped config pill copy', () => {
@@ -55,11 +43,19 @@ describe('AI settings models table', () => {
         expect(source.includes('Best for')).toBe(false);
     });
 
+    it('uses small dropdown sizing for all AI Strategy controls', () => {
+        const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
+        expect(source.includes("providerDropdown = dropdown;\n        dropdown.selectEl.addClass('ert-input', 'ert-input--sm');")).toBe(true);
+        expect(source.includes("modelOverrideDropdown = dropdown;\n        dropdown.selectEl.addClass('ert-input', 'ert-input--sm');")).toBe(true);
+        expect(source.includes("accessTierDropdown = dropdown;\n        dropdown.selectEl.addClass('ert-input', 'ert-input--sm');")).toBe(true);
+    });
+
     it('renders Large Manuscript Handling section with execution preference controls', () => {
         const source = readFileSync(resolve(process.cwd(), 'src/settings/sections/AiSection.ts'), 'utf8');
         expect(source.includes('Large Manuscript Handling')).toBe(true);
         expect(source.includes('Execution Preference')).toBe(true);
         expect(source.includes('singlePassOnly')).toBe(true);
+        expect(source.includes('ert-ai-analysis-mode-question-divider')).toBe(true);
     });
 
     it('renders provider key status states without saved-not-tested phrasing', () => {

@@ -1250,7 +1250,6 @@ export class InquiryView extends ItemView {
             impact: 'low',
             assessmentConfidence: 'low'
         });
-        this.logInquirySvgDebug();
 
         this.flowRingHit = this.glyph.flowRingHit;
         this.depthRingHit = this.glyph.depthRingHit;
@@ -2435,7 +2434,8 @@ export class InquiryView extends ItemView {
             this.notifyInteraction('No scenes found in current scope.');
             return;
         }
-        const scopeLabel = this.state.scope === 'saga' ? 'saga' : `book "${this.getFocusBookLabel()}"`;
+        const scopeBookLabel = this.getFocusBookTitleForMessages() || this.getFocusBookLabel();
+        const scopeLabel = this.state.scope === 'saga' ? 'saga' : `book "${scopeBookLabel}"`;
         const affectedScenes = await this.scanForInquiryActionItems(scenes);
         const modal = new InquiryPurgeConfirmationModal(
             this.app,
@@ -4009,19 +4009,6 @@ export class InquiryView extends ItemView {
             const tick = this.minimapTicks[idx];
             if (!tick) return;
             tick.classList.toggle('is-empty', wordCount < emptyMax);
-        });
-    }
-
-    private logInquirySvgDebug(): void {
-        const svg = this.rootSvg;
-        const viewBox = svg?.getAttribute('viewBox');
-        const frame = svg?.querySelector('.ert-inquiry-svg-frame');
-        const rings = svg?.querySelectorAll('.ert-inquiry-ring-progress')?.length || 0;
-        console.info('[Inquiry] SVG debug', {
-            hasSvg: !!svg,
-            viewBox,
-            hasFrame: !!frame,
-            ringCount: rings
         });
     }
 
@@ -6870,7 +6857,6 @@ export class InquiryView extends ItemView {
         let result: InquiryResult;
         let runTrace: InquiryRunTrace | null = null;
         new Notice('Inquiry: contacting AI provider.');
-        console.info('[Inquiry] API HIT');
         const submittedAt = new Date();
         const runnerInput = {
             scope: this.state.scope,
@@ -6894,9 +6880,7 @@ export class InquiryView extends ItemView {
             const runOutput = await this.runner.runWithTrace(runnerInput);
             result = runOutput.result;
             runTrace = runOutput.trace;
-            console.info('[Inquiry] API OK');
         } catch (error) {
-            console.info('[Inquiry] API FAIL');
             result = this.buildErrorFallback(question, focusLabel, manifest.fingerprint, error);
             const message = error instanceof Error ? error.message : String(error);
             runTrace = await this.buildFallbackTrace(runnerInput, `Runner exception: ${message}`);
@@ -8824,6 +8808,18 @@ export class InquiryView extends ItemView {
             if (match) return match.displayLabel;
         }
         return books[0]?.displayLabel ?? 'B0';
+    }
+
+    private getFocusBookTitleForMessages(): string | null {
+        const focusBookId = this.state.focusBookId ?? this.corpus?.activeBookId ?? this.corpus?.books?.[0]?.id;
+        if (!focusBookId) return null;
+        const normalizedFocus = normalizePath(focusBookId);
+        if (!normalizedFocus) return null;
+        const match = (this.plugin.settings.books || []).find(book =>
+            normalizePath((book.sourceFolder || '').trim()) === normalizedFocus
+        );
+        const title = match?.title?.trim();
+        return title && title.length > 0 ? title : null;
     }
 
     private getFocusLabel(): string {
