@@ -35,7 +35,7 @@ import type { InquiryClassConfig, InquiryMaterialMode, InquiryPromptConfig, Inqu
 import { buildDefaultInquiryPromptConfig, getBuiltInPromptSeed, getCanonicalPromptText, normalizeInquiryPromptConfig } from './prompts';
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
 import { ensureInquiryContentLogFolder, ensureInquiryLogFolder, resolveInquiryLogFolder } from './utils/logs';
-import { openOrRevealFile } from '../utils/fileUtils';
+import { openOrRevealFile, openOrRevealFileAtSubpath } from '../utils/fileUtils';
 import { extractTokenUsage, formatAiLogContent, formatDuration, sanitizeLogPayload, type AiLogStatus } from '../ai/log';
 import { getCredentialSecretId } from '../ai/credentials/credentials';
 import { redactSensitiveValue } from '../ai/credentials/redactSensitive';
@@ -2448,10 +2448,12 @@ export class InquiryView extends ItemView {
         this.artifactButton.classList.toggle('is-briefing-pulse', status === 'unsaved');
         this.artifactButton.classList.toggle('is-briefing-saved', status === 'saved');
         this.artifactButton.classList.toggle('is-briefing-error', status === 'error');
-        const tooltip = status === 'unsaved'
-            ? 'Briefing · Save latest brief'
-            : 'Briefing · Recent inquiries';
-        addTooltipData(this.artifactButton, this.balanceTooltipText(tooltip), 'left');
+        // Briefing manager has its own full panel on hover/click; keep this icon tooltip-free.
+        this.artifactButton.removeAttribute('data-tooltip');
+        this.artifactButton.removeAttribute('data-tooltip-placement');
+        this.artifactButton.removeAttribute('data-rt-tooltip');
+        this.artifactButton.removeAttribute('data-rt-tooltip-placement');
+        this.artifactButton.classList.remove('rt-tooltip-target');
     }
 
     private async handleBriefingSaveClick(): Promise<void> {
@@ -2695,8 +2697,7 @@ export class InquiryView extends ItemView {
             await openOrRevealFile(this.app, file);
             return;
         }
-        const linkPath = `${file.path}#^${anchorId}`;
-        await this.app.workspace.openLinkText(linkPath, '');
+        await openOrRevealFileAtSubpath(this.app, file, `#^${anchorId}`);
     }
 
     private getMostRecentInquiryLogFile(): TFile | null {
@@ -8321,14 +8322,11 @@ export class InquiryView extends ItemView {
         let outcome: InquiryWritebackOutcome = 'skipped';
         const inquiryLinkToken = '[[Inquiry Brief —';
         const isInquiryLine = (line: string): boolean => line.includes(inquiryLinkToken);
-        const quoteWikiLink = (line: string): string => {
-            const match = line.match(/\[\[[^\]]+\]\]/);
-            if (!match || match.index === undefined) return line;
-            const start = match.index;
-            const end = start + match[0].length;
-            const alreadyQuoted = (start > 0 && line[start - 1] === '"') && line[end] === '"';
-            if (alreadyQuoted) return line;
-            return `${line.slice(0, start)}"${match[0]}"${line.slice(end)}`;
+        const normalizeInquiryLinkLine = (line: string): string => {
+            if (!line) return line;
+            return line
+                .replace(/^\\?"(\[\[[^\]]+\]\])"\\?(\s+—\s+)/, '$1$2')
+                .replace(/^\\?"(\[\[[^\]]+\]\])"\\?$/, '$1');
         };
 
         await this.app.fileManager.processFrontMatter(file, (fm) => {
@@ -8345,19 +8343,26 @@ export class InquiryView extends ItemView {
 
             const newline = rawText.includes('\r\n') ? '\r\n' : '\n';
             const lines = rawText === '' ? [] : rawText.split(/\r?\n/);
-            const inquiryIndices = lines.reduce<number[]>((acc, line, index) => {
+            const normalizedLines = lines.map(line => normalizeInquiryLinkLine(line));
+            const normalizedExisting = normalizedLines.some((line, index) => line !== lines[index]);
+            const inquiryIndices = normalizedLines.reduce<number[]>((acc, line, index) => {
                 if (isInquiryLine(line)) acc.push(index);
                 return acc;
             }, []);
 
-            if (inquiryIndices.some(index => lines[index].includes(briefLinkNeedle))) {
-                outcome = 'duplicate';
+            if (inquiryIndices.some(index => normalizedLines[index].includes(briefLinkNeedle))) {
+                if (!normalizedExisting) {
+                    outcome = 'duplicate';
+                    return;
+                }
+                const normalizedText = normalizedLines.join(newline);
+                frontmatter[fieldKey] = normalizedText;
+                outcome = 'written';
                 return;
             }
 
-            const shouldQuoteLink = lines.length === 0 && notes.length === 1 && !rawText.includes('\n') && !rawText.includes('\r');
-            const nextNotes = shouldQuoteLink ? notes.map(note => quoteWikiLink(note)) : notes.slice();
-            let nextLines = [...lines, ...nextNotes];
+            const nextNotes = notes.map(note => normalizeInquiryLinkLine(note));
+            let nextLines = [...normalizedLines, ...nextNotes];
 
             const nextInquiryIndices = nextLines.reduce<number[]>((acc, line, index) => {
                 if (isInquiryLine(line)) acc.push(index);

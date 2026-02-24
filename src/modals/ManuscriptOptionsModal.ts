@@ -108,6 +108,7 @@ export class ManuscriptOptionsModal extends Modal {
     private layoutContainerEl?: HTMLElement;
     private selectedLayoutId?: string;
     private manuscriptPresetDescEl?: HTMLElement;
+    private manuscriptPresetGridEl?: HTMLElement;
     private outlinePresetDescEl?: HTMLElement;
     private manuscriptPreviewToggle?: HTMLElement;
     private manuscriptPreviewPanel?: HTMLElement;
@@ -233,6 +234,7 @@ export class ManuscriptOptionsModal extends Modal {
         // B) PRESETS
         this.manuscriptOptionsCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         const manuscriptPresetGrid = this.manuscriptOptionsCard.createDiv({ cls: 'ert-manuscript-preset-grid' });
+        this.manuscriptPresetGridEl = manuscriptPresetGrid;
 
         const presetHeaderCol = manuscriptPresetGrid.createDiv({ cls: 'ert-manuscript-preset-col ert-manuscript-preset-col--header' });
         this.createSectionHeading(presetHeaderCol, t('manuscriptModal.manuscriptPresetHeading'), 'book-open');
@@ -282,6 +284,18 @@ export class ManuscriptOptionsModal extends Modal {
             });
         this.outlinePresetDescEl = this.outlineOptionsCard.createDiv({ cls: 'rt-sub-card-note' });
         this.updateOutlinePresetDescription();
+        this.synopsisRow = this.outlineOptionsCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
+        this.synopsisRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: t('manuscriptModal.includeSynopsis') });
+        new ToggleComponent(this.synopsisRow)
+            .setValue(this.includeSynopsisUserChoice)
+            .onChange((value) => {
+                this.includeSynopsisUserChoice = value;
+                this.includeSynopsis = value;
+            });
+        this.outlineOptionsCard.createDiv({
+            cls: 'rt-sub-card-note',
+            text: t('manuscriptModal.includeSynopsisNote')
+        });
 
         // C) SPLIT OUTPUT
         this.splitCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
@@ -409,25 +423,6 @@ export class ManuscriptOptionsModal extends Modal {
             text: t('manuscriptModal.tocNote')
         });
 
-        this.includeMatterCard = this.manuscriptRulesCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
-        this.includeMatterCard.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Include matter notes' });
-        new ToggleComponent(this.includeMatterCard)
-            .setValue(this.includeMatterUserChoice)
-            .onChange((value) => {
-                this.hasTouchedMatterToggle = true;
-                this.includeMatterUserChoice = value;
-                this.includeMatter = value;
-            });
-
-        this.synopsisRow = this.manuscriptRulesCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
-        this.synopsisRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: t('manuscriptModal.includeSynopsis') });
-        new ToggleComponent(this.synopsisRow)
-            .setValue(this.includeSynopsis)
-            .onChange((value) => {
-                this.includeSynopsisUserChoice = value;
-                this.includeSynopsis = value;
-            });
-
         // G) PUBLISHING OPTIONS
         this.publishingCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         this.createSectionHeading(this.publishingCard, 'Publishing Options', 'settings');
@@ -439,6 +434,16 @@ export class ManuscriptOptionsModal extends Modal {
             .setValue(this.updateWordCounts)
             .onChange((value) => {
                 this.updateWordCounts = value;
+            });
+
+        this.includeMatterCard = publishingBody.createDiv({ cls: 'rt-manuscript-toggle-row' });
+        this.includeMatterCard.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Include matter notes' });
+        new ToggleComponent(this.includeMatterCard)
+            .setValue(this.includeMatterUserChoice)
+            .onChange((value) => {
+                this.hasTouchedMatterToggle = true;
+                this.includeMatterUserChoice = value;
+                this.includeMatter = value;
             });
 
         const artifactRow = publishingBody.createDiv({ cls: 'rt-manuscript-toggle-row' });
@@ -631,40 +636,49 @@ export class ManuscriptOptionsModal extends Modal {
         });
     }
 
+    private isPdfManuscriptExport(): boolean {
+        return this.exportType === 'manuscript' && this.outputFormat === 'pdf';
+    }
+
     private resolveExportRules(): {
         includeMatterMode: 'user' | 'forced-off';
-        includeSynopsisMode: 'user' | 'forced-off';
         tocEnabled: boolean;
         tocDefault: TocMode;
         showSubplotFilter: boolean;
         chronoMessage: string | null;
+        lockSceneSelectionToFullBook: boolean;
     } {
         const isNovelManuscript = this.exportType === 'manuscript' && this.manuscriptPreset === 'novel';
-        const isPdfManuscript = this.exportType === 'manuscript' && this.outputFormat === 'pdf';
-        const showSubplotFilter = this.exportType === 'manuscript'
+        const isPdfManuscript = this.isPdfManuscriptExport();
+        const lockSceneSelectionToFullBook = isPdfManuscript;
+        const showSubplotFilter = !lockSceneSelectionToFullBook && (this.exportType === 'manuscript'
             ? this.manuscriptPreset === 'novel'
-            : this.outlinePreset === 'shooting-schedule';
+            : this.outlinePreset === 'shooting-schedule');
 
         return {
             includeMatterMode: isNovelManuscript ? 'user' : 'forced-off',
-            includeSynopsisMode: this.exportType === 'manuscript' && !isPdfManuscript ? 'user' : 'forced-off',
             tocEnabled: isNovelManuscript && !isPdfManuscript,
             tocDefault: isNovelManuscript && !isPdfManuscript ? 'markdown' : 'none',
             showSubplotFilter,
-            chronoMessage: this.hasWhenDates ? null : 'No When dates found.'
+            chronoMessage: lockSceneSelectionToFullBook || this.hasWhenDates ? null : 'No When dates found.',
+            lockSceneSelectionToFullBook
         };
     }
 
     private syncExportUi(): void {
         this.normalizeOutputFormatForOutline();
         const rules = this.resolveExportRules();
+        const shouldLockSelection = rules.lockSceneSelectionToFullBook;
+        const showSceneSelectionCards = !shouldLockSelection;
 
         this.manuscriptOptionsCard?.toggleClass('rt-hidden', this.exportType !== 'manuscript');
         this.outlineOptionsCard?.toggleClass('rt-hidden', this.exportType !== 'outline');
-        this.manuscriptRulesCard?.toggleClass('rt-hidden', this.exportType !== 'manuscript');
+        this.manuscriptRulesCard?.toggleClass('rt-hidden', !(this.exportType === 'manuscript' && this.outputFormat === 'markdown'));
         this.tocCard?.toggleClass('rt-hidden', !rules.tocEnabled || this.exportType !== 'manuscript');
         this.includeMatterCard?.toggleClass('rt-hidden', rules.includeMatterMode !== 'user' || this.exportType !== 'manuscript');
-        this.synopsisRow?.toggleClass('rt-hidden', rules.includeSynopsisMode !== 'user' || this.exportType !== 'manuscript');
+        this.synopsisRow?.toggleClass('rt-hidden', this.exportType !== 'outline');
+        this.scopeCard?.toggleClass('rt-hidden', !showSceneSelectionCards);
+        this.orderingCard?.toggleClass('rt-hidden', !showSceneSelectionCards);
         this.filterCard?.toggleClass('rt-hidden', !rules.showSubplotFilter);
         this.chronoHelperEl?.toggleClass('rt-hidden', !rules.chronoMessage);
 
@@ -686,15 +700,24 @@ export class ManuscriptOptionsModal extends Modal {
             this.includeMatter = this.includeMatterUserChoice;
         }
 
-        if (rules.includeSynopsisMode === 'forced-off') {
-            this.includeSynopsis = false;
-        } else {
-            this.includeSynopsis = this.includeSynopsisUserChoice;
-        }
+        this.includeSynopsis = this.exportType === 'outline' ? this.includeSynopsisUserChoice : false;
 
+        let shouldReloadScenes = false;
         if (!rules.showSubplotFilter && this.subplot !== 'All Subplots') {
             this.subplot = 'All Subplots';
             this.subplotDropdown?.setValue('All Subplots');
+            shouldReloadScenes = true;
+        }
+        if (shouldLockSelection && this.order !== 'narrative') {
+            this.order = 'narrative';
+            shouldReloadScenes = true;
+        }
+        if (shouldLockSelection) {
+            this.rangeStart = 1;
+            this.rangeEnd = Math.max(1, this.totalScenes);
+            this.updateRangeUI();
+        }
+        if (shouldReloadScenes) {
             void this.loadScenesForOrder();
         }
 
@@ -721,12 +744,13 @@ export class ManuscriptOptionsModal extends Modal {
         this.layoutContainerEl.empty();
 
         const isPdfManuscript = this.exportType === 'manuscript' && this.outputFormat === 'pdf';
+        this.manuscriptPresetGridEl?.toggleClass('ert-manuscript-preset-grid--single', !isPdfManuscript);
         this.layoutHeaderEl?.toggleClass('rt-hidden', !isPdfManuscript);
+        this.templateWarningEl?.toggleClass('rt-hidden', !isPdfManuscript);
+        this.layoutContainerEl.toggleClass('rt-hidden', !isPdfManuscript);
         if (!isPdfManuscript) {
-            this.layoutContainerEl.addClass('rt-hidden');
             return;
         }
-        this.layoutContainerEl.removeClass('rt-hidden');
 
         const layouts = getLayoutsForPreset(this.plugin, this.manuscriptPreset);
         const activeBook = getActiveBook(this.plugin.settings);
@@ -816,7 +840,10 @@ export class ManuscriptOptionsModal extends Modal {
      */
     private updateTemplateWarning(): void {
         if (!this.templateWarningEl || this.exportType !== 'manuscript') {
-            if (this.templateWarningEl) this.templateWarningEl.empty();
+            if (this.templateWarningEl) {
+                this.templateWarningEl.empty();
+                this.templateWarningEl.addClass('rt-hidden');
+            }
             return;
         }
 
@@ -826,8 +853,10 @@ export class ManuscriptOptionsModal extends Modal {
 
         // Only check templates for PDF format
         if (this.outputFormat === 'markdown') {
+            this.templateWarningEl.addClass('rt-hidden');
             return; // No template needed for markdown
         }
+        this.templateWarningEl.removeClass('rt-hidden');
 
         // ── Layout-aware validation ──────────────────────────────────
         const layouts = getLayoutsForPreset(this.plugin, this.manuscriptPreset);
@@ -1301,7 +1330,10 @@ HOST: Let's start with Sarah's story...`
 
     private async loadScenesForOrder(): Promise<void> {
         try {
-            const { titles, whenDates, sceneNumbers } = await getSceneFilesByOrder(this.app, this.plugin, this.order, this.subplot);
+            const isPdfManuscript = this.isPdfManuscriptExport();
+            const effectiveOrder: ManuscriptOrder = isPdfManuscript ? 'narrative' : this.order;
+            const effectiveSubplot = isPdfManuscript || this.subplot === 'All Subplots' ? undefined : this.subplot;
+            const { titles, whenDates, sceneNumbers } = await getSceneFilesByOrder(this.app, this.plugin, effectiveOrder, effectiveSubplot);
             this.sceneTitles = titles;
             this.sceneWhenDates = whenDates;
             this.sceneNumbers = sceneNumbers;
@@ -1311,7 +1343,7 @@ HOST: Let's start with Sarah's story...`
             this.hasWhenDates = whenDates.some((value) => !!value);
 
             const meta = [`${this.totalScenes} scenes available`];
-            if (this.subplot !== 'All Subplots') {
+            if (!isPdfManuscript && this.subplot !== 'All Subplots') {
                 meta.push(`Filtered by: ${this.subplot}`);
             } else {
                 meta.push(t('manuscriptModal.heroNarrativeMeta'));
@@ -1440,6 +1472,15 @@ HOST: Let's start with Sarah's story...`
         const tocMode: TocMode = rules.tocEnabled ? this.tocMode : rules.tocDefault;
         const includeMatter = rules.includeMatterMode === 'user' ? this.includeMatterUserChoice : false;
         const includeSynopsis = this.exportType === 'outline' ? this.includeSynopsisUserChoice : false;
+        const lockSceneSelection = this.isPdfManuscriptExport();
+        const submissionOrder: ManuscriptOrder = lockSceneSelection ? 'narrative' : this.order;
+        const submissionRangeStart = lockSceneSelection ? undefined : this.rangeStart;
+        const submissionRangeEnd = lockSceneSelection ? undefined : this.rangeEnd;
+        const submissionSubplot = lockSceneSelection
+            ? undefined
+            : this.subplot === 'All Subplots'
+                ? undefined
+                : this.subplot;
 
         this.outputStatusEl?.addClass('rt-hidden');
         this.exportCompleted = false;
@@ -1451,11 +1492,11 @@ HOST: Let's start with Sarah's story...`
 
         try {
             const outcome = await this.onSubmit({
-                order: this.order,
+                order: submissionOrder,
                 tocMode,
-                rangeStart: this.rangeStart,
-                rangeEnd: this.rangeEnd,
-                subplot: this.subplot === 'All Subplots' ? undefined : this.subplot,
+                rangeStart: submissionRangeStart,
+                rangeEnd: submissionRangeEnd,
+                subplot: submissionSubplot,
                 exportType: this.exportType,
                 manuscriptPreset: this.manuscriptPreset,
                 outlinePreset: this.outlinePreset,

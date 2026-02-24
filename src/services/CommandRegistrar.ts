@@ -239,8 +239,13 @@ export class CommandRegistrar {
         }
 
         try {
+            const lockSceneSelectionToFullBook = result.exportType === 'manuscript' && result.outputFormat === 'pdf';
+            const effectiveOrder = lockSceneSelectionToFullBook ? 'narrative' : result.order;
+            const effectiveSubplot = lockSceneSelectionToFullBook ? undefined : result.subplot;
+            const effectiveRangeStart = lockSceneSelectionToFullBook ? undefined : result.rangeStart;
+            const effectiveRangeEnd = lockSceneSelectionToFullBook ? undefined : result.rangeEnd;
             const includeMatter = result.exportType === 'manuscript' && (result.includeMatter ?? false);
-            const scenes = await getSceneFilesByOrder(this.app, this.plugin, result.order, undefined, includeMatter);
+            const scenes = await getSceneFilesByOrder(this.app, this.plugin, effectiveOrder, undefined, includeMatter);
             const selection: ManuscriptSceneSelection = {
                 files: scenes.files,
                 titles: scenes.titles,
@@ -256,8 +261,8 @@ export class CommandRegistrar {
             };
 
             let filteredSelection = selection;
-            if (result.subplot && result.subplot !== 'All Subplots') {
-                const indices = selection.subplots.map((s, i) => s === result.subplot ? i : -1).filter(i => i !== -1);
+            if (effectiveSubplot && effectiveSubplot !== 'All Subplots') {
+                const indices = selection.subplots.map((s, i) => s === effectiveSubplot ? i : -1).filter(i => i !== -1);
                 filteredSelection = {
                     files: indices.map(i => selection.files[i]),
                     titles: indices.map(i => selection.titles[i]),
@@ -273,7 +278,7 @@ export class CommandRegistrar {
                 };
             }
 
-            const slicedSelection = this.sliceSelection(filteredSelection, result.rangeStart, result.rangeEnd);
+            const slicedSelection = this.sliceSelection(filteredSelection, effectiveRangeStart, effectiveRangeEnd, includeMatter);
             if (slicedSelection.files.length === 0) {
                 new Notice('Selected range is empty.');
                 return {};
@@ -317,8 +322,8 @@ export class CommandRegistrar {
                         ? `${baseTitle} - Part ${range.part}.${outline.extension}`
                         : buildExportFilename({
                             exportType: 'outline',
-                            order: result.order,
-                            subplotFilter: result.subplot,
+                            order: effectiveOrder,
+                            subplotFilter: effectiveSubplot,
                             outlinePreset: result.outlinePreset,
                             extension: outline.extension
                         });
@@ -382,8 +387,8 @@ export class CommandRegistrar {
                         ? `${baseTitle} - Part ${range.part}.${extension}`
                         : buildExportFilename({
                             exportType: 'manuscript',
-                            order: result.order,
-                            subplotFilter: result.subplot,
+                            order: effectiveOrder,
+                            subplotFilter: effectiveSubplot,
                             manuscriptPreset: result.manuscriptPreset,
                             extension
                         });
@@ -453,8 +458,8 @@ export class CommandRegistrar {
                         : buildPrecursorFilename(
                             ctx.fileStem,
                             result.manuscriptPreset || 'novel',
-                            result.order,
-                            result.subplot
+                            effectiveOrder,
+                            effectiveSubplot
                         );
                     const precursorPath = `${outputFolder}/${precursorName}`;
                     await this.writeVaultTextFile(precursorPath, assembled.text);
@@ -465,8 +470,8 @@ export class CommandRegistrar {
                     ? `${baseTitle} - Part ${range.part}.pdf`
                     : buildExportFilename({
                         exportType: 'manuscript',
-                        order: result.order,
-                        subplotFilter: result.subplot,
+                        order: effectiveOrder,
+                        subplotFilter: effectiveSubplot,
                         manuscriptPreset: result.manuscriptPreset,
                         extension,
                         fileStem: ctx.fileStem
@@ -518,21 +523,65 @@ export class CommandRegistrar {
         return {};
     }
 
-    private sliceSelection(selection: ManuscriptSceneSelection, start?: number, end?: number): ManuscriptSceneSelection {
+    private sliceSelection(
+        selection: ManuscriptSceneSelection,
+        start?: number,
+        end?: number,
+        keepMatterOutsideRange = false
+    ): ManuscriptSceneSelection {
         if (!start && !end) return selection;
-        const startIdx = (start || 1) - 1;
-        const endIdx = end || selection.files.length;
 
+        if (!keepMatterOutsideRange) {
+            const startIdx = (start || 1) - 1;
+            const endIdx = end || selection.files.length;
+            const indices = Array.from(
+                { length: Math.max(0, endIdx - startIdx) },
+                (_unused, offset) => startIdx + offset
+            );
+            return this.pickSelectionIndices(selection, indices);
+        }
+
+        const matterPaths = selection.matterMetaByPath;
+        const sceneIndices: number[] = [];
+        const matterIndices = new Set<number>();
+
+        selection.files.forEach((file, index) => {
+            const isMatter = !!(matterPaths && matterPaths.has(file.path));
+            if (isMatter) {
+                matterIndices.add(index);
+            } else {
+                sceneIndices.push(index);
+            }
+        });
+
+        if (sceneIndices.length === 0) return selection;
+
+        const normalizedStart = Math.max(1, Math.min(start || 1, sceneIndices.length));
+        const normalizedEnd = Math.max(normalizedStart, Math.min(end || sceneIndices.length, sceneIndices.length));
+        const selectedSceneIndices = new Set(sceneIndices.slice(normalizedStart - 1, normalizedEnd));
+
+        const keepIndices: number[] = [];
+        selection.files.forEach((_file, index) => {
+            if (matterIndices.has(index) || selectedSceneIndices.has(index)) {
+                keepIndices.push(index);
+            }
+        });
+
+        return this.pickSelectionIndices(selection, keepIndices);
+    }
+
+    private pickSelectionIndices(selection: ManuscriptSceneSelection, indices: number[]): ManuscriptSceneSelection {
+        const clamped = indices.filter(index => index >= 0 && index < selection.files.length);
         return {
-            files: selection.files.slice(startIdx, endIdx),
-            titles: selection.titles.slice(startIdx, endIdx),
-            whenDates: selection.whenDates.slice(startIdx, endIdx),
-            acts: selection.acts.slice(startIdx, endIdx),
-            sceneNumbers: selection.sceneNumbers.slice(startIdx, endIdx),
-            subplots: selection.subplots.slice(startIdx, endIdx),
-            synopses: selection.synopses.slice(startIdx, endIdx),
-            runtimes: selection.runtimes.slice(startIdx, endIdx),
-            wordCounts: selection.wordCounts.slice(startIdx, endIdx),
+            files: clamped.map(index => selection.files[index]),
+            titles: clamped.map(index => selection.titles[index]),
+            whenDates: clamped.map(index => selection.whenDates[index]),
+            acts: clamped.map(index => selection.acts[index]),
+            sceneNumbers: clamped.map(index => selection.sceneNumbers[index]),
+            subplots: clamped.map(index => selection.subplots[index]),
+            synopses: clamped.map(index => selection.synopses[index]),
+            runtimes: clamped.map(index => selection.runtimes[index]),
+            wordCounts: clamped.map(index => selection.wordCounts[index]),
             matterMetaByPath: selection.matterMetaByPath,
             sortOrder: selection.sortOrder
         };

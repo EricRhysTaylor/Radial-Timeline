@@ -527,6 +527,7 @@ export class OuterRingDragController {
         this.sourceItemType = 'Scene';
         if (this.sourceSceneGroup) {
             this.sourceSceneGroup.classList.remove('rt-drag-source');
+            this.sourceSceneGroup.style.removeProperty('--rt-drag-stroke-color');
         }
         this.sourceSceneGroup = null;
         if (this.holdTimer !== null) {
@@ -545,6 +546,11 @@ export class OuterRingDragController {
         lastInteractionTime = Date.now(); // Mark start so click handler knows to skip
         this.svg.classList.add('rt-dragging-outer');
         this.sourceSceneGroup.classList.add('rt-drag-source');
+        if (this.originColor) {
+            this.sourceSceneGroup.style.setProperty('--rt-drag-stroke-color', this.originColor);
+        } else {
+            this.sourceSceneGroup.style.removeProperty('--rt-drag-stroke-color');
+        }
         this.hideDragIndicator(); // Hide tangent arrows during drag
         this.log('beginDrag', { sceneId: this.sourceSceneId, itemType: this.sourceItemType });
     }
@@ -621,6 +627,13 @@ export class OuterRingDragController {
         // Get source subplot for comparison
         const sourceSubplot = order[fromIdx]?.subplot ?? 'Main Plot';
         const subplotChanged = sourceSubplot !== targetSubplot;
+        const hasMetadataMove = actChanged || (subplotChanged && sourceType === 'Scene');
+
+        // No-op drop: no reorder and no metadata change means nothing to do.
+        if (isNoOpReorder && !hasMetadataMove) {
+            this.resetState();
+            return;
+        }
 
         const sourceOriginalNumber = order[fromIdx]?.numberText ?? '';
         const targetOriginalNumber = order[toIdx]?.numberText ?? '';
@@ -790,6 +803,12 @@ export class OuterRingDragController {
             });
         }
 
+        // No-op drop: no renumber and no metadata change.
+        if (updates.length === 0) {
+            this.resetState();
+            return;
+        }
+
         // Build descriptive summary message
         const summaryLines: string[] = [];
         if (actChanged) {
@@ -818,11 +837,6 @@ export class OuterRingDragController {
         }
 
         if (!confirmed) {
-            this.resetState();
-            return;
-        }
-
-        if (updates.length === 0) {
             this.resetState();
             return;
         }
@@ -969,8 +983,8 @@ export class OuterRingDragController {
         this.startY = evt.clientY;
         this.startTime = Date.now();
         
-        // Get subplot color from the scene group's data attributes
-        this.originColor = this.resolveSubplotColorFromGroup(group);
+        // Drag accent follows publish-stage color (not subplot fill color)
+        this.originColor = this.resolvePublishStageColorFromGroup(group);
         this.captureOriginGeometry(sceneId);
         
         if (this.holdTimer !== null) {
@@ -1058,14 +1072,44 @@ export class OuterRingDragController {
         }
     }
 
-    private resolveSubplotColorFromGroup(group: SVGGElement): string | undefined {
-        const subplotIdxAttr = group.getAttribute('data-subplot-color-index') || group.getAttribute('data-subplot-index');
-        if (!subplotIdxAttr) return undefined;
-        const idx = Number(subplotIdxAttr);
-        if (!Number.isFinite(idx)) return undefined;
-        const colors = (this.view.plugin.settings as any)?.subplotColors as string[] | undefined;
-        if (colors && colors[idx]) return colors[idx];
-        return undefined;
+    private resolvePublishStageColorFromGroup(group: SVGGElement): string {
+        const readCssVariable = (name: string): string | undefined => {
+            try {
+                const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+                return value || undefined;
+            } catch (_error) {
+                return undefined;
+            }
+        };
+
+        const normalizeStage = (raw: unknown): 'Zero' | 'Author' | 'House' | 'Press' => {
+            const value = Array.isArray(raw) ? raw[0] : raw;
+            const stage = String(value ?? '').trim().toLowerCase();
+            if (stage === 'author') return 'Author';
+            if (stage === 'house') return 'House';
+            if (stage === 'press') return 'Press';
+            return 'Zero';
+        };
+
+        const stageFromFrontmatter = (): 'Zero' | 'Author' | 'House' | 'Press' => {
+            const encodedPath = group.getAttribute('data-path');
+            const filePath = encodedPath ? decodeURIComponent(encodedPath) : '';
+            if (!filePath) return 'Zero';
+            const file = this.view.plugin.app.vault.getAbstractFileByPath(filePath);
+            if (!file) return 'Zero';
+            const cache = this.view.plugin.app.metadataCache.getFileCache(file as any);
+            const frontmatter = cache?.frontmatter;
+            if (!frontmatter) return 'Zero';
+            return normalizeStage(frontmatter['Publish Stage'] ?? frontmatter['publish stage'] ?? frontmatter['publishStage']);
+        };
+
+        const stage = stageFromFrontmatter();
+        return (
+            readCssVariable(`--rt-publishStageColors-${stage}`)
+            || readCssVariable('--rt-publishStageColors-Zero')
+            || readCssVariable('--rt-max-publish-stage-color')
+            || '#9370DB'
+        );
     }
 
     /**

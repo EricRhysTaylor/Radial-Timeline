@@ -418,6 +418,21 @@
   line-height: 1.4;
 }
 
+.rt-drag-confirm-modal .ert-modal-badge {
+  color: var(--rt-confirm-accent, var(--text-muted));
+  border-color: color-mix(in srgb, var(--rt-confirm-accent, var(--interactive-accent)) 45%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--rt-confirm-accent, var(--interactive-accent)) 12%, var(--background-secondary));
+}
+
+.rt-drag-confirm-modal .ert-modal-title {
+  background: linear-gradient(90deg,
+      var(--rt-confirm-accent, var(--text-normal)),
+      color-mix(in srgb, var(--rt-confirm-accent, var(--text-normal)) 66%, var(--text-faint) 34%));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 .rt-drag-confirm-modal .rt-mod-cta {
   background-color: var(--rt-confirm-accent, var(--interactive-accent));
 }

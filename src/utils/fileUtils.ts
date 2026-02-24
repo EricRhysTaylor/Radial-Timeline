@@ -38,6 +38,36 @@ export async function openOrRevealFile(app: App, file: TFile, newLeaf: boolean =
 }
 
 /**
+ * Opens/reveals a file at a heading/block subpath without spawning duplicate tabs.
+ *
+ * @param app - The Obsidian App instance
+ * @param file - The file to open
+ * @param subpath - A subpath starting with '#' (e.g. '#Heading' or '#^block-id')
+ * @param newLeaf - Whether to open in a new leaf when file is not already open
+ */
+export async function openOrRevealFileAtSubpath(
+  app: App,
+  file: TFile,
+  subpath: string,
+  newLeaf: boolean = false
+): Promise<void> {
+  const normalizedSubpath = subpath.startsWith('#') ? subpath : `#${subpath}`;
+  const leaves = app.workspace.getLeavesOfType('markdown');
+  const existingLeaf = leaves.find(leaf => {
+    const view = leaf.view;
+    return view instanceof MarkdownView && view.file?.path === file.path;
+  });
+
+  if (existingLeaf) {
+    await existingLeaf.openFile(file, { active: true, eState: { subpath: normalizedSubpath } });
+    app.workspace.setActiveLeaf(existingLeaf);
+    return;
+  }
+
+  await app.workspace.openLinkText(`${file.path}${normalizedSubpath}`, file.path, newLeaf);
+}
+
+/**
  * Opens a file by path using Obsidian's recommended approach.
  * 
  * @param app - The Obsidian App instance
@@ -54,4 +84,3 @@ export async function openOrRevealFileByPath(app: App, filePath: string, newLeaf
   
   await openOrRevealFile(app, file, newLeaf);
 }
-
