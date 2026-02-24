@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-02-23T18:50:33.190Z",
+  "generatedAt": "2026-02-24T20:34:38.731Z",
   "summary": {
-    "openai": 115,
+    "openai": 116,
     "anthropic": 9,
     "google": 43
   },
@@ -540,10 +540,10 @@
       "raw": {
         "id": "gpt-4o-search-preview",
         "object": "model",
-        "created": 1741388720,
+        "created": 1771905534,
         "owned_by": "system"
       },
-      "createdAt": "2025-03-07T23:05:20.000Z"
+      "createdAt": "2026-02-24T03:58:54.000Z"
     },
     {
       "provider": "openai",
@@ -551,10 +551,10 @@
       "raw": {
         "id": "gpt-4o-search-preview-2025-03-11",
         "object": "model",
-        "created": 1741388170,
+        "created": 1771905621,
         "owned_by": "system"
       },
-      "createdAt": "2025-03-07T22:56:10.000Z"
+      "createdAt": "2026-02-24T04:00:21.000Z"
     },
     {
       "provider": "openai",
@@ -841,6 +841,17 @@
         "owned_by": "system"
       },
       "createdAt": "2025-12-10T05:19:19.000Z"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.3-codex",
+      "raw": {
+        "id": "gpt-5.3-codex",
+        "object": "model",
+        "created": 1770537915,
+        "owned_by": "system"
+      },
+      "createdAt": "2026-02-08T08:05:15.000Z"
     },
     {
       "provider": "openai",

@@ -418,6 +418,43 @@
   line-height: 1.4;
 }
 
+.rt-drag-confirm-row.is-status-row {
+  border-style: dashed;
+}
+
+.rt-drag-confirm-row.is-status-row.is-hidden {
+  display: none;
+}
+
+.rt-drag-confirm-row.is-status-row.is-live {
+  border-color: color-mix(in srgb, var(--rt-confirm-accent, var(--interactive-accent)) 42%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--rt-confirm-accent, var(--interactive-accent)) 10%, var(--background-secondary));
+}
+
+.rt-drag-confirm-row.is-status-row.is-complete {
+  border-color: color-mix(in srgb, var(--text-success) 38%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--text-success) 10%, var(--background-secondary));
+}
+
+.rt-drag-confirm-row.is-status-row.is-error {
+  border-color: color-mix(in srgb, var(--text-error) 38%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--text-error) 10%, var(--background-secondary));
+}
+
+.ert-drag-confirm-status-text {
+  font-size: 0.98em;
+  color: var(--text-normal);
+}
+
+.rt-drag-confirm-modal .ert-modal-actions .is-hidden-action {
+  display: none;
+}
+
+.rt-drag-confirm-modal .modal-close-button.is-locked-close {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .ert-ui.ert-scope--modal .rt-drag-confirm-modal .ert-modal-badge {
   color: var(--rt-confirm-accent, var(--text-muted));
   border-color: color-mix(in srgb, var(--rt-confirm-accent, var(--interactive-accent)) 45%, var(--background-modifier-border));

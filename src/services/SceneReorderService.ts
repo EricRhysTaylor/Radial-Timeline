@@ -28,12 +28,40 @@ export interface RippleRenamePlanOptions {
     customBeatSystemName?: string;
 }
 
+export type SceneReorderProgressPhase = 'scan' | 'stage' | 'rename' | 'done';
+
+export interface SceneReorderProgress {
+    phase: SceneReorderProgressPhase;
+    totalFiles: number;
+    stagedFiles: number;
+    renamedFiles: number;
+}
+
+export interface ApplySceneNumberUpdatesOptions {
+    onProgress?: (progress: SceneReorderProgress) => void;
+}
+
+function reportProgress(
+    options: ApplySceneNumberUpdatesOptions | undefined,
+    progress: SceneReorderProgress
+): void {
+    try {
+        options?.onProgress?.(progress);
+    } catch {
+        // Progress listeners are UI-only; never block rename work.
+    }
+}
+
 /**
  * Apply scene updates - updates frontmatter and renames files.
  * Uses two-phase rename: ALL files go through temp namespace first.
  * This is the safest approach - never rename directly from old to new.
  */
-export async function applySceneNumberUpdates(app: App, updates: SceneUpdate[]): Promise<void> {
+export async function applySceneNumberUpdates(
+    app: App,
+    updates: SceneUpdate[],
+    options?: ApplySceneNumberUpdatesOptions
+): Promise<void> {
     interface RenameOp {
         originalPath: string;
         tempPath: string;
@@ -84,26 +112,39 @@ export async function applySceneNumberUpdates(app: App, updates: SceneUpdate[]):
             });
         }
     }
-    
-    if (renameOps.length === 0) return;
+
+    const totalFiles = renameOps.length;
+    reportProgress(options, { phase: 'scan', totalFiles, stagedFiles: 0, renamedFiles: 0 });
+    if (totalFiles === 0) {
+        reportProgress(options, { phase: 'done', totalFiles, stagedFiles: 0, renamedFiles: 0 });
+        return;
+    }
     
     // Phase 1: Rename ALL files to temp namespace
     // This clears ALL original positions
+    let stagedFiles = 0;
     for (const op of renameOps) {
         const file = app.vault.getAbstractFileByPath(op.originalPath);
         if (file instanceof TFile) {
             await app.fileManager.renameFile(file, op.tempPath);
+            stagedFiles += 1;
+            reportProgress(options, { phase: 'stage', totalFiles, stagedFiles, renamedFiles: 0 });
         }
     }
     
     // Phase 2: Rename ALL files from temp to final
     // All target positions are now guaranteed free
+    let renamedFiles = 0;
     for (const op of renameOps) {
         const file = app.vault.getAbstractFileByPath(op.tempPath);
         if (file instanceof TFile) {
             await app.fileManager.renameFile(file, op.finalPath);
+            renamedFiles += 1;
+            reportProgress(options, { phase: 'rename', totalFiles, stagedFiles: totalFiles, renamedFiles });
         }
     }
+
+    reportProgress(options, { phase: 'done', totalFiles, stagedFiles: totalFiles, renamedFiles: totalFiles });
 }
 
 function buildRenamedBasename(basename: string, newNumber: string): string {

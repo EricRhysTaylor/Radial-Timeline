@@ -6,9 +6,17 @@ const ICON_BLOCKS = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="
 
 export class DragConfirmModal extends Modal {
     private readonly summary: string[];
-    private decision: boolean = false;
     private readonly accent?: string;
     private readonly itemLabel: string; // 'scene' or 'beat'
+    private phase: 'confirm' | 'running' | 'done' = 'confirm';
+    private closed = false;
+    private beginResolver: ((value: boolean) => void) | null = null;
+    private dismissResolver: (() => void) | null = null;
+    private primaryButtonEl: HTMLButtonElement | null = null;
+    private cancelButtonEl: HTMLButtonElement | null = null;
+    private statusRowEl: HTMLElement | null = null;
+    private statusTextEl: HTMLElement | null = null;
+    private backdropGuard: ((evt: MouseEvent) => void) | null = null;
 
     constructor(app: App, summaryLines: string[], accent?: string, itemLabel?: string) {
         super(app);
@@ -19,12 +27,32 @@ export class DragConfirmModal extends Modal {
 
     onOpen(): void {
         const { contentEl, modalEl } = this;
+        this.closed = false;
         contentEl.empty();
         
         if (modalEl) {
             modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
             modalEl.style.width = 'min(660px, 90vw)'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
+
+        this.scope.register([], 'Escape', () => {
+            if (this.phase === 'confirm') {
+                this.resolveBegin(false);
+                this.close();
+            }
+            return false;
+        });
+
+        this.backdropGuard = (evt: MouseEvent) => {
+            if (this.phase === 'confirm') return;
+            if (evt.target === this.containerEl) {
+                evt.preventDefault();
+                evt.stopPropagation();
+                evt.stopImmediatePropagation();
+            }
+        };
+        this.containerEl.addEventListener('mousedown', this.backdropGuard, true);
+        this.containerEl.addEventListener('click', this.backdropGuard, true);
 
         contentEl.addClass('ert-modal-container', 'rt-drag-confirm-modal', 'ert-stack');
         
@@ -61,12 +89,46 @@ export class DragConfirmModal extends Modal {
             row.createDiv({ cls: 'rt-drag-confirm-row-text', text: line });
         });
 
-        const buttons = contentEl.createDiv({ cls: 'ert-modal-actions' });
-        const confirmBtn = buttons.createEl('button', { text: 'Apply', cls: 'rt-mod-cta' });
-        const cancelBtn = buttons.createEl('button', { text: 'Cancel' });
+        const statusRow = listDiv.createDiv({ cls: 'rt-drag-confirm-row is-status-row is-hidden' });
+        const statusIcon = statusRow.createDiv({ cls: 'rt-drag-confirm-row-icon' });
+        this.setIcon(statusIcon, ICON_LIST_ORDERED);
+        this.statusTextEl = statusRow.createDiv({ cls: 'rt-drag-confirm-row-text ert-drag-confirm-status-text' });
+        this.statusTextEl.setText('Preparing reorder...');
+        this.statusRowEl = statusRow;
 
-        confirmBtn.addEventListener('click', () => { this.decision = true; this.close(); });
-        cancelBtn.addEventListener('click', () => { this.decision = false; this.close(); });
+        const buttons = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        const primaryBtn = buttons.createEl('button', { text: 'Begin', cls: 'rt-mod-cta' });
+        const cancelBtn = buttons.createEl('button', { text: 'Cancel' });
+        this.primaryButtonEl = primaryBtn;
+        this.cancelButtonEl = cancelBtn;
+
+        primaryBtn.addEventListener('click', () => {
+            if (this.phase === 'confirm') {
+                this.phase = 'running';
+                this.setCloseControlDisabled(true);
+                this.showStatusRow('is-live');
+                if (this.primaryButtonEl) {
+                    this.primaryButtonEl.disabled = true;
+                    this.primaryButtonEl.textContent = 'Working...';
+                }
+                if (this.cancelButtonEl) {
+                    this.cancelButtonEl.classList.add('is-hidden-action');
+                }
+                this.resolveBegin(true);
+                return;
+            }
+
+            if (this.phase === 'done') {
+                this.resolveDismiss();
+                this.close();
+            }
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            if (this.phase !== 'confirm') return;
+            this.resolveBegin(false);
+            this.close();
+        });
     }
 
     private setIcon(container: HTMLElement, svgString: string): void {
@@ -78,7 +140,72 @@ export class DragConfirmModal extends Modal {
         }
     }
 
-    getResult(): boolean {
-        return this.decision;
+    onClose(): void {
+        if (this.backdropGuard) {
+            this.containerEl.removeEventListener('mousedown', this.backdropGuard, true);
+            this.containerEl.removeEventListener('click', this.backdropGuard, true);
+            this.backdropGuard = null;
+        }
+        this.closed = true;
+        this.resolveBegin(false);
+        this.resolveDismiss();
+        this.setCloseControlDisabled(false);
+        this.contentEl.empty();
+    }
+
+    async waitForBegin(): Promise<boolean> {
+        return await new Promise<boolean>((resolve) => {
+            this.beginResolver = resolve;
+            this.open();
+        });
+    }
+
+    updateProgress(message: string): void {
+        if (this.closed || this.phase !== 'running') return;
+        this.showStatusRow('is-live');
+        this.statusTextEl?.setText(message);
+    }
+
+    async finishWithDismiss(message: string, isError: boolean = false): Promise<void> {
+        if (this.closed) return;
+        this.phase = 'done';
+        this.showStatusRow(isError ? 'is-error' : 'is-complete');
+        this.statusTextEl?.setText(message);
+        this.setCloseControlDisabled(true);
+        if (this.cancelButtonEl) {
+            this.cancelButtonEl.classList.add('is-hidden-action');
+        }
+        if (this.primaryButtonEl) {
+            this.primaryButtonEl.disabled = false;
+            this.primaryButtonEl.textContent = 'Dismiss';
+        }
+
+        await new Promise<void>((resolve) => {
+            this.dismissResolver = resolve;
+        });
+    }
+
+    private showStatusRow(stateClass: 'is-live' | 'is-complete' | 'is-error'): void {
+        if (!this.statusRowEl) return;
+        this.statusRowEl.classList.remove('is-hidden', 'is-live', 'is-complete', 'is-error');
+        this.statusRowEl.classList.add(stateClass);
+    }
+
+    private setCloseControlDisabled(disabled: boolean): void {
+        const closeBtn = this.modalEl.querySelector<HTMLElement>('.modal-close-button');
+        if (!closeBtn) return;
+        closeBtn.classList.toggle('is-locked-close', disabled);
+    }
+
+    private resolveBegin(value: boolean): void {
+        const resolver = this.beginResolver;
+        this.beginResolver = null;
+        resolver?.(value);
+    }
+
+    private resolveDismiss(): void {
+        const resolver = this.dismissResolver;
+        this.dismissResolver = null;
+        resolver?.();
     }
 }
