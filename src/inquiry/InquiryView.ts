@@ -105,6 +105,11 @@ const VIEWBOX_SIZE = 1600;
 const INQUIRY_SYNOPSIS_CAPABLE_CLASSES = new Set(['scene', 'outline']);
 const INQUIRY_CONTEXT_CLASSES = new Set(['character', 'place', 'power']);
 const MINIMAP_GROUP_Y = -520;
+const MINIMAP_TOKEN_CAP_Y = 7;
+const MINIMAP_TOKEN_CAP_BAR_HEIGHT = 2;
+const MINIMAP_TOKEN_CAP_ENDCAP_HEIGHT = 10;
+const MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT = 6;
+const MINIMAP_TOKEN_CAP_SPLIT_TICK_WIDTH = 2;
 const PREVIEW_PANEL_WIDTH = 640;
 const PREVIEW_PANEL_Y = -390;
 const PREVIEW_PANEL_MINIMAP_GAP = 60;
@@ -928,6 +933,7 @@ export class InquiryView extends ItemView {
     private minimapTokenCapBar?: SVGRectElement;
     private minimapTokenCapStartCap?: SVGRectElement;
     private minimapTokenCapEndCap?: SVGRectElement;
+    private minimapTokenCapSplitGroup?: SVGGElement;
     private minimapTicks: SVGGElement[] = [];
     private minimapGroup?: SVGGElement;
     private minimapBackboneGroup?: SVGGElement;
@@ -1239,6 +1245,7 @@ export class InquiryView extends ItemView {
         this.minimapTokenCapEndCap = this.createSvgElement('rect');
         this.minimapTokenCapEndCap.classList.add('ert-inquiry-minimap-tokencap-endcap');
         minimapGroup.appendChild(this.minimapTokenCapEndCap);
+        this.minimapTokenCapSplitGroup = this.createSvgGroup(minimapGroup, 'ert-inquiry-minimap-tokencap-splits');
 
         this.minimapTicksEl = this.createSvgGroup(minimapGroup, 'ert-inquiry-minimap-ticks', baselineStartX, 0);
         this.renderModeIcons(minimapGroup);
@@ -1817,9 +1824,8 @@ export class InquiryView extends ItemView {
         const scopeLabel = this.state.scope === 'saga' ? 'Saga' : 'Book';
         const targetLabel = this.getFocusBookLabel();
         const contextLabel = `${scopeLabel} ${targetLabel}`;
-        const prefix = hasQuestion ? `Payload (${contextLabel} + Q)` : `Payload (${contextLabel})`;
         return {
-            text: `${prefix}: ~${inputLabel} in`,
+            text: `Payload (${contextLabel}): ~${inputLabel} in`,
             inputTokens: estimate.inputTokens,
             tier: this.getTokenTier(estimate.inputTokens),
             hasQuestion
@@ -1995,6 +2001,37 @@ export class InquiryView extends ItemView {
         return Math.max(2, Math.ceil(Math.max(1, ratio)));
     }
 
+    private getCurrentPassPlan(readinessUi: InquiryReadinessUiState): {
+        packagingExpected: boolean;
+        estimatedPassCount: number | null;
+        recentExactPassCount: number | null;
+        displayPassCount: number;
+        packagingTriggerReason: string | null;
+    } {
+        const packagingExpected = readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget;
+        if (!packagingExpected) {
+            return {
+                packagingExpected: false,
+                estimatedPassCount: null,
+                recentExactPassCount: null,
+                displayPassCount: 1,
+                packagingTriggerReason: null
+            };
+        }
+        const advanced = getLastAiAdvancedContext(this.plugin, 'InquiryMode');
+        const recentExactPassCount = typeof advanced?.executionPassCount === 'number' && advanced.executionPassCount > 1
+            ? advanced.executionPassCount
+            : null;
+        const estimatedPassCount = this.estimateStructuredPassCount(readinessUi);
+        return {
+            packagingExpected: true,
+            estimatedPassCount,
+            recentExactPassCount,
+            displayPassCount: recentExactPassCount ?? estimatedPassCount,
+            packagingTriggerReason: advanced?.packagingTriggerReason ?? null
+        };
+    }
+
     private renderEngineReadinessStrip(readinessUi: InquiryReadinessUiState): void {
         if (!this.enginePanelReadinessEl
             || !this.enginePanelReadinessStatusEl
@@ -2024,12 +2061,16 @@ export class InquiryView extends ItemView {
         const safeLabel = readinessUi.safeInputBudget > 0
             ? this.formatTokenEstimate(readinessUi.safeInputBudget)
             : 'n/a';
-        const structuredPassCount = this.estimateStructuredPassCount(readinessUi);
+        const passPlan = this.getCurrentPassPlan(readinessUi);
         if (popoverState === 'ready') {
             this.enginePanelReadinessMessageEl.setText(`Payload estimate: ~${inputLabel}. Fits safely - single pass.`);
         } else if (popoverState === 'multi-pass') {
+            const estimateLabel = passPlan.estimatedPassCount ?? passPlan.displayPassCount;
+            const recentRunSuffix = passPlan.recentExactPassCount
+                ? ` Recent run used ${passPlan.recentExactPassCount} passes.`
+                : '';
             this.enginePanelReadinessMessageEl.setText(
-                `Large request - handled in ${structuredPassCount} passes (Automatic). Payload estimate: ~${inputLabel}.`
+                `Large request - estimated ~${estimateLabel} passes (Automatic). Payload estimate: ~${inputLabel}.${recentRunSuffix}`
             );
         } else if (readinessUi.readiness.cause === 'single_pass_limit') {
             this.enginePanelReadinessMessageEl.setText(
@@ -4024,7 +4065,6 @@ export class InquiryView extends ItemView {
         const capWidth = 2;
         const capHeight = Math.max(30, tickHeight + 12);
         const capHalfWidth = Math.round(capWidth / 2);
-        const capHalfHeight = Math.round(capHeight / 2);
         const edgeScenePadding = tickWidth;
         const tickInset = capWidth + (tickWidth / 2) + 4 + edgeScenePadding;
         const availableLength = Math.max(0, length - (tickInset * 2));
@@ -4055,18 +4095,18 @@ export class InquiryView extends ItemView {
         this.minimapBaseline.setAttribute('y2', '0');
         if (this.minimapEndCapStart && this.minimapEndCapEnd) {
             this.minimapEndCapStart.setAttribute('x', String(baselineStart - capHalfWidth));
-            this.minimapEndCapStart.setAttribute('y', String(-capHalfHeight));
+            this.minimapEndCapStart.setAttribute('y', String(-capHeight));
             this.minimapEndCapStart.setAttribute('width', String(Math.round(capWidth)));
             this.minimapEndCapStart.setAttribute('height', String(Math.round(capHeight)));
             this.minimapEndCapEnd.setAttribute('x', String(baselineEnd - capHalfWidth));
-            this.minimapEndCapEnd.setAttribute('y', String(-capHalfHeight));
+            this.minimapEndCapEnd.setAttribute('y', String(-capHeight));
             this.minimapEndCapEnd.setAttribute('width', String(Math.round(capWidth)));
             this.minimapEndCapEnd.setAttribute('height', String(Math.round(capHeight)));
         }
-        const tokenCapY = 7;
-        const tokenCapBarHeight = 2;
-        const tokenCapCapHeight = 10;
-        const tokenCapCapY = tokenCapY - Math.round((tokenCapCapHeight - tokenCapBarHeight) / 2);
+        const tokenCapY = MINIMAP_TOKEN_CAP_Y;
+        const tokenCapBarHeight = MINIMAP_TOKEN_CAP_BAR_HEIGHT;
+        const tokenCapCapHeight = MINIMAP_TOKEN_CAP_ENDCAP_HEIGHT;
+        const tokenCapCapY = tokenCapY;
         if (this.minimapTokenCapBar) {
             this.minimapTokenCapBar.setAttribute('x', String(baselineStart));
             this.minimapTokenCapBar.setAttribute('y', String(tokenCapY));
@@ -4084,6 +4124,10 @@ export class InquiryView extends ItemView {
             this.minimapTokenCapEndCap.setAttribute('y', String(tokenCapCapY));
             this.minimapTokenCapEndCap.setAttribute('width', String(Math.round(capWidth)));
             this.minimapTokenCapEndCap.setAttribute('height', String(Math.round(tokenCapCapHeight)));
+        }
+        if (this.minimapTokenCapSplitGroup) {
+            this.clearSvgChildren(this.minimapTokenCapSplitGroup);
+            this.minimapTokenCapSplitGroup.classList.add('ert-hidden');
         }
         this.minimapBottomOffset = tokenCapCapY + tokenCapCapHeight;
         this.minimapTicksEl.setAttribute('transform', `translate(${baselineStart} 0)`);
@@ -4368,15 +4412,19 @@ export class InquiryView extends ItemView {
         this.minimapBackboneShine?.setAttribute('width', '0');
         this.minimapBackboneGlow?.setAttribute('width', '0');
 
+        const passPlan = this.getCurrentPassPlan(readinessUi);
         const isOverCapacity = ratio >= 1;
-        this.updateTokenCapBar(clamped, isOverCapacity);
+        const usesAutomaticPackaging = readinessUi.packaging === 'automatic' && readinessUi.readiness.exceedsBudget;
+        const overCapacityTone: 'amber' | 'red' = usesAutomaticPackaging ? 'amber' : 'red';
+        this.updateTokenCapBar(clamped, isOverCapacity, overCapacityTone, passPlan.displayPassCount);
 
         if (isOverCapacity) {
-            const redColors = this.getBackbonePressureColors('red');
-            this.applyBackboneStopColors(redColors.gradient, redColors.shine);
-            this.minimapBaseline.style.stroke = '#f44c4c';
-            this.minimapEndCapStart?.style.setProperty('fill', '#f44c4c');
-            this.minimapEndCapEnd?.style.setProperty('fill', '#f44c4c');
+            const pressureColors = this.getBackbonePressureColors(overCapacityTone);
+            const overCapacityColor = overCapacityTone === 'amber' ? '#ff9900' : '#f44c4c';
+            this.applyBackboneStopColors(pressureColors.gradient, pressureColors.shine);
+            this.minimapBaseline.style.stroke = overCapacityColor;
+            this.minimapEndCapStart?.style.setProperty('fill', overCapacityColor);
+            this.minimapEndCapEnd?.style.setProperty('fill', overCapacityColor);
         } else {
             const pressureColors = this.getBackbonePressureColors(readinessUi.readiness.pressureTone);
             this.applyBackboneStopColors(pressureColors.gradient, pressureColors.shine);
@@ -4387,11 +4435,13 @@ export class InquiryView extends ItemView {
 
         this.minimapBackboneGroup.classList.remove('is-pressure-normal', 'is-pressure-amber', 'is-pressure-red', 'is-pressure-over-budget');
         this.minimapBackboneGroup.classList.add(
-            isOverCapacity || readinessUi.readiness.pressureTone === 'red'
-                ? 'is-pressure-red'
-                : readinessUi.readiness.pressureTone === 'amber'
-                    ? 'is-pressure-amber'
-                    : 'is-pressure-normal'
+            isOverCapacity
+                ? (overCapacityTone === 'amber' ? 'is-pressure-amber' : 'is-pressure-red')
+                : readinessUi.readiness.pressureTone === 'red'
+                    ? 'is-pressure-red'
+                    : readinessUi.readiness.pressureTone === 'amber'
+                        ? 'is-pressure-amber'
+                        : 'is-pressure-normal'
         );
         this.minimapBackboneGroup.classList.toggle(
             'is-pressure-over-budget',
@@ -4410,15 +4460,22 @@ export class InquiryView extends ItemView {
         }
         addTooltipData(this.minimapBaseline, this.balanceTooltipText(tooltipLines.join('\n')), 'top');
 
-        const advanced = getLastAiAdvancedContext(this.plugin, 'InquiryMode');
-        const passIndicator = buildPassIndicator(advanced?.executionPassCount, readinessUi.readiness.state === 'large');
+        const passIndicator = buildPassIndicator(
+            passPlan.recentExactPassCount ?? undefined,
+            passPlan.packagingExpected,
+            passPlan.estimatedPassCount ?? undefined
+        );
         if (this.minimapPassIndicatorGroup && this.minimapPassIndicatorText) {
             this.minimapPassIndicatorGroup.classList.toggle('ert-hidden', !passIndicator.visible);
             if (passIndicator.visible) {
                 this.minimapPassIndicatorText.textContent = passIndicator.marks;
-                const reason = advanced?.packagingTriggerReason
-                    || (passIndicator.expectedOnly ? 'Large corpus packaged for stability.' : 'Large corpus packaging completed.');
-                const passText = passIndicator.exactCount ? `Passes: ${passIndicator.exactCount}` : 'Passes: packaging expected';
+                const reason = passPlan.packagingTriggerReason
+                    || (passIndicator.expectedOnly
+                        ? 'Large corpus expected to be packaged for stability.'
+                        : 'Large corpus packaging completed.');
+                const passText = passIndicator.exactCount
+                    ? `Passes: ${passIndicator.exactCount} total (${passIndicator.extraPassCount ?? 0} extra)`
+                    : `Estimated passes: ${passIndicator.totalPassCount ?? 2} total (${passIndicator.extraPassCount ?? 1} extra)`;
                 addTooltipData(
                     this.minimapPassIndicatorGroup,
                     this.balanceTooltipText(`${passText}\n${reason}`),
@@ -6079,16 +6136,55 @@ export class InquiryView extends ItemView {
         this.applyBackboneStopColors(gradientColors, shineColors);
     }
 
-    private updateTokenCapBar(fillRatio: number, isOverCapacity: boolean): void {
+    private updateTokenCapPassSplits(totalPassCount: number): void {
+        if (!this.minimapTokenCapSplitGroup || !this.minimapLayout) return;
+        this.clearSvgChildren(this.minimapTokenCapSplitGroup);
+        if (totalPassCount <= 1) {
+            this.minimapTokenCapSplitGroup.classList.add('ert-hidden');
+            return;
+        }
+
+        const baselineStart = Math.round(this.minimapLayout.startX);
+        const length = this.minimapLayout.length;
+        const splitY = MINIMAP_TOKEN_CAP_Y + MINIMAP_TOKEN_CAP_BAR_HEIGHT;
+        const tickHalfWidth = MINIMAP_TOKEN_CAP_SPLIT_TICK_WIDTH / 2;
+        for (let index = 1; index < totalPassCount; index += 1) {
+            const ratio = index / totalPassCount;
+            const centerX = baselineStart + (length * ratio);
+            const splitTick = this.createSvgElement('rect');
+            splitTick.classList.add('ert-inquiry-minimap-tokencap-split');
+            splitTick.setAttribute('x', (centerX - tickHalfWidth).toFixed(2));
+            splitTick.setAttribute('y', String(splitY));
+            splitTick.setAttribute('width', String(MINIMAP_TOKEN_CAP_SPLIT_TICK_WIDTH));
+            splitTick.setAttribute('height', String(MINIMAP_TOKEN_CAP_SPLIT_TICK_HEIGHT));
+            splitTick.setAttribute('rx', '1');
+            splitTick.setAttribute('ry', '1');
+            this.minimapTokenCapSplitGroup.appendChild(splitTick);
+        }
+        this.minimapTokenCapSplitGroup.classList.remove('ert-hidden');
+    }
+
+    private updateTokenCapBar(
+        fillRatio: number,
+        isOverCapacity: boolean,
+        overCapacityTone: 'amber' | 'red',
+        totalPassCount: number
+    ): void {
         if (!this.minimapTokenCapBar || !this.minimapLayout) return;
         const length = this.minimapLayout.length;
         const filledWidth = length * Math.min(Math.max(fillRatio, 0), 1);
         this.minimapTokenCapBar.setAttribute('x', String(Math.round(this.minimapLayout.startX)));
         this.minimapTokenCapBar.setAttribute('width', filledWidth.toFixed(2));
-        this.minimapTokenCapBar.style.fill = isOverCapacity ? '#f44c4c' : '#ffffff';
+        const overCapacityColor = overCapacityTone === 'amber' ? '#ff9900' : '#f44c4c';
+        this.minimapTokenCapBar.style.fill = isOverCapacity ? overCapacityColor : '#ffffff';
 
-        this.minimapTokenCapStartCap?.classList.toggle('is-over-capacity', isOverCapacity);
-        this.minimapTokenCapEndCap?.classList.toggle('is-over-capacity', isOverCapacity);
+        const endcapStateClass = overCapacityTone === 'amber' ? 'is-warning-capacity' : 'is-over-capacity';
+        const inverseStateClass = overCapacityTone === 'amber' ? 'is-over-capacity' : 'is-warning-capacity';
+        this.minimapTokenCapStartCap?.classList.toggle(endcapStateClass, isOverCapacity);
+        this.minimapTokenCapEndCap?.classList.toggle(endcapStateClass, isOverCapacity);
+        this.minimapTokenCapStartCap?.classList.remove(inverseStateClass);
+        this.minimapTokenCapEndCap?.classList.remove(inverseStateClass);
+        this.updateTokenCapPassSplits(isOverCapacity ? Math.max(1, totalPassCount) : 1);
     }
 
     private applyBackboneOscillationColors(progress: number): void {

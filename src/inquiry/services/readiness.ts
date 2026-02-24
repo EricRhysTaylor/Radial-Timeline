@@ -29,6 +29,8 @@ export interface PassIndicatorResult {
     visible: boolean;
     marks: string;
     visibleCount: number;
+    totalPassCount: number | null;
+    extraPassCount: number | null;
     exactCount: number | null;
     expectedOnly: boolean;
 }
@@ -94,24 +96,38 @@ export function evaluateInquiryReadiness(input: EvaluateInquiryReadinessInput): 
     };
 }
 
-export function buildPassIndicator(passCount?: number, packagingExpected?: boolean): PassIndicatorResult {
+export function buildPassIndicator(
+    passCount?: number,
+    packagingExpected?: boolean,
+    estimatedPassCount?: number
+): PassIndicatorResult {
     const normalizedPassCount = Number.isFinite(passCount) ? Math.max(0, Math.round(passCount as number)) : 0;
     if (normalizedPassCount > 1) {
-        const visibleCount = Math.min(5, normalizedPassCount);
+        const extraPassCount = normalizedPassCount - 1;
+        const visibleCount = Math.min(5, extraPassCount);
         return {
             visible: true,
             marks: '+'.repeat(visibleCount),
             visibleCount,
+            totalPassCount: normalizedPassCount,
+            extraPassCount,
             exactCount: normalizedPassCount,
             expectedOnly: false
         };
     }
 
     if (packagingExpected) {
+        const normalizedEstimate = Number.isFinite(estimatedPassCount)
+            ? Math.max(2, Math.round(estimatedPassCount as number))
+            : 2;
+        const extraPassCount = normalizedEstimate - 1;
+        const visibleCount = Math.min(5, extraPassCount);
         return {
             visible: true,
-            marks: '+',
-            visibleCount: 1,
+            marks: '+'.repeat(Math.max(1, visibleCount)),
+            visibleCount: Math.max(1, visibleCount),
+            totalPassCount: normalizedEstimate,
+            extraPassCount,
             exactCount: null,
             expectedOnly: true
         };
@@ -121,6 +137,8 @@ export function buildPassIndicator(passCount?: number, packagingExpected?: boole
         visible: false,
         marks: '',
         visibleCount: 0,
+        totalPassCount: null,
+        extraPassCount: null,
         exactCount: null,
         expectedOnly: false
     };

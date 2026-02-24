@@ -5849,6 +5849,117 @@
   margin-top: 0;
 }
 
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-modal-container {
+  padding: 22px 24px 18px;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-modal {
+  --ert-panel-shadow: none;
+  --ert-pill-shadow: none;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-subtitle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  font-size: 1.02rem;
+  font-weight: 600;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-subtitle-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-option {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 14px;
+  padding: 12px 12px 10px;
+  background: color-mix(in srgb, var(--background-secondary) 58%, transparent);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-option.is-active {
+  border-color: color-mix(in srgb, var(--interactive-accent) 42%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-secondary));
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-option-header {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ert-gap-sm);
+  margin-bottom: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-option-radio {
+  margin: 0;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-option-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-option-title {
+  font-weight: 600;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-option-desc {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-list-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-list-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-actions {
+  margin-top: var(--ert-gap-sm);
+  padding-top: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-actions button {
+  box-shadow: none;
+}
+
 .ert-ui.ert-scope--modal .ert-ai-context-selector-row {
   display: flex;
   gap: var(--ert-gap-sm);
@@ -6869,6 +6980,127 @@
   line-height: 1;
   transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
   box-sizing: border-box;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-add-form {
+  margin-top: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-layout-add-form-setting {
+  padding: var(--ert-gap-sm) 0;
+}
+
+.ert-ui.ert-scope--settings .ert-layout-add-form-hint {
+  margin-top: var(--ert-gap-xs);
+  padding-left: 2px;
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-status + .ert-bookmeta-status {
+  margin-top: 4px;
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-status.is-found .ert-bookmeta-status-icon {
+  color: var(--text-success);
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-status.is-missing .ert-bookmeta-status-icon,
+.ert-ui.ert-scope--settings .ert-bookmeta-status.is-warning .ert-bookmeta-status-icon {
+  color: var(--text-warning, var(--color-orange, #f5a97a));
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-preview {
+  margin-top: var(--ert-gap-sm);
+  padding: var(--ert-pad-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-preview-header {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ert-gap-xs);
+  margin-bottom: var(--ert-gap-sm);
+  font-weight: 600;
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-preview-header-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ert-gap-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-preview-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-preview-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-preview-value {
+  font-size: 0.9rem;
+  color: var(--text-normal);
+  overflow-wrap: anywhere;
+}
+
+.ert-ui.ert-scope--settings .ert-bookmeta-preview-value.ert-bookmeta-preview-value--empty {
+  color: var(--text-faint);
+}
+
+@media (max-width: 720px) {
+  .ert-ui.ert-scope--settings .ert-bookmeta-preview-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ert-ui .ert-template-path-suggest {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ert-ui .ert-template-path-suggest-path {
+  font-size: 0.88rem;
+  color: var(--text-normal);
+}
+
+.ert-ui .ert-template-path-suggest-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
 .ert-ui.ert-scope--settings .ert-pillBtn:focus-visible {

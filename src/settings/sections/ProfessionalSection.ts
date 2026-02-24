@@ -6,7 +6,7 @@
  * Professional License Settings Section
  */
 
-import { App, Setting, setIcon, normalizePath, Notice, TFile, TFolder, Modal, ButtonComponent } from 'obsidian';
+import { App, Setting, setIcon, normalizePath, Notice, TFile, TFolder, Modal, ButtonComponent, AbstractInputSuggest, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { ERT_CLASSES } from '../../ui/classes';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
@@ -15,6 +15,7 @@ import { generateSceneContent } from '../../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
 import type { PandocLayoutTemplate } from '../../types';
+import type { BookMeta } from '../../types';
 import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { getActiveBookExportContext } from '../../utils/exportContext';
 import { isPathInFolderScope } from '../../utils/pathScope';
@@ -219,6 +220,77 @@ function listAvailableLatexEngines(): Array<{ engine: string; path: string }> {
 
 type MatterSampleLane = 'guided' | 'advanced';
 
+class PandocTemplatePathSuggest extends AbstractInputSuggest<string> {
+    private readonly plugin: RadialTimelinePlugin;
+    private readonly inputRef: HTMLInputElement;
+    private readonly onChoose: (path: string) => void;
+
+    constructor(
+        app: App,
+        input: HTMLInputElement,
+        plugin: RadialTimelinePlugin,
+        onChoose: (path: string) => void
+    ) {
+        super(app, input);
+        this.plugin = plugin;
+        this.inputRef = input;
+        this.onChoose = onChoose;
+    }
+
+    getSuggestions(query: string): string[] {
+        const rawQuery = (query || '').trim();
+        const normalizedQuery = rawQuery ? normalizePath(rawQuery.replace(/^\/+/, '')) : '';
+        const lowered = normalizedQuery.toLowerCase();
+        const candidateSet = new Set<string>();
+        const addCandidate = (path: string) => {
+            const trimmed = path.trim();
+            if (!trimmed) return;
+            candidateSet.add(normalizePath(trimmed));
+        };
+        const texPattern = /\.(tex|ltx|latex)$/i;
+
+        this.app.vault.getFiles()
+            .filter(file => texPattern.test(file.path))
+            .forEach(file => addCandidate(file.path));
+
+        (this.plugin.settings.pandocLayouts || [])
+            .forEach(layout => addCandidate(layout.path));
+
+        const pandocFolder = normalizePath((this.plugin.settings.pandocFolder || 'Pandoc').trim() || 'Pandoc');
+        if (normalizedQuery) {
+            if (texPattern.test(normalizedQuery)) {
+                addCandidate(normalizedQuery);
+                addCandidate(`${pandocFolder}/${normalizedQuery}`);
+            } else {
+                addCandidate(`${normalizedQuery}.tex`);
+                addCandidate(`${pandocFolder}/${normalizedQuery}.tex`);
+            }
+        }
+
+        const ordered = Array.from(candidateSet).sort((a, b) => a.localeCompare(b));
+        if (!lowered) return ordered.slice(0, 40);
+        return ordered.filter(path => path.toLowerCase().includes(lowered)).slice(0, 40);
+    }
+
+    renderSuggestion(path: string, el: HTMLElement): void {
+        const row = el.createDiv({ cls: 'ert-template-path-suggest' });
+        row.createDiv({ cls: 'ert-template-path-suggest-path', text: path });
+        const exists = !!this.app.vault.getAbstractFileByPath(path);
+        row.createDiv({
+            cls: 'ert-template-path-suggest-meta',
+            text: exists ? 'Existing file' : 'Suggested path'
+        });
+    }
+
+    selectSuggestion(path: string, _evt: MouseEvent | KeyboardEvent): void {
+        const normalized = normalizePath(path);
+        this.inputRef.value = normalized;
+        this.onChoose(normalized);
+        try { this.close(); } catch {}
+        try { this.inputRef.focus(); } catch {}
+    }
+}
+
 class MatterSampleLaneModal extends Modal {
     private selected: MatterSampleLane = 'guided';
     private readonly onPick: (lane: MatterSampleLane | null) => void;
@@ -230,18 +302,32 @@ class MatterSampleLaneModal extends Modal {
     }
 
     onOpen(): void {
-        const { contentEl } = this;
+        const { contentEl, modalEl } = this;
         contentEl.empty();
-        contentEl.addClass('ert-stack');
+        if (modalEl) {
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal--template-pack');
+            modalEl.style.width = '560px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '92vw';
+        }
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-template-pack-modal');
 
-        contentEl.createEl('h3', { text: 'Generate Template Pack' });
-        contentEl.createDiv({ text: 'This will create a complete publishing template set in your vault.' });
-        contentEl.createDiv({ text: 'Choose how you want to manage front and back matter pages.' });
-        contentEl.createEl('h4', { text: 'Workflow' });
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        const badge = header.createSpan({ cls: `${ERT_CLASSES.MODAL_BADGE} ert-modal-badge-pro` });
+        const badgeIcon = badge.createSpan({ cls: ERT_CLASSES.MODAL_BADGE_ICON });
+        setIcon(badgeIcon, 'package-plus');
+        badge.createSpan({ text: 'Pro' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Generate Template Pack' });
+        header.createDiv({
+            cls: 'ert-modal-subtitle',
+            text: 'Create publishing templates and choose how front/back matter pages should be managed.'
+        });
 
-        const createdTitle = contentEl.createEl('h4', { text: 'What Will Be Created' });
-        createdTitle.style.marginTop = '0.6rem';
-        const createdList = contentEl.createEl('ul');
+        const createdBlock = contentEl.createDiv({ cls: 'ert-template-pack-created ert-stack--tight' });
+        const createdHeading = createdBlock.createDiv({ cls: 'ert-template-pack-subtitle' });
+        const createdHeadingIcon = createdHeading.createSpan({ cls: 'ert-template-pack-subtitle-icon' });
+        setIcon(createdHeadingIcon, 'list-checks');
+        createdHeading.createSpan({ text: 'What Will Be Created' });
+        const createdList = createdBlock.createEl('ul', { cls: 'ert-template-pack-list' });
         const renderCreatedList = () => {
             createdList.empty();
             const items = this.selected === 'guided'
@@ -257,48 +343,78 @@ class MatterSampleLaneModal extends Modal {
                     'Scene examples',
                     'PDF layout templates'
                 ];
-            items.forEach(item => createdList.createEl('li', { text: item }));
+            items.forEach(item => {
+                const listItem = createdList.createEl('li', { cls: 'ert-template-pack-list-item' });
+                const itemIcon = listItem.createSpan({ cls: 'ert-template-pack-list-icon' });
+                setIcon(itemIcon, 'dot');
+                listItem.createSpan({ text: item });
+            });
         };
 
-        const makeOption = (lane: MatterSampleLane, title: string, desc: string) => {
-            const row = contentEl.createDiv({ cls: 'setting-item' });
-            const info = row.createDiv({ cls: 'setting-item-info' });
-            const nameRow = info.createDiv({ cls: 'setting-item-name' });
-            const radio = nameRow.createEl('input', {
-                type: 'radio',
-                attr: { name: 'rt-matter-lane', value: lane }
+        const optionsEl = contentEl.createDiv({ cls: 'ert-template-pack-options ert-stack--tight' });
+        const optionButtons: Partial<Record<MatterSampleLane, HTMLButtonElement>> = {};
+        const laneRadios: Partial<Record<MatterSampleLane, HTMLInputElement>> = {};
+        const refreshOptionState = () => {
+            (Object.keys(optionButtons) as MatterSampleLane[]).forEach((lane) => {
+                const active = this.selected === lane;
+                const optionButton = optionButtons[lane];
+                const laneRadio = laneRadios[lane];
+                if (!optionButton || !laneRadio) return;
+                optionButton.toggleClass(ERT_CLASSES.IS_ACTIVE, active);
+                optionButton.setAttr('aria-pressed', active ? 'true' : 'false');
+                laneRadio.checked = active;
             });
-            radio.checked = this.selected === lane;
+            renderCreatedList();
+        };
+
+        const makeOption = (
+            lane: MatterSampleLane,
+            title: string,
+            desc: string,
+            iconName: string
+        ) => {
+            const option = optionsEl.createEl('button', {
+                cls: 'ert-template-pack-option',
+                attr: { type: 'button' }
+            });
+            const optionHeader = option.createDiv({ cls: 'ert-template-pack-option-header' });
+            const radio = optionHeader.createEl('input', {
+                type: 'radio',
+                cls: 'ert-template-pack-option-radio',
+                attr: { name: 'ert-matter-lane', value: lane }
+            }) as HTMLInputElement;
+            const optionIcon = optionHeader.createSpan({ cls: 'ert-template-pack-option-icon' });
+            setIcon(optionIcon, iconName);
+            optionHeader.createSpan({ cls: 'ert-template-pack-option-title', text: title });
+            option.createDiv({ cls: 'ert-template-pack-option-desc', text: desc });
             radio.addEventListener('change', () => {
                 this.selected = lane;
-                renderCreatedList();
+                refreshOptionState();
             });
-            nameRow.createSpan({ text: ` ${title}` });
-            info.createDiv({ cls: 'setting-item-description', text: desc });
-            row.onClickEvent(() => {
+            option.addEventListener('click', () => {
                 this.selected = lane;
-                const radios = contentEl.querySelectorAll('input[name="rt-matter-lane"]');
-                radios.forEach((el) => {
-                    const input = el as HTMLInputElement;
-                    input.checked = input.value === lane;
-                });
-                renderCreatedList();
+                refreshOptionState();
             });
+
+            optionButtons[lane] = option;
+            laneRadios[lane] = radio;
         };
 
         makeOption(
             'guided',
             'Guided Matter (Recommended)',
-            'Uses a single BookMeta file for title, copyright, ISBN, and other publishing details. Matter pages are rendered by templates. Best for most authors.'
+            'Uses a single BookMeta file for title, copyright, ISBN, and other publishing details. Matter pages are rendered by templates. Best for most authors.',
+            'book-open'
         );
         makeOption(
             'advanced',
             'Advanced (LaTeX in Body)',
-            'Write raw LaTeX directly inside front/back matter notes. Radial Timeline passes this content through unchanged. Best for advanced users comfortable with LaTeX.'
+            'Write raw LaTeX directly inside front/back matter notes. Radial Timeline passes this content through unchanged. Best for advanced users comfortable with LaTeX.',
+            'code'
         );
-        renderCreatedList();
+        refreshOptionState();
 
-        const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        const actions = contentEl.createDiv({ cls: 'ert-modal-actions ert-template-pack-actions' });
         new ButtonComponent(actions)
             .setButtonText('Generate Template Pack')
             .setCta()
@@ -331,9 +447,58 @@ async function chooseMatterSampleLane(app: App): Promise<MatterSampleLane | null
     });
 }
 
-function getActiveBookMetaStatus(plugin: RadialTimelinePlugin): { found: boolean; path?: string } {
+function attachTemplatePathSuggest(
+    plugin: RadialTimelinePlugin,
+    text: TextComponent,
+    onSelect: (path: string) => void
+): void {
+    new PandocTemplatePathSuggest(plugin.app, text.inputEl, plugin, (path) => {
+        try { text.setValue(path); } catch {}
+        onSelect(path);
+    });
+}
+
+interface ActiveBookMetaStatus {
+    found: boolean;
+    path?: string;
+    warning?: string;
+    sourceFolder?: string;
+    bookMeta?: BookMeta;
+}
+
+function parseBookMetaFromFrontmatter(frontmatter: Record<string, unknown>, sourcePath: string): BookMeta {
+    const book = frontmatter.Book as Record<string, unknown> | undefined;
+    const rights = frontmatter.Rights as Record<string, unknown> | undefined;
+    const identifiers = frontmatter.Identifiers as Record<string, unknown> | undefined;
+    const publisher = frontmatter.Publisher as Record<string, unknown> | undefined;
+
+    const rawYear = rights?.year;
+    const year = typeof rawYear === 'number'
+        ? rawYear
+        : typeof rawYear === 'string'
+            ? Number(rawYear)
+            : NaN;
+
+    return {
+        title: (book?.title as string) || undefined,
+        author: (book?.author as string) || undefined,
+        rights: rights ? {
+            copyright_holder: (rights.copyright_holder as string) || undefined,
+            year: Number.isFinite(year) ? year : undefined
+        } : undefined,
+        identifiers: identifiers ? {
+            isbn_paperback: (identifiers.isbn_paperback as string) || undefined
+        } : undefined,
+        publisher: publisher ? {
+            name: (publisher.name as string) || undefined
+        } : undefined,
+        sourcePath
+    };
+}
+
+function getActiveBookMetaStatus(plugin: RadialTimelinePlugin): ActiveBookMetaStatus {
     const sourceFolder = getActiveBookExportContext(plugin).sourceFolder.trim();
-    if (!sourceFolder) return { found: false };
+    if (!sourceFolder) return { found: false, sourceFolder };
 
     const mappings = plugin.settings.enableCustomMetadataMapping
         ? plugin.settings.frontmatterMappings
@@ -345,13 +510,28 @@ function getActiveBookMetaStatus(plugin: RadialTimelinePlugin): { found: boolean
             const cache = plugin.app.metadataCache.getFileCache(file);
             if (!cache?.frontmatter) return null;
             const normalized = normalizeFrontmatterKeys(cache.frontmatter as Record<string, unknown>, mappings);
-            return normalized.Class === 'BookMeta' ? file.path : null;
+            if (normalized.Class !== 'BookMeta') return null;
+            return {
+                path: file.path,
+                meta: parseBookMetaFromFrontmatter(normalized, file.path)
+            };
         })
-        .filter((path): path is string => !!path)
-        .sort((a, b) => a.localeCompare(b));
+        .filter((entry): entry is { path: string; meta: BookMeta } => !!entry)
+        .sort((a, b) => a.path.localeCompare(b.path));
 
-    if (!candidates.length) return { found: false };
-    return { found: true, path: candidates[0] };
+    if (!candidates.length) return { found: false, sourceFolder };
+
+    const selected = candidates[0];
+    if (candidates.length > 1) {
+        return {
+            found: true,
+            path: selected.path,
+            sourceFolder,
+            bookMeta: selected.meta,
+            warning: `Multiple BookMeta notes found. Using: ${selected.path}`
+        };
+    }
+    return { found: true, path: selected.path, sourceFolder, bookMeta: selected.meta };
 }
 
 /**
@@ -1484,21 +1664,23 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         setTimeout(() => inputEl.removeClass(cls), 1700);
     };
 
+    const layoutRowsContainer = layoutSubSection.createDiv({ cls: 'ert-layout-rows' });
+
     /** Render one row per existing layout. */
     const renderLayoutRows = () => {
         // Clear previous rows (keep header)
-        const existingRows = layoutSubSection.querySelectorAll('.ert-layout-row');
+        const existingRows = layoutRowsContainer.querySelectorAll('.ert-layout-row');
         existingRows.forEach(el => el.remove());
 
         const layouts = plugin.settings.pandocLayouts || [];
 
         if (layouts.length === 0) {
-            const emptyEl = layoutSubSection.createDiv({ cls: 'ert-layout-row setting-item' });
+            const emptyEl = layoutRowsContainer.createDiv({ cls: 'ert-layout-row setting-item' });
             emptyEl.createSpan({ text: 'No layouts configured. Add one below or generate a Template Pack.', cls: 'setting-item-description' });
         }
 
         for (const layout of layouts) {
-            const row = layoutSubSection.createDiv({ cls: 'ert-layout-row' });
+            const row = layoutRowsContainer.createDiv({ cls: 'ert-layout-row' });
 
             const s = addProRow(new Setting(row))
                 .setName(layout.name)
@@ -1514,6 +1696,10 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                         flashValidateLayoutPath(text.inputEl, layout);
                         s.setDesc(buildLayoutDescription(layout));
                     };
+                    attachTemplatePathSuggest(plugin, text, (path) => {
+                        layout.path = path.trim();
+                        void saveAndValidate();
+                    });
 
                     // SAFE: direct addEventListener; Modal/Settings lifecycle manages cleanup
                     text.inputEl.addEventListener('blur', saveAndValidate);
@@ -1537,7 +1723,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
 
     // ── Add Layout inline form ───────────────────────────────────────────────
     let addFormVisible = false;
-    const addFormContainer = layoutSubSection.createDiv({ cls: 'ert-layout-add-form rt-hidden' });
+    const addFormContainer = layoutSubSection.createDiv({ cls: 'ert-layout-add-form ert-hidden' });
 
     let newName = '';
     let newPreset: 'novel' | 'screenplay' | 'podcast' = 'novel';
@@ -1545,6 +1731,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
 
     const addFormSetting = addProRow(new Setting(addFormContainer))
         .setName('New layout');
+    addFormSetting.settingEl.addClass('ert-layout-add-form-setting');
 
     addFormSetting.addText(text => {
         text.setPlaceholder('Layout name');
@@ -1561,7 +1748,15 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         text.setPlaceholder('path/to/template.tex');
         text.inputEl.addClass('ert-input--lg');
         text.onChange(v => { newPath = v; });
+        attachTemplatePathSuggest(plugin, text, (path) => {
+            newPath = path;
+        });
     });
+    const addFormHint = addFormContainer.createDiv({
+        cls: ERT_CLASSES.SECTION_DESC,
+        text: 'Tip: start typing to autocomplete existing .tex templates in your vault.'
+    });
+    addFormHint.addClass('ert-layout-add-form-hint');
     addFormSetting.addExtraButton(btn => {
         btn.setIcon('checkmark');
         btn.setTooltip('Confirm');
@@ -1579,7 +1774,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             await plugin.saveSettings();
             // Reset form
             newName = ''; newPreset = 'novel'; newPath = '';
-            addFormContainer.addClass('rt-hidden');
+            addFormContainer.addClass('ert-hidden');
             addFormVisible = false;
             renderLayoutRows();
         });
@@ -1588,7 +1783,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         btn.setIcon('cross');
         btn.setTooltip('Cancel');
         btn.onClick(() => {
-            addFormContainer.addClass('rt-hidden');
+            addFormContainer.addClass('ert-hidden');
             addFormVisible = false;
         });
     });
@@ -1603,13 +1798,65 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     });
 
     const activeBookMetaStatus = getActiveBookMetaStatus(plugin);
-    addProRow(new Setting(templatePackSection))
+    const activeBookMetaSetting = addProRow(new Setting(templatePackSection))
         .setName('Active book BookMeta')
-        .setDesc(
-            activeBookMetaStatus.found
-                ? '✅ BookMeta detected in active book folder.'
-                : '⚠ No BookMeta found for active book. Guided Matter pages may render incomplete.'
-        );
+        .setDesc('');
+    if (activeBookMetaSetting.descEl) {
+        activeBookMetaSetting.descEl.empty();
+        const statusRow = activeBookMetaSetting.descEl.createDiv({
+            cls: `ert-bookmeta-status ${activeBookMetaStatus.found ? 'is-found' : 'is-missing'}`
+        });
+        const statusIcon = statusRow.createSpan({ cls: 'ert-bookmeta-status-icon' });
+        setIcon(statusIcon, activeBookMetaStatus.found ? 'check-circle' : 'alert-triangle');
+        statusRow.createSpan({
+            text: activeBookMetaStatus.found
+                ? 'BookMeta detected in active book folder.'
+                : 'No BookMeta found for active book. Guided Matter pages may render incomplete.'
+        });
+        if (activeBookMetaStatus.warning) {
+            const warningRow = activeBookMetaSetting.descEl.createDiv({ cls: 'ert-bookmeta-status is-warning' });
+            const warningIcon = warningRow.createSpan({ cls: 'ert-bookmeta-status-icon' });
+            setIcon(warningIcon, 'alert-circle');
+            warningRow.createSpan({ text: activeBookMetaStatus.warning });
+        }
+    }
+
+    const previewFrame = templatePackSection.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-bookmeta-preview` });
+    const previewHeader = previewFrame.createDiv({ cls: 'ert-bookmeta-preview-header' });
+    const previewHeaderIcon = previewHeader.createSpan({ cls: 'ert-bookmeta-preview-header-icon' });
+    setIcon(previewHeaderIcon, 'book-copy');
+    previewHeader.createSpan({ text: 'BookMeta preview' });
+
+    const previewGrid = previewFrame.createDiv({ cls: 'ert-bookmeta-preview-grid' });
+    const addPreviewField = (label: string, value?: string | number | null) => {
+        const item = previewGrid.createDiv({ cls: 'ert-bookmeta-preview-item' });
+        item.createDiv({ cls: 'ert-bookmeta-preview-label', text: label });
+        const normalized = value === undefined || value === null || String(value).trim().length === 0
+            ? 'Not set'
+            : String(value);
+        const valueEl = item.createDiv({ cls: 'ert-bookmeta-preview-value', text: normalized });
+        valueEl.toggleClass('ert-bookmeta-preview-value--empty', normalized === 'Not set');
+    };
+
+    if (activeBookMetaStatus.found && activeBookMetaStatus.bookMeta) {
+        const meta = activeBookMetaStatus.bookMeta;
+        addPreviewField('Title', meta.title);
+        addPreviewField('Author', meta.author);
+        addPreviewField('Copyright holder', meta.rights?.copyright_holder);
+        addPreviewField('Rights year', meta.rights?.year);
+        addPreviewField('ISBN paperback', meta.identifiers?.isbn_paperback);
+        addPreviewField('Publisher', meta.publisher?.name);
+        addPreviewField('Source note', meta.sourcePath || activeBookMetaStatus.path);
+        if (activeBookMetaStatus.sourceFolder) {
+            addPreviewField('Active book folder', activeBookMetaStatus.sourceFolder);
+        }
+    } else {
+        addPreviewField('Status', 'No BookMeta note detected yet');
+        if (activeBookMetaStatus.sourceFolder) {
+            addPreviewField('Expected folder', activeBookMetaStatus.sourceFolder);
+        }
+        addPreviewField('Suggested file', '000 BookMeta.md');
+    }
 
     // Add Layout + Generate Template Pack buttons row
     const layoutActionsSetting = addProRow(new Setting(templatePackSection));
@@ -1617,7 +1864,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         button.setButtonText('Add Layout');
         button.onClick(() => {
             addFormVisible = !addFormVisible;
-            addFormContainer.toggleClass('rt-hidden', !addFormVisible);
+            addFormContainer.toggleClass('ert-hidden', !addFormVisible);
         });
     });
     layoutActionsSetting.addButton(button => {

@@ -75,6 +75,7 @@ export class ManuscriptOptionsModal extends Modal {
     private rangeFillEl?: HTMLElement;
     private heroMetaEl?: HTMLElement;
     private rangeStatusEl?: HTMLElement;
+    private rangeDecimalWarningEl?: HTMLElement;
     private rangeCardContainer?: HTMLElement;
     private loadingEl?: HTMLElement;
     private actionButton?: ButtonComponent;
@@ -291,9 +292,7 @@ export class ManuscriptOptionsModal extends Modal {
             attr: { type: 'radio', name: splitModeGroup, value: 'parts' }
         }) as HTMLInputElement;
         partsOption.createSpan({ text: 'Split into parts' });
-        const splitInputRow = partsCol.createDiv({ cls: 'ert-manuscript-split-inline' });
-        splitInputRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Number of parts' });
-        this.splitPartsInputEl = splitInputRow.createEl('input', {
+        this.splitPartsInputEl = partsOption.createEl('input', {
             cls: 'ert-input ert-input--xs',
             attr: { type: 'number', min: '2', max: '20', step: '1', value: String(this.splitParts) }
         }) as HTMLInputElement;
@@ -342,6 +341,10 @@ export class ManuscriptOptionsModal extends Modal {
 
         this.createSectionHeading(this.scopeCard, t('manuscriptModal.rangeHeading'), 'sliders-horizontal');
         this.rangeStatusEl = this.scopeCard.createDiv({ cls: 'rt-manuscript-range-status', text: t('manuscriptModal.rangeLoading') });
+        this.rangeDecimalWarningEl = this.scopeCard.createDiv({
+            cls: 'rt-manuscript-range-warning rt-hidden',
+            text: t('manuscriptModal.rangeDecimalWarning')
+        });
         const rangeShell = this.scopeCard.createDiv({ cls: 'rt-manuscript-range-shell' });
         this.rangeCardContainer = rangeShell.createDiv({ cls: 'rt-manuscript-range-cards' });
         const trackWrap = rangeShell.createDiv({ cls: 'rt-manuscript-range-track-wrap' });
@@ -940,6 +943,14 @@ HOST: Let's start with Sarah's story...`
         return Math.max(0, this.rangeEnd - this.rangeStart + 1);
     }
 
+    private getSelectedSceneNumbers(): number[] {
+        if (this.totalScenes === 0 || this.sceneNumbers.length === 0) return [];
+        const startIndex = Math.max(0, this.rangeStart - 1);
+        const endIndexExclusive = Math.min(this.rangeEnd, this.sceneNumbers.length);
+        if (endIndexExclusive <= startIndex) return [];
+        return this.sceneNumbers.slice(startIndex, endIndexExclusive);
+    }
+
     private isSplitEnabled(): boolean {
         return this.splitMode === 'parts';
     }
@@ -1281,6 +1292,10 @@ HOST: Let's start with Sarah's story...`
     private syncRangeAvailability(): void {
         const count = this.getSelectedSceneCount();
         this.rangeStatusEl?.setText(`${count} scenes selected`);
+        const hasDecimalScenes = this.getSelectedSceneNumbers().some((sceneNumber) => Number.isFinite(sceneNumber) && !Number.isInteger(sceneNumber));
+        if (this.rangeDecimalWarningEl) {
+            this.rangeDecimalWarningEl.toggleClass('rt-hidden', !hasDecimalScenes);
+        }
     }
 
     private updateRangeUI(): void {

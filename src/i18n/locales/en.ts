@@ -219,6 +219,7 @@ export interface TranslationKeys {
         rangeCountLabel: string;
         rangeStatus: string;
         rangeLoading: string;
+        rangeDecimalWarning: string;
         actionCreate: string;
         actionCancel: string;
         emptyNotice: string;
@@ -474,6 +475,7 @@ export const en: TranslationKeys = {
         rangeCountLabel: '{{count}} scenes selected',
         rangeStatus: 'Scenes {{start}} – {{end}} of {{total}} ({{count}} selected)',
         rangeLoading: 'Fetching scenes…',
+        rangeDecimalWarning: 'Decimal scene numbers detected in this range. Use Ripple Renumber to normalize numbering.',
         actionCreate: 'Manuscript generate',
         actionCancel: 'Cancel',
         emptyNotice: 'No scenes available to assemble.',

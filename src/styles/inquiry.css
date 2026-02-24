@@ -68,7 +68,8 @@
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-backbone-glow,
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-backbone-shine,
 .ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-bar,
-.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-endcap {
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-endcap,
+.ert-inquiry-svg.is-guidance-lockout .ert-inquiry-minimap-tokencap-splits {
   display: none;
 }
 
@@ -476,8 +477,22 @@
   fill: #f44c4c;
 }
 
+.ert-inquiry-minimap-tokencap-endcap.is-warning-capacity {
+  fill: #ff9900;
+}
+
+.ert-inquiry-minimap-tokencap-splits {
+  pointer-events: none;
+}
+
+.ert-inquiry-minimap-tokencap-split {
+  fill: color-mix(in srgb, var(--text-normal) 80%, transparent);
+  opacity: 0.78;
+}
+
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-bar,
-.ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-endcap {
+.ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-endcap,
+.ert-inquiry-svg.is-running .ert-inquiry-minimap-tokencap-split {
   opacity: 0.3;
 }
 

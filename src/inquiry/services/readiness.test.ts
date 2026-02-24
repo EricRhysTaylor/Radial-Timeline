@@ -72,7 +72,9 @@ describe('readiness', () => {
     it('renders marks for multi-pass execution', () => {
         const marks = buildPassIndicator(2);
         expect(marks.visible).toBe(true);
-        expect(marks.marks).toBe('++');
+        expect(marks.marks).toBe('+');
+        expect(marks.extraPassCount).toBe(1);
+        expect(marks.totalPassCount).toBe(2);
         expect(marks.exactCount).toBe(2);
     });
 
@@ -81,6 +83,8 @@ describe('readiness', () => {
         expect(marks.visible).toBe(true);
         expect(marks.marks).toBe('+++++');
         expect(marks.visibleCount).toBe(5);
+        expect(marks.extraPassCount).toBe(8);
+        expect(marks.totalPassCount).toBe(9);
         expect(marks.exactCount).toBe(9);
     });
 
@@ -89,6 +93,18 @@ describe('readiness', () => {
         expect(marks.visible).toBe(true);
         expect(marks.marks).toBe('+');
         expect(marks.expectedOnly).toBe(true);
+        expect(marks.totalPassCount).toBe(2);
+        expect(marks.extraPassCount).toBe(1);
+        expect(marks.exactCount).toBeNull();
+    });
+
+    it('uses estimated pass count for predicted packaging markers', () => {
+        const marks = buildPassIndicator(undefined, true, 4);
+        expect(marks.visible).toBe(true);
+        expect(marks.marks).toBe('+++');
+        expect(marks.expectedOnly).toBe(true);
+        expect(marks.totalPassCount).toBe(4);
+        expect(marks.extraPassCount).toBe(3);
         expect(marks.exactCount).toBeNull();
     });
 });
