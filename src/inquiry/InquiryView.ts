@@ -9,6 +9,7 @@ import {
     setTooltip,
     TAbstractFile,
     TFile,
+    TFolder,
     ToggleComponent,
     WorkspaceLeaf,
     normalizePath
@@ -33,7 +34,7 @@ import {
 import type { InquiryClassConfig, InquiryMaterialMode, InquiryPromptConfig, InquiryPromptSlot, OmnibusProgressState } from '../types/settings';
 import { buildDefaultInquiryPromptConfig, getBuiltInPromptSeed, getCanonicalPromptText, normalizeInquiryPromptConfig } from './prompts';
 import { ensureInquiryArtifactFolder, getMostRecentArtifactFile, resolveInquiryArtifactFolder } from './utils/artifacts';
-import { ensureInquiryContentLogFolder, ensureInquiryLogFolder } from './utils/logs';
+import { ensureInquiryContentLogFolder, ensureInquiryLogFolder, resolveInquiryLogFolder } from './utils/logs';
 import { openOrRevealFile } from '../utils/fileUtils';
 import { extractTokenUsage, formatAiLogContent, formatDuration, sanitizeLogPayload, type AiLogStatus } from '../ai/log';
 import { getCredentialSecretId } from '../ai/credentials/credentials';
@@ -359,6 +360,79 @@ class InquiryPurgeConfirmationModal extends Modal {
 
     onClose(): void {
         this.contentEl.empty();
+    }
+}
+
+class InquiryCancelRunModal extends Modal {
+    private didResolve = false;
+
+    constructor(
+        app: App,
+        private estimateLabel: string,
+        private onResolve: (confirmed: boolean) => void
+    ) {
+        super(app);
+    }
+
+    onOpen(): void {
+        const { contentEl, modalEl } = this;
+        contentEl.empty();
+
+        if (modalEl) {
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell');
+            modalEl.style.width = '520px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+        }
+
+        contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-inquiry-cancel-modal');
+
+        const header = contentEl.createDiv({ cls: 'ert-modal-header' });
+        header.createSpan({ cls: 'ert-modal-badge', text: 'Inquiry' });
+        header.createDiv({ cls: 'ert-modal-title', text: 'Cancel Inquiry Run?' });
+        header.createDiv({
+            cls: 'ert-modal-subtitle',
+            text: 'The provider call may continue in the background, but this run result will be discarded.'
+        });
+
+        const panel = contentEl.createDiv({ cls: 'ert-panel ert-panel--glass ert-stack' });
+        panel.createDiv({ cls: 'ert-inquiry-cancel-modal-message', text: 'Stop this active run now?' });
+        if (this.estimateLabel.trim()) {
+            panel.createDiv({
+                cls: 'ert-inquiry-cancel-modal-estimate',
+                text: `Rough run time estimate: ${this.estimateLabel}.`
+            });
+        }
+        panel.createDiv({
+            cls: 'ert-inquiry-cancel-modal-note',
+            text: 'You can open the Inquiry Log if this run later fails.'
+        });
+
+        const actions = contentEl.createDiv({ cls: 'ert-modal-actions' });
+        new ButtonComponent(actions)
+            .setButtonText('Keep Running')
+            .onClick(() => {
+                this.resolveOnce(false);
+                this.close();
+            });
+        new ButtonComponent(actions)
+            .setButtonText('Cancel Run')
+            .setWarning()
+            .onClick(() => {
+                this.resolveOnce(true);
+                this.close();
+            });
+    }
+
+    onClose(): void {
+        this.contentEl.empty();
+        this.resolveOnce(false);
+    }
+
+    private resolveOnce(confirmed: boolean): void {
+        if (this.didResolve) return;
+        this.didResolve = true;
+        this.onResolve(confirmed);
     }
 }
 
@@ -864,6 +938,7 @@ type EngineFailureGuidance = {
     message: string;
     buttonLabel: string;
     targets: AiSettingsFocus[];
+    action?: 'settings' | 'open-log';
 };
 type InquiryReadinessUiState = {
     readiness: InquiryReadinessResult;
@@ -992,6 +1067,7 @@ export class InquiryView extends ItemView {
     private previewGroup?: SVGGElement;
     private previewHero?: SVGTextElement;
     private previewMeta?: SVGTextElement;
+    private previewRunningNote?: SVGTextElement;
     private previewFooter?: SVGTextElement;
     private previewClickTarget?: SVGRectElement;
     private previewRows: InquiryPreviewRow[] = [];
@@ -1051,6 +1127,9 @@ export class InquiryView extends ItemView {
     private sessionStore: InquirySessionStore;
     private minimapResultPreviewActive = false;
     private guidanceState: InquiryGuidanceState = 'ready';
+    private inquiryRunTokenCounter = 0;
+    private activeInquiryRunToken = 0;
+    private cancelledInquiryRunTokens = new Set<number>();
 
     constructor(leaf: WorkspaceLeaf, plugin: RadialTimelinePlugin) {
         super(leaf);
@@ -1127,8 +1206,12 @@ export class InquiryView extends ItemView {
 
     private renderDesktopLayout(): void {
         this.contentEl.addClass('ert-inquiry-root');
-        this.registerDomEvent(this.contentEl, 'click', () => {
+        this.registerDomEvent(this.contentEl, 'click', (event: MouseEvent) => {
             if (!this.isErrorState()) return;
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+            const backgroundTarget = target.closest('.ert-inquiry-bg, .ert-inquiry-bg-image');
+            if (!backgroundTarget) return;
             this.dismissError();
         }, { capture: true });
         const svg = this.createSvgElement('svg');
@@ -1320,6 +1403,16 @@ export class InquiryView extends ItemView {
         const panel = this.createSvgGroup(parent, 'ert-inquiry-preview', 0, PREVIEW_PANEL_Y);
         this.previewGroup = panel;
         this.registerDomEvent(panel as unknown as HTMLElement, 'click', (event: MouseEvent) => {
+            if (this.state.isRunning) {
+                event.stopPropagation();
+                void this.handleRunningPreviewCancelClick();
+                return;
+            }
+            if (this.isErrorState()) {
+                event.stopPropagation();
+                void this.openInquiryErrorLog();
+                return;
+            }
             if (!this.isResultsState()) return;
             event.stopPropagation();
             this.dismissResults();
@@ -1331,6 +1424,11 @@ export class InquiryView extends ItemView {
         clickTarget.setAttribute('pointer-events', 'all');
         panel.appendChild(clickTarget);
         this.previewClickTarget = clickTarget;
+
+        const runningNote = this.createSvgText(panel, 'ert-inquiry-preview-running-note ert-hidden', '', 0, -24);
+        runningNote.setAttribute('text-anchor', 'middle');
+        runningNote.setAttribute('dominant-baseline', 'hanging');
+        this.previewRunningNote = runningNote;
 
         const hero = this.createSvgText(panel, 'ert-inquiry-preview-hero', '', 0, PREVIEW_PANEL_PADDING_Y);
         hero.setAttribute('text-anchor', 'middle');
@@ -1627,6 +1725,10 @@ export class InquiryView extends ItemView {
             const guidance = this.enginePanelFailureGuidance;
             this.pendingGuardQuestion = undefined;
             this.hideEnginePanel();
+            if (guidance.action === 'open-log') {
+                void this.openInquiryErrorLog();
+                return;
+            }
             this.openAiSettings(guidance.targets);
             return;
         }
@@ -1672,54 +1774,13 @@ export class InquiryView extends ItemView {
         const result = this.state.activeResult;
         if (!result) return null;
         if (!this.isErrorResult(result)) return null;
-        const detail = [
-            result.summary,
-            result.summaryFlow,
-            result.summaryDepth,
-            result.aiStatus,
-            result.aiReason,
-            ...result.findings.map(finding => finding.headline || ''),
-            ...result.findings.flatMap(finding => finding.bullets || [])
-        ]
-            .filter(Boolean)
-            .join(' ')
-            .toLowerCase();
-
-        if (detail.includes('no model satisfies capability floor')) {
-            const providerMatch = detail.match(/provider\s+([a-z0-9_-]+)/);
-            const providerRaw = providerMatch?.[1] || this.plugin.settings.defaultAiProvider || 'openai';
-            const providerLabel = this.getInquiryProviderLabel(
-                (providerRaw === 'anthropic' || providerRaw === 'gemini' || providerRaw === 'openai' || providerRaw === 'local')
-                    ? providerRaw
-                    : 'openai'
-            );
-            return {
-                message: `${providerLabel} cannot run this Inquiry setup. In Settings > AI Strategy, update Provider or Thinking Style, then retry.`,
-                buttonLabel: 'Adjust Settings',
-                targets: ['provider', 'thinking-style', 'access-level']
-            };
-        }
-
-        if (detail.includes('safe limit for a single pass') || detail.includes('single-pass only')) {
-            return {
-                message: 'This request exceeds the safe limit for a single pass. Switch Execution Preference to Automatic, or reduce scope.',
-                buttonLabel: 'Adjust Settings',
-                targets: ['large-manuscript-handling', 'execution-preference']
-            };
-        }
-
-        if (result.aiReason === 'auth') {
-            return {
-                message: 'Provider credentials need attention. In Settings > AI, verify your provider and saved key details.',
-                buttonLabel: 'Adjust Settings',
-                targets: ['provider']
-            };
-        }
-
+        const reason = this.formatApiErrorReason(result);
+        const reasonSuffix = reason ? ` (${reason})` : '';
         return {
-            message: 'Inquiry failed. Open Settings > AI to check Provider and Thinking Style before retrying.',
-            buttonLabel: 'Adjust Settings',
-            targets: ['provider', 'thinking-style', 'access-level']
+            message: `Inquiry failed${reasonSuffix}. Open the Inquiry Log for a detailed error report.`,
+            buttonLabel: 'Open Log',
+            targets: [],
+            action: 'open-log'
         };
     }
 
@@ -2390,7 +2451,7 @@ export class InquiryView extends ItemView {
         const tooltip = status === 'unsaved'
             ? 'Briefing · Save latest brief'
             : 'Briefing · Recent inquiries';
-        this.artifactButton.setAttribute('data-tooltip', this.balanceTooltipText(tooltip));
+        addTooltipData(this.artifactButton, this.balanceTooltipText(tooltip), 'left');
     }
 
     private async handleBriefingSaveClick(): Promise<void> {
@@ -2636,6 +2697,46 @@ export class InquiryView extends ItemView {
         }
         const linkPath = `${file.path}#^${anchorId}`;
         await this.app.workspace.openLinkText(linkPath, '');
+    }
+
+    private getMostRecentInquiryLogFile(): TFile | null {
+        const folderPath = resolveInquiryLogFolder();
+        const folder = this.app.vault.getAbstractFileByPath(folderPath);
+        if (!(folder instanceof TFolder)) return null;
+
+        let latest: TFile | null = null;
+        const scan = (node: TAbstractFile): void => {
+            if (node instanceof TFile) {
+                if (node.extension !== 'md') return;
+                if (!latest || node.stat.mtime > latest.stat.mtime) {
+                    latest = node;
+                }
+                return;
+            }
+            if (node instanceof TFolder) {
+                node.children.forEach(child => scan(child));
+            }
+        };
+        scan(folder);
+        return latest;
+    }
+
+    private async openLatestInquiryLogForContext(): Promise<boolean> {
+        const activeSession = this.state.activeSessionId
+            ? this.sessionStore.peekSession(this.state.activeSessionId)
+            : undefined;
+        const sessionLogPath = activeSession?.logPath;
+        if (sessionLogPath) {
+            const sessionLog = this.app.vault.getAbstractFileByPath(sessionLogPath);
+            if (sessionLog instanceof TFile) {
+                await openOrRevealFile(this.app, sessionLog);
+                return true;
+            }
+        }
+        const fallback = this.getMostRecentInquiryLogFile();
+        if (!fallback) return false;
+        await openOrRevealFile(this.app, fallback);
+        return true;
     }
 
     private createSvgElement<K extends keyof SVGElementTagNameMap>(tag: K): SVGElementTagNameMap[K] {
@@ -3430,14 +3531,18 @@ export class InquiryView extends ItemView {
             lockedPromptId: this.state.isRunning ? this.state.activeQuestionId : null,
             onPromptSelect: (zone, promptId) => {
                 if (this.isInquiryRunDisabled()) return;
-                this.clearErrorStateForAction();
                 if (this.state.isRunning) {
                     this.notifyInteraction('Inquiry running. Please wait.');
                     return;
                 }
-                this.setSelectedPrompt(zone, promptId);
                 const prompt = this.getPromptOptions(zone)
                     .find(item => item.id === promptId);
+                if (prompt && this.isErrorState() && this.state.activeResult?.questionId === prompt.id) {
+                    void this.openInquiryErrorLog();
+                    return;
+                }
+                this.clearErrorStateForAction();
+                this.setSelectedPrompt(zone, promptId);
                 if (prompt) {
                     void this.handleQuestionClick(prompt);
                 } else {
@@ -3481,7 +3586,6 @@ export class InquiryView extends ItemView {
 
     private handlePromptClick(zone: InquiryZone): void {
         if (this.isInquiryRunDisabled()) return;
-        this.clearErrorStateForAction();
         if (this.state.isRunning) {
             this.notifyInteraction('Inquiry running. Please wait.');
             return;
@@ -3501,6 +3605,11 @@ export class InquiryView extends ItemView {
             this.notifyInteraction('No questions configured for this zone.');
             return;
         }
+        if (this.isErrorState() && this.state.activeResult?.questionId === nextPrompt.id) {
+            void this.openInquiryErrorLog();
+            return;
+        }
+        this.clearErrorStateForAction();
         if (nextPrompt.id !== currentId) {
             this.setSelectedPrompt(zone, nextPrompt.id);
         }
@@ -4160,7 +4269,7 @@ export class InquiryView extends ItemView {
             const rowY = rowIndex === 0 ? rowTopY : rowBottomY;
             const x = Math.round(pos - (tickWidth / 2));
             const y = Math.round(rowY);
-            const tick = this.createSvgGroup(this.minimapTicksEl, 'ert-inquiry-minimap-tick rt-tooltip-target', x, y);
+            const tick = this.createSvgGroup(this.minimapTicksEl, 'ert-inquiry-minimap-tick', x, y);
             const isSagaScope = this.state.scope === 'saga';
             if (isSagaScope) {
                 tick.classList.add('is-saga');
@@ -4210,9 +4319,8 @@ export class InquiryView extends ItemView {
             } else {
                 tick.removeAttribute('data-scene-id');
             }
-            tick.setAttribute('data-tooltip', this.balanceTooltipText(fullLabel));
-            tick.setAttribute('data-tooltip-placement', 'bottom');
-            tick.setAttribute('data-tooltip-offset-y', '6');
+            addTooltipData(tick, this.balanceTooltipText(fullLabel), 'bottom');
+            tick.setAttribute('data-rt-tooltip-offset-y', '6');
             this.registerDomEvent(tick as unknown as HTMLElement, 'click', (event: MouseEvent) => {
                 this.clearErrorStateForAction();
                 if (this.state.isRunning) {
@@ -5786,10 +5894,8 @@ export class InquiryView extends ItemView {
         }
 
         const tooltip = this.buildCorpusCcTooltip(entry, stats, thresholds, tier, isMismatch, wordCount);
-        slot.group.classList.add('rt-tooltip-target');
-        slot.group.setAttribute('data-tooltip', tooltip);
-        slot.group.setAttribute('data-tooltip-placement', 'left');
-        slot.group.setAttribute('data-tooltip-offset-x', '10');
+        addTooltipData(slot.group, tooltip, 'left');
+        slot.group.setAttribute('data-rt-tooltip-offset-x', '10');
         if (entry.filePath) {
             slot.group.classList.add('is-openable');
             slot.group.setAttribute('data-file-path', entry.filePath);
@@ -6379,8 +6485,9 @@ export class InquiryView extends ItemView {
         this.previewLocked = true;
         this.previewGroup.classList.add('is-visible', 'is-error');
         this.previewGroup.classList.remove('is-locked', 'is-results');
+        this.setPreviewRunningNoteText('');
         this.resetPreviewRowLabels();
-        this.setPreviewFooterText('Click a question to try again.');
+        this.setPreviewFooterText('Click panel to open the Inquiry Log.');
         this.updatePromptPreview(zone, this.state.mode, 'Inquiry paused.', emptyRows, meta, { hideEmpty: true });
     }
 
@@ -6394,7 +6501,7 @@ export class InquiryView extends ItemView {
                 const label = tick.getAttribute('data-label') || '';
                 if (label) {
                     const fullLabel = tick.getAttribute('data-full-label') || label;
-                    tick.setAttribute('data-tooltip', this.balanceTooltipText(fullLabel));
+                    addTooltipData(tick, this.balanceTooltipText(fullLabel), 'bottom');
                 }
             });
             return;
@@ -6411,7 +6518,7 @@ export class InquiryView extends ItemView {
             const tooltip = finding
                 ? this.buildFindingTooltip(label, finding)
                 : fullLabel;
-            tick.setAttribute('data-tooltip', tooltip);
+            addTooltipData(tick, tooltip, 'bottom');
         });
     }
 
@@ -6437,9 +6544,10 @@ export class InquiryView extends ItemView {
         const hasPrev = books.length > 1 && current > 0;
         const hasNext = books.length > 1 && current >= 0 && current < books.length - 1;
         const lockout = this.isInquiryGuidanceLockout();
+        const running = this.state.isRunning;
 
-        this.setIconButtonDisabled(this.navPrevButton, lockout || !hasPrev);
-        this.setIconButtonDisabled(this.navNextButton, lockout || !hasNext);
+        this.setIconButtonDisabled(this.navPrevButton, running || lockout || !hasPrev);
+        this.setIconButtonDisabled(this.navNextButton, running || lockout || !hasNext);
 
         const prevBook = hasPrev ? books[current - 1] : undefined;
         const nextBook = hasNext ? books[current + 1] : undefined;
@@ -6533,10 +6641,11 @@ export class InquiryView extends ItemView {
         const runDisabled = this.isInquiryRunDisabled();
         const blocked = this.isInquiryBlocked();
         const lockout = this.isInquiryGuidanceLockout();
+        const running = this.state.isRunning;
 
         if (this.rootSvg) {
             this.rootSvg.classList.toggle('is-inquiry-blocked', runDisabled);
-            this.rootSvg.classList.toggle('is-run-locked', runDisabled);
+            this.rootSvg.classList.toggle('is-run-locked', runDisabled || running);
             this.rootSvg.classList.toggle('is-no-scenes', state === 'no-scenes');
             this.rootSvg.classList.toggle('is-guidance-lockout', lockout);
         }
@@ -6544,29 +6653,30 @@ export class InquiryView extends ItemView {
         this.contentEl.classList.toggle('is-guidance-lockout', lockout);
 
         this.zonePromptElements.forEach(({ group }) => {
-            group.setAttribute('aria-disabled', runDisabled ? 'true' : 'false');
-            group.setAttribute('tabindex', runDisabled ? '-1' : '0');
+            const disabled = runDisabled || running;
+            group.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+            group.setAttribute('tabindex', disabled ? '-1' : '0');
         });
 
-        this.setIconButtonDisabled(this.apiSimulationButton, runDisabled);
-        this.setIconButtonDisabled(this.scopeToggleButton, lockout);
-        this.setIconButtonDisabled(this.engineBadgeGroup, lockout);
-        this.setIconButtonDisabled(this.artifactButton, lockout);
-        this.setIconButtonDisabled(this.detailsToggle, lockout);
+        this.setIconButtonDisabled(this.apiSimulationButton, runDisabled || running);
+        this.setIconButtonDisabled(this.scopeToggleButton, lockout || running);
+        this.setIconButtonDisabled(this.engineBadgeGroup, lockout || running);
+        this.setIconButtonDisabled(this.artifactButton, lockout || running);
+        this.setIconButtonDisabled(this.detailsToggle, lockout || running);
 
         if (this.briefingSaveButton) {
-            this.briefingSaveButton.disabled = blocked || lockout;
+            this.briefingSaveButton.disabled = blocked || lockout || running;
         }
         if (this.briefingClearButton) {
-            this.briefingClearButton.disabled = lockout;
+            this.briefingClearButton.disabled = lockout || running;
         }
         if (this.briefingResetButton) {
-            this.briefingResetButton.disabled = lockout || this.state.isRunning || !this.hasCorpusOverrides();
+            this.briefingResetButton.disabled = lockout || running || !this.hasCorpusOverrides();
         }
         if (this.briefingPurgeButton) {
-            this.briefingPurgeButton.disabled = lockout || this.state.isRunning;
+            this.briefingPurgeButton.disabled = lockout || running;
         }
-        if (lockout) {
+        if (lockout || running) {
             this.hideBriefingPanel(true);
             this.hideEnginePanel();
         }
@@ -6857,6 +6967,10 @@ export class InquiryView extends ItemView {
     private handleGlyphClick(): void {
         if (this.isInquiryGuidanceLockout()) return;
         this.clearErrorStateForAction();
+        if (this.state.isRunning) {
+            this.notifyInteraction('Inquiry running. Please wait.');
+            return;
+        }
         if (this.state.scope === 'saga') {
             this.state.scope = 'book';
             this.refreshUI();
@@ -6865,7 +6979,57 @@ export class InquiryView extends ItemView {
         this.glyph?.root.classList.toggle('is-expanded');
     }
 
+    private beginInquiryRunToken(): number {
+        const token = ++this.inquiryRunTokenCounter;
+        this.activeInquiryRunToken = token;
+        this.cancelledInquiryRunTokens.delete(token);
+        return token;
+    }
+
+    private finishInquiryRunToken(token: number): void {
+        this.cancelledInquiryRunTokens.delete(token);
+        if (this.activeInquiryRunToken === token) {
+            this.activeInquiryRunToken = 0;
+        }
+    }
+
+    private shouldDiscardInquiryRunOutcome(token: number): boolean {
+        if (!token) return false;
+        if (this.cancelledInquiryRunTokens.has(token)) return true;
+        return this.activeInquiryRunToken !== token;
+    }
+
+    private requestActiveInquiryCancellation(): void {
+        if (!this.state.isRunning) return;
+        const token = this.activeInquiryRunToken;
+        if (!token) {
+            this.notifyInteraction('This run cannot be cancelled from the preview panel.');
+            return;
+        }
+        this.cancelledInquiryRunTokens.add(token);
+        if (this.activeInquiryRunToken === token) {
+            this.activeInquiryRunToken = 0;
+        }
+        this.state.isRunning = false;
+        this.pendingGuardQuestion = undefined;
+        this.unlockPromptPreview();
+        this.setApiStatus('idle');
+        this.refreshUI();
+        this.notifyInteraction('Inquiry cancel requested. This run will be discarded when the provider call returns.');
+    }
+
+    private async openInquiryErrorLog(): Promise<void> {
+        const opened = await this.openLatestInquiryLogForContext();
+        if (!opened) {
+            new Notice('No Inquiry log found for this run.');
+        }
+    }
+
     private async handleQuestionClick(question: InquiryQuestion): Promise<void> {
+        if (this.isErrorState() && this.state.activeResult?.questionId === question.id) {
+            await this.openInquiryErrorLog();
+            return;
+        }
         await this.runInquiry(question);
     }
 
@@ -6973,96 +7137,110 @@ export class InquiryView extends ItemView {
                 modelLabel: engineSelection.modelLabel
             }
         };
+        const runToken = this.beginInquiryRunToken();
         try {
-            // Lens selection is UI-only; do not vary question, evidence, or verdict structure by lens.
-            // Each inquiry produces two compressed answers (flow + depth). Keep this dual-answer model intact.
-            const runOutput = await this.runner.runWithTrace(runnerInput);
-            result = runOutput.result;
-            runTrace = runOutput.trace;
-        } catch (error) {
-            result = this.buildErrorFallback(question, focusLabel, manifest.fingerprint, error);
-            const message = error instanceof Error ? error.message : String(error);
-            runTrace = await this.buildFallbackTrace(runnerInput, `Runner exception: ${message}`);
-        }
-        const completedAt = new Date();
-        result.submittedAt = submittedAt.toISOString();
-        result.completedAt = completedAt.toISOString();
-        result.roundTripMs = completedAt.getTime() - submittedAt.getTime();
-        const tokenEstimate = runTrace?.tokenEstimate ?? this.getTokenEstimateForQuestion(question.question);
-        result.tokenEstimateInput = tokenEstimate.inputTokens;
-        result.tokenEstimateTier = this.getTokenTier(tokenEstimate.inputTokens);
-        result.aiModelNextRunOnly = engineSelection.nextRunOnly;
-        result = this.applyCorpusOverrideSummary(result);
-        const rawResult = result;
-        result = this.normalizeLegacyResult(result);
-        const normalizationNotes = this.collectNormalizationNotes(rawResult, result);
+            try {
+                // Lens selection is UI-only; do not vary question, evidence, or verdict structure by lens.
+                // Each inquiry produces two compressed answers (flow + depth). Keep this dual-answer model intact.
+                const runOutput = await this.runner.runWithTrace(runnerInput);
+                result = runOutput.result;
+                runTrace = runOutput.trace;
+            } catch (error) {
+                result = this.buildErrorFallback(question, focusLabel, manifest.fingerprint, error);
+                const message = error instanceof Error ? error.message : String(error);
+                runTrace = await this.buildFallbackTrace(runnerInput, `Runner exception: ${message}`);
+            }
+            if (this.shouldDiscardInquiryRunOutcome(runToken)) {
+                return;
+            }
+            const completedAt = new Date();
+            result.submittedAt = submittedAt.toISOString();
+            result.completedAt = completedAt.toISOString();
+            result.roundTripMs = completedAt.getTime() - submittedAt.getTime();
+            const tokenEstimate = runTrace?.tokenEstimate ?? this.getTokenEstimateForQuestion(question.question);
+            result.tokenEstimateInput = tokenEstimate.inputTokens;
+            result.tokenEstimateTier = this.getTokenTier(tokenEstimate.inputTokens);
+            result.aiModelNextRunOnly = engineSelection.nextRunOnly;
+            result = this.applyCorpusOverrideSummary(result);
+            const rawResult = result;
+            result = this.normalizeLegacyResult(result);
+            const normalizationNotes = this.collectNormalizationNotes(rawResult, result);
 
-        if (cacheEnabled && !this.isErrorResult(result)) {
-            cacheStatus = 'fresh';
-        } else if (!cacheEnabled) {
-            cacheStatus = 'missing';
-        }
+            if (cacheEnabled && !this.isErrorResult(result)) {
+                cacheStatus = 'fresh';
+            } else if (!cacheEnabled) {
+                cacheStatus = 'missing';
+            }
 
-        let session: InquirySession = {
-            key,
-            baseKey,
-            result,
-            createdAt: Date.now(),
-            lastAccessed: Date.now(),
-            status: this.resolveSessionStatusFromResult(result),
-            focusBookId,
-            focusSceneId,
-            scope: this.state.scope,
-            questionZone: question.zone
-        };
-        this.sessionStore.setSession(session);
-        const traceForLog = runTrace
-            ?? await this.buildFallbackTrace(runnerInput, 'Trace unavailable; log created without prompt capture.');
-        await this.saveInquiryLog(result, traceForLog, manifest, {
-            sessionKey: session.key,
-            normalizationNotes
-        });
-        session = this.sessionStore.peekSession(session.key) ?? session;
-
-        const autoSaveEnabled = this.plugin.settings.inquiryAutoSave ?? true;
-        const shouldAutoSave = autoSaveEnabled
-            && !this.isErrorResult(result)
-            && session.status !== 'simulated'
-            && session.status !== 'saved'
-            && !session.briefPath;
-        if (shouldAutoSave) {
-            await this.saveBrief(result, {
-                openFile: false,
-                silent: true,
-                sessionKey: session.key
+            let session: InquirySession = {
+                key,
+                baseKey,
+                result,
+                createdAt: Date.now(),
+                lastAccessed: Date.now(),
+                status: this.resolveSessionStatusFromResult(result),
+                focusBookId,
+                focusSceneId,
+                scope: this.state.scope,
+                questionZone: question.zone
+            };
+            this.sessionStore.setSession(session);
+            const traceForLog = runTrace
+                ?? await this.buildFallbackTrace(runnerInput, 'Trace unavailable; log created without prompt capture.');
+            await this.saveInquiryLog(result, traceForLog, manifest, {
+                sessionKey: session.key,
+                normalizationNotes
             });
+            if (this.shouldDiscardInquiryRunOutcome(runToken)) {
+                return;
+            }
             session = this.sessionStore.peekSession(session.key) ?? session;
-        }
 
-        const elapsed = Date.now() - startTime;
-        if (elapsed < MIN_PROCESSING_MS) {
-            await new Promise(resolve => window.setTimeout(resolve, MIN_PROCESSING_MS - elapsed));
-        }
+            const autoSaveEnabled = this.plugin.settings.inquiryAutoSave ?? true;
+            const shouldAutoSave = autoSaveEnabled
+                && !this.isErrorResult(result)
+                && session.status !== 'simulated'
+                && session.status !== 'saved'
+                && !session.briefPath;
+            if (shouldAutoSave) {
+                await this.saveBrief(result, {
+                    openFile: false,
+                    silent: true,
+                    sessionKey: session.key
+                });
+                session = this.sessionStore.peekSession(session.key) ?? session;
+            }
 
-        if (engineSelection.usedOverride) {
-            this.refreshEnginePanel();
-        }
+            const elapsed = Date.now() - startTime;
+            if (elapsed < MIN_PROCESSING_MS) {
+                await new Promise(resolve => window.setTimeout(resolve, MIN_PROCESSING_MS - elapsed));
+            }
 
-        this.applySession({
-            result,
-            key: session.key,
-            focusBookId: session.focusBookId,
-            focusSceneId: session.focusSceneId,
-            scope: session.scope,
-            questionZone: session.questionZone
-        }, cacheStatus);
-        if (this.isErrorResult(result)) {
-            this.setApiStatus('error', this.formatApiErrorReason(result));
-        } else {
-            this.setApiStatus('success');
-        }
-        if (this.shouldAutoPopulatePendingEdits()) {
-            void this.writeInquiryPendingEdits(session, result);
+            if (engineSelection.usedOverride) {
+                this.refreshEnginePanel();
+            }
+            if (this.shouldDiscardInquiryRunOutcome(runToken)) {
+                return;
+            }
+
+            this.applySession({
+                result,
+                key: session.key,
+                focusBookId: session.focusBookId,
+                focusSceneId: session.focusSceneId,
+                scope: session.scope,
+                questionZone: session.questionZone
+            }, cacheStatus);
+            if (this.isErrorResult(result)) {
+                this.setApiStatus('error', this.formatApiErrorReason(result));
+            } else {
+                this.setApiStatus('success');
+            }
+            if (this.shouldAutoPopulatePendingEdits()) {
+                void this.writeInquiryPendingEdits(session, result);
+            }
+        } finally {
+            this.finishInquiryRunToken(runToken);
         }
     }
 
@@ -8885,6 +9063,10 @@ export class InquiryView extends ItemView {
     }
 
     private shiftFocus(delta: number): void {
+        if (this.state.isRunning) {
+            this.notifyInteraction('Inquiry running. Please wait.');
+            return;
+        }
         this.clearErrorStateForAction();
         const books = this.getNavigationBooks();
         const count = books.length;
@@ -8983,31 +9165,16 @@ export class InquiryView extends ItemView {
     }
 
     private buildFindingTooltip(label: string, finding: InquiryFinding): string {
-        const MAX_LINES = 4;
-        const MAX_CHARS = 90;
-        const lines: string[] = [];
-        let titleLine = `${label}: ${finding.headline.trim()}`;
-        if (titleLine.length > MAX_CHARS) {
-            titleLine = titleLine.substring(0, MAX_CHARS - 1).trimEnd() + '…';
+        const MAX_CHARS = 220;
+        const lead = (finding.bullets || [])
+            .map(entry => entry.replace(/\s+/g, ' ').trim())
+            .find(Boolean);
+        const source = lead || this.normalizeInquiryHeadline(finding.headline);
+        let line = `${label}: ${source}`;
+        if (line.length > MAX_CHARS) {
+            line = line.slice(0, MAX_CHARS - 1).trimEnd() + '…';
         }
-        lines.push(titleLine);
-        for (const bullet of finding.bullets) {
-            if (lines.length >= MAX_LINES) break;
-            const trimmed = bullet.trim();
-            if (!trimmed) continue;
-            let bulletLine = `  • ${trimmed}`;
-            if (bulletLine.length > MAX_CHARS) {
-                bulletLine = bulletLine.substring(0, MAX_CHARS - 1).trimEnd() + '…';
-            }
-            lines.push(bulletLine);
-        }
-        if (lines.length >= MAX_LINES && finding.bullets.length > lines.length - 1) {
-            const last = lines[lines.length - 1];
-            if (!last.endsWith('…')) {
-                lines[lines.length - 1] = last.trimEnd() + ' …';
-            }
-        }
-        return lines.join('\n');
+        return line;
     }
 
     private handleMinimapHover(label: string, displayLabel?: string): void {
@@ -9080,14 +9247,13 @@ export class InquiryView extends ItemView {
     ): Map<string, InquiryFinding> {
         const map = new Map<string, InquiryFinding>();
         if (!result) return map;
-        result.findings.forEach(finding => {
+        const ordered = this.getOrderedFindings(result, result.mode || this.state.mode);
+        ordered.forEach(finding => {
             if (!this.isFindingHit(finding)) return;
             const label = this.resolveFindingChipLabel(finding, result, items);
             if (!label) return;
-            const existing = map.get(label);
-            if (!existing || this.getImpactRank(finding.impact) > this.getImpactRank(existing.impact)) {
-                map.set(label, finding);
-            }
+            if (map.has(label)) return;
+            map.set(label, finding);
         });
         return map;
     }
@@ -9139,6 +9305,7 @@ export class InquiryView extends ItemView {
             this.previewHideTimer = undefined;
         }
         this.previewGroup.classList.remove('is-error');
+        this.setPreviewRunningNoteText('');
         this.previewLast = { zone, question };
         this.updatePromptPreview(zone, mode, question, undefined, undefined, { hideEmpty: true });
         this.previewGroup.classList.add('is-visible');
@@ -9250,6 +9417,85 @@ export class InquiryView extends ItemView {
         }
     }
 
+    private setPreviewRunningNoteText(text: string): void {
+        if (!this.previewRunningNote) return;
+        const note = text.trim();
+        this.previewRunningNote.textContent = note;
+        this.previewRunningNote.classList.toggle('ert-hidden', !note);
+    }
+
+    private formatRunDurationEstimate(minSeconds: number, maxSeconds: number): string {
+        const min = Math.max(1, Math.round(minSeconds));
+        const max = Math.max(min, Math.round(maxSeconds));
+        if (max < 60) {
+            return `~${min}-${max}s`;
+        }
+        const minMinutes = Math.max(1, Math.round(min / 60));
+        const maxMinutes = Math.max(minMinutes, Math.round(max / 60));
+        return `~${minMinutes}-${maxMinutes}m`;
+    }
+
+    private estimateRunDurationRange(questionText: string): { minSeconds: number; maxSeconds: number } {
+        const readinessUi = this.buildReadinessUiState(questionText);
+        const passPlan = this.getCurrentPassPlan(readinessUi);
+        const estimatedTokens = Math.max(0, readinessUi.estimateInputTokens || 0);
+        const totalPasses = Math.max(1, passPlan.displayPassCount || 1);
+        const perPassTokens = estimatedTokens > 0
+            ? estimatedTokens / totalPasses
+            : 0;
+        const questionComplexityBoost = Math.min(4, Math.max(0, Math.round((questionText?.trim().length ?? 0) / 90)));
+        const perPassMin = 6 + (perPassTokens / 900) + (questionComplexityBoost * 0.5);
+        const perPassMax = 12 + (perPassTokens / 550) + questionComplexityBoost;
+        const multiPassOverheadMin = Math.max(0, totalPasses - 1) * 5;
+        const multiPassOverheadMax = Math.max(0, totalPasses - 1) * 9;
+        const minSeconds = Math.max(6, (perPassMin * totalPasses) + multiPassOverheadMin);
+        const maxSeconds = Math.max(minSeconds + 6, (perPassMax * totalPasses) + multiPassOverheadMax);
+        return {
+            minSeconds,
+            maxSeconds
+        };
+    }
+
+    private buildRunningCancelNote(questionText: string): string {
+        const estimate = this.estimateRunDurationRange(questionText);
+        const estimateLabel = this.formatRunDurationEstimate(estimate.minSeconds, estimate.maxSeconds);
+        const evidenceMode = this.describeRunEvidenceMode();
+        return `Running now (${evidenceMode}). Rough ETA ${estimateLabel}. Click panel to cancel.`;
+    }
+
+    private describeRunEvidenceMode(): string {
+        const stats = this.getPayloadStats();
+        const summaryCount = stats.sceneSynopsisUsed + stats.bookOutlineSummaryCount + stats.sagaOutlineSummaryCount;
+        const bodyCount = stats.sceneFullTextCount + stats.bookOutlineFullCount + stats.sagaOutlineFullCount;
+        if (summaryCount > 0 && bodyCount === 0) return 'Summary evidence';
+        if (bodyCount > 0 && summaryCount === 0) return 'Body evidence';
+        if (summaryCount > 0 && bodyCount > 0) return 'Mixed evidence';
+        return 'Corpus evidence';
+    }
+
+    private async promptCancelInquiryRun(questionText: string): Promise<boolean> {
+        const estimate = this.estimateRunDurationRange(questionText);
+        const estimateLabel = this.formatRunDurationEstimate(estimate.minSeconds, estimate.maxSeconds);
+        return await new Promise<boolean>(resolve => {
+            const modal = new InquiryCancelRunModal(this.app, estimateLabel, confirmed => resolve(confirmed));
+            modal.open();
+        });
+    }
+
+    private async handleRunningPreviewCancelClick(): Promise<void> {
+        if (!this.state.isRunning) return;
+        if (!this.activeInquiryRunToken) {
+            this.notifyInteraction('Cancel is available for active single-question Inquiry runs.');
+            return;
+        }
+        const questionText = this.previewLast?.question
+            || this.getCurrentPromptQuestion()
+            || '';
+        const confirmed = await this.promptCancelInquiryRun(questionText);
+        if (!confirmed) return;
+        this.requestActiveInquiryCancellation();
+    }
+
     private updatePromptPreview(
         zone: InquiryZone,
         mode: InquiryMode,
@@ -9333,6 +9579,7 @@ export class InquiryView extends ItemView {
         this.previewLocked = true;
         this.previewGroup.classList.add('is-visible', 'is-results');
         this.previewGroup.classList.remove('is-locked', 'is-error');
+        this.setPreviewRunningNoteText('');
         const hero = this.buildResultsHeroText(result, mode);
         const meta = this.buildResultsMetaText(result, mode, zone);
         const chips = this.buildResultsChips(result, mode);
@@ -9719,6 +9966,13 @@ export class InquiryView extends ItemView {
         const startX = -PREVIEW_PANEL_WIDTH / 2;
         let startY = 0;
         let height = baseHeight;
+        if (this.state.isRunning && this.previewRunningNote && !this.previewRunningNote.classList.contains('ert-hidden')) {
+            const noteTop = Number(this.previewRunningNote.getAttribute('y') ?? '-24');
+            if (Number.isFinite(noteTop)) {
+                startY = Math.min(startY, noteTop);
+                height = Math.max(height, baseHeight - startY);
+            }
+        }
         if (this.previewFooter && this.previewGroup?.classList.contains('is-results')) {
             const footerY = Number(this.previewFooter.getAttribute('y') ?? '0');
             if (Number.isFinite(footerY)) {
@@ -9745,8 +9999,9 @@ export class InquiryView extends ItemView {
         this.previewGroup.classList.add('is-visible', 'is-locked');
         this.previewGroup.classList.remove('is-results');
         this.previewGroup.classList.remove('is-error');
+        this.setPreviewRunningNoteText(this.buildRunningCancelNote(question.question));
         this.resetPreviewRowLabels();
-        this.setPreviewFooterText('');
+        this.setPreviewFooterText('Click panel to cancel.');
         this.updatePromptPreview(question.zone, this.state.mode, question.question, rows, undefined, { hideEmpty: true });
         this.lastReadinessUiState = this.buildReadinessUiState(question.question);
         this.updateMinimapPressureGauge();
@@ -9763,6 +10018,7 @@ export class InquiryView extends ItemView {
             this.previewGroup.classList.remove('is-error');
         }
         this.resetPreviewRowLabels();
+        this.setPreviewRunningNoteText('');
         this.setPreviewFooterText('');
         this.lastReadinessUiState = undefined;
         this.updateMinimapPressureGauge();
@@ -9835,10 +10091,10 @@ export class InquiryView extends ItemView {
         if (!this.previewRows.length) return;
         this.previewRows.forEach(row => {
             row.group.classList.remove('is-token-amber', 'is-token-red');
-            if (row.group.getAttribute('data-tooltip')) {
-                row.group.removeAttribute('data-tooltip');
-            }
+            row.group.removeAttribute('data-tooltip');
             row.group.removeAttribute('data-tooltip-placement');
+            row.group.removeAttribute('data-rt-tooltip');
+            row.group.removeAttribute('data-rt-tooltip-placement');
             row.group.classList.remove('rt-tooltip-target');
         });
         if (this.previewGroup?.classList.contains('is-results')) return;
@@ -10307,10 +10563,14 @@ export class InquiryView extends ItemView {
                 addTooltipData(element, balancedText, placement ?? 'bottom');
                 return;
             }
-            if (element.getAttribute('data-tooltip') === text || element.getAttribute('data-tooltip') === balancedText) {
+            const tooltipValue = element.getAttribute('data-tooltip');
+            const rtTooltipValue = element.getAttribute('data-rt-tooltip');
+            if (tooltipValue === text || tooltipValue === balancedText || rtTooltipValue === text || rtTooltipValue === balancedText) {
                 element.removeAttribute('data-tooltip');
+                element.removeAttribute('data-rt-tooltip');
             }
             element.removeAttribute('data-tooltip-placement');
+            element.removeAttribute('data-rt-tooltip-placement');
             element.classList.remove('rt-tooltip-target');
         });
     }
@@ -10724,6 +10984,78 @@ export class InquiryView extends ItemView {
             .filter(Boolean);
     }
 
+    private formatManifestClassLabel(value: string): string {
+        if (!value) return 'Class';
+        return value
+            .replace(/[_-]+/g, ' ')
+            .trim()
+            .split(/\s+/)
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+    }
+
+    private formatManifestModeLabel(mode?: InquiryMaterialMode): string {
+        const normalized = this.normalizeEvidenceMode(mode);
+        if (normalized === 'summary') return 'Summary';
+        if (normalized === 'full') return 'Body';
+        return 'Off';
+    }
+
+    private resolveSceneLogLabel(frontmatter: Record<string, unknown> | null, file: TFile): string {
+        const rawSceneNumber = frontmatter ? frontmatter['Scene Number'] : undefined;
+        const parsedNumber = Number(typeof rawSceneNumber === 'string' ? rawSceneNumber.trim() : rawSceneNumber);
+        const sceneNumber = Number.isFinite(parsedNumber) ? Math.max(1, Math.floor(parsedNumber)) : null;
+        const rawTitle = frontmatter ? (frontmatter['Title'] ?? frontmatter['title']) : undefined;
+        const title = typeof rawTitle === 'string' ? rawTitle.trim() : '';
+        if (sceneNumber && title) return `${title} (S${sceneNumber})`;
+        if (sceneNumber) return `S${sceneNumber}`;
+        if (title) return title;
+        return file.basename;
+    }
+
+    private resolveManifestEntryLabel(entry: CorpusManifestEntry): string {
+        const file = this.app.vault.getAbstractFileByPath(entry.path);
+        if (file && this.isTFile(file)) {
+            const frontmatter = this.getNormalizedFrontmatter(file);
+            if (entry.class === 'scene') {
+                return this.resolveSceneLogLabel(frontmatter, file);
+            }
+            const rawTitle = frontmatter ? (frontmatter['Title'] ?? frontmatter['title']) : undefined;
+            if (typeof rawTitle === 'string' && rawTitle.trim()) {
+                return rawTitle.trim();
+            }
+            return file.basename;
+        }
+        const fallback = entry.path.split('/').pop();
+        return fallback || entry.path;
+    }
+
+    private buildManifestTocLines(manifest: CorpusManifest | null): string[] {
+        if (!manifest?.entries?.length) {
+            return ['- none'];
+        }
+        const dedupedEntries: CorpusManifestEntry[] = [];
+        const seen = new Set<string>();
+        manifest.entries.forEach(entry => {
+            const key = `${entry.class}::${entry.path}::${this.normalizeEvidenceMode(entry.mode)}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            dedupedEntries.push(entry);
+        });
+
+        dedupedEntries.sort((a, b) => {
+            if (a.class !== b.class) return a.class.localeCompare(b.class);
+            return a.path.localeCompare(b.path, undefined, { numeric: true, sensitivity: 'base' });
+        });
+
+        return dedupedEntries.map(entry => {
+            const classLabel = this.formatManifestClassLabel(entry.class);
+            const modeLabel = this.formatManifestModeLabel(entry.mode);
+            const itemLabel = this.resolveManifestEntryLabel(entry);
+            return `- ${classLabel} · ${modeLabel} · ${itemLabel} (${entry.path})`;
+        });
+    }
+
     private buildInquiryLogContent(
         result: InquiryResult,
         trace: InquiryRunTrace,
@@ -10810,13 +11142,7 @@ export class InquiryView extends ItemView {
         };
 
         const formatClassLabel = (value: string): string => {
-            if (!value) return 'Class';
-            return value
-                .replace(/[_-]+/g, ' ')
-                .trim()
-                .split(/\s+/)
-                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-                .join(' ');
+            return this.formatManifestClassLabel(value);
         };
 
         const buildCorpusSummary = (): string[] => {
@@ -10946,6 +11272,10 @@ export class InquiryView extends ItemView {
 
         lines.push('## Corpus Summary');
         lines.push(...buildCorpusSummary());
+        lines.push('');
+
+        lines.push('## Corpus TOC');
+        lines.push(...this.buildManifestTocLines(manifest));
         lines.push('');
 
         lines.push('## Tokens');
@@ -11083,6 +11413,8 @@ export class InquiryView extends ItemView {
                 contextLines.push(`- Corpus counts: ${countList}`);
             }
         }
+        contextLines.push('', '### Corpus TOC');
+        this.buildManifestTocLines(manifest).forEach(line => contextLines.push(line));
 
         const logContent = formatAiLogContent({
             title,

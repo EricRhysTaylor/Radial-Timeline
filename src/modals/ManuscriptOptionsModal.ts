@@ -59,6 +59,8 @@ export class ManuscriptOptionsModal extends Modal {
     private saveMarkdownArtifact: boolean = true;
     private hasWhenDates: boolean = false;
     private includeMatterUserChoice: boolean = true;
+    private includeSynopsisUserChoice: boolean = true;
+    private hasTouchedMatterToggle: boolean = false;
     private splitMode: 'single' | 'parts' = 'single';
     private splitParts: number = 3;
 
@@ -102,6 +104,7 @@ export class ManuscriptOptionsModal extends Modal {
     private includeMatterCard?: HTMLElement;
     private synopsisRow?: HTMLElement;
     private templateWarningEl?: HTMLElement;
+    private layoutHeaderEl?: HTMLElement;
     private layoutContainerEl?: HTMLElement;
     private selectedLayoutId?: string;
     private manuscriptPresetDescEl?: HTMLElement;
@@ -213,21 +216,31 @@ export class ManuscriptOptionsModal extends Modal {
         // A) OUTPUT
         const outputCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         this.createSectionHeading(outputCard, 'Output', 'file-output');
-        const exportTypeRow = outputCard.createDiv({ cls: 'ert-manuscript-output-row' });
-        exportTypeRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Document type' });
-        const exportRow = exportTypeRow.createDiv({ cls: 'rt-manuscript-pill-row ert-manuscript-pill-row--single' });
+        const outputGrid = outputCard.createDiv({ cls: 'ert-manuscript-output-grid' });
+
+        const exportTypeCol = outputGrid.createDiv({ cls: 'ert-manuscript-output-col' });
+        exportTypeCol.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Document type' });
+        const exportRow = exportTypeCol.createDiv({ cls: 'rt-manuscript-pill-row ert-manuscript-pill-row--single' });
         this.createExportTypePill(exportRow, t('manuscriptModal.exportTypeManuscript'), 'manuscript');
         this.createExportTypePill(exportRow, t('manuscriptModal.exportTypeOutline'), 'outline', !this.isPro, true);
-        const formatGroupRow = outputCard.createDiv({ cls: 'ert-manuscript-output-row' });
-        formatGroupRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Format' });
-        const formatRow = formatGroupRow.createDiv({ cls: 'rt-manuscript-pill-row ert-manuscript-pill-row--single' });
+
+        const formatCol = outputGrid.createDiv({ cls: 'ert-manuscript-output-col' });
+        formatCol.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Format' });
+        const formatRow = formatCol.createDiv({ cls: 'rt-manuscript-pill-row ert-manuscript-pill-row--single' });
         this.createOutputFormatPill(formatRow, t('manuscriptModal.formatMarkdown'), 'markdown', false, 'both');
         this.createOutputFormatPill(formatRow, t('manuscriptModal.formatPdf'), 'pdf', !this.isPro, 'manuscript', true);
 
         // B) PRESETS
         this.manuscriptOptionsCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        this.createSectionHeading(this.manuscriptOptionsCard, t('manuscriptModal.manuscriptPresetHeading'), 'book-open');
-        const presetRow = this.manuscriptOptionsCard.createDiv({ cls: 'rt-manuscript-input-container' });
+        const manuscriptPresetGrid = this.manuscriptOptionsCard.createDiv({ cls: 'ert-manuscript-preset-grid' });
+
+        const presetHeaderCol = manuscriptPresetGrid.createDiv({ cls: 'ert-manuscript-preset-col ert-manuscript-preset-col--header' });
+        this.createSectionHeading(presetHeaderCol, t('manuscriptModal.manuscriptPresetHeading'), 'book-open');
+        this.layoutHeaderEl = manuscriptPresetGrid.createDiv({ cls: 'ert-manuscript-preset-col ert-manuscript-preset-col--header' });
+        this.createSectionHeading(this.layoutHeaderEl, 'Layout', 'layout-template');
+
+        const presetCol = manuscriptPresetGrid.createDiv({ cls: 'ert-manuscript-preset-col ert-manuscript-preset-col--preset' });
+        const presetRow = presetCol.createDiv({ cls: 'rt-manuscript-input-container' });
         this.manuscriptPresetDropdown = new DropdownComponent(presetRow)
             .addOption('novel', t('manuscriptModal.presetNovel'))
             .addOption('screenplay', t('manuscriptModal.presetScreenplay'))
@@ -246,10 +259,10 @@ export class ManuscriptOptionsModal extends Modal {
                 this.updateManuscriptPresetDescription();
             });
         this.styleDropdownProOptions(this.manuscriptPresetDropdown, ['screenplay', 'podcast']);
-        this.manuscriptPresetDescEl = this.manuscriptOptionsCard.createDiv({ cls: 'rt-sub-card-note' });
+        this.manuscriptPresetDescEl = presetCol.createDiv({ cls: 'rt-sub-card-note' });
         this.updateManuscriptPresetDescription();
-        this.layoutContainerEl = this.manuscriptOptionsCard.createDiv({ cls: 'rt-manuscript-layout-picker' });
-        this.templateWarningEl = this.manuscriptOptionsCard.createDiv({ cls: 'rt-manuscript-template-warning' });
+        this.layoutContainerEl = manuscriptPresetGrid.createDiv({ cls: 'rt-manuscript-layout-picker ert-manuscript-preset-col ert-manuscript-preset-col--layout' });
+        this.templateWarningEl = manuscriptPresetGrid.createDiv({ cls: 'rt-manuscript-template-warning ert-manuscript-preset-status' });
 
         this.outlineOptionsCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
         if (!this.isPro) {
@@ -284,16 +297,16 @@ export class ManuscriptOptionsModal extends Modal {
         this.splitSingleInputEl = singleOption.createEl('input', {
             attr: { type: 'radio', name: splitModeGroup, value: 'single' }
         }) as HTMLInputElement;
-        singleOption.createSpan({ text: 'Single file' });
+        singleOption.createSpan({ cls: 'ert-manuscript-split-option-label', text: 'Single file' });
 
         const partsCol = splitModeRow.createDiv({ cls: 'ert-manuscript-split-col ert-manuscript-split-col--parts' });
-        const partsOption = partsCol.createEl('label', { cls: 'ert-manuscript-split-option' });
+        const partsOption = partsCol.createEl('label', { cls: 'ert-manuscript-split-option ert-manuscript-split-option--parts' });
         this.splitPartsRadioInputEl = partsOption.createEl('input', {
             attr: { type: 'radio', name: splitModeGroup, value: 'parts' }
         }) as HTMLInputElement;
-        partsOption.createSpan({ text: 'Split into parts' });
+        partsOption.createSpan({ cls: 'ert-manuscript-split-option-label', text: 'Split into parts' });
         this.splitPartsInputEl = partsOption.createEl('input', {
-            cls: 'ert-input ert-input--xs',
+            cls: 'ert-input ert-input--xs ert-manuscript-split-parts-input',
             attr: { type: 'number', min: '2', max: '20', step: '1', value: String(this.splitParts) }
         }) as HTMLInputElement;
 
@@ -401,6 +414,7 @@ export class ManuscriptOptionsModal extends Modal {
         new ToggleComponent(this.includeMatterCard)
             .setValue(this.includeMatterUserChoice)
             .onChange((value) => {
+                this.hasTouchedMatterToggle = true;
                 this.includeMatterUserChoice = value;
                 this.includeMatter = value;
             });
@@ -410,6 +424,7 @@ export class ManuscriptOptionsModal extends Modal {
         new ToggleComponent(this.synopsisRow)
             .setValue(this.includeSynopsis)
             .onChange((value) => {
+                this.includeSynopsisUserChoice = value;
                 this.includeSynopsis = value;
             });
 
@@ -427,7 +442,7 @@ export class ManuscriptOptionsModal extends Modal {
             });
 
         const artifactRow = publishingBody.createDiv({ cls: 'rt-manuscript-toggle-row' });
-        artifactRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Always save Markdown file' });
+        artifactRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Always save precompile Markdown file' });
         this.markdownArtifactToggle = new ToggleComponent(artifactRow)
             .setValue(this.saveMarkdownArtifact)
             .onChange((value) => {
@@ -435,7 +450,7 @@ export class ManuscriptOptionsModal extends Modal {
             });
         publishingBody.createDiv({
             cls: 'rt-sub-card-note',
-            text: 'When rendering PDF, the Markdown file is saved first.'
+            text: 'When rendering PDF, this saves the precompile Markdown input passed to Pandoc before LaTeX conversion.'
         });
 
         // H) FOOTER
@@ -618,20 +633,23 @@ export class ManuscriptOptionsModal extends Modal {
 
     private resolveExportRules(): {
         includeMatterMode: 'user' | 'forced-off';
+        includeSynopsisMode: 'user' | 'forced-off';
         tocEnabled: boolean;
         tocDefault: TocMode;
         showSubplotFilter: boolean;
         chronoMessage: string | null;
     } {
         const isNovelManuscript = this.exportType === 'manuscript' && this.manuscriptPreset === 'novel';
+        const isPdfManuscript = this.exportType === 'manuscript' && this.outputFormat === 'pdf';
         const showSubplotFilter = this.exportType === 'manuscript'
             ? this.manuscriptPreset === 'novel'
             : this.outlinePreset === 'shooting-schedule';
 
         return {
             includeMatterMode: isNovelManuscript ? 'user' : 'forced-off',
-            tocEnabled: isNovelManuscript,
-            tocDefault: isNovelManuscript ? 'markdown' : 'none',
+            includeSynopsisMode: this.exportType === 'manuscript' && !isPdfManuscript ? 'user' : 'forced-off',
+            tocEnabled: isNovelManuscript && !isPdfManuscript,
+            tocDefault: isNovelManuscript && !isPdfManuscript ? 'markdown' : 'none',
             showSubplotFilter,
             chronoMessage: this.hasWhenDates ? null : 'No When dates found.'
         };
@@ -646,7 +664,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.manuscriptRulesCard?.toggleClass('rt-hidden', this.exportType !== 'manuscript');
         this.tocCard?.toggleClass('rt-hidden', !rules.tocEnabled || this.exportType !== 'manuscript');
         this.includeMatterCard?.toggleClass('rt-hidden', rules.includeMatterMode !== 'user' || this.exportType !== 'manuscript');
-        this.synopsisRow?.toggleClass('rt-hidden', this.exportType !== 'manuscript');
+        this.synopsisRow?.toggleClass('rt-hidden', rules.includeSynopsisMode !== 'user' || this.exportType !== 'manuscript');
         this.filterCard?.toggleClass('rt-hidden', !rules.showSubplotFilter);
         this.chronoHelperEl?.toggleClass('rt-hidden', !rules.chronoMessage);
 
@@ -654,10 +672,24 @@ export class ManuscriptOptionsModal extends Modal {
             this.tocMode = rules.tocDefault;
         }
 
+        const shouldDefaultMatterOffForPdf = this.exportType === 'manuscript'
+            && this.manuscriptPreset === 'novel'
+            && this.outputFormat === 'pdf'
+            && !this.hasTouchedMatterToggle;
+        if (shouldDefaultMatterOffForPdf) {
+            this.includeMatterUserChoice = false;
+        }
+
         if (rules.includeMatterMode === 'forced-off') {
             this.includeMatter = false;
         } else {
             this.includeMatter = this.includeMatterUserChoice;
+        }
+
+        if (rules.includeSynopsisMode === 'forced-off') {
+            this.includeSynopsis = false;
+        } else {
+            this.includeSynopsis = this.includeSynopsisUserChoice;
         }
 
         if (!rules.showSubplotFilter && this.subplot !== 'All Subplots') {
@@ -681,17 +713,17 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     /**
-     * Render or hide the Pandoc layout picker.
-     * Visible only when outputFormat is PDF and exportType is manuscript.
+     * Render the layout picker in manuscript preset column 2.
+     * Visible only for manuscript PDF exports.
      */
     private updateLayoutPicker(): void {
         if (!this.layoutContainerEl) return;
         this.layoutContainerEl.empty();
 
-        const isPandoc = this.exportType === 'manuscript' && this.outputFormat === 'pdf';
-        if (!isPandoc) {
+        const isPdfManuscript = this.exportType === 'manuscript' && this.outputFormat === 'pdf';
+        this.layoutHeaderEl?.toggleClass('rt-hidden', !isPdfManuscript);
+        if (!isPdfManuscript) {
             this.layoutContainerEl.addClass('rt-hidden');
-            this.selectedLayoutId = undefined;
             return;
         }
         this.layoutContainerEl.removeClass('rt-hidden');
@@ -699,6 +731,7 @@ export class ManuscriptOptionsModal extends Modal {
         const layouts = getLayoutsForPreset(this.plugin, this.manuscriptPreset);
         const activeBook = getActiveBook(this.plugin.settings);
         const lastUsed = (activeBook?.lastUsedPandocLayoutByPreset || {})[this.manuscriptPreset];
+        let selectedLayoutName: string | undefined;
 
         if (layouts.length === 0) {
             // Empty state
@@ -717,17 +750,17 @@ export class ManuscriptOptionsModal extends Modal {
                 this.app.setting.openTabById('radial-timeline');
             });
             this.selectedLayoutId = undefined;
+            selectedLayoutName = undefined;
         } else if (layouts.length === 1) {
             // Single layout — static text
-            this.createSectionHeading(this.layoutContainerEl, 'Layout', 'layout-template');
             this.layoutContainerEl.createDiv({
                 cls: 'rt-sub-card-note',
                 text: layouts[0].name
             });
             this.selectedLayoutId = layouts[0].id;
+            selectedLayoutName = layouts[0].name;
         } else {
             // Multiple layouts — dropdown
-            this.createSectionHeading(this.layoutContainerEl, 'Layout', 'layout-template');
             const ddContainer = this.layoutContainerEl.createDiv({ cls: 'rt-manuscript-input-container' });
             const dd = new DropdownComponent(ddContainer);
             for (const l of layouts) {
@@ -737,11 +770,45 @@ export class ManuscriptOptionsModal extends Modal {
             const defaultId = lastUsed && layouts.some(l => l.id === lastUsed) ? lastUsed : layouts[0].id;
             dd.setValue(defaultId);
             this.selectedLayoutId = defaultId;
+            selectedLayoutName = layouts.find(l => l.id === defaultId)?.name;
             dd.onChange((val) => {
                 this.selectedLayoutId = val;
+                const selected = layouts.find(l => l.id === val);
+                this.renderLayoutDescription(selected?.name);
                 this.updateTemplateWarning();
             });
         }
+
+        this.renderLayoutDescription(selectedLayoutName);
+
+    }
+
+    private renderLayoutDescription(layoutName?: string): void {
+        if (!this.layoutContainerEl) return;
+        this.layoutContainerEl.querySelector('.rt-manuscript-layout-desc')?.remove();
+        const desc = this.layoutContainerEl.createDiv({ cls: 'rt-sub-card-note rt-manuscript-layout-desc' });
+        if (!layoutName) {
+            desc.setText('Choose a PDF layout in Settings → Pro → Export Layouts.');
+            return;
+        }
+        const key = layoutName.toLowerCase();
+        if (key.includes('aj finn') || key.includes('ajfinn')) {
+            desc.setText('Used for the novel The Woman in the Window by AJ Finn.');
+            return;
+        }
+        if (key.includes('screenplay')) {
+            desc.setText('Industry screenplay formatting for print-ready PDF scripts.');
+            return;
+        }
+        if (key.includes('podcast')) {
+            desc.setText('Structured podcast script layout for narration-based formats.');
+            return;
+        }
+        if (key.includes('novel')) {
+            desc.setText('Traditional novel manuscript layout for print-ready PDF.');
+            return;
+        }
+        desc.setText('Custom LaTeX layout for manuscript PDF rendering.');
     }
 
     /**
@@ -943,12 +1010,12 @@ HOST: Let's start with Sarah's story...`
         return Math.max(0, this.rangeEnd - this.rangeStart + 1);
     }
 
-    private getSelectedSceneNumbers(): number[] {
-        if (this.totalScenes === 0 || this.sceneNumbers.length === 0) return [];
+    private getSelectedSceneTitles(): string[] {
+        if (this.totalScenes === 0 || this.sceneTitles.length === 0) return [];
         const startIndex = Math.max(0, this.rangeStart - 1);
-        const endIndexExclusive = Math.min(this.rangeEnd, this.sceneNumbers.length);
+        const endIndexExclusive = Math.min(this.rangeEnd, this.sceneTitles.length);
         if (endIndexExclusive <= startIndex) return [];
-        return this.sceneNumbers.slice(startIndex, endIndexExclusive);
+        return this.sceneTitles.slice(startIndex, endIndexExclusive);
     }
 
     private isSplitEnabled(): boolean {
@@ -1292,7 +1359,7 @@ HOST: Let's start with Sarah's story...`
     private syncRangeAvailability(): void {
         const count = this.getSelectedSceneCount();
         this.rangeStatusEl?.setText(`${count} scenes selected`);
-        const hasDecimalScenes = this.getSelectedSceneNumbers().some((sceneNumber) => Number.isFinite(sceneNumber) && !Number.isInteger(sceneNumber));
+        const hasDecimalScenes = this.getSelectedSceneTitles().some((title) => /^\d+\.\d+\s+/.test((title || '').trim()));
         if (this.rangeDecimalWarningEl) {
             this.rangeDecimalWarningEl.toggleClass('rt-hidden', !hasDecimalScenes);
         }
@@ -1372,7 +1439,7 @@ HOST: Let's start with Sarah's story...`
         const rules = this.resolveExportRules();
         const tocMode: TocMode = rules.tocEnabled ? this.tocMode : rules.tocDefault;
         const includeMatter = rules.includeMatterMode === 'user' ? this.includeMatterUserChoice : false;
-        const includeSynopsis = this.exportType === 'outline' ? this.includeSynopsis : false;
+        const includeSynopsis = this.exportType === 'outline' ? this.includeSynopsisUserChoice : false;
 
         this.outputStatusEl?.addClass('rt-hidden');
         this.exportCompleted = false;

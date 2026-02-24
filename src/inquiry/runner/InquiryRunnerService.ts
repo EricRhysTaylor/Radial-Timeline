@@ -37,6 +37,7 @@ type EvidenceBlock = {
 type SceneSnapshot = {
     path: string;
     label: string;
+    title: string;
     sceneId: string;
     summary: string;  // Extended Summary field (frontmatter["Summary"])
     sceneNumber?: number;
@@ -173,6 +174,10 @@ export class InquiryRunnerService implements InquiryRunner {
                 if (response.error) {
                     trace.notes.push(`Provider error: ${response.error}`);
                 }
+                const recovered = this.tryRecoverSingleInvalidResponse(input, response, trace, 'provider');
+                if (recovered) {
+                    return { result: recovered, trace };
+                }
                 return {
                     result: this.buildStubResult(input, this.getAiMetaFromResponse(response), response.error),
                     trace
@@ -229,6 +234,10 @@ export class InquiryRunnerService implements InquiryRunner {
                             trace.notes.push(`Parse retry provider status: ${status}${reason}.`);
                             if (retryResponse.error) {
                                 trace.notes.push(`Parse retry provider error: ${retryResponse.error}`);
+                            }
+                            const recovered = this.tryRecoverSingleInvalidResponse(input, retryResponse, trace, 'parse retry provider');
+                            if (recovered) {
+                                return { result: recovered, trace };
                             }
                             const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus ?? 'rejected');
                             return {
@@ -330,6 +339,10 @@ export class InquiryRunnerService implements InquiryRunner {
                 if (response.error) {
                     trace.notes.push(`Provider error: ${response.error}`);
                 }
+                const recovered = this.tryRecoverOmnibusInvalidResponse(input, response, trace, 'provider');
+                if (recovered) {
+                    return recovered;
+                }
                 const aiMeta = this.getAiMetaFromResponse(response);
                 return {
                     results: this.buildOmnibusStubResults(input, aiMeta, response.error),
@@ -393,6 +406,10 @@ export class InquiryRunnerService implements InquiryRunner {
                             trace.notes.push(`Parse retry provider status: ${status}${reason}.`);
                             if (retryResponse.error) {
                                 trace.notes.push(`Parse retry provider error: ${retryResponse.error}`);
+                            }
+                            const recovered = this.tryRecoverOmnibusInvalidResponse(input, retryResponse, trace, 'parse retry provider');
+                            if (recovered) {
+                                return recovered;
                             }
                             const fallbackMeta = this.withParseFailureMeta(this.getAiMetaFromResponse(retryResponse), retryResponse.aiStatus ?? 'rejected');
                             return {
@@ -481,15 +498,16 @@ export class InquiryRunnerService implements InquiryRunner {
             );
             for (const scene of scenes) {
                 const mode = sceneModeByPath.get(scene.path) ?? 'none';
+                const sceneLabel = scene.title ? `${scene.title} (${scene.label})` : scene.label;
                 if (mode === 'summary') {
                     if (!scene.summary) continue;
-                    blocks.push({ label: `Scene ${scene.label} (${scene.sceneId}) summary`, content: scene.summary });
+                    blocks.push({ label: `Scene ${sceneLabel} (${scene.sceneId}) (Summary)`, content: scene.summary });
                     continue;
                 }
                 if (mode === 'full') {
                     const content = await this.readFileContent(scene.path);
                     if (!content) continue;
-                    blocks.push({ label: `Scene ${scene.label} (${scene.sceneId})`, content });
+                    blocks.push({ label: `Scene ${sceneLabel} (${scene.sceneId}) (Body)`, content });
                 }
             }
 
@@ -511,30 +529,39 @@ export class InquiryRunnerService implements InquiryRunner {
             );
             for (const scene of scenes) {
                 const mode = sceneModeByPath.get(scene.path) ?? 'none';
+                const sceneLabel = scene.title ? `${scene.title} (${scene.label})` : scene.label;
                 if (mode === 'summary') {
                     if (!scene.summary) continue;
-                    blocks.push({ label: `Scene ${scene.label} (${scene.sceneId}) summary`, content: scene.summary });
+                    blocks.push({ label: `Scene ${sceneLabel} (${scene.sceneId}) (Summary)`, content: scene.summary });
                     continue;
                 }
                 if (mode === 'full') {
                     const content = await this.readFileContent(scene.path);
                     if (!content) continue;
-                    blocks.push({ label: `Scene ${scene.label} (${scene.sceneId})`, content });
+                    blocks.push({ label: `Scene ${sceneLabel} (${scene.sceneId}) (Body)`, content });
                 }
             }
         }
 
         const references = await this.collectReferenceDocs(referenceEntries);
         blocks.push(...references);
+        const dedupedBlocks: EvidenceBlock[] = [];
+        const seenBlockKeys = new Set<string>();
+        blocks.forEach(block => {
+            const key = `${block.label}\u0000${block.content}`;
+            if (seenBlockKeys.has(key)) return;
+            seenBlockKeys.add(key);
+            dedupedBlocks.push(block);
+        });
 
-        if (!blocks.length) {
-            blocks.push({ label: 'Evidence', content: 'No evidence available for the selected scope.' });
+        if (!dedupedBlocks.length) {
+            dedupedBlocks.push({ label: 'Evidence', content: 'No evidence available for the selected scope.' });
         }
 
         // Hard guard: Inquiry corpus must never include Synopsis-sourced content.
         // Catches accidental reintroduction of Synopsis semantics in future changes.
         if (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') {
-            for (const block of blocks) {
+            for (const block of dedupedBlocks) {
                 if (/\bsynopsis\b/i.test(block.label)) {
                     console.warn(
                         `[Inquiry guard] Evidence block label "${block.label}" contains "synopsis". ` +
@@ -544,19 +571,24 @@ export class InquiryRunnerService implements InquiryRunner {
             }
         }
 
-        return blocks;
+        return dedupedBlocks;
     }
 
     private async buildSceneSnapshots(entries: CorpusManifestEntry[]): Promise<SceneSnapshot[]> {
         const scenes: SceneSnapshot[] = [];
+        const seenPaths = new Set<string>();
 
         entries.forEach(entry => {
+            const normalizedPath = entry.path.trim();
+            if (!normalizedPath || seenPaths.has(normalizedPath)) return;
+            seenPaths.add(normalizedPath);
             const file = this.vault.getAbstractFileByPath(entry.path);
             if (!file || !('path' in file)) return;
             if (!this.isTFile(file)) return;
             const frontmatter = this.getFrontmatter(file);
             const summary = this.extractSummary(frontmatter);
             const sceneNumber = this.extractSceneNumber(frontmatter);
+            const title = this.getSceneTitle(file, frontmatter);
             const sceneId = resolveSceneReferenceId(
                 entry.sceneId ?? readSceneId(frontmatter) ?? undefined,
                 file.path
@@ -564,6 +596,7 @@ export class InquiryRunnerService implements InquiryRunner {
             scenes.push({
                 path: file.path,
                 label: '',
+                title,
                 sceneId,
                 summary,
                 sceneNumber
@@ -585,6 +618,14 @@ export class InquiryRunnerService implements InquiryRunner {
         return scenes;
     }
 
+    private getSceneTitle(file: TFile, frontmatter: Record<string, unknown>): string {
+        const rawTitle = frontmatter['Title'] ?? frontmatter['title'];
+        if (typeof rawTitle === 'string' && rawTitle.trim()) {
+            return rawTitle.trim();
+        }
+        return file.basename;
+    }
+
     private async collectOutlines(entries: CorpusManifestEntry[], fallbackLabel: string): Promise<EvidenceBlock[]> {
         const blocks: EvidenceBlock[] = [];
         for (const entry of entries) {
@@ -596,12 +637,12 @@ export class InquiryRunnerService implements InquiryRunner {
             if (mode === 'summary') {
                 const summary = this.getSummaryForPath(entry.path);
                 if (!summary) continue;
-                blocks.push({ label: `${baseLabel} summary`, content: summary });
+                blocks.push({ label: `${baseLabel} (Summary)`, content: summary });
                 continue;
             }
             const content = await this.readFileContent(entry.path);
             if (!content) continue;
-            blocks.push({ label: baseLabel, content });
+            blocks.push({ label: `${baseLabel} (Body)`, content });
         }
         return blocks;
     }
@@ -615,12 +656,12 @@ export class InquiryRunnerService implements InquiryRunner {
             if (mode === 'summary') {
                 const summary = this.getSummaryForPath(entry.path);
                 if (!summary) continue;
-                blocks.push({ label: `${baseLabel} summary`, content: summary });
+                blocks.push({ label: `${baseLabel} (Summary)`, content: summary });
                 continue;
             }
             const content = await this.readFileContent(entry.path);
             if (!content) continue;
-            blocks.push({ label: baseLabel, content });
+            blocks.push({ label: `${baseLabel} (Body)`, content });
         }
         return blocks;
     }
@@ -742,6 +783,8 @@ export class InquiryRunnerService implements InquiryRunner {
             'Use depth summary phrasing that emphasizes alignment, implication, and consistency.',
             'If conclusions align, still phrase summaries to match the active lens emphasis.',
             'Use scene ref_id values from evidence labels in parentheses (e.g., scn_a1b2c3d4).',
+            'Evidence headings include "(Summary)" or "(Body)".',
+            'Treat "(Summary)" entries as compressed evidence, not full scene prose; avoid claims requiring missing fine-grain details.',
             'Optionally tag findings with lens: flow|depth|both to indicate relevance.',
             'Return JSON only with summaryFlow, summaryDepth, verdict.flow, verdict.depth, impact, assessmentConfidence, and findings.',
             'Return JSON only using the exact schema below.',
@@ -824,6 +867,8 @@ export class InquiryRunnerService implements InquiryRunner {
             'Use depth summary phrasing that emphasizes alignment, implication, and consistency.',
             'If conclusions align, still phrase summaries to match the active lens emphasis.',
             'Use scene ref_id values from evidence labels in parentheses (e.g., scn_a1b2c3d4).',
+            'Evidence headings include "(Summary)" or "(Body)".',
+            'Treat "(Summary)" entries as compressed evidence, not full scene prose; avoid claims requiring missing fine-grain details.',
             'Optionally tag findings with lens: flow|depth|both to indicate relevance.',
             'Return JSON only with summaryFlow, summaryDepth, verdict.flow, verdict.depth, impact, assessmentConfidence, and findings for every question.',
             'Return JSON only using the exact schema below.',
@@ -1617,6 +1662,58 @@ export class InquiryRunnerService implements InquiryRunner {
         return meta;
     }
 
+    private withRecoveredInvalidResponseMeta(
+        meta: Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'>
+    ): Pick<InquiryResult, 'aiProvider' | 'aiModelRequested' | 'aiModelResolved' | 'aiStatus' | 'aiReason'> {
+        return {
+            ...meta,
+            aiStatus: 'success',
+            aiReason: 'recovered_invalid_response'
+        };
+    }
+
+    private tryRecoverSingleInvalidResponse(
+        input: InquiryRunnerInput,
+        response: ProviderResult,
+        trace: InquiryRunTrace,
+        context: string
+    ): InquiryResult | null {
+        if (!response.content || response.aiReason !== 'invalid_response') return null;
+        try {
+            const recovered = this.parseResponse(response.content);
+            trace.notes.push(`${context}: recovered from invalid_response via local JSON extraction.`);
+            const recoveredMeta = this.withRecoveredInvalidResponseMeta(this.getAiMetaFromResponse(response));
+            return this.buildResult(input, recovered, recoveredMeta);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            trace.notes.push(`${context}: invalid_response recovery failed (${message}).`);
+            return null;
+        }
+    }
+
+    private tryRecoverOmnibusInvalidResponse(
+        input: InquiryOmnibusInput,
+        response: ProviderResult,
+        trace: InquiryRunTrace,
+        context: string
+    ): { results: InquiryResult[]; trace: InquiryRunTrace; rawResponse: RawOmnibusResponse } | null {
+        if (!response.content || response.aiReason !== 'invalid_response') return null;
+        try {
+            const recovered = this.parseOmnibusResponse(response.content);
+            trace.notes.push(`${context}: recovered omnibus response from invalid_response via local JSON extraction.`);
+            const recoveredMeta = this.withRecoveredInvalidResponseMeta(this.getAiMetaFromResponse(response));
+            return {
+                results: this.buildOmnibusResults(input, recovered, recoveredMeta, trace),
+                trace,
+                rawResponse: recovered
+            };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            trace.notes.push(`${context}: omnibus invalid_response recovery failed (${message}).`);
+            return null;
+        }
+    }
+
     private buildStubSummary(aiStatus?: InquiryAiStatus, aiReason?: string, message?: string): string {
         if (aiStatus === 'rejected' && aiReason === 'unsupported_param') {
             return 'AI request rejected: unsupported parameter.';
@@ -1831,13 +1928,14 @@ export class InquiryRunnerService implements InquiryRunner {
 
     private getOutputTokenCap(provider: InquiryAiProvider): number {
         const providerCap = PROVIDER_MAX_OUTPUT_TOKENS[provider] ?? INQUIRY_MAX_OUTPUT_TOKENS;
-        return Math.max(512, providerCap);
+        return Math.max(512, Math.min(providerCap, INQUIRY_MAX_OUTPUT_TOKENS));
     }
 
     private getParseRetryOutputTokenCap(provider: InquiryAiProvider, currentCap: number): number {
         const providerCap = PROVIDER_MAX_OUTPUT_TOKENS[provider] ?? currentCap;
-        const retryTarget = Math.max(currentCap * 2, 4000);
-        return Math.max(currentCap, Math.min(providerCap, retryTarget));
+        const inquiryRetryCap = Math.min(providerCap, INQUIRY_MAX_OUTPUT_TOKENS * 2);
+        const retryTarget = Math.max(currentCap * 2, INQUIRY_MAX_OUTPUT_TOKENS);
+        return Math.max(currentCap, Math.min(inquiryRetryCap, retryTarget));
     }
 
     private shouldRetryParseFailure(

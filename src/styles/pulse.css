@@ -236,16 +236,28 @@
 .rt-manuscript-pill-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .ert-manuscript-pill-row--single {
   flex-wrap: nowrap;
-  padding: 4px 6px;
+  padding: 0;
 }
 
 .ert-manuscript-pill-row--single .rt-manuscript-pill {
   flex: 0 0 auto;
+}
+
+.ert-manuscript-output-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 20px;
+}
+
+.ert-manuscript-output-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .ert-manuscript-output-row {
@@ -258,13 +270,15 @@
 .rt-manuscript-pill {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
+  gap: 6px;
+  padding: 7px 11px;
+  min-height: 32px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.05);
   cursor: pointer;
   transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+  font-size: 0.95rem;
 }
 
 .rt-manuscript-pill.rt-is-active {
@@ -282,15 +296,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
   opacity: 0.8;
 }
 
 .rt-manuscript-pill-icon svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
 .rt-manuscript-pill-text {
@@ -381,6 +395,47 @@
   min-width: 220px;
 }
 
+.ert-manuscript-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+  align-items: start;
+}
+
+.ert-manuscript-preset-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ert-manuscript-preset-col--header {
+  gap: 0;
+}
+
+.ert-manuscript-preset-col--layout {
+  justify-content: flex-start;
+  align-self: start;
+}
+
+.rt-manuscript-layout-picker {
+  margin-top: 0;
+  padding: 0;
+}
+
+.rt-manuscript-layout-picker .rt-manuscript-input-container {
+  margin: 0;
+  padding: 0;
+}
+
+.rt-manuscript-layout-picker .rt-manuscript-input-container select.dropdown {
+  margin: 0;
+}
+
+.ert-manuscript-preset-status {
+  grid-column: 1 / -1;
+}
+
 .ert-manuscript-split-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -391,7 +446,10 @@
 .ert-manuscript-split-col {
   display: flex;
   align-items: flex-start;
-  min-height: 36px;
+  min-height: 0;
+  align-self: start;
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .ert-manuscript-split-col--single {
@@ -400,16 +458,38 @@
 
 .ert-manuscript-split-col--parts {
   align-items: flex-start;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  gap: 0;
+  align-self: start;
+  justify-self: start;
+  justify-content: flex-start;
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .ert-manuscript-split-option {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  justify-content: space-between;
-  width: 100%;
+  justify-content: flex-start;
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.ert-manuscript-split-option input[type="radio"] {
+  margin: 0;
+}
+
+.ert-manuscript-split-option-label {
+  line-height: 1.2;
+}
+
+.ert-manuscript-split-option--parts {
+  width: auto;
+  align-items: center;
+  align-self: start;
 }
 
 .ert-manuscript-split-parts {
@@ -420,8 +500,13 @@
   grid-column: 2;
 }
 
-.ert-manuscript-split-col--parts .ert-manuscript-split-option > input.ert-input {
-  margin-left: 10px;
+.ert-manuscript-split-col--parts .ert-manuscript-split-parts-input {
+  margin-left: 6px;
+  margin-top: 0;
+  width: 72px;
+  min-width: 72px;
+  flex: 0 0 auto;
+  align-self: auto;
 }
 
 .ert-manuscript-split-preview {
@@ -435,13 +520,17 @@
 }
 
 @media (max-width: 720px) {
-  .ert-manuscript-output-row {
-    align-items: flex-start;
-    flex-direction: column;
+  .ert-manuscript-output-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 
-  .ert-manuscript-output-row .ert-manuscript-pill-row--single {
-    width: 100%;
+  .ert-manuscript-preset-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ert-manuscript-preset-col--layout {
+    margin-top: 0;
   }
 
   .ert-manuscript-split-grid {

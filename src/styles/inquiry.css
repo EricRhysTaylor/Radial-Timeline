@@ -554,8 +554,11 @@
 .ert-inquiry-svg.is-running .inq-zone-dot-hit,
 .ert-inquiry-svg.is-running .ert-inquiry-zone-pod,
 .ert-inquiry-svg.is-running .ert-inquiry-ring-hit,
+.ert-inquiry-svg.is-running .ert-inquiry-glyph-hit,
 .ert-inquiry-svg.is-running .ert-inquiry-minimap-tick,
-.ert-inquiry-svg.is-running .ert-inquiry-cc-cell {
+.ert-inquiry-svg.is-running .ert-inquiry-cc-cell,
+.ert-inquiry-svg.is-running .ert-inquiry-cc-class,
+.ert-inquiry-svg.is-running .ert-inquiry-cc-label-group {
   pointer-events: none;
   cursor: default;
 }
@@ -1345,6 +1348,16 @@
   font-weight: 750;
   font-style: italic;
   fill: var(--text-normal);
+}
+
+.ert-inquiry-preview-running-note {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  fill: color-mix(in srgb, var(--text-muted) 88%, transparent);
+  opacity: 0.92;
+  pointer-events: none;
 }
 
 .ert-inquiry-preview-meta {
@@ -2423,6 +2436,29 @@
   color: var(--text-muted);
   font-size: 11px;
   flex-shrink: 0;
+}
+
+.ert-inquiry-cancel-modal .ert-modal-header {
+  margin-bottom: 8px;
+}
+
+.ert-inquiry-cancel-modal-message {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-normal);
+  line-height: 1.4;
+}
+
+.ert-inquiry-cancel-modal-estimate {
+  font-size: 13px;
+  color: var(--text-normal);
+  line-height: 1.45;
+}
+
+.ert-inquiry-cancel-modal-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.45;
 }
 
 .ert-inquiry-briefing-note {

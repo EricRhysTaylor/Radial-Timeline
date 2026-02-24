@@ -520,6 +520,9 @@ export class InquiryGlyph {
                 marker.group.removeAttribute('data-tooltip');
                 marker.group.removeAttribute('data-tooltip-placement');
                 marker.group.removeAttribute('data-tooltip-offset-y');
+                marker.group.removeAttribute('data-rt-tooltip');
+                marker.group.removeAttribute('data-rt-tooltip-placement');
+                marker.group.removeAttribute('data-rt-tooltip-offset-y');
             });
         });
     }

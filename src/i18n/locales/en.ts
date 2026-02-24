@@ -475,7 +475,7 @@ export const en: TranslationKeys = {
         rangeCountLabel: '{{count}} scenes selected',
         rangeStatus: 'Scenes {{start}} – {{end}} of {{total}} ({{count}} selected)',
         rangeLoading: 'Fetching scenes…',
-        rangeDecimalWarning: 'Decimal scene numbers detected in this range. Use Ripple Renumber to normalize numbering.',
+        rangeDecimalWarning: 'Several scenes or beats are using decimal prefixes. Remove decimals using Ripple Renumber via drag move.',
         actionCreate: 'Manuscript generate',
         actionCancel: 'Cancel',
         emptyNotice: 'No scenes available to assemble.',
