@@ -1695,6 +1695,17 @@
 
 .ert-inquiry-root {
   position: relative;
+  isolation: isolate;
+}
+
+body.rt-modal-open .ert-inquiry-root,
+body.rt-modal-open .ert-inquiry-svg {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+body.rt-modal-open .ert-inquiry-svg * {
+  animation-play-state: paused;
 }
 
 .ert-inquiry-root.is-inquiry-blocked .ert-inquiry-briefing-item,

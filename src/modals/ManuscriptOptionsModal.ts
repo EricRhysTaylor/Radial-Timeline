@@ -745,9 +745,9 @@ export class ManuscriptOptionsModal extends Modal {
 
         const isPdfManuscript = this.exportType === 'manuscript' && this.outputFormat === 'pdf';
         this.manuscriptPresetGridEl?.toggleClass('ert-manuscript-preset-grid--single', !isPdfManuscript);
-        this.layoutHeaderEl?.toggleClass('rt-hidden', !isPdfManuscript);
-        this.templateWarningEl?.toggleClass('rt-hidden', !isPdfManuscript);
-        this.layoutContainerEl.toggleClass('rt-hidden', !isPdfManuscript);
+        this.layoutHeaderEl?.toggleClass('ert-manuscript-preset-col--hidden', !isPdfManuscript);
+        this.templateWarningEl?.toggleClass('ert-manuscript-preset-status--hidden', !isPdfManuscript);
+        this.layoutContainerEl.toggleClass('ert-manuscript-preset-col--hidden', !isPdfManuscript);
         if (!isPdfManuscript) {
             return;
         }
@@ -842,7 +842,7 @@ export class ManuscriptOptionsModal extends Modal {
         if (!this.templateWarningEl || this.exportType !== 'manuscript') {
             if (this.templateWarningEl) {
                 this.templateWarningEl.empty();
-                this.templateWarningEl.addClass('rt-hidden');
+                this.templateWarningEl.addClass('ert-manuscript-preset-status--hidden');
             }
             return;
         }
@@ -853,10 +853,10 @@ export class ManuscriptOptionsModal extends Modal {
 
         // Only check templates for PDF format
         if (this.outputFormat === 'markdown') {
-            this.templateWarningEl.addClass('rt-hidden');
+            this.templateWarningEl.addClass('ert-manuscript-preset-status--hidden');
             return; // No template needed for markdown
         }
-        this.templateWarningEl.removeClass('rt-hidden');
+        this.templateWarningEl.removeClass('ert-manuscript-preset-status--hidden');
 
         // ── Layout-aware validation ──────────────────────────────────
         const layouts = getLayoutsForPreset(this.plugin, this.manuscriptPreset);

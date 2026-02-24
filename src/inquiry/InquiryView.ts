@@ -6852,6 +6852,10 @@ export class InquiryView extends ItemView {
                 this.stopRunningAnimations();
                 return;
             }
+            if (document.body.classList.contains('rt-modal-open')) {
+                this.runningAnimationFrame = window.requestAnimationFrame(animate);
+                return;
+            }
             const elapsed = now - (this.runningAnimationStart ?? now);
             this.updateBackbonePulse(elapsed);
             this.updateSweep(elapsed);

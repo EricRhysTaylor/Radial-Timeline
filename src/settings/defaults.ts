@@ -265,6 +265,7 @@ Context:`,
     pandocFallbackPath: '',
     pandocFolder: 'Pandoc',
     pandocLayouts: [],
+    matterWorkflowMode: 'guided',
     lastUsedPandocLayoutByPreset: {},
     pandocTemplates: {
         screenplay: '',

@@ -1,5 +1,5 @@
 .rt-drop-target-arc {
-  stroke: var(--interactive-accent);
+  stroke: var(--rt-drag-stroke-color, var(--interactive-accent, #705DCF));
   stroke-width: 4px;
   stroke-linecap: round;
   fill: none;
@@ -15,7 +15,7 @@
 }
 
 .rt-drop-target-tick {
-  stroke: var(--interactive-accent);
+  stroke: var(--rt-drag-stroke-color, var(--interactive-accent, #705DCF));
   stroke-width: 4px;
   stroke-linecap: round;
   fill: none;

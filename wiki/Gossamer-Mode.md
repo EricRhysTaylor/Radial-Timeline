@@ -64,13 +64,13 @@ When "Custom" is selected, the beat system editor appears:
 
 Row colors show the sync status between your beat list and the actual note files:
 *   **Green** — beat note exists and is aligned.
-*   **Orange** — beat note exists but is misaligned (wrong number or act). Merge to fix.
+*   **Orange** — beat note exists but is misaligned (wrong act). Merge to fix.
 *   **Red** — duplicate title or multiple files match. Resolve manually.
 *   **No highlight** — new beat, no file yet.
 
 ### 3. Create & Merge
 *   **Create**: Generates beat set notes in your source folder, one per beat. Notes come pre-populated with properties (`Class: Beat`, `Purpose`, `Beat Model`, `Range`, etc.) so they are immediately recognized by Gossamer Mode. The button is disabled when all beats already have files, and shows how many new notes will be created.
-*   **Merge**: Appears when beats are misaligned. Renames and updates existing beat note files to match the current list order and act assignments. Use this after reordering or renaming beats.
+*   **Merge**: Appears when beats are misaligned. Updates existing beat note frontmatter to match current act assignments (and fills missing Beat Model/Beat Id where applicable). It does not rename files or enforce numeric prefix conventions.
 
 > [!NOTE]
 > Custom beat notes use the same properties structure as preset systems. Use the Beat properties editor to extend this with your own fields.

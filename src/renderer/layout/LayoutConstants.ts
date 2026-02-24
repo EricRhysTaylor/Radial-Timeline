@@ -116,10 +116,10 @@ export const SUBPLOT_OUTER_RADIUS_STANDARD = {
 // Positioned just inside the Act labels (ACT_LABEL_RADIUS = 790) to avoid overlap
 
 /** Absolute radius for the outer tip of the drag tick (px) */
-export const DRAG_DROP_TICK_OUTER_RADIUS = 782;
+export const DRAG_DROP_TICK_OUTER_RADIUS = 785;
 
 /** Absolute radius for the drag arc line (px) */
-export const DRAG_DROP_ARC_RADIUS = 782;
+export const DRAG_DROP_ARC_RADIUS = 786;
 
 /** Length of the drag drop tick marker (px) */
 export const DRAG_DROP_TICK_LENGTH = 10;

@@ -270,6 +270,16 @@
      so that DOM mutations during re-renders don't cause z-index flicker when
      Obsidian's settings modal is open. */
   contain: layout style paint;
+  isolation: isolate;
+}
+
+body.rt-modal-open .radial-timeline-container {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+body.rt-modal-open .radial-timeline-container * {
+  animation-play-state: paused;
 }
 
 /* Loading and Error Messages (Consolidated) */

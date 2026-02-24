@@ -314,7 +314,7 @@ export async function getSceneFilesByOrder(
     return false;
   });
 
-  const { sortScenes, sortScenesChronologically, extractPosition } = await import('./sceneHelpers');
+  const { sortScenes, sortScenesChronologically, sortByManuscriptOrder } = await import('./sceneHelpers');
   let sortedScenes: TimelineItem[];
   let sortOrder: string;
 
@@ -357,9 +357,7 @@ export async function getSceneFilesByOrder(
   };
 
   const compareMatterItems = (a: TimelineItem, b: TimelineItem): number => {
-    const posDiff = extractPosition(a) - extractPosition(b);
-    if (posDiff !== 0) return posDiff;
-    return (a.title || '').localeCompare(b.title || '');
+    return sortByManuscriptOrder(a, b);
   };
 
   const orderedItems = (() => {

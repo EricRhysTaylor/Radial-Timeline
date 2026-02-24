@@ -366,7 +366,8 @@ export async function createBeatNotesFromSet(
     }
   }
 
-  // Pre-compute beat numbers per act using scene-aligned spread
+  // Pre-compute beat filename prefixes per act using scene-aligned spread.
+  // Scenes own integer slots; beats use decimal minors (e.g., 7.01, 7.02).
   const actSceneNumbers = options?.actSceneNumbers;
   const beatsByAct = new Map<number, number[]>(); // act -> beat indices
   for (let i = 0; i < beatSystem.beats.length; i++) {
@@ -377,8 +378,19 @@ export async function createBeatNotesFromSet(
     beatsByAct.set(act, list);
   }
 
-  const beatNumberByIndex = new Array<number>(beatSystem.beats.length);
-  let nextFallbackNumber = 1;
+  const beatPrefixByIndex = new Array<string>(beatSystem.beats.length);
+  const minorByMajor = new Map<number, number>();
+  let fallbackMinor = 1;
+
+  const nextMinorForMajor = (major: number): number => {
+    const next = (minorByMajor.get(major) ?? 0) + 1;
+    minorByMajor.set(major, next);
+    return next;
+  };
+
+  const formatBeatPrefix = (major: number, minor: number): string =>
+    `${major}.${String(minor).padStart(2, '0')}`;
+
   const sortedActs = [...beatsByAct.keys()].sort((a, b) => a - b);
   sortedActs.forEach((actNum) => {
     const indices = beatsByAct.get(actNum) ?? [];
@@ -386,24 +398,25 @@ export async function createBeatNotesFromSet(
     if (sceneNums.length > 0) {
       const spread = spreadBeatsAcrossScenes(indices.length, sceneNums);
       indices.forEach((beatIdx, i) => {
-        beatNumberByIndex[beatIdx] = spread[i];
+        const major = spread[i];
+        const minor = nextMinorForMajor(major);
+        beatPrefixByIndex[beatIdx] = formatBeatPrefix(major, minor);
       });
-      const spreadMax = Math.max(...spread);
-      if (Number.isFinite(spreadMax)) {
-        nextFallbackNumber = Math.max(nextFallbackNumber, spreadMax + 1);
-      }
       return;
     }
 
-    // No scene range for this act: keep numbering globally monotonic.
-    indices.forEach((beatIdx, i) => {
-      beatNumberByIndex[beatIdx] = nextFallbackNumber + i;
+    // No scene range for this act: keep beats in non-scene space (0.xx).
+    indices.forEach((beatIdx) => {
+      beatPrefixByIndex[beatIdx] = formatBeatPrefix(0, fallbackMinor);
+      fallbackMinor += 1;
     });
-    nextFallbackNumber += indices.length;
   });
   // Final safety fallback for any undefined index.
-  beatNumberByIndex.forEach((val, idx) => {
-    if (val === undefined) beatNumberByIndex[idx] = idx + 1;
+  beatPrefixByIndex.forEach((val, idx) => {
+    if (val === undefined) {
+      beatPrefixByIndex[idx] = formatBeatPrefix(0, fallbackMinor);
+      fallbackMinor += 1;
+    }
   });
 
   for (let i = 0; i < beatSystem.beats.length; i++) {
@@ -411,7 +424,7 @@ export async function createBeatNotesFromSet(
     const beatInfo = beatSystem.beatDetails[i];
     // Use explicit act if available, otherwise calculate
     const act = beatInfo.act ? beatInfo.act : getBeatAct(i, beatSystem.beats.length);
-    const beatNumber = beatNumberByIndex[i];
+    const beatNumber = beatPrefixByIndex[i];
     
     // Use canonical title without "Act X:" prefix for filename
     const displayName = stripActPrefix(beatName);

@@ -44,7 +44,7 @@ Heal updates frontmatter only. It does **not** rename files or change filename p
 
 > **Rule**: Beat prefix numbers are **not** audited as errors and are **never** healed as part of Beat Audit / Heal.
 
-- A beat note with a "wrong" prefix number (e.g. `5 Midpoint` when the scene distribution suggests `7`) is **not** flagged as misaligned if its Act is correct.
+- A beat note with a "wrong" prefix number (e.g. `5.01 Midpoint` when the scene distribution suggests `7.01`) is **not** flagged as misaligned if its Act is correct.
 - A beat note with no prefix number (e.g. `Midpoint.md`) is **not** flagged as misaligned if its Act is correct.
 - Repair does **not** rename files to fix prefix numbers; it only updates frontmatter (`Act`, `Beat Model`, `Class`).
 

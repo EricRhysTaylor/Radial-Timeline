@@ -139,7 +139,7 @@ Gossamer1: 12                 # Latest gossamer score
 ---
 ```
 
-> **Note**: Beat notes are ordered structurally by Act and filename prefix (e.g., `01 Opening Image.md`). Beats do not use the `When` field — they are not temporal.
+> **Note**: Beat notes are ordered structurally by Act and filename prefix (e.g., `1.01 Opening Image.md`). Beats do not use the `When` field — they are not temporal.
 
 ### Beat with Historical Gossamer Tracking
 

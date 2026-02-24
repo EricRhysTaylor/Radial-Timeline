@@ -769,7 +769,7 @@ export function renderStoryBeatsSection(params: {
             existingBeatLegacyMatchedCount = legacyMatched;
             existingBeatMissingModelCount = missingModelCandidates.length;
 
-            // Compute misaligned count: beats matched by name but wrong number or act
+            // Compute misaligned count: beats matched by name but wrong Act.
             const maxActs = getActCount();
             const expectedBeats: BeatRow[] = selectedSystem === 'Custom'
                 ? orderBeatsByAct(

@@ -5856,6 +5856,9 @@
 .ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-modal {
   --ert-panel-shadow: none;
   --ert-pill-shadow: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(92vh - (var(--ert-gap-sm) * 2));
 }
 
 .ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-subtitle {
@@ -5882,6 +5885,12 @@
 }
 
 .ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--ert-gap-xs);
+  white-space: normal;
   width: 100%;
   text-align: left;
   border: 1px solid var(--background-modifier-border);
@@ -5898,10 +5907,10 @@
 }
 
 .ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-option-header {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  width: 100%;
   gap: var(--ert-gap-sm);
-  margin-bottom: var(--ert-gap-xs);
 }
 
 .ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-option-radio {
@@ -5918,10 +5927,15 @@
 }
 
 .ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-option-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-weight: 600;
 }
 
 .ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-option-desc {
+  width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
   color: var(--text-muted);
   font-size: 0.95rem;
   line-height: 1.35;
@@ -5938,7 +5952,7 @@
 
 .ert-ui.ert-scope--modal.ert-modal--template-pack .ert-template-pack-list-item {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--ert-gap-xs);
 }
 
@@ -6993,7 +7007,7 @@
 }
 
 .ert-ui.ert-scope--settings .ert-layout-add-form-setting {
-  padding: var(--ert-gap-sm) 0;
+  padding: var(--ert-gap-sm) var(--ert-pad-md);
 }
 
 .ert-ui.ert-scope--settings .ert-layout-add-form-hint {

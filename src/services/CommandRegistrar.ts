@@ -302,6 +302,12 @@ export class CommandRegistrar {
             const savedPaths: string[] = [];
             const renderedPaths: string[] = [];
             const statusMessages: string[] = [];
+            const selectedMatterCount = slicedSelection.files.reduce((count, file) => (
+                filteredSelection.matterMetaByPath?.has(file.path) ? count + 1 : count
+            ), 0);
+            if (includeMatter && selectedMatterCount === 0) {
+                statusMessages.push('Include matter notes is enabled, but no front/back matter notes were found in the active book source folder.');
+            }
 
             if (result.exportType === 'outline') {
                 const runtimeSettings = getRuntimeSettings(this.plugin.settings);
@@ -800,7 +806,7 @@ export class CommandRegistrar {
         try {
             const sanitizedPath = sanitizeSourcePath(sourcePath);
             const isFront = classValue === 'Frontmatter';
-            const defaultPrefix = isFront ? '0.1' : '200.1';
+            const defaultPrefix = isFront ? '0.01' : '200.01';
             const defaultLabel = isFront ? 'Front Matter' : 'Back Matter';
             const defaultName = `${defaultPrefix} ${defaultLabel}.md`;
             const filename = buildInitialSceneFilename(defaultName);

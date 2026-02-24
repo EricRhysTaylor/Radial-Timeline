@@ -5,6 +5,7 @@
 import { parseRange, isScoreInRange } from './rangeValidation';
 import { STAGE_ORDER } from './constants';
 import { normalizeBeatSetNameInput, toBeatMatchKey, toBeatModelMatchKey } from './beatsInputNormalize';
+import { comparePrefixTokens, extractPrefixToken } from './prefixOrder';
 
 export type GossamerBeatStatus = 'present' | 'outlineOnly' | 'missing';
 
@@ -579,13 +580,13 @@ export function extractBeatOrder(scenes: { itemType?: string; subplot?: string; 
     plotBeats = filterBeatsBySystem(plotBeats, selectedBeatModel);
   }
   
-  // Sort by numeric prefix
+  // Sort by filename prefix using natural token ordering.
   plotBeats.sort((a, b) => {
-    const aMatch = (a.title || '').match(/^(\d+(?:\.\d+)?)/);
-    const bMatch = (b.title || '').match(/^(\d+(?:\.\d+)?)/);
-    const aNum = aMatch ? parseFloat(aMatch[1]) : 0;
-    const bNum = bMatch ? parseFloat(bMatch[1]) : 0;
-    return aNum - bNum;
+    const aPrefix = extractPrefixToken(a.title || '');
+    const bPrefix = extractPrefixToken(b.title || '');
+    const prefixCmp = comparePrefixTokens(aPrefix, bPrefix);
+    if (prefixCmp !== 0) return prefixCmp;
+    return (a.title || '').localeCompare(b.title || '', undefined, { numeric: true, sensitivity: 'base' });
   });
   
   // Strip leading numbers from titles

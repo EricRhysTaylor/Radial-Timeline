@@ -218,7 +218,7 @@ function listAvailableLatexEngines(): Array<{ engine: string; path: string }> {
 // SAMPLE TEMPLATE GENERATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type MatterSampleLane = 'guided' | 'advanced';
+type MatterSampleLane = 'guided' | 'advanced' | 'mixed';
 
 class PandocTemplatePathSuggest extends AbstractInputSuggest<string> {
     private readonly plugin: RadialTimelinePlugin;
@@ -292,13 +292,14 @@ class PandocTemplatePathSuggest extends AbstractInputSuggest<string> {
 }
 
 class MatterSampleLaneModal extends Modal {
-    private selected: MatterSampleLane = 'guided';
+    private selected: MatterSampleLane;
     private readonly onPick: (lane: MatterSampleLane | null) => void;
     private resolved = false;
 
-    constructor(app: App, onPick: (lane: MatterSampleLane | null) => void) {
+    constructor(app: App, onPick: (lane: MatterSampleLane | null) => void, defaultLane: MatterSampleLane) {
         super(app);
         this.onPick = onPick;
+        this.selected = defaultLane;
     }
 
     onOpen(): void {
@@ -314,7 +315,7 @@ class MatterSampleLaneModal extends Modal {
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
         const badge = header.createSpan({ cls: `${ERT_CLASSES.MODAL_BADGE} ert-modal-badge-pro` });
         const badgeIcon = badge.createSpan({ cls: ERT_CLASSES.MODAL_BADGE_ICON });
-        setIcon(badgeIcon, 'package-plus');
+        setIcon(badgeIcon, 'star');
         badge.createSpan({ text: 'Pro' });
         header.createDiv({ cls: 'ert-modal-title', text: 'Generate Template Pack' });
         header.createDiv({
@@ -338,11 +339,18 @@ class MatterSampleLaneModal extends Modal {
                     'Scene examples',
                     'PDF layout templates'
                 ]
-                : [
+                : this.selected === 'advanced'
+                    ? [
                     'Front/back matter examples with working LaTeX bodies',
                     'Scene examples',
                     'PDF layout templates'
-                ];
+                    ]
+                    : [
+                        '000 BookMeta.md (master publishing metadata file)',
+                        'Front/back matter stubs set to bodyMode: auto (mix semantic + inline LaTeX)',
+                        'Scene examples',
+                        'PDF layout templates'
+                    ];
             items.forEach(item => {
                 const listItem = createdList.createEl('li', { cls: 'ert-template-pack-list-item' });
                 const itemIcon = listItem.createSpan({ cls: 'ert-template-pack-list-icon' });
@@ -412,6 +420,12 @@ class MatterSampleLaneModal extends Modal {
             'Write raw LaTeX directly inside front/back matter notes. Radial Timeline passes this content through unchanged. Best for advanced users comfortable with LaTeX.',
             'code'
         );
+        makeOption(
+            'mixed',
+            'Mixed (Semantic + LaTeX)',
+            'Uses matter metadata with bodyMode:auto so each page can be plain frontmatter-driven content or inline LaTeX.',
+            'blend'
+        );
         refreshOptionState();
 
         const actions = contentEl.createDiv({ cls: 'ert-modal-actions ert-template-pack-actions' });
@@ -441,9 +455,9 @@ class MatterSampleLaneModal extends Modal {
     }
 }
 
-async function chooseMatterSampleLane(app: App): Promise<MatterSampleLane | null> {
+async function chooseMatterSampleLane(app: App, defaultLane: MatterSampleLane): Promise<MatterSampleLane | null> {
     return new Promise((resolve) => {
-        new MatterSampleLaneModal(app, resolve).open();
+        new MatterSampleLaneModal(app, resolve, defaultLane).open();
     });
 }
 
@@ -464,6 +478,83 @@ interface ActiveBookMetaStatus {
     warning?: string;
     sourceFolder?: string;
     bookMeta?: BookMeta;
+}
+
+function normalizeMatterSideFromContext(classValue: string, filename: string, existingSide?: unknown): 'front' | 'back' {
+    if (typeof existingSide === 'string') {
+        const normalized = existingSide.trim().toLowerCase();
+        if (normalized === 'front' || normalized === 'frontmatter') return 'front';
+        if (normalized === 'back' || normalized === 'backmatter') return 'back';
+    }
+    if (classValue === 'backmatter') return 'back';
+    if (classValue === 'frontmatter') return 'front';
+    if (/^200(?:\.|$)/.test(filename.trim())) return 'back';
+    if (/^0(?:\.|$)/.test(filename.trim())) return 'front';
+    return 'front';
+}
+
+async function applyMatterWorkflowToActiveBook(
+    plugin: RadialTimelinePlugin,
+    workflow: MatterSampleLane
+): Promise<{ scanned: number; updated: number; sourceFolder: string }> {
+    const sourceFolder = getActiveBookExportContext(plugin).sourceFolder.trim();
+    if (!sourceFolder) {
+        throw new Error('Active book source folder is not set.');
+    }
+
+    const mappings = plugin.settings.enableCustomMetadataMapping
+        ? plugin.settings.frontmatterMappings
+        : undefined;
+
+    const files = plugin.app.vault.getMarkdownFiles()
+        .filter(file => isPathInFolderScope(file.path, sourceFolder));
+
+    let scanned = 0;
+    let updated = 0;
+
+    for (const file of files) {
+        const cache = plugin.app.metadataCache.getFileCache(file);
+        const rawFrontmatter = cache?.frontmatter as Record<string, unknown> | undefined;
+        if (!rawFrontmatter) continue;
+        const normalized = normalizeFrontmatterKeys(rawFrontmatter, mappings);
+        const classRaw = normalized.Class;
+        const classValue = typeof classRaw === 'string' ? classRaw.trim().toLowerCase() : '';
+        if (classValue !== 'matter' && classValue !== 'frontmatter' && classValue !== 'backmatter') continue;
+
+        scanned += 1;
+        let changed = false;
+
+        await plugin.app.fileManager.processFrontMatter(file, (frontmatter) => {
+            const fm = frontmatter as Record<string, unknown>;
+            const currentMatter = fm.Matter && typeof fm.Matter === 'object'
+                ? { ...(fm.Matter as Record<string, unknown>) }
+                : {};
+
+            const side = normalizeMatterSideFromContext(classValue, file.basename, currentMatter.side);
+            const nextMatter: Record<string, unknown> = {
+                ...currentMatter,
+                side
+            };
+
+            if (workflow === 'guided') {
+                nextMatter.bodyMode = 'plain';
+            } else if (workflow === 'advanced') {
+                nextMatter.bodyMode = 'latex';
+                nextMatter.usesBookMeta = false;
+            } else {
+                nextMatter.bodyMode = 'auto';
+            }
+
+            if (JSON.stringify(currentMatter) !== JSON.stringify(nextMatter)) {
+                fm.Matter = nextMatter;
+                changed = true;
+            }
+        });
+
+        if (changed) updated += 1;
+    }
+
+    return { scanned, updated, sourceFolder };
 }
 
 function parseBookMetaFromFrontmatter(frontmatter: Record<string, unknown>, sourcePath: string): BookMeta {
@@ -838,7 +929,7 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             ].join('\n')
         },
         {
-            name: '0.4 Dedication (Semantic).md',
+            name: '0.04 Dedication (Semantic).md',
             content: [
                 '---',
                 'Class: Matter',
@@ -855,7 +946,7 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             ].join('\n')
         },
         {
-            name: '0.5 Epigraph (Semantic).md',
+            name: '0.05 Epigraph (Semantic).md',
             content: [
                 '---',
                 'Class: Matter',
@@ -872,7 +963,7 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             ].join('\n')
         },
         {
-            name: '200.1 Acknowledgments (Semantic).md',
+            name: '200.01 Acknowledgments (Semantic).md',
             content: [
                 '---',
                 'Class: Matter',
@@ -889,7 +980,7 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             ].join('\n')
         },
         {
-            name: '200.2 About the Author (Semantic).md',
+            name: '200.02 About the Author (Semantic).md',
             content: [
                 '---',
                 'Class: Matter',
@@ -909,7 +1000,7 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
 
     const advancedMatterSamples: { name: string; content: string }[] = [
         {
-            name: '0.2 Title Page (Body LaTeX).md',
+            name: '0.02 Title Page (Body LaTeX).md',
             content: [
                 '---',
                 'Class: Matter',
@@ -931,7 +1022,7 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             ].join('\n')
         },
         {
-            name: '0.3 Copyright (Body LaTeX).md',
+            name: '0.03 Copyright (Body LaTeX).md',
             content: [
                 '---',
                 'Class: Matter',
@@ -952,7 +1043,7 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             ].join('\n')
         },
         {
-            name: '0.4 Dedication (Body LaTeX).md',
+            name: '0.04 Dedication (Body LaTeX).md',
             content: [
                 '---',
                 'Class: Matter',
@@ -973,7 +1064,7 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             ].join('\n')
         },
         {
-            name: '0.5 Epigraph (Body LaTeX).md',
+            name: '0.05 Epigraph (Body LaTeX).md',
             content: [
                 '---',
                 'Class: Matter',
@@ -992,7 +1083,7 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             ].join('\n')
         },
         {
-            name: '200.1 Acknowledgments (Body LaTeX).md',
+            name: '200.01 Acknowledgments (Body LaTeX).md',
             content: [
                 '---',
                 'Class: Matter',
@@ -1010,7 +1101,7 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             ].join('\n')
         },
         {
-            name: '200.2 About the Author (Body LaTeX).md',
+            name: '200.02 About the Author (Body LaTeX).md',
             content: [
                 '---',
                 'Class: Matter',
@@ -1029,7 +1120,22 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
         }
     ];
 
-    const matterSamples = matterLane === 'guided' ? guidedMatterSamples : advancedMatterSamples;
+    const mixedMatterSamples: { name: string; content: string }[] = guidedMatterSamples.map((sample) => ({
+        name: sample.name,
+        content: sample.content
+            .replace(/bodyMode:\s*plain/g, 'bodyMode: auto')
+            .replace(/Guided Matter Page/g, 'Mixed Matter Page')
+            .replace(
+                /Rendered using BookMeta and the selected PDF template\./g,
+                'Uses bodyMode:auto so each page can be semantic plain content or inline LaTeX.'
+            )
+    }));
+
+    const matterSamples = matterLane === 'advanced'
+        ? advancedMatterSamples
+        : matterLane === 'mixed'
+            ? mixedMatterSamples
+            : guidedMatterSamples;
 
     // ── LaTeX Templates ─────────────────────────────────────────────────────
     const latexTemplates: { name: string; content: string }[] = [
@@ -1188,9 +1294,18 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
                 '\\pagestyle{fancy}',
                 '',
                 '\\setcounter{secnumdepth}{1}',
-                '\\titleformat{\\section}{\\normalfont\\Huge\\bfseries\\centering}{\\arabic{section}}{0pt}{}',
-                '\\titlespacing*{\\section}{0pt}{\\dimexpr\\textheight/6\\relax}{\\dimexpr\\textheight/6\\relax}',
-                '\\preto\\section{\\clearpage\\thispagestyle{fancy}}',
+                '',
+                '% Scene opener pages (new scene starts): headerless, centered, cinematic spacing',
+                '\\titleformat{\\section}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{\\arabic{section}}{0.2em}{}',
+                '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{}{0pt}{}',
+                '\\titlespacing*{\\section}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}',
+                '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
+                '',
+                '% Pandoc may emit subsection headings depending on markdown level/template defaults',
+                '\\titleformat{\\subsection}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{\\arabic{subsection}}{0.2em}{}',
+                '\\titleformat{name=\\subsection,numberless}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{}{0pt}{}',
+                '\\titlespacing*{\\subsection}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}',
+                '\\preto\\subsection{\\clearpage\\thispagestyle{empty}}',
                 '',
                 '\\onehalfspacing',
                 '\\setlength{\\parindent}{1.5em}',
@@ -1214,7 +1329,7 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
         }
     }
 
-    if (matterLane === 'guided') {
+    if (matterLane === 'guided' || matterLane === 'mixed') {
         const bookMetaPath = normalizePath(`${templatesFolder}/${bookMetaSample.name}`);
         if (!vault.getAbstractFileByPath(bookMetaPath)) {
             await vault.create(bookMetaPath, bookMetaSample.content);
@@ -1643,6 +1758,9 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     workflowList.createEl('li', {
         text: 'Advanced (LaTeX in Body) — Write raw LaTeX directly inside matter note bodies.'
     });
+    workflowList.createEl('li', {
+        text: 'Mixed — Keep semantic metadata and allow per-note bodyMode:auto (plain or inline LaTeX).'
+    });
 
     const presetDescriptions: Record<string, string> = {
         novel: 'Traditional novel manuscript layout. Scenes become chapters or sections. Suitable for print-ready PDF.',
@@ -1796,7 +1914,52 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     templatePackSection.createEl('h5', { text: 'Template Pack Generation', cls: ERT_CLASSES.SECTION_TITLE });
     templatePackSection.createEl('p', {
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Creates scene examples, Pandoc PDF templates, and front/back matter scaffolds. You will choose Guided or Advanced workflow during generation.'
+        text: 'Creates scene examples, Pandoc PDF templates, and front/back matter scaffolds. Set workflow below, then generate or migrate active-book matter notes.'
+    });
+
+    const getSavedWorkflowMode = (): MatterSampleLane => {
+        const saved = plugin.settings.matterWorkflowMode;
+        if (saved === 'guided' || saved === 'advanced' || saved === 'mixed') return saved;
+        return 'guided';
+    };
+
+    let selectedMatterWorkflow = getSavedWorkflowMode();
+    const workflowSetting = addProRow(new Setting(templatePackSection))
+        .setName('Matter workflow')
+        .setDesc('Guided = frontmatter plain text. Advanced = inline LaTeX. Mixed = bodyMode:auto per note.')
+        .addDropdown(dd => {
+            dd.addOption('guided', 'Guided (frontmatter)');
+            dd.addOption('advanced', 'Advanced (LaTeX body)');
+            dd.addOption('mixed', 'Mixed');
+            dd.setValue(selectedMatterWorkflow);
+            dd.onChange(async (value) => {
+                const next = value as MatterSampleLane;
+                selectedMatterWorkflow = next;
+                plugin.settings.matterWorkflowMode = next;
+                await plugin.saveSettings();
+            });
+        });
+    workflowSetting.addButton(button => {
+        button.setButtonText('Apply to active book');
+        button.setTooltip('Updates Matter.bodyMode for front/back matter notes in the active book source folder.');
+        button.onClick(async () => {
+            button.setDisabled(true);
+            button.setButtonText('Applying…');
+            try {
+                const result = await applyMatterWorkflowToActiveBook(plugin, selectedMatterWorkflow);
+                if (result.scanned === 0) {
+                    new Notice(`No matter notes found in active book folder: ${result.sourceFolder}`);
+                } else {
+                    new Notice(`Applied "${selectedMatterWorkflow}" workflow to ${result.updated}/${result.scanned} matter notes.`);
+                }
+            } catch (e) {
+                const msg = (e as Error).message || String(e);
+                new Notice(`Failed to apply workflow: ${msg}`);
+            } finally {
+                button.setDisabled(false);
+                button.setButtonText('Apply to active book');
+            }
+        });
     });
 
     const activeBookMetaStatus = getActiveBookMetaStatus(plugin);
@@ -1871,17 +2034,22 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     });
     layoutActionsSetting.addButton(button => {
         button.setButtonText('Generate Template Pack');
-        button.setTooltip('Creates scene samples, Pandoc templates, and matter workflow scaffolds (Guided or Advanced).');
+        button.setTooltip('Creates scene samples, Pandoc templates, and matter workflow scaffolds (Guided, Advanced, or Mixed).');
         button.setCta();
         button.onClick(async () => {
-            const lane = await chooseMatterSampleLane(plugin.app);
+            const lane = await chooseMatterSampleLane(plugin.app, selectedMatterWorkflow);
             if (!lane) return;
             button.setDisabled(true);
             button.setButtonText('Generating Pack…');
             try {
+                if (plugin.settings.matterWorkflowMode !== lane) {
+                    plugin.settings.matterWorkflowMode = lane;
+                    selectedMatterWorkflow = lane;
+                    await plugin.saveSettings();
+                }
                 const created = await generateSampleTemplates(plugin, lane);
                 if (created.length > 0) {
-                    const laneLabel = lane === 'guided' ? 'guided' : 'advanced';
+                    const laneLabel = lane === 'guided' ? 'guided' : lane === 'advanced' ? 'advanced' : 'mixed';
                     new Notice(`Created ${created.length} ${laneLabel} template-pack files. Scenes → Export/Templates, LaTeX → ${plugin.settings.pandocFolder || 'Pandoc'}/. Layouts registered.`);
                 } else {
                     new Notice('All template-pack files already exist. Layouts updated.');
@@ -1902,7 +2070,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     templatePackHelp.createEl('li', { text: 'Front/back matter scaffolds' });
     templatePackSection.createEl('p', {
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'You will choose Guided or Advanced workflow during generation.'
+        text: 'Use Matter workflow + Apply to active book to migrate existing notes; Generate Template Pack creates new scaffolds.'
     });
 
     return section;

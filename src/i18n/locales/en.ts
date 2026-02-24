@@ -347,7 +347,7 @@ export const en: TranslationKeys = {
             },
             rippleRename: {
                 name: 'Manuscript ripple rename: normalize numeric prefixes after drag reorder.',
-                desc: 'Renames both scenes and beats filenames only. Keeps padding (01/001). Removes decimals (1.2/1.5 -> 1/2).',
+                desc: 'Renames scene and active-beat filenames only. Scenes stay integer (1, 2, 3). Beats become decimal minors (1.01, 1.02).',
             },
             autoExpand: {
                 name: 'Auto-expand clipped scene titles',
@@ -475,7 +475,7 @@ export const en: TranslationKeys = {
         rangeCountLabel: '{{count}} scenes selected',
         rangeStatus: 'Scenes {{start}} – {{end}} of {{total}} ({{count}} selected)',
         rangeLoading: 'Fetching scenes…',
-        rangeDecimalWarning: 'Several scenes or beats are using decimal prefixes. Remove decimals using Ripple Renumber via drag move.',
+        rangeDecimalWarning: 'Some scene filenames use decimal prefixes. Canonical scene numbering is integer-only; use drag + Ripple Rename to normalize.',
         actionCreate: 'Manuscript generate',
         actionCancel: 'Cancel',
         emptyNotice: 'No scenes available to assemble.',

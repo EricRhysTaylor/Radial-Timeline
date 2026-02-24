@@ -1,6 +1,13 @@
 import { TFile, App } from 'obsidian';
 import type { TimelineItem } from '../types';
 import { filterBeatsBySystem } from '../utils/gossamer';
+import {
+    comparePrefixTokens,
+    extractIntegerPrefixWidth,
+    extractPrefixToken,
+    formatBeatDecimalPrefix,
+    formatIntegerPrefix
+} from '../utils/prefixOrder';
 
 export interface SceneUpdate {
     path: string;
@@ -116,28 +123,10 @@ interface RippleCandidate {
     sourceIndex: number;
 }
 
-function parseIntegerPrefixWidth(basename: string): number {
-    const match = basename.match(/^\s*(\d+)(?:\.\d+)?\s+/);
-    return match?.[1]?.length ?? 0;
-}
-
-function formatNormalizedPrefix(index: number, width: number): string {
-    const raw = String(index);
-    if (width > 1) return raw.padStart(width, '0');
-    return raw;
-}
-
 function extractBasename(path: string): string {
     const fileName = path.split('/').pop() ?? path;
     const extensionMatch = fileName.match(/\.([^.]+)$/);
     return extensionMatch ? fileName.slice(0, -(extensionMatch[0].length)) : fileName;
-}
-
-function parsePrefixPosition(basename: string): number | null {
-    const match = basename.match(/^\s*(\d+(?:\.\d+)?)\s+/);
-    if (!match) return null;
-    const parsed = Number.parseFloat(match[1]);
-    return Number.isFinite(parsed) ? parsed : null;
 }
 
 function getActiveBeatPaths(items: TimelineItem[], options?: RippleRenamePlanOptions): Set<string> | undefined {
@@ -194,13 +183,10 @@ function buildCanonicalOrder(candidates: RippleCandidate[]): RippleCandidate[] {
     for (const act of orderedActs) {
         const actItems = byAct.get(act) ?? [];
         actItems.sort((a, b) => {
-            const aPos = parsePrefixPosition(a.basename);
-            const bPos = parsePrefixPosition(b.basename);
-            if (aPos !== bPos) {
-                if (aPos === null) return 1;
-                if (bPos === null) return -1;
-                return aPos - bPos;
-            }
+            const aPos = extractPrefixToken(a.basename);
+            const bPos = extractPrefixToken(b.basename);
+            const prefixCmp = comparePrefixTokens(aPos, bPos);
+            if (prefixCmp !== 0) return prefixCmp;
 
             const basenameCmp = a.basename.localeCompare(b.basename, undefined, { numeric: true, sensitivity: 'base' });
             if (basenameCmp !== 0) return basenameCmp;
@@ -224,11 +210,26 @@ export function buildRippleRenamePlan(items: TimelineItem[], options?: RippleRen
     const candidates = dedupeAndCollectEligible(items, activeBeatPaths);
     const ordered = buildCanonicalOrder(candidates);
     const updates: SceneUpdate[] = [];
+    const beatMinorByMajor = new Map<string, number>();
+    let nextSceneNumber = 1;
+    let currentScenePrefix = '0';
 
-    ordered.forEach((entry, idx) => {
+    ordered.forEach((entry) => {
         const currentBasename = entry.basename;
-        const width = parseIntegerPrefixWidth(currentBasename);
-        const newNumber = formatNormalizedPrefix(idx + 1, width);
+        const newNumber = entry.itemType === 'Scene'
+            ? (() => {
+                const width = extractIntegerPrefixWidth(currentBasename);
+                const prefix = formatIntegerPrefix(nextSceneNumber, width);
+                currentScenePrefix = prefix;
+                nextSceneNumber += 1;
+                return prefix;
+            })()
+            : (() => {
+                const major = currentScenePrefix || '0';
+                const nextMinor = (beatMinorByMajor.get(major) ?? 0) + 1;
+                beatMinorByMajor.set(major, nextMinor);
+                return formatBeatDecimalPrefix(major, nextMinor, 2);
+            })();
         const finalBasename = buildRenamedBasename(currentBasename, newNumber);
         if (finalBasename !== currentBasename) {
             updates.push({ path: entry.path, newNumber });

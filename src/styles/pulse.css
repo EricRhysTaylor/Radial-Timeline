@@ -413,6 +413,10 @@
   min-width: 0;
 }
 
+.ert-manuscript-preset-col--hidden {
+  display: none;
+}
+
 .ert-manuscript-preset-col--header {
   gap: 0;
 }
@@ -438,6 +442,10 @@
 
 .ert-manuscript-preset-status {
   grid-column: 1 / -1;
+}
+
+.ert-manuscript-preset-status--hidden {
+  display: none;
 }
 
 .ert-manuscript-split-grid {

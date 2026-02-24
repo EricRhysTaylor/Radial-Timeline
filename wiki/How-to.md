@@ -4,6 +4,15 @@ Scenes in Radial Timeline can be reordered in two ways: **by renaming the scene 
 
 ---
 
+#### Prefix Numbering Convention
+
+- **Scenes** use canonical integer prefixes: `1`, `2`, `3`, ...
+- **Beats** use decimal minor prefixes so they do not consume scene integers: `1.01`, `1.02`, ...
+- **Front matter** typically uses `0.xx`; **Back matter** uses `200.xx`.
+- Use two-digit minor parts (`.01`, `.02`) for stable Obsidian filename sorting.
+
+---
+
 #### Method 1: Reorder by Scene Title (All Versions)
 
 Radial Timeline uses the **leading scene number in the scene title** to determine order.

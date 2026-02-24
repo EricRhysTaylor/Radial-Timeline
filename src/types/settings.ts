@@ -490,6 +490,7 @@ export interface RadialTimelineSettings {
     pandocFallbackPath?: string;
     pandocFolder?: string;  // Vault path for Pandoc templates and compile scripts
     pandocLayouts?: PandocLayoutTemplate[];
+    matterWorkflowMode?: 'guided' | 'advanced' | 'mixed';
     /** @deprecated Migrated to BookProfile.lastUsedPandocLayoutByPreset. Kept for one migration cycle. */
     lastUsedPandocLayoutByPreset?: Record<string, string>;
 

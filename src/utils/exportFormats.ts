@@ -335,7 +335,8 @@ export async function runPandocOnContent(
     const pdfEngine = pdfEngineSelection.path || pdfEngineSelection.engine;
     const tmpDir = os.tmpdir();
     const tmpInput = path.join(tmpDir, `rt-pandoc-${Date.now()}.md`);
-    await fs.promises.writeFile(tmpInput, content, 'utf8');
+    const preparedContent = preparePandocContent(content, options);
+    await fs.promises.writeFile(tmpInput, preparedContent, 'utf8');
 
     const args = ['-f', 'markdown', '-t', options.targetFormat, '-o', outputAbsolutePath, tmpInput];
     args.push('--pdf-engine', pdfEngine);
@@ -365,6 +366,37 @@ export async function runPandocOnContent(
             console.warn('Failed to clean tmp pandoc file', e);
         }
     });
+}
+
+function preparePandocContent(content: string, options: PandocOptions): string {
+    if (options.targetFormat !== 'pdf') return content;
+
+    const injectLines: string[] = [];
+
+    // Some custom/legacy templates do not define \tightlist, but Pandoc emits it for markdown lists.
+    const hasTightlistDefinition = /\\(?:providecommand|newcommand|def)\s*\\tightlist|\\(?:providecommand|newcommand)\s*\{\\tightlist\}/.test(content);
+    if (!hasTightlistDefinition) {
+        injectLines.push('\\providecommand{\\tightlist}{\\setlength{\\itemsep}{0pt}\\setlength{\\parskip}{0pt}}');
+    }
+
+    // Runtime compatibility shim for AJ Finn templates that predate RT-native scene opener formatting.
+    const templatePath = options.templatePath?.toLowerCase() || '';
+    const isAjFinnTemplate = templatePath.includes('ajfinn');
+    if (isAjFinnTemplate) {
+        injectLines.push(
+            '\\titleformat{\\section}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{\\arabic{section}}{0.2em}{}',
+            '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{}{0pt}{}',
+            '\\titlespacing*{\\section}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}',
+            '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
+            '\\titleformat{\\subsection}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{\\arabic{subsection}}{0.2em}{}',
+            '\\titleformat{name=\\subsection,numberless}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{}{0pt}{}',
+            '\\titlespacing*{\\subsection}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}',
+            '\\preto\\subsection{\\clearpage\\thispagestyle{empty}}'
+        );
+    }
+
+    if (injectLines.length === 0) return content;
+    return `${injectLines.join('\n')}\n\n${content}`;
 }
 
 function formatCsvValue(value: string | null | undefined): string {

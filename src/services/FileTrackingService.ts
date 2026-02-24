@@ -2,6 +2,9 @@ import type RadialTimelinePlugin from '../main';
 import { TFile, TAbstractFile, MarkdownView } from 'obsidian';
 
 export class FileTrackingService {
+    private modalStateObserver?: MutationObserver;
+    private modalStateSyncRaf?: number;
+
     constructor(private plugin: RadialTimelinePlugin) {}
 
     updateOpenFilesTracking(): void {
@@ -63,6 +66,7 @@ export class FileTrackingService {
 
     registerWorkspaceListeners(): void {
         this.plugin.app.workspace.onLayoutReady(() => {
+            this.installModalStateObserver();
             this.plugin.setCSSColorVariables();
             this.updateOpenFilesTracking();
         });
@@ -104,6 +108,39 @@ export class FileTrackingService {
                 this.plugin.refreshTimelineIfNeeded(null);
             }
         }));
+    }
+
+    private installModalStateObserver(): void {
+        if (this.modalStateObserver || !document.body) return;
+
+        this.syncModalOpenBodyClass();
+        this.modalStateObserver = new MutationObserver(() => this.scheduleModalStateSync());
+        this.modalStateObserver.observe(document.body, { childList: true, subtree: true });
+
+        this.plugin.register(() => {
+            if (this.modalStateObserver) {
+                this.modalStateObserver.disconnect();
+                this.modalStateObserver = undefined;
+            }
+            if (this.modalStateSyncRaf) {
+                window.cancelAnimationFrame(this.modalStateSyncRaf);
+                this.modalStateSyncRaf = undefined;
+            }
+            document.body.classList.remove('rt-modal-open');
+        });
+    }
+
+    private scheduleModalStateSync(): void {
+        if (this.modalStateSyncRaf) return;
+        this.modalStateSyncRaf = window.requestAnimationFrame(() => {
+            this.modalStateSyncRaf = undefined;
+            this.syncModalOpenBodyClass();
+        });
+    }
+
+    private syncModalOpenBodyClass(): void {
+        if (!document.body) return;
+        document.body.classList.toggle('rt-modal-open', this.isModalOpen());
     }
 
     private handleFileRename(file: TAbstractFile, oldPath: string): void {

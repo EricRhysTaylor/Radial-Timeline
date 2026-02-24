@@ -107,7 +107,7 @@ Gossamer2: 21                 # Second run (most recent in this example)
 Gossamer2 Justification:
 ```
 
-> **Beat semantics**: Beats are structural, not temporal. They do not use the `When` field — ordering comes from Act assignment and filename prefix.
+> **Beat semantics**: Beats are structural, not temporal. They do not use the `When` field — ordering comes from Act assignment and filename prefix (`sceneInteger.minor`, for example `7.01`).
 
 Beat notes have their own **Beat properties editor** in **Settings → Story beats system**. Use it to add custom keys and choose which fields appear in beat hovers. Beat properties are stored per beat system.
 
@@ -146,6 +146,6 @@ The plugin automatically recognizes legacy field names, so you don't need to upd
 | `Purpose:` | `Description:` |
 | `Context:` | `Synopsis:` (Backdrop only) |
 
-Beat notes do not use `When:` — they are ordered structurally by Act and filename prefix.
+Beat notes do not use `When:` — they are ordered structurally by Act and filename prefix. Recommended format: fixed-width decimal minors (`1.01`, `1.02`, ...).
 
 Existing notes with old field names will continue to work. Only new notes created from sets will use the current field names.

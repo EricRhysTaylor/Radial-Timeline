@@ -184,6 +184,7 @@ Configure the structural pacing guide for your story.
     *   **Red** — duplicate beat title or multiple files match. Resolve manually.
     *   **No highlight** — new beat with no file yet. Use **Create** to generate it.
 *   **Create sets**: Generate beat set notes in your source folder. The button shows how many new notes will be created and is disabled when all beats already have files.
+*   **Beat filename numbering**: Generated beat notes use decimal minor prefixes (for example, `7.01 Midpoint.md`) so scene integer slots remain canonical.
 *   **Repair beat notes**: (Appears when misaligned beats or missing Beat Model are detected) Updates frontmatter (Act, Beat Model, Class) only. Does not rename files. See [[Beat-Audit-Heal]] for details.
 *   **Beat properties editor**: Customize additional beat properties and choose which fields appear in the beat hover synopsis. Stored per beat system.
 *   **Saved sets ✦ Pro**: Save and switch between multiple custom beat systems (unlimited beat sets). Each system stores its beat list, Beat properties editor fields, and hover metadata selections. Core includes a single custom beat system.
@@ -285,6 +286,7 @@ Configure the AI assistant for narrative analysis.
 <a name="configuration"></a>
 ### Configuration
 Technical configuration and file handling.
+*   **Manuscript ripple rename**: Normalizes scene and active-beat filename prefixes after drag reorder. Scenes are resequenced as integers (`1`, `2`, `3`), while beats are resequenced as decimal minors (`1.01`, `1.02`, ...).
 *   **Auto-expand clipped scene titles**: Automatically expands truncated text in the radial view on hover.
 *   **Timeline readability scale**: Adjusts the global font size of the timeline (Normal or Large).
 *   **Metadata refresh debounce**: Adjust how often the timeline refreshes while typing (default 10000ms).

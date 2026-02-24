@@ -10,6 +10,7 @@ import { parseScoresFromClipboard } from '../GossamerCommands';
 import { getPlotSystem } from '../utils/beatsSystems';
 import { normalizeBeatSetNameInput, resolveSelectedBeatModel } from '../utils/beatsInputNormalize';
 import { isPathInFolderScope } from '../utils/pathScope';
+import { comparePrefixTokens, extractPrefixToken } from '../utils/prefixOrder';
 
 interface ScoreHistoryItem {
   index: number;
@@ -498,13 +499,13 @@ export class GossamerScoreModal extends Modal {
   }
 
   private buildEntries(): void {
-    // Sort plot beats by numeric prefix
+    // Sort plot beats by filename prefix using natural token ordering.
     const sortedBeats = [...this.plotBeats].sort((a, b) => {
-      const aMatch = (a.title || '').match(/^(\d+(?:\.\d+)?)/);
-      const bMatch = (b.title || '').match(/^(\d+(?:\.\d+)?)/);
-      const aNum = aMatch ? parseFloat(aMatch[1]) : 0;
-      const bNum = bMatch ? parseFloat(bMatch[1]) : 0;
-      return aNum - bNum;
+      const aPrefix = extractPrefixToken(a.title || '');
+      const bPrefix = extractPrefixToken(b.title || '');
+      const prefixCmp = comparePrefixTokens(aPrefix, bPrefix);
+      if (prefixCmp !== 0) return prefixCmp;
+      return (a.title || '').localeCompare(b.title || '', undefined, { numeric: true, sensitivity: 'base' });
     });
 
     for (const beat of sortedBeats) {

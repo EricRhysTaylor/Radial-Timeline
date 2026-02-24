@@ -6,6 +6,7 @@
 import type { TimelineItem } from '../types';
 import type { ChronologueBackdropMicroRing, GlobalPovMode } from '../types/settings';
 import { parseWhenField } from './date';
+import { comparePrefixTokens, extractPrefixToken } from './prefixOrder';
 
 const STATUSES_REQUIRING_WHEN = new Set(['working', 'complete']);
 
@@ -288,40 +289,33 @@ export function sortScenesChronologically(scenes: TimelineItem[]): TimelineItem[
 }
 
 /**
- * Extract a numeric position from a scene or beat note for sorting
- * Returns the filename prefix number (e.g., "01 Scene" → 1)
- * Returns Infinity if no prefix found (sorts to end)
+ * Extract a sortable prefix token from a scene/beat title.
+ * Returns null if no numeric prefix is present.
+ */
+export function extractPositionToken(item: TimelineItem): string | null {
+    return extractPrefixToken(item.title || '');
+}
+
+/**
+ * Legacy numeric extractor retained for renderer callers.
+ * Prefer token-based ordering via sortByManuscriptOrder().
  */
 export function extractPosition(item: TimelineItem): number {
-    const title = item.title || '';
-    
-    // Extract prefix number
-    const prefixMatch = title.match(/^(\d+(?:\.\d+)?)\s*/);
-    if (prefixMatch) {
-        return parseFloat(prefixMatch[1]);
-    }
-    
-    // No position found
-    return Infinity;
+    const token = extractPositionToken(item);
+    if (!token) return Infinity;
+    const parsed = Number.parseFloat(token);
+    return Number.isFinite(parsed) ? parsed : Infinity;
 }
 
 /**
  * Sort scenes by manuscript order (prefix number, then alphanumeric)
  */
 export function sortByManuscriptOrder(a: TimelineItem, b: TimelineItem): number {
-    // Extract positions (prefix or Range for beats)
-    const aPos = extractPosition(a);
-    const bPos = extractPosition(b);
-    
-    // Sort by position
-    if (aPos !== bPos) {
-        // If both are Infinity (no position), fall back to alphanumeric
-        if (aPos === Infinity && bPos === Infinity) {
-            return (a.title || '').localeCompare(b.title || '');
-        }
-        return aPos - bPos;
-    }
-    
-    // If positions are equal, sort by full title
-    return (a.title || '').localeCompare(b.title || '');
+    const aToken = extractPositionToken(a);
+    const bToken = extractPositionToken(b);
+    const tokenCmp = comparePrefixTokens(aToken, bToken);
+    if (tokenCmp !== 0) return tokenCmp;
+
+    // If prefix tokens are equal or absent, sort by full title.
+    return (a.title || '').localeCompare(b.title || '', undefined, { numeric: true, sensitivity: 'base' });
 }

@@ -2,6 +2,7 @@ import { Notice, App } from 'obsidian';
 import { applySceneNumberUpdates, buildRippleRenamePlan, type SceneUpdate } from '../../services/SceneReorderService';
 import { DragConfirmModal } from '../../modals/DragConfirmModal';
 import { DRAG_DROP_ARC_RADIUS, DRAG_DROP_TICK_OUTER_RADIUS, DRAG_DROP_TICK_LENGTH } from '../../renderer/layout/LayoutConstants';
+import { formatBeatDecimalPrefix, formatIntegerPrefix } from '../../utils/prefixOrder';
 
 export interface OuterRingViewAdapter {
     plugin: { app: App; settings: Record<string, unknown> };
@@ -80,6 +81,7 @@ export class OuterRingDragController {
     private confirming = false;
     private dropTick: SVGPathElement | null = null;
     private originColor?: string;
+    private originModalColor?: string;
     private originStartAngle?: number;
     private originOuterR?: number;
     private dropArc: SVGPathElement | null = null;
@@ -195,14 +197,7 @@ export class OuterRingDragController {
     }
 
     private formatPrefixWithWidth(index: number, width: number): string {
-        const raw = String(index);
-        if (width > 1) return raw.padStart(width, '0');
-        return raw;
-    }
-
-    private getNextPrefixForEntry(entry: OuterRingOrderEntry, index: number): string {
-        const width = this.getPrefixWidthForEntry(entry);
-        return this.formatPrefixWithWidth(index, width);
+        return formatIntegerPrefix(index, width);
     }
 
     private buildRenumberDiff(
@@ -211,8 +206,25 @@ export class OuterRingDragController {
     ): { updates: SceneUpdate[]; nextNumberByPath: Map<string, string> } {
         const updates: SceneUpdate[] = [];
         const nextNumberByPath = new Map<string, string>();
-        reordered.forEach((entry, idx) => {
-            const nextNumber = this.getNextPrefixForEntry(entry, idx + 1);
+        const beatMinorByMajor = new Map<string, number>();
+        let nextSceneNumber = 1;
+        let currentScenePrefix = '0';
+
+        reordered.forEach((entry) => {
+            const nextNumber = entry.itemType === 'Scene'
+                ? (() => {
+                    const width = this.getPrefixWidthForEntry(entry);
+                    const prefix = this.formatPrefixWithWidth(nextSceneNumber, width);
+                    currentScenePrefix = prefix;
+                    nextSceneNumber += 1;
+                    return prefix;
+                })()
+                : (() => {
+                    const major = currentScenePrefix || '0';
+                    const nextMinor = (beatMinorByMajor.get(major) ?? 0) + 1;
+                    beatMinorByMajor.set(major, nextMinor);
+                    return formatBeatDecimalPrefix(major, nextMinor, 2);
+                })();
             nextNumberByPath.set(entry.path, nextNumber);
             if (!forceNoRenumber) {
                 const currentPrefix = this.getCurrentPrefixForCompare(entry);
@@ -230,7 +242,7 @@ export class OuterRingDragController {
 
     private appendRippleRenameSummary(summaryLines: string[]): void {
         if (!this.isRippleRenameEnabled()) return;
-        summaryLines.push('Ripple rename is enabled: scene and active-beat filenames are normalized after drop (filenames only). Decimalized prefixes are reflowed to integers.');
+        summaryLines.push('Ripple rename is enabled: scene and active-beat filenames are normalized after drop (filenames only). Scenes stay integer-numbered; beats are rewritten as decimal minors.');
     }
 
     private buildResequenceSummaryLine(
@@ -249,7 +261,7 @@ export class OuterRingDragController {
         if (beatCount === 0) {
             return `Will resequence ${total} filenames (${sceneCount} scenes) — updates numbering.`;
         }
-        return `Will resequence ${total} filenames (${sceneCount} scenes, ${beatCount} beats) — resolves overlaps; decimals become integers.`;
+        return `Will resequence ${total} filenames (${sceneCount} scenes, ${beatCount} beats) — scenes stay integers and beats use decimal minors.`;
     }
 
     /** Extract the scene/beat path element ID from an .rt-scene-group */
@@ -329,11 +341,13 @@ export class OuterRingDragController {
         if (this.dropTick) {
             this.dropTick.setAttribute('d', '');
             this.dropTick.removeAttribute('stroke');
+            this.dropTick.style.removeProperty('--rt-drag-stroke-color');
             this.dropTick.classList.add('rt-hidden');
         }
         if (this.dropArc) {
             this.dropArc.setAttribute('d', '');
             this.dropArc.removeAttribute('stroke');
+            this.dropArc.style.removeProperty('--rt-drag-stroke-color');
             this.dropArc.classList.add('rt-hidden');
         }
     }
@@ -478,8 +492,10 @@ export class OuterRingDragController {
         tick.classList.remove('rt-hidden');
         tick.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
         if (color) {
+            tick.style.setProperty('--rt-drag-stroke-color', color);
             tick.setAttribute('stroke', color);
         } else {
+            tick.style.removeProperty('--rt-drag-stroke-color');
             tick.removeAttribute('stroke');
         }
     }
@@ -508,8 +524,10 @@ export class OuterRingDragController {
         const y1p = rArc * Math.sin(a1);
         arc.setAttribute('d', `M ${x0} ${y0} A ${rArc} ${rArc} 0 ${largeArc} ${sweep} ${x1p} ${y1p}`);
         if (color) {
+            arc.style.setProperty('--rt-drag-stroke-color', color);
             arc.setAttribute('stroke', color);
         } else {
+            arc.style.removeProperty('--rt-drag-stroke-color');
             arc.removeAttribute('stroke');
         }
     }
@@ -525,6 +543,7 @@ export class OuterRingDragController {
         this.sourceSceneId = null;
         this.sourcePath = null;
         this.sourceItemType = 'Scene';
+        this.originModalColor = undefined;
         if (this.sourceSceneGroup) {
             this.sourceSceneGroup.classList.remove('rt-drag-source');
             this.sourceSceneGroup.style.removeProperty('--rt-drag-stroke-color');
@@ -654,7 +673,12 @@ export class OuterRingDragController {
         this.confirming = true;
         let confirmed = false;
         try {
-            const modal = new DragConfirmModal(this.view.plugin.app, summaryLines, this.originColor, sourceLabel);
+            const modal = new DragConfirmModal(
+                this.view.plugin.app,
+                summaryLines,
+                this.originModalColor ?? this.originColor,
+                sourceLabel
+            );
             confirmed = await new Promise<boolean>((resolve) => {
                 const onClose = () => resolve(modal.getResult());
                 modal.onClose = onClose;
@@ -826,7 +850,12 @@ export class OuterRingDragController {
         this.confirming = true;
         let confirmed = false;
         try {
-            const modal = new DragConfirmModal(this.view.plugin.app, summaryLines, this.originColor, sourceLabel);
+            const modal = new DragConfirmModal(
+                this.view.plugin.app,
+                summaryLines,
+                this.originModalColor ?? this.originColor,
+                sourceLabel
+            );
             confirmed = await new Promise<boolean>((resolve) => {
                 const onClose = () => resolve(modal.getResult());
                 modal.onClose = onClose;
@@ -985,6 +1014,7 @@ export class OuterRingDragController {
         
         // Drag accent follows publish-stage color (not subplot fill color)
         this.originColor = this.resolvePublishStageColorFromGroup(group);
+        this.originModalColor = this.resolveSubplotColorFromGroup(group);
         this.captureOriginGeometry(sceneId);
         
         if (this.holdTimer !== null) {
@@ -1110,6 +1140,36 @@ export class OuterRingDragController {
             || readCssVariable('--rt-max-publish-stage-color')
             || '#9370DB'
         );
+    }
+
+    private resolveSubplotColorFromGroup(group: SVGGElement): string | undefined {
+        const readCssVariable = (name: string): string | undefined => {
+            try {
+                const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+                return value || undefined;
+            } catch (_error) {
+                return undefined;
+            }
+        };
+
+        const subplotIdxAttr = group.getAttribute('data-subplot-color-index') || group.getAttribute('data-subplot-index');
+        if (subplotIdxAttr) {
+            const idx = Number(subplotIdxAttr);
+            if (Number.isFinite(idx)) {
+                const normalized = ((Math.trunc(idx) % 16) + 16) % 16;
+                const subplotColor =
+                    readCssVariable(`--rt-subplot-colors-${normalized}`)
+                    || ((this.view.plugin.settings as any)?.subplotColors?.[normalized] as string | undefined);
+                if (subplotColor) return subplotColor;
+            }
+        }
+
+        const scenePath = group.querySelector<SVGPathElement>('.rt-scene-path');
+        if (scenePath) {
+            const fillAttr = scenePath.getAttribute('fill')?.trim();
+            if (fillAttr && !fillAttr.startsWith('url(')) return fillAttr;
+        }
+        return undefined;
     }
 
     /**
