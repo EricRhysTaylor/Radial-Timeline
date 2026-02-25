@@ -1463,7 +1463,8 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     addWikiLink(pandocHeading, 'Settings#professional');
     applyErtHeaderLayout(pandocHeading);
 
-    const systemConfigPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
+    const systemConfigPanel = pandocPanel.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+    systemConfigPanel.style.order = '50';
     const systemConfigHeading = addProRow(new Setting(systemConfigPanel))
         .setName('System Configuration')
         .setDesc('Configure your Pandoc executable and global Pandoc folder.')
@@ -1544,11 +1545,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             });
         });
 
-    // ── Pandoc Folder (advanced) ──────────────────────────────────────────
-    const pandocAdvanced = systemConfigPanel.createEl('details', { cls: 'ert-publishing-system-advanced' }) as HTMLDetailsElement;
-    const pandocAdvancedSummary = pandocAdvanced.createEl('summary', { text: 'Advanced' });
-    pandocAdvancedSummary.addClass('ert-publishing-system-advanced-summary');
-    const pandocAdvancedBody = pandocAdvanced.createDiv({ cls: 'ert-publishing-system-advanced-body' });
+    // ── Pandoc Folder ──────────────────────────────────────────────────────
     const defaultPandocFolder = normalizePath(DEFAULT_SETTINGS.pandocFolder || 'Radial Timeline/Pandoc');
     let pandocFolderText: TextComponent | null = null;
     let pandocFolderInputEl: HTMLInputElement | null = null;
@@ -1570,7 +1567,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         setTimeout(() => { pandocFolderInputEl?.removeClass(cls); }, 1700);
     };
 
-    const pandocFolderSetting = addProRow(new Setting(pandocAdvancedBody))
+    const pandocFolderSetting = addProRow(new Setting(systemConfigPanel))
         .setName('Pandoc folder')
         .setDesc('Global folder for PDF layout templates (.tex) and compile helpers. Used during PDF rendering. Final exports are saved to the Export folder.')
         .addText(text => {
@@ -1606,7 +1603,8 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     });
 
     // ── Layout Registry Subsection ──────────────────────────────────────────
-    const layoutPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
+    const layoutPanel = pandocPanel.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+    layoutPanel.style.order = '20';
     const layoutHeading = addProRow(new Setting(layoutPanel))
         .setName('Export Layouts (PDF)')
         .setDesc('Manage built-in and custom LaTeX layouts used for manuscript PDF rendering.')
@@ -1913,7 +1911,8 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         });
     });
 
-    const publishingSetupPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
+    const publishingSetupPanel = pandocPanel.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+    publishingSetupPanel.style.order = '30';
     const publishingHeading = addProRow(new Setting(publishingSetupPanel))
         .setName('Publishing Setup')
         .setDesc('Set up publishing notes for the active book. BookMeta + matter notes are activated from the active book folder.')
@@ -2023,7 +2022,8 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         });
     });
 
-    const advancedPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
+    const advancedPanel = pandocPanel.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+    advancedPanel.style.order = '40';
     const advancedHeading = addProRow(new Setting(advancedPanel))
         .setName('Advanced')
         .setDesc('Matter workflow controls for migrating existing notes in the active book folder.')
@@ -2103,7 +2103,8 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         text: 'Use Apply to active book to migrate existing matter notes to the selected workflow without re-generating files.'
     });
 
-    const previewPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
+    const previewPanel = pandocPanel.createDiv({ cls: `${ERT_CLASSES.STACK} ${ERT_CLASSES.STACK_TIGHT}` });
+    previewPanel.style.order = '10';
     const previewPanelHeading = addProRow(new Setting(previewPanel))
         .setName('Preview')
         .setDesc('BookMeta values detected in the active book folder.')
@@ -2111,11 +2112,14 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     addHeadingIcon(previewPanelHeading, 'book-copy');
     applyErtHeaderLayout(previewPanelHeading);
 
-    const previewFrame = previewPanel.createDiv({ cls: 'ert-bookmeta-preview' });
-    const previewHeader = previewFrame.createDiv({ cls: 'ert-bookmeta-preview-header' });
+    const previewFrame = previewPanel.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-previewFrame--center ert-previewFrame--flush` });
+    const previewHeader = previewFrame.createDiv({ cls: 'ert-previewFrame__header ert-bookmeta-preview-header' });
     const previewHeaderIcon = previewHeader.createSpan({ cls: 'ert-bookmeta-preview-header-icon' });
     setIcon(previewHeaderIcon, 'book-copy');
-    previewHeader.createSpan({ text: 'BookMeta preview' });
+    previewHeader.createDiv({
+        cls: 'ert-planetary-preview-heading ert-previewFrame__title',
+        text: 'BookMeta preview'
+    });
 
     const previewGrid = previewFrame.createDiv({ cls: 'ert-bookmeta-preview-grid' });
     const addPreviewField = (label: string, value?: string | number | null) => {
