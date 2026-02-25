@@ -186,7 +186,7 @@ export interface ExportFilenameOptions {
     manuscriptPreset?: ManuscriptPreset;
     outlinePreset?: OutlinePreset;
     extension: string;
-    /** When set and format is PDF, filename becomes {fileStem}.{ext}. */
+    /** Book title-derived stem used for manuscript PDF naming. */
     fileStem?: string;
 }
 
@@ -195,7 +195,7 @@ export interface ExportFilenameOptions {
  * Pattern: "[Category/Title] [Preset] [Sub-][Order] [Timestamp].[ext]"
  * Examples:
  *   - "Manuscript Novl Narr Jan 12 @ 3.32PM.md"
- *   - "Working Title Novl Narr Feb 14 @ 11.51AM.pdf"
+ *   - "Working Title PDF Feb 14 @ 11.51AM.pdf"
  *   - "Outline BtSh RevN Jan 12 @ 3.32PM.md"
  *   - "Outline IdxC Sub-RevC Jan 12 @ 3.32PM.csv"
  */
@@ -206,12 +206,13 @@ export function buildExportFilename(options: ExportFilenameOptions): string {
     const orderPart = hasSubplotFilter ? `Sub-${orderAcronym}` : orderAcronym;
     const isPandocExport = options.exportType === 'manuscript' && options.extension === 'pdf';
 
-    // Pandoc exports use readable book-titled filenames for author-facing artifacts.
-    if (isPandocExport && options.fileStem) {
-        const presetAcronym = getManuscriptPresetAcronym(options.manuscriptPreset || 'novel');
+    // Manuscript PDF exports use formal, title-first naming.
+    if (isPandocExport) {
         const isDefault = options.fileStem === 'Manuscript' || options.fileStem === 'Untitled-Manuscript';
-        const prefix = isDefault ? 'Manuscript' : stemToReadable(options.fileStem);
-        return `${prefix} ${presetAcronym} ${orderPart} ${timestamp}.${options.extension}`;
+        const prefix = options.fileStem
+            ? (isDefault ? 'Manuscript' : stemToReadable(options.fileStem))
+            : 'Manuscript';
+        return `${prefix} PDF ${timestamp}.${options.extension}`;
     }
     
     if (options.exportType === 'outline') {
@@ -352,55 +353,34 @@ function parseFcListFamilies(output: string): string[] {
 }
 
 function loadFontCatalogFromFcList(): string[] | null {
-    try {
-        const output = execFileSync('fc-list', [':', 'family'], {
-            encoding: 'utf8',
-            stdio: ['ignore', 'pipe', 'ignore']
-        });
-        const entries = parseFcListFamilies(output);
-        return entries.length > 0 ? Array.from(new Set(entries)) : null;
-    } catch {
-        return null;
-    }
-}
+    const candidates = process.platform === 'darwin'
+        ? ['fc-list', '/opt/homebrew/bin/fc-list', '/usr/local/bin/fc-list', '/usr/bin/fc-list']
+        : ['fc-list', '/usr/bin/fc-list', '/usr/local/bin/fc-list'];
 
-function loadFontCatalogFromMacSystemProfiler(): string[] | null {
-    if (process.platform !== 'darwin') return null;
-
-    try {
-        const output = execFileSync('system_profiler', ['SPFontsDataType', '-json'], {
-            encoding: 'utf8',
-            stdio: ['ignore', 'pipe', 'ignore'],
-            maxBuffer: 1024 * 1024 * 16
-        });
-        const parsed = JSON.parse(output) as { SPFontsDataType?: unknown[] };
-        const entries = new Set<string>();
-        for (const fontRecord of parsed.SPFontsDataType || []) {
-            if (!fontRecord || typeof fontRecord !== 'object') continue;
-            const record = fontRecord as Record<string, unknown>;
-            const typefaces = Array.isArray(record.typefaces) ? record.typefaces : [];
-            for (const face of typefaces) {
-                if (!face || typeof face !== 'object') continue;
-                const faceRecord = face as Record<string, unknown>;
-                for (const key of ['family', 'fullname', '_name']) {
-                    const value = faceRecord[key];
-                    if (typeof value === 'string' && value.trim()) {
-                        entries.add(value.trim());
-                    }
-                }
+    for (const candidate of candidates) {
+        try {
+            const output = execFileSync(candidate, [':', 'family'], {
+                encoding: 'utf8',
+                stdio: ['ignore', 'pipe', 'ignore'],
+                timeout: 3000,
+                maxBuffer: 1024 * 1024 * 8
+            });
+            const entries = parseFcListFamilies(output);
+            if (entries.length > 0) {
+                return Array.from(new Set(entries));
             }
+        } catch {
+            // Try next candidate path.
         }
-        return entries.size > 0 ? Array.from(entries) : null;
-    } catch {
-        return null;
     }
+    return null;
 }
 
 function loadSystemFontCatalog(): string[] | null {
     if (systemFontCatalogLoaded) return systemFontCatalogCache;
     systemFontCatalogLoaded = true;
 
-    const catalog = loadFontCatalogFromFcList() || loadFontCatalogFromMacSystemProfiler();
+    const catalog = loadFontCatalogFromFcList();
     systemFontCatalogCache = catalog;
     return systemFontCatalogCache;
 }

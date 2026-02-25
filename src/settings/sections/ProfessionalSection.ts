@@ -372,17 +372,17 @@ class MatterSampleLaneModal extends Modal {
         const { contentEl, modalEl } = this;
         contentEl.empty();
         if (modalEl) {
-            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal--template-pack');
+            modalEl.classList.add('ert-ui', 'ert-scope--modal', 'ert-modal-shell', 'ert-modal--template-pack', ERT_CLASSES.SKIN_PRO);
             modalEl.style.width = '560px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw';
         }
         contentEl.addClass('ert-modal-container', 'ert-stack', 'ert-template-pack-modal');
 
         const header = contentEl.createDiv({ cls: 'ert-modal-header' });
-        const badge = header.createSpan({ cls: `${ERT_CLASSES.MODAL_BADGE} ert-modal-badge-pro` });
-        const badgeIcon = badge.createSpan({ cls: ERT_CLASSES.MODAL_BADGE_ICON });
-        setIcon(badgeIcon, 'star');
-        badge.createSpan({ text: 'Pro' });
+        const badge = header.createSpan({ cls: `${ERT_CLASSES.BADGE_PILL} ${ERT_CLASSES.BADGE_PILL_PRO}` });
+        const badgeIcon = badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_ICON });
+        setIcon(badgeIcon, 'signature');
+        badge.createSpan({ cls: ERT_CLASSES.BADGE_PILL_TEXT, text: 'PRO' });
         header.createDiv({ cls: 'ert-modal-title', text: 'Generate Template Pack' });
         header.createDiv({
             cls: 'ert-modal-subtitle',
@@ -394,7 +394,7 @@ class MatterSampleLaneModal extends Modal {
         const createdHeadingIcon = createdHeading.createSpan({ cls: 'ert-template-pack-subtitle-icon' });
         setIcon(createdHeadingIcon, 'list-checks');
         createdHeading.createSpan({ text: 'What Will Be Created' });
-        const createdList = createdBlock.createEl('ul', { cls: 'ert-template-pack-list' });
+        const createdList = createdBlock.createEl('ol', { cls: 'ert-template-pack-list ert-template-pack-list--ordered' });
         const renderCreatedList = () => {
             createdList.empty();
             const items = this.selected === 'guided'
@@ -419,24 +419,22 @@ class MatterSampleLaneModal extends Modal {
                     ];
             items.forEach(item => {
                 const listItem = createdList.createEl('li', { cls: 'ert-template-pack-list-item' });
-                const itemIcon = listItem.createSpan({ cls: 'ert-template-pack-list-icon' });
-                setIcon(itemIcon, 'dot');
-                listItem.createSpan({ text: item });
+                listItem.setText(item);
             });
         };
 
         const optionsEl = contentEl.createDiv({ cls: 'ert-template-pack-options ert-stack--tight' });
-        const optionButtons: Partial<Record<MatterSampleLane, HTMLButtonElement>> = {};
-        const laneRadios: Partial<Record<MatterSampleLane, HTMLInputElement>> = {};
+        optionsEl.setAttr('role', 'radiogroup');
+        optionsEl.setAttr('aria-label', 'Matter workflow');
+        const optionButtons: Partial<Record<MatterSampleLane, HTMLDivElement>> = {};
         const refreshOptionState = () => {
             (Object.keys(optionButtons) as MatterSampleLane[]).forEach((lane) => {
                 const active = this.selected === lane;
                 const optionButton = optionButtons[lane];
-                const laneRadio = laneRadios[lane];
-                if (!optionButton || !laneRadio) return;
+                if (!optionButton) return;
                 optionButton.toggleClass(ERT_CLASSES.IS_ACTIVE, active);
-                optionButton.setAttr('aria-pressed', active ? 'true' : 'false');
-                laneRadio.checked = active;
+                optionButton.setAttr('aria-checked', active ? 'true' : 'false');
+                optionButton.setAttr('tabindex', active ? '0' : '-1');
             });
             renderCreatedList();
         };
@@ -447,21 +445,25 @@ class MatterSampleLaneModal extends Modal {
             desc: string,
             iconName: string
         ) => {
-            const option = optionsEl.createEl('button', {
+            const option = optionsEl.createDiv({
                 cls: 'ert-template-pack-option',
-                attr: { type: 'button' }
+                attr: {
+                    role: 'radio',
+                    tabindex: '-1',
+                    'aria-checked': 'false'
+                }
             });
-            const optionHeader = option.createDiv({ cls: 'ert-template-pack-option-header' });
-            const radio = optionHeader.createEl('input', {
-                type: 'radio',
-                cls: 'ert-template-pack-option-radio',
-                attr: { name: 'ert-matter-lane', value: lane }
-            }) as HTMLInputElement;
+            const radioCol = option.createDiv({ cls: 'ert-template-pack-option-radio-col' });
+            radioCol.createSpan({ cls: 'ert-template-pack-option-radio' });
+            const optionContent = option.createDiv({ cls: 'ert-template-pack-option-content' });
+            const optionHeader = optionContent.createDiv({ cls: 'ert-template-pack-option-header' });
             const optionIcon = optionHeader.createSpan({ cls: 'ert-template-pack-option-icon' });
             setIcon(optionIcon, iconName);
             optionHeader.createSpan({ cls: 'ert-template-pack-option-title', text: title });
-            option.createDiv({ cls: 'ert-template-pack-option-desc', text: desc });
-            radio.addEventListener('change', () => {
+            optionContent.createDiv({ cls: 'ert-template-pack-option-desc', text: desc });
+            option.addEventListener('keydown', (evt: KeyboardEvent) => {
+                if (evt.key !== 'Enter' && evt.key !== ' ') return;
+                evt.preventDefault();
                 this.selected = lane;
                 refreshOptionState();
             });
@@ -471,7 +473,6 @@ class MatterSampleLaneModal extends Modal {
             });
 
             optionButtons[lane] = option;
-            laneRadios[lane] = radio;
         };
 
         makeOption(
