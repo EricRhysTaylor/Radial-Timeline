@@ -1164,7 +1164,7 @@ export class ManuscriptOptionsModal extends Modal {
         this.layoutContainerEl.querySelector('.rt-manuscript-layout-desc')?.remove();
         const desc = this.layoutContainerEl.createDiv({ cls: 'rt-sub-card-note rt-manuscript-layout-desc' });
         if (!layoutName) {
-            desc.setText('Choose a PDF layout in Settings → Pro → Export Layouts. Layout files are .tex templates in your Pandoc folder (or a custom path).');
+            desc.setText('Choose a PDF layout in Settings → Pro → Export Layouts. Layout files are .tex templates in your Pandoc folder (global library), while BookMeta + front/back matter notes come from the active book folder.');
             return;
         }
         const key = layoutName.toLowerCase();

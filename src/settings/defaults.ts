@@ -263,9 +263,7 @@ Context:`,
 
     // Export / Pandoc defaults
     pandocPath: '',
-    pandocEnableFallback: false,
-    pandocFallbackPath: '',
-    pandocFolder: 'Pandoc',
+    pandocFolder: 'Radial Timeline/Pandoc',
     pandocLayouts: [],
     matterWorkflowMode: 'guided',
     lastUsedPandocLayoutByPreset: {},

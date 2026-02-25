@@ -12,6 +12,7 @@ import * as fs from 'fs'; // SAFE: Node fs required for Pandoc temp files
 import * as os from 'os'; // SAFE: Node os required for temp directory resolution
 import * as path from 'path'; // SAFE: Node path required for temp/absolute paths
 import { formatRuntimeValue, RuntimeSettings } from './runtimeEstimator';
+import { DEFAULT_SETTINGS } from '../settings/defaults';
 
 export type ExportType = 'manuscript' | 'outline';
 export type ManuscriptPreset = 'screenplay' | 'podcast' | 'novel';
@@ -47,7 +48,8 @@ export function getLayoutsForPreset(plugin: RadialTimelinePlugin, preset: Manusc
 }
 
 function getPandocFolder(plugin: RadialTimelinePlugin): string {
-    return normalizePath((plugin.settings.pandocFolder || 'Pandoc').trim() || 'Pandoc');
+    const defaultPandocFolder = normalizePath(DEFAULT_SETTINGS.pandocFolder || 'Radial Timeline/Pandoc');
+    return normalizePath((plugin.settings.pandocFolder || defaultPandocFolder).trim() || defaultPandocFolder);
 }
 
 function getTemplatePathCandidates(plugin: RadialTimelinePlugin, templatePath: string): string[] {
@@ -228,8 +230,6 @@ export function buildExportFilename(options: ExportFilenameOptions): string {
 export interface PandocOptions {
     targetFormat: 'pdf';
     pandocPath?: string;
-    enableFallback?: boolean;
-    fallbackPath?: string;
     templatePath?: string;
     workingDir?: string;
     metadata?: Record<string, string | undefined>;
@@ -253,9 +253,7 @@ function resolveVaultAbsolutePath(plugin: RadialTimelinePlugin, vaultPath: strin
 function resolvePandocBinary(options: PandocOptions): string {
     const configured = options.pandocPath && options.pandocPath.trim()
         ? options.pandocPath.trim()
-        : options.enableFallback && options.fallbackPath && options.fallbackPath.trim()
-            ? options.fallbackPath.trim()
-            : 'pandoc';
+        : 'pandoc';
 
     // Recover from settings values incorrectly normalized as vault paths
     // (e.g. "/opt/homebrew/bin/pandoc" stored as "opt/homebrew/bin/pandoc").
@@ -270,6 +268,14 @@ function resolvePandocBinary(options: PandocOptions): string {
         if (fs.existsSync(candidate)) {
             return candidate;
         }
+    }
+
+    if (
+        configured !== 'pandoc'
+        && (path.isAbsolute(configured) || /^[A-Za-z]:[\\/]/.test(configured) || configured.includes('/') || configured.includes('\\'))
+        && !fs.existsSync(configured)
+    ) {
+        console.warn(`[Radial Timeline] Configured Pandoc path not found: ${configured}`);
     }
 
     return configured;

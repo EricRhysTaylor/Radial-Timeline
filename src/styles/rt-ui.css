@@ -7039,6 +7039,93 @@
   padding-left: 2px;
 }
 
+.ert-ui.ert-scope--settings .ert-layout-input-readonly {
+  opacity: 0.78;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-system-advanced {
+  margin-top: var(--ert-gap-sm);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--ert-control-radius);
+  padding: var(--ert-gap-xs) var(--ert-pad-sm);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-system-advanced > summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-system-advanced > summary::marker,
+.ert-ui.ert-scope--settings .ert-publishing-system-advanced > summary::-webkit-details-marker {
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-system-advanced-body {
+  margin-top: var(--ert-gap-xs);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  column-gap: var(--ert-gap-sm);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  padding: var(--ert-pad-sm);
+  cursor: pointer;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-row:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--interactive-accent) 48%, transparent);
+  outline-offset: 1px;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-row.is-ready {
+  background: color-mix(in srgb, var(--background-secondary) 76%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-row.is-not-ready {
+  background: color-mix(in srgb, var(--background-secondary) 64%, transparent);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-row.is-ready .ert-publishing-status-icon {
+  color: var(--text-success);
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-row.is-not-ready .ert-publishing-status-icon {
+  color: var(--text-warning, var(--color-orange, #f5a97a));
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-title {
+  font-weight: 600;
+}
+
+.ert-ui.ert-scope--settings .ert-publishing-status-bullets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
 .ert-ui.ert-scope--settings .ert-bookmeta-status {
   display: inline-flex;
   align-items: center;
@@ -7068,7 +7155,7 @@
 }
 
 .ert-ui.ert-scope--settings .ert-bookmeta-preview {
-  margin-top: var(--ert-gap-sm);
+  margin-top: 0;
   padding: var(--ert-pad-sm);
 }
 

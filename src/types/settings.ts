@@ -511,8 +511,6 @@ export interface RadialTimelineSettings {
 
     // Export / Pandoc (Professional)
     pandocPath?: string;
-    pandocEnableFallback?: boolean;
-    pandocFallbackPath?: string;
     pandocFolder?: string;  // Vault path for Pandoc templates and compile scripts
     pandocLayouts?: PandocLayoutTemplate[];
     matterWorkflowMode?: 'guided' | 'advanced' | 'mixed';

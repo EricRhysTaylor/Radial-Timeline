@@ -21,6 +21,13 @@ import { normalizeFrontmatterKeys } from '../../utils/frontmatter';
 import { getActiveBookExportContext } from '../../utils/exportContext';
 import { isPathInFolderScope } from '../../utils/pathScope';
 import { inferMatterSideFromFilename, parseMatterMetaFromFrontmatter } from '../../utils/matterMeta';
+import { getActiveBook } from '../../utils/books';
+import {
+    ensureBundledPandocLayoutsRegistered,
+    getBundledPandocLayouts,
+    installBundledPandocLayouts,
+    isBundledPandocLayoutInstalled
+} from '../../utils/pandocBundledLayouts';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SYSTEM PATH SCANNING
@@ -230,7 +237,8 @@ interface TemplatePathSuggestion {
 }
 
 function getConfiguredPandocFolder(plugin: RadialTimelinePlugin): string {
-    return normalizePath((plugin.settings.pandocFolder || 'Pandoc').trim() || 'Pandoc');
+    const defaultPandocFolder = normalizePath(DEFAULT_SETTINGS.pandocFolder || 'Radial Timeline/Pandoc');
+    return normalizePath((plugin.settings.pandocFolder || defaultPandocFolder).trim() || defaultPandocFolder);
 }
 
 function compactTemplatePathForStorage(plugin: RadialTimelinePlugin, rawPath: string): string {
@@ -340,9 +348,7 @@ class PandocTemplatePathSuggest extends AbstractInputSuggest<TemplatePathSuggest
         const row = el.createDiv({ cls: 'ert-template-path-suggest' });
         row.createDiv({ cls: 'ert-template-path-suggest-path', text: suggestion.storedPath });
         const metaParts = [suggestion.exists ? 'Existing file' : 'Suggested path'];
-        if (suggestion.inPandocFolder || suggestion.fullPath !== suggestion.storedPath) {
-            metaParts.push(suggestion.fullPath);
-        }
+        metaParts.push(suggestion.inPandocFolder ? 'Pandoc folder' : 'Custom path');
         row.createDiv({
             cls: 'ert-template-path-suggest-meta',
             text: metaParts.join(' · ')
@@ -360,12 +366,14 @@ class PandocTemplatePathSuggest extends AbstractInputSuggest<TemplatePathSuggest
 class MatterSampleLaneModal extends Modal {
     private selected: MatterSampleLane;
     private readonly onPick: (lane: MatterSampleLane | null) => void;
+    private readonly includeScriptExamples: boolean;
     private resolved = false;
 
-    constructor(app: App, onPick: (lane: MatterSampleLane | null) => void, defaultLane: MatterSampleLane) {
+    constructor(app: App, onPick: (lane: MatterSampleLane | null) => void, defaultLane: MatterSampleLane, includeScriptExamples: boolean) {
         super(app);
         this.onPick = onPick;
         this.selected = defaultLane;
+        this.includeScriptExamples = includeScriptExamples;
     }
 
     onOpen(): void {
@@ -402,21 +410,21 @@ class MatterSampleLaneModal extends Modal {
                     '000 BookMeta.md (master publishing metadata file)',
                     'Front matter stubs (Title Page, Copyright, Dedication, etc.)',
                     'Back matter stubs (Acknowledgments, About the Author)',
-                    'Script examples (screenplay + podcast)',
                     'PDF layout templates'
                 ]
                 : this.selected === 'advanced'
                     ? [
                     'Front/back matter examples with working LaTeX bodies',
-                    'Script examples (screenplay + podcast)',
                     'PDF layout templates'
                     ]
                     : [
                         '000 BookMeta.md (master publishing metadata file)',
                         'Front/back matter stubs set to BodyMode: auto (mix semantic + inline LaTeX)',
-                        'Script examples (screenplay + podcast)',
                         'PDF layout templates'
                     ];
+            if (this.includeScriptExamples) {
+                items.splice(items.length - 1, 0, 'Script examples (screenplay + podcast)');
+            }
             items.forEach(item => {
                 const listItem = createdList.createEl('li', { cls: 'ert-template-pack-list-item' });
                 listItem.setText(item);
@@ -522,9 +530,9 @@ class MatterSampleLaneModal extends Modal {
     }
 }
 
-async function chooseMatterSampleLane(app: App, defaultLane: MatterSampleLane): Promise<MatterSampleLane | null> {
+async function chooseMatterSampleLane(app: App, defaultLane: MatterSampleLane, includeScriptExamples: boolean): Promise<MatterSampleLane | null> {
     return new Promise((resolve) => {
-        new MatterSampleLaneModal(app, resolve, defaultLane).open();
+        new MatterSampleLaneModal(app, resolve, defaultLane, includeScriptExamples).open();
     });
 }
 
@@ -682,15 +690,70 @@ function getActiveBookMetaStatus(plugin: RadialTimelinePlugin): ActiveBookMetaSt
     return { found: true, path: selected.path, sourceFolder, bookMeta: selected.meta };
 }
 
+function getActiveBookMatterCount(plugin: RadialTimelinePlugin): { sourceFolder: string; count: number } {
+    const sourceFolder = getActiveBookExportContext(plugin).sourceFolder.trim();
+    if (!sourceFolder) return { sourceFolder: '', count: 0 };
+
+    const mappings = plugin.settings.enableCustomMetadataMapping
+        ? plugin.settings.frontmatterMappings
+        : undefined;
+
+    let count = 0;
+    for (const file of plugin.app.vault.getMarkdownFiles()) {
+        if (!isPathInFolderScope(file.path, sourceFolder)) continue;
+        const cache = plugin.app.metadataCache.getFileCache(file);
+        const raw = cache?.frontmatter as Record<string, unknown> | undefined;
+        if (!raw) continue;
+        const normalized = normalizeFrontmatterKeys(raw, mappings);
+        if (parseMatterMetaFromFrontmatter(normalized)) count += 1;
+    }
+
+    return { sourceFolder, count };
+}
+
+function areScriptPresetsInUse(plugin: RadialTimelinePlugin): boolean {
+    const activeBook = getActiveBook(plugin.settings);
+    const activeBookUsed = !!(activeBook?.lastUsedPandocLayoutByPreset?.screenplay || activeBook?.lastUsedPandocLayoutByPreset?.podcast);
+    if (activeBookUsed) return true;
+
+    const hasCustomScriptLayouts = (plugin.settings.pandocLayouts || [])
+        .some(layout => !layout.bundled && (layout.preset === 'screenplay' || layout.preset === 'podcast'));
+
+    return hasCustomScriptLayouts;
+}
+
+function isConfiguredPandocPathValid(plugin: RadialTimelinePlugin): boolean {
+    const candidate = (plugin.settings.pandocPath || '').trim();
+    if (!candidate) return false;
+    if (path.isAbsolute(candidate) || /^[A-Za-z]:[\\/]/.test(candidate)) {
+        return fileExistsSync(candidate);
+    }
+    if (candidate.includes('/') || candidate.includes('\\')) {
+        return false;
+    }
+    // Command-name value (e.g. "pandoc") relies on PATH resolution at runtime.
+    return true;
+}
+
+function countValidPdfLayouts(plugin: RadialTimelinePlugin): number {
+    return (plugin.settings.pandocLayouts || [])
+        .filter(layout => validatePandocLayout(plugin, layout).valid)
+        .length;
+}
+
 /**
  * Generate sample scene files and LaTeX templates in the user's vault.
  * Skips files that already exist. Auto-configures template paths in settings.
  */
-async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane: MatterSampleLane): Promise<string[]> {
+async function generateSampleTemplates(
+    plugin: RadialTimelinePlugin,
+    matterLane: MatterSampleLane,
+    includeScriptExamples: boolean
+): Promise<string[]> {
     const vault = plugin.app.vault;
     const baseFolder = plugin.settings.manuscriptOutputFolder || 'Radial Timeline/Export';
     const templatesFolder = normalizePath(`${baseFolder}/Templates`);
-    const pandocFolder = normalizePath(plugin.settings.pandocFolder || 'Pandoc');
+    const pandocFolder = getConfiguredPandocFolder(plugin);
     const activeSourceFolderRaw = getActiveBookExportContext(plugin).sourceFolder.trim();
     const activeSourceFolder = activeSourceFolderRaw ? normalizePath(activeSourceFolderRaw) : '';
     const matterTargetFolder = activeSourceFolder || templatesFolder;
@@ -1129,199 +1192,14 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             ? mixedMatterSamples
             : guidedMatterSamples;
 
-    // ── LaTeX Templates ─────────────────────────────────────────────────────
-    const latexTemplates: { name: string; content: string }[] = [
-        {
-            name: 'screenplay_template.tex',
-            content: [
-                '% Pandoc LaTeX Template — Screenplay Format',
-                '% US industry standard: Courier 12pt, specific margins',
-                '\\documentclass[12pt,letterpaper]{article}',
-                '',
-                '\\usepackage[top=1in,bottom=1in,left=1.5in,right=1in]{geometry}',
-                '\\usepackage{fontspec}',
-                '\\usepackage{parskip}',
-                '',
-                '% Courier is the screenplay standard',
-                '\\setmainfont{Courier New}[',
-                '  BoldFont={Courier New Bold},',
-                '  ItalicFont={Courier New Italic}',
-                ']',
-                '',
-                '\\pagestyle{plain}',
-                '\\setlength{\\parindent}{0pt}',
-                '\\setlength{\\parskip}{12pt}',
-                '',
-                '% Disable hyphenation (screenplay convention)',
-                '\\hyphenpenalty=10000',
-                '\\exhyphenpenalty=10000',
-                '',
-                '\\begin{document}',
-                '',
-                '$body$',
-                '',
-                '\\end{document}'
-            ].join('\n')
-        },
-        {
-            name: 'podcast_template.tex',
-            content: [
-                '% Pandoc LaTeX Template — Podcast Script Format',
-                '% Clean sans-serif for audio production scripts',
-                '\\documentclass[11pt,letterpaper]{article}',
-                '',
-                '\\usepackage[top=1in,bottom=1in,left=1in,right=1in]{geometry}',
-                '\\usepackage{fontspec}',
-                '\\usepackage{parskip}',
-                '',
-                '% Clean sans-serif for readability',
-                '\\setmainfont{Helvetica Neue}[',
-                '  BoldFont={Helvetica Neue Bold},',
-                '  ItalicFont={Helvetica Neue Italic}',
-                ']',
-                '',
-                '\\pagestyle{plain}',
-                '\\setlength{\\parindent}{0pt}',
-                '\\setlength{\\parskip}{8pt}',
-                '',
-                '\\begin{document}',
-                '',
-                '$body$',
-                '',
-                '\\end{document}'
-            ].join('\n')
-        },
-        {
-            name: 'novel_template.tex',
-            content: [
-                '% Pandoc LaTeX Template — Novel Manuscript Format',
-                '% Traditional publishing format: Times 12pt, double-spaced',
-                '\\documentclass[12pt,letterpaper]{article}',
-                '',
-                '\\usepackage[top=1in,bottom=1in,left=1in,right=1in]{geometry}',
-                '\\usepackage{fontspec}',
-                '\\usepackage{setspace}',
-                '',
-                '% Times New Roman is the publishing standard',
-                '\\setmainfont{Times New Roman}[',
-                '  BoldFont={Times New Roman Bold},',
-                '  ItalicFont={Times New Roman Italic}',
-                ']',
-                '',
-                '% Double spacing (standard for manuscript submissions)',
-                '\\doublespacing',
-                '',
-                '% First line indent',
-                '\\setlength{\\parindent}{0.5in}',
-                '\\setlength{\\parskip}{0pt}',
-                '',
-                '% Page numbers top right',
-                '\\usepackage{fancyhdr}',
-                '\\pagestyle{fancy}',
-                '\\fancyhf{}',
-                '\\fancyhead[R]{\\thepage}',
-                '\\renewcommand{\\headrulewidth}{0pt}',
-                '',
-                '\\begin{document}',
-                '',
-                '$body$',
-                '',
-                '\\end{document}'
-            ].join('\n')
-        },
-        {
-            name: 'signature_literary_rt.tex',
-            content: [
-                '% Pandoc LaTeX Template — Signature Literary (Radial Timeline native)',
-                '% Sophisticated print styling without external JS compile layer.',
-                '\\documentclass[11pt,letterpaper,twoside]{book}',
-                '',
-                '\\usepackage{fontspec}',
-                '\\usepackage{amssymb}',
-                '\\usepackage{fancyhdr}',
-                '\\usepackage{titlesec}',
-                '\\usepackage{geometry}',
-                '\\usepackage{setspace}',
-                '\\usepackage{graphicx}',
-                '\\usepackage{etoolbox}',
-                '',
-                '% Pandoc compatibility macro for compact lists',
-                '\\providecommand{\\tightlist}{%',
-                '  \\setlength{\\itemsep}{0pt}\\setlength{\\parskip}{0pt}',
-                '}',
-                '',
-                '% Print trim-style page geometry',
-                '\\geometry{paperwidth=6in,paperheight=9in,top=1in,bottom=1in,left=1in,right=1in}',
-                '',
-                '\\defaultfontfeatures{Ligatures=TeX}',
-                '\\IfFontExistsTF{Sorts Mill Goudy}{',
-                '  \\setmainfont{Sorts Mill Goudy}[ItalicFont={Sorts Mill Goudy Italic}]',
-                '  \\newfontface\\headerfont{Sorts Mill Goudy}[LetterSpace=15.0]',
-                '}{',
-                '  \\setmainfont{TeX Gyre Pagella}',
-                '  \\newfontface\\headerfont{TeX Gyre Pagella}[LetterSpace=12.0]',
-                '}',
-                '',
-                '\\newcommand{\\BookTitle}{$if(title)$$title$$else$Untitled Manuscript$endif$}',
-                '\\newcommand{\\AuthorName}{$if(author)$$for(author)$$author$$sep$, $endfor$$else$Author$endif$}',
-                '',
-                '\\fancyhf{}',
-                '\\renewcommand{\\headrulewidth}{0pt}',
-                '\\renewcommand{\\footrulewidth}{0pt}',
-                '\\setlength{\\parskip}{0pt}',
-                '\\setlength{\\headsep}{24pt}',
-                '\\setlength{\\headheight}{14pt}',
-                '',
-                '\\newcommand{\\KernedText}[1]{{\\headerfont\\MakeUppercase{#1}}}',
-                '\\newcommand{\\PageNumber}[1]{\\raisebox{0.2ex}{#1}}',
-                '\\newcommand{\\HeaderSeparator}{\\raisebox{0.2ex}{\\textbar}}',
-                '',
-                '\\fancyhead[CE]{%',
-                '  \\ifnum\\value{page}=1\\relax\\else',
-                '    \\PageNumber{\\thepage}\\hspace{1em}\\HeaderSeparator\\hspace{1em}\\KernedText{\\AuthorName}',
-                '  \\fi',
-                '}',
-                '\\fancyhead[CO]{%',
-                '  \\ifnum\\value{page}=1\\relax\\else',
-                '    \\KernedText{\\BookTitle}\\hspace{1em}\\HeaderSeparator\\hspace{1em}\\PageNumber{\\thepage}',
-                '  \\fi',
-                '}',
-                '\\fancyfoot{}',
-                '\\pagestyle{fancy}',
-                '',
-                '\\setcounter{secnumdepth}{1}',
-                '',
-                '% Scene opener pages (new scene starts): headerless, centered, cinematic spacing',
-                '\\titleformat{\\section}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{\\arabic{section}}{0.2em}{}',
-                '\\titleformat{name=\\section,numberless}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{}{0pt}{}',
-                '\\titlespacing*{\\section}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}',
-                '\\preto\\section{\\clearpage\\thispagestyle{empty}}',
-                '',
-                '% Pandoc may emit subsection headings depending on markdown level/template defaults',
-                '\\titleformat{\\subsection}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{\\arabic{subsection}}{0.2em}{}',
-                '\\titleformat{name=\\subsection,numberless}[display]{\\normalfont\\bfseries\\centering\\fontsize{30}{34}\\selectfont}{}{0pt}{}',
-                '\\titlespacing*{\\subsection}{0pt}{\\dimexpr\\textheight/5\\relax}{\\dimexpr\\textheight/5\\relax}',
-                '\\preto\\subsection{\\clearpage\\thispagestyle{empty}}',
-                '',
-                '\\onehalfspacing',
-                '\\setlength{\\parindent}{1.5em}',
-                '',
-                '\\begin{document}',
-                '\\setcounter{page}{1}',
-                '',
-                '$body$',
-                '',
-                '\\end{document}'
-            ].join('\n')
-        }
-    ];
-
     // Create all files (skip existing)
-    for (const scene of sampleScenes) {
-        const filePath = normalizePath(`${templatesFolder}/${scene.name}`);
-        if (!vault.getAbstractFileByPath(filePath)) {
-            await vault.create(filePath, scene.content);
-            createdFiles.push(scene.name);
+    if (includeScriptExamples) {
+        for (const scene of sampleScenes) {
+            const filePath = normalizePath(`${templatesFolder}/${scene.name}`);
+            if (!vault.getAbstractFileByPath(filePath)) {
+                await vault.create(filePath, scene.content);
+                createdFiles.push(scene.name);
+            }
         }
     }
 
@@ -1341,29 +1219,12 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
         }
     }
 
-    for (const template of latexTemplates) {
-        const filePath = normalizePath(`${pandocFolder}/${template.name}`);
-        if (!vault.getAbstractFileByPath(filePath)) {
-            await vault.create(filePath, template.content);
-            createdFiles.push(template.name);
-        }
-    }
-
-    // Auto-register generated .tex files as bundled pandoc layouts
-    const existingLayouts = plugin.settings.pandocLayouts || [];
-    const existingIds = new Set(existingLayouts.map(l => l.id));
-    const sampleLayouts: PandocLayoutTemplate[] = [
-        { id: 'bundled-screenplay', name: 'Screenplay', preset: 'screenplay', path: 'screenplay_template.tex', bundled: true },
-        { id: 'bundled-podcast', name: 'Podcast Script', preset: 'podcast', path: 'podcast_template.tex', bundled: true },
-        { id: 'bundled-novel', name: 'Novel Manuscript', preset: 'novel', path: 'novel_template.tex', bundled: true },
-        { id: 'bundled-novel-signature-literary-rt', name: 'Signature Literary (RT)', preset: 'novel', path: 'signature_literary_rt.tex', bundled: true },
-    ];
-    for (const layout of sampleLayouts) {
-        if (!existingIds.has(layout.id)) {
-            existingLayouts.push(layout);
-        }
-    }
-    plugin.settings.pandocLayouts = existingLayouts;
+    const bundledInstall = await installBundledPandocLayouts(plugin);
+    const installedBundledFilenames = getBundledPandocLayouts()
+        .filter(layout => bundledInstall.installed.includes(layout.name))
+        .map(layout => layout.path);
+    createdFiles.push(...installedBundledFilenames);
+    ensureBundledPandocLayoutsRegistered(plugin);
     await plugin.saveSettings();
 
     return createdFiles;
@@ -1494,6 +1355,10 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         renderProfessionalSection({ app: plugin.app, plugin, containerEl, renderHero, onProToggle });
     };
 
+    if (ensureBundledPandocLayoutsRegistered(plugin)) {
+        void plugin.saveSettings();
+    }
+
     checkbox.onchange = async () => {
         plugin.settings.devProActive = checkbox.checked;
         await plugin.saveSettings();
@@ -1598,15 +1463,18 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     addWikiLink(pandocHeading, 'Settings#professional');
     applyErtHeaderLayout(pandocHeading);
 
-    const systemConfigSection = pandocPanel.createDiv({
-        cls: `${ERT_CLASSES.SECTION} ${ERT_CLASSES.SECTION_TIGHT}`
-    });
-    systemConfigSection.createEl('h5', { text: 'System Configuration', cls: ERT_CLASSES.SECTION_TITLE });
+    const systemConfigPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
+    const systemConfigHeading = addProRow(new Setting(systemConfigPanel))
+        .setName('System Configuration')
+        .setDesc('Configure your Pandoc executable and global Pandoc folder.')
+        .setHeading();
+    addHeadingIcon(systemConfigHeading, 'settings');
+    applyErtHeaderLayout(systemConfigHeading);
 
     // Settings
     let pandocPathInputEl: HTMLInputElement | null = null;
     const defaultDesc = 'Path to your Pandoc executable. Required for PDF rendering. Leave blank to use your system PATH, or click Auto locate.';
-    const pandocSetting = addProRow(new Setting(systemConfigSection))
+    const pandocSetting = addProRow(new Setting(systemConfigPanel))
         .setName('Pandoc & LaTeX')
         .setDesc(defaultDesc)
         .addText(text => {
@@ -1676,87 +1544,75 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
             });
         });
 
-    addProRow(new Setting(systemConfigSection))
-        .setName('Pandoc fallback')
-        .setDesc('Optional path to a secondary Pandoc binary. Used if the primary path cannot be found.')
-        .addText(text => {
-            text.inputEl.addClass('ert-input--lg');
-            text.setPlaceholder('/path/to/pandoc');
-            text.setValue(plugin.settings.pandocFallbackPath || '');
-            plugin.registerDomEvent(text.inputEl, 'blur', async () => {
-                const value = text.getValue().trim();
-                plugin.settings.pandocFallbackPath = value;
-                await plugin.saveSettings();
-            });
-        })
-        .addToggle(toggle => {
-            toggle.setValue(!!plugin.settings.pandocEnableFallback);
-            toggle.onChange(async (value) => {
-                plugin.settings.pandocEnableFallback = value;
-                await plugin.saveSettings();
-            });
-        });
+    // ── Pandoc Folder (advanced) ──────────────────────────────────────────
+    const pandocAdvanced = systemConfigPanel.createEl('details', { cls: 'ert-publishing-system-advanced' }) as HTMLDetailsElement;
+    const pandocAdvancedSummary = pandocAdvanced.createEl('summary', { text: 'Advanced' });
+    pandocAdvancedSummary.addClass('ert-publishing-system-advanced-summary');
+    const pandocAdvancedBody = pandocAdvanced.createDiv({ cls: 'ert-publishing-system-advanced-body' });
+    const defaultPandocFolder = normalizePath(DEFAULT_SETTINGS.pandocFolder || 'Radial Timeline/Pandoc');
+    let pandocFolderText: TextComponent | null = null;
+    let pandocFolderInputEl: HTMLInputElement | null = null;
+    const saveAndValidatePandocFolder = async (): Promise<void> => {
+        if (!pandocFolderText || !pandocFolderInputEl) return;
+        const raw = pandocFolderText.getValue().trim();
+        const normalized = normalizePath(raw || defaultPandocFolder);
+        pandocFolderText.setValue(normalized);
+        plugin.settings.pandocFolder = normalized;
+        await plugin.saveSettings();
 
-    // ── Pandoc Folder ─────────────────────────────────────────────────────
-    addProRow(new Setting(systemConfigSection))
+        pandocFolderInputEl.removeClass('ert-input--flash-success', 'ert-input--flash-error');
+        void pandocFolderInputEl.offsetWidth;
+        const folder = plugin.app.vault.getAbstractFileByPath(normalized);
+        const cls = (folder && folder instanceof TFolder)
+            ? 'ert-input--flash-success'
+            : 'ert-input--flash-error';
+        pandocFolderInputEl.addClass(cls);
+        setTimeout(() => { pandocFolderInputEl?.removeClass(cls); }, 1700);
+    };
+
+    const pandocFolderSetting = addProRow(new Setting(pandocAdvancedBody))
         .setName('Pandoc folder')
-        .setDesc('Vault folder where Radial Timeline stores PDF templates and compile scripts (.tex, .js). This folder is used when rendering PDF exports.')
+        .setDesc('Global folder for PDF layout templates (.tex) and compile helpers. Used during PDF rendering. Final exports are saved to the Export folder.')
         .addText(text => {
+            pandocFolderText = text;
+            pandocFolderInputEl = text.inputEl;
             text.inputEl.addClass('ert-input--lg');
-            text.setPlaceholder('Pandoc');
-            text.setValue(plugin.settings.pandocFolder || 'Pandoc');
-
-            const saveAndValidateFolder = async () => {
-                const raw = text.getValue().trim();
-                const normalized = raw ? normalizePath(raw) : '';
-                plugin.settings.pandocFolder = normalized;
-                await plugin.saveSettings();
-
-                // Flash validate: check if folder exists in the vault
-                text.inputEl.removeClass('ert-input--flash-success', 'ert-input--flash-error');
-                void text.inputEl.offsetWidth;
-                if (normalized) {
-                    const folder = plugin.app.vault.getAbstractFileByPath(normalized);
-                    const cls = (folder && folder instanceof TFolder)
-                        ? 'ert-input--flash-success'
-                        : 'ert-input--flash-error';
-                    text.inputEl.addClass(cls);
-                    setTimeout(() => { text.inputEl.removeClass(cls); }, 1700);
-                }
-            };
-
-            plugin.registerDomEvent(text.inputEl, 'blur', saveAndValidateFolder);
+            text.setPlaceholder(defaultPandocFolder);
+            text.setValue(normalizePath(plugin.settings.pandocFolder || defaultPandocFolder));
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { void saveAndValidatePandocFolder(); });
             plugin.registerDomEvent(text.inputEl, 'keydown', (e: KeyboardEvent) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    saveAndValidateFolder();
+                    void saveAndValidatePandocFolder();
                 }
             });
         });
+    pandocFolderSetting.addExtraButton(button => {
+        button.setIcon('rotate-ccw');
+        button.setTooltip('Reset to default (Radial Timeline/Pandoc)');
+        button.extraSettingsEl.addClass('ert-iconBtn');
+        button.onClick(async () => {
+            if (pandocFolderText) {
+                pandocFolderText.setValue(defaultPandocFolder);
+            }
+            plugin.settings.pandocFolder = defaultPandocFolder;
+            await plugin.saveSettings();
+            if (pandocFolderInputEl) {
+                pandocFolderInputEl.removeClass('ert-input--flash-success', 'ert-input--flash-error');
+                pandocFolderInputEl.addClass('ert-input--flash-success');
+                setTimeout(() => pandocFolderInputEl?.removeClass('ert-input--flash-success'), 1700);
+            }
+        });
+    });
 
     // ── Layout Registry Subsection ──────────────────────────────────────────
-    const layoutSubSection = pandocPanel.createDiv({
-        cls: `${ERT_CLASSES.SECTION} ${ERT_CLASSES.SECTION_TIGHT}`
-    });
-    layoutSubSection.createEl('h5', { text: 'Export Layouts (PDF)', cls: ERT_CLASSES.SECTION_TITLE });
-    layoutSubSection.createEl('p', {
-        cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Choose which LaTeX layout to use when rendering manuscript PDFs. Use a filename for templates in your Pandoc folder, or provide a custom vault/absolute path.'
-    });
-    layoutSubSection.createEl('p', {
-        cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Matter workflow is selected when generating a Template Pack:'
-    });
-    const workflowList = layoutSubSection.createEl('ul', { cls: ERT_CLASSES.SECTION_DESC });
-    workflowList.createEl('li', {
-        text: 'Guided (Recommended) — Uses a single BookMeta file and template-driven front/back matter pages.'
-    });
-    workflowList.createEl('li', {
-        text: 'Advanced (LaTeX in Body) — Write raw LaTeX directly inside matter note bodies.'
-    });
-    workflowList.createEl('li', {
-        text: 'Mixed — Keep semantic metadata and allow per-note BodyMode:auto (plain or inline LaTeX).'
-    });
+    const layoutPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
+    const layoutHeading = addProRow(new Setting(layoutPanel))
+        .setName('Export Layouts (PDF)')
+        .setDesc('Manage built-in and custom LaTeX layouts used for manuscript PDF rendering.')
+        .setHeading();
+    addHeadingIcon(layoutHeading, 'book-open');
+    applyErtHeaderLayout(layoutHeading);
 
     const presetDescriptions: Record<string, string> = {
         novel: 'Traditional novel manuscript layout. Scenes become chapters or sections. Suitable for print-ready PDF.',
@@ -1766,26 +1622,35 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     const buildLayoutDescription = (layout: PandocLayoutTemplate): string => {
         const base = presetDescriptions[layout.preset] || 'Custom PDF layout.';
         const pathLabel = layout.path || '(no path)';
+        const bundledInstalled = layout.bundled ? isBundledPandocLayoutInstalled(plugin, layout) : false;
+        const sourceLabel = layout.bundled
+            ? (bundledInstalled ? 'Bundled (Installed)' : 'Bundled (Not installed)')
+            : 'Custom';
+
+        if (layout.bundled && !bundledInstalled) {
+            return `${sourceLabel} · ${base} Template path: ${pathLabel} · Install to copy this bundled layout into ${getConfiguredPandocFolder(plugin)}/.`;
+        }
+
         const absolutePath = layout.path ? resolveTemplatePath(plugin, layout.path) : '';
         const fontDiagnostics = getTemplateFontDiagnostics(absolutePath);
 
         if (!fontDiagnostics.usesFontspec) {
-            return `${base} Template path: ${pathLabel}`;
+            return `${sourceLabel} · ${base} Template path: ${pathLabel}`;
         }
 
         if (fontDiagnostics.missingRequiredFonts.length > 0) {
-            return `${base} Template path: ${pathLabel} · Missing required font(s): ${fontDiagnostics.missingRequiredFonts.join(', ')}`;
+            return `${sourceLabel} · ${base} Template path: ${pathLabel} · Missing required font(s): ${fontDiagnostics.missingRequiredFonts.join(', ')}`;
         }
 
         if (fontDiagnostics.missingOptionalFonts.length > 0) {
-            return `${base} Template path: ${pathLabel} · Optional font missing (fallback will be used): ${fontDiagnostics.missingOptionalFonts.join(', ')}`;
+            return `${sourceLabel} · ${base} Template path: ${pathLabel} · Optional font missing (fallback will be used): ${fontDiagnostics.missingOptionalFonts.join(', ')}`;
         }
 
         if (!fontDiagnostics.canVerifySystemFonts && fontDiagnostics.requiredFonts.length > 0) {
-            return `${base} Template path: ${pathLabel} · Font check unavailable on this platform.`;
+            return `${sourceLabel} · ${base} Template path: ${pathLabel} · Font check unavailable on this platform.`;
         }
 
-        return `${base} Template path: ${pathLabel} · Fonts verified.`;
+        return `${sourceLabel} · ${base} Template path: ${pathLabel} · Fonts verified.`;
     };
 
     /** Flash-validate a layout path input using the centralized helper. */
@@ -1799,7 +1664,65 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         setTimeout(() => inputEl.removeClass(cls), 1700);
     };
 
-    const layoutRowsContainer = layoutSubSection.createDiv({ cls: 'ert-layout-rows' });
+    const layoutRowsContainer = layoutPanel.createDiv({ cls: 'ert-layout-rows' });
+
+    const duplicateBundledLayout = async (layout: PandocLayoutTemplate): Promise<void> => {
+        const installResult = await installBundledPandocLayouts(plugin, [layout.id]);
+        if (installResult.installed.length > 0) {
+            new Notice(`Installed bundled layout '${layout.name}' to Pandoc folder.`);
+        }
+
+        const pandocFolder = getConfiguredPandocFolder(plugin);
+        const sourceRelativePath = normalizePath(layout.path.replace(/^\/+/, ''));
+        const sourceVaultPath = normalizePath(`${pandocFolder}/${sourceRelativePath}`);
+        const sourceFile = plugin.app.vault.getAbstractFileByPath(sourceVaultPath);
+        if (!(sourceFile instanceof TFile)) {
+            new Notice(`Could not duplicate '${layout.name}' because template file is missing.`);
+            return;
+        }
+
+        const sourceContent = await plugin.app.vault.read(sourceFile);
+        const sourceFilename = path.basename(layout.path || 'layout.tex');
+        const sourceExt = path.extname(sourceFilename) || '.tex';
+        const sourceStem = sourceFilename.slice(0, -sourceExt.length) || 'layout';
+        let copyIndex = 1;
+        let copyFilename = `${sourceStem}-copy${sourceExt}`;
+        let copyVaultPath = normalizePath(`${pandocFolder}/${copyFilename}`);
+        while (plugin.app.vault.getAbstractFileByPath(copyVaultPath)) {
+            copyFilename = `${sourceStem}-copy-${copyIndex}${sourceExt}`;
+            copyVaultPath = normalizePath(`${pandocFolder}/${copyFilename}`);
+            copyIndex += 1;
+        }
+
+        await plugin.app.vault.create(copyVaultPath, sourceContent);
+
+        const existing = plugin.settings.pandocLayouts || [];
+        let copyName = `${layout.name} Copy`;
+        let copyNameIndex = 2;
+        while (existing.some(item => item.name === copyName && item.preset === layout.preset)) {
+            copyName = `${layout.name} Copy ${copyNameIndex}`;
+            copyNameIndex += 1;
+        }
+
+        const idBase = `${slugifyToFileStem(copyName).toLowerCase()}-${layout.preset}`;
+        let nextId = idBase;
+        let idSuffix = 2;
+        while (existing.some(item => item.id === nextId)) {
+            nextId = `${idBase}-${idSuffix}`;
+            idSuffix += 1;
+        }
+
+        existing.push({
+            id: nextId,
+            name: copyName,
+            preset: layout.preset,
+            path: compactTemplatePathForStorage(plugin, copyFilename),
+            bundled: false
+        });
+        plugin.settings.pandocLayouts = existing;
+        await plugin.saveSettings();
+        new Notice(`Created editable copy '${copyName}'.`);
+    };
 
     /** Render one row per existing layout. */
     const renderLayoutRows = () => {
@@ -1811,19 +1734,26 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
 
         if (layouts.length === 0) {
             const emptyEl = layoutRowsContainer.createDiv({ cls: 'ert-layout-row setting-item' });
-            emptyEl.createSpan({ text: 'No layouts configured. Add one below or generate a Template Pack.', cls: 'setting-item-description' });
+            emptyEl.createSpan({ text: 'No layouts configured yet.', cls: 'setting-item-description' });
         }
 
         for (const layout of layouts) {
             const row = layoutRowsContainer.createDiv({ cls: 'ert-layout-row' });
+            const isBundled = layout.bundled === true;
 
             const s = addProRow(new Setting(row))
                 .setName(layout.name)
-                .setDesc(buildLayoutDescription(layout))
-                .addText(text => {
+                .setDesc(buildLayoutDescription(layout));
+
+            s.addText(text => {
                     text.inputEl.addClass('ert-input--lg');
                     text.setPlaceholder('template.tex or path/to/template.tex');
                     text.setValue(layout.path);
+                    if (isBundled) {
+                        text.setDisabled(true);
+                        text.inputEl.addClass('ert-layout-input-readonly');
+                        return;
+                    }
 
                     const saveAndValidate = async () => {
                         const normalizedPath = compactTemplatePathForStorage(plugin, text.getValue());
@@ -1843,8 +1773,36 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                     text.inputEl.addEventListener('keydown', (e: KeyboardEvent) => {
                         if (e.key === 'Enter') { e.preventDefault(); saveAndValidate(); }
                     });
-                })
-                .addExtraButton(btn => {
+                });
+
+            if (isBundled && !isBundledPandocLayoutInstalled(plugin, layout)) {
+                s.addButton(btn => {
+                    btn.setButtonText('Install');
+                    btn.setTooltip('Install bundled layout');
+                    btn.onClick(async () => {
+                        const result = await installBundledPandocLayouts(plugin, [layout.id]);
+                        if (result.installed.length > 0) {
+                            new Notice(`Installed bundled layout: ${layout.name}`);
+                        } else if (result.failed.length > 0) {
+                            new Notice(`Failed to install bundled layout: ${layout.name}`);
+                        }
+                        renderLayoutRows();
+                    });
+                });
+            }
+
+            if (isBundled) {
+                s.addButton(btn => {
+                    btn.setButtonText('Duplicate');
+                    btn.onClick(async () => {
+                        await duplicateBundledLayout(layout);
+                        renderLayoutRows();
+                    });
+                });
+            }
+
+            if (!isBundled) {
+                s.addExtraButton(btn => {
                     btn.setIcon('trash');
                     btn.setTooltip('Remove layout');
                     btn.onClick(async () => {
@@ -1853,6 +1811,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                         renderLayoutRows();
                     });
                 });
+            }
         }
     };
 
@@ -1860,7 +1819,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
 
     // ── Add Layout inline form ───────────────────────────────────────────────
     let addFormVisible = false;
-    const addFormContainer = layoutSubSection.createDiv({ cls: 'ert-layout-add-form ert-hidden' });
+    const addFormContainer = layoutPanel.createDiv({ cls: 'ert-layout-add-form ert-hidden' });
 
     let newName = '';
     let newPreset: 'novel' | 'screenplay' | 'podcast' = 'novel';
@@ -1931,14 +1890,36 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         });
     });
 
-    const templatePackSection = pandocPanel.createDiv({
-        cls: `${ERT_CLASSES.SECTION} ${ERT_CLASSES.SECTION_TIGHT}`
+    const layoutManageSetting = addProRow(new Setting(layoutPanel));
+    layoutManageSetting.addButton(button => {
+        button.setButtonText('Add Layout');
+        button.onClick(() => {
+            addFormVisible = !addFormVisible;
+            addFormContainer.toggleClass('ert-hidden', !addFormVisible);
+        });
     });
-    templatePackSection.createEl('h5', { text: 'Template Pack Generation', cls: ERT_CLASSES.SECTION_TITLE });
-    templatePackSection.createEl('p', {
-        cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Creates screenplay/podcast script samples in your manuscript Templates folder, LaTeX templates in your Pandoc folder, and front/back matter + BookMeta scaffolds in the active book folder.'
+    layoutManageSetting.addButton(button => {
+        button.setButtonText('Install all');
+        button.onClick(async () => {
+            const result = await installBundledPandocLayouts(plugin);
+            if (result.installed.length > 0) {
+                new Notice(`Installed ${result.installed.length} bundled layout template(s) in ${getConfiguredPandocFolder(plugin)}/.`);
+            } else if (result.failed.length > 0) {
+                new Notice('Some bundled layouts failed to install.');
+            } else {
+                new Notice('Bundled layouts are already installed.');
+            }
+            renderLayoutRows();
+        });
     });
+
+    const publishingSetupPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
+    const publishingHeading = addProRow(new Setting(publishingSetupPanel))
+        .setName('Publishing Setup')
+        .setDesc('Set up publishing notes for the active book. BookMeta + matter notes are activated from the active book folder.')
+        .setHeading();
+    addHeadingIcon(publishingHeading, 'book-open-text');
+    applyErtHeaderLayout(publishingHeading);
 
     const getSavedWorkflowMode = (): MatterSampleLane => {
         const saved = plugin.settings.matterWorkflowMode;
@@ -1947,9 +1928,112 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     };
 
     let selectedMatterWorkflow = getSavedWorkflowMode();
-    const workflowSetting = addProRow(new Setting(templatePackSection))
+    const includeScriptExamples = areScriptPresetsInUse(plugin);
+    const activeBookMetaStatus = getActiveBookMetaStatus(plugin);
+    const activeBookMatter = getActiveBookMatterCount(plugin);
+    const allLayouts = plugin.settings.pandocLayouts || [];
+    const validLayoutCount = countValidPdfLayouts(plugin);
+    const pandocPathValid = isConfiguredPandocPathValid(plugin);
+    const exportReady = pandocPathValid && validLayoutCount > 0;
+    const publishingSetupReady = activeBookMetaStatus.found && activeBookMatter.count > 0;
+    const setupStatusRow = publishingSetupPanel.createDiv({
+        cls: `ert-publishing-status-row ${exportReady ? 'is-ready' : 'is-not-ready'}`
+    });
+    setupStatusRow.setAttr('role', 'button');
+    setupStatusRow.setAttr('tabindex', '0');
+    const setupStatusIcon = setupStatusRow.createSpan({ cls: 'ert-publishing-status-icon' });
+    setIcon(setupStatusIcon, exportReady ? 'check-circle' : 'alert-triangle');
+    const setupStatusMain = setupStatusRow.createDiv({ cls: 'ert-publishing-status-main' });
+    setupStatusMain.createDiv({
+        cls: 'ert-publishing-status-title',
+        text: exportReady ? 'Export ready' : 'Export not ready'
+    });
+    const setupBullets = setupStatusMain.createDiv({ cls: 'ert-publishing-status-bullets' });
+    setupBullets.createSpan({ text: `Pandoc: ${pandocPathValid ? 'valid' : 'missing'}` });
+    setupBullets.createSpan({ text: `Layouts: ${validLayoutCount}/${allLayouts.length} valid` });
+    setupBullets.createSpan({ text: `Publishing setup: ${publishingSetupReady ? 'ready' : 'pending'}` });
+    setupBullets.createSpan({ text: `BookMeta: ${activeBookMetaStatus.found ? 'yes' : 'no'}` });
+    setupBullets.createSpan({ text: `Matter: ${activeBookMatter.count}` });
+
+    let setupInFlight = false;
+    let setupButtonComponent: ButtonComponent | null = null;
+    const setSetupButtonState = (busy: boolean) => {
+        if (!setupButtonComponent) return;
+        setupButtonComponent.setDisabled(busy);
+        setupButtonComponent.setButtonText(busy ? 'Setting up publishing…' : 'Set up publishing for active book');
+    };
+    const runPublishingSetup = async () => {
+        if (setupInFlight) return;
+        setupInFlight = true;
+        setSetupButtonState(true);
+        try {
+            const lane = await chooseMatterSampleLane(plugin.app, selectedMatterWorkflow, includeScriptExamples);
+            if (!lane) return;
+            if (plugin.settings.matterWorkflowMode !== lane) {
+                plugin.settings.matterWorkflowMode = lane;
+                selectedMatterWorkflow = lane;
+                await plugin.saveSettings();
+            }
+            const created = await generateSampleTemplates(plugin, lane, includeScriptExamples);
+            const scriptTargetLabel = `${plugin.settings.manuscriptOutputFolder || 'Radial Timeline/Export'}/Templates`;
+            const sourceFolder = getActiveBookExportContext(plugin).sourceFolder.trim();
+            const matterTargetLabel = sourceFolder || scriptTargetLabel;
+            if (created.length > 0) {
+                const laneLabel = lane === 'guided' ? 'guided' : lane === 'advanced' ? 'advanced' : 'mixed';
+                new Notice(`Created ${created.length} ${laneLabel} setup files. Matter + BookMeta → ${matterTargetLabel}, Layouts → ${getConfiguredPandocFolder(plugin)}/.`);
+            } else {
+                new Notice('Publishing setup already exists. Bundled layouts are registered.');
+            }
+            renderLayoutRows();
+            rerender();
+        } catch (e) {
+            const msg = (e as Error).message || String(e);
+            new Notice(`Error setting up publishing: ${msg}`);
+        } finally {
+            setupInFlight = false;
+            setSetupButtonState(false);
+        }
+    };
+
+    const setupStatusAction = () => {
+        if (!publishingSetupReady) {
+            void runPublishingSetup();
+            return;
+        }
+        if (!exportReady) {
+            systemConfigPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+        }
+        layoutPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    setupStatusRow.addEventListener('click', () => setupStatusAction());
+    setupStatusRow.addEventListener('keydown', (evt: KeyboardEvent) => {
+        if (evt.key !== 'Enter' && evt.key !== ' ') return;
+        evt.preventDefault();
+        setupStatusAction();
+    });
+
+    const setupActionSetting = addProRow(new Setting(publishingSetupPanel));
+    setupActionSetting.addButton(button => {
+        setupButtonComponent = button;
+        button.setButtonText('Set up publishing for active book');
+        button.setCta();
+        button.onClick(() => {
+            void runPublishingSetup();
+        });
+    });
+
+    const advancedPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
+    const advancedHeading = addProRow(new Setting(advancedPanel))
+        .setName('Advanced')
+        .setDesc('Matter workflow controls for migrating existing notes in the active book folder.')
+        .setHeading();
+    addHeadingIcon(advancedHeading, 'code');
+    applyErtHeaderLayout(advancedHeading);
+
+    const workflowSetting = addProRow(new Setting(advancedPanel))
         .setName('Matter workflow')
-        .setDesc('Guided = plain text. Advanced = inline LaTeX. Mixed = BodyMode:auto per note.')
+        .setDesc('Used by setup. Guided = plain text, Advanced = inline LaTeX, Mixed = BodyMode:auto per note.')
         .addDropdown(dd => {
             dd.addOption('guided', 'Guided (frontmatter)');
             dd.addOption('advanced', 'Advanced (LaTeX body)');
@@ -1985,8 +2069,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         });
     });
 
-    const activeBookMetaStatus = getActiveBookMetaStatus(plugin);
-    const activeBookMetaSetting = addProRow(new Setting(templatePackSection))
+    const activeBookMetaSetting = addProRow(new Setting(advancedPanel))
         .setName('Active book BookMeta')
         .setDesc('');
     if (activeBookMetaSetting.descEl) {
@@ -2009,7 +2092,26 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         }
     }
 
-    const previewFrame = templatePackSection.createDiv({ cls: `${ERT_CLASSES.PREVIEW_FRAME} ert-bookmeta-preview` });
+    const templatePackHelp = advancedPanel.createEl('ul', { cls: ERT_CLASSES.SECTION_DESC });
+    templatePackHelp.createEl('li', { text: 'BookMeta + front/back matter notes are activated from the active book folder.' });
+    templatePackHelp.createEl('li', { text: 'Pandoc PDF layouts (.tex) are global files in your Pandoc folder.' });
+    if (includeScriptExamples) {
+        templatePackHelp.createEl('li', { text: 'Script examples (screenplay + podcast) are included because script presets are in use.' });
+    }
+    advancedPanel.createEl('p', {
+        cls: ERT_CLASSES.SECTION_DESC,
+        text: 'Use Apply to active book to migrate existing matter notes to the selected workflow without re-generating files.'
+    });
+
+    const previewPanel = lockPanel(section.createDiv({ cls: `${ERT_CLASSES.PANEL} ${ERT_CLASSES.STACK}` }));
+    const previewPanelHeading = addProRow(new Setting(previewPanel))
+        .setName('Preview')
+        .setDesc('BookMeta values detected in the active book folder.')
+        .setHeading();
+    addHeadingIcon(previewPanelHeading, 'book-copy');
+    applyErtHeaderLayout(previewPanelHeading);
+
+    const previewFrame = previewPanel.createDiv({ cls: 'ert-bookmeta-preview' });
     const previewHeader = previewFrame.createDiv({ cls: 'ert-bookmeta-preview-header' });
     const previewHeaderIcon = previewHeader.createSpan({ cls: 'ert-bookmeta-preview-header-icon' });
     setIcon(previewHeaderIcon, 'book-copy');
@@ -2045,59 +2147,6 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         }
         addPreviewField('Suggested file', '000 BookMeta.md');
     }
-
-    // Add Layout + Generate Template Pack buttons row
-    const layoutActionsSetting = addProRow(new Setting(templatePackSection));
-    layoutActionsSetting.addButton(button => {
-        button.setButtonText('Add Layout');
-        button.onClick(() => {
-            addFormVisible = !addFormVisible;
-            addFormContainer.toggleClass('ert-hidden', !addFormVisible);
-        });
-    });
-    layoutActionsSetting.addButton(button => {
-        button.setButtonText('Generate Template Pack');
-        button.setTooltip('Creates screenplay/podcast script samples in your manuscript Templates folder, LaTeX templates in your Pandoc folder, and matter workflow scaffolds in the active book folder.');
-        button.setCta();
-        button.onClick(async () => {
-            const lane = await chooseMatterSampleLane(plugin.app, selectedMatterWorkflow);
-            if (!lane) return;
-            button.setDisabled(true);
-            button.setButtonText('Generating Pack…');
-            try {
-                if (plugin.settings.matterWorkflowMode !== lane) {
-                    plugin.settings.matterWorkflowMode = lane;
-                    selectedMatterWorkflow = lane;
-                    await plugin.saveSettings();
-                }
-                const created = await generateSampleTemplates(plugin, lane);
-                if (created.length > 0) {
-                    const laneLabel = lane === 'guided' ? 'guided' : lane === 'advanced' ? 'advanced' : 'mixed';
-                    const scriptTargetLabel = `${plugin.settings.manuscriptOutputFolder || 'Radial Timeline/Export'}/Templates`;
-                    const sourceFolder = getActiveBookExportContext(plugin).sourceFolder.trim();
-                    const matterTargetLabel = sourceFolder || scriptTargetLabel;
-                    new Notice(`Created ${created.length} ${laneLabel} template-pack files. Scripts → ${scriptTargetLabel}, Matter + BookMeta → ${matterTargetLabel}, LaTeX → ${plugin.settings.pandocFolder || 'Pandoc'}/. Layouts registered.`);
-                } else {
-                    new Notice('All template-pack files already exist. Layouts updated.');
-                }
-                renderLayoutRows();
-            } catch (e) {
-                const msg = (e as Error).message || String(e);
-                new Notice(`Error generating template pack: ${msg}`);
-            } finally {
-                button.setDisabled(false);
-                button.setButtonText('Generate Template Pack');
-            }
-        });
-    });
-    const templatePackHelp = templatePackSection.createEl('ul', { cls: ERT_CLASSES.SECTION_DESC });
-    templatePackHelp.createEl('li', { text: 'Script examples (screenplay + podcast) → manuscript output Templates folder' });
-    templatePackHelp.createEl('li', { text: 'Pandoc PDF templates (.tex) → Pandoc folder' });
-    templatePackHelp.createEl('li', { text: 'Front/back matter + BookMeta scaffolds → active book source folder' });
-    templatePackSection.createEl('p', {
-        cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Use Matter workflow + Apply to active book to migrate existing notes; Generate Template Pack creates new scaffolds.'
-    });
 
     return section;
 }

@@ -27,6 +27,7 @@ import { isPathInFolderScope } from '../utils/pathScope';
 import { ensureSceneTemplateFrontmatter } from '../utils/sceneIds';
 import { chunkScenesIntoParts } from '../utils/splitOutput';
 import { parseMatterMetaFromFrontmatter } from '../utils/matterMeta';
+import { ensureBundledLayoutInstalledForExport } from '../utils/pandocBundledLayouts';
 
 import { getRuntimeSettings } from '../utils/runtimeEstimator';
 
@@ -431,7 +432,14 @@ export class CommandRegistrar {
                 new Notice('No Pandoc layout selected. Configure layouts in Pro settings.');
                 return {};
             }
-            const layoutValidation = validatePandocLayout(this.plugin, layout);
+            let layoutValidation = validatePandocLayout(this.plugin, layout);
+            if (!layoutValidation.valid && layout.bundled) {
+                const bundledInstall = await ensureBundledLayoutInstalledForExport(this.plugin, layout);
+                if (bundledInstall.installed) {
+                    new Notice(`Installed bundled layout '${layout.name}' to Pandoc folder.`);
+                    layoutValidation = validatePandocLayout(this.plugin, layout);
+                }
+            }
             if (!layoutValidation.valid) {
                 new Notice(`Layout "${layout.name}" is invalid: ${layoutValidation.error}`);
                 return {};
@@ -515,8 +523,6 @@ export class CommandRegistrar {
                     templatePath,
                     workingDir: absoluteOutputFolder,
                     pandocPath: this.plugin.settings.pandocPath,
-                    enableFallback: this.plugin.settings.pandocEnableFallback,
-                    fallbackPath: this.plugin.settings.pandocFallbackPath,
                     metadata: pandocMetadata
                 });
 

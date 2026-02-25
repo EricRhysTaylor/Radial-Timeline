@@ -52,6 +52,7 @@ import { DEFAULT_BOOK_TITLE, createBookId, deriveBookTitleFromSourcePath, getAct
 import { initVersionCheckService, getVersionCheckService } from './services/VersionCheckService';
 import { registerRuntimeCommands } from './RuntimeCommands';
 import { AuthorProgressService } from './services/AuthorProgressService';
+import { ensureBundledPandocLayoutsRegistered } from './utils/pandocBundledLayouts';
 
 
 // Declare the variable that will be injected by the build process
@@ -786,6 +787,7 @@ export default class RadialTimelinePlugin extends Plugin {
                 pandocLayoutsMigrated = true;
             }
         }
+        const bundledPandocLayoutsRegistered = ensureBundledPandocLayoutsRegistered(this);
         // ─── Beat Id migration: assign GUIDs to custom/saved beats lacking ids ───
         let beatIdMigrated = false;
         if (Array.isArray(this.settings.customBeatSystemBeats)) {
@@ -818,7 +820,7 @@ export default class RadialTimelinePlugin extends Plugin {
             });
         }
 
-        if (before !== after || aiSettingsMigrated || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated || backdropTemplateMigrated || pandocLayoutsMigrated || booksMigrated || schemaOntologyMigrated || beatIdMigrated) {
+        if (before !== after || aiSettingsMigrated || templatesMigrated || actionNotesTargetMigrated || exportFolderMigrated || beatConfigMigrated || backdropTemplateMigrated || pandocLayoutsMigrated || bundledPandocLayoutsRegistered || booksMigrated || schemaOntologyMigrated || beatIdMigrated) {
             await this.saveSettings();
         }
     }
