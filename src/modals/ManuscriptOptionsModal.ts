@@ -1168,8 +1168,8 @@ export class ManuscriptOptionsModal extends Modal {
             return;
         }
         const key = layoutName.toLowerCase();
-        if (key.includes('signature literary')) {
-            desc.setText('Cinematic literary trim layout with inline-LaTeX matter support for print-ready novels.');
+        if (key.includes('signature literary') || key.includes('(st)')) {
+            desc.setText('ST = Signature Literary. Print-ready novel layout with alternating title/author running headers and page-number formatting.');
             return;
         }
         if (key.includes('screenplay')) {
@@ -1181,7 +1181,7 @@ export class ManuscriptOptionsModal extends Modal {
             return;
         }
         if (key.includes('novel')) {
-            desc.setText('Traditional novel manuscript layout for print-ready PDF.');
+            desc.setText('ST = Signature Literary. Print-ready novel layout with alternating title/author running headers and page-number formatting.');
             return;
         }
         desc.setText('Custom LaTeX layout for manuscript PDF rendering.');

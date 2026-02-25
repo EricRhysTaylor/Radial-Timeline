@@ -36,7 +36,7 @@ function createPluginWithBundledLayout(layoutId: string): { plugin: RadialTimeli
 
     const settings: RadialTimelineSettings = {
         ...DEFAULT_SETTINGS,
-        pandocFolder: 'Pandoc',
+        pandocFolder: 'Radial Timeline/Pandoc',
         pandocLayouts: [layout]
     };
 
@@ -50,7 +50,7 @@ function createPluginWithBundledLayout(layoutId: string): { plugin: RadialTimeli
 
 describe('bundled pandoc layout export auto-install', () => {
     it('installs missing bundled .tex template and then validates successfully', async () => {
-        const { plugin, layout } = createPluginWithBundledLayout('bundled-novel-signature-literary-rt');
+        const { plugin, layout } = createPluginWithBundledLayout('bundled-novel');
 
         const before = validatePandocLayout(plugin, layout);
         expect(before.valid).toBe(false);

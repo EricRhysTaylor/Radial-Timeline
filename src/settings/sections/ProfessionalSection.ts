@@ -492,7 +492,7 @@ class MatterSampleLaneModal extends Modal {
         makeOption(
             'advanced',
             'Advanced (LaTeX in Body)',
-            'Canonical inline-LaTeX front/back matter pages for the Signature Literary template. Best for advanced users comfortable with LaTeX.',
+            'Canonical inline-LaTeX front/back matter pages for the ST (Signature Literary) template. Best for advanced users comfortable with LaTeX.',
             'code'
         );
         makeOption(
@@ -975,9 +975,9 @@ async function generateSampleTemplates(
 
     const advancedMatterComment = [
         '<!--',
-        'Advanced Matter Page (Signature Literary)',
+        'Advanced Matter Page (ST - Signature Literary)',
         'Raw LaTeX is used below.',
-        'This is the canonical inline-LaTeX matter format for Signature Literary exports.',
+        'This is the canonical inline-LaTeX matter format for ST exports.',
         'Radial Timeline will not escape this content.',
         '-->'
     ];
@@ -1613,7 +1613,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     applyErtHeaderLayout(layoutHeading);
 
     const presetDescriptions: Record<string, string> = {
-        novel: 'Traditional novel manuscript layout. Scenes become chapters or sections. Suitable for print-ready PDF.',
+        novel: 'ST = Signature Literary. Print-ready novel layout with alternating title/author running headers and page-number formatting.',
         screenplay: 'Screenplay formatting for industry-standard PDF scripts.',
         podcast: 'Structured podcast script layout for narration-based formats.'
     };

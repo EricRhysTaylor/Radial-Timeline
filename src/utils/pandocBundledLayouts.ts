@@ -81,49 +81,7 @@ const BUNDLED_PANDOC_LAYOUT_TEMPLATES: BundledPandocLayoutTemplate[] = [
     },
     {
         id: 'bundled-novel',
-        name: 'Novel Manuscript',
-        preset: 'novel',
-        path: 'novel_template.tex',
-        bundled: true,
-        content: [
-            '% Pandoc LaTeX Template - Novel Manuscript Format',
-            '% Traditional publishing format: Times 12pt, double-spaced',
-            '\\documentclass[12pt,letterpaper]{article}',
-            '',
-            '\\usepackage[top=1in,bottom=1in,left=1in,right=1in]{geometry}',
-            '\\usepackage{fontspec}',
-            '\\usepackage{setspace}',
-            '',
-            '% Times New Roman is the publishing standard',
-            '\\setmainfont{Times New Roman}[',
-            '  BoldFont={Times New Roman Bold},',
-            '  ItalicFont={Times New Roman Italic}',
-            ']',
-            '',
-            '% Double spacing (standard for manuscript submissions)',
-            '\\doublespacing',
-            '',
-            '% First line indent',
-            '\\setlength{\\parindent}{0.5in}',
-            '\\setlength{\\parskip}{0pt}',
-            '',
-            '% Page numbers top right',
-            '\\usepackage{fancyhdr}',
-            '\\pagestyle{fancy}',
-            '\\fancyhf{}',
-            '\\fancyhead[R]{\\thepage}',
-            '\\renewcommand{\\headrulewidth}{0pt}',
-            '',
-            '\\begin{document}',
-            '',
-            '$body$',
-            '',
-            '\\end{document}'
-        ].join('\n')
-    },
-    {
-        id: 'bundled-novel-signature-literary-rt',
-        name: 'Signature Literary (RT)',
+        name: 'Novel Manuscript (ST)',
         preset: 'novel',
         path: 'signature_literary_rt.tex',
         bundled: true,
@@ -223,9 +181,12 @@ export function getBundledPandocLayouts(): PandocLayoutTemplate[] {
 }
 
 export function ensureBundledPandocLayoutsRegistered(plugin: RadialTimelinePlugin): boolean {
-    const existing = plugin.settings.pandocLayouts || [];
+    let existing = plugin.settings.pandocLayouts || [];
+    const canonicalIds = new Set(getBundledPandocLayouts().map(layout => layout.id));
+    const filtered = existing.filter(layout => !(layout.bundled && !canonicalIds.has(layout.id)));
+    let changed = filtered.length !== existing.length;
+    existing = filtered;
     const byId = new Map(existing.map(layout => [layout.id, layout]));
-    let changed = false;
 
     for (const bundled of getBundledPandocLayouts()) {
         const current = byId.get(bundled.id);
