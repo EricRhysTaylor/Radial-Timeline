@@ -643,7 +643,7 @@ export class BookDesignerModal extends Modal {
                 this.targetPathInput = text;
                 text.setValue(this.targetPath)
                     .setPlaceholder('vault root');
-                text.inputEl.addClass('rt-input-sm');
+                text.inputEl.addClass('rt-input-lg');
                 new ModalFolderSuggest(this.app, text.inputEl, (path: string) => {
                     this.targetPath = path;
                     text.setValue(path);

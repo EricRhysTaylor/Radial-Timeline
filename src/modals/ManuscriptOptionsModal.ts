@@ -182,10 +182,7 @@ export class ManuscriptOptionsModal extends Modal {
 
     private renderSkeleton(container: HTMLElement): void {
         const hero = container.createDiv({ cls: 'ert-modal-header' });
-
-        if (this.isPro) {
-            hero.createSpan({ cls: 'ert-modal-badge', text: 'Pro' });
-        }
+        hero.createSpan({ cls: 'ert-modal-badge', text: 'EXPORT' });
 
         hero.createDiv({
             cls: 'ert-modal-title',
@@ -437,7 +434,7 @@ export class ManuscriptOptionsModal extends Modal {
             });
 
         this.includeMatterCard = publishingBody.createDiv({ cls: 'rt-manuscript-toggle-row' });
-        this.includeMatterCard.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Include matter notes' });
+        this.includeMatterCard.createSpan({ cls: 'rt-manuscript-toggle-label', text: 'Include front & back matter notes' });
         new ToggleComponent(this.includeMatterCard)
             .setValue(this.includeMatterUserChoice)
             .onChange((value) => {
@@ -787,6 +784,7 @@ export class ManuscriptOptionsModal extends Modal {
             // Multiple layouts — dropdown
             const ddContainer = this.layoutContainerEl.createDiv({ cls: 'rt-manuscript-input-container' });
             const dd = new DropdownComponent(ddContainer);
+            dd.selectEl.addClass('ert-input--lg');
             for (const l of layouts) {
                 dd.addOption(l.id, l.name);
             }

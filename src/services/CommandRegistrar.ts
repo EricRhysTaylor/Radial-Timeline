@@ -306,7 +306,7 @@ export class CommandRegistrar {
                 filteredSelection.matterMetaByPath?.has(file.path) ? count + 1 : count
             ), 0);
             if (includeMatter && selectedMatterCount === 0) {
-                statusMessages.push('Include matter notes is enabled, but no front/back matter notes were found in the active book source folder.');
+                statusMessages.push('Include front & back matter notes is enabled, but no front/back matter notes were found in the active book source folder.');
             }
 
             if (result.exportType === 'outline') {
