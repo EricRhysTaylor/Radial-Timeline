@@ -786,7 +786,6 @@ export default class RadialTimelinePlugin extends Plugin {
                 pandocLayoutsMigrated = true;
             }
         }
-
         // ─── Beat Id migration: assign GUIDs to custom/saved beats lacking ids ───
         let beatIdMigrated = false;
         if (Array.isArray(this.settings.customBeatSystemBeats)) {

@@ -445,8 +445,12 @@ export class CommandRegistrar {
 
             const templatePath = resolveTemplatePath(this.plugin, layout.path);
             const shouldSaveMarkdown = result.saveMarkdownArtifact ?? true;
-            const useLatexSceneOpeners = /ajfinn|aj finn/i.test(`${layout.id} ${layout.name} ${layout.path}`);
+            const useLatexSceneOpeners = /signature literary|signature[-_ ]literary/i.test(`${layout.id} ${layout.name} ${layout.path}`);
             const sceneHeadingRenderMode = useLatexSceneOpeners ? 'latex-section-starred' : 'markdown-h2';
+            const pandocMetadata: Record<string, string | undefined> = {
+                title: bookMetaResolution.bookMeta?.title,
+                author: bookMetaResolution.bookMeta?.author,
+            };
             const fontDiagnostics = getTemplateFontDiagnostics(templatePath);
             if (fontDiagnostics.fontsEmbeddedInPdf) {
                 statusMessages.push('Font embedding: XeLaTeX/LuaLaTeX embed resolved OpenType/TrueType fonts in the exported PDF.');
@@ -455,8 +459,6 @@ export class CommandRegistrar {
                 const fontWarning = `Missing required system font(s): ${fontDiagnostics.missingRequiredFonts.join(', ')}. Install them or switch layouts before exporting.`;
                 statusMessages.push(fontWarning);
                 new Notice(fontWarning);
-            } else if (!fontDiagnostics.canVerifySystemFonts && fontDiagnostics.requiredFonts.length > 0) {
-                statusMessages.push('Unable to verify required system fonts on this platform. PDF export may fail if fonts are unavailable.');
             }
 
             new Notice('Running Pandoc...');
@@ -514,7 +516,8 @@ export class CommandRegistrar {
                     workingDir: absoluteOutputFolder,
                     pandocPath: this.plugin.settings.pandocPath,
                     enableFallback: this.plugin.settings.pandocEnableFallback,
-                    fallbackPath: this.plugin.settings.pandocFallbackPath
+                    fallbackPath: this.plugin.settings.pandocFallbackPath,
+                    metadata: pandocMetadata
                 });
 
                 renderedPaths.push(renderedVaultPath);

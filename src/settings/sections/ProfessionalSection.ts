@@ -11,6 +11,7 @@ import type RadialTimelinePlugin from '../../main';
 import { ERT_CLASSES } from '../../ui/classes';
 import { addHeadingIcon, addWikiLink, applyErtHeaderLayout } from '../wikiLink';
 import { execFile } from 'child_process'; // SAFE: Node child_process for system path scanning
+import * as path from 'path'; // SAFE: Node path for absolute-path detection in layout input normalization
 import { generateSceneContent } from '../../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { getTemplateFontDiagnostics, resolveTemplatePath, validatePandocLayout, slugifyToFileStem } from '../../utils/exportFormats';
@@ -221,7 +222,36 @@ function listAvailableLatexEngines(): Array<{ engine: string; path: string }> {
 
 type MatterSampleLane = 'guided' | 'advanced' | 'mixed';
 
-class PandocTemplatePathSuggest extends AbstractInputSuggest<string> {
+interface TemplatePathSuggestion {
+    fullPath: string;
+    storedPath: string;
+    exists: boolean;
+    inPandocFolder: boolean;
+}
+
+function getConfiguredPandocFolder(plugin: RadialTimelinePlugin): string {
+    return normalizePath((plugin.settings.pandocFolder || 'Pandoc').trim() || 'Pandoc');
+}
+
+function compactTemplatePathForStorage(plugin: RadialTimelinePlugin, rawPath: string): string {
+    const trimmed = rawPath.trim();
+    if (!trimmed) return '';
+    if (path.isAbsolute(trimmed) || /^[A-Za-z]:[\\/]/.test(trimmed)) {
+        return trimmed;
+    }
+
+    const normalized = normalizePath(trimmed.replace(/^\/+/, ''));
+    if (!normalized) return '';
+
+    const pandocFolder = getConfiguredPandocFolder(plugin);
+    const prefix = `${pandocFolder}/`;
+    if (normalized.startsWith(prefix)) {
+        return normalized.slice(prefix.length);
+    }
+    return normalized;
+}
+
+class PandocTemplatePathSuggest extends AbstractInputSuggest<TemplatePathSuggestion> {
     private readonly plugin: RadialTimelinePlugin;
     private readonly inputRef: HTMLInputElement;
     private readonly onChoose: (path: string) => void;
@@ -238,7 +268,7 @@ class PandocTemplatePathSuggest extends AbstractInputSuggest<string> {
         this.onChoose = onChoose;
     }
 
-    getSuggestions(query: string): string[] {
+    getSuggestions(query: string): TemplatePathSuggestion[] {
         const rawQuery = (query || '').trim();
         const normalizedQuery = rawQuery ? normalizePath(rawQuery.replace(/^\/+/, '')) : '';
         const lowered = normalizedQuery.toLowerCase();
@@ -257,7 +287,7 @@ class PandocTemplatePathSuggest extends AbstractInputSuggest<string> {
         (this.plugin.settings.pandocLayouts || [])
             .forEach(layout => addCandidate(layout.path));
 
-        const pandocFolder = normalizePath((this.plugin.settings.pandocFolder || 'Pandoc').trim() || 'Pandoc');
+        const pandocFolder = getConfiguredPandocFolder(this.plugin);
         if (normalizedQuery) {
             if (texPattern.test(normalizedQuery)) {
                 addCandidate(normalizedQuery);
@@ -269,24 +299,59 @@ class PandocTemplatePathSuggest extends AbstractInputSuggest<string> {
         }
 
         const ordered = Array.from(candidateSet).sort((a, b) => a.localeCompare(b));
-        if (!lowered) return ordered.slice(0, 40);
-        return ordered.filter(path => path.toLowerCase().includes(lowered)).slice(0, 40);
+        const dedupedByStored = new Map<string, TemplatePathSuggestion>();
+        for (const fullPath of ordered) {
+            const normalized = normalizePath(fullPath);
+            const storedPath = compactTemplatePathForStorage(this.plugin, normalized);
+            const inPandocFolder = storedPath !== normalized;
+            const exists = this.app.vault.getAbstractFileByPath(normalized) instanceof TFile;
+            const suggestion: TemplatePathSuggestion = {
+                fullPath: normalized,
+                storedPath,
+                exists,
+                inPandocFolder
+            };
+            const key = suggestion.storedPath.toLowerCase();
+            const current = dedupedByStored.get(key);
+            if (!current) {
+                dedupedByStored.set(key, suggestion);
+                continue;
+            }
+            if (!current.exists && suggestion.exists) {
+                dedupedByStored.set(key, suggestion);
+                continue;
+            }
+            if (!current.inPandocFolder && suggestion.inPandocFolder) {
+                dedupedByStored.set(key, suggestion);
+            }
+        }
+
+        const suggestions = Array.from(dedupedByStored.values());
+        if (!lowered) return suggestions.slice(0, 40);
+        return suggestions
+            .filter(suggestion => {
+                const haystack = `${suggestion.storedPath} ${suggestion.fullPath}`.toLowerCase();
+                return haystack.includes(lowered);
+            })
+            .slice(0, 40);
     }
 
-    renderSuggestion(path: string, el: HTMLElement): void {
+    renderSuggestion(suggestion: TemplatePathSuggestion, el: HTMLElement): void {
         const row = el.createDiv({ cls: 'ert-template-path-suggest' });
-        row.createDiv({ cls: 'ert-template-path-suggest-path', text: path });
-        const exists = !!this.app.vault.getAbstractFileByPath(path);
+        row.createDiv({ cls: 'ert-template-path-suggest-path', text: suggestion.storedPath });
+        const metaParts = [suggestion.exists ? 'Existing file' : 'Suggested path'];
+        if (suggestion.inPandocFolder || suggestion.fullPath !== suggestion.storedPath) {
+            metaParts.push(suggestion.fullPath);
+        }
         row.createDiv({
             cls: 'ert-template-path-suggest-meta',
-            text: exists ? 'Existing file' : 'Suggested path'
+            text: metaParts.join(' · ')
         });
     }
 
-    selectSuggestion(path: string, _evt: MouseEvent | KeyboardEvent): void {
-        const normalized = normalizePath(path);
-        this.inputRef.value = normalized;
-        this.onChoose(normalized);
+    selectSuggestion(suggestion: TemplatePathSuggestion, _evt: MouseEvent | KeyboardEvent): void {
+        this.inputRef.value = suggestion.storedPath;
+        this.onChoose(suggestion.storedPath);
         try { this.close(); } catch {}
         try { this.inputRef.focus(); } catch {}
     }
@@ -337,19 +402,19 @@ class MatterSampleLaneModal extends Modal {
                     '000 BookMeta.md (master publishing metadata file)',
                     'Front matter stubs (Title Page, Copyright, Dedication, etc.)',
                     'Back matter stubs (Acknowledgments, About the Author)',
-                    'Scene examples',
+                    'Script examples (screenplay + podcast)',
                     'PDF layout templates'
                 ]
                 : this.selected === 'advanced'
                     ? [
                     'Front/back matter examples with working LaTeX bodies',
-                    'Scene examples',
+                    'Script examples (screenplay + podcast)',
                     'PDF layout templates'
                     ]
                     : [
                         '000 BookMeta.md (master publishing metadata file)',
                         'Front/back matter stubs set to BodyMode: auto (mix semantic + inline LaTeX)',
-                        'Scene examples',
+                        'Script examples (screenplay + podcast)',
                         'PDF layout templates'
                     ];
             items.forEach(item => {
@@ -418,7 +483,7 @@ class MatterSampleLaneModal extends Modal {
         makeOption(
             'advanced',
             'Advanced (LaTeX in Body)',
-            'Write raw LaTeX directly inside front/back matter notes. Radial Timeline passes this content through unchanged. Best for advanced users comfortable with LaTeX.',
+            'Canonical inline-LaTeX front/back matter pages for the Signature Literary template. Best for advanced users comfortable with LaTeX.',
             'code'
         );
         makeOption(
@@ -625,12 +690,26 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
     const baseFolder = plugin.settings.manuscriptOutputFolder || 'Radial Timeline/Export';
     const templatesFolder = normalizePath(`${baseFolder}/Templates`);
     const pandocFolder = normalizePath(plugin.settings.pandocFolder || 'Pandoc');
+    const activeSourceFolderRaw = getActiveBookExportContext(plugin).sourceFolder.trim();
+    const activeSourceFolder = activeSourceFolderRaw ? normalizePath(activeSourceFolderRaw) : '';
+    const matterTargetFolder = activeSourceFolder || templatesFolder;
+
+    const ensureFolderPath = async (folderPath: string): Promise<void> => {
+        const parts = normalizePath(folderPath).split('/').filter(Boolean);
+        let current = '';
+        for (const part of parts) {
+            current = current ? `${current}/${part}` : part;
+            if (!vault.getAbstractFileByPath(current)) {
+                await vault.createFolder(current);
+            }
+        }
+    };
 
     // Ensure folders exist
-    for (const folder of [baseFolder, templatesFolder, pandocFolder]) {
+    for (const folder of [baseFolder, templatesFolder, pandocFolder, matterTargetFolder]) {
         const normalized = normalizePath(folder);
         if (!vault.getAbstractFileByPath(normalized)) {
-            await vault.createFolder(normalized);
+            await ensureFolderPath(normalized);
         }
     }
 
@@ -679,19 +758,6 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
         {
             Synopsis: 'Introduction and interview with Dr. Sarah Chen about AI and creativity.',
             Runtime: '8:00',
-            Status: 'Working'
-        }
-    );
-
-    const novelData = {
-        act: 1, when: '2024-01-15', sceneNumber: 1,
-        subplots: ['Main Plot'], character: 'Emma, Thomas', place: ''
-    };
-    const novelYaml = patchYaml(
-        generateSceneContent(baseTemplate, novelData),
-        {
-            Synopsis: 'Emma discovers a hidden key inside a hollowed-out book in the old library.',
-            POV: 'Emma',
             Status: 'Working'
         }
     );
@@ -799,36 +865,6 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
         '[END]'
     ].join('\n');
 
-    const novelBody = [
-        'The late afternoon sun filtered through the dusty windows of the old library, casting long shadows across the wooden floors. Emma ran her fingers along the spine of a leather-bound volume, feeling the familiar comfort of aged paper and binding glue.',
-        '',
-        '"You know you can\'t stay here forever," Thomas said from the doorway.',
-        '',
-        'She didn\'t turn around. "Watch me."',
-        '',
-        'He walked closer, his footsteps echoing in the empty reading room. "The demolition crew arrives Monday. This place will be rubble by Wednesday."',
-        '',
-        '"Then I have until Monday." Emma pulled the book from the shelf, opened it to reveal hollowed-out pages. Inside: a small brass key.',
-        '',
-        'Thomas leaned over her shoulder. "What is that?"',
-        '',
-        '"The reason they want this building torn down." She held the key up to the light, watching it glint. "The reason my grandfather died."',
-        '',
-        '"Emma—"',
-        '',
-        '"Don\'t." She closed the book, tucked it under her arm. "Don\'t tell me to let it go. Don\'t tell me it\'s not worth it."',
-        '',
-        'Thomas studied her face: the determined set of her jaw, the fire in her eyes that had been absent for so long. He sighed.',
-        '',
-        '"What do you need me to do?"',
-        '',
-        'She smiled for the first time in weeks. "Help me find what this key opens."',
-        '',
-        'Outside, the shadows grew longer. Somewhere in the building, old floorboards creaked. Emma and Thomas didn\'t notice. They were already lost in the hunt, following a trail of clues that would lead them into the heart of a decades-old conspiracy.',
-        '',
-        'The library held its secrets close, but not for much longer.'
-    ].join('\n');
-
     const sampleScenes: { name: string; content: string }[] = [
         {
             name: 'Sample Screenplay Scene.md',
@@ -837,10 +873,6 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
         {
             name: 'Sample Podcast Scene.md',
             content: `---\n${podcastYaml}\n---\n\n${podcastBody}`
-        },
-        {
-            name: 'Sample Novel Scene.md',
-            content: `---\n${novelYaml}\n---\n\n${novelBody}`
         }
     ];
 
@@ -879,8 +911,9 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
 
     const advancedMatterComment = [
         '<!--',
-        'Advanced Matter Page',
+        'Advanced Matter Page (Signature Literary)',
         'Raw LaTeX is used below.',
+        'This is the canonical inline-LaTeX matter format for Signature Literary exports.',
         'Radial Timeline will not escape this content.',
         '-->'
     ];
@@ -1196,9 +1229,9 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
             ].join('\n')
         },
         {
-            name: 'ajfinn_rt.tex',
+            name: 'signature_literary_rt.tex',
             content: [
-                '% Pandoc LaTeX Template — AJ Finn (Radial Timeline native)',
+                '% Pandoc LaTeX Template — Signature Literary (Radial Timeline native)',
                 '% Sophisticated print styling without external JS compile layer.',
                 '\\documentclass[11pt,letterpaper,twoside]{book}',
                 '',
@@ -1292,7 +1325,7 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
     }
 
     if (matterLane === 'guided' || matterLane === 'mixed') {
-        const bookMetaPath = normalizePath(`${templatesFolder}/${bookMetaSample.name}`);
+        const bookMetaPath = normalizePath(`${matterTargetFolder}/${bookMetaSample.name}`);
         if (!vault.getAbstractFileByPath(bookMetaPath)) {
             await vault.create(bookMetaPath, bookMetaSample.content);
             createdFiles.push(bookMetaSample.name);
@@ -1300,7 +1333,7 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
     }
 
     for (const matter of matterSamples) {
-        const filePath = normalizePath(`${templatesFolder}/${matter.name}`);
+        const filePath = normalizePath(`${matterTargetFolder}/${matter.name}`);
         if (!vault.getAbstractFileByPath(filePath)) {
             await vault.create(filePath, matter.content);
             createdFiles.push(matter.name);
@@ -1319,10 +1352,10 @@ async function generateSampleTemplates(plugin: RadialTimelinePlugin, matterLane:
     const existingLayouts = plugin.settings.pandocLayouts || [];
     const existingIds = new Set(existingLayouts.map(l => l.id));
     const sampleLayouts: PandocLayoutTemplate[] = [
-        { id: 'bundled-screenplay', name: 'Screenplay', preset: 'screenplay', path: normalizePath(`${pandocFolder}/screenplay_template.tex`), bundled: true },
-        { id: 'bundled-podcast', name: 'Podcast Script', preset: 'podcast', path: normalizePath(`${pandocFolder}/podcast_template.tex`), bundled: true },
-        { id: 'bundled-novel', name: 'Novel Manuscript', preset: 'novel', path: normalizePath(`${pandocFolder}/novel_template.tex`), bundled: true },
-        { id: 'bundled-novel-ajfinn-rt', name: 'AJ Finn RT', preset: 'novel', path: normalizePath(`${pandocFolder}/ajfinn_rt.tex`), bundled: true },
+        { id: 'bundled-screenplay', name: 'Screenplay', preset: 'screenplay', path: 'screenplay_template.tex', bundled: true },
+        { id: 'bundled-podcast', name: 'Podcast Script', preset: 'podcast', path: 'podcast_template.tex', bundled: true },
+        { id: 'bundled-novel', name: 'Novel Manuscript', preset: 'novel', path: 'novel_template.tex', bundled: true },
+        { id: 'bundled-novel-signature-literary-rt', name: 'Signature Literary (RT)', preset: 'novel', path: 'signature_literary_rt.tex', bundled: true },
     ];
     for (const layout of sampleLayouts) {
         if (!existingIds.has(layout.id)) {
@@ -1707,7 +1740,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     layoutSubSection.createEl('h5', { text: 'Export Layouts (PDF)', cls: ERT_CLASSES.SECTION_TITLE });
     layoutSubSection.createEl('p', {
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Choose which LaTeX layout to use when rendering your manuscript to PDF.'
+        text: 'Choose which LaTeX layout to use when rendering manuscript PDFs. Use a filename for templates in your Pandoc folder, or provide a custom vault/absolute path.'
     });
     layoutSubSection.createEl('p', {
         cls: ERT_CLASSES.SECTION_DESC,
@@ -1788,11 +1821,13 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                 .setDesc(buildLayoutDescription(layout))
                 .addText(text => {
                     text.inputEl.addClass('ert-input--lg');
-                    text.setPlaceholder('path/to/template.tex');
+                    text.setPlaceholder('template.tex or path/to/template.tex');
                     text.setValue(layout.path);
 
                     const saveAndValidate = async () => {
-                        layout.path = text.getValue().trim();
+                        const normalizedPath = compactTemplatePathForStorage(plugin, text.getValue());
+                        layout.path = normalizedPath;
+                        try { text.setValue(normalizedPath); } catch {}
                         await plugin.saveSettings();
                         flashValidateLayoutPath(text.inputEl, layout);
                         s.setDesc(buildLayoutDescription(layout));
@@ -1846,7 +1881,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         dd.onChange(v => { newPreset = v as typeof newPreset; });
     });
     addFormSetting.addText(text => {
-        text.setPlaceholder('path/to/template.tex');
+        text.setPlaceholder('template.tex or path/to/template.tex');
         text.inputEl.addClass('ert-input--lg');
         text.onChange(v => { newPath = v; });
         attachTemplatePathSuggest(plugin, text, (path) => {
@@ -1855,7 +1890,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     });
     const addFormHint = addFormContainer.createDiv({
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Tip: start typing to autocomplete existing .tex templates in your vault.'
+        text: 'Tip: autocomplete finds .tex files in your vault. Files from your Pandoc folder are saved as filename-only references.'
     });
     addFormHint.addClass('ert-layout-add-form-hint');
     addFormSetting.addExtraButton(btn => {
@@ -1870,7 +1905,13 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                 new Notice('A layout with this name and preset already exists.');
                 return;
             }
-            existing.push({ id, name: trimName, preset: newPreset, path: newPath.trim(), bundled: false });
+            existing.push({
+                id,
+                name: trimName,
+                preset: newPreset,
+                path: compactTemplatePathForStorage(plugin, newPath),
+                bundled: false
+            });
             plugin.settings.pandocLayouts = existing;
             await plugin.saveSettings();
             // Reset form
@@ -1895,7 +1936,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     templatePackSection.createEl('h5', { text: 'Template Pack Generation', cls: ERT_CLASSES.SECTION_TITLE });
     templatePackSection.createEl('p', {
         cls: ERT_CLASSES.SECTION_DESC,
-        text: 'Creates scene examples, Pandoc PDF templates, and front/back matter scaffolds. Set workflow below, then generate or migrate active-book matter notes.'
+        text: 'Creates screenplay/podcast script samples in your manuscript Templates folder, LaTeX templates in your Pandoc folder, and front/back matter + BookMeta scaffolds in the active book folder.'
     });
 
     const getSavedWorkflowMode = (): MatterSampleLane => {
@@ -2015,7 +2056,7 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
     });
     layoutActionsSetting.addButton(button => {
         button.setButtonText('Generate Template Pack');
-        button.setTooltip('Creates scene samples, Pandoc templates, and matter workflow scaffolds (Guided, Advanced, or Mixed).');
+        button.setTooltip('Creates screenplay/podcast script samples in your manuscript Templates folder, LaTeX templates in your Pandoc folder, and matter workflow scaffolds in the active book folder.');
         button.setCta();
         button.onClick(async () => {
             const lane = await chooseMatterSampleLane(plugin.app, selectedMatterWorkflow);
@@ -2031,7 +2072,10 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
                 const created = await generateSampleTemplates(plugin, lane);
                 if (created.length > 0) {
                     const laneLabel = lane === 'guided' ? 'guided' : lane === 'advanced' ? 'advanced' : 'mixed';
-                    new Notice(`Created ${created.length} ${laneLabel} template-pack files. Scenes → Export/Templates, LaTeX → ${plugin.settings.pandocFolder || 'Pandoc'}/. Layouts registered.`);
+                    const scriptTargetLabel = `${plugin.settings.manuscriptOutputFolder || 'Radial Timeline/Export'}/Templates`;
+                    const sourceFolder = getActiveBookExportContext(plugin).sourceFolder.trim();
+                    const matterTargetLabel = sourceFolder || scriptTargetLabel;
+                    new Notice(`Created ${created.length} ${laneLabel} template-pack files. Scripts → ${scriptTargetLabel}, Matter + BookMeta → ${matterTargetLabel}, LaTeX → ${plugin.settings.pandocFolder || 'Pandoc'}/. Layouts registered.`);
                 } else {
                     new Notice('All template-pack files already exist. Layouts updated.');
                 }
@@ -2046,9 +2090,9 @@ export function renderProfessionalSection({ plugin, containerEl, renderHero, onP
         });
     });
     const templatePackHelp = templatePackSection.createEl('ul', { cls: ERT_CLASSES.SECTION_DESC });
-    templatePackHelp.createEl('li', { text: 'Scene examples' });
-    templatePackHelp.createEl('li', { text: 'Pandoc PDF templates' });
-    templatePackHelp.createEl('li', { text: 'Front/back matter scaffolds' });
+    templatePackHelp.createEl('li', { text: 'Script examples (screenplay + podcast) → manuscript output Templates folder' });
+    templatePackHelp.createEl('li', { text: 'Pandoc PDF templates (.tex) → Pandoc folder' });
+    templatePackHelp.createEl('li', { text: 'Front/back matter + BookMeta scaffolds → active book source folder' });
     templatePackSection.createEl('p', {
         cls: ERT_CLASSES.SECTION_DESC,
         text: 'Use Matter workflow + Apply to active book to migrate existing notes; Generate Template Pack creates new scaffolds.'

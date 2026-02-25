@@ -572,18 +572,6 @@
   padding: 10px 16px;
 }
 
-.rt-manuscript-modal .ert-manuscript-template-select-wrap {
-  width: 100%;
-}
-
-.rt-manuscript-modal .ert-manuscript-template-select {
-  width: 100%;
-}
-
-.rt-manuscript-modal .ert-manuscript-template-select.is-empty {
-  color: var(--text-muted);
-}
-
 .rt-manuscript-modal .rt-template-actions button:last-child {
   margin-left: auto;
 }

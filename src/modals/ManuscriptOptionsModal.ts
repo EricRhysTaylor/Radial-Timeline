@@ -562,8 +562,8 @@ export class ManuscriptOptionsModal extends Modal {
         // I) EXPORT TEMPLATES
         const templateCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card rt-layout-templates-card' });
         this.createSectionHeading(templateCard, 'Export Templates', 'bookmark');
-        const templateSetting = new DropdownComponent(templateCard.createDiv({ cls: 'rt-manuscript-input-container ert-manuscript-template-select-wrap' }));
-        templateSetting.selectEl.addClass('ert-input', 'ert-input--full', 'ert-manuscript-template-select');
+        const templateSetting = new DropdownComponent(templateCard.createDiv({ cls: 'rt-manuscript-input-container' }));
+        templateSetting.selectEl.addClass('ert-input', 'ert-input--lg');
         this.exportTemplateDropdown = templateSetting.selectEl;
         templateSetting.onChange((value) => {
             if (!value) {
@@ -687,7 +687,6 @@ export class ManuscriptOptionsModal extends Modal {
 
         this.exportTemplateDropdown.value = this.activeExportTemplateId ?? '';
         this.exportTemplateDropdown.disabled = false;
-        this.exportTemplateDropdown.toggleClass('is-empty', templates.length === 0);
         this.deleteTemplateButton?.setDisabled(!this.activeExportTemplateId);
     }
 
@@ -1134,7 +1133,7 @@ export class ManuscriptOptionsModal extends Modal {
             // Multiple layouts — dropdown
             const ddContainer = this.layoutContainerEl.createDiv({ cls: 'rt-manuscript-input-container' });
             const dd = new DropdownComponent(ddContainer);
-            dd.selectEl.addClass('ert-input--lg');
+            dd.selectEl.addClass('ert-input', 'ert-input--lg');
             for (const l of layouts) {
                 dd.addOption(l.id, l.name);
             }
@@ -1165,12 +1164,12 @@ export class ManuscriptOptionsModal extends Modal {
         this.layoutContainerEl.querySelector('.rt-manuscript-layout-desc')?.remove();
         const desc = this.layoutContainerEl.createDiv({ cls: 'rt-sub-card-note rt-manuscript-layout-desc' });
         if (!layoutName) {
-            desc.setText('Choose a PDF layout in Settings → Pro → Export Layouts.');
+            desc.setText('Choose a PDF layout in Settings → Pro → Export Layouts. Layout files are .tex templates in your Pandoc folder (or a custom path).');
             return;
         }
         const key = layoutName.toLowerCase();
-        if (key.includes('aj finn') || key.includes('ajfinn')) {
-            desc.setText('Used for the novel The Woman in the Window by AJ Finn.');
+        if (key.includes('signature literary')) {
+            desc.setText('Cinematic literary trim layout with inline-LaTeX matter support for print-ready novels.');
             return;
         }
         if (key.includes('screenplay')) {
@@ -1240,16 +1239,29 @@ export class ManuscriptOptionsModal extends Modal {
         const templatePath = resolveTemplatePath(this.plugin, selectedLayout.path);
         const engineSelection = getAutoPdfEngineSelection(templatePath);
         const fontDiagnostics = getTemplateFontDiagnostics(templatePath);
+        const canVerifyFonts = fontDiagnostics.canVerifySystemFonts;
         const primaryRequested = fontDiagnostics.optionalFonts[0] || fontDiagnostics.requiredFonts[0] || null;
-        const hasPrimaryMissing = primaryRequested
+        const hasPrimaryMissing = canVerifyFonts && primaryRequested
             ? fontDiagnostics.missingOptionalFonts.includes(primaryRequested) || fontDiagnostics.missingRequiredFonts.includes(primaryRequested)
             : false;
-        const fallbackFont = fontDiagnostics.requiredFonts.find(font => !fontDiagnostics.missingRequiredFonts.includes(font)) || null;
-        const hasFontRisk = fontDiagnostics.missingRequiredFonts.length > 0 || hasPrimaryMissing;
+        const fallbackFont = canVerifyFonts
+            ? fontDiagnostics.requiredFonts.find(font => !fontDiagnostics.missingRequiredFonts.includes(font)) || null
+            : null;
+        const hasFontRisk = canVerifyFonts && (fontDiagnostics.missingRequiredFonts.length > 0 || hasPrimaryMissing);
 
         const summaryLines: string[] = [];
         if (!primaryRequested) {
             summaryLines.push('Template font: not specified (LaTeX default serif).');
+        } else if (!canVerifyFonts) {
+            const requestedType = this.getFontFamilyType(primaryRequested);
+            const declaredFallback = fontDiagnostics.requiredFonts[0] || null;
+            summaryLines.push(`Template asks for: ${primaryRequested} (${requestedType}).`);
+            if (declaredFallback && declaredFallback !== primaryRequested) {
+                const fallbackType = this.getFontFamilyType(declaredFallback);
+                summaryLines.push(`PDF uses template fallback logic: ${primaryRequested} or ${declaredFallback} (${fallbackType}).`);
+            } else {
+                summaryLines.push(`PDF will request: ${primaryRequested} (${requestedType}).`);
+            }
         } else if (hasPrimaryMissing) {
             const requestedType = this.getFontFamilyType(primaryRequested);
             if (fallbackFont && fallbackFont !== primaryRequested) {
@@ -1270,9 +1282,6 @@ export class ManuscriptOptionsModal extends Modal {
             summaryLines.push(`Embedding: yes (${engineSelection.engine} embeds resolved OpenType/TrueType fonts).`);
         } else {
             summaryLines.push('Embedding: layout does not declare custom font embedding via fontspec.');
-        }
-        if (!fontDiagnostics.canVerifySystemFonts && fontDiagnostics.requiredFonts.length > 0) {
-            summaryLines.push('Install check unavailable on this platform. If export fails, install the requested font and retry.');
         }
 
         // Template exists — show status indicator

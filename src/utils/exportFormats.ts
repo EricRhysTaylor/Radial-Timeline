@@ -46,6 +46,27 @@ export function getLayoutsForPreset(plugin: RadialTimelinePlugin, preset: Manusc
     return (plugin.settings.pandocLayouts || []).filter(l => l.preset === preset);
 }
 
+function getPandocFolder(plugin: RadialTimelinePlugin): string {
+    return normalizePath((plugin.settings.pandocFolder || 'Pandoc').trim() || 'Pandoc');
+}
+
+function getTemplatePathCandidates(plugin: RadialTimelinePlugin, templatePath: string): string[] {
+    const trimmed = templatePath.trim();
+    if (!trimmed) return [];
+    if (path.isAbsolute(trimmed)) return [trimmed];
+
+    const normalized = normalizePath(trimmed.replace(/^\/+/, ''));
+    if (!normalized) return [];
+
+    const candidates = [normalized];
+    const pandocFolder = getPandocFolder(plugin);
+    const prefixed = normalizePath(`${pandocFolder}/${normalized}`);
+    if (!normalized.startsWith(`${pandocFolder}/`) && prefixed !== normalized) {
+        candidates.push(prefixed);
+    }
+    return Array.from(new Set(candidates));
+}
+
 /**
  * Validate that a layout's .tex file exists.
  * Used by both Pro Settings (flash validation) and the export runner (hard-guard).
@@ -69,10 +90,16 @@ export function validatePandocLayout(
         }
     }
 
-    // Vault-relative path
-    const file = plugin.app.vault.getAbstractFileByPath(trimmed);
-    if (file instanceof TFile) {
-        return { valid: true };
+    const candidates = getTemplatePathCandidates(plugin, trimmed);
+    for (const candidate of candidates) {
+        const file = plugin.app.vault.getAbstractFileByPath(candidate);
+        if (file instanceof TFile) {
+            return { valid: true };
+        }
+    }
+    const fallbackCandidate = candidates.find(candidate => candidate !== trimmed);
+    if (fallbackCandidate) {
+        return { valid: false, error: `File not found in vault: ${trimmed} (also checked ${fallbackCandidate})` };
     }
     return { valid: false, error: `File not found in vault: ${trimmed}` };
 }
@@ -204,6 +231,7 @@ export interface PandocOptions {
     fallbackPath?: string;
     templatePath?: string;
     workingDir?: string;
+    metadata?: Record<string, string | undefined>;
 }
 
 export interface OutlineExportResult {
@@ -315,26 +343,66 @@ function extractConditionalFontsFromTemplate(tex: string): string[] {
     return Array.from(fonts);
 }
 
-function loadSystemFontCatalog(): string[] | null {
-    if (systemFontCatalogLoaded) return systemFontCatalogCache;
-    systemFontCatalogLoaded = true;
+function parseFcListFamilies(output: string): string[] {
+    return output
+        .split(/\r?\n/)
+        .flatMap(line => line.split(':')[0]?.split(',') || [])
+        .map(entry => entry.trim())
+        .filter(Boolean);
+}
 
+function loadFontCatalogFromFcList(): string[] | null {
     try {
         const output = execFileSync('fc-list', [':', 'family'], {
             encoding: 'utf8',
             stdio: ['ignore', 'pipe', 'ignore']
         });
-        const entries = output
-            .split(/\r?\n/)
-            .flatMap(line => line.split(':')[0]?.split(',') || [])
-            .map(entry => entry.trim())
-            .filter(Boolean);
-        systemFontCatalogCache = Array.from(new Set(entries));
-        return systemFontCatalogCache;
+        const entries = parseFcListFamilies(output);
+        return entries.length > 0 ? Array.from(new Set(entries)) : null;
     } catch {
-        systemFontCatalogCache = null;
         return null;
     }
+}
+
+function loadFontCatalogFromMacSystemProfiler(): string[] | null {
+    if (process.platform !== 'darwin') return null;
+
+    try {
+        const output = execFileSync('system_profiler', ['SPFontsDataType', '-json'], {
+            encoding: 'utf8',
+            stdio: ['ignore', 'pipe', 'ignore'],
+            maxBuffer: 1024 * 1024 * 16
+        });
+        const parsed = JSON.parse(output) as { SPFontsDataType?: unknown[] };
+        const entries = new Set<string>();
+        for (const fontRecord of parsed.SPFontsDataType || []) {
+            if (!fontRecord || typeof fontRecord !== 'object') continue;
+            const record = fontRecord as Record<string, unknown>;
+            const typefaces = Array.isArray(record.typefaces) ? record.typefaces : [];
+            for (const face of typefaces) {
+                if (!face || typeof face !== 'object') continue;
+                const faceRecord = face as Record<string, unknown>;
+                for (const key of ['family', 'fullname', '_name']) {
+                    const value = faceRecord[key];
+                    if (typeof value === 'string' && value.trim()) {
+                        entries.add(value.trim());
+                    }
+                }
+            }
+        }
+        return entries.size > 0 ? Array.from(entries) : null;
+    } catch {
+        return null;
+    }
+}
+
+function loadSystemFontCatalog(): string[] | null {
+    if (systemFontCatalogLoaded) return systemFontCatalogCache;
+    systemFontCatalogLoaded = true;
+
+    const catalog = loadFontCatalogFromFcList() || loadFontCatalogFromMacSystemProfiler();
+    systemFontCatalogCache = catalog;
+    return systemFontCatalogCache;
 }
 
 function isFontInstalled(fontName: string, catalog: string[]): boolean {
@@ -465,6 +533,14 @@ export async function runPandocOnContent(
     args.push('--pdf-engine', pdfEngine);
     if (options.templatePath && options.templatePath.trim()) {
         args.push('--template', options.templatePath.trim());
+    }
+    if (options.metadata) {
+        for (const [key, rawValue] of Object.entries(options.metadata)) {
+            const value = typeof rawValue === 'string' ? rawValue.trim() : '';
+            if (!value) continue;
+            const normalized = value.replace(/\r?\n/g, ' ');
+            args.push('--metadata', `${key}=${normalized}`);
+        }
     }
 
     await new Promise<void>((resolve, reject) => {
@@ -793,9 +869,14 @@ export function resolveTemplatePath(plugin: RadialTimelinePlugin, templatePath: 
         return trimmed;
     }
     
-    // Otherwise, treat as vault-relative and resolve to absolute
-    const absolutePath = resolveVaultAbsolutePath(plugin, trimmed);
-    return absolutePath || trimmed; // Fallback to original if resolution fails
+    const candidates = getTemplatePathCandidates(plugin, trimmed);
+    for (const candidate of candidates) {
+        const absolutePath = resolveVaultAbsolutePath(plugin, candidate);
+        if (absolutePath) {
+            return absolutePath;
+        }
+    }
+    return trimmed; // Fallback to original if resolution fails
 }
 
 export async function writeTextFile(
